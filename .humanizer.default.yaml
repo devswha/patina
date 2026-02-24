@@ -1,0 +1,15 @@
+version: "2.0"
+language: ko
+profile: default
+output: rewrite       # rewrite | diff | audit | score
+
+patterns:
+  - ko-content
+  - ko-language
+  - ko-style
+  - ko-communication
+  - ko-filler
+
+skip-patterns: []
+blocklist: []          # 추가로 감지할 어휘
+allowlist: []          # 감지에서 제외할 어휘

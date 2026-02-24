@@ -1,8 +1,38 @@
-# Humanizer-KR
+# oh-my-humanizer (Humanizer-KR)
 
 A Claude Code skill that removes signs of AI-generated writing from **Korean** text, making it sound more natural and human-written.
 
-Based on [blader/humanizer](https://github.com/blader/humanizer) (English version), adapted for Korean language patterns.
+Inspired by [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh)'s plugin architecture. Based on [blader/humanizer](https://github.com/blader/humanizer) (English version), adapted for Korean language patterns.
+
+## Architecture
+
+```
+humanizer-korean/
+├── SKILL.md                      # Orchestrator (load config → load patterns → process)
+├── .humanizer.default.yaml       # Default configuration
+├── core/
+│   └── voice.md                  # Voice & personality guidelines
+├── patterns/                     # Pattern packs (like oh-my-zsh plugins/)
+│   ├── ko-content.md             # Content patterns 1-6
+│   ├── ko-language.md            # Language/grammar patterns 7-12
+│   ├── ko-style.md               # Style patterns 13-18
+│   ├── ko-communication.md       # Communication patterns 19-21
+│   └── ko-filler.md              # Filler/hedging patterns 22-24
+├── profiles/                     # Writing style profiles (like oh-my-zsh themes/)
+│   └── default.md                # Default profile
+└── custom/                       # User extensions (.gitignore'd)
+    ├── patterns/                 # Custom pattern packs
+    └── profiles/                 # Custom profiles
+```
+
+| oh-my-zsh | oh-my-humanizer |
+|-----------|-----------------|
+| `.zshrc` | `.humanizer.default.yaml` |
+| `plugins=(git docker)` | `patterns: [ko-content, ko-style]` |
+| `plugins/` | `patterns/` |
+| `themes/` | `profiles/` |
+| `custom/plugins/` | `custom/patterns/` |
+| `ZSH_THEME="robbyrussell"` | `profile: blog` |
 
 ## Installation
 
@@ -13,11 +43,11 @@ mkdir -p ~/.claude/skills
 git clone https://github.com/devswha/humanizer-korean.git ~/.claude/skills/humanizer-kr
 ```
 
-### Manual install/update (only the skill file)
+### Manual install/update
 
 ```bash
 mkdir -p ~/.claude/skills/humanizer-kr
-cp SKILL.md ~/.claude/skills/humanizer-kr/
+cp -r SKILL.md .humanizer.default.yaml core/ patterns/ profiles/ ~/.claude/skills/humanizer-kr/
 ```
 
 ## Usage
@@ -30,29 +60,61 @@ In Claude Code, invoke the skill:
 [paste your Korean text here]
 ```
 
-Or ask Claude to humanize text directly:
+### Options
 
 ```
-이 텍스트를 자연스럽게 바꿔줘: [your text]
+/humanizer-kr --profile blog 텍스트...     # Use blog profile
+/humanizer-kr --diff 텍스트...              # Show changes per pattern
+/humanizer-kr --audit 텍스트...             # Detect only, no rewrite
+/humanizer-kr --score 텍스트...             # AI similarity score 0-100
 ```
 
-## Overview
+## Configuration
 
-Based on [Wikipedia's "Signs of AI writing"](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) guide, adapted for Korean AI writing patterns. Includes both universal patterns and Korean-specific patterns such as:
+Edit `.humanizer.default.yaml` to customize:
 
-- `~적(的)` suffix overuse (혁신적, 체계적, 효과적...)
-- `~고 있다` progressive form overuse
-- Excessive Sino-Korean formal vocabulary
-- Verbose particle usage (`~에 있어서`, `~함에 있어`)
-- Korean-specific AI vocabulary (다양한, 활발한, 아울러, 나아가...)
+```yaml
+version: "2.0"
+language: ko
+profile: default
+output: rewrite       # rewrite | diff | audit | score
 
-The skill also includes a final "AI가 쓴 것처럼 보이는 부분은?" audit pass and a second rewrite.
+patterns:
+  - ko-content
+  - ko-language
+  - ko-style
+  - ko-communication
+  - ko-filler
 
-### Key Insight from Wikipedia
+skip-patterns: []     # Pattern packs to skip
+blocklist: []         # Additional vocabulary to detect
+allowlist: []         # Vocabulary to exclude from detection
+```
 
-> "LLMs use statistical algorithms to guess what should come next. The result tends toward the most statistically likely result that applies to the widest variety of cases."
+## Custom Patterns
 
-## 24 Patterns Detected (with Before/After Examples)
+Add your own pattern packs to `custom/patterns/`:
+
+```markdown
+---
+pack: my-patterns
+language: ko
+name: 내 커스텀 패턴
+version: 1.0.0
+patterns: 2
+---
+
+# 내 커스텀 패턴
+
+### 1. 패턴 이름
+**문제:** ...
+**수정 전:** ...
+**수정 후:** ...
+```
+
+Custom patterns are automatically loaded alongside built-in patterns.
+
+## 24 Patterns Detected
 
 ### Content Patterns
 
@@ -135,6 +197,7 @@ See `SKILL.md` for the full example with draft → audit → final rewrite flow.
 
 ## Version History
 
+- **2.0.0** - Plugin architecture (oh-my-humanizer): pattern packs, profiles, config file, custom extensions
 - **1.0.0** - Initial Korean adaptation with 24 patterns, Korean-specific examples, and audit pass
 
 ## License

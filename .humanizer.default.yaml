@@ -1,9 +1,10 @@
-version: "2.0"
+version: "2.1.0"
 language: ko
 profile: default
 output: rewrite       # rewrite | diff | audit | score
 
 patterns:
+  - ko-structure
   - ko-content
   - ko-language
   - ko-style

@@ -8,18 +8,21 @@ Inspired by [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh)'s plugin architectur
 
 ```
 humanizer-korean/
-├── SKILL.md                      # Orchestrator (load config → load patterns → process)
+├── SKILL.md                      # Orchestrator (2-Phase pipeline: structure → sentence → audit)
 ├── .humanizer.default.yaml       # Default configuration
 ├── core/
 │   └── voice.md                  # Voice & personality guidelines
 ├── patterns/                     # Pattern packs (like oh-my-zsh plugins/)
+│   ├── ko-structure.md           # Structure patterns 25-27 (Phase 1)
 │   ├── ko-content.md             # Content patterns 1-6
 │   ├── ko-language.md            # Language/grammar patterns 7-12
 │   ├── ko-style.md               # Style patterns 13-18
 │   ├── ko-communication.md       # Communication patterns 19-21
 │   └── ko-filler.md              # Filler/hedging patterns 22-24
 ├── profiles/                     # Writing style profiles (like oh-my-zsh themes/)
-│   └── default.md                # Default profile
+│   ├── default.md                # Default profile
+│   └── blog.md                   # Blog/essay profile (pilot)
+├── examples/                     # Before/after examples per pattern (success + failure cases)
 └── custom/                       # User extensions (.gitignore'd)
     ├── patterns/                 # Custom pattern packs
     └── profiles/                 # Custom profiles
@@ -74,12 +77,13 @@ In Claude Code, invoke the skill:
 Edit `.humanizer.default.yaml` to customize:
 
 ```yaml
-version: "2.0"
+version: "2.1.0"
 language: ko
 profile: default
 output: rewrite       # rewrite | diff | audit | score
 
 patterns:
+  - ko-structure
   - ko-content
   - ko-language
   - ko-style
@@ -114,7 +118,15 @@ patterns: 2
 
 Custom patterns are automatically loaded alongside built-in patterns.
 
-## 24 Patterns Detected
+## 27 Patterns Detected
+
+### Structure Patterns (Phase 1)
+
+| # | Pattern | Before | After |
+|---|---------|--------|-------|
+| 25 | **구조적 반복** | Every paragraph: "주장→근거→의의" same structure | Vary paragraph structures (question, detail, short punch) |
+| 26 | **번역체** | "~것은 사실이다", "~하는 것이 가능하다" | Natural Korean equivalents |
+| 27 | **수동태 남용** | "~되어지다", "~되어질 수 있다" | Active voice or simple "~되다" |
 
 ### Content Patterns
 
@@ -195,8 +207,30 @@ See `SKILL.md` for the full example with draft → audit → final rewrite flow.
 - [WikiProject AI Cleanup](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_AI_Cleanup) - Maintaining organization
 - [blader/humanizer](https://github.com/blader/humanizer) - Original English version
 
+## Profiles
+
+| Profile | Description | Use Case |
+|---------|-------------|----------|
+| `default` | Maintain original tone, equal pattern priority | General purpose |
+| `blog` | Amplify 1st person, opinions, rhythm variation; suppress bold/emoji tolerance | Personal blogs, essays |
+
+Profiles support `voice-overrides` and `pattern-overrides` in YAML frontmatter for fine-grained control.
+
+```
+/humanizer-kr --profile blog 텍스트...
+```
+
+## Examples
+
+The `examples/` directory contains before/after test cases for each pattern:
+- **Success cases**: Correct transformations demonstrating pattern detection
+- **Failure cases**: Over-corrections or false positives showing pattern boundaries
+
+See `examples/README.md` for the naming convention and index.
+
 ## Version History
 
+- **2.1.0** - 2-Phase pipeline (structure → sentence → audit), 3 new structure patterns (27 total), blog profile, examples directory, profile overrides
 - **2.0.0** - Plugin architecture (oh-my-humanizer): pattern packs, profiles, config file, custom extensions
 - **1.0.0** - Initial Korean adaptation with 24 patterns, Korean-specific examples, and audit pass
 

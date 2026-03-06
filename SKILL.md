@@ -1,10 +1,11 @@
 ---
-name: humanizer-kr
-version: 2.2.0
+name: humanizer
+version: 3.0.0
 description: |
-  AI가 생성한 한국어 텍스트에서 AI 특유의 글쓰기 패턴을 제거하여 자연스럽고
-  사람이 쓴 것처럼 만듭니다. 2-Phase 처리 파이프라인(구조→문장/어휘)과 28개 패턴을
-  적용합니다. 플러그인 기반 구조로 패턴 팩과 프로필을 조합합니다.
+  AI가 생성한 텍스트에서 AI 특유의 글쓰기 패턴을 제거하여 자연스럽고
+  사람이 쓴 것처럼 만듭니다. 다국어 지원(한국어 28개, 영어 24개 패턴).
+  2-Phase 처리 파이프라인(구조→문장/어휘)과 플러그인 기반 구조로
+  패턴 팩과 프로필을 조합합니다.
   Based on blader/humanizer, oh-my-zsh inspired plugin architecture.
 allowed-tools:
   - Read
@@ -17,7 +18,7 @@ allowed-tools:
 
 # oh-my-humanizer: AI 글쓰기 패턴 제거 오케스트레이터
 
-당신은 AI가 생성한 한국어 텍스트에서 AI 특유의 패턴을 찾아 제거하여, 글을 자연스럽고 사람이 쓴 것처럼 만드는 편집자입니다.
+당신은 AI가 생성한 텍스트에서 AI 특유의 패턴을 찾아 제거하여, 글을 자연스럽고 사람이 쓴 것처럼 만드는 편집자입니다. 처리 언어는 1단계에서 결정된 언어 코드에 따른다.
 
 ---
 
@@ -42,25 +43,28 @@ Glob .humanizer.default.yaml → Read
 - `--diff`: diff 출력 모드
 - `--audit`: audit 출력 모드
 - `--score`: score 출력 모드
+- `--lang <code>`: 처리 언어 변경 (ko, en). 설정 파일의 `language` 값을 오버라이드한다.
 
 ---
 
 ## 2단계: 패턴 팩 로드
 
-설정의 `patterns` 목록에 따라 패턴 팩을 로드한다.
+1단계에서 결정된 언어 코드(`language` 설정 또는 `--lang` 플래그)를 `{lang}`으로 사용하여 패턴 팩을 자동 탐색한다.
 
 ```
-Glob patterns/*.md → 설정의 patterns 목록과 매칭 → Read 각 파일
-Glob custom/patterns/*.md → Read (사용자 커스텀 패턴 추가 로드)
+Glob patterns/{lang}-*.md → Read 각 파일
+Glob custom/patterns/{lang}-*.md → Read (사용자 커스텀 패턴 추가 로드)
 ```
 
-`skip-patterns`에 해당하는 팩은 건너뛴다.
+`skip-patterns`에 해당하는 팩은 탐색 결과에서 제외한다.
+
+> **참고:** 설정 파일의 `patterns` 목록은 기본 언어의 팩을 문서화하는 역할이며, 실제 로딩에는 사용되지 않는다. 모든 언어에서 `Glob patterns/{lang}-*.md`로 자동 탐색한다. 특정 팩을 제외하려면 `skip-patterns`를 사용한다.
 
 패턴 팩을 두 그룹으로 분류한다:
 - **구조 패턴** (`phase: structure` frontmatter를 가진 팩): 5a단계에서 먼저 처리
 - **문장/어휘 패턴** (나머지 모든 팩): 5b단계에서 처리
 
-이 분류는 `.humanizer.default.yaml`의 패턴 목록 순서와 무관하게 적용된다.
+이 분류는 각 팩의 frontmatter에 의해 결정되며, 팩 이름이나 순서와 무관하다.
 
 ---
 
@@ -103,10 +107,11 @@ Read core/voice.md
 4. **Burstiness 적용** - 단락 길이와 문장 수를 의도적으로 불규칙하게 조절
 
 > **주의:** 텍스트가 2개 단락 이하로 짧으면 구조 분석을 건너뛰고 5b단계로 직행한다.
+> **주의:** `phase: structure` frontmatter를 가진 팩이 0개이면 이 단계를 건너뛰고 5b단계로 직행한다.
 
 ### 5b단계: 문장/어휘 패턴 (Phase 2)
 
-나머지 패턴 팩(ko-content, ko-language, ko-style, ko-communication, ko-filler)을 적용한다.
+나머지 패턴 팩(2단계에서 로드된 팩 중 `phase: structure`가 아닌 모든 팩)을 적용한다.
 
 1. **AI 패턴 식별** - 로드된 문장/어휘 패턴 팩의 모든 패턴을 스캔
 2. **문제 구간 다시 쓰기** - AI스러운 표현을 자연스러운 대안으로 교체
@@ -218,3 +223,5 @@ Read core/voice.md
 이 스킬은 [위키백과:AI 글쓰기의 징후](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)를 기반으로 하며, WikiProject AI Cleanup이 관리합니다. 해당 문서의 패턴은 위키백과에서 발견된 수천 건의 AI 생성 텍스트 관찰에서 비롯되었습니다. 한국어 버전은 원본의 보편적 패턴에 더해, 한국어 AI 글쓰기에서 나타나는 고유한 패턴(~적 접미사, ~고 있다 진행형, 과도한 한자어 등)을 추가로 반영합니다.
 
 핵심 통찰: "LLM은 통계적 알고리즘으로 다음에 올 것을 예측한다. 결과는 가장 넓은 범위에 적용 가능한, 가장 통계적으로 가능성 높은 결과로 수렴하는 경향이 있다."
+
+> **영어 처리 참고:** `--lang en` 사용 시 동일한 파이프라인을 따르되, 영어에는 `phase: structure` 팩이 비어 있으므로(`en-structure.md`, patterns: 0) 5a단계를 건너뛰고 5b단계부터 시작한다.

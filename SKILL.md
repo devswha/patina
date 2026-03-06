@@ -68,9 +68,10 @@ Glob custom/patterns/*.md → Read (사용자 커스텀 패턴 추가 로드)
 
 ```
 Read profiles/{profile}.md
+Glob custom/profiles/{profile}.md → Read (사용자 커스텀 프로필 우선 로드)
 ```
 
-프로필이 없으면 `profiles/default.md`를 사용한다.
+커스텀 프로필(`custom/profiles/{profile}.md`)이 있으면 우선 사용한다. 없으면 `profiles/{profile}.md`를 사용한다. 둘 다 없으면 `profiles/default.md`를 사용한다.
 
 프로필에 `voice-overrides`와 `pattern-overrides`가 있으면 이를 파싱하여 5단계에서 적용한다.
 - `voice-overrides`: voice.md 지침의 강도를 프로필별로 조절 (amplify/allow/suppress)

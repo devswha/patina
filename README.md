@@ -230,7 +230,7 @@ Profiles support `voice-overrides` and `pattern-overrides` in YAML frontmatter f
 
 ## Examples
 
-The `examples/` directory contains before/after test cases for each pattern:
+The `examples/` directory contains before/after test cases for select patterns:
 - **Success cases**: Correct transformations demonstrating pattern detection
 - **Failure cases**: Over-corrections or false positives showing pattern boundaries
 

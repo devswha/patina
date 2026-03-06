@@ -31,7 +31,7 @@ The "runtime" is `SKILL.md` (the orchestrator): it reads config, loads pattern p
 
 - `patterns/*.md`
   - Pattern packs. Each file has YAML frontmatter (pack name, language, pattern count) and contains the actual pattern definitions with before/after examples.
-  - `ko-content.md` (patterns 1-6), `ko-language.md` (7-12), `ko-style.md` (13-18), `ko-communication.md` (19-21), `ko-filler.md` (22-24).
+  - `ko-structure.md` (patterns 25-28, Phase 1), `ko-content.md` (patterns 1-6), `ko-language.md` (7-12), `ko-style.md` (13-18), `ko-communication.md` (19-21), `ko-filler.md` (22-24).
 
 - `profiles/*.md`
   - Writing style profiles. Each has YAML frontmatter and tone/priority guidelines.

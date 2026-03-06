@@ -1,6 +1,6 @@
 # examples/
 
-이 디렉토리에는 humanizer-korean 패턴의 동작을 검증하는 예제 파일들이 담겨 있다.
+이 디렉토리에는 oh-my-humanizer 패턴의 동작을 검증하는 예제 파일들이 담겨 있다.
 
 ## 목적
 
@@ -44,4 +44,4 @@
 ## 패턴 팩 참조
 
 - `ko-content.md` — 패턴 #1–6 (콘텐츠 패턴)
-- `ko-structure.md` — 패턴 #25–27 (구조 패턴)
+- `ko-structure.md` — 패턴 #25–28 (구조 패턴)

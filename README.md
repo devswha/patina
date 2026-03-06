@@ -1,19 +1,26 @@
-# oh-my-humanizer (Humanizer-KR)
+# oh-my-humanizer
 
-A Claude Code skill that removes signs of AI-generated writing from **Korean** text, making it sound more natural and human-written.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
+[![Based on](https://img.shields.io/badge/Based%20on-blader%2Fhumanizer%20v2.2.0-blue)](https://github.com/blader/humanizer)
+[![Korean](https://img.shields.io/badge/Language-Korean-red)](https://github.com/devswha/oh-my-humanizer)
+
+A Claude Code skill that removes signs of AI-generated writing from **Korean** text, making it sound natural and human-written.
 
 Inspired by [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh)'s plugin architecture. Based on [blader/humanizer](https://github.com/blader/humanizer) (English version), adapted for Korean language patterns.
+
+> **Key Insight from Wikipedia:** "LLMs use statistical algorithms to guess what should come next. The result tends toward the most statistically likely result that applies to the widest variety of cases."
 
 ## Architecture
 
 ```
-humanizer-korean/
+oh-my-humanizer/
 ├── SKILL.md                      # Orchestrator (2-Phase pipeline: structure → sentence → audit)
 ├── .humanizer.default.yaml       # Default configuration
 ├── core/
 │   └── voice.md                  # Voice & personality guidelines
 ├── patterns/                     # Pattern packs (like oh-my-zsh plugins/)
-│   ├── ko-structure.md           # Structure patterns 25-27 (Phase 1)
+│   ├── ko-structure.md           # Structure patterns 25-28 (Phase 1)
 │   ├── ko-content.md             # Content patterns 1-6
 │   ├── ko-language.md            # Language/grammar patterns 7-12
 │   ├── ko-style.md               # Style patterns 13-18
@@ -43,7 +50,7 @@ humanizer-korean/
 
 ```bash
 mkdir -p ~/.claude/skills
-git clone https://github.com/devswha/humanizer-korean.git ~/.claude/skills/humanizer-kr
+git clone https://github.com/devswha/oh-my-humanizer.git ~/.claude/skills/humanizer-kr
 ```
 
 ### Manual install/update
@@ -77,7 +84,7 @@ In Claude Code, invoke the skill:
 Edit `.humanizer.default.yaml` to customize:
 
 ```yaml
-version: "2.1.0"
+version: "2.2.0"
 language: ko
 profile: default
 output: rewrite       # rewrite | diff | audit | score
@@ -118,7 +125,7 @@ patterns: 2
 
 Custom patterns are automatically loaded alongside built-in patterns.
 
-## 27 Patterns Detected
+## 28 Patterns Detected
 
 ### Structure Patterns (Phase 1)
 
@@ -127,6 +134,7 @@ Custom patterns are automatically loaded alongside built-in patterns.
 | 25 | **구조적 반복** | Every paragraph: "주장→근거→의의" same structure | Vary paragraph structures (question, detail, short punch) |
 | 26 | **번역체** | "~것은 사실이다", "~하는 것이 가능하다" | Natural Korean equivalents |
 | 27 | **수동태 남용** | "~되어지다", "~되어질 수 있다" | Active voice or simple "~되다" |
+| 28 | **불필요한 외래어** | "인사이트를 레버리지하여 시너지를" | "교훈을 활용해서 협력 효과를" |
 
 ### Content Patterns
 
@@ -230,6 +238,7 @@ See `examples/README.md` for the naming convention and index.
 
 ## Version History
 
+- **2.2.0** - Added loanword overuse pattern (#28), README modernization with badges, repo rename to oh-my-humanizer
 - **2.1.0** - 2-Phase pipeline (structure → sentence → audit), 3 new structure patterns (27 total), blog profile, examples directory, profile overrides
 - **2.0.0** - Plugin architecture (oh-my-humanizer): pattern packs, profiles, config file, custom extensions
 - **1.0.0** - Initial Korean adaptation with 24 patterns, Korean-specific examples, and audit pass

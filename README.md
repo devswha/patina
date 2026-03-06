@@ -28,9 +28,12 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detec
 ```bash
 mkdir -p ~/.claude/skills
 git clone https://github.com/devswha/oh-my-humanizer.git ~/.claude/skills/humanizer
+
+# Expose the MAX variant as its own Claude skill
+ln -snf ~/.claude/skills/humanizer/humanizer-max ~/.claude/skills/humanizer-max
 ```
 
-That's it. Claude Code will detect the skill automatically.
+Claude Code will detect `/humanizer` automatically. Add the symlink step as well if you want `/humanizer-max` exposed as a separate skill.
 
 ## Use
 
@@ -61,6 +64,26 @@ Korean is the default language. For English:
 | `--score` | Get an AI-similarity score from 0-100 |
 
 Combine flags freely: `/humanizer --lang en --audit --profile blog`
+
+### MAX Mode (Multi-Model)
+
+Run the same text through multiple AI models and pick the best result:
+
+```
+/humanizer-max
+
+[paste your text here]
+```
+
+Each model humanizes independently, results are scored for AI-likeness, and the lowest-scoring (most human) result wins.
+
+| Flag | What it does |
+|------|-------------|
+| `--models claude,gemini` | Choose which models to use |
+| `--lang en` | Process English text |
+| `--profile blog` | Use blog/essay writing style |
+
+Supported models: `claude`, `codex`, `gemini`. `claude`/`gemini` dispatch through `omx ask`; `codex` dispatches through `codex exec`.
 
 ## How It Works
 
@@ -251,13 +274,16 @@ Some patterns are language-specific. Where Korean has one pattern, English may h
 Edit `.humanizer.default.yaml`:
 
 ```yaml
-version: "3.0.0"
+version: "3.1.0"
 language: ko              # ko | en (or use --lang flag)
 profile: default          # default | blog
 output: rewrite           # rewrite | diff | audit | score
 skip-patterns: []         # e.g., [ko-filler] to skip a pack
 blocklist: []             # extra words to flag
 allowlist: []             # words to never flag
+max-models:             # MAX mode models (claude, codex, gemini)
+  - claude
+  - gemini
 ```
 
 Pattern packs are auto-discovered by language prefix -- no need to list them manually.
@@ -296,7 +322,13 @@ patterns: 1
 
 ```
 oh-my-humanizer/
-├── SKILL.md                  # Orchestrator (the "engine")
+├── SKILL.md                  # /humanizer entrypoint
+├── SKILL-MAX.md              # MAX mode source/reference doc
+├── humanizer-max/            # Installable /humanizer-max skill directory
+│   ├── SKILL.md              # MAX mode entrypoint
+│   ├── core -> ../core
+│   ├── patterns -> ../patterns
+│   └── profiles -> ../profiles
 ├── .humanizer.default.yaml   # Configuration
 ├── core/voice.md             # Voice & personality guidelines
 ├── patterns/
@@ -325,6 +357,7 @@ Inspired by [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh)'s plugin architectur
 
 | Version | Changes |
 |---------|---------|
+| **3.1.0** | MAX mode: installable `/humanizer-max` skill entrypoint + provider-aware dispatch (`omx ask` for Claude/Gemini, `codex exec` for Codex) |
 | **3.0.0** | Multi-language framework, `--lang` flag, English patterns (24) from blader/humanizer, skill renamed to `humanizer` |
 | **2.2.0** | Loanword overuse pattern (#28), badges, repo rename |
 | **2.1.0** | 2-Phase pipeline, structure patterns, blog profile, examples |

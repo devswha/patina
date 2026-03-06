@@ -1,6 +1,6 @@
 ---
 name: humanizer
-version: 3.0.0
+version: 3.1.0
 description: |
   AI가 생성한 텍스트에서 AI 특유의 글쓰기 패턴을 제거하여 자연스럽고
   사람이 쓴 것처럼 만듭니다. 다국어 지원(한국어 28개, 영어 24개 패턴).

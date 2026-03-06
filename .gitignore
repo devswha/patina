@@ -1,4 +1,5 @@
 .omc/
+.omx/
 custom/
 .DS_Store
 *.swp

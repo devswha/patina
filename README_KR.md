@@ -28,9 +28,12 @@
 ```bash
 mkdir -p ~/.claude/skills
 git clone https://github.com/devswha/oh-my-humanizer.git ~/.claude/skills/humanizer
+
+# MAX 변형을 별도 Claude 스킬로 노출
+ln -snf ~/.claude/skills/humanizer/humanizer-max ~/.claude/skills/humanizer-max
 ```
 
-끝입니다. Claude Code가 스킬을 자동으로 인식합니다.
+Claude Code는 `/humanizer`를 자동 인식합니다. `/humanizer-max`까지 쓰려면 symlink 단계도 함께 실행하세요.
 
 ## 사용법
 
@@ -61,6 +64,26 @@ Claude Code에서 입력:
 | `--score` | AI 유사도 점수 0-100 |
 
 플래그 조합 가능: `/humanizer --lang en --audit --profile blog`
+
+### MAX 모드 (멀티모델)
+
+같은 텍스트를 여러 AI 모델에 동시에 돌려 가장 좋은 결과를 선택합니다:
+
+```
+/humanizer-max
+
+[여기에 텍스트를 붙여넣으세요]
+```
+
+각 모델이 독립적으로 휴머나이징하고, AI 유사도를 점수로 평가한 뒤, 가장 낮은 점수(가장 사람다운) 결과가 최종 출력됩니다.
+
+| 플래그 | 기능 |
+|--------|------|
+| `--models claude,gemini` | 사용할 모델 선택 |
+| `--lang en` | 영어 텍스트 처리 |
+| `--profile blog` | 블로그/에세이 문체 사용 |
+
+지원 모델: `claude`, `codex`, `gemini`. `claude`/`gemini`는 `omx ask`, `codex`는 `codex exec` 경로를 사용합니다.
 
 ## 동작 원리
 
@@ -251,13 +274,16 @@ Claude Code에서 입력:
 `.humanizer.default.yaml` 수정:
 
 ```yaml
-version: "3.0.0"
+version: "3.1.0"
 language: ko              # ko | en (또는 --lang 플래그 사용)
 profile: default          # default | blog
 output: rewrite           # rewrite | diff | audit | score
 skip-patterns: []         # 예: [ko-filler] 특정 팩 건너뛰기
 blocklist: []             # 추가로 감지할 어휘
 allowlist: []             # 감지에서 제외할 어휘
+max-models:             # MAX 모드 모델 (claude, codex, gemini)
+  - claude
+  - gemini
 ```
 
 패턴 팩은 언어 접두사로 자동 탐색됩니다 — 수동 등록 불필요.
@@ -296,7 +322,13 @@ patterns: 1
 
 ```
 oh-my-humanizer/
-├── SKILL.md                  # 오케스트레이터 (엔진)
+├── SKILL.md                  # /humanizer 진입점
+├── SKILL-MAX.md              # MAX 모드 소스/참고 문서
+├── humanizer-max/            # 설치 가능한 /humanizer-max 스킬 디렉토리
+│   ├── SKILL.md              # MAX 모드 진입점
+│   ├── core -> ../core
+│   ├── patterns -> ../patterns
+│   └── profiles -> ../profiles
 ├── .humanizer.default.yaml   # 설정
 ├── core/voice.md             # 문체/개성 가이드라인
 ├── patterns/
@@ -325,6 +357,7 @@ oh-my-humanizer/
 
 | 버전 | 변경 사항 |
 |------|----------|
+| **3.1.0** | 설치 가능한 `/humanizer-max` 진입점 + provider-aware 디스패치 (`omx ask` for Claude/Gemini, `codex exec` for Codex) |
 | **3.0.0** | 다국어 프레임워크, `--lang` 플래그, 영어 패턴 (24개) blader/humanizer에서 포팅, 스킬명 `humanizer`로 변경 |
 | **2.2.0** | 불필요한 외래어 패턴 (#28), 배지, 레포 이름 변경 |
 | **2.1.0** | 2-Phase 파이프라인, 구조 패턴, 블로그 프로필, 예시 |

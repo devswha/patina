@@ -1,6 +1,7 @@
 .omc/
 .omx/
 custom/
+.humanizer.yaml
 .DS_Store
 *.swp
 *~

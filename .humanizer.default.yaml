@@ -37,3 +37,11 @@ allowlist: []              # 감지에서 제외할 어휘
 max-models:
   - claude
   - gemini
+
+# Dispatch mode for MAX mode CLI execution
+# omc: tmux pane parallel dispatch (recommended, requires oh-my-claudecode + tmux)
+#       - Handles long prompts via stdin pipe (no ARG_MAX limit)
+#       - Visual feedback in separate tmux panes
+#       - Gemini stderr issue handled automatically
+# direct: sequential stdin pipe (no external dependency, fallback)
+dispatch: omc

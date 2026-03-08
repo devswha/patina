@@ -83,7 +83,7 @@ Claude Code에서 입력:
 | `--lang en` | 영어 텍스트 처리 |
 | `--profile blog` | 블로그/에세이 문체 사용 |
 
-지원 모델: `claude`, `codex`, `gemini`. `claude`/`gemini`는 `omx ask`, `codex`는 `codex exec` 경로를 사용합니다.
+지원 모델: `claude`, `codex`, `gemini`. `claude`는 `claude -p`, `gemini`는 `gemini -p`, `codex`는 `codex exec` 경로를 사용합니다.
 
 ## 동작 원리
 
@@ -357,7 +357,7 @@ oh-my-humanizer/
 
 | 버전 | 변경 사항 |
 |------|----------|
-| **3.1.0** | 설치 가능한 `/humanizer-max` 진입점 + provider-aware 디스패치 (`omx ask` for Claude/Gemini, `codex exec` for Codex) |
+| **3.1.0** | 설치 가능한 `/humanizer-max` 진입점 + provider-aware 디스패치 (`claude -p` / `gemini -p` for Claude/Gemini, `codex exec` for Codex) |
 | **3.0.0** | 다국어 프레임워크, `--lang` 플래그, 영어 패턴 (24개) blader/humanizer에서 포팅, 스킬명 `humanizer`로 변경 |
 | **2.2.0** | 불필요한 외래어 패턴 (#28), 배지, 레포 이름 변경 |
 | **2.1.0** | 2-Phase 파이프라인, 구조 패턴, 블로그 프로필, 예시 |

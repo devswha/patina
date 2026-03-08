@@ -83,7 +83,7 @@ Each model humanizes independently, results are scored for AI-likeness, and the 
 | `--lang en` | Process English text |
 | `--profile blog` | Use blog/essay writing style |
 
-Supported models: `claude`, `codex`, `gemini`. `claude`/`gemini` dispatch through `omx ask`; `codex` dispatches through `codex exec`.
+Supported models: `claude`, `codex`, `gemini`. `claude` dispatches through `claude -p`, `gemini` through `gemini -p`, `codex` through `codex exec`.
 
 ## How It Works
 
@@ -357,7 +357,7 @@ Inspired by [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh)'s plugin architectur
 
 | Version | Changes |
 |---------|---------|
-| **3.1.0** | MAX mode: installable `/humanizer-max` skill entrypoint + provider-aware dispatch (`omx ask` for Claude/Gemini, `codex exec` for Codex) |
+| **3.1.0** | MAX mode: installable `/humanizer-max` skill entrypoint + provider-aware dispatch (`claude -p` / `gemini -p` for Claude/Gemini, `codex exec` for Codex) |
 | **3.0.0** | Multi-language framework, `--lang` flag, English patterns (24) from blader/humanizer, skill renamed to `humanizer` |
 | **2.2.0** | Loanword overuse pattern (#28), badges, repo rename |
 | **2.1.0** | 2-Phase pipeline, structure patterns, blog profile, examples |

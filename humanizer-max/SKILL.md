@@ -164,11 +164,12 @@ Write tool → /tmp/humanizer-max-prompt.txt
 ## 5단계: 모델 디스패치 (dispatch-aware)
 
 프롬프트는 이미 `/tmp/humanizer-max-prompt.txt`에 저장되어 있다 (4단계).
-모든 모델은 **stdin pipe**로 프롬프트를 전달받아 ARG_MAX 제한을 회피한다.
+Claude/Codex는 **stdin pipe**, Gemini는 **`$(cat file)` 인자 치환**으로 프롬프트를 전달한다.
+프롬프트는 파일에서 읽으므로 셸 변수 확장 없이 안전하게 전달된다.
 
 ### 모드 A: OMC dispatch (`dispatch: omc`)
 
-tmux pane을 사용하여 모든 모델을 **병렬** 실행한다. 각 pane에서 프롬프트를 stdin으로 전달하고, 완료 시 sentinel 파일을 생성한다.
+tmux pane을 사용하여 모든 모델을 **병렬** 실행한다. 각 pane에서 프롬프트 파일을 읽어 전달하고, 완료 시 sentinel 파일을 생성한다.
 
 ```bash
 PROMPT_FILE="/tmp/humanizer-max-prompt.txt"
@@ -182,7 +183,7 @@ tmux split-window -d -h \
 
 # Gemini: stdin pipe → stderr를 stdout으로 합쳐서 캡처
 tmux split-window -d -v \
-  "cat $PROMPT_FILE | gemini -p > /tmp/humanizer-max-gemini-output.txt 2>&1; touch /tmp/humanizer-max-gemini.done"
+  "gemini -p \"\$(cat $PROMPT_FILE)\" > /tmp/humanizer-max-gemini-output.txt 2>&1; touch /tmp/humanizer-max-gemini.done"
 
 # Codex: stdin pipe → stdout 캡처
 tmux split-window -d -v \
@@ -219,7 +220,7 @@ PROMPT_FILE="/tmp/humanizer-max-prompt.txt"
 cat $PROMPT_FILE | claude -p > /tmp/humanizer-max-claude-output.txt 2>/dev/null
 
 # Gemini
-cat $PROMPT_FILE | gemini -p > /tmp/humanizer-max-gemini-output.txt 2>&1
+gemini -p "$(cat $PROMPT_FILE)" > /tmp/humanizer-max-gemini-output.txt 2>&1
 
 # Codex
 cat $PROMPT_FILE | codex exec -q > /tmp/humanizer-max-codex-output.txt 2>/dev/null

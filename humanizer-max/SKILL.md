@@ -4,8 +4,8 @@ version: 3.1.0
 description: |
   Multi-model humanization. Runs the same humanization task on multiple
   local model CLIs, scores each result, and selects the best
-  (lowest AI score) output. Uses `omx ask` for Claude/Gemini
-  and `codex exec` for Codex.
+  (lowest AI score) output. Uses `claude -p` / `gemini -p` for
+  Claude/Gemini and `codex exec` for Codex.
 allowed-tools:
   - Read
   - Write
@@ -20,7 +20,7 @@ allowed-tools:
 
 당신은 여러 AI 모델을 동시에 사용하여 텍스트를 humanize하고, 가장 자연스러운 결과를 자동 선택하는 오케스트레이터입니다. 각 모델이 같은 텍스트를 humanize한 뒤, AI 유사도 점수가 가장 낮은 결과를 최종본으로 선택합니다.
 
-> **전제 조건:** 선택한 모델의 로컬 CLI가 설치되어 있어야 합니다. `claude`/`gemini`는 `omx ask`, `codex`는 `codex exec` 경로를 사용합니다.
+> **전제 조건:** 선택한 모델의 로컬 CLI가 설치되어 있어야 합니다. `claude`는 `claude -p`, `gemini`는 `gemini -p`, `codex`는 `codex exec` 경로를 사용합니다.
 
 ---
 
@@ -123,9 +123,10 @@ Write tool → /tmp/humanizer-max-prompt.txt
 
 선택된 모델별로 실행 경로가 다르다:
 
-- `claude`, `gemini` → `omx ask <provider> --prompt "..."`
-  - 표준 출력으로 **아티팩트 경로**를 반환한다
-  - 아티팩트는 `.omx/artifacts/` 아래에 저장된다
+- `claude` → `claude -p "$(cat prompt.txt)"`
+  - 표준 출력으로 humanized 텍스트를 직접 반환한다
+- `gemini` → `gemini -p "$(cat prompt.txt)"`
+  - 결과가 stderr로 출력된다 (Gemini CLI 특성). `2>&1`로 캡처한다
 - `codex` → `codex exec --dangerously-bypass-approvals-and-sandbox ...`
   - `-o`로 지정한 파일에 최종 humanized 텍스트를 바로 쓴다
 
@@ -134,9 +135,11 @@ Write tool → /tmp/humanizer-max-prompt.txt
 ```bash
 PROMPT=$(cat /tmp/humanizer-max-prompt.txt)
 
-# Claude / Gemini: stdout에 artifact path가 찍히므로 파일로 받아 둔다
-omx ask claude --prompt "$PROMPT" > /tmp/humanizer-max-claude-artifact.txt &
-omx ask gemini --prompt "$PROMPT" > /tmp/humanizer-max-gemini-artifact.txt &
+# Claude: stdout으로 직접 결과를 받는다
+claude -p "$PROMPT" > /tmp/humanizer-max-claude-output.txt 2>/dev/null &
+
+# Gemini: 결과가 stderr로 출력되므로 2>&1로 캡처한다
+gemini -p "$PROMPT" > /tmp/humanizer-max-gemini-output.txt 2>&1 &
 
 # Codex: 마지막 메시지를 파일로 직접 받는다
 codex exec --dangerously-bypass-approvals-and-sandbox \
@@ -153,23 +156,25 @@ wait
 
 ### 결과 수집
 
-- `claude`, `gemini`
-  1. `/tmp/humanizer-max-{provider}-artifact.txt`의 첫 줄에서 artifact path를 읽는다
-  2. 해당 파일을 Read한다
-  3. 구조화된 마크다운의 `## Raw output` 섹션에서 실제 humanized 텍스트를 추출한다
+- `claude`
+  1. `/tmp/humanizer-max-claude-output.txt`를 Read한다
+  2. 파일 전체를 Claude 결과 텍스트로 사용한다
+
+- `gemini`
+  1. `/tmp/humanizer-max-gemini-output.txt`를 Read한다
+  2. Gemini CLI는 stderr로 출력하므로 `2>&1`로 캡처한 결과다
+  3. YOLO mode 배너 등 부가 메시지가 포함될 수 있으므로, 실제 humanized 텍스트만 추출한다
 
 - `codex`
   1. `/tmp/humanizer-max-codex-output.txt`를 Read한다
   2. 파일 전체를 Codex 결과 텍스트로 사용한다
   3. 필요하면 `/tmp/humanizer-max-codex-stderr.txt`로 디버깅한다
 
-> **중요:** `omx ask`는 `.omc/artifacts/ask/`가 아니라 `.omx/artifacts/`에 아티팩트를 쓴다. 또한 `omx ask`의 stdout은 답변 본문이 아니라 **artifact path**다.
-
 ### 실패 처리
 
-- 특정 모델의 artifact path 파일이 비어 있거나, artifact/output 파일이 없거나, 명령이 비정상 종료한 경우 → 해당 모델을 `failed`로 표시하고 나머지로 계속 진행
+- 특정 모델의 output 파일이 비어 있거나, 파일이 없거나, 명령이 비정상 종료한 경우 → 해당 모델을 `failed`로 표시하고 나머지로 계속 진행
 - `codex`가 stderr만 남기고 결과 파일을 쓰지 못한 경우 → 실패로 간주하고 stderr 첫 줄을 사유로 기록
-- 모든 모델이 실패한 경우 → 에러 메시지와 함께 어떤 실행기(`omx ask` 또는 `codex exec`)가 실패했는지 진단 정보를 출력하고 종료
+- 모든 모델이 실패한 경우 → 에러 메시지와 함께 어떤 CLI(`claude -p`, `gemini -p`, `codex exec`)가 실패했는지 진단 정보를 출력하고 종료
 
 ---
 
@@ -265,5 +270,5 @@ Best: claude (AI Score: 23)
 
 - 이 스킬은 기존 `/humanizer` 스킬의 확장 버전으로, 동일한 패턴 팩과 프로필을 사용합니다
 - 모델 추가/제거는 `.humanizer.default.yaml`의 `max-models` 또는 `--models` 플래그로 설정합니다
-- 지원 모델: `claude`, `codex`, `gemini` (`claude`/`gemini`는 `omx ask`, `codex`는 `codex exec`)
+- 지원 모델: `claude`, `codex`, `gemini` (`claude`는 `claude -p`, `gemini`는 `gemini -p`, `codex`는 `codex exec`)
 - v2 계획: 최고 점수가 기준 이상이면 자동 재시도하는 ralph 루프 도입 예정

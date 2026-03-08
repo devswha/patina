@@ -31,7 +31,7 @@ blocklist: []              # 추가로 감지할 어휘
 allowlist: []              # 감지에서 제외할 어휘
 
 # MAX mode: multi-model humanization
-# claude/gemini use `omx ask`, codex uses `codex exec`
+# claude uses `claude -p`, gemini uses `gemini -p`, codex uses `codex exec`
 # Supported models: claude, codex, gemini
 # Override with CLI: --models claude,gemini,codex
 max-models:

@@ -28,7 +28,7 @@ The "runtime" is `SKILL.md` (the orchestrator): it reads config, auto-discovers 
 
 - `humanizer-max/SKILL.md`
   - Installable MAX mode skill entrypoint exposed as `/humanizer-max`.
-  - Uses `omx ask` for Claude/Gemini and `codex exec` for Codex.
+  - Uses `claude -p` / `gemini -p` for Claude/Gemini and `codex exec` for Codex.
   - Scores each result and auto-selects the best (lowest AI score) output.
 
 - `.humanizer.default.yaml`

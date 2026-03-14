@@ -1,4 +1,4 @@
-version: "3.1.1"
+version: "3.2.0"
 language: ko              # Korean (default) -- auto-loads all ko-*.md patterns
                           # language: en      -- English -- auto-loads all en-*.md patterns
                           # Override with CLI: --lang en
@@ -46,3 +46,31 @@ max-models:
 #       - All providers receive the prompt via stdin
 # direct: sequential stdin dispatch (fallback; apply the same per-model timeout)
 dispatch: omc
+
+# Ouroboros: iterative self-improvement loop
+# Runs the full humanization pipeline repeatedly until the AI score converges.
+# Enable via config or CLI flag: --ouroboros
+ouroboros:
+  enabled: false            # opt-in; --ouroboros CLI flag overrides to true
+  target-score: 30          # stop when overall score <= this value (0-100)
+  max-iterations: 3         # hard limit on loop iterations
+  plateau-threshold: 10     # stop if score improves by less than this between iterations
+  category-weights:
+    ko:
+      content: 0.20
+      language: 0.20
+      style: 0.20
+      communication: 0.15
+      filler: 0.10
+      structure: 0.15
+    en:
+      content: 0.25
+      language: 0.25
+      style: 0.25
+      communication: 0.15
+      filler: 0.10
+      structure: 0.00
+  severity-points:
+    high: 3
+    medium: 2
+    low: 1

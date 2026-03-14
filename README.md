@@ -62,6 +62,7 @@ Korean is the default language. For English:
 | `--diff` | Show what changed and why, pattern by pattern |
 | `--audit` | Detect AI patterns only (no rewriting) |
 | `--score` | Get an AI-similarity score from 0-100 |
+| `--ouroboros` | Iterative self-improvement: rewrite until AI score converges |
 
 Combine flags freely: `/humanizer --lang en --audit --profile blog`
 
@@ -276,7 +277,7 @@ Some patterns are language-specific. Where Korean has one pattern, English may h
 Edit `.humanizer.default.yaml`:
 
 ```yaml
-version: "3.1.1"
+version: "3.2.0"
 language: ko              # ko | en (or use --lang flag)
 profile: default          # default | blog
 output: rewrite           # rewrite | diff | audit | score
@@ -334,6 +335,7 @@ oh-my-humanizer/
 │   └── profiles -> ../profiles
 ├── .humanizer.default.yaml   # Configuration
 ├── core/voice.md             # Voice & personality guidelines
+├── core/scoring.md           # Scoring algorithm reference
 ├── patterns/
 │   ├── ko-*.md               # Korean patterns (6 packs, 28 patterns)
 │   └── en-*.md               # English patterns (6 packs, 24 patterns)
@@ -360,6 +362,7 @@ Inspired by [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh)'s plugin architectur
 
 | Version | Changes |
 |---------|---------|
+| **3.2.0** | Ouroboros scoring system: pattern-based AI-likeness scoring (0-100), `--score` mode with category breakdown, `--ouroboros` iterative self-improvement loop with configurable termination (target/plateau/regression/max-iterations) |
 | **3.1.1** | MAX mode reliability fixes: per-run temp dir, model-scoped wait loop + timeout handling, Gemini stdin dispatch, Codex CLI compatibility (`--output-last-message`, no `-q`) |
 | **3.1.0** | MAX mode: installable `/humanizer-max` skill entrypoint + provider-aware dispatch (`claude -p` / `gemini -p` for Claude/Gemini, `codex exec` for Codex) |
 | **3.0.0** | Multi-language framework, `--lang` flag, English patterns (24) from blader/humanizer, skill renamed to `humanizer` |

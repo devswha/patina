@@ -172,10 +172,11 @@ Write tool → $PROMPT_FILE
 ## 5단계: 모델 디스패치 (dispatch-aware)
 
 프롬프트는 이미 `$PROMPT_FILE`에 저장되어 있다 (4단계).
-세 모델 모두 **stdin pipe**로 프롬프트를 전달한다.
+Claude/Codex는 **stdin pipe**, Gemini는 **`$(cat file)` 인자 치환**으로 프롬프트를 전달한다.
+프롬프트는 파일에서 읽으므로 셸 변수 확장 없이 안전하게 전달된다.
 
 - Claude: `claude -p`
-- Gemini: `gemini -p '' --output-format text`
+- Gemini: `gemini -p "$(cat $PROMPT_FILE)" --output-format text`
 - Codex: `codex exec --skip-git-repo-check --output-last-message <file>`
 
 고정 `/tmp/humanizer-max-*` 파일명은 사용하지 않는다. 모든 산출물은 `$RUN_DIR` 아래에 저장한다.
@@ -196,7 +197,7 @@ CLAUDE_PANE=$(tmux split-window -d -P -F "#{pane_id}" -h \
 
 # Gemini
 GEMINI_PANE=$(tmux split-window -d -P -F "#{pane_id}" -v \
-  "cat \"$PROMPT_FILE\" | gemini -p '' --output-format text > \"$RUN_DIR/gemini-output.txt\" 2> \"$RUN_DIR/gemini-log.txt\"; printf '%s' \$? > \"$RUN_DIR/gemini.exit\"; touch \"$RUN_DIR/gemini.done\"")
+  "gemini -p \"\$(cat \\\"$PROMPT_FILE\\\")\" --output-format text > \"$RUN_DIR/gemini-output.txt\" 2> \"$RUN_DIR/gemini-log.txt\"; printf '%s' \$? > \"$RUN_DIR/gemini.exit\"; touch \"$RUN_DIR/gemini.done\"")
 
 # Codex
 CODEX_PANE=$(tmux split-window -d -P -F "#{pane_id}" -v \
@@ -251,7 +252,7 @@ printf '%s' $? > "$RUN_DIR/claude.exit"
 touch "$RUN_DIR/claude.done"
 
 # Gemini
-timeout "${TIMEOUT_SECONDS}s" sh -c 'cat "$1" | gemini -p "" --output-format text > "$2" 2> "$3"' sh \
+timeout "${TIMEOUT_SECONDS}s" sh -c 'gemini -p "$(cat "$1")" --output-format text > "$2" 2> "$3"' sh \
   "$PROMPT_FILE" "$RUN_DIR/gemini-output.txt" "$RUN_DIR/gemini-log.txt"
 printf '%s' $? > "$RUN_DIR/gemini.exit"
 touch "$RUN_DIR/gemini.done"
@@ -389,7 +390,7 @@ Best: claude (AI Score: 23)
 
 - 이 스킬은 기존 `/humanizer` 스킬의 확장 버전으로, 동일한 패턴 팩과 프로필을 사용합니다
 - 모델 추가/제거는 `.humanizer.default.yaml`의 `max-models` 또는 `--models` 플래그로 설정합니다
-- 지원 모델: `claude`, `codex`, `gemini` (모두 stdin pipe로 프롬프트 전달)
+- 지원 모델: `claude`, `codex`, `gemini` (Claude/Codex는 stdin pipe, Gemini는 `$(cat file)` 인자 치환)
 - 디스패치 모드: `omc` (tmux pane 병렬, 기본) / `direct` (순차 실행, fallback)
 - 각 실행은 고유 temp dir를 사용하며, 선택된 모델만 기다리고, timeout 모델은 자동으로 `failed` 처리한다
 - 최초 실행 시 설치 인터뷰로 `.humanizer.yaml` 생성 (모델 선택, 디스패치 모드, CLI 설치 확인)

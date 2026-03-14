@@ -1,6 +1,6 @@
 ---
 name: humanizer-max
-version: 3.1.1
+version: 3.2.0
 description: |
   Multi-model humanization. Runs the same humanization task on multiple
   local model CLIs, scores each result, and selects the best
@@ -308,7 +308,11 @@ touch "$RUN_DIR/codex.done"
 이것은 패턴 정의에 기반한 주관적 전문가 평가이다 — 수식은 없다.
 ```
 
-이 평가는 SKILL.md의 `--score` 모드와 동일한 접근법이다. 오케스트레이터(이 Claude 세션)가 평가자 역할을 한다.
+> **참고:** `core/scoring.md`에 수식 기반 스코어링 알고리즘이 정의되어 있다.
+> 단일 모드(`--score`)는 해당 수식을 사용하며, MAX 모드는 위의 주관적 평가를 사용한다.
+> Phase 2에서 두 방식을 통합할 예정이다.
+
+이 평가는 SKILL.md의 `--score` 모드와 유사하지만, MAX 모드에서는 주관적 평가를 사용한다.
 
 ---
 

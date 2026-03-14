@@ -62,6 +62,7 @@ Claude Code에서 입력:
 | `--diff` | 패턴별 변경 사항 표시 |
 | `--audit` | AI 패턴만 탐지 (수정 안 함) |
 | `--score` | AI 유사도 점수 0-100 |
+| `--ouroboros` | 반복 자기개선: AI 점수가 수렴할 때까지 교정 반복 |
 
 플래그 조합 가능: `/humanizer --lang en --audit --profile blog`
 
@@ -276,7 +277,7 @@ Claude Code에서 입력:
 `.humanizer.default.yaml` 수정:
 
 ```yaml
-version: "3.1.1"
+version: "3.2.0"
 language: ko              # ko | en (또는 --lang 플래그 사용)
 profile: default          # default | blog
 output: rewrite           # rewrite | diff | audit | score
@@ -334,6 +335,7 @@ oh-my-humanizer/
 │   └── profiles -> ../profiles
 ├── .humanizer.default.yaml   # 설정
 ├── core/voice.md             # 문체/개성 가이드라인
+├── core/scoring.md           # 스코어링 알고리즘 레퍼런스
 ├── patterns/
 │   ├── ko-*.md               # 한국어 패턴 (6팩, 28개)
 │   └── en-*.md               # 영어 패턴 (6팩, 24개)
@@ -360,6 +362,7 @@ oh-my-humanizer/
 
 | 버전 | 변경 사항 |
 |------|----------|
+| **3.2.0** | 우로보로스 스코어링 시스템: 패턴 기반 AI 유사도 점수(0-100), `--score` 모드(카테고리별 분석), `--ouroboros` 반복 자기개선 루프(목표달성/정체/회귀/상한 종료 조건) |
 | **3.1.1** | MAX 모드 안정성 수정: 실행별 temp dir, 선택 모델만 기다리는 wait loop + timeout 처리, Gemini stdin 디스패치, Codex CLI 호환성 수정(`--output-last-message`, `-q` 제거) |
 | **3.1.0** | 설치 가능한 `/humanizer-max` 진입점 + provider-aware 디스패치 (`claude -p` / `gemini -p` for Claude/Gemini, `codex exec` for Codex) |
 | **3.0.0** | 다국어 프레임워크, `--lang` 플래그, 영어 패턴 (24개) blader/humanizer에서 포팅, 스킬명 `humanizer`로 변경 |

@@ -1,6 +1,6 @@
 ---
 name: humanizer-max
-version: 3.1.1
+version: 3.2.0
 description: |
   Multi-model humanization. Runs the same humanization task on multiple
   local model CLIs, scores each result, and selects the best

@@ -88,6 +88,81 @@ Supported models: `claude`, `codex`, `gemini`. MAX mode feeds all three via stdi
 
 Each MAX run uses a unique temp directory, waits only for the models you selected, and marks timed-out runs as failed instead of waiting forever.
 
+### Score Mode
+
+Check how AI-like your text is without rewriting:
+
+```
+/humanizer --score
+
+[paste your text here]
+```
+
+Returns a 0-100 AI-likeness score with per-category breakdown:
+
+```
+| Category      | Weight | Detected | Raw Score | Weighted |
+|---------------|--------|----------|-----------|----------|
+| content       | 0.20   | 3/6      | 33.3      | 6.7      |
+| language      | 0.20   | 1/6      | 11.1      | 2.2      |
+| style         | 0.20   | 2/6      | 27.8      | 5.6      |
+| communication | 0.15   | 0/3      | 0.0       | 0.0      |
+| filler        | 0.10   | 1/3      | 11.1      | 1.1      |
+| structure     | 0.15   | 1/4      | 25.0      | 3.8      |
+| Overall       |        |          |           | 19.3 (±10) |
+
+Interpretation: 16-30 = Mostly human-like, minor traces
+```
+
+Score ranges: **0-15** human | **16-30** mostly human | **31-50** mixed | **51-70** AI-like | **71-100** heavily AI
+
+The score is pattern-based and deterministic — it reuses the same 28 (Korean) or 24 (English) detection patterns from audit mode. Profile overrides affect scoring (e.g., blog profile suppresses bold pattern #14).
+
+### Ouroboros Mode (Iterative Self-Improvement)
+
+Automatically rewrite until the AI score drops below a target:
+
+```
+/humanizer --ouroboros
+
+[paste your text here]
+```
+
+The ouroboros loop runs the full humanization pipeline repeatedly, scoring after each iteration:
+
+```
+Ouroboros Iteration Log
+
+| Iter | Before | After | Improvement | Reason      |
+|------|--------|-------|-------------|-------------|
+| 0    | —      | 78    | —           | Initial     |
+| 1    | 78     | 45    | +33         |             |
+| 2    | 45     | 28    | +17         | Target met  |
+
+Final score: 28/100 (±10)
+Iterations: 2/3
+Reason: Target met (target: 30)
+
+[final humanized text]
+```
+
+**Termination conditions** (whichever comes first):
+- **Target met**: Score drops to ≤ 30 (configurable)
+- **Plateau**: Score improves by less than 10 points between iterations
+- **Regression**: Score increases (text got worse) — rolls back to previous iteration
+- **Max iterations**: Hard cap of 3 iterations (configurable)
+
+**Configuration** — customize in `.humanizer.yaml`:
+
+```yaml
+ouroboros:
+  target-score: 30          # Stop when score <= this (0-100)
+  max-iterations: 3         # Maximum loop iterations
+  plateau-threshold: 10     # Minimum improvement required
+```
+
+`--ouroboros` cannot be combined with `--diff`, `--audit`, or `--score`.
+
 ## How It Works
 
 ```

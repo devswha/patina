@@ -83,7 +83,9 @@ Each model humanizes independently, results are scored for AI-likeness, and the 
 | `--lang en` | Process English text |
 | `--profile blog` | Use blog/essay writing style |
 
-Supported models: `claude`, `codex`, `gemini`. `claude` dispatches through `claude -p`, `gemini` through `gemini -p`, `codex` through `codex exec`.
+Supported models: `claude`, `codex`, `gemini`. MAX mode feeds all three via stdin (`claude -p`, `gemini -p '' --output-format text`, `codex exec --skip-git-repo-check`) and captures Codex's final answer with `--output-last-message`.
+
+Each MAX run uses a unique temp directory, waits only for the models you selected, and marks timed-out runs as failed instead of waiting forever.
 
 ## How It Works
 
@@ -274,7 +276,7 @@ Some patterns are language-specific. Where Korean has one pattern, English may h
 Edit `.humanizer.default.yaml`:
 
 ```yaml
-version: "3.1.0"
+version: "3.1.1"
 language: ko              # ko | en (or use --lang flag)
 profile: default          # default | blog
 output: rewrite           # rewrite | diff | audit | score
@@ -284,6 +286,7 @@ allowlist: []             # words to never flag
 max-models:             # MAX mode models (claude, codex, gemini)
   - claude
   - gemini
+dispatch: omc             # omc | direct
 ```
 
 Pattern packs are auto-discovered by language prefix -- no need to list them manually.
@@ -357,6 +360,7 @@ Inspired by [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh)'s plugin architectur
 
 | Version | Changes |
 |---------|---------|
+| **3.1.1** | MAX mode reliability fixes: per-run temp dir, model-scoped wait loop + timeout handling, Gemini stdin dispatch, Codex CLI compatibility (`--output-last-message`, no `-q`) |
 | **3.1.0** | MAX mode: installable `/humanizer-max` skill entrypoint + provider-aware dispatch (`claude -p` / `gemini -p` for Claude/Gemini, `codex exec` for Codex) |
 | **3.0.0** | Multi-language framework, `--lang` flag, English patterns (24) from blader/humanizer, skill renamed to `humanizer` |
 | **2.2.0** | Loanword overuse pattern (#28), badges, repo rename |

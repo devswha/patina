@@ -1,4 +1,4 @@
-version: "3.1.0"
+version: "3.1.1"
 language: ko              # Korean (default) -- auto-loads all ko-*.md patterns
                           # language: en      -- English -- auto-loads all en-*.md patterns
                           # Override with CLI: --lang en
@@ -31,7 +31,8 @@ blocklist: []              # 추가로 감지할 어휘
 allowlist: []              # 감지에서 제외할 어휘
 
 # MAX mode: multi-model humanization
-# claude uses `claude -p`, gemini uses `gemini -p`, codex uses `codex exec`
+# claude uses `claude -p`, gemini uses `gemini -p '' --output-format text`,
+# codex uses `codex exec --skip-git-repo-check --output-last-message <file>`
 # Supported models: claude, codex, gemini
 # Override with CLI: --models claude,gemini,codex
 max-models:
@@ -40,8 +41,8 @@ max-models:
 
 # Dispatch mode for MAX mode CLI execution
 # omc: tmux pane parallel dispatch (recommended, requires oh-my-claudecode + tmux)
-#       - Handles long prompts via stdin pipe (no ARG_MAX limit)
-#       - Visual feedback in separate tmux panes
-#       - Gemini stderr issue handled automatically
-# direct: sequential stdin pipe (no external dependency, fallback)
+#       - Uses a unique temp dir per run
+#       - Waits only for selected models and marks timed-out runs as failed
+#       - All providers receive the prompt via stdin
+# direct: sequential stdin dispatch (fallback; apply the same per-model timeout)
 dispatch: omc

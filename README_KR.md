@@ -83,7 +83,9 @@ Claude Code에서 입력:
 | `--lang en` | 영어 텍스트 처리 |
 | `--profile blog` | 블로그/에세이 문체 사용 |
 
-지원 모델: `claude`, `codex`, `gemini`. `claude`는 `claude -p`, `gemini`는 `gemini -p`, `codex`는 `codex exec` 경로를 사용합니다.
+지원 모델: `claude`, `codex`, `gemini`. MAX 모드는 세 모델 모두 stdin으로 프롬프트를 전달하며 (`claude -p`, `gemini -p '' --output-format text`, `codex exec --skip-git-repo-check`), Codex 최종 응답은 `--output-last-message`로 별도 캡처합니다.
+
+각 MAX 실행은 고유한 임시 디렉터리를 사용하고, 선택한 모델만 기다리며, 타임아웃 난 모델은 무한 대기 대신 `failed`로 처리합니다.
 
 ## 동작 원리
 
@@ -274,7 +276,7 @@ Claude Code에서 입력:
 `.humanizer.default.yaml` 수정:
 
 ```yaml
-version: "3.1.0"
+version: "3.1.1"
 language: ko              # ko | en (또는 --lang 플래그 사용)
 profile: default          # default | blog
 output: rewrite           # rewrite | diff | audit | score
@@ -284,6 +286,7 @@ allowlist: []             # 감지에서 제외할 어휘
 max-models:             # MAX 모드 모델 (claude, codex, gemini)
   - claude
   - gemini
+dispatch: omc             # omc | direct
 ```
 
 패턴 팩은 언어 접두사로 자동 탐색됩니다 — 수동 등록 불필요.
@@ -357,6 +360,7 @@ oh-my-humanizer/
 
 | 버전 | 변경 사항 |
 |------|----------|
+| **3.1.1** | MAX 모드 안정성 수정: 실행별 temp dir, 선택 모델만 기다리는 wait loop + timeout 처리, Gemini stdin 디스패치, Codex CLI 호환성 수정(`--output-last-message`, `-q` 제거) |
 | **3.1.0** | 설치 가능한 `/humanizer-max` 진입점 + provider-aware 디스패치 (`claude -p` / `gemini -p` for Claude/Gemini, `codex exec` for Codex) |
 | **3.0.0** | 다국어 프레임워크, `--lang` 플래그, 영어 패턴 (24개) blader/humanizer에서 포팅, 스킬명 `humanizer`로 변경 |
 | **2.2.0** | 불필요한 외래어 패턴 (#28), 배지, 레포 이름 변경 |

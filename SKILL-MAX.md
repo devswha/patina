@@ -1,6 +1,6 @@
 ---
 name: humanizer-max
-version: 3.1.0
+version: 3.1.1
 description: |
   Multi-model humanization. Runs the same humanization task on multiple
   local model CLIs, scores each result, and selects the best
@@ -153,101 +153,141 @@ Do not use any tools. Do not read or modify any files.
 Do not ask questions. Do not include explanations or metadata.
 ```
 
-이 프롬프트를 임시 파일에 저장한다:
+이 프롬프트를 실행마다 고유한 임시 디렉터리에 저장한다:
+
+```bash
+RUN_DIR="$(mktemp -d /tmp/humanizer-max.XXXXXX)"
+PROMPT_FILE="$RUN_DIR/prompt.txt"
+TIMEOUT_SECONDS=900
+```
+
+이후 예시의 `$RUN_DIR`/`$PROMPT_FILE`은 이 실행에서 생성한 경로를 뜻한다. 최종 출력이 끝날 때까지 이 디렉터리를 유지하고, 마지막에 정리한다.
 
 ```
-Write tool → /tmp/humanizer-max-prompt.txt
+Write tool → $PROMPT_FILE
 ```
 
 ---
 
 ## 5단계: 모델 디스패치 (dispatch-aware)
 
-프롬프트는 이미 `/tmp/humanizer-max-prompt.txt`에 저장되어 있다 (4단계).
-Claude/Codex는 **stdin pipe**, Gemini는 **`$(cat file)` 인자 치환**으로 프롬프트를 전달한다.
-프롬프트는 파일에서 읽으므로 셸 변수 확장 없이 안전하게 전달된다.
+프롬프트는 이미 `$PROMPT_FILE`에 저장되어 있다 (4단계).
+세 모델 모두 **stdin pipe**로 프롬프트를 전달한다.
+
+- Claude: `claude -p`
+- Gemini: `gemini -p '' --output-format text`
+- Codex: `codex exec --skip-git-repo-check --output-last-message <file>`
+
+고정 `/tmp/humanizer-max-*` 파일명은 사용하지 않는다. 모든 산출물은 `$RUN_DIR` 아래에 저장한다.
 
 ### 모드 A: OMC dispatch (`dispatch: omc`)
 
 tmux pane을 사용하여 모든 모델을 **병렬** 실행한다. 각 pane에서 프롬프트 파일을 읽어 전달하고, 완료 시 sentinel 파일을 생성한다.
 
 ```bash
-PROMPT_FILE="/tmp/humanizer-max-prompt.txt"
+SELECTED_MODELS="claude gemini codex"   # 실제로는 설정/플래그에서 선택된 모델만 포함
+CLAUDE_PANE=""
+GEMINI_PANE=""
+CODEX_PANE=""
 
-# 이전 실행 잔여물 정리
-rm -f /tmp/humanizer-max-*.done /tmp/humanizer-max-*-output.txt
+# Claude
+CLAUDE_PANE=$(tmux split-window -d -P -F "#{pane_id}" -h \
+  "cat \"$PROMPT_FILE\" | claude -p > \"$RUN_DIR/claude-output.txt\" 2> \"$RUN_DIR/claude-log.txt\"; printf '%s' \$? > \"$RUN_DIR/claude.exit\"; touch \"$RUN_DIR/claude.done\"")
 
-# Claude: stdin pipe → stdout 캡처
-tmux split-window -d -h \
-  "cat $PROMPT_FILE | claude -p > /tmp/humanizer-max-claude-output.txt 2>/dev/null; touch /tmp/humanizer-max-claude.done"
+# Gemini
+GEMINI_PANE=$(tmux split-window -d -P -F "#{pane_id}" -v \
+  "cat \"$PROMPT_FILE\" | gemini -p '' --output-format text > \"$RUN_DIR/gemini-output.txt\" 2> \"$RUN_DIR/gemini-log.txt\"; printf '%s' \$? > \"$RUN_DIR/gemini.exit\"; touch \"$RUN_DIR/gemini.done\"")
 
-# Gemini: stdin pipe → stderr를 stdout으로 합쳐서 캡처
-tmux split-window -d -v \
-  "gemini -p \"\$(cat $PROMPT_FILE)\" > /tmp/humanizer-max-gemini-output.txt 2>&1; touch /tmp/humanizer-max-gemini.done"
-
-# Codex: stdin pipe → stdout 캡처
-tmux split-window -d -v \
-  "cat $PROMPT_FILE | codex exec -q > /tmp/humanizer-max-codex-output.txt 2>/dev/null; touch /tmp/humanizer-max-codex.done"
+# Codex
+CODEX_PANE=$(tmux split-window -d -P -F "#{pane_id}" -v \
+  "cat \"$PROMPT_FILE\" | codex exec --skip-git-repo-check --output-last-message \"$RUN_DIR/codex-output.txt\" > \"$RUN_DIR/codex-log.txt\" 2>&1; printf '%s' \$? > \"$RUN_DIR/codex.exit\"; touch \"$RUN_DIR/codex.done\"")
 ```
 
-실제 실행은 `max-models`에 포함된 모델의 pane만 생성한다.
+실제 실행은 `max-models`에 포함된 모델의 pane만 생성하고, pane id도 해당 모델에 대해서만 기록한다.
 
 **완료 대기**: Bash로 sentinel 파일을 폴링한다.
 
 ```bash
-# 선택된 모델들의 .done 파일이 모두 생길 때까지 대기
+START_TIME=$(date +%s)
+
+# 선택된 모델들의 .done 파일만 기다린다
 while true; do
   ALL_DONE=true
-  for model in claude gemini codex; do
-    # max-models에 포함된 모델만 확인
-    [ -f /tmp/humanizer-max-$model.done ] || ALL_DONE=false
+  for model in $SELECTED_MODELS; do
+    [ -f "$RUN_DIR/$model.done" ] || ALL_DONE=false
   done
   $ALL_DONE && break
+
+  NOW=$(date +%s)
+  if [ $((NOW - START_TIME)) -ge $TIMEOUT_SECONDS ]; then
+    for model in $SELECTED_MODELS; do
+      if [ ! -f "$RUN_DIR/$model.done" ]; then
+        printf '124' > "$RUN_DIR/$model.exit"
+        printf 'timeout after %ss\n' "$TIMEOUT_SECONDS" > "$RUN_DIR/$model.log.txt"
+        touch "$RUN_DIR/$model.timeout" "$RUN_DIR/$model.done"
+      fi
+    done
+    [ -n "$CLAUDE_PANE" ] && tmux kill-pane -t "$CLAUDE_PANE" 2>/dev/null || true
+    [ -n "$GEMINI_PANE" ] && tmux kill-pane -t "$GEMINI_PANE" 2>/dev/null || true
+    [ -n "$CODEX_PANE" ] && tmux kill-pane -t "$CODEX_PANE" 2>/dev/null || true
+    break
+  fi
+
   sleep 3
 done
 ```
 
-> tmux pane은 실행 완료 후 자동으로 닫힌다. 진행 중에는 사용자가 pane을 전환하여 각 모델의 실행 상태를 시각적으로 확인할 수 있다.
+> tmux pane은 실행 완료 후 자동으로 닫힌다. 진행 중에는 사용자가 pane을 전환하여 각 모델의 실행 상태를 시각적으로 확인할 수 있다. 타임아웃이 발생한 pane은 kill 후 `failed`로 표시한다.
 
 ### 모드 B: Direct dispatch (`dispatch: direct`)
 
 tmux 없이 순차적으로 실행한다. OMC/tmux가 없는 환경에서의 fallback.
 
 ```bash
-PROMPT_FILE="/tmp/humanizer-max-prompt.txt"
-
 # Claude
-cat $PROMPT_FILE | claude -p > /tmp/humanizer-max-claude-output.txt 2>/dev/null
+timeout "${TIMEOUT_SECONDS}s" sh -c 'cat "$1" | claude -p > "$2" 2> "$3"' sh \
+  "$PROMPT_FILE" "$RUN_DIR/claude-output.txt" "$RUN_DIR/claude-log.txt"
+printf '%s' $? > "$RUN_DIR/claude.exit"
+touch "$RUN_DIR/claude.done"
 
 # Gemini
-gemini -p "$(cat $PROMPT_FILE)" > /tmp/humanizer-max-gemini-output.txt 2>&1
+timeout "${TIMEOUT_SECONDS}s" sh -c 'cat "$1" | gemini -p "" --output-format text > "$2" 2> "$3"' sh \
+  "$PROMPT_FILE" "$RUN_DIR/gemini-output.txt" "$RUN_DIR/gemini-log.txt"
+printf '%s' $? > "$RUN_DIR/gemini.exit"
+touch "$RUN_DIR/gemini.done"
 
 # Codex
-cat $PROMPT_FILE | codex exec -q > /tmp/humanizer-max-codex-output.txt 2>/dev/null
+timeout "${TIMEOUT_SECONDS}s" sh -c 'cat "$1" | codex exec --skip-git-repo-check --output-last-message "$2" > "$3" 2>&1' sh \
+  "$PROMPT_FILE" "$RUN_DIR/codex-output.txt" "$RUN_DIR/codex-log.txt"
+printf '%s' $? > "$RUN_DIR/codex.exit"
+touch "$RUN_DIR/codex.done"
 ```
 
-실제 실행은 `max-models`에 포함된 모델에만 적용한다.
+실제 실행은 `max-models`에 포함된 모델에만 적용한다. 각 명령은 `TIMEOUT_SECONDS` 상한을 두고, `timeout`이 없으면 동등한 타임아웃 래퍼(`gtimeout` 등)로 대체한다.
 
 ### 결과 수집 (공통)
 
 - `claude`
-  1. `/tmp/humanizer-max-claude-output.txt`를 Read한다
-  2. 파일 전체를 Claude 결과 텍스트로 사용한다
+  1. `$RUN_DIR/claude-output.txt`를 Read한다
+  2. `$RUN_DIR/claude.exit`가 0이고 output이 비어 있지 않으면 결과 텍스트로 사용한다
+  3. 실패 또는 빈 출력이면 `$RUN_DIR/claude-log.txt`를 진단 정보로 Read한다
 
 - `gemini`
-  1. `/tmp/humanizer-max-gemini-output.txt`를 Read한다
-  2. Gemini CLI는 stderr로 출력하므로 `2>&1`로 캡처한 결과다
-  3. YOLO mode 배너 등 부가 메시지가 포함될 수 있으므로, 실제 humanized 텍스트만 추출한다
+  1. `$RUN_DIR/gemini-output.txt`를 Read한다
+  2. `$RUN_DIR/gemini.exit`가 0이고 output이 비어 있지 않으면 결과 텍스트로 사용한다
+  3. `$RUN_DIR/gemini-log.txt`에는 인증/확장/MCP 경고가 포함될 수 있으므로, 실패 진단용으로만 사용한다
 
 - `codex`
-  1. `/tmp/humanizer-max-codex-output.txt`를 Read한다
-  2. 파일 전체를 Codex 결과 텍스트로 사용한다
+  1. `$RUN_DIR/codex-output.txt`를 Read한다 (`--output-last-message`가 기록한 최종 텍스트)
+  2. `$RUN_DIR/codex.exit`가 0이고 output이 비어 있지 않으면 결과 텍스트로 사용한다
+  3. 실패 또는 빈 출력이면 `$RUN_DIR/codex-log.txt`를 진단 정보로 Read한다
 
 ### 실패 처리
 
-- 특정 모델의 output 파일이 비어 있거나, 파일이 없거나, 명령이 비정상 종료한 경우 → 해당 모델을 `failed`로 표시하고 나머지로 계속 진행
-- sentinel 파일(`.done`)이 생겼지만 output 파일이 비어 있으면 → CLI가 에러 없이 빈 응답을 반환한 것이므로 `failed`로 표시
-- 모든 모델이 실패한 경우 → 에러 메시지와 함께 각 모델의 output/stderr 파일 내용을 진단 정보로 출력하고 종료
+- 특정 모델의 exit code가 0이 아니거나, output 파일이 비어 있거나, 파일이 없으면 → 해당 모델을 `failed`로 표시하고 나머지로 계속 진행
+- `.timeout` 파일이 있거나 exit code가 `124`이면 → `timed out`으로 기록하고 `failed`로 표시
+- `.done` 파일은 생겼지만 output 파일이 비어 있으면 → CLI가 빈 응답을 반환한 것이므로 `failed`로 표시
+- 모든 모델이 실패한 경우 → 에러 메시지와 함께 각 모델의 output/log 파일 내용을 진단 정보로 출력하고 종료
 - `dispatch: omc`에서 tmux가 없으면 (`$TMUX` 미설정) → 경고 후 자동으로 direct 모드로 전환
 
 ---
@@ -302,6 +342,7 @@ Best: claude (AI Score: 23)
 3. **카테고리별 세부 점수** — 최종본의 패턴 카테고리별 점수
 4. **차점 결과 요약** — 다른 모델의 결과를 접힌 섹션으로 제공 (참고용)
 5. **실패 정보** — 실패한 모델이 있으면 사유 표시
+6. **임시 파일 정리** — 출력이 끝난 뒤 `rm -rf "$RUN_DIR"`로 정리
 
 ### 출력 예시
 
@@ -346,5 +387,6 @@ Best: claude (AI Score: 23)
 - 모델 추가/제거는 `.humanizer.default.yaml`의 `max-models` 또는 `--models` 플래그로 설정합니다
 - 지원 모델: `claude`, `codex`, `gemini` (모두 stdin pipe로 프롬프트 전달)
 - 디스패치 모드: `omc` (tmux pane 병렬, 기본) / `direct` (순차 실행, fallback)
+- 각 실행은 고유 temp dir를 사용하며, 선택된 모델만 기다리고, timeout 모델은 자동으로 `failed` 처리한다
 - 최초 실행 시 설치 인터뷰로 `.humanizer.yaml` 생성 (모델 선택, 디스패치 모드, CLI 설치 확인)
 - v2 계획: 최고 점수가 기준 이상이면 자동 재시도하는 ralph 루프 도입 예정

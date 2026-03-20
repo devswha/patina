@@ -17,4 +17,5 @@
 ## 연결된 서비스
 
 - GitHub: devswha/oh-my-humanizer
+- Discord: 채널 DISCORD_CHANNEL
 - clawhip: http://127.0.0.1:25294

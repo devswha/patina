@@ -28,6 +28,10 @@ patterns: 6
 
 **Watch words:** serves as, acts as, functions as, stands as, operates as, works as, remains as, exists as
 
+**Fire condition:** 2+ copula-avoidance constructions in the same paragraph, or a single instance where "is" would be shorter and clearer.
+
+**Exclusion:** "Serves as" is acceptable when the subject has a formally designated role function (e.g., "the committee serves as an advisory board" — institutional role, not decorative usage).
+
 **Problem:** AI avoids the simple verb "is" by using unnecessarily complex copula constructions. "The park serves as a gathering place" instead of "The park is a gathering place."
 
 **Before:**
@@ -42,6 +46,10 @@ patterns: 6
 
 **Watch words:** not just...but, not merely...but also, not only...but, goes beyond...to, more than just...it is, transcends...to become
 
+**Fire condition:** 2+ "not X but Y" structures in the same document, or a single instance where the positive statement alone would be simpler and equally clear.
+
+**Exclusion:** Genuine contrastive clarification correcting a misconception ("the event is not a conference but a workshop — no keynotes, only hands-on sessions") — the negative frame is doing real work here.
+
 **Problem:** AI uses negative-then-positive constructions to make simple points sound profound. Instead of stating what something is, it first states what it is not.
 
 **Before:**
@@ -54,6 +62,12 @@ patterns: 6
 
 ### 10. Rule of Three Overuse
 
+**Fire condition:** 3-item lists appear 2+ times in the same document, or a triple-part sentence where the count is arbitrary and another count would be equally valid.
+
+**Exclusion:** Naturally occurring triads in genuinely three-part processes (past/present/future; input/process/output; beginning/middle/end) are not this pattern.
+
+**Burstiness note:** When rewriting, use the naturally correct count — one strong point if that is all there is, two contrasting items if that is the real structure, four if there are actually four. Varying list counts across a document signals human authorship.
+
 **Problem:** AI defaults to triple-item lists and three-part structures when the natural count might be two, four, or one. This creates a rhythm that feels rehearsed rather than spontaneous.
 
 **Before:**
@@ -65,6 +79,10 @@ patterns: 6
 ---
 
 ### 11. Elegant Variation (Synonym Cycling)
+
+**Fire condition:** The same entity referred to by 3+ different names or synonyms within a single paragraph.
+
+**Exclusion:** Legitimate disambiguation (using "the company" vs. "Microsoft" when distinguishing a parent from a subsidiary, or "the study" vs. "the 2023 Stanford paper" for precision) is not this pattern.
 
 **Problem:** AI rotates synonyms for the same entity to avoid repeating a word, producing text that feels strangely evasive. A city becomes "the metropolis," then "the urban center," then "the municipality" — all within the same paragraph.
 
@@ -79,6 +97,10 @@ patterns: 6
 ### 12. False Ranges
 
 **Watch words:** from X to Y, ranging from...to, spanning...to, everything from...to, whether...or
+
+**Fire condition:** A "from X to Y" construction appears where the two poles do not meaningfully bound a spectrum — the range is decorative rather than informative.
+
+**Exclusion:** Genuine numeric or temporal ranges ("from 10 to 100 employees", "from January to March", "from $5 to $50") are not this pattern.
 
 **Problem:** AI creates artificial ranges to sound comprehensive, often pairing two extremes that do not meaningfully define a spectrum.
 

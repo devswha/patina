@@ -12,6 +12,10 @@ patterns: 6
 
 **Watch words:** significant milestone, pivotal moment, groundbreaking, transformative, paradigm shift, revolutionary, game-changing, unprecedented, landmark achievement, watershed moment, trailblazing, monumental
 
+**Fire condition:** 2+ emphasis words appear in the same paragraph, or a single word like "revolutionary" or "groundbreaking" applied to an ordinary product or event.
+
+**Exclusion:** Genuine historical events of large scale (first moon landing, eradication of a disease) where the adjective is proportionate. Use judgment on actual impact.
+
 **Problem:** AI inflates the importance of ordinary topics. Everything becomes a "significant milestone" or a "paradigm shift," regardless of actual impact.
 
 **Before:**
@@ -25,6 +29,10 @@ patterns: 6
 ### 2. Undue Emphasis on Notability/Media
 
 **Watch words:** garnered significant attention, widely recognized, has been featured in, attracted widespread interest, gained international acclaim, made headlines, captured the imagination of, has been praised by critics and audiences alike
+
+**Fire condition:** A claim of broad attention, coverage, or acclaim appears without a named publication, outlet, or specific figure.
+
+**Exclusion:** Statements like "widely used" backed by a rough scale ("used in 50 countries", "over 10 million installs") — specificity makes them acceptable even without named sources.
 
 **Problem:** AI claims broad media coverage or public attention without citing specific sources or evidence.
 
@@ -40,6 +48,10 @@ patterns: 6
 
 **Watch words:** showcasing, highlighting, underscoring, demonstrating, illustrating, reflecting, signaling, exemplifying, reinforcing, embodying, encapsulating
 
+**Fire condition:** 3+ present-participle phrases chained in a single sentence or consecutive clauses with no concrete causal explanation.
+
+**Exclusion:** A single well-placed participle for genuine causal or temporal connection ("the policy increased costs, pushing firms to cut staff") is acceptable and not this pattern.
+
 **Problem:** AI uses present participle chains as filler analysis. Instead of explaining *why* something matters, it strings together "-ing" words that gesture at significance without saying anything concrete.
 
 **Before:**
@@ -53,6 +65,10 @@ patterns: 6
 ### 4. Promotional Language
 
 **Watch words:** stunning, breathtaking, world-class, gem of, hidden treasure, crown jewel, vibrant, nestled in, boasts, a must-visit, unparalleled, exquisite, awe-inspiring, picturesque
+
+**Fire condition:** 2+ promotional adjectives modifying the same subject, or a single strong superlative ("world-class", "breathtaking", "must-visit") used as descriptive prose rather than quoted marketing copy.
+
+**Exclusion:** Direct quotations from marketing or promotional materials being analyzed — the promotional language belongs to the source, not the author.
 
 **Problem:** AI uses tourism-brochure language instead of neutral description, especially when writing about places, food, or cultural events.
 
@@ -68,6 +84,10 @@ patterns: 6
 
 **Watch words:** experts say, many believe, it is widely accepted, studies show, research indicates, critics argue, according to sources, observers note, analysts predict, some suggest, it is generally agreed
 
+**Fire condition:** Any claim of authority appears with an unspecified source rather than a named one (person, institution, publication, or study with date).
+
+**Exclusion:** Well-established consensus facts with no reasonable controversy ("doctors say smoking causes lung cancer") — use judgment on whether a named source is genuinely necessary.
+
 **Problem:** AI cites unnamed "experts" and "studies" instead of specific sources. This creates an illusion of authority without any verifiable backing.
 
 **Before:**
@@ -81,6 +101,10 @@ patterns: 6
 ### 6. Formulaic "Challenges and Prospects"
 
 **Watch words:** despite these challenges, remains to be seen, poised for growth, at a crossroads, on the cusp of, only time will tell, the road ahead, faces significant hurdles but, with continued effort, looking forward
+
+**Fire condition:** A paragraph or conclusion contains both a generic challenge phrase AND a generic optimism phrase — the classic two-step pattern of acknowledging problems then pivoting to vague hope.
+
+**Exclusion:** Genuine uncertainty expressed with specific caveats ("FDA approval takes 14 months; if denied by Q3, we shift to EU trials") — precision makes it acceptable. Only trigger when both poles are vague.
 
 **Problem:** AI wraps up with a generic challenges-then-optimism formula: acknowledge problems, then pivot to vague hope. This pattern appears at the end of almost every AI-generated article or essay.
 

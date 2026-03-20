@@ -5,3 +5,4 @@ custom/
 .DS_Store
 *.swp
 *~
+scripts/logs/

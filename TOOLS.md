@@ -36,6 +36,26 @@ oh-my-humanizer/
 - 버전 동기화 필수: `SKILL.md`, `SKILL-MAX.md`, `humanizer-max/SKILL.md`, `.humanizer.default.yaml`, `README.md`
 - 새 언어 추가: `{lang}-*.md` 패턴 파일만 생성하면 자동 탐색
 
+## Autonomous Bot
+
+```
+scripts/
+├── bot.sh           # Cron entrypoint: flock, timeout, claude -p, notifications
+├── bot-prompt.md    # Bot brain: task priority, inline scoring, quality gates
+└── logs/            # Run logs (gitignored, rotated at 30 days)
+```
+
+```bash
+# Manual bot run
+./scripts/bot.sh
+
+# Check bot activity
+cat memory/daily/$(date +%Y-%m-%d).md
+
+# Toggle auto-merge (default: false)
+AUTO_MERGE=true ./scripts/bot.sh
+```
+
 ## clawhip 연동
 
 ```bash

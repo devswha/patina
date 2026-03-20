@@ -19,3 +19,10 @@
 - GitHub: devswha/oh-my-humanizer
 - Discord: 채널 DISCORD_CHANNEL
 - clawhip: http://127.0.0.1:25294
+
+## Autonomous Bot
+
+- Bot runs hourly via cron (`scripts/bot.sh`)
+- Bot PRs are labeled `bot`
+- `AUTO_MERGE` env var controls merge behavior (default: `false`)
+- Bot rules: `memory/topics/bot-rules.md`

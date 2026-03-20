@@ -42,7 +42,7 @@ To reduce variance between runs, follow these guidelines when assigning severity
 
 - **Structure patterns (#25-28):** Assess at document level, not instance count.
   A single structural issue (e.g., every paragraph follows identical template) is High.
-- **Communication patterns (#19-22):** A single clear chatbot expression
+- **Communication patterns (#19-21):** A single clear chatbot expression
   (e.g., "좋은 질문입니다!") may be High — these are strong AI signals regardless of count.
 - **Short text (1-2 paragraphs):** Adjust thresholds proportionally.
   2 instances in 2 paragraphs = Medium, not Low.

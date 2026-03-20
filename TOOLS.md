@@ -43,5 +43,5 @@ oh-my-humanizer/
 clawhip status
 
 # 수동 알림 테스트
-clawhip send --channel 1468997478220042405 --message "oh-my-humanizer 테스트 알림"
+clawhip send --channel 1484400552262762496 --message "oh-my-humanizer 테스트 알림"
 ```

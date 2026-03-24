@@ -136,19 +136,38 @@ Read core/voice.md
 ## 목소리 지침
 {3단계에서 로드한 voice.md 내용을 여기에 인라인}
 
-## 처리 지침
-1. 위의 패턴 팩에서 정의된 모든 AI 패턴을 입력 텍스트에서 스캔하라
-2. 발견된 AI 패턴을 자연스러운 대안으로 교체하라
-3. 핵심 메시지와 의미를 보존하라
-4. 프로필의 어조 지침에 따라 톤을 조절하라
-5. 목소리 지침에 따라 실제 사람의 개성을 불어넣어라
+## Phase 1: 구조 교정 (Structure Patterns)
+
+위의 패턴 팩 목록에서 `phase: structure`가 표시된 팩의 패턴만 처리하라 (구조적 반복, 문단 길이 균일성, 단락 템플릿 고정 등):
+
+1. `phase: structure` 팩의 패턴만 스캔하라
+2. 발견된 구조 패턴을 교정하라 — 문단 길이를 의도적으로 변주하고, 반복 구조를 해체하라
+3. 이 단계의 출력이 Phase 2의 입력이 된다
+
+## Phase 2: 문장/어휘 교정 (Sentence & Lexical Patterns)
+
+Phase 1 출력에 대해, 나머지 패턴 팩(content, language, style, communication, filler)을 처리하라:
+
+1. 각 패턴의 fire condition을 확인하여 실제로 해당하는 경우에만 교정하라
+2. 프로필의 `pattern-overrides`를 적용하라 (suppress는 건너뜀, reduce는 부드럽게, amplify는 더 엄격하게)
+3. 설정의 blocklist 어휘도 추가 감지하고, allowlist 어휘는 감지에서 제외하라
+4. 프로필의 `voice-overrides`와 목소리 지침에 따라 필자의 개성을 불어넣어라
+5. 핵심 메시지와 의미를 반드시 보존하라
+
+## Phase 3: 자기검수 (Self-Audit)
+
+Phase 2 출력 전체를 읽고 스스로 물어라: "아래 글에서 AI가 쓴 것처럼 보이는 부분은?"
+
+1. Phase 1에서 교정한 구조적 변경이 Phase 2에서 되돌려지지 않았는지 확인하라 (회귀 체크)
+2. 아직 AI처럼 느껴지는 표현이 있으면 마지막으로 수정하라
+3. 한 번만 재검토하고 완료한다 — 무한 반복하지 않는다
 
 ## 입력 텍스트
 {사용자가 제공한 원문 텍스트}
 
 ## 중요 제약
 Humanize this text by removing the AI patterns described above.
-Output ONLY the humanized text.
+Output ONLY the final humanized text (after Phase 3 self-audit).
 Do not use any tools. Do not read or modify any files.
 Do not ask questions. Do not include explanations or metadata.
 ```

@@ -12,6 +12,10 @@ patterns: 3
 
 **Watch words:** it's important to note that, it's worth mentioning that, it should be noted that, in order to, due to the fact that, at the end of the day, when it comes to, in terms of, the fact of the matter is, it goes without saying, needless to say, as a matter of fact, for all intents and purposes, in light of the fact that
 
+**Fire condition:** 2+ filler phrases appear in the same paragraph, or a single phrase that can be deleted without any loss of meaning.
+
+**Exclusion:** "In order to" is occasionally necessary for clarity in legal or formal regulatory writing where "to" could be misread as part of an infinitive chain. Use judgment in those contexts.
+
 **Problem:** AI pads sentences with unnecessary filler that adds length but no meaning. These phrases can almost always be deleted or replaced with a shorter alternative.
 
 **Substitutions:**
@@ -35,6 +39,10 @@ patterns: 3
 
 **Watch words:** it could potentially be argued that perhaps, may or may not, it is possible that, to some extent, in certain cases, it could be said that, there is a chance that, one might argue, it seems likely that, arguably, it is conceivable that, tends to suggest
 
+**Fire condition:** 3+ qualifiers stacked on a single claim, or a statement so hedged it makes no falsifiable assertion.
+
+**Exclusion:** A single hedge on a genuinely uncertain claim is appropriate and not this pattern ("this approach may reduce costs" when the evidence is preliminary). Only trigger when qualifiers are stacked or when the combined hedging evacuates all meaning.
+
 **Problem:** AI over-qualifies every statement to avoid being wrong, producing text so hedged that it says almost nothing. A single hedge is fine; stacking three or four qualifiers on one claim is not.
 
 **Before:**
@@ -48,6 +56,10 @@ patterns: 3
 ### 24. Generic Positive Conclusions
 
 **Watch words:** a bright future lies ahead, exciting journey, the possibilities are endless, stands as a testament, the sky is the limit, promising outlook, exciting times ahead, the best is yet to come, transformative potential, a new chapter
+
+**Fire condition:** 2+ vague optimism phrases appear in the same paragraph or conclusion, or a standalone final sentence that is entirely optimism filler with no specific claim.
+
+**Exclusion:** A specific optimistic statement backed by evidence ("given the trial data, FDA approval looks likely by Q3") is not this pattern — specificity makes it acceptable.
 
 **Problem:** AI ends with vague optimism instead of specific conclusions. This pattern often appears alongside Pattern 6 (Formulaic Challenges and Prospects) but can also stand alone as a final sentence.
 

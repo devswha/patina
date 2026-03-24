@@ -12,6 +12,10 @@ patterns: 3
 
 **Watch words:** I hope this helps!, Let me know if you need, Feel free to ask, Happy to help, Don't hesitate to reach out, I'd be glad to, Is there anything else, Hope that clarifies things, Let me know if you'd like me to
 
+**Fire condition:** Any chatbot-style conversational phrase appears in content that is not a live interactive conversation.
+
+**Exclusion:** Acceptable in transcripts of actual live chat sessions, intentional UI microcopy for chatbot interfaces, or dialogue being quoted and analyzed.
+
 **Problem:** AI includes chatbot conversational phrases in written content. These are appropriate in a live chat but not in articles, reports, or documentation.
 
 **Before:**
@@ -26,6 +30,10 @@ patterns: 3
 
 **Watch words:** as of my last update, I don't have access to real-time, my training data, I cannot verify current, as of my knowledge cutoff, I'm not able to browse, please verify this information, this may have changed since
 
+**Fire condition:** Any AI self-reference or training-data caveat appears in editorial, journalistic, or analytical content.
+
+**Exclusion:** Acceptable in technical documentation explicitly about AI systems, or in content that intentionally discloses AI generation (with a proper disclosure note). Also acceptable if the caveat is replaced with a dated, source-cited fact.
+
 **Problem:** AI includes training-data caveats in content that should not reference AI limitations. These disclaimers break the fourth wall and remind readers the text was machine-generated.
 
 **Before:**
@@ -39,6 +47,10 @@ patterns: 3
 ### 21. Sycophantic/Servile Tone
 
 **Watch words:** Great question!, That's an excellent point, You've raised a fascinating, What a thoughtful, That's a really interesting, Absolutely!, You're absolutely right, What a great observation
+
+**Fire condition:** Any flattering or servile opener appears before substantive content.
+
+**Exclusion:** None — this pattern has no valid context in editorial, analytical, or journalistic writing. Even in conversational formats, drop the flattery and start with the answer.
 
 **Problem:** AI flatters the reader or questioner before answering. This servile opener adds no information and signals AI generation.
 

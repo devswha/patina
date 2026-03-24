@@ -20,8 +20,8 @@ notify() {
 }
 
 # --- Pre-checks ---
-command -v claude >/dev/null 2>&1 || { notify "oh-my-humanizer bot: claude CLI not found"; exit 1; }
-gh auth status >/dev/null 2>&1 || { notify "oh-my-humanizer bot: gh not authenticated"; exit 1; }
+command -v claude >/dev/null 2>&1 || { notify "oh-my-humanizer 봇: claude CLI를 찾을 수 없음"; exit 1; }
+gh auth status >/dev/null 2>&1 || { notify "oh-my-humanizer 봇: gh 인증 실패"; exit 1; }
 clawhip status >/dev/null 2>&1 || echo "WARNING: clawhip daemon may be down"
 
 # --- Stale lock detection (age > 45 minutes) ---
@@ -95,14 +95,14 @@ set -e
 # --- Notification dispatch (4 distinct states) ---
 if [ "$EXIT_CODE" -eq 0 ]; then
   if grep -q "No actionable tasks found" "$LOG_FILE" 2>/dev/null; then
-    notify "oh-my-humanizer bot: no tasks found (idle run)"
+    notify "oh-my-humanizer 봇: 처리할 작업 없음 (대기)"
   else
-    notify "oh-my-humanizer bot: run completed successfully"
+    notify "oh-my-humanizer 봇: 실행 완료"
   fi
 elif [ "$EXIT_CODE" -eq 124 ]; then
-  notify "oh-my-humanizer bot: run TIMED OUT after 30m. Check for orphaned branches."
+  notify "oh-my-humanizer 봇: 30분 타임아웃 — 고아 브랜치 확인 필요"
 else
-  notify "oh-my-humanizer bot: run FAILED (exit $EXIT_CODE). Check logs."
+  notify "oh-my-humanizer 봇: 실행 실패 (exit $EXIT_CODE) — 로그 확인 필요"
 fi
 
 # --- Daily log append ---

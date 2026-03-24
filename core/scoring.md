@@ -87,16 +87,13 @@ Unknown categories (from custom packs not in the weight config) get default weig
 
 | Category | Weight | Patterns |
 |----------|--------|----------|
-| content | 0.25 | 6 |
-| language | 0.25 | 6 |
-| style | 0.25 | 6 |
-| communication | 0.15 | 3 |
+| content | 0.22 | 6 |
+| language | 0.22 | 6 |
+| style | 0.22 | 6 |
+| communication | 0.14 | 3 |
 | filler | 0.10 | 3 |
-| structure | 0.00 | 0 |
-| **Total** | **1.00** | **24** |
-
-> **Note:** English structure pack is a placeholder (0 patterns).
-> When en-structure gets real patterns, weights must be updated.
+| structure | 0.10 | 4 |
+| **Total** | **1.00** | **28** |
 
 Weights are configurable via `ouroboros.category-weights.{lang}` in `.humanizer.yaml`.
 

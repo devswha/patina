@@ -116,6 +116,27 @@ Before summing severities, apply profile `pattern-overrides` modifiers:
 Example: blog profile suppresses #14 (bold) → pattern #14 severity becomes 0,
 excluded from ko-style category calculation.
 
+### Language-Scoped Overrides
+
+`pattern-overrides` may be nested under a language code (`ko:`, `en:`) to avoid
+cross-language number collisions (e.g., ko #8 is "~적 접미사" while en #8 is
+"Copula Avoidance" — the same number refers to unrelated patterns in each language).
+
+```yaml
+# Language-scoped format (recommended for multi-language profiles)
+pattern-overrides:
+  ko:
+    8: amplify    # ko-language #8 (~적 접미사)
+    14: suppress  # ko-style #14 (볼드체)
+  en:
+    8: amplify    # en-language #8 (Copula Avoidance)
+    14: suppress  # en-style #14 (Boldface)
+```
+
+**Resolution rule:** When the active language has a sub-section under `pattern-overrides`,
+apply **only** that sub-section's overrides. Top-level (unscoped) overrides apply to all
+languages and are merged before language-scoped ones (language-scoped wins on conflict).
+
 ---
 
 ## 6. Scoring Formula

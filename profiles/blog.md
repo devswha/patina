@@ -11,11 +11,18 @@ voice-overrides:
   messiness: amplify            # 불완전한 구조 허용
   concrete-emotions: amplify    # 감정 구체화 강화
 pattern-overrides:
-  14: suppress                  # 볼드체 — 블로그에서는 흔하게 사용, 교정 불필요
-  15: reduce                    # 인라인 헤더 — 블로그에서 일부 허용
-  17: reduce                    # 이모지 — 블로그에서 가끔 허용 (과도한 경우만 교정)
-  18: amplify                   # 한자어/공식어 — 블로그에서는 특히 부자연스러우므로 적극 교정
-  8: amplify                    # ~적 접미사 — 블로그에서는 특히 딱딱하게 느껴지므로 적극 교정
+  ko:
+    14: suppress                # 볼드체 — 블로그에서는 흔하게 사용, 교정 불필요
+    15: reduce                  # 인라인 헤더 — 블로그에서 일부 허용
+    17: reduce                  # 이모지 — 블로그에서 가끔 허용 (과도한 경우만 교정)
+    18: amplify                 # 한자어/공식어 — 블로그에서는 특히 부자연스러우므로 적극 교정
+    8: amplify                  # ~적 접미사 — 블로그에서는 특히 딱딱하게 느껴지므로 적극 교정
+  en:
+    14: suppress                # Boldface — blogs use bold for readability, no correction needed
+    15: reduce                  # Inline-header lists — partially allowed in blog posts
+    17: reduce                  # Emojis — occasional use tolerated in personal blogs
+    7: amplify                  # AI vocabulary words — especially jarring in casual blog prose
+    8: amplify                  # Copula avoidance — blog prose should use simple "is", not "serves as"
 ---
 
 # 블로그/에세이 프로필
@@ -34,13 +41,20 @@ pattern-overrides:
 - **불완전한 문장을 두려워하지 않는다.** "그래서?" "글쎄." — 짧은 파편 문장이 리듬을 만든다.
 - **유머와 자기비하를 허용한다.** "삽질을 이틀 했다", "이걸 왜 이제야 알았을까" — 사람다움의 핵심.
 
-## 패턴 처리
+## 패턴 처리 (한국어)
 
-- **볼드체(#14), 인라인 헤더(#15):** 블로그에서는 가독성을 위해 흔히 사용하므로 관대하게 처리한다. 기계적으로 모든 키워드를 볼드 처리한 경우만 교정.
-- **이모지(#17):** 1-2개 자연스러운 사용은 허용. 모든 항목에 이모지를 붙인 경우만 교정.
-- **한자어/공식어(#18), ~적 접미사(#8):** 블로그에서 "도모하다", "혁신적인" 같은 표현은 특히 부자연스럽다. 적극 교정.
-- **구조적 반복(#25):** 블로그에서도 모든 단락이 동일 구조면 AI 티가 난다. 적극 교정.
-- **번역체(#26):** 블로그는 구어체에 가까워야 하므로 번역체가 더 눈에 띈다. 적극 교정.
+- **볼드체(ko #14), 인라인 헤더(ko #15):** 블로그에서는 가독성을 위해 흔히 사용하므로 관대하게 처리한다. 기계적으로 모든 키워드를 볼드 처리한 경우만 교정.
+- **이모지(ko #17):** 1-2개 자연스러운 사용은 허용. 모든 항목에 이모지를 붙인 경우만 교정.
+- **한자어/공식어(ko #18), ~적 접미사(ko #8):** 블로그에서 "도모하다", "혁신적인" 같은 표현은 특히 부자연스럽다. 적극 교정.
+- **구조적 반복(ko #25):** 블로그에서도 모든 단락이 동일 구조면 AI 티가 난다. 적극 교정.
+- **번역체(ko #26):** 블로그는 구어체에 가까워야 하므로 번역체가 더 눈에 띈다. 적극 교정.
+
+## Pattern Handling (English)
+
+- **Boldface (en #14), Inline-header lists (en #15):** Blogs legitimately use bold and headers for readability. Only correct mechanical over-use across every bullet.
+- **Emojis (en #17):** 1–2 natural uses are tolerated. Correct only when every item gets an emoji.
+- **AI vocabulary (en #7):** Words like "delve", "tapestry", "leverage", "multifaceted" are especially jarring in casual blog prose. Aggressively correct.
+- **Copula avoidance (en #8):** "Serves as", "functions as" read stiffly in blog writing. Replace with simple "is/are" constructions.
 
 ## voice.md 오버라이드
 

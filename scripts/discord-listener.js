@@ -20,7 +20,7 @@ const REPO_DIR = resolve(__dirname, '..');
 // --- Configuration ---
 const CHANNEL_ID = process.env.DISCORD_CHANNEL || 'DISCORD_CHANNEL';
 const ALLOWED_USERS = (process.env.DISCORD_ALLOWED_USERS || 'DISCORD_ALLOWED_USERS').split(',');
-const LOCK_FILE = '/tmp/oh-my-humanizer-bot.lock';
+const LOCK_FILE = '/tmp/oh-my-humanizer-chat.lock';
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_QUEUE_SIZE = 3;
 const HEARTBEAT_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
@@ -145,9 +145,13 @@ async function processQueue(channel) {
     await channel.sendTyping();
     const response = await runClaude(userMessage, channel);
 
-    const chunks = splitMessage(response);
-    for (const chunk of chunks) {
-      await message.reply(chunk);
+    if (!response) {
+      await message.reply('🤔 응답을 생성하지 못했어요. 다시 말해주세요.');
+    } else {
+      const chunks = splitMessage(response);
+      for (const chunk of chunks) {
+        await message.reply(chunk);
+      }
     }
   } catch (err) {
     let errorMsg;

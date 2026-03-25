@@ -9,9 +9,9 @@ The "runtime" is `SKILL.md` (the orchestrator): it reads config, auto-discovers 
 
 ## Architecture (oh-my-zsh parallel)
 
-| oh-my-zsh | oh-my-humanizer |
-|-----------|-----------------|
-| `.zshrc` | `.humanizer.default.yaml` |
+| oh-my-zsh | patina |
+|-----------|--------|
+| `.zshrc` | `.patina.default.yaml` |
 | `plugins/` | `patterns/` |
 | `themes/` | `profiles/` |
 | `custom/plugins/` | `custom/patterns/` |
@@ -26,12 +26,12 @@ The "runtime" is `SKILL.md` (the orchestrator): it reads config, auto-discovers 
 - `SKILL-MAX.md`
   - Source/reference doc for the MAX mode workflow.
 
-- `humanizer-max/SKILL.md`
-  - Installable MAX mode skill entrypoint exposed as `/humanizer-max`.
+- `patina-max/SKILL.md`
+  - Installable MAX mode skill entrypoint exposed as `/patina-max`.
   - Uses `claude -p` / `gemini -p` for Claude/Gemini and `codex exec` for Codex.
   - Scores each result and auto-selects the best (lowest AI score) output.
 
-- `.humanizer.default.yaml`
+- `.patina.default.yaml`
   - Default configuration: language, profile, output mode, blocklist/allowlist. MAX mode model selection (`max-models` field).
   - Pattern loading uses auto-discovery (`Glob patterns/{lang}-*.md`), not the `patterns` list (which is informational).
 
@@ -61,33 +61,33 @@ The "runtime" is `SKILL.md` (the orchestrator): it reads config, auto-discovers 
 Recommended (clone directly into Claude Code skills directory):
 ```bash
 mkdir -p ~/.claude/skills
-git clone https://github.com/devswha/oh-my-humanizer.git ~/.claude/skills/humanizer
-ln -snf ~/.claude/skills/humanizer/humanizer-max ~/.claude/skills/humanizer-max
+git clone https://github.com/devswha/patina.git ~/.claude/skills/patina
+ln -snf ~/.claude/skills/patina/patina-max ~/.claude/skills/patina-max
 ```
 
 Manual install/update:
 ```bash
-mkdir -p ~/.claude/skills/humanizer
-cp -a SKILL.md .humanizer.default.yaml core/ patterns/ profiles/ humanizer-max/ ~/.claude/skills/humanizer/
-ln -snf ~/.claude/skills/humanizer/humanizer-max ~/.claude/skills/humanizer-max
+mkdir -p ~/.claude/skills/patina
+cp -a SKILL.md .patina.default.yaml core/ patterns/ profiles/ patina-max/ ~/.claude/skills/patina/
+ln -snf ~/.claude/skills/patina/patina-max ~/.claude/skills/patina-max
 ```
 
 ## How to "run" it (Claude Code)
 Invoke the skill:
-- `/humanizer` then paste Korean text (default language: ko)
-- `/humanizer --lang en` then paste English text
-- `/humanizer --profile blog` for blog-style output
-- `/humanizer --audit` for detection-only mode
-- `/humanizer-max` then paste text (install `~/.claude/skills/humanizer-max` symlink first)
-- `/humanizer-max --models claude,gemini,codex` to specify models
+- `/patina` then paste Korean text (default language: ko)
+- `/patina --lang en` then paste English text
+- `/patina --profile blog` for blog-style output
+- `/patina --audit` for detection-only mode
+- `/patina-max` then paste text (install `~/.claude/skills/patina-max` symlink first)
+- `/patina-max --models claude,gemini,codex` to specify models
 
 ## Making changes safely
 
 ### Versioning (keep in sync)
 - `SKILL.md` has a `version:` field in its YAML frontmatter.
 - `SKILL-MAX.md` has a `version:` field in its YAML frontmatter.
-- `humanizer-max/SKILL.md` has a `version:` field in its YAML frontmatter.
-- `.humanizer.default.yaml` has a `version:` field.
+- `patina-max/SKILL.md` has a `version:` field in its YAML frontmatter.
+- `.patina.default.yaml` has a `version:` field.
 - `README.md` has a "Version History" section.
 
 If you bump the version, update all five.
@@ -108,11 +108,11 @@ If you bump the version, update all five.
 
 ### Adding new pattern packs
 - Create a new `.md` file in `patterns/` with the standard frontmatter format.
-- Pattern packs are auto-discovered by language prefix -- no need to update `.humanizer.default.yaml`.
+- Pattern packs are auto-discovered by language prefix -- no need to update `.patina.default.yaml`.
 
 ### Adding new profiles
 - Create a new `.md` file in `profiles/` with profile frontmatter.
-- Users select profiles via `--profile <name>` or by editing `.humanizer.default.yaml`.
+- Users select profiles via `--profile <name>` or by editing `.patina.default.yaml`.
 
 ### Documenting non-obvious fixes
 If you change the prompt to handle a tricky failure mode, add a short note to `README.md`'s version history.

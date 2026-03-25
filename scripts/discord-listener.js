@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * oh-my-humanizer Discord Listener
+ * patina Discord Listener
  *
  * Listens for messages in a designated Discord channel and responds
  * using claude -p with the interactive prompt. Natural language chat,
@@ -20,7 +20,7 @@ const REPO_DIR = resolve(__dirname, '..');
 // --- Configuration ---
 const CHANNEL_ID = process.env.DISCORD_CHANNEL || '1484400552262762496';
 const ALLOWED_USERS = (process.env.DISCORD_ALLOWED_USERS || '266436073557590016').split(',');
-const LOCK_FILE = '/tmp/oh-my-humanizer-bot.lock';
+const LOCK_FILE = '/tmp/patina-bot.lock';
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_QUEUE_SIZE = 3;
 const HEARTBEAT_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
@@ -180,14 +180,14 @@ client.once('clientReady', () => {
   // Notify Discord
   const channel = client.channels.cache.get(CHANNEL_ID);
   if (channel) {
-    channel.send('🟢 oh-my-humanizer 봇 온라인 — 채팅으로 말 걸어주세요!');
+    channel.send('🟢 patina 봇 온라인 — 채팅으로 말 걸어주세요!');
   }
 
   // Heartbeat every 6 hours
   setInterval(() => {
     if (!processing && queue.length === 0) {
       const ch = client.channels.cache.get(CHANNEL_ID);
-      if (ch) ch.send('💚 oh-my-humanizer 봇 정상 대기 중');
+      if (ch) ch.send('💚 patina 봇 정상 대기 중');
     }
   }, HEARTBEAT_INTERVAL_MS);
 });
@@ -246,7 +246,7 @@ async function shutdown(signal) {
     }
   }
 
-  if (channel) await channel.send('🔴 oh-my-humanizer 봇 오프라인');
+  if (channel) await channel.send('🔴 patina 봇 오프라인');
 
   client.destroy();
   process.exit(0);
@@ -256,5 +256,5 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
 // --- Start ---
-console.log('[listener] Starting oh-my-humanizer Discord listener...');
+console.log('[listener] Starting patina Discord listener...');
 client.login(BOT_TOKEN);

@@ -8,3 +8,5 @@ custom/
 scripts/logs/
 node_modules/
 .env
+HEARTBEAT.md
+SOUL.md

@@ -2,16 +2,12 @@
   "name": "patina-bot",
   "version": "1.0.0",
   "private": true,
-  "description": "Discord listener for patina autonomous bot",
-  "type": "module",
+  "description": "OpenClaw-based automation for patina",
   "scripts": {
-    "listener": "node scripts/discord-listener.js",
-    "listener:start": "systemctl --user start patina-listener",
-    "listener:stop": "systemctl --user stop patina-listener",
-    "listener:status": "systemctl --user status patina-listener",
-    "listener:logs": "journalctl --user -u patina-listener -f"
-  },
-  "dependencies": {
-    "discord.js": "^14.18.0"
+    "bot": "bash scripts/bot.sh",
+    "openclaw:bootstrap": "bash scripts/openclaw-bootstrap.sh",
+    "openclaw:status": "openclaw status",
+    "openclaw:restart": "openclaw gateway restart",
+    "openclaw:logs": "openclaw logs --follow"
   }
 }

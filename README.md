@@ -1,11 +1,11 @@
 **[한국어](README_KR.md)** | English
 
-# oh-my-humanizer
+# patina
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
 [![Based on](https://img.shields.io/badge/Based%20on-blader%2Fhumanizer-blue)](https://github.com/blader/humanizer)
-[![Multi-language](https://img.shields.io/badge/Languages-Korean%20%7C%20English-green)](https://github.com/devswha/oh-my-humanizer)
+[![Multi-language](https://img.shields.io/badge/Languages-Korean%20%7C%20English-green)](https://github.com/devswha/patina)
 
 **Make AI text sound like a human wrote it.**
 
@@ -27,20 +27,20 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detec
 
 ```bash
 mkdir -p ~/.claude/skills
-git clone https://github.com/devswha/oh-my-humanizer.git ~/.claude/skills/humanizer
+git clone https://github.com/devswha/patina.git ~/.claude/skills/patina
 
 # Expose the MAX variant as its own Claude skill
-ln -snf ~/.claude/skills/humanizer/humanizer-max ~/.claude/skills/humanizer-max
+ln -snf ~/.claude/skills/patina/patina-max ~/.claude/skills/patina-max
 ```
 
-Claude Code will detect `/humanizer` automatically. Add the symlink step as well if you want `/humanizer-max` exposed as a separate skill.
+Claude Code will detect `/patina` automatically. Add the symlink step as well if you want `/patina-max` exposed as a separate skill.
 
 ## Use
 
 In Claude Code, type:
 
 ```
-/humanizer
+/patina
 
 [paste your text here]
 ```
@@ -48,7 +48,7 @@ In Claude Code, type:
 Korean is the default language. For English:
 
 ```
-/humanizer --lang en
+/patina --lang en
 
 [paste your English text here]
 ```
@@ -64,14 +64,14 @@ Korean is the default language. For English:
 | `--score` | Get an AI-similarity score from 0-100 |
 | `--ouroboros` | Iterative self-improvement: rewrite until AI score converges |
 
-Combine flags freely: `/humanizer --lang en --audit --profile blog`
+Combine flags freely: `/patina --lang en --audit --profile blog`
 
 ### MAX Mode (Multi-Model)
 
 Run the same text through multiple AI models and pick the best result:
 
 ```
-/humanizer-max
+/patina-max
 
 [paste your text here]
 ```
@@ -93,7 +93,7 @@ Each MAX run uses a unique temp directory, waits only for the models you selecte
 Check how AI-like your text is without rewriting:
 
 ```
-/humanizer --score
+/patina --score
 
 [paste your text here]
 ```
@@ -123,7 +123,7 @@ The score is pattern-based and deterministic — it reuses the same 28 (Korean) 
 Automatically rewrite until the AI score drops below a target:
 
 ```
-/humanizer --ouroboros
+/patina --ouroboros
 
 [paste your text here]
 ```
@@ -152,7 +152,7 @@ Reason: Target met (target: 30)
 - **Regression**: Score increases (text got worse) — rolls back to previous iteration
 - **Max iterations**: Hard cap of 3 iterations (configurable)
 
-**Configuration** — customize in `.humanizer.yaml`:
+**Configuration** — customize in `.patina.yaml`:
 
 ```yaml
 ouroboros:
@@ -349,7 +349,7 @@ Some patterns are language-specific. Where Korean has one pattern, English may h
 
 ## Configuration
 
-Edit `.humanizer.default.yaml`:
+Edit `.patina.default.yaml`:
 
 ```yaml
 version: "3.2.0"
@@ -375,7 +375,7 @@ Pattern packs are auto-discovered by language prefix -- no need to list them man
 | `blog` | More personal, opinionated | Blog posts, essays |
 
 ```
-/humanizer --profile blog text...
+/patina --profile blog text...
 ```
 
 ## Custom Patterns
@@ -400,15 +400,15 @@ patterns: 1
 ## Project Structure
 
 ```
-oh-my-humanizer/
-├── SKILL.md                  # /humanizer entrypoint
+patina/
+├── SKILL.md                  # /patina entrypoint
 ├── SKILL-MAX.md              # MAX mode source/reference doc
-├── humanizer-max/            # Installable /humanizer-max skill directory
+├── patina-max/               # Installable /patina-max skill directory
 │   ├── SKILL.md              # MAX mode entrypoint
 │   ├── core -> ../core
 │   ├── patterns -> ../patterns
 │   └── profiles -> ../profiles
-├── .humanizer.default.yaml   # Configuration
+├── .patina.default.yaml      # Configuration
 ├── core/voice.md             # Voice & personality guidelines
 ├── core/scoring.md           # Scoring algorithm reference
 ├── patterns/
@@ -425,7 +425,7 @@ Inspired by [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh)'s plugin architectur
 
 1. Create `patterns/{lang}-content.md`, `{lang}-language.md`, etc.
 2. Set `language: {lang}` in each file's frontmatter
-3. Use `/humanizer --lang {lang}` -- auto-discovered, no config changes needed
+3. Use `/patina --lang {lang}` -- auto-discovered, no config changes needed
 
 ## References
 
@@ -439,8 +439,8 @@ Inspired by [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh)'s plugin architectur
 |---------|---------|
 | **3.2.0** | Ouroboros scoring system: pattern-based AI-likeness scoring (0-100), `--score` mode with category breakdown, `--ouroboros` iterative self-improvement loop with configurable termination (target/plateau/regression/max-iterations) |
 | **3.1.1** | MAX mode reliability fixes: per-run temp dir, model-scoped wait loop + timeout handling, Gemini stdin dispatch, Codex CLI compatibility (`--output-last-message`, no `-q`) |
-| **3.1.0** | MAX mode: installable `/humanizer-max` skill entrypoint + provider-aware dispatch (`claude -p` / `gemini -p` for Claude/Gemini, `codex exec` for Codex) |
-| **3.0.0** | Multi-language framework, `--lang` flag, English patterns (24) from blader/humanizer, skill renamed to `humanizer` |
+| **3.1.0** | MAX mode: installable `/patina-max` skill entrypoint + provider-aware dispatch (`claude -p` / `gemini -p` for Claude/Gemini, `codex exec` for Codex) |
+| **3.0.0** | Multi-language framework, `--lang` flag, English patterns (24) from blader/humanizer, skill renamed to `patina` |
 | **2.2.0** | Loanword overuse pattern (#28), badges, repo rename |
 | **2.1.0** | 2-Phase pipeline, structure patterns, blog profile, examples |
 | **2.0.0** | Plugin architecture: pattern packs, profiles, config |

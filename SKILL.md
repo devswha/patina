@@ -1,5 +1,5 @@
 ---
-name: humanizer
+name: patina
 version: 3.2.0
 description: |
   AI가 생성한 텍스트에서 AI 특유의 글쓰기 패턴을 제거하여 자연스럽고
@@ -16,7 +16,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# oh-my-humanizer: AI 글쓰기 패턴 제거 오케스트레이터
+# patina: AI 글쓰기 패턴 제거 오케스트레이터
 
 당신은 AI가 생성한 텍스트에서 AI 특유의 패턴을 찾아 제거하여, 글을 자연스럽고 사람이 쓴 것처럼 만드는 편집자입니다. 처리 언어는 1단계에서 결정된 언어 코드에 따른다.
 
@@ -24,10 +24,10 @@ allowed-tools:
 
 ## 1단계: 설정 로드
 
-`.humanizer.default.yaml`을 읽어 설정을 로드한다.
+`.patina.default.yaml`을 읽어 설정을 로드한다.
 
 ```
-Glob .humanizer.default.yaml → Read
+Glob .patina.default.yaml → Read
 ```
 
 설정에서 다음을 확인:
@@ -47,7 +47,7 @@ Glob .humanizer.default.yaml → Read
 - `--lang <code>`: 처리 언어 변경 (ko, en). 설정 파일의 `language` 값을 오버라이드한다.
 
 `--score` 또는 `--ouroboros` 또는 `ouroboros.enabled: true`이면 `core/scoring.md`도 로드한다.
-파일이 없으면 에러: "core/scoring.md not found. Please update oh-my-humanizer."
+파일이 없으면 에러: "core/scoring.md not found. Please update patina."
 
 `--ouroboros`는 rewrite 출력 모드를 사용한다. `--audit`, `--diff`, `--score`와 함께 사용할 수 없다.
 

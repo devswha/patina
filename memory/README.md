@@ -5,7 +5,7 @@
 - `daily/YYYY-MM-DD.md` -> chronological work log
 - `channels/<channel>.md` -> one lane/channel
 - `agents/<agent>.md` -> one agent/operator profile
-- `projects/oh-my-humanizer.md` -> canonical repo/project state
+- `projects/patina.md` -> canonical repo/project state
 - `topics/rules.md` -> durable operating rules
 - `topics/lessons.md` -> reusable lessons
 - `handoffs/YYYY-MM-DD-<slug>.md` -> bounded handoffs
@@ -14,7 +14,7 @@
 ## Read by situation
 
 - Need latest execution context -> latest file in `daily/`
-- Need canonical project state -> `projects/oh-my-humanizer.md`
+- Need canonical project state -> `projects/patina.md`
 - Need policy or norms -> `topics/rules.md`
 
 ## Naming rules

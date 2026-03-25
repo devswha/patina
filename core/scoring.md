@@ -1,7 +1,7 @@
 ---
 name: AI-Likeness Scoring Algorithm
 version: 1.0.0
-description: Pattern-based AI-likeness scoring reference for humanizer score and ouroboros modes
+description: Pattern-based AI-likeness scoring reference for patina score and ouroboros modes
 ---
 
 # AI-Likeness Scoring Algorithm
@@ -95,7 +95,7 @@ Unknown categories (from custom packs not in the weight config) get default weig
 | structure | 0.10 | 4 |
 | **Total** | **1.00** | **28** |
 
-Weights are configurable via `ouroboros.category-weights.{lang}` in `.humanizer.yaml`.
+Weights are configurable via `ouroboros.category-weights.{lang}` in `.patina.yaml`.
 
 ---
 

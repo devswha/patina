@@ -1,11 +1,11 @@
 한국어 | **[English](README.md)**
 
-# oh-my-humanizer
+# patina
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
 [![Based on](https://img.shields.io/badge/Based%20on-blader%2Fhumanizer-blue)](https://github.com/blader/humanizer)
-[![Multi-language](https://img.shields.io/badge/Languages-Korean%20%7C%20English-green)](https://github.com/devswha/oh-my-humanizer)
+[![Multi-language](https://img.shields.io/badge/Languages-Korean%20%7C%20English-green)](https://github.com/devswha/patina)
 
 **AI가 쓴 글을 사람이 쓴 것처럼 바꿔줍니다.**
 
@@ -27,20 +27,20 @@
 
 ```bash
 mkdir -p ~/.claude/skills
-git clone https://github.com/devswha/oh-my-humanizer.git ~/.claude/skills/humanizer
+git clone https://github.com/devswha/patina.git ~/.claude/skills/patina
 
 # MAX 변형을 별도 Claude 스킬로 노출
-ln -snf ~/.claude/skills/humanizer/humanizer-max ~/.claude/skills/humanizer-max
+ln -snf ~/.claude/skills/patina/patina-max ~/.claude/skills/patina-max
 ```
 
-Claude Code는 `/humanizer`를 자동 인식합니다. `/humanizer-max`까지 쓰려면 symlink 단계도 함께 실행하세요.
+Claude Code는 `/patina`를 자동 인식합니다. `/patina-max`까지 쓰려면 symlink 단계도 함께 실행하세요.
 
 ## 사용법
 
 Claude Code에서 입력:
 
 ```
-/humanizer
+/patina
 
 [여기에 텍스트를 붙여넣으세요]
 ```
@@ -48,7 +48,7 @@ Claude Code에서 입력:
 기본 언어는 한국어입니다. 영어 텍스트를 처리하려면:
 
 ```
-/humanizer --lang en
+/patina --lang en
 
 [paste your English text here]
 ```
@@ -64,14 +64,14 @@ Claude Code에서 입력:
 | `--score` | AI 유사도 점수 0-100 |
 | `--ouroboros` | 반복 자기개선: AI 점수가 수렴할 때까지 교정 반복 |
 
-플래그 조합 가능: `/humanizer --lang en --audit --profile blog`
+플래그 조합 가능: `/patina --lang en --audit --profile blog`
 
 ### MAX 모드 (멀티모델)
 
 같은 텍스트를 여러 AI 모델에 동시에 돌려 가장 좋은 결과를 선택합니다:
 
 ```
-/humanizer-max
+/patina-max
 
 [여기에 텍스트를 붙여넣으세요]
 ```
@@ -93,7 +93,7 @@ Claude Code에서 입력:
 텍스트가 얼마나 AI스러운지 수정 없이 확인:
 
 ```
-/humanizer --score
+/patina --score
 
 [여기에 텍스트를 붙여넣으세요]
 ```
@@ -123,7 +123,7 @@ Claude Code에서 입력:
 AI 점수가 목표치 이하로 떨어질 때까지 자동으로 반복 교정:
 
 ```
-/humanizer --ouroboros
+/patina --ouroboros
 
 [여기에 텍스트를 붙여넣으세요]
 ```
@@ -152,7 +152,7 @@ Ouroboros 반복 로그
 - **점수 회귀**: 점수가 오히려 올라감 (텍스트가 악화) — 이전 반복 결과로 롤백
 - **반복 상한**: 최대 3회 반복 (설정 가능)
 
-**설정** — `.humanizer.yaml`에서 커스터마이징:
+**설정** — `.patina.yaml`에서 커스터마이징:
 
 ```yaml
 ouroboros:
@@ -349,7 +349,7 @@ ouroboros:
 
 ## 설정
 
-`.humanizer.default.yaml` 수정:
+`.patina.default.yaml` 수정:
 
 ```yaml
 version: "3.2.0"
@@ -375,7 +375,7 @@ dispatch: omc             # omc | direct
 | `blog` | 개인적, 의견 강조 | 블로그, 에세이 |
 
 ```
-/humanizer --profile blog 텍스트...
+/patina --profile blog 텍스트...
 ```
 
 ## 커스텀 패턴
@@ -400,15 +400,15 @@ patterns: 1
 ## 프로젝트 구조
 
 ```
-oh-my-humanizer/
-├── SKILL.md                  # /humanizer 진입점
+patina/
+├── SKILL.md                  # /patina 진입점
 ├── SKILL-MAX.md              # MAX 모드 소스/참고 문서
-├── humanizer-max/            # 설치 가능한 /humanizer-max 스킬 디렉토리
+├── patina-max/               # 설치 가능한 /patina-max 스킬 디렉토리
 │   ├── SKILL.md              # MAX 모드 진입점
 │   ├── core -> ../core
 │   ├── patterns -> ../patterns
 │   └── profiles -> ../profiles
-├── .humanizer.default.yaml   # 설정
+├── .patina.default.yaml      # 설정
 ├── core/voice.md             # 문체/개성 가이드라인
 ├── core/scoring.md           # 스코어링 알고리즘 레퍼런스
 ├── patterns/
@@ -425,7 +425,7 @@ oh-my-humanizer/
 
 1. `patterns/{lang}-content.md`, `{lang}-language.md` 등을 생성
 2. 각 파일 frontmatter에 `language: {lang}` 설정
-3. `/humanizer --lang {lang}`으로 사용 — 자동 탐색, 설정 변경 불필요
+3. `/patina --lang {lang}`으로 사용 — 자동 탐색, 설정 변경 불필요
 
 ## 참고 자료
 
@@ -439,8 +439,8 @@ oh-my-humanizer/
 |------|----------|
 | **3.2.0** | 우로보로스 스코어링 시스템: 패턴 기반 AI 유사도 점수(0-100), `--score` 모드(카테고리별 분석), `--ouroboros` 반복 자기개선 루프(목표달성/정체/회귀/상한 종료 조건) |
 | **3.1.1** | MAX 모드 안정성 수정: 실행별 temp dir, 선택 모델만 기다리는 wait loop + timeout 처리, Gemini stdin 디스패치, Codex CLI 호환성 수정(`--output-last-message`, `-q` 제거) |
-| **3.1.0** | 설치 가능한 `/humanizer-max` 진입점 + provider-aware 디스패치 (`claude -p` / `gemini -p` for Claude/Gemini, `codex exec` for Codex) |
-| **3.0.0** | 다국어 프레임워크, `--lang` 플래그, 영어 패턴 (24개) blader/humanizer에서 포팅, 스킬명 `humanizer`로 변경 |
+| **3.1.0** | 설치 가능한 `/patina-max` 진입점 + provider-aware 디스패치 (`claude -p` / `gemini -p` for Claude/Gemini, `codex exec` for Codex) |
+| **3.0.0** | 다국어 프레임워크, `--lang` 플래그, 영어 패턴 (24개) blader/humanizer에서 포팅, 스킬명 `patina`로 변경 |
 | **2.2.0** | 불필요한 외래어 패턴 (#28), 배지, 레포 이름 변경 |
 | **2.1.0** | 2-Phase 파이프라인, 구조 패턴, 블로그 프로필, 예시 |
 | **2.0.0** | 플러그인 구조: 패턴 팩, 프로필, 설정 파일 |

@@ -1,4 +1,4 @@
-# oh-my-humanizer
+# patina
 
 ## Current state
 

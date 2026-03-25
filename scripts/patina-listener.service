@@ -1,11 +1,11 @@
 [Unit]
-Description=oh-my-humanizer Discord Listener
+Description=patina Discord Listener
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/devswha/workspace/oh-my-humanizer
+WorkingDirectory=/home/devswha/workspace/patina
 # Explicit PATH — lesson from bot-learnings.md 5-day silent failure
 Environment=PATH=/home/devswha/.local/bin:/home/devswha/.cargo/bin:/home/devswha/.nvm/versions/node/v22.17.1/bin:/usr/local/bin:/usr/bin:/bin
 ExecStartPre=/bin/sh -c 'command -v claude'

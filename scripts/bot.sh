@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# oh-my-humanizer autonomous bot
+# patina autonomous bot
 # Runs hourly via cron. Picks one task, executes it, exits.
 
 # Ensure ~/.local/bin is in PATH (claude CLI lives here)
 export PATH="$HOME/.local/bin:$PATH"
 
-REPO_DIR="/home/devswha/workspace/oh-my-humanizer"
-LOCK_FILE="/tmp/oh-my-humanizer-bot.lock"
+REPO_DIR="/home/devswha/workspace/patina"
+LOCK_FILE="/tmp/patina-bot.lock"
 LOG_DIR="$REPO_DIR/scripts/logs"
 DISCORD_CHANNEL="DISCORD_CHANNEL"
 DATE="$(date +%Y-%m-%d)"
@@ -23,8 +23,8 @@ notify() {
 }
 
 # --- Pre-checks ---
-command -v claude >/dev/null 2>&1 || { notify "oh-my-humanizer 봇: claude CLI를 찾을 수 없음"; exit 1; }
-gh auth status >/dev/null 2>&1 || { notify "oh-my-humanizer 봇: gh 인증 실패"; exit 1; }
+command -v claude >/dev/null 2>&1 || { notify "patina 봇: claude CLI를 찾을 수 없음"; exit 1; }
+gh auth status >/dev/null 2>&1 || { notify "patina 봇: gh 인증 실패"; exit 1; }
 clawhip status >/dev/null 2>&1 || echo "WARNING: clawhip daemon may be down"
 
 # --- Stale lock detection (age > 45 minutes) ---
@@ -98,14 +98,14 @@ set -e
 # --- Notification dispatch (4 distinct states) ---
 if [ "$EXIT_CODE" -eq 0 ]; then
   if grep -q "No actionable tasks found" "$LOG_FILE" 2>/dev/null; then
-    notify "oh-my-humanizer 봇: 처리할 작업 없음 (대기)"
+    notify "patina 봇: 처리할 작업 없음 (대기)"
   else
-    notify "oh-my-humanizer 봇: 실행 완료"
+    notify "patina 봇: 실행 완료"
   fi
 elif [ "$EXIT_CODE" -eq 124 ]; then
-  notify "oh-my-humanizer 봇: 30분 타임아웃 — 고아 브랜치 확인 필요"
+  notify "patina 봇: 30분 타임아웃 — 고아 브랜치 확인 필요"
 else
-  notify "oh-my-humanizer 봇: 실행 실패 (exit $EXIT_CODE) — 로그 확인 필요"
+  notify "patina 봇: 실행 실패 (exit $EXIT_CODE) — 로그 확인 필요"
 fi
 
 # --- Daily log append ---
@@ -116,7 +116,7 @@ if [ ! -f "$DAILY_LOG" ]; then
 
 ## Summary
 
-- Active project: \`oh-my-humanizer\`
+- Active project: \`patina\`
 
 ## Log
 EOF

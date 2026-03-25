@@ -43,6 +43,7 @@ For bot or automation work, also read:
 ## OpenClaw runtime notes
 - Discord ingress is handled by the OpenClaw gateway, not a custom `discord.js` listener.
 - `scripts/openclaw-bootstrap.sh` provisions the `patina` OpenClaw agent and binds the dedicated Discord channel to this workspace.
+- component-only Discord bot posts are relayed by `scripts/openclaw-component-bridge.mjs`.
 - `scripts/bot.sh` runs the autonomous cron bot through `openclaw agent`.
 
 ## Commit protocol

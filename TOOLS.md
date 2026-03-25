@@ -44,12 +44,17 @@ scripts/
 ├── bot.sh                  # Cron entrypoint: flock, openclaw agent, notifications
 ├── bot-prompt.md           # Cron bot brain: task priority, quality gates, reporting
 ├── openclaw-bootstrap.sh   # OpenClaw agent + Discord channel binding bootstrap
+├── openclaw-component-bridge.mjs # Component-only Discord bot messages → OpenClaw relay
+├── patina-component-bridge.service # User systemd unit for the component bridge
 └── logs/                   # Run logs (gitignored, rotated at 30 days)
 ```
 
 ```bash
 # OpenClaw 에이전트/Discord 라우팅 프로비저닝
 ./scripts/openclaw-bootstrap.sh
+
+# component-only bot 메시지 브리지 1회 점검
+npm run openclaw:component-bridge:once
 
 # 수동 봇 실행
 ./scripts/bot.sh
@@ -72,6 +77,9 @@ openclaw status
 
 # 수동 알림 테스트
 openclaw message send --channel discord --target channel:1484400552262762496 --message "patina 테스트 알림"
+
+# component-only bot 메시지 브리지 상태
+npm run openclaw:component-bridge:status
 ```
 
 ## 운영 메모
@@ -79,4 +87,5 @@ openclaw message send --channel discord --target channel:1484400552262762496 --m
 - Discord 연결은 OpenClaw gateway가 담당하므로 별도 `discord.js` 리스너를 돌리지 않음
 - `scripts/openclaw-bootstrap.sh`는 정확한 Discord 채널 peer binding을 추가함
 - 가능하면 기존 `~/.clawhip/config.toml`의 Discord 토큰을 재사용해서 예전 봇 닉네임/권한을 그대로 이어감
+- component-only Discord bot posts는 `scripts/openclaw-component-bridge.mjs`가 감지해서 `openclaw agent --deliver`로 릴레이함
 - stricter allowlist가 필요하면 `OPENCLAW_ENFORCE_ALLOWLIST=true ./scripts/openclaw-bootstrap.sh`

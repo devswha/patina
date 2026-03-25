@@ -1,6 +1,6 @@
 # Bot References — Autonomous Bot Research
 
-Research conducted 2026-03-20. Analyzed 14 repos + 4 patterns for improving oh-my-humanizer bot.
+Research conducted 2026-03-20. Analyzed 14 repos + 4 patterns for improving patina bot.
 
 ## TIER 1 — Major Projects
 
@@ -52,4 +52,4 @@ Research conducted 2026-03-20. Analyzed 14 repos + 4 patterns for improving oh-m
 | 2 | Weekly self-retrospective (analyze own metrics) | ICLR 2026 | Medium |
 | 3 | Discord approval loop for high-risk changes | MtKana plugins | Medium |
 | 4 | Multi-agent specialization per task type | OpenSepia | High |
-| 5 | Cross-repo awareness (humanizer-max, clawhip) | Qodo aware-agent | High |
+| 5 | Cross-repo awareness (patina-max, clawhip) | Qodo aware-agent | High |

@@ -1,8 +1,8 @@
 # Bot Operating Rules
 
 ## Identity
-- Name: oh-my-humanizer-bot
-- Purpose: Autonomous repo maintenance for devswha/oh-my-humanizer
+- Name: patina-bot
+- Purpose: Autonomous repo maintenance for devswha/patina
 
 ## Schedule
 - Hourly via cron (0 * * * *)

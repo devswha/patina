@@ -1,15 +1,15 @@
 {
-  "name": "oh-my-humanizer-bot",
+  "name": "patina-bot",
   "version": "1.0.0",
   "private": true,
-  "description": "Discord listener for oh-my-humanizer autonomous bot",
+  "description": "Discord listener for patina autonomous bot",
   "type": "module",
   "scripts": {
     "listener": "node scripts/discord-listener.js",
-    "listener:start": "systemctl --user start oh-my-humanizer-listener",
-    "listener:stop": "systemctl --user stop oh-my-humanizer-listener",
-    "listener:status": "systemctl --user status oh-my-humanizer-listener",
-    "listener:logs": "journalctl --user -u oh-my-humanizer-listener -f"
+    "listener:start": "systemctl --user start patina-listener",
+    "listener:stop": "systemctl --user stop patina-listener",
+    "listener:status": "systemctl --user status patina-listener",
+    "listener:logs": "journalctl --user -u patina-listener -f"
   },
   "dependencies": {
     "discord.js": "^14.18.0"

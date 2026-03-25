@@ -1,13 +1,13 @@
-# TOOLS.md — oh-my-humanizer 환경 정보
+# TOOLS.md — patina 환경 정보
 
 ## 레포 구조
 
 ```
-oh-my-humanizer/
+patina/
 ├── SKILL.md                 # 메인 오케스트레이터 (2-Phase 파이프라인)
 ├── SKILL-MAX.md             # MAX mode 설계/참고 문서
-├── humanizer-max/SKILL.md   # MAX mode 엔트리포인트
-├── .humanizer.default.yaml  # 기본 설정
+├── patina-max/SKILL.md      # MAX mode 엔트리포인트
+├── .patina.default.yaml     # 기본 설정
 ├── core/
 │   ├── voice.md             # 문체/개성 가이드라인
 │   └── scoring.md           # 스코어링 알고리즘
@@ -33,7 +33,7 @@ oh-my-humanizer/
 ## 기술 스택 주의사항
 
 - 코드 빌드/테스트 없음 — 마크다운 기반 프롬프트 프로젝트
-- 버전 동기화 필수: `SKILL.md`, `SKILL-MAX.md`, `humanizer-max/SKILL.md`, `.humanizer.default.yaml`, `README.md`
+- 버전 동기화 필수: `SKILL.md`, `SKILL-MAX.md`, `patina-max/SKILL.md`, `.patina.default.yaml`, `README.md`
 - 새 언어 추가: `{lang}-*.md` 패턴 파일만 생성하면 자동 탐색
 
 ## Autonomous Bot
@@ -63,5 +63,5 @@ AUTO_MERGE=true ./scripts/bot.sh
 clawhip status
 
 # 수동 알림 테스트
-clawhip send --channel DISCORD_CHANNEL --message "oh-my-humanizer 테스트 알림"
+clawhip send --channel DISCORD_CHANNEL --message "patina 테스트 알림"
 ```

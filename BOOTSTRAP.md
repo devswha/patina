@@ -1,4 +1,4 @@
-# BOOTSTRAP.md — oh-my-humanizer 워크스페이스 부트스트랩
+# BOOTSTRAP.md — patina 워크스페이스 부트스트랩
 
 ## 세션 시작 시 수행할 작업
 
@@ -11,12 +11,12 @@
 ## 프로젝트 경로
 
 ```
-/home/devswha/workspace/oh-my-humanizer
+/home/devswha/workspace/patina
 ```
 
 ## 연결된 서비스
 
-- GitHub: devswha/oh-my-humanizer
+- GitHub: devswha/patina
 - Discord: 채널 DISCORD_CHANNEL
 - clawhip: http://127.0.0.1:25294
 

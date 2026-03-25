@@ -99,10 +99,15 @@ User says: "${sanitize(userMessage)}"
 
 Respond concisely in Korean. Do NOT use any tools that require user interaction.`;
 
-  return new Promise((resolve, reject) => {
-    const cmd = `flock -n ${LOCK_FILE} timeout 15m claude -p --dangerously-skip-permissions --allowedTools "Read,Write,Edit,Glob,Grep,Bash" --model sonnet`;
+  // Write prompt to temp file, then pipe to claude -p via stdin
+  const tmpFile = `/tmp/hmz-prompt-${Date.now()}.md`;
+  const { writeFileSync, unlinkSync } = await import('node:fs');
+  writeFileSync(tmpFile, assembledPrompt);
 
-    const child = exec(cmd, {
+  return new Promise((resolve, reject) => {
+    const cmd = `flock -n ${LOCK_FILE} timeout 15m sh -c 'cat "${tmpFile}" | claude -p --dangerously-skip-permissions --allowedTools "Read,Write,Edit,Glob,Grep,Bash" --model sonnet'`;
+
+    exec(cmd, {
       cwd: REPO_DIR,
       env: {
         ...process.env,
@@ -111,6 +116,9 @@ Respond concisely in Korean. Do NOT use any tools that require user interaction.
       maxBuffer: 1024 * 1024,
       timeout: 15 * 60 * 1000,
     }, (error, stdout, stderr) => {
+      // Cleanup temp file
+      try { unlinkSync(tmpFile); } catch (_) {}
+
       if (error) {
         if (error.killed) {
           reject(new Error('timeout'));
@@ -123,9 +131,6 @@ Respond concisely in Korean. Do NOT use any tools that require user interaction.
       }
       resolve(stdout.trim());
     });
-
-    child.stdin.write(assembledPrompt);
-    child.stdin.end();
   });
 }
 

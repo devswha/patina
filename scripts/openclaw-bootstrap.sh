@@ -14,6 +14,8 @@ OPENCLAW_ENFORCE_ALLOWLIST="${OPENCLAW_ENFORCE_ALLOWLIST:-false}"
 RESTART_GATEWAY="${RESTART_GATEWAY:-true}"
 CLAWHIP_CONFIG="${CLAWHIP_CONFIG:-$HOME/.clawhip/config.toml}"
 OPENCLAW_DISCORD_TOKEN="${OPENCLAW_DISCORD_TOKEN:-}"
+SYSTEMD_USER_DIR="${SYSTEMD_USER_DIR:-$HOME/.config/systemd/user}"
+COMPONENT_BRIDGE_SERVICE="${COMPONENT_BRIDGE_SERVICE:-patina-component-bridge.service}"
 
 command -v openclaw >/dev/null 2>&1 || { echo "openclaw CLI를 찾을 수 없음" >&2; exit 1; }
 command -v node >/dev/null 2>&1 || { echo "node를 찾을 수 없음" >&2; exit 1; }
@@ -116,6 +118,7 @@ process.stdout.write(JSON.stringify(guilds));
 ')"
 openclaw config set channels.discord.guilds "$updated_guilds" --json >/dev/null
 openclaw config set channels.discord.enabled true --json >/dev/null
+openclaw config set channels.discord.allowBots true --json >/dev/null
 
 if [ "$OPENCLAW_ENFORCE_ALLOWLIST" = "true" ]; then
   echo "[bootstrap] enabling strict Discord allowlist policy"
@@ -133,9 +136,20 @@ if systemctl --user list-unit-files 2>/dev/null | grep -q '^patina-listener\.ser
   systemctl --user disable --now patina-listener.service >/dev/null 2>&1 || true
 fi
 
+if command -v systemctl >/dev/null 2>&1; then
+  echo "[bootstrap] installing component-only bot bridge service"
+  mkdir -p "$SYSTEMD_USER_DIR"
+  install -m 644 "$REPO_DIR/scripts/patina-component-bridge.service" "$SYSTEMD_USER_DIR/$COMPONENT_BRIDGE_SERVICE"
+  systemctl --user daemon-reload
+  systemctl --user enable --now "$COMPONENT_BRIDGE_SERVICE" >/dev/null
+fi
+
 if [ "$RESTART_GATEWAY" = "true" ]; then
   echo "[bootstrap] restarting OpenClaw gateway"
   openclaw gateway restart >/dev/null
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user restart "$COMPONENT_BRIDGE_SERVICE" >/dev/null 2>&1 || true
+  fi
 fi
 
 echo "[bootstrap] done"

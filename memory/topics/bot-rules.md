@@ -6,6 +6,7 @@
 
 ## Runtime
 - Interactive Discord replies are handled by the OpenClaw gateway
+- Component-only Discord bot posts are relayed by `scripts/openclaw-component-bridge.mjs`
 - Scheduled autonomous work runs through `scripts/bot.sh` via `openclaw agent`
 
 ## Schedule

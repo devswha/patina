@@ -1,0 +1,18 @@
+[Unit]
+Description=patina OpenClaw component-only bot bridge
+After=network-online.target openclaw-gateway.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/devswha/workspace/patina
+Environment=PATH=/home/devswha/.local/bin:/home/devswha/.cargo/bin:/home/devswha/.nvm/versions/node/v22.17.1/bin:/usr/local/bin:/usr/bin:/bin
+ExecStartPre=/bin/sh -c 'command -v openclaw && command -v node'
+ExecStart=/home/devswha/.nvm/versions/node/v22.17.1/bin/node scripts/openclaw-component-bridge.mjs
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGINT
+
+[Install]
+WantedBy=default.target

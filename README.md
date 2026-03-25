@@ -263,7 +263,7 @@ The skill loads language-specific pattern packs (`ko-*.md` or `en-*.md`) and app
 
 </details>
 
-### English (24 patterns)
+### English (28 patterns)
 
 Ported from [blader/humanizer](https://github.com/blader/humanizer), based on [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing).
 
@@ -413,7 +413,7 @@ patina/
 ├── core/scoring.md           # Scoring algorithm reference
 ├── patterns/
 │   ├── ko-*.md               # Korean patterns (6 packs, 28 patterns)
-│   └── en-*.md               # English patterns (6 packs, 24 patterns)
+│   └── en-*.md               # English patterns (6 packs, 28 patterns)
 ├── profiles/                 # Writing style profiles
 ├── examples/                 # Before/after test cases
 └── custom/                   # Your extensions (gitignored)

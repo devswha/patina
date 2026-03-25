@@ -4,8 +4,12 @@
 - Name: patina-bot
 - Purpose: Autonomous repo maintenance for devswha/patina
 
+## Runtime
+- Interactive Discord replies are handled by the OpenClaw gateway
+- Scheduled autonomous work runs through `scripts/bot.sh` via `openclaw agent`
+
 ## Schedule
-- Hourly via cron (0 * * * *)
+- Hourly via cron (`0 * * * *`)
 - Single-task-per-run (max 1 PR/hour)
 
 ## Branch Policy
@@ -15,7 +19,7 @@
 
 ## Quality Gates
 - Content changes (patterns, examples, profiles): inline ouroboros scoring, score <= 30
-- Config/structural changes (yaml, README, docs): structural validation only
+- Config/structural changes (yaml, README, docs, shell scripts): structural validation only
 - Version sync: cross-file verification of all 5 version-bearing files
 
 ## Merge Policy
@@ -27,13 +31,14 @@
 - All bot PRs carry the `bot` label
 
 ## Notifications
-- clawhip Discord (channel DISCORD_CHANNEL)
-- 4 states: success, failure, timeout, no-tasks
+- OpenClaw Discord channel `DISCORD_CHANNEL`
+- 4 terminal states: success, failure, timeout, no-tasks
+- In-progress updates go through `openclaw message send`
 
 ## Safety
 - No SKILL.md pipeline logic changes
-- No issue body reading (title and labels only)
-- Tools restricted to Read, Write, Edit, Glob, Grep, Bash
+- Prefer issue titles/labels; avoid issue body content unless needed
+- Avoid commands that require human interaction in autonomous runs
 
 ## Failure Handling
 - Scoring failure (score > 30 after 3 iterations): abandon, clean up branch

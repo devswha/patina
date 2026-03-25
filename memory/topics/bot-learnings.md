@@ -6,11 +6,19 @@ The bot reads this file before each run to avoid repeating mistakes.
 ## Lessons
 
 ### 2026-03-25: cron PATH 미설정으로 5일간 무음 장애
-- **증상:** 봇이 매시간 실행되지만 claude CLI를 찾지 못해 즉시 종료
-- **원인:** `claude`는 `~/.local/bin/`에 설치되어 있지만, cron의 최소 PATH(`/usr/bin:/usr/local/bin`)에 미포함. bot.sh에 nvm 초기화는 있었으나 `~/.local/bin` PATH 추가 누락
+- **증상:** 봇이 매시간 실행되지만 런타임 CLI를 찾지 못해 즉시 종료
+- **원인:** CLI가 `~/.local/bin/` 또는 nvm bin PATH에 있지만, cron의 최소 PATH(`/usr/bin:/usr/local/bin`)에 미포함
 - **왜 못 잡았나:** 수동 테스트(`./scripts/bot.sh`)는 터미널의 full PATH에서 실행되어 문제 없었음. `env -i` 시뮬레이션 검증을 계획했지만 실행하지 않음
-- **이중 장애:** clawhip 데몬도 꺼져서 실패 알림 자체도 전달 안 됨 → 완전 무음
+- **이중 장애:** 알림 전송 경로까지 비정상이면 실패 자체가 조용히 묻힐 수 있음
 - **교훈:**
   1. cron용 스크립트는 반드시 `env -i`로 최소 환경 테스트할 것
-  2. 외부 CLI 도구는 절대 PATH 또는 `export PATH="$HOME/.local/bin:$PATH"`로 명시할 것
-  3. clawhip 데몬 상태를 주기적으로 확인하는 별도 체크 필요
+  2. 외부 CLI 도구는 절대 PATH 또는 `export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"`처럼 명시할 것
+  3. 알림/대화 런타임(OpenClaw gateway) 상태를 주기적으로 확인할 것
+
+### 2026-03-25: Discord 연결은 커스텀 리스너보다 OpenClaw gateway에 위임
+- **배경:** `discord.js` 리스너 + `clawhip` 알림 조합은 운영 지점이 둘로 갈라져 장애 추적이 번거로웠음
+- **교훈:**
+  1. Discord ingress/egress는 OpenClaw gateway 하나로 통합할 것
+  2. 워크스페이스 라우팅은 exact channel binding으로 고정할 것
+  3. 중복 응답 방지를 위해 legacy listener는 disable 상태를 유지할 것
+  4. 기존 채널에서 보이던 봇 닉네임을 유지하려면 OpenClaw도 기존 bot token을 재사용할 것

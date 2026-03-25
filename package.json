@@ -6,8 +6,12 @@
   "scripts": {
     "bot": "bash scripts/bot.sh",
     "openclaw:bootstrap": "bash scripts/openclaw-bootstrap.sh",
+    "openclaw:component-bridge": "node scripts/openclaw-component-bridge.mjs",
+    "openclaw:component-bridge:once": "COMPONENT_BRIDGE_ONCE=true COMPONENT_BRIDGE_SEED_HISTORY=false node scripts/openclaw-component-bridge.mjs",
     "openclaw:status": "openclaw status",
     "openclaw:restart": "openclaw gateway restart",
-    "openclaw:logs": "openclaw logs --follow"
+    "openclaw:logs": "openclaw logs --follow",
+    "openclaw:component-bridge:logs": "journalctl --user -u patina-component-bridge -f",
+    "openclaw:component-bridge:status": "systemctl --user status patina-component-bridge"
   }
 }

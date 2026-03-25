@@ -22,3 +22,11 @@ The bot reads this file before each run to avoid repeating mistakes.
   2. 워크스페이스 라우팅은 exact channel binding으로 고정할 것
   3. 중복 응답 방지를 위해 legacy listener는 disable 상태를 유지할 것
   4. 기존 채널에서 보이던 봇 닉네임을 유지하려면 OpenClaw도 기존 bot token을 재사용할 것
+
+### 2026-03-26: component-only bot 메시지는 별도 브리지가 필요
+- **증상:** 다른 봇이 채널에 말해도 OpenClaw가 반응하지 않았음
+- **원인:** 실제 메시지 본문은 비어 있고 Discord components(type 17/10) 안에 텍스트가 들어 있었음
+- **교훈:**
+  1. `channels.discord.allowBots=true`만으로는 component-only bot posts를 처리하지 못할 수 있음
+  2. 최신 메시지 payload를 직접 읽어 `components[].content`까지 확인해야 함
+  3. 브리지 서비스는 component-only bot posts만 릴레이해서 bot-to-bot 루프를 최소화할 것

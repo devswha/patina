@@ -13,7 +13,7 @@ oh-my-humanizer/
 │   └── scoring.md           # 스코어링 알고리즘
 ├── patterns/
 │   ├── ko-*.md              # 한국어 AI 패턴 탐지 팩 (28개)
-│   └── en-*.md              # 영어 AI 패턴 탐지 팩 (24개)
+│   └── en-*.md              # 영어 AI 패턴 탐지 팩 (28개)
 ├── profiles/
 │   ├── default.md           # 기본 프로필
 │   └── blog.md              # 블로그/에세이 프로필

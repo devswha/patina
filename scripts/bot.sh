@@ -4,6 +4,9 @@ set -euo pipefail
 # oh-my-humanizer autonomous bot
 # Runs hourly via cron. Picks one task, executes it, exits.
 
+# Ensure ~/.local/bin is in PATH (claude CLI lives here)
+export PATH="$HOME/.local/bin:$PATH"
+
 REPO_DIR="/home/devswha/workspace/oh-my-humanizer"
 LOCK_FILE="/tmp/oh-my-humanizer-bot.lock"
 LOG_DIR="$REPO_DIR/scripts/logs"

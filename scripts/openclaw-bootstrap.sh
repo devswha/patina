@@ -7,6 +7,9 @@ export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PATINA_AGENT_ID="${PATINA_AGENT_ID:-patina}"
+PLANNER_AGENT_ID="${PLANNER_AGENT_ID:-planner}"
+GENERATOR_AGENT_ID="${GENERATOR_AGENT_ID:-generator}"
+EVALUATOR_AGENT_ID="${EVALUATOR_AGENT_ID:-evaluator}"
 DISCORD_CHANNEL="${DISCORD_CHANNEL:-1484400552262762496}"
 DISCORD_GUILD="${DISCORD_GUILD:-1467797131623534647}"
 DISCORD_ALLOWED_USERS="${DISCORD_ALLOWED_USERS:-266436073557590016}"
@@ -35,9 +38,13 @@ PY
 )"
 fi
 
-export PATINA_AGENT_ID DISCORD_CHANNEL DISCORD_GUILD DISCORD_ALLOWED_USERS OPENCLAW_DISCORD_TOKEN
+export PATINA_AGENT_ID PLANNER_AGENT_ID GENERATOR_AGENT_ID EVALUATOR_AGENT_ID DISCORD_CHANNEL DISCORD_GUILD DISCORD_ALLOWED_USERS OPENCLAW_DISCORD_TOKEN
 
-agent_workspace="$({ openclaw config get agents.list --json 2>/dev/null || echo '[]'; } | node -e '
+ensure_agent_workspace() {
+  local agent_id="$1"
+  local agent_workspace
+
+  agent_workspace="$({ openclaw config get agents.list --json 2>/dev/null || echo '[]'; } | node -e '
 let data="";
 process.stdin.on("data", (chunk) => data += chunk);
 process.stdin.on("end", () => {
@@ -45,19 +52,25 @@ process.stdin.on("end", () => {
   const agent = list.find((item) => item && item.id === process.argv[1]);
   process.stdout.write(agent?.workspace || "");
 });
-' "$PATINA_AGENT_ID")"
+' "$agent_id")"
 
-if [ -z "$agent_workspace" ]; then
-  echo "[bootstrap] adding OpenClaw agent: $PATINA_AGENT_ID"
-  openclaw agents add "$PATINA_AGENT_ID" --non-interactive --workspace "$REPO_DIR" >/dev/null
-elif [ "$agent_workspace" != "$REPO_DIR" ]; then
-  echo "[bootstrap] agent '$PATINA_AGENT_ID' already exists with a different workspace: $agent_workspace" >&2
-  exit 1
-else
-  echo "[bootstrap] OpenClaw agent already exists: $PATINA_AGENT_ID"
-fi
+  if [ -z "$agent_workspace" ]; then
+    echo "[bootstrap] adding OpenClaw agent: $agent_id"
+    openclaw agents add "$agent_id" --non-interactive --workspace "$REPO_DIR" >/dev/null
+  elif [ "$agent_workspace" != "$REPO_DIR" ]; then
+    echo "[bootstrap] agent '$agent_id' already exists with a different workspace: $agent_workspace" >&2
+    exit 1
+  else
+    echo "[bootstrap] OpenClaw agent already exists: $agent_id"
+  fi
 
-openclaw agents set-identity --agent "$PATINA_AGENT_ID" --workspace "$REPO_DIR" --from-identity >/dev/null
+  openclaw agents set-identity --agent "$agent_id" --workspace "$REPO_DIR" --from-identity >/dev/null
+}
+ensure_agent_workspace "$PATINA_AGENT_ID"
+
+for agent_id in "$PLANNER_AGENT_ID" "$GENERATOR_AGENT_ID" "$EVALUATOR_AGENT_ID"; do
+  ensure_agent_workspace "$agent_id"
+done
 
 if [ -n "$OPENCLAW_DISCORD_TOKEN" ]; then
   echo "[bootstrap] syncing Discord token from migrated bot config"
@@ -154,6 +167,9 @@ fi
 
 echo "[bootstrap] done"
 echo "  agent:   $PATINA_AGENT_ID"
+echo "  planner: $PLANNER_AGENT_ID"
+echo "  generator: $GENERATOR_AGENT_ID"
+echo "  evaluator: $EVALUATOR_AGENT_ID"
 echo "  guild:   $DISCORD_GUILD"
 echo "  channel: $DISCORD_CHANNEL"
 echo "  status:  openclaw status"

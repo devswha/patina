@@ -7,7 +7,15 @@
 ## Runtime
 - Interactive Discord replies are handled by the OpenClaw gateway
 - Component-only Discord bot posts are relayed by `scripts/openclaw-component-bridge.mjs`
-- Scheduled autonomous work runs through `scripts/bot.sh` via `openclaw agent`
+- Scheduled autonomous work runs through `scripts/harness.sh`
+- `scripts/bot.sh` remains as a deprecated fallback path
+
+## 3-Agent Harness
+- Planner: reads open issues / recent PRs / repo state and writes `artifacts/harness/{run-id}/spec.md`
+- Generator: implements the spec on a local `bot/*` branch and writes `diff.patch`
+- Evaluator: reviews with cold context, writes `review.md`, and returns `PASS` / `REVISE` / `FAIL`
+- Shared state lives in `artifacts/harness/{run-id}/`
+- Revision loop is capped at 3 `REVISE` rounds, then escalates to `FAIL`
 
 ## Schedule
 - Hourly via cron (`0 * * * *`)
@@ -35,11 +43,13 @@
 - OpenClaw Discord channel `1484400552262762496`
 - 4 terminal states: success, failure, timeout, no-tasks
 - In-progress updates go through `openclaw message send`
+- Harness sends step updates for planner, generator, evaluator, revise loop, PR creation, and merge
 
 ## Safety
 - No SKILL.md pipeline logic changes
 - Prefer issue titles/labels; avoid issue body content unless needed
 - Avoid commands that require human interaction in autonomous runs
+- Generator does not push or open PR until Evaluator returns `PASS`
 
 ## Failure Handling
 - Scoring failure (score > 30 after 3 iterations): abandon, clean up branch

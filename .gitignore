@@ -6,3 +6,5 @@ custom/
 *.swp
 *~
 scripts/logs/
+node_modules/
+.env

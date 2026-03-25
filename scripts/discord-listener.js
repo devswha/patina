@@ -119,6 +119,10 @@ Respond concisely in Korean. Do NOT use any tools that require user interaction.
       // Cleanup temp file
       try { unlinkSync(tmpFile); } catch (_) {}
 
+      // Debug logging
+      if (stderr) console.error(`[claude-stderr] ${stderr.slice(0, 500)}`);
+      console.log(`[claude] exit=${error?.code ?? 0} stdout=${stdout.length}B stderr=${stderr.length}B`);
+
       if (error) {
         if (error.killed) {
           reject(new Error('timeout'));

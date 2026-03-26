@@ -5,8 +5,8 @@
 - Purpose: Autonomous repo maintenance for devswha/patina
 
 ## Runtime
-- Interactive Discord replies are handled by the OpenClaw gateway
-- Component-only Discord bot posts are relayed by `scripts/openclaw-component-bridge.mjs`
+- Interactive Discord replies are handled by the runtime gateway
+- Component-only Discord bot posts are relayed by `scripts/component-bridge.mjs`
 - Scheduled autonomous work runs through `scripts/harness.sh`
 - `scripts/bot.sh` remains as a deprecated fallback path
 
@@ -40,9 +40,9 @@
 - All bot PRs carry the `bot` label
 
 ## Notifications
-- OpenClaw Discord channel is provided locally via `DISCORD_CHANNEL`
+- runtime Discord channel is provided locally via `DISCORD_CHANNEL`
 - 4 terminal states: success, failure, timeout, no-tasks
-- In-progress updates go through `openclaw message send`
+- In-progress updates go through `./scripts/runtime-cli.sh message send`
 - Harness sends step updates for planner, generator, evaluator, revise loop, PR creation, and merge
 
 ## Safety

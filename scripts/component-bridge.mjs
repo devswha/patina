@@ -159,11 +159,17 @@ function extractComponentOnlyText(message) {
   return unique.join('\n').trim();
 }
 
+function extractBotText(message) {
+  const content = (message?.content || '').trim();
+  if (content) return content;
+  return extractComponentOnlyText(message);
+}
+
 function shouldBridge(message, selfBotId) {
   const author = message?.author || {};
   if (!author.bot) return false;
   if (selfBotId && String(author.id) === String(selfBotId)) return false;
-  return Boolean(extractComponentOnlyText(message));
+  return Boolean(extractBotText(message));
 }
 
 function markSeen(state, messageId) {
@@ -178,9 +184,11 @@ function alreadySeen(state, messageId) {
 
 function deliverReply(message, channelId) {
   const author = message.author || {};
-  const extracted = extractComponentOnlyText(message);
+  const extracted = extractBotText(message);
+  const isComponentOnly = !(message?.content || '').trim();
+  const noteType = isComponentOnly ? 'component-only content' : 'text message';
   const prompt = [
-    `[Bridge note: This Discord message came from bot ${author.username || author.id} as component-only content in channel ${channelId}.]`,
+    `[Bridge note: This Discord message came from bot ${author.username || author.id} as ${noteType} in channel ${channelId}.]`,
     'Respond naturally in Korean.',
     '',
     extracted,

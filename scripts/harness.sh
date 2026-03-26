@@ -381,7 +381,8 @@ git fetch --prune origin >/dev/null 2>&1 || true
 git checkout main >/dev/null 2>&1 || true
 git pull --ff-only origin main >/dev/null 2>&1 || true
 
-if [ -n "$(git status --short 2>/dev/null)" ]; then
+# untracked 파일은 무시, staged/modified만 dirty로 판단
+if [ -n "$(git diff --name-only 2>/dev/null)$(git diff --cached --name-only 2>/dev/null)" ]; then
   notify "patina 봇: 작업 트리가 깨끗하지 않아 harness 실행 중단"
   finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=dirty-worktree run=$RUN_ID"
 fi

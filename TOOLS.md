@@ -50,6 +50,12 @@ scripts/
 ```
 
 ```bash
+# local-only runtime config (gitignored)
+cp .env.example .env
+$EDITOR .env
+```
+
+```bash
 # OpenClaw 에이전트/Discord 라우팅 프로비저닝
 ./scripts/openclaw-bootstrap.sh
 
@@ -76,7 +82,7 @@ openclaw status
 ./scripts/openclaw-bootstrap.sh
 
 # 수동 알림 테스트
-openclaw message send --channel discord --target channel:DISCORD_CHANNEL --message "patina 테스트 알림"
+openclaw message send --channel discord --target "channel:${DISCORD_CHANNEL}" --message "patina 테스트 알림"
 
 # component-only bot 메시지 브리지 상태
 npm run openclaw:component-bridge:status
@@ -85,6 +91,7 @@ npm run openclaw:component-bridge:status
 ## 운영 메모
 
 - Discord 연결은 OpenClaw gateway가 담당하므로 별도 `discord.js` 리스너를 돌리지 않음
+- 실제 Discord/OpenClaw 식별자와 토큰은 공개 레포에 두지 않고 로컬 `.env` 또는 홈 디렉터리 설정에서만 관리
 - `scripts/openclaw-bootstrap.sh`는 정확한 Discord 채널 peer binding을 추가함
 - 가능하면 기존 `~/.clawhip/config.toml`의 Discord 토큰을 재사용해서 예전 봇 닉네임/권한을 그대로 이어감
 - component-only Discord bot posts는 `scripts/openclaw-component-bridge.mjs`가 감지해서 `openclaw agent --deliver`로 릴레이함

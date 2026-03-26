@@ -4,10 +4,18 @@ set -euo pipefail
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
 REPO_DIR="/home/devswha/workspace/patina"
+ENV_FILE="${PATINA_ENV_FILE:-$REPO_DIR/.env}"
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+  set +a
+fi
+
 LOCK_FILE="${LOCK_FILE:-/tmp/patina-bot.lock}"
 LOG_DIR="$REPO_DIR/scripts/logs"
 ARTIFACT_ROOT="$REPO_DIR/artifacts/harness"
-DISCORD_CHANNEL="${DISCORD_CHANNEL:-DISCORD_CHANNEL}"
+DISCORD_CHANNEL="${DISCORD_CHANNEL:-}"
 AUTO_MERGE="${AUTO_MERGE:-false}"
 PLANNER_AGENT_ID="${PLANNER_AGENT_ID:-planner}"
 GENERATOR_AGENT_ID="${GENERATOR_AGENT_ID:-generator}"
@@ -34,6 +42,8 @@ PUSHED_BRANCH="false"
 PR_NUMBER=""
 FINAL_STATUS="failure"
 FINAL_REASON=""
+
+[ -n "$DISCORD_CHANNEL" ] || { echo "DISCORD_CHANNEL이 필요합니다 (.env 또는 환경 변수 설정)" >&2; exit 1; }
 
 # --- 비정상 종료 시 main 복귀 + 알림 ---
 on_unexpected_exit() {

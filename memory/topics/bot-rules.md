@@ -40,7 +40,7 @@
 - All bot PRs carry the `bot` label
 
 ## Notifications
-- OpenClaw Discord channel `DISCORD_CHANNEL`
+- OpenClaw Discord channel is provided locally via `DISCORD_CHANNEL`
 - 4 terminal states: success, failure, timeout, no-tasks
 - In-progress updates go through `openclaw message send`
 - Harness sends step updates for planner, generator, evaluator, revise loop, PR creation, and merge

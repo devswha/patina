@@ -2,6 +2,7 @@
 .omx/
 custom/
 .patina.yaml
+.workclaw/
 .DS_Store
 *.swp
 *~

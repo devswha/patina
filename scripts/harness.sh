@@ -34,6 +34,20 @@ PR_NUMBER=""
 FINAL_STATUS="failure"
 FINAL_REASON=""
 
+# --- 비정상 종료 시 main 복귀 + 알림 ---
+on_unexpected_exit() {
+  local exit_code=$?
+  cd "$REPO_DIR" 2>/dev/null || true
+  git checkout main >/dev/null 2>&1 || true
+  if [ "$FINAL_STATUS" = "failure" ]; then
+    echo "UNEXPECTED EXIT (code=$exit_code) at $(date +%H:%M:%S)" >> "$LOG_FILE" 2>/dev/null || true
+    openclaw message send --channel discord --target "channel:${DISCORD_CHANNEL}" \
+      --message "⚠️ patina 봇: harness 비정상 종료 (exit $exit_code) — run $RUN_ID" \
+      >/dev/null 2>&1 || true
+  fi
+}
+trap on_unexpected_exit EXIT
+
 notify() {
   local msg="$1"
   openclaw message send \
@@ -472,7 +486,16 @@ while [ "$verdict" = "REVISE" ] && [ "$revision_count" -lt "$MAX_REVISE_LOOPS" ]
 done
 
 if [ "$verdict" = "PASS" ]; then
+  set +e
   create_pr
+  pr_exit=$?
+  set -e
+
+  if [ "$pr_exit" -ne 0 ]; then
+    notify "❌ patina 봇: PR 생성 실패 — 브랜치 $CURRENT_BRANCH (exit $pr_exit)"
+    finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=pr-failed run=$RUN_ID issue=#${selected_issue:-na} branch=$CURRENT_BRANCH"
+  fi
+
   FINAL_STATUS="pass"
   finish_and_exit 0 "- Harness run at $(date +%H:%M): exit=0 status=pass run=$RUN_ID issue=#${selected_issue:-na} branch=$CURRENT_BRANCH pr=#${PR_NUMBER:-na}"
 fi

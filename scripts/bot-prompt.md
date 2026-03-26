@@ -100,7 +100,7 @@ If after 3 scoring-and-revision iterations the score remains > 30, abandon the c
 
 ## Discord Notifications (실시간 보고)
 작업 진행 중 각 단계마다 Discord로 실시간 보고하라. 한글로 작성.
-Format: `openclaw message send --channel discord --target channel:DISCORD_CHANNEL --message "..."`
+Format: `openclaw message send --channel discord --target "channel:${DISCORD_CHANNEL}" --message "..."`
 
 ### 보고 타이밍 (매 단계마다 즉시 전송)
 1. **작업 시작:** 어떤 작업을 선택했는지

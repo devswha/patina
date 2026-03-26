@@ -24,7 +24,7 @@
 - Design doc: `docs/harness-design.md`
 - Mode: `AUTO_MERGE=false`
 - Rules: `memory/topics/bot-rules.md`
-- Discord: channel DISCORD_CHANNEL
+- Discord: configured locally via `.env` (`DISCORD_CHANNEL`)
 - Known issue: harness.sh SIGKILL on first test (PR 생성 직전, 원인 미조사)
 
 ## Keep here

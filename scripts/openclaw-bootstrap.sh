@@ -6,13 +6,21 @@ export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_FILE="${PATINA_ENV_FILE:-$REPO_DIR/.env}"
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+  set +a
+fi
+
 PATINA_AGENT_ID="${PATINA_AGENT_ID:-patina}"
 PLANNER_AGENT_ID="${PLANNER_AGENT_ID:-planner}"
 GENERATOR_AGENT_ID="${GENERATOR_AGENT_ID:-generator}"
 EVALUATOR_AGENT_ID="${EVALUATOR_AGENT_ID:-evaluator}"
-DISCORD_CHANNEL="${DISCORD_CHANNEL:-DISCORD_CHANNEL}"
-DISCORD_GUILD="${DISCORD_GUILD:-DISCORD_GUILD}"
-DISCORD_ALLOWED_USERS="${DISCORD_ALLOWED_USERS:-DISCORD_ALLOWED_USERS}"
+DISCORD_CHANNEL="${DISCORD_CHANNEL:-}"
+DISCORD_GUILD="${DISCORD_GUILD:-}"
+DISCORD_ALLOWED_USERS="${DISCORD_ALLOWED_USERS:-}"
 OPENCLAW_ENFORCE_ALLOWLIST="${OPENCLAW_ENFORCE_ALLOWLIST:-false}"
 RESTART_GATEWAY="${RESTART_GATEWAY:-true}"
 CLAWHIP_CONFIG="${CLAWHIP_CONFIG:-$HOME/.clawhip/config.toml}"
@@ -23,6 +31,12 @@ COMPONENT_BRIDGE_SERVICE="${COMPONENT_BRIDGE_SERVICE:-patina-component-bridge.se
 command -v openclaw >/dev/null 2>&1 || { echo "openclaw CLI를 찾을 수 없음" >&2; exit 1; }
 command -v node >/dev/null 2>&1 || { echo "node를 찾을 수 없음" >&2; exit 1; }
 command -v python3 >/dev/null 2>&1 || { echo "python3를 찾을 수 없음" >&2; exit 1; }
+[ -n "$DISCORD_CHANNEL" ] || { echo "DISCORD_CHANNEL이 필요합니다 (.env 또는 환경 변수 설정)" >&2; exit 1; }
+[ -n "$DISCORD_GUILD" ] || { echo "DISCORD_GUILD가 필요합니다 (.env 또는 환경 변수 설정)" >&2; exit 1; }
+if [ "$OPENCLAW_ENFORCE_ALLOWLIST" = "true" ] && [ -z "$DISCORD_ALLOWED_USERS" ]; then
+  echo "OPENCLAW_ENFORCE_ALLOWLIST=true 인 경우 DISCORD_ALLOWED_USERS가 필요합니다" >&2
+  exit 1
+fi
 
 if [ -z "$OPENCLAW_DISCORD_TOKEN" ] && [ -f "$CLAWHIP_CONFIG" ]; then
   OPENCLAW_DISCORD_TOKEN="$(python3 - "$CLAWHIP_CONFIG" <<'PY'

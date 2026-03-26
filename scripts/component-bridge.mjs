@@ -38,7 +38,12 @@ loadLocalEnv();
 
 const RUNTIME_CLI = process.env.PATINA_RUNTIME_CLI || '';
 const STATE_FILE = process.env.COMPONENT_BRIDGE_STATE_FILE || resolve(REPO_DIR, '.omx/state/component-bridge.json');
-const CHANNEL_ID = process.env.COMPONENT_BRIDGE_CHANNEL || process.env.DISCORD_CHANNEL || '';
+const CHANNEL_IDS = (
+  process.env.COMPONENT_BRIDGE_CHANNELS
+  || process.env.COMPONENT_BRIDGE_CHANNEL
+  || process.env.DISCORD_CHANNEL
+  || ''
+).split(',').map((id) => id.trim()).filter(Boolean);
 const AGENT_ID = process.env.PATINA_AGENT_ID || 'patina';
 const SESSION_PREFIX = process.env.COMPONENT_BRIDGE_SESSION_PREFIX || 'patina-component-bridge';
 const POLL_MS = Number.parseInt(process.env.COMPONENT_BRIDGE_POLL_MS || '4000', 10);
@@ -52,8 +57,8 @@ if (!RUNTIME_CLI) {
   throw new Error('PATINA_RUNTIME_CLI가 필요합니다 (.env 또는 환경 변수 설정)');
 }
 
-if (!CHANNEL_ID) {
-  throw new Error('DISCORD_CHANNEL 또는 COMPONENT_BRIDGE_CHANNEL이 필요합니다 (.env 또는 환경 변수 설정)');
+if (CHANNEL_IDS.length === 0) {
+  throw new Error('DISCORD_CHANNEL, COMPONENT_BRIDGE_CHANNEL, 또는 COMPONENT_BRIDGE_CHANNELS가 필요합니다 (.env 또는 환경 변수 설정)');
 }
 
 function log(message) {
@@ -115,11 +120,11 @@ function getSelfBotId() {
   );
 }
 
-function readMessages(limit = 20) {
+function readMessages(channelId, limit = 20) {
   const result = runJson([
     'message', 'read',
     '--channel', 'discord',
-    '--target', `channel:${CHANNEL_ID}`,
+    '--target', `channel:${channelId}`,
     '--limit', String(limit),
     '--json',
   ]);
@@ -171,20 +176,20 @@ function alreadySeen(state, messageId) {
   return state.seenIds.includes(String(messageId));
 }
 
-function deliverReply(message) {
+function deliverReply(message, channelId) {
   const author = message.author || {};
   const extracted = extractComponentOnlyText(message);
   const prompt = [
-    `[Bridge note: This Discord message came from bot ${author.username || author.id} as component-only content.]`,
+    `[Bridge note: This Discord message came from bot ${author.username || author.id} as component-only content in channel ${channelId}.]`,
     'Respond naturally in Korean.',
     '',
     extracted,
   ].join('\n');
 
   if (VERBOSE) {
-    log(`forwarding ${message.id} from ${author.username || author.id}: ${JSON.stringify(extracted)}`);
+    log(`forwarding ${message.id} from ${author.username || author.id} in ${channelId}: ${JSON.stringify(extracted)}`);
   } else {
-    log(`forwarding component-only bot message ${message.id} from ${author.username || author.id}`);
+    log(`forwarding component-only bot message ${message.id} from ${author.username || author.id} in ${channelId}`);
   }
 
   const sessionId = `${SESSION_PREFIX}-${author.id}`;
@@ -197,7 +202,7 @@ function deliverReply(message) {
     '--message', prompt,
     '--deliver',
     '--reply-channel', 'discord',
-    '--reply-to', `channel:${CHANNEL_ID}`,
+    '--reply-to', `channel:${channelId}`,
   ]).trim();
 
   if (output) {
@@ -220,15 +225,17 @@ async function main() {
     }
   }
 
-  log(`watching channel ${CHANNEL_ID} as self bot ${state.selfBotId || 'unknown'}${ONCE ? ' (once)' : ''}`);
+  log(`watching channels [${CHANNEL_IDS.join(', ')}] as self bot ${state.selfBotId || 'unknown'}${ONCE ? ' (once)' : ''}`);
 
   if (SEED_HISTORY && state.seenIds.length === 0) {
-    const initialMessages = readMessages(30);
-    for (const message of initialMessages) {
-      markSeen(state, message.id);
+    for (const channelId of CHANNEL_IDS) {
+      const initialMessages = readMessages(channelId, 30);
+      for (const message of initialMessages) {
+        markSeen(state, message.id);
+      }
+      log(`seeded ${initialMessages.length} recent messages from channel ${channelId}`);
     }
     saveState(state);
-    log(`seeded ${initialMessages.length} recent messages`);
   }
 
   while (true) {
@@ -239,14 +246,16 @@ async function main() {
         log(`resolved self bot id: ${state.selfBotId}`);
       }
 
-      const messages = readMessages(20).slice().reverse();
-      for (const message of messages) {
-        if (alreadySeen(state, message.id)) continue;
-        markSeen(state, message.id);
-        saveState(state);
+      for (const channelId of CHANNEL_IDS) {
+        const messages = readMessages(channelId, 20).slice().reverse();
+        for (const message of messages) {
+          if (alreadySeen(state, message.id)) continue;
+          markSeen(state, message.id);
+          saveState(state);
 
-        if (!shouldBridge(message, state.selfBotId)) continue;
-        deliverReply(message);
+          if (!shouldBridge(message, state.selfBotId)) continue;
+          deliverReply(message, channelId);
+        }
       }
     } catch (error) {
       log(`poll failed: ${error.message}`);

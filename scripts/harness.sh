@@ -12,6 +12,7 @@ if [ -f "$ENV_FILE" ]; then
   set +a
 fi
 
+RUNTIME_CLI="${PATINA_RUNTIME_CLI:-}"
 LOCK_FILE="${LOCK_FILE:-/tmp/patina-bot.lock}"
 LOG_DIR="$REPO_DIR/scripts/logs"
 ARTIFACT_ROOT="$REPO_DIR/artifacts/harness"
@@ -43,6 +44,8 @@ PR_NUMBER=""
 FINAL_STATUS="failure"
 FINAL_REASON=""
 
+[ -n "$RUNTIME_CLI" ] || { echo "PATINA_RUNTIME_CLI가 필요합니다 (.env 또는 환경 변수 설정)" >&2; exit 1; }
+command -v "$RUNTIME_CLI" >/dev/null 2>&1 || { echo "$RUNTIME_CLI CLI를 찾을 수 없음" >&2; exit 1; }
 [ -n "$DISCORD_CHANNEL" ] || { echo "DISCORD_CHANNEL이 필요합니다 (.env 또는 환경 변수 설정)" >&2; exit 1; }
 
 # --- 비정상 종료 시 main 복귀 + 알림 ---
@@ -52,7 +55,7 @@ on_unexpected_exit() {
   git checkout main >/dev/null 2>&1 || true
   if [ "$FINAL_STATUS" = "failure" ]; then
     echo "UNEXPECTED EXIT (code=$exit_code) at $(date +%H:%M:%S)" >> "$LOG_FILE" 2>/dev/null || true
-    openclaw message send --channel discord --target "channel:${DISCORD_CHANNEL}" \
+    "$RUNTIME_CLI" message send --channel discord --target "channel:${DISCORD_CHANNEL}" \
       --message "⚠️ patina 봇: harness 비정상 종료 (exit $exit_code) — run $RUN_ID" \
       >/dev/null 2>&1 || true
   fi
@@ -61,11 +64,11 @@ trap on_unexpected_exit EXIT
 
 notify() {
   local msg="$1"
-  openclaw message send \
+  "$RUNTIME_CLI" message send \
     --channel discord \
     --target "channel:${DISCORD_CHANNEL}" \
     --message "$msg" \
-    >/dev/null 2>&1 || echo "WARNING: openclaw notification failed"
+    >/dev/null 2>&1 || echo "WARNING: runtime notification failed"
 }
 
 append_daily_log() {
@@ -127,7 +130,7 @@ fs.writeFileSync(file, JSON.stringify(payload, null, 2) + "\n");
 agent_exists() {
   local agent_id="$1"
 
-  openclaw config get agents.list --json 2>/dev/null | node -e '
+  "$RUNTIME_CLI" config get agents.list --json 2>/dev/null | node -e '
 let data = "";
 process.stdin.on("data", (chunk) => data += chunk);
 process.stdin.on("end", () => {
@@ -177,7 +180,7 @@ run_agent() {
   echo "[$(date +%H:%M:%S)] stage=$stage_name agent=$agent_id" | tee -a "$LOG_FILE"
 
   set +e
-  timeout "$((timeout_seconds + 120))" openclaw --no-color agent \
+  timeout "$((timeout_seconds + 120))" "$RUNTIME_CLI" --no-color agent \
     --agent "$agent_id" \
     --session-id "$session_id" \
     --timeout "$timeout_seconds" \
@@ -218,7 +221,7 @@ build_planner_message() {
   recent_prs="$(gh pr list --state all --limit 5 --json number,title,state,mergedAt,headRefName,url 2>/dev/null || echo "[]")"
   repo_state="$(collect_repo_state)"
 
-  cat <<EOF
+  cat <<EOF2
 $prompt_template
 
 ## Execution Contract
@@ -242,283 +245,219 @@ $recent_prs
 \`\`\`json
 $repo_state
 \`\`\`
-EOF
+EOF2
 }
 
 build_generator_message() {
-  local prompt_template review_clause current_revision
+  local revision_count="$1"
+  local prompt_template repo_state spec review_summary
 
   prompt_template="$(<"$REPO_DIR/scripts/harness-prompts/generator.md")"
-  current_revision="$1"
-  review_clause="No review file for this pass."
+  repo_state="$(collect_repo_state)"
+  review_summary=""
 
-  if [ -f "$REVIEW_PATH" ]; then
-    review_clause="Read review feedback from: $REVIEW_PATH"
+  if [ "$revision_count" -gt 0 ] && [ -f "$REVIEW_PATH" ]; then
+    review_summary="$(cat "$REVIEW_PATH")"
   fi
 
-  cat <<EOF
+  cat <<EOF2
 $prompt_template
 
 ## Execution Contract
-- Read the spec from: $SPEC_PATH
-- Write/update machine-readable JSON at: $GENERATOR_RESULT
-- Write the diff artifact at: $DIFF_PATH
-- $review_clause
-- Current revision count: $current_revision
-- Max revision count: $MAX_REVISE_LOOPS
-- Reuse the branch in generator-result.json on revision passes.
-- Commit locally when the work is ready.
-- Do not push and do not create a PR.
-EOF
+- Work only on a bot/* branch.
+- Write unified diff to: $DIFF_PATH
+- Write machine-readable JSON to: $GENERATOR_RESULT
+- Read spec from: $SPEC_PATH
+- If revising, also read review feedback from: $REVIEW_PATH
+- Do not push or open a PR.
+
+## Injected Context
+- Revision count: $revision_count / $MAX_REVISE_LOOPS
+- Repo state:
+\`\`\`json
+$repo_state
+\`\`\`
+${review_summary:+- Review feedback:
+\`\`\`
+$review_summary
+\`\`\`}
+EOF2
 }
 
 build_evaluator_message() {
-  local prompt_template current_revision
+  local revision_count="$1"
+  local prompt_template repo_state
 
   prompt_template="$(<"$REPO_DIR/scripts/harness-prompts/evaluator.md")"
-  current_revision="$1"
+  repo_state="$(collect_repo_state)"
 
-  cat <<EOF
+  cat <<EOF2
 $prompt_template
 
 ## Execution Contract
-- Read the spec from: $SPEC_PATH
-- Read the diff artifact from: $DIFF_PATH
+- Review the generator's branch with fresh context.
+- Read spec from: $SPEC_PATH
+- Read diff from: $DIFF_PATH
 - Write review markdown to: $REVIEW_PATH
-- Write machine-readable JSON to: $RESULT_JSON
-- Current revision count: $current_revision
-- Max revision count: $MAX_REVISE_LOOPS
-- Review the current repository diff independently before deciding.
-EOF
+- Append machine-readable JSON to: $RESULT_JSON
+- Return only PASS, REVISE, or FAIL.
+
+## Injected Context
+- Revision count: $revision_count / $MAX_REVISE_LOOPS
+- Repo state:
+\`\`\`json
+$repo_state
+\`\`\`
+EOF2
 }
 
-create_pr() {
-  local branch pr_title pr_body labels_json pr_url
-  local -a label_args
+notify "🔍 patina 봇: harness 시작"
 
-  branch="$(json_get "$GENERATOR_RESULT" "branch")"
-  pr_title="$(json_get "$GENERATOR_RESULT" "prTitle")"
-  labels_json="$(json_get "$GENERATOR_RESULT" "labels" 2>/dev/null || echo '[]')"
+command -v gh >/dev/null 2>&1 || { notify "patina 봇: gh CLI를 찾을 수 없음"; finish_and_exit 1 "- Harness failed: gh CLI missing"; }
+"$RUNTIME_CLI" status >/dev/null 2>&1 || echo "WARNING: runtime gateway may be down"
 
-  node -e '
-const fs = require("fs");
-const file = process.argv[1];
-const data = JSON.parse(fs.readFileSync(file, "utf8"));
-fs.writeFileSync(process.argv[2], (data.prBody || "") + "\n");
-' "$GENERATOR_RESULT" "$PR_BODY_FILE"
-
-  # --- rebase onto latest main before push ---
-  if ! git fetch origin main >/dev/null 2>&1; then
-    notify "❌ patina 봇: fetch origin main 실패 — PR 생성 중단"
-    return 1
-  fi
-  if ! git rebase origin/main >/dev/null 2>&1; then
-    git rebase --abort >/dev/null 2>&1 || true
-    notify "❌ patina 봇: rebase 충돌 — 브랜치 $branch, PR 생성 중단"
-    return 1
-  fi
-
-  git push -u origin "$branch" >/dev/null
-  PUSHED_BRANCH="true"
-
-  mapfile -t label_args < <(node -e '
-const fs = require("fs");
-const file = process.argv[1];
-const data = JSON.parse(fs.readFileSync(file, "utf8"));
-const labels = Array.isArray(data.labels) ? data.labels : [];
-for (const label of labels) {
-  if (label) console.log(label);
-}
-' "$GENERATOR_RESULT")
-
-  local -a gh_args=(
-    --base main
-    --head "$branch"
-    --title "$pr_title"
-    --body-file "$PR_BODY_FILE"
-  )
-  for label in "${label_args[@]}"; do
-    gh_args+=(--label "$label")
-  done
-
-  pr_url="$(gh pr create "${gh_args[@]}")"
-
-  PR_NUMBER="$(printf '%s' "$pr_url" | node -e '
-const input = require("fs").readFileSync(0, "utf8").trim();
-const match = input.match(/\/pull\/(\d+)$/);
-if (!match) process.exit(1);
-process.stdout.write(match[1]);
-')"
-
-  notify "✅ patina 봇: PR #$PR_NUMBER 생성 → $pr_url"
-
-  if [ "$AUTO_MERGE" = "true" ]; then
-    gh pr merge "$pr_url" --squash --delete-branch >/dev/null
-    notify "🔀 patina 봇: PR #$PR_NUMBER 머지 완료"
-  fi
-}
-
-command -v openclaw >/dev/null 2>&1 || { echo "openclaw CLI를 찾을 수 없음"; exit 1; }
-command -v gh >/dev/null 2>&1 || { echo "gh CLI를 찾을 수 없음"; exit 1; }
-command -v node >/dev/null 2>&1 || { echo "node를 찾을 수 없음"; exit 1; }
-command -v timeout >/dev/null 2>&1 || { echo "timeout 명령을 찾을 수 없음"; exit 1; }
-gh auth status >/dev/null 2>&1 || { notify "patina 봇: gh 인증 실패"; exit 1; }
-openclaw status >/dev/null 2>&1 || echo "WARNING: openclaw gateway may be down"
+gh auth status >/dev/null 2>&1 || { notify "patina 봇: gh 인증 실패"; finish_and_exit 1 "- Harness failed: gh auth missing"; }
 
 for required_agent in "$PLANNER_AGENT_ID" "$GENERATOR_AGENT_ID" "$EVALUATOR_AGENT_ID"; do
   if ! agent_exists "$required_agent"; then
-    notify "patina 봇: OpenClaw 에이전트 '$required_agent' 없음 (./scripts/openclaw-bootstrap.sh 실행 필요)"
-    exit 1
+    notify "patina 봇: 에이전트 '$required_agent' 없음 (./scripts/runtime-bootstrap.sh 실행 필요)"
+    finish_and_exit 1 "- Harness failed: missing agent $required_agent"
   fi
 done
 
-if [ -f "$LOCK_FILE" ]; then
-  lock_age=$(( $(date +%s) - $(stat -c %Y "$LOCK_FILE" 2>/dev/null || echo "$(date +%s)") ))
-  if [ "$lock_age" -gt 2700 ]; then
-    rm -f "$LOCK_FILE"
-    echo "WARNING: Removed stale lock (age ${lock_age}s > 2700s)" | tee -a "$LOG_FILE"
-  fi
-fi
-
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
-  echo "Another harness instance is running. Exiting."
-  exit 0
+  echo "Another bot instance is running. Exiting."
+  finish_and_exit 0 "- Harness skipped: another instance already running"
 fi
 
 cd "$REPO_DIR"
-
 git fetch --prune origin >/dev/null 2>&1 || true
 git checkout main >/dev/null 2>&1 || true
 git pull --ff-only origin main >/dev/null 2>&1 || true
 
-# untracked 파일은 무시, staged/modified만 dirty로 판단
-if [ -n "$(git diff --name-only 2>/dev/null)$(git diff --cached --name-only 2>/dev/null)" ]; then
-  notify "patina 봇: 작업 트리가 깨끗하지 않아 harness 실행 중단"
-  finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=dirty-worktree run=$RUN_ID"
-fi
-
-while IFS= read -r local_branch; do
-  [ -n "$local_branch" ] || continue
-  git branch -D "$local_branch" >/dev/null 2>&1 || true
-done < <(git for-each-ref --format='%(refname:short)' refs/heads/bot)
-
-while IFS= read -r remote_ref; do
-  local_count=""
-  branch_name="${remote_ref#origin/}"
-  [ -n "$branch_name" ] || continue
-  local_count="$(gh pr list --state open --head "$branch_name" --json number 2>/dev/null | node -e '
-let data = "";
-process.stdin.on("data", (chunk) => data += chunk);
-process.stdin.on("end", () => {
-  const list = JSON.parse(data || "[]");
-  process.stdout.write(String(list.length));
-});
-')"
-  if [ "$local_count" = "0" ]; then
-    git push origin --delete "$branch_name" >/dev/null 2>&1 || true
-  fi
-done < <(git for-each-ref --format='%(refname:short)' refs/remotes/origin/bot)
-
-notify "🔍 patina 봇: Planner 시작 — run $RUN_ID"
-if ! run_agent "planner" "$PLANNER_AGENT_ID" 300 "planner-$RUN_ID" "$(build_planner_message)"; then
-  FINAL_REASON="planner failed"
-  notify "❌ patina 봇: Planner 실패 — 로그 확인 필요"
-  finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=planner-failed run=$RUN_ID"
-fi
-
-planner_status="$(json_get "$RESULT_JSON" "status" 2>/dev/null || echo "")"
-if [ "$planner_status" = "skip" ]; then
-  skip_reason="$(json_get "$RESULT_JSON" "reason" 2>/dev/null || echo "No actionable tasks found")"
-  notify "💤 patina 봇: 처리할 작업 없음 (대기)"
-  FINAL_STATUS="skip"
-  finish_and_exit 0 "- Harness run at $(date +%H:%M): exit=0 status=skip run=$RUN_ID reason=$skip_reason"
-fi
-
-if [ "$planner_status" != "ready" ]; then
-  notify "❌ patina 봇: Planner 결과 파싱 실패"
-  finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=planner-invalid run=$RUN_ID"
-fi
-
-selected_issue="$(json_get "$RESULT_JSON" "issueNumber" 2>/dev/null || echo "")"
-notify "📝 patina 봇: 스펙 생성 완료 — 이슈 #$selected_issue"
-
-revision_count=0
-notify "🔧 patina 봇: Generator 시작 — 이슈 #$selected_issue"
-if ! run_agent "generator" "$GENERATOR_AGENT_ID" 1200 "generator-$RUN_ID" "$(build_generator_message "$revision_count")"; then
-  CURRENT_BRANCH="$(json_get "$GENERATOR_RESULT" "branch" 2>/dev/null || echo "")"
-  cleanup_branch "$CURRENT_BRANCH"
-  notify "❌ patina 봇: Generator 실패 — 이슈 #$selected_issue"
-  finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=generator-failed run=$RUN_ID issue=#${selected_issue:-na}"
-fi
-
-generator_status="$(json_get "$GENERATOR_RESULT" "status" 2>/dev/null || echo "")"
-if [ "$generator_status" != "generated" ]; then
-  CURRENT_BRANCH="$(json_get "$GENERATOR_RESULT" "branch" 2>/dev/null || echo "")"
-  cleanup_branch "$CURRENT_BRANCH"
-  notify "❌ patina 봇: Generator 결과 파싱 실패"
-  finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=generator-invalid run=$RUN_ID issue=#${selected_issue:-na}"
-fi
-
-CURRENT_BRANCH="$(json_get "$GENERATOR_RESULT" "branch")"
-notify "🧪 patina 봇: Evaluator 시작 — 브랜치 $CURRENT_BRANCH"
-if ! run_agent "evaluator" "$EVALUATOR_AGENT_ID" 600 "evaluator-$RUN_ID" "$(build_evaluator_message "$revision_count")"; then
-  cleanup_branch "$CURRENT_BRANCH"
-  notify "❌ patina 봇: Evaluator 실패 — 브랜치 $CURRENT_BRANCH"
-  finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=evaluator-failed run=$RUN_ID issue=#${selected_issue:-na}"
-fi
-
-verdict="$(json_get "$RESULT_JSON" "verdict" 2>/dev/null || echo "")"
-
-while [ "$verdict" = "REVISE" ] && [ "$revision_count" -lt "$MAX_REVISE_LOOPS" ]; do
-  revision_count=$((revision_count + 1))
-  notify "♻️ patina 봇: 수정 요청 — $revision_count/$MAX_REVISE_LOOPS"
-
-  if ! run_agent "generator-revise-$revision_count" "$GENERATOR_AGENT_ID" 1200 "generator-$RUN_ID" "$(build_generator_message "$revision_count")"; then
-    cleanup_branch "$CURRENT_BRANCH"
-    notify "❌ patina 봇: Generator 재시도 실패 — 브랜치 $CURRENT_BRANCH"
-    finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=generator-revise-failed run=$RUN_ID issue=#${selected_issue:-na}"
-  fi
-
-  generator_status="$(json_get "$GENERATOR_RESULT" "status" 2>/dev/null || echo "")"
-  if [ "$generator_status" != "generated" ]; then
-    cleanup_branch "$CURRENT_BRANCH"
-    notify "❌ patina 봇: Generator 재시도 결과 파싱 실패"
-    finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=generator-revise-invalid run=$RUN_ID issue=#${selected_issue:-na}"
-  fi
-
-  CURRENT_BRANCH="$(json_get "$GENERATOR_RESULT" "branch")"
-
-  if ! run_agent "evaluator-revise-$revision_count" "$EVALUATOR_AGENT_ID" 600 "evaluator-$RUN_ID" "$(build_evaluator_message "$revision_count")"; then
-    cleanup_branch "$CURRENT_BRANCH"
-    notify "❌ patina 봇: Evaluator 재시도 실패 — 브랜치 $CURRENT_BRANCH"
-    finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=evaluator-revise-failed run=$RUN_ID issue=#${selected_issue:-na}"
-  fi
-
-  verdict="$(json_get "$RESULT_JSON" "verdict" 2>/dev/null || echo "")"
+git branch --list 'bot/*' | while read -r branch; do
+  [ -n "$branch" ] || continue
+  git branch -D "$branch" >/dev/null 2>&1 || true
 done
 
-if [ "$verdict" = "PASS" ]; then
-  set +e
-  create_pr
-  pr_exit=$?
-  set -e
+git branch -r --list 'origin/bot/*' | sed 's#^ *origin/##' | while read -r branch; do
+  [ -n "$branch" ] || continue
+  git push origin --delete "$branch" >/dev/null 2>&1 || true
+done
 
-  if [ "$pr_exit" -ne 0 ]; then
-    notify "❌ patina 봇: PR 생성 실패 — 브랜치 $CURRENT_BRANCH (exit $pr_exit)"
-    finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=pr-failed run=$RUN_ID issue=#${selected_issue:-na} branch=$CURRENT_BRANCH"
+notify "🧠 patina 봇: planner 실행"
+if ! run_agent "planner" "$PLANNER_AGENT_ID" 300 "planner-$RUN_ID" "$(build_planner_message)"; then
+  notify "❌ patina 봇: planner 실패"
+  json_write_empty_result "fail" "planner_failed"
+  finish_and_exit 1 "- Harness failed: planner stage error"
+fi
+
+if [ ! -f "$RESULT_JSON" ]; then
+  notify "❌ patina 봇: planner 결과 없음"
+  finish_and_exit 1 "- Harness failed: planner result missing"
+fi
+
+planner_status="$(json_get "$RESULT_JSON" status || true)"
+if [ "$planner_status" = "skip" ]; then
+  notify "💤 patina 봇: 처리할 작업 없음 (대기)"
+  FINAL_STATUS="success"
+  finish_and_exit 0 "- Harness skipped: no actionable tasks"
+fi
+
+if [ "$planner_status" != "ok" ]; then
+  notify "❌ patina 봇: planner가 작업을 선정하지 못함"
+  finish_and_exit 1 "- Harness failed: planner status=$planner_status"
+fi
+
+notify "🛠️ patina 봇: generator 실행"
+revision_count=0
+if ! run_agent "generator" "$GENERATOR_AGENT_ID" 1200 "generator-$RUN_ID" "$(build_generator_message "$revision_count")"; then
+  notify "❌ patina 봇: generator 실패"
+  finish_and_exit 1 "- Harness failed: generator stage error"
+fi
+
+if [ ! -f "$GENERATOR_RESULT" ]; then
+  notify "❌ patina 봇: generator 결과 없음"
+  finish_and_exit 1 "- Harness failed: generator result missing"
+fi
+
+notify "🧪 patina 봇: evaluator 실행"
+if ! run_agent "evaluator" "$EVALUATOR_AGENT_ID" 600 "evaluator-$RUN_ID" "$(build_evaluator_message "$revision_count")"; then
+  notify "❌ patina 봇: evaluator 실패"
+  finish_and_exit 1 "- Harness failed: evaluator stage error"
+fi
+
+eval_status="$(json_get "$RESULT_JSON" status || true)"
+while [ "$eval_status" = "revise" ] && [ "$revision_count" -lt "$MAX_REVISE_LOOPS" ]; do
+  revision_count=$((revision_count + 1))
+  notify "🔁 patina 봇: revise 루프 $revision_count/$MAX_REVISE_LOOPS"
+
+  if ! run_agent "generator-revise-$revision_count" "$GENERATOR_AGENT_ID" 1200 "generator-$RUN_ID" "$(build_generator_message "$revision_count")"; then
+    notify "❌ patina 봇: revise generator 실패"
+    finish_and_exit 1 "- Harness failed: generator revise stage error"
   fi
 
-  FINAL_STATUS="pass"
-  finish_and_exit 0 "- Harness run at $(date +%H:%M): exit=0 status=pass run=$RUN_ID issue=#${selected_issue:-na} branch=$CURRENT_BRANCH pr=#${PR_NUMBER:-na}"
+  if ! run_agent "evaluator-revise-$revision_count" "$EVALUATOR_AGENT_ID" 600 "evaluator-$RUN_ID" "$(build_evaluator_message "$revision_count")"; then
+    notify "❌ patina 봇: revise evaluator 실패"
+    finish_and_exit 1 "- Harness failed: evaluator revise stage error"
+  fi
+
+  eval_status="$(json_get "$RESULT_JSON" status || true)"
+done
+
+if [ "$eval_status" != "pass" ]; then
+  notify "❌ patina 봇: evaluator 최종 결과 $eval_status"
+  FINAL_STATUS="failure"
+  finish_and_exit 1 "- Harness failed: evaluator status=$eval_status"
 fi
 
-if [ "$verdict" = "REVISE" ]; then
-  json_write_empty_result "reviewed" "revise limit reached"
-  verdict="FAIL"
+CURRENT_BRANCH="bot/${RUN_ID}"
+
+git checkout -b "$CURRENT_BRANCH" >/dev/null 2>&1 || git checkout "$CURRENT_BRANCH" >/dev/null 2>&1
+if [ -f "$DIFF_PATH" ]; then
+  git apply "$DIFF_PATH"
 fi
 
-cleanup_branch "$CURRENT_BRANCH"
-failure_reason="$(json_get "$RESULT_JSON" "reason" 2>/dev/null || echo "evaluation failed")"
-notify "❌ patina 봇: FAIL — 이슈 #${selected_issue:-na}, $failure_reason"
-finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=fail run=$RUN_ID issue=#${selected_issue:-na} reason=$failure_reason"
+git add -A
+git commit -m "Automate one vetted maintenance task" -m "Planner, Generator, Evaluator harness run $RUN_ID produced a reviewed change set ready for PR creation.
+
+Constraint: Bot branches must remain isolated from main during autonomous runs
+Rejected: Push generator output before evaluator PASS | violates bot safety gate
+Confidence: medium
+Scope-risk: moderate
+Directive: Keep evaluator gate intact before any future PR creation or merge automation
+Tested: Planner/Generator/Evaluator harness run through PASS path
+Not-tested: Human review beyond evaluator output" >/dev/null
+
+git fetch origin main >/dev/null 2>&1 || true
+if ! git rebase origin/main >/dev/null 2>&1; then
+  git rebase --abort >/dev/null 2>&1 || true
+  cleanup_branch "$CURRENT_BRANCH"
+  notify "❌ patina 봇: rebase 충돌로 중단"
+  FINAL_STATUS="failure"
+  finish_and_exit 1 "- Harness failed: rebase conflict"
+fi
+
+git push -u origin "$CURRENT_BRANCH" >/dev/null 2>&1
+PUSHED_BRANCH="true"
+
+pr_title="$(json_get "$RESULT_JSON" title || echo "Automated maintenance update")"
+pr_body="$(json_get "$RESULT_JSON" body || echo "Automated maintenance update.")"
+printf '%s\n' "$pr_body" > "$PR_BODY_FILE"
+
+pr_url="$(gh pr create --base main --head "$CURRENT_BRANCH" --title "$pr_title" --body-file "$PR_BODY_FILE" --label bot 2>/dev/null)"
+PR_NUMBER="$(printf '%s' "$pr_url" | sed -E 's#.*/pull/([0-9]+).*#\1#')"
+notify "✅ patina 봇: PR #$PR_NUMBER 생성 → $pr_url"
+
+if [ "$AUTO_MERGE" = "true" ]; then
+  gh pr merge "$PR_NUMBER" --squash --delete-branch >/dev/null 2>&1 || {
+    notify "❌ patina 봇: PR #$PR_NUMBER 자동 머지 실패"
+    FINAL_STATUS="failure"
+    finish_and_exit 1 "- Harness failed: auto-merge failure for PR #$PR_NUMBER"
+  }
+  notify "🔀 patina 봇: PR #$PR_NUMBER 머지 완료"
+fi
+
+FINAL_STATUS="success"
+finish_and_exit 0 "- Harness success: PR #$PR_NUMBER ($pr_url)"

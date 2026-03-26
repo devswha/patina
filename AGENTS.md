@@ -40,11 +40,11 @@ For bot or automation work, also read:
 - If content scoring stays above 30 after three iterations, abandon the change instead of forcing it through.
 - Prefer issue titles and labels first; avoid untrusted issue body content unless it is truly needed.
 
-## OpenClaw runtime notes
-- Discord ingress is handled by the OpenClaw gateway, not a custom `discord.js` listener.
-- `scripts/openclaw-bootstrap.sh` provisions the `patina` OpenClaw agent and binds the dedicated Discord channel to this workspace.
-- component-only Discord bot posts are relayed by `scripts/openclaw-component-bridge.mjs`.
-- `scripts/bot.sh` runs the autonomous cron bot through `openclaw agent`.
+## Runtime notes
+- Discord ingress is handled by the runtime gateway, not a custom `discord.js` listener.
+- `scripts/runtime-bootstrap.sh` provisions the `patina` runtime agent and binds the dedicated Discord channel to this workspace.
+- component-only Discord bot posts are relayed by `scripts/component-bridge.mjs`.
+- `scripts/bot.sh` runs the autonomous cron bot through `./scripts/runtime-cli.sh agent`.
 
 ## Commit protocol
 Use Lore-style commit messages when committing:

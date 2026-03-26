@@ -2,16 +2,16 @@
   "name": "patina-bot",
   "version": "1.0.0",
   "private": true,
-  "description": "OpenClaw-based automation for patina",
+  "description": "Runtime-managed automation for patina",
   "scripts": {
     "bot": "bash scripts/bot.sh",
-    "openclaw:bootstrap": "bash scripts/openclaw-bootstrap.sh",
-    "openclaw:component-bridge": "node scripts/openclaw-component-bridge.mjs",
-    "openclaw:component-bridge:once": "COMPONENT_BRIDGE_ONCE=true COMPONENT_BRIDGE_SEED_HISTORY=false node scripts/openclaw-component-bridge.mjs",
-    "openclaw:status": "openclaw status",
-    "openclaw:restart": "openclaw gateway restart",
-    "openclaw:logs": "openclaw logs --follow",
-    "openclaw:component-bridge:logs": "journalctl --user -u patina-component-bridge -f",
-    "openclaw:component-bridge:status": "systemctl --user status patina-component-bridge"
+    "runtime:bootstrap": "bash scripts/runtime-bootstrap.sh",
+    "runtime:component-bridge": "node scripts/component-bridge.mjs",
+    "runtime:component-bridge:once": "COMPONENT_BRIDGE_ONCE=true COMPONENT_BRIDGE_SEED_HISTORY=false node scripts/component-bridge.mjs",
+    "runtime:status": "bash scripts/runtime-cli.sh status",
+    "runtime:restart": "bash scripts/runtime-cli.sh gateway restart",
+    "runtime:logs": "bash scripts/runtime-cli.sh logs --follow",
+    "runtime:component-bridge:logs": "journalctl --user -u patina-component-bridge -f",
+    "runtime:component-bridge:status": "systemctl --user status patina-component-bridge"
   }
 }

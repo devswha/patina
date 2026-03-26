@@ -15,6 +15,7 @@ if [ -f "$ENV_FILE" ]; then
   set +a
 fi
 
+RUNTIME_CLI="${PATINA_RUNTIME_CLI:-}"
 LOCK_FILE="/tmp/patina-bot.lock"
 LOG_DIR="$REPO_DIR/scripts/logs"
 DISCORD_CHANNEL="${DISCORD_CHANNEL:-}"
@@ -32,20 +33,21 @@ export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 # --- Notification helper ---
 notify() {
   local msg="$1"
-  openclaw message send \
+  "$RUNTIME_CLI" message send \
     --channel discord \
     --target "channel:${DISCORD_CHANNEL}" \
     --message "$msg" \
-    >/dev/null 2>&1 || echo "WARNING: openclaw notification failed"
+    >/dev/null 2>&1 || echo "WARNING: runtime notification failed"
 }
 
 # --- Pre-checks ---
-command -v openclaw >/dev/null 2>&1 || { echo "openclaw CLI를 찾을 수 없음"; exit 1; }
+[ -n "$RUNTIME_CLI" ] || { echo "PATINA_RUNTIME_CLI가 필요합니다 (.env 또는 환경 변수 설정)" >&2; exit 1; }
+command -v "$RUNTIME_CLI" >/dev/null 2>&1 || { echo "$RUNTIME_CLI CLI를 찾을 수 없음"; exit 1; }
 [ -n "$DISCORD_CHANNEL" ] || { echo "DISCORD_CHANNEL이 필요합니다 (.env 또는 환경 변수 설정)" >&2; exit 1; }
 gh auth status >/dev/null 2>&1 || { notify "patina 봇: gh 인증 실패"; exit 1; }
-openclaw status >/dev/null 2>&1 || echo "WARNING: openclaw gateway may be down"
+"$RUNTIME_CLI" status >/dev/null 2>&1 || echo "WARNING: runtime gateway may be down"
 
-if ! openclaw config get agents.list --json 2>/dev/null | node -e '
+if ! "$RUNTIME_CLI" config get agents.list --json 2>/dev/null | node -e '
 let data="";
 process.stdin.on("data", (chunk) => data += chunk);
 process.stdin.on("end", () => {
@@ -54,7 +56,7 @@ process.stdin.on("end", () => {
   process.exit(ok ? 0 : 1);
 });
 ' "$PATINA_AGENT_ID"; then
-  notify "patina 봇: OpenClaw patina 에이전트가 없음 (./scripts/openclaw-bootstrap.sh 실행 필요)"
+  notify "patina 봇: patina 에이전트가 없음 (./scripts/runtime-bootstrap.sh 실행 필요)"
   exit 1
 fi
 
@@ -113,7 +115,7 @@ PROMPT_EOF
 LOG_FILE="$LOG_DIR/bot-$(date +%Y%m%d-%H%M).log"
 
 set +e
-timeout 30m openclaw --no-color agent \
+timeout 30m "$RUNTIME_CLI" --no-color agent \
   --agent "$PATINA_AGENT_ID" \
   --session-id "$PATINA_BOT_SESSION_ID" \
   --thinking high \

@@ -4,8 +4,8 @@
 
 ## 개요
 
-기존 단일 봇(`bot.sh` → `openclaw agent`)을 **Planner / Generator / Evaluator** 3에이전트 체제로 전환한다.
-각 에이전트는 독립 OpenClaw agent로 등록되며, 오케스트레이터 스크립트가 실행 순서와 데이터 전달을 관리한다.
+기존 단일 봇(`bot.sh` → `./scripts/runtime-cli.sh agent`)을 **Planner / Generator / Evaluator** 3에이전트 체제로 전환한다.
+각 에이전트는 독립 runtime agent로 등록되며, 오케스트레이터 스크립트가 실행 순서와 데이터 전달을 관리한다.
 
 ## 목표
 
@@ -22,11 +22,11 @@
 | 구성 요소 | 기술 | 버전 | 역할 |
 |---|---|---|---|
 | **오케스트레이터** | Bash | 5.1 | harness.sh — 파이프라인 제어, 에이전트 호출, 상태 관리 |
-| **에이전트 실행** | OpenClaw CLI | 2026.2.9 | `openclaw agent --agent <id> --message <prompt>` |
+| **에이전트 실행** | runtime CLI | 2026.2.9 | `./scripts/runtime-cli.sh agent --agent <id> --message <prompt>` |
 | **병렬 실행** (선택) | omx / tmux | 0.11.9 / 3.2a | Generator+Evaluator 병렬 가능 시 활용 |
 | **JSON 처리** | Node.js inline | 22.17.1 | `-e` one-liner로 result.json 파싱 (jq 미설치) |
 | **Git 관리** | git + gh CLI | 2.4.0 | 브랜치, PR 생성, 이슈 조회 |
-| **알림** | OpenClaw message | — | Discord 채널 실시간 보고 |
+| **알림** | runtime message | — | Discord 채널 실시간 보고 |
 | **스케줄링** | cron | — | 매 시간 harness.sh 실행 |
 
 ### 의존성 원칙
@@ -36,11 +36,11 @@
 
 ### 통신 방식: 하이브리드
 
-에이전트 간 데이터 전달은 **호출은 OpenClaw, 데이터는 파일** 방식:
+에이전트 간 데이터 전달은 **호출은 runtime, 데이터는 파일** 방식:
 
 ```bash
-# 오케스트레이터가 에이전트 호출 (OpenClaw 네이티브)
-openclaw agent --agent planner \
+# 오케스트레이터가 에이전트 호출 (runtime 네이티브)
+./scripts/runtime-cli.sh agent --agent planner \
   --message "분석할 이슈: $ISSUES. 스펙을 $RUN_DIR/spec.md에 작성해라."
 
 # 큰 데이터(spec, diff, review)는 파일로 전달
@@ -52,7 +52,7 @@ cat $RUN_DIR/result.json
 ```
 
 **이유:**
-- 호출/제어: OpenClaw가 세션 관리, 타임아웃, 모델 선택 담당
+- 호출/제어: runtime가 세션 관리, 타임아웃, 모델 선택 담당
 - 데이터: 파일이라 크기 제한 없음, 디버깅 시 바로 확인 가능
 - 실패 복구: artifact가 디스크에 남아있어 수동 재시도 가능
 
@@ -67,8 +67,8 @@ cat $RUN_DIR/result.json
                     │   cron 매 시간       │
                     └──────┬───────────────┘
                            │
-                    openclaw agent --message
-                    (호출은 OpenClaw, 데이터는 파일)
+                    ./scripts/runtime-cli.sh agent --message
+                    (호출은 runtime, 데이터는 파일)
                            │
               ┌────────────┼────────────────┐
               ▼            ▼                ▼
@@ -259,8 +259,8 @@ scripts/
 │   └── evaluator.md              # Evaluator 에이전트 프롬프트
 ├── bot.sh                        # (deprecated, harness.sh로 이관)
 ├── bot-prompt.md                 # (deprecated, harness-prompts/로 분리)
-├── openclaw-bootstrap.sh         # 수정: 3개 에이전트 등록 추가
-├── openclaw-component-bridge.mjs # 변경 없음
+├── runtime-bootstrap.sh         # 수정: 3개 에이전트 등록 추가
+├── component-bridge.mjs         # 변경 없음
 └── logs/
 
 artifacts/
@@ -276,14 +276,14 @@ artifacts/
 
 ## Bootstrap 변경사항
 
-`openclaw-bootstrap.sh`에 3개 에이전트 등록 추가:
+`runtime-bootstrap.sh`에 3개 에이전트 등록 추가:
 
 ```bash
 # 기존 patina 에이전트 (대화용) — 변경 없음
 # + 신규 3개:
 AGENTS=("planner" "generator" "evaluator")
 for agent_id in "${AGENTS[@]}"; do
-  openclaw agents add "$agent_id" --non-interactive --workspace "$REPO_DIR"
+  ./scripts/runtime-cli.sh agents add "$agent_id" --non-interactive --workspace "$REPO_DIR"
 done
 ```
 
@@ -369,5 +369,5 @@ auto-merge: false
 - [x] 모델: 전 에이전트 Opus (`cliproxy/claude-opus-4-6`)
 - [x] 첫 테스트 대상: #17 이슈
 - [x] 기술 스택: Bash 기반, 새 의존성 없음
-- [x] 통신 방식: 하이브리드 (호출은 OpenClaw, 데이터는 파일)
+- [x] 통신 방식: 하이브리드 (호출은 runtime, 데이터는 파일)
 - [x] 구현: omx 코딩 에이전트에 위임

@@ -4,7 +4,7 @@
 
 ```
 patina/
-├── AGENTS.md                # OpenClaw/Codex 공통 작업 규칙
+├── AGENTS.md                # runtime/Codex 공통 작업 규칙
 ├── USER.md                  # Discord 대화용 사용자 지침
 ├── SKILL.md                 # 메인 오케스트레이터 (2-Phase 파이프라인)
 ├── SKILL-MAX.md             # MAX mode 설계/참고 문서
@@ -41,10 +41,10 @@ patina/
 
 ```
 scripts/
-├── bot.sh                  # Cron entrypoint: flock, openclaw agent, notifications
+├── bot.sh                  # Cron entrypoint: flock, runtime CLI agent, notifications
 ├── bot-prompt.md           # Cron bot brain: task priority, quality gates, reporting
-├── openclaw-bootstrap.sh   # OpenClaw agent + Discord channel binding bootstrap
-├── openclaw-component-bridge.mjs # Component-only Discord bot messages → OpenClaw relay
+├── runtime-bootstrap.sh    # runtime agent + Discord channel binding bootstrap
+├── component-bridge.mjs    # Component-only Discord bot messages → runtime relay
 ├── patina-component-bridge.service # User systemd unit for the component bridge
 └── logs/                   # Run logs (gitignored, rotated at 30 days)
 ```
@@ -56,11 +56,11 @@ $EDITOR .env
 ```
 
 ```bash
-# OpenClaw 에이전트/Discord 라우팅 프로비저닝
-./scripts/openclaw-bootstrap.sh
+# runtime 에이전트/Discord 라우팅 프로비저닝
+./scripts/runtime-bootstrap.sh
 
 # component-only bot 메시지 브리지 1회 점검
-npm run openclaw:component-bridge:once
+npm run runtime:component-bridge:once
 
 # 수동 봇 실행
 ./scripts/bot.sh
@@ -72,27 +72,27 @@ cat memory/daily/$(date +%Y-%m-%d).md
 AUTO_MERGE=true ./scripts/bot.sh
 ```
 
-## OpenClaw 연동
+## runtime 연동
 
 ```bash
 # 상태 확인
-openclaw status
+npm run runtime:status
 
 # patina 워크스페이스를 Discord 채널에 바인딩
-./scripts/openclaw-bootstrap.sh
+./scripts/runtime-bootstrap.sh
 
 # 수동 알림 테스트
-openclaw message send --channel discord --target "channel:${DISCORD_CHANNEL}" --message "patina 테스트 알림"
+./scripts/runtime-cli.sh message send --channel discord --target "channel:${DISCORD_CHANNEL}" --message "patina 테스트 알림"
 
 # component-only bot 메시지 브리지 상태
-npm run openclaw:component-bridge:status
+npm run runtime:component-bridge:status
 ```
 
 ## 운영 메모
 
-- Discord 연결은 OpenClaw gateway가 담당하므로 별도 `discord.js` 리스너를 돌리지 않음
-- 실제 Discord/OpenClaw 식별자와 토큰은 공개 레포에 두지 않고 로컬 `.env` 또는 홈 디렉터리 설정에서만 관리
-- `scripts/openclaw-bootstrap.sh`는 정확한 Discord 채널 peer binding을 추가함
+- Discord 연결은 runtime gateway가 담당하므로 별도 `discord.js` 리스너를 돌리지 않음
+- 실제 Discord/runtime 식별자와 토큰은 공개 레포에 두지 않고 로컬 `.env` 또는 홈 디렉터리 설정에서만 관리
+- `scripts/runtime-bootstrap.sh`는 정확한 Discord 채널 peer binding을 추가함
 - 가능하면 기존 `~/.clawhip/config.toml`의 Discord 토큰을 재사용해서 예전 봇 닉네임/권한을 그대로 이어감
-- component-only Discord bot posts는 `scripts/openclaw-component-bridge.mjs`가 감지해서 `openclaw agent --deliver`로 릴레이함
-- stricter allowlist가 필요하면 `OPENCLAW_ENFORCE_ALLOWLIST=true ./scripts/openclaw-bootstrap.sh`
+- component-only Discord bot posts는 `scripts/component-bridge.mjs`가 감지해서 `./scripts/runtime-cli.sh agent --deliver`로 릴레이함
+- stricter allowlist가 필요하면 `RUNTIME_ENFORCE_ALLOWLIST=true ./scripts/runtime-bootstrap.sh`

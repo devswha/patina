@@ -36,7 +36,8 @@ function loadLocalEnv() {
 
 loadLocalEnv();
 
-const STATE_FILE = process.env.COMPONENT_BRIDGE_STATE_FILE || resolve(REPO_DIR, '.omx/state/openclaw-component-bridge.json');
+const RUNTIME_CLI = process.env.PATINA_RUNTIME_CLI || '';
+const STATE_FILE = process.env.COMPONENT_BRIDGE_STATE_FILE || resolve(REPO_DIR, '.omx/state/component-bridge.json');
 const CHANNEL_ID = process.env.COMPONENT_BRIDGE_CHANNEL || process.env.DISCORD_CHANNEL || '';
 const AGENT_ID = process.env.PATINA_AGENT_ID || 'patina';
 const SESSION_PREFIX = process.env.COMPONENT_BRIDGE_SESSION_PREFIX || 'patina-component-bridge';
@@ -47,6 +48,10 @@ const ONCE = process.env.COMPONENT_BRIDGE_ONCE === 'true';
 const SEED_HISTORY = process.env.COMPONENT_BRIDGE_SEED_HISTORY !== 'false';
 const VERBOSE = process.env.COMPONENT_BRIDGE_VERBOSE === 'true';
 
+if (!RUNTIME_CLI) {
+  throw new Error('PATINA_RUNTIME_CLI가 필요합니다 (.env 또는 환경 변수 설정)');
+}
+
 if (!CHANNEL_ID) {
   throw new Error('DISCORD_CHANNEL 또는 COMPONENT_BRIDGE_CHANNEL이 필요합니다 (.env 또는 환경 변수 설정)');
 }
@@ -55,8 +60,8 @@ function log(message) {
   console.log(`[component-bridge] ${message}`);
 }
 
-function runOpenClaw(args) {
-  return execFileSync('openclaw', args, {
+function runRuntimeCli(args) {
+  return execFileSync(RUNTIME_CLI, args, {
     cwd: REPO_DIR,
     encoding: 'utf8',
     env: {
@@ -67,7 +72,7 @@ function runOpenClaw(args) {
 }
 
 function runJson(args) {
-  return JSON.parse(runOpenClaw(args));
+  return JSON.parse(runRuntimeCli(args));
 }
 
 function loadState() {
@@ -183,7 +188,7 @@ function deliverReply(message) {
   }
 
   const sessionId = `${SESSION_PREFIX}-${author.id}`;
-  const output = runOpenClaw([
+  const output = runRuntimeCli([
     '--no-color',
     'agent',
     '--agent', AGENT_ID,

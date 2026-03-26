@@ -21,6 +21,7 @@ SPEC_PATH="$RUN_DIR/spec.md"
 DIFF_PATH="$RUN_DIR/diff.patch"
 REVIEW_PATH="$RUN_DIR/review.md"
 RESULT_JSON="$RUN_DIR/result.json"
+GENERATOR_RESULT="$RUN_DIR/generator-result.json"
 PR_BODY_FILE="$RUN_DIR/pr-body.md"
 
 mkdir -p "$LOG_DIR" "$RUN_DIR"
@@ -250,12 +251,12 @@ $prompt_template
 
 ## Execution Contract
 - Read the spec from: $SPEC_PATH
-- Write/update machine-readable JSON at: $RESULT_JSON
+- Write/update machine-readable JSON at: $GENERATOR_RESULT
 - Write the diff artifact at: $DIFF_PATH
 - $review_clause
 - Current revision count: $current_revision
 - Max revision count: $MAX_REVISE_LOOPS
-- Reuse the branch in result.json on revision passes.
+- Reuse the branch in generator-result.json on revision passes.
 - Commit locally when the work is ready.
 - Do not push and do not create a PR.
 EOF
@@ -285,16 +286,16 @@ create_pr() {
   local branch pr_title pr_body labels_json pr_url
   local -a label_args
 
-  branch="$(json_get "$RESULT_JSON" "branch")"
-  pr_title="$(json_get "$RESULT_JSON" "prTitle")"
-  labels_json="$(json_get "$RESULT_JSON" "labels" 2>/dev/null || echo '[]')"
+  branch="$(json_get "$GENERATOR_RESULT" "branch")"
+  pr_title="$(json_get "$GENERATOR_RESULT" "prTitle")"
+  labels_json="$(json_get "$GENERATOR_RESULT" "labels" 2>/dev/null || echo '[]')"
 
   node -e '
 const fs = require("fs");
 const file = process.argv[1];
 const data = JSON.parse(fs.readFileSync(file, "utf8"));
 fs.writeFileSync(process.argv[2], (data.prBody || "") + "\n");
-' "$RESULT_JSON" "$PR_BODY_FILE"
+' "$GENERATOR_RESULT" "$PR_BODY_FILE"
 
   # --- rebase onto latest main before push ---
   if ! git fetch origin main >/dev/null 2>&1; then
@@ -318,7 +319,7 @@ const labels = Array.isArray(data.labels) ? data.labels : [];
 for (const label of labels) {
   if (label) console.log(label);
 }
-' "$RESULT_JSON")
+' "$GENERATOR_RESULT")
 
   local -a gh_args=(
     --base main
@@ -435,21 +436,21 @@ notify "📝 patina 봇: 스펙 생성 완료 — 이슈 #$selected_issue"
 revision_count=0
 notify "🔧 patina 봇: Generator 시작 — 이슈 #$selected_issue"
 if ! run_agent "generator" "$GENERATOR_AGENT_ID" 1200 "generator-$RUN_ID" "$(build_generator_message "$revision_count")"; then
-  CURRENT_BRANCH="$(json_get "$RESULT_JSON" "branch" 2>/dev/null || echo "")"
+  CURRENT_BRANCH="$(json_get "$GENERATOR_RESULT" "branch" 2>/dev/null || echo "")"
   cleanup_branch "$CURRENT_BRANCH"
   notify "❌ patina 봇: Generator 실패 — 이슈 #$selected_issue"
   finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=generator-failed run=$RUN_ID issue=#${selected_issue:-na}"
 fi
 
-generator_status="$(json_get "$RESULT_JSON" "status" 2>/dev/null || echo "")"
+generator_status="$(json_get "$GENERATOR_RESULT" "status" 2>/dev/null || echo "")"
 if [ "$generator_status" != "generated" ]; then
-  CURRENT_BRANCH="$(json_get "$RESULT_JSON" "branch" 2>/dev/null || echo "")"
+  CURRENT_BRANCH="$(json_get "$GENERATOR_RESULT" "branch" 2>/dev/null || echo "")"
   cleanup_branch "$CURRENT_BRANCH"
   notify "❌ patina 봇: Generator 결과 파싱 실패"
   finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=generator-invalid run=$RUN_ID issue=#${selected_issue:-na}"
 fi
 
-CURRENT_BRANCH="$(json_get "$RESULT_JSON" "branch")"
+CURRENT_BRANCH="$(json_get "$GENERATOR_RESULT" "branch")"
 notify "🧪 patina 봇: Evaluator 시작 — 브랜치 $CURRENT_BRANCH"
 if ! run_agent "evaluator" "$EVALUATOR_AGENT_ID" 600 "evaluator-$RUN_ID" "$(build_evaluator_message "$revision_count")"; then
   cleanup_branch "$CURRENT_BRANCH"
@@ -469,14 +470,14 @@ while [ "$verdict" = "REVISE" ] && [ "$revision_count" -lt "$MAX_REVISE_LOOPS" ]
     finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=generator-revise-failed run=$RUN_ID issue=#${selected_issue:-na}"
   fi
 
-  generator_status="$(json_get "$RESULT_JSON" "status" 2>/dev/null || echo "")"
+  generator_status="$(json_get "$GENERATOR_RESULT" "status" 2>/dev/null || echo "")"
   if [ "$generator_status" != "generated" ]; then
     cleanup_branch "$CURRENT_BRANCH"
     notify "❌ patina 봇: Generator 재시도 결과 파싱 실패"
     finish_and_exit 1 "- Harness run at $(date +%H:%M): exit=1 status=generator-revise-invalid run=$RUN_ID issue=#${selected_issue:-na}"
   fi
 
-  CURRENT_BRANCH="$(json_get "$RESULT_JSON" "branch")"
+  CURRENT_BRANCH="$(json_get "$GENERATOR_RESULT" "branch")"
 
   if ! run_agent "evaluator-revise-$revision_count" "$EVALUATOR_AGENT_ID" 600 "evaluator-$RUN_ID" "$(build_evaluator_message "$revision_count")"; then
     cleanup_branch "$CURRENT_BRANCH"

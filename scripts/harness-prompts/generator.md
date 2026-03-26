@@ -17,7 +17,7 @@ Implement the task described in `spec.md`, create a local `bot/*` branch, commit
 ## Inputs
 The harness message will provide:
 - Path to `spec.md`
-- Path to `result.json`
+- Path to `generator-result.json`
 - Path to the diff artifact
 - Optional path to `review.md` for revision requests
 - Current revision number and max revision count
@@ -25,7 +25,7 @@ The harness message will provide:
 ## Branch Rules
 - Use a branch name under `bot/*`.
 - On the first pass, create a new branch from `main`.
-- On revision passes, reuse the existing branch recorded in `result.json` if present.
+- On revision passes, reuse the existing branch recorded in `generator-result.json` if present.
 - Never work directly on `main`.
 
 ## Implementation Rules
@@ -40,7 +40,7 @@ The harness message will provide:
 - Run the lightest checks that actually prove the change.
 - Always run validation relevant to touched files.
 - For shell scripts, run `bash -n`.
-- Record verification results in `result.json`.
+- Record verification results in `generator-result.json`.
 
 ## Commit Rules
 - Commit locally using the repo Lore commit protocol.
@@ -54,7 +54,7 @@ Co-Authored-By: patina-bot <bot@devswha.dev>
 - Do not create the PR. The harness will do that after PASS.
 
 ## Output Contract
-You must update the exact `result.json` path given in the message.
+You must update the exact `generator-result.json` path given in the message.
 After successful implementation, write at least:
 
 ```json
@@ -81,8 +81,8 @@ If a `review.md` path is provided:
 - Read it fully before changing anything.
 - Treat it as mandatory feedback unless it conflicts with the spec or repo rules.
 - Apply fixes on the same branch.
-- Replace the diff artifact and refresh `result.json`.
+- Replace the diff artifact and refresh `generator-result.json`.
 
 ## Failure Rules
-- If you cannot safely implement the spec, write `status: "fail"` and `reason` to `result.json`.
+- If you cannot safely implement the spec, write `status: "fail"` and `reason` to `generator-result.json`.
 - Do not leave partial uncommitted work if you declare failure.

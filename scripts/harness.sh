@@ -183,7 +183,7 @@ collect_repo_state() {
 
   branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")"
   head="$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")"
-  if [ -n "$(git status --short 2>/dev/null)" ]; then
+  if [ -n "$(git diff --name-only 2>/dev/null)$(git diff --cached --name-only 2>/dev/null)" ]; then
     dirty="true"
   else
     dirty="false"
@@ -420,6 +420,7 @@ planner_status="$(json_get "$RESULT_JSON" "status" 2>/dev/null || echo "")"
 if [ "$planner_status" = "skip" ]; then
   skip_reason="$(json_get "$RESULT_JSON" "reason" 2>/dev/null || echo "No actionable tasks found")"
   notify "💤 patina 봇: 처리할 작업 없음 (대기)"
+  FINAL_STATUS="skip"
   finish_and_exit 0 "- Harness run at $(date +%H:%M): exit=0 status=skip run=$RUN_ID reason=$skip_reason"
 fi
 

@@ -7,9 +7,17 @@ set -euo pipefail
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
 REPO_DIR="/home/devswha/workspace/patina"
+ENV_FILE="${PATINA_ENV_FILE:-$REPO_DIR/.env}"
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+  set +a
+fi
+
 LOCK_FILE="/tmp/patina-bot.lock"
 LOG_DIR="$REPO_DIR/scripts/logs"
-DISCORD_CHANNEL="${DISCORD_CHANNEL:-DISCORD_CHANNEL}"
+DISCORD_CHANNEL="${DISCORD_CHANNEL:-}"
 PATINA_AGENT_ID="${PATINA_AGENT_ID:-patina}"
 PATINA_BOT_SESSION_ID="${PATINA_BOT_SESSION_ID:-patina-bot-cron}"
 DATE="$(date +%Y-%m-%d)"
@@ -33,6 +41,7 @@ notify() {
 
 # --- Pre-checks ---
 command -v openclaw >/dev/null 2>&1 || { echo "openclaw CLI를 찾을 수 없음"; exit 1; }
+[ -n "$DISCORD_CHANNEL" ] || { echo "DISCORD_CHANNEL이 필요합니다 (.env 또는 환경 변수 설정)" >&2; exit 1; }
 gh auth status >/dev/null 2>&1 || { notify "patina 봇: gh 인증 실패"; exit 1; }
 openclaw status >/dev/null 2>&1 || echo "WARNING: openclaw gateway may be down"
 

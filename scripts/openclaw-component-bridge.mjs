@@ -7,8 +7,37 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_DIR = resolve(__dirname, '..');
+
+function loadLocalEnv() {
+  const envPath = process.env.PATINA_ENV_FILE || resolve(REPO_DIR, '.env');
+  if (!existsSync(envPath)) return;
+
+  for (const rawLine of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+
+    const match = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (!match) continue;
+
+    const [, key, rawValue] = match;
+    if (process.env[key] !== undefined) continue;
+
+    let value = rawValue.trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"'))
+      || (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    process.env[key] = value;
+  }
+}
+
+loadLocalEnv();
+
 const STATE_FILE = process.env.COMPONENT_BRIDGE_STATE_FILE || resolve(REPO_DIR, '.omx/state/openclaw-component-bridge.json');
-const CHANNEL_ID = process.env.COMPONENT_BRIDGE_CHANNEL || process.env.DISCORD_CHANNEL || 'DISCORD_CHANNEL';
+const CHANNEL_ID = process.env.COMPONENT_BRIDGE_CHANNEL || process.env.DISCORD_CHANNEL || '';
 const AGENT_ID = process.env.PATINA_AGENT_ID || 'patina';
 const SESSION_PREFIX = process.env.COMPONENT_BRIDGE_SESSION_PREFIX || 'patina-component-bridge';
 const POLL_MS = Number.parseInt(process.env.COMPONENT_BRIDGE_POLL_MS || '4000', 10);
@@ -17,6 +46,10 @@ const TIMEOUT_SEC = Number.parseInt(process.env.COMPONENT_BRIDGE_TIMEOUT_SEC || 
 const ONCE = process.env.COMPONENT_BRIDGE_ONCE === 'true';
 const SEED_HISTORY = process.env.COMPONENT_BRIDGE_SEED_HISTORY !== 'false';
 const VERBOSE = process.env.COMPONENT_BRIDGE_VERBOSE === 'true';
+
+if (!CHANNEL_ID) {
+  throw new Error('DISCORD_CHANNEL 또는 COMPONENT_BRIDGE_CHANNEL이 필요합니다 (.env 또는 환경 변수 설정)');
+}
 
 function log(message) {
   console.log(`[component-bridge] ${message}`);

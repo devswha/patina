@@ -133,6 +133,9 @@ finish_and_exit() {
     append_daily_log "$summary"
   fi
 
+  # --- 항상 main으로 복귀 ---
+  git checkout main >/dev/null 2>&1 || true
+
   find "$LOG_DIR" -name "*.log" -mtime +30 -delete 2>/dev/null || true
   find "$ARTIFACT_ROOT" -mindepth 1 -maxdepth 1 -type d -mtime +30 -exec rm -rf {} + 2>/dev/null || true
 
@@ -279,6 +282,17 @@ const data = JSON.parse(fs.readFileSync(file, "utf8"));
 fs.writeFileSync(process.argv[2], (data.prBody || "") + "\n");
 ' "$RESULT_JSON" "$PR_BODY_FILE"
 
+  # --- rebase onto latest main before push ---
+  if ! git fetch origin main >/dev/null 2>&1; then
+    notify "❌ patina 봇: fetch origin main 실패 — PR 생성 중단"
+    return 1
+  fi
+  if ! git rebase origin/main >/dev/null 2>&1; then
+    git rebase --abort >/dev/null 2>&1 || true
+    notify "❌ patina 봇: rebase 충돌 — 브랜치 $branch, PR 생성 중단"
+    return 1
+  fi
+
   git push -u origin "$branch" >/dev/null
   PUSHED_BRANCH="true"
 
@@ -292,13 +306,17 @@ for (const label of labels) {
 }
 ' "$RESULT_JSON")
 
-  pr_url="$(gh pr create \
-    --base main \
-    --head "$branch" \
-    --title "$pr_title" \
-    --body-file "$PR_BODY_FILE" \
-    $(for label in "${label_args[@]}"; do printf -- '--label %q ' "$label"; done)
-  )"
+  local -a gh_args=(
+    --base main
+    --head "$branch"
+    --title "$pr_title"
+    --body-file "$PR_BODY_FILE"
+  )
+  for label in "${label_args[@]}"; do
+    gh_args+=(--label "$label")
+  done
+
+  pr_url="$(gh pr create "${gh_args[@]}")"
 
   PR_NUMBER="$(printf '%s' "$pr_url" | node -e '
 const input = require("fs").readFileSync(0, "utf8").trim();

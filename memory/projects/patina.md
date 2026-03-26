@@ -13,12 +13,19 @@
 - 영어 en-structure 팩 완성 (현재 placeholder)
 - ouroboros scoring 시스템 안정화
 
-## Autonomous Bot
+## Autonomous Bot — 3-Agent Harness
 
-- Status: active (hourly cron)
-- Mode: `AUTO_MERGE=false` (validation period)
+- Status: Phase 1 구현 완료, 첫 테스트 PASS
+- Architecture: Planner → Generator → Evaluator (하이브리드 통신)
+- Orchestrator: `scripts/harness.sh` (bot.sh deprecated)
+- Agents: `planner`, `generator`, `evaluator` (전부 Opus)
+- Prompts: `scripts/harness-prompts/{planner,generator,evaluator}.md`
+- Artifacts: `artifacts/harness/{run-id}/`
+- Design doc: `docs/harness-design.md`
+- Mode: `AUTO_MERGE=false`
 - Rules: `memory/topics/bot-rules.md`
 - Discord: channel 1484400552262762496
+- Known issue: harness.sh SIGKILL on first test (PR 생성 직전, 원인 미조사)
 
 ## Keep here
 

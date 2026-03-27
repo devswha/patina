@@ -21,7 +21,7 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detec
 **After** (humanized):
 > AI coding tools speed up grunt work. Config files, test scaffolding, that kind of thing. The problem is the code looks right even when it isn't. It compiles, passes lint, so you merge it -- then find out later it's doing something completely different from what you intended.
 
-52 patterns detected across Korean (28) and English (24). See the [full pattern list](#patterns) below.
+59 patterns detected across Korean (28) and English (31). See the [full pattern list](#patterns) below.
 
 ## Install
 
@@ -263,7 +263,7 @@ The skill loads language-specific pattern packs (`ko-*.md` or `en-*.md`) and app
 
 </details>
 
-### English (28 patterns)
+### English (31 patterns)
 
 Ported from [blader/humanizer](https://github.com/blader/humanizer), based on [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing).
 
@@ -413,7 +413,7 @@ patina/
 ├── core/scoring.md           # Scoring algorithm reference
 ├── patterns/
 │   ├── ko-*.md               # Korean patterns (6 packs, 28 patterns)
-│   └── en-*.md               # English patterns (6 packs, 28 patterns)
+│   └── en-*.md               # English patterns (6 packs, 31 patterns)
 ├── profiles/                 # Writing style profiles
 ├── examples/                 # Before/after test cases
 └── custom/                   # Your extensions (gitignored)

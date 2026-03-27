@@ -4,7 +4,7 @@
   "private": true,
   "description": "Runtime-managed automation for patina",
   "scripts": {
-    "bot": "bash ops/bot.sh",
+    "bot": "bash ops/harness.sh",
     "runtime:bootstrap": "bash ops/runtime-bootstrap.sh",
     "runtime:component-bridge": "node ops/component-bridge.mjs",
     "runtime:component-bridge:once": "COMPONENT_BRIDGE_ONCE=true COMPONENT_BRIDGE_SEED_HISTORY=false node ops/component-bridge.mjs",

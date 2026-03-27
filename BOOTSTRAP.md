@@ -26,7 +26,7 @@
 ## Autonomous Bot
 
 - Discord 대화는 runtime gateway가 직접 처리
-- Cron bot runs hourly via cron (`ops/bot.sh`)
+- Cron harness runs hourly via cron (`ops/harness.sh`)
 - Bot PRs are labeled `bot`
 - `AUTO_MERGE` env var controls merge behavior (default: `false`)
 - Bot rules: `memory/topics/bot-rules.md`

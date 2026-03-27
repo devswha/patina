@@ -68,14 +68,14 @@ $EDITOR .env
 # component-only bot 메시지 브리지 1회 점검
 npm run runtime:component-bridge:once
 
-# 수동 봇 실행
-./ops/bot.sh
+# 수동 harness 실행
+./ops/harness.sh
 
 # 봇 활동 확인
 cat memory/daily/$(date +%Y-%m-%d).md
 
 # Auto-merge 토글 (기본값: false)
-AUTO_MERGE=true ./ops/bot.sh
+AUTO_MERGE=true ./ops/harness.sh
 ```
 
 ## runtime 연동

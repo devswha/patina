@@ -67,7 +67,7 @@ After successful implementation, write at least:
   "prBody": "Markdown body",
   "labels": ["documentation", "bot"],
   "checks": [
-    "bash -n scripts/harness.sh"
+    "bash -n ops/harness.sh"
   ]
 }
 ```

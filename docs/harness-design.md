@@ -4,7 +4,7 @@
 
 ## 개요
 
-기존 단일 봇(`bot.sh` → `./scripts/runtime-cli.sh agent`)을 **Planner / Generator / Evaluator** 3에이전트 체제로 전환한다.
+기존 단일 봇(`bot.sh` → `./ops/runtime-cli.sh agent`)을 **Planner / Generator / Evaluator** 3에이전트 체제로 전환한다.
 각 에이전트는 독립 runtime agent로 등록되며, 오케스트레이터 스크립트가 실행 순서와 데이터 전달을 관리한다.
 
 ## 목표
@@ -22,7 +22,7 @@
 | 구성 요소 | 기술 | 버전 | 역할 |
 |---|---|---|---|
 | **오케스트레이터** | Bash | 5.1 | harness.sh — 파이프라인 제어, 에이전트 호출, 상태 관리 |
-| **에이전트 실행** | runtime CLI | 2026.2.9 | `./scripts/runtime-cli.sh agent --agent <id> --message <prompt>` |
+| **에이전트 실행** | runtime CLI | 2026.2.9 | `./ops/runtime-cli.sh agent --agent <id> --message <prompt>` |
 | **병렬 실행** (선택) | omx / tmux | 0.11.9 / 3.2a | Generator+Evaluator 병렬 가능 시 활용 |
 | **JSON 처리** | Node.js inline | 22.17.1 | `-e` one-liner로 result.json 파싱 (jq 미설치) |
 | **Git 관리** | git + gh CLI | 2.4.0 | 브랜치, PR 생성, 이슈 조회 |
@@ -40,7 +40,7 @@
 
 ```bash
 # 오케스트레이터가 에이전트 호출 (runtime 네이티브)
-./scripts/runtime-cli.sh agent --agent planner \
+./ops/runtime-cli.sh agent --agent planner \
   --message "분석할 이슈: $ISSUES. 스펙을 $RUN_DIR/spec.md에 작성해라."
 
 # 큰 데이터(spec, diff, review)는 파일로 전달
@@ -67,7 +67,7 @@ cat $RUN_DIR/result.json
                     │   cron 매 시간       │
                     └──────┬───────────────┘
                            │
-                    ./scripts/runtime-cli.sh agent --message
+                    ./ops/runtime-cli.sh agent --message
                     (호출은 runtime, 데이터는 파일)
                            │
               ┌────────────┼────────────────┐
@@ -251,7 +251,7 @@ Generator ←──── review.md ────── Evaluator
 ## 디렉토리 구조 변경
 
 ```
-scripts/
+ops/
 ├── harness.sh                    # 오케스트레이터 (bot.sh 대체)
 ├── harness-prompts/
 │   ├── planner.md                # Planner 에이전트 프롬프트
@@ -260,6 +260,7 @@ scripts/
 ├── bot.sh                        # (deprecated, harness.sh로 이관)
 ├── bot-prompt.md                 # (deprecated, harness-prompts/로 분리)
 ├── runtime-bootstrap.sh         # 수정: 3개 에이전트 등록 추가
+├── runtime-cli.sh               # Runtime CLI wrapper
 ├── component-bridge.mjs         # 변경 없음
 └── logs/
 
@@ -283,7 +284,7 @@ artifacts/
 # + 신규 3개:
 AGENTS=("planner" "generator" "evaluator")
 for agent_id in "${AGENTS[@]}"; do
-  ./scripts/runtime-cli.sh agents add "$agent_id" --non-interactive --workspace "$REPO_DIR"
+  ./ops/runtime-cli.sh agents add "$agent_id" --non-interactive --workspace "$REPO_DIR"
 done
 ```
 

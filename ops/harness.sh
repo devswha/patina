@@ -14,7 +14,7 @@ fi
 
 RUNTIME_CLI="${PATINA_RUNTIME_CLI:-}"
 LOCK_FILE="${LOCK_FILE:-/tmp/patina-bot.lock}"
-LOG_DIR="$REPO_DIR/scripts/logs"
+LOG_DIR="$REPO_DIR/ops/logs"
 ARTIFACT_ROOT="$REPO_DIR/artifacts/harness"
 DISCORD_CHANNEL="${DISCORD_CHANNEL:-}"
 AUTO_MERGE="${AUTO_MERGE:-false}"
@@ -216,7 +216,7 @@ process.stdout.write(JSON.stringify(payload, null, 2));
 build_planner_message() {
   local prompt_template open_issues recent_prs repo_state
 
-  prompt_template="$(<"$REPO_DIR/scripts/harness-prompts/planner.md")"
+  prompt_template="$(<"$REPO_DIR/ops/harness-prompts/planner.md")"
   open_issues="$(gh issue list --state open --limit 50 --json number,title,labels,createdAt,url 2>/dev/null || echo "[]")"
   recent_prs="$(gh pr list --state all --limit 5 --json number,title,state,mergedAt,headRefName,url 2>/dev/null || echo "[]")"
   repo_state="$(collect_repo_state)"
@@ -252,7 +252,7 @@ build_generator_message() {
   local revision_count="$1"
   local prompt_template repo_state spec review_summary
 
-  prompt_template="$(<"$REPO_DIR/scripts/harness-prompts/generator.md")"
+  prompt_template="$(<"$REPO_DIR/ops/harness-prompts/generator.md")"
   repo_state="$(collect_repo_state)"
   review_summary=""
 
@@ -288,7 +288,7 @@ build_evaluator_message() {
   local revision_count="$1"
   local prompt_template repo_state
 
-  prompt_template="$(<"$REPO_DIR/scripts/harness-prompts/evaluator.md")"
+  prompt_template="$(<"$REPO_DIR/ops/harness-prompts/evaluator.md")"
   repo_state="$(collect_repo_state)"
 
   cat <<EOF2
@@ -320,7 +320,7 @@ gh auth status >/dev/null 2>&1 || { notify "patina 봇: gh 인증 실패"; finis
 
 for required_agent in "$PLANNER_AGENT_ID" "$GENERATOR_AGENT_ID" "$EVALUATOR_AGENT_ID"; do
   if ! agent_exists "$required_agent"; then
-    notify "patina 봇: 에이전트 '$required_agent' 없음 (./scripts/runtime-bootstrap.sh 실행 필요)"
+    notify "patina 봇: 에이전트 '$required_agent' 없음 (./ops/runtime-bootstrap.sh 실행 필요)"
     finish_and_exit 1 "- Harness failed: missing agent $required_agent"
   fi
 done

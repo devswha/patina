@@ -6,7 +6,7 @@
 2. `CLAUDE.md` 읽기 — 운영 규칙 확인
 3. `TOOLS.md` 읽기 — 환경 정보 확인
 4. `npm run runtime:status` 확인 — gateway / Discord 채널 상태 확인
-5. 필요하면 `./scripts/runtime-bootstrap.sh` 실행 — patina 에이전트, Discord 라우팅, 기존 봇 토큰, component bridge 동기화
+5. 필요하면 `./ops/runtime-bootstrap.sh` 실행 — patina 에이전트, Discord 라우팅, 기존 봇 토큰, component bridge 동기화
    - 공개 레포에는 실제 Discord/runtime 식별자를 넣지 않음
    - 로컬 `.env`(gitignored)에 `DISCORD_CHANNEL`, `DISCORD_GUILD`, `DISCORD_ALLOWED_USERS` 저장
 6. GitHub 이슈/PR 상태 확인 — 미처리 항목 파악
@@ -26,7 +26,7 @@
 ## Autonomous Bot
 
 - Discord 대화는 runtime gateway가 직접 처리
-- Cron bot runs hourly via cron (`scripts/bot.sh`)
+- Cron bot runs hourly via cron (`ops/bot.sh`)
 - Bot PRs are labeled `bot`
 - `AUTO_MERGE` env var controls merge behavior (default: `false`)
 - Bot rules: `memory/topics/bot-rules.md`

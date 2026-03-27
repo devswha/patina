@@ -40,10 +40,16 @@ patina/
 ## Autonomous Bot
 
 ```
-scripts/
-├── bot.sh                  # Cron entrypoint: flock, runtime CLI agent, notifications
-├── bot-prompt.md           # Cron bot brain: task priority, quality gates, reporting
-├── runtime-bootstrap.sh    # runtime agent + Discord channel binding bootstrap
+ops/
+├── harness.sh              # 3-agent orchestrator (Planner → Generator → Evaluator)
+├── harness-prompts/        # Agent prompts for harness pipeline
+│   ├── planner.md
+│   ├── generator.md
+│   └── evaluator.md
+├── bot.sh                  # (deprecated) Single-agent cron entrypoint
+├── bot-prompt.md           # (deprecated) Single-agent bot brain
+├── runtime-bootstrap.sh    # Runtime agent + Discord channel binding bootstrap
+├── runtime-cli.sh          # Runtime CLI wrapper (reads .env)
 ├── component-bridge.mjs    # Component-only Discord bot messages → runtime relay
 ├── patina-component-bridge.service # User systemd unit for the component bridge
 └── logs/                   # Run logs (gitignored, rotated at 30 days)
@@ -57,19 +63,19 @@ $EDITOR .env
 
 ```bash
 # runtime 에이전트/Discord 라우팅 프로비저닝
-./scripts/runtime-bootstrap.sh
+./ops/runtime-bootstrap.sh
 
 # component-only bot 메시지 브리지 1회 점검
 npm run runtime:component-bridge:once
 
 # 수동 봇 실행
-./scripts/bot.sh
+./ops/bot.sh
 
 # 봇 활동 확인
 cat memory/daily/$(date +%Y-%m-%d).md
 
 # Auto-merge 토글 (기본값: false)
-AUTO_MERGE=true ./scripts/bot.sh
+AUTO_MERGE=true ./ops/bot.sh
 ```
 
 ## runtime 연동
@@ -79,10 +85,10 @@ AUTO_MERGE=true ./scripts/bot.sh
 npm run runtime:status
 
 # patina 워크스페이스를 Discord 채널에 바인딩
-./scripts/runtime-bootstrap.sh
+./ops/runtime-bootstrap.sh
 
 # 수동 알림 테스트
-./scripts/runtime-cli.sh message send --channel discord --target "channel:${DISCORD_CHANNEL}" --message "patina 테스트 알림"
+./ops/runtime-cli.sh message send --channel discord --target "channel:${DISCORD_CHANNEL}" --message "patina 테스트 알림"
 
 # component-only bot 메시지 브리지 상태
 npm run runtime:component-bridge:status
@@ -92,7 +98,7 @@ npm run runtime:component-bridge:status
 
 - Discord 연결은 runtime gateway가 담당하므로 별도 `discord.js` 리스너를 돌리지 않음
 - 실제 Discord/runtime 식별자와 토큰은 공개 레포에 두지 않고 로컬 `.env` 또는 홈 디렉터리 설정에서만 관리
-- `scripts/runtime-bootstrap.sh`는 정확한 Discord 채널 peer binding을 추가함
+- `ops/runtime-bootstrap.sh`는 정확한 Discord 채널 peer binding을 추가함
 - 가능하면 기존 `~/.clawhip/config.toml`의 Discord 토큰을 재사용해서 예전 봇 닉네임/권한을 그대로 이어감
-- component-only Discord bot posts는 `scripts/component-bridge.mjs`가 감지해서 `./scripts/runtime-cli.sh agent --deliver`로 릴레이함
-- stricter allowlist가 필요하면 `RUNTIME_ENFORCE_ALLOWLIST=true ./scripts/runtime-bootstrap.sh`
+- component-only Discord bot posts는 `ops/component-bridge.mjs`가 감지해서 `./ops/runtime-cli.sh agent --deliver`로 릴레이함
+- stricter allowlist가 필요하면 `RUNTIME_ENFORCE_ALLOWLIST=true ./ops/runtime-bootstrap.sh`

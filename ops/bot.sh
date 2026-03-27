@@ -17,7 +17,7 @@ fi
 
 RUNTIME_CLI="${PATINA_RUNTIME_CLI:-}"
 LOCK_FILE="/tmp/patina-bot.lock"
-LOG_DIR="$REPO_DIR/scripts/logs"
+LOG_DIR="$REPO_DIR/ops/logs"
 DISCORD_CHANNEL="${DISCORD_CHANNEL:-}"
 PATINA_AGENT_ID="${PATINA_AGENT_ID:-patina}"
 PATINA_BOT_SESSION_ID="${PATINA_BOT_SESSION_ID:-patina-bot-cron}"
@@ -56,7 +56,7 @@ process.stdin.on("end", () => {
   process.exit(ok ? 0 : 1);
 });
 ' "$PATINA_AGENT_ID"; then
-  notify "patina 봇: patina 에이전트가 없음 (./scripts/runtime-bootstrap.sh 실행 필요)"
+  notify "patina 봇: patina 에이전트가 없음 (./ops/runtime-bootstrap.sh 실행 필요)"
   exit 1
 fi
 
@@ -93,7 +93,7 @@ OPEN_ISSUES=$(gh issue list --state open --json number,title,labels 2>/dev/null 
 RECENT_PRS=$(gh pr list --state all --limit 5 --json number,title,state 2>/dev/null || echo "[]")
 
 # --- Read and assemble prompt via heredoc (prevents injection) ---
-PROMPT_TEMPLATE=$(cat "$REPO_DIR/scripts/bot-prompt.md")
+PROMPT_TEMPLATE=$(cat "$REPO_DIR/ops/bot-prompt.md")
 ASSEMBLED_PROMPT=$(cat <<PROMPT_EOF
 $PROMPT_TEMPLATE
 

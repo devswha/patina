@@ -17,9 +17,9 @@
 
 - Status: Phase 1 구현 완료, 첫 테스트 PASS
 - Architecture: Planner → Generator → Evaluator (하이브리드 통신)
-- Orchestrator: `scripts/harness.sh` (bot.sh deprecated)
+- Orchestrator: `ops/harness.sh` (bot.sh deprecated)
 - Agents: `planner`, `generator`, `evaluator` (전부 Opus)
-- Prompts: `scripts/harness-prompts/{planner,generator,evaluator}.md`
+- Prompts: `ops/harness-prompts/{planner,generator,evaluator}.md`
 - Artifacts: `artifacts/harness/{run-id}/`
 - Design doc: `docs/harness-design.md`
 - Mode: `AUTO_MERGE=false`

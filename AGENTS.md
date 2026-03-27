@@ -42,9 +42,9 @@ For bot or automation work, also read:
 
 ## Runtime notes
 - Discord ingress is handled by the runtime gateway, not a custom `discord.js` listener.
-- `scripts/runtime-bootstrap.sh` provisions the `patina` runtime agent and binds the dedicated Discord channel to this workspace.
-- component-only Discord bot posts are relayed by `scripts/component-bridge.mjs`.
-- `scripts/bot.sh` runs the autonomous cron bot through `./scripts/runtime-cli.sh agent`.
+- `ops/runtime-bootstrap.sh` provisions the `patina` runtime agent and binds the dedicated Discord channel to this workspace.
+- component-only Discord bot posts are relayed by `ops/component-bridge.mjs`.
+- `ops/bot.sh` runs the autonomous cron bot through `./ops/runtime-cli.sh agent`.
 
 ## Commit protocol
 Use Lore-style commit messages when committing:

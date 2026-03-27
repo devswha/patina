@@ -8,7 +8,7 @@ The bot reads this file before each run to avoid repeating mistakes.
 ### 2026-03-25: cron PATH 미설정으로 5일간 무음 장애
 - **증상:** 봇이 매시간 실행되지만 런타임 CLI를 찾지 못해 즉시 종료
 - **원인:** CLI가 `~/.local/bin/` 또는 nvm bin PATH에 있지만, cron의 최소 PATH(`/usr/bin:/usr/local/bin`)에 미포함
-- **왜 못 잡았나:** 수동 테스트(`./scripts/bot.sh`)는 터미널의 full PATH에서 실행되어 문제 없었음. `env -i` 시뮬레이션 검증을 계획했지만 실행하지 않음
+- **왜 못 잡았나:** 수동 테스트(`./ops/bot.sh`)는 터미널의 full PATH에서 실행되어 문제 없었음. `env -i` 시뮬레이션 검증을 계획했지만 실행하지 않음
 - **이중 장애:** 알림 전송 경로까지 비정상이면 실패 자체가 조용히 묻힐 수 있음
 - **교훈:**
   1. cron용 스크립트는 반드시 `env -i`로 최소 환경 테스트할 것

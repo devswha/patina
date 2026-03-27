@@ -168,7 +168,7 @@ fi
 if command -v systemctl >/dev/null 2>&1; then
   echo "[bootstrap] installing component-only bot bridge service"
   mkdir -p "$SYSTEMD_USER_DIR"
-  install -m 644 "$REPO_DIR/scripts/patina-component-bridge.service" "$SYSTEMD_USER_DIR/$COMPONENT_BRIDGE_SERVICE"
+  install -m 644 "$REPO_DIR/ops/patina-component-bridge.service" "$SYSTEMD_USER_DIR/$COMPONENT_BRIDGE_SERVICE"
   systemctl --user daemon-reload
   systemctl --user enable --now "$COMPONENT_BRIDGE_SERVICE" >/dev/null
 fi

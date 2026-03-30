@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>gstack 카드뉴스 초안</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --panel: #1d1d1d;
+      --panel-2: #232323;
+      --text: #f5f5f5;
+      --muted: #b8b8b8;
+      --accent: #b8ff01;
+      --border: rgba(255,255,255,0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Pretendard, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0b0b0b;
+      color: var(--text);
+      line-height: 1.6;
+      padding: 24px;
+    }
+    .deck {
+      display: grid;
+      gap: 28px;
+      justify-content: center;
+    }
+    .slide {
+      width: 1080px;
+      min-height: 1350px;
+      background: linear-gradient(180deg, var(--panel), var(--bg));
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 64px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+    }
+    .eyebrow {
+      color: var(--accent);
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    h1, h2 {
+      margin: 0 0 20px;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+    h1 { font-size: 92px; }
+    h2 { font-size: 74px; }
+    .subtitle {
+      font-size: 34px;
+      color: var(--muted);
+      margin-bottom: 40px;
+      max-width: 820px;
+    }
+    .hero {
+      font-size: 42px;
+      font-weight: 700;
+      max-width: 860px;
+    }
+    ul {
+      margin: 0;
+      padding-left: 28px;
+      font-size: 34px;
+    }
+    li + li { margin-top: 14px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 30px;
+    }
+    .card {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 24px 28px;
+    }
+    .card strong {
+      color: var(--accent);
+      display: block;
+      font-size: 22px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .card p {
+      margin: 0;
+      font-size: 29px;
+      color: var(--text);
+    }
+    .footer {
+      position: absolute;
+      left: 64px;
+      right: 64px;
+      bottom: 44px;
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 20px;
+    }
+    .accent-box {
+      margin-top: 28px;
+      padding: 24px 28px;
+      border-radius: 22px;
+      background: rgba(184,255,1,0.08);
+      border: 1px solid rgba(184,255,1,0.18);
+      font-size: 31px;
+      font-weight: 700;
+    }
+    .numbers {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 34px;
+    }
+    .number {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 28px;
+    }
+    .number .value {
+      font-size: 54px;
+      font-weight: 900;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+    .number .label {
+      font-size: 24px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="deck">
+    <section class="slide">
+      <div class="eyebrow">Github Repo Review</div>
+      <h1>gstack</h1>
+      <p class="subtitle">Claude Code를 팀처럼 쓰는 법</p>
+      <p class="hero">프롬프트 몇 개 더 붙이는 얘기가 아니다. 역할, 순서, 검토 루프를 통째로 세팅하는 방식이다.</p>
+      <div class="footer"><span>garrytan/gstack</span><span>1 / 7</span></div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Problem</div>
+      <h2>AI 코딩이 자꾸<br>어긋나는 이유</h2>
+      <div class="grid">
+        <div class="card"><strong>Role</strong><p>역할이 없으면 모델은 그냥 범용 답변기로 돌아간다.</p></div>
+        <div class="card"><strong>Review</strong><p>리뷰가 없으면 돌아가는 코드와 안전한 코드를 구분 못 한다.</p></div>
+        <div class="card"><strong>QA</strong><p>QA가 없으면 결국 사람 손으로 다시 확인하게 된다.</p></div>
+        <div class="card"><strong>Process</strong><p>순서가 없으면 아이디어가 바로 구현으로 튀어서 방향이 흔들린다.</p></div>
+      </div>
+      <div class="accent-box">모델보다 운영 방식이 더 중요하다.</div>
+      <div class="footer"><span>gstack cardnews draft</span><span>2 / 7</span></div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">What it does</div>
+      <h2>Claude Code를<br>역할 분리된 팀으로</h2>
+      <div class="grid">
+        <div class="card"><strong>/office-hours</strong><p>문제 자체를 다시 정의한다.</p></div>
+        <div class="card"><strong>/plan-ceo-review</strong><p>범위를 다시 보고 제품 방향을 점검한다.</p></div>
+        <div class="card"><strong>/plan-eng-review</strong><p>설계, 에러 경로, 테스트를 고정한다.</p></div>
+        <div class="card"><strong>/review</strong><p>CI는 통과하지만 프로덕션에서 터질 문제를 찾는다.</p></div>
+        <div class="card"><strong>/qa</strong><p>실제 브라우저로 클릭하며 확인한다.</p></div>
+        <div class="card"><strong>/ship</strong><p>PR과 릴리즈까지 마무리한다.</p></div>
+      </div>
+      <div class="footer"><span>핵심은 역할 분리</span><span>3 / 7</span></div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Process</div>
+      <h2>도구 모음보다<br>프로세스에 가깝다</h2>
+      <div class="numbers">
+        <div class="number"><div class="value">Think</div><div class="label">아이디어를 다시 본다</div></div>
+        <div class="number"><div class="value">Plan</div><div class="label">범위와 구조를 고정한다</div></div>
+        <div class="number"><div class="value">Build</div><div class="label">그 다음에 구현한다</div></div>
+      </div>
+      <div class="numbers">
+        <div class="number"><div class="value">Review</div><div class="label">버그와 누락을 잡는다</div></div>
+        <div class="number"><div class="value">Test</div><div class="label">브라우저와 회귀 검증을 붙인다</div></div>
+        <div class="number"><div class="value">Ship</div><div class="label">배포 후 회고까지 이어진다</div></div>
+      </div>
+      <div class="accent-box">각 스킬이 다음 단계의 입력을 만든다. 그래서 흐름이 끊기지 않는다.</div>
+      <div class="footer"><span>Think → Plan → Build → Review → Test → Ship → Reflect</span><span>4 / 7</span></div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Why people watch it</div>
+      <h2>숫자보다<br>주장 구조가 세다</h2>
+      <ul>
+        <li>README 기준 최근 60일 생산 코드 60만+ 라인</li>
+        <li>테스트 비중 35%</li>
+        <li>하루 1만~2만 라인 주장</li>
+        <li>1주일 362 commits, 140,751 lines added</li>
+      </ul>
+      <div class="accent-box">중요한 건 숫자 자체보다, 역할 분리와 리뷰 루프를 붙였더니 처리량이 올라갔다는 서사다.</div>
+      <p class="subtitle">주의: 위 수치는 외부 검증치가 아니라 gstack README의 자기 보고 기준이다.</p>
+      <div class="footer"><span>README self-reported metrics</span><span>5 / 7</span></div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Why Codex users care</div>
+      <h2>Claude 전용에서<br>안 멈춘다</h2>
+      <div class="grid">
+        <div class="card"><strong>Standard</strong><p>README는 SKILL.md 표준을 지원하는 에이전트로 확장 가능하다고 설명한다.</p></div>
+        <div class="card"><strong>Hosts</strong><p>Codex, Gemini CLI, Cursor 설치 경로를 별도로 안내한다.</p></div>
+        <div class="card"><strong>Codex install</strong><p><code>.agents/skills/gstack</code>에 clone 후 <code>./setup --host codex</code>.</p></div>
+        <div class="card"><strong>Takeaway</strong><p>워크플로우 자체를 다른 에이전트로 이식하려는 시도다.</p></div>
+      </div>
+      <div class="footer"><span>repo metadata checked 2026-03-27 UTC</span><span>6 / 7</span></div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Takeaway</div>
+      <h2>AI를 잘 쓰는 건<br>모델 선택이 끝이 아니다</h2>
+      <ul>
+        <li>역할을 나누고</li>
+        <li>순서를 고정하고</li>
+        <li>리뷰와 QA를 붙여야 한다</li>
+      </ul>
+      <div class="accent-box">AI가 자꾸 엉뚱한 방향으로 가면, gstack README의 Quick start부터 읽어볼 만하다.</div>
+      <p class="subtitle">2026-03-27 UTC 기준 GitHub: Stars 50,844 · Forks 6,519 · License MIT</p>
+      <div class="footer"><span>https://github.com/garrytan/gstack</span><span>7 / 7</span></div>
+    </section>
+  </main>
+</body>
+</html>

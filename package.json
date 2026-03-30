@@ -5,6 +5,10 @@
   "description": "Runtime-managed automation for patina",
   "scripts": {
     "bot": "bash ops/harness.sh",
+    "marketing:runtime:bootstrap": "bash ops/marketing-runtime-bootstrap.sh",
+    "marketing:runtime:status": "bash ops/marketing-runtime-cli.sh status",
+    "marketing:runtime:restart": "bash ops/marketing-runtime-cli.sh gateway restart",
+    "marketing:runtime:logs": "bash ops/marketing-runtime-cli.sh logs --follow",
     "runtime:bootstrap": "bash ops/runtime-bootstrap.sh",
     "runtime:component-bridge": "node ops/component-bridge.mjs",
     "runtime:component-bridge:once": "COMPONENT_BRIDGE_ONCE=true COMPONENT_BRIDGE_SEED_HISTORY=false node ops/component-bridge.mjs",

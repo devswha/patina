@@ -9,6 +9,7 @@
 5. 필요하면 `./ops/runtime-bootstrap.sh` 실행 — patina 에이전트, Discord 라우팅, 기존 봇 토큰, component bridge 동기화
    - 공개 레포에는 실제 Discord/runtime 식별자를 넣지 않음
    - 로컬 `.env`(gitignored)에 `DISCORD_CHANNEL`, `DISCORD_GUILD`, `DISCORD_ALLOWED_USERS` 저장
+   - 마케팅 봇을 분리할 때는 `./ops/marketing-runtime-bootstrap.sh` 사용 (별도 OpenClaw profile)
 6. GitHub 이슈/PR 상태 확인 — 미처리 항목 파악
 
 ## 프로젝트 경로

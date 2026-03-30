@@ -48,6 +48,9 @@ ops/
 │   └── evaluator.md
 ├── bot.sh                  # (deprecated) Single-agent cron entrypoint
 ├── bot-prompt.md           # (deprecated) Single-agent bot brain
+├── marketing-workspace-template/ # Seed files for isolated marketing workspace
+├── marketing-runtime-bootstrap.sh # Isolated marketing runtime bootstrap
+├── marketing-runtime-cli.sh # OpenClaw wrapper for marketing profile
 ├── runtime-bootstrap.sh    # Runtime agent + Discord channel binding bootstrap
 ├── runtime-cli.sh          # Runtime CLI wrapper (reads .env)
 ├── component-bridge.mjs    # Component-only Discord bot messages → runtime relay
@@ -64,6 +67,9 @@ $EDITOR .env
 ```bash
 # runtime 에이전트/Discord 라우팅 프로비저닝
 ./ops/runtime-bootstrap.sh
+
+# 마케팅 봇 전용 profile 프로비저닝
+./ops/marketing-runtime-bootstrap.sh
 
 # component-only bot 메시지 브리지 1회 점검
 npm run runtime:component-bridge:once
@@ -84,8 +90,14 @@ AUTO_MERGE=true ./ops/harness.sh
 # 상태 확인
 npm run runtime:status
 
+# 마케팅 봇 상태 확인 (별도 profile)
+npm run marketing:runtime:status
+
 # patina 워크스페이스를 Discord 채널에 바인딩
 ./ops/runtime-bootstrap.sh
+
+# 마케팅 봇을 별도 OpenClaw profile에 바인딩
+./ops/marketing-runtime-bootstrap.sh
 
 # 수동 알림 테스트
 ./ops/runtime-cli.sh message send --channel discord --target "channel:${DISCORD_CHANNEL}" --message "patina 테스트 알림"
@@ -99,6 +111,8 @@ npm run runtime:component-bridge:status
 - Discord 연결은 runtime gateway가 담당하므로 별도 `discord.js` 리스너를 돌리지 않음
 - 실제 Discord/runtime 식별자와 토큰은 공개 레포에 두지 않고 로컬 `.env` 또는 홈 디렉터리 설정에서만 관리
 - `ops/runtime-bootstrap.sh`는 정확한 Discord 채널 peer binding을 추가함
+- `ops/marketing-runtime-bootstrap.sh`는 `--profile marketing` 기반 별도 OpenClaw 상태/설정과 기본 gateway port `18889`로 마케팅 봇을 분리함
+- 마케팅 봇은 별도 workspace(`~/.openclaw-marketing/workspace` 기본값)에 템플릿 파일을 심어 `개발가재`와 다른 정체성을 유지함
 - 가능하면 기존 `~/.clawhip/config.toml`의 Discord 토큰을 재사용해서 예전 봇 닉네임/권한을 그대로 이어감
 - component-only Discord bot posts는 `ops/component-bridge.mjs`가 감지해서 `./ops/runtime-cli.sh agent --deliver`로 릴레이함
 - stricter allowlist가 필요하면 `RUNTIME_ENFORCE_ALLOWLIST=true ./ops/runtime-bootstrap.sh`

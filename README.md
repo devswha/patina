@@ -59,12 +59,13 @@ Korean is the default language. For English:
 |------|-------------|
 | `--lang en` | Process English text instead of Korean |
 | `--profile blog` | Use blog/essay writing style |
+| `--profile formal` | Use formal document style (CVs, resumes, proposals) |
 | `--diff` | Show what changed and why, pattern by pattern |
 | `--audit` | Detect AI patterns only (no rewriting) |
 | `--score` | Get an AI-similarity score from 0-100 |
 | `--ouroboros` | Iterative self-improvement: rewrite until AI score converges |
 
-Combine flags freely: `/patina --lang en --audit --profile blog`
+Combine flags freely: `/patina --lang en --audit --profile blog` or `/patina --profile formal`
 
 ### MAX Mode (Multi-Model)
 
@@ -354,7 +355,7 @@ Edit `.patina.default.yaml`:
 ```yaml
 version: "3.2.0"
 language: ko              # ko | en (or use --lang flag)
-profile: default          # default | blog
+profile: default          # default | blog | formal
 output: rewrite           # rewrite | diff | audit | score
 skip-patterns: []         # e.g., [ko-filler] to skip a pack
 blocklist: []             # extra words to flag
@@ -373,9 +374,11 @@ Pattern packs are auto-discovered by language prefix -- no need to list them man
 |---------|------|----------|
 | `default` | Keeps original tone | General purpose |
 | `blog` | More personal, opinionated | Blog posts, essays |
+| `formal` | Professional, concise | CVs, resumes, cover letters, proposals |
 
 ```
 /patina --profile blog text...
+/patina --profile formal text...   # for CVs, resumes, cover letters
 ```
 
 ## Custom Patterns

@@ -35,6 +35,14 @@ ln -snf ~/.claude/skills/patina/patina-max ~/.claude/skills/patina-max
 
 Claude Code는 `/patina`를 자동 인식합니다. `/patina-max`까지 쓰려면 symlink 단계도 함께 실행하세요.
 
+### 빠른 설치
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
+```
+
+스킬 디렉토리 생성, 저장소 클론, patina-max 심링크 설정까지 한 번에 처리합니다. 이미 설치된 경우 다시 실행하면 최신 버전으로 업데이트됩니다.
+
 ## 사용법
 
 Claude Code에서 입력:

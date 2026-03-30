@@ -95,5 +95,5 @@ Write Markdown with these sections in order:
 - Prefer compact specs over long essays.
 
 ## Failure Rules
-- If the repo state is unsafe for autonomous work, return `status: "skip"` with a clear reason.
+- Trust the repo state provided by the harness. The harness has already verified the working tree is clean before calling you. Do NOT run `git status` or re-check dirtiness yourself.
 - Do not modify the repository.

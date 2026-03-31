@@ -91,26 +91,60 @@ en-{패턴번호}-{판정}-{순번}.md       ← 영어 패턴
 |------|------|------|------|
 | `en-01-success-01.md` | en #1 Undue Emphasis | Success | Software update inflated to "groundbreaking paradigm shift" |
 | `en-01-failure-01.md` | en #1 Undue Emphasis | Failure (false positive) | Apollo 11 described with proportionate "turning point" |
+| `en-02-success-01.md` | en #2 Notability/Media Inflation | Success | Unnamed "widespread acclaim" for local bakery → specific review |
+| `en-02-failure-01.md` | en #2 Notability/Media Inflation | Failure (false positive) | Nobel laureate with specific citation count and named publications |
 | `en-03-success-01.md` | en #3 Superficial -ing Analyses | Success | 4+ "-ing" chains with no causal depth → concrete findings |
 | `en-03-failure-01.md` | en #3 Superficial -ing Analyses | Failure (false positive) | Participles with genuine causal connections |
 | `en-04-success-01.md` | en #4 Promotional Language | Success | Promotional adjectives in editorial prose → factual rewrite |
 | `en-04-failure-01.md` | en #4 Promotional Language | Failure (false positive) | Promotional language inside direct quotation being analyzed |
+| `en-05-success-01.md` | en #5 Vague Attributions | Success | "Experts say", "studies show" with no named sources → specific citations |
+| `en-05-failure-01.md` | en #5 Vague Attributions | Failure (false positive) | "Doctors recommend exercise" — established medical consensus |
+| `en-06-success-01.md` | en #6 Challenges and Prospects | Success | Generic challenge-then-optimism formula → specific obstacles and timelines |
+| `en-06-failure-01.md` | en #6 Challenges and Prospects | Failure (false positive) | Specific uncertainty with concrete caveats and contingency plans |
 | `en-07-success-01.md` | en #7 AI Vocabulary Words | Success | 15 watch-list words in 2 sentences → concrete findings |
 | `en-07-failure-01.md` | en #7 AI Vocabulary Words | Failure (false positive) | Single "robust" in data-dense research text |
 | `en-08-success-01.md` | en #8 Copula Avoidance | Success | Multiple "serves as" circumlocutions → direct verbs |
 | `en-08-failure-01.md` | en #8 Copula Avoidance | Failure (false positive) | "Serves as" describing formal institutional role |
+| `en-09-success-01.md` | en #9 Negative Parallelisms | Success | 2+ "not just X but Y" structures → direct positive statements |
+| `en-09-failure-01.md` | en #9 Negative Parallelisms | Failure (false positive) | Genuine contrastive clarification correcting a misconception |
+| `en-10-success-01.md` | en #10 Rule of Three | Success | 3 triple-item lists in one text → natural item counts |
+| `en-10-failure-01.md` | en #10 Rule of Three | Failure (false positive) | Genuinely three-part process (setup, measurement, analysis) |
+| `en-11-success-01.md` | en #11 Synonym Cycling | Success | Same city called 4 different names in one paragraph → consistent term |
+| `en-11-failure-01.md` | en #11 Synonym Cycling | Failure (false positive) | Parent/subsidiary distinction (Alphabet vs Google vs DeepMind) |
+| `en-12-success-01.md` | en #12 False Ranges | Success | Decorative "from X to Y" ranges → concrete specifics |
+| `en-12-failure-01.md` | en #12 False Ranges | Failure (false positive) | Genuine numeric and temporal ranges in clinical study |
 | `en-13-success-01.md` | en #13 Em Dash Overuse | Success | 3+ em dashes in one paragraph → varied punctuation |
 | `en-13-failure-01.md` | en #13 Em Dash Overuse | Failure (false positive) | Single em dash for literary dramatic pause |
+| `en-14-success-01.md` | en #14 Boldface Overuse | Success | 6+ bold terms in flowing prose → plain text |
+| `en-14-failure-01.md` | en #14 Boldface Overuse | Failure (false positive) | UI documentation with bold for button/menu names |
+| `en-15-success-01.md` | en #15 Inline-Header Lists | Success | "**Label:** description" bullets in article → flowing prose |
+| `en-15-failure-01.md` | en #15 Inline-Header Lists | Failure (false positive) | API parameter documentation with label-description format |
+| `en-16-success-01.md` | en #16 Title Case Headings | Success | Every content word capitalized → sentence case |
+| `en-16-failure-01.md` | en #16 Title Case Headings | Failure (false positive) | Proper nouns and brand names in heading (Google Cloud Platform) |
+| `en-17-success-01.md` | en #17 Emojis | Success | Emoji section markers in business report → plain text headings |
+| `en-17-failure-01.md` | en #17 Emojis | Failure (false positive) | Social media copy with deliberate emoji use |
+| `en-18-success-01.md` | en #18 Curly Quotation Marks | Success | Curly quotes in code/config context → straight quotes |
+| `en-18-failure-01.md` | en #18 Curly Quotation Marks | Failure (false positive) | Curly quotes in narrative literary prose (typographically correct) |
 | `en-19-success-01.md` | en #19 Collaborative Communication | Success | Chatbot phrases in editorial content → direct prose |
 | `en-19-failure-01.md` | en #19 Collaborative Communication | Failure (false positive) | Chatbot phrases quoted as UX research objects |
+| `en-20-success-01.md` | en #20 Knowledge-Cutoff Disclaimers | Success | AI self-reference in editorial content → dated source citation |
+| `en-20-failure-01.md` | en #20 Knowledge-Cutoff Disclaimers | Failure (false positive) | Technical paper about AI model where training cutoff is the subject |
 | `en-21-success-01.md` | en #21 Sycophantic Tone | Success | Flattery before substantive content → direct start |
 | `en-21-failure-01.md` | en #21 Sycophantic Tone | Failure (false positive) | "Great question" in attributed direct dialogue |
 | `en-22-success-01.md` | en #22 Filler Phrases | Success | Multiple filler phrases → concise rewrite |
 | `en-22-failure-01.md` | en #22 Filler Phrases | Failure (false positive) | "In order to" in legal/regulatory context |
+| `en-23-success-01.md` | en #23 Excessive Hedging | Success | 6+ stacked qualifiers on one claim → direct statement |
+| `en-23-failure-01.md` | en #23 Excessive Hedging | Failure (false positive) | Single appropriate hedge on genuinely uncertain medical claim |
+| `en-24-success-01.md` | en #24 Vague Positive Conclusions | Success | 3 vague optimism phrases with zero specifics → concrete plans |
+| `en-24-failure-01.md` | en #24 Vague Positive Conclusions | Failure (false positive) | Specific optimism backed by trial data and timeline |
 | `en-25-success-01.md` | en #25 Metronomic Paragraph Structure | Success | 3+ identical paragraph templates → varied structure |
 | `en-25-failure-01.md` | en #25 Metronomic Paragraph Structure | Failure (false positive) | Repeated structure in comparative product review |
 | `en-26-success-01.md` | en #26 Passive Nominalization Chains | Success | 2+ passive nominalizations → active verbs |
 | `en-26-failure-01.md` | en #26 Passive Nominalization Chains | Failure (false positive) | Passive voice in scientific methods section |
+| `en-27-success-01.md` | en #27 Zombie Nouns | Success | 5+ nominalized verb phrases → active verbs |
+| `en-27-failure-01.md` | en #27 Zombie Nouns | Failure (false positive) | Legal text where noun forms carry specific technical meaning |
+| `en-28-success-01.md` | en #28 Stacked Subordinate Clauses | Success | 4+ embedded clauses before main verb → split into clear sentences |
+| `en-28-failure-01.md` | en #28 Stacked Subordinate Clauses | Failure (false positive) | Patent claim language requiring nested qualification by convention |
 
 ## 패턴 팩 참조
 

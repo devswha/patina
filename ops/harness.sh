@@ -134,7 +134,9 @@ agent_exists() {
 let data = "";
 process.stdin.on("data", (chunk) => data += chunk);
 process.stdin.on("end", () => {
-  const list = JSON.parse(data || "[]");
+  let list;
+  try { list = JSON.parse(data || "[]"); } catch { process.exit(1); }
+  if (!Array.isArray(list)) process.exit(1);
   const ok = list.some((agent) => agent && agent.id === process.argv[1]);
   process.exit(ok ? 0 : 1);
 });
@@ -314,7 +316,10 @@ EOF2
 notify "🔍 patina 봇: harness 시작"
 
 command -v gh >/dev/null 2>&1 || { notify "patina 봇: gh CLI를 찾을 수 없음"; finish_and_exit 1 "- Harness failed: gh CLI missing"; }
-"$RUNTIME_CLI" status >/dev/null 2>&1 || echo "WARNING: runtime gateway may be down"
+if ! "$RUNTIME_CLI" status >/dev/null 2>&1; then
+  echo "Gateway unreachable — aborting" >> "$LOG_FILE"
+  finish_and_exit 0 "- Harness skipped: gateway unreachable"
+fi
 
 gh auth status >/dev/null 2>&1 || { notify "patina 봇: gh 인증 실패"; finish_and_exit 1 "- Harness failed: gh auth missing"; }
 

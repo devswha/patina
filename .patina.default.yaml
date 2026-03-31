@@ -19,7 +19,7 @@ patterns:
   - ko-filler
 
 # English packs (auto-discovered when language: en):
-#   - en-structure (placeholder, 0 patterns)
+#   - en-structure (4 patterns: #25-28)
 #   - en-content
 #   - en-language
 #   - en-style

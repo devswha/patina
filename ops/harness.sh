@@ -426,6 +426,19 @@ fi
 
 CURRENT_BRANCH="bot/${RUN_ID}"
 
+# Clean up generator's working-tree leftovers (untracked/modified files)
+# before creating the harness branch and applying the diff cleanly.
+# Exclude memory/ and .openclaw/ which contain runtime state.
+git checkout main >/dev/null 2>&1 || true
+# Delete any bot/* branches the generator created during this run
+while IFS= read -r branch; do
+  branch="${branch#"${branch%%[![:space:]]*}"}"
+  [ -n "$branch" ] || continue
+  git branch -D "$branch" >/dev/null 2>&1 || true
+done < <(git branch --list 'bot/*' 2>/dev/null)
+git clean -fd --exclude='memory/' --exclude='.openclaw/' >/dev/null 2>&1 || true
+git checkout -- . >/dev/null 2>&1 || true
+
 git checkout -b "$CURRENT_BRANCH" >/dev/null 2>&1 || git checkout "$CURRENT_BRANCH" >/dev/null 2>&1
 if [ -f "$DIFF_PATH" ]; then
   git apply "$DIFF_PATH"

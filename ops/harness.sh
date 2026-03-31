@@ -53,6 +53,8 @@ on_unexpected_exit() {
   local exit_code=$?
   cd "$REPO_DIR" 2>/dev/null || true
   git checkout main >/dev/null 2>&1 || true
+  git clean -fd --exclude='memory/' --exclude='.openclaw/' >/dev/null 2>&1 || true
+  git checkout -- . >/dev/null 2>&1 || true
   if [ "$FINAL_STATUS" = "failure" ]; then
     echo "UNEXPECTED EXIT (code=$exit_code) at $(date +%H:%M:%S)" >> "$LOG_FILE" 2>/dev/null || true
     "$RUNTIME_CLI" message send --channel discord --target "channel:${DISCORD_CHANNEL}" \
@@ -163,8 +165,10 @@ finish_and_exit() {
     append_daily_log "$summary"
   fi
 
-  # --- 항상 main으로 복귀 ---
+  # --- 항상 main으로 복귀 + 작업 트리 정리 ---
   git checkout main >/dev/null 2>&1 || true
+  git clean -fd --exclude='memory/' --exclude='.openclaw/' >/dev/null 2>&1 || true
+  git checkout -- . >/dev/null 2>&1 || true
 
   find "$LOG_DIR" -name "*.log" -mtime +30 -delete 2>/dev/null || true
   find "$ARTIFACT_ROOT" -mindepth 1 -maxdepth 1 -type d -mtime +30 -exec rm -rf {} + 2>/dev/null || true

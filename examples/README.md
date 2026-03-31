@@ -91,14 +91,28 @@ en-{패턴번호}-{판정}-{순번}.md       ← 영어 패턴
 |------|------|------|------|
 | `en-01-success-01.md` | en #1 Undue Emphasis | Success | Software update inflated to "groundbreaking paradigm shift" |
 | `en-01-failure-01.md` | en #1 Undue Emphasis | Failure (false positive) | Apollo 11 described with proportionate "turning point" |
+| `en-02-success-01.md` | en #2 Undue Notability/Media | Success | Five unsourced notability claims → named outlet + metrics |
+| `en-02-failure-01.md` | en #2 Undue Notability/Media | Failure (false positive) | Sundance premiere with named prize, distributor, dates, and box office |
 | `en-03-success-01.md` | en #3 Superficial -ing Analyses | Success | 4+ "-ing" chains with no causal depth → concrete findings |
 | `en-03-failure-01.md` | en #3 Superficial -ing Analyses | Failure (false positive) | Participles with genuine causal connections |
 | `en-04-success-01.md` | en #4 Promotional Language | Success | Promotional adjectives in editorial prose → factual rewrite |
 | `en-04-failure-01.md` | en #4 Promotional Language | Failure (false positive) | Promotional language inside direct quotation being analyzed |
+| `en-05-success-01.md` | en #5 Vague Attributions | Success | Four unnamed authorities → named sources + concrete figures |
+| `en-05-failure-01.md` | en #5 Vague Attributions | Failure (false positive) | Pediatric fever advice with specific clinical thresholds |
+| `en-06-success-01.md` | en #6 Formulaic Challenges/Prospects | Success | Generic challenges-then-hope formula → specific bottleneck + data |
+| `en-06-failure-01.md` | en #6 Formulaic Challenges/Prospects | Failure (false positive) | Startup hiring challenge with quantified fix and conditional deadline |
 | `en-07-success-01.md` | en #7 AI Vocabulary Words | Success | 15 watch-list words in 2 sentences → concrete findings |
 | `en-07-failure-01.md` | en #7 AI Vocabulary Words | Failure (false positive) | Single "robust" in data-dense research text |
 | `en-08-success-01.md` | en #8 Copula Avoidance | Success | Multiple "serves as" circumlocutions → direct verbs |
 | `en-08-failure-01.md` | en #8 Copula Avoidance | Failure (false positive) | "Serves as" describing formal institutional role |
+| `en-09-success-01.md` | en #9 Negative Parallelisms | Success | Three "not X but Y" in one paragraph → direct positive statements |
+| `en-09-failure-01.md` | en #9 Negative Parallelisms | Failure (false positive) | Investigative juice-labeling contrasts with factual stakes |
+| `en-10-success-01.md` | en #10 Rule of Three Overuse | Success | Three consecutive arbitrary triples → natural count + specifics |
+| `en-10-failure-01.md` | en #10 Rule of Three Overuse | Failure (false positive) | Color theory primaries/secondaries — inherently three-element sets |
+| `en-11-success-01.md` | en #11 Elegant Variation | Success | Seoul called 4 different names → consistent "Seoul" / "the city" |
+| `en-11-failure-01.md` | en #11 Elegant Variation | Failure (false positive) | Clinical narrative with functional patient identifiers (demographics, name) |
+| `en-12-success-01.md` | en #12 False Ranges | Success | Three decorative "from X to Y" → actual structure + demographics |
+| `en-12-failure-01.md` | en #12 False Ranges | Failure (false positive) | Hurricane emergency ranges (wind speed, surge, evacuation zones) |
 | `en-13-success-01.md` | en #13 Em Dash Overuse | Success | 3+ em dashes in one paragraph → varied punctuation |
 | `en-13-failure-01.md` | en #13 Em Dash Overuse | Failure (false positive) | Single em dash for literary dramatic pause |
 | `en-19-success-01.md` | en #19 Collaborative Communication | Success | Chatbot phrases in editorial content → direct prose |

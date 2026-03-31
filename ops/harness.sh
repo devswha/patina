@@ -341,15 +341,15 @@ git fetch --prune origin >/dev/null 2>&1 || true
 git checkout main >/dev/null 2>&1 || true
 git pull --ff-only origin main >/dev/null 2>&1 || true
 
-git branch --list 'bot/*' | while read -r branch; do
+while IFS= read -r branch; do
   [ -n "$branch" ] || continue
   git branch -D "$branch" >/dev/null 2>&1 || true
-done
+done < <(git branch --list 'bot/*' 2>/dev/null)
 
-git branch -r --list 'origin/bot/*' | sed 's#^ *origin/##' | while read -r branch; do
+while IFS= read -r branch; do
   [ -n "$branch" ] || continue
   git push origin --delete "$branch" >/dev/null 2>&1 || true
-done
+done < <(git branch -r --list 'origin/bot/*' 2>/dev/null | sed 's#^ *origin/##')
 
 notify "🧠 patina 봇: planner 실행"
 if ! run_agent "planner" "$PLANNER_AGENT_ID" 300 "planner-$RUN_ID" "$(build_planner_message)"; then
@@ -370,7 +370,7 @@ if [ "$planner_status" = "skip" ]; then
   finish_and_exit 0 "- Harness skipped: no actionable tasks"
 fi
 
-if [ "$planner_status" != "ok" ]; then
+if [ "$planner_status" != "ok" ] && [ "$planner_status" != "ready" ]; then
   notify "❌ patina 봇: planner가 작업을 선정하지 못함"
   finish_and_exit 1 "- Harness failed: planner status=$planner_status"
 fi

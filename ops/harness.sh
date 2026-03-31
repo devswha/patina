@@ -393,8 +393,12 @@ if ! run_agent "evaluator" "$EVALUATOR_AGENT_ID" 600 "evaluator-$RUN_ID" "$(buil
   finish_and_exit 1 "- Harness failed: evaluator stage error"
 fi
 
-eval_status="$(json_get "$RESULT_JSON" status || true)"
-while [ "$eval_status" = "revise" ] && [ "$revision_count" -lt "$MAX_REVISE_LOOPS" ]; do
+# Evaluator writes {"status":"reviewed","verdict":"PASS|REVISE|FAIL"}
+# Read verdict field; fall back to status for backward compat; normalize to lowercase
+eval_verdict="$(json_get "$RESULT_JSON" verdict 2>/dev/null || json_get "$RESULT_JSON" status || true)"
+eval_verdict="$(printf '%s' "$eval_verdict" | tr '[:upper:]' '[:lower:]')"
+
+while [ "$eval_verdict" = "revise" ] && [ "$revision_count" -lt "$MAX_REVISE_LOOPS" ]; do
   revision_count=$((revision_count + 1))
   notify "🔁 patina 봇: revise 루프 $revision_count/$MAX_REVISE_LOOPS"
 
@@ -408,13 +412,14 @@ while [ "$eval_status" = "revise" ] && [ "$revision_count" -lt "$MAX_REVISE_LOOP
     finish_and_exit 1 "- Harness failed: evaluator revise stage error"
   fi
 
-  eval_status="$(json_get "$RESULT_JSON" status || true)"
+  eval_verdict="$(json_get "$RESULT_JSON" verdict 2>/dev/null || json_get "$RESULT_JSON" status || true)"
+  eval_verdict="$(printf '%s' "$eval_verdict" | tr '[:upper:]' '[:lower:]')"
 done
 
-if [ "$eval_status" != "pass" ]; then
-  notify "❌ patina 봇: evaluator 최종 결과 $eval_status"
+if [ "$eval_verdict" != "pass" ]; then
+  notify "❌ patina 봇: evaluator 최종 결과 $eval_verdict"
   FINAL_STATUS="failure"
-  finish_and_exit 1 "- Harness failed: evaluator status=$eval_status"
+  finish_and_exit 1 "- Harness failed: evaluator verdict=$eval_verdict"
 fi
 
 CURRENT_BRANCH="bot/${RUN_ID}"

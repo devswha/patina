@@ -347,9 +347,13 @@ while IFS= read -r branch; do
   git branch -D "$branch" >/dev/null 2>&1 || true
 done < <(git branch --list 'bot/*' 2>/dev/null)
 
+# Delete remote bot/* branches only if they have no open PR
 while IFS= read -r branch; do
   branch="${branch#"${branch%%[![:space:]]*}"}"
   [ -n "$branch" ] || continue
+  if gh pr list --head "$branch" --state open --json number --jq '.[0].number' 2>/dev/null | grep -q .; then
+    continue  # skip — open PR exists for this branch
+  fi
   git push origin --delete "$branch" >/dev/null 2>&1 || true
 done < <(git branch -r --list 'origin/bot/*' 2>/dev/null | sed 's#^ *origin/##')
 
@@ -467,8 +471,9 @@ fi
 git push -u origin "$CURRENT_BRANCH" >/dev/null 2>&1
 PUSHED_BRANCH="true"
 
-pr_title="$(json_get "$RESULT_JSON" title || echo "Automated maintenance update")"
-pr_body="$(json_get "$RESULT_JSON" body || echo "Automated maintenance update.")"
+# Read PR metadata from generator result (prTitle/prBody), fall back to evaluator/defaults
+pr_title="$(json_get "$GENERATOR_RESULT" prTitle 2>/dev/null || json_get "$RESULT_JSON" title 2>/dev/null || echo "Automated maintenance update")"
+pr_body="$(json_get "$GENERATOR_RESULT" prBody 2>/dev/null || json_get "$RESULT_JSON" body 2>/dev/null || echo "Automated maintenance update.")"
 printf '%s\n' "$pr_body" > "$PR_BODY_FILE"
 
 pr_url="$(gh pr create --base main --head "$CURRENT_BRANCH" --title "$pr_title" --body-file "$PR_BODY_FILE" --label bot 2>/dev/null)"

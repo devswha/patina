@@ -489,5 +489,9 @@ if [ "$AUTO_MERGE" = "true" ]; then
   notify "🔀 patina 봇: PR #$PR_NUMBER 머지 완료"
 fi
 
+# Return to clean main so next run starts clean
+git checkout main >/dev/null 2>&1 || true
+git clean -fd --exclude='memory/' --exclude='.openclaw/' >/dev/null 2>&1 || true
+
 FINAL_STATUS="success"
 finish_and_exit 0 "- Harness success: PR #$PR_NUMBER ($pr_url)"

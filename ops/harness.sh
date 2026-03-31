@@ -342,11 +342,13 @@ git checkout main >/dev/null 2>&1 || true
 git pull --ff-only origin main >/dev/null 2>&1 || true
 
 while IFS= read -r branch; do
+  branch="${branch#"${branch%%[![:space:]]*}"}"  # trim leading whitespace
   [ -n "$branch" ] || continue
   git branch -D "$branch" >/dev/null 2>&1 || true
 done < <(git branch --list 'bot/*' 2>/dev/null)
 
 while IFS= read -r branch; do
+  branch="${branch#"${branch%%[![:space:]]*}"}"
   [ -n "$branch" ] || continue
   git push origin --delete "$branch" >/dev/null 2>&1 || true
 done < <(git branch -r --list 'origin/bot/*' 2>/dev/null | sed 's#^ *origin/##')

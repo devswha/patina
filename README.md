@@ -434,6 +434,9 @@ Pattern packs are auto-discovered by language prefix -- no need to list them man
 | `technical` | Clear, precise, no opinions | API docs, READMEs, guides |
 | `social` | Casual, short, emoji-friendly | Twitter/X, Instagram, threads |
 | `email` | Polite but concise | Business emails, formal letters |
+| `legal` | Preserves legal conventions | Contracts, legal opinions |
+| `medical` | Preserves medical precision | Clinical reports, medical papers |
+| `marketing` | Persuasive, concrete | Ad copy, product pages, press releases |
 
 ```
 /patina --profile blog text...

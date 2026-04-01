@@ -235,8 +235,8 @@ Interpretation: 16-30 range = "거의 사람다움" (Mostly human, minor traces)
   (e.g., `custom/patterns/ko-domain.md` with `pack: ko-domain`) gets default weight 0.10.
 - **LLM non-determinism** means the same text may score differently across runs.
   The formula is deterministic; the severity assignment is not.
-- **Fidelity scoring** (meaning preservation vs original) is designed in §§ 9–13 below.
-  Implementation and pipeline integration are pending.
+- **Fidelity scoring** (meaning preservation vs original) is defined in §§ 9–13 below
+  and integrated into `--score`, `--ouroboros`, and MAX mode pipelines.
 
 ---
 
@@ -248,8 +248,8 @@ Fidelity measures *how faithfully the output preserves the original meaning*.
 Both dimensions are necessary: aggressive humanization can achieve a low AI score
 by deleting content or changing meaning entirely. Fidelity scoring guards against this.
 
-**Design status:** This section documents the scoring rubric and formula.
-Pipeline integration (`--score`, `--ouroboros`, MAX mode) is out of scope here.
+Fidelity scoring is integrated into `--score`, `--ouroboros`, and MAX mode pipelines.
+See SKILL.md § 6 (score mode) and SKILL-MAX.md § 6 for integration details.
 
 ---
 
@@ -451,9 +451,9 @@ ouroboros:
 | 51-70 | 주의 | Caution — significant AI traces or meaning loss |
 | 71-100 | 부적합 | Poor — heavy AI patterns and/or substantial meaning loss |
 
-### Ouroboros Termination (Future)
+### Ouroboros Termination
 
-When integrated with `--ouroboros`, the loop should terminate when:
+When used with `--ouroboros`, the loop terminates when:
 - Combined score ≤ threshold (default: 30), OR
 - Fidelity score drops below floor (default: 70) — **hard stop**, even if AI score improves
 

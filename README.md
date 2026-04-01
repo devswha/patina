@@ -134,6 +134,18 @@ Interpretation: 16-30 = Mostly human-like, minor traces
 
 Score ranges: **0-15** human | **16-30** mostly human | **31-50** mixed | **51-70** AI-like | **71-100** heavily AI
 
+When used with rewrite or ouroboros mode, a **fidelity score** (0-100, higher = better) is also shown, measuring how faithfully the output preserves the original meaning:
+
+```
+| Metric        | Score   |
+|---------------|---------|
+| AI-likeness   | 23/100  |
+| Fidelity      | 87/100  |
+| Combined      | 19/100  |
+```
+
+Fidelity checks four criteria: claims preserved, no fabrication, tone match, and length ratio. The combined score weights both dimensions — configurable per profile (e.g., academic: fidelity 0.60, AI 0.40; blog: AI 0.70, fidelity 0.30).
+
 The score is pattern-based and deterministic — it reuses the same 28 (Korean), 31 (English), 28 (Chinese), or 28 (Japanese) detection patterns from audit mode. Profile overrides affect scoring (e.g., blog profile suppresses bold pattern #14).
 
 ### Ouroboros Mode (Iterative Self-Improvement)

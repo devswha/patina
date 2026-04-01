@@ -102,6 +102,35 @@ ouroboros:
       communication: 0.15
       filler: 0.10
       structure: 0.15
+  fidelity-floor: 70             # stop ouroboros if fidelity drops below this
+  combined-weights:
+    default:
+      ai-likeness: 0.60
+      fidelity: 0.40
+    academic:
+      ai-likeness: 0.40
+      fidelity: 0.60
+    blog:
+      ai-likeness: 0.70
+      fidelity: 0.30
+    technical:
+      ai-likeness: 0.35
+      fidelity: 0.65
+    social:
+      ai-likeness: 0.75
+      fidelity: 0.25
+    email:
+      ai-likeness: 0.50
+      fidelity: 0.50
+    legal:
+      ai-likeness: 0.35
+      fidelity: 0.65
+    medical:
+      ai-likeness: 0.35
+      fidelity: 0.65
+    marketing:
+      ai-likeness: 0.65
+      fidelity: 0.35
   severity-points:
     high: 3
     medium: 2

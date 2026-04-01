@@ -3,7 +3,7 @@ name: patina
 version: 3.2.0
 description: |
   AI가 생성한 텍스트에서 AI 특유의 글쓰기 패턴을 제거하여 자연스럽고
-  사람이 쓴 것처럼 만듭니다. 다국어 지원(한국어 28개, 영어 24개 패턴).
+  사람이 쓴 것처럼 만듭니다. 다국어 지원(한국어 28개, 영어 31개 패턴).
   2-Phase 처리 파이프라인(구조→문장/어휘)과 플러그인 기반 구조로
   패턴 팩과 프로필을 조합합니다.
   Based on blader/humanizer, oh-my-zsh inspired plugin architecture.
@@ -304,4 +304,4 @@ AI 유사도 점수를 0-100 척도로 산출한다. `core/scoring.md`를 참조
 
 핵심 통찰: "LLM은 통계적 알고리즘으로 다음에 올 것을 예측한다. 결과는 가장 넓은 범위에 적용 가능한, 가장 통계적으로 가능성 높은 결과로 수렴하는 경향이 있다."
 
-> **영어 처리 참고:** `--lang en` 사용 시 동일한 파이프라인을 따르되, 영어에는 `phase: structure` 팩이 비어 있으므로(`en-structure.md`, patterns: 0) 5a단계를 건너뛰고 5b단계부터 시작한다.
+> **영어 처리 참고:** `--lang en` 사용 시 동일한 파이프라인을 따른다. 영어 `en-structure.md` 팩에는 4개의 구조 패턴(#25 Metronomic Paragraph Structure, #26 Passive Nominalization Chains, #27 Zombie Nouns, #28 Stacked Subordinate Clauses)이 포함되어 있으므로 5a단계(구조 분석)가 한국어와 마찬가지로 실행된다.

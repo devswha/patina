@@ -64,12 +64,12 @@ ouroboros:
       filler: 0.10
       structure: 0.15
     en:
-      content: 0.25
-      language: 0.25
-      style: 0.25
-      communication: 0.15
+      content: 0.22
+      language: 0.22
+      style: 0.22
+      communication: 0.14
       filler: 0.10
-      structure: 0.00
+      structure: 0.10
   severity-points:
     high: 3
     medium: 2

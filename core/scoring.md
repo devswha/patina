@@ -229,10 +229,8 @@ Interpretation: 16-30 range = "거의 사람다움" (Mostly human, minor traces)
 
 ---
 
-## 8. Known Limitations (Phase 1)
+## 8. Known Limitations
 
-- **Single mode only.** MAX mode (SKILL-MAX.md) uses separate subjective evaluation.
-  These approaches will be reconciled in Phase 2.
 - **Custom pattern packs** are auto-discovered and scored. A new category
   (e.g., `custom/patterns/ko-domain.md` with `pack: ko-domain`) gets default weight 0.10.
 - **LLM non-determinism** means the same text may score differently across runs.

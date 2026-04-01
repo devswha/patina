@@ -430,9 +430,15 @@ Pattern packs are auto-discovered by language prefix -- no need to list them man
 |---------|------|----------|
 | `default` | Keeps original tone | General purpose |
 | `blog` | More personal, opinionated | Blog posts, essays |
+| `academic` | Formal, evidence-based | Research papers, theses |
+| `technical` | Clear, precise, no opinions | API docs, READMEs, guides |
+| `social` | Casual, short, emoji-friendly | Twitter/X, Instagram, threads |
+| `email` | Polite but concise | Business emails, formal letters |
 
 ```
 /patina --profile blog text...
+/patina --profile academic text...
+/patina --profile technical text...
 ```
 
 ## Custom Patterns

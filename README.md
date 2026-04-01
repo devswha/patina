@@ -1,4 +1,4 @@
-**[한국어](README_KR.md)** | English
+**[한국어](README_KR.md)** | **[中文](README_ZH.md)** | **[日本語](README_JA.md)** | English
 
 # patina
 

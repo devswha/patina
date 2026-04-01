@@ -1,0 +1,546 @@
+**[한국어](README_KR.md)** | **[English](README.md)** | 中文 | **[日本語](README_JA.md)**
+
+# patina
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
+[![Based on](https://img.shields.io/badge/Based%20on-blader%2Fhumanizer-blue)](https://github.com/blader/humanizer)
+[![Multi-language](https://img.shields.io/badge/Languages-Korean%20%7C%20English%20%7C%20Chinese%20%7C%20Japanese-green)](https://github.com/devswha/patina)
+
+**让 AI 生成的文字读起来像人写的。**
+
+一个 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 技能，用于检测和消除中文、韩文、英文及日文文本中的 AI 写作痕迹。它能发现那些典型的 AI 特征——"赋能"、"助力"、排比句堆砌、空洞的总结——并将其改写成自然流畅的文字。
+
+> "大语言模型使用统计算法来预测下一个词。其结果倾向于产出适用范围最广的、统计概率最高的内容。" — [维基百科](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)
+
+## 效果展示
+
+**改写前**（AI 味十足）：
+> AI 编程工具代表了一个**开创性的里程碑**，展示了大语言模型的**创新潜力**，标志着软件开发演进中的**关键转折点**。这不仅优化了流程，还促进了协作并推动了组织协调。
+
+**改写后**（像人写的）：
+> AI 编程工具加快了琐碎的工作，比如配置文件、测试骨架之类的。问题在于生成的代码看上去没毛病——能编译、能过 lint，你就合并了——结果后来才发现它干的事跟你想要的完全不一样。
+
+共检测 112 个模式，覆盖韩文（28 个）、英文（28 个）、中文（28 个）和日文（28 个）。完整模式列表见[下文](#模式)。
+
+## 安装
+
+```bash
+mkdir -p ~/.claude/skills
+git clone https://github.com/devswha/patina.git ~/.claude/skills/patina
+
+# 将 MAX 变体暴露为独立的 Claude 技能
+ln -snf ~/.claude/skills/patina/patina-max ~/.claude/skills/patina-max
+```
+
+Claude Code 会自动识别 `/patina`。如果还需要使用 `/patina-max`，请同时执行上面的符号链接步骤。
+
+### 快速安装
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
+```
+
+一键完成：创建技能目录、克隆仓库、设置 patina-max 符号链接。已安装的情况下再次运行即可更新到最新版本。
+
+## 使用方法
+
+在 Claude Code 中输入：
+
+```
+/patina
+
+[在此粘贴你的文本]
+```
+
+默认处理韩文。如需处理其他语言：
+
+```
+/patina --lang en
+
+[在此粘贴英文文本]
+```
+
+```
+/patina --lang zh
+
+[在此粘贴中文文本]
+```
+
+```
+/patina --lang ja
+
+[在此粘贴日文文本]
+```
+
+### 更多选项
+
+| 参数 | 功能 |
+|------|------|
+| `--lang en` | 处理英文文本 |
+| `--lang zh` | 处理中文文本 |
+| `--lang ja` | 处理日文文本 |
+| `--batch docs/*.md` | 批量处理多个文件 |
+| `--in-place` | 覆盖原文件（与 `--batch` 配合使用） |
+| `--suffix .humanized` | 另存为 `{file}.humanized.md` |
+| `--outdir output/` | 将结果保存到指定目录 |
+| `--profile blog` | 使用博客/随笔写作风格 |
+| `--profile formal` | 使用正式文档风格（简历、提案等） |
+| `--diff` | 逐个模式展示改动内容及原因 |
+| `--audit` | 仅检测 AI 模式（不改写） |
+| `--score` | 获取 0-100 的 AI 相似度评分 |
+| `--ouroboros` | 迭代自我优化：反复改写直到 AI 评分收敛 |
+
+参数可自由组合：`/patina --lang en --audit --profile blog` 或 `/patina --profile formal`
+
+### MAX 模式（多模型）
+
+将同一段文本交给多个 AI 模型分别处理，然后选出最佳结果：
+
+```
+/patina-max
+
+[在此粘贴你的文本]
+```
+
+每个模型独立进行人性化改写，结果按 AI 相似度评分，得分最低（最像人写的）的胜出。
+
+| 参数 | 功能 |
+|------|------|
+| `--models claude,gemini` | 选择使用的模型 |
+| `--lang en` | 处理英文文本 |
+| `--profile blog` | 使用博客/随笔写作风格 |
+
+支持的模型：`claude`、`codex`、`gemini`。MAX 模式通过 stdin 调用三个模型（`claude -p`、`gemini -p '' --output-format text`、`codex exec --skip-git-repo-check`），并通过 `--output-last-message` 捕获 Codex 的最终输出。
+
+每次 MAX 运行使用独立的临时目录，仅等待所选模型完成，超时的运行标记为失败而非无限等待。
+
+### 评分模式
+
+在不改写的情况下检查文本的 AI 痕迹程度：
+
+```
+/patina --score
+
+[在此粘贴你的文本]
+```
+
+返回 0-100 的 AI 相似度评分，并按类别细分：
+
+```
+| 类别          | 权重   | 检出数 | 原始得分 | 加权得分 |
+|---------------|--------|--------|----------|----------|
+| 内容          | 0.20   | 3/6    | 33.3     | 6.7      |
+| 语言          | 0.20   | 1/6    | 11.1     | 2.2      |
+| 风格          | 0.20   | 2/6    | 27.8     | 5.6      |
+| 沟通          | 0.15   | 0/3    | 0.0      | 0.0      |
+| 填充          | 0.10   | 1/3    | 11.1     | 1.1      |
+| 结构          | 0.15   | 1/4    | 25.0     | 3.8      |
+| 综合          |        |        |          | 19.3 (±10) |
+
+解读：16-30 = 基本像人写的，有轻微痕迹
+```
+
+分值范围：**0-15** 人写 | **16-30** 基本像人写 | **31-50** 混合 | **51-70** AI 味明显 | **71-100** 严重 AI 痕迹
+
+与改写或 ouroboros 模式配合使用时，还会显示**保真度评分**（0-100，越高越好），衡量输出对原文语义的保留程度：
+
+```
+| 指标          | 得分    |
+|---------------|---------|
+| AI 相似度     | 23/100  |
+| 保真度        | 87/100  |
+| 综合得分      | 19/100  |
+```
+
+保真度检查四项标准：观点保留、无捏造内容、语气匹配、篇幅比例。综合得分同时权衡两个维度——可按配置文件调整（例如：学术型：保真度 0.60，AI 0.40；博客型：AI 0.70，保真度 0.30）。
+
+评分基于模式匹配，结果确定——复用审计模式中的 28 个（韩文）、28 个（英文）、28 个（中文）或 28 个（日文）检测模式。配置文件覆盖会影响评分（例如：博客配置文件会屏蔽粗体模式 #14）。
+
+### Ouroboros 模式（迭代自我优化）
+
+自动反复改写，直到 AI 评分降至目标以下：
+
+```
+/patina --ouroboros
+
+[在此粘贴你的文本]
+```
+
+Ouroboros 循环反复执行完整的人性化流水线，每次迭代后评分：
+
+```
+Ouroboros 迭代日志
+
+| 迭代 | 改写前 | 改写后 | 改善幅度 | 原因        |
+|------|--------|--------|----------|-------------|
+| 0    | —      | 78     | —        | 初始        |
+| 1    | 78     | 45     | +33      |             |
+| 2    | 45     | 28     | +17      | 达到目标    |
+
+最终得分：28/100 (±10)
+迭代次数：2/3
+终止原因：达到目标（目标值：30）
+
+[最终人性化文本]
+```
+
+**终止条件**（以先满足者为准）：
+- **达到目标**：评分降至 ≤ 30（可配置）
+- **平台期**：两次迭代间改善不足 10 分
+- **退化**：评分反而升高（文本变差）——回退到上一次迭代
+- **最大迭代次数**：硬性上限 3 次（可配置）
+
+**配置** — 在 `.patina.yaml` 中自定义：
+
+```yaml
+ouroboros:
+  target-score: 30          # 评分 <= 此值时停止 (0-100)
+  max-iterations: 3         # 最大迭代次数
+  plateau-threshold: 10     # 所需最小改善幅度
+```
+
+`--ouroboros` 不能与 `--diff`、`--audit` 或 `--score` 组合使用。
+
+## 工作原理
+
+```
+你的文本
+  |
+  v
+[阶段 1] 结构扫描 -- 修复段落级问题（重复、被动语态）
+  |
+  v
+[阶段 2] 句子改写 -- 修复词语级问题（AI 用语、填充词、过度含糊）
+  |
+  v
+[阶段 3] 自我审查 -- "还像 AI 写的吗？" -- 修复残留问题
+  |
+  v
+自然流畅的文本
+```
+
+该技能加载对应语言的模式包（`ko-*.md`、`en-*.md`、`zh-*.md` 或 `ja-*.md`），通过 3 阶段流水线进行处理。配置文件和语气指南决定最终的文风。
+
+## <a name="模式"></a>模式
+
+### 韩文（28 个模式）
+
+<details>
+<summary><b>结构模式</b>（阶段 1）-- 4 个模式，针对文档级问题</summary>
+
+| # | 模式 | AI 的典型做法 | 修正方案 |
+|---|------|--------------|----------|
+| 25 | 结构重复 | 每段都遵循 "论点-论据-意义" 的固定结构 | 变换结构：提问、细节描写、短句点睛 |
+| 26 | 翻译腔 | 不自然的英语直译（"~这是一个事实"） | 使用自然的韩语句式 |
+| 27 | 被动语态滥用 | 双重被动结构 | 主动语态或简单被动 |
+| 28 | 不必要的外来词 | "Leverage insights for synergy" | 使用韩语本土词汇 |
+
+</details>
+
+<details>
+<summary><b>内容模式</b> -- 6 个模式，针对内容空洞问题</summary>
+
+| # | 模式 | AI 的典型做法 | 修正方案 |
+|---|------|--------------|----------|
+| 1 | 重要性夸大 | "开创性的里程碑"、"关键转折点" | 替换为具体事实、日期、数据 |
+| 2 | 媒体引用夸大 | "被《纽约时报》、BBC 等报道" | 引用一篇具体的报道 |
+| 3 | 表面化的 -ing 分析 | "展现着、象征着、推动着" | 删除填充词或添加真实来源 |
+| 4 | 推销性语言 | "令人惊叹的自然美景……旅游瑰宝" | 中性描述加具体事实 |
+| 5 | 模糊归因 | "专家表示……业内人士指出" | 给出具体来源 |
+| 6 | 套路化的挑战与展望 | "尽管面临挑战……前景一片光明" | 指出具体问题和实际方案 |
+
+</details>
+
+<details>
+<summary><b>语言模式</b> -- 6 个模式，针对语法/词汇问题</summary>
+
+| # | 模式 | AI 的典型做法 | 修正方案 |
+|---|------|--------------|----------|
+| 7 | AI 词汇滥用 | 韩语 AI 填充词过度使用 | 使用朴素语言和具体细节 |
+| 8 | -적 后缀滥用 | 堆砌汉字词形容词后缀 | 描述实际发生的事情 |
+| 9 | 否定式排比 | 把 "不仅是 X 更是 Y" 当拐杖 | 直接说重点 |
+| 10 | 三连排列 | 到处都是三项列表 | 用自然的项目数量 |
+| 11 | 同义词轮换 | 对同一事物轮换使用同义词 | 选定一个词并坚持使用 |
+| 12 | 冗长助词 | 不必要的长形式语法结构 | 简洁的等价表达 |
+
+</details>
+
+<details>
+<summary><b>风格模式</b> -- 6 个模式，针对格式问题</summary>
+
+| # | 模式 | AI 的典型做法 | 修正方案 |
+|---|------|--------------|----------|
+| 13 | 过多连接词 | 韩语过渡词过度使用 | 删除不必要的连接词 |
+| 14 | 粗体滥用 | 每个关键词都加粗 | 使用普通文本 |
+| 15 | 行内标题列表 | "**标签：** 描述" 格式 | 转为散文 |
+| 16 | 进行时态滥用 | 韩语进行时形式过度使用 | 过去时或具体计划 |
+| 17 | 表情符号 | 专业文本中使用 emoji 作章节标记 | 删除 |
+| 18 | 过度正式语言 | 过于官方的语体 | 使用朴素语言 |
+
+</details>
+
+<details>
+<summary><b>沟通模式</b> -- 3 个模式，针对聊天机器人痕迹</summary>
+
+| # | 模式 | AI 的典型做法 | 修正方案 |
+|---|------|--------------|----------|
+| 19 | 聊天机器人用语 | "希望对你有帮助！有问题随时问" | 直接删除 |
+| 20 | 训练截止声明 | "具体信息有限" | 查找来源或删除 |
+| 21 | 谄媚语气 | "好问题！说得太对了" | 直接回答 |
+
+</details>
+
+<details>
+<summary><b>填充与含糊模式</b> -- 3 个模式，针对水分内容</summary>
+
+| # | 模式 | AI 的典型做法 | 修正方案 |
+|---|------|--------------|----------|
+| 22 | 填充短语 | 不必要的凑字词 | 简洁的等价表达 |
+| 23 | 过度含糊 | 过分限定的陈述 | 直接陈述 |
+| 24 | 空洞的正面结语 | "未来一片光明" | 具体计划或事实 |
+
+</details>
+
+### 英文（28 个模式）
+
+移植自 [blader/humanizer](https://github.com/blader/humanizer)，基于[维基百科：AI 写作的特征](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)。
+
+<details>
+<summary><b>内容模式</b> -- 6 个模式</summary>
+
+| # | 模式 | AI 的典型做法 | 修正方案 |
+|---|------|--------------|----------|
+| 1 | 重要性夸大 | "represents a significant milestone" | 具体事实 |
+| 2 | 媒体/知名度夸大 | "garnered significant attention" | 引用具体来源 |
+| 3 | 表面化的 -ing 分析 | "showcasing, highlighting, underscoring" | 删除或添加来源 |
+| 4 | 推销性语言 | "stunning, world-class, hidden gem" | 中性描述 |
+| 5 | 模糊归因 | "experts say, studies show" | 给出具体来源 |
+| 6 | 挑战与展望 | "despite challenges... poised for growth" | 具体问题/方案 |
+
+</details>
+
+<details>
+<summary><b>语言模式</b> -- 6 个模式</summary>
+
+| # | 模式 | AI 的典型做法 | 修正方案 |
+|---|------|--------------|----------|
+| 7 | AI 词汇 | "delve, tapestry, landscape, multifaceted" | 朴素语言 |
+| 8 | 系动词回避 | "serves as, acts as, functions as" | 直接用 "is" |
+| 9 | 否定式排比 | "not just X but Y" | 直接说重点 |
+| 10 | 三连排列 | "X, Y, and Z" 反复出现 | 自然的项目数量 |
+| 11 | 同义词轮换 | "the city... the metropolis... the urban center" | 选定一个词 |
+| 12 | 虚假范围 | "from X to Y", "ranging from... to" | 具体数值 |
+
+</details>
+
+<details>
+<summary><b>风格模式</b> -- 6 个模式</summary>
+
+| # | 模式 | AI 的典型做法 | 修正方案 |
+|---|------|--------------|----------|
+| 13 | 破折号滥用 | "innovation -- a key driver -- transforms" | 减少破折号 |
+| 14 | 粗体滥用 | 到处加粗关键词 | 使用普通文本 |
+| 15 | 行内标题列表 | "**Label:** description" 格式 | 转为散文 |
+| 16 | 标题大写 | "The Future Of Artificial Intelligence" | 句首大写 |
+| 17 | 表情符号 | emoji 章节标记 | 删除 |
+| 18 | 弯引号 | 纯文本中使用智能引号 | 使用直引号 |
+
+</details>
+
+<details>
+<summary><b>沟通模式</b> -- 3 个模式</summary>
+
+| # | 模式 | AI 的典型做法 | 修正方案 |
+|---|------|--------------|----------|
+| 19 | 聊天机器人用语 | "I hope this helps! Let me know" | 直接删除 |
+| 20 | 训练截止声明 | "as of my last update" | 查找来源或删除 |
+| 21 | 谄媚语气 | "Great question!" | 直接回答 |
+
+</details>
+
+<details>
+<summary><b>填充与含糊模式</b> -- 3 个模式</summary>
+
+| # | 模式 | AI 的典型做法 | 修正方案 |
+|---|------|--------------|----------|
+| 22 | 填充短语 | "it's important to note that" | 删掉水分 |
+| 23 | 过度含糊 | "could potentially be argued that perhaps" | 直接陈述 |
+| 24 | 空洞的正面结语 | "a bright future lies ahead" | 具体事实 |
+
+</details>
+
+<details>
+<summary><b>中文模式 (zh)</b> -- 28 个模式</summary>
+
+中文模式遵循同样的 6 大类结构。`--lang zh` 自动发现所有 `zh-*.md` 模式包。
+
+**内容 (6)：** 过度强调重要性、媒体/知名度宣称、表面化的动词链分析、推销性语言、模糊归因、套路化的挑战与展望。
+
+**语言 (6)：** AI 流行词滥用（赋能/助力/深耕）、成语堆砌（四字格过度使用）、的/地/得过度规范化、排比句滥用、同义词轮换、冗长介词框架。
+
+**风格 (6)：** 过多连接词、粗体滥用、行内标题列表、地字状语滥用（积极地/深入地）、表情符号、公文体（官僚语体）。
+
+**沟通 (3)：** 聊天机器人痕迹、知识截止声明、谄媚语气。
+
+**填充 (3)：** 填充短语（众所周知/不可否认的是）、过度含糊、空洞的正面结语。
+
+**结构 (4)：** 结构重复、翻译腔/欧化语法、被字句滥用、总分总结构过度使用。
+
+</details>
+
+<details>
+<summary><b>日文模式 (ja)</b> -- 28 个模式</summary>
+
+日文模式遵循同样的 6 大类结构。`--lang ja` 自动发现所有 `ja-*.md` 模式包。
+
+**内容 (6)：** 过度强调重要性、媒体/知名度宣称、表面化的动词链分析（~しており）、推销性语言、模糊归因、套路化的挑战与展望。
+
+**语言 (6)：** AI 流行词滥用、~的（teki）后缀滥用、否定式排比、三连排列、同义词轮换、片假名外来词滥用。
+
+**风格 (6)：** 过多连接词、粗体滥用、行内标题列表、敬语过度使用（ございます/させていただきます）、表情符号、过于生硬的である体。
+
+**沟通 (3)：** 聊天机器人痕迹、知识截止声明、谄媚语气。
+
+**填充 (3)：** 填充短语（周知の通り/言うまでもなく）、过度含糊、空洞的正面结语。
+
+**结构 (4)：** 结构重复、翻译腔、~ている 进行时滥用、起承转结套路滥用。
+
+</details>
+
+<details>
+<summary><b>韩/英/中/日模式差异对比</b></summary>
+
+部分模式因语言特性而不同。同一编号在不同语言中可能对应不同的模式：
+
+| # | 韩文 | 英文 | 中文 | 日文 |
+|---|------|------|------|------|
+| 8 | -적 后缀滥用 | 系动词回避（"serves as"） | 成语堆砌（四字格） | -的 后缀滥用（~的） |
+| 9 | 否定式排比 | 否定式排比 | 的/地/得过度规范化 | 否定式排比 |
+| 10 | 三连排列 | 三连排列 | 排比句滥用 | 三连排列 |
+| 12 | 冗长助词 | 虚假范围（"from X to Y"） | 冗长介词框架（在~的基础上） | 片假名外来词滥用 |
+| 13 | 过多连接词 | 破折号滥用 | 过多连接词（与此同时/此外） | 过多连接词 |
+| 16 | 进行时态滥用 | 标题大写 | 地字状语滥用（积极地/深入地） | 敬语过度使用（ございます） |
+| 18 | 过度正式语言 | 弯引号 | 公文体 | 生硬的である体 |
+| 25 | 结构重复 | 节拍器式段落结构 | 结构重复 | 结构重复 |
+| 26 | 翻译腔 | 被动名词化链 | 翻译腔/欧化语法 | 翻译腔 |
+| 27 | 被动语态滥用 | 僵尸名词 | 被字句滥用 | ている 进行时滥用 |
+| 28 | 不必要的外来词 | 从句嵌套过深 | 总分总结构滥用 | 起承转结套路滥用 |
+
+</details>
+
+## 配置
+
+编辑 `.patina.default.yaml`：
+
+```yaml
+version: "3.2.0"
+language: ko              # ko | en | zh | ja（或使用 --lang 参数）
+profile: default
+output: rewrite           # rewrite | diff | audit | score
+skip-patterns: []         # 例如 [ko-filler] 跳过某个模式包
+blocklist: []             # 额外标记的词语
+allowlist: []             # 永不标记的词语
+max-models:             # MAX 模式使用的模型（claude, codex, gemini）
+  - claude
+  - gemini
+dispatch: omc             # omc | direct
+```
+
+模式包按语言前缀自动发现——无需手动列出。
+
+## 配置文件（Profiles）
+
+| 配置文件 | 语气风格 | 适用场景 |
+|----------|----------|----------|
+| `default` | 保持原文语气 | 通用 |
+| `blog` | 更个人化、有观点 | 博客文章、随笔 |
+| `academic` | 正式、注重证据 | 学术论文、毕业论文 |
+| `technical` | 清晰、精准、无主观意见 | API 文档、README、指南 |
+| `social` | 随性、简短、可用 emoji | Twitter/X、Instagram、帖子 |
+| `email` | 礼貌但简洁 | 商务邮件、正式信函 |
+| `legal` | 保留法律文书惯例 | 合同、法律意见书 |
+| `medical` | 保留医学精确性 | 临床报告、医学论文 |
+| `marketing` | 有说服力、具体 | 广告文案、产品页面、新闻稿 |
+| `formal` | 专业、简洁 | 简历、求职信、提案 |
+
+```
+/patina --profile blog text...
+/patina --profile academic text...
+/patina --profile technical text...
+/patina --profile formal text...
+```
+
+## 自定义模式
+
+将 `.md` 文件放入 `custom/patterns/` 即可自动加载：
+
+```markdown
+---
+pack: my-patterns
+language: ko
+name: My Custom Patterns
+version: 1.0.0
+patterns: 1
+---
+
+### 1. Pattern Name
+**Problem:** What AI does wrong
+**Before:** > AI-sounding example
+**After:** > Natural-sounding fix
+```
+
+## 项目结构
+
+```
+patina/
+├── SKILL.md                  # /patina 入口
+├── SKILL-MAX.md              # MAX 模式源文件/参考文档
+├── patina-max/               # 可安装的 /patina-max 技能目录
+│   ├── SKILL.md              # MAX 模式入口
+│   ├── core -> ../core
+│   ├── patterns -> ../patterns
+│   └── profiles -> ../profiles
+├── .patina.default.yaml      # 配置文件
+├── core/voice.md             # 语气与个性指南
+├── core/scoring.md           # 评分算法参考
+├── patterns/
+│   ├── ko-*.md               # 韩文模式（6 个包，28 个模式）
+│   ├── en-*.md               # 英文模式（6 个包，28 个模式）
+│   ├── zh-*.md               # 中文模式（6 个包，28 个模式）
+│   └── ja-*.md               # 日文模式（6 个包，28 个模式）
+├── profiles/                 # 写作风格配置文件
+├── examples/                 # 改写前后的测试用例
+└── custom/                   # 你的扩展（已 gitignore）
+```
+
+灵感来自 [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh) 的插件架构：模式是插件，配置文件是主题。
+
+## 添加新语言
+
+1. 创建 `patterns/{lang}-content.md`、`{lang}-language.md` 等文件
+2. 在每个文件的 frontmatter 中设置 `language: {lang}`
+3. 使用 `/patina --lang {lang}` 即可——自动发现，无需修改配置
+
+## 参考资料
+
+- [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) -- 模式的主要来源
+- [WikiProject AI Cleanup](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_AI_Cleanup) -- 社区行动
+- [blader/humanizer](https://github.com/blader/humanizer) -- 英文原版
+
+## 版本历史
+
+| 版本 | 变更内容 |
+|------|----------|
+| **3.2.0** | Ouroboros 评分系统：基于模式的 AI 相似度评分（0-100）、`--score` 模式含类别细分、`--ouroboros` 迭代自我优化循环，支持可配置的终止条件（目标值/平台期/退化/最大迭代次数） |
+| **3.1.1** | MAX 模式可靠性修复：独立运行临时目录、模型级等待循环 + 超时处理、Gemini stdin 分发、Codex CLI 兼容性（`--output-last-message`，移除 `-q`） |
+| **3.1.0** | MAX 模式：可安装的 `/patina-max` 技能入口 + 按提供商分发（Claude/Gemini 使用 `claude -p` / `gemini -p`，Codex 使用 `codex exec`） |
+| **3.0.0** | 多语言框架、`--lang` 参数、英文模式（24 个）来自 blader/humanizer、技能更名为 `patina` |
+| **2.2.0** | 外来词滥用模式（#28）、徽章、仓库更名 |
+| **2.1.0** | 2 阶段流水线、结构模式、博客配置文件、示例 |
+| **2.0.0** | 插件架构：模式包、配置文件、配置 |
+| **1.0.0** | 初版韩语适配（24 个模式） |
+
+## 许可证
+
+MIT

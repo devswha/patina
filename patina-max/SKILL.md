@@ -47,7 +47,7 @@ Glob .patina.default.yaml → Read
 
 `$ARGUMENTS`에서 옵션을 파싱하여 설정을 오버라이드:
 - `--profile <name>`: 프로필 변경
-- `--lang <code>`: 처리 언어 변경 (ko, en)
+- `--lang <code>`: 처리 언어 변경 (ko, en, zh)
 - `--models <list>`: 사용할 모델 변경 (쉼표 구분, 예: `claude,gemini,codex`)
 - `--dispatch <mode>`: 디스패치 모드 변경 (`omc` 또는 `direct`)
 

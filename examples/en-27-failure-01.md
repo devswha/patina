@@ -20,6 +20,6 @@ language: en
 
 - Pattern 27 (Zombie Nouns): Three nominalized forms — "decision," "investigation," and "recommendation" — appear in the same paragraph, superficially matching the 3+ threshold.
 
-## Verdict
+## Judgment
 
 **Failure (false positive)** — The exclusion condition applies: noun forms that carry meaning unavailable in the verb are explicitly excluded, as are legal contexts where nominalized forms have specific technical definitions. Here, "decision" refers to a binding judicial ruling — not the act of deciding. "Investigation" is a defined statutory term meaning a formal inquiry under regulatory guidelines, distinct from the general verb "investigate." "Recommendation" is a legal instrument — a written determination of compliance status — not a suggestion. Converting these to verbs would lose their precise legal meanings and potentially alter the interpretation of the statute.

@@ -20,6 +20,6 @@ language: en
 
 - Pattern 27 (Zombie Nouns): Six nominalized verb phrases in two paragraphs — "made a decision," "conduct an investigation," "provide a recommendation," "implementation of improvements," "evaluation of the available options was performed," and "consideration was given." Each converts a simple verb into a bloated noun phrase that adds syllables without adding meaning.
 
-## Verdict
+## Judgment
 
 **Success** — The fire condition is met: 6 nominalized verb phrases far exceeds the 3+ threshold. Nearly every clause wraps an action inside an abstract noun — "made a decision" instead of "decided," "conduct an investigation" instead of "investigated," "provide a recommendation" instead of "recommended." The corrected version restores active verbs throughout, cutting word count by roughly 40% while preserving all the original information. One noun form ("profitability") is retained because it carries meaning the verb form cannot.

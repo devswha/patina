@@ -1,13 +1,35 @@
+# oh-my-codex / oh-my-x
 .omc/
 .omx/
+
+# User customizations
 custom/
 .patina.yaml
+
+# OS / editor
 .DS_Store
 *.swp
 *~
+
+# Ops / runtime logs
 ops/logs/
 artifacts/harness/*/
 node_modules/
 .env
+
+# OpenClaw / Claude Code workspace files (runtime-specific, not part of the skill)
+.openclaw/
+.workclaw/
+AGENTS.md
+BOOTSTRAP.md
+CLAUDE.md
+IDENTITY.md
+USER.md
+MEMORY.md
 HEARTBEAT.md
 SOUL.md
+TOOLS.md
+memory/
+
+# Marketing bot workspace template (internal ops)
+ops/marketing-workspace-template/

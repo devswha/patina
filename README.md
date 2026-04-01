@@ -77,12 +77,13 @@ Korean is the default language. For other languages:
 | `--suffix .humanized` | Save as `{file}.humanized.md` |
 | `--outdir output/` | Save results to a directory |
 | `--profile blog` | Use blog/essay writing style |
+| `--profile formal` | Use formal document style (CVs, resumes, proposals) |
 | `--diff` | Show what changed and why, pattern by pattern |
 | `--audit` | Detect AI patterns only (no rewriting) |
 | `--score` | Get an AI-similarity score from 0-100 |
 | `--ouroboros` | Iterative self-improvement: rewrite until AI score converges |
 
-Combine flags freely: `/patina --lang en --audit --profile blog`
+Combine flags freely: `/patina --lang en --audit --profile blog` or `/patina --profile formal`
 
 ### MAX Mode (Multi-Model)
 
@@ -427,7 +428,7 @@ Edit `.patina.default.yaml`:
 ```yaml
 version: "3.2.0"
 language: ko              # ko | en | zh | ja (or use --lang flag)
-profile: default          # default | blog
+profile: default
 output: rewrite           # rewrite | diff | audit | score
 skip-patterns: []         # e.g., [ko-filler] to skip a pack
 blocklist: []             # extra words to flag
@@ -453,11 +454,13 @@ Pattern packs are auto-discovered by language prefix -- no need to list them man
 | `legal` | Preserves legal conventions | Contracts, legal opinions |
 | `medical` | Preserves medical precision | Clinical reports, medical papers |
 | `marketing` | Persuasive, concrete | Ad copy, product pages, press releases |
+| `formal` | Professional, concise | CVs, resumes, cover letters, proposals |
 
 ```
 /patina --profile blog text...
 /patina --profile academic text...
 /patina --profile technical text...
+/patina --profile formal text...
 ```
 
 ## Custom Patterns

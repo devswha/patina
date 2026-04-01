@@ -59,12 +59,13 @@ Claude Code에서 입력:
 |--------|------|
 | `--lang en` | 영어 텍스트 처리 |
 | `--profile blog` | 블로그/에세이 문체 사용 |
+| `--profile formal` | 정형 문서 문체 사용 (이력서, 자기소개서, 제안서) |
 | `--diff` | 패턴별 변경 사항 표시 |
 | `--audit` | AI 패턴만 탐지 (수정 안 함) |
 | `--score` | AI 유사도 점수 0-100 |
 | `--ouroboros` | 반복 자기개선: AI 점수가 수렴할 때까지 교정 반복 |
 
-플래그 조합 가능: `/patina --lang en --audit --profile blog`
+플래그 조합 가능: `/patina --lang en --audit --profile blog` 또는 `/patina --profile formal`
 
 ### MAX 모드 (멀티모델)
 
@@ -373,9 +374,11 @@ dispatch: omc             # omc | direct
 |--------|-----|------|
 | `default` | 원래 톤 유지 | 범용 |
 | `blog` | 개인적, 의견 강조 | 블로그, 에세이 |
+| `formal` | 전문적, 간결 서술체 | 이력서, 자기소개서, 제안서 |
 
 ```
 /patina --profile blog 텍스트...
+/patina --profile formal 텍스트...   # 이력서, 자기소개서, 커버레터용
 ```
 
 ## 커스텀 패턴

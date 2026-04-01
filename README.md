@@ -35,6 +35,14 @@ ln -snf ~/.claude/skills/patina/patina-max ~/.claude/skills/patina-max
 
 Claude Code will detect `/patina` automatically. Add the symlink step as well if you want `/patina-max` exposed as a separate skill.
 
+### Quick Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
+```
+
+This handles everything: creates the skills directory, clones the repo, and sets up the patina-max symlink. Safe to run again to update.
+
 ## Use
 
 In Claude Code, type:

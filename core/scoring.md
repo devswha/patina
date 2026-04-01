@@ -427,6 +427,9 @@ Where:
 | Technical profile | 0.35 | 0.65 | Accuracy is paramount in docs |
 | Social profile | 0.75 | 0.25 | Tone transformation expected |
 | Email profile | 0.50 | 0.50 | Equal importance |
+| Legal profile | 0.35 | 0.65 | Legal precision must be preserved |
+| Medical profile | 0.35 | 0.65 | Clinical accuracy is critical |
+| Marketing profile | 0.65 | 0.35 | Tone transformation tolerated, creative rewriting expected |
 
 Configurable via `ouroboros.combined-weights.{profile}` in `.patina.yaml`:
 

@@ -1,9 +1,10 @@
+language: en
 ---
 pattern: 8
 type: success
 name: Copula Avoidance
 pack: en-language
----
+ENDFRONT
 
 # Pattern 8: Copula Avoidance — Success
 
@@ -19,6 +20,6 @@ pack: en-language
 
 - Pattern 8 (Copula Avoidance): Three copula-avoidance constructions in one paragraph — "serves as," "functions as," and "acts as" — each replacing a simple "is." None of the subjects have a formally designated role function; they are just descriptions of what each place is used for.
 
-## Verdict
+## Judgment
 
 **Success** — The fire condition is met: 3 copula-avoidance constructions appear in the same paragraph, and in every case "is" would be shorter and clearer. The warehouse does not hold a formal institutional role — it is simply used as a market. The corrected version uses plain "is" and adds concrete details: visitor count, timing, and the specific festival.

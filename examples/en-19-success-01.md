@@ -1,9 +1,10 @@
+language: en
 ---
 pattern: 19
 type: success
 name: Collaborative Communication Artifacts
 pack: en-communication
----
+ENDFRONT
 
 # Pattern 19: Collaborative Communication Artifacts — Success
 
@@ -19,6 +20,6 @@ pack: en-communication
 
 - Pattern 19 (Collaborative Communication Artifacts): Three chatbot-style phrases — "I hope this helps!", "Let me know if you'd like me to," and "Feel free to ask" — appear in what is clearly written content (a historical summary), not a live interactive conversation.
 
-## Verdict
+## Judgment
 
 **Success** — The fire condition is met: chatbot conversational phrases appear in content that is not a live interactive conversation. The text is a historical factual summary, not a chat session. The corrected version removes all three conversational artifacts and adds a substantive closing fact instead.

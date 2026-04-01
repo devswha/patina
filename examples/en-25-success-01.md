@@ -1,9 +1,10 @@
+language: en
 ---
 pattern: 25
 type: success
 name: Metronomic Paragraph Structure
 pack: en-structure
----
+ENDFRONT
 
 # Pattern 25: Metronomic Paragraph Structure — Success
 
@@ -27,6 +28,6 @@ pack: en-structure
 
 - Pattern 25 (Metronomic Paragraph Structure): All three paragraphs follow the identical template: general claim, then statistic as evidence, then interpretive "significance" sentence. The structure is claim-evidence-significance repeated three times without variation.
 
-## Verdict
+## Judgment
 
 **Success** — The fire condition is met: 3 consecutive paragraphs follow the same internal template (claim → evidence → significance). Each paragraph opens with a broad topic statement, supports it with one data point, and closes with an interpretive sentence using signal words ("represents," "signals," "underscores"). The corrected version varies paragraph shape: the first leads with the data, the second opens with a counterpoint, and the third starts with an evaluative observation.

@@ -21,7 +21,7 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detec
 **After** (humanized):
 > AI coding tools speed up grunt work. Config files, test scaffolding, that kind of thing. The problem is the code looks right even when it isn't. It compiles, passes lint, so you merge it -- then find out later it's doing something completely different from what you intended.
 
-115 patterns detected across Korean (28), English (31), Chinese (28), and Japanese (28). See the [full pattern list](#patterns) below.
+112 patterns detected across Korean (28), English (28), Chinese (28), and Japanese (28). See the [full pattern list](#patterns) below.
 
 ## Install
 
@@ -155,7 +155,7 @@ When used with rewrite or ouroboros mode, a **fidelity score** (0-100, higher = 
 
 Fidelity checks four criteria: claims preserved, no fabrication, tone match, and length ratio. The combined score weights both dimensions — configurable per profile (e.g., academic: fidelity 0.60, AI 0.40; blog: AI 0.70, fidelity 0.30).
 
-The score is pattern-based and deterministic — it reuses the same 28 (Korean), 31 (English), 28 (Chinese), or 28 (Japanese) detection patterns from audit mode. Profile overrides affect scoring (e.g., blog profile suppresses bold pattern #14).
+The score is pattern-based and deterministic — it reuses the same 28 (Korean), 28 (English), 28 (Chinese), or 28 (Japanese) detection patterns from audit mode. Profile overrides affect scoring (e.g., blog profile suppresses bold pattern #14).
 
 ### Ouroboros Mode (Iterative Self-Improvement)
 
@@ -302,7 +302,7 @@ The skill loads language-specific pattern packs (`ko-*.md`, `en-*.md`, `zh-*.md`
 
 </details>
 
-### English (31 patterns)
+### English (28 patterns)
 
 Ported from [blader/humanizer](https://github.com/blader/humanizer), based on [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing).
 
@@ -506,7 +506,9 @@ patina/
 ├── core/scoring.md           # Scoring algorithm reference
 ├── patterns/
 │   ├── ko-*.md               # Korean patterns (6 packs, 28 patterns)
-│   └── en-*.md               # English patterns (6 packs, 31 patterns)
+│   ├── en-*.md               # English patterns (6 packs, 28 patterns)
+│   ├── zh-*.md               # Chinese patterns (6 packs, 28 patterns)
+│   └── ja-*.md               # Japanese patterns (6 packs, 28 patterns)
 ├── profiles/                 # Writing style profiles
 ├── examples/                 # Before/after test cases
 └── custom/                   # Your extensions (gitignored)

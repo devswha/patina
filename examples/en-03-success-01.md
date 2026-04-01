@@ -1,9 +1,10 @@
+language: en
 ---
 pattern: 3
 type: success
 name: Superficial -ing Analyses
 pack: en-content
----
+ENDFRONT
 
 # Pattern 3: Superficial -ing Analyses — Success
 
@@ -19,6 +20,6 @@ pack: en-content
 
 - Pattern 3 (Superficial -ing Analyses): Four present-participle phrases — "showcasing," "highlighting," "underscoring," "demonstrating" — chained in a single sentence with no concrete causal explanation. Each gerund gestures at significance without saying anything specific.
 
-## Verdict
+## Judgment
 
 **Success** — The fire condition is met: 4 present-participle phrases chained in consecutive clauses, all functioning as vague analytical filler. None of them explain *why* the initiative matters or provide any concrete detail. The corrected version replaces the -ing chain with specific facts: which neighborhoods, what the farm actually produced, and how distribution works.

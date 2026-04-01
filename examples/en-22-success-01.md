@@ -1,9 +1,10 @@
+language: en
 ---
 pattern: 22
 type: success
 name: Filler Phrases
 pack: en-filler
----
+ENDFRONT
 
 # Pattern 22: Filler Phrases — Success
 
@@ -19,6 +20,6 @@ pack: en-filler
 
 - Pattern 22 (Filler Phrases): Six filler phrases in one paragraph — "it's important to note that," "in order to," "due to the fact that," "it's worth mentioning that," "at the end of the day," and "when it comes to." Each can be deleted or shortened without any loss of meaning.
 
-## Verdict
+## Judgment
 
 **Success** — The fire condition is met: 6 filler phrases far exceeds the 2+ threshold. Every one of them adds length but no meaning. "In order to" becomes "to," "due to the fact that" becomes a direct clause, and the rest are deleted entirely. The corrected version is shorter, clearer, and adds a concrete statistic.

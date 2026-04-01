@@ -386,6 +386,20 @@ Fidelity = (3+2+3+2) / 12 × 100 = **83.3**
 
 Interpretation: 76-90 range = "높은 충실도" (High fidelity, minor issues)
 
+### Fidelity Score Interpretation
+
+| Range | Label | Meaning |
+|-------|-------|---------|
+| 91-100 | 완벽한 충실도 | Perfect fidelity — all meaning preserved |
+| 76-90 | 높은 충실도 | High fidelity — minor omissions or additions |
+| 51-75 | 보통 충실도 | Moderate fidelity — noticeable meaning changes |
+| 26-50 | 낮은 충실도 | Low fidelity — significant meaning loss or fabrication |
+| 0-25 | 의미 왜곡 | Meaning severely distorted or lost |
+
+> **Note:** Unlike AI-likeness (lower = better), fidelity uses **higher = better**.
+> A score of 83 means "roughly 73-93 range" given ±10 LLM variance —
+> solidly in the "높은 충실도" band.
+
 ---
 
 ## 13. Combined Score

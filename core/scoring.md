@@ -95,6 +95,18 @@ Unknown categories (from custom packs not in the weight config) get default weig
 | structure | 0.10 | 4 |
 | **Total** | **1.00** | **28** |
 
+### Chinese (zh)
+
+| Category | Weight | Patterns |
+|----------|--------|----------|
+| content | 0.20 | 6 |
+| language | 0.20 | 6 |
+| style | 0.20 | 6 |
+| communication | 0.15 | 3 |
+| filler | 0.10 | 3 |
+| structure | 0.15 | 4 |
+| **Total** | **1.00** | **28** |
+
 Weights are configurable via `ouroboros.category-weights.{lang}` in `.patina.yaml`.
 
 ---

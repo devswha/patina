@@ -5,11 +5,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
 [![Based on](https://img.shields.io/badge/Based%20on-blader%2Fhumanizer-blue)](https://github.com/blader/humanizer)
-[![Multi-language](https://img.shields.io/badge/Languages-Korean%20%7C%20English-green)](https://github.com/devswha/patina)
+[![Multi-language](https://img.shields.io/badge/Languages-Korean%20%7C%20English%20%7C%20Chinese-green)](https://github.com/devswha/patina)
 
 **Make AI text sound like a human wrote it.**
 
-A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detects and removes AI writing patterns from Korean and English text. It finds the telltale signs -- the "delve into"s, the triple-item lists, the vague conclusions -- and rewrites them into natural prose.
+A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detects and removes AI writing patterns from Korean, English, and Chinese text. It finds the telltale signs -- the "delve into"s, the triple-item lists, the vague conclusions -- and rewrites them into natural prose.
 
 > "LLMs use statistical algorithms to guess what should come next. The result tends toward the most statistically likely result that applies to the widest variety of cases." — [Wikipedia](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)
 
@@ -21,7 +21,7 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detec
 **After** (humanized):
 > AI coding tools speed up grunt work. Config files, test scaffolding, that kind of thing. The problem is the code looks right even when it isn't. It compiles, passes lint, so you merge it -- then find out later it's doing something completely different from what you intended.
 
-59 patterns detected across Korean (28) and English (31). See the [full pattern list](#patterns) below.
+87 patterns detected across Korean (28), English (31), and Chinese (28). See the [full pattern list](#patterns) below.
 
 ## Install
 
@@ -45,7 +45,7 @@ In Claude Code, type:
 [paste your text here]
 ```
 
-Korean is the default language. For English:
+Korean is the default language. For English or Chinese:
 
 ```
 /patina --lang en
@@ -53,11 +53,18 @@ Korean is the default language. For English:
 [paste your English text here]
 ```
 
+```
+/patina --lang zh
+
+[paste your Chinese text here]
+```
+
 ### More Options
 
 | Flag | What it does |
 |------|-------------|
 | `--lang en` | Process English text instead of Korean |
+| `--lang zh` | Process Chinese text instead of Korean |
 | `--profile blog` | Use blog/essay writing style |
 | `--diff` | Show what changed and why, pattern by pattern |
 | `--audit` | Detect AI patterns only (no rewriting) |
@@ -116,7 +123,7 @@ Interpretation: 16-30 = Mostly human-like, minor traces
 
 Score ranges: **0-15** human | **16-30** mostly human | **31-50** mixed | **51-70** AI-like | **71-100** heavily AI
 
-The score is pattern-based and deterministic — it reuses the same 28 (Korean) or 31 (English) detection patterns from audit mode. Profile overrides affect scoring (e.g., blog profile suppresses bold pattern #14).
+The score is pattern-based and deterministic — it reuses the same 28 (Korean), 31 (English), or 28 (Chinese) detection patterns from audit mode. Profile overrides affect scoring (e.g., blog profile suppresses bold pattern #14).
 
 ### Ouroboros Mode (Iterative Self-Improvement)
 
@@ -181,7 +188,7 @@ Your text
 Natural-sounding text
 ```
 
-The skill loads language-specific pattern packs (`ko-*.md` or `en-*.md`) and applies them through this 3-phase pipeline. Profiles and voice guidelines shape the tone.
+The skill loads language-specific pattern packs (`ko-*.md`, `en-*.md`, or `zh-*.md`) and applies them through this 3-phase pipeline. Profiles and voice guidelines shape the tone.
 
 ## <a name="patterns"></a>Patterns
 
@@ -332,21 +339,42 @@ Ported from [blader/humanizer](https://github.com/blader/humanizer), based on [W
 </details>
 
 <details>
-<summary><b>Korean vs English: where patterns differ</b></summary>
+<summary><b>Chinese Patterns (zh)</b> -- 28 patterns</summary>
 
-Some patterns are language-specific. Where Korean has one pattern, English may have a different one in the same slot:
+Chinese patterns follow the same 6-category structure. `--lang zh` auto-discovers all `zh-*.md` packs.
 
-| # | Korean | English |
-|---|--------|---------|
-| 8 | -jeok suffix overuse (Sino-Korean adjectives) | Copula avoidance ("serves as") |
-| 12 | Verbose particles (Korean grammar) | False ranges ("from X to Y") |
-| 13 | Excessive connectors (Korean transitions) | Em dash overuse |
-| 16 | Progressive tense overuse | Title Case in Headings |
-| 18 | Excessive formal language | Curly quotation marks |
-| 25 | Structural Repetition | Metronomic Paragraph Structure |
-| 26 | Translationese | Passive Nominalization Chains |
-| 27 | Passive Voice Overuse | Zombie Nouns (Excessive Nominalization) |
-| 28 | Unnecessary Loanwords | Stacked Subordinate Clauses |
+**Content (6):** Undue significance emphasis, media/notability claims, superficial verb-chain analysis, promotional language, vague attributions, formulaic challenges-and-prospects.
+
+**Language (6):** AI buzzword overuse (赋能/助力/深耕), four-character idiom overuse (成语堆砌), overly normalized 的/地/得, parallelism overuse (排比句), synonym cycling, verbose prepositional frames.
+
+**Style (6):** Excessive connectors, boldface overuse, inline-header lists, 地-adverb overuse, emojis, official/bureaucratic register (公文体).
+
+**Communication (3):** Chatbot artifacts, knowledge-cutoff disclaimers, sycophantic tone.
+
+**Filler (3):** Filler phrases (众所周知/不可否认的是), excessive hedging, generic positive conclusions.
+
+**Structure (4):** Structural repetition, translationese/Europeanized grammar, passive 被-overuse, total-subtotal-total (总分总) overuse.
+
+</details>
+
+<details>
+<summary><b>Korean vs English vs Chinese: where patterns differ</b></summary>
+
+Some patterns are language-specific. Where one language has a pattern, another may have a different one in the same slot:
+
+| # | Korean | English | Chinese |
+|---|--------|---------|---------|
+| 8 | -jeok suffix overuse | Copula avoidance ("serves as") | Four-character idiom overuse (成语) |
+| 9 | — | — | 的/地/得 over-normalization |
+| 10 | — | — | Parallelism overuse (排比句) |
+| 12 | Verbose particles | False ranges ("from X to Y") | Verbose prepositional frames (在～的基础上) |
+| 13 | Excessive connectors | Em dash overuse | Excessive connectors (与此同时/此外) |
+| 16 | Progressive tense overuse | Title Case in Headings | 地-adverb overuse (积极地/深入地) |
+| 18 | Excessive formal language | Curly quotation marks | Bureaucratic register (公文体) |
+| 25 | Structural Repetition | Metronomic Paragraph Structure | Structural Repetition |
+| 26 | Translationese | Passive Nominalization Chains | Translationese/Europeanized grammar |
+| 27 | Passive Voice Overuse | Zombie Nouns | 被-overuse |
+| 28 | Unnecessary Loanwords | Stacked Subordinate Clauses | 总分总 structure overuse |
 
 </details>
 
@@ -356,7 +384,7 @@ Edit `.patina.default.yaml`:
 
 ```yaml
 version: "3.2.0"
-language: ko              # ko | en (or use --lang flag)
+language: ko              # ko | en | zh (or use --lang flag)
 profile: default          # default | blog
 output: rewrite           # rewrite | diff | audit | score
 skip-patterns: []         # e.g., [ko-filler] to skip a pack

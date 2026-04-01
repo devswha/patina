@@ -1,9 +1,10 @@
+language: en
 ---
 pattern: 4
 type: failure
 name: Promotional Language
 pack: en-content
----
+ENDFRONT
 
 # Pattern 4: Promotional Language — Failure (False Positive)
 
@@ -19,6 +20,6 @@ pack: en-content
 
 - Pattern 4 (Promotional Language): "breathtaking," "nestled," "must-visit," and "hidden gem" all appear in the text.
 
-## Verdict
+## Judgment
 
 **Failure (false positive)** — The exclusion condition applies: the promotional language appears inside direct quotations from marketing materials being analyzed, not as the author's own descriptive prose. The author is critically examining these claims, not endorsing them. The surrounding text provides a skeptical counterpoint with specific data (14 reviews, 3.8-star average). Firing here would penalize legitimate media criticism.

@@ -1,9 +1,10 @@
+language: en
 ---
 pattern: 13
 type: success
 name: Em Dash Overuse
 pack: en-style
----
+ENDFRONT
 
 # Pattern 13: Em Dash Overuse — Success
 
@@ -19,6 +20,6 @@ pack: en-style
 
 - Pattern 13 (Em Dash Overuse): Seven em dashes in two sentences, used for parenthetical asides, clause breaks, and conditional insertions. Every interruption uses the same punctuation mark.
 
-## Verdict
+## Judgment
 
 **Success** — The fire condition is met: 7 em dashes far exceeds the 3+ threshold. The dashes are used uniformly for every parenthetical and aside, creating a choppy, mechanical rhythm. The corrected version varies the alternatives: commas for some parentheticals, subordinate clauses for others, and a conditional phrase restructured as a trailing clause.

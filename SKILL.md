@@ -3,7 +3,7 @@ name: patina
 version: 3.2.0
 description: |
   AI가 생성한 텍스트에서 AI 특유의 글쓰기 패턴을 제거하여 자연스럽고
-  사람이 쓴 것처럼 만듭니다. 다국어 지원(한국어 28개, 영어 31개, 중국어 28개, 일본어 28개 패턴).
+  사람이 쓴 것처럼 만듭니다. 다국어 지원(한국어 28개, 영어 28개, 중국어 28개, 일본어 28개 패턴).
   2-Phase 처리 파이프라인(구조→문장/어휘)과 플러그인 기반 구조로
   패턴 팩과 프로필을 조합합니다.
   Based on blader/humanizer, oh-my-zsh inspired plugin architecture.

@@ -1,9 +1,10 @@
+language: en
 ---
 pattern: 25
 type: failure
 name: Metronomic Paragraph Structure
 pack: en-structure
----
+ENDFRONT
 
 # Pattern 25: Metronomic Paragraph Structure — Failure (False Positive)
 
@@ -23,6 +24,6 @@ pack: en-structure
 
 - Pattern 25 (Metronomic Paragraph Structure): All three paragraphs follow the same internal template — processor, then camera/GPU, then battery life, then price.
 
-## Verdict
+## Judgment
 
 **Failure (false positive)** — The exclusion condition applies: comparative reviews where the repeated structure is the required format are explicitly excluded. This is a product comparison evaluating three phones on the same criteria (processor, camera, battery, price). The parallel structure is deliberate and expected — readers need consistent categories to compare products. The regularity is a feature of the format, not an AI artifact.

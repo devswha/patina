@@ -1,9 +1,10 @@
+language: en
 ---
 pattern: 21
 type: success
 name: Sycophantic/Servile Tone
 pack: en-communication
----
+ENDFRONT
 
 # Pattern 21: Sycophantic/Servile Tone — Success
 
@@ -19,6 +20,6 @@ pack: en-communication
 
 - Pattern 21 (Sycophantic/Servile Tone): Three flattering openers — "Great question!", "That's a really fascinating topic," and "You've raised an excellent point" — all appear before the substantive content. "Let me break this down for you" adds a fourth servile phrase.
 
-## Verdict
+## Judgment
 
 **Success** — The fire condition is met: multiple flattering and servile openers appear before the actual answer begins. None of these phrases add information. The corrected version drops all four filler phrases and leads with the substantive point, adding specific data to replace the empty flattery.

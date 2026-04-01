@@ -1,9 +1,10 @@
+language: en
 ---
 pattern: 26
 type: failure
 name: Passive Nominalization Chains
 pack: en-structure
----
+ENDFRONT
 
 # Pattern 26: Passive Nominalization Chains — Failure (False Positive)
 
@@ -19,6 +20,6 @@ pack: en-structure
 
 - Pattern 26 (Passive Nominalization Chains): Three passive constructions — "were collected," "were measured," and "were determined" — appear in the same paragraph.
 
-## Verdict
+## Judgment
 
 **Failure (false positive)** — The exclusion condition applies: scientific methods sections are explicitly excluded because passive voice is a disciplinary norm in experimental methodology. Passive construction in a methods section keeps the focus on the procedure rather than the researcher, which is the accepted convention. Additionally, the actor is appropriately omitted — what matters is *how* the measurements were taken, not *who* held the probe. Firing here would impose a stylistic correction that conflicts with scientific writing standards.

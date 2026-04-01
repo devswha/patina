@@ -1,9 +1,10 @@
+language: en
 ---
 pattern: 4
 type: success
 name: Promotional Language
 pack: en-content
----
+ENDFRONT
 
 # Pattern 4: Promotional Language — Success
 
@@ -19,6 +20,6 @@ pack: en-content
 
 - Pattern 4 (Promotional Language): Six promotional terms — "nestled," "stunning," "boasts," "world-class," "breathtaking," "hidden gem," "exquisite," "must-visit" — applied to what is being described as a small countryside village. Multiple superlatives modify the same subject.
 
-## Verdict
+## Judgment
 
 **Success** — The fire condition is clearly met: well over 2 promotional adjectives modify the same subject, including strong superlatives like "world-class," "breathtaking," and "must-visit" used as descriptive prose rather than quoted marketing copy. The text reads like a tourism brochure. The corrected version replaces the promotional language with neutral, factual description: location, amenities, and access details.

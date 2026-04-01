@@ -5,11 +5,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
 [![Based on](https://img.shields.io/badge/Based%20on-blader%2Fhumanizer-blue)](https://github.com/blader/humanizer)
-[![Multi-language](https://img.shields.io/badge/Languages-Korean%20%7C%20English%20%7C%20Chinese-green)](https://github.com/devswha/patina)
+[![Multi-language](https://img.shields.io/badge/Languages-Korean%20%7C%20English%20%7C%20Chinese%20%7C%20Japanese-green)](https://github.com/devswha/patina)
 
 **Make AI text sound like a human wrote it.**
 
-A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detects and removes AI writing patterns from Korean, English, and Chinese text. It finds the telltale signs -- the "delve into"s, the triple-item lists, the vague conclusions -- and rewrites them into natural prose.
+A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detects and removes AI writing patterns from Korean, English, Chinese, and Japanese text. It finds the telltale signs -- the "delve into"s, the triple-item lists, the vague conclusions -- and rewrites them into natural prose.
 
 > "LLMs use statistical algorithms to guess what should come next. The result tends toward the most statistically likely result that applies to the widest variety of cases." — [Wikipedia](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)
 
@@ -21,7 +21,7 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detec
 **After** (humanized):
 > AI coding tools speed up grunt work. Config files, test scaffolding, that kind of thing. The problem is the code looks right even when it isn't. It compiles, passes lint, so you merge it -- then find out later it's doing something completely different from what you intended.
 
-87 patterns detected across Korean (28), English (31), and Chinese (28). See the [full pattern list](#patterns) below.
+115 patterns detected across Korean (28), English (31), Chinese (28), and Japanese (28). See the [full pattern list](#patterns) below.
 
 ## Install
 
@@ -45,7 +45,7 @@ In Claude Code, type:
 [paste your text here]
 ```
 
-Korean is the default language. For English or Chinese:
+Korean is the default language. For other languages:
 
 ```
 /patina --lang en
@@ -59,12 +59,19 @@ Korean is the default language. For English or Chinese:
 [paste your Chinese text here]
 ```
 
+```
+/patina --lang ja
+
+[paste your Japanese text here]
+```
+
 ### More Options
 
 | Flag | What it does |
 |------|-------------|
-| `--lang en` | Process English text instead of Korean |
-| `--lang zh` | Process Chinese text instead of Korean |
+| `--lang en` | Process English text |
+| `--lang zh` | Process Chinese text |
+| `--lang ja` | Process Japanese text |
 | `--profile blog` | Use blog/essay writing style |
 | `--diff` | Show what changed and why, pattern by pattern |
 | `--audit` | Detect AI patterns only (no rewriting) |
@@ -123,7 +130,7 @@ Interpretation: 16-30 = Mostly human-like, minor traces
 
 Score ranges: **0-15** human | **16-30** mostly human | **31-50** mixed | **51-70** AI-like | **71-100** heavily AI
 
-The score is pattern-based and deterministic — it reuses the same 28 (Korean), 31 (English), or 28 (Chinese) detection patterns from audit mode. Profile overrides affect scoring (e.g., blog profile suppresses bold pattern #14).
+The score is pattern-based and deterministic — it reuses the same 28 (Korean), 31 (English), 28 (Chinese), or 28 (Japanese) detection patterns from audit mode. Profile overrides affect scoring (e.g., blog profile suppresses bold pattern #14).
 
 ### Ouroboros Mode (Iterative Self-Improvement)
 
@@ -188,7 +195,7 @@ Your text
 Natural-sounding text
 ```
 
-The skill loads language-specific pattern packs (`ko-*.md`, `en-*.md`, or `zh-*.md`) and applies them through this 3-phase pipeline. Profiles and voice guidelines shape the tone.
+The skill loads language-specific pattern packs (`ko-*.md`, `en-*.md`, `zh-*.md`, or `ja-*.md`) and applies them through this 3-phase pipeline. Profiles and voice guidelines shape the tone.
 
 ## <a name="patterns"></a>Patterns
 
@@ -358,23 +365,42 @@ Chinese patterns follow the same 6-category structure. `--lang zh` auto-discover
 </details>
 
 <details>
-<summary><b>Korean vs English vs Chinese: where patterns differ</b></summary>
+<summary><b>Japanese Patterns (ja)</b> -- 28 patterns</summary>
+
+Japanese patterns follow the same 6-category structure. `--lang ja` auto-discovers all `ja-*.md` packs.
+
+**Content (6):** Undue significance emphasis, media/notability claims, superficial verb-chain analysis (〜しており), promotional language, vague attributions, formulaic challenges-and-prospects.
+
+**Language (6):** AI buzzword overuse, 〜的(teki) suffix overuse, negative parallelisms, rule of three, synonym cycling, katakana loanword overuse.
+
+**Style (6):** Excessive connectors, boldface overuse, inline-header lists, excessive keigo (ございます/させていただきます), emojis, overly stiff である-style register.
+
+**Communication (3):** Chatbot artifacts, knowledge-cutoff disclaimers, sycophantic tone.
+
+**Filler (3):** Filler phrases (周知の通り/言うまでもなく), excessive hedging, generic positive conclusions.
+
+**Structure (4):** Structural repetition, translationese, 〜ている progressive overuse, 起承転結 formula overuse.
+
+</details>
+
+<details>
+<summary><b>Korean vs English vs Chinese vs Japanese: where patterns differ</b></summary>
 
 Some patterns are language-specific. Where one language has a pattern, another may have a different one in the same slot:
 
-| # | Korean | English | Chinese |
-|---|--------|---------|---------|
-| 8 | -jeok suffix overuse | Copula avoidance ("serves as") | Four-character idiom overuse (成语) |
-| 9 | — | — | 的/地/得 over-normalization |
-| 10 | — | — | Parallelism overuse (排比句) |
-| 12 | Verbose particles | False ranges ("from X to Y") | Verbose prepositional frames (在～的基础上) |
-| 13 | Excessive connectors | Em dash overuse | Excessive connectors (与此同时/此外) |
-| 16 | Progressive tense overuse | Title Case in Headings | 地-adverb overuse (积极地/深入地) |
-| 18 | Excessive formal language | Curly quotation marks | Bureaucratic register (公文体) |
-| 25 | Structural Repetition | Metronomic Paragraph Structure | Structural Repetition |
-| 26 | Translationese | Passive Nominalization Chains | Translationese/Europeanized grammar |
-| 27 | Passive Voice Overuse | Zombie Nouns | 被-overuse |
-| 28 | Unnecessary Loanwords | Stacked Subordinate Clauses | 总分总 structure overuse |
+| # | Korean | English | Chinese | Japanese |
+|---|--------|---------|---------|----------|
+| 8 | -jeok suffix overuse | Copula avoidance ("serves as") | Four-character idiom overuse (成语) | -teki suffix overuse (〜的) |
+| 9 | Negative parallelisms | Negative parallelisms | 的/地/得 over-normalization | Negative parallelisms |
+| 10 | Rule of three | Rule of three | Parallelism overuse (排比句) | Rule of three |
+| 12 | Verbose particles | False ranges ("from X to Y") | Verbose prepositional frames (在～的基础上) | Katakana loanword overuse |
+| 13 | Excessive connectors | Em dash overuse | Excessive connectors (与此同时/此外) | Excessive connectors |
+| 16 | Progressive tense overuse | Title Case in Headings | 地-adverb overuse (积极地/深入地) | Excessive keigo (ございます) |
+| 18 | Excessive formal language | Curly quotation marks | Bureaucratic register (公文体) | Stiff である-style register |
+| 25 | Structural Repetition | Metronomic Paragraph Structure | Structural Repetition | Structural Repetition |
+| 26 | Translationese | Passive Nominalization Chains | Translationese/Europeanized grammar | Translationese |
+| 27 | Passive Voice Overuse | Zombie Nouns | 被-overuse | ている progressive overuse |
+| 28 | Unnecessary Loanwords | Stacked Subordinate Clauses | 总分总 structure overuse | 起承転結 formula overuse |
 
 </details>
 
@@ -384,7 +410,7 @@ Edit `.patina.default.yaml`:
 
 ```yaml
 version: "3.2.0"
-language: ko              # ko | en | zh (or use --lang flag)
+language: ko              # ko | en | zh | ja (or use --lang flag)
 profile: default          # default | blog
 output: rewrite           # rewrite | diff | audit | score
 skip-patterns: []         # e.g., [ko-filler] to skip a pack

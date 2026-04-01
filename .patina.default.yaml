@@ -2,11 +2,12 @@ version: "3.2.0"
 language: ko              # Korean (default) -- auto-loads all ko-*.md patterns
                           # language: en      -- English -- auto-loads all en-*.md patterns
                           # language: zh      -- Chinese -- auto-loads all zh-*.md patterns
-                          # Override with CLI: --lang en / --lang zh
+                          # language: ja      -- Japanese -- auto-loads all ja-*.md patterns
+                          # Override with CLI: --lang en / --lang zh / --lang ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
 
-# Supported languages: ko, en, zh
+# Supported languages: ko, en, zh, ja
 
 # patterns 목록은 기본 언어(ko)의 팩을 문서화합니다.
 # 실제 로딩은 Glob patterns/{lang}-*.md로 자동 탐색합니다.
@@ -34,6 +35,14 @@ patterns:
 #   - zh-style
 #   - zh-communication
 #   - zh-filler
+
+# Japanese packs (auto-discovered when language: ja):
+#   - ja-structure (4 patterns: #25-28)
+#   - ja-content
+#   - ja-language
+#   - ja-style
+#   - ja-communication
+#   - ja-filler
 
 skip-patterns: []
 blocklist: []              # 추가로 감지할 어휘
@@ -80,6 +89,13 @@ ouroboros:
       filler: 0.10
       structure: 0.10
     zh:
+      content: 0.20
+      language: 0.20
+      style: 0.20
+      communication: 0.15
+      filler: 0.10
+      structure: 0.15
+    ja:
       content: 0.20
       language: 0.20
       style: 0.20

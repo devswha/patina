@@ -116,7 +116,7 @@ Interpretation: 16-30 = Mostly human-like, minor traces
 
 Score ranges: **0-15** human | **16-30** mostly human | **31-50** mixed | **51-70** AI-like | **71-100** heavily AI
 
-The score is pattern-based and deterministic — it reuses the same 28 (Korean) or 24 (English) detection patterns from audit mode. Profile overrides affect scoring (e.g., blog profile suppresses bold pattern #14).
+The score is pattern-based and deterministic — it reuses the same 28 (Korean) or 31 (English) detection patterns from audit mode. Profile overrides affect scoring (e.g., blog profile suppresses bold pattern #14).
 
 ### Ouroboros Mode (Iterative Self-Improvement)
 
@@ -343,7 +343,10 @@ Some patterns are language-specific. Where Korean has one pattern, English may h
 | 13 | Excessive connectors (Korean transitions) | Em dash overuse |
 | 16 | Progressive tense overuse | Title Case in Headings |
 | 18 | Excessive formal language | Curly quotation marks |
-| 25-28 | Structure patterns (Korean-specific) | Placeholder (no English equivalents yet) |
+| 25 | Structural Repetition | Metronomic Paragraph Structure |
+| 26 | Translationese | Passive Nominalization Chains |
+| 27 | Passive Voice Overuse | Zombie Nouns (Excessive Nominalization) |
+| 28 | Unnecessary Loanwords | Stacked Subordinate Clauses |
 
 </details>
 

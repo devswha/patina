@@ -72,6 +72,10 @@ Korean is the default language. For other languages:
 | `--lang en` | Process English text |
 | `--lang zh` | Process Chinese text |
 | `--lang ja` | Process Japanese text |
+| `--batch docs/*.md` | Process multiple files at once |
+| `--in-place` | Overwrite originals (with `--batch`) |
+| `--suffix .humanized` | Save as `{file}.humanized.md` |
+| `--outdir output/` | Save results to a directory |
 | `--profile blog` | Use blog/essay writing style |
 | `--diff` | Show what changed and why, pattern by pattern |
 | `--audit` | Detect AI patterns only (no rewriting) |

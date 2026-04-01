@@ -45,6 +45,10 @@ Glob .patina.default.yaml → Read
 - `--score`: score 출력 모드
 - `--ouroboros`: ouroboros 모드 (반복 교정 + 점수 수렴)
 - `--lang <code>`: 처리 언어 변경 (ko, en, zh, ja). 설정 파일의 `language` 값을 오버라이드한다.
+- `--batch <files>`: 여러 파일을 한꺼번에 처리 (glob 또는 명시적 경로 목록).
+  - `--in-place`: 원본 파일을 교정된 텍스트로 덮어쓴다.
+  - `--suffix <ext>`: 결과를 `{원본명}{ext}` 파일로 저장한다 (예: `--suffix .humanized`).
+  - `--outdir <dir>`: 결과를 지정 디렉토리에 저장한다.
 
 `--score` 또는 `--ouroboros` 또는 `ouroboros.enabled: true`이면 `core/scoring.md`도 로드한다.
 파일이 없으면 에러: "core/scoring.md not found. Please update patina."
@@ -138,6 +142,47 @@ Read core/voice.md
 [최종 교정 텍스트]
 
 > **주의:** `--ouroboros`는 rewrite 출력을 기본으로 한다. `--diff`, `--audit`, `--score`와 함께 사용할 수 없다.
+
+---
+
+## 배치 모드 (`--batch`)
+
+`--batch` 플래그가 있으면 아래 절차를 따른다. 1~4단계(설정, 패턴, 프로필, 목소리 로드)는 한 번만 실행한다.
+
+### 입력
+
+```
+Glob {지정된 파일 패턴} → 파일 목록 확보
+```
+
+파일 크기 제한: 50KB 초과 파일은 건너뛰고 요약에 "skipped (too large)" 표시.
+
+### 처리 흐름
+
+각 파일에 대해 순차적으로:
+1. `Read` 파일 내용
+2. 5단계(텍스트 처리) 파이프라인 실행
+3. `--score` 모드를 자동 적용하여 교정 전/후 점수를 측정
+4. 결과 저장:
+   - `--in-place`: `Write`로 원본 파일 덮어쓰기
+   - `--suffix <ext>`: `Write`로 `{원본명}{ext}` 파일 생성
+   - `--outdir <dir>`: `Write`로 `{dir}/{파일명}` 생성
+   - 위 옵션이 없으면: 각 파일의 결과를 순차적으로 출력 (기본 output 모드 적용)
+
+한 파일이 실패하면 에러를 기록하고 다음 파일로 계속 진행한다.
+
+### 결과 요약
+
+모든 파일 처리 후 요약 테이블을 출력한다:
+
+| 파일 | 교정 전 점수 | 교정 후 점수 | 교정 패턴 수 | 상태 |
+|------|-------------|-------------|-------------|------|
+| post1.md | 67 | 23 | 12 | ✅ |
+| post2.md | 45 | 18 | 8 | ✅ |
+| big.md | — | — | — | ⏭️ skipped (too large) |
+| broken.md | — | — | — | ❌ error: parse failed |
+
+> **주의:** `--batch`는 `--ouroboros`와 함께 사용할 수 있다. 이 경우 각 파일에 대해 ouroboros 루프가 독립적으로 실행된다.
 
 ---
 

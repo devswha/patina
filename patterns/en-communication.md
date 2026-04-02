@@ -2,8 +2,8 @@
 pack: en-communication
 language: en
 name: Communication Patterns
-version: 1.0.0
-patterns: 3
+version: 1.1.0
+patterns: 4
 ---
 
 # Communication Patterns
@@ -59,3 +59,21 @@ patterns: 3
 
 **After:**
 > The main economic factor is the gap between housing supply and demand. Building permits in the metro area dropped 18% last year while population grew 2.1%.
+
+---
+
+### 29. False Nuance (Retroactive Reframing)
+
+**Watch words:** Actually, it's more nuanced than that, To be more precise, Well, it's not quite that simple, That said, the reality is more complex, More accurately, In fairness, it's more that, If we're being precise, Though to be fair
+
+**Fire condition:** The text restates or lightly reframes the preceding claim under the guise of adding nuance, without introducing new information, evidence, or a genuinely different perspective.
+
+**Exclusion:** Acceptable when the reframe introduces a substantive correction, cites new evidence, or genuinely shifts the analytical frame in a way that changes the conclusion. Also acceptable in dialogue transcripts where the speaker is visibly self-correcting with new data.
+
+**Problem:** AI hedges its own statements by immediately re-qualifying them in a way that sounds thoughtful but adds nothing. The "nuance" is cosmetic — the second sentence says the same thing as the first in slightly different words. This creates an illusion of depth while padding the text.
+
+**Before:**
+> Remote work increases productivity. Actually, it's more nuanced than that — remote work can enhance productivity in certain contexts while presenting challenges in others, and the net effect depends on organizational culture and individual work styles.
+
+**After:**
+> Remote work increases productivity for focused solo tasks — a Stanford study found a 13% gain for call center workers. It hurts spontaneous collaboration, though: Microsoft's 2021 internal data showed cross-team communication dropped 25% after going fully remote.

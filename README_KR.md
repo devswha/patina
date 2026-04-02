@@ -528,6 +528,12 @@ patina/
 - [WikiProject AI Cleanup](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_AI_Cleanup) -- 커뮤니티 활동
 - [blader/humanizer](https://github.com/blader/humanizer) -- 영어 원본 버전
 
+## 기여하기
+
+[CONTRIBUTING.md](CONTRIBUTING.md)에서 패턴 추가, 예시 개선, 프로필 생성, 오래된 패턴 신고 방법을 확인할 수 있습니다.
+
+**패턴 노화:** AI 글쓰기 패턴은 모델이 파인튜닝되면서 바뀝니다. 더 이상 신뢰할 수 없는 패턴이나 새로운 AI 특징을 발견하면 [이슈를 열어주세요](https://github.com/devswha/patina/issues).
+
 ## 버전 이력
 
 | 버전 | 변경 사항 |

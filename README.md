@@ -528,6 +528,12 @@ Inspired by [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh)'s plugin architectur
 - [WikiProject AI Cleanup](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_AI_Cleanup) -- community effort
 - [blader/humanizer](https://github.com/blader/humanizer) -- original English version
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add patterns, improve examples, create profiles, and report stale patterns.
+
+**Pattern staleness:** AI writing patterns evolve as models get fine-tuned. If you notice a pattern that's no longer a reliable signal, or spot a new AI tell, [open an issue](https://github.com/devswha/patina/issues).
+
 ## Version History
 
 | Version | Changes |

@@ -18,8 +18,8 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detec
 **Before** (AI-sounding):
 > AI coding tools represent a **groundbreaking milestone** showcasing the **innovative potential** of large language models, signifying a **pivotal turning point** in software development evolution. This not only streamlines processes but also fosters collaboration and facilitates organizational alignment.
 
-**After** (humanized):
-> AI coding tools speed up grunt work. Config files, test scaffolding, that kind of thing. The problem is the code looks right even when it isn't. It compiles, passes lint, so you merge it -- then find out later it's doing something completely different from what you intended.
+**After** (humanized — same message, less AI):
+> AI coding tools save real time on the boring parts — scaffolding config files, generating boilerplate tests, filling in CRUD endpoints. For teams already drowning in backlog, that kind of leverage matters. The alignment part is harder to measure, but pull request turnaround at our org dropped from 3 days to about 1 after we rolled them out.
 
 112 patterns detected across Korean (28), English (28), Chinese (28), and Japanese (28). See the [full pattern list](#patterns) below.
 

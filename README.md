@@ -103,7 +103,7 @@ Run the same text through multiple AI models and pick the best result:
 [paste your text here]
 ```
 
-Each model humanizes independently, results are scored for AI-likeness, and the lowest-scoring (most human) result wins.
+Each model humanizes independently, results are scored for AI-likeness and meaning preservation (MPS), and the lowest-scoring (most human) result that passes the MPS floor (≥ 70) wins.
 
 | Flag | What it does |
 |------|-------------|
@@ -146,14 +146,15 @@ Score ranges: **0-15** human | **16-30** mostly human | **31-50** mixed | **51-7
 When used with rewrite or ouroboros mode, a **fidelity score** (0-100, higher = better) is also shown, measuring how faithfully the output preserves the original meaning:
 
 ```
-| Metric        | Score   |
-|---------------|---------|
-| AI-likeness   | 23/100  |
-| Fidelity      | 87/100  |
-| Combined      | 19/100  |
+| Metric               | Score   |
+|----------------------|---------|
+| AI-likeness          | 23/100  |
+| Fidelity             | 87/100  |
+| MPS (meaning)        | 92/100  |
+| Combined             | 19/100  |
 ```
 
-Fidelity checks four criteria: claims preserved, no fabrication, tone match, and length ratio. The combined score weights both dimensions — configurable per profile (e.g., academic: fidelity 0.60, AI 0.40; blog: AI 0.70, fidelity 0.30).
+Fidelity checks four criteria: claims preserved, no fabrication, tone match, and length ratio. MPS (Meaning Preservation Score) tracks whether specific semantic anchors -- claims, polarity, causation, numbers -- survived the rewriting pipeline. The combined score weights AI-likeness and fidelity — configurable per profile (e.g., academic: fidelity 0.60, AI 0.40; blog: AI 0.70, fidelity 0.30).
 
 The score is pattern-based and deterministic — it reuses the same 29 (Korean), 29 (English), 29 (Chinese), or 29 (Japanese) detection patterns from audit mode. Profile overrides affect scoring (e.g., blog profile suppresses bold pattern #14).
 
@@ -190,6 +191,8 @@ Reason: Target met (target: 30)
 - **Plateau**: Score improves by less than 10 points between iterations
 - **Regression**: Score increases (text got worse) — rolls back to previous iteration
 - **Max iterations**: Hard cap of 3 iterations (configurable)
+- **Fidelity floor**: Fidelity drops below 70 — rolls back to previous iteration
+- **MPS floor**: MPS (meaning preservation) drops below 70 — rolls back to previous iteration
 
 **Configuration** — customize in `.patina.yaml`:
 
@@ -198,6 +201,8 @@ ouroboros:
   target-score: 30          # Stop when score <= this (0-100)
   max-iterations: 3         # Maximum loop iterations
   plateau-threshold: 10     # Minimum improvement required
+  fidelity-floor: 70        # Stop if fidelity drops below this
+  mps-floor: 70             # Stop if meaning preservation drops below this
 ```
 
 `--ouroboros` cannot be combined with `--diff`, `--audit`, or `--score`.
@@ -208,19 +213,28 @@ ouroboros:
 Your text
   |
   v
+[Step 4.5] Semantic Anchor Extraction -- extract key claims, polarity, causation, numbers
+  |
+  v
 [Phase 1] Structure scan -- fix paragraph-level issues (repetition, passive voice)
+  |
+  v
+[Step 5a-v] Anchor Verification -- check meaning preserved after Phase 1
   |
   v
 [Phase 2] Sentence rewrite -- fix word-level issues (AI vocabulary, filler, hedging)
   |
   v
-[Phase 3] Self-audit -- "does this still sound like AI?" -- fix remaining issues
+[Step 5b-v] Anchor Verification -- check meaning preserved after Phase 2
   |
   v
-Natural-sounding text
+[Phase 3] Self-audit -- polarity scan, regression check, final MPS calculation
+  |
+  v
+Natural-sounding text (meaning verified)
 ```
 
-The skill loads language-specific pattern packs (`ko-*.md`, `en-*.md`, `zh-*.md`, or `ja-*.md`) and applies them through this 3-phase pipeline. Profiles and voice guidelines shape the tone.
+The skill loads language-specific pattern packs (`ko-*.md`, `en-*.md`, `zh-*.md`, or `ja-*.md`) and applies them through this pipeline. Semantic anchors (key claims, polarity, numbers) are extracted before rewriting and verified after each phase -- if meaning is corrupted, the offending change is retried or rolled back. Profiles and voice guidelines shape the tone.
 
 ## <a name="patterns"></a>Patterns
 
@@ -507,7 +521,7 @@ patina/
 │   └── profiles -> ../profiles
 ├── .patina.default.yaml      # Configuration
 ├── core/voice.md             # Voice & personality guidelines
-├── core/scoring.md           # Scoring algorithm reference
+├── core/scoring.md           # Scoring algorithm (AI-likeness + fidelity + MPS)
 ├── patterns/
 │   ├── ko-*.md               # Korean patterns (6 packs, 29 patterns)
 │   ├── en-*.md               # English patterns (6 packs, 29 patterns)

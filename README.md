@@ -438,7 +438,7 @@ Some patterns are language-specific. Where one language has a pattern, another m
 Edit `.patina.default.yaml`:
 
 ```yaml
-version: "3.2.0"
+version: "3.3.0"
 language: ko              # ko | en | zh | ja (or use --lang flag)
 profile: default
 output: rewrite           # rewrite | diff | audit | score
@@ -542,6 +542,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add patterns, improve examples
 
 | Version | Changes |
 |---------|---------|
+| **3.3.0** | Meaning Preservation System (MPS): ensures humanized text maintains original intent and claims |
 | **3.2.0** | Ouroboros scoring system: pattern-based AI-likeness scoring (0-100), `--score` mode with category breakdown, `--ouroboros` iterative self-improvement loop with configurable termination (target/plateau/regression/max-iterations) |
 | **3.1.1** | MAX mode reliability fixes: per-run temp dir, model-scoped wait loop + timeout handling, Gemini stdin dispatch, Codex CLI compatibility (`--output-last-message`, no `-q`) |
 | **3.1.0** | MAX mode: installable `/patina-max` skill entrypoint + provider-aware dispatch (`claude -p` / `gemini -p` for Claude/Gemini, `codex exec` for Codex) |

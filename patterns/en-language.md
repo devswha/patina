@@ -14,6 +14,9 @@ patterns: 6
 
 **Fire condition:** 3+ watch words appear in one paragraph.
 
+**Semantic Risk:** MEDIUM
+**Preservation Note:** Replacing AI vocabulary words changes the specific connotations carried by words like "nuanced" or "multifaceted"; ensure the substituted terms preserve the intended meaning and register.
+
 **Problem:** These words appear at dramatically higher rates in AI-generated text than in human writing. Individually they are normal English words; clustered together they are a telltale fingerprint.
 
 **Before:**
@@ -32,6 +35,9 @@ patterns: 6
 
 **Exclusion:** "Serves as" is acceptable when the subject has a formally designated role function (e.g., "the committee serves as an advisory board" — institutional role, not decorative usage).
 
+**Semantic Risk:** MEDIUM
+**Preservation Note:** "Serves as" sometimes implies a functional or designated role distinct from mere identity; replacing with "is" may flatten a meaningful distinction about purpose or function.
+
 **Problem:** AI avoids the simple verb "is" by using unnecessarily complex copula constructions. "The park serves as a gathering place" instead of "The park is a gathering place."
 
 **Before:**
@@ -49,6 +55,9 @@ patterns: 6
 **Fire condition:** 2+ "not X but Y" structures in the same document, or a single instance where the positive statement alone would be simpler and equally clear.
 
 **Exclusion:** Genuine contrastive clarification correcting a misconception ("the event is not a conference but a workshop — no keynotes, only hands-on sessions") — the negative frame is doing real work here.
+
+**Semantic Risk:** MEDIUM
+**Preservation Note:** The negative framing sometimes carries a genuine contrast or correction; collapsing "not X but Y" to just "Y" may lose the implicit rejection of a common assumption the author intended to address.
 
 **Problem:** AI uses negative-then-positive constructions to make simple points sound profound. Instead of stating what something is, it first states what it is not.
 
@@ -70,6 +79,8 @@ patterns: 6
 
 **Problem:** AI defaults to triple-item lists and three-part structures when the natural count might be two, four, or one. This creates a rhythm that feels rehearsed rather than spontaneous.
 
+**Semantic Risk:** LOW
+
 **Before:**
 > The program fosters creativity, innovation, and collaboration. Participants gain inspiration, practical skills, and lasting connections. The result is a more dynamic, inclusive, and forward-thinking community.
 
@@ -85,6 +96,8 @@ patterns: 6
 **Exclusion:** Legitimate disambiguation (using "the company" vs. "Microsoft" when distinguishing a parent from a subsidiary, or "the study" vs. "the 2023 Stanford paper" for precision) is not this pattern.
 
 **Problem:** AI rotates synonyms for the same entity to avoid repeating a word, producing text that feels strangely evasive. A city becomes "the metropolis," then "the urban center," then "the municipality" — all within the same paragraph.
+
+**Semantic Risk:** LOW
 
 **Before:**
 > Tokyo is the most populous city in Japan. The metropolis is known for its blend of tradition and modernity. The urban center attracts millions of tourists each year. The Japanese capital continues to grow.
@@ -103,6 +116,9 @@ patterns: 6
 **Exclusion:** Genuine numeric or temporal ranges ("from 10 to 100 employees", "from January to March", "from $5 to $50") are not this pattern.
 
 **Problem:** AI creates artificial ranges to sound comprehensive, often pairing two extremes that do not meaningfully define a spectrum.
+
+**Semantic Risk:** MEDIUM
+**Preservation Note:** Removing a range construction may drop a genuine scope claim about audience or coverage; verify whether the range was intended to convey actual breadth before eliminating it.
 
 **Before:**
 > The festival offers something for everyone, from young children to seasoned professionals, spanning everything from traditional folk music to cutting-edge electronic performances.

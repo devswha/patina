@@ -1,10 +1,11 @@
 ---
 name: patina-max
-version: 3.2.0
+version: 3.3.0
 description: |
   Multi-model humanization. Runs the same humanization task on multiple
   local model CLIs, scores each result, and selects the best
-  (lowest AI score) output. Uses `claude -p` / `gemini -p` for
+  output by lowest AI score among candidates that pass the MPS
+  meaning-preservation floor. Uses `claude -p` / `gemini -p` for
   Claude/Gemini and `codex exec` for Codex.
 allowed-tools:
   - Read
@@ -18,7 +19,7 @@ allowed-tools:
 
 # patina MAX: 멀티모델 Best-of-N Rewriter
 
-당신은 여러 AI 모델을 동시에 사용하여 텍스트를 humanize하고, 가장 자연스러운 결과를 자동 선택하는 오케스트레이터입니다. 각 모델이 같은 텍스트를 humanize한 뒤, AI 유사도 점수가 가장 낮은 결과를 최종본으로 선택합니다.
+당신은 여러 AI 모델을 동시에 사용하여 텍스트를 humanize하고, 가장 자연스러운 결과를 자동 선택하는 오케스트레이터입니다. 각 모델이 같은 텍스트를 humanize한 뒤, 의미 보존 기준(MPS ≥ 70)을 통과한 결과 중 AI 유사도 점수가 가장 낮은 것을 최종본으로 선택합니다.
 
 > **전제 조건:**
 > - **oh-my-claudecode (OMC)** 가 설치되어 있어야 합니다 (tmux dispatch 모드)
@@ -153,14 +154,21 @@ Phase 1 출력에 대해, 나머지 패턴 팩(content, language, style, communi
 3. 설정의 blocklist 어휘도 추가 감지하고, allowlist 어휘는 감지에서 제외하라
 4. 프로필의 `voice-overrides`와 목소리 지침에 따라 필자의 개성을 불어넣어라
 5. 핵심 메시지와 의미를 반드시 보존하라
+6. 핵심 주장, 극성(긍정/부정), 인과관계, 수치를 반드시 보존하라
 
 ## Phase 3: 자기검수 (Self-Audit)
 
-Phase 2 출력 전체를 읽고 스스로 물어라: "아래 글에서 AI가 쓴 것처럼 보이는 부분은?"
+Phase 2 출력 전체를 읽고 아래 체크리스트를 순서대로 실행하라:
 
-1. Phase 1에서 교정한 구조적 변경이 Phase 2에서 되돌려지지 않았는지 확인하라 (회귀 체크)
-2. 아직 AI처럼 느껴지는 표현이 있으면 마지막으로 수정하라
-3. 한 번만 재검토하고 완료한다 — 무한 반복하지 않는다
+1. **앵커 추출** — 원본 텍스트에서 핵심 의미 앵커를 추출하라: 사실적 주장(Claim), 극성(Polarity: 긍정/부정), 인과관계(Causation), 수치(Quantifier), 부정 표현(Negation). 문단당 최대 3개.
+2. **앵커 검증** — 추출한 각 앵커가 Phase 2 출력에 보존되었는지 확인하라:
+   - 앵커가 보존됨 → OK
+   - 앵커가 약화/모호해짐 → 해당 문장을 앵커를 보존하면서 다시 교정하라
+   - 앵커가 삭제되었거나 극성이 반전됨 → 해당 문장을 원문으로 복원하라
+3. **극성 반전 스캔** — 원문의 부정이 긍정으로(또는 반대) 바뀐 곳이 없는지 명시적으로 확인하라
+4. **회귀 체크** — Phase 1에서 교정한 구조적 변경이 Phase 2에서 되돌려지지 않았는지 확인하라
+5. **AI 검수** — "아래 글에서 AI가 쓴 것처럼 보이는 부분은?" 아직 AI처럼 느껴지는 표현이 있으면 마지막으로 수정하라
+6. 한 번만 재검토하고 완료한다 — 무한 반복하지 않는다
 
 ## 입력 텍스트
 {사용자가 제공한 원문 텍스트}
@@ -325,6 +333,8 @@ touch "$RUN_DIR/codex.done"
 
 이 절차는 각 모델의 결과에 대해 독립적으로 실행한다. 모든 모델이 동일한 수식으로 평가되므로 공정한 비교가 가능하다.
 
+각 결과에 대해 추가로 MPS(Meaning Preservation Score)를 산출한다. 원본 텍스트에서 의미 앵커를 추출하고, 각 모델의 humanize 결과가 앵커를 얼마나 보존했는지를 `core/scoring.md` §§ 14-17의 절차로 평가한다.
+
 > **참고:** 이전 버전에서는 MAX 모드가 주관적 평가를 사용했으나, v3.2.0부터 `core/scoring.md`의 수식 기반 알고리즘으로 통합되었다. 단일 모드(`--score`)와 MAX 모드가 동일한 스코어링을 사용한다.
 
 ---
@@ -336,16 +346,18 @@ touch "$RUN_DIR/codex.done"
 ### 비교 테이블 형식
 
 ```
-| Model   | AI Score | Status  |
-|---------|----------|---------|
-| claude  | 23       | success |
-| gemini  | 31       | success |
-| codex   | --       | failed  |
+| Model   | AI Score | MPS  | Status  |
+|---------|----------|------|---------|
+| claude  | 23       | 92   | ✅       |
+| gemini  | 31       | 85   | ✅       |
+| codex   | --       | --   | failed  |
 
-Best: claude (AI Score: 23)
+Best: claude (AI Score: 23, MPS: 92)
 ```
 
-- AI 점수가 가장 낮은 결과를 자동 선택한다
+- MPS ≥ 70인 후보 중 AI 점수가 가장 낮은 결과를 자동 선택한다
+- MPS < 70인 후보는 AI 점수와 관계없이 탈락한다
+- 모든 후보의 MPS < 70인 경우, MPS가 가장 높은 후보를 선택한다 (의미 보존 우선)
 - 동점이면 설정 파일의 모델 순서에서 먼저 오는 것을 우선한다
 
 ---

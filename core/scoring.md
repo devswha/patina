@@ -461,3 +461,173 @@ When used with `--ouroboros`, the loop terminates when:
 - Fidelity score drops below floor (default: 70) — **hard stop**, even if AI score improves
 
 This prevents the ouroboros loop from "improving" AI score by destroying content.
+
+---
+
+## 14. MPS (Meaning Preservation Score) — Overview
+
+AI-likeness (§§ 1–7) measures *how AI-like the output sounds*.
+Fidelity (§§ 9–13) measures *how faithfully the output preserves overall meaning*.
+MPS measures *whether specific semantic anchors survive the humanization pipeline*.
+
+MPS is anchor-based: it tracks discrete meaning units (claims, polarity, causation, quantifiers, negations) extracted from the original text in SKILL.md Step 4.5, and checks whether each anchor is preserved after each pipeline phase.
+
+MPS complements fidelity scoring — fidelity is a holistic LLM judgment, MPS is a structured anchor-by-anchor verification.
+
+---
+
+## 15. MPS Anchor Verification Criteria
+
+Each anchor extracted in Step 4.5 is verified against the pipeline output. Verification produces one of three verdicts:
+
+### PASS
+Anchor content is present in the output and its polarity is preserved. The anchor may be rephrased but its core assertion is unambiguously recoverable.
+
+### SOFT FAIL
+Anchor content is present but weakened or made ambiguous. Examples:
+- Specific claim became vague: "매출이 30% 증가" → "매출이 크게 증가"
+- Quantifier lost precision: "p<0.05" → "통계적으로 유의미하다"
+- Causal link became correlational: "A 때문에 B가 발생" → "A와 B는 관련이 있다"
+- Definitive statement became hedged: "시스템이 실패했다" → "시스템에 문제가 있었을 수 있다"
+
+### HARD FAIL
+Anchor content is deleted or its polarity is inverted. Examples:
+- Claim removed entirely from output
+- Negation dropped: "검증되지 않았다" → "검증되었다"
+- Causation reversed: "A가 B를 야기했다" → "B가 A를 야기했다"
+
+### PASS vs SOFT FAIL Boundary
+
+If a reader can **unambiguously recover** the original anchor's meaning from the rewritten version, it is PASS. If a reader could **reasonably interpret** the rewritten version differently from the original, it is SOFT FAIL.
+
+---
+
+## 16. MPS Scoring Formula
+
+### Base Formula
+
+```
+anchor_pass_rate = PASS_count / total_anchor_count
+polarity_preserved = polarity_PASS_count / total_polarity_anchor_count
+
+MPS = (anchor_pass_rate × 0.6 + polarity_preserved × 0.4) × 100
+```
+
+Where:
+- `PASS_count`: anchors with PASS verdict after all remediation (including successful retries)
+- `total_anchor_count`: all extracted anchors
+- `polarity_PASS_count`: polarity-type anchors (Polarity + Negation) with PASS verdict
+- `total_polarity_anchor_count`: all polarity-type anchors (Polarity + Negation)
+
+### Retry Counting Rule
+
+If a SOFT FAIL anchor passes after alternative correction (retry), it counts as **PASS** in the formula. Only anchors that remain SOFT FAIL or HARD FAIL after all remediation are counted as failures.
+
+### Fallback (No Polarity Anchors)
+
+If the text contains no Polarity or Negation anchors:
+
+```
+MPS = anchor_pass_rate × 100
+```
+
+### Fallback (No Anchors Extracted)
+
+When anchor extraction is skipped (text ≤1 paragraph and ≤2 sentences) or yields zero anchors:
+
+```
+MPS = N/A (not applicable)
+```
+
+When MPS = N/A:
+- `--score` mode displays: `의미 보존 (MPS): N/A (앵커 없음)`
+- Ouroboros loop: MPS floor check is bypassed (only fidelity floor applies)
+- MAX mode: MPS gate is bypassed (selection uses AI score only)
+
+### MPS Interpretation
+
+| Range | Label | Meaning |
+|-------|-------|---------|
+| 90–100 | 우수 (Excellent) | Full meaning preservation |
+| 70–89 | 양호 (Good) | Minor weakening, acceptable |
+| 50–69 | 주의 (Warning) | Significant anchor loss, review needed |
+| < 50 | 위험 (Critical) | Severe meaning corruption |
+
+### Worked Example
+
+Original text (3 paragraphs) with extracted anchors:
+
+| # | Type | Content | Verdict | After Retry |
+|---|------|---------|---------|-------------|
+| 1 | Claim | "시스템이 실패했다" | SOFT FAIL | PASS (retry succeeded) |
+| 2 | Polarity | "아직 검증되지 않았다" (negative) | PASS | — |
+| 3 | Quantifier | "매출 30% 증가" | PASS | — |
+| 4 | Causation | "A 때문에 B 발생" | HARD FAIL | — (original restored) |
+| 5 | Negation | "불가능하다" | PASS | — |
+
+After remediation:
+- PASS: #1 (retry), #2, #3, #5 = 4
+- HARD FAIL: #4 = 1 (original restored, so meaning is preserved in output but pattern not humanized)
+- Total anchors: 5
+- Polarity anchors (#2, #5): both PASS = 2/2
+
+```
+anchor_pass_rate = 4/5 = 0.80
+polarity_preserved = 2/2 = 1.00
+MPS = (0.80 × 0.6 + 1.00 × 0.4) × 100 = (0.48 + 0.40) × 100 = 88
+```
+
+Interpretation: 70–89 range = "양호" (Good, minor weakening)
+
+> **Note:** Anchor #4 was a HARD FAIL, so its original sentence was restored in the output.
+> The anchor counts as a failure in MPS (reducing the score), but the meaning IS preserved
+> in the output because the original was kept. MPS reflects humanization success rate,
+> not output meaning accuracy (which is always preserved via fallback).
+
+### MPS vs Fidelity: Complementary Metrics
+
+MPS measures **humanization coverage** — what fraction of meaning anchors were successfully humanized while being preserved. A HARD FAIL anchor that was restored to its original wording counts as a humanization failure (the pattern wasn't removable without meaning loss), even though the final output's meaning is intact. Fidelity (§§ 9-13) measures **overall output meaning accuracy** against the original — restored sentences score perfectly on fidelity. Use both metrics together: high fidelity + low MPS means "meaning is safe but some AI patterns couldn't be removed."
+
+---
+
+## 17. MPS Integration Points
+
+### `--score` Mode Output
+
+When `--score` is used with rewrite or ouroboros mode (original text available),
+MPS is displayed alongside AI-likeness and Fidelity:
+
+| 지표 | 점수 |
+|------|------|
+| AI 유사도 | 23/100 (낮을수록 좋음) |
+| 충실도 | 87/100 (높을수록 좋음) |
+| 의미 보존 (MPS) | 92/100 (높을수록 좋음) |
+| 종합 | 25/100 (낮을수록 좋음) |
+
+> **Note:** MPS is NOT included in the combined score formula (§13).
+> Combined score uses fidelity (holistic) while MPS is a structural verification metric.
+> Both are displayed for transparency but serve different purposes.
+
+### Ouroboros Loop Gating
+
+MPS floor = 70 (default). Independent of fidelity floor.
+
+Termination condition:
+- MPS < mps-floor → terminate with reason: **의미 보존 하한 위반** → rollback to previous iteration
+
+Both fidelity floor AND MPS floor must pass for an iteration to be accepted.
+
+Configurable via `.patina.yaml`:
+
+```yaml
+ouroboros:
+  mps-floor: 70  # default
+```
+
+### MAX Mode Candidate Selection
+
+Current: Select candidate with lowest AI score.
+New: Select candidate with lowest AI score **WHERE MPS ≥ 70**.
+
+Candidates with MPS < 70 are disqualified regardless of AI score.
+If ALL candidates have MPS < 70, select the one with the highest MPS (least meaning loss).

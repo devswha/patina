@@ -1,10 +1,11 @@
 ---
 name: patina-max
-version: 3.2.0
+version: 3.3.0
 description: |
   Multi-model humanization. Runs the same humanization task on multiple
   local model CLIs, scores each result, and selects the best
-  (lowest AI score) output. Uses `claude -p` / `gemini -p` for
+  output by lowest AI score among candidates that pass the MPS
+  meaning-preservation floor. Uses `claude -p` / `gemini -p` for
   Claude/Gemini and `codex exec` for Codex.
 allowed-tools:
   - Read
@@ -18,7 +19,7 @@ allowed-tools:
 
 # patina MAX: 멀티모델 Best-of-N Rewriter
 
-당신은 여러 AI 모델을 동시에 사용하여 텍스트를 humanize하고, 가장 자연스러운 결과를 자동 선택하는 오케스트레이터입니다. 각 모델이 같은 텍스트를 humanize한 뒤, AI 유사도 점수가 가장 낮은 결과를 최종본으로 선택합니다.
+당신은 여러 AI 모델을 동시에 사용하여 텍스트를 humanize하고, 가장 자연스러운 결과를 자동 선택하는 오케스트레이터입니다. 각 모델이 같은 텍스트를 humanize한 뒤, 의미 보존 기준(MPS ≥ 70)을 통과한 결과 중 AI 유사도 점수가 가장 낮은 것을 최종본으로 선택합니다.
 
 > **전제 조건:**
 > - **oh-my-claudecode (OMC)** 가 설치되어 있어야 합니다 (tmux dispatch 모드)
@@ -306,6 +307,8 @@ touch "$RUN_DIR/codex.done"
 
 이 절차는 각 모델의 결과에 대해 독립적으로 실행한다. 모든 모델이 동일한 수식으로 평가되므로 공정한 비교가 가능하다.
 
+각 결과에 대해 추가로 MPS(Meaning Preservation Score)를 산출한다. 원본 텍스트에서 의미 앵커를 추출하고, 각 모델의 humanize 결과가 앵커를 얼마나 보존했는지를 `core/scoring.md` §§ 14-17의 절차로 평가한다.
+
 > **참고:** 이전 버전에서는 MAX 모드가 주관적 평가를 사용했으나, v3.2.0부터 `core/scoring.md`의 수식 기반 알고리즘으로 통합되었다. 단일 모드(`--score`)와 MAX 모드가 동일한 스코어링을 사용한다.
 
 ---
@@ -317,16 +320,18 @@ touch "$RUN_DIR/codex.done"
 ### 비교 테이블 형식
 
 ```
-| Model   | AI Score | Status  |
-|---------|----------|---------|
-| claude  | 23       | success |
-| gemini  | 31       | success |
-| codex   | --       | failed  |
+| Model   | AI Score | MPS  | Status  |
+|---------|----------|------|---------|
+| claude  | 23       | 92   | ✅       |
+| gemini  | 31       | 85   | ✅       |
+| codex   | --       | --   | failed  |
 
-Best: claude (AI Score: 23)
+Best: claude (AI Score: 23, MPS: 92)
 ```
 
-- AI 점수가 가장 낮은 결과를 자동 선택한다
+- MPS ≥ 70인 후보 중 AI 점수가 가장 낮은 결과를 자동 선택한다
+- MPS < 70인 후보는 AI 점수와 관계없이 탈락한다
+- 모든 후보의 MPS < 70인 경우, MPS가 가장 높은 후보를 선택한다 (의미 보존 우선)
 - 동점이면 설정 파일의 모델 순서에서 먼저 오는 것을 우선한다
 
 ---

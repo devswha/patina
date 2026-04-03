@@ -18,6 +18,8 @@ patterns: 4
 
 **Problem:** AI includes chatbot conversational phrases in written content. These are appropriate in a live chat but not in articles, reports, or documentation.
 
+**Semantic Risk:** LOW
+
 **Before:**
 > The French Revolution began in 1789, driven by fiscal crisis and food shortages. I hope this helps! Let me know if you need more details on any specific aspect of the revolution. Feel free to ask about the key figures involved.
 
@@ -35,6 +37,9 @@ patterns: 4
 **Exclusion:** Acceptable in technical documentation explicitly about AI systems, or in content that intentionally discloses AI generation (with a proper disclosure note). Also acceptable if the caveat is replaced with a dated, source-cited fact.
 
 **Problem:** AI includes training-data caveats in content that should not reference AI limitations. These disclaimers break the fourth wall and remind readers the text was machine-generated.
+
+**Semantic Risk:** MEDIUM
+**Preservation Note:** The disclaimer sometimes carries a genuine factual caveat about data currency; removing it without replacing the claim with a dated source may leave an unverified assertion that the reader cannot assess.
 
 **Before:**
 > As of my last update in April 2024, the company had around 5,000 employees. I don't have access to real-time data, so please verify this information with current sources.
@@ -54,6 +59,8 @@ patterns: 4
 
 **Problem:** AI flatters the reader or questioner before answering. This servile opener adds no information and signals AI generation.
 
+**Semantic Risk:** LOW
+
 **Before:**
 > Great question! That's a really fascinating topic. You've raised an excellent point about the economic factors at play. Let me break this down for you.
 
@@ -71,6 +78,9 @@ patterns: 4
 **Exclusion:** Acceptable when the reframe introduces a substantive correction, cites new evidence, or genuinely shifts the analytical frame in a way that changes the conclusion. Also acceptable in dialogue transcripts where the speaker is visibly self-correcting with new data.
 
 **Problem:** AI hedges its own statements by immediately re-qualifying them in a way that sounds thoughtful but adds nothing. The "nuance" is cosmetic — the second sentence says the same thing as the first in slightly different words. This creates an illusion of depth while padding the text.
+
+**Semantic Risk:** HIGH
+**Preservation Note:** Removing the reframing clause may delete a genuine qualification or exception; verify that the retained primary claim accurately stands alone before removing the "nuance" sentence.
 
 **Before:**
 > Remote work increases productivity. Actually, it's more nuanced than that — remote work can enhance productivity in certain contexts while presenting challenges in others, and the net effect depends on organizational culture and individual work styles.

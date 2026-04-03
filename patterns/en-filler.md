@@ -18,6 +18,8 @@ patterns: 3
 
 **Problem:** AI pads sentences with unnecessary filler that adds length but no meaning. These phrases can almost always be deleted or replaced with a shorter alternative.
 
+**Semantic Risk:** LOW
+
 **Substitutions:**
 - "it's important to note that" --> delete, just state the fact
 - "in order to" --> "to"
@@ -45,6 +47,9 @@ patterns: 3
 
 **Problem:** AI over-qualifies every statement to avoid being wrong, producing text so hedged that it says almost nothing. A single hedge is fine; stacking three or four qualifiers on one claim is not.
 
+**Semantic Risk:** MEDIUM
+**Preservation Note:** Removing hedges from a genuinely uncertain claim may produce an over-confident assertion; ensure the corrected version retains at least one qualifier if the underlying evidence is preliminary or contested.
+
 **Before:**
 > It could potentially be argued that this approach may, to some extent, offer certain advantages in some cases, though it is possible that the results might vary depending on a number of factors that arguably remain to be fully understood.
 
@@ -62,6 +67,8 @@ patterns: 3
 **Exclusion:** A specific optimistic statement backed by evidence ("given the trial data, FDA approval looks likely by Q3") is not this pattern — specificity makes it acceptable.
 
 **Problem:** AI ends with vague optimism instead of specific conclusions. This pattern often appears alongside Pattern 6 (Formulaic Challenges and Prospects) but can also stand alone as a final sentence.
+
+**Semantic Risk:** LOW
 
 **Before:**
 > As the company enters this exciting new chapter, the possibilities are truly endless. With its talented team and innovative vision, a bright future undoubtedly lies ahead. The best is yet to come.

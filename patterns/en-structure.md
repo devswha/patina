@@ -21,6 +21,9 @@ phase: structure
 
 **Problem:** AI stamps every paragraph with the same internal template regardless of what the content actually requires. Human writing varies paragraph shape: some paragraphs open with a question, some lead with a specific detail, some end without resolving anything. Metronomic regularity is one of the strongest structural signals of AI generation.
 
+**Semantic Risk:** MEDIUM
+**Preservation Note:** Restructuring paragraph order or shape may alter the logical flow of an argument; verify that each paragraph's core claim survives the restructuring and that no evidence is dropped.
+
 **Before:**
 > The electric vehicle market has experienced unprecedented growth in recent years. Sales doubled between 2021 and 2023, driven by falling battery costs and expanded charging infrastructure. This trend signals a fundamental shift in how consumers relate to personal transportation.
 >
@@ -49,6 +52,9 @@ phase: structure
 
 **Problem:** AI chains passive nominalizations that convert active situations into abstract bureaucratic prose. "An analysis was conducted" means "we analyzed." The passive form removes agency and adds syllables without adding meaning.
 
+**Semantic Risk:** MEDIUM
+**Preservation Note:** Converting passive to active assigns a specific agent; if the original intentionally omitted the actor (unknown, irrelevant, or sensitive), the active rewrite may introduce an unintended attribution.
+
 **Before:**
 > An extensive review of the literature was conducted in order to identify key patterns. Consideration was given to a range of methodological approaches, and a decision was made to adopt a mixed-methods design. Data collection was performed over a six-month period, after which an analysis was undertaken to identify recurring themes.
 
@@ -69,6 +75,9 @@ phase: structure
 
 **Problem:** AI converts verbs into bloated noun phrases, a pattern called "zombie nouns." Every action becomes an abstract event: "improve" becomes "make an improvement to," "analyze" becomes "conduct an analysis of." The result is wordy, impersonal, and slow.
 
+**Semantic Risk:** MEDIUM
+**Preservation Note:** Some nominalized forms carry distinct meaning from their verb counterparts ("the investigation" vs. "investigate"); verify that converting to a verb does not collapse a reference to an ongoing process or formal procedure.
+
 **Before:**
 > The committee made a decision to conduct an analysis of the current situation and to provide a recommendation regarding future strategy. An evaluation of the available options was performed, and after careful consideration was given to each alternative, an agreement was reached on the most viable approach.
 
@@ -86,6 +95,9 @@ phase: structure
 **Burstiness note:** Break stacked sentences into two or three shorter ones. Start one sentence with the main clause, then add a separate sentence for the embedded detail. Vary lengths — don't make every resulting sentence the same.
 
 **Problem:** AI builds sentences with cascading embedded clauses that delay the main verb and obscure the subject-verb relationship. The result is technically grammatical but exhausting to read and often contains no insight beyond what a shorter sentence would convey.
+
+**Semantic Risk:** MEDIUM
+**Preservation Note:** Breaking stacked clauses into separate sentences may lose precision embedded in the nested qualifications; ensure every embedded condition or qualification appears in the rewritten version.
 
 **Before:**
 > The initiative, which was developed in response to increasing concerns about, and growing awareness of, the urgent need to address the challenges facing both urban and rural communities in the context of rapid technological transformation, aims to bridge the gap between innovation and equitable access.

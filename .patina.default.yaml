@@ -1,4 +1,4 @@
-version: "3.2.0"
+version: "3.3.0"
 language: ko              # Korean (default) -- auto-loads all ko-*.md patterns
                           # language: en      -- English -- auto-loads all en-*.md patterns
                           # language: zh      -- Chinese -- auto-loads all zh-*.md patterns
@@ -103,6 +103,7 @@ ouroboros:
       filler: 0.10
       structure: 0.15
   fidelity-floor: 70             # stop ouroboros if fidelity drops below this
+  mps-floor: 70                  # stop ouroboros if MPS (meaning preservation) drops below this
   combined-weights:
     default:
       ai-likeness: 0.60

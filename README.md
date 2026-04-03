@@ -19,7 +19,7 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detec
 > Coffee has emerged as a **pivotal cultural phenomenon** that has **fundamentally transformed** social interactions across the globe. This beloved beverage serves as a catalyst for community building, fosters meaningful connections, and facilitates cross-cultural dialogue. From the bustling cafés of Paris to the serene tea houses repurposed for coffee in Tokyo, this **remarkable journey** showcases the **innovative spirit** of human culinary exploration.
 
 **After** (humanized by `/patina --lang en` — same meaning, less AI):
-> Coffee changed how people meet — sit across from someone long enough and real connections form, even across cultures. That's true in a Paris café or a Tokyo tea house that used to serve matcha. One roasted bean turned into a global social ritual.
+> Coffee has quietly changed how people meet. Sit across from someone long enough, and something like a real connection tends to form — even between people from very different cultures. It happens in Paris cafés and in Tokyo tea houses that used to serve matcha. Somehow, one roasted bean grew into a social ritual shared across the world.
 
 Anchor verification (MPS = 100): global social transformation ✓, community building ✓, meaningful connections ✓, cross-cultural dialogue ✓, Paris cafés ✓, Tokyo tea houses ✓, culinary exploration ✓. Only the AI packaging was removed.
 

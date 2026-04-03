@@ -531,6 +531,19 @@ If the text contains no Polarity or Negation anchors:
 MPS = anchor_pass_rate × 100
 ```
 
+### Fallback (No Anchors Extracted)
+
+When anchor extraction is skipped (text ≤1 paragraph and ≤2 sentences) or yields zero anchors:
+
+```
+MPS = N/A (not applicable)
+```
+
+When MPS = N/A:
+- `--score` mode displays: `의미 보존 (MPS): N/A (앵커 없음)`
+- Ouroboros loop: MPS floor check is bypassed (only fidelity floor applies)
+- MAX mode: MPS gate is bypassed (selection uses AI score only)
+
 ### MPS Interpretation
 
 | Range | Label | Meaning |
@@ -570,6 +583,10 @@ Interpretation: 70–89 range = "양호" (Good, minor weakening)
 > The anchor counts as a failure in MPS (reducing the score), but the meaning IS preserved
 > in the output because the original was kept. MPS reflects humanization success rate,
 > not output meaning accuracy (which is always preserved via fallback).
+
+### MPS vs Fidelity: Complementary Metrics
+
+MPS measures **humanization coverage** — what fraction of meaning anchors were successfully humanized while being preserved. A HARD FAIL anchor that was restored to its original wording counts as a humanization failure (the pattern wasn't removable without meaning loss), even though the final output's meaning is intact. Fidelity (§§ 9-13) measures **overall output meaning accuracy** against the original — restored sentences score perfectly on fidelity. Use both metrics together: high fidelity + low MPS means "meaning is safe but some AI patterns couldn't be removed."
 
 ---
 

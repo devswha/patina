@@ -4,7 +4,8 @@ version: 3.3.0
 description: |
   Multi-model humanization. Runs the same humanization task on multiple
   local model CLIs, scores each result, and selects the best
-  (lowest AI score) output. Uses `claude -p` / `gemini -p` for
+  output by lowest AI score among candidates that pass the MPS
+  meaning-preservation floor. Uses `claude -p` / `gemini -p` for
   Claude/Gemini and `codex exec` for Codex.
 allowed-tools:
   - Read
@@ -18,7 +19,7 @@ allowed-tools:
 
 # patina MAX: 멀티모델 Best-of-N Rewriter
 
-당신은 여러 AI 모델을 동시에 사용하여 텍스트를 humanize하고, 가장 자연스러운 결과를 자동 선택하는 오케스트레이터입니다. 각 모델이 같은 텍스트를 humanize한 뒤, AI 유사도 점수가 가장 낮은 결과를 최종본으로 선택합니다.
+당신은 여러 AI 모델을 동시에 사용하여 텍스트를 humanize하고, 가장 자연스러운 결과를 자동 선택하는 오케스트레이터입니다. 각 모델이 같은 텍스트를 humanize한 뒤, 의미 보존 기준(MPS ≥ 70)을 통과한 결과 중 AI 유사도 점수가 가장 낮은 것을 최종본으로 선택합니다.
 
 > **전제 조건:**
 > - **oh-my-claudecode (OMC)** 가 설치되어 있어야 합니다 (tmux dispatch 모드)

@@ -16,6 +16,9 @@ patterns: 6
 
 **Exclusion:** Genuine historical events of large scale (first moon landing, eradication of a disease) where the adjective is proportionate. Use judgment on actual impact.
 
+**Semantic Risk:** HIGH
+**Preservation Note:** Removing emphasis words may delete the author's actual claim about significance; over-correction can convert a genuinely notable event into an unremarkable one.
+
 **Problem:** AI inflates the importance of ordinary topics. Everything becomes a "significant milestone" or a "paradigm shift," regardless of actual impact.
 
 **Before:**
@@ -33,6 +36,9 @@ patterns: 6
 **Fire condition:** A claim of broad attention, coverage, or acclaim appears without a named publication, outlet, or specific figure.
 
 **Exclusion:** Statements like "widely used" backed by a rough scale ("used in 50 countries", "over 10 million installs") — specificity makes them acceptable even without named sources.
+
+**Semantic Risk:** HIGH
+**Preservation Note:** Correcting unsourced attention claims may remove a core assertion about recognition or impact that the author intended as a factual claim.
 
 **Problem:** AI claims broad media coverage or public attention without citing specific sources or evidence.
 
@@ -52,6 +58,9 @@ patterns: 6
 
 **Exclusion:** A single well-placed participle for genuine causal or temporal connection ("the policy increased costs, pushing firms to cut staff") is acceptable and not this pattern.
 
+**Semantic Risk:** HIGH
+**Preservation Note:** Replacing participle chains with concrete explanation restructures the argument; if the causal relationship is not well understood, the correction may introduce a claim the original did not make.
+
 **Problem:** AI uses present participle chains as filler analysis. Instead of explaining *why* something matters, it strings together "-ing" words that gesture at significance without saying anything concrete.
 
 **Before:**
@@ -69,6 +78,9 @@ patterns: 6
 **Fire condition:** 2+ promotional adjectives modifying the same subject, or a single strong superlative ("world-class", "breathtaking", "must-visit") used as descriptive prose rather than quoted marketing copy.
 
 **Exclusion:** Direct quotations from marketing or promotional materials being analyzed — the promotional language belongs to the source, not the author.
+
+**Semantic Risk:** MEDIUM
+**Preservation Note:** Replacing promotional adjectives with neutral description may remove genuine qualitative assessments the author intended as their own voice or evaluation.
 
 **Problem:** AI uses tourism-brochure language instead of neutral description, especially when writing about places, food, or cultural events.
 
@@ -88,6 +100,9 @@ patterns: 6
 
 **Exclusion:** Well-established consensus facts with no reasonable controversy ("doctors say smoking causes lung cancer") — use judgment on whether a named source is genuinely necessary.
 
+**Semantic Risk:** HIGH
+**Preservation Note:** Removing vague attributions without replacement deletes the author's sourcing claim; correction must substitute a real source or remove the claim entirely, which changes the text's evidentiary basis.
+
 **Problem:** AI cites unnamed "experts" and "studies" instead of specific sources. This creates an illusion of authority without any verifiable backing.
 
 **Before:**
@@ -105,6 +120,9 @@ patterns: 6
 **Fire condition:** A paragraph or conclusion contains both a generic challenge phrase AND a generic optimism phrase — the classic two-step pattern of acknowledging problems then pivoting to vague hope.
 
 **Exclusion:** Genuine uncertainty expressed with specific caveats ("FDA approval takes 14 months; if denied by Q3, we shift to EU trials") — precision makes it acceptable. Only trigger when both poles are vague.
+
+**Semantic Risk:** HIGH
+**Preservation Note:** Replacing the challenge-prospect formula restructures the argument's conclusion; the corrected version must not omit actual challenges or prospects the author named, even vaguely.
 
 **Problem:** AI wraps up with a generic challenges-then-optimism formula: acknowledge problems, then pivot to vague hope. This pattern appears at the end of almost every AI-generated article or essay.
 

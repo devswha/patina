@@ -18,6 +18,8 @@ patterns: 6
 
 **Problem:** AI uses em dashes for emphasis, parenthetical asides, and clause breaks far more frequently than human writers. A text peppered with em dashes reads as distinctly AI-generated.
 
+**Semantic Risk:** LOW
+
 **Before:**
 > The new policy — which was announced last Tuesday — aims to address a long-standing issue — affordable housing. Critics — including several council members — argue that the plan lacks specifics — a concern that the mayor dismissed as premature.
 
@@ -33,6 +35,8 @@ patterns: 6
 **Exclusion:** Bold is appropriate in UI documentation (button names, field labels), safety warnings ("**Do not** delete this file"), and genuine reference material where bold signals terminology. Only trigger in flowing prose.
 
 **Problem:** AI bolds key terms as if writing a study guide or corporate slide deck. In normal prose, bolding should be rare or absent.
+
+**Semantic Risk:** LOW
 
 **Before:**
 > **Machine learning** is a subset of **artificial intelligence** that uses **statistical methods** to enable computers to **learn from data**. The most common approaches include **supervised learning**, **unsupervised learning**, and **reinforcement learning**.
@@ -52,6 +56,8 @@ patterns: 6
 
 **Problem:** AI converts prose into pseudo-heading bullet points with a bold label and colon on every item. This format is appropriate for reference docs but not for articles, essays, or narrative text.
 
+**Semantic Risk:** LOW
+
 **Before:**
 > - **Accessibility:** The platform supports screen readers and keyboard navigation.
 > - **Performance:** Load times have been reduced by 40%.
@@ -70,6 +76,8 @@ patterns: 6
 
 **Problem:** AI capitalizes every word in headings (Title Case) instead of using sentence case. In most modern style guides (AP, APA, Google developer docs), sentence case is preferred for readability.
 
+**Semantic Risk:** LOW
+
 **Before:**
 > ## The Impact Of Remote Work On Urban Development And Housing Markets
 
@@ -87,6 +95,8 @@ patterns: 6
 **Exclusion:** Personal blogs, social media copy, and casual newsletters where emojis are a deliberate stylistic choice. Also exclude emoji in quoted material being analyzed.
 
 **Problem:** AI inserts emojis to add visual interest to text where they are inappropriate. This is especially common in listicles, summaries, and instructional content.
+
+**Semantic Risk:** LOW
 
 **Before:**
 > Here are five tips for better sleep:
@@ -115,6 +125,8 @@ patterns: 6
 **Exclusion:** Curly quotes in narrative prose are typographically correct and not this pattern. Only trigger in technical or code contexts where curly quotes cause syntax errors or compatibility issues.
 
 **Problem:** AI generates curly quotes in contexts where straight quotes are standard, such as code blocks, plain-text documents, configuration files, and technical documentation. This can cause syntax errors and compatibility issues.
+
+**Semantic Risk:** LOW
 
 **Before:**
 > Set the variable: `name = "hello"`

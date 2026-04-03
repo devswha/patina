@@ -18,8 +18,10 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detec
 **Before** (AI-sounding):
 > Coffee has emerged as a **pivotal cultural phenomenon** that has **fundamentally transformed** social interactions across the globe. This beloved beverage serves as a catalyst for community building, fosters meaningful connections, and facilitates cross-cultural dialogue. From the bustling cafés of Paris to the serene tea houses repurposed for coffee in Tokyo, this **remarkable journey** showcases the **innovative spirit** of human culinary exploration.
 
-**After** (humanized — same message, less AI):
-> People meet over coffee. That's been true since Ottoman coffeehouses in the 1500s, and it's true now at the Starbucks on your corner. The drink itself matters less than the excuse to sit across from someone for twenty minutes. In Seoul, café culture got so big that there are more coffee shops per capita than any other city. Most of them are empty by 3pm, but they served their purpose.
+**After** (humanized by `/patina --lang en` — same meaning, less AI):
+> Coffee changed how people meet — sit across from someone long enough and real connections form, even across cultures. That's true in a Paris café or a Tokyo tea house that used to serve matcha. One roasted bean turned into a global social ritual.
+
+Anchor verification (MPS = 100): global social transformation ✓, community building ✓, meaningful connections ✓, cross-cultural dialogue ✓, Paris cafés ✓, Tokyo tea houses ✓, culinary exploration ✓. Only the AI packaging was removed.
 
 116 patterns detected across Korean (29), English (29), Chinese (29), and Japanese (29). See the [full pattern list](#patterns) below.
 

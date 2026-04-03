@@ -16,10 +16,10 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detec
 ## See It In Action
 
 **Before** (AI-sounding):
-> AI coding tools represent a **groundbreaking milestone** showcasing the **innovative potential** of large language models, signifying a **pivotal turning point** in software development evolution. This not only streamlines processes but also fosters collaboration and facilitates organizational alignment.
+> Coffee has emerged as a **pivotal cultural phenomenon** that has **fundamentally transformed** social interactions across the globe. This beloved beverage serves as a catalyst for community building, fosters meaningful connections, and facilitates cross-cultural dialogue. From the bustling cafés of Paris to the serene tea houses repurposed for coffee in Tokyo, this **remarkable journey** showcases the **innovative spirit** of human culinary exploration.
 
 **After** (humanized — same message, less AI):
-> AI coding tools save real time on the boring parts — scaffolding config files, generating boilerplate tests, filling in CRUD endpoints. For teams already drowning in backlog, that kind of leverage matters. The alignment part is harder to measure, but pull request turnaround at our org dropped from 3 days to about 1 after we rolled them out.
+> People meet over coffee. That's been true since Ottoman coffeehouses in the 1500s, and it's true now at the Starbucks on your corner. The drink itself matters less than the excuse to sit across from someone for twenty minutes. In Seoul, café culture got so big that there are more coffee shops per capita than any other city. Most of them are empty by 3pm, but they served their purpose.
 
 116 patterns detected across Korean (29), English (29), Chinese (29), and Japanese (29). See the [full pattern list](#patterns) below.
 

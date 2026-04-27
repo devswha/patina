@@ -1,9 +1,14 @@
 {
-  "name": "patina-bot",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Runtime-managed automation for patina",
+  "name": "patina-cli",
+  "version": "3.3.0",
+  "description": "AI text humanizer CLI — detects and removes AI writing patterns",
+  "type": "module",
+  "main": "src/cli.js",
+  "bin": {
+    "patina": "bin/patina.js"
+  },
   "scripts": {
+    "test": "node --test tests/e2e/*.test.js",
     "bot": "bash ops/harness.sh",
     "marketing:runtime:bootstrap": "bash ops/marketing-runtime-bootstrap.sh",
     "marketing:runtime:status": "bash ops/marketing-runtime-cli.sh status",
@@ -17,5 +22,20 @@
     "runtime:logs": "bash ops/runtime-cli.sh logs --follow",
     "runtime:component-bridge:logs": "journalctl --user -u patina-component-bridge -f",
     "runtime:component-bridge:status": "systemctl --user status patina-component-bridge"
-  }
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "ai",
+    "humanizer",
+    "writing",
+    "claude-code",
+    "nlp"
+  ],
+  "license": "MIT",
+  "private": false
 }

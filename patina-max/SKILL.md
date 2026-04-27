@@ -293,6 +293,53 @@ touch "$RUN_DIR/codex.done"
 
 실제 실행은 `max-models`에 포함된 모델에만 적용한다. 각 명령은 `TIMEOUT_SECONDS` 상한을 두고, `timeout`이 없으면 동등한 타임아웃 래퍼(`gtimeout` 등)로 대체한다.
 
+### 모드 C: API dispatch (`dispatch: api`)
+
+로컬 CLI를 사용하지 않고 HTTP API를 통해 모델을 호출한다. OpenAI-compatible API 엔드포인트를 사용하며, API 키와 엔드포인트는 환경 변수에서 읽는다.
+
+**환경 변수:**
+- `PATINA_API_KEY` — API 인증 키 (필수)
+- `PATINA_API_BASE` — 기본 URL (기본값: `https://api.openai.com/v1`)
+- `PATINA_MODEL_CLAUDE` — claude 모델 ID (기본값: `claude-3-5-sonnet-20241022`)
+- `PATINA_MODEL_GEMINI` — gemini 모델 ID (기본값: `gemini-1.5-pro-latest`)
+- `PATINA_MODEL_CODEX` — codex 모델 ID (기본값: `gpt-4o`)
+
+**모델 매핑:**
+
+| 모델 키 | 기본 모델 ID | API 공급자 예시 |
+|---------|-------------|----------------|
+| claude | `claude-3-5-sonnet-20241022` | Anthropic, OpenRouter |
+| gemini | `gemini-1.5-pro-latest` | Google AI Studio, OpenRouter |
+| codex | `gpt-4o` | OpenAI, Azure |
+
+**요청 형식 (OpenAI-compatible chat completions):**
+
+```bash
+API_KEY="${PATINA_API_KEY}"
+API_BASE="${PATINA_API_BASE:-https://api.openai.com/v1}"
+MODEL="${PATINA_MODEL_CLAUDE:-claude-3-5-sonnet-20241022}"
+
+jq -n \
+  --arg model "$MODEL" \
+  --arg prompt "$(cat "$PROMPT_FILE")" \
+  '{model: $model, messages: [{role: "user", content: $prompt}], temperature: 0.7}' \
+| curl -s -X POST "${API_BASE}/chat/completions" \
+  -H "Authorization: Bearer ${API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d @- \
+| jq -r '.choices[0].message.content' > "$RUN_DIR/claude-output.txt"
+printf '%s' $? > "$RUN_DIR/claude.exit"
+touch "$RUN_DIR/claude.done"
+```
+
+**의존성:** `curl`, `jq`가 설치되어 있어야 한다.
+
+**타임아웃:** `curl --max-time` 또는 외부 `timeout` 명령으로 `TIMEOUT_SECONDS`를 적용한다.
+
+**결과 수집:** 공통 결과 수집 로직과 동일하다. API 오류 응답(4xx/5xx)은 `.exit` 파일에 HTTP 상태 코드를 기록하고 `failed`로 표시한다.
+
+> **참고:** API dispatch는 Claude Code 스킬뿐 아니라 어떤 에이전트나 스크립트에서도 사용할 수 있다. `core/standalone-prompt.md`의 템플릿과 함께 사용하면, Claude Code가 아닌 환경에서도 MAX 모드의 best-of-N 선택을 재현할 수 있다.
+
 ### 결과 수집 (공통)
 
 - `claude`

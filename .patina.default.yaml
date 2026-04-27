@@ -63,6 +63,11 @@ max-models:
 #       - Waits only for selected models and marks timed-out runs as failed
 #       - All providers receive the prompt via stdin
 # direct: sequential stdin dispatch (fallback; apply the same per-model timeout)
+# api: HTTP API dispatch (no local CLI needed; requires PATINA_API_KEY env var)
+#       - Uses OpenAI-compatible chat completions endpoint
+#       - Works with Anthropic, OpenAI, Google AI Studio, OpenRouter, etc.
+#       - Requires curl and jq
+#       - Model IDs configurable via PATINA_MODEL_* env vars
 dispatch: omc
 
 # Ouroboros: iterative self-improvement loop

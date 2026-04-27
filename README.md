@@ -45,6 +45,43 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
 
 This handles everything: creates the skills directory, clones the repo, and sets up the patina-max symlink. Safe to run again to update.
 
+### Standalone CLI
+
+Patina also works as a standalone Node.js CLI tool that can be used from any terminal, shell script, or CI/CD pipeline.
+
+**Requirements:** Node.js ≥ 18
+
+**Install locally:**
+```bash
+git clone https://github.com/devswha/patina.git
+cd patina
+npm install
+npm link        # makes `patina` available globally
+```
+
+**Or use without installing:**
+```bash
+node bin/patina.js --lang en input.txt
+```
+
+**Environment variables:**
+```bash
+export PATINA_API_KEY="your-api-key"
+export PATINA_API_BASE="https://api.openai.com/v1"  # or your proxy
+export PATINA_MODEL="gpt-4o"                        # default model
+```
+
+**CLI usage:**
+```bash
+patina --lang en --profile blog input.txt
+patina --lang ko --score input.txt
+patina --lang en --ouroboros input.txt
+patina --lang en --models gpt-4o,claude-sonnet input.txt  # MAX mode
+patina --batch docs/*.md --suffix .humanized
+```
+
+See `patina --help` for all options.
+
 ## Use
 
 In Claude Code, type:

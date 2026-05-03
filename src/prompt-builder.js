@@ -48,7 +48,7 @@ export function buildPrompt({ config, patterns, profile, voice, scoring, text, m
   if (mode === 'rewrite') {
     prompt += buildRewriteInstructions(structurePacks, lexicalPacks);
   } else if (mode === 'diff') {
-    prompt += buildDiffInstructions(structurePacks, lexicalPacks);
+    prompt += buildDiffInstructions();
   } else if (mode === 'audit') {
     prompt += buildAuditInstructions();
   } else if (mode === 'score') {
@@ -104,16 +104,26 @@ function buildRewriteInstructions(structurePacks, lexicalPacks) {
   return inst;
 }
 
-function buildDiffInstructions(structurePacks, lexicalPacks) {
+function buildDiffInstructions() {
   return `Show what changed and why, pattern by pattern. For each change:\n` +
     `- Show the original text\n` +
     `- Show the corrected text\n` +
-    `- Name the pattern that triggered the change\n` +
+    `- Name the pattern that triggered the change (use exact \`N. Pattern Name\` from the loaded packs)\n` +
     `- Explain why it was changed\n`;
 }
 
 function buildAuditInstructions() {
-  return `Detect AI patterns ONLY — do not rewrite. Output a table:\n\n` +
+  return `Detect AI patterns ONLY — do not rewrite. Output a table.\n\n` +
+    `**Strict requirements:**\n` +
+    `- Use the EXACT pattern name AND number from the loaded Pattern Packs above. ` +
+    `Format: \`N. Pattern Name\` (e.g., \`30. Rhetorical Question Openers\` or \`13. Em Dash Overuse\`). ` +
+    `Do not paraphrase, abbreviate, or invent names.\n` +
+    `- The Category column must be the exact pack name from the loaded packs ` +
+    `(e.g., \`en-structure\`, \`ko-filler\`, \`zh-content\`). Do not use generic ` +
+    `category names like "Style", "Filler", or "Content".\n` +
+    `- If you suspect an AI tell that doesn't match any loaded pattern exactly, ` +
+    `omit it from the table rather than coining a new name.\n\n` +
+    `Output format:\n` +
     `| Pattern | Category | Severity | Location |\n` +
     `|---------|----------|----------|----------|\n`;
 }

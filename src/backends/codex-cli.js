@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 export const name = 'codex-cli';
@@ -12,6 +12,14 @@ export function isAvailable() {
   } catch {
     return false;
   }
+}
+
+export function isAuthenticated() {
+  return existsSync(join(homedir(), '.codex', 'auth.json'));
+}
+
+export function authHint() {
+  return 'Run `codex login` to authenticate (uses your ChatGPT Plus account, no API key needed).';
 }
 
 export async function invoke({ prompt, timeout = 180000 } = {}) {

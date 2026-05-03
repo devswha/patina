@@ -1,51 +1,76 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { selectBackend, listBackends } from '../../src/backends/index.js';
-import { isAvailable as codexAvailable } from '../../src/backends/codex-cli.js';
+import { isAvailable as codexAvailable, isAuthenticated as codexAuthd } from '../../src/backends/codex-cli.js';
 
 describe('Backend Selection', () => {
-  it('selects openai-http by default when no model and no name given', () => {
-    const b = selectBackend({});
-    assert.strictEqual(b.name, 'openai-http');
+  it('selects openai-http by default when API key is present', () => {
+    const { backend, autoSelected } = selectBackend({ hasApiKey: true });
+    assert.strictEqual(backend.name, 'openai-http');
+    assert.strictEqual(autoSelected, false);
   });
 
-  it('selects openai-http for unrelated models like gpt-4o', () => {
-    const b = selectBackend({ model: 'gpt-4o' });
-    assert.strictEqual(b.name, 'openai-http');
+  it('selects openai-http for unrelated models when API key is present', () => {
+    const { backend } = selectBackend({ model: 'gpt-4o', hasApiKey: true });
+    assert.strictEqual(backend.name, 'openai-http');
   });
 
   it('selects codex-cli when --backend codex-cli is explicit', () => {
-    const b = selectBackend({ name: 'codex-cli' });
-    assert.strictEqual(b.name, 'codex-cli');
+    const { backend, autoSelected, reason } = selectBackend({ name: 'codex-cli' });
+    assert.strictEqual(backend.name, 'codex-cli');
+    assert.strictEqual(autoSelected, false);
+    assert.strictEqual(reason, 'explicit');
   });
 
-  it('selects openai-http when --backend openai-http is explicit', () => {
-    const b = selectBackend({ name: 'openai-http' });
-    assert.strictEqual(b.name, 'openai-http');
+  it('selects openai-http when --backend openai-http is explicit even without key', () => {
+    const { backend, autoSelected } = selectBackend({ name: 'openai-http', hasApiKey: false });
+    assert.strictEqual(backend.name, 'openai-http');
+    assert.strictEqual(autoSelected, false);
   });
 
   it('routes --model codex to codex-cli via heuristic', () => {
-    const b = selectBackend({ model: 'codex' });
-    assert.strictEqual(b.name, 'codex-cli');
+    const { backend, reason } = selectBackend({ model: 'codex', hasApiKey: true });
+    assert.strictEqual(backend.name, 'codex-cli');
+    assert.strictEqual(reason, 'model heuristic');
   });
 
   it('routes --model codex-mini-latest to codex-cli via prefix', () => {
-    const b = selectBackend({ model: 'codex-mini-latest' });
-    assert.strictEqual(b.name, 'codex-cli');
+    const { backend } = selectBackend({ model: 'codex-mini-latest', hasApiKey: true });
+    assert.strictEqual(backend.name, 'codex-cli');
   });
 
   it('does not match `codexa` or other false positives', () => {
-    const b = selectBackend({ model: 'codexa-1.0' });
-    assert.strictEqual(b.name, 'openai-http');
+    const { backend } = selectBackend({ model: 'codexa-1.0', hasApiKey: true });
+    assert.strictEqual(backend.name, 'openai-http');
   });
 
   it('explicit --backend overrides --model heuristic', () => {
-    const b = selectBackend({ name: 'openai-http', model: 'codex' });
-    assert.strictEqual(b.name, 'openai-http');
+    const { backend } = selectBackend({ name: 'openai-http', model: 'codex' });
+    assert.strictEqual(backend.name, 'openai-http');
   });
 
   it('throws on unknown backend name', () => {
     assert.throws(() => selectBackend({ name: 'invented-backend' }), /Unknown backend/);
+  });
+});
+
+describe('Auto-fallback to codex-cli', () => {
+  it('auto-selects codex-cli when no API key and codex is authenticated', { skip: !(codexAvailable() && codexAuthd()) }, () => {
+    const { backend, autoSelected, reason } = selectBackend({ hasApiKey: false });
+    assert.strictEqual(backend.name, 'codex-cli');
+    assert.strictEqual(autoSelected, true);
+    assert.match(reason, /no API key/);
+  });
+
+  it('does NOT auto-select when API key is present', () => {
+    const { backend, autoSelected } = selectBackend({ hasApiKey: true });
+    assert.strictEqual(backend.name, 'openai-http');
+    assert.strictEqual(autoSelected, false);
+  });
+
+  it('does NOT auto-select when name is explicit', () => {
+    const { autoSelected } = selectBackend({ name: 'openai-http', hasApiKey: false });
+    assert.strictEqual(autoSelected, false);
   });
 });
 
@@ -67,5 +92,13 @@ describe('Backend Listing', () => {
     const list = listBackends();
     const codex = list.find((b) => b.name === 'codex-cli');
     assert.strictEqual(codex.available, codexAvailable());
+  });
+
+  it('reports authenticated status for each backend', () => {
+    const list = listBackends();
+    for (const b of list) {
+      assert.strictEqual(typeof b.authenticated, 'boolean');
+      assert.strictEqual(typeof b.authHint, 'string');
+    }
   });
 });

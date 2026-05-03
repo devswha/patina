@@ -59,6 +59,8 @@ npm install
 npm link        # 让 `patina` 命令全局可用
 ```
 
+> 如果已经执行过上方的快速安装，仓库位于 `~/.claude/skills/patina`，无需再次克隆。直接 `cd ~/.claude/skills/patina && npm install && npm link` 即可。
+
 **无需安装直接运行：**
 ```bash
 node bin/patina.js --lang en input.txt
@@ -76,9 +78,11 @@ export PATINA_MODEL="gpt-4o"                        # 默认模型
 patina --lang en --profile blog input.txt
 patina --lang ko --score input.txt
 patina --lang en --ouroboros input.txt
-patina --lang en --models gpt-4o,claude-sonnet input.txt  # MAX 模式
+patina --lang en --models gpt-4o,gpt-4o-mini input.txt  # MAX 模式
 patina --batch docs/*.md --suffix .humanized
 ```
+
+> `--models` 通过同一个 `--base-url` 端点调用所列出的全部模型，因此该端点必须支持所有模型。要混用多家提供商（OpenAI + Anthropic + Google），请将 `--base-url` 指向 OpenRouter 等多提供商网关。另一条路径 `/patina-max` Claude Code 技能通过本地 `claude`、`codex`、`gemini` CLI 调度，无需 API 密钥。
 
 完整选项请运行 `patina --help` 查看。
 

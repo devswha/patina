@@ -59,6 +59,8 @@ npm install
 npm link        # `patina` 명령어를 전역에서 사용 가능하게 만듭니다
 ```
 
+> 이미 위의 빠른 설치를 실행했다면 `~/.claude/skills/patina`에 저장소가 있습니다. 다시 클론하지 말고 `cd ~/.claude/skills/patina && npm install && npm link`로 진행하세요.
+
 **설치 없이 바로 실행:**
 ```bash
 node bin/patina.js --lang en input.txt
@@ -76,9 +78,11 @@ export PATINA_MODEL="gpt-4o"                        # 기본 모델
 patina --lang en --profile blog input.txt
 patina --lang ko --score input.txt
 patina --lang en --ouroboros input.txt
-patina --lang en --models gpt-4o,claude-sonnet input.txt  # MAX 모드
+patina --lang en --models gpt-4o,gpt-4o-mini input.txt  # MAX 모드
 patina --batch docs/*.md --suffix .humanized
 ```
+
+> `--models`는 나열된 모든 모델을 같은 `--base-url` 엔드포인트로 호출합니다. 여러 프로바이더(OpenAI + Anthropic + Google)를 섞으려면 OpenRouter 같은 멀티 프로바이더 게이트웨이로 `--base-url`을 가리키세요. 별도의 `/patina-max` Claude Code 스킬은 로컬 `claude`, `codex`, `gemini` CLI로 디스패치하므로 API 키가 필요하지 않습니다.
 
 전체 옵션은 `patina --help`로 확인하세요.
 

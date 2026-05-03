@@ -1,10 +1,10 @@
-language: en
 ---
 pattern: 4
 type: failure
 name: Promotional Language
 pack: en-content
-ENDFRONT
+language: en
+---
 
 # Pattern 4: Promotional Language — Failure (False Positive)
 

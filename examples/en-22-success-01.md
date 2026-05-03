@@ -1,10 +1,10 @@
-language: en
 ---
 pattern: 22
 type: success
 name: Filler Phrases
 pack: en-filler
-ENDFRONT
+language: en
+---
 
 # Pattern 22: Filler Phrases — Success
 

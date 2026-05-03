@@ -1,10 +1,10 @@
-language: en
 ---
 pattern: 22
 type: failure
 name: Filler Phrases
 pack: en-filler
-ENDFRONT
+language: en
+---
 
 # Pattern 22: Filler Phrases — Failure (False Positive)
 

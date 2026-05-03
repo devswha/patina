@@ -26,7 +26,7 @@ patterns:
 #   - en-language
 #   - en-style
 #   - en-communication
-#   - en-filler
+#   - en-filler (4 patterns: #22-24, #31)
 
 # Chinese packs (auto-discovered when language: zh):
 #   - zh-structure (4 patterns: #25-28; pattern #30 KO/EN only for now)
@@ -34,7 +34,7 @@ patterns:
 #   - zh-language
 #   - zh-style
 #   - zh-communication
-#   - zh-filler
+#   - zh-filler (3 patterns: #22-24; pattern #31 KO/EN only for now)
 
 # Japanese packs (auto-discovered when language: ja):
 #   - ja-structure (4 patterns: #25-28; pattern #30 KO/EN only for now)
@@ -42,7 +42,7 @@ patterns:
 #   - ja-language
 #   - ja-style
 #   - ja-communication
-#   - ja-filler
+#   - ja-filler (3 patterns: #22-24; pattern #31 KO/EN only for now)
 
 skip-patterns: []
 blocklist: []              # 추가로 감지할 어휘

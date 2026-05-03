@@ -59,6 +59,8 @@ npm install
 npm link        # `patina` コマンドをグローバルで使えるようにします
 ```
 
+> 既に上のクイックインストールを実行済みの場合、リポジトリは `~/.claude/skills/patina` にあります。再クローンせずに `cd ~/.claude/skills/patina && npm install && npm link` を実行してください。
+
 **インストールせずに実行:**
 ```bash
 node bin/patina.js --lang en input.txt
@@ -76,9 +78,11 @@ export PATINA_MODEL="gpt-4o"                        # デフォルトモデル
 patina --lang en --profile blog input.txt
 patina --lang ko --score input.txt
 patina --lang en --ouroboros input.txt
-patina --lang en --models gpt-4o,claude-sonnet input.txt  # MAX モード
+patina --lang en --models gpt-4o,gpt-4o-mini input.txt  # MAX モード
 patina --batch docs/*.md --suffix .humanized
 ```
+
+> `--models` は列挙したすべてのモデルを同じ `--base-url` エンドポイントに対して呼び出します。複数プロバイダ（OpenAI + Anthropic + Google）を混在させたい場合は、OpenRouter のようなマルチプロバイダゲートウェイに `--base-url` を向けてください。別パスの `/patina-max` Claude Code スキルはローカルの `claude`、`codex`、`gemini` CLI 経由でディスパッチするため、API キーは不要です。
 
 全オプションは `patina --help` で確認できます。
 

@@ -59,6 +59,8 @@ npm install
 npm link        # makes `patina` available globally
 ```
 
+> Already ran the quick install above? The repo is already at `~/.claude/skills/patina`. Just `cd ~/.claude/skills/patina && npm install && npm link` instead of cloning again.
+
 **Or use without installing:**
 ```bash
 node bin/patina.js --lang en input.txt
@@ -76,9 +78,11 @@ export PATINA_MODEL="gpt-4o"                        # default model
 patina --lang en --profile blog input.txt
 patina --lang ko --score input.txt
 patina --lang en --ouroboros input.txt
-patina --lang en --models gpt-4o,claude-sonnet input.txt  # MAX mode
+patina --lang en --models gpt-4o,gpt-4o-mini input.txt  # MAX mode
 patina --batch docs/*.md --suffix .humanized
 ```
+
+> `--models` calls each listed model via the same `--base-url` endpoint, so all models must be served by that endpoint. To mix providers (OpenAI + Anthropic + Google), point `--base-url` at a multi-provider gateway like OpenRouter. The separate `/patina-max` Claude Code skill dispatches via local `claude`, `codex`, and `gemini` CLIs instead — no API key needed.
 
 See `patina --help` for all options.
 

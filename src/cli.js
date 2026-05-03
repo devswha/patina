@@ -9,6 +9,10 @@ import { writeFileSync } from 'node:fs';
 import { resolve, basename, extname } from 'node:path';
 
 export async function main(args) {
+  if (args[0] === 'auth') {
+    return handleAuth(args.slice(1));
+  }
+
   const parsed = parseArgs(args);
 
   if (parsed.help) {
@@ -22,9 +26,7 @@ export async function main(args) {
   }
 
   if (parsed.listBackends) {
-    for (const b of listBackends()) {
-      console.log(`${b.name}\t${b.available ? 'available' : 'not installed'}`);
-    }
+    printBackendStatus();
     return;
   }
 
@@ -87,10 +89,31 @@ export async function main(args) {
       });
     } else {
       const model = parsed.model || process.env.PATINA_MODEL || 'gpt-4o';
-      const backend = selectBackend({ name: parsed.backend, model });
+      const apiKey = parsed.apiKey || process.env.PATINA_API_KEY;
+      const { backend, autoSelected, reason } = selectBackend({
+        name: parsed.backend,
+        model,
+        hasApiKey: Boolean(apiKey),
+      });
+
+      if (autoSelected) {
+        console.error(`[patina] Using ${backend.name} backend (${reason}). Run \`patina auth status\` for details.`);
+      }
+
+      if (backend.name === 'openai-http' && !apiKey) {
+        const msg = ['No API key found. Set PATINA_API_KEY or pass --api-key.'];
+        const codex = listBackends().find((b) => b.name === 'codex-cli');
+        if (codex && codex.available && !codex.authenticated) {
+          msg.push('Or run `codex login` to use the free codex-cli backend (no key needed).');
+        } else if (codex && !codex.available) {
+          msg.push('Or install `codex` from https://github.com/openai/codex to use the free codex-cli backend.');
+        }
+        throw new Error(msg.join('\n'));
+      }
+
       result = await backend.invoke({
         prompt,
-        apiKey: parsed.apiKey || process.env.PATINA_API_KEY,
+        apiKey,
         baseURL: parsed.baseURL || process.env.PATINA_API_BASE || 'https://api.openai.com/v1',
         model,
       });
@@ -292,5 +315,58 @@ Environment Variables:
   PATINA_API_KEY       API authentication key
   PATINA_API_BASE      API base URL (default: https://api.openai.com/v1)
   PATINA_MODEL         Default model ID
+
+Subcommands:
+  patina auth status   Show backend availability and authentication status
+  patina auth login    Print per-backend instructions for authenticating
+
+If no API key is set and the codex CLI is installed and authenticated,
+patina automatically uses the codex-cli backend (no key required).
 `);
+}
+
+function printBackendStatus() {
+  const list = listBackends();
+  const rows = list.map((b) => ({
+    name: b.name,
+    available: b.available ? 'yes' : 'no',
+    authenticated: b.authenticated ? 'yes' : 'no',
+    note: b.authenticated ? '' : b.authHint,
+  }));
+  const widths = {
+    name: Math.max('Backend'.length, ...rows.map((r) => r.name.length)),
+    available: Math.max('Available'.length, ...rows.map((r) => r.available.length)),
+    authenticated: Math.max('Authenticated'.length, ...rows.map((r) => r.authenticated.length)),
+  };
+  const pad = (s, w) => s + ' '.repeat(Math.max(0, w - s.length));
+  console.log(
+    `${pad('Backend', widths.name)}  ${pad('Available', widths.available)}  ${pad('Authenticated', widths.authenticated)}  Notes`
+  );
+  console.log(
+    `${'-'.repeat(widths.name)}  ${'-'.repeat(widths.available)}  ${'-'.repeat(widths.authenticated)}  -----`
+  );
+  for (const r of rows) {
+    console.log(
+      `${pad(r.name, widths.name)}  ${pad(r.available, widths.available)}  ${pad(r.authenticated, widths.authenticated)}  ${r.note}`
+    );
+  }
+}
+
+function handleAuth(subArgs) {
+  const sub = subArgs[0] || 'status';
+  if (sub === 'status') {
+    printBackendStatus();
+    return;
+  }
+  if (sub === 'login') {
+    console.log('To authenticate a backend, follow the per-backend instructions:\n');
+    for (const b of listBackends()) {
+      const status = b.authenticated ? '✓ already authenticated' : '✗ not authenticated';
+      console.log(`  ${b.name}: ${status}`);
+      if (!b.authenticated) console.log(`    → ${b.authHint}`);
+    }
+    return;
+  }
+  console.error(`Unknown auth subcommand: ${sub}. Try \`patina auth status\` or \`patina auth login\`.`);
+  process.exit(1);
 }

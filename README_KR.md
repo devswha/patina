@@ -45,6 +45,43 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
 
 스킬 디렉토리 생성, 저장소 클론, patina-max 심볼릭 링크 설정까지 한 번에 처리합니다. 업데이트할 때 다시 실행해도 안전합니다.
 
+### 독립형 CLI
+
+Patina는 Node.js 기반 독립형 CLI로도 동작합니다. 터미널, 셸 스크립트, CI/CD 파이프라인 어디서든 쓸 수 있습니다.
+
+**요구사항:** Node.js ≥ 18
+
+**로컬 설치:**
+```bash
+git clone https://github.com/devswha/patina.git
+cd patina
+npm install
+npm link        # `patina` 명령어를 전역에서 사용 가능하게 만듭니다
+```
+
+**설치 없이 바로 실행:**
+```bash
+node bin/patina.js --lang en input.txt
+```
+
+**환경 변수:**
+```bash
+export PATINA_API_KEY="your-api-key"
+export PATINA_API_BASE="https://api.openai.com/v1"  # 또는 프록시 주소
+export PATINA_MODEL="gpt-4o"                        # 기본 모델
+```
+
+**CLI 사용 예시:**
+```bash
+patina --lang en --profile blog input.txt
+patina --lang ko --score input.txt
+patina --lang en --ouroboros input.txt
+patina --lang en --models gpt-4o,claude-sonnet input.txt  # MAX 모드
+patina --batch docs/*.md --suffix .humanized
+```
+
+전체 옵션은 `patina --help`로 확인하세요.
+
 ## 사용법
 
 Claude Code에서 다음과 같이 입력하세요:

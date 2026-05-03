@@ -45,6 +45,43 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
 
 一键完成：创建技能目录、克隆仓库、设置 patina-max 符号链接。已安装的情况下再次运行即可更新到最新版本。
 
+### 独立 CLI
+
+Patina 也可以作为独立的 Node.js CLI 工具使用，可在任意终端、Shell 脚本或 CI/CD 流水线中调用。
+
+**环境要求：** Node.js ≥ 18
+
+**本地安装：**
+```bash
+git clone https://github.com/devswha/patina.git
+cd patina
+npm install
+npm link        # 让 `patina` 命令全局可用
+```
+
+**无需安装直接运行：**
+```bash
+node bin/patina.js --lang en input.txt
+```
+
+**环境变量：**
+```bash
+export PATINA_API_KEY="your-api-key"
+export PATINA_API_BASE="https://api.openai.com/v1"  # 或自建代理
+export PATINA_MODEL="gpt-4o"                        # 默认模型
+```
+
+**CLI 用法：**
+```bash
+patina --lang en --profile blog input.txt
+patina --lang ko --score input.txt
+patina --lang en --ouroboros input.txt
+patina --lang en --models gpt-4o,claude-sonnet input.txt  # MAX 模式
+patina --batch docs/*.md --suffix .humanized
+```
+
+完整选项请运行 `patina --help` 查看。
+
 ## 使用方法
 
 在 Claude Code 中输入：

@@ -2,6 +2,7 @@ import { loadConfig, getRepoRoot } from './config.js';
 import { loadPatterns, loadProfile, loadCoreFile, loadInputText } from './loader.js';
 import { buildPrompt } from './prompt-builder.js';
 import { selectBackend, listBackends } from './backends/index.js';
+import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js';
 import { formatOutput } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
@@ -29,6 +30,19 @@ export async function main(args) {
     printBackendStatus();
     return;
   }
+
+  if (parsed.listProviders) {
+    printProviderStatus();
+    return;
+  }
+
+  const provider = selectProvider(parsed.provider);
+  const resolved = resolveProviderConfig({
+    provider,
+    apiKey: parsed.apiKey,
+    baseURL: parsed.baseURL,
+    model: parsed.model,
+  });
 
   const config = loadConfig();
 
@@ -69,13 +83,12 @@ export async function main(args) {
       result = await runMaxMode({
         prompt,
         models: parsed.models,
-        apiKey: parsed.apiKey || process.env.PATINA_API_KEY,
-        baseURL: parsed.baseURL || process.env.PATINA_API_BASE || 'https://api.openai.com/v1',
+        apiKey: resolved.apiKey,
+        baseURL: resolved.baseURL,
         config,
         patterns,
       });
     } else if (parsed.ouroboros) {
-      const model = parsed.model || process.env.PATINA_MODEL || 'gpt-4o';
       result = await runOuroboros({
         config,
         patterns,
@@ -83,25 +96,26 @@ export async function main(args) {
         voice: voice.body ? voice : null,
         scoring: scoring.body ? scoring : null,
         text,
-        apiKey: parsed.apiKey || process.env.PATINA_API_KEY,
-        baseURL: parsed.baseURL || process.env.PATINA_API_BASE || 'https://api.openai.com/v1',
-        model,
+        apiKey: resolved.apiKey,
+        baseURL: resolved.baseURL,
+        model: resolved.model,
       });
     } else {
-      const model = parsed.model || process.env.PATINA_MODEL || 'gpt-4o';
-      const apiKey = parsed.apiKey || process.env.PATINA_API_KEY;
       const { backend, autoSelected, reason } = selectBackend({
         name: parsed.backend,
-        model,
-        hasApiKey: Boolean(apiKey),
+        model: resolved.model,
+        hasApiKey: Boolean(resolved.apiKey),
       });
 
       if (autoSelected) {
         console.error(`[patina] Using ${backend.name} backend (${reason}). Run \`patina auth status\` for details.`);
       }
 
-      if (backend.name === 'openai-http' && !apiKey) {
+      if (backend.name === 'openai-http' && !resolved.apiKey) {
         const msg = ['No API key found. Set PATINA_API_KEY or pass --api-key.'];
+        if (provider) {
+          msg.push(`(--provider ${provider.name} expects ${provider.apiKeyEnv} or PATINA_API_KEY.)`);
+        }
         const codex = listBackends().find((b) => b.name === 'codex-cli');
         if (codex && codex.available && !codex.authenticated) {
           msg.push('Or run `codex login` to use the free codex-cli backend (no key needed).');
@@ -113,9 +127,9 @@ export async function main(args) {
 
       result = await backend.invoke({
         prompt,
-        apiKey,
-        baseURL: parsed.baseURL || process.env.PATINA_API_BASE || 'https://api.openai.com/v1',
-        model,
+        apiKey: resolved.apiKey,
+        baseURL: resolved.baseURL,
+        model: resolved.model,
       });
     }
 
@@ -200,6 +214,12 @@ function parseArgs(args) {
         break;
       case '--list-backends':
         parsed.listBackends = true;
+        break;
+      case '--provider':
+        parsed.provider = args[++i];
+        break;
+      case '--list-providers':
+        parsed.listProviders = true;
         break;
       default:
         if (!arg.startsWith('-')) {
@@ -310,11 +330,18 @@ Options:
   --dispatch <mode>    MAX dispatch: omc, direct, api
   --backend <name>     Backend: openai-http (default), codex-cli (no API key)
   --list-backends      List available backends and their availability
+  --provider <name>    Provider preset: openai, gemini, groq, together
+                       (sets base-url + default model + reads <PROVIDER>_API_KEY)
+  --list-providers     List provider presets and which keys are set
 
 Environment Variables:
-  PATINA_API_KEY       API authentication key
+  PATINA_API_KEY       API authentication key (any provider)
   PATINA_API_BASE      API base URL (default: https://api.openai.com/v1)
   PATINA_MODEL         Default model ID
+  GEMINI_API_KEY       Used when --provider gemini
+  GROQ_API_KEY         Used when --provider groq
+  TOGETHER_API_KEY     Used when --provider together
+  OPENAI_API_KEY       Used when --provider openai (alternative to PATINA_API_KEY)
 
 Subcommands:
   patina auth status   Show backend availability and authentication status
@@ -348,6 +375,32 @@ function printBackendStatus() {
   for (const r of rows) {
     console.log(
       `${pad(r.name, widths.name)}  ${pad(r.available, widths.available)}  ${pad(r.authenticated, widths.authenticated)}  ${r.note}`
+    );
+  }
+}
+
+function printProviderStatus() {
+  const rows = Object.values(PROVIDERS).map((p) => ({
+    name: p.name,
+    free: p.freeTier ? 'yes' : 'no',
+    keySet: process.env[p.apiKeyEnv] ? 'yes' : 'no',
+    note: `${p.apiKeyEnv} → ${p.baseURL}`,
+  }));
+  const widths = {
+    name: Math.max('Provider'.length, ...rows.map((r) => r.name.length)),
+    free: Math.max('Free tier'.length, ...rows.map((r) => r.free.length)),
+    keySet: Math.max('Key set'.length, ...rows.map((r) => r.keySet.length)),
+  };
+  const pad = (s, w) => s + ' '.repeat(Math.max(0, w - s.length));
+  console.log(
+    `${pad('Provider', widths.name)}  ${pad('Free tier', widths.free)}  ${pad('Key set', widths.keySet)}  Notes`
+  );
+  console.log(
+    `${'-'.repeat(widths.name)}  ${'-'.repeat(widths.free)}  ${'-'.repeat(widths.keySet)}  -----`
+  );
+  for (const r of rows) {
+    console.log(
+      `${pad(r.name, widths.name)}  ${pad(r.free, widths.free)}  ${pad(r.keySet, widths.keySet)}  ${r.note}`
     );
   }
 }

@@ -98,6 +98,25 @@ patina --lang ko input.txt                                # auto-fallback: if no
 
 > `codex-cli` backend dispatches via the local [`codex`](https://github.com/openai/codex) CLI, which authenticates via OpenAI/ChatGPT OAuth — no `PATINA_API_KEY` needed. Run `codex login` once and patina picks it up automatically. Single-mode rewrites only (`--audit`, `--score`, `--diff`, `--ouroboros`, `--models`/MAX still go through the HTTP backend in v1).
 
+**Free-tier providers (get an API key once, then it's free):**
+```bash
+patina --list-providers                                   # show preset providers + key status
+
+# Google Gemini (free tier — key at https://aistudio.google.com/app/apikey)
+export GEMINI_API_KEY="..."
+patina --provider gemini --lang ko input.txt
+
+# Groq (free tier with rate limits)
+export GROQ_API_KEY="..."
+patina --provider groq --lang ko input.txt
+
+# Together AI (free models, suffixed with "-Free")
+export TOGETHER_API_KEY="..."
+patina --provider together --lang ko input.txt
+```
+
+> `--provider` sets the right base URL, default model, and reads the provider-specific API key env var. Override any of these with `--base-url`, `--model`, or `--api-key`.
+
 See `patina --help` for all options.
 
 ## Use

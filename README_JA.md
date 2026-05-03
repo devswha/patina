@@ -84,6 +84,15 @@ patina --batch docs/*.md --suffix .humanized
 
 > `--models` は列挙したすべてのモデルを同じ `--base-url` エンドポイントに対して呼び出します。複数プロバイダ（OpenAI + Anthropic + Google）を混在させたい場合は、OpenRouter のようなマルチプロバイダゲートウェイに `--base-url` を向けてください。別パスの `/patina-max` Claude Code スキルはローカルの `claude`、`codex`、`gemini` CLI 経由でディスパッチするため、API キーは不要です。
 
+**バックエンド（API キーなしで実行）:**
+```bash
+patina --list-backends                                    # バックエンド一覧と可用性を表示
+patina --backend codex-cli --lang ko input.txt            # ローカル codex CLI を使用
+patina --model codex --lang ko input.txt                  # 同上 — モデル名から自動ルーティング
+```
+
+> `codex-cli` バックエンドはローカルの [`codex`](https://github.com/openai/codex) CLI 経由でディスパッチします。codex は OpenAI/ChatGPT OAuth で認証するため、`PATINA_API_KEY` は不要です。v1 では単一モードの書き換えのみ対応し、`--audit`、`--score`、`--diff`、`--ouroboros`、`--models`/MAX は引き続き HTTP バックエンドを使用します。
+
 全オプションは `patina --help` で確認できます。
 
 ## 使い方

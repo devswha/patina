@@ -84,6 +84,15 @@ patina --batch docs/*.md --suffix .humanized
 
 > `--models` calls each listed model via the same `--base-url` endpoint, so all models must be served by that endpoint. To mix providers (OpenAI + Anthropic + Google), point `--base-url` at a multi-provider gateway like OpenRouter. The separate `/patina-max` Claude Code skill dispatches via local `claude`, `codex`, and `gemini` CLIs instead — no API key needed.
 
+**Backends (run without an API key):**
+```bash
+patina --list-backends                                    # list backends + availability
+patina --backend codex-cli --lang ko input.txt            # uses local codex CLI
+patina --model codex --lang ko input.txt                  # same — auto-routes by model name
+```
+
+> `codex-cli` backend dispatches via the local [`codex`](https://github.com/openai/codex) CLI, which authenticates via OpenAI/ChatGPT OAuth — no `PATINA_API_KEY` needed. Single-mode rewrites only (`--audit`, `--score`, `--diff`, `--ouroboros`, `--models`/MAX still go through the HTTP backend in v1).
+
 See `patina --help` for all options.
 
 ## Use

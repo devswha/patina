@@ -84,6 +84,15 @@ patina --batch docs/*.md --suffix .humanized
 
 > `--models` 通过同一个 `--base-url` 端点调用所列出的全部模型，因此该端点必须支持所有模型。要混用多家提供商（OpenAI + Anthropic + Google），请将 `--base-url` 指向 OpenRouter 等多提供商网关。另一条路径 `/patina-max` Claude Code 技能通过本地 `claude`、`codex`、`gemini` CLI 调度，无需 API 密钥。
 
+**后端（无需 API 密钥即可运行）：**
+```bash
+patina --list-backends                                    # 列出后端及其可用性
+patina --backend codex-cli --lang ko input.txt            # 使用本地 codex CLI
+patina --model codex --lang ko input.txt                  # 同上 — 根据模型名称自动路由
+```
+
+> `codex-cli` 后端通过本地 [`codex`](https://github.com/openai/codex) CLI 调度，由 OpenAI/ChatGPT OAuth 完成认证，因此无需 `PATINA_API_KEY`。v1 仅支持单模式改写，`--audit`、`--score`、`--diff`、`--ouroboros`、`--models`/MAX 仍走 HTTP 后端。
+
 完整选项请运行 `patina --help` 查看。
 
 ## 使用方法

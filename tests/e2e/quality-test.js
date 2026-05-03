@@ -1,6 +1,18 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync } from 'node:fs';
+/**
+ * Quality test — opt-in script (NOT part of `npm test`).
+ *
+ * Builds a patina prompt for an AI-generated paragraph, runs it through
+ * `opencode run -m opencode/hy3-preview-free`, and grades the rewrite on
+ * AI-buzzword removal, fact preservation, length sanity, personal voice,
+ * and sentence variety.
+ *
+ * Requires the `opencode` CLI to be installed and authenticated.
+ * Run with: `node tests/e2e/quality-test.js`
+ */
+
+import { writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';

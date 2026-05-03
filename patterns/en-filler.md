@@ -2,8 +2,8 @@
 pack: en-filler
 language: en
 name: Filler & Hedging Patterns
-version: 1.0.0
-patterns: 3
+version: 1.1.0
+patterns: 4
 ---
 
 # Filler & Hedging Patterns
@@ -83,3 +83,31 @@ patterns: 3
 > The bill goes to committee vote on March 12. If it passes, the new rules take effect in January.
 
 **Not this pattern:** The "challenges, but bright future" two-step structure --> Pattern 6 (Formulaic "Challenges and Prospects," en-content.md) handles that.
+
+---
+
+### 31. Conclusion Signal Words
+
+**Watch words:** In conclusion, Ultimately, In summary, To conclude, To sum up, Finally, All in all, In the end, Overall, On the whole
+
+**Fire condition:** The document's final paragraph (or second-to-last) opens with one of the watch words. Or 2+ such conclusion signals appear across paragraphs.
+
+**Exclusion:**
+- Academic papers with an explicit "Conclusion" section header (the header already signals; in-prose markers are redundant)
+- Multi-step arguments where "Therefore" or "Thus" follows from a clear preceding chain (logic markers, not stylistic markers)
+- Speech or lecture transcripts where the speaker explicitly signposts wrap-up
+
+**Problem:** AI essays announce their conclusions ("In conclusion, X is Y") instead of just stating them. Human writers rarely flag the conclusion paragraph — they just write the conclusion. AI feels obligated to scaffold document structure for the reader.
+
+**Semantic Risk:** LOW
+**Preservation:** Removing only the signal word leaves a hollow paragraph. Rewrite the actual conclusion to be more concrete. The paragraph should still read as a conclusion without the marker.
+
+**Burstiness guidance:** When removing conclusion signals, vary the replacement. Don't replace every "In conclusion, X is Y" with "X is Y, then" — that creates a new mechanical pattern. Mix short verdicts with longer explanatory wrap-ups. This pattern often co-fires with #24 (Generic Positive Conclusions); handle both together.
+
+**Before:**
+> In conclusion, work-life balance is not a luxury but a necessity. It is a critical foundation upon which sustainable success — both personal and professional — must be built.
+
+**After:**
+> Work-life balance isn't optional. Without it, the rest of the structure cracks.
+
+**Not this pattern:** When the *content* of the conclusion is vague optimism --> Pattern 24 (Generic Positive Conclusions) handles that. Pattern 31 is about the signal *word itself* regardless of what follows.

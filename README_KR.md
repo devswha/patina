@@ -88,12 +88,15 @@ patina --batch docs/*.md --suffix .humanized
 
 **백엔드 (API 키 없이 실행):**
 ```bash
-patina --list-backends                                    # 백엔드 목록과 가용성 표시
-patina --backend codex-cli --lang ko input.txt            # 로컬 codex CLI 사용
+patina auth status                                        # 백엔드 가용성 + 인증 상태 표시
+patina auth login                                         # 백엔드별 인증 안내
+patina --backend codex-cli --lang ko input.txt            # 로컬 codex CLI 명시적 사용
 patina --model codex --lang ko input.txt                  # 동일 — 모델명으로 자동 라우팅
+patina --lang ko input.txt                                # 자동 fallback: PATINA_API_KEY가 없고
+                                                          # codex가 로그인돼 있으면 무료로 사용
 ```
 
-> `codex-cli` 백엔드는 로컬 [`codex`](https://github.com/openai/codex) CLI로 디스패치합니다. codex는 OpenAI/ChatGPT OAuth로 인증하므로 `PATINA_API_KEY`가 필요 없습니다. v1에서는 단일 모드 재작성만 지원하며, `--audit`, `--score`, `--diff`, `--ouroboros`, `--models`/MAX는 여전히 HTTP 백엔드를 사용합니다.
+> `codex-cli` 백엔드는 로컬 [`codex`](https://github.com/openai/codex) CLI로 디스패치합니다. codex는 OpenAI/ChatGPT OAuth로 인증하므로 `PATINA_API_KEY`가 필요 없습니다. `codex login`을 한 번 하면 patina가 자동으로 인식합니다. v1에서는 단일 모드 재작성만 지원하며, `--audit`, `--score`, `--diff`, `--ouroboros`, `--models`/MAX는 여전히 HTTP 백엔드를 사용합니다.
 
 전체 옵션은 `patina --help`로 확인하세요.
 

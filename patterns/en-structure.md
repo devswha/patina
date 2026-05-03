@@ -2,8 +2,8 @@
 pack: en-structure
 language: en
 name: Structure Patterns
-version: 1.1.0
-patterns: 4
+version: 1.2.0
+patterns: 5
 phase: structure
 ---
 
@@ -104,6 +104,35 @@ phase: structure
 
 **After:**
 > Rural and urban communities are getting left behind as technology changes fast. The initiative targets that gap directly — access to tools, not just the tools themselves.
+
+---
+
+### 30. Rhetorical Question Openers
+
+**Problem:** AI essays open paragraphs with rhetorical questions ("So what does this mean?", "Why is this important?", "But how did we get here?") to scaffold structure. The writer already knows the answer; the question is filler that buys time before the actual claim. Real writers state observations directly. Rhetorical questions belong in speeches and editorials, not in informational essays.
+
+**Trigger conditions:** A paragraph opens with an interrogative sentence ("Why...?", "How...?", "What...?", "But what if...?") AND the answer follows in the same or next sentence within the same paragraph. Or: the document contains 2+ rhetorical questions used as paragraph openers across paragraphs.
+
+**Exceptions:**
+- Interview, FAQ, or Q&A format documents
+- Genuine open questions where the author truly doesn't know the answer (research questions, philosophical inquiry)
+- Speech or lecture transcripts where audience engagement is the goal
+- Academic papers' research question sections
+
+**Semantic risk:** LOW
+**Preservation:** Distinguish structural filler from genuinely emphatic questioning. If converting to declarative, verify the new sentence still carries the original emphasis.
+
+**Burstiness guidance:** When converting rhetorical questions to declaratives, vary the result. Don't replace every "Why X?" with "X is because Y" — that just substitutes one mechanical pattern for another. Mix short emphatic statements with longer explanatory clauses.
+
+**Before:**
+> So why did Korean coffee culture grow so fast? The answer is surprisingly simple. Cafés moved beyond being places to buy drinks and became social hubs.
+>
+> But what about the future? Experts believe the trend will continue.
+
+**After:**
+> Korean coffee culture grew fast for a surprisingly simple reason: cafés moved beyond being places to buy drinks and became social hubs.
+>
+> The trend is likely to continue. Experts agree.
 
 ---
 

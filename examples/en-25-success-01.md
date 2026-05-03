@@ -1,10 +1,10 @@
-language: en
 ---
 pattern: 25
 type: success
 name: Metronomic Paragraph Structure
 pack: en-structure
-ENDFRONT
+language: en
+---
 
 # Pattern 25: Metronomic Paragraph Structure — Success
 

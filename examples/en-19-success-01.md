@@ -1,10 +1,10 @@
-language: en
 ---
 pattern: 19
 type: success
 name: Collaborative Communication Artifacts
 pack: en-communication
-ENDFRONT
+language: en
+---
 
 # Pattern 19: Collaborative Communication Artifacts — Success
 

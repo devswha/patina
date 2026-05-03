@@ -1,10 +1,10 @@
-language: en
 ---
 pattern: 13
 type: failure
 name: Em Dash Overuse
 pack: en-style
-ENDFRONT
+language: en
+---
 
 # Pattern 13: Em Dash Overuse — Failure (False Positive)
 

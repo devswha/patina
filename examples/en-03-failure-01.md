@@ -1,10 +1,10 @@
-language: en
 ---
 pattern: 3
 type: failure
 name: Superficial -ing Analyses
 pack: en-content
-ENDFRONT
+language: en
+---
 
 # Pattern 3: Superficial -ing Analyses — Failure (False Positive)
 

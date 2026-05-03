@@ -88,12 +88,15 @@ patina --batch docs/*.md --suffix .humanized
 
 **バックエンド（API キーなしで実行）:**
 ```bash
-patina --list-backends                                    # バックエンド一覧と可用性を表示
-patina --backend codex-cli --lang ko input.txt            # ローカル codex CLI を使用
+patina auth status                                        # バックエンドの可用性 + 認証状態を表示
+patina auth login                                         # バックエンド別の認証手順
+patina --backend codex-cli --lang ko input.txt            # ローカル codex CLI を明示的に使用
 patina --model codex --lang ko input.txt                  # 同上 — モデル名から自動ルーティング
+patina --lang ko input.txt                                # 自動フォールバック: PATINA_API_KEY が未設定で
+                                                          # codex がログイン済みなら無料で使用
 ```
 
-> `codex-cli` バックエンドはローカルの [`codex`](https://github.com/openai/codex) CLI 経由でディスパッチします。codex は OpenAI/ChatGPT OAuth で認証するため、`PATINA_API_KEY` は不要です。v1 では単一モードの書き換えのみ対応し、`--audit`、`--score`、`--diff`、`--ouroboros`、`--models`/MAX は引き続き HTTP バックエンドを使用します。
+> `codex-cli` バックエンドはローカルの [`codex`](https://github.com/openai/codex) CLI 経由でディスパッチします。codex は OpenAI/ChatGPT OAuth で認証するため、`PATINA_API_KEY` は不要です。一度 `codex login` を実行すれば patina が自動で認識します。v1 では単一モードの書き換えのみ対応し、`--audit`、`--score`、`--diff`、`--ouroboros`、`--models`/MAX は引き続き HTTP バックエンドを使用します。
 
 全オプションは `patina --help` で確認できます。
 

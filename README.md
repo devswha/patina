@@ -88,12 +88,15 @@ patina --batch docs/*.md --suffix .humanized
 
 **Backends (run without an API key):**
 ```bash
-patina --list-backends                                    # list backends + availability
-patina --backend codex-cli --lang ko input.txt            # uses local codex CLI
+patina auth status                                        # show backend availability + authentication
+patina auth login                                         # per-backend instructions for authenticating
+patina --backend codex-cli --lang ko input.txt            # uses local codex CLI explicitly
 patina --model codex --lang ko input.txt                  # same — auto-routes by model name
+patina --lang ko input.txt                                # auto-fallback: if no PATINA_API_KEY and
+                                                          # codex is logged in, patina uses it for free
 ```
 
-> `codex-cli` backend dispatches via the local [`codex`](https://github.com/openai/codex) CLI, which authenticates via OpenAI/ChatGPT OAuth — no `PATINA_API_KEY` needed. Single-mode rewrites only (`--audit`, `--score`, `--diff`, `--ouroboros`, `--models`/MAX still go through the HTTP backend in v1).
+> `codex-cli` backend dispatches via the local [`codex`](https://github.com/openai/codex) CLI, which authenticates via OpenAI/ChatGPT OAuth — no `PATINA_API_KEY` needed. Run `codex login` once and patina picks it up automatically. Single-mode rewrites only (`--audit`, `--score`, `--diff`, `--ouroboros`, `--models`/MAX still go through the HTTP backend in v1).
 
 See `patina --help` for all options.
 

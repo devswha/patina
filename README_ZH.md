@@ -88,12 +88,15 @@ patina --batch docs/*.md --suffix .humanized
 
 **后端（无需 API 密钥即可运行）：**
 ```bash
-patina --list-backends                                    # 列出后端及其可用性
-patina --backend codex-cli --lang ko input.txt            # 使用本地 codex CLI
-patina --model codex --lang ko input.txt                  # 同上 — 根据模型名称自动路由
+patina auth status                                        # 显示后端可用性 + 认证状态
+patina auth login                                         # 各后端的认证指引
+patina --backend codex-cli --lang ko input.txt            # 显式使用本地 codex CLI
+patina --model codex --lang ko input.txt                  # 同上 — 按模型名自动路由
+patina --lang ko input.txt                                # 自动回退：未设置 PATINA_API_KEY
+                                                          # 且 codex 已登录时免费使用
 ```
 
-> `codex-cli` 后端通过本地 [`codex`](https://github.com/openai/codex) CLI 调度，由 OpenAI/ChatGPT OAuth 完成认证，因此无需 `PATINA_API_KEY`。v1 仅支持单模式改写，`--audit`、`--score`、`--diff`、`--ouroboros`、`--models`/MAX 仍走 HTTP 后端。
+> `codex-cli` 后端通过本地 [`codex`](https://github.com/openai/codex) CLI 调度，由 OpenAI/ChatGPT OAuth 完成认证，因此无需 `PATINA_API_KEY`。运行一次 `codex login` 之后 patina 会自动识别。v1 仅支持单模式改写，`--audit`、`--score`、`--diff`、`--ouroboros`、`--models`/MAX 仍走 HTTP 后端。
 
 完整选项请运行 `patina --help` 查看。
 

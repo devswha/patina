@@ -29,20 +29,20 @@ patterns:
 #   - en-filler (4 patterns: #22-24, #31)
 
 # Chinese packs (auto-discovered when language: zh):
-#   - zh-structure (4 patterns: #25-28; pattern #30 KO/EN only for now)
+#   - zh-structure (5 patterns: #25-28, #30)
 #   - zh-content
 #   - zh-language
 #   - zh-style
 #   - zh-communication
-#   - zh-filler (3 patterns: #22-24; pattern #31 KO/EN only for now)
+#   - zh-filler (4 patterns: #22-24, #31)
 
 # Japanese packs (auto-discovered when language: ja):
-#   - ja-structure (4 patterns: #25-28; pattern #30 KO/EN only for now)
+#   - ja-structure (5 patterns: #25-28, #30)
 #   - ja-content
 #   - ja-language
 #   - ja-style
 #   - ja-communication
-#   - ja-filler (3 patterns: #22-24; pattern #31 KO/EN only for now)
+#   - ja-filler (4 patterns: #22-24, #31)
 
 skip-patterns: []
 blocklist: []              # 추가로 감지할 어휘

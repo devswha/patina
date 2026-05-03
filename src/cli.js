@@ -1,7 +1,7 @@
 import { loadConfig, getRepoRoot } from './config.js';
 import { loadPatterns, loadProfile, loadCoreFile, loadInputText } from './loader.js';
 import { buildPrompt } from './prompt-builder.js';
-import { callLLM, callLLMMultiple } from './api.js';
+import { selectBackend, listBackends } from './backends/index.js';
 import { formatOutput } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
@@ -18,6 +18,13 @@ export async function main(args) {
 
   if (parsed.version) {
     console.log('patina 3.3.0');
+    return;
+  }
+
+  if (parsed.listBackends) {
+    for (const b of listBackends()) {
+      console.log(`${b.name}\t${b.available ? 'available' : 'not installed'}`);
+    }
     return;
   }
 
@@ -80,7 +87,8 @@ export async function main(args) {
       });
     } else {
       const model = parsed.model || process.env.PATINA_MODEL || 'gpt-4o';
-      result = await callLLM({
+      const backend = selectBackend({ name: parsed.backend, model });
+      result = await backend.invoke({
         prompt,
         apiKey: parsed.apiKey || process.env.PATINA_API_KEY,
         baseURL: parsed.baseURL || process.env.PATINA_API_BASE || 'https://api.openai.com/v1',
@@ -163,6 +171,12 @@ function parseArgs(args) {
         break;
       case '--dispatch':
         parsed.dispatch = args[++i];
+        break;
+      case '--backend':
+        parsed.backend = args[++i];
+        break;
+      case '--list-backends':
+        parsed.listBackends = true;
         break;
       default:
         if (!arg.startsWith('-')) {
@@ -271,6 +285,8 @@ Options:
   --api-key <key>      API key (or PATINA_API_KEY env)
   --base-url <url>     API base URL (or PATINA_API_BASE env)
   --dispatch <mode>    MAX dispatch: omc, direct, api
+  --backend <name>     Backend: openai-http (default), codex-cli (no API key)
+  --list-backends      List available backends and their availability
 
 Environment Variables:
   PATINA_API_KEY       API authentication key

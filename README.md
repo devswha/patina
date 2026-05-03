@@ -23,7 +23,7 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detec
 
 Anchor verification (MPS = 100): global social transformation ✓, community building ✓, meaningful connections ✓, cross-cultural dialogue ✓, Paris cafés ✓, Tokyo tea houses ✓, culinary exploration ✓. Only the AI packaging was removed.
 
-120 patterns detected across Korean (31), English (31), Chinese (29), and Japanese (29). See the [full pattern list](#patterns) below.
+121 patterns detected across Korean (32), English (31), Chinese (29), and Japanese (29). See the [full pattern list](#patterns) below.
 
 > 🆓 **No API key required.** With the [`codex`](https://github.com/openai/codex) CLI installed, the standalone `patina` runs for free via OpenAI/ChatGPT OAuth — no `PATINA_API_KEY` needed. See [Standalone CLI > Backends](#backends-run-without-an-api-key) for the one-line setup.
 
@@ -220,7 +220,7 @@ When used with rewrite or ouroboros mode, a **fidelity score** (0-100, higher = 
 
 Fidelity checks four criteria: claims preserved, no fabrication, tone match, and length ratio. MPS (Meaning Preservation Score) tracks whether specific semantic anchors -- claims, polarity, causation, numbers -- survived the rewriting pipeline. The combined score weights AI-likeness and fidelity — configurable per profile (e.g., academic: fidelity 0.60, AI 0.40; blog: AI 0.70, fidelity 0.30).
 
-The score is pattern-based and deterministic — it reuses the same 31 (Korean), 31 (English), 29 (Chinese), or 29 (Japanese) detection patterns from audit mode. Profile overrides affect scoring (e.g., blog profile suppresses bold pattern #14).
+The score is pattern-based and deterministic — it reuses the same 32 (Korean), 31 (English), 29 (Chinese), or 29 (Japanese) detection patterns from audit mode. Profile overrides affect scoring (e.g., blog profile suppresses bold pattern #14).
 
 ### Ouroboros Mode (Iterative Self-Improvement)
 
@@ -302,7 +302,7 @@ The skill loads language-specific pattern packs (`ko-*.md`, `en-*.md`, `zh-*.md`
 
 ## <a name="patterns"></a>Patterns
 
-All four languages share the same 6-category structure (120 patterns total: 31 KO + 31 EN + 29 ZH + 29 JA). The categories and most patterns are universal — only a few slots have language-specific variants. Patterns #30 (rhetorical question openers) and #31 (conclusion signal words) currently live in KO and EN only; ZH/JA parity is follow-up work.
+All four languages share the same 6-category structure (121 patterns total: 32 KO + 31 EN + 29 ZH + 29 JA). The categories and most patterns are universal — only a few slots have language-specific variants. Patterns #30 (rhetorical question openers) and #31 (conclusion signal words) currently live in KO and EN only; pattern #32 ("보다" comparative adverb overuse) is KO-specific (English doesn't have an equivalent particle pattern). ZH/JA parity for #30/#31 is follow-up work.
 
 ### Shared Pattern Categories
 

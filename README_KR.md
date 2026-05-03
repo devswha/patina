@@ -98,6 +98,25 @@ patina --lang ko input.txt                                # 자동 fallback: PAT
 
 > `codex-cli` 백엔드는 로컬 [`codex`](https://github.com/openai/codex) CLI로 디스패치합니다. codex는 OpenAI/ChatGPT OAuth로 인증하므로 `PATINA_API_KEY`가 필요 없습니다. `codex login`을 한 번 하면 patina가 자동으로 인식합니다. v1에서는 단일 모드 재작성만 지원하며, `--audit`, `--score`, `--diff`, `--ouroboros`, `--models`/MAX는 여전히 HTTP 백엔드를 사용합니다.
 
+**무료 티어 프로바이더 (API 키 한 번만 받으면 무료):**
+```bash
+patina --list-providers                                   # 프리셋 프로바이더와 키 설정 여부 표시
+
+# Google Gemini (무료 티어 — 키 발급: https://aistudio.google.com/app/apikey)
+export GEMINI_API_KEY="..."
+patina --provider gemini --lang ko input.txt
+
+# Groq (무료 티어, 레이트 리밋 있음)
+export GROQ_API_KEY="..."
+patina --provider groq --lang ko input.txt
+
+# Together AI (이름에 "-Free"가 붙은 무료 모델)
+export TOGETHER_API_KEY="..."
+patina --provider together --lang ko input.txt
+```
+
+> `--provider`는 base URL, 기본 모델, 프로바이더별 API 키 환경 변수를 한 번에 설정합니다. `--base-url`, `--model`, `--api-key`로 개별 오버라이드 가능합니다.
+
 전체 옵션은 `patina --help`로 확인하세요.
 
 ## 사용법

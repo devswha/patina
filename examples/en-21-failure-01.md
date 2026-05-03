@@ -1,10 +1,10 @@
-language: en
 ---
 pattern: 21
 type: failure
 name: Sycophantic/Servile Tone
 pack: en-communication
-ENDFRONT
+language: en
+---
 
 # Pattern 21: Sycophantic/Servile Tone — Failure (False Positive)
 

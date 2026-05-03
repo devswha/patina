@@ -1,10 +1,10 @@
-language: en
 ---
 pattern: 8
 type: failure
 name: Copula Avoidance
 pack: en-language
-ENDFRONT
+language: en
+---
 
 # Pattern 8: Copula Avoidance — Failure (False Positive)
 

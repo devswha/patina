@@ -1,10 +1,10 @@
-language: en
 ---
 pattern: 26
 type: failure
 name: Passive Nominalization Chains
 pack: en-structure
-ENDFRONT
+language: en
+---
 
 # Pattern 26: Passive Nominalization Chains — Failure (False Positive)
 

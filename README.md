@@ -4,13 +4,13 @@
 
 [![Tests](https://github.com/devswha/patina/actions/workflows/test.yml/badge.svg)](https://github.com/devswha/patina/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
+[![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#quick-start)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
 [![Version](https://img.shields.io/badge/version-3.8.0-blue)](CHANGELOG.md)
 
 > **Make AI text sound like a human wrote it.**
 
-A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill and standalone CLI that detects and rewrites AI writing patterns in Korean, English, Chinese, and Japanese. Pattern-based and auditable — not a black-box LLM paraphraser. The scoring formula is deterministic; LLM severity assignment is the only stochastic step (±8–10 pt variance per run, see [scoring.md §8](core/scoring.md)).
+Detects and rewrites AI writing patterns in Korean, English, Chinese, and Japanese. Available as a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), and OpenCode, or as a standalone Node.js CLI. Pattern-based and auditable — not a black-box LLM paraphraser. The scoring formula is deterministic; LLM severity assignment is the only stochastic step (±8–10 pt variance per run, see [scoring.md §8](core/scoring.md)).
 
 ## Demo
 

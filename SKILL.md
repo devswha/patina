@@ -1,6 +1,6 @@
 ---
 name: patina
-version: 3.5.0
+version: 3.5.1
 description: |
   AI가 생성한 텍스트에서 AI 특유의 글쓰기 패턴을 제거하여 자연스럽고
   사람이 쓴 것처럼 만듭니다. 다국어 지원(한국어 32개, 영어 31개, 중국어 31개, 일본어 32개 패턴).
@@ -159,7 +159,7 @@ stddev = sqrt(sum((x - mean)^2) / N)   # population stddev
 burstiness_CV = stddev / mean
 ```
 
-밴드: `low < 0.25` / `0.25 ≤ mid ≤ 0.50` / `high > 0.50`.
+밴드: `low < 0.30` / `0.30 ≤ mid ≤ 0.50` / `high > 0.50`. (v3.5.1 calibration)
 
 **MATTR (Moving Average TTR, 어휘 다양성)**
 

@@ -1,4 +1,4 @@
-version: "3.5.0"
+version: "3.5.1"
 language: ko              # Korean (default) -- auto-loads all ko-*.md patterns
                           # language: en      -- English -- auto-loads all en-*.md patterns
                           # language: zh      -- Chinese -- auto-loads all zh-*.md patterns
@@ -151,7 +151,8 @@ stylometry:
   languages: [ko, en]        # only languages where v1 stylometry runs
   burstiness:
     bands:
-      low: 0.25              # CV < 0.25 → low (suspect)
+      low: 0.30              # CV < 0.30 → low (suspect). Calibrated v3.5.1 from
+                             # 0.25 against 300 external paragraphs (HC3 + Wikipedia).
       high: 0.50             # CV > 0.50 → high
   ttr:
     window: 50               # MATTR window in tokens

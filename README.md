@@ -400,7 +400,7 @@ Some pattern slots have different implementations per language, targeting each l
 Edit `.patina.default.yaml`:
 
 ```yaml
-version: "3.3.0"
+version: "3.4.0"
 language: ko              # ko | en | zh | ja (or use --lang flag)
 profile: default
 output: rewrite           # rewrite | diff | audit | score
@@ -504,6 +504,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add patterns, improve examples
 
 | Version | Changes |
 |---------|---------|
+| **3.4.0** | Free-tier ergonomics + 4 new patterns. New: codex-cli backend (no API key — uses local `codex` CLI's ChatGPT OAuth), `patina auth status/login` with auto-fallback when no key set, `--provider` shortcuts for Gemini / Groq / Together AI free tiers. Pattern additions: #30 (rhetorical question openers) and #31 (conclusion signal words) across all 4 languages, plus #32 (comparative adverb overuse) for KO `보다` and JA `より`. Default profile expanded to match other profiles' structure. GitHub Actions CI workflow added. |
 | **3.3.0** | Meaning Preservation System (MPS): ensures humanized text maintains original intent and claims |
 | **3.2.0** | Ouroboros scoring system: pattern-based AI-likeness scoring (0-100), `--score` mode with category breakdown, `--ouroboros` iterative self-improvement loop with configurable termination (target/plateau/regression/max-iterations) |
 | **3.1.1** | MAX mode reliability fixes: per-run temp dir, model-scoped wait loop + timeout handling, Gemini stdin dispatch, Codex CLI compatibility (`--output-last-message`, no `-q`) |

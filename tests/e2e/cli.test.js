@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { loadConfig, getRepoRoot } from '../../src/config.js';
+import { loadConfig } from '../../src/config.js';
 import { loadPatterns, loadProfile, loadCoreFile, splitFrontmatter } from '../../src/loader.js';
 import { buildPrompt } from '../../src/prompt-builder.js';
 import { fileURLToPath } from 'node:url';
@@ -13,7 +13,7 @@ describe('Config Loading', () => {
   it('should load .patina.default.yaml', () => {
     const config = loadConfig(resolve(REPO_ROOT, '.patina.default.yaml'));
     assert.ok(config);
-    assert.strictEqual(config.version, '3.3.0');
+    assert.strictEqual(config.version, '3.4.0');
     assert.ok(config.language);
     assert.ok(config.profile);
     assert.ok(config.patterns);

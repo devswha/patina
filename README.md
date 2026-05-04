@@ -24,7 +24,7 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that detec
 
 Anchor verification (MPS = 100): global social transformation ✓, community building ✓, meaningful connections ✓, cross-cultural dialogue ✓, Paris cafés ✓, Tokyo tea houses ✓, culinary exploration ✓. Only the AI packaging was removed.
 
-126 patterns detected across Korean (32), English (31), Chinese (31), and Japanese (32). See the [full pattern list](#patterns) below.
+126 patterns detected across Korean (32), English (31), Chinese (31), and Japanese (32). Preprocessing includes stylometric suspect-zone detection (burstiness CV + MATTR) before the pattern scan. See the [full pattern list](#patterns) below.
 
 > 🆓 **No API key required.** With the [`codex`](https://github.com/openai/codex) CLI installed, the standalone `patina` runs for free via OpenAI/ChatGPT OAuth — no `PATINA_API_KEY` needed. See [Standalone CLI > Backends](#backends-run-without-an-api-key) for the one-line setup.
 
@@ -504,6 +504,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add patterns, improve examples
 
 | Version | Changes |
 |---------|---------|
+| **3.5.0** | Stylometric Suspect Zone Detection. New step 4.6 inserted between anchor extraction and the pattern phases. Deterministic burstiness (sentence-length CV) and MATTR (window=50) signals flag suspect paragraphs the 28-pattern catalog misses. Languages: ko + en in v1; zh + ja deferred to v2 roadmap. LLM receives a `<suspect-zones>` meta block plus `«P{n} SUSPECT»` paragraph prefixes as internal working memory. New file: `core/stylometry.md` (algorithm reference). Roadmap: n-gram repetition, perplexity proxy, external detector integration. |
 | **3.4.0** | Free-tier ergonomics + 4 new patterns. New: codex-cli backend (no API key — uses local `codex` CLI's ChatGPT OAuth), `patina auth status/login` with auto-fallback when no key set, `--provider` shortcuts for Gemini / Groq / Together AI free tiers. Pattern additions: #30 (rhetorical question openers) and #31 (conclusion signal words) across all 4 languages, plus #32 (comparative adverb overuse) for KO `보다` and JA `より`. Default profile expanded to match other profiles' structure. GitHub Actions CI workflow added. |
 | **3.3.0** | Meaning Preservation System (MPS): ensures humanized text maintains original intent and claims |
 | **3.2.0** | Ouroboros scoring system: pattern-based AI-likeness scoring (0-100), `--score` mode with category breakdown, `--ouroboros` iterative self-improvement loop with configurable termination (target/plateau/regression/max-iterations) |

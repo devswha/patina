@@ -24,7 +24,7 @@
 
 앵커 검증 (MPS = 100): 전 세계 사회적 변화 ✓, 커뮤니티 구축 ✓, 의미 있는 연결 ✓, 문화 간 대화 ✓, 파리 카페 ✓, 도쿄 찻집 ✓, 음식 문화 탐험 ✓. AI 포장만 제거.
 
-한국어(32개), 영어(31개), 중국어(31개), 일본어(32개) 총 126개 패턴을 탐지합니다. [전체 패턴 목록](#patterns)은 아래에서 확인하세요.
+한국어(32개), 영어(31개), 중국어(31개), 일본어(32개) 총 126개 패턴을 탐지합니다. 패턴 스캔 전에 통계 기반 의심 구간 탐지(burstiness CV + MATTR) 전처리가 동작합니다. [전체 패턴 목록](#patterns)은 아래에서 확인하세요.
 
 > 🆓 **API 키 없이도 사용 가능.** [`codex`](https://github.com/openai/codex) CLI만 깔려 있으면 standalone `patina`가 OpenAI/ChatGPT OAuth로 무료 실행됩니다. `PATINA_API_KEY` 불필요. 한 줄 설정은 [Standalone CLI > 백엔드](#백엔드-api-키-없이-실행) 참조.
 
@@ -504,6 +504,7 @@ patina/
 
 | 버전 | 변경 사항 |
 |---------|---------|
+| **3.5.0** | 통계 기반 의심 구간 탐지 (Stylometric Suspect Zone Detection). 의미 앵커 추출과 패턴 처리 단계 사이에 새 4.6단계 삽입. 문장 길이 변동계수(burstiness CV)와 MATTR(window=50) 신호로 28-패턴 카탈로그가 놓치는 의심 단락을 식별. 언어: v1 = ko + en, zh/ja는 v2 로드맵으로 보류. LLM 입력에 `<suspect-zones>` 메타 블록과 `«P{n} SUSPECT»` 단락 prefix를 내부 작업 메모리로 전달. 신규 파일: `core/stylometry.md` (알고리즘 레퍼런스). 로드맵: n-gram 반복도, perplexity 근사, 외부 detector 연동. |
 | **3.4.0** | 무료 사용 옵션 확장 + 4개 신규 패턴. 신규: codex-cli 백엔드 (API 키 불필요 — 로컬 `codex` CLI의 ChatGPT OAuth 사용), `patina auth status/login` 서브커맨드 + API 키 없을 때 자동 fallback, Gemini/Groq/Together AI 무료 티어용 `--provider` 단축. 패턴 추가: #30(수사적 질문 단락 시작)과 #31(결론 신호어 남용)을 4개 언어 모두에 추가, KO `보다` / JA `より` 비교부사 남용 (#32). 기본 프로필을 다른 프로필과 동일한 구조로 확장. GitHub Actions CI 워크플로우 추가. |
 | **3.3.0** | 의미 보존 시스템(MPS): 사람화된 텍스트가 원문의 의도와 주장을 유지하도록 보장 |
 | **3.2.0** | 우로보로스 스코어링 시스템: 패턴 기반 AI 유사도 점수(0-100), 카테고리별 상세 내역의 `--score` 모드, 설정 가능한 종료 조건(목표/정체/퇴행/최대 반복)의 `--ouroboros` 반복 자기개선 루프 |

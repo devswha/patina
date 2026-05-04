@@ -1,4 +1,4 @@
-version: "3.4.0"
+version: "3.5.0"
 language: ko              # Korean (default) -- auto-loads all ko-*.md patterns
                           # language: en      -- English -- auto-loads all en-*.md patterns
                           # language: zh      -- Chinese -- auto-loads all zh-*.md patterns
@@ -141,3 +141,25 @@ ouroboros:
     high: 3
     medium: 2
     low: 1
+
+# Stylometry: deterministic statistical preprocessing (SKILL.md Step 4.6)
+# Calculates burstiness (sentence-length CV) and MATTR (lexical diversity) per
+# paragraph, marks suspect zones, and feeds them into 5a/5b as internal memory.
+# See core/stylometry.md for the full algorithm reference.
+stylometry:
+  enabled: true              # set false to bypass 4.6단계 entirely
+  languages: [ko, en]        # only languages where v1 stylometry runs
+  burstiness:
+    bands:
+      low: 0.25              # CV < 0.25 → low (suspect)
+      high: 0.50             # CV > 0.50 → high
+  ttr:
+    window: 50               # MATTR window in tokens
+    bands:
+      low: 0.55              # MATTR < 0.55 → low (suspect)
+      high: 0.70             # MATTR > 0.70 → high
+  sentence_zoom:
+    similarity_threshold: 0.20  # adjacent sentences within ±20% token count → grouped as sub-flag
+  skip:
+    min_paragraphs: 2
+    min_sentences: 2

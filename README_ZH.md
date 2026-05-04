@@ -24,7 +24,7 @@
 
 锚点验证（MPS = 100）：全球社交变革 ✓、社区建设 ✓、有意义的联结 ✓、跨文化对话 ✓、巴黎咖啡馆 ✓、东京茶室 ✓、饮食文化探索 ✓。仅去除AI包装。
 
-共检测 126 个模式，覆盖韩文（32 个）、英文（31 个）、中文（31 个）和日文（32 个）。完整模式列表见[下文](#模式)。
+共检测 126 个模式，覆盖韩文（32 个）、英文（31 个）、中文（31 个）和日文（32 个）。模式扫描前执行文体统计疑似区间检测（burstiness CV + MATTR）预处理。完整模式列表见[下文](#模式)。
 
 > 🆓 **无需 API 密钥。** 只要安装了 [`codex`](https://github.com/openai/codex) CLI，独立的 `patina` 即可通过 OpenAI/ChatGPT OAuth 免费运行，不需要 `PATINA_API_KEY`。一行设置请见 [Standalone CLI > 后端](#后端无需-api-密钥即可运行)。
 
@@ -498,6 +498,7 @@ patina/
 
 | 版本 | 变更内容 |
 |------|----------|
+| **3.5.0** | 文体统计疑似区间检测（Stylometric Suspect Zone Detection）。在语义锚点提取与模式处理阶段之间插入新的 4.6 步骤。利用句长变异系数（burstiness CV）和 MATTR（window=50）信号，识别 28 模式目录遗漏的疑似段落。支持语言：v1 = ko + en，zh/ja 推迟至 v2 路线图。向 LLM 输入传入 `<suspect-zones>` 元块及 `«P{n} SUSPECT»` 段落前缀，作为内部工作记忆。新增文件：`core/stylometry.md`（算法参考文档）。路线图：n-gram 重复度、perplexity 近似、外部检测器集成。 |
 | **3.4.0** | 免费使用选项扩展 + 4 个新模式。新增：codex-cli 后端（无需 API 密钥 — 通过本地 `codex` CLI 的 ChatGPT OAuth 认证），`patina auth status/login` 子命令及未设置 API 密钥时的自动回退，Gemini/Groq/Together AI 免费层的 `--provider` 快捷方式。模式新增：#30（修辞性疑问句段首）与 #31（结论信号词滥用）扩展到全部 4 种语言，KO `보다` / JA `より` 比较副词滥用 (#32)。默认配置文件扩充至与其他配置文件同等结构。新增 GitHub Actions CI 工作流。 |
 | **3.3.0** | 语义保留系统（MPS）：确保人性化后的文本保持原文的意图和主张 |
 | **3.2.0** | Ouroboros 评分系统：基于模式的 AI 相似度评分（0-100）、`--score` 模式含类别细分、`--ouroboros` 迭代自我优化循环，支持可配置的终止条件（目标值/平台期/退化/最大迭代次数） |

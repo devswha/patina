@@ -1,11 +1,12 @@
 ---
 name: patina
-version: 3.4.0
+version: 3.5.0
 description: |
   AI가 생성한 텍스트에서 AI 특유의 글쓰기 패턴을 제거하여 자연스럽고
   사람이 쓴 것처럼 만듭니다. 다국어 지원(한국어 32개, 영어 31개, 중국어 31개, 일본어 32개 패턴).
   2-Phase 처리 파이프라인(구조→문장/어휘)과 플러그인 기반 구조로
-  패턴 팩과 프로필을 조합합니다. 의미 보존 시스템(MPS) 내장.
+  패턴 팩과 프로필을 조합합니다. 의미 보존 시스템(MPS)과 결정론적 통계
+  전처리(stylometric suspect-zone detection) 내장.
   Based on blader/humanizer, oh-my-zsh inspired plugin architecture.
 allowed-tools:
   - Read
@@ -133,6 +134,84 @@ Read core/voice.md
 
 ---
 
+## 4.6단계: 통계 기반 의심 구간 탐지 (Stylometric Suspect Zone Detection)
+
+패턴 카탈로그가 명명하지 못하는 분포적 AI다움(균질한 문장 길이, 빈약한 어휘 다양성)을 결정론적 통계로 미리 표시한다. 4.5단계 의미 앵커와 마찬가지로 이 결과는 내부 작업 메모리이며 사용자 대면 출력에 포함하지 않는다.
+
+### 건너뜀 조건
+
+> **주의:** 텍스트가 단락 ≤2 또는 전체 문장 ≤2 이면 4.6단계를 통째로 건너뛴다 (4.5단계와 동일 임계).
+>
+> **언어 제한 (v1):** `stylometry.languages` 설정에 포함된 언어에서만 실행한다. 기본값은 `[ko, en]`. 처리 언어가 `zh` 또는 `ja` 인 경우 4.6단계를 skip 하고 파이프라인을 정상 진행한다 (zh/ja 토큰화는 v2 이후 로드맵).
+
+### 메트릭 정의
+
+전체 알고리즘 정의는 `core/stylometry.md`를 참조한다. 핵심 공식만 인라인으로 제시한다.
+
+**Tokenization** — whitespace 기준 분할 + edge-punctuation strip. ko=어절, en=단어. 형태소 분석기 미사용.
+
+**Burstiness (CV, 문장 길이 변동성)**
+
+```
+sentence_token_counts = [len(tokens) for sentence in paragraph]
+mean = sum(...) / N
+stddev = sqrt(sum((x - mean)^2) / N)   # population stddev
+burstiness_CV = stddev / mean
+```
+
+밴드: `low < 0.25` / `0.25 ≤ mid ≤ 0.50` / `high > 0.50`.
+
+**MATTR (Moving Average TTR, 어휘 다양성)**
+
+```
+window = 50 tokens
+lower_tokens = [token.lower() for token in paragraph_tokens]
+ratios = [len(set(slice)) / window for slice in sliding_window(lower_tokens, 50)]
+MATTR = mean(ratios)
+# fallback: len(tokens) < 50 이면 simple TTR (unique / total)
+```
+
+밴드: `low < 0.55` / `0.55 ≤ mid ≤ 0.70` / `high > 0.70`. lowercase 외 추가 정규화 없음 (no stemming/lemmatization).
+
+**Hot 판정 규칙**
+
+```
+paragraph is SUSPECT iff burstiness_band == "low" OR MATTR_band == "low"
+```
+
+**Sentence Zoom**
+
+hot 단락 내부에서 인접 문장 토큰 수 차이 < 20% 인 연속 문장을 그룹으로 묶어 sub-flag 으로 표기한다.
+
+### LLM 전달 형식
+
+원문 텍스트 상단에 meta block 을 삽입하고, hot 단락 본문 첫머리에 prefix 토큰을 부착한다.
+
+**Meta Block (예)**
+
+```
+<suspect-zones lang="ko">
+- P2: burstiness=0.18 (low), MATTR=0.48 (low) — 문장 길이 균질, 어휘 반복 다수
+- P2.S2-S4: 인접 문장 토큰 수 동일
+</suspect-zones>
+```
+
+**Body Prefix (예)**
+
+```
+«P2 SUSPECT» 이 도구는 단순한 자동완성을 넘어선다. ...
+```
+
+### 파이프라인 결합
+
+- **5a 단계**: 입력에 meta block + prefix 가 포함된 상태로 전달된다. hot 단락이 우선 검토 대상이다.
+- **5b 단계**: 동일 입력을 받는다. hot 문장 그룹이 우선 재작성 대상이다.
+- **5c 단계**: 최종 출력에서 meta block 과 prefix 가 모두 제거되었는지 확인한다. 처리되지 않은 hot zone 이 있으면 경고한다 (강제 재처리는 v1 범위 밖).
+
+> **주의:** suspect zone 정보는 사용자 대면 출력에 노출하지 않는다. 4.5단계 anchor 와 동일한 "내부 작업 메모리" 정책이다.
+
+---
+
 ## Ouroboros 루프 (`--ouroboros`)
 
 `--ouroboros` 플래그가 있거나 `ouroboros.enabled: true`이면, 아래 루프가 5단계와 6단계를 감싼다.
@@ -226,6 +305,7 @@ Glob {지정된 파일 패턴} → 파일 목록 확보
 
 `phase: structure` 팩의 패턴만 적용한다. 글 전체의 구조적 문제를 먼저 해결한다.
 
+0. **Suspect zone 활용** — 4.6단계의 hot 단락을 우선 검토 대상으로 표시. meta block 과 `«P{n} SUSPECT»` prefix 를 참고해 단락 단위 분석 우선순위를 결정한다
 1. **문서 구조 스캔** - 단락 배치, 반복 구조, 번역체 구문, 수동태 패턴을 글 전체 수준에서 분석
 2. **구조적 문제 교정** - 단락 구조 다양화, 번역체 교정, 이중 피동 제거
 3. **의미 보존 확인** - 구조 변경 후에도 핵심 주장과 논리 흐름이 유지되는지 확인
@@ -275,6 +355,7 @@ FOR each anchor IN anchor_list:
 
 나머지 패턴 팩(2단계에서 로드된 팩 중 `phase: structure`가 아닌 모든 팩)을 적용한다.
 
+0. **Suspect zone 활용** — 4.6단계의 hot 문장 그룹(`P{n}.S{m}-S{k}`)을 우선 재작성 대상으로 처리. meta block 의 sub-flag 정보를 사용해 패턴 스캔 우선순위를 결정한다
 1. **AI 패턴 식별** - 로드된 문장/어휘 패턴 팩의 모든 패턴을 스캔
 2. **문제 구간 다시 쓰기** - AI스러운 표현을 자연스러운 대안으로 교체
 3. **의미 보존** - 핵심 메시지를 유지

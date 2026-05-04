@@ -1,8 +1,8 @@
 ---
 pack: ai-lexicon-ko
 language: ko
-version: 1.0.0
-entries: 90
+version: 1.1.0
+entries: 102
 ---
 
 # AI-favored 어휘 (Korean)
@@ -70,6 +70,18 @@ entries: 90
 - 생태계
 - 패러다임
 
+# v1.1 추가 — 외부 검증 마이닝 결과 (2026-05-04)
+# ko/AI 100 paragraphs (Claude 생성) vs NamuWiki human 100 paragraphs 차별 빈도 분석.
+# 어절 단위 doc-frequency 비율이 ≥4×, 그리고 도메인 아티팩트(가면라이더, 한국, 시리즈 등)가 아닌 register marker 만 채택.
+- 평가된다
+- 꼽힌다
+- 가리킨다
+- 사례로
+- 다수의
+- 알려져
+- 일컬어진다
+- 평가받다
+
 ## Multi-word phrases (substring)
 
 - ~의 가능성을 열다
@@ -121,6 +133,13 @@ entries: 90
 - 차원을 넘어
 - 단순한 ~을 넘어
 - 단순한 ~이 아닌
+
+# v1.1 추가 — 외부 검증 마이닝 결과 (2026-05-04)
+# 어절 bi-gram 으로 AI 측에서 ≥6× doc-frequency, NamuWiki human 에서 ≤1 인 의례적 phrase.
+- 가운데 하나로
+- 자리 잡았다
+- 알려져 있다
+- ~의 사례로
 
 ## Notes on each entry (why AI-favored)
 

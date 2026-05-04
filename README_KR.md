@@ -400,7 +400,7 @@ ouroboros:
 `.patina.default.yaml`을 편집하세요:
 
 ```yaml
-version: "3.3.0"
+version: "3.4.0"
 language: ko              # ko | en | zh | ja (또는 --lang 플래그 사용)
 profile: default
 output: rewrite           # rewrite | diff | audit | score
@@ -504,6 +504,7 @@ patina/
 
 | 버전 | 변경 사항 |
 |---------|---------|
+| **3.4.0** | 무료 사용 옵션 확장 + 4개 신규 패턴. 신규: codex-cli 백엔드 (API 키 불필요 — 로컬 `codex` CLI의 ChatGPT OAuth 사용), `patina auth status/login` 서브커맨드 + API 키 없을 때 자동 fallback, Gemini/Groq/Together AI 무료 티어용 `--provider` 단축. 패턴 추가: #30(수사적 질문 단락 시작)과 #31(결론 신호어 남용)을 4개 언어 모두에 추가, KO `보다` / JA `より` 비교부사 남용 (#32). 기본 프로필을 다른 프로필과 동일한 구조로 확장. GitHub Actions CI 워크플로우 추가. |
 | **3.3.0** | 의미 보존 시스템(MPS): 사람화된 텍스트가 원문의 의도와 주장을 유지하도록 보장 |
 | **3.2.0** | 우로보로스 스코어링 시스템: 패턴 기반 AI 유사도 점수(0-100), 카테고리별 상세 내역의 `--score` 모드, 설정 가능한 종료 조건(목표/정체/퇴행/최대 반복)의 `--ouroboros` 반복 자기개선 루프 |
 | **3.1.1** | MAX 모드 안정성 개선: 실행별 임시 디렉토리, 모델별 대기 루프 + 타임아웃 처리, Gemini stdin 전달, Codex CLI 호환성 (`--output-last-message`, `-q` 제거) |

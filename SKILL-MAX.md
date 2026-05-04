@@ -1,6 +1,6 @@
 ---
 name: patina-max
-version: 3.3.0
+version: 3.4.0
 description: |
   Multi-model humanization. Runs the same humanization task on multiple
   local model CLIs, scores each result, and selects the best

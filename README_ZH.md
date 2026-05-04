@@ -76,7 +76,7 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 | `--ouroboros` | 反复改写直到分数收敛（含 MPS 回滚） |
 | `--lang <ko\|en\|zh\|ja>` | 选择语言（默认：`ko`） |
 | `--profile <名称>` | 语气预设：`blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing` |
-| `--batch <glob>` | 批量处理多个文件 |
+| `--batch` | 把位置参数当作文件列表（例：`--batch docs/*.md`） |
 
 完整选项请运行 `patina --help`。
 

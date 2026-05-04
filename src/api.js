@@ -21,9 +21,10 @@ export async function callLLM({
 
   let lastError;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    let timer;
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeout);
+      timer = setTimeout(() => controller.abort(), timeout);
 
       const response = await fetch(url, {
         method: 'POST',
@@ -34,8 +35,6 @@ export async function callLLM({
         body: JSON.stringify(body),
         signal: controller.signal,
       });
-
-      clearTimeout(timer);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -55,6 +54,8 @@ export async function callLLM({
         const delay = 1000 * (attempt + 1);
         await new Promise((r) => setTimeout(r, delay));
       }
+    } finally {
+      clearTimeout(timer);
     }
   }
 

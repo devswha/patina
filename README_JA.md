@@ -76,7 +76,7 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 | `--ouroboros` | スコア収束まで反復（MPS ロールバック付き） |
 | `--lang <ko\|en\|zh\|ja>` | 言語選択（デフォルト：`ko`） |
 | `--profile <名前>` | トーンプリセット：`blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing` |
-| `--batch <glob>` | 複数ファイルを一括処理 |
+| `--batch` | 位置引数をファイル一覧として処理（例：`--batch docs/*.md`） |
 
 全オプションは `patina --help`。
 

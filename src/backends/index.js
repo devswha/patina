@@ -1,12 +1,27 @@
 import { callLLM } from '../api.js';
 import * as codexCli from './codex-cli.js';
 
+// Provider env vars patina recognizes via --provider <name>.
+// Keep in sync with PROVIDERS in src/providers.js.
+const HTTP_KEY_ENV_VARS = [
+  'PATINA_API_KEY',
+  'OPENAI_API_KEY',
+  'GEMINI_API_KEY',
+  'GROQ_API_KEY',
+  'TOGETHER_API_KEY',
+];
+
 const openaiHttp = {
   name: 'openai-http',
   isAvailable: () => true,
-  isAuthenticated: () => Boolean(process.env.PATINA_API_KEY),
-  authHint: () =>
-    'Set PATINA_API_KEY (or pass --api-key). Get a key at https://platform.openai.com/api-keys.',
+  isAuthenticated: () => HTTP_KEY_ENV_VARS.some((k) => process.env[k]),
+  authHint: () => {
+    const present = HTTP_KEY_ENV_VARS.filter((k) => process.env[k]);
+    if (present.length > 0) {
+      return `Authenticated via ${present.join(', ')}.`;
+    }
+    return 'Set PATINA_API_KEY (or use --provider gemini|groq|together with the matching <PROVIDER>_API_KEY).';
+  },
   invoke: ({ prompt, apiKey, baseURL, model, timeout }) =>
     callLLM({ prompt, apiKey, baseURL, model, timeout }),
 };

@@ -76,7 +76,7 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 | `--ouroboros` | 점수가 수렴할 때까지 반복 (MPS 롤백 포함) |
 | `--lang <ko\|en\|zh\|ja>` | 언어 선택 (기본값: `ko`) |
 | `--profile <이름>` | 톤 프리셋: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing` |
-| `--batch <glob>` | 여러 파일 일괄 처리 |
+| `--batch` | 위치 인자를 파일 목록으로 처리 (예: `--batch docs/*.md`) |
 
 전체 옵션은 `patina --help`.
 

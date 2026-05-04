@@ -6,7 +6,7 @@ import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js
 import { formatOutput } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, basename, extname } from 'node:path';
 
 const PACKAGE_VERSION = JSON.parse(
@@ -210,9 +210,6 @@ function parseArgs(args) {
       case '--base-url':
         parsed.baseURL = args[++i];
         break;
-      case '--dispatch':
-        parsed.dispatch = args[++i];
-        break;
       case '--backend':
         parsed.backend = args[++i];
         break;
@@ -279,6 +276,7 @@ async function writeBatchOutput(parsed, inputPath, output) {
     const dir = inputPath.slice(0, -basename(inputPath).length);
     outPath = resolve(dir, `${base}${parsed.suffix}${ext}`);
   } else if (parsed.outdir) {
+    mkdirSync(parsed.outdir, { recursive: true });
     outPath = resolve(parsed.outdir, basename(inputPath));
   } else {
     console.log(output);
@@ -331,7 +329,6 @@ Options:
   --model <id>         Single model ID (default: gpt-4o)
   --api-key <key>      API key (or PATINA_API_KEY env)
   --base-url <url>     API base URL (or PATINA_API_BASE env)
-  --dispatch <mode>    MAX dispatch: omc, direct, api
   --backend <name>     Backend: openai-http (default), codex-cli (no API key)
   --list-backends      List available backends and their availability
   --provider <name>    Provider preset: openai, gemini, groq, together

@@ -1,4 +1,4 @@
-version: "3.5.1"
+version: "3.7.0"
 language: ko              # Korean (default) -- auto-loads all ko-*.md patterns
                           # language: en      -- English -- auto-loads all en-*.md patterns
                           # language: zh      -- Chinese -- auto-loads all zh-*.md patterns
@@ -161,6 +161,24 @@ stylometry:
       high: 0.70             # MATTR > 0.70 → high
   sentence_zoom:
     similarity_threshold: 0.20  # adjacent sentences within ±20% token count → grouped as sub-flag
+  skip:
+    min_paragraphs: 2
+    min_sentences: 2
+
+# AI-Lexicon Overlap (SKILL.md Step 4.7)
+# Matches paragraphs against an AI-favored phrase dictionary not covered
+# by the 28-pattern catalog. Computes density per 1000 tokens; high
+# density paragraphs are flagged SUSPECT under the 3-signal OR rule
+# (burstiness OR MATTR OR lexicon_density).
+# See core/stylometry.md §16 for the full algorithm.
+lexicon:
+  enabled: true
+  languages: [en, ko]        # zh/ja deferred (no curated lexicon yet)
+  density_threshold: 2.0     # matches per 1000 tokens; > threshold → SUSPECT
+  # Lexicon files auto-discovered via Glob lexicon/ai-{lang}.md
+  # See lexicon/ai-en.md (108 entries) and lexicon/ai-ko.md (90 entries).
+  # Calibrated against 400 paragraphs (HC3 + Wikipedia + NamuWiki):
+  # AI catch 66% → 76% with Wikipedia FP staying at 25% boundary.
   skip:
     min_paragraphs: 2
     min_sentences: 2

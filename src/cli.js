@@ -22,7 +22,7 @@ export async function main(args) {
   }
 
   if (parsed.version) {
-    console.log('patina 3.3.0');
+    console.log('patina 3.4.0');
     return;
   }
 

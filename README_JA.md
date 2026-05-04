@@ -498,6 +498,7 @@ patina/
 
 | バージョン | 変更内容 |
 |---------|---------|
+| **3.5.1** | 統計信号 calibration パッチ。v3.5.0 の `stylometry.burstiness.bands.low` を 0.25 → 0.30 に引き上げ。外部段落 300 件（HC3 ChatGPT 100、HC3 human 100、Wikipedia 100）に対する検証の結果、v3.5.0 は実際の AI テキストの 57% しか検出できず — v1 目標 70% に未達。v3.5.1 は 66% 検出率 + HC3 human FP 12% + Wikipedia FP 23%。閾値スイープの結果、AI ≥70% AND max FP ≤20% を同時に満たす閾値の組み合わせが存在しない — Wikipedia の百科事典的スタイルは自然に均一な文長を持つため。MATTR 閾値は 0.55 に維持（散文での弁別力がない — スイープで検証済み）。正直な枠組み：v3.5.x は LLM への助言マーカーであり、単独の決定ゲートではない。n-gram 反復度（元々 v2 ロードマップ）を v3.6+ の優先順位に昇格。Calibration 根拠は `core/stylometry.md` §13 を参照。 |
 | **3.5.0** | 統計的疑惑区間検出（Stylometric Suspect Zone Detection）。意味アンカー抽出とパターン処理フェーズの間に新たな 4.6 ステップを挿入。文長変動係数（burstiness CV）と MATTR（window=50）シグナルにより、28 パターンカタログが見逃す疑惑段落を特定。対応言語：v1 = ko + en、zh/ja は v2 ロードマップに保留。LLM 入力に `<suspect-zones>` メタブロックと `«P{n} SUSPECT»` 段落プレフィックスを内部作業メモリとして渡す。新規ファイル：`core/stylometry.md`（アルゴリズムリファレンス）。ロードマップ：n-gram 反復度、perplexity 近似、外部 detector 連携。 |
 | **3.4.0** | 無料利用オプションの拡張 + 4つの新規パターン。新機能：codex-cli バックエンド（API キー不要 — ローカル `codex` CLI の ChatGPT OAuth を使用）、`patina auth status/login` サブコマンドと API キー未設定時の自動フォールバック、Gemini/Groq/Together AI 無料ティア向け `--provider` ショートカット。パターン追加：#30（修辞疑問の段落冒頭）と #31（結論シグナルワード）を4言語すべてに追加、KO `보다` / JA `より` 比較副詞の濫用 (#32)。デフォルトプロファイルを他のプロファイルと同等の構造に拡張。GitHub Actions CI ワークフロー追加。 |
 | **3.3.0** | 意味保持システム（MPS）：人間化後のテキストが原文の意図と主張を維持することを保証 |

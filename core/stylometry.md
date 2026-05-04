@@ -1,6 +1,6 @@
 ---
 name: Stylometric Suspect-Zone Detection
-version: 1.0.0
+version: 1.1.0
 description: Deterministic statistical preprocessing that flags suspect paragraphs and sentence groups before pattern scanning, used by SKILL.md Step 4.6
 ---
 
@@ -120,11 +120,17 @@ burstiness_CV = stddev / mean
 
 | 밴드 | 임계값 | 해석 |
 |------|--------|------|
-| low | CV < 0.25 | 문장 길이가 균질함 — AI 의심 |
-| mid | 0.25 ≤ CV ≤ 0.50 | 자연스러운 변동 |
+| low | CV < 0.30 | 문장 길이가 균질함 — AI 의심 |
+| mid | 0.30 ≤ CV ≤ 0.50 | 자연스러운 변동 |
 | high | CV > 0.50 | 사람다운 큰 변동 |
 
 임계값은 `.patina.default.yaml`의 `stylometry.burstiness.bands`에서 조정 가능하다.
+
+> **v3.5.1 calibration:** 초기 임계값은 `0.25`였다. 외부 300 단락
+> (HC3 ChatGPT 100 + HC3 human 100 + Wikipedia 100) 측정 후 `0.30`으로 상향 조정.
+> 0.25에서는 AI catch rate 가 57%에 그쳐 v1 목표(70%) 미달이었고,
+> 0.30에서 66%까지 상승. 0.35 이상은 Wikipedia false positive 가 34%+ 로
+> 급증해 채택하지 않음. 자세한 sweep 결과는 §13 참조.
 
 ---
 
@@ -183,7 +189,7 @@ paragraph is SUSPECT iff
 
 v1 결과에서 false positive 가 한도(자연 시드 2/10)를 넘기면, `.patina.default.yaml`의
 `stylometry.burstiness.bands.low` 또는 `stylometry.ttr.bands.low` 를 보수적으로 낮춰
-재평가한다 (예: 0.25 → 0.22).
+재평가한다 (예: 0.30 → 0.27).
 
 ---
 
@@ -309,7 +315,7 @@ hot 단락 본문 첫머리에 토큰 prefix `«P{n} SUSPECT»` 를 삽입한다
 mean = 5
 stddev = 0
 CV = 0 / 5 = 0.00
-band = low (< 0.25)
+band = low (< 0.30)
 ```
 
 **MATTR**
@@ -443,3 +449,54 @@ v1 범위에서 의도적으로 제외한 항목. v1 시드 평가 결과를 바
   감수한다. 시드 평가에서 false positive 비율이 한도를 넘기면 v1.1 에서 보강한다.
 - **Language scope**: v1 은 ko + en 만 지원한다. zh/ja 는 character-based 또는 형태소
   분석기 의존성이 있어 별도 작업으로 분리했다.
+
+---
+
+## 13. Calibration Appendix (v3.5.1)
+
+v3.5.0 자체 시드 평가는 만점이었으나(AI 10/10, 자연 0/10), 외부 데이터에서는 신호가 약했다. 시드 픽스처를 작성한 측과 측정 알고리즘이 같았기 때문이다(자기 일관성). 이 절은 v3.5.1 calibration 의 근거 데이터다.
+
+### 외부 측정 (300 단락)
+
+| Source | n | hot rate (v3.5.0, 0.25) | hot rate (v3.5.1, 0.30) | CV median |
+|--------|---|--------------------------|--------------------------|-----------|
+| HC3 ChatGPT 답변 (en) | 100 | 57.0% | 66.0% | 0.220 |
+| HC3 human 답변 (en) | 100 | 8.0% | 12.0% | 0.511 |
+| Wikipedia 도입 단락 (en) | 100 | 19.0% | 23.0% | 0.386 |
+
+### 임계값 sweep 핵심 결과
+
+burstiness × MATTR 35조합을 모두 측정. **AI ≥70% AND max FP ≤20% 동시 만족하는 조합은 0개.** Pareto frontier 상위:
+
+| burst | mattr | AI hot | HC3 FP | Wiki FP | utility |
+|-------|-------|--------|--------|---------|---------|
+| 0.25 | 0.55 (v3.5.0) | 57% | 8% | 19% | 38 |
+| **0.30** | **0.55 (v3.5.1)** | **66%** | **12%** | **23%** | **43** |
+| 0.35 | 0.55 | 73% | 22% | 34% | 39 |
+| 0.40 | 0.55 | 84% | 35% | 57% | 27 |
+
+v3.5.1 은 utility 최대점. 0.35 이상은 Wikipedia FP 가 급증해 백과사전체 자연 텍스트를 과도하게 hot 으로 표시.
+
+### MATTR 의 약한 변별력 — 정직한 한계
+
+MATTR 임계값을 `0.55 → 0.78` 로 광범위하게 sweep 해도 AI 와 사람의 발화 빈도 차이가 거의 없었다.
+
+| MATTR threshold | AI MATTR-only fires | Human MATTR-only fires |
+|-----------------|---------------------|------------------------|
+| 0.65 | 2/100 | 3/100 |
+| 0.70 | 6/100 | 5/100 |
+| 0.75 | 16/100 | 19/100 |
+
+MATTR 0.75 에서는 사람 텍스트가 오히려 더 자주 hot 발화. 자유 산문에서는 어휘 다양성이 AI/사람 변별 신호로 약하다는 의미. v3.5.1 은 **MATTR 임계값을 0.55 로 유지**한다 (실질적으로 거의 발화하지 않는 안전 신호로 보존; 임계값 상향은 false positive 만 늘림). v2 에서 n-gram 반복도가 어휘 반복 패턴을 더 정밀하게 잡을 후보다.
+
+### Wikipedia 의 register 문제
+
+Wikipedia 도입 단락은 백과사전체 register 라 자연스럽게 균질한 문장 길이를 가진다(CV median 0.386). v3.5.1 에서 23% false positive 는 v1 acceptance(≤20%) 를 살짝 위반하나 register issue 에서 비롯된 구조적 한계로 본다. 단순 임계값 조정으로는 해소되지 않는다 — n-gram 또는 perplexity 기반 신호가 추가되어야 백과사전체 sentence-length uniformity 와 AI uniformity 를 분리할 수 있다.
+
+### 운용상 권고
+
+v3.5.1 은 advisory marker 로 사용하라. 패턴 카탈로그가 명명한 28 개 신호의 **보조 입력**이며, 단독 결정 신호로 쓰기엔 catch rate(66%) 가 부족하다. 단락이 hot 표시되면 LLM 이 우선 검토하고, 표시되지 않더라도 패턴 단계가 정상 작동한다.
+
+### 외부 검증 재현
+
+`.omc/research/eval_external_v2.py` 로 측정, `.omc/research/threshold_sweep.py` 로 sweep 수행. raw 결과는 `.omc/research/external_results_v2.json`. 재실행 시 HuggingFace `Hello-SimpleAI/HC3` + `wikimedia/wikipedia` 20231101.en 다운로드 발생.

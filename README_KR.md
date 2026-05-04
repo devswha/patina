@@ -504,6 +504,7 @@ patina/
 
 | 버전 | 변경 사항 |
 |---------|---------|
+| **3.5.1** | 통계 신호 calibration 패치. v3.5.0 의 `stylometry.burstiness.bands.low` 를 0.25 → 0.30 으로 상향. 외부 단락 300건(HC3 ChatGPT 100, HC3 human 100, Wikipedia 100) 측정 결과 v3.5.0 은 실제 AI 단락의 57% 만 잡았음 — v1 목표 70% 미달. v3.5.1 은 66% catch + HC3 human FP 12% + Wikipedia FP 23%. Sweep 결과 AI ≥70% AND max FP ≤20% 동시 만족하는 임계값 조합 없음 — Wikipedia 백과사전체는 균일한 문장 길이가 자연스럽기 때문. MATTR 임계값은 0.55 유지 (산문에서 변별력 없음 — sweep 으로 확인). 정직한 framing: v3.5.x 는 LLM advisory marker 이지 단독 결정 신호가 아님. n-gram 반복도(원래 v2 로드맵) 를 v3.6+ 우선순위로 격상. Calibration 근거는 `core/stylometry.md` §13. |
 | **3.5.0** | 통계 기반 의심 구간 탐지 (Stylometric Suspect Zone Detection). 의미 앵커 추출과 패턴 처리 단계 사이에 새 4.6단계 삽입. 문장 길이 변동계수(burstiness CV)와 MATTR(window=50) 신호로 28-패턴 카탈로그가 놓치는 의심 단락을 식별. 언어: v1 = ko + en, zh/ja는 v2 로드맵으로 보류. LLM 입력에 `<suspect-zones>` 메타 블록과 `«P{n} SUSPECT»` 단락 prefix를 내부 작업 메모리로 전달. 신규 파일: `core/stylometry.md` (알고리즘 레퍼런스). 로드맵: n-gram 반복도, perplexity 근사, 외부 detector 연동. |
 | **3.4.0** | 무료 사용 옵션 확장 + 4개 신규 패턴. 신규: codex-cli 백엔드 (API 키 불필요 — 로컬 `codex` CLI의 ChatGPT OAuth 사용), `patina auth status/login` 서브커맨드 + API 키 없을 때 자동 fallback, Gemini/Groq/Together AI 무료 티어용 `--provider` 단축. 패턴 추가: #30(수사적 질문 단락 시작)과 #31(결론 신호어 남용)을 4개 언어 모두에 추가, KO `보다` / JA `より` 비교부사 남용 (#32). 기본 프로필을 다른 프로필과 동일한 구조로 확장. GitHub Actions CI 워크플로우 추가. |
 | **3.3.0** | 의미 보존 시스템(MPS): 사람화된 텍스트가 원문의 의도와 주장을 유지하도록 보장 |

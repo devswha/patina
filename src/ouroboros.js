@@ -1,5 +1,5 @@
 import { callLLM } from './api.js';
-import { scoreText, scoreMPS } from './scoring.js';
+import { scoreText, scoreMPS, scoreFidelity, combinedScore } from './scoring.js';
 import { buildPrompt } from './prompt-builder.js';
 
 export async function runOuroboros({
@@ -83,18 +83,22 @@ export async function runOuroboros({
       model,
     });
 
-    const currentScore = scoreResult?.overall ?? 100;
+    let currentScore = scoreResult?.overall ?? 100;
     const delta = previousScore - currentScore;
 
-    const mpsResult = await scoreMPS({
-      original: text,
-      rewritten: humanized,
-      apiKey,
-      baseURL,
-      model,
-    });
+    const [mpsResult, fidelityResult] = await Promise.all([
+      scoreMPS({ original: text, rewritten: humanized, apiKey, baseURL, model }),
+      scoreFidelity({ original: text, rewritten: humanized, apiKey, baseURL, model }),
+    ]);
 
     const mps = mpsResult?.mps ?? 100;
+    const fidelity = fidelityResult?.fidelity ?? 100;
+    const combined = combinedScore({
+      aiLikeness: currentScore,
+      fidelity,
+      profile: config.profile,
+      config,
+    });
 
     let reason = '';
     let shouldStop = false;
@@ -107,16 +111,20 @@ export async function runOuroboros({
       reason = 'Regression';
       shouldStop = true;
       shouldRollback = true;
+    } else if (fidelity < fidelityFloor) {
+      reason = 'Fidelity floor violation';
+      shouldStop = true;
+      shouldRollback = true;
+    } else if (mps < mpsFloor) {
+      reason = 'MPS floor violation';
+      shouldStop = true;
+      shouldRollback = true;
     } else if (delta <= plateauThreshold) {
       reason = 'Plateau';
       shouldStop = true;
     } else if (iteration >= maxIterations) {
       reason = 'Max iterations';
       shouldStop = true;
-    } else if (mps < mpsFloor) {
-      reason = 'MPS floor violation';
-      shouldStop = true;
-      shouldRollback = true;
     }
 
     iterationLog.push({
@@ -124,6 +132,9 @@ export async function runOuroboros({
       before: previousScore,
       after: currentScore,
       improvement: delta,
+      fidelity,
+      mps,
+      combined,
       reason: shouldStop ? reason : '',
     });
 

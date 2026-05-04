@@ -76,7 +76,7 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `--ouroboros` | Iterate the rewrite until score converges (with MPS rollback) |
 | `--lang <ko\|en\|zh\|ja>` | Select language (default: `ko`) |
 | `--profile <name>` | Tone preset: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing` |
-| `--batch <glob>` | Process multiple files |
+| `--batch` | Treat positional args as a list of files (e.g. `--batch docs/*.md`) |
 
 `patina --help` for the full flag list.
 

@@ -400,7 +400,7 @@ ouroboros:
 编辑 `.patina.default.yaml`：
 
 ```yaml
-version: "3.3.0"
+version: "3.4.0"
 language: ko              # ko | en | zh | ja（或使用 --lang 参数）
 profile: default
 output: rewrite           # rewrite | diff | audit | score
@@ -498,6 +498,7 @@ patina/
 
 | 版本 | 变更内容 |
 |------|----------|
+| **3.4.0** | 免费使用选项扩展 + 4 个新模式。新增：codex-cli 后端（无需 API 密钥 — 通过本地 `codex` CLI 的 ChatGPT OAuth 认证），`patina auth status/login` 子命令及未设置 API 密钥时的自动回退，Gemini/Groq/Together AI 免费层的 `--provider` 快捷方式。模式新增：#30（修辞性疑问句段首）与 #31（结论信号词滥用）扩展到全部 4 种语言，KO `보다` / JA `より` 比较副词滥用 (#32)。默认配置文件扩充至与其他配置文件同等结构。新增 GitHub Actions CI 工作流。 |
 | **3.3.0** | 语义保留系统（MPS）：确保人性化后的文本保持原文的意图和主张 |
 | **3.2.0** | Ouroboros 评分系统：基于模式的 AI 相似度评分（0-100）、`--score` 模式含类别细分、`--ouroboros` 迭代自我优化循环，支持可配置的终止条件（目标值/平台期/退化/最大迭代次数） |
 | **3.1.1** | MAX 模式可靠性修复：独立运行临时目录、模型级等待循环 + 超时处理、Gemini stdin 分发、Codex CLI 兼容性（`--output-last-message`，移除 `-q`） |

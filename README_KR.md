@@ -10,7 +10,7 @@
 
 > **AI가 쓴 글을 사람이 쓴 것처럼 바꿔줍니다.**
 
-한국어, 영어, 중국어, 일본어 텍스트에서 AI 특유의 글쓰기 패턴을 탐지하고 교정하는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 스킬 + 독립형 CLI. 패턴 기반, 감사 가능, 결정적 — 블랙박스 LLM 패러프레이저가 아닙니다.
+한국어, 영어, 중국어, 일본어 텍스트에서 AI 특유의 글쓰기 패턴을 탐지하고 교정하는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 스킬 + 독립형 CLI. 패턴 기반, 감사 가능 — 블랙박스 LLM 패러프레이저가 아닙니다. 스코어링 공식은 결정적이지만 LLM severity 부여 단계는 ±8–10pt 변동이 있습니다 ([scoring.md §8](core/scoring.md) 참조).
 
 ## 데모
 
@@ -35,11 +35,13 @@
 
 ## 빠른 시작
 
-### Claude Code 스킬로
+### Claude Code 또는 Codex CLI 스킬로
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
+
+설치 스크립트가 Claude Code, [Codex CLI](https://github.com/openai/codex), Cursor, OpenCode 에 한 번에 연결합니다. 그런 다음:
 
 ```
 /patina --lang ko
@@ -105,7 +107,7 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 
 각 검증 단계에서 의미가 손상되면 재시도하거나 롤백합니다.
 
-**캘리브레이션** *(400단락 코퍼스, `.omc/research/v3_7_lexicon_eval.py` 로 재현 가능)*: HC3 ChatGPT (en) AI 탐지 76%, paired ko/AI 코퍼스 91%, 사람 글 오탐 13–25%. 수용 기준: AI ≥ 75%, 최대 FP ≤ 25%. 알고리즘은 [stylometry.md](core/stylometry.md).
+**캘리브레이션** *(500단락 코퍼스, `.omc/research/v3_8_remeasure.py` 로 재현 가능)*: HC3 ChatGPT (en) AI 탐지 76%, paired ko/AI 코퍼스 91%, 사람 글 오탐 13–25%. 수용 기준: AI ≥ 75%, 최대 FP ≤ 25%. 알고리즘은 [stylometry.md](core/stylometry.md).
 
 ## 설정
 

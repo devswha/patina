@@ -10,7 +10,7 @@
 
 > **让 AI 生成的文字读起来像人写的。**
 
-一个用于检测和改写中文、韩文、英文及日文文本中 AI 写作痕迹的 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 技能 + 独立 CLI。基于模式、可审计、确定性 — 不是黑箱式 LLM 改写器。
+一个用于检测和改写中文、韩文、英文及日文文本中 AI 写作痕迹的 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 技能 + 独立 CLI。基于模式、可审计 — 不是黑箱式 LLM 改写器。评分公式是确定性的，但 LLM 严重程度判定阶段有 ±8–10pt 的波动（参见 [scoring.md §8](core/scoring.md)）。
 
 ## 效果展示
 
@@ -35,11 +35,13 @@
 
 ## 快速开始
 
-### 作为 Claude Code 技能
+### 作为 Claude Code 或 Codex CLI 技能
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
+
+安装脚本会一次性将 patina 接入 Claude Code、[Codex CLI](https://github.com/openai/codex)、Cursor、OpenCode。然后：
 
 ```
 /patina --lang zh
@@ -105,7 +107,7 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 
 任一验证阶段语义偏移则重试或回滚。
 
-**校准** *(400 段语料，可通过 `.omc/research/v3_7_lexicon_eval.py` 复现)*：HC3 ChatGPT (en) AI 检出 76%，paired ko/AI 语料 91%，人类写作误检 13–25%。接受门槛：AI ≥ 75%，最大 FP ≤ 25%。算法见 [stylometry.md](core/stylometry.md)。
+**校准** *(500 段语料，可通过 `.omc/research/v3_8_remeasure.py` 复现)*：HC3 ChatGPT (en) AI 检出 76%，paired ko/AI 语料 91%，人类写作误检 13–25%。接受门槛：AI ≥ 75%，最大 FP ≤ 25%。算法见 [stylometry.md](core/stylometry.md)。
 
 ## 配置
 

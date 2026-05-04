@@ -10,7 +10,7 @@
 
 > **Make AI text sound like a human wrote it.**
 
-A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill and standalone CLI that detects and rewrites AI writing patterns in Korean, English, Chinese, and Japanese. Pattern-based, auditable, deterministic — not a black-box LLM paraphraser.
+A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill and standalone CLI that detects and rewrites AI writing patterns in Korean, English, Chinese, and Japanese. Pattern-based and auditable — not a black-box LLM paraphraser. The scoring formula is deterministic; LLM severity assignment is the only stochastic step (±8–10 pt variance per run, see [scoring.md §8](core/scoring.md)).
 
 ## Demo
 
@@ -35,11 +35,13 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill and standa
 
 ## Quick Start
 
-### As a Claude Code skill
+### As a Claude Code or Codex CLI skill
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
+
+The installer wires patina into Claude Code, [Codex CLI](https://github.com/openai/codex), Cursor, and OpenCode. Then:
 
 ```
 /patina --lang en
@@ -105,7 +107,7 @@ Natural-sounding text (meaning verified)
 
 If meaning drifts at any verification step, the change is retried or rolled back.
 
-**Calibration** *(400-paragraph corpus, reproducible via `.omc/research/v3_7_lexicon_eval.py`)*: 76% AI catch on HC3 ChatGPT (en), 91% on paired ko/AI corpus, 13–25% FP on human prose. Acceptance gates: AI ≥ 75%, max FP ≤ 25%. See [stylometry.md](core/stylometry.md) for the algorithm.
+**Calibration** *(500-paragraph corpus, reproducible via `.omc/research/v3_8_remeasure.py`)*: 76% AI catch on HC3 ChatGPT (en), 91% on paired ko/AI corpus, 13–25% FP on human prose. Acceptance gates: AI ≥ 75%, max FP ≤ 25%. See [stylometry.md](core/stylometry.md) for the algorithm.
 
 ## Configuration
 

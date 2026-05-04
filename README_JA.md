@@ -10,7 +10,7 @@
 
 > **AI が書いた文章を、人間が書いたように変えます。**
 
-韓国語・英語・中国語・日本語のテキストから AI 特有の文体パターンを検出して書き換える [Claude Code](https://docs.anthropic.com/en/docs/claude-code) スキル + スタンドアロン CLI。パターンベース・監査可能・決定的 — ブラックボックス LLM パラフレーザーではありません。
+韓国語・英語・中国語・日本語のテキストから AI 特有の文体パターンを検出して書き換える [Claude Code](https://docs.anthropic.com/en/docs/claude-code) スキル + スタンドアロン CLI。パターンベース・監査可能 — ブラックボックス LLM パラフレーザーではありません。スコアリング式は決定的ですが LLM の severity 判定段階に ±8–10pt の変動があります（[scoring.md §8](core/scoring.md) 参照）。
 
 ## デモ
 
@@ -35,11 +35,13 @@
 
 ## クイックスタート
 
-### Claude Code スキルとして
+### Claude Code または Codex CLI スキルとして
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
+
+インストーラが Claude Code、[Codex CLI](https://github.com/openai/codex)、Cursor、OpenCode に一括で配線します。続いて：
 
 ```
 /patina --lang ja
@@ -105,7 +107,7 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 
 各検証ステップで意味が損なわれた場合、変更は再試行またはロールバックされます。
 
-**キャリブレーション** *(400 段落コーパス、`.omc/research/v3_7_lexicon_eval.py` で再現可能)*：HC3 ChatGPT (en) AI 検出 76%、paired ko/AI コーパス 91%、人間文章誤検出 13–25%。受け入れ基準：AI ≥ 75%、最大 FP ≤ 25%。アルゴリズムは [stylometry.md](core/stylometry.md)。
+**キャリブレーション** *(500 段落コーパス、`.omc/research/v3_8_remeasure.py` で再現可能)*：HC3 ChatGPT (en) AI 検出 76%、paired ko/AI コーパス 91%、人間文章誤検出 13–25%。受け入れ基準：AI ≥ 75%、最大 FP ≤ 25%。アルゴリズムは [stylometry.md](core/stylometry.md)。
 
 ## 設定
 

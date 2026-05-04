@@ -5,10 +5,12 @@ set -e
 
 # Agent targets (set env vars to enable; all enabled by default if none specified)
 INSTALL_CLAUDE="${INSTALL_CLAUDE:-true}"
+INSTALL_CODEX="${INSTALL_CODEX:-true}"
 INSTALL_CURSOR="${INSTALL_CURSOR:-true}"
 INSTALL_OPCODE="${INSTALL_OPCODE:-true}"
 
 CLAUDE_SKILLS_DIR="${HOME}/.claude/skills"
+CODEX_SKILLS_DIR="${HOME}/.codex/skills"
 CURSOR_RULES_DIR="${HOME}/.cursor/rules"
 OPCODE_SKILLS_DIR="${HOME}/.config/opencode/skills"
 PATINA_DIR="${CLAUDE_SKILLS_DIR}/patina"
@@ -76,6 +78,26 @@ else
   warn "Skipping Claude Code installation (INSTALL_CLAUDE=false)"
 fi
 
+# --- Codex CLI ---
+if [ "${INSTALL_CODEX}" = "true" ]; then
+  info "Installing for Codex CLI..."
+
+  if [ ! -d "${CODEX_SKILLS_DIR}" ]; then
+    info "Creating ${CODEX_SKILLS_DIR}..."
+    mkdir -p "${CODEX_SKILLS_DIR}"
+  fi
+
+  if [ -d "${PATINA_DIR}" ]; then
+    ln -snf "${PATINA_DIR}" "${CODEX_SKILLS_DIR}/patina"
+    ln -snf "${PATINA_DIR}/patina-max" "${CODEX_SKILLS_DIR}/patina-max"
+    success "Codex: /patina and /patina-max linked to ${CODEX_SKILLS_DIR}"
+  else
+    warn "Patina repo not found. Claude Code installation must succeed first."
+  fi
+else
+  warn "Skipping Codex installation (INSTALL_CODEX=false)"
+fi
+
 # --- Cursor ---
 if [ "${INSTALL_CURSOR}" = "true" ]; then
   info "Installing for Cursor..."
@@ -131,6 +153,12 @@ if [ "${INSTALL_CLAUDE}" = "true" ]; then
   printf "    /patina --lang en    Humanize English text\n"
   printf "    /patina-max          Multi-model humanization\n"
 fi
+if [ "${INSTALL_CODEX}" = "true" ]; then
+  printf "  Codex CLI:\n"
+  printf "    /patina              Humanize Korean text\n"
+  printf "    /patina --lang en    Humanize English text\n"
+  printf "    /patina-max          Multi-model humanization\n"
+fi
 if [ "${INSTALL_CURSOR}" = "true" ]; then
   printf "  Cursor:\n"
   printf "    Rules loaded from ~/.cursor/rules/patina.md\n"
@@ -143,6 +171,7 @@ fi
 printf "\n"
 info "Environment variables to control installation:"
 printf "  INSTALL_CLAUDE=true|false   (default: true)\n"
+printf "  INSTALL_CODEX=true|false    (default: true)\n"
 printf "  INSTALL_CURSOR=true|false   (default: true)\n"
 printf "  INSTALL_OPCODE=true|false   (default: true)\n"
 printf "\n"

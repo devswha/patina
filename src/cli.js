@@ -6,8 +6,12 @@ import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js
 import { formatOutput } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve, basename, extname } from 'node:path';
+
+const PACKAGE_VERSION = JSON.parse(
+  readFileSync(resolve(getRepoRoot(), 'package.json'), 'utf8')
+).version;
 
 export async function main(args) {
   if (args[0] === 'auth') {
@@ -22,7 +26,7 @@ export async function main(args) {
   }
 
   if (parsed.version) {
-    console.log('patina 3.4.0');
+    console.log(`patina ${PACKAGE_VERSION}`);
     return;
   }
 

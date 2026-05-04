@@ -13,7 +13,7 @@ describe('Config Loading', () => {
   it('should load .patina.default.yaml', () => {
     const config = loadConfig(resolve(REPO_ROOT, '.patina.default.yaml'));
     assert.ok(config);
-    assert.strictEqual(config.version, '3.4.0');
+    assert.match(config.version, /^\d+\.\d+\.\d+$/);
     assert.ok(config.language);
     assert.ok(config.profile);
     assert.ok(config.patterns);

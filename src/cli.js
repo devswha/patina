@@ -235,7 +235,18 @@ function parseArgs(args) {
 
 async function loadInputs(parsed) {
   if (parsed.files.length === 0) {
+    // No file args. If stdin is a TTY (interactive terminal), there is no input
+    // to read — print help instead of hanging or sending empty text to the LLM.
+    if (process.stdin.isTTY) {
+      printHelp();
+      console.error('\nNo input provided. Pass a file path, pipe text via stdin, or run `patina --help`.');
+      process.exit(2);
+    }
     const stdin = await readStdin();
+    if (!stdin.trim()) {
+      console.error('Error: empty input on stdin. Pipe text via stdin or pass a file path.');
+      process.exit(2);
+    }
     return [{ path: '-', text: stdin }];
   }
 

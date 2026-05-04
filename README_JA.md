@@ -4,13 +4,13 @@
 
 [![Tests](https://github.com/devswha/patina/actions/workflows/test.yml/badge.svg)](https://github.com/devswha/patina/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
+[![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#クイックスタート)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
 [![Version](https://img.shields.io/badge/version-3.8.0-blue)](CHANGELOG.md)
 
 > **AI が書いた文章を、人間が書いたように変えます。**
 
-韓国語・英語・中国語・日本語のテキストから AI 特有の文体パターンを検出して書き換える [Claude Code](https://docs.anthropic.com/en/docs/claude-code) スキル + スタンドアロン CLI。パターンベース・監査可能 — ブラックボックス LLM パラフレーザーではありません。スコアリング式は決定的ですが LLM の severity 判定段階に ±8–10pt の変動があります（[scoring.md §8](core/scoring.md) 参照）。
+韓国語・英語・中国語・日本語のテキストから AI 特有の文体パターンを検出して書き換えます。[Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex CLI](https://github.com/openai/codex)、[Cursor](https://cursor.sh)、OpenCode 向けスキル + スタンドアロン Node.js CLI として利用可能。パターンベース・監査可能 — ブラックボックス LLM パラフレーザーではありません。スコアリング式は決定的ですが LLM の severity 判定段階に ±8–10pt の変動があります（[scoring.md §8](core/scoring.md) 参照）。
 
 ## デモ
 

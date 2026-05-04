@@ -4,13 +4,13 @@
 
 [![Tests](https://github.com/devswha/patina/actions/workflows/test.yml/badge.svg)](https://github.com/devswha/patina/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
+[![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#빠른-시작)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
 [![Version](https://img.shields.io/badge/version-3.8.0-blue)](CHANGELOG.md)
 
 > **AI가 쓴 글을 사람이 쓴 것처럼 바꿔줍니다.**
 
-한국어, 영어, 중국어, 일본어 텍스트에서 AI 특유의 글쓰기 패턴을 탐지하고 교정하는 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 스킬 + 독립형 CLI. 패턴 기반, 감사 가능 — 블랙박스 LLM 패러프레이저가 아닙니다. 스코어링 공식은 결정적이지만 LLM severity 부여 단계는 ±8–10pt 변동이 있습니다 ([scoring.md §8](core/scoring.md) 참조).
+한국어, 영어, 중국어, 일본어 텍스트에서 AI 특유의 글쓰기 패턴을 탐지하고 교정합니다. [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), OpenCode 용 스킬 + 독립형 Node.js CLI 로 사용. 패턴 기반, 감사 가능 — 블랙박스 LLM 패러프레이저가 아닙니다. 스코어링 공식은 결정적이지만 LLM severity 부여 단계는 ±8–10pt 변동이 있습니다 ([scoring.md §8](core/scoring.md) 참조).
 
 ## 데모
 

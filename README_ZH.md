@@ -4,13 +4,13 @@
 
 [![Tests](https://github.com/devswha/patina/actions/workflows/test.yml/badge.svg)](https://github.com/devswha/patina/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
+[![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#快速开始)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
 [![Version](https://img.shields.io/badge/version-3.8.0-blue)](CHANGELOG.md)
 
 > **让 AI 生成的文字读起来像人写的。**
 
-一个用于检测和改写中文、韩文、英文及日文文本中 AI 写作痕迹的 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 技能 + 独立 CLI。基于模式、可审计 — 不是黑箱式 LLM 改写器。评分公式是确定性的，但 LLM 严重程度判定阶段有 ±8–10pt 的波动（参见 [scoring.md §8](core/scoring.md)）。
+检测并改写中文、韩文、英文及日文文本中的 AI 写作痕迹。可作为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex CLI](https://github.com/openai/codex)、[Cursor](https://cursor.sh)、OpenCode 技能使用，或作为独立的 Node.js CLI 运行。基于模式、可审计 — 不是黑箱式 LLM 改写器。评分公式是确定性的，但 LLM 严重程度判定阶段有 ±8–10pt 的波动（参见 [scoring.md §8](core/scoring.md)）。
 
 ## 效果展示
 

@@ -1,7 +1,7 @@
 ---
 name: Stylometric Suspect-Zone Detection
-version: 1.2.0
-description: Deterministic statistical preprocessing that flags suspect paragraphs and sentence groups before pattern scanning, used by SKILL.md Step 4.6
+version: 2.0.0
+description: Deterministic statistical preprocessing that flags suspect paragraphs and sentence groups before pattern scanning, used by SKILL.md Step 4.6 (burstiness + MATTR) and Step 4.7 (AI-lexicon overlap)
 ---
 
 # Stylometric Suspect-Zone Detection
@@ -422,7 +422,7 @@ v1 범위에서 의도적으로 제외한 항목. v1 시드 평가 결과를 바
 | 항목 | 설명 | 도입 후보 시점 |
 |------|------|----------------|
 | ~~n-gram redundancy~~ | ~~bi/trigram 반복도~~ — **dropped, §15 negative finding** | — |
-| AI-lexicon overlap | 28-패턴 외 AI 특유 어구 사전 매칭 | v3.7 후보 |
+| ~~AI-lexicon overlap~~ | ~~28-패턴 외 AI 특유 어구 사전 매칭~~ — **shipped v3.7, §16** | v3.7 |
 | Perplexity proxy | small LM 또는 cloze prompt 기반 token-level surprise | v4 후보 |
 | Function-word distribution | 기능어 빈도 분포 차이 (Mosteller & Wallace 류) | v4 후보 |
 | GPTZero / Originality 연동 | 외부 detector API 결과를 hot 신호로 합산 | v4+ 후보 |
@@ -559,3 +559,132 @@ n-gram 반복도를 ship 하지 않는다. v3.5.1 상태 유지. roadmap 에서 
 ### 재현
 
 `.omc/research/v3_6_ngram_probe.py` 로 측정, raw 결과는 `.omc/research/v3_6_results.json`. HuggingFace `Hello-SimpleAI/HC3` + `wikimedia/wikipedia` + `heegyu/namuwiki` 다운로드 발생.
+
+---
+
+## 16. AI-Lexicon Overlap Signal (v3.7)
+
+§13 calibration 과 §15 n-gram 부정 결과 모두 같은 결론을 가리켰다 — 구조적 균질성(burstiness, MATTR, n-gram redundancy)은 백과사전체와 AI를 충분히 분리하지 못한다. 다른 축의 신호가 필요했다. v3.7은 28-패턴 카탈로그가 명시적으로 잡지 못하는 AI 특유 어구를 평면 사전(flat dictionary)으로 추가 매칭해 어휘 축의 신호를 도입한다.
+
+### 알고리즘
+
+```
+For paragraph P with tokens T:
+  matches = number of lexicon entries that appear in P
+            (case-insensitive, whole-word for "Strict matches",
+             substring for "Multi-word phrases")
+  density = matches / len(T) * 1000   # matches per 1000 tokens
+
+  hot iff density > threshold
+```
+
+기본 threshold = `2.0` (1,000 토큰당 2회). `lexicon.density_threshold`로 설정 가능.
+
+### 단락 hot 결정 규칙 (3-signal OR)
+
+```
+paragraph is SUSPECT iff
+  burstiness_band == "low" OR MATTR_band == "low" OR lexicon_density > threshold
+```
+
+§6의 2-signal OR 규칙을 3-signal OR로 확장한다. burstiness/MATTR는 분포적 신호, lexicon은 어휘적 신호 — 다른 축이라 OR 결합 시 둘 다 합산 효과를 낸다.
+
+### 사전 파일
+
+- `lexicon/ai-en.md` — 영어 50개 strict + 58개 phrase = 108 entries
+- `lexicon/ai-ko.md` — 한국어 41개 strict + 49개 phrase = 90 entries
+
+탐색은 `Glob lexicon/ai-{lang}.md`로 자동. zh/ja는 v1 미지원 (`lexicon.languages` 기본 `[en, ko]`). 사용자가 `custom/lexicon/ai-{lang}.md` 를 두면 우선 로드.
+
+### 매칭 정책
+
+- **Strict matches** (Markdown `## Strict matches` 섹션): 대소문자 무시 whole-word 매칭. 한국어 어절(예: `자리매김`)은 substring으로 근사 — Korean punctuation/space로 분리되므로 false attach 위험이 낮다
+- **Multi-word phrases** (Markdown `## Multi-word phrases` 섹션): 대소문자 무시 substring 매칭. `~` 가 포함된 한국어 phrase(예: `~의 지평을 넓히다`)는 `~` 을 wildcard 로 취급 (`.{0,40}`)
+- 한 paragraph 안에서 같은 entry 가 여러 번 나와도 1로 계산 (entry 단위 카운트)
+
+### LLM 전달 형식 확장
+
+기존 `<suspect-zones>` meta block을 lexicon hit 정보로 확장한다.
+
+```
+<suspect-zones lang="ko">
+- P1: burstiness=0.18 (low) — 문장 길이 균질
+- P2: lexicon_density=4.2/1000 — AI-lexicon hits: "혁신적인 접근, 패러다임 전환, 시너지"
+- P3: burstiness=0.22 (low), lexicon_density=3.1/1000 — 균질 + AI 어휘 다수
+</suspect-zones>
+```
+
+규칙:
+- lexicon hit이 있는 단락은 매칭된 entry 중 최대 5개를 짧은 인용으로 표기
+- burstiness/MATTR hot 과 lexicon hot 이 동시 발화하면 한 줄에 합쳐서 표기
+- meta block 전체는 사용자 출력에 노출하지 않는다 (§9 Anchor 정책과 동일)
+
+### Body Prefix
+
+§9의 `«P{n} SUSPECT»` prefix 는 lexicon-only hot 단락에도 동일하게 적용한다. LLM 입력에는 hot의 발화 사유가 무엇이든 동일한 신호로 도착한다.
+
+### v3.7 Calibration (외부 400 단락)
+
+같은 코퍼스(HC3 ChatGPT/human + Wikipedia + NamuWiki)로 `density_threshold` 0.5–5.0 범위 sweep.
+
+| Source | n | v3.5.1 hot | v3.7 hot (thr=2.0) |
+|--------|---|------------|---------------------|
+| HC3 ChatGPT (en AI) | 100 | **66.0%** | **76.0%** |
+| HC3 human (en) | 100 | 12.0% | 19.0% |
+| Wikipedia (en) | 100 | 23.0% | **25.0%** |
+| NamuWiki (ko) | 100 | 11.0% | 13.0% |
+
+Pareto frontier (3-signal OR, threshold sweep):
+
+| lex_thr | AI% | HC3% | Wiki% | Namu% | utility |
+|---------|-----|------|-------|-------|---------|
+| 0.5–2.5 (plateau) | 76.0 | 19.0 | 25.0 | 13.0 | +51 |
+| 3.0 | 76.0 | 17.0 | 25.0 | 13.0 | +51 |
+| 5.0 | 76.0 | 15.0 | 25.0 | 13.0 | +51 |
+| v3.5.1 baseline | 66.0 | 12.0 | 23.0 | 11.0 | +43 |
+
+### Acceptance criteria — 충족
+
+| 기준 | 목표 | 실측 |
+|------|------|------|
+| AI catch (HC3 ChatGPT) | ≥ 75% | **76.0%** ✓ |
+| max human FP | ≤ 25% | **25.0%** ✓ (Wikipedia, 경계) |
+| NamuWiki 회귀 | v3.5.1 +5pp 이내 | 11% → 13% (+2pp) ✓ |
+
+3개 기준 모두 충족 → v3.7 ship 결정.
+
+### Threshold 선택 근거
+
+`density_threshold = 2.0` 채택. 0.5–5.0 plateau 구간 어디에서도 동일한 catch/FP 가 나오므로 사양 기본값(2.0) 을 사용한다. 운용 의미: "1,000 토큰당 AI lexicon entry 가 2개 초과로 나타나면 단락 의심". 이는 사양 §3 Recommendation 과 일치한다.
+
+### Calibration drop list
+
+초기 lexicon 후보 중 다음 entry 들은 sweep 결과 사람 텍스트(특히 Wikipedia 백과사전체) 발화율이 AI 발화율과 같거나 높아 제외했다.
+
+- Strict (drop): `intersection`, `principles`, `mindset`, `iterative`, `responsible`, `methodologies`, `redefine`, `accessible`, `equitable`
+- Phrases (drop): `one of the most`, `in conjunction with`, `the power of`
+
+이 entry 들은 학술/전문 prose 에서 자연스럽게 등장하는 단어로, AI 의 promotional 어휘가 아니라 register 의 일부였다. 재추가 시 반드시 `.omc/research/v3_7_lexicon_eval.py` 로 회귀 측정.
+
+### 28-패턴 카탈로그와의 분리
+
+lexicon 은 다음 카탈로그 항목과 **중복되지 않도록** 큐레이션됐다:
+
+- `en-language.md` Pattern 7 (delve, tapestry, multifaceted, leverage 등 30개) — 카탈로그가 이미 다룸
+- `en-content.md` Pattern 1, 4 (groundbreaking, transformative — paradigm shift 등 promotional 형용사) — 카탈로그가 이미 다룸
+- `ko-language.md` Pattern 7, 8 (다양한, 활발한, 혁신적인, ~적 접미사 등) — 카탈로그가 이미 다룸
+- `ko-style.md` Pattern 13, 18 (이를 통해, 도모하다, 본 사업 등) — 카탈로그가 이미 다룸
+
+lexicon 의 50+58/41+49 entry 는 위 패턴들이 명시적으로 잡지 않는 영역(modal scaffolding, 추상명사, 의례적 도입/마무리 phrase) 만 추렸다.
+
+### 한국어 lexicon 의 한계 (정직)
+
+NamuWiki/HC3 한국어 사람 corpus 와 paired 한국어 AI corpus 가 v3.7 시점에 없다 (`post_v3_5_1_research.korean_validation` 참조 — Track A 가 별도로 진행 중). ko lexicon 항목은 한국어 AI 텍스트에 대한 저자 판단으로 큐레이션됐고, NamuWiki 사람 텍스트에서 +2pp 만 더한다는 점만 검증됐다 (AI 측 검증은 Track A 결과를 기다린다). 한국어 lexicon 의 AI catch 효과는 추후 Track A corpus 로 재측정 예정.
+
+### 운용상 권고
+
+v3.7 도 advisory marker 다. 28-패턴 카탈로그의 보조 입력이며, 단독 결정 신호로 쓰기엔 catch rate(76%) 가 여전히 부족하다. 단락이 hot 표시되면 LLM 이 우선 검토하고, 표시되지 않더라도 패턴 단계가 정상 작동한다. v3.5.1 운용 권고와 동일.
+
+### 재현
+
+`.omc/research/v3_7_lexicon_eval.py` 로 측정. raw 결과는 `.omc/research/v3_7_results.json` (paragraph-level: text + cv + mattr + lex_density + lex_hits). 재실행 시 HuggingFace `Hello-SimpleAI/HC3` + `wikimedia/wikipedia` 20231101.en + `heegyu/namuwiki` 다운로드 발생.

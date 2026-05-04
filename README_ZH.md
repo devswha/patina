@@ -5,124 +5,69 @@
 [![Tests](https://github.com/devswha/patina/actions/workflows/test.yml/badge.svg)](https://github.com/devswha/patina/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
-[![Based on](https://img.shields.io/badge/Based%20on-blader%2Fhumanizer-blue)](https://github.com/blader/humanizer)
-[![Multi-language](https://img.shields.io/badge/Languages-Korean%20%7C%20English%20%7C%20Chinese%20%7C%20Japanese-green)](https://github.com/devswha/patina)
+[![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
+[![Version](https://img.shields.io/badge/version-3.8.0-blue)](#版本历史)
 
-**让 AI 生成的文字读起来像人写的。**
+> **让 AI 生成的文字读起来像人写的。**
 
-一个 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 技能，用于检测和消除中文、韩文、英文及日文文本中的 AI 写作痕迹。它能发现那些典型的 AI 特征——"赋能"、"助力"、排比句堆砌、空洞的总结——并将其改写成自然流畅的文字。
-
-> "大语言模型使用统计算法来预测下一个词。其结果倾向于产出适用范围最广的、统计概率最高的内容。" — [维基百科](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)
+一个用于检测和改写中文、韩文、英文及日文文本中 AI 写作痕迹的 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 技能 + 独立 CLI。基于模式、可审计、确定性评分 — 不是黑箱式 LLM 改写器。
 
 ## 效果展示
 
-**修改前**（AI风格）：
+**修改前**（AI 风格）：
 > 咖啡已成为**深刻改变**全球社交互动的**核心文化现象**。这种备受喜爱的饮品充当了社区建设的催化剂，促进了有意义的联结，并推动了跨文化对话。从巴黎繁华的咖啡馆到东京宁静的茶室，这一**非凡旅程**展示了人类饮食文化探索的**创新精神**。
 
-**修改后**（`/patina --lang zh` 处理——同样内容，更少AI感）：
+**修改后**（`/patina --lang zh` 处理 — 同样内容，仅去除 AI 包装）：
 > 咖啡在不知不觉中改变了人们见面的方式。和人坐下来聊久了，关系自然就有了，哪怕文化背景完全不同也能聊到一起。巴黎的咖啡馆和东京从茶室改过来的店里，发生的事情其实差不多。一颗豆子烤一烤，就这样变成了全世界共享的社交文化。
 
-锚点验证（MPS = 100）：全球社交变革 ✓、社区建设 ✓、有意义的联结 ✓、跨文化对话 ✓、巴黎咖啡馆 ✓、东京茶室 ✓、饮食文化探索 ✓。仅去除AI包装。
+> **MPS = 100** · 全球社交变革 ✓ · 社区建设 ✓ · 有意义的联结 ✓ · 跨文化对话 ✓ · 巴黎咖啡馆 ✓ · 东京茶室 ✓ · 饮食文化探索 ✓
 
-共检测 126 个模式，覆盖韩文（32 个）、英文（31 个）、中文（31 个）和日文（32 个）。模式扫描前执行文体统计疑似区间检测（burstiness CV + MATTR）预处理。完整模式列表见[下文](#模式)。
+---
 
-> 🆓 **无需 API 密钥。** 只要安装了 [`codex`](https://github.com/openai/codex) CLI，独立的 `patina` 即可通过 OpenAI/ChatGPT OAuth 免费运行，不需要 `PATINA_API_KEY`。一行设置请见 [Standalone CLI > 后端](#后端无需-api-密钥即可运行)。
+## 一览
 
-## 安装
+|  |  |
+|---|---|
+| **126 个模式** | 韩文 32 + 英文 31 + 中文 31 + 日文 32 |
+| **AI 检出率** | 韩文 91% / 英文 76% (HC3) |
+| **误检率** | NamuWiki 13% / HC3 human 19% / Wikipedia 25% *(百科风格本质局限 — 已记录)* |
+| **模式** | rewrite · audit · score · diff · ouroboros |
+| **免费层** | 支持 — 通过 `codex` CLI（无需 API 密钥） |
+| **许可证** | MIT |
 
-```bash
-mkdir -p ~/.claude/skills
-git clone https://github.com/devswha/patina.git ~/.claude/skills/patina
+---
 
-# 将 MAX 变体暴露为独立的 Claude 技能
-ln -snf ~/.claude/skills/patina/patina-max ~/.claude/skills/patina-max
-```
+## 目录
 
-Claude Code 会自动识别 `/patina`。如果还需要使用 `/patina-max`，请同时执行上面的符号链接步骤。
+- [快速开始](#快速开始)
+- [模式与参数](#模式与参数)
+- [MAX 模式](#max-模式多模型)
+- [评分 & ouroboros](#评分--ouroboros)
+- [认证](#认证)
+- [工作原理](#工作原理)
+- [校准](#校准)
+- [模式](#模式)
+- [配置](#配置)
+- [配置文件](#配置文件profiles)
+- [自定义模式](#自定义模式)
+- [项目结构](#项目结构)
+- [添加新语言](#添加新语言)
+- [参考资料](#参考资料)
+- [版本历史](#版本历史)
 
-### 快速安装
+---
+
+## 快速开始
+
+### 作为 Claude Code 技能
+
+一行安装：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
 
-一键完成：创建技能目录、克隆仓库、设置 patina-max 符号链接。已安装的情况下再次运行即可更新到最新版本。
-
-### 独立 CLI
-
-Patina 也可以作为独立的 Node.js CLI 工具使用，可在任意终端、Shell 脚本或 CI/CD 流水线中调用。
-
-**环境要求：** Node.js ≥ 18
-
-**本地安装：**
-```bash
-git clone https://github.com/devswha/patina.git
-cd patina
-npm install
-npm link        # 让 `patina` 命令全局可用
-```
-
-> 如果已经执行过上方的快速安装，仓库位于 `~/.claude/skills/patina`，无需再次克隆。直接 `cd ~/.claude/skills/patina && npm install && npm link` 即可。
-
-**无需安装直接运行：**
-```bash
-node bin/patina.js --lang en input.txt
-```
-
-**环境变量：**
-```bash
-export PATINA_API_KEY="your-api-key"
-export PATINA_API_BASE="https://api.openai.com/v1"  # 或自建代理
-export PATINA_MODEL="gpt-4o"                        # 默认模型
-```
-
-**CLI 用法：**
-```bash
-patina --lang en --profile blog input.txt
-patina --lang ko --score input.txt
-patina --lang en --ouroboros input.txt
-patina --lang en --models gpt-4o,gpt-4o-mini input.txt  # MAX 模式
-patina --batch docs/*.md --suffix .humanized
-```
-
-> `--models` 通过同一个 `--base-url` 端点调用所列出的全部模型，因此该端点必须支持所有模型。要混用多家提供商（OpenAI + Anthropic + Google），请将 `--base-url` 指向 OpenRouter 等多提供商网关。另一条路径 `/patina-max` Claude Code 技能通过本地 `claude`、`codex`、`gemini` CLI 调度，无需 API 密钥。
-
-**后端（无需 API 密钥即可运行）：**
-```bash
-patina auth status                                        # 显示后端可用性 + 认证状态
-patina auth login                                         # 各后端的认证指引
-patina --backend codex-cli --lang ko input.txt            # 显式使用本地 codex CLI
-patina --model codex --lang ko input.txt                  # 同上 — 按模型名自动路由
-patina --lang ko input.txt                                # 自动回退：未设置 PATINA_API_KEY
-                                                          # 且 codex 已登录时免费使用
-```
-
-> `codex-cli` 后端通过本地 [`codex`](https://github.com/openai/codex) CLI 调度，由 OpenAI/ChatGPT OAuth 完成认证，因此无需 `PATINA_API_KEY`。运行一次 `codex login` 之后 patina 会自动识别。v1 仅支持单模式改写，`--audit`、`--score`、`--diff`、`--ouroboros`、`--models`/MAX 仍走 HTTP 后端。
-
-**免费层服务商（一次申请 API 密钥即可免费使用）：**
-```bash
-patina --list-providers                                   # 显示预设服务商及密钥设置状态
-
-# Google Gemini（免费层 — 申请密钥：https://aistudio.google.com/app/apikey）
-export GEMINI_API_KEY="..."
-patina --provider gemini --lang ko input.txt
-
-# Groq（免费层，有速率限制）
-export GROQ_API_KEY="..."
-patina --provider groq --lang ko input.txt
-
-# Together AI（名称带 "-Free" 后缀的免费模型）
-export TOGETHER_API_KEY="..."
-patina --provider together --lang ko input.txt
-```
-
-> `--provider` 一次设置好 base URL、默认模型和该服务商对应的 API 密钥环境变量。可通过 `--base-url`、`--model`、`--api-key` 单独覆盖。
-
-完整选项请运行 `patina --help` 查看。
-
-## 使用方法
-
-在 Claude Code 中输入：
+在 Claude Code 中：
 
 ```
 /patina --lang zh
@@ -130,37 +75,67 @@ patina --provider together --lang ko input.txt
 [在此粘贴你的文本]
 ```
 
-使用 `--lang` 选择语言：
+[手动安装 →](#手动安装)
 
-| 参数 | 语言 |
-|------|------|
-| `--lang ko` | 韩文 |
-| `--lang en` | 英文 |
-| `--lang zh` | 中文 |
-| `--lang ja` | 日文 |
+### 作为独立 CLI
 
-默认语言在 `.patina.default.yaml` 中设置（默认值：`ko`）。可在配置文件中修改，或每次运行时用 `--lang` 覆盖。
+需要 **Node.js ≥ 18**。
 
-### 更多选项
+```bash
+git clone https://github.com/devswha/patina.git
+cd patina && npm install && npm link
+patina --lang zh input.txt
+```
+
+```bash
+# 常用示例
+patina --lang en --profile blog input.txt
+patina --lang ko --score input.txt
+patina --lang en --ouroboros input.txt
+patina --batch docs/*.md --suffix .humanized
+```
+
+> 🆓 **无需 API 密钥** — 只要安装并登录 [`codex`](https://github.com/openai/codex) CLI 即可。完整后端列表见 [认证](#认证)。
+
+#### 手动安装
+
+```bash
+mkdir -p ~/.claude/skills
+git clone https://github.com/devswha/patina.git ~/.claude/skills/patina
+ln -snf ~/.claude/skills/patina/patina-max ~/.claude/skills/patina-max  # MAX 模式技能
+```
+
+如果已通过独立 CLI 流程克隆，无需重复克隆 — 直接在该目录下执行 `npm link`。
+
+---
+
+## 模式与参数
+
+```
+patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] [批处理选项] input.txt
+```
 
 | 参数 | 功能 |
 |------|------|
-| `--batch docs/*.md` | 批量处理多个文件 |
-| `--in-place` | 覆盖原文件（与 `--batch` 配合使用） |
-| `--suffix .humanized` | 另存为 `{file}.humanized.md` |
-| `--outdir output/` | 将结果保存到指定目录 |
-| `--profile blog` | 使用博客/随笔写作风格 |
-| `--profile formal` | 使用正式文档风格（简历、提案等） |
-| `--diff` | 逐个模式展示改动内容及原因 |
+| `--lang <ko\|en\|zh\|ja>` | 选择语言（默认：`ko`） |
+| `--profile <名称>` | 语气预设 — 见 [配置文件](#配置文件profiles) |
 | `--audit` | 仅检测 AI 模式（不改写） |
-| `--score` | 获取 0-100 的 AI 相似度评分 |
-| `--ouroboros` | 迭代自我优化：反复改写直到 AI 评分收敛 |
+| `--score` | 0–100 AI 相似度评分 + 类别细分 |
+| `--diff` | 按模式逐项展示改动 |
+| `--ouroboros` | 反复改写直到分数收敛（含 MPS 回滚） |
+| `--batch <glob>` | 批量处理多个文件 |
+| `--in-place` | 覆盖原文件（与 `--batch` 配合） |
+| `--suffix <ext>` | 另存为 `{file}.{ext}.md` |
+| `--outdir <dir>` | 将结果保存到指定目录 |
+| `--models <list>` | MAX 模式 — 见下文 |
 
-参数可自由组合：`/patina --lang en --audit --profile blog` 或 `/patina --profile formal`
+可自由组合：`patina --lang en --audit --profile blog`。完整选项请运行 `patina --help`。
 
-### MAX 模式（多模型）
+---
 
-将同一段文本交给多个 AI 模型分别处理，然后选出最佳结果：
+## MAX 模式（多模型）
+
+将同一段文本独立交给 Claude、Codex、Gemini。每个模型独立改写，按 AI 相似度 + MPS 评分，得分最低（最像人写）且通过 MPS ≥ 70 门槛者胜出。
 
 ```
 /patina-max
@@ -168,153 +143,199 @@ patina --provider together --lang ko input.txt
 [在此粘贴你的文本]
 ```
 
-每个模型独立进行人性化改写，结果同时按 AI 相似度和语义保留度（MPS）评分，得分最低（最像人写的）且通过 MPS 门槛（≥ 70）的胜出。
+| 模型 | 调度 | 认证 |
+|-----|------|------|
+| `claude` | `claude -p` | Claude Code |
+| `codex` | `codex exec --skip-git-repo-check --output-last-message` | ChatGPT OAuth |
+| `gemini` | `gemini -p '' --output-format text` | Google AI Studio |
 
-| 参数 | 功能 |
-|------|------|
-| `--models claude,gemini` | 选择使用的模型 |
-| `--lang en` | 处理英文文本 |
-| `--profile blog` | 使用博客/随笔写作风格 |
+每次 MAX 运行使用独立的临时目录，仅等待所选模型，超时按失败处理（不无限等待）。
 
-支持的模型：`claude`、`codex`、`gemini`。MAX 模式通过 stdin 调用三个模型（`claude -p`、`gemini -p '' --output-format text`、`codex exec --skip-git-repo-check`），并通过 `--output-last-message` 捕获 Codex 的最终输出。
+> 独立 CLI MAX：`patina --models gpt-4o,gpt-4o-mini input.txt` — 通过同一个 `--base-url` 端点调用所有模型。要混用多家服务商，请将 `--base-url` 指向 OpenRouter 等多服务商网关。Claude Code `/patina-max` 技能通过本地 CLI 调度 — 无需 API 密钥。
 
-每次 MAX 运行使用独立的临时目录，仅等待所选模型完成，超时的运行标记为失败而非无限等待。
+---
+
+## 评分 & ouroboros
 
 ### 评分模式
 
-在不改写的情况下检查文本的 AI 痕迹程度：
+不改写，仅检查 AI 痕迹程度：
 
-```
-/patina --score
-
-[在此粘贴你的文本]
+```bash
+patina --score input.txt
 ```
 
-返回 0-100 的 AI 相似度评分，并按类别细分：
-
 ```
-| 类别          | 权重   | 检出数 | 原始得分 | 加权得分 |
-|---------------|--------|--------|----------|----------|
-| 内容          | 0.20   | 3/6    | 33.3     | 6.7      |
-| 语言          | 0.20   | 1/6    | 11.1     | 2.2      |
-| 风格          | 0.20   | 2/6    | 27.8     | 5.6      |
-| 沟通          | 0.15   | 0/3    | 0.0      | 0.0      |
-| 填充          | 0.10   | 1/3    | 11.1     | 1.1      |
-| 结构          | 0.15   | 1/4    | 25.0     | 3.8      |
-| 综合          |        |        |          | 19.3 (±10) |
-
-解读：16-30 = 基本像人写的，有轻微痕迹
+| Category      | Weight | Detected | Raw  | Weighted |
+|---------------|--------|----------|------|----------|
+| content       | 0.20   | 3/6      | 33.3 | 6.7      |
+| language      | 0.20   | 1/6      | 11.1 | 2.2      |
+| style         | 0.20   | 2/6      | 27.8 | 5.6      |
+| communication | 0.15   | 0/3      | 0.0  | 0.0      |
+| filler        | 0.10   | 1/3      | 11.1 | 1.1      |
+| structure     | 0.15   | 1/4      | 25.0 | 3.8      |
+| Overall       |        |          |      | 19.3 (±10) |
 ```
 
-分值范围：**0-15** 人写 | **16-30** 基本像人写 | **31-50** 混合 | **51-70** AI 味明显 | **71-100** 严重 AI 痕迹
+| 范围 | 解读 |
+|------|------|
+| 0–15 | 人写 |
+| 16–30 | 基本像人写 |
+| 31–50 | 混合 |
+| 51–70 | AI 味明显 |
+| 71–100 | 严重 AI 痕迹 |
 
-与改写或 ouroboros 模式配合使用时，还会显示**保真度评分**（0-100，越高越好），衡量输出对原文语义的保留程度：
+与改写模式配合时，还会输出：
 
-```
-| 指标              | 分数    |
-|-------------------|---------|
-| AI相似度          | 23/100  |
-| 忠实度            | 87/100  |
-| 语义保留 (MPS)    | 92/100  |
-| 综合              | 19/100  |
-```
+| 指标 | 分数 | 含义 |
+|------|------|------|
+| AI 相似度 | 23/100 | 越低越像人写 |
+| 忠实度 | 87/100 | 观点保留、无捏造、语气一致、篇幅比例 |
+| MPS | 92/100 | 语义锚点（主张、极性、因果、数值） |
+| 综合 | 19/100 | 按配置文件加权（如博客：AI 0.70 / 忠实度 0.30） |
 
-忠实度检查四项标准：观点保留、无捏造内容、语气匹配、篇幅比例。MPS（语义保留分数）追踪改写流水线中具体语义锚点——主张、极性、因果关系、数值——是否得以保留。综合得分同时权衡两个维度——可按配置文件调整（例如：学术型：忠实度 0.60，AI 0.40；博客型：AI 0.70，忠实度 0.30）。
+### ouroboros 模式
 
-评分基于模式匹配，结果确定——复用审计模式中的 32 个（韩文）、31 个（英文）、31 个（中文）或 32 个（日文）检测模式。配置文件覆盖会影响评分（例如：博客配置文件会屏蔽粗体模式 #14）。
+反复改写直到分数收敛：
 
-### Ouroboros 模式（迭代自我优化）
-
-自动反复改写，直到 AI 评分降至目标以下：
-
-```
-/patina --ouroboros
-
-[在此粘贴你的文本]
+```bash
+patina --ouroboros input.txt
 ```
 
-Ouroboros 循环反复执行完整的人性化流水线，每次迭代后评分：
-
 ```
-Ouroboros 迭代日志
-
-| 迭代 | 改写前 | 改写后 | 改善幅度 | 原因        |
-|------|--------|--------|----------|-------------|
-| 0    | —      | 78     | —        | 初始        |
-| 1    | 78     | 45     | +33      |             |
-| 2    | 45     | 28     | +17      | 达到目标    |
-
-最终得分：28/100 (±10)
-迭代次数：2/3
-终止原因：达到目标（目标值：30）
-
-[最终人性化文本]
+| Iter | Before | After | Improvement | Reason     |
+|------|--------|-------|-------------|------------|
+| 0    | —      | 78    | —           | Initial    |
+| 1    | 78     | 45    | +33         |            |
+| 2    | 45     | 28    | +17         | Target met |
 ```
 
-**终止条件**（以先满足者为准）：
-- **达到目标**：评分降至 ≤ 30（可配置）
-- **平台期**：两次迭代间改善不足 10 分
-- **退化**：评分反而升高（文本变差）——回退到上一次迭代
-- **最大迭代次数**：硬性上限 3 次（可配置）
-- **忠实度下限**：忠实度低于 70——回退到上一次迭代
-- **MPS下限**：MPS（语义保留度）低于 70——回退到上一次迭代
+终止条件（先满足者为准）：
+- 达到目标（分数 ≤ 30，可配置）
+- 平台期（迭代间改善 < 10）
+- 退化（分数升高 — 回滚）
+- 最大迭代次数（默认 3）
+- 忠实度 / MPS 下限触发（回滚）
 
-**配置** — 在 `.patina.yaml` 中自定义：
+在 `.patina.yaml` 中配置：
 
 ```yaml
 ouroboros:
-  target-score: 30          # 评分 <= 此值时停止 (0-100)
-  max-iterations: 3         # 最大迭代次数
-  plateau-threshold: 10     # 所需最小改善幅度
-  fidelity-floor: 70        # 忠实度低于此值时停止
-  mps-floor: 70             # 语义保留度低于此值时停止
+  target-score: 30
+  max-iterations: 3
+  plateau-threshold: 10
+  fidelity-floor: 70
+  mps-floor: 70
 ```
 
-`--ouroboros` 不能与 `--diff`、`--audit` 或 `--score` 组合使用。
+> `--ouroboros` 不能与 `--diff`、`--audit`、`--score` 同时使用。
+
+---
+
+## 认证
+
+| 后端 | 设置 | 成本 |
+|------|------|------|
+| `codex-cli` *(可用时为默认)* | `codex login` | **免费**（ChatGPT OAuth） |
+| OpenAI 兼容 HTTP | `PATINA_API_KEY=...` | 按服务商计费 |
+| Google Gemini | `GEMINI_API_KEY=...` + `--provider gemini` | 免费层 |
+| Groq | `GROQ_API_KEY=...` + `--provider groq` | 免费层 |
+| Together AI | `TOGETHER_API_KEY=...` + `--provider together` | 有免费模型 |
+| OpenRouter | `--base-url https://openrouter.ai/api/v1` + 密钥 | 按服务商计费 |
+
+```bash
+patina auth status         # 后端可用性 + 认证状态
+patina auth login          # 各后端登录指引
+patina --list-providers    # 预设服务商 + 密钥设置状态
+```
+
+未设置 `PATINA_API_KEY` 且 `codex` 已登录时，patina 自动回退到 `codex-cli`。
+
+> `codex-cli` v1 仅支持单模式改写。`--audit`、`--score`、`--diff`、`--ouroboros`、`--models`/MAX 仍走 HTTP 后端。
+
+默认环境变量：
+
+```bash
+PATINA_API_KEY=...                            # HTTP 后端必需
+PATINA_API_BASE=https://api.openai.com/v1     # 或代理
+PATINA_MODEL=gpt-4o                           # 默认模型
+```
+
+---
 
 ## 工作原理
 
 ```
 输入文本
-  |
-  v
-[步骤4.5] 语义锚点提取 -- 提取核心主张、极性、因果关系、数值
-  |
-  v
-[阶段1] 结构扫描 -- 修复段落级问题（重复、被动语态）
-  |
-  v
-[步骤5a-v] 锚点验证 -- 阶段1后检查语义保留
-  |
-  v
-[阶段2] 句子改写 -- 修复词汇级问题（AI词汇、填充词、模糊表达）
-  |
-  v
-[步骤5b-v] 锚点验证 -- 阶段2后检查语义保留
-  |
-  v
-[阶段3] 自审 -- 极性扫描、回归检查、最终MPS计算
-  |
-  v
+  │
+  ▼
+[步骤 4.5]   语义锚点提取
+             (核心主张、极性、因果、数值)
+  │
+  ▼
+[步骤 4.6]   文体统计预处理
+             (burstiness CV + MATTR)
+  │
+  ▼
+[步骤 4.7]   AI 词汇重叠
+             (扁平词典：英 ~108 / 韩 102 项)
+  │
+  ▼
+[阶段 1]     结构扫描
+             (段落级：重复、被动语态)
+  │
+  ▼
+[步骤 5a-v]  锚点验证
+  │
+  ▼
+[阶段 2]     句子改写
+             (词汇级：AI 词汇、填充、含糊)
+  │
+  ▼
+[步骤 5b-v]  锚点验证
+  │
+  ▼
+[阶段 3]     自审
+             (极性扫描、回归检查、最终 MPS)
+  │
+  ▼
 自然的文本（语义已验证）
 ```
 
-该技能加载对应语言的模式包（`ko-*.md`、`en-*.md`、`zh-*.md` 或 `ja-*.md`），通过这条流水线进行处理。语义锚点（核心主张、极性、数值）在改写前提取，并在每个阶段后进行验证——若语义遭到破坏，相关修改会被重试或回滚。配置文件和语气指南决定最终的文风。
+模式包按语言前缀（`{lang}-*.md`）自动发现。语义锚点在改写前提取，每个阶段后验证 — 若语义遭到破坏，相关修改会被重试或回滚。
 
-## <a name="模式"></a>模式
+---
 
-四种语言共享相同的 6 大类结构（共 126 个：韩文 32 + 英文 31 + 中文 31 + 日文 32）。各类别及大多数模式是通用的——只有少数槽位有语言特定的实现。模式 #30（修辞疑问句段首）和 #31（结论信号词）已覆盖全部 4 种语言。模式 #32（比较副词滥用 — KO「보다」、JA「より」）为韩文/日文专属（英文与中文没有对应助词）。
+## 校准
 
-### 共享模式类别
+通过 `.omc/research/v3_7_lexicon_eval.py` 在 400 段语料（HC3 + Wikipedia + NamuWiki + paired ko/AI）上可复现：
+
+| 来源 | Hot rate | 备注 |
+|------|----------|------|
+| HC3 ChatGPT (en) | **76%** | AI 检出率 |
+| HC3 human (en) | 19% | 真实人类写作的误检 |
+| Wikipedia (en) | 25% | 百科风格句长均匀 — 本质局限 |
+| NamuWiki (ko) | 13% | 韩文人类写作的误检 |
+| ko/AI corpus | **91%** | 系统中最强信号 *(post-v3.8.0)* |
+
+接受门槛：AI 检出 ≥ 75% · 最大 FP ≤ 25% · NamuWiki 回归 ≤ +5pp。全部达成。
+
+> 文体统计与词汇信号是给 LLM 的**建议性标记**，不是单独决策门槛。Wikipedia 25% FP 是百科风格的本质，无法靠调参消除。详见 `core/stylometry.md` §13、§16。
+
+---
+
+## 模式
+
+四种语言共享相同的 6 大类结构。大多数模式是通用的，仅少数槽位有语言特定实现。模式 #30（修辞性疑问句段首）和 #31（结论信号词）覆盖全部 4 种语言。模式 #32（比较副词滥用 — KO `보다`、JA `より`）仅韩文/日文专属。
+
+### 通用类别
 
 <details>
-<summary><b>内容模式</b> — 6 个模式，针对内容实质问题</summary>
-
-以下模式在四种语言中完全相同：
+<summary><b>内容</b> — 6 个模式（#1–#6）</summary>
 
 | # | 模式 | AI 的典型做法 | 修正方案 |
 |---|------|--------------|----------|
-| 1 | 重要性夸大 | "开创性的里程碑"、"关键转折点" | 替换为具体事实、日期、数据 |
+| 1 | 重要性夸大 | "开创性的里程碑" | 替换为具体事实、日期、数据 |
 | 2 | 媒体/知名度夸大 | "被《纽约时报》、BBC 等报道" | 引用一篇具体的报道 |
 | 3 | 表面化的动词链分析 | "展现着、象征着、推动着" 连用 | 删除填充词或添加真实来源 |
 | 4 | 推销性语言 | "令人惊叹、世界级、隐藏瑰宝" | 中性描述加具体事实 |
@@ -324,9 +345,7 @@ ouroboros:
 </details>
 
 <details>
-<summary><b>沟通模式</b> — 4 个模式，针对聊天机器人痕迹</summary>
-
-以下模式在四种语言中完全相同：
+<summary><b>沟通</b> — 4 个模式（#19–#21, #29）</summary>
 
 | # | 模式 | AI 的典型做法 | 修正方案 |
 |---|------|--------------|----------|
@@ -338,9 +357,7 @@ ouroboros:
 </details>
 
 <details>
-<summary><b>填充与含糊模式</b> — 3 个模式，针对水分内容</summary>
-
-以下模式在四种语言中完全相同：
+<summary><b>填充与含糊</b> — 3 个模式（#22–#24）</summary>
 
 | # | 模式 | AI 的典型做法 | 修正方案 |
 |---|------|--------------|----------|
@@ -350,12 +367,10 @@ ouroboros:
 
 </details>
 
-### 语言特定模式
-
-部分模式槽位在各语言中有不同实现，针对每种语言特有的 AI 写作特征：
+### 语言特定槽位
 
 <details>
-<summary><b>语言模式</b>（#7–#12）— 语法与词汇</summary>
+<summary><b>语言</b>（#7–#12）— 语法与词汇</summary>
 
 | # | 韩文 | 英文 | 中文 | 日文 |
 |---|------|------|------|------|
@@ -369,7 +384,7 @@ ouroboros:
 </details>
 
 <details>
-<summary><b>风格模式</b>（#13–#18）— 格式与文体</summary>
+<summary><b>风格</b>（#13–#18）— 格式与文体</summary>
 
 | # | 韩文 | 英文 | 中文 | 日文 |
 |---|------|------|------|------|
@@ -383,42 +398,50 @@ ouroboros:
 </details>
 
 <details>
-<summary><b>结构模式</b>（#25–#29）— 文档级问题</summary>
+<summary><b>结构</b>（#25–#28）— 文档级</summary>
 
 | # | 韩文 | 英文 | 中文 | 日文 |
 |---|------|------|------|------|
-| 25 | 结构重复 | 节拍器式段落结构 | 结构重复 | 结构重复 |
+| 25 | 结构重复 | 节拍器式段落 | 结构重复 | 结构重复 |
 | 26 | 翻译腔 | 被动名词化链 | 翻译腔/欧化语法 | 翻译腔 |
 | 27 | 被动语态滥用 | 僵尸名词 | 被字句滥用 | ている 进行时滥用 |
 | 28 | 不必要的外来词 | 从句嵌套过深 | 总分总结构滥用 | 起承转结套路滥用 |
-| 29 | 虚假细化 | False Nuance | 虚假细化 | 偽りのニュアンス |
 
 </details>
 
+### 通用扩展（v3.4.0+）
+
+| # | 全部语言 |
+|---|---------|
+| 30 | 修辞性疑问句段首（"Have you ever wondered…?"、"那么…呢？"） |
+| 31 | 结论信号词（"In conclusion"、"결론적으로"、"总而言之"、"結論として"） |
+| 32 | 比较副词滥用 — 仅韩文 `보다` / 日文 `より` |
+
+---
+
 ## 配置
 
-编辑 `.patina.default.yaml`：
-
 ```yaml
-version: "3.4.0"
-language: ko              # ko | en | zh | ja（或使用 --lang 参数）
+# .patina.default.yaml
+version: "3.8.0"
+language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
 skip-patterns: []         # 例如 [ko-filler] 跳过某个模式包
 blocklist: []             # 额外标记的词语
 allowlist: []             # 永不标记的词语
-max-models:             # MAX 模式使用的模型（claude, codex, gemini）
-  - claude
-  - gemini
+max-models: [claude, gemini]
 dispatch: omc             # omc | direct
 ```
 
-模式包按语言前缀自动发现——无需手动列出。
+模式包按语言前缀自动发现 — 无需手动列出。
+
+---
 
 ## 配置文件（Profiles）
 
 | 配置文件 | 语气风格 | 适用场景 |
-|----------|----------|----------|
+|---------|----------|---------|
 | `default` | 保持原文语气 | 通用 |
 | `blog` | 更个人化、有观点 | 博客文章、随笔 |
 | `academic` | 正式、注重证据 | 学术论文、毕业论文 |
@@ -430,12 +453,11 @@ dispatch: omc             # omc | direct
 | `marketing` | 有说服力、具体 | 广告文案、产品页面、新闻稿 |
 | `formal` | 专业、简洁 | 简历、求职信、提案 |
 
+```bash
+patina --profile blog text...
 ```
-/patina --profile blog text...
-/patina --profile academic text...
-/patina --profile technical text...
-/patina --profile formal text...
-```
+
+---
 
 ## 自定义模式
 
@@ -450,68 +472,119 @@ version: 1.0.0
 patterns: 1
 ---
 
-### 1. Pattern Name
-**Problem:** What AI does wrong
-**Before:** > AI-sounding example
-**After:** > Natural-sounding fix
+### 1. 模式名
+**问题：** AI 做错的事
+**Before：** > AI 风格示例
+**After：** > 自然修正
 ```
+
+---
 
 ## 项目结构
 
 ```
 patina/
 ├── SKILL.md                  # /patina 入口
-├── SKILL-MAX.md              # MAX 模式源文件/参考文档
-├── patina-max/               # 可安装的 /patina-max 技能目录
-│   ├── SKILL.md              # MAX 模式入口
-│   ├── core -> ../core
-│   ├── patterns -> ../patterns
-│   └── profiles -> ../profiles
-├── .patina.default.yaml      # 配置文件
-├── core/voice.md             # 语气与个性指南
-├── core/scoring.md           # 评分算法（AI相似度 + 忠实度 + MPS）
+├── SKILL-MAX.md              # MAX 模式参考文档
+├── patina-max/               # /patina-max 技能（可安装）
+│   └── SKILL.md
+├── .patina.default.yaml      # 配置
+├── core/
+│   ├── voice.md              # 语气与个性指南
+│   ├── scoring.md            # 评分算法参考
+│   └── stylometry.md         # 文体统计算法参考
+├── lexicon/
+│   ├── ai-en.md              # 英文 AI 词典（108 项）
+│   └── ai-ko.md              # 韩文 AI 词典（102 项）
 ├── patterns/
-│   ├── ko-*.md               # 韩文模式（6 个包，32 个模式）
-│   ├── en-*.md               # 英文模式（6 个包，31 个模式）
-│   ├── zh-*.md               # 中文模式（6 个包，31 个模式）
-│   └── ja-*.md               # 日文模式（6 个包，32 个模式）
-├── profiles/                 # 写作风格配置文件
+│   ├── ko-*.md               # 韩文（6 个包，32 个模式）
+│   ├── en-*.md               # 英文（6 个包，31 个模式）
+│   ├── zh-*.md               # 中文（6 个包，31 个模式）
+│   └── ja-*.md               # 日文（6 个包，32 个模式）
+├── profiles/                 # 语气预设
 ├── examples/                 # 改写前后的测试用例
-└── custom/                   # 你的扩展（已 gitignore）
+└── custom/                   # 用户扩展（已 gitignore）
 ```
 
 灵感来自 [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh) 的插件架构：模式是插件，配置文件是主题。
 
+---
+
 ## 添加新语言
 
-1. 创建 `patterns/{lang}-content.md`、`{lang}-language.md` 等文件
-2. 在每个文件的 frontmatter 中设置 `language: {lang}`
-3. 使用 `/patina --lang {lang}` 即可——自动发现，无需修改配置
+1. 创建 `patterns/{lang}-content.md`、`{lang}-language.md` 等文件。
+2. 在每个文件的 frontmatter 中设置 `language: {lang}`。
+3. 使用 `/patina --lang {lang}` — 自动发现，无需修改配置。
+
+---
 
 ## 参考资料
 
-- [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) -- 模式的主要来源
-- [WikiProject AI Cleanup](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_AI_Cleanup) -- 社区行动
-- [blader/humanizer](https://github.com/blader/humanizer) -- 英文原版
+- [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) — 模式的主要来源
+- [WikiProject AI Cleanup](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_AI_Cleanup) — 社区行动
+- [blader/humanizer](https://github.com/blader/humanizer) — 英文原版
+
+## 贡献
+
+参见 [CONTRIBUTING.md](CONTRIBUTING.md)。模式提交和**陈旧报告**（"这个信号不再是 AI 特征了"）是最有价值的贡献 — AI 写作模式会随着模型微调而变化。
+
+[提交 issue →](https://github.com/devswha/patina/issues)
+
+---
 
 ## 版本历史
 
-| 版本 | 变更内容 |
-|------|----------|
-| **3.8.0** | 韩文 lexicon 再策展。Track A 的 paired ko/AI 语料库（基于 NamuWiki 主题种子的 Claude 生成韩文 100 条）测量表明，v3.7.0 的韩文 lexicon 在 AI 检出率的贡献仅为 +1pp（对比英文的 +10pp）。通过与 NamuWiki 人文散文的差分频率分析（AI doc-freq ≥4×、比率 ≥4.0）挖掘出 12 个高信噪比条目：`평가된다`、`꼽힌다`、`가리킨다`、`사례로`、`다수의`、`알려져`、`일컬어진다`、`평가받다`（strict 8 个）以及 `가운데 하나로`、`자리 잡았다`、`알려져 있다`、`~의 사례로`（phrase 4 个）。结果：韩文/AI 检出 83% → **91%**（+8pp）。NamuWiki 人文 FP 维持在 **13%**（零回归 — 清晰的 Pareto 改进）。英文 lexicon 及其数值保持不变。算法参考：`core/stylometry.md` §16；挖掘脚本：`.omc/research/v3_8_ko_lexicon_mine.py`。 |
-| **3.7.0** | AI-lexicon overlap 信号（新增 4.7 步骤）。扁平词典（`lexicon/ai-en.md` 108 项，`lexicon/ai-ko.md` 90 项）匹配 28-模式目录未明确列出的 AI 偏好短语。按每 1,000 词元密度计算，将 4.6 步骤 hot 规则扩展为 3-signal OR（burstiness OR MATTR OR lexicon_density > 2.0）。基于 400 个外部段落（HC3 ChatGPT/human + Wikipedia + NamuWiki）校准：AI 检出 66%→**76%**，HC3 human FP 12%→19%，Wikipedia FP 23%→**25%** 边界，NamuWiki FP 11%→13%（在 +5pp 护栏内）。所有 acceptance 标准达成（AI ≥75%，max FP ≤25%，NamuWiki 回归 ≤+5pp）— 首次突破 v3.5.1 Pareto 墙。Drop list（评估后）：`intersection`、`principles`、`mindset`、`iterative`、`responsible`、`methodologies`、`redefine`、`accessible`、`equitable`、`one of the most`、`in conjunction with`、`the power of` — 学术散文中的发火率高于 AI 文本。跳过 v3.6（n-gram drop，§15 negative finding）。算法参考：`core/stylometry.md` §16；校准脚本：`.omc/research/v3_7_lexicon_eval.py`。 |
-| **3.5.1** | 文体统计信号 calibration 补丁。v3.5.0 的 `stylometry.burstiness.bands.low` 从 0.25 上调至 0.30，基于对 300 个外部段落（HC3 ChatGPT 100 + HC3 human 100 + Wikipedia 100）的验证。v3.5.0 仅检测到 57% 的真实 AI 文本 — 未达 v1 目标的 70%。v3.5.1 达成 66% 检测率，HC3 human 误检 12%，Wikipedia 误检 23%。阈值扫描结果表明不存在同时满足 AI ≥70% 且 max FP ≤20% 的阈值组合 — Wikipedia 百科全书风格自然具有一致的句长分布。MATTR 阈值保持 0.55（扫描证实其对散文无判别力）。坦诚的框架：v3.5.x 是 LLM 的咨询标记，而非单独决策门槛。n-gram 重复度（原 v2 路线图）提升为 v3.6+ 优先项。Calibration 证据详见 `core/stylometry.md` §13。 |
-| **3.5.0** | 文体统计疑似区间检测（Stylometric Suspect Zone Detection）。在语义锚点提取与模式处理阶段之间插入新的 4.6 步骤。利用句长变异系数（burstiness CV）和 MATTR（window=50）信号，识别 28 模式目录遗漏的疑似段落。支持语言：v1 = ko + en，zh/ja 推迟至 v2 路线图。向 LLM 输入传入 `<suspect-zones>` 元块及 `«P{n} SUSPECT»` 段落前缀，作为内部工作记忆。新增文件：`core/stylometry.md`（算法参考文档）。路线图：n-gram 重复度、perplexity 近似、外部检测器集成。 |
-| **3.4.0** | 免费使用选项扩展 + 4 个新模式。新增：codex-cli 后端（无需 API 密钥 — 通过本地 `codex` CLI 的 ChatGPT OAuth 认证），`patina auth status/login` 子命令及未设置 API 密钥时的自动回退，Gemini/Groq/Together AI 免费层的 `--provider` 快捷方式。模式新增：#30（修辞性疑问句段首）与 #31（结论信号词滥用）扩展到全部 4 种语言，KO `보다` / JA `より` 比较副词滥用 (#32)。默认配置文件扩充至与其他配置文件同等结构。新增 GitHub Actions CI 工作流。 |
-| **3.3.0** | 语义保留系统（MPS）：确保人性化后的文本保持原文的意图和主张 |
-| **3.2.0** | Ouroboros 评分系统：基于模式的 AI 相似度评分（0-100）、`--score` 模式含类别细分、`--ouroboros` 迭代自我优化循环，支持可配置的终止条件（目标值/平台期/退化/最大迭代次数） |
-| **3.1.1** | MAX 模式可靠性修复：独立运行临时目录、模型级等待循环 + 超时处理、Gemini stdin 分发、Codex CLI 兼容性（`--output-last-message`，移除 `-q`） |
-| **3.1.0** | MAX 模式：可安装的 `/patina-max` 技能入口 + 按提供商分发（Claude/Gemini 使用 `claude -p` / `gemini -p`，Codex 使用 `codex exec`） |
-| **3.0.0** | 多语言框架、`--lang` 参数、英文模式（24 个）来自 blader/humanizer、技能更名为 `patina` |
-| **2.2.0** | 外来词滥用模式（#28）、徽章、仓库更名 |
-| **2.1.0** | 2 阶段流水线、结构模式、博客配置文件、示例 |
-| **2.0.0** | 插件架构：模式包、配置文件、配置 |
-| **1.0.0** | 初版韩语适配（24 个模式） |
+| 版本 | 主要变更 |
+|------|---------|
+| **3.8.0** | 韩文 lexicon 再策展（NamuWiki vs Claude 生成 KO 的差分频率挖掘）。韩文 AI 检出：83% → **91%**（+8pp）。误检回归 0pp。 |
+| **3.7.0** | AI 词汇重叠信号（4.7 步骤）。英 108 + 韩 90 项。Hot 规则扩展为 3-signal OR。HC3 ChatGPT AI 检出：66% → **76%** — v3.5.1 以来首次突破 Pareto 墙。 |
+| **3.5.1** | 文体统计校准补丁 — burstiness 阈值 0.25 → 0.30。AI 检出 57% → 66%。 |
+| **3.5.0** | 文体统计疑似区间检测（4.6 步骤）— burstiness CV + MATTR。v1 = ko + en。 |
+| **3.4.0** | codex-cli 后端（无需 API 密钥）、`patina auth` 子命令、免费层服务商快捷方式。模式 #30、#31 扩展到 4 种语言，KO/JA 增加 #32。新增 CI 工作流。 |
+| **3.3.0** | 语义保留系统（MPS）。 |
+| **3.2.0** | Ouroboros 评分 + 迭代自我优化循环。 |
+| **3.1.x** | MAX 模式可靠性，多 CLI 调度（claude / codex / gemini）。 |
+| **3.0.0** | 多语言框架，`--lang` 参数，blader/humanizer 来源的英文模式，技能更名为 `patina`。 |
+| **2.x** | 插件架构，blog 配置文件，结构模式，外来词模式（#28）。 |
+| **1.0.0** | 初版韩语适配（24 个模式）。 |
+
+<details>
+<summary><b>详细发布说明</b></summary>
+
+#### 3.8.0 — 数据驱动的韩文 lexicon 挖掘
+
+v3.7.0 的韩文 lexicon 由作者直觉策展，对 AI 检出仅贡献 +1pp（对比英文 +10pp）。v3.8.0 通过与 NamuWiki 人文散文的差分频率挖掘语料库，发现 12 个 AI 高频但人类极少使用的 register marker。
+
+挖掘规则（`.omc/research/v3_8_ko_lexicon_mine.py`）：
+- 어절 doc-frequency：AI count ≥ 4 AND 比率 AI / (human + 1) ≥ 4.0
+- 排除领域工件（专有名词、年份 token）
+- 仅保留 register marker（被动评价动词、百科式动词、数量表达支架）
+
+新增项：
+- Strict（8 个）：`평가된다`、`꼽힌다`、`가리킨다`、`사례로`、`다수의`、`알려져`、`일컬어진다`、`평가받다`
+- Phrase（4 个）：`가운데 하나로`、`자리 잡았다`、`알려져 있다`、`~의 사례로`
+
+500 段语料结果：ko/AI catch 83% → **91%**（+8pp）。NamuWiki human FP 维持在 **13%** — 回归 0pp，清晰的 Pareto 改进。
+
+#### 3.7.0 — AI 词汇重叠信号
+
+扁平词典（`lexicon/ai-en.md` 108 项，`lexicon/ai-ko.md` 90 项）匹配 28-模式目录未明确列出的 AI 偏好短语。按每 1,000 词元密度计算，将 4.6 步骤 hot 规则扩展为 3-signal OR（burstiness OR MATTR OR lexicon_density > 2.0）。
+
+400 段语料校准：AI 检出 66% → **76%**，HC3 human FP 12%→19%，Wikipedia FP 23%→**25%** 边界，NamuWiki FP 11%→13%（在 +5pp 护栏内）。所有 acceptance 标准达成 — 首次突破 v3.5.1 Pareto 墙。
+
+Drop list（评估后）：`intersection`、`principles`、`mindset`、`iterative`、`responsible`、`methodologies`、`redefine`、`accessible`、`equitable`、`one of the most`、`in conjunction with`、`the power of` — 学术散文的发火率高于 AI 文本。
+
+跳过 v3.6（n-gram drop，§15 negative finding）。
+
+#### 3.5.1 — 文体统计校准补丁
+
+300 段外部验证后，将 `stylometry.burstiness.bands.low` 从 0.25 上调至 0.30。v3.5.0 仅检测到实际 AI 文本的 57% — v3.5.1 达成 66% 检测率 + HC3 human FP 12% + Wikipedia FP 23%。
+
+阈值扫描结果：不存在同时满足 AI ≥70% 且 max FP ≤20% 的阈值组合 — Wikipedia 百科风格自然句长一致。MATTR 阈值保持 0.55。坦诚定位：v3.5.x 是给 LLM 的建议性标记，不是单独决策门槛。
+
+</details>
+
+---
 
 ## 许可证
 

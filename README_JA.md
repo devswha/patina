@@ -5,124 +5,69 @@
 [![Tests](https://github.com/devswha/patina/actions/workflows/test.yml/badge.svg)](https://github.com/devswha/patina/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
-[![Based on](https://img.shields.io/badge/Based%20on-blader%2Fhumanizer-blue)](https://github.com/blader/humanizer)
-[![Multi-language](https://img.shields.io/badge/Languages-Korean%20%7C%20English%20%7C%20Chinese%20%7C%20Japanese-green)](https://github.com/devswha/patina)
+[![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
+[![Version](https://img.shields.io/badge/version-3.8.0-blue)](#バージョン履歴)
 
-**AIが書いた文章を、人間が書いたように変えます。**
+> **AI が書いた文章を、人間が書いたように変えます。**
 
-韓国語・英語・中国語・日本語のテキストからAI特有の文体パターンを検出・除去する [Claude Code](https://docs.anthropic.com/en/docs/claude-code) スキルです。「画期的なマイルストーン」「～にとどまらず」「明るい未来が期待される」といったAI臭い表現を見つけ出し、自然な文章に書き換えます。
+韓国語・英語・中国語・日本語のテキストから AI 特有の文体パターンを検出して書き換える [Claude Code](https://docs.anthropic.com/en/docs/claude-code) スキル + スタンドアロン CLI。パターンベース・監査可能・決定的スコアリング — ブラックボックス LLM パラフレーザーではありません。
 
-> 「LLMは統計的アルゴリズムを使って次に来る内容を予測する。その結果、最も幅広いケースに当てはまる、統計的に最も可能性の高い結果に収束する傾向がある。」 — [Wikipedia](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)
+## デモ
 
-## 変換例
-
-**修正前**（AI風の文章）：
+**修正前**（AI 風の文章）：
 > コーヒーは、世界中の社会的交流を**根本的に変革した****中核的な文化現象**として台頭してきました。この愛される飲料はコミュニティ構築の触媒として機能し、意義ある繋がりを促進し、異文化間の対話を導いています。パリの活気あるカフェから東京の静かな茶室に至るまで、この**驚くべき旅**は人類の食文化探求における**革新的精神**を示しています。
 
-**修正後**（`/patina --lang ja` で処理——同じ内容、AI感を除去）：
+**修正後**（`/patina --lang ja` — 同じ内容、AI 装飾のみ除去）：
 > コーヒーは、人の会い方をかなり変えてきたと思う。誰かと向かい合って座っているうちに自然と関係ができるし、文化が違う人同士でも会話が生まれやすくなる。パリのカフェでも、もともと抹茶を出していた東京の茶室でも、起きていることはよく似ている。豆を一つ焙煎しただけのものが、いつの間にか世界中で共有される社交の文化になっていた。
 
-アンカー検証（MPS = 100）：社会的交流の変革 ✓、コミュニティ構築 ✓、意義ある繋がり ✓、異文化間の対話 ✓、パリのカフェ ✓、東京の茶室 ✓、食文化探求 ✓。AIの装飾のみ除去。
+> **MPS = 100** · 社会的交流の変革 ✓ · コミュニティ構築 ✓ · 意義ある繋がり ✓ · 異文化間の対話 ✓ · パリのカフェ ✓ · 東京の茶室 ✓ · 食文化探求 ✓
 
-韓国語（32）、英語（31）、中国語（31）、日本語（32）の合計126パターンを検出します。パターンスキャン前に文体統計的疑惑区間検出（burstiness CV + MATTR）による前処理が動作します。[全パターン一覧](#パターン)は下記をご覧ください。
+---
 
-> 🆓 **API キーは不要。** [`codex`](https://github.com/openai/codex) CLI さえあれば、スタンドアロン `patina` は OpenAI/ChatGPT OAuth 経由で無料で動きます。`PATINA_API_KEY` は不要です。1 行で済む設定は [Standalone CLI > バックエンド](#バックエンドapi-キーなしで実行) を参照してください。
+## 概要
 
-## インストール
+|  |  |
+|---|---|
+| **126 パターン** | 韓国語 32 + 英語 31 + 中国語 31 + 日本語 32 |
+| **AI 検出率** | 韓国語 91% / 英語 76% (HC3) |
+| **誤検出率** | NamuWiki 13% / HC3 human 19% / Wikipedia 25% *(百科事典体の本質的限界 — 文書化済み)* |
+| **モード** | rewrite · audit · score · diff · ouroboros |
+| **無料利用** | 可能 — `codex` CLI 経由 (API キー不要) |
+| **ライセンス** | MIT |
 
-```bash
-mkdir -p ~/.claude/skills
-git clone https://github.com/devswha/patina.git ~/.claude/skills/patina
+---
 
-# MAX モードを独立した Claude スキルとして公開
-ln -snf ~/.claude/skills/patina/patina-max ~/.claude/skills/patina-max
-```
+## 目次
 
-Claude Code は `/patina` を自動的に検出します。`/patina-max` を独立したスキルとして使いたい場合は、シンボリックリンクの手順も実行してください。
+- [クイックスタート](#クイックスタート)
+- [モードとフラグ](#モードとフラグ)
+- [MAX モード](#max-モードマルチモデル)
+- [スコア & ouroboros](#スコア--ouroboros)
+- [認証](#認証)
+- [仕組み](#仕組み)
+- [キャリブレーション](#キャリブレーション)
+- [パターン](#パターン)
+- [設定](#設定)
+- [プロファイル](#プロファイル)
+- [カスタムパターン](#カスタムパターン)
+- [プロジェクト構造](#プロジェクト構造)
+- [新しい言語の追加](#新しい言語の追加)
+- [参考文献](#参考文献)
+- [バージョン履歴](#バージョン履歴)
 
-### クイックインストール
+---
+
+## クイックスタート
+
+### Claude Code スキルとして
+
+ワンライナー インストール：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
 
-スキルディレクトリの作成、リポジトリのクローン、patina-max シンボリックリンクの設定をすべて自動で行います。更新時に再実行しても安全です。
-
-### スタンドアロン CLI
-
-Patina は Node.js ベースのスタンドアロン CLI としても動作します。ターミナル、シェルスクリプト、CI/CD パイプラインなど、どこでも利用できます。
-
-**要件:** Node.js ≥ 18
-
-**ローカルインストール:**
-```bash
-git clone https://github.com/devswha/patina.git
-cd patina
-npm install
-npm link        # `patina` コマンドをグローバルで使えるようにします
-```
-
-> 既に上のクイックインストールを実行済みの場合、リポジトリは `~/.claude/skills/patina` にあります。再クローンせずに `cd ~/.claude/skills/patina && npm install && npm link` を実行してください。
-
-**インストールせずに実行:**
-```bash
-node bin/patina.js --lang en input.txt
-```
-
-**環境変数:**
-```bash
-export PATINA_API_KEY="your-api-key"
-export PATINA_API_BASE="https://api.openai.com/v1"  # またはプロキシ
-export PATINA_MODEL="gpt-4o"                        # デフォルトモデル
-```
-
-**CLI の使い方:**
-```bash
-patina --lang en --profile blog input.txt
-patina --lang ko --score input.txt
-patina --lang en --ouroboros input.txt
-patina --lang en --models gpt-4o,gpt-4o-mini input.txt  # MAX モード
-patina --batch docs/*.md --suffix .humanized
-```
-
-> `--models` は列挙したすべてのモデルを同じ `--base-url` エンドポイントに対して呼び出します。複数プロバイダ（OpenAI + Anthropic + Google）を混在させたい場合は、OpenRouter のようなマルチプロバイダゲートウェイに `--base-url` を向けてください。別パスの `/patina-max` Claude Code スキルはローカルの `claude`、`codex`、`gemini` CLI 経由でディスパッチするため、API キーは不要です。
-
-**バックエンド（API キーなしで実行）:**
-```bash
-patina auth status                                        # バックエンドの可用性 + 認証状態を表示
-patina auth login                                         # バックエンド別の認証手順
-patina --backend codex-cli --lang ko input.txt            # ローカル codex CLI を明示的に使用
-patina --model codex --lang ko input.txt                  # 同上 — モデル名から自動ルーティング
-patina --lang ko input.txt                                # 自動フォールバック: PATINA_API_KEY が未設定で
-                                                          # codex がログイン済みなら無料で使用
-```
-
-> `codex-cli` バックエンドはローカルの [`codex`](https://github.com/openai/codex) CLI 経由でディスパッチします。codex は OpenAI/ChatGPT OAuth で認証するため、`PATINA_API_KEY` は不要です。一度 `codex login` を実行すれば patina が自動で認識します。v1 では単一モードの書き換えのみ対応し、`--audit`、`--score`、`--diff`、`--ouroboros`、`--models`/MAX は引き続き HTTP バックエンドを使用します。
-
-**無料ティアのプロバイダ（API キーを 1 回取得すれば無料）:**
-```bash
-patina --list-providers                                   # プリセットプロバイダとキー設定状況を表示
-
-# Google Gemini（無料ティア — キー発行: https://aistudio.google.com/app/apikey）
-export GEMINI_API_KEY="..."
-patina --provider gemini --lang ko input.txt
-
-# Groq（無料ティア、レート制限あり）
-export GROQ_API_KEY="..."
-patina --provider groq --lang ko input.txt
-
-# Together AI（"-Free" サフィックス付きの無料モデル）
-export TOGETHER_API_KEY="..."
-patina --provider together --lang ko input.txt
-```
-
-> `--provider` は base URL、デフォルトモデル、プロバイダ別 API キー環境変数をまとめて設定します。`--base-url`、`--model`、`--api-key` で個別に上書き可能です。
-
-全オプションは `patina --help` で確認できます。
-
-## 使い方
-
-Claude Code で以下のように入力します：
+Claude Code で：
 
 ```
 /patina --lang ja
@@ -130,37 +75,67 @@ Claude Code で以下のように入力します：
 [ここにテキストを貼り付け]
 ```
 
-`--lang` で言語を選択します：
+[手動インストール →](#手動インストール)
 
-| フラグ | 言語 |
-|------|------|
-| `--lang ko` | 韓国語 |
-| `--lang en` | 英語 |
-| `--lang zh` | 中国語 |
-| `--lang ja` | 日本語 |
+### スタンドアロン CLI として
 
-デフォルト言語は `.patina.default.yaml` で設定します（デフォルト：`ko`）。設定ファイルで変更するか、実行時に `--lang` で上書きできます。
+**Node.js ≥ 18** が必要です。
 
-### その他のオプション
+```bash
+git clone https://github.com/devswha/patina.git
+cd patina && npm install && npm link
+patina --lang ja input.txt
+```
+
+```bash
+# よく使う例
+patina --lang en --profile blog input.txt
+patina --lang ko --score input.txt
+patina --lang en --ouroboros input.txt
+patina --batch docs/*.md --suffix .humanized
+```
+
+> 🆓 **API キー不要** — [`codex`](https://github.com/openai/codex) CLI にログイン済みであれば OK。全バックエンドは [認証](#認証) を参照。
+
+#### 手動インストール
+
+```bash
+mkdir -p ~/.claude/skills
+git clone https://github.com/devswha/patina.git ~/.claude/skills/patina
+ln -snf ~/.claude/skills/patina/patina-max ~/.claude/skills/patina-max  # MAX モードスキル
+```
+
+スタンドアロン CLI の手順で既にクローン済みの場合は、再クローンせずそのディレクトリで `npm link` のみ実行してください。
+
+---
+
+## モードとフラグ
+
+```
+patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] [バッチオプション] input.txt
+```
 
 | フラグ | 機能 |
-|------|-------------|
-| `--batch docs/*.md` | 複数ファイルを一括処理 |
+|--------|------|
+| `--lang <ko\|en\|zh\|ja>` | 言語選択（デフォルト：`ko`） |
+| `--profile <名前>` | トーンプリセット — [プロファイル](#プロファイル) を参照 |
+| `--audit` | AI パターン検出のみ（書き換えなし） |
+| `--score` | 0–100 AI 類似度スコア + カテゴリ別内訳 |
+| `--diff` | 変更箇所をパターンごとに表示 |
+| `--ouroboros` | スコア収束まで反復（MPS ロールバック付き） |
+| `--batch <glob>` | 複数ファイルを一括処理 |
 | `--in-place` | 元ファイルを上書き（`--batch` と併用） |
-| `--suffix .humanized` | `{file}.humanized.md` として保存 |
-| `--outdir output/` | 結果を指定ディレクトリに保存 |
-| `--profile blog` | ブログ・エッセイ向けの文体を使用 |
-| `--profile formal` | フォーマル文書向けの文体を使用（履歴書、提案書） |
-| `--diff` | 変更箇所とその理由をパターンごとに表示 |
-| `--audit` | AIパターンの検出のみ（書き換えなし） |
-| `--score` | AI類似度スコア（0-100）を取得 |
-| `--ouroboros` | 反復自己改善：AIスコアが収束するまで書き換えを繰り返す |
+| `--suffix <ext>` | `{file}.{ext}.md` として保存 |
+| `--outdir <dir>` | 結果を指定ディレクトリに保存 |
+| `--models <list>` | MAX モード — 下記参照 |
 
-フラグは自由に組み合わせ可能です：`/patina --lang en --audit --profile blog` や `/patina --profile formal` など
+自由に組み合わせ可能：`patina --lang en --audit --profile blog`。全オプションは `patina --help` で確認。
 
-### MAX モード（マルチモデル）
+---
 
-同じテキストを複数のAIモデルで処理し、最良の結果を選択します：
+## MAX モード（マルチモデル）
+
+同じテキストを Claude、Codex、Gemini に独立に通します。各モデルが人間化を行い、AI 類似度と MPS で採点され、MPS ≥ 70 を満たす中で最もスコアが低い（最も人間らしい）結果が採用されます。
 
 ```
 /patina-max
@@ -168,181 +143,223 @@ Claude Code で以下のように入力します：
 [ここにテキストを貼り付け]
 ```
 
-各モデルが独立して人間化処理を行い、AI類似度スコアと意味保持度（MPS）で採点し、MPSの基準値（≥ 70）を満たした中で最もスコアが低い（最も人間らしい）結果が採用されます。
+| モデル | ディスパッチ | 認証 |
+|-------|------------|------|
+| `claude` | `claude -p` | Claude Code |
+| `codex` | `codex exec --skip-git-repo-check --output-last-message` | ChatGPT OAuth |
+| `gemini` | `gemini -p '' --output-format text` | Google AI Studio |
 
-| フラグ | 機能 |
-|------|-------------|
-| `--models claude,gemini` | 使用するモデルを選択 |
-| `--lang en` | 英語テキストを処理 |
-| `--profile blog` | ブログ・エッセイ向けの文体を使用 |
+各 MAX 実行は隔離された一時ディレクトリを使用し、選択したモデルのみを待機し、タイムアウトは無限待機ではなく失敗として処理されます。
 
-対応モデル：`claude`、`codex`、`gemini`。MAX モードは3つすべてに stdin 経由で入力（`claude -p`、`gemini -p '' --output-format text`、`codex exec --skip-git-repo-check`）し、Codex の最終回答は `--output-last-message` で取得します。
+> スタンドアロン CLI MAX：`patina --models gpt-4o,gpt-4o-mini input.txt` — 同じ `--base-url` エンドポイントで呼び出し。複数プロバイダを混在させたい場合は OpenRouter 等のマルチプロバイダゲートウェイに `--base-url` を向けてください。Claude Code `/patina-max` スキルはローカル CLI 経由でディスパッチ — API キー不要。
 
-各 MAX 実行ではユニークな一時ディレクトリを使用し、選択したモデルのみを待機し、タイムアウトした実行は無限に待たず失敗として処理します。
+---
+
+## スコア & ouroboros
 
 ### スコアモード
 
-書き換えなしでテキストのAI度合いを確認できます：
+書き換えなしで AI 度合いを確認：
 
-```
-/patina --score
-
-[ここにテキストを貼り付け]
+```bash
+patina --score input.txt
 ```
 
-カテゴリ別の内訳付きで0-100のAI類似度スコアが返されます：
-
 ```
-| Category      | Weight | Detected | Raw Score | Weighted |
-|---------------|--------|----------|-----------|----------|
-| content       | 0.20   | 3/6      | 33.3      | 6.7      |
-| language      | 0.20   | 1/6      | 11.1      | 2.2      |
-| style         | 0.20   | 2/6      | 27.8      | 5.6      |
-| communication | 0.15   | 0/3      | 0.0       | 0.0      |
-| filler        | 0.10   | 1/3      | 11.1      | 1.1      |
-| structure     | 0.15   | 1/4      | 25.0      | 3.8      |
-| Overall       |        |          |           | 19.3 (±10) |
-
-Interpretation: 16-30 = Mostly human-like, minor traces
+| Category      | Weight | Detected | Raw  | Weighted |
+|---------------|--------|----------|------|----------|
+| content       | 0.20   | 3/6      | 33.3 | 6.7      |
+| language      | 0.20   | 1/6      | 11.1 | 2.2      |
+| style         | 0.20   | 2/6      | 27.8 | 5.6      |
+| communication | 0.15   | 0/3      | 0.0  | 0.0      |
+| filler        | 0.10   | 1/3      | 11.1 | 1.1      |
+| structure     | 0.15   | 1/4      | 25.0 | 3.8      |
+| Overall       |        |          |      | 19.3 (±10) |
 ```
 
-スコア範囲：**0-15** 人間的 | **16-30** ほぼ人間的 | **31-50** 混在 | **51-70** AI的 | **71-100** 強いAI的
+| 範囲 | 解釈 |
+|------|------|
+| 0–15 | 人間的 |
+| 16–30 | ほぼ人間的 |
+| 31–50 | 混在 |
+| 51–70 | AI 的 |
+| 71–100 | 強い AI 的 |
 
-書き換えモードまたは ouroboros モードと併用した場合、**忠実度スコア**（0-100、高いほど良い）も表示されます。これは出力が原文の意味をどの程度忠実に保持しているかを測定します：
+書き換えモードと併用時の追加指標：
 
-```
-| 指標              | スコア  |
-|-------------------|---------|
-| AI類似度          | 23/100  |
-| 忠実度            | 87/100  |
-| 意味保持 (MPS)    | 92/100  |
-| 総合              | 19/100  |
-```
+| 指標 | スコア | 意味 |
+|------|--------|------|
+| AI 類似度 | 23/100 | 低いほど人間的 |
+| 忠実度 | 87/100 | 主張保持、捏造なし、トーン一致、長さ比 |
+| MPS | 92/100 | セマンティックアンカー（主張、極性、因果、数値） |
+| 総合 | 19/100 | プロファイル加重（例：blog AI 0.70 / 忠実度 0.30） |
 
-忠実度は4つの基準で判定されます：主張の保持、捏造の有無、トーンの一致、長さの比率。MPS（意味保持スコア）は、核心主張・極性・因果関係・数値といった特定のセマンティックアンカーが書き換えパイプラインを通じて維持されたかを追跡します。総合スコアはAI類似度と忠実度を加重平均します。プロファイルごとに設定可能です（例：academic は忠実度 0.60、AI 0.40、blog は AI 0.70、忠実度 0.30）。
+### ouroboros モード
 
-スコアはパターンベースで決定的です。audit モードと同じ32（韓国語）、31（英語）、31（中国語）、32（日本語）の検出パターンを再利用します。プロファイルのオーバーライドはスコアリングに影響します（例：blog プロファイルでは太字パターン #14 が抑制されます）。
+スコア収束まで書き換えを反復：
 
-### Ouroboros モード（反復自己改善）
-
-AIスコアが目標値を下回るまで自動的に書き換えを繰り返します：
-
-```
-/patina --ouroboros
-
-[ここにテキストを貼り付け]
+```bash
+patina --ouroboros input.txt
 ```
 
-ouroboros ループは人間化パイプライン全体を繰り返し実行し、各イテレーション後にスコアを計測します：
-
 ```
-Ouroboros Iteration Log
-
-| Iter | Before | After | Improvement | Reason      |
-|------|--------|-------|-------------|-------------|
-| 0    | —      | 78    | —           | Initial     |
-| 1    | 78     | 45    | +33         |             |
-| 2    | 45     | 28    | +17         | Target met  |
-
-Final score: 28/100 (±10)
-Iterations: 2/3
-Reason: Target met (target: 30)
-
-[最終的な人間化テキスト]
+| Iter | Before | After | Improvement | Reason     |
+|------|--------|-------|-------------|------------|
+| 0    | —      | 78    | —           | Initial    |
+| 1    | 78     | 45    | +33         |            |
+| 2    | 45     | 28    | +17         | Target met |
 ```
 
-**終了条件**（いずれか最初に満たされたもの）：
-- **目標達成**：スコアが 30 以下に到達（設定可能）
-- **停滞**：イテレーション間の改善が 10 ポイント未満
-- **後退**：スコアが上昇（テキストが悪化）した場合、前のイテレーションにロールバック
-- **最大イテレーション数**：3回のハードキャップ（設定可能）
-- **忠実度フロア**：忠実度が 70 を下回った場合、前のイテレーションにロールバック
-- **MPSフロア**：MPS（意味保持）が 70 を下回った場合、前のイテレーションにロールバック
+終了条件（最初に満たされたもの）：
+- 目標達成（スコア ≤ 30、設定可能）
+- 停滞（イテレーション間の改善 < 10）
+- 後退（スコア上昇 — ロールバック）
+- 最大イテレーション数（デフォルト 3）
+- 忠実度 / MPS フロア違反（ロールバック）
 
-**設定** — `.patina.yaml` でカスタマイズ：
+`.patina.yaml` で設定：
 
 ```yaml
 ouroboros:
-  target-score: 30          # スコアがこの値以下で停止（0-100）
-  max-iterations: 3         # 最大ループ回数
-  plateau-threshold: 10     # 必要な最小改善幅
-  fidelity-floor: 70        # 忠実度がこの値を下回った場合に停止
-  mps-floor: 70             # 意味保持度がこの値を下回った場合に停止
+  target-score: 30
+  max-iterations: 3
+  plateau-threshold: 10
+  fidelity-floor: 70
+  mps-floor: 70
 ```
 
-`--ouroboros` は `--diff`、`--audit`、`--score` と併用できません。
+> `--ouroboros` は `--diff`、`--audit`、`--score` と併用不可。
+
+---
+
+## 認証
+
+| バックエンド | 設定 | コスト |
+|------------|------|--------|
+| `codex-cli` *(利用可能時のデフォルト)* | `codex login` | **無料**（ChatGPT OAuth） |
+| OpenAI 互換 HTTP | `PATINA_API_KEY=...` | プロバイダ別 |
+| Google Gemini | `GEMINI_API_KEY=...` + `--provider gemini` | 無料ティア |
+| Groq | `GROQ_API_KEY=...` + `--provider groq` | 無料ティア |
+| Together AI | `TOGETHER_API_KEY=...` + `--provider together` | 無料モデルあり |
+| OpenRouter | `--base-url https://openrouter.ai/api/v1` + キー | プロバイダ別 |
+
+```bash
+patina auth status         # バックエンド可用性 + 認証状態
+patina auth login          # バックエンド別ログイン手順
+patina --list-providers    # プリセットプロバイダ + キー設定状況
+```
+
+`PATINA_API_KEY` 未設定で `codex` がログイン済みなら自動的に `codex-cli` にフォールバック。
+
+> `codex-cli` v1 は単一モード書き換えのみ対応。`--audit`、`--score`、`--diff`、`--ouroboros`、`--models`/MAX は引き続き HTTP バックエンド使用。
+
+デフォルト環境変数：
+
+```bash
+PATINA_API_KEY=...                            # HTTP バックエンドに必須
+PATINA_API_BASE=https://api.openai.com/v1     # またはプロキシ
+PATINA_MODEL=gpt-4o                           # デフォルトモデル
+```
+
+---
 
 ## 仕組み
 
 ```
 入力テキスト
-  |
-  v
-[ステップ4.5] セマンティックアンカー抽出 -- 核心主張、極性、因果関係、数値を抽出
-  |
-  v
-[フェーズ1] 構造スキャン -- 段落レベルの問題を修正（繰り返し、受動態）
-  |
-  v
-[ステップ5a-v] アンカー検証 -- フェーズ1後の意味保持を確認
-  |
-  v
-[フェーズ2] 文章リライト -- 語彙レベルの問題を修正（AI語彙、フィラー、ヘッジング）
-  |
-  v
-[ステップ5b-v] アンカー検証 -- フェーズ2後の意味保持を確認
-  |
-  v
-[フェーズ3] セルフ監査 -- 極性スキャン、回帰チェック、最終MPS算出
-  |
-  v
+  │
+  ▼
+[ステップ 4.5]   セマンティックアンカー抽出
+                 (核心主張、極性、因果、数値)
+  │
+  ▼
+[ステップ 4.6]   文体統計プリパス
+                 (burstiness CV + MATTR)
+  │
+  ▼
+[ステップ 4.7]   AI 語彙オーバーラップ
+                 (フラット辞書: 英 ~108 / 韓 102 項目)
+  │
+  ▼
+[フェーズ 1]     構造スキャン
+                 (段落レベル: 繰り返し、受動態)
+  │
+  ▼
+[ステップ 5a-v]  アンカー検証
+  │
+  ▼
+[フェーズ 2]     文章リライト
+                 (語彙レベル: AI 語彙、フィラー、ヘッジ)
+  │
+  ▼
+[ステップ 5b-v]  アンカー検証
+  │
+  ▼
+[フェーズ 3]     セルフ監査
+                 (極性スキャン、回帰、最終 MPS)
+  │
+  ▼
 自然なテキスト（意味検証済み）
 ```
 
-言語固有のパターンパック（`ko-*.md`、`en-*.md`、`zh-*.md`、`ja-*.md`）を読み込み、このパイプラインで適用します。セマンティックアンカー（核心主張、極性、数値）は書き換え前に抽出され、各フェーズ後に検証されます。意味が損なわれた場合、問題のある変更は再試行またはロールバックされます。プロファイルとボイスガイドラインがトーンを調整します。
+パターンパックは言語プレフィックス（`{lang}-*.md`）で自動検出されます。セマンティックアンカーは書き換え前に抽出され、各フェーズ後に検証されます — 意味が損なわれた場合、変更は再試行またはロールバックされます。
 
-## <a name="パターン"></a>パターン
+---
 
-4言語すべてが同じ6カテゴリ構造を共有します（合計126パターン：韓国語 32 + 英語 31 + 中国語 31 + 日本語 32）。カテゴリと大半のパターンは言語を超えて共通です。一部のスロットのみ言語固有の実装があります。パターン #30（修辞疑問の段落冒頭）と #31（結論シグナルワード）は4言語すべてで利用可能です。パターン #32（比較副詞の濫用 — KO「보다」、JA「より」）は KO/JA 専用です（英語と中国語に同等の助詞がないため）。
+## キャリブレーション
 
-### 共通パターンカテゴリ
+`.omc/research/v3_7_lexicon_eval.py` で 400 段落コーパス（HC3 + Wikipedia + NamuWiki + paired ko/AI）に対して再現可能：
+
+| ソース | Hot rate | 注釈 |
+|--------|----------|------|
+| HC3 ChatGPT (en) | **76%** | AI 検出率 |
+| HC3 human (en) | 19% | 実人間文章への誤検出 |
+| Wikipedia (en) | 25% | 百科事典体は文長が均一 — 本質的限界 |
+| NamuWiki (ko) | 13% | 韓国語人間文章への誤検出 |
+| ko/AI corpus | **91%** | システム内最強信号 *(post-v3.8.0)* |
+
+受け入れ基準：AI 検出 ≥ 75% · 最大 FP ≤ 25% · NamuWiki 回帰 ≤ +5pp。すべて達成。
+
+> 文体統計と語彙信号は LLM への**助言マーカー**であり、単独決定ゲートではありません。Wikipedia 25% FP は百科事典体の本質で、チューニングで除去できません。`core/stylometry.md` §13、§16 で文書化。
+
+---
+
+## パターン
+
+4 言語すべてが同じ 6 カテゴリ構造を共有します。大半のパターンは普遍的で、一部のスロットのみ言語固有実装があります。パターン #30（修辞疑問の段落冒頭）と #31（結論シグナルワード）は 4 言語すべてに存在。パターン #32（比較副詞の濫用 — KO `보다`、JA `より`）は KO/JA 専用です。
+
+### 共通カテゴリ
 
 <details>
-<summary><b>コンテンツパターン</b> — 内容の問題 6パターン</summary>
+<summary><b>コンテンツ</b> — 6 パターン (#1–#6)</summary>
 
-以下のパターンは4言語すべてで共通です：
-
-| # | パターン | AIの特徴 | 修正方法 |
+| # | パターン | AI の特徴 | 修正方法 |
 |---|---------|----------|--------|
-| 1 | 重要性の誇張 | 「画期的なマイルストーン」「重要な転換点」 | 具体的な事実、日付、数値に置き換え |
-| 2 | メディア/知名度の誇張 | 「NYT、BBCなどで紹介」 | 具体的な記事を1つ引用 |
-| 3 | 表面的な動詞連鎖分析 | 「示しており、象徴しており、貢献しており」 | フィラーを削除するか実際の出典を追加 |
-| 4 | 宣伝的な表現 | 「息を呑む、世界レベル、隠れた宝石」 | 事実に基づく中立的な記述 |
+| 1 | 重要性の誇張 | 「画期的なマイルストーン」 | 具体的事実、日付、数値 |
+| 2 | メディア/知名度の誇張 | 「NYT、BBC などで紹介」 | 具体的記事を 1 つ引用 |
+| 3 | 表面的な動詞連鎖分析 | 「示しており、象徴しており」 | 実際の説明や出典 |
+| 4 | 宣伝的な表現 | 「息を呑む、世界レベル」 | 中立的な記述 |
 | 5 | 曖昧な帰属 | 「専門家によると…研究によれば」 | 実際の出典を明記 |
-| 6 | 定型的な課題/展望 | 「課題はあるものの…明るい未来」 | 具体的な問題と具体的な計画 |
+| 6 | 定型的な課題/展望 | 「課題はあるものの…明るい未来」 | 具体的問題と計画 |
 
 </details>
 
 <details>
-<summary><b>コミュニケーションパターン</b> — チャットボット痕跡 4パターン</summary>
+<summary><b>コミュニケーション</b> — 4 パターン (#19–#21, #29)</summary>
 
-以下のパターンは4言語すべてで共通です：
-
-| # | パターン | AIの特徴 | 修正方法 |
+| # | パターン | AI の特徴 | 修正方法 |
 |---|---------|----------|--------|
 | 19 | チャットボットフレーズ | 「お役に立てば幸いです！」 | 完全に削除 |
 | 20 | 学習データ期限の免責 | 「具体的な情報には限界があります」 | 出典を探すか削除 |
-| 21 | 追従的なトーン | 「素晴らしい質問ですね！」 | 直接回答する |
+| 21 | 追従的なトーン | 「素晴らしい質問ですね！」 | 直接回答 |
 | 29 | 偽りのニュアンス | 「実はもっと複雑な問題で……」 | 根拠を追加するか削除 |
 
 </details>
 
 <details>
-<summary><b>フィラー・ヘッジングパターン</b> — 水増し表現 3パターン</summary>
+<summary><b>フィラー & ヘッジング</b> — 3 パターン (#22–#24)</summary>
 
-以下のパターンは4言語すべてで共通です：
-
-| # | パターン | AIの特徴 | 修正方法 |
+| # | パターン | AI の特徴 | 修正方法 |
 |---|---------|----------|--------|
 | 22 | フィラーフレーズ | 不要な埋め言葉 | 簡潔な表現に |
 | 23 | 過剰なヘッジング | 過度に限定された表現 | 直接的な表現 |
@@ -350,92 +367,97 @@ ouroboros:
 
 </details>
 
-### 言語固有パターン
-
-一部のパターンスロットは言語ごとに異なる実装があり、各言語特有のAIの書き癖を対象としています：
+### 言語固有スロット
 
 <details>
-<summary><b>言語パターン</b>（#7–#12）— 文法・語彙</summary>
+<summary><b>言語</b>（#7–#12）— 文法・語彙</summary>
 
 | # | 韓国語 | 英語 | 中国語 | 日本語 |
 |---|--------|------|--------|--------|
-| 7 | AIフィラー語彙の多用 | AI語彙（delve、tapestry） | AI流行語（赋能/助力/深耕） | AIバズワードの多用 |
-| 8 | -jeok接尾辞の多用 | コピュラ回避（"serves as"） | 四字熟語の多用（成语） | -teki接尾辞の多用（～的） |
+| 7 | AI フィラー語彙の多用 | AI 語彙（delve、tapestry） | AI 流行語（赋能/助力） | AI バズワード多用 |
+| 8 | -jeok（적）接尾辞多用 | コピュラ回避（"serves as"） | 四字熟語多用（成语） | -teki（的）接尾辞多用 |
 | 9 | 否定的並列構文 | 否定的並列構文 | 的/地/得の過度な正規化 | 否定的並列構文 |
-| 10 | 三項目の法則 | 三項目の法則 | 排比句の多用 | 三項目の法則 |
+| 10 | 三項目の法則 | 三項目の法則 | 排比句多用 | 三項目の法則 |
 | 11 | 類義語の循環 | 類義語の循環 | 類義語の循環 | 類義語の循環 |
-| 12 | 冗長な助詞 | 偽の範囲表現（"from X to Y"） | 冗長な前置詞構文 | カタカナ外来語の多用 |
+| 12 | 冗長な助詞 | 偽の範囲表現（"from X to Y"） | 冗長な前置詞構文 | カタカナ外来語多用 |
 
 </details>
 
 <details>
-<summary><b>スタイルパターン</b>（#13–#18）— 書式・文体</summary>
+<summary><b>スタイル</b>（#13–#18）— 書式・文体</summary>
 
 | # | 韓国語 | 英語 | 中国語 | 日本語 |
 |---|--------|------|--------|--------|
-| 13 | 過剰な接続詞 | emダッシュの多用 | 過剰な接続詞 | 過剰な接続詞 |
-| 14 | 太字の多用 | 太字の多用 | 太字の多用 | 太字の多用 |
+| 13 | 過剰な接続詞 | em ダッシュ多用 | 過剰な接続詞 | 過剰な接続詞 |
+| 14 | 太字多用 | 太字多用 | 太字多用 | 太字多用 |
 | 15 | インラインヘッダーリスト | インラインヘッダーリスト | インラインヘッダーリスト | インラインヘッダーリスト |
-| 16 | 進行形の多用（-고 있다） | タイトルケースの見出し | 地副詞の多用（积极地/深入地） | 過剰な敬語（ございます） |
+| 16 | 進行形多用（-고 있다） | タイトルケース見出し | 地副詞多用 | 過剰な敬語（ございます） |
 | 17 | 絵文字 | 絵文字 | 絵文字 | 絵文字 |
-| 18 | 過度な格式体 | カーリー引用符 | 官僚的文体（公文体） | 硬いである調 |
+| 18 | 過度な格式体 | カーリー引用符 | 官僚的文体（公文体） | 硬い である調 |
 
 </details>
 
 <details>
-<summary><b>構造パターン</b>（#25–#29）— 文書レベルの問題</summary>
+<summary><b>構造</b>（#25–#28）— 文書レベル</summary>
 
 | # | 韓国語 | 英語 | 中国語 | 日本語 |
 |---|--------|------|--------|--------|
-| 25 | 構造的繰り返し | メトロノーム的段落構造 | 構造的繰り返し | 構造的繰り返し |
+| 25 | 構造的繰り返し | メトロノーム的段落 | 構造的繰り返し | 構造的繰り返し |
 | 26 | 翻訳調 | 受動態の名詞化連鎖 | 翻訳調/欧化文法 | 翻訳調 |
-| 27 | 受動態の多用 | ゾンビ名詞 | 被の多用 | ている進行形の多用 |
-| 28 | 不要な外来語 | 積み重ね従属節 | 総分総構造の多用 | 起承転結の定型化 |
-| 29 | 偽りのニュアンス | False Nuance | 虚假细化 | 偽りのニュアンス |
+| 27 | 受動態多用 | ゾンビ名詞 | 被の多用 | ている進行形多用 |
+| 28 | 不要な外来語 | 積み重ね従属節 | 総分総構造多用 | 起承転結の定型化 |
 
 </details>
+
+### 横断的拡張（v3.4.0+）
+
+| # | 全言語共通 |
+|---|-----------|
+| 30 | 修辞疑問の段落冒頭（"Have you ever wondered…?"、「~でしょうか？」） |
+| 31 | 結論シグナルワード（"In conclusion"、「결론적으로」、「总而言之」、「結論として」） |
+| 32 | 比較副詞の濫用 — 韓国語 `보다` / 日本語 `より` のみ |
+
+---
 
 ## 設定
 
-`.patina.default.yaml` を編集します：
-
 ```yaml
-version: "3.4.0"
-language: ko              # ko | en | zh | ja（または --lang フラグを使用）
+# .patina.default.yaml
+version: "3.8.0"
+language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
 skip-patterns: []         # 例：[ko-filler] でパックをスキップ
 blocklist: []             # フラグ対象に追加する単語
 allowlist: []             # フラグ対象にしない単語
-max-models:             # MAX モードのモデル（claude, codex, gemini）
-  - claude
-  - gemini
+max-models: [claude, gemini]
 dispatch: omc             # omc | direct
 ```
 
-パターンパックは言語プレフィックスで自動検出されます。手動でリストに追加する必要はありません。
+パターンパックは言語プレフィックスで自動検出されます — 手動でリスト化不要。
+
+---
 
 ## プロファイル
 
 | プロファイル | トーン | 用途 |
-|---------|------|----------|
-| `default` | 元のトーンを維持 | 汎用 |
-| `blog` | より個人的、意見が入る | ブログ記事、エッセイ |
+|-----------|--------|------|
+| `default` | 元のトーン維持 | 汎用 |
+| `blog` | 個人的、意見入り | ブログ記事、エッセイ |
 | `academic` | フォーマル、エビデンスベース | 論文、学位論文 |
-| `technical` | 明確、正確、意見なし | APIドキュメント、README、ガイド |
-| `social` | カジュアル、短文、絵文字OK | Twitter/X、Instagram、スレッド |
+| `technical` | 明確、正確、意見なし | API ドキュメント、README |
+| `social` | カジュアル、絵文字 OK | Twitter/X、Instagram、スレッド |
 | `email` | 丁寧だが簡潔 | ビジネスメール、公式書簡 |
-| `legal` | 法律文書の慣例を保持 | 契約書、法律意見書 |
-| `medical` | 医学的な正確さを保持 | 臨床報告、医学論文 |
-| `marketing` | 説得力があり具体的 | 広告コピー、製品ページ、プレスリリース |
-| `formal` | プロフェッショナルで簡潔 | 履歴書、カバーレター、提案書 |
+| `legal` | 法律慣例保持 | 契約書、法律意見書 |
+| `medical` | 医学的正確さ保持 | 臨床報告、医学論文 |
+| `marketing` | 説得力、具体的 | 広告コピー、プレスリリース |
+| `formal` | プロフェッショナル、簡潔 | 履歴書、カバーレター、提案書 |
 
+```bash
+patina --profile blog text...
 ```
-/patina --profile blog text...
-/patina --profile academic text...
-/patina --profile technical text...
-/patina --profile formal text...
-```
+
+---
 
 ## カスタムパターン
 
@@ -450,68 +472,119 @@ version: 1.0.0
 patterns: 1
 ---
 
-### 1. Pattern Name
-**Problem:** What AI does wrong
-**Before:** > AI-sounding example
-**After:** > Natural-sounding fix
+### 1. パターン名
+**問題：** AI が間違っていること
+**Before：** > AI 風の例
+**After：** > 自然な修正
 ```
+
+---
 
 ## プロジェクト構造
 
 ```
 patina/
 ├── SKILL.md                  # /patina エントリポイント
-├── SKILL-MAX.md              # MAX モード ソース/リファレンスドキュメント
-├── patina-max/               # インストール可能な /patina-max スキルディレクトリ
-│   ├── SKILL.md              # MAX モード エントリポイント
-│   ├── core -> ../core
-│   ├── patterns -> ../patterns
-│   └── profiles -> ../profiles
-├── .patina.default.yaml      # 設定ファイル
-├── core/voice.md             # ボイス＆パーソナリティガイドライン
-├── core/scoring.md           # スコアリングアルゴリズム（AI類似度＋忠実度＋MPS）
+├── SKILL-MAX.md              # MAX モード参考文書
+├── patina-max/               # /patina-max スキル（インストール可能）
+│   └── SKILL.md
+├── .patina.default.yaml      # 設定
+├── core/
+│   ├── voice.md              # ボイス & パーソナリティガイドライン
+│   ├── scoring.md            # スコアリングアルゴリズム参考
+│   └── stylometry.md         # 文体統計アルゴリズム参考
+├── lexicon/
+│   ├── ai-en.md              # 英語 AI 語彙辞書（108 項目）
+│   └── ai-ko.md              # 韓国語 AI 語彙辞書（102 項目）
 ├── patterns/
-│   ├── ko-*.md               # 韓国語パターン（6パック、29パターン）
-│   ├── en-*.md               # 英語パターン（6パック、29パターン）
-│   ├── zh-*.md               # 中国語パターン（6パック、29パターン）
-│   └── ja-*.md               # 日本語パターン（6パック、29パターン）
-├── profiles/                 # 文体プロファイル
+│   ├── ko-*.md               # 韓国語（6 パック、32 パターン）
+│   ├── en-*.md               # 英語（6 パック、31 パターン）
+│   ├── zh-*.md               # 中国語（6 パック、31 パターン）
+│   └── ja-*.md               # 日本語（6 パック、32 パターン）
+├── profiles/                 # トーンプリセット
 ├── examples/                 # Before/After テストケース
-└── custom/                   # 独自の拡張（gitignored）
+└── custom/                   # ユーザー拡張（gitignore 対象）
 ```
 
-[oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh) のプラグインアーキテクチャに着想を得ています。パターンがプラグイン、プロファイルがテーマに相当します。
+[oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh) のプラグインアーキテクチャに着想：パターンがプラグイン、プロファイルがテーマ。
+
+---
 
 ## 新しい言語の追加
 
-1. `patterns/{lang}-content.md`、`{lang}-language.md` などを作成
-2. 各ファイルのフロントマターに `language: {lang}` を設定
-3. `/patina --lang {lang}` で使用 -- 自動検出されるため、設定変更は不要
+1. `patterns/{lang}-content.md`、`{lang}-language.md` などを作成。
+2. 各ファイルのフロントマターに `language: {lang}` を設定。
+3. `/patina --lang {lang}` で使用 — 自動検出のため設定変更不要。
+
+---
 
 ## 参考文献
 
-- [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) -- パターンの一次ソース
-- [WikiProject AI Cleanup](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_AI_Cleanup) -- コミュニティ活動
-- [blader/humanizer](https://github.com/blader/humanizer) -- 英語版オリジナル
+- [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) — パターンの一次ソース
+- [WikiProject AI Cleanup](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_AI_Cleanup) — コミュニティ活動
+- [blader/humanizer](https://github.com/blader/humanizer) — 英語版オリジナル
+
+## コントリビュート
+
+[CONTRIBUTING.md](CONTRIBUTING.md) を参照。パターン追加と**陳腐化レポート**（「この信号はもう AI ではない」）が最も価値ある貢献です — AI の書き癖はモデルがファインチューンされるにつれ変化します。
+
+[Issue を作成 →](https://github.com/devswha/patina/issues)
+
+---
 
 ## バージョン履歴
 
-| バージョン | 変更内容 |
-|---------|---------|
-| **3.8.0** | 韓国語 lexicon の再キュレーション。Track A の paired ko/AI コーパス（NamuWiki トピックシード由来の Claude 生成韓国語 100 件）の測定から、v3.7.0 の韓国語 lexicon が AI 検出率への寄与度は +1pp のみであることが判明（英語は +10pp）。NamuWiki 人間語彙との差分頻度分析（AI doc-freq ≥4×、比率 ≥4.0）により 12 個の高信号エントリを発掘：`평가된다`、`꼽힌다`、`가리킨다`、`사례로`、`다수의`、`알려져`、`일컬어진다`、`평가받다`（strict 8 個）と `가운데 하나로`、`자리 잡았다`、`알려져 있다`、`~의 사례로`（phrase 4 個）。結果：ko/AI 検出率 83% → **91%**（+8pp）。NamuWiki 人間語彙 FP は **13%** 維持（回帰 0pp — clean Pareto 改善）。英語 lexicon および英語側の数値は変更なし。アルゴリズム参照：`core/stylometry.md` §16；マイニングスクリプト：`.omc/research/v3_8_ko_lexicon_mine.py`。 |
-| **3.7.0** | AI-lexicon overlap シグナル追加（新 4.7段階）。フラット辞書（`lexicon/ai-en.md` 108項目、`lexicon/ai-ko.md` 90項目）で 28-パターンカタログが明示的に捕捉できない AI 特有のフレーズを照合。1,000 トークンあたりの出現密度を計算し、4.6段階 hot ルールを 3-signal OR（burstiness OR MATTR OR lexicon_density > 2.0）に拡張。外部 400 段落（HC3 ChatGPT/human + Wikipedia + NamuWiki）でキャリブレーション: AI 検出率 66%→**76%**、HC3 human FP 12%→19%、Wikipedia FP 23%→**25%** 境界、NamuWiki FP 11%→13%（+5pp ガード内）。全 acceptance 基準を満たす（AI ≥75%、max FP ≤25%、NamuWiki 回帰 ≤+5pp）— v3.5.1 Pareto 壁の初突破。Drop list（eval 後）: `intersection`、`principles`、`mindset`、`iterative`、`responsible`、`methodologies`、`redefine`、`accessible`、`equitable`、`one of the most`、`in conjunction with`、`the power of` — 学術 prose の発火率が AI 発火率より高かった。v3.6 はスキップ（n-gram drop、§15 negative finding）。アルゴリズム: `core/stylometry.md` §16；キャリブレーションスクリプト: `.omc/research/v3_7_lexicon_eval.py`。 |
-| **3.5.1** | 統計信号 calibration パッチ。v3.5.0 の `stylometry.burstiness.bands.low` を 0.25 → 0.30 に引き上げ。外部段落 300 件（HC3 ChatGPT 100、HC3 human 100、Wikipedia 100）に対する検証の結果、v3.5.0 は実際の AI テキストの 57% しか検出できず — v1 目標 70% に未達。v3.5.1 は 66% 検出率 + HC3 human FP 12% + Wikipedia FP 23%。閾値スイープの結果、AI ≥70% AND max FP ≤20% を同時に満たす閾値の組み合わせが存在しない — Wikipedia の百科事典的スタイルは自然に均一な文長を持つため。MATTR 閾値は 0.55 に維持（散文での弁別力がない — スイープで検証済み）。正直な枠組み：v3.5.x は LLM への助言マーカーであり、単独の決定ゲートではない。n-gram 反復度（元々 v2 ロードマップ）を v3.6+ の優先順位に昇格。Calibration 根拠は `core/stylometry.md` §13 を参照。 |
-| **3.5.0** | 統計的疑惑区間検出（Stylometric Suspect Zone Detection）。意味アンカー抽出とパターン処理フェーズの間に新たな 4.6 ステップを挿入。文長変動係数（burstiness CV）と MATTR（window=50）シグナルにより、28 パターンカタログが見逃す疑惑段落を特定。対応言語：v1 = ko + en、zh/ja は v2 ロードマップに保留。LLM 入力に `<suspect-zones>` メタブロックと `«P{n} SUSPECT»` 段落プレフィックスを内部作業メモリとして渡す。新規ファイル：`core/stylometry.md`（アルゴリズムリファレンス）。ロードマップ：n-gram 反復度、perplexity 近似、外部 detector 連携。 |
-| **3.4.0** | 無料利用オプションの拡張 + 4つの新規パターン。新機能：codex-cli バックエンド（API キー不要 — ローカル `codex` CLI の ChatGPT OAuth を使用）、`patina auth status/login` サブコマンドと API キー未設定時の自動フォールバック、Gemini/Groq/Together AI 無料ティア向け `--provider` ショートカット。パターン追加：#30（修辞疑問の段落冒頭）と #31（結論シグナルワード）を4言語すべてに追加、KO `보다` / JA `より` 比較副詞の濫用 (#32)。デフォルトプロファイルを他のプロファイルと同等の構造に拡張。GitHub Actions CI ワークフロー追加。 |
-| **3.3.0** | 意味保持システム（MPS）：人間化後のテキストが原文の意図と主張を維持することを保証 |
-| **3.2.0** | Ouroboros スコアリングシステム：パターンベースのAI類似度スコアリング（0-100）、カテゴリ別内訳付き `--score` モード、設定可能な終了条件（目標/停滞/後退/最大イテレーション数）付き `--ouroboros` 反復自己改善ループ |
-| **3.1.1** | MAX モード信頼性修正：実行ごとの一時ディレクトリ、モデル単位の待機ループ＋タイムアウト処理、Gemini stdin ディスパッチ、Codex CLI 互換性（`--output-last-message`、`-q` なし） |
-| **3.1.0** | MAX モード：インストール可能な `/patina-max` スキルエントリポイント＋プロバイダ対応ディスパッチ（Claude/Gemini は `claude -p` / `gemini -p`、Codex は `codex exec`） |
-| **3.0.0** | 多言語フレームワーク、`--lang` フラグ、blader/humanizer からの英語パターン（24）、スキル名を `patina` に変更 |
-| **2.2.0** | 外来語多用パターン（#28）、バッジ、リポジトリ名変更 |
-| **2.1.0** | 2フェーズパイプライン、構造パターン、blog プロファイル、サンプル |
-| **2.0.0** | プラグインアーキテクチャ：パターンパック、プロファイル、設定 |
-| **1.0.0** | 韓国語初期対応（24パターン） |
+| バージョン | 主な変更 |
+|----------|---------|
+| **3.8.0** | 韓国語 lexicon 再キュレーション（NamuWiki vs Claude 生成 KO の差分頻度マイニング）。韓国語 AI 検出：83% → **91%**（+8pp）。誤検出回帰 0pp。 |
+| **3.7.0** | AI 語彙オーバーラップ信号（4.7 ステップ）。英 108 + 韓 90 項目。Hot ルールを 3 信号 OR に拡張。HC3 ChatGPT AI 検出：66% → **76%** — v3.5.1 以降初の Pareto 突破。 |
+| **3.5.1** | 文体統計 calibration パッチ — burstiness 閾値 0.25 → 0.30。AI 検出 57% → 66%。 |
+| **3.5.0** | 文体統計疑似区間検出（4.6 ステップ）— burstiness CV + MATTR。v1 = ko + en。 |
+| **3.4.0** | codex-cli バックエンド（API キー不要）、`patina auth` サブコマンド、無料ティアプロバイダショートカット。パターン #30、#31 を 4 言語すべてに追加、KO/JA に #32。CI ワークフロー追加。 |
+| **3.3.0** | 意味保持システム（MPS）。 |
+| **3.2.0** | Ouroboros スコアリング + 反復自己改善ループ。 |
+| **3.1.x** | MAX モード信頼性、マルチ CLI ディスパッチ（claude / codex / gemini）。 |
+| **3.0.0** | 多言語フレームワーク、`--lang` フラグ、blader/humanizer からの英語パターン、スキル名を `patina` に変更。 |
+| **2.x** | プラグインアーキテクチャ、blog プロファイル、構造パターン、外来語パターン（#28）。 |
+| **1.0.0** | 韓国語初期対応（24 パターン）。 |
+
+<details>
+<summary><b>詳細リリースノート</b></summary>
+
+#### 3.8.0 — データ駆動の韓国語 lexicon マイニング
+
+v3.7.0 の韓国語 lexicon は author 直感キュレーションで AI 検出に +1pp のみ寄与（英語の +10pp に対して）。v3.8.0 は NamuWiki 人間散文との差分頻度でコーパスを採掘し、AI が頻用するが人間がほぼ使わない 12 個の register marker を発見。
+
+採掘ルール（`.omc/research/v3_8_ko_lexicon_mine.py`）：
+- 어절 doc-frequency：AI count ≥ 4 AND 比率 AI / (human + 1) ≥ 4.0
+- ドメインアーティファクト除外（固有名詞、年トークン）
+- register marker のみ保持（受動評価動詞、百科事典的動詞、数量表現の足場）
+
+追加項目：
+- Strict（8 個）：`평가된다`、`꼽힌다`、`가리킨다`、`사례로`、`다수의`、`알려져`、`일컬어진다`、`평가받다`
+- Phrase（4 個）：`가운데 하나로`、`자리 잡았다`、`알려져 있다`、`~의 사례로`
+
+500 段落コーパスでの結果：ko/AI catch 83% → **91%**（+8pp）。NamuWiki human FP は **13% 維持** — 回帰 0pp、clean Pareto 改善。
+
+#### 3.7.0 — AI 語彙オーバーラップ信号
+
+フラット辞書（`lexicon/ai-en.md` 108 項目、`lexicon/ai-ko.md` 90 項目）で 28-パターンカタログが明示的に捕捉できない AI 特有のフレーズを照合。1,000 トークンあたりの出現密度を計算し、4.6 ステップ hot ルールを 3-signal OR（burstiness OR MATTR OR lexicon_density > 2.0）に拡張。
+
+400 段落キャリブレーション：AI 検出 66% → **76%**、HC3 human FP 12%→19%、Wikipedia FP 23%→**25%** 境界、NamuWiki FP 11%→13%（+5pp ガード内）。全 acceptance 基準を満たす — v3.5.1 Pareto 壁の初突破。
+
+Drop list（eval 後）：`intersection`、`principles`、`mindset`、`iterative`、`responsible`、`methodologies`、`redefine`、`accessible`、`equitable`、`one of the most`、`in conjunction with`、`the power of` — 学術 prose の発火率が AI 発火率より高かった。
+
+v3.6 はスキップ（n-gram drop、§15 negative finding）。
+
+#### 3.5.1 — 文体統計 calibration パッチ
+
+300 段落の外部検証後、`stylometry.burstiness.bands.low` を 0.25 → 0.30 に引き上げ。v3.5.0 は実 AI の 57% しか検出できず — v3.5.1 は 66% 検出 + HC3 human FP 12% + Wikipedia FP 23%。
+
+Sweep の結果、AI ≥70% AND max FP ≤20% を同時に満たす閾値の組み合わせは存在しない — Wikipedia の百科事典的スタイルは自然に均一な文長を持つため。MATTR 閾値は 0.55 維持。v3.5.x は LLM への助言マーカーであり、単独決定ゲートではない。
+
+</details>
+
+---
 
 ## ライセンス
 

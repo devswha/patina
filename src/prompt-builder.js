@@ -63,8 +63,9 @@ export function buildPrompt({ config, patterns, profile, voice, scoring, text, m
   return prompt;
 }
 
-function buildRewriteInstructions(structurePacks, lexicalPacks) {
-  let inst = `Follow the 3-Phase pipeline:\n\n`;
+function buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAudit = true } = {}) {
+  const phaseCount = includeSelfAudit ? 3 : 2;
+  let inst = `Follow the ${phaseCount}-Phase pipeline:\n\n`;
 
   if (structurePacks.length > 0) {
     inst += `### Phase 1: Structure Scan\n\n`;
@@ -91,15 +92,23 @@ function buildRewriteInstructions(structurePacks, lexicalPacks) {
   inst += `5. Inject personality per voice guidelines\n`;
   inst += `6. Respect blocklist/allowlist and pattern overrides\n\n`;
 
-  inst += `### Phase 3: Self-Audit\n\n`;
-  inst += `1. Scan for remaining AI tells\n`;
-  inst += `2. Verify no polarity inversions (negation → positive or vice versa)\n`;
-  inst += `3. Ensure Phase 1 corrections were not reverted in Phase 2\n`;
-  inst += `4. Final check: meaning preserved?\n\n`;
+  if (includeSelfAudit) {
+    inst += `### Phase 3: Self-Audit\n\n`;
+    inst += `1. Scan for remaining AI tells\n`;
+    inst += `2. Verify no polarity inversions (negation → positive or vice versa)\n`;
+    inst += `3. Ensure Phase 1 corrections were not reverted in Phase 2\n`;
+    inst += `4. Final check: meaning preserved?\n\n`;
 
-  inst += `Provide:\n`;
-  inst += `1. A brief list of what still looks AI-written (if anything)\n`;
-  inst += `2. The final humanized text\n`;
+    inst += `Provide:\n`;
+    inst += `1. A brief list of what still looks AI-written (if anything)\n`;
+    inst += `2. The final humanized text\n`;
+  } else {
+    // Self-audit suppressed: external evaluators (scoreText, scoreMPS,
+    // scoreFidelity) handle AI-tell detection, polarity, and meaning checks
+    // downstream. Output only the rewritten text so iterations stay clean.
+    inst += `Output ONLY the final humanized text. Do not include analysis, ` +
+      `pattern lists, or commentary — downstream evaluators handle that.\n`;
+  }
 
   return inst;
 }
@@ -171,7 +180,10 @@ function buildOuroborosInstructions(config, structurePacks, lexicalPacks) {
   inst += `      - fidelity < ${fidelityFloor} → fidelity violation → rollback\n`;
   inst += `      - MPS < ${mpsFloor} → MPS violation → rollback\n`;
   inst += `4. Output iteration log and final text\n\n`;
-  inst += buildRewriteInstructions(structurePacks, lexicalPacks);
+  // Skip Phase 3 self-audit: each iteration runs through external evaluators
+  // (scoreText, scoreMPS, scoreFidelity) in src/ouroboros.js, so an in-prompt
+  // self-audit duplicates work and inflates token cost.
+  inst += buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAudit: false });
 
   return inst;
 }

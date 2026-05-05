@@ -20,6 +20,7 @@ node_modules/
 # OpenClaw / Claude Code workspace files (runtime-specific, not part of the skill)
 .openclaw/
 .workclaw/
+.claude/
 AGENTS.md
 BOOTSTRAP.md
 CLAUDE.md

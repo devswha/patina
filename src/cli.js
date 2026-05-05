@@ -3,7 +3,7 @@ import { loadPatterns, loadProfile, loadCoreFile, loadInputText } from './loader
 import { buildPrompt } from './prompt-builder.js';
 import { selectBackend, listBackends } from './backends/index.js';
 import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js';
-import { validateBaseURL, applyInsecureBaseURLOptIn } from './security.js';
+import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from './security.js';
 import { formatOutput } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
@@ -42,13 +42,15 @@ export async function main(args) {
   }
 
   const provider = selectProvider(parsed.provider);
+  const apiKey = resolveApiKey(parsed);
   const resolved = resolveProviderConfig({
     provider,
-    apiKey: parsed.apiKey,
+    apiKey,
     baseURL: parsed.baseURL,
     model: parsed.model,
   });
   applyInsecureBaseURLOptIn(parsed);
+  applyPrivateBaseURLOptIn(parsed);
   validateBaseURL(resolved.baseURL);
 
   const config = loadConfig();
@@ -212,6 +214,12 @@ function parseArgs(args) {
       case '--api-key':
         parsed.apiKey = args[++i];
         break;
+      case '--api-key-file':
+        parsed.apiKeyFile = args[++i];
+        break;
+      case '--allow-private-base-url':
+        parsed.allowPrivateBaseURL = true;
+        break;
       case '--base-url':
         parsed.baseURL = args[++i];
         break;
@@ -239,6 +247,38 @@ function parseArgs(args) {
   }
 
   return parsed;
+}
+
+// Resolve the API key, preferring file-based sources to keep the secret out
+// of argv and shell history (CWE-214). Precedence: --api-key-file >
+// PATINA_API_KEY_FILE > --api-key (with deprecation warning) > parsed.apiKey
+// passed through to provider config (env var path stays in providers.js).
+function resolveApiKey(parsed) {
+  const filePath = parsed.apiKeyFile || process.env.PATINA_API_KEY_FILE;
+  if (filePath) {
+    let contents;
+    try {
+      contents = readFileSync(filePath, 'utf8');
+    } catch (err) {
+      throw new Error(`Cannot read --api-key-file ${filePath}: ${err.message}`);
+    }
+    const key = contents.replace(/[\r\n]+$/, '').trim();
+    if (!key) {
+      throw new Error(`API key file ${filePath} is empty`);
+    }
+    if (parsed.apiKey) {
+      console.error('[patina] both --api-key-file and --api-key were provided; using --api-key-file');
+    }
+    return key;
+  }
+  if (parsed.apiKey) {
+    console.error(
+      '[patina] warning: --api-key exposes the secret in shell history and `ps` output.\n' +
+      '         Prefer PATINA_API_KEY env var, --api-key-file <path>, or PATINA_API_KEY_FILE.'
+    );
+    return parsed.apiKey;
+  }
+  return undefined;
 }
 
 async function loadInputs(parsed) {
@@ -346,7 +386,9 @@ Options:
   --outdir <dir>       Save results to directory
   --models <list>      MAX mode: comma-separated model list
   --model <id>         Single model ID (default: gpt-4o)
-  --api-key <key>      API key (or PATINA_API_KEY env)
+  --api-key <key>      API key (DEPRECATED: leaks via ps/shell history; prefer
+                       PATINA_API_KEY env or --api-key-file)
+  --api-key-file <path>  Read API key from file (recommended for shared hosts)
   --base-url <url>     API base URL (or PATINA_API_BASE env)
   --backend <name>     Backend: openai-http (default), codex-cli (no API key)
   --list-backends      List available backends and their availability
@@ -355,11 +397,18 @@ Options:
   --list-providers     List provider presets and which keys are set
   --allow-insecure-base-url  Permit plaintext http:// to non-localhost endpoints
                        (also enabled by PATINA_ALLOW_INSECURE_BASE_URL=1)
+  --allow-private-base-url   Permit base URL pointing at private/IMDS IPs
+                       (also enabled by PATINA_ALLOW_PRIVATE_BASE_URL=1).
+                       Default: refuse to send the API key to RFC 1918 / link-local
+                       hosts to block SSRF to cloud metadata endpoints.
 
 Environment Variables:
   PATINA_API_KEY       API authentication key (any provider)
+  PATINA_API_KEY_FILE  Path to file containing the API key (alt to PATINA_API_KEY)
   PATINA_API_BASE      API base URL (default: https://api.openai.com/v1)
   PATINA_MODEL         Default model ID
+  PATINA_ALLOW_INSECURE_BASE_URL  Set to 1 to permit plain HTTP to non-loopback
+  PATINA_ALLOW_PRIVATE_BASE_URL   Set to 1 to permit private/IMDS base URLs
   GEMINI_API_KEY       Used when --provider gemini
   GROQ_API_KEY         Used when --provider groq
   TOGETHER_API_KEY     Used when --provider together

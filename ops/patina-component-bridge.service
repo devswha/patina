@@ -5,11 +5,16 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/devswha/workspace/patina
-EnvironmentFile=-/home/devswha/workspace/patina/.env
-Environment=PATH=/home/devswha/.local/bin:/home/devswha/.cargo/bin:/home/devswha/.nvm/versions/node/v22.17.1/bin:/usr/local/bin:/usr/bin:/bin
+# %h expands to the user's home directory at runtime (user-mode systemd).
+# Adjust WorkingDirectory if your patina checkout lives elsewhere.
+WorkingDirectory=%h/workspace/patina
+EnvironmentFile=-%h/workspace/patina/.env
+# PATH must include a node binary. NVM users: replace `current` below with
+# the resolved version path (e.g. `%h/.nvm/versions/node/v22.17.1/bin`)
+# or symlink `current` to a maintained version.
+Environment=PATH=%h/.nvm/current/bin:%h/.local/bin:%h/.cargo/bin:/usr/local/bin:/usr/bin:/bin
 ExecStartPre=/bin/sh -c 'test -n "$PATINA_RUNTIME_CLI" && command -v "$PATINA_RUNTIME_CLI" && command -v node'
-ExecStart=/home/devswha/.nvm/versions/node/v22.17.1/bin/node ops/component-bridge.mjs
+ExecStart=/usr/bin/env node ops/component-bridge.mjs
 Restart=always
 RestartSec=5
 TimeoutStopSec=30

@@ -77,7 +77,7 @@ If after 3 scoring-and-revision iterations the score remains > 30, abandon the c
 1. Create branch: `bot/{issue-number}-{slug}` or `bot/{task-type}-{date}`
 2. Make changes (edit markdown, yaml, or scripts as needed)
 3. Apply the appropriate quality gate (see Quality Gates above)
-4. Commit using the repo's Lore commit protocol and append `Co-Authored-By: patina-bot <bot@devswha.dev>`
+4. Commit using the repo's Lore commit protocol and append `Co-Authored-By: patina-bot <patina-bot@example.com>`
 5. **Rebase before PR:**
    - Run: `git fetch origin main && git rebase origin/main`
    - If rebase fails: `git rebase --abort && git checkout main && git branch -D {branch}`

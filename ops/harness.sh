@@ -3,7 +3,9 @@ set -euo pipefail
 
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
-REPO_DIR="/home/devswha/workspace/patina"
+# Resolve repo dir from script location, allow PATINA_REPO_DIR override.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="${PATINA_REPO_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 ENV_FILE="${PATINA_ENV_FILE:-$REPO_DIR/.env}"
 if [ -f "$ENV_FILE" ]; then
   set -a

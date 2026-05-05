@@ -8,6 +8,13 @@ export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${PATINA_ENV_FILE:-$REPO_DIR/.env}"
 if [ -f "$ENV_FILE" ]; then
+  # Tighten .env permissions: it holds the Discord bot token. Default 0644
+  # leaks the token to any local user.
+  current_mode=$(stat -c '%a' "$ENV_FILE" 2>/dev/null || echo "")
+  if [ -n "$current_mode" ] && [ "$current_mode" != "600" ]; then
+    chmod 600 "$ENV_FILE"
+    echo "[bootstrap] tightened $ENV_FILE permissions: $current_mode -> 600" >&2
+  fi
   set -a
   # shellcheck disable=SC1090
   . "$ENV_FILE"
@@ -22,7 +29,7 @@ EVALUATOR_AGENT_ID="${EVALUATOR_AGENT_ID:-evaluator}"
 DISCORD_CHANNEL="${DISCORD_CHANNEL:-}"
 DISCORD_GUILD="${DISCORD_GUILD:-}"
 DISCORD_ALLOWED_USERS="${DISCORD_ALLOWED_USERS:-}"
-RUNTIME_ENFORCE_ALLOWLIST="${RUNTIME_ENFORCE_ALLOWLIST:-false}"
+RUNTIME_ENFORCE_ALLOWLIST="${RUNTIME_ENFORCE_ALLOWLIST:-true}"
 RESTART_GATEWAY="${RESTART_GATEWAY:-true}"
 CLAWHIP_CONFIG="${CLAWHIP_CONFIG:-$HOME/.clawhip/config.toml}"
 RUNTIME_DISCORD_TOKEN="${RUNTIME_DISCORD_TOKEN:-}"

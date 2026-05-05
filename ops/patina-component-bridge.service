@@ -20,5 +20,24 @@ RestartSec=5
 TimeoutStopSec=30
 KillSignal=SIGINT
 
+# Sandbox hardening. User-mode systemd already runs as the user (non-root);
+# these directives reduce blast radius if component-bridge.mjs or the runtime
+# CLI is compromised via Discord input. Adjust if you need extra capabilities.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHostname=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
 [Install]
 WantedBy=default.target

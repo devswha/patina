@@ -27,6 +27,10 @@ export async function invoke({ prompt, timeout = 180000 } = {}) {
     throw new Error('codex-cli backend: prompt must be a non-empty string');
   }
 
+  // Run codex from a fresh temp directory with the read-only sandbox so that
+  // a prompt-injection in user text cannot read the caller's repo or write
+  // arbitrary files. The output file lives inside the same temp dir so codex
+  // can still drop the last message there.
   const dir = mkdtempSync(join(tmpdir(), 'patina-codex-'));
   const outFile = join(dir, 'last-message.txt');
 
@@ -34,8 +38,10 @@ export async function invoke({ prompt, timeout = 180000 } = {}) {
     const proc = spawn('codex', [
       'exec',
       '--skip-git-repo-check',
+      '--sandbox', 'read-only',
+      '-C', dir,
       '--output-last-message', outFile,
-    ], { stdio: ['pipe', 'pipe', 'pipe'] });
+    ], { stdio: ['pipe', 'pipe', 'pipe'], cwd: dir });
 
     let stderr = '';
     proc.stderr.on('data', (chunk) => { stderr += chunk; });

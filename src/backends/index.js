@@ -43,7 +43,7 @@ export function listBackends() {
   });
 }
 
-export function selectBackend({ name, model, hasApiKey } = {}) {
+export function selectBackend({ name, model } = {}) {
   if (name) {
     const backend = REGISTRY[name];
     if (!backend) {
@@ -56,11 +56,9 @@ export function selectBackend({ name, model, hasApiKey } = {}) {
     return { backend: REGISTRY['codex-cli'], autoSelected: false, reason: 'model heuristic' };
   }
 
-  // Auto-fallback: no API key, but codex is installed and authenticated
-  const noKey = hasApiKey === false || (hasApiKey === undefined && !process.env.PATINA_API_KEY);
-  if (noKey && REGISTRY['codex-cli'].isAvailable() && REGISTRY['codex-cli'].isAuthenticated()) {
-    return { backend: REGISTRY['codex-cli'], autoSelected: true, reason: 'no API key; codex authenticated' };
-  }
-
+  // No silent auto-fallback to codex-cli. Sending arbitrary text to a coding
+  // agent is a higher-trust action than calling a plain completion API, so
+  // require an explicit `--backend codex-cli` (or `--model codex*`).
+  // See issue #88.
   return { backend: REGISTRY['openai-http'], autoSelected: false, reason: 'default' };
 }

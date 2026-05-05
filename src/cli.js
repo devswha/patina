@@ -89,6 +89,7 @@ export async function main(args) {
     if (parsed.models) {
       result = await runMaxMode({
         prompt,
+        sourceText: text,
         models: parsed.models,
         apiKey: resolved.apiKey,
         baseURL: resolved.baseURL,

@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, sep } from 'node:path';
 import yaml from 'js-yaml';
+import { validateProfileName } from './security.js';
 
 export function loadFile(path) {
   return readFileSync(path, 'utf8');
@@ -42,7 +43,12 @@ export function loadPatterns(repoRoot, lang, skipPatterns = []) {
 }
 
 export function loadProfile(repoRoot, profileName) {
-  const profilePath = resolve(repoRoot, 'profiles', `${profileName}.md`);
+  validateProfileName(profileName);
+  const profilesDir = resolve(repoRoot, 'profiles');
+  const profilePath = resolve(profilesDir, `${profileName}.md`);
+  if (!profilePath.startsWith(profilesDir + sep)) {
+    throw new Error(`Profile path escaped profiles/: ${profilePath}`);
+  }
   const content = loadFile(profilePath);
   return splitFrontmatter(content);
 }

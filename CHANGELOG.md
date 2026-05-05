@@ -2,6 +2,49 @@
 
 All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 
+## 3.9.0 — 2026-05-05
+
+**Standalone CLI security hardening (issues #88, #89, #90).**
+
+Three boundary-validation fixes for the standalone `patina` CLI. None of them
+affect the `/patina` skill flow inside Claude Code / Codex CLI / Cursor /
+OpenCode (the skill runs prompts, not the Node CLI), but anyone running
+`patina` from a shell — especially against untrusted input text — should
+upgrade.
+
+### Breaking change
+
+- **codex-cli auto-fallback removed.** Previously, when no API key was set
+  and `codex` was installed and authenticated, patina silently used the
+  codex-cli backend. This sent the user's input to a coding agent, where
+  prompt injection in the document body could ask the agent to inspect or
+  modify files. The auto-fallback is now removed; codex-cli requires
+  explicit `--backend codex-cli` (or `--model codex…`). The error message
+  when no API key is found suggests this opt-in.
+
+### Hardening
+
+- **Profile name validation** (`src/security.js`, `src/loader.js`). `--profile`
+  values and the `profile:` field in `.patina.yaml` must now match
+  `/^[A-Za-z0-9_][A-Za-z0-9_-]*$/`. This blocks `../../README` and similar
+  path-traversal reads that would have leaked unrelated `.md` files into the
+  LLM prompt.
+- **Base URL validation** (`src/api.js`, `src/security.js`). Plaintext
+  `http://` is rejected for non-loopback hosts by default. Loopback (`127.*`,
+  `localhost`, `::1`) is still allowed for tests and local mocks. Override
+  with `--allow-insecure-base-url` or `PATINA_ALLOW_INSECURE_BASE_URL=1` for
+  trusted private endpoints. `https://` works as before.
+- **Codex sandbox** (`src/backends/codex-cli.js`). When `--backend codex-cli`
+  is used, codex now runs with `--sandbox read-only` from a fresh tempdir
+  cwd (`-C <tmpdir>`), so a prompt-injected agent cannot reach the caller's
+  repo or write outside the temp dir.
+
+### Migration
+
+If you depended on the silent codex-cli auto-fallback, add `--backend
+codex-cli` to your invocation, or set `PATINA_API_KEY` / `--provider`. Run
+`patina auth status` to see backend availability and how to authenticate.
+
 ## 3.8.0 — 2026-05-04
 
 **Korean lexicon re-curation via differential-frequency mining.**

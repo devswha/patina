@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#クイックスタート)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-3.8.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.9.0-blue)](CHANGELOG.md)
 
 > **AI が書いた文章を、人間が書いたように変えます。**
 
@@ -113,7 +113,7 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 
 ```yaml
 # .patina.default.yaml
-version: "3.8.0"
+version: "3.9.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score

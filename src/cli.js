@@ -3,6 +3,7 @@ import { loadPatterns, loadProfile, loadCoreFile, loadInputText } from './loader
 import { buildPrompt } from './prompt-builder.js';
 import { selectBackend, listBackends } from './backends/index.js';
 import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js';
+import { validateBaseURL, applyInsecureBaseURLOptIn } from './security.js';
 import { formatOutput } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
@@ -47,6 +48,8 @@ export async function main(args) {
     baseURL: parsed.baseURL,
     model: parsed.model,
   });
+  applyInsecureBaseURLOptIn(parsed);
+  validateBaseURL(resolved.baseURL);
 
   const config = loadConfig();
 
@@ -108,7 +111,6 @@ export async function main(args) {
       const { backend, autoSelected, reason } = selectBackend({
         name: parsed.backend,
         model: resolved.model,
-        hasApiKey: Boolean(resolved.apiKey),
       });
 
       if (autoSelected) {
@@ -121,10 +123,12 @@ export async function main(args) {
           msg.push(`(--provider ${provider.name} expects ${provider.apiKeyEnv} or PATINA_API_KEY.)`);
         }
         const codex = listBackends().find((b) => b.name === 'codex-cli');
-        if (codex && codex.available && !codex.authenticated) {
-          msg.push('Or run `codex login` to use the free codex-cli backend (no key needed).');
+        if (codex && codex.available && codex.authenticated) {
+          msg.push('Or pass `--backend codex-cli` to use the codex-cli backend (no key needed).');
+        } else if (codex && codex.available && !codex.authenticated) {
+          msg.push('Or run `codex login`, then pass `--backend codex-cli`.');
         } else if (codex && !codex.available) {
-          msg.push('Or install `codex` from https://github.com/openai/codex to use the free codex-cli backend.');
+          msg.push('Or install `codex` from https://github.com/openai/codex and pass `--backend codex-cli`.');
         }
         throw new Error(msg.join('\n'));
       }
@@ -221,6 +225,9 @@ function parseArgs(args) {
         break;
       case '--list-providers':
         parsed.listProviders = true;
+        break;
+      case '--allow-insecure-base-url':
+        parsed.allowInsecureBaseURL = true;
         break;
       default:
         if (!arg.startsWith('-')) {
@@ -345,6 +352,8 @@ Options:
   --provider <name>    Provider preset: openai, gemini, groq, together
                        (sets base-url + default model + reads <PROVIDER>_API_KEY)
   --list-providers     List provider presets and which keys are set
+  --allow-insecure-base-url  Permit plaintext http:// to non-localhost endpoints
+                       (also enabled by PATINA_ALLOW_INSECURE_BASE_URL=1)
 
 Environment Variables:
   PATINA_API_KEY       API authentication key (any provider)
@@ -359,8 +368,9 @@ Subcommands:
   patina auth status   Show backend availability and authentication status
   patina auth login    Print per-backend instructions for authenticating
 
-If no API key is set and the codex CLI is installed and authenticated,
-patina automatically uses the codex-cli backend (no key required).
+If no API key is set, pass --backend codex-cli to use a logged-in codex CLI
+(no key required). Auto-fallback was removed in v3.9 to keep agent-mode
+backends opt-in (issue #88).
 `);
 }
 

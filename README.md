@@ -24,6 +24,8 @@ Unlike a generic paraphraser, patina is **pattern-based and auditable**: it show
 
 > **MPS = 100** · cultural transformation ✓ · community building ✓ · meaningful connections ✓ · cross-cultural dialogue ✓
 
+More examples: [Before/After Gallery](docs/EXAMPLES.md). Social preview asset: [patina-before-after.svg](assets/social/patina-before-after.svg).
+
 ## At a Glance
 
 |  |  |

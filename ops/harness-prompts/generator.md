@@ -47,7 +47,7 @@ The harness message will provide:
 - Append this trailer exactly:
 
 ```text
-Co-Authored-By: patina-bot <bot@devswha.dev>
+Co-Authored-By: patina-bot <patina-bot@example.com>
 ```
 
 - Do not push.

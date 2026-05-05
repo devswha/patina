@@ -100,7 +100,7 @@ cat $RUN_DIR/result.json
 | 항목 | 값 |
 |---|---|
 | Agent ID | `planner` |
-| Workspace | `/home/devswha/workspace/patina` |
+| Workspace | `${PATINA_REPO_DIR}` (default: repo checkout root) |
 | Model | `cliproxy/claude-opus-4-6` |
 | 트리거 | 오케스트레이터가 호출 |
 | 타임아웃 | 5분 |
@@ -148,7 +148,7 @@ cat $RUN_DIR/result.json
 | 항목 | 값 |
 |---|---|
 | Agent ID | `generator` |
-| Workspace | `/home/devswha/workspace/patina` |
+| Workspace | `${PATINA_REPO_DIR}` (default: repo checkout root) |
 | Model | `cliproxy/claude-opus-4-6` |
 | 트리거 | 오케스트레이터가 spec.md와 함께 호출 |
 | 타임아웃 | 20분 |
@@ -166,7 +166,7 @@ cat $RUN_DIR/result.json
 - 기존 패턴/코드 스타일 준수
 - 변경 완료 후 자체 검증 (lint, syntax check 등)
 - review.md가 있으면 피드백 반영하여 수정
-- 커밋 메시지는 Lore 스타일 + `Co-Authored-By: patina-bot <bot@devswha.dev>`
+- 커밋 메시지는 Lore 스타일 + `Co-Authored-By: patina-bot <patina-bot@example.com>`
 
 ---
 
@@ -177,7 +177,7 @@ cat $RUN_DIR/result.json
 | 항목 | 값 |
 |---|---|
 | Agent ID | `evaluator` |
-| Workspace | `/home/devswha/workspace/patina` |
+| Workspace | `${PATINA_REPO_DIR}` (default: repo checkout root) |
 | Model | `cliproxy/claude-opus-4-6` |
 | 트리거 | 오케스트레이터가 diff.patch와 함께 호출 |
 | 타임아웃 | 10분 |

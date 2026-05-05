@@ -1,0 +1,7 @@
+# Canonical author mapping for git shortlog / GitHub UI display.
+# All listed identities below belong to the maintainer (devswha).
+# Format: <canonical-name> <canonical-email> <historical-name> <historical-email>
+
+devswha <devswha@gmail.com> Sangwoo Ha <devswha@gmail.com>
+devswha <devswha@gmail.com> Hako <devswha@gmail.com>
+devswha <devswha@gmail.com> Calvin Ha <calvin-ha_Noul@noul.kr>

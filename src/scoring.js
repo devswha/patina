@@ -1,22 +1,50 @@
 import { callLLM } from './api.js';
 
-function extractJson(text) {
-  if (!text) return null;
+class SchemaError extends Error {
+  constructor(message, raw) {
+    super(message);
+    this.name = 'SchemaError';
+    this.raw = raw;
+  }
+}
 
+function parseStrictJson(text) {
+  if (!text) throw new SchemaError('Empty response', text);
+
+  let body = text;
   const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (codeBlockMatch) {
-    text = codeBlockMatch[1];
+  if (codeBlockMatch) body = codeBlockMatch[1];
+  body = body.trim();
+
+  const firstBrace = body.indexOf('{');
+  const lastBrace = body.lastIndexOf('}');
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    throw new SchemaError('No JSON object found', text);
   }
 
-  text = text.trim();
-
-  const firstBrace = text.indexOf('{');
-  const lastBrace = text.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    return text.slice(firstBrace, lastBrace + 1);
+  try {
+    return JSON.parse(body.slice(firstBrace, lastBrace + 1));
+  } catch (e) {
+    throw new SchemaError(`JSON parse failed: ${e.message}`, text);
   }
+}
 
-  return null;
+// Call LLM and parse strict JSON. On schema failure, retry once at temperature 0.
+async function callAndParseJson({ prompt, apiKey, baseURL, model, temperature = 0.1 }) {
+  let lastError;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const t = attempt === 0 ? temperature : 0;
+    const result = await callLLM({ prompt, apiKey, baseURL, model, temperature: t });
+    try {
+      return { parsed: parseStrictJson(result), raw: result };
+    } catch (e) {
+      lastError = e;
+      if (attempt === 0) {
+        console.error(`[patina] score JSON parse failed (${e.message}); retrying at temperature 0`);
+      }
+    }
+  }
+  throw lastError;
 }
 
 export async function scoreText({ text, config, patterns, apiKey, baseURL, model }) {
@@ -53,22 +81,12 @@ Return ONLY a JSON object in this exact format (no markdown, no explanation):
 ${text}
 `;
 
-  const result = await callLLM({
-    prompt,
-    apiKey,
-    baseURL,
-    model,
-    temperature: 0.1,
-  });
-
   try {
-    const cleaned = extractJson(result);
-    if (cleaned) {
-      return JSON.parse(cleaned);
-    }
-    return { raw: result, overall: null };
-  } catch {
-    return { raw: result, overall: null };
+    const { parsed } = await callAndParseJson({ prompt, apiKey, baseURL, model });
+    return parsed;
+  } catch (e) {
+    console.error(`[patina] scoreText schema failure after retry: ${e.message}`);
+    return { overall: null, error: 'schema-failure', raw: e.raw };
   }
 }
 
@@ -104,22 +122,12 @@ ${original}
 ${rewritten}
 `;
 
-  const result = await callLLM({
-    prompt,
-    apiKey,
-    baseURL,
-    model,
-    temperature: 0.1,
-  });
-
   try {
-    const cleaned = extractJson(result);
-    if (cleaned) {
-      return JSON.parse(cleaned);
-    }
-    return { mps: null, raw: result };
-  } catch {
-    return { mps: null, raw: result };
+    const { parsed } = await callAndParseJson({ prompt, apiKey, baseURL, model });
+    return parsed;
+  } catch (e) {
+    console.error(`[patina] scoreMPS schema failure after retry: ${e.message}`);
+    return { mps: null, error: 'schema-failure', raw: e.raw };
   }
 }
 
@@ -174,12 +182,13 @@ ${rewritten}
 `;
 
   let parsed = null;
+  let schemaError = null;
   try {
-    const result = await callLLM({ prompt, apiKey, baseURL, model, temperature: 0.1 });
-    const cleaned = extractJson(result);
-    if (cleaned) parsed = JSON.parse(cleaned);
-  } catch {
-    parsed = null;
+    const result = await callAndParseJson({ prompt, apiKey, baseURL, model });
+    parsed = result.parsed;
+  } catch (e) {
+    console.error(`[patina] scoreFidelity schema failure after retry: ${e.message}`);
+    schemaError = e;
   }
 
   const claims = clamp03(parsed?.claims_preserved);
@@ -197,6 +206,7 @@ ${rewritten}
     length_ratio_pct: lengthRatio,
     rationale: parsed?.rationale ?? null,
     fidelity: Math.round(fidelity * 10) / 10,
+    ...(schemaError ? { error: 'schema-failure', raw: schemaError.raw } : {}),
   };
 }
 

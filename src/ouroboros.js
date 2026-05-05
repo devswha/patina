@@ -55,6 +55,14 @@ export async function runOuroboros({
   let previousScore = initialScore;
   let bestText = text;
   let bestScore = initialScore;
+  // Original is identical to itself, so its fidelity is 100 by definition.
+  // This gives iteration 1 a valid combined baseline to detect regressions against.
+  let previousCombined = combinedScore({
+    aiLikeness: initialScore,
+    fidelity: 100,
+    profile: config.profile,
+    config,
+  });
 
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
     const prompt = buildPrompt({
@@ -99,6 +107,7 @@ export async function runOuroboros({
       profile: config.profile,
       config,
     });
+    const combinedDelta = previousCombined - combined;
 
     let reason = '';
     let shouldStop = false;
@@ -107,8 +116,8 @@ export async function runOuroboros({
     if (currentScore <= targetScore) {
       reason = 'Target met';
       shouldStop = true;
-    } else if (delta < 0) {
-      reason = 'Regression';
+    } else if (combinedDelta < 0) {
+      reason = `Regression (combined ${previousCombined} → ${combined})`;
       shouldStop = true;
       shouldRollback = true;
     } else if (fidelity < fidelityFloor) {
@@ -135,6 +144,7 @@ export async function runOuroboros({
       fidelity,
       mps,
       combined,
+      combinedDelta,
       reason: shouldStop ? reason : '',
     });
 
@@ -144,6 +154,7 @@ export async function runOuroboros({
     } else {
       currentText = humanized;
       previousScore = currentScore;
+      previousCombined = combined;
 
       if (currentScore < bestScore) {
         bestText = humanized;

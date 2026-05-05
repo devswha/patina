@@ -1,7 +1,7 @@
 import { callLLMMultiple } from './api.js';
 import { scoreText, scoreMPS } from './scoring.js';
 
-export async function runMaxMode({ prompt, models, apiKey, baseURL, config, patterns }) {
+export async function runMaxMode({ prompt, sourceText, models, apiKey, baseURL, config, patterns }) {
   console.error(`[patina-max] Dispatching to ${models.length} models: ${models.join(', ')}`);
 
   const results = await callLLMMultiple({
@@ -30,7 +30,7 @@ export async function runMaxMode({ prompt, models, apiKey, baseURL, config, patt
     });
 
     const mpsResult = await scoreMPS({
-      original: prompt.split('## Input Text')[1] || '',
+      original: sourceText,
       rewritten: r.result,
       apiKey,
       baseURL,

@@ -8,9 +8,11 @@
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
 [![Version](https://img.shields.io/badge/version-3.9.0-blue)](CHANGELOG.md)
 
-> **AI が書いた文章を、人間が書いたように変えます。**
+> **AI の装飾だけを剥がし、意味はそのまま。**
 
-韓国語・英語・中国語・日本語のテキストから AI 特有の文体パターンを検出して書き換えます。[Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex CLI](https://github.com/openai/codex)、[Cursor](https://cursor.sh)、OpenCode 向けスキル + スタンドアロン Node.js CLI として利用可能。パターンベース・監査可能 — ブラックボックス LLM パラフレーザーではありません。スコアリング式は決定的ですが LLM の severity 判定段階に ±8–10pt の変動があります（[scoring.md §8](core/scoring.md) 参照）。
+韓国語・英語・中国語・日本語のテキストから AI 特有の文体パターンを検出して書き換えます。[Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex CLI](https://github.com/openai/codex)、[Cursor](https://cursor.sh)、OpenCode 向けのスキル、またはスタンドアロン Node.js CLI として動作します。
+
+一般的なパラフレーザーとは違い、patina は **パターンベースで監査可能**です。何を、なぜ変更し、原文の主張が保たれているかを示します。
 
 ## デモ
 
@@ -31,6 +33,7 @@
 | **誤検出率** | 人間文章で 13–25% *(百科事典体の本質的限界、[文書化済み](core/stylometry.md))* |
 | **モード** | rewrite · audit · score · diff · ouroboros |
 | **無料利用** | 可能 — `codex` CLI 経由 (API キー不要) |
+| **決定性** | スコアリング式は決定的、LLM の severity 判定段階に ±8–10pt の変動 ([scoring.md §8](core/scoring.md)) |
 | **ライセンス** | MIT |
 
 ## クイックスタート

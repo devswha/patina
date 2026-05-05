@@ -8,9 +8,11 @@
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
 [![Version](https://img.shields.io/badge/version-3.9.0-blue)](CHANGELOG.md)
 
-> **让 AI 生成的文字读起来像人写的。**
+> **只剥掉 AI 包装，保留原意。**
 
-检测并改写中文、韩文、英文及日文文本中的 AI 写作痕迹。可作为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex CLI](https://github.com/openai/codex)、[Cursor](https://cursor.sh)、OpenCode 技能使用，或作为独立的 Node.js CLI 运行。基于模式、可审计 — 不是黑箱式 LLM 改写器。评分公式是确定性的，但 LLM 严重程度判定阶段有 ±8–10pt 的波动（参见 [scoring.md §8](core/scoring.md)）。
+检测并改写中文、韩文、英文及日文文本中的 AI 写作痕迹。可作为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex CLI](https://github.com/openai/codex)、[Cursor](https://cursor.sh)、OpenCode 的技能使用，或作为独立的 Node.js CLI 运行。
+
+不同于一般的改写器，patina **基于模式且可审计**：会展示改了什么、为什么改、以及原文的主张是否被保留。
 
 ## 效果展示
 
@@ -31,6 +33,7 @@
 | **误检率** | 人类写作 13–25% *(百科风格本质局限，[已记录](core/stylometry.md))* |
 | **模式** | rewrite · audit · score · diff · ouroboros |
 | **免费层** | 支持 — 通过 `codex` CLI（无需 API 密钥） |
+| **确定性** | 评分公式是确定性的；LLM 严重度判定阶段 ±8–10pt 波动（[scoring.md §8](core/scoring.md)） |
 | **许可证** | MIT |
 
 ## 快速开始

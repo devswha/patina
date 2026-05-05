@@ -132,6 +132,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Patterns](docs/PATTERNS.md)** — full 126-pattern catalog
 - **[Authentication](docs/AUTHENTICATION.md)** — backends, providers, free-tier setup
 - **[FAQ](docs/FAQ.md)** — detector-bypass concerns, MPS, false positives, contribution starting points
+- **[Launch Copy](docs/social/patina-launch-copy.md)** — Show HN, Reddit, X, Korean community drafts
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI-lexicon algorithm
 - **[Scoring](core/scoring.md)** — AI-likeness + fidelity + MPS
 - **[Changelog](CHANGELOG.md)** — release notes and methodology

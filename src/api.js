@@ -1,4 +1,4 @@
-import { getRepoRoot } from './config.js';
+import { validateBaseURL } from './security.js';
 
 const DEFAULT_TIMEOUT = 120000;
 const DEFAULT_MAX_RETRIES = 2;
@@ -11,7 +11,9 @@ export async function callLLM({
   temperature = 0.7,
   timeout = DEFAULT_TIMEOUT,
   maxRetries = DEFAULT_MAX_RETRIES,
+  allowInsecureBaseURL = false,
 }) {
+  validateBaseURL(baseURL, { allowInsecure: allowInsecureBaseURL });
   const url = `${baseURL}/chat/completions`;
   const body = {
     model,
@@ -69,9 +71,11 @@ export async function callLLMMultiple({
   baseURL = 'https://api.openai.com/v1',
   temperature = 0.7,
   timeout = DEFAULT_TIMEOUT,
+  allowInsecureBaseURL = false,
   onStart,
   onComplete,
 }) {
+  validateBaseURL(baseURL, { allowInsecure: allowInsecureBaseURL });
   const promises = models.map(async (model) => {
     if (onStart) onStart(model);
     try {
@@ -82,6 +86,7 @@ export async function callLLMMultiple({
         model,
         temperature,
         timeout,
+        allowInsecureBaseURL,
       });
       if (onComplete) onComplete(model, true);
       return { model, result, ok: true };

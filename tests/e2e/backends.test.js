@@ -4,14 +4,14 @@ import { selectBackend, listBackends } from '../../src/backends/index.js';
 import { isAvailable as codexAvailable, isAuthenticated as codexAuthd } from '../../src/backends/codex-cli.js';
 
 describe('Backend Selection', () => {
-  it('selects openai-http by default when API key is present', () => {
-    const { backend, autoSelected } = selectBackend({ hasApiKey: true });
+  it('selects openai-http by default', () => {
+    const { backend, autoSelected } = selectBackend({});
     assert.strictEqual(backend.name, 'openai-http');
     assert.strictEqual(autoSelected, false);
   });
 
-  it('selects openai-http for unrelated models when API key is present', () => {
-    const { backend } = selectBackend({ model: 'gpt-4o', hasApiKey: true });
+  it('selects openai-http for unrelated models', () => {
+    const { backend } = selectBackend({ model: 'gpt-4o' });
     assert.strictEqual(backend.name, 'openai-http');
   });
 
@@ -22,25 +22,25 @@ describe('Backend Selection', () => {
     assert.strictEqual(reason, 'explicit');
   });
 
-  it('selects openai-http when --backend openai-http is explicit even without key', () => {
-    const { backend, autoSelected } = selectBackend({ name: 'openai-http', hasApiKey: false });
+  it('selects openai-http when --backend openai-http is explicit', () => {
+    const { backend, autoSelected } = selectBackend({ name: 'openai-http' });
     assert.strictEqual(backend.name, 'openai-http');
     assert.strictEqual(autoSelected, false);
   });
 
   it('routes --model codex to codex-cli via heuristic', () => {
-    const { backend, reason } = selectBackend({ model: 'codex', hasApiKey: true });
+    const { backend, reason } = selectBackend({ model: 'codex' });
     assert.strictEqual(backend.name, 'codex-cli');
     assert.strictEqual(reason, 'model heuristic');
   });
 
   it('routes --model codex-mini-latest to codex-cli via prefix', () => {
-    const { backend } = selectBackend({ model: 'codex-mini-latest', hasApiKey: true });
+    const { backend } = selectBackend({ model: 'codex-mini-latest' });
     assert.strictEqual(backend.name, 'codex-cli');
   });
 
   it('does not match `codexa` or other false positives', () => {
-    const { backend } = selectBackend({ model: 'codexa-1.0', hasApiKey: true });
+    const { backend } = selectBackend({ model: 'codexa-1.0' });
     assert.strictEqual(backend.name, 'openai-http');
   });
 
@@ -54,22 +54,23 @@ describe('Backend Selection', () => {
   });
 });
 
-describe('Auto-fallback to codex-cli', () => {
-  it('auto-selects codex-cli when no API key and codex is authenticated', { skip: !(codexAvailable() && codexAuthd()) }, () => {
-    const { backend, autoSelected, reason } = selectBackend({ hasApiKey: false });
-    assert.strictEqual(backend.name, 'codex-cli');
-    assert.strictEqual(autoSelected, true);
-    assert.match(reason, /no API key/);
-  });
-
-  it('does NOT auto-select when API key is present', () => {
-    const { backend, autoSelected } = selectBackend({ hasApiKey: true });
+describe('Codex auto-fallback removed (issue #88)', () => {
+  it('does NOT auto-select codex-cli even when codex is installed and authenticated', { skip: !(codexAvailable() && codexAuthd()) }, () => {
+    const { backend, autoSelected } = selectBackend({});
     assert.strictEqual(backend.name, 'openai-http');
     assert.strictEqual(autoSelected, false);
   });
 
-  it('does NOT auto-select when name is explicit', () => {
-    const { autoSelected } = selectBackend({ name: 'openai-http', hasApiKey: false });
+  it('selects openai-http by default when nothing is specified', () => {
+    const { backend, autoSelected, reason } = selectBackend({});
+    assert.strictEqual(backend.name, 'openai-http');
+    assert.strictEqual(autoSelected, false);
+    assert.strictEqual(reason, 'default');
+  });
+
+  it('still routes to codex-cli when --backend codex-cli is explicit', () => {
+    const { backend, autoSelected } = selectBackend({ name: 'codex-cli' });
+    assert.strictEqual(backend.name, 'codex-cli');
     assert.strictEqual(autoSelected, false);
   });
 });

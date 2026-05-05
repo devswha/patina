@@ -8,9 +8,11 @@
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
 [![Version](https://img.shields.io/badge/version-3.8.0-blue)](CHANGELOG.md)
 
-> **AI가 쓴 글을 사람이 쓴 것처럼 바꿔줍니다.**
+> **AI 포장만 벗기고, 의미는 그대로.**
 
-한국어, 영어, 중국어, 일본어 텍스트에서 AI 특유의 글쓰기 패턴을 탐지하고 교정합니다. [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), OpenCode 용 스킬 + 독립형 Node.js CLI 로 사용. 패턴 기반, 감사 가능 — 블랙박스 LLM 패러프레이저가 아닙니다. 스코어링 공식은 결정적이지만 LLM severity 부여 단계는 ±8–10pt 변동이 있습니다 ([scoring.md §8](core/scoring.md) 참조).
+한국어, 영어, 중국어, 일본어 텍스트에서 AI 특유의 글쓰기 패턴을 탐지하고 교정합니다. [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), OpenCode 용 스킬 또는 독립형 Node.js CLI 로 동작합니다.
+
+일반적인 패러프레이저와 달리 patina는 **패턴 기반이고 감사 가능**합니다. 무엇을, 왜 바꿨는지, 그리고 원문의 주장이 보존됐는지를 보여줍니다.
 
 ## 데모
 
@@ -31,6 +33,7 @@
 | **오탐율** | 사람 글에 13–25% *(백과사전체의 본질적 한계, [문서화](core/stylometry.md))* |
 | **모드** | rewrite · audit · score · diff · ouroboros |
 | **무료 사용** | 가능 — `codex` CLI 로그인 시 API 키 불필요 |
+| **결정성** | 스코어링 공식은 결정적이지만 LLM severity 부여 단계는 ±8–10pt 변동 ([scoring.md §8](core/scoring.md)) |
 | **라이선스** | MIT |
 
 ## 빠른 시작

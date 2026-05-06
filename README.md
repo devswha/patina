@@ -30,7 +30,7 @@ More examples: [Before/After Gallery](docs/EXAMPLES.md). Social preview asset: [
 
 |  |  |
 |---|---|
-| **126 patterns** | 32 KO + 31 EN + 31 ZH + 32 JA — see [PATTERNS.md](docs/PATTERNS.md) |
+| **131 patterns** | 37 KO (incl. 5 score-only viral-hook) + 31 EN + 31 ZH + 32 JA — see [PATTERNS.md](docs/PATTERNS.md) |
 | **AI catch rate** | 91% Korean / 76% English (HC3) |
 | **False positives** | 13–25% on human prose *(boundary intrinsic to encyclopedic register, [documented](core/stylometry.md))* |
 | **Modes** | rewrite · audit · score · diff · ouroboros |
@@ -101,6 +101,10 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `--batch` | Treat positional args as a list of files (e.g. `--batch docs/*.md`) |
 
 `patina --help` for the full flag list.
+
+### Score-only patterns
+
+`--score` and `--audit` measure a slightly broader set of signals than `--rewrite` does. The Korean pack `ko-viral-hook` (5 patterns: shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, hyperbolic engagement lexicon) is **detection-only** — it surfaces in the score and audit so the benchmark matches human intuition for SNS-style marketing copy, but `--rewrite`/`--diff`/`--ouroboros` skip it because those signals are often intentional rhetoric. Real-world demos: [`examples/viral-hook/`](examples/viral-hook/).
 
 ## Tones
 

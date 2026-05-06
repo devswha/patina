@@ -28,7 +28,7 @@
 
 |  |  |
 |---|---|
-| **126개 패턴** | 한국어 32 + 영어 31 + 중국어 31 + 일본어 32 — [PATTERNS.md](docs/PATTERNS.md) |
+| **131개 패턴** | 한국어 37 (스코어 전용 viral-hook 5개 포함) + 영어 31 + 중국어 31 + 일본어 32 — [PATTERNS.md](docs/PATTERNS.md) |
 | **AI 탐지율** | 한국어 91% / 영어 76% (HC3) |
 | **오탐율** | 사람 글에 13–25% *(백과사전체의 본질적 한계, [문서화](core/stylometry.md))* |
 | **모드** | rewrite · audit · score · diff · ouroboros |
@@ -100,6 +100,10 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 
 전체 옵션은 `patina --help`.
 
+### 스코어 전용 패턴
+
+`--score`와 `--audit`는 `--rewrite`보다 약간 더 넓은 신호를 측정합니다. 한국어 팩 `ko-viral-hook` (숫자 충격 훅, 클릭베이트 미스터리 종결, 검증 회피 단언, 호흡 최적화 단문 배열, AI 인플루언서 어휘 5개 패턴)은 **탐지 전용**입니다 — score와 audit에는 나타나서 SNS 마케팅 카피에 대한 사용자 직관과 점수가 일치하도록 하지만, `--rewrite`/`--diff`/`--ouroboros`는 이 신호들이 의도된 수사일 수 있어 건너뜁니다. 실제 데모: [`examples/viral-hook/`](examples/viral-hook/).
+
 ## 톤
 
 `--tone` 은 패턴 재작성 위에 적용되는 명명된 보이스 축입니다. 우선순위: `--tone` CLI > `tone:` 설정 > `profile:` 설정.
@@ -160,7 +164,7 @@ max-models: [claude, gemini]
 
 ## 문서
 
-- **[Patterns](docs/PATTERNS.md)** — 126개 패턴 카탈로그
+- **[Patterns](docs/PATTERNS.md)** — 131개 패턴 카탈로그
 - **[Authentication](docs/AUTHENTICATION.md)** — 백엔드, 프로바이더, 무료 티어 설정
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 어휘 알고리즘
 - **[Scoring](core/scoring.md)** — AI 유사도 + 충실도 + MPS

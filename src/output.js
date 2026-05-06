@@ -2,9 +2,47 @@ export function formatOutput(result, mode, _parsed, opts = {}) {
   const tone = opts.tone || null;
   let body = renderBody(result);
   if (mode === 'rewrite' || mode === 'diff' || mode === 'ouroboros') {
-    body = stripSelfAudit(body);
+    // v3.11 Phase 3.1: when --variants > 1 is used, the model emits
+    // [VARIANT n]...[/VARIANT] blocks instead of a single [BODY]. We
+    // detect that shape first and pretty-print the candidates.
+    const variants = extractVariants(body);
+    if (variants.length > 0) {
+      body = formatVariants(variants, body);
+    } else {
+      body = stripSelfAudit(body);
+    }
   }
   return appendToneFooter(body, tone);
+}
+
+// v3.11 Phase 3.1: extract [VARIANT n]...[/VARIANT] blocks from a model
+// response. Returns an array of { id, text } sorted by id, empty if no
+// variant tags are present.
+export function extractVariants(body) {
+  if (!body) return [];
+  const re = /\[VARIANT\s*(\d+)\]\s*\n([\s\S]*?)\n\s*\[\/VARIANT\]/g;
+  const out = [];
+  let m;
+  while ((m = re.exec(body)) !== null) {
+    const id = parseInt(m[1], 10);
+    const text = m[2].trim();
+    if (text) out.push({ id, text });
+  }
+  out.sort((a, b) => a.id - b.id);
+  return out;
+}
+
+function formatVariants(variants, raw) {
+  // Surface each variant with a labeled header so users can copy whichever
+  // voice they want. Strip [SELF_AUDIT] and any tail metadata that follows
+  // the last [/VARIANT] block, but preserve the YAML footer if present.
+  const lastClose = raw.lastIndexOf('[/VARIANT]');
+  const tail = lastClose >= 0
+    ? raw.slice(lastClose + '[/VARIANT]'.length).replace(/\[SELF_AUDIT\][\s\S]*?\[\/SELF_AUDIT\]/g, '').trim()
+    : '';
+  const blocks = variants.map(({ id, text }) => `## Variant ${id}\n\n${text}`);
+  const merged = blocks.join('\n\n');
+  return tail ? `${merged}\n\n${tail}` : merged;
 }
 
 // v3.11 Phase 1.3: parse the model's score table and check that the Weight

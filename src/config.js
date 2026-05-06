@@ -84,9 +84,12 @@ export function resolveTone({ cliTone, configTone, lang }) {
     };
   }
 
-  // zh/ja + explicit named tone → warning + fallback.
-  if ((lang === 'zh' || lang === 'ja') && effective !== 'auto') {
-    const warning = `tone "${effective}" is en/ko-only in v1; falling back to default profile`;
+  // zh/ja + any tone (including auto) → warning + fallback.
+  // Phase 4.5b heuristics only cover ko/en signals; auto on zh/ja would
+  // silently degrade to residual "professional" without useful evidence.
+  if ((lang === 'zh' || lang === 'ja') && effective) {
+    const label = effective === 'auto' ? 'auto-detection' : `tone "${effective}"`;
+    const warning = `${label} is en/ko-only in v1; falling back to default profile`;
     return {
       tone: null,
       tone_source: 'unsupported_language_fallback',

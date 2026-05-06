@@ -39,10 +39,13 @@ function appendToneFooter(body, tone) {
 function hasToneFooter(body) {
   if (!body) return false;
   const tail = body.split(/\r?\n/).slice(-30).join('\n');
-  // Must contain at least one fenced block with a tone: key.
   const m = tail.match(/(^|\n)---\s*\n([\s\S]*?)\n---\s*$/);
   if (!m) return false;
-  return /\btone\s*:/.test(m[2]);
+  const block = m[2];
+  return /\btone\s*:/.test(block)
+    && /\btone_source\s*:/.test(block)
+    && /\btone_evidence\s*:/.test(block)
+    && /\btone_confidence\s*:/.test(block);
 }
 
 function formatMaxModeOutput(result) {

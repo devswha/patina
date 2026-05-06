@@ -1,0 +1,17 @@
+Warning: True color (24-bit) support not detected. Using a terminal with true color enabled will result in a better visual experience.
+Ripgrep is not available. Falling back to GrepTool.
+MCP issues detected. Run /mcp list for status.
+[BODY]
+마케팅을 잘해서 뜬 게 아닙니다. 새벽 3시에 버그를 잡다 머리 쥐어뜯던 개발자들의 그 '가려운 곳'을 제대로 긁어줬기 때문이죠. 엔비디아가 이 이름 없는 오픈소스와 손을 잡은 건 결코 우연이 아닙니다. 실전에서 바로 돈이 되는 도구는 사람들이 먼저 알아보게 되어 있습니다.
+[/BODY]
+
+[SELF_AUDIT]
+'~기 때문임'처럼 딱딱하게 끊기는 어미를 자연스러운 구어체인 '~기 때문이죠'로 수정했습니다. '무명의'를 '이름 없는'으로, '대중'을 '사람들'로 바꾸어 문어체 느낌을 덜어내고 개발 현장의 생동감을 살렸습니다. '핵심적', '기여', '~라고 할 수 있다' 등 나열된 AI 신호 어휘를 배제하고 인과관계를 명확히 유지했습니다.
+[/SELF_AUDIT]
+
+---
+tone: null
+tone_source: profile_only
+tone_evidence: []
+tone_confidence: 1.0
+---

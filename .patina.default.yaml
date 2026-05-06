@@ -1,4 +1,4 @@
-version: "3.10.0"
+version: "3.11.0"
 language: ko              # Korean (default) -- auto-loads all ko-*.md patterns
                           # language: en      -- English -- auto-loads all en-*.md patterns
                           # language: zh      -- Chinese -- auto-loads all zh-*.md patterns
@@ -97,12 +97,13 @@ ouroboros:
       structure: 0.15
       viral-hook: 0.10  # score-only pack (excluded from rewrite)
     en:
-      content: 0.22
-      language: 0.22
-      style: 0.22
-      communication: 0.14
-      filler: 0.10
+      content: 0.20
+      language: 0.20
+      style: 0.20
+      communication: 0.12
+      filler: 0.08
       structure: 0.10
+      viral-hook: 0.10  # score-only pack (excluded from rewrite)
     zh:
       content: 0.20
       language: 0.20

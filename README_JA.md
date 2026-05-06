@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#クイックスタート)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-3.10.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.11.0-blue)](CHANGELOG.md)
 
 > **AI の装飾だけを剥がし、意味はそのまま。**
 
@@ -28,7 +28,7 @@
 
 |  |  |
 |---|---|
-| **131 パターン** | 韓国語 37 (スコア専用 viral-hook 5個を含む) + 英語 31 + 中国語 31 + 日本語 32 — [PATTERNS.md](docs/PATTERNS.md) |
+| **136 パターン** | 韓国語 37 + 英語 36 (各5個のスコア専用 viral-hook を含む) + 中国語 31 + 日本語 32 — [PATTERNS.md](docs/PATTERNS.md) |
 | **AI 検出率** | 韓国語 91% / 英語 76% (HC3) |
 | **誤検出率** | 人間文章で 13–25% *(百科事典体の本質的限界、[文書化済み](core/stylometry.md))* |
 | **モード** | rewrite · audit · score · diff · ouroboros |
@@ -154,7 +154,7 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 
 ```yaml
 # .patina.default.yaml
-version: "3.10.0"
+version: "3.11.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
@@ -166,7 +166,7 @@ max-models: [claude, gemini]
 
 ## ドキュメント
 
-- **[Patterns](docs/PATTERNS.md)** — 131 パターンカタログ
+- **[Patterns](docs/PATTERNS.md)** — 136 パターンカタログ
 - **[Authentication](docs/AUTHENTICATION.md)** — バックエンド、プロバイダ、無料ティア設定
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 語彙アルゴリズム
 - **[Scoring](core/scoring.md)** — AI 類似度 + 忠実度 + MPS

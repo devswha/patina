@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#빠른-시작)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-3.10.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.11.0-blue)](CHANGELOG.md)
 
 > **AI 포장만 벗기고, 의미는 그대로.**
 
@@ -28,7 +28,7 @@
 
 |  |  |
 |---|---|
-| **131개 패턴** | 한국어 37 (스코어 전용 viral-hook 5개 포함) + 영어 31 + 중국어 31 + 일본어 32 — [PATTERNS.md](docs/PATTERNS.md) |
+| **136개 패턴** | 한국어 37 + 영어 36 (각 5개 스코어 전용 viral-hook 포함) + 중국어 31 + 일본어 32 — [PATTERNS.md](docs/PATTERNS.md) |
 | **AI 탐지율** | 한국어 91% / 영어 76% (HC3) |
 | **오탐율** | 사람 글에 13–25% *(백과사전체의 본질적 한계, [문서화](core/stylometry.md))* |
 | **모드** | rewrite · audit · score · diff · ouroboros |
@@ -152,7 +152,7 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 
 ```yaml
 # .patina.default.yaml
-version: "3.10.0"
+version: "3.11.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
@@ -164,7 +164,7 @@ max-models: [claude, gemini]
 
 ## 문서
 
-- **[Patterns](docs/PATTERNS.md)** — 131개 패턴 카탈로그
+- **[Patterns](docs/PATTERNS.md)** — 136개 패턴 카탈로그
 - **[Authentication](docs/AUTHENTICATION.md)** — 백엔드, 프로바이더, 무료 티어 설정
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 어휘 알고리즘
 - **[Scoring](core/scoring.md)** — AI 유사도 + 충실도 + MPS

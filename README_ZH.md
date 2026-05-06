@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#快速开始)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-3.10.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.11.0-blue)](CHANGELOG.md)
 
 > **只剥掉 AI 包装，保留原意。**
 
@@ -28,7 +28,7 @@
 
 |  |  |
 |---|---|
-| **131 个模式** | 韩文 37 (含5个仅评分的 viral-hook) + 英文 31 + 中文 31 + 日文 32 — [PATTERNS.md](docs/PATTERNS.md) |
+| **136 个模式** | 韩文 37 + 英文 36 (各含5个仅评分的 viral-hook) + 中文 31 + 日文 32 — [PATTERNS.md](docs/PATTERNS.md) |
 | **AI 检出率** | 韩文 91% / 英文 76% (HC3) |
 | **误检率** | 人类写作 13–25% *(百科风格本质局限，[已记录](core/stylometry.md))* |
 | **模式** | rewrite · audit · score · diff · ouroboros |
@@ -154,7 +154,7 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 
 ```yaml
 # .patina.default.yaml
-version: "3.10.0"
+version: "3.11.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
@@ -166,7 +166,7 @@ max-models: [claude, gemini]
 
 ## 文档
 
-- **[Patterns](docs/PATTERNS.md)** — 131 个模式目录
+- **[Patterns](docs/PATTERNS.md)** — 136 个模式目录
 - **[Authentication](docs/AUTHENTICATION.md)** — 后端、服务商、免费层设置
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 词汇算法
 - **[Scoring](core/scoring.md)** — AI 相似度 + 忠实度 + MPS

@@ -58,6 +58,7 @@ export async function main(args) {
   const config = loadConfig(configPath);
   const startedAt = new Date().toISOString();
   const manifestResults = [];
+  const manifestOutputs = [];
 
   if (parsed.lang) config.language = parsed.lang;
   if (parsed.profile) config.profile = parsed.profile;
@@ -164,7 +165,7 @@ export async function main(args) {
         prompt,
         outputRef: { kind: 'file', name: outputName },
       });
-      manifestResults[manifestResults.length - 1]._content = output;
+      manifestOutputs.push({ name: outputName, content: output });
     }
 
     if (parsed.batch) {
@@ -186,14 +187,14 @@ export async function main(args) {
       configPath: configPath ?? null,
       config,
       patterns,
-      results: manifestResults.map(({ _content, ...r }) => r),
+      results: manifestResults,
       startedAt,
     });
-    const outputs = manifestResults.map(({ outputRef, _content }) => ({
-      name: outputRef.name,
-      content: _content,
-    }));
-    const manifestPath = writeManifest(resolve(process.cwd(), parsed.saveRun), manifest, outputs);
+    const manifestPath = writeManifest(
+      resolve(process.cwd(), parsed.saveRun),
+      manifest,
+      manifestOutputs
+    );
     console.error(`[patina] wrote manifest to ${manifestPath}`);
   }
 }

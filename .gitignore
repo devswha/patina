@@ -34,3 +34,6 @@ memory/
 
 # Marketing bot workspace template (internal ops)
 ops/marketing-workspace-template/
+
+# Generated benchmark artifacts (regenerated per `npm run benchmark`)
+tests/quality/results.json

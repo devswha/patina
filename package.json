@@ -8,7 +8,10 @@
     "patina": "bin/patina.js"
   },
   "scripts": {
-    "test": "node --test tests/e2e/*.test.js",
+    "test": "node --test tests/unit/*.test.js tests/e2e/*.test.js",
+    "test:unit": "node --test tests/unit/*.test.js",
+    "test:e2e": "node --test tests/e2e/*.test.js",
+    "benchmark": "node tests/quality/benchmark.mjs",
     "bot": "bash ops/harness.sh",
     "marketing:runtime:bootstrap": "bash ops/marketing-runtime-bootstrap.sh",
     "marketing:runtime:status": "bash ops/marketing-runtime-cli.sh status",

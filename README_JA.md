@@ -28,7 +28,7 @@
 
 |  |  |
 |---|---|
-| **126 パターン** | 韓国語 32 + 英語 31 + 中国語 31 + 日本語 32 — [PATTERNS.md](docs/PATTERNS.md) |
+| **131 パターン** | 韓国語 37 (スコア専用 viral-hook 5個を含む) + 英語 31 + 中国語 31 + 日本語 32 — [PATTERNS.md](docs/PATTERNS.md) |
 | **AI 検出率** | 韓国語 91% / 英語 76% (HC3) |
 | **誤検出率** | 人間文章で 13–25% *(百科事典体の本質的限界、[文書化済み](core/stylometry.md))* |
 | **モード** | rewrite · audit · score · diff · ouroboros |
@@ -102,6 +102,10 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 
 全オプションは `patina --help`。
 
+### スコア専用パターン
+
+`--score`と`--audit`は`--rewrite`より少し広い範囲のシグナルを測定します。韓国語パック `ko-viral-hook`(数字ショックフック、クリックベイト末尾、出典回避の権威主張、息継ぎ最適化の短文羅列、誇張エンゲージメント語彙の5パターン)は**検出専用**です — スコアと監査に現れることでSNSマーケティングコピーに対するユーザーの直感とベンチマークを一致させますが、これらのシグナルは意図的な修辞であることが多いため `--rewrite`/`--diff`/`--ouroboros` は対象外です。実例: [`examples/viral-hook/`](examples/viral-hook/).
+
 ## トーン
 
 `--tone` はパターン書き換えの上に重ねる、名前付きの声色軸です。優先順位：`--tone` CLI > `tone:` 設定 > `profile:` 設定。
@@ -162,7 +166,7 @@ max-models: [claude, gemini]
 
 ## ドキュメント
 
-- **[Patterns](docs/PATTERNS.md)** — 126 パターンカタログ
+- **[Patterns](docs/PATTERNS.md)** — 131 パターンカタログ
 - **[Authentication](docs/AUTHENTICATION.md)** — バックエンド、プロバイダ、無料ティア設定
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 語彙アルゴリズム
 - **[Scoring](core/scoring.md)** — AI 類似度 + 忠実度 + MPS

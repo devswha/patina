@@ -28,7 +28,7 @@
 
 |  |  |
 |---|---|
-| **126 个模式** | 韩文 32 + 英文 31 + 中文 31 + 日文 32 — [PATTERNS.md](docs/PATTERNS.md) |
+| **131 个模式** | 韩文 37 (含5个仅评分的 viral-hook) + 英文 31 + 中文 31 + 日文 32 — [PATTERNS.md](docs/PATTERNS.md) |
 | **AI 检出率** | 韩文 91% / 英文 76% (HC3) |
 | **误检率** | 人类写作 13–25% *(百科风格本质局限，[已记录](core/stylometry.md))* |
 | **模式** | rewrite · audit · score · diff · ouroboros |
@@ -102,6 +102,10 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 
 完整选项请运行 `patina --help`。
 
+### 仅评分模式
+
+`--score` 和 `--audit` 测量的信号范围比 `--rewrite` 略广。韩文模式包 `ko-viral-hook`（数字震撼钩子、标题党悬念结尾、回避验证的权威断言、呼吸优化短句堆叠、夸张互动词汇 共5个模式）为**仅检测**模式 — 它会出现在评分和审计中，使基准与用户对 SNS 营销文案的直觉一致，但 `--rewrite`/`--diff`/`--ouroboros` 会跳过它们，因为这些信号往往是有意的修辞。实例: [`examples/viral-hook/`](examples/viral-hook/).
+
 ## 语调
 
 `--tone` 是叠加在模式改写之上的具名声音轴。优先级：`--tone` CLI > `tone:` 配置 > `profile:` 配置。
@@ -162,7 +166,7 @@ max-models: [claude, gemini]
 
 ## 文档
 
-- **[Patterns](docs/PATTERNS.md)** — 126 个模式目录
+- **[Patterns](docs/PATTERNS.md)** — 131 个模式目录
 - **[Authentication](docs/AUTHENTICATION.md)** — 后端、服务商、免费层设置
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 词汇算法
 - **[Scoring](core/scoring.md)** — AI 相似度 + 忠实度 + MPS

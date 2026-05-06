@@ -260,3 +260,31 @@ test('formatOutput: renders variants as labeled headings', () => {
   assert.ok(!out.includes('[VARIANT'));
   assert.ok(!out.includes('SELF_AUDIT'));
 });
+
+// --- isShortText (v3.11 Phase 3.2) ---
+
+import { isShortText } from '../../src/prompt-builder.js';
+
+test('isShortText: empty/short → true', () => {
+  assert.equal(isShortText(''), true);
+  assert.equal(isShortText('a'), true);
+  assert.equal(isShortText('짧은 글입니다.'), true);
+});
+
+test('isShortText: ≤200 non-whitespace chars → true', () => {
+  // 199 chars of 'a' + spaces — non-whitespace count ≤ 200
+  assert.equal(isShortText('a'.repeat(199)), true);
+  assert.equal(isShortText('a'.repeat(200)), true);
+});
+
+test('isShortText: >200 chars but ≤3 paragraphs → true', () => {
+  const para = 'a'.repeat(80);
+  const text = `${para}\n\n${para}\n\n${para}`; // 3 paragraphs, 240 chars
+  assert.equal(isShortText(text), true);
+});
+
+test('isShortText: >200 chars AND ≥4 paragraphs → false', () => {
+  const para = 'a'.repeat(80);
+  const text = `${para}\n\n${para}\n\n${para}\n\n${para}`;
+  assert.equal(isShortText(text), false);
+});

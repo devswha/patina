@@ -30,7 +30,7 @@ More examples: [Before/After Gallery](docs/EXAMPLES.md). Social preview asset: [
 
 |  |  |
 |---|---|
-| **136 patterns** | 37 KO + 36 EN (each incl. 5 score-only viral-hook) + 31 ZH + 32 JA — see [PATTERNS.md](docs/PATTERNS.md) |
+| **146 patterns** | 37 KO + 36 EN + 36 ZH + 37 JA (each incl. 5 score-only viral-hook) — see [PATTERNS.md](docs/PATTERNS.md) |
 | **AI catch rate** | 91% Korean / 76% English (HC3) |
 | **False positives** | 13–25% on human prose *(boundary intrinsic to encyclopedic register, [documented](core/stylometry.md))* |
 | **Modes** | rewrite · audit · score · diff · ouroboros |
@@ -104,11 +104,27 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 
 ### Score-only patterns
 
-`--score` and `--audit` measure a slightly broader set of signals than `--rewrite` does. The viral-hook packs (`ko-viral-hook` and `en-viral-hook`, 5 patterns each: shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, hyperbolic engagement lexicon) are **detection-only** — they surface in the score and audit so the benchmark matches human intuition for SNS-style marketing copy, but `--rewrite`/`--diff`/`--ouroboros` skip them because those signals are often intentional rhetoric. Real-world demos: [`examples/viral-hook/`](examples/viral-hook/).
+`--score` and `--audit` measure a slightly broader set of signals than `--rewrite` does. The viral-hook packs (`ko/en/zh/ja-viral-hook`, 5 patterns each: shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, hyperbolic engagement lexicon) are **detection-only** — they surface in the score and audit so the benchmark matches human intuition for SNS-style marketing copy across all four languages, but `--rewrite`/`--diff`/`--ouroboros` skip them because those signals are often intentional rhetoric. Real-world demos: [`examples/viral-hook/`](examples/viral-hook/).
+
+### Prompt-mode tuning (v3.11)
+
+`--prompt-mode strict|minimal|auto` lets you trade off between the full pattern packs (~34KB structured prompt) and a compressed casual instruction (~3KB). `auto` picks per backend — Gemini does better on minimal (it gets over-constrained by long structured prompts), while Claude leverages the full packs and Codex is roughly insensitive. case-05 documents the A/B.
+
+### Multiple stylistic variants (v3.11)
+
+`--variants <1-5>` asks the model for N voice variants of the rewrite in one call (e.g., V1 casual, V2 direct, V3 measured) — facts, numbers, and causation stay identical across variants. Each comes back as `## Variant N` so you can pick the voice you want.
+
+### Short-text scoring boost (v3.11)
+
+For inputs ≤200 chars or ≤3 paragraphs, register-sensitive categories (`language`, `style`, `viral-hook`) get a 1.5× severity multiplier so single-paragraph voice shifts surface in the score. case-04 found these were undercounted by the long-text formula.
 
 ### Self-audit isolation (v3.11)
 
-In rewrite mode, the model emits its self-audit notes inside `[SELF_AUDIT]`/`[/SELF_AUDIT]` tags wrapped around a `[BODY]`/`[/BODY]` block. patina strips the audit before showing the user, so raw output is clean — earlier versions sometimes leaked phrases like "남아 있는 AI 티" or "Phase 3" preambles into the user-facing text.
+In rewrite mode, the model emits its self-audit notes inside `[SELF_AUDIT]`/`[/SELF_AUDIT]` tags wrapped around a `[BODY]`/`[/BODY]` block (or `[VARIANT n]` blocks when `--variants > 1`). patina strips the audit before showing the user, so raw output is clean — earlier versions sometimes leaked phrases like "남아 있는 AI 티" or "Phase 3" preambles into the user-facing text.
+
+### Score weight drift detection (v3.11)
+
+`--score` runs cross-check the Weight column the model emits against your config's `category-weights`. If the model invents a category (e.g., `discord`) or substitutes a different number, `[patina]` warnings hit stderr — observability only, the score itself isn't altered.
 
 ## Tones
 

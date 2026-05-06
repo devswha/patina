@@ -1,4 +1,11 @@
-export function buildPrompt({ config, patterns, profile, voice, scoring, text, mode = 'rewrite', tone = null }) {
+export function buildPrompt({ config, patterns, profile, voice, scoring, text, mode = 'rewrite', tone = null, promptMode = 'strict' }) {
+  // v3.11+ prompt-mode dispatch (case-04 hypothesis test). minimal prompt
+  // strips pattern definitions/examples and uses a casual instruction; only
+  // applies to rewrite mode where voice prior matters most.
+  if (promptMode === 'minimal' && mode === 'rewrite') {
+    return buildMinimalPrompt({ config, patterns, text, tone });
+  }
+
   const lang = config.language || 'ko';
   const profileName = config.profile || 'default';
 
@@ -196,6 +203,66 @@ function buildScoreInstructions(config, lang) {
   inst += `Interpretation: 0-15 human | 16-30 mostly human | 31-50 mixed | 51-70 AI-like | 71-100 heavily AI\n`;
 
   return inst;
+}
+
+// v3.11 minimal prompt — case-04 hypothesis test.
+// Strips pattern definitions/examples and uses a casual instruction so the
+// model's natural voice prior isn't overridden by analytical framing. Only
+// invoked for rewrite mode; score/audit/diff/ouroboros stay on the strict
+// path because they need precise pattern references.
+function buildMinimalPrompt({ config, patterns, text, tone }) {
+  const lang = config.language || 'ko';
+  const activePatterns = patterns.filter((p) => !p.isScoreOnly);
+
+  const watchWords = [];
+  for (const pack of activePatterns) {
+    const packName = pack.frontmatter?.pack || pack.file;
+    const words = extractWatchWords(pack.body);
+    if (words.length > 0) {
+      watchWords.push(`- **${packName}**: ${words.join(', ')}`);
+    }
+  }
+
+  const instruction = lang === 'ko'
+    ? `이 글이 AI가 쓴 것 같아 보여서 사람이 쓴 것처럼 자연스럽게 다듬어줘. 아래 어휘들이 보이면 자연스러운 한국어로 풀어줘. 무리하게 의역하지 말고 의미·숫자·인과관계는 그대로 보존해.`
+    : `This text reads like AI. Rewrite it so it sounds like a real person wrote it. If you spot any of the phrases below, swap them out for something natural. Don't over-paraphrase — keep the meaning, numbers, and causation intact.`;
+
+  let prompt = `${instruction}\n\n`;
+
+  if (watchWords.length > 0) {
+    prompt += lang === 'ko' ? `## AI 신호 어휘 (참고)\n\n` : `## AI signal words (reference)\n\n`;
+    prompt += watchWords.join('\n');
+    prompt += '\n\n';
+  }
+
+  if (tone && tone.tone_source) {
+    prompt += lang === 'ko' ? `## 톤\n` : `## Tone\n`;
+    prompt += `- tone: ${tone.tone === null ? 'null' : tone.tone}\n`;
+    prompt += `- source: ${tone.tone_source}\n\n`;
+  }
+
+  prompt += lang === 'ko' ? `## 출력 형식\n\n` : `## Output format\n\n`;
+  prompt += `1. 다듬은 본문을 \`[BODY]\` ... \`[/BODY]\` 안에. 본문만, 머리말·메타·"최종 결과물" 같은 라벨 없이.\n`;
+  prompt += `2. \`[SELF_AUDIT]\` ... \`[/SELF_AUDIT]\` 안에 짧게: 어떤 부분 손봤는지, 남은 AI 신호 있는지.\n`;
+  prompt += `3. 톤 정보가 있으면 마지막에 YAML 푸터: \`---\\ntone: ...\\ntone_source: ...\\ntone_evidence: [...]\\ntone_confidence: ...\\n---\`\n\n`;
+
+  prompt += lang === 'ko' ? `## 입력\n\n${text}\n\n` : `## Input\n\n${text}\n\n`;
+  prompt += lang === 'ko' ? `## 출력\n\n` : `## Output\n\n`;
+
+  return prompt;
+}
+
+// Extract the comma-separated values that follow a "주의 어휘:" or "Watch words:"
+// label in a pattern pack body. Used by buildMinimalPrompt to compress packs
+// from full definitions+examples down to just the trigger vocab.
+function extractWatchWords(body) {
+  const re = /\*\*(?:주의 어휘|Watch words):\*\*\s*([^\n]+)/g;
+  const out = [];
+  let m;
+  while ((m = re.exec(body)) !== null) {
+    out.push(m[1].trim());
+  }
+  return out;
 }
 
 function buildOuroborosInstructions(config, structurePacks, lexicalPacks) {

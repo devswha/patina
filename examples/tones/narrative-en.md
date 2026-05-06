@@ -1,28 +1,25 @@
 # Fixture: narrative × en
 
-**diff focus:** First-person anchor, scene detail, emotional presence, time markers introduced
+**diff focus:** First-person experience, concrete scene, sensory detail
 
 ---
 
 ## Input
 
-Leaving a long-term job is a challenging decision that requires careful consideration of multiple factors. After evaluating various aspects of the situation, the individual chose to pursue new opportunities. This transition involved experiencing a range of emotions, ultimately leading to a positive outlook.
+This tool has demonstrated considerable potential for enhancing developer productivity. Its effectiveness is particularly evident in repetitive code generation tasks, and its applicability across various work environments is noteworthy. Furthermore, the relatively gentle learning curve enables developers at all experience levels to adopt it with ease.
 
 ---
 
 ## Output (narrative tone applied)
 
-The day I handed in my resignation, I didn't feel relieved. I thought I would. Five years of the same desk, the same commute, the same Friday stand-up — and I'd convinced myself that leaving would feel like stepping out of a fog. Instead I stood in the elevator going down and thought: what if the fog was mine?
-
-I'm still not sure I made the right call. But I slept eight hours that night for the first time in months.
+The first time I ran it, three hours of boilerplate vanished into a single command. I showed it to the frontend team on a Monday; by Wednesday the backend folks were using it too. Even the intern who'd joined two weeks earlier figured it out without asking anyone. Small thing, but the afternoons started feeling a little lighter.
 
 ---
 
 ## Diff notes
 
-- "requires careful consideration of multiple factors" → removed (abstract process language)
-- "the individual chose" → "The day I handed in" (first-person, past tense scene)
-- "range of emotions" → "I didn't feel relieved. I thought I would." (specific emotional reversal)
-- "ultimately leading to a positive outlook" → replaced with honest ambiguity + concrete detail
-- Time anchors added: "Five years," "that night," "for the first time in months"
-- Scene detail: "same desk, same commute, same Friday stand-up"
+- "demonstrated considerable potential" → "three hours of boilerplate vanished" (specific scene)
+- "applicability across various work environments" → "frontend → backend" (narrative progression)
+- "gentle learning curve" → "the intern figured it out" (character detail)
+- "enhancing developer productivity" → "afternoons started feeling lighter" (experiential)
+- Core meaning (productivity, repetitive tasks, versatility, low barrier) fully preserved

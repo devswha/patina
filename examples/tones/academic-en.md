@@ -1,26 +1,26 @@
 # Fixture: academic × en
 
-**diff focus:** Objective register, evidence-oriented language, minimal first-person, hedging preserved appropriately
+**diff focus:** Objective observation, hedged claims, filler adjectives removed
 
 ---
 
 ## Input
 
-This groundbreaking study completely revolutionizes everything we thought we knew about the subject. The findings are absolutely incredible and will undoubtedly transform the entire field forever. Every researcher will be amazed by what we discovered.
+This tool has demonstrated considerable potential for enhancing developer productivity. Its effectiveness is particularly evident in repetitive code generation tasks, and its applicability across various work environments is noteworthy. Furthermore, the relatively gentle learning curve enables developers at all experience levels to adopt it with ease.
 
 ---
 
 ## Output (academic tone applied)
 
-This study reports findings inconsistent with prior literature. The treatment group showed a statistically significant improvement over controls (p < 0.01), suggesting that current theoretical models may require revision in this domain. Replication with larger samples is warranted before broader conclusions can be drawn.
+The tool appears to improve developer productivity, primarily by automating repetitive code generation. It has been deployed across multiple work environments, suggesting broad applicability. Initial adoption costs are low, which may facilitate uptake among less experienced developers, though long-term productivity effects remain to be measured.
 
 ---
 
 ## Diff notes
 
-- "groundbreaking" / "revolutionizes" / "absolutely incredible" → removed (superlative AI vocabulary)
-- "completely... everything we thought we knew" → removed (hyperbolic scope)
-- "undoubtedly transform the entire field forever" → "may require revision" (appropriate academic hedging)
-- "Every researcher will be amazed" → removed (unsubstantiated claim)
-- "we discovered" → "This study reports" (third-person, passive attribution)
-- Specific statistic added to ground the claim
+- "has demonstrated considerable potential" → "appears to improve" (hedged observation)
+- "particularly evident" → removed (unsupported emphasis)
+- "noteworthy" → "suggesting broad applicability" (qualified claim)
+- "enables developers... with ease" → "may facilitate uptake" (academic hedge)
+- Added closing caveat on long-term effects (scholarly caution)
+- Core meaning (productivity, repetitive tasks, versatility, low barrier) fully preserved

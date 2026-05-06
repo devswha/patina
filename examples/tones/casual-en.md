@@ -1,6 +1,6 @@
 # Fixture: casual × en
 
-**diff focus:** Contractions introduced, first-person added, informal register, opinions surfaced
+**diff focus:** Contractions, first-person, informal register
 
 ---
 
@@ -12,15 +12,15 @@ This tool has demonstrated considerable potential for enhancing developer produc
 
 ## Output (casual tone applied)
 
-Honestly, this thing surprised me. Repetitive code? It knocks that out fast. I've seen people who'd never touched it pick it up in an afternoon — which isn't something you can say about most dev tools. It's not magic, but for the boring stuff, it's actually pretty good.
+Honestly, this thing is pretty fast for repetitive code. Works across different setups too, and I've seen people who'd never used it pick it up in an afternoon. It's not magic, but for the boring stuff it gets the job done.
 
 ---
 
 ## Diff notes
 
-- "demonstrated considerable potential" → "surprised me" (first-person reaction, contraction)
-- "Its effectiveness is particularly evident" → "Repetitive code? It knocks that out fast" (fragment + direct)
-- "relatively gentle learning curve" → "pick it up in an afternoon" (concrete scene)
-- "Furthermore" removed (AI transition marker)
-- "noteworthy" removed (AI filler adjective)
-- Overall: passive observation → active first-person voice with contractions
+- "demonstrated considerable potential" → "is pretty fast" (direct, informal)
+- "Its effectiveness is particularly evident" → removed (redundant with next clause)
+- "applicability across various work environments" → "works across different setups" (casual phrasing)
+- "relatively gentle learning curve" → "pick it up in an afternoon" (concrete)
+- "Furthermore" → removed (AI transition marker)
+- Core meaning (productivity, repetitive tasks, versatility, low barrier) fully preserved

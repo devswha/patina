@@ -26,7 +26,11 @@ export function analyzeText(text, opts = {}) {
     lexicon: providedLexicon,
   } = opts;
 
-  const paragraphs = splitParagraphs(text);
+  // Normalize to NFC at the boundary so downstream tokenization and lexicon
+  // comparison see canonical form. Mixed NFC/NFD inputs (e.g. "café" composed
+  // vs decomposed) would otherwise yield different MATTR/lexicon hits.
+  const normalized = text ? text.normalize('NFC') : '';
+  const paragraphs = splitParagraphs(normalized);
   const lexicon =
     providedLexicon ??
     (repoRoot ? loadLexicon(lang, repoRoot) : { strict: [], phrases: [] });

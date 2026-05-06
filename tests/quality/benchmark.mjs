@@ -94,6 +94,11 @@ function main() {
   for (const path of fixtures) {
     const { meta, body } = parseFixture(path);
     const lang = meta.language;
+    if (typeof meta.expected_hot !== 'boolean') {
+      throw new Error(
+        `${path}: \`expected_hot\` must be a literal boolean (got ${typeof meta.expected_hot}: ${JSON.stringify(meta.expected_hot)})`
+      );
+    }
     if (!lexicons[lang]) lexicons[lang] = loadLexicon(lang, REPO_ROOT);
     if (!perLanguage[lang]) perLanguage[lang] = emptyMetrics();
 
@@ -102,7 +107,7 @@ function main() {
       lexicon: lexicons[lang],
     });
     const predicted = result.hot;
-    const expected = Boolean(meta.expected_hot);
+    const expected = meta.expected_hot;
     updateMetrics(perLanguage[lang], predicted, expected);
 
     const p = result.paragraphs[0] || {};
@@ -142,6 +147,8 @@ function main() {
 
   writeFileSync(RESULTS_PATH, JSON.stringify(results, null, 2) + '\n');
 
+  const wrong = fixtureLog.filter((f) => !f.correct);
+
   if (!quiet) {
     console.log(`# Quality benchmark — ${fixtureLog.length} fixtures`);
     console.log(`Overall accuracy: ${(overallAccuracy * 100).toFixed(1)}%`);
@@ -154,7 +161,6 @@ function main() {
       );
     }
     console.log();
-    const wrong = fixtureLog.filter((f) => !f.correct);
     if (wrong.length > 0) {
       console.log(`Misclassified (${wrong.length}):`);
       for (const f of wrong) {
@@ -167,6 +173,9 @@ function main() {
     }
     console.log(`\nFull log: ${RESULTS_PATH}`);
   }
+
+  // Non-zero exit on any misclassification so CI catches regressions even in --quiet mode.
+  if (wrong.length > 0) process.exitCode = 1;
 }
 
 main();

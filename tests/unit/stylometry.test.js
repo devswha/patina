@@ -67,25 +67,36 @@ test('classifyMattr uses default bands (low<0.55, high>0.70)', () => {
   assert.equal(classifyMattr(0.80), 'high');
 });
 
-test('§10 English worked example is hot (low burstiness AND low MATTR)', () => {
+test('§10 English worked example: exact CV/MATTR/token counts', () => {
   const text =
     'The tool is innovative. The tool is efficient. The tool is reliable. The tool is scalable. The tool is essential.';
   const result = analyzeText(text, { lang: 'en' });
   const p = result.paragraphs[0];
+  // 5 sentences × 4 tokens (the, tool, is, X) → uniform → CV=0
   assert.equal(p.sentenceCount, 5);
+  assert.equal(p.tokenCount, 20);
+  assert.equal(p.burstiness.cv, 0);
   assert.equal(p.burstiness.band, 'low');
+  // 8 unique (the, tool, is, innovative, efficient, reliable, scalable, essential) / 20 = 0.40
+  assert.equal(p.mattr.value, 8 / 20);
   assert.equal(p.mattr.band, 'low');
   assert.equal(p.hot, true);
 });
 
-test('§10 Korean worked example is hot via burstiness (uniform 어절 counts)', () => {
+test('§10 Korean worked example: exact CV/MATTR/token counts', () => {
   const text =
     '이 도구는 단순한 자동완성을 넘어선다. 이 도구는 사용자의 의도를 이해한다. ' +
     '이 도구는 효율적인 협업을 가능하게 한다. 이 도구는 혁신적인 생산성을 제공한다. ' +
     '이 도구는 다양한 언어를 지원한다.';
   const result = analyzeText(text, { lang: 'ko' });
   const p = result.paragraphs[0];
+  // 어절 counts: [5, 5, 6, 5, 5] → mean=5.2, stddev=0.4, CV=0.4/5.2≈0.0769
   assert.equal(p.sentenceCount, 5);
+  assert.equal(p.tokenCount, 26);
+  assert.ok(Math.abs(p.burstiness.cv - 0.4 / 5.2) < 1e-9);
   assert.equal(p.burstiness.band, 'low');
+  // 18 unique tokens / 26 total → 0.6923...
+  assert.ok(Math.abs(p.mattr.value - 18 / 26) < 1e-9);
+  assert.equal(p.mattr.band, 'mid');
   assert.equal(p.hot, true);
 });

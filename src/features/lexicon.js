@@ -24,7 +24,9 @@ function parseLexiconBody(body) {
       continue;
     }
     if (mode && line.startsWith('- ')) {
-      const entry = line.slice(2).trim();
+      // Normalize to NFC so visually identical entries don't fail to match
+      // tokens that arrive in a different normalization form.
+      const entry = line.slice(2).trim().normalize('NFC');
       if (entry) (mode === 'strict' ? strict : phrases).push(entry);
     }
   }
@@ -63,13 +65,19 @@ export function computeDensity(paragraphText, tokens, lexicon) {
   const hits = [];
   const tokenSet = new Set(tokens.map((t) => t.toLowerCase()));
 
+  // §16: English strict entries match whole-word; Korean strict entries are
+  // approximated by substring (어절 inflection means `자리매김` should also
+  // hit `자리매김했다`, `자리매김으로`, etc.). Punctuated entries always need
+  // substring fallback because tokenization strips edge punct.
+  const koSubstring = lexicon.lang === 'ko';
   for (const entry of lexicon.strict) {
     const lowerEntry = entry.toLowerCase();
     if (tokenSet.has(lowerEntry)) {
       hits.push(entry);
-    } else if (/[^\p{L}\p{N}]/u.test(lowerEntry) && lowerText.includes(lowerEntry)) {
-      // Hyphenated or otherwise punctuated entries can't sit in tokenSet
-      // because tokenization strips edge punct only.
+      continue;
+    }
+    const hasInternalPunct = /[^\p{L}\p{N}]/u.test(lowerEntry);
+    if ((koSubstring || hasInternalPunct) && lowerText.includes(lowerEntry)) {
       hits.push(entry);
     }
   }

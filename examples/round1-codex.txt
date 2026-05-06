@@ -1,0 +1,12 @@
+마케팅으로 뜬 게 아니다.
+
+개발자들이 새벽 3시에 버그 잡다가 머리 쥐어뜯을 때 느끼던 그 가려운 지점을 정확히 긁어줬기 때문이다. NVIDIA가 이 무명 오픈소스와 손잡은 것도 우연이 아니다.
+
+실전에서 바로 돈이 되는 도구는 보통 현장이 먼저 알아본다.
+
+---
+tone: null
+tone_source: profile_only
+tone_evidence: []
+tone_confidence: null
+---

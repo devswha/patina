@@ -1,9 +1,11 @@
 export function buildPrompt({ config, patterns, profile, voice, scoring, text, mode = 'rewrite', tone = null, promptMode = 'strict', variants = 1 }) {
   // v3.11+ prompt-mode dispatch (case-04 hypothesis test). minimal prompt
   // strips pattern definitions/examples and uses a casual instruction; only
-  // applies to rewrite mode where voice prior matters most.
+  // applies to rewrite mode where voice prior matters most. Profile body is
+  // still passed through (Round 2 found Gemini ignored casual-conversation
+  // when the profile was dropped).
   if (promptMode === 'minimal' && mode === 'rewrite') {
-    return buildMinimalPrompt({ config, patterns, text, tone, variants });
+    return buildMinimalPrompt({ config, patterns, profile, text, tone, variants });
   }
 
   const lang = config.language || 'ko';
@@ -255,7 +257,7 @@ export function isShortText(text) {
 // model's natural voice prior isn't overridden by analytical framing. Only
 // invoked for rewrite mode; score/audit/diff/ouroboros stay on the strict
 // path because they need precise pattern references.
-function buildMinimalPrompt({ config, patterns, text, tone, variants = 1 }) {
+function buildMinimalPrompt({ config, patterns, profile, text, tone, variants = 1 }) {
   const lang = config.language || 'ko';
   const activePatterns = patterns.filter((p) => !p.isScoreOnly);
 
@@ -280,8 +282,16 @@ function buildMinimalPrompt({ config, patterns, text, tone, variants = 1 }) {
     prompt += '\n\n';
   }
 
+  // v3.11 Round 2 fix: profile body must reach the model in minimal mode too,
+  // otherwise voice profiles like casual-conversation get ignored. Keep it
+  // compact — just the profile body, no full pattern-overrides table.
+  if (profile && profile.body) {
+    prompt += lang === 'ko' ? `## 톤·프로필 가이드\n\n` : `## Tone & profile guide\n\n`;
+    prompt += `${profile.body}\n\n`;
+  }
+
   if (tone && tone.tone_source) {
-    prompt += lang === 'ko' ? `## 톤\n` : `## Tone\n`;
+    prompt += lang === 'ko' ? `## 톤 메타\n` : `## Tone metadata\n`;
     prompt += `- tone: ${tone.tone === null ? 'null' : tone.tone}\n`;
     prompt += `- source: ${tone.tone_source}\n\n`;
   }

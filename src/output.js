@@ -7,6 +7,50 @@ export function formatOutput(result, mode, _parsed, opts = {}) {
   return appendToneFooter(body, tone);
 }
 
+// v3.11 Phase 1.3: parse the model's score table and check that the Weight
+// column matches the config-supplied category-weights. case-02 found that
+// the model often invents weights or extra categories (e.g., "discord");
+// this surfaces those drifts as warnings rather than silently accepting them.
+//
+// Returns an array of human-readable warning strings (empty if everything
+// matches). Caller is responsible for emitting to stderr.
+export function validateScoreWeights(output, configWeights) {
+  if (!output || !configWeights || Object.keys(configWeights).length === 0) {
+    return [];
+  }
+  const warnings = [];
+  // Match table rows where the first column is a category id and the
+  // second is a numeric weight. Skip header/separator rows by requiring
+  // the category to start with a letter.
+  const rowRe = /^\|\s*([a-z][\w-]*)\s*\|\s*([\d.]+)\s*\|/i;
+  const seen = new Map();
+  for (const line of output.split(/\r?\n/)) {
+    const m = line.match(rowRe);
+    if (!m) continue;
+    const cat = m[1].toLowerCase();
+    const weight = parseFloat(m[2]);
+    if (!Number.isNaN(weight) && !seen.has(cat)) {
+      seen.set(cat, weight);
+    }
+  }
+  for (const [cat, expected] of Object.entries(configWeights)) {
+    if (!seen.has(cat)) {
+      warnings.push(`weight check: category "${cat}" missing from score output`);
+      continue;
+    }
+    const actual = seen.get(cat);
+    if (Math.abs(actual - expected) > 0.005) {
+      warnings.push(`weight check: "${cat}" expected ${expected}, model used ${actual}`);
+    }
+  }
+  for (const cat of seen.keys()) {
+    if (!(cat in configWeights)) {
+      warnings.push(`weight check: unexpected category "${cat}" — likely model hallucination`);
+    }
+  }
+  return warnings;
+}
+
 // v3.11: rewrite/diff/ouroboros prompts ask the model to wrap user-facing
 // text in [BODY]...[/BODY] and put audit notes in [SELF_AUDIT]...[/SELF_AUDIT].
 // We extract the body block and drop the audit so callers get clean text.

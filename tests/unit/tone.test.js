@@ -161,6 +161,7 @@ test('stripSelfAudit: only applied to rewrite/diff/ouroboros modes', () => {
 // --- resolvePromptMode (v3.11 Phase 3.3) ---
 
 import { resolvePromptMode } from '../../src/cli.js';
+import { validateScoreWeights } from '../../src/output.js';
 
 test('resolvePromptMode: strict passes through unchanged', () => {
   assert.equal(resolvePromptMode('strict', { backend: 'codex-cli' }), 'strict');
@@ -187,4 +188,41 @@ test('resolvePromptMode: auto + codex-cli → strict (default)', () => {
 test('resolvePromptMode: auto + unknown → strict (conservative)', () => {
   assert.equal(resolvePromptMode('auto', { backend: 'openai-http', model: 'gpt-5.5' }), 'strict');
   assert.equal(resolvePromptMode('auto', {}), 'strict');
+});
+
+// --- validateScoreWeights (v3.11 Phase 1.3) ---
+
+test('validateScoreWeights: matches → no warnings', () => {
+  const output = `| Category | Weight | Detected | Raw | Weighted |
+|----------|--------|----------|-----|----------|
+| content | 0.18 | none | 0.0 | 0.0 |
+| language | 0.18 | none | 0.0 | 0.0 |`;
+  const warnings = validateScoreWeights(output, { content: 0.18, language: 0.18 });
+  assert.deepEqual(warnings, []);
+});
+
+test('validateScoreWeights: mismatch → warning lists expected vs actual', () => {
+  const output = `| content | 0.13 | none | 0.0 | 0.0 |`;
+  const warnings = validateScoreWeights(output, { content: 0.18 });
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /expected 0\.18.*0\.13/);
+});
+
+test('validateScoreWeights: unexpected category → hallucination warning', () => {
+  const output = `| content | 0.18 | none | 0.0 | 0.0 |
+| discord | 0.20 | none | 0.0 | 0.0 |`;
+  const warnings = validateScoreWeights(output, { content: 0.18 });
+  const hallucination = warnings.find((w) => w.includes('discord') && w.includes('hallucination'));
+  assert.ok(hallucination, 'should flag discord as hallucinated');
+});
+
+test('validateScoreWeights: missing category → warning', () => {
+  const warnings = validateScoreWeights('| content | 0.18 |', { content: 0.18, language: 0.18 });
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /language.*missing/);
+});
+
+test('validateScoreWeights: empty config → no-op', () => {
+  assert.deepEqual(validateScoreWeights('any output', {}), []);
+  assert.deepEqual(validateScoreWeights('', { content: 0.18 }), []);
 });

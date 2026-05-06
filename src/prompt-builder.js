@@ -187,16 +187,16 @@ function buildAuditInstructions() {
 
 function buildScoreInstructions(config, lang) {
   const weights = config.ouroboros?.['category-weights']?.[lang] || {};
-  let inst = `Calculate an AI-likeness score (0-100) with per-category breakdown:\n\n`;
+  let inst = `Calculate an AI-likeness score (0-100) using EXACTLY these category weights. Do NOT invent extra categories (no "discord", no "tone", no "general"). Use only the categories listed:\n\n`;
 
   for (const [cat, weight] of Object.entries(weights)) {
-    inst += `- ${cat}: weight ${weight}\n`;
+    inst += `- ${cat}: ${weight}\n`;
   }
 
   inst += `\nSeverity scale: Low=1, Medium=2, High=3 points per detection.\n`;
   inst += `Category score = (sum of adjusted severities / (pattern_count × 3)) × 100\n`;
-  inst += `Overall = weighted average of category scores.\n\n`;
-  inst += `Output format:\n`;
+  inst += `Overall = weighted average using the EXACT weights above (sum should equal 1.00).\n\n`;
+  inst += `Output format (the Weight column must echo the values above verbatim):\n`;
   inst += `| Category | Weight | Detected | Raw Score | Weighted |\n`;
   inst += `|----------|--------|----------|-----------|----------|\n`;
   inst += `| **Overall** | | | | **XX.X (±10)** |\n\n`;

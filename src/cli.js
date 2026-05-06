@@ -4,7 +4,7 @@ import { buildPrompt } from './prompt-builder.js';
 import { selectBackend, listBackends } from './backends/index.js';
 import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from './security.js';
-import { formatOutput } from './output.js';
+import { formatOutput, validateScoreWeights } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
 import { buildManifest, appendResult, writeManifest } from './manifest.js';
@@ -182,6 +182,16 @@ export async function main(args) {
       output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution });
     } else {
       output = formatOutput(result, mode, parsed, { tone: toneResolution });
+    }
+
+    // v3.11 Phase 1.3: surface weight drift between config and the score
+    // table the model emitted. Warnings only — does not alter the output.
+    if (mode === 'score') {
+      const configWeights = config.ouroboros?.['category-weights']?.[lang] || {};
+      const warnings = validateScoreWeights(output, configWeights);
+      for (const w of warnings) {
+        console.error(`[patina] ${w}`);
+      }
     }
 
     if (parsed.saveRun) {

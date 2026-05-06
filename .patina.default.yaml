@@ -1,4 +1,4 @@
-version: "3.9.0"
+version: "3.10.0"
 language: ko              # Korean (default) -- auto-loads all ko-*.md patterns
                           # language: en      -- English -- auto-loads all en-*.md patterns
                           # language: zh      -- Chinese -- auto-loads all zh-*.md patterns
@@ -6,6 +6,14 @@ language: ko              # Korean (default) -- auto-loads all ko-*.md patterns
                           # Override with CLI: --lang en / --lang zh / --lang ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
+
+# Tone categorization (v3.10): named voice axis. Six v1 tones for ko/en.
+# Resolution: explicit --tone > config tone > config profile.
+# auto = heuristic single-tone detection at SKILL.md Phase 4.5b.
+# Unset = profile-only legacy behavior (regression-safe default).
+tone:                       # one of: casual, professional, academic, narrative, marketing, instructional, auto
+                            # Override with CLI: --tone <name>
+                            # zh/ja with explicit tone: warns and falls back to profile.
 
 # Supported languages: ko, en, zh, ja
 

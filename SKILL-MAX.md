@@ -1,6 +1,6 @@
 ---
 name: patina-max
-version: 3.9.0
+version: 3.10.0
 description: |
   Multi-model humanization. Runs the same humanization task on multiple
   local model CLIs, scores each result, and selects the best
@@ -393,3 +393,7 @@ Best: claude (AI Score: 23, MPS: 92)
 - 각 실행은 고유 temp dir를 사용하며, 선택된 모델만 기다리고, timeout 모델은 자동으로 `failed` 처리한다
 - 최초 실행 시 설치 인터뷰로 `.patina.yaml` 생성 (모델 선택, 디스패치 모드, CLI 설치 확인)
 - `--ouroboros`와 함께 사용 가능: 최고 점수가 target-score 이상이면 해당 모델 결과를 입력으로 재실행하여 점수를 수렴시킨다
+
+## 톤 전파 (v3.10)
+
+MAX mode에서 톤 해석은 SKILL.md 1단계/4.5b단계와 동일하게 처리된다. 1단계에서 resolved_tone, tone_source, tone_evidence, tone_confidence를 결정한 뒤, 워커 프롬프트(4단계에서 각 모델에 전달하는 인라인 프롬프트)에 `<tone-context>` 블록으로 포함한다. 모든 디스패치 모델(claude, gemini, codex)은 동일한 톤 컨텍스트를 받아 일관된 목소리로 humanize를 수행한다. 최종 선택된 결과의 YAML footer에는 SKILL.md 6단계 규칙과 동일하게 tone 메타데이터가 포함된다.

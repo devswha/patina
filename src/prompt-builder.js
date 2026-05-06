@@ -1,4 +1,4 @@
-export function buildPrompt({ config, patterns, profile, voice, scoring, text, mode = 'rewrite' }) {
+export function buildPrompt({ config, patterns, profile, voice, scoring, text, mode = 'rewrite', tone = null }) {
   const lang = config.language || 'ko';
   const profileName = config.profile || 'default';
 
@@ -6,6 +6,27 @@ export function buildPrompt({ config, patterns, profile, voice, scoring, text, m
   const lexicalPacks = patterns.filter((p) => !p.isStructure);
 
   let prompt = `You are an editor who detects and removes AI writing patterns from text, rewriting it into natural, human-written prose.\n\n`;
+
+  // Tone context (v3.10). Surface resolved tone metadata at the top so the LLM
+  // applies Phase 4.5b/5b/6 logic per SKILL.md. Body text in rewrite mode must
+  // not leak tone metadata (A7) — only the YAML footer at the end carries it.
+  if (tone && tone.tone_source) {
+    prompt += `## Tone Resolution (v3.10)\n\n`;
+    prompt += `- resolved_tone: ${tone.tone === null ? 'null' : tone.tone}\n`;
+    prompt += `- tone_source: ${tone.tone_source}\n`;
+    prompt += `- tone_evidence: ${JSON.stringify(tone.tone_evidence ?? [])}\n`;
+    prompt += `- tone_confidence: ${tone.tone_confidence ?? 'null'}\n`;
+    if (tone.tone_source === 'auto') {
+      prompt += `\nRun Phase 4.5b heuristic detection per SKILL.md to resolve a single tone, evidence, and confidence. Apply Phase 5b tone-derived overrides (replace, not stack) and emit Phase 6 YAML footer.\n`;
+    } else if (tone.tone_source === 'user') {
+      prompt += `\nApply Phase 5b tone-derived overrides for "${tone.tone}" (replace, not stack with profile overrides). Emit Phase 6 YAML footer with these exact values.\n`;
+    } else if (tone.tone_source === 'unsupported_language_fallback') {
+      prompt += `\nzh/ja with explicit tone is unsupported in v1; proceed in profile-only mode. Emit Phase 6 YAML footer with tone: null and the fallback warning preserved in tone_evidence.\n`;
+    } else if (tone.tone_source === 'profile_only') {
+      prompt += `\nNo tone specified — profile-only mode (regression-safe path). Phase 4.5b is skipped. Emit Phase 6 YAML footer with tone: null and tone_source: profile_only.\n`;
+    }
+    prompt += `\n`;
+  }
 
   prompt += `## Configuration\n\n`;
   prompt += `- Language: ${lang}\n`;

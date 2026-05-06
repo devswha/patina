@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#快速开始)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-3.9.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.10.0-blue)](CHANGELOG.md)
 
 > **只剥掉 AI 包装，保留原意。**
 
@@ -52,6 +52,24 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
 [在此粘贴你的文本]
 ```
 
+以特定语调改写：
+
+```
+/patina --tone narrative
+
+[在此粘贴你的随笔草稿]
+```
+
+自动检测最适合的语调：
+
+```
+/patina --tone auto --lang en
+
+[在此粘贴你的文本]
+```
+
+> 注意：`--tone` 在 v1 仅对 ko/en 生效。zh/ja 配合明确语调时会触发警告并回退到 profile-only 模式。
+
 ### 作为独立 CLI
 
 需要 Node.js ≥ 18。
@@ -79,9 +97,25 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 | `--ouroboros` | 反复改写直到分数收敛（含 MPS 回滚） |
 | `--lang <ko\|en\|zh\|ja>` | 选择语言（默认：`ko`） |
 | `--profile <名称>` | 语气预设：`blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing` |
+| `--tone <名称>` | 语调类别：`casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | 把位置参数当作文件列表（例：`--batch docs/*.md`） |
 
 完整选项请运行 `patina --help`。
+
+## 语调
+
+`--tone` 是叠加在模式改写之上的具名声音轴。优先级：`--tone` CLI > `tone:` 配置 > `profile:` 配置。
+
+| 语调 | 适用 | 主要特征 |
+|------|------|----------|
+| `casual` | 博客、社交内容、个人笔记 | 缩略、第一人称、表情符号可用、低正式度 |
+| `professional` | 工作邮件、报告、商务写作 | 清晰简洁、正式而不僵硬（legal/medical 子档案强制 fidelity 下限） |
+| `academic` | 论文、研究综述、技术分析 | 客观、证据导向、第一人称最少 |
+| `narrative` | 个人随笔、回忆录、经历叙述 | 第一人称为锚、场景细节、情感在场 |
+| `marketing` | 广告文案、落地页、产品公告 | 短促有力、有说服力、CTA 友好 |
+| `instructional` | 教程、操作指南、技术文档 | 命令式动词、编号结构、抑制猜测语 |
+
+`--tone auto` 通过启发式（词汇 + 结构信号）自动选择最契合的语调。zh/ja 上使用明确语调会发出警告并回退到 profile-only 模式（v1.1 以后再支持）。
 
 ### MAX 模式
 
@@ -116,10 +150,11 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 
 ```yaml
 # .patina.default.yaml
-version: "3.9.0"
+version: "3.10.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
+tone:                     # casual | professional | academic | narrative | marketing | instructional | auto
 max-models: [claude, gemini]
 ```
 

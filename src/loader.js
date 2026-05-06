@@ -62,3 +62,21 @@ export function loadCoreFile(repoRoot, filename) {
 export function loadInputText(path) {
   return readFileSync(path, 'utf8');
 }
+
+// Tone → backbone profile mapping (v3.10, mirrors SKILL.md Phase 1).
+// Returns the *primary* backbone profile name for a resolved tone.
+// Multi-profile tones (e.g. professional → email + formal + legal + medical)
+// expose only the primary here; secondary profiles are documented in SKILL.md
+// and respected via legal/medical fidelity-floor enforcement at Phase 5b.
+const TONE_BACKBONE = {
+  casual: 'blog',                 // primary; social is a secondary backbone
+  professional: 'email',          // primary; formal/legal/medical secondary
+  academic: 'academic',           // primary; technical secondary
+  narrative: 'narrative',
+  marketing: 'marketing',
+  instructional: 'instructional',
+};
+
+export function toneToBackboneProfile(tone) {
+  return TONE_BACKBONE[tone] || null;
+}

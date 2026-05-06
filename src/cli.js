@@ -1,5 +1,5 @@
-import { loadConfig, getRepoRoot } from './config.js';
-import { loadPatterns, loadProfile, loadCoreFile, loadInputText } from './loader.js';
+import { loadConfig, getRepoRoot, resolveTone } from './config.js';
+import { loadPatterns, loadProfile, loadCoreFile, loadInputText, toneToBackboneProfile } from './loader.js';
 import { buildPrompt } from './prompt-builder.js';
 import { selectBackend, listBackends } from './backends/index.js';
 import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js';
@@ -65,7 +65,28 @@ export async function main(args) {
 
   const repoRoot = getRepoRoot();
   const lang = config.language || 'ko';
-  const profileName = config.profile || 'default';
+
+  // Tone resolution (v3.10): CLI --tone > config tone > null.
+  // null + config.profile → profile-only mode (regression-safe; v3.9 behavior).
+  // zh/ja + explicit tone → unsupported_language_fallback (warn + profile-only path).
+  const toneResolution = resolveTone({ cliTone: parsed.tone, configTone: config.tone, lang });
+  if (toneResolution.warning) {
+    console.error(`[patina] ${toneResolution.warning}`);
+  }
+
+  // Backbone profile mapping: explicit user tone (not auto, not fallback) maps to a
+  // backbone profile. CLI --profile still wins on conflict (per Phase 1 spec — backbone
+  // is applied "after --profile override"). Only auto-map when user didn't specify --profile.
+  let profileName = config.profile || 'default';
+  if (
+    !parsed.profile &&
+    toneResolution.tone_source === 'user' &&
+    toneResolution.tone &&
+    toneResolution.tone !== 'auto'
+  ) {
+    const backbone = toneToBackboneProfile(toneResolution.tone);
+    if (backbone) profileName = backbone;
+  }
 
   const patterns = loadPatterns(repoRoot, lang, config['skip-patterns'] || []);
   const profile = loadProfile(repoRoot, profileName);
@@ -89,6 +110,7 @@ export async function main(args) {
       scoring: scoring.body ? scoring : null,
       text,
       mode,
+      tone: toneResolution,
     });
 
     let result;
@@ -152,9 +174,10 @@ export async function main(args) {
 
     let output;
     if (parsed.ouroboros) {
-      output = formatOuroborosOutput(result);
+      const ouroborosBody = formatOuroborosOutput(result);
+      output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution });
     } else {
-      output = formatOutput(result, mode, parsed);
+      output = formatOutput(result, mode, parsed, { tone: toneResolution });
     }
 
     if (parsed.saveRun) {
@@ -221,6 +244,18 @@ function parseArgs(args) {
       case '--profile':
         parsed.profile = args[++i];
         break;
+      case '--tone': {
+        const t = args[++i];
+        if (t === undefined) {
+          throw new Error(`--tone requires a value. Valid tones: casual, professional, academic, narrative, marketing, instructional, auto`);
+        }
+        const valid = ['casual', 'professional', 'academic', 'narrative', 'marketing', 'instructional', 'auto'];
+        if (!valid.includes(t)) {
+          throw new Error(`Unknown tone '${t}'. Valid tones: ${valid.join(', ')}`);
+        }
+        parsed.tone = t;
+        break;
+      }
       case '--diff':
         parsed.diff = true;
         break;
@@ -429,7 +464,12 @@ Options:
   -v, --version        Show version
   --lang <code>        Language: ko, en, zh, ja (default: ko)
   --profile <name>     Profile: default, blog, academic, technical, formal,
-                       social, email, legal, medical, marketing
+                       social, email, legal, medical, marketing,
+                       narrative, instructional
+  --tone <name>        Tone category: casual, professional, academic,
+                       narrative, marketing, instructional, auto.
+                       Resolution: --tone > config tone > config profile.
+                       zh/ja with explicit tone → warns + profile-only fallback.
   --diff               Show changes pattern by pattern
   --audit              Detect patterns only (no rewrite)
   --score              Output AI-likeness score (0-100)

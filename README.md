@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#quick-start)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-3.9.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.10.0-blue)](CHANGELOG.md)
 
 > **Strip the AI packaging. Keep the meaning.**
 
@@ -54,6 +54,22 @@ The installer wires patina into Claude Code, [Codex CLI](https://github.com/open
 [paste your text here]
 ```
 
+Rewrite with a specific tone:
+
+```
+/patina --tone narrative
+
+[paste your essay draft here]
+```
+
+Auto-detect and apply the best-fit tone:
+
+```
+/patina --tone auto --lang en
+
+[paste your text here]
+```
+
 ### As a standalone CLI
 
 Requires Node.js ≥ 18.
@@ -81,9 +97,25 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `--ouroboros` | Iterate the rewrite until score converges (with MPS rollback) |
 | `--lang <ko\|en\|zh\|ja>` | Select language (default: `ko`) |
 | `--profile <name>` | Tone preset: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing` |
+| `--tone <name>` | Tone category: `casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | Treat positional args as a list of files (e.g. `--batch docs/*.md`) |
 
 `patina --help` for the full flag list.
+
+## Tones
+
+`--tone` selects a named voice axis applied on top of pattern rewriting. Resolution order: `--tone` CLI > `tone:` config > `profile:` config.
+
+| Tone | Intended for | Key behaviors |
+|------|-------------|---------------|
+| `casual` | Blog posts, social content, personal notes | Contractions, first-person, emoticons OK, low formality |
+| `professional` | Work emails, reports, business writing | Clear and concise, formal but not stiff; legal/medical sub-profiles force fidelity floor |
+| `academic` | Papers, research summaries, technical analysis | Objective, evidence-oriented, minimal first-person |
+| `narrative` | Personal essays, memoir, experience-based writing | First-person anchor, scene detail, emotional presence, time flow |
+| `marketing` | Ad copy, landing pages, product announcements | Short impact sentences, persuasive, CTA-friendly |
+| `instructional` | Tutorials, how-to guides, technical docs | Imperative verbs, numbered structure, hedging suppressed |
+
+`--tone auto` runs heuristic detection (lexical + structural signals) and selects the best-fit tone. zh/ja with an explicit tone emits a warning and falls back to profile-only mode.
 
 ### MAX mode
 
@@ -118,10 +150,11 @@ If meaning drifts at any verification step, the change is retried or rolled back
 
 ```yaml
 # .patina.default.yaml
-version: "3.9.0"
+version: "3.10.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
+tone:                     # casual | professional | academic | narrative | marketing | instructional | auto
 max-models: [claude, gemini]
 ```
 

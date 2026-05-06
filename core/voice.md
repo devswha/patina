@@ -142,3 +142,20 @@ The Korean guidance above is the reference — but English voice has its own spe
 
 ### After (has breath):
 > Honestly, I'm not sure what to make of this one. Three million lines of code — generated while everyone was asleep. Developers are split right down the middle: half impressed, half explaining why it doesn't count. The truth is probably somewhere boring in between. But I keep thinking about the agent just running. Overnight. Nobody watching.
+
+---
+
+## Per-Tone Voice Notes (v3.10)
+
+The six v1 tones each pull different levers from the guidance above. Use `--tone <name>` to activate.
+
+| Tone | Voice lever emphasis | Profile backbone |
+|------|---------------------|-----------------|
+| `casual` | Contractions, first-person, opinions, humor, messiness | `blog` / `social` |
+| `professional` | Clarity and concision; formal register but not stiff; suppress filler | `email` / `formal` (legal/medical force fidelity floor 0.65) |
+| `academic` | Objective tone, evidence references, suppress first-person and emoticons | `academic` / `technical` |
+| `narrative` | First-person anchor, scene detail, emotional presence, time flow — see `profiles/narrative.md` | `profiles/narrative.md` (new) |
+| `marketing` | Short impact sentences, persuasive verbs, CTA-friendly; emoticons allowed | `marketing` |
+| `instructional` | Imperative verbs at sentence head, numbered structure preserved, hedging suppressed — see `profiles/instructional.md` | `profiles/instructional.md` (new) |
+
+Deeper voice guidance for each tone lives in the corresponding profile file. This table is a pointer only.

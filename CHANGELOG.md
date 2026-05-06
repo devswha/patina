@@ -2,6 +2,69 @@
 
 All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 
+## 3.10.0 — 2026-05-06
+
+**Tone categorization v1 (6 tones + `auto`).**
+
+A first-class `tone` axis sits on top of profiles, giving users an explicit
+voice category without having to memorize the profile catalog. Tone resolution
+is `--tone` CLI > `tone:` config > `profile:` config; absence of any tone keeps
+v3.9.0 behavior intact (regression-safe profile-only path).
+
+### New
+
+- **`--tone <name>` flag and `tone:` config field.** Six v1 tones plus `auto`:
+  `casual`, `professional`, `academic`, `narrative`, `marketing`,
+  `instructional`. Unknown values fail fast with the valid list.
+- **Two new profile backbones:** `profiles/narrative.md` and
+  `profiles/instructional.md` (ko + en sections each). zh/ja sections are
+  intentionally omitted for v1.
+- **Phase 4.5b heuristic auto-detection.** When `--tone auto`, deterministic
+  lexical and structural signals select a single tone with `tone_evidence`
+  (1–3 strings) and `tone_confidence` (`low`/`medium`/`high`). No fallback on
+  low confidence — always commits to a single tone (A5).
+- **Phase 5b tone override layer.** Resolved tone applies a per-tone override
+  pack on top of profile overrides. **Tone overrides replace profile overrides
+  on conflict; they do not stack** (idempotent application).
+- **Phase 6 YAML footer.** Every output mode (`rewrite`, `diff`, `audit`,
+  `score`) emits a trailing footer block:
+  ```
+  ---
+  tone: <resolved | null>
+  tone_source: user | auto | unsupported_language_fallback | profile_only | skipped_short_input
+  tone_evidence: [...]
+  tone_confidence: low | medium | high | null
+  ---
+  ```
+  Body text in `rewrite` mode contains zero tone metadata leakage.
+- **12 fixture pairs** under `examples/tones/` (6 tones × ko/en) showing the
+  documented behavioral direction per tone.
+
+### Behavior
+
+- **zh/ja with explicit `--tone`** emits a warning to stderr and the YAML
+  footer (`tone_source: unsupported_language_fallback`), then continues in
+  profile-only mode. Body text matches the v3.9.0 profile-only output.
+- **legal/medical fidelity preserved within `professional` tone.** When the
+  active profile is `legal` or `medical`, `combined-weights.{legal|medical}`
+  (fidelity 0.65) is forced regardless of tone resolution. Tone overrides
+  cannot lower the fidelity floor (R2).
+- **Short-input bypass.** Texts with `<2 paragraphs OR <2 sentences` skip
+  Phase 4.5b detection entirely and emit `tone_source: skipped_short_input`
+  with `tone_evidence: ["input too short"]`. This is distinct from the
+  residual-default path (auto detection ran but no signal cluster reached
+  threshold), which keeps `tone_source: auto`.
+
+### CLI wiring (standalone Node CLI)
+
+The standalone `src/cli.js` CLI threads `--tone` through `src/config.js`
+(`resolveTone()`), `src/loader.js` (`toneToBackboneProfile()`),
+`src/prompt-builder.js` (tone context block), and `src/output.js`
+(YAML footer emission for all 4 modes). `--tone bogus` fails fast with the
+valid list. CLI > config > unset priority is preserved. Profile-only
+invocations (`patina --profile blog input.md`, no `--tone` and no `tone:`
+config) behave identically to v3.9.0 except for the appended YAML footer.
+
 ## 3.9.0 — 2026-05-05
 
 **Standalone CLI security hardening (issues #88, #89, #90).**

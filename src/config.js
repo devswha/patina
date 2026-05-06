@@ -50,3 +50,67 @@ function deepMerge(target, source) {
 export function getRepoRoot() {
   return REPO_ROOT;
 }
+
+const VALID_TONES = ['casual', 'professional', 'academic', 'narrative', 'marketing', 'instructional', 'auto'];
+
+// Resolve the effective tone from CLI flag and config (v3.10).
+// Priority: cliTone > configTone > unset. zh/ja + explicit tone → fallback path.
+// Returns: { tone, tone_source, tone_evidence, tone_confidence, warning? }
+export function resolveTone({ cliTone, configTone, lang }) {
+  if (cliTone !== undefined && cliTone !== null) {
+    if (!VALID_TONES.includes(cliTone)) {
+      throw new Error(
+        `Unknown tone '${cliTone}'. Valid tones: ${VALID_TONES.join(', ')}`
+      );
+    }
+  }
+  if (configTone !== undefined && configTone !== null && configTone !== '') {
+    if (!VALID_TONES.includes(configTone)) {
+      throw new Error(
+        `Invalid tone '${configTone}' in config. Valid tones: ${VALID_TONES.join(', ')}`
+      );
+    }
+  }
+
+  const effective = cliTone || (configTone === '' ? null : configTone) || null;
+
+  // Profile-only mode: nothing specified at all.
+  if (!effective) {
+    return {
+      tone: null,
+      tone_source: 'profile_only',
+      tone_evidence: [],
+      tone_confidence: null,
+    };
+  }
+
+  // zh/ja + explicit named tone → warning + fallback.
+  if ((lang === 'zh' || lang === 'ja') && effective !== 'auto') {
+    const warning = `tone "${effective}" is en/ko-only in v1; falling back to default profile`;
+    return {
+      tone: null,
+      tone_source: 'unsupported_language_fallback',
+      tone_evidence: [warning],
+      tone_confidence: null,
+      warning,
+    };
+  }
+
+  if (effective === 'auto') {
+    // Detection runs in-prompt at SKILL.md Phase 4.5b. Mark request only.
+    return {
+      tone: 'auto',
+      tone_source: 'auto',
+      tone_evidence: [],
+      tone_confidence: null,
+    };
+  }
+
+  // User-specified named tone.
+  return {
+    tone: effective,
+    tone_source: 'user',
+    tone_evidence: ['user-specified'],
+    tone_confidence: 'high',
+  };
+}

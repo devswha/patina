@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#クイックスタート)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-3.9.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.10.0-blue)](CHANGELOG.md)
 
 > **AI の装飾だけを剥がし、意味はそのまま。**
 
@@ -52,6 +52,24 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
 [ここにテキストを貼り付け]
 ```
 
+特定のトーンで書き換え：
+
+```
+/patina --tone narrative
+
+[ここにエッセイの下書きを貼り付け]
+```
+
+最適なトーンを自動検出：
+
+```
+/patina --tone auto --lang en
+
+[ここにテキストを貼り付け]
+```
+
+> 注意：v1 では `--tone` は ko/en のみ対応。zh/ja で明示トーンを指定すると警告を出して profile-only モードにフォールバックします。
+
 ### スタンドアロン CLI として
 
 Node.js ≥ 18 が必要です。
@@ -79,9 +97,25 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 | `--ouroboros` | スコア収束まで反復（MPS ロールバック付き） |
 | `--lang <ko\|en\|zh\|ja>` | 言語選択（デフォルト：`ko`） |
 | `--profile <名前>` | トーンプリセット：`blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing` |
+| `--tone <名前>` | トーンカテゴリ：`casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | 位置引数をファイル一覧として処理（例：`--batch docs/*.md`） |
 
 全オプションは `patina --help`。
+
+## トーン
+
+`--tone` はパターン書き換えの上に重ねる、名前付きの声色軸です。優先順位：`--tone` CLI > `tone:` 設定 > `profile:` 設定。
+
+| トーン | 用途 | 主な特徴 |
+|--------|------|----------|
+| `casual` | ブログ、SNS、個人メモ | 短縮形、一人称、絵文字 OK、低い形式度 |
+| `professional` | 業務メール、レポート、ビジネス文書 | 明確で簡潔、形式的だが堅すぎない（legal/medical サブプロファイルは fidelity 下限を強制） |
+| `academic` | 論文、研究要旨、技術分析 | 客観的、根拠重視、一人称は最小限 |
+| `narrative` | 個人エッセイ、回想録、体験談 | 一人称基点、シーンの細部、感情の存在感 |
+| `marketing` | 広告コピー、ランディングページ、製品告知 | 短くインパクトのある文、説得力、CTA 親和 |
+| `instructional` | チュートリアル、ハウツー、技術ドキュメント | 命令形動詞、番号付き構造、推測表現を抑制 |
+
+`--tone auto` はヒューリスティック（語彙 + 構造シグナル）で最適なトーンを自動選択します。zh/ja で明示トーンを指定すると警告を出して profile-only モードにフォールバックします（v1.1 以降で対応予定）。
 
 ### MAX モード
 
@@ -116,10 +150,11 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 
 ```yaml
 # .patina.default.yaml
-version: "3.9.0"
+version: "3.10.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
+tone:                     # casual | professional | academic | narrative | marketing | instructional | auto
 max-models: [claude, gemini]
 ```
 

@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#빠른-시작)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-3.9.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.10.0-blue)](CHANGELOG.md)
 
 > **AI 포장만 벗기고, 의미는 그대로.**
 
@@ -52,6 +52,22 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
 [텍스트를 여기에 붙여넣기]
 ```
 
+특정 톤으로 재작성:
+
+```
+/patina --tone narrative
+
+[에세이 초안을 여기에 붙여넣기]
+```
+
+자동 톤 감지:
+
+```
+/patina --tone auto --lang ko
+
+[텍스트를 여기에 붙여넣기]
+```
+
 ### 독립형 CLI 로
 
 Node.js ≥ 18 필요.
@@ -79,9 +95,25 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 | `--ouroboros` | 점수가 수렴할 때까지 반복 (MPS 롤백 포함) |
 | `--lang <ko\|en\|zh\|ja>` | 언어 선택 (기본값: `ko`) |
 | `--profile <이름>` | 톤 프리셋: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing` |
+| `--tone <이름>` | 톤 카테고리: `casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | 위치 인자를 파일 목록으로 처리 (예: `--batch docs/*.md`) |
 
 전체 옵션은 `patina --help`.
+
+## 톤
+
+`--tone` 은 패턴 재작성 위에 적용되는 명명된 보이스 축입니다. 우선순위: `--tone` CLI > `tone:` 설정 > `profile:` 설정.
+
+| 톤 | 용도 | 주요 특성 |
+|----|------|-----------|
+| `casual` | 블로그, SNS, 개인 메모 | 축약, 1인칭, 이모티콘 허용, 낮은 격식 |
+| `professional` | 업무 메일, 보고서, 비즈니스 | 명확하고 간결, 격식 있되 딱딱하지 않음 (legal/medical 하위 프로필은 fidelity 하한 강제) |
+| `academic` | 논문, 연구 요약, 기술 분석 | 객관적, 근거 중심, 1인칭 최소화 |
+| `narrative` | 에세이, 회고록, 경험담 | 1인칭 중심, 장면 디테일, 감정의 흐름 |
+| `marketing` | 광고 카피, 랜딩 페이지, 제품 알림 | 짧고 강한 문장, 설득력, CTA 친화 |
+| `instructional` | 튜토리얼, 하우투, 기술 문서 | 명령형 동사, 번호 매김 구조, 추측 표현 억제 |
+
+`--tone auto` 는 휴리스틱(어휘 + 구조 신호)으로 가장 적합한 톤을 자동 선택합니다. zh/ja 에서 명시 톤을 지정하면 경고를 내고 프로필 전용 모드로 폴백합니다.
 
 ### MAX 모드
 
@@ -116,10 +148,11 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 
 ```yaml
 # .patina.default.yaml
-version: "3.9.0"
+version: "3.10.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
+tone:                     # casual | professional | academic | narrative | marketing | instructional | auto
 max-models: [claude, gemini]
 ```
 

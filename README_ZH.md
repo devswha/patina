@@ -68,7 +68,7 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
 [在此粘贴你的文本]
 ```
 
-> 注意：`--tone` 在 v1 仅对 ko/en 生效。zh/ja 配合明确语调时会触发警告并回退到 profile-only 模式。
+> 注意：`--tone`（含 `auto`）在 v1 仅对 ko/en 生效。zh/ja 使用任何语调均会触发警告并回退到 profile-only 模式。
 
 ### 作为独立 CLI
 
@@ -115,7 +115,7 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 | `marketing` | 广告文案、落地页、产品公告 | 短促有力、有说服力、CTA 友好 |
 | `instructional` | 教程、操作指南、技术文档 | 命令式动词、编号结构、抑制猜测语 |
 
-`--tone auto` 通过启发式（词汇 + 结构信号）自动选择最契合的语调。zh/ja 上使用明确语调会发出警告并回退到 profile-only 模式（v1.1 以后再支持）。
+`--tone auto` 通过启发式（词汇 + 结构信号）自动选择最契合的语调。zh/ja 上使用任何语调（包括 `auto`）均会发出警告并回退到 profile-only 模式 — Phase 4.5b 启发式仅覆盖 ko/en。
 
 ### MAX 模式
 

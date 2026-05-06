@@ -115,7 +115,7 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `marketing` | Ad copy, landing pages, product announcements | Short impact sentences, persuasive, CTA-friendly |
 | `instructional` | Tutorials, how-to guides, technical docs | Imperative verbs, numbered structure, hedging suppressed |
 
-`--tone auto` runs heuristic detection (lexical + structural signals) and selects the best-fit tone. zh/ja with an explicit tone emits a warning and falls back to profile-only mode.
+`--tone auto` runs heuristic detection (lexical + structural signals) and selects the best-fit tone. zh/ja with any tone (including `auto`) emits a warning and falls back to profile-only mode — Phase 4.5b heuristics only cover ko/en.
 
 ### MAX mode
 

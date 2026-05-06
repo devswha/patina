@@ -42,9 +42,11 @@ v3.9.0 behavior intact (regression-safe profile-only path).
 
 ### Behavior
 
-- **zh/ja with explicit `--tone`** emits a warning to stderr and the YAML
-  footer (`tone_source: unsupported_language_fallback`), then continues in
-  profile-only mode. Body text matches the v3.9.0 profile-only output.
+- **zh/ja with any `--tone` (including `auto`)** emits a warning to stderr
+  and the YAML footer (`tone_source: unsupported_language_fallback`), then
+  continues in profile-only mode. Phase 4.5b heuristics only cover ko/en
+  signals, so `auto` on zh/ja would silently degrade to residual
+  `professional` without useful evidence — the fallback is intentional.
 - **legal/medical fidelity preserved within `professional` tone.** When the
   active profile is `legal` or `medical`, `combined-weights.{legal|medical}`
   (fidelity 0.65) is forced regardless of tone resolution. Tone overrides
@@ -54,6 +56,19 @@ v3.9.0 behavior intact (regression-safe profile-only path).
   with `tone_evidence: ["input too short"]`. This is distinct from the
   residual-default path (auto detection ran but no signal cluster reached
   threshold), which keeps `tone_source: auto`.
+
+### Quality
+
+- **`hasToneFooter()` validates all 4 keys.** Detection now requires `tone`,
+  `tone_source`, `tone_evidence`, and `tone_confidence` to be present in the
+  fenced block. Partial model-emitted footers no longer suppress the CLI
+  authoritative footer.
+- **`resolveTone()` validates `cliTone` input.** Both CLI and config tone
+  values are now validated against the allowed tone list, ensuring fail-fast
+  behavior regardless of caller.
+- **17 tone unit tests** covering `resolveTone()` priority chain, edge cases
+  (empty config, zh/ja fallback, invalid values), backbone profile mapping,
+  and `formatOutput` footer emission/deduplication.
 
 ### CLI wiring (standalone Node CLI)
 

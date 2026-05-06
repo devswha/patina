@@ -1,25 +1,25 @@
 # Fixture: professional × en
 
-**diff focus:** Formal but not stiff, redundant filler removed, concrete over abstract
+**diff focus:** Formal but concise, filler adjectives removed, clear statements
 
 ---
 
 ## Input
 
-Our cutting-edge solution serves as a pivotal catalyst for synergizing your organization's core competencies and leveraging transformative paradigm shifts to unlock unprecedented value creation across all stakeholder touchpoints.
+This tool has demonstrated considerable potential for enhancing developer productivity. Its effectiveness is particularly evident in repetitive code generation tasks, and its applicability across various work environments is noteworthy. Furthermore, the relatively gentle learning curve enables developers at all experience levels to adopt it with ease.
 
 ---
 
 ## Output (professional tone applied)
 
-Our platform streamlines cross-team workflows and reduces time-to-decision. It integrates with your existing tools and can be deployed within a standard IT environment without custom infrastructure.
+This tool reduces time spent on repetitive code generation, improving overall development speed. It integrates into a range of tech stacks and workflows, and its low onboarding cost makes it accessible to junior and senior developers alike.
 
 ---
 
 ## Diff notes
 
-- "cutting-edge" / "pivotal catalyst" / "synergizing" → removed (AI vocabulary pattern)
-- "leveraging transformative paradigm shifts" → removed entirely
-- "unlock unprecedented value creation" → "reduces time-to-decision" (concrete outcome)
-- "stakeholder touchpoints" → "cross-team workflows" (plain language)
-- Overall: buzzword-heavy abstraction → clear, formal, measurable language
+- "demonstrated considerable potential for enhancing" → "reduces time spent on" (specific outcome)
+- "particularly evident" / "noteworthy" → removed (filler adjectives)
+- "applicability across various work environments" → "integrates into a range of tech stacks" (concrete)
+- "relatively gentle learning curve" → "low onboarding cost" (business-appropriate phrasing)
+- Core meaning (productivity, repetitive tasks, versatility, low barrier) fully preserved

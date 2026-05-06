@@ -1,30 +1,25 @@
 # Fixture: marketing × en
 
-**diff focus:** Short impact sentences, persuasive verbs, CTA introduced, social proof
+**diff focus:** Short impact sentences, concrete benefits, CTA-friendly
 
 ---
 
 ## Input
 
-Our product offers a comprehensive suite of features designed to potentially improve the productivity of users in their day-to-day work activities. A significant number of users have adopted the product and are generally reporting satisfactory outcomes. Those who are interested may wish to consider trying it out.
+This tool has demonstrated considerable potential for enhancing developer productivity. Its effectiveness is particularly evident in repetitive code generation tasks, and its applicability across various work environments is noteworthy. Furthermore, the relatively gentle learning curve enables developers at all experience levels to adopt it with ease.
 
 ---
 
 ## Output (marketing tone applied)
 
-Get two hours back every day.
-
-Stop doing the repetitive stuff manually. Over 12,000 teams already run on it — and the average user cuts their admin time in half within a week.
-
-Try it free. No credit card. →
+Stop writing the same code twice. This tool handles repetitive generation across any stack, and your team can start using it today — no ramp-up needed. Ship faster.
 
 ---
 
 ## Diff notes
 
-- "comprehensive suite of features" → removed (AI marketing filler)
-- "potentially improve" → "Get two hours back" (concrete benefit, imperative lead)
-- "generally reporting satisfactory outcomes" → "cuts their admin time in half within a week" (specific social proof)
-- "may wish to consider trying" → "Try it free." (direct CTA, hedging stripped)
-- Short sentences and line breaks added for scan-ability
-- Urgency and social proof signals introduced
+- "demonstrated considerable potential for enhancing" → "Stop writing the same code twice" (impact opener)
+- "applicability across various work environments" → "across any stack" (concise benefit)
+- "gentle learning curve" → "no ramp-up needed" (benefit framing)
+- "Furthermore" → removed; replaced with short closing CTA ("Ship faster")
+- Core meaning (productivity, repetitive tasks, versatility, low barrier) fully preserved

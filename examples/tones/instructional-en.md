@@ -1,30 +1,29 @@
 # Fixture: instructional × en
 
-**diff focus:** Imperative verbs at sentence head, numbered structure, hedging stripped, one action per step
+**diff focus:** Direct declarative sentences, structured list, hedging removed
 
 ---
 
 ## Input
 
-Before you begin the setup process, you may want to consider checking whether Node.js is installed on your system. It would be advisable to ensure that the version is 18 or higher. You could then proceed to clone the repository. After installation is complete, you might want to think about starting the development server.
+This tool has demonstrated considerable potential for enhancing developer productivity. Its effectiveness is particularly evident in repetitive code generation tasks, and its applicability across various work environments is noteworthy. Furthermore, the relatively gentle learning curve enables developers at all experience levels to adopt it with ease.
 
 ---
 
 ## Output (instructional tone applied)
 
-1. Check your Node.js version: `node --version` (requires 18 or higher)
-2. Clone the repository: `git clone https://github.com/example/repo`
-3. Install dependencies: `npm install`
-4. Start the development server: `npm run dev`
+This tool automates repetitive code generation to reduce development time.
+
+- **Repetitive tasks**: Generates boilerplate, CRUD patterns, and scaffolding code.
+- **Environment-agnostic**: Works with frontend, backend, and data pipeline setups.
+- **Low barrier to entry**: No prior experience required to start.
 
 ---
 
 ## Diff notes
 
-- "you may want to consider checking" → "Check" (imperative, hedging stripped)
-- "It would be advisable to ensure" → removed as separate step, folded into step 1
-- "You could then proceed to" → "Clone" (direct imperative)
-- "you might want to think about starting" → "Start" (hedging fully removed)
-- Prose → numbered list (one action per step)
-- Inline code commands added for precision
-- Filler phrases ("Before you begin," "After installation is complete") → replaced by sequence numbers
+- "demonstrated considerable potential" → "automates repetitive code generation" (direct statement)
+- "particularly evident" / "noteworthy" → removed (filler)
+- Prose → bullet list (information structured for scanning)
+- "relatively gentle learning curve" → "no prior experience required" (hedging removed)
+- Core meaning (productivity, repetitive tasks, versatility, low barrier) fully preserved

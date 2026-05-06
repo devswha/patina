@@ -115,6 +115,7 @@ export async function main(args) {
         parsed.promptMode || config['prompt-mode'] || 'strict',
         { backend: parsed.backend, model: resolved.model }
       ),
+      variants: parsed.variants || 1,
     });
 
     let result;
@@ -349,6 +350,14 @@ function parseArgs(args) {
         parsed.promptMode = m;
         break;
       }
+      case '--variants': {
+        const n = Number(args[++i]);
+        if (!Number.isInteger(n) || n < 1 || n > 5) {
+          throw new Error(`--variants expects an integer 1-5, got ${args[i]}`);
+        }
+        parsed.variants = n;
+        break;
+      }
       default:
         if (!arg.startsWith('-')) {
           parsed.files.push(arg);
@@ -539,6 +548,10 @@ Options:
                        auto: pick by backend — gemini → minimal, others → strict.
                        case-05 finding: minimal helps Gemini, hurts Claude,
                        neutral for Codex. Only affects --rewrite mode.
+  --variants <n>       Generate N stylistic variants of the rewrite (1-5,
+                       default 1). Each variant preserves facts/numbers but
+                       differs in voice (V1 casual, V2 direct, V3 measured…).
+                       Output prints each as ## Variant N. Only --rewrite mode.
   --allow-private-base-url   Permit base URL pointing at private/IMDS IPs
                        (also enabled by PATINA_ALLOW_PRIVATE_BASE_URL=1).
                        Default: refuse to send the API key to RFC 1918 / link-local

@@ -1,7 +1,30 @@
-export function formatOutput(result, _mode, _parsed, opts = {}) {
+export function formatOutput(result, mode, _parsed, opts = {}) {
   const tone = opts.tone || null;
-  const body = renderBody(result);
+  let body = renderBody(result);
+  if (mode === 'rewrite' || mode === 'diff' || mode === 'ouroboros') {
+    body = stripSelfAudit(body);
+  }
   return appendToneFooter(body, tone);
+}
+
+// v3.11: rewrite/diff/ouroboros prompts ask the model to wrap user-facing
+// text in [BODY]...[/BODY] and put audit notes in [SELF_AUDIT]...[/SELF_AUDIT].
+// We extract the body block and drop the audit so callers get clean text.
+// If the model didn't honor the tags (older runs, mocked tests, etc.), we
+// fall back to returning the full output untouched.
+export function stripSelfAudit(body) {
+  if (!body) return body;
+  const bodyOpen = body.indexOf('[BODY]');
+  const bodyClose = body.indexOf('[/BODY]', bodyOpen);
+  if (bodyOpen < 0 || bodyClose <= bodyOpen) {
+    return body;
+  }
+  const inner = body.slice(bodyOpen + '[BODY]'.length, bodyClose).trim();
+  const tail = body
+    .slice(bodyClose + '[/BODY]'.length)
+    .replace(/\[SELF_AUDIT\][\s\S]*?\[\/SELF_AUDIT\]/g, '')
+    .trim();
+  return tail ? `${inner}\n\n${tail}` : inner;
 }
 
 function renderBody(result) {

@@ -37,12 +37,12 @@ describe('Config Loading', () => {
 });
 
 describe('Pattern Loading', () => {
-  it('should load all pattern packs (24 base + ko-viral-hook)', () => {
+  it('should load all pattern packs (24 base + ko/en viral-hook)', () => {
     const packs = loadPatterns(REPO_ROOT, 'ko');
     assert.strictEqual(packs.length, 7, 'Expected 7 Korean packs (6 base + viral-hook)');
 
     const enPacks = loadPatterns(REPO_ROOT, 'en');
-    assert.strictEqual(enPacks.length, 6, 'Expected 6 English packs');
+    assert.strictEqual(enPacks.length, 7, 'Expected 7 English packs (6 base + viral-hook)');
 
     const zhPacks = loadPatterns(REPO_ROOT, 'zh');
     assert.strictEqual(zhPacks.length, 6, 'Expected 6 Chinese packs');
@@ -53,12 +53,17 @@ describe('Pattern Loading', () => {
 
   it('should mark score-only packs', () => {
     const koPacks = loadPatterns(REPO_ROOT, 'ko');
-    const viralHook = koPacks.find((p) => p.frontmatter?.pack === 'ko-viral-hook');
-    assert.ok(viralHook, 'ko-viral-hook pack should exist');
-    assert.strictEqual(viralHook.isScoreOnly, true, 'ko-viral-hook should be score-only');
+    const koViralHook = koPacks.find((p) => p.frontmatter?.pack === 'ko-viral-hook');
+    assert.ok(koViralHook, 'ko-viral-hook pack should exist');
+    assert.strictEqual(koViralHook.isScoreOnly, true, 'ko-viral-hook should be score-only');
 
     const contentPack = koPacks.find((p) => p.frontmatter?.pack === 'ko-content');
     assert.strictEqual(contentPack.isScoreOnly, false, 'ko-content should not be score-only');
+
+    const enPacks = loadPatterns(REPO_ROOT, 'en');
+    const enViralHook = enPacks.find((p) => p.frontmatter?.pack === 'en-viral-hook');
+    assert.ok(enViralHook, 'en-viral-hook pack should exist');
+    assert.strictEqual(enViralHook.isScoreOnly, true, 'en-viral-hook should be score-only');
   });
 
   it('should parse frontmatter correctly', () => {
@@ -78,7 +83,7 @@ describe('Pattern Loading', () => {
 
   it('should respect skip-patterns', () => {
     const packs = loadPatterns(REPO_ROOT, 'en', ['en-filler']);
-    assert.strictEqual(packs.length, 5, 'Should skip en-filler');
+    assert.strictEqual(packs.length, 6, 'Should skip en-filler (7 base+viral - 1 = 6)');
   });
 });
 

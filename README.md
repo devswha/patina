@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#quick-start)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-3.10.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.11.0-blue)](CHANGELOG.md)
 
 > **Strip the AI packaging. Keep the meaning.**
 
@@ -30,7 +30,7 @@ More examples: [Before/After Gallery](docs/EXAMPLES.md). Social preview asset: [
 
 |  |  |
 |---|---|
-| **131 patterns** | 37 KO (incl. 5 score-only viral-hook) + 31 EN + 31 ZH + 32 JA — see [PATTERNS.md](docs/PATTERNS.md) |
+| **136 patterns** | 37 KO + 36 EN (each incl. 5 score-only viral-hook) + 31 ZH + 32 JA — see [PATTERNS.md](docs/PATTERNS.md) |
 | **AI catch rate** | 91% Korean / 76% English (HC3) |
 | **False positives** | 13–25% on human prose *(boundary intrinsic to encyclopedic register, [documented](core/stylometry.md))* |
 | **Modes** | rewrite · audit · score · diff · ouroboros |
@@ -104,7 +104,11 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 
 ### Score-only patterns
 
-`--score` and `--audit` measure a slightly broader set of signals than `--rewrite` does. The Korean pack `ko-viral-hook` (5 patterns: shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, hyperbolic engagement lexicon) is **detection-only** — it surfaces in the score and audit so the benchmark matches human intuition for SNS-style marketing copy, but `--rewrite`/`--diff`/`--ouroboros` skip it because those signals are often intentional rhetoric. Real-world demos: [`examples/viral-hook/`](examples/viral-hook/).
+`--score` and `--audit` measure a slightly broader set of signals than `--rewrite` does. The viral-hook packs (`ko-viral-hook` and `en-viral-hook`, 5 patterns each: shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, hyperbolic engagement lexicon) are **detection-only** — they surface in the score and audit so the benchmark matches human intuition for SNS-style marketing copy, but `--rewrite`/`--diff`/`--ouroboros` skip them because those signals are often intentional rhetoric. Real-world demos: [`examples/viral-hook/`](examples/viral-hook/).
+
+### Self-audit isolation (v3.11)
+
+In rewrite mode, the model emits its self-audit notes inside `[SELF_AUDIT]`/`[/SELF_AUDIT]` tags wrapped around a `[BODY]`/`[/BODY]` block. patina strips the audit before showing the user, so raw output is clean — earlier versions sometimes leaked phrases like "남아 있는 AI 티" or "Phase 3" preambles into the user-facing text.
 
 ## Tones
 
@@ -154,7 +158,7 @@ If meaning drifts at any verification step, the change is retried or rolled back
 
 ```yaml
 # .patina.default.yaml
-version: "3.10.0"
+version: "3.11.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score

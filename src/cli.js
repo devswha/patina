@@ -111,7 +111,10 @@ export async function main(args) {
       text,
       mode,
       tone: toneResolution,
-      promptMode: parsed.promptMode || config['prompt-mode'] || 'strict',
+      promptMode: resolvePromptMode(
+        parsed.promptMode || config['prompt-mode'] || 'strict',
+        { backend: parsed.backend, model: resolved.model }
+      ),
     });
 
     let result;
@@ -330,8 +333,8 @@ function parseArgs(args) {
         break;
       case '--prompt-mode': {
         const m = args[++i];
-        if (!m || !['strict', 'minimal'].includes(m)) {
-          throw new Error(`--prompt-mode expects 'strict' or 'minimal', got ${m}`);
+        if (!m || !['strict', 'minimal', 'auto'].includes(m)) {
+          throw new Error(`--prompt-mode expects 'strict' | 'minimal' | 'auto', got ${m}`);
         }
         parsed.promptMode = m;
         break;
@@ -351,6 +354,21 @@ function parseArgs(args) {
 // of argv and shell history (CWE-214). Precedence: --api-key-file >
 // PATINA_API_KEY_FILE > --api-key (with deprecation warning) > parsed.apiKey
 // passed through to provider config (env var path stays in providers.js).
+// v3.11: case-05 found that prompt-mode preference is per-backend.
+// auto resolves to strict for codex-cli/claude (instruction-rich) and
+// minimal for gemini (voice-rich, over-constrained by long prompts).
+// Explicit strict/minimal pass through unchanged.
+export function resolvePromptMode(mode, { backend, model }) {
+  if (mode !== 'auto') return mode;
+  const backendStr = (backend || '').toLowerCase();
+  const modelStr = (model || '').toLowerCase();
+  if (backendStr.includes('gemini') || modelStr.includes('gemini')) return 'minimal';
+  if (modelStr.includes('claude')) return 'strict';
+  // Default for codex-cli, openai-http with gpt-* models, and anything we
+  // can't classify — strict is the conservative choice (full pattern packs).
+  return 'strict';
+}
+
 function resolveApiKey(parsed) {
   const filePath = parsed.apiKeyFile || process.env.PATINA_API_KEY_FILE;
   if (filePath) {
@@ -505,10 +523,12 @@ Options:
   --save-run <dir>     Write manifest.json + output-N.txt under <dir> after the
                        run (records version, prompt/config hashes, patterns,
                        provider/model — useful for reproducibility / audit)
-  --prompt-mode <m>    Rewrite prompt mode: strict (default, full pattern packs)
-                       or minimal (compressed watch-words only, ~91% smaller).
-                       case-05: minimal helps Gemini, hurts Claude, neutral for
-                       Codex — pick per backend. Only affects --rewrite mode.
+  --prompt-mode <m>    Rewrite prompt mode: strict | minimal | auto.
+                       strict (default): full pattern packs (~34KB).
+                       minimal: compressed watch-words + casual instruction (~3KB).
+                       auto: pick by backend — gemini → minimal, others → strict.
+                       case-05 finding: minimal helps Gemini, hurts Claude,
+                       neutral for Codex. Only affects --rewrite mode.
   --allow-private-base-url   Permit base URL pointing at private/IMDS IPs
                        (also enabled by PATINA_ALLOW_PRIVATE_BASE_URL=1).
                        Default: refuse to send the API key to RFC 1918 / link-local

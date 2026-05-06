@@ -157,3 +157,34 @@ test('stripSelfAudit: only applied to rewrite/diff/ouroboros modes', () => {
   assert.ok(audit.includes('[BODY]'));
   assert.ok(audit.includes('[SELF_AUDIT]'));
 });
+
+// --- resolvePromptMode (v3.11 Phase 3.3) ---
+
+import { resolvePromptMode } from '../../src/cli.js';
+
+test('resolvePromptMode: strict passes through unchanged', () => {
+  assert.equal(resolvePromptMode('strict', { backend: 'codex-cli' }), 'strict');
+  assert.equal(resolvePromptMode('strict', { backend: 'gemini' }), 'strict');
+});
+
+test('resolvePromptMode: minimal passes through unchanged', () => {
+  assert.equal(resolvePromptMode('minimal', { backend: 'codex-cli' }), 'minimal');
+});
+
+test('resolvePromptMode: auto + gemini backend → minimal', () => {
+  assert.equal(resolvePromptMode('auto', { backend: 'gemini' }), 'minimal');
+  assert.equal(resolvePromptMode('auto', { backend: '', model: 'gemini-3-flash-preview' }), 'minimal');
+});
+
+test('resolvePromptMode: auto + claude model → strict', () => {
+  assert.equal(resolvePromptMode('auto', { backend: '', model: 'claude-sonnet-4-6' }), 'strict');
+});
+
+test('resolvePromptMode: auto + codex-cli → strict (default)', () => {
+  assert.equal(resolvePromptMode('auto', { backend: 'codex-cli' }), 'strict');
+});
+
+test('resolvePromptMode: auto + unknown → strict (conservative)', () => {
+  assert.equal(resolvePromptMode('auto', { backend: 'openai-http', model: 'gpt-5.5' }), 'strict');
+  assert.equal(resolvePromptMode('auto', {}), 'strict');
+});

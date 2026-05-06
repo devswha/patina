@@ -7,6 +7,7 @@ import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } 
 import { formatOutput } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
+import { buildManifest, appendResult, writeManifest } from './manifest.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, basename, extname } from 'node:path';
 
@@ -53,7 +54,10 @@ export async function main(args) {
   applyPrivateBaseURLOptIn(parsed);
   validateBaseURL(resolved.baseURL);
 
-  const config = loadConfig();
+  const configPath = parsed.config ? resolve(process.cwd(), parsed.config) : undefined;
+  const config = loadConfig(configPath);
+  const startedAt = new Date().toISOString();
+  const manifestResults = [];
 
   if (parsed.lang) config.language = parsed.lang;
   if (parsed.profile) config.profile = parsed.profile;
@@ -151,11 +155,45 @@ export async function main(args) {
       output = formatOutput(result, mode, parsed);
     }
 
+    if (parsed.saveRun) {
+      const idx = manifestResults.length + 1;
+      const outputName = `output-${idx}.txt`;
+      appendResult(manifestResults, {
+        inputPath: path,
+        prompt,
+        outputRef: { kind: 'file', name: outputName },
+      });
+      manifestResults[manifestResults.length - 1]._content = output;
+    }
+
     if (parsed.batch) {
       await writeBatchOutput(parsed, path, output);
     } else {
       console.log(output);
     }
+  }
+
+  if (parsed.saveRun) {
+    const manifest = buildManifest({
+      patinaVersion: PACKAGE_VERSION,
+      mode,
+      lang,
+      profile: profileName,
+      provider: provider?.name,
+      backend: parsed.backend ?? 'openai-http',
+      model: resolved.model,
+      configPath: configPath ?? null,
+      config,
+      patterns,
+      results: manifestResults.map(({ _content, ...r }) => r),
+      startedAt,
+    });
+    const outputs = manifestResults.map(({ outputRef, _content }) => ({
+      name: outputRef.name,
+      content: _content,
+    }));
+    const manifestPath = writeManifest(resolve(process.cwd(), parsed.saveRun), manifest, outputs);
+    console.error(`[patina] wrote manifest to ${manifestPath}`);
   }
 }
 
@@ -237,6 +275,12 @@ function parseArgs(args) {
         break;
       case '--allow-insecure-base-url':
         parsed.allowInsecureBaseURL = true;
+        break;
+      case '--config':
+        parsed.config = args[++i];
+        break;
+      case '--save-run':
+        parsed.saveRun = args[++i];
         break;
       default:
         if (!arg.startsWith('-')) {
@@ -397,6 +441,10 @@ Options:
   --list-providers     List provider presets and which keys are set
   --allow-insecure-base-url  Permit plaintext http:// to non-localhost endpoints
                        (also enabled by PATINA_ALLOW_INSECURE_BASE_URL=1)
+  --config <path>      Load config from <path> instead of .patina.default.yaml
+  --save-run <dir>     Write manifest.json + output-N.txt under <dir> after the
+                       run (records version, prompt/config hashes, patterns,
+                       provider/model — useful for reproducibility / audit)
   --allow-private-base-url   Permit base URL pointing at private/IMDS IPs
                        (also enabled by PATINA_ALLOW_PRIVATE_BASE_URL=1).
                        Default: refuse to send the API key to RFC 1918 / link-local

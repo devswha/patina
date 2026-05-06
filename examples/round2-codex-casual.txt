@@ -1,0 +1,12 @@
+에이, 마케팅 잘해서 뜬 거 아니에요.
+
+개발자들이 새벽 3시에 버그 잡다가 머리 쥐어뜯잖아요? 그때 딱 필요한 부분을 긁어준 거죠. NVIDIA가 이름도 거의 안 알려진 오픈소스랑 손잡은 것도 그래서고요.
+
+실전에서 바로 돈 되는 도구는, 결국 사람들이 먼저 알아봐요.
+
+---
+tone: null
+tone_source: profile_only
+tone_evidence: []
+tone_confidence: null
+---

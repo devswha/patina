@@ -1,0 +1,19 @@
+Warning: True color (24-bit) support not detected. Using a terminal with true color enabled will result in a better visual experience.
+Ripgrep is not available. Falling back to GrepTool.
+MCP issues detected. Run /mcp list for status.
+[BODY]
+마케팅 잘해서 뜬 게 아닙니다. 개발자들이 새벽 3시까지 버그 잡느라 머리 싸매던 그 '가려운 곳'을 정확히 긁어줬기 때문입니다. 엔비디아가 이름도 없던 이 오픈소스와 손을 잡은 건 결코 우연이 아닙니다. 실전에서 곧바로 돈이 되는 도구는 대중이 가장 먼저 알아봅니다.
+[/BODY]
+
+[SELF_AUDIT]
+- '때문임'과 같은 메모식 종결 어미를 자연스러운 서술형으로 다듬었습니다.
+- '무명의'를 '이름도 없던'으로, '우연이 아니다'를 '결코 우연이 아닙니다'로 매끄럽게 연결했습니다.
+- AI 신호 어휘(핵심적, 혁신적, ~를 통해 등)를 일절 사용하지 않고 원문의 직관적인 느낌을 유지했습니다.
+[/SELF_AUDIT]
+
+---
+tone: null
+tone_source: profile_only
+tone_evidence: []
+tone_confidence: 1.0
+---

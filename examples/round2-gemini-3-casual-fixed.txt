@@ -1,0 +1,20 @@
+Warning: True color (24-bit) support not detected. Using a terminal with true color enabled will result in a better visual experience.
+Ripgrep is not available. Falling back to GrepTool.
+MCP issues detected. Run /mcp list for status.
+[BODY]
+에이, 이거 마케팅 잘해서 뜬 거 아니에요.
+개발자들이 새벽 3시에 버그 잡다가 진짜 머리 쥐어뜯잖아요? 그 가려운 부분을 아주 정확하게 긁어줬으니까 뜬 거죠.
+엔비디아가 이름도 없던 이 오픈소스랑 손잡은 것도 그냥 우연이 아니에요. 
+실제로 써먹었을 때 바로 돈이 되는 도구는 사람들이 제일 먼저 알아보는 법이거든요.
+[/BODY]
+
+[SELF_AUDIT]
+'~요/죠', '~잖아요' 같은 종결어미를 사용해 친구와 대화하는 듯한 친근한 톤으로 바꿨습니다. '무명'이나 '실전' 같은 딱딱한 한자어를 '이름도 없던', '실제로 써먹었을 때'처럼 쉬운 입말로 풀어서 AI 특유의 경직된 문체를 제거했습니다.
+[/SELF_AUDIT]
+
+---
+tone: casual-conversation
+tone_source: profile_only
+tone_evidence: ["~요/죠/잖아요 어미 활용", "친근한 대화 시작어(에이) 사용", "한자어의 구어체 순화"]
+tone_confidence: 5
+---

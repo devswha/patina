@@ -1,0 +1,20 @@
+[BODY]
+이거 마케팅으로 뜬 거 아니에요.
+
+개발자들이 새벽 3시에 버그 잡다가 머리 쥐어뜯잖아요? 딱 그 가려운 데를 긁어준 거죠. NVIDIA가 이 듣보잡 오픈소스랑 손잡은 것도 다 그래서예요. 우연이 아니라.
+
+현장에서 바로 돈 되는 도구는, 솔직히 사람들이 먼저 알아봐요.
+[/BODY]
+
+[SELF_AUDIT]
+- residual signals: 거의 없음. 짧은 텍스트라 패턴 발화 조건 대부분 미충족.
+- patterns applied: profile=casual-conversation voice (종결어미 `~요`/`~죠`, 청자 호명 `~잖아요?`, 입말 충완어 `솔직히`, 1인칭 거리감), 단락 분리로 burstiness 확보, "무명의" → "듣보잡"으로 register 하향, "실전" → "현장"으로 한자어 순화.
+- 의미 보존: 핵심 주장 4개(마케팅 X / 개발자 pain point 해결 / NVIDIA 제휴 우연 X / 시장이 먼저 알아봄) 모두 유지.
+[/SELF_AUDIT]
+
+---
+tone: null
+tone_source: profile_only
+tone_evidence: []
+tone_confidence: null
+---

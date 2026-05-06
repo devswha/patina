@@ -2,8 +2,16 @@ export function buildPrompt({ config, patterns, profile, voice, scoring, text, m
   const lang = config.language || 'ko';
   const profileName = config.profile || 'default';
 
-  const structurePacks = patterns.filter((p) => p.isStructure);
-  const lexicalPacks = patterns.filter((p) => !p.isStructure);
+  // score_only packs (e.g., viral-hook) are detection-only: included in score
+  // and audit modes but excluded from rewrite/diff/ouroboros so we don't force
+  // edits to viral-hook patterns that may be intentional rhetoric.
+  const includeScoreOnly = mode === 'score' || mode === 'audit';
+  const activePatterns = includeScoreOnly
+    ? patterns
+    : patterns.filter((p) => !p.isScoreOnly);
+
+  const structurePacks = activePatterns.filter((p) => p.isStructure);
+  const lexicalPacks = activePatterns.filter((p) => !p.isStructure);
 
   let prompt = `You are an editor who detects and removes AI writing patterns from text, rewriting it into natural, human-written prose.\n\n`;
 
@@ -41,7 +49,7 @@ export function buildPrompt({ config, patterns, profile, voice, scoring, text, m
   prompt += `\n`;
 
   prompt += `## Pattern Packs\n\n`;
-  for (const pack of patterns) {
+  for (const pack of activePatterns) {
     prompt += `### Pack: ${pack.frontmatter?.pack || pack.file}\n\n`;
     prompt += `${pack.body}\n\n`;
   }

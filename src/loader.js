@@ -37,6 +37,7 @@ export function loadPatterns(repoRoot, lang, skipPatterns = []) {
       frontmatter,
       body,
       isStructure: frontmatter?.phase === 'structure',
+      isScoreOnly: frontmatter?.score_only === true,
     });
   }
   return packs;

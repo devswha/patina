@@ -68,7 +68,7 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
 [ここにテキストを貼り付け]
 ```
 
-> 注意：v1 では `--tone` は ko/en のみ対応。zh/ja で明示トーンを指定すると警告を出して profile-only モードにフォールバックします。
+> 注意：v1 では `--tone`（`auto` 含む）は ko/en のみ対応。zh/ja では警告を出して profile-only モードにフォールバックします。
 
 ### スタンドアロン CLI として
 
@@ -115,7 +115,7 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 | `marketing` | 広告コピー、ランディングページ、製品告知 | 短くインパクトのある文、説得力、CTA 親和 |
 | `instructional` | チュートリアル、ハウツー、技術ドキュメント | 命令形動詞、番号付き構造、推測表現を抑制 |
 
-`--tone auto` はヒューリスティック（語彙 + 構造シグナル）で最適なトーンを自動選択します。zh/ja で明示トーンを指定すると警告を出して profile-only モードにフォールバックします（v1.1 以降で対応予定）。
+`--tone auto` はヒューリスティック（語彙 + 構造シグナル）で最適なトーンを自動選択します。zh/ja では `auto` を含む全トーン指定時に警告を出して profile-only モードにフォールバックします — Phase 4.5b ヒューリスティックは ko/en のみ対応のためです。
 
 ### MAX モード
 

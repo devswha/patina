@@ -240,6 +240,24 @@ Interpretation: 16-30 range = "거의 사람다움" (Mostly human, minor traces)
 - **Fidelity scoring** (meaning preservation vs original) is defined in §§ 9–13 below
   and integrated into `--score`, `--ouroboros`, and MAX mode pipelines.
 
+### Short-text boost (v3.11 Phase 3.2)
+
+For inputs ≤200 non-whitespace chars OR ≤3 non-empty paragraphs, register-
+sensitive categories get a 1.5x severity multiplier (capped at 3 per detection):
+
+- `language` — 종결어미, register cues, sentence form patterns
+- `style` — connectors, transition fillers, formulaic openers
+- `viral-hook` — shock numbers, clickbait closes, hyperbolic lexicon
+
+Rationale: case-04 found that voice/register shifts (e.g., `~다` ↔ `~습니다`)
+are clearly perceived by humans but barely move the standard formula because
+short texts only accumulate 1–2 pattern detections. The boost surfaces those
+shifts so single-paragraph score deltas align with reader intuition.
+
+The boost is applied at severity-assignment time by the scoring LLM (per the
+prompt instruction in `buildScoreInstructions`), not as a post-multiplier on
+category scores. This keeps the formula in §6 unchanged.
+
 ---
 
 ## 9. Fidelity Scoring — Overview

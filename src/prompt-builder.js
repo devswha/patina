@@ -88,7 +88,7 @@ export function buildPrompt({ config, patterns, profile, voice, scoring, text, m
   } else if (mode === 'audit') {
     prompt += buildAuditInstructions();
   } else if (mode === 'score') {
-    prompt += buildScoreInstructions(config, lang);
+    prompt += buildScoreInstructions(config, lang, text);
   } else if (mode === 'ouroboros') {
     prompt += buildOuroborosInstructions(config, structurePacks, lexicalPacks);
   }
@@ -205,7 +205,7 @@ function buildAuditInstructions() {
     `|---------|----------|----------|----------|\n`;
 }
 
-function buildScoreInstructions(config, lang) {
+function buildScoreInstructions(config, lang, text = '') {
   const weights = config.ouroboros?.['category-weights']?.[lang] || {};
   let inst = `Calculate an AI-likeness score (0-100) using EXACTLY these category weights. Do NOT invent extra categories (no "discord", no "tone", no "general"). Use only the categories listed:\n\n`;
 
@@ -216,6 +216,21 @@ function buildScoreInstructions(config, lang) {
   inst += `\nSeverity scale: Low=1, Medium=2, High=3 points per detection.\n`;
   inst += `Category score = (sum of adjusted severities / (pattern_count × 3)) × 100\n`;
   inst += `Overall = weighted average using the EXACT weights above (sum should equal 1.00).\n\n`;
+
+  // v3.11 Phase 3.2: short text (~200 chars or ≤3 paragraphs) often shows
+  // clear voice/register shifts that the standard formula barely registers
+  // because so few pattern instances accumulate. Tell the model to apply a
+  // 1.5x severity multiplier to register-sensitive categories (language,
+  // style, viral-hook) in this regime, capped at 3 (High) per detection.
+  const isShort = isShortText(text);
+  if (isShort) {
+    inst += `**Short-text boost (input ≤200 chars OR ≤3 paragraphs):** for `;
+    inst += `register-sensitive categories (\`language\`, \`style\`, \`viral-hook\`) `;
+    inst += `apply a 1.5x severity multiplier per detection (cap at 3). This `;
+    inst += `surfaces voice/register shifts (e.g., \`~다\` ↔ \`~습니다\` swap) `;
+    inst += `that the long-text formula otherwise undercounts.\n\n`;
+  }
+
   inst += `Output format (the Weight column must echo the values above verbatim):\n`;
   inst += `| Category | Weight | Detected | Raw Score | Weighted |\n`;
   inst += `|----------|--------|----------|-----------|----------|\n`;
@@ -223,6 +238,16 @@ function buildScoreInstructions(config, lang) {
   inst += `Interpretation: 0-15 human | 16-30 mostly human | 31-50 mixed | 51-70 AI-like | 71-100 heavily AI\n`;
 
   return inst;
+}
+
+// v3.11 Phase 3.2 helper: classify a text as "short" for scoring boost.
+// Threshold: ≤200 non-whitespace chars OR ≤3 non-empty paragraphs.
+export function isShortText(text) {
+  if (!text) return true;
+  const stripped = text.replace(/\s+/g, '');
+  if (stripped.length <= 200) return true;
+  const paragraphs = text.split(/\n\s*\n/).filter((p) => p.trim().length > 0);
+  return paragraphs.length <= 3;
 }
 
 // v3.11 minimal prompt — case-04 hypothesis test.

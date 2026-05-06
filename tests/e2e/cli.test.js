@@ -37,9 +37,9 @@ describe('Config Loading', () => {
 });
 
 describe('Pattern Loading', () => {
-  it('should load all 24 pattern packs', () => {
+  it('should load all pattern packs (24 base + ko-viral-hook)', () => {
     const packs = loadPatterns(REPO_ROOT, 'ko');
-    assert.strictEqual(packs.length, 6, 'Expected 6 Korean packs');
+    assert.strictEqual(packs.length, 7, 'Expected 7 Korean packs (6 base + viral-hook)');
 
     const enPacks = loadPatterns(REPO_ROOT, 'en');
     assert.strictEqual(enPacks.length, 6, 'Expected 6 English packs');
@@ -49,6 +49,16 @@ describe('Pattern Loading', () => {
 
     const jaPacks = loadPatterns(REPO_ROOT, 'ja');
     assert.strictEqual(jaPacks.length, 6, 'Expected 6 Japanese packs');
+  });
+
+  it('should mark score-only packs', () => {
+    const koPacks = loadPatterns(REPO_ROOT, 'ko');
+    const viralHook = koPacks.find((p) => p.frontmatter?.pack === 'ko-viral-hook');
+    assert.ok(viralHook, 'ko-viral-hook pack should exist');
+    assert.strictEqual(viralHook.isScoreOnly, true, 'ko-viral-hook should be score-only');
+
+    const contentPack = koPacks.find((p) => p.frontmatter?.pack === 'ko-content');
+    assert.strictEqual(contentPack.isScoreOnly, false, 'ko-content should not be score-only');
   });
 
   it('should parse frontmatter correctly', () => {

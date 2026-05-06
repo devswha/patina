@@ -73,15 +73,16 @@ Unknown categories (from custom packs not in the weight config) get default weig
 
 ### Korean (ko)
 
-| Category | Weight | Patterns |
-|----------|--------|----------|
-| content | 0.20 | 6 |
-| language | 0.20 | 6 |
-| style | 0.20 | 6 |
-| communication | 0.15 | 3 |
-| filler | 0.10 | 3 |
-| structure | 0.15 | 4 |
-| **Total** | **1.00** | **28** |
+| Category | Weight | Patterns | Notes |
+|----------|--------|----------|-------|
+| content | 0.18 | 6 | |
+| language | 0.18 | 6 | |
+| style | 0.18 | 6 | |
+| communication | 0.13 | 3 | |
+| filler | 0.08 | 3 | |
+| structure | 0.15 | 4 | |
+| viral-hook | 0.10 | 5 | score-only (no rewrite) |
+| **Total** | **1.00** | **33** | |
 
 ### English (en)
 

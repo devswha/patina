@@ -128,9 +128,21 @@ function buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAud
     inst += `3. Ensure Phase 1 corrections were not reverted in Phase 2\n`;
     inst += `4. Final check: meaning preserved?\n\n`;
 
-    inst += `Provide:\n`;
-    inst += `1. A brief list of what still looks AI-written (if anything)\n`;
-    inst += `2. The final humanized text\n`;
+    inst += `### Output format (STRICT — v3.11)\n\n`;
+    inst += `Produce output in this exact order, with no other text outside the tagged blocks:\n\n`;
+    inst += `1. The rewritten text wrapped in \`[BODY]\`/\`[/BODY]\` tags. ` +
+      `The body block must contain ONLY the user-facing rewrite — no headings, ` +
+      `no Phase labels, no preamble like "잔여 AI 티" or "최종 결과물".\n`;
+    inst += `2. Self-audit notes wrapped in \`[SELF_AUDIT]\`/\`[/SELF_AUDIT]\` tags ` +
+      `(brief: what still looks AI-written, which patterns were applied). ` +
+      `This block is for downstream review — patina strips it before showing the user.\n`;
+    inst += `3. The Phase 6 YAML footer if tone resolution requires it.\n\n`;
+    inst += `Example shape:\n\n`;
+    inst += "```\n";
+    inst += `[BODY]\n<rewritten text>\n[/BODY]\n\n`;
+    inst += `[SELF_AUDIT]\n- residual signals: ...\n- patterns applied: ...\n[/SELF_AUDIT]\n\n`;
+    inst += "---\ntone: ...\ntone_source: ...\ntone_evidence: [...]\ntone_confidence: ...\n---\n";
+    inst += "```\n";
   } else {
     // Self-audit suppressed: external evaluators (scoreText, scoreMPS,
     // scoreFidelity) handle AI-tell detection, polarity, and meaning checks

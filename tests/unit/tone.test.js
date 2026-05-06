@@ -127,3 +127,33 @@ test('formatOutput: null tone emits null values', () => {
   assert.ok(out.includes('tone: null'));
   assert.ok(out.includes('tone_confidence: null'));
 });
+
+// --- stripSelfAudit (v3.11) ---
+
+test('stripSelfAudit: extracts [BODY] block and drops [SELF_AUDIT]', () => {
+  const raw = '[BODY]\nHello world\n[/BODY]\n\n[SELF_AUDIT]\n- residual signal: foo\n[/SELF_AUDIT]';
+  const out = formatOutput(raw, 'rewrite', {});
+  assert.equal(out, 'Hello world');
+});
+
+test('stripSelfAudit: keeps YAML footer that follows [/BODY]', () => {
+  const raw = '[BODY]\nHello world\n[/BODY]\n\n[SELF_AUDIT]\nstuff\n[/SELF_AUDIT]\n\n---\ntone: null\ntone_source: profile_only\ntone_evidence: []\ntone_confidence: null\n---';
+  const out = formatOutput(raw, 'rewrite', {});
+  assert.ok(out.startsWith('Hello world'));
+  assert.ok(out.includes('tone_source: profile_only'));
+  assert.ok(!out.includes('residual'));
+});
+
+test('stripSelfAudit: passes through unchanged when no tags emitted', () => {
+  const raw = 'Plain rewrite text without tags.';
+  const out = formatOutput(raw, 'rewrite', {});
+  assert.equal(out, 'Plain rewrite text without tags.');
+});
+
+test('stripSelfAudit: only applied to rewrite/diff/ouroboros modes', () => {
+  const raw = '[BODY]\nclean\n[/BODY]\n[SELF_AUDIT]\nleak\n[/SELF_AUDIT]';
+  const audit = formatOutput(raw, 'audit', {});
+  // Audit mode should not strip — tags should round-trip as-is.
+  assert.ok(audit.includes('[BODY]'));
+  assert.ok(audit.includes('[SELF_AUDIT]'));
+});

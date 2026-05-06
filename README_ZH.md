@@ -28,7 +28,7 @@
 
 |  |  |
 |---|---|
-| **136 个模式** | 韩文 37 + 英文 36 (各含5个仅评分的 viral-hook) + 中文 31 + 日文 32 — [PATTERNS.md](docs/PATTERNS.md) |
+| **146 个模式** | 韩文 37 + 英文 36 + 中文 36 + 日文 37 (各含5个仅评分的 viral-hook) — [PATTERNS.md](docs/PATTERNS.md) |
 | **AI 检出率** | 韩文 91% / 英文 76% (HC3) |
 | **误检率** | 人类写作 13–25% *(百科风格本质局限，[已记录](core/stylometry.md))* |
 | **模式** | rewrite · audit · score · diff · ouroboros |
@@ -166,7 +166,7 @@ max-models: [claude, gemini]
 
 ## 文档
 
-- **[Patterns](docs/PATTERNS.md)** — 136 个模式目录
+- **[Patterns](docs/PATTERNS.md)** — 146 个模式目录
 - **[Authentication](docs/AUTHENTICATION.md)** — 后端、服务商、免费层设置
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 词汇算法
 - **[Scoring](core/scoring.md)** — AI 相似度 + 忠实度 + MPS

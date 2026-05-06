@@ -28,7 +28,7 @@
 
 |  |  |
 |---|---|
-| **136 パターン** | 韓国語 37 + 英語 36 (各5個のスコア専用 viral-hook を含む) + 中国語 31 + 日本語 32 — [PATTERNS.md](docs/PATTERNS.md) |
+| **146 パターン** | 韓国語 37 + 英語 36 + 中国語 36 + 日本語 37 (各5個のスコア専用 viral-hook を含む) — [PATTERNS.md](docs/PATTERNS.md) |
 | **AI 検出率** | 韓国語 91% / 英語 76% (HC3) |
 | **誤検出率** | 人間文章で 13–25% *(百科事典体の本質的限界、[文書化済み](core/stylometry.md))* |
 | **モード** | rewrite · audit · score · diff · ouroboros |
@@ -166,7 +166,7 @@ max-models: [claude, gemini]
 
 ## ドキュメント
 
-- **[Patterns](docs/PATTERNS.md)** — 136 パターンカタログ
+- **[Patterns](docs/PATTERNS.md)** — 146 パターンカタログ
 - **[Authentication](docs/AUTHENTICATION.md)** — バックエンド、プロバイダ、無料ティア設定
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 語彙アルゴリズム
 - **[Scoring](core/scoring.md)** — AI 類似度 + 忠実度 + MPS

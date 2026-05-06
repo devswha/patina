@@ -28,7 +28,7 @@
 
 |  |  |
 |---|---|
-| **136개 패턴** | 한국어 37 + 영어 36 (각 5개 스코어 전용 viral-hook 포함) + 중국어 31 + 일본어 32 — [PATTERNS.md](docs/PATTERNS.md) |
+| **146개 패턴** | 한국어 37 + 영어 36 + 중국어 36 + 일본어 37 (각 5개 스코어 전용 viral-hook 포함) — [PATTERNS.md](docs/PATTERNS.md) |
 | **AI 탐지율** | 한국어 91% / 영어 76% (HC3) |
 | **오탐율** | 사람 글에 13–25% *(백과사전체의 본질적 한계, [문서화](core/stylometry.md))* |
 | **모드** | rewrite · audit · score · diff · ouroboros |
@@ -164,7 +164,7 @@ max-models: [claude, gemini]
 
 ## 문서
 
-- **[Patterns](docs/PATTERNS.md)** — 136개 패턴 카탈로그
+- **[Patterns](docs/PATTERNS.md)** — 146개 패턴 카탈로그
 - **[Authentication](docs/AUTHENTICATION.md)** — 백엔드, 프로바이더, 무료 티어 설정
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 어휘 알고리즘
 - **[Scoring](core/scoring.md)** — AI 유사도 + 충실도 + MPS

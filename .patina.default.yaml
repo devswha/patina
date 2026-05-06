@@ -105,19 +105,21 @@ ouroboros:
       structure: 0.10
       viral-hook: 0.10  # score-only pack (excluded from rewrite)
     zh:
-      content: 0.20
-      language: 0.20
-      style: 0.20
-      communication: 0.15
-      filler: 0.10
+      content: 0.18
+      language: 0.18
+      style: 0.18
+      communication: 0.13
+      filler: 0.08
       structure: 0.15
+      viral-hook: 0.10  # score-only pack (excluded from rewrite)
     ja:
-      content: 0.20
-      language: 0.20
-      style: 0.20
-      communication: 0.15
-      filler: 0.10
+      content: 0.18
+      language: 0.18
+      style: 0.18
+      communication: 0.13
+      filler: 0.08
       structure: 0.15
+      viral-hook: 0.10  # score-only pack (excluded from rewrite)
   fidelity-floor: 70             # stop ouroboros if fidelity drops below this
   mps-floor: 70                  # stop ouroboros if MPS (meaning preservation) drops below this
   combined-weights:

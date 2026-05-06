@@ -37,33 +37,23 @@ describe('Config Loading', () => {
 });
 
 describe('Pattern Loading', () => {
-  it('should load all pattern packs (24 base + ko/en viral-hook)', () => {
-    const packs = loadPatterns(REPO_ROOT, 'ko');
-    assert.strictEqual(packs.length, 7, 'Expected 7 Korean packs (6 base + viral-hook)');
-
-    const enPacks = loadPatterns(REPO_ROOT, 'en');
-    assert.strictEqual(enPacks.length, 7, 'Expected 7 English packs (6 base + viral-hook)');
-
-    const zhPacks = loadPatterns(REPO_ROOT, 'zh');
-    assert.strictEqual(zhPacks.length, 6, 'Expected 6 Chinese packs');
-
-    const jaPacks = loadPatterns(REPO_ROOT, 'ja');
-    assert.strictEqual(jaPacks.length, 6, 'Expected 6 Japanese packs');
+  it('should load all pattern packs (24 base + 4 viral-hook)', () => {
+    for (const lang of ['ko', 'en', 'zh', 'ja']) {
+      const packs = loadPatterns(REPO_ROOT, lang);
+      assert.strictEqual(packs.length, 7, `Expected 7 ${lang} packs (6 base + viral-hook)`);
+    }
   });
 
-  it('should mark score-only packs', () => {
-    const koPacks = loadPatterns(REPO_ROOT, 'ko');
-    const koViralHook = koPacks.find((p) => p.frontmatter?.pack === 'ko-viral-hook');
-    assert.ok(koViralHook, 'ko-viral-hook pack should exist');
-    assert.strictEqual(koViralHook.isScoreOnly, true, 'ko-viral-hook should be score-only');
+  it('should mark score-only viral-hook packs across all languages', () => {
+    for (const lang of ['ko', 'en', 'zh', 'ja']) {
+      const packs = loadPatterns(REPO_ROOT, lang);
+      const viralHook = packs.find((p) => p.frontmatter?.pack === `${lang}-viral-hook`);
+      assert.ok(viralHook, `${lang}-viral-hook pack should exist`);
+      assert.strictEqual(viralHook.isScoreOnly, true, `${lang}-viral-hook should be score-only`);
 
-    const contentPack = koPacks.find((p) => p.frontmatter?.pack === 'ko-content');
-    assert.strictEqual(contentPack.isScoreOnly, false, 'ko-content should not be score-only');
-
-    const enPacks = loadPatterns(REPO_ROOT, 'en');
-    const enViralHook = enPacks.find((p) => p.frontmatter?.pack === 'en-viral-hook');
-    assert.ok(enViralHook, 'en-viral-hook pack should exist');
-    assert.strictEqual(enViralHook.isScoreOnly, true, 'en-viral-hook should be score-only');
+      const content = packs.find((p) => p.frontmatter?.pack === `${lang}-content`);
+      assert.strictEqual(content.isScoreOnly, false, `${lang}-content should not be score-only`);
+    }
   });
 
   it('should parse frontmatter correctly', () => {

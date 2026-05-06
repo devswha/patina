@@ -97,6 +97,7 @@ export async function main(args) {
         baseURL: resolved.baseURL,
         config,
         patterns,
+        maxConcurrency: parsed.maxConcurrency,
       });
     } else if (parsed.ouroboros) {
       result = await runOuroboros({
@@ -208,6 +209,14 @@ function parseArgs(args) {
       case '--models':
         parsed.models = args[++i].split(',').map((m) => m.trim());
         break;
+      case '--max-concurrency': {
+        const n = Number(args[++i]);
+        if (!Number.isFinite(n) || n < 0) {
+          throw new Error(`--max-concurrency expects a non-negative integer, got ${args[i]}`);
+        }
+        parsed.maxConcurrency = n;
+        break;
+      }
       case '--model':
         parsed.model = args[++i];
         break;
@@ -385,6 +394,7 @@ Options:
   --suffix <ext>       Save as {name}{ext}{extname}
   --outdir <dir>       Save results to directory
   --models <list>      MAX mode: comma-separated model list
+  --max-concurrency <n>  Cap parallel MAX-mode requests (default: unlimited)
   --model <id>         Single model ID (default: gpt-4o)
   --api-key <key>      API key (DEPRECATED: leaks via ps/shell history; prefer
                        PATINA_API_KEY env or --api-key-file)

@@ -96,7 +96,7 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 | `--diff` | 変更箇所をパターンごとに表示 |
 | `--ouroboros` | スコア収束まで反復（MPS ロールバック付き） |
 | `--lang <ko\|en\|zh\|ja>` | 言語選択（デフォルト：`ko`） |
-| `--profile <名前>` | トーンプリセット：`blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing` |
+| `--profile <名前>` | トーンプリセット：`blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation` |
 | `--tone <名前>` | トーンカテゴリ：`casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | 位置引数をファイル一覧として処理（例：`--batch docs/*.md`） |
 

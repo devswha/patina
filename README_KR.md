@@ -94,7 +94,7 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 | `--diff` | 변경 사항을 패턴별로 표시 |
 | `--ouroboros` | 점수가 수렴할 때까지 반복 (MPS 롤백 포함) |
 | `--lang <ko\|en\|zh\|ja>` | 언어 선택 (기본값: `ko`) |
-| `--profile <이름>` | 톤 프리셋: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing` |
+| `--profile <이름>` | 톤 프리셋: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation` |
 | `--tone <이름>` | 톤 카테고리: `casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | 위치 인자를 파일 목록으로 처리 (예: `--batch docs/*.md`) |
 

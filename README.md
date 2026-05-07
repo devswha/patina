@@ -186,6 +186,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 
 ## Documentation
 
+- **[Quickstart](docs/QUICKSTART.md)** - Get started with patina
 - **[Patterns](docs/PATTERNS.md)** — full 126-pattern catalog
 - **[Authentication](docs/AUTHENTICATION.md)** — backends, providers, free-tier setup
 - **[FAQ](docs/FAQ.md)** — detector-bypass concerns, MPS, false positives, contribution starting points

@@ -1,7 +1,7 @@
 ---
 name: patina
 version: 3.11.0
-description: 한·영·중·일 텍스트의 AI 글쓰기 패턴을 검출·교정해 사람이 쓴 것처럼 다듬는 스킬. 의미 보존(MPS) 검증 포함.
+description: Detect and rewrite AI writing patterns in Korean, English, Chinese, and Japanese text so it reads as if a human wrote it. Meaning-preservation (MPS) verified.
 allowed-tools:
   - Read
   - Write

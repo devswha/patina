@@ -80,7 +80,7 @@ cd patina && npm install && npm link
 patina --lang ja input.txt
 ```
 
-> 🆓 **API キー不要** — [`codex`](https://github.com/openai/codex) CLI にログイン済みであれば OK。全バックエンドは [AUTHENTICATION.md](docs/AUTHENTICATION.md) を参照。
+> 🆓 **API キー不要** — [`codex`](https://github.com/openai/codex)、[`claude`](https://docs.anthropic.com/en/docs/claude-code)、[`gemini`](https://github.com/google-gemini/gemini-cli) のいずれか CLI にログイン済みであれば OK。`--backend codex-cli | claude-cli | gemini-cli` で直接選択するか、`--model claude-*` / `--model gemini-*` のようにモデル名でルーティングできます。全バックエンドは [AUTHENTICATION.md](docs/AUTHENTICATION.md) を参照。
 
 ## モード
 

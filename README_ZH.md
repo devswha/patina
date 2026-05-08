@@ -80,7 +80,7 @@ cd patina && npm install && npm link
 patina --lang zh input.txt
 ```
 
-> 🆓 **无需 API 密钥** — 只要 [`codex`](https://github.com/openai/codex) CLI 已登录即可。完整后端列表见 [AUTHENTICATION.md](docs/AUTHENTICATION.md)。
+> 🆓 **无需 API 密钥** — 只要 [`codex`](https://github.com/openai/codex)、[`claude`](https://docs.anthropic.com/en/docs/claude-code)、[`gemini`](https://github.com/google-gemini/gemini-cli) 任一 CLI 已登录即可。可通过 `--backend codex-cli | claude-cli | gemini-cli` 直接选择，或用 `--model claude-*` / `--model gemini-*` 按模型名路由。完整后端列表见 [AUTHENTICATION.md](docs/AUTHENTICATION.md)。
 
 ## 模式
 

@@ -80,7 +80,7 @@ cd patina && npm install && npm link
 patina --lang en input.txt
 ```
 
-> 🆓 **No API key required** if you have the [`codex`](https://github.com/openai/codex) CLI logged in. See [AUTHENTICATION.md](docs/AUTHENTICATION.md) for the full backend list.
+> 🆓 **No API key required** if you have any of [`codex`](https://github.com/openai/codex), [`claude`](https://docs.anthropic.com/en/docs/claude-code), or [`gemini`](https://github.com/google-gemini/gemini-cli) CLIs logged in. Pick one with `--backend codex-cli | claude-cli | gemini-cli`, or let the model heuristic route automatically (`--model claude-*` → claude-cli, etc.). See [AUTHENTICATION.md](docs/AUTHENTICATION.md) for the full backend list.
 
 ## Modes
 

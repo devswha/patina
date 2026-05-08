@@ -78,7 +78,7 @@ cd patina && npm install && npm link
 patina --lang ko input.txt
 ```
 
-> 🆓 **API 키 없이 무료 사용 가능** — [`codex`](https://github.com/openai/codex) CLI 로그인만 되어 있으면 됩니다. 전체 백엔드는 [AUTHENTICATION.md](docs/AUTHENTICATION.md) 참조.
+> 🆓 **API 키 없이 무료 사용 가능** — [`codex`](https://github.com/openai/codex), [`claude`](https://docs.anthropic.com/en/docs/claude-code), [`gemini`](https://github.com/google-gemini/gemini-cli) CLI 중 하나만 로그인되어 있으면 됩니다. `--backend codex-cli | claude-cli | gemini-cli` 로 직접 선택하거나 `--model claude-*` / `--model gemini-*` 처럼 모델명으로 라우팅됩니다. 전체 백엔드는 [AUTHENTICATION.md](docs/AUTHENTICATION.md) 참조.
 
 ## 모드
 

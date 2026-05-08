@@ -44,6 +44,28 @@ describe('Backend Selection', () => {
     assert.strictEqual(backend.name, 'openai-http');
   });
 
+  it('routes --model claude-* to claude-cli via heuristic', () => {
+    const { backend, reason } = selectBackend({ model: 'claude-sonnet-4-6' });
+    assert.strictEqual(backend.name, 'claude-cli');
+    assert.strictEqual(reason, 'model heuristic');
+  });
+
+  it('routes --model gemini-* to gemini-cli via heuristic', () => {
+    const { backend, reason } = selectBackend({ model: 'gemini-3-flash-preview' });
+    assert.strictEqual(backend.name, 'gemini-cli');
+    assert.strictEqual(reason, 'model heuristic');
+  });
+
+  it('does not match `claudette` or `gemininet` or other false positives', () => {
+    assert.strictEqual(selectBackend({ model: 'claudette-1' }).backend.name, 'openai-http');
+    assert.strictEqual(selectBackend({ model: 'gemininet' }).backend.name, 'openai-http');
+  });
+
+  it('selects claude-cli / gemini-cli when --backend is explicit', () => {
+    assert.strictEqual(selectBackend({ name: 'claude-cli' }).backend.name, 'claude-cli');
+    assert.strictEqual(selectBackend({ name: 'gemini-cli' }).backend.name, 'gemini-cli');
+  });
+
   it('explicit --backend overrides --model heuristic', () => {
     const { backend } = selectBackend({ name: 'openai-http', model: 'codex' });
     assert.strictEqual(backend.name, 'openai-http');
@@ -76,11 +98,12 @@ describe('Codex auto-fallback removed (issue #88)', () => {
 });
 
 describe('Backend Listing', () => {
-  it('returns at least openai-http and codex-cli', () => {
+  it('returns at least openai-http, codex-cli, claude-cli, gemini-cli', () => {
     const list = listBackends();
     const names = list.map((b) => b.name);
-    assert.ok(names.includes('openai-http'));
-    assert.ok(names.includes('codex-cli'));
+    for (const expected of ['openai-http', 'codex-cli', 'claude-cli', 'gemini-cli']) {
+      assert.ok(names.includes(expected), `expected backend ${expected}`);
+    }
   });
 
   it('reports openai-http as always available (HTTP, no install check)', () => {

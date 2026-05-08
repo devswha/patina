@@ -150,7 +150,7 @@ test('stripSelfAudit: passes through unchanged when no tags emitted', () => {
   assert.equal(out, 'Plain rewrite text without tags.');
 });
 
-test('stripSelfAudit: only applied to rewrite/diff/ouroboros modes', () => {
+test('stripSelfAudit: only applied to rewrite/ouroboros modes', () => {
   const raw = '[BODY]\nclean\n[/BODY]\n[SELF_AUDIT]\nleak\n[/SELF_AUDIT]';
   const audit = formatOutput(raw, 'audit', {});
   // Audit mode should not strip — tags should round-trip as-is.

@@ -137,41 +137,7 @@ function buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAud
     inst += `3. Ensure Phase 1 corrections were not reverted in Phase 2\n`;
     inst += `4. Final check: meaning preserved?\n\n`;
 
-    inst += `### Output format (STRICT — v3.11)\n\n`;
-    inst += `Produce output in this exact order, with no other text outside the tagged blocks:\n\n`;
-
-    if (variants > 1) {
-      inst += `1. Produce ${variants} stylistic VARIANTS of the rewrite, each ` +
-        `wrapped in \`[VARIANT n]\`/\`[/VARIANT]\` tags where n is 1..${variants}. ` +
-        `Each variant must preserve all facts, numbers, and causation, but ` +
-        `differ in voice (e.g., V1 casual conversational, V2 direct/punchy, ` +
-        `V3 measured/professional). No headings, no preamble inside the tags.\n`;
-      inst += `2. Self-audit notes wrapped in \`[SELF_AUDIT]\`/\`[/SELF_AUDIT]\` tags ` +
-        `(brief: what differs across variants, residual AI signals, applied patterns).\n`;
-      inst += `3. The Phase 6 YAML footer if tone resolution requires it.\n\n`;
-      inst += `Example shape:\n\n`;
-      inst += "```\n";
-      for (let i = 1; i <= variants; i++) {
-        inst += `[VARIANT ${i}]\n<rewritten text — voice ${i}>\n[/VARIANT]\n\n`;
-      }
-      inst += `[SELF_AUDIT]\n- voice axis: ...\n- residual signals: ...\n[/SELF_AUDIT]\n\n`;
-      inst += "---\ntone: ...\ntone_source: ...\ntone_evidence: [...]\ntone_confidence: ...\n---\n";
-      inst += "```\n";
-    } else {
-      inst += `1. The rewritten text wrapped in \`[BODY]\`/\`[/BODY]\` tags. ` +
-        `The body block must contain ONLY the user-facing rewrite — no headings, ` +
-        `no Phase labels, no preamble like "잔여 AI 티" or "최종 결과물".\n`;
-      inst += `2. Self-audit notes wrapped in \`[SELF_AUDIT]\`/\`[/SELF_AUDIT]\` tags ` +
-        `(brief: what still looks AI-written, which patterns were applied). ` +
-        `This block is for downstream review — patina strips it before showing the user.\n`;
-      inst += `3. The Phase 6 YAML footer if tone resolution requires it.\n\n`;
-      inst += `Example shape:\n\n`;
-      inst += "```\n";
-      inst += `[BODY]\n<rewritten text>\n[/BODY]\n\n`;
-      inst += `[SELF_AUDIT]\n- residual signals: ...\n- patterns applied: ...\n[/SELF_AUDIT]\n\n`;
-      inst += "---\ntone: ...\ntone_source: ...\ntone_evidence: [...]\ntone_confidence: ...\n---\n";
-      inst += "```\n";
-    }
+    inst += buildOutputFormatBlock({ variants });
   } else {
     // Self-audit suppressed: external evaluators (scoreText, scoreMPS,
     // scoreFidelity) handle AI-tell detection, polarity, and meaning checks
@@ -181,6 +147,50 @@ function buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAud
   }
 
   return inst;
+}
+
+// v3.11: emit the strict-mode output-format block. Single-variant uses
+// [BODY]/[/BODY]; --variants > 1 uses [VARIANT n]/[/VARIANT] blocks.
+function buildOutputFormatBlock({ variants = 1 } = {}) {
+  const isVariants = variants > 1;
+  const tag = isVariants ? '[VARIANT n]/[/VARIANT]' : '[BODY]/[/BODY]';
+  const itemDesc = isVariants
+    ? `Produce ${variants} stylistic VARIANTS of the rewrite, each wrapped in ` +
+      `\`[VARIANT n]\`/\`[/VARIANT]\` tags where n is 1..${variants}. Each ` +
+      `variant must preserve all facts, numbers, and causation, but differ in ` +
+      `voice (e.g., V1 casual conversational, V2 direct/punchy, V3 measured/` +
+      `professional). No headings, no preamble inside the tags.`
+    : `The rewritten text wrapped in \`[BODY]\`/\`[/BODY]\` tags. The body ` +
+      `block must contain ONLY the user-facing rewrite — no headings, no ` +
+      `Phase labels, no preamble like "잔여 AI 티" or "최종 결과물".`;
+  const auditDesc = isVariants
+    ? `(brief: what differs across variants, residual AI signals, applied patterns)`
+    : `(brief: what still looks AI-written, which patterns were applied). ` +
+      `This block is for downstream review — patina strips it before showing the user`;
+
+  let exampleBody = '';
+  if (isVariants) {
+    for (let i = 1; i <= variants; i++) {
+      exampleBody += `[VARIANT ${i}]\n<rewritten text — voice ${i}>\n[/VARIANT]\n\n`;
+    }
+  } else {
+    exampleBody = `[BODY]\n<rewritten text>\n[/BODY]\n\n`;
+  }
+
+  return (
+    `### Output format (STRICT — v3.11)\n\n` +
+    `Produce output in this exact order, with no other text outside the tagged blocks:\n\n` +
+    `1. ${itemDesc}\n` +
+    `2. Self-audit notes wrapped in \`[SELF_AUDIT]\`/\`[/SELF_AUDIT]\` tags ${auditDesc}.\n` +
+    `3. The Phase 6 YAML footer if tone resolution requires it.\n\n` +
+    `Example shape (uses ${tag}):\n\n` +
+    '```\n' +
+    exampleBody +
+    `[SELF_AUDIT]\n- ${isVariants ? 'voice axis' : 'residual signals'}: ...\n` +
+    `- ${isVariants ? 'residual signals' : 'patterns applied'}: ...\n[/SELF_AUDIT]\n\n` +
+    `---\ntone: ...\ntone_source: ...\ntone_evidence: [...]\ntone_confidence: ...\n---\n` +
+    '```\n'
+  );
 }
 
 function buildDiffInstructions() {

@@ -1,7 +1,7 @@
 ---
 name: patina-max
 version: 3.11.0
-description: 같은 텍스트를 여러 모델(claude/codex/gemini CLI)로 humanize하고 의미 보존(MPS≥70) 통과 결과 중 최저 AI 점수를 자동 선택하는 best-of-N 스킬.
+description: Best-of-N humanizer. Runs the same text through multiple model CLIs (claude / codex / gemini) and auto-picks the lowest AI-score result that passes the meaning-preservation floor (MPS ≥ 70).
 allowed-tools:
   - Read
   - Write

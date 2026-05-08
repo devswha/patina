@@ -1,16 +1,11 @@
 export function formatOutput(result, mode, _parsed, opts = {}) {
   const tone = opts.tone || null;
   let body = renderBody(result);
-  if (mode === 'rewrite' || mode === 'diff' || mode === 'ouroboros') {
-    // v3.11 Phase 3.1: when --variants > 1 is used, the model emits
-    // [VARIANT n]...[/VARIANT] blocks instead of a single [BODY]. We
-    // detect that shape first and pretty-print the candidates.
+  // Only rewrite and ouroboros emit [BODY]/[VARIANT n] tags; diff/audit/score
+  // emit tables and don't need the extraction step.
+  if (mode === 'rewrite' || mode === 'ouroboros') {
     const variants = extractVariants(body);
-    if (variants.length > 0) {
-      body = formatVariants(variants, body);
-    } else {
-      body = stripSelfAudit(body);
-    }
+    body = variants.length > 0 ? formatVariants(variants, body) : stripSelfAudit(body);
   }
   return appendToneFooter(body, tone);
 }

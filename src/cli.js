@@ -10,6 +10,7 @@ import { runOuroboros } from './ouroboros.js';
 import { buildManifest, appendResult, writeManifest } from './manifest.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, basename, extname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const PACKAGE_VERSION = JSON.parse(
   readFileSync(resolve(getRepoRoot(), 'package.json'), 'utf8')
@@ -649,4 +650,14 @@ function handleAuth(subArgs) {
   }
   console.error(`Unknown auth subcommand: ${sub}. Try \`patina auth status\` or \`patina auth login\`.`);
   process.exit(1);
+}
+
+// Self-invocation guard (#113): when run directly via `node src/cli.js ...`,
+// run main(). When imported (e.g. by bin/patina.js or tests), just expose
+// the exports.
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  main(process.argv.slice(2)).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }

@@ -1,12 +1,7 @@
 ---
 name: patina-max
 version: 3.11.0
-description: |
-  Multi-model humanization. Runs the same humanization task on multiple
-  local model CLIs, scores each result, and selects the best
-  output by lowest AI score among candidates that pass the MPS
-  meaning-preservation floor. Uses `claude -p` / `gemini -p` for
-  Claude/Gemini and `codex exec` for Codex.
+description: 같은 텍스트를 여러 모델(claude/codex/gemini CLI)로 humanize하고 의미 보존(MPS≥70) 통과 결과 중 최저 AI 점수를 자동 선택하는 best-of-N 스킬.
 allowed-tools:
   - Read
   - Write

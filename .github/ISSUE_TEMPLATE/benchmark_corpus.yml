@@ -1,0 +1,33 @@
+name: Benchmark or corpus proposal
+description: Propose benchmark fixtures, corpus sources, or metric changes
+title: "benchmark: "
+labels: [benchmark]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Proposal type
+      options: [human corpus, AI corpus, adversarial corpus, metric, threshold, report, other]
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the corpus, metric, or benchmark change.
+    validations:
+      required: true
+  - type: textarea
+    id: license
+    attributes:
+      label: License / redistribution notes
+      description: For corpus proposals, explain whether text can be redistributed in this repo.
+    validations:
+      required: false
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation idea
+      description: How should we know this improves patina without raising false positives?
+    validations:
+      required: true

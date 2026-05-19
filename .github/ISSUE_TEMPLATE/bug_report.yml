@@ -1,0 +1,53 @@
+name: Bug report
+description: Report a reproducible patina bug
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please avoid sharing private or confidential text.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: "3.11.0 or commit SHA"
+    validations:
+      required: true
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language
+      options: [ko, en, zh, ja, mixed, unknown]
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options: [rewrite, audit, score, diff, ouroboros, max, install, other]
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Include command, config, and a safe input sample if possible.
+      placeholder: |
+        Command:
+        Input:
+        Config:
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true

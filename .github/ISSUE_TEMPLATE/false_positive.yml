@@ -1,0 +1,39 @@
+name: False positive report
+description: Report human writing that patina marks as too AI-like
+title: "false positive: "
+labels: [false-positive, benchmark]
+body:
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language
+      options: [ko, en, zh, ja]
+    validations:
+      required: true
+  - type: dropdown
+    id: register
+    attributes:
+      label: Register / genre
+      options: [blog, academic, technical, legal, medical, marketing, social, narrative, encyclopedic, other]
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Safe sample
+      description: Paste only text you are allowed to share publicly.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: patina result
+      description: Include score/audit output or the pattern that fired.
+    validations:
+      required: true
+  - type: textarea
+    id: why_human
+    attributes:
+      label: Why this should be treated as human/acceptable prose
+    validations:
+      required: true

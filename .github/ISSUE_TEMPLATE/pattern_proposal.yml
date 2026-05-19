@@ -1,0 +1,40 @@
+name: Pattern proposal
+description: Suggest a new AI-writing pattern or rewrite rule
+title: "pattern: "
+labels: [patterns]
+body:
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language
+      options: [ko, en, zh, ja]
+    validations:
+      required: true
+  - type: input
+    id: pattern_name
+    attributes:
+      label: Pattern name
+      placeholder: "e.g. generic positive conclusion"
+    validations:
+      required: true
+  - type: textarea
+    id: examples
+    attributes:
+      label: AI-like examples
+      description: Provide at least 2-3 short examples if possible.
+    validations:
+      required: true
+  - type: textarea
+    id: rewrite
+    attributes:
+      label: Better human rewrite
+      description: Show how the pattern should be rewritten while preserving meaning.
+    validations:
+      required: true
+  - type: textarea
+    id: false_positive
+    attributes:
+      label: False-positive risk
+      description: When would this phrase or structure be legitimate human writing?
+    validations:
+      required: true

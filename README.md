@@ -32,6 +32,7 @@ More examples: [Before/After Gallery](docs/EXAMPLES.md). Social preview asset: [
 |---|---|
 | **146 patterns** | 37 KO + 36 EN + 36 ZH + 37 JA (each incl. 5 score-only viral-hook) — see [PATTERNS.md](docs/PATTERNS.md) |
 | **AI catch rate** | 91% Korean / 76% English (HC3) |
+| **Benchmark report** | Reproducible suspect-zone benchmark: [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) |
 | **False positives** | 13–25% on human prose *(boundary intrinsic to encyclopedic register, [documented](core/stylometry.md))* |
 | **Modes** | rewrite · audit · score · diff · ouroboros |
 | **Free tier** | Yes — via `codex` CLI (no API key) |
@@ -78,6 +79,13 @@ Requires Node.js ≥ 18.
 git clone https://github.com/devswha/patina.git
 cd patina && npm install && npm link
 patina --lang en input.txt
+```
+
+Or try stdin after linking:
+
+```bash
+printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon that has fundamentally transformed social interactions across the globe.' \
+  | patina --lang en --backend codex-cli
 ```
 
 > 🆓 **No API key required** if you have any of [`codex`](https://github.com/openai/codex), [`claude`](https://docs.anthropic.com/en/docs/claude-code), or [`gemini`](https://github.com/google-gemini/gemini-cli) CLIs logged in. Pick one with `--backend codex-cli | claude-cli | gemini-cli`, or let the model heuristic route automatically (`--model claude-*` → claude-cli, etc.). See [AUTHENTICATION.md](docs/AUTHENTICATION.md) for the full backend list.
@@ -186,9 +194,12 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 
 ## Documentation
 
-- **[Patterns](docs/PATTERNS.md)** — full 126-pattern catalog
+- **[Patterns](docs/PATTERNS.md)** — full 146-pattern catalog
 - **[Authentication](docs/AUTHENTICATION.md)** — backends, providers, free-tier setup
 - **[FAQ](docs/FAQ.md)** — detector-bypass concerns, MPS, false positives, contribution starting points
+- **[Roadmap](docs/ROADMAP.md)** — quality, benchmark, product, community, and launch priorities
+- **[Benchmark Report](docs/benchmarks/latest.md)** — latest reproducible suspect-zone benchmark summary
+- **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — benchmark design notes for measuring AI-like writing signals
 - **[Launch Copy](docs/social/patina-launch-copy.md)** — Show HN, Reddit, X, Korean community drafts
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI-lexicon algorithm
 - **[Scoring](core/scoring.md)** — AI-likeness + fidelity + MPS

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security policy
+    url: https://github.com/devswha/patina/blob/main/SECURITY.md
+    about: Please do not disclose vulnerabilities in public issues.

@@ -1,6 +1,6 @@
 # Pattern Catalog
 
-126 patterns across 4 languages (32 KO + 31 EN + 31 ZH + 32 JA), organized in 6 categories. Most patterns are universal; a few slots have language-specific variants. Each pattern has a fire condition, an exclude condition (so legitimate uses don't get flagged), and example before/after pairs in `examples/`.
+146 pattern entries across 4 languages (37 KO + 36 EN + 36 ZH + 37 JA). The main catalog has 126 rewrite-capable patterns; the extra 20 are score/audit-only viral-hook patterns (5 per language). Most patterns are universal; a few slots have language-specific variants. Each pattern has a fire condition, an exclude condition (so legitimate uses don't get flagged), and example before/after pairs in `examples/`.
 
 | Category | # of patterns | Range |
 |----------|---------------|-------|
@@ -11,6 +11,7 @@
 | Filler & Hedging | 3 | #22–#24 |
 | Structure | 4 | #25–#28 *(some language-specific)* |
 | Universal extensions | 3 | #30–#32 *(KO/JA only for #32)* |
+| Viral hook | 5 per language | score/audit-only SNS-marketing signals |
 
 ## Universal patterns
 
@@ -85,9 +86,21 @@ These categories are identical across all four languages.
 | 31 | Conclusion signal words ("In conclusion", "결론적으로", "总而言之", "結論として") |
 | 32 | Comparative adverb overuse — KO `보다` / JA `より` only |
 
+## Score-only viral hooks (v3.11.0+)
+
+Each language has a `patterns/{lang}-viral-hook.md` pack with 5 score/audit-only patterns:
+
+1. Shock numbers as hook
+2. Clickbait mystery close
+3. Source-skipping authority
+4. Breath-optimized short-sentence stacking
+5. Hyperbolic engagement lexicon
+
+These signals affect `--score` and `--audit` only. `--rewrite`, `--diff`, and `--ouroboros` skip them because the rhetoric may be intentional.
+
 ## AI-lexicon overlap (step 4.7)
 
-In addition to the 126 patterns, two flat dictionaries flag AI-favored phrases not enumerated in the catalog:
+Separate from the pattern catalog, two flat dictionaries flag AI-favored phrases:
 
 - `lexicon/ai-en.md` — 108 entries (50 strict + 58 phrases)
 - `lexicon/ai-ko.md` — 102 entries (49 strict + 54 phrases)
@@ -96,7 +109,7 @@ Densities are computed per 1000 tokens; threshold default is 2.0. See `core/styl
 
 ## Adding a new language
 
-1. Create `patterns/{lang}-content.md`, `{lang}-language.md`, `{lang}-style.md`, `{lang}-communication.md`, `{lang}-filler.md`, `{lang}-structure.md`.
+1. Create `patterns/{lang}-content.md`, `{lang}-language.md`, `{lang}-style.md`, `{lang}-communication.md`, `{lang}-filler.md`, `{lang}-structure.md`, and optionally `{lang}-viral-hook.md` for score-only SNS signals.
 2. Set `language: {lang}` in each file's frontmatter.
 3. Use `/patina --lang {lang}` — auto-discovered, no config changes needed.
 

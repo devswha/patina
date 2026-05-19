@@ -11,7 +11,8 @@
     "test": "node --test tests/unit/*.test.js tests/e2e/*.test.js",
     "test:unit": "node --test tests/unit/*.test.js",
     "test:e2e": "node --test tests/e2e/*.test.js",
-    "benchmark": "node tests/quality/benchmark.mjs"
+    "benchmark": "node tests/quality/benchmark.mjs",
+    "benchmark:report": "node scripts/benchmark-report.mjs"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
@@ -22,10 +23,47 @@
   "keywords": [
     "ai",
     "humanizer",
+    "ai-humanizer",
+    "llm-humanizer",
+    "text-humanizer",
     "writing",
+    "stylometry",
+    "korean",
+    "nlp",
     "claude-code",
-    "nlp"
+    "codex-cli"
   ],
   "license": "MIT",
-  "private": false
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devswha/patina.git"
+  },
+  "homepage": "https://github.com/devswha/patina#readme",
+  "bugs": {
+    "url": "https://github.com/devswha/patina/issues"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "core/",
+    "patterns/",
+    "profiles/",
+    "lexicon/",
+    "docs/",
+    "scripts/benchmark-report.mjs",
+    "tests/quality/benchmark.mjs",
+    "tests/quality/README.md",
+    "tests/fixtures/suspect-zones/",
+    "README.md",
+    "README_KR.md",
+    "README_ZH.md",
+    "README_JA.md",
+    "SKILL.md",
+    "SKILL-MAX.md",
+    "patina-max/SKILL.md",
+    ".patina.default.yaml",
+    "LICENSE",
+    "CHANGELOG.md"
+  ]
 }

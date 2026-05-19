@@ -14,6 +14,13 @@ Long tagline:
 
 > A pattern-based cleanup tool for AI-sounding text. It shows what changed, why it changed, and whether the original claims survived.
 
+## Before posting
+
+- Run `npm run benchmark:report && npm test`.
+- Check the current benchmark: [`docs/benchmarks/latest.md`](../benchmarks/latest.md).
+- Keep claims to "editing signal" and "suspect-zone benchmark"; do not imply authorship proof.
+- Link issues for useful feedback: false positives, missing patterns, benchmark fixtures.
+
 ## Avoid
 
 Do not frame patina as:
@@ -147,10 +154,11 @@ That is the part I care about most: editable output with a safety rail.
 ```text
 Current calibration:
 
-- 126 pattern catalog
+- 146 pattern catalog
 - 91% Korean AI catch rate
 - 76% English HC3 catch rate
 - 13-25% false positives on human prose
+- Latest fixture benchmark: https://github.com/devswha/patina/blob/main/docs/benchmarks/latest.md
 
 False positives are documented because this should be used as an editor, not a judge.
 ```

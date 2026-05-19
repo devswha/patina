@@ -18,6 +18,7 @@ Long tagline:
 
 - Run `npm run benchmark:report && npm test`.
 - Check the current benchmark: [`docs/benchmarks/latest.md`](../benchmarks/latest.md).
+- Use the launch social preview when the surface supports images: [`assets/social/patina-og.svg`](../../assets/social/patina-og.svg).
 - Keep claims to "editing signal" and "suspect-zone benchmark"; do not imply authorship proof.
 - Link issues for useful feedback: false positives, missing patterns, benchmark fixtures.
 

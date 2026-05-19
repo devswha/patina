@@ -200,6 +200,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 
 ## Documentation
 
+- **[Glossary](docs/GLOSSARY.md)** — short definitions for MPS, fidelity, burstiness, MATTR, modes, and other recurring terms
 - **[Patterns](docs/PATTERNS.md)** — full 146-pattern catalog
 - **[Authentication](docs/AUTHENTICATION.md)** — backends, providers, free-tier setup
 - **[FAQ](docs/FAQ.md)** — detector-bypass concerns, MPS, false positives, contribution starting points

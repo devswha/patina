@@ -1,5 +1,9 @@
 **[한국어](README_KR.md)** | **[中文](README_ZH.md)** | **[日本語](README_JA.md)** | English
 
+<p align="center">
+  <img src="assets/brand/patina-logo.svg" alt="patina — Strip the AI packaging. Keep the meaning." width="440">
+</p>
+
 # patina
 
 [![Tests](https://github.com/devswha/patina/actions/workflows/test.yml/badge.svg)](https://github.com/devswha/patina/actions/workflows/test.yml)
@@ -24,7 +28,9 @@ Unlike a generic paraphraser, patina is **pattern-based and auditable**: it show
 
 > **MPS = 100** · cultural transformation ✓ · community building ✓ · meaningful connections ✓ · cross-cultural dialogue ✓
 
-More examples: [Before/After Gallery](docs/EXAMPLES.md). Social preview asset: [patina-before-after.svg](assets/social/patina-before-after.svg).
+More examples: [Before/After Gallery](docs/EXAMPLES.md).
+Brand assets: [logo](assets/brand/patina-logo.svg), [icon](assets/brand/patina-icon.svg),
+[social preview](assets/social/patina-og.svg), and [before/after card](assets/social/patina-before-after.svg).
 
 ## At a Glance
 

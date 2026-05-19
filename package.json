@@ -51,6 +51,7 @@
     "profiles/",
     "lexicon/",
     "docs/",
+    "assets/",
     "scripts/benchmark-report.mjs",
     "tests/quality/benchmark.mjs",
     "tests/quality/README.md",

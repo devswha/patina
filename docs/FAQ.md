@@ -1,5 +1,9 @@
 # FAQ
 
+New to the vocabulary? Start with the [Glossary](GLOSSARY.md) for short
+definitions of MPS, fidelity, burstiness, MATTR, modes, and other recurring
+terms.
+
 ## Is patina an AI detector bypass tool?
 
 No. patina is an editing and audit tool.

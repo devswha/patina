@@ -135,7 +135,9 @@ Acceptance criteria:
 
 Goal: reduce the time from landing on README to seeing value.
 
-- Add a recognizable patina logo / app icon before launch. Aim for an Obsidian-like level of memorability: dark, faceted, tactile, and simple enough to work at favicon size, without copying Obsidian's trade dress.
+- Maintain the recognizable patina logo / app icon now in `assets/brand/`.
+  It should stay dark, faceted, tactile, and simple enough to work at favicon size,
+  without copying Obsidian's trade dress.
 - Add an animated terminal demo or short GIF.
 - Add copy-paste sample commands for the 4 most likely users:
   - writer/blogger
@@ -253,8 +255,7 @@ Recommended order:
 1. Link research notes and roadmap from README.
 2. Add GitHub issue/PR templates and community docs.
 3. Add benchmark report generation.
-4. Add a Patina logo/icon and social preview image.
+4. Add a Patina logo/icon and social preview image. **Done:** source SVGs live in `assets/brand/` and `assets/social/patina-og.svg`.
 5. Add a terminal demo asset.
 6. Prepare one focused launch post.
 7. Publish npm only after install/support policy is settled.
-

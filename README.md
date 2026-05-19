@@ -1,7 +1,7 @@
 **[한국어](README_KR.md)** | **[中文](README_ZH.md)** | **[日本語](README_JA.md)** | English
 
 <p align="center">
-  <img src="assets/brand/patina-logo.svg" alt="patina — Strip the AI packaging. Keep the meaning." width="440">
+  <img src="assets/brand/patina-logo.svg?v=20260520" alt="patina — Strip the AI packaging. Keep the meaning." width="440">
 </p>
 
 # patina

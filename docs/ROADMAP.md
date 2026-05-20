@@ -275,50 +275,41 @@ Already done or mostly done:
 - README hero block is centered. Issue: [#241](https://github.com/devswha/patina/issues/241).
 - Korean companion docs exist for contributing, FAQ, authentication, and examples. Issue: [#202](https://github.com/devswha/patina/issues/202).
 - Priority labels were added for the last unlabeled queue items. Issues: [#99](https://github.com/devswha/patina/issues/99), [#104](https://github.com/devswha/patina/issues/104).
+- Test/backend hardening wave is complete: prompt snapshots, backend contract unification, SIGINT cancellation, structured logging, and progress indicators. Issues: [#169](https://github.com/devswha/patina/issues/169), [#131](https://github.com/devswha/patina/issues/131), [#133](https://github.com/devswha/patina/issues/133), [#132](https://github.com/devswha/patina/issues/132), [#180](https://github.com/devswha/patina/issues/180).
+- Scoring/stylometry quality wave is complete: zh/ja char n-grams, deterministic shadow scoring, manifest v2 observability, response cache, and voice anchors. Issues: [#151](https://github.com/devswha/patina/issues/151), [#136](https://github.com/devswha/patina/issues/136), [#134](https://github.com/devswha/patina/issues/134), [#135](https://github.com/devswha/patina/issues/135), [#137](https://github.com/devswha/patina/issues/137).
+- Pattern/profile wave is complete: zh/ja risk notes, comparison-adverb backport, zh/ja profile overrides, overlap audit, developer-prose profiles, and viral-hook expansion to 8 score-only patterns per language. Issues: [#147](https://github.com/devswha/patina/issues/147), [#148](https://github.com/devswha/patina/issues/148), [#149](https://github.com/devswha/patina/issues/149), [#152](https://github.com/devswha/patina/issues/152), [#153](https://github.com/devswha/patina/issues/153), [#154](https://github.com/devswha/patina/issues/154).
 
-Next executable wave order:
+Next executable wave order (snapshot: 2026-05-20 after PR #273):
 
 ### Blocked release wave — keep visible, do not start yet
 
-These are still the two open high-priority issues, but they are blocked until package ownership, release credentials, versioning, and support policy are settled.
+These are the only open high-priority issues. They stay blocked until package ownership, release credentials, versioning, and support policy are settled.
 
 1. Settle npm support policy, then publish `patina-cli` / `patina-humanizer` with release workflow. Issue: [#203](https://github.com/devswha/patina/issues/203).
 2. Ship `devswha/patina-action@v1` for PR-comment scoring after the release/versioning path is stable. Issue: [#204](https://github.com/devswha/patina/issues/204).
 
-### Wave 1 — documentation, governance, and issue hygiene
+### Wave 1 — medium, executable after release policy is unblocked
 
-1. Tie this roadmap to a GitHub Project board or Milestones. Issue: [#195](https://github.com/devswha/patina/issues/195).
-2. Add JSDoc public exports and publish generated API reference. Issue: [#191](https://github.com/devswha/patina/issues/191).
+1. Add zh/ja AI-lexicon files for stylometry overlap detection. Issue: [#104](https://github.com/devswha/patina/issues/104).
+2. Let CLI backends participate in standalone MAX. Issue: [#141](https://github.com/devswha/patina/issues/141).
+3. Reduce MAX prompt weight by opting into a minimal default. Issue: [#143](https://github.com/devswha/patina/issues/143).
+4. Add MAX pane-liveness watchdogs for dead tmux panes. Issue: [#144](https://github.com/devswha/patina/issues/144).
+5. Make `patina auth login <backend>` launch the real login flow. Issue: [#186](https://github.com/devswha/patina/issues/186).
+6. Add JSDoc public exports and publish generated API reference. Issue: [#191](https://github.com/devswha/patina/issues/191).
+7. Tie this roadmap to a GitHub Project board or Milestones. Issue: [#195](https://github.com/devswha/patina/issues/195).
 
-### Wave 2 — tests and backend hardening
+### Wave 2 — research calibration, parked unless explicitly scheduled
 
-1. Add golden snapshot tests for `buildPrompt` combinations. Issue: [#169](https://github.com/devswha/patina/issues/169).
-2. Unify backend timeout / `AbortSignal` / fallback contracts. Issue: [#131](https://github.com/devswha/patina/issues/131).
-3. Add SIGINT cancellation for in-flight backends and HTTP calls. Issue: [#133](https://github.com/devswha/patina/issues/133).
-4. Introduce a leveled structured logger to replace ad-hoc `console.error`. Issue: [#132](https://github.com/devswha/patina/issues/132).
-5. Add progress indicators for `--models` and `--ouroboros`. Issue: [#180](https://github.com/devswha/patina/issues/180).
+These are medium-priority but research-heavy. Keep them out of the critical path until release blockers and the core quality loop have stable owner time.
 
-### Wave 3 — scoring and stylometry quality
+1. Re-baseline AI catch rate against 2025+ models. Issue: [#155](https://github.com/devswha/patina/issues/155).
+2. Run the lexicon freshness audit with per-entry corpus provenance. Issue: [#160](https://github.com/devswha/patina/issues/160).
+3. Establish quarterly pattern-freshness review with corpus refresh and emerging-pattern triage. Issue: [#165](https://github.com/devswha/patina/issues/165).
 
-1. Add zh/ja char-n-gram fallback for stylometry. Issue: [#151](https://github.com/devswha/patina/issues/151).
-2. Add deterministic feature signals as a shadow score and tie-breaker. Issue: [#136](https://github.com/devswha/patina/issues/136).
-3. Record scores, tokens, response hashes, seeds, and iteration logs in manifest schema v2. Issue: [#134](https://github.com/devswha/patina/issues/134).
-4. Add a persistent prompt-response cache keyed by prompt hash, model, and temperature. Issue: [#135](https://github.com/devswha/patina/issues/135).
-5. Add voice-anchor few-shot scoring from user-supplied human references. Issue: [#137](https://github.com/devswha/patina/issues/137).
+### Wave 3 — low-priority parked ecosystem and research
 
-### Wave 4 — patterns and profiles
+Do not start these until npm publication, action v1, and medium MAX/auth/docs work have a stable release path:
 
-1. Add zh/ja per-pattern Semantic Risk / Preservation Note annotations. Issue: [#147](https://github.com/devswha/patina/issues/147).
-2. Backport pattern #32 "comparison adverb overuse" to en/zh. Issue: [#148](https://github.com/devswha/patina/issues/148).
-3. Add zh/ja pattern overrides to blog, casual-conversation, formal, instructional, and narrative profiles. Issue: [#149](https://github.com/devswha/patina/issues/149).
-4. Quantify overlap between style/language/filler packs. Issue: [#152](https://github.com/devswha/patina/issues/152).
-5. Add genre-specific packs for code comments, commit messages, and release notes. Issue: [#153](https://github.com/devswha/patina/issues/153).
-6. Expand viral-hook patterns from 5 to 8–10 per language. Issue: [#154](https://github.com/devswha/patina/issues/154).
-
-### Wave 5 — research and parked expansion
-
-Keep these out of the critical path until npm packaging, release support, and the core quality loop are stable:
-
-- Editor / platform integrations: VS Code, Obsidian, static-site generators, web playground. Issues: [#206](https://github.com/devswha/patina/issues/206), [#207](https://github.com/devswha/patina/issues/207), [#208](https://github.com/devswha/patina/issues/208), [#210](https://github.com/devswha/patina/issues/210).
-- Ecosystem packaging: Docker image, pattern marketplace, HuggingFace corpus. Issues: [#209](https://github.com/devswha/patina/issues/209), [#211](https://github.com/devswha/patina/issues/211), [#212](https://github.com/devswha/patina/issues/212).
-- Larger research tracks: 2025+ re-baseline, lexicon freshness, quarterly pattern review, blinded human evaluation, cross-judge agreement, adversarial MPS audit, and detector-comparison expansion. Issues: [#155](https://github.com/devswha/patina/issues/155), [#160](https://github.com/devswha/patina/issues/160), [#165](https://github.com/devswha/patina/issues/165), [#156](https://github.com/devswha/patina/issues/156), [#158](https://github.com/devswha/patina/issues/158), [#159](https://github.com/devswha/patina/issues/159), [#163](https://github.com/devswha/patina/issues/163).
+- False-positive and benchmark calibration: [#99](https://github.com/devswha/patina/issues/99), [#156](https://github.com/devswha/patina/issues/156), [#157](https://github.com/devswha/patina/issues/157), [#158](https://github.com/devswha/patina/issues/158), [#159](https://github.com/devswha/patina/issues/159), [#163](https://github.com/devswha/patina/issues/163).
+- Documentation site exploration: [#199](https://github.com/devswha/patina/issues/199).
+- Editor/platform integrations and distribution experiments: [#206](https://github.com/devswha/patina/issues/206), [#207](https://github.com/devswha/patina/issues/207), [#208](https://github.com/devswha/patina/issues/208), [#209](https://github.com/devswha/patina/issues/209), [#210](https://github.com/devswha/patina/issues/210), [#211](https://github.com/devswha/patina/issues/211), [#212](https://github.com/devswha/patina/issues/212).

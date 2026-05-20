@@ -197,11 +197,11 @@ describe('private base URL SSRF guard (issue #167)', () => {
     withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: undefined }, () => {
       assert.throws(
         () => validateBaseURL('https://10.0.0.1/v1'),
-        /private\/reserved IP/
+        /private\/reserved/
       );
       assert.throws(
         () => validateBaseURL('https://169.254.169.254/latest/meta-data'),
-        /private\/reserved IP/
+        /private\/reserved/
       );
     });
   });

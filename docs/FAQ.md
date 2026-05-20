@@ -40,6 +40,8 @@ Current calibration reports 91% editing-hotspot recall on Korean AI text [84.0-9
 
 False positives are expected, especially for encyclopedic, corporate, academic, or heavily edited prose. patina is meant to help edit suspicious passages, not to accuse a writer.
 
+See the [False-positive Gallery](FALSE-POSITIVES.md) for safe examples of registers that should be treated as editing hints rather than authorship accusations.
+
 See [ETHICS.md](ETHICS.md) for the intended-use position statement.
 
 ## Does it work without an API key?

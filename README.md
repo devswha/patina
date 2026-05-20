@@ -287,6 +287,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Authentication](docs/AUTHENTICATION.md)** ([한국어](docs/AUTHENTICATION_KR.md)) — backends, providers, free-tier setup
 - **[GitHub Action](docs/integrations/github-action.md)** — PR hotspot comments without a live model key
 - **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit, Husky, and Lefthook score-only recipes
+- **[Static-site Stencils](docs/integrations/static-sites.md)** — Hugo, Astro, and Next.js MDX build-time scoring recipes
 - **[Docker](docs/integrations/docker.md)** — GHCR image usage and release tags
 - **[Release workflow](docs/integrations/release.md)** — npm provenance + GHCR publishing checklist
 - **[CLI Contract](docs/CLI.md)** — score gate, JSON/text/Markdown output, and automation-safe surfaces
@@ -295,10 +296,12 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Exit Codes](docs/EXIT-CODES.md)** — process code contract for CI and editor integrations
 - **[Ethics](docs/ETHICS.md)** — intended use, non-use, and disclosure stance
 - **[FAQ](docs/FAQ.md)** ([한국어](docs/FAQ_KR.md)) — detector-bypass concerns, MPS, false positives, contribution starting points
+- **[False-positive Gallery](docs/FALSE-POSITIVES.md)** — safe examples of human-register prose that should be treated as editing hints, not accusations
 - **[Comparison](docs/COMPARISON.md)** — factual comparison with common paraphraser/humanizer tools
 - **[Branding](docs/BRANDING.md)** — canonical logo/social assets and OG setup notes
 - **[Design](DESIGN.md)** — product/brand source of truth for repo-native SVG and README surfaces
 - **[Roadmap](docs/ROADMAP.md)** — quality, benchmark, product, community, and launch priorities
+- **[Docs Platform RFC](docs/RESEARCH-DOCS-PLATFORM.md)** — Docusaurus, Astro Starlight, MkDocs, and GitHub Pages investigation
 - **[Benchmark Report](docs/benchmarks/latest.md)** — latest reproducible suspect-zone benchmark summary
 - **[Detector Comparison Harness](docs/benchmarks/detector-comparison.md)** — offline/manual comparison protocol for third-party detectors
 - **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — benchmark design notes for measuring AI-like writing signals

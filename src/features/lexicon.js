@@ -65,11 +65,12 @@ export function computeDensity(paragraphText, tokens, lexicon) {
   const hits = [];
   const tokenSet = new Set(tokens.map((t) => t.toLowerCase()));
 
-  // §16: English strict entries match whole-word; Korean strict entries are
-  // approximated by substring (어절 inflection means `자리매김` should also
-  // hit `자리매김했다`, `자리매김으로`, etc.). Punctuated entries always need
-  // substring fallback because tokenization strips edge punct.
-  const koSubstring = lexicon.lang === 'ko';
+  // §16: English strict entries match whole-word; CJK strict entries are
+  // approximated by substring. Korean inflection and zh/ja character fallback
+  // mean `자리매김`, `可以说`, or `まとめると` may not survive as whole tokens.
+  // Punctuated entries always need substring fallback because tokenization
+  // strips edge punct.
+  const cjkSubstring = ['ko', 'zh', 'ja'].includes(lexicon.lang);
   for (const entry of lexicon.strict) {
     const lowerEntry = entry.toLowerCase();
     if (tokenSet.has(lowerEntry)) {
@@ -77,7 +78,7 @@ export function computeDensity(paragraphText, tokens, lexicon) {
       continue;
     }
     const hasInternalPunct = /[^\p{L}\p{N}]/u.test(lowerEntry);
-    if ((koSubstring || hasInternalPunct) && lowerText.includes(lowerEntry)) {
+    if ((cjkSubstring || hasInternalPunct) && lowerText.includes(lowerEntry)) {
       hits.push(entry);
     }
   }

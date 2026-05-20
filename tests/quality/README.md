@@ -117,5 +117,5 @@ calibration documented in `core/stylometry.md` §13 §16.
 Currently runs on all supported pattern-pack languages: `ko`, `en`, `zh`, and
 `ja`. Chinese and Japanese use a deterministic character-token fallback because
 normal prose often has no whitespace; ko/en keep whitespace tokenization.
-Language-specific zh/ja lexicons are still future work, so current zh/ja
-fixtures are mainly burstiness/MATTR regression coverage.
+zh/ja now include high-precision AI-lexicon fixtures as well as
+burstiness/MATTR regression coverage.

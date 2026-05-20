@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
-const ROOTS = ['bin', 'scripts', 'src', 'tests'];
+const ROOTS = ['bin', 'scripts', 'src', 'tests', 'playground'];
 const EXT_RE = /\.(?:js|mjs)$/;
 
 function walk(dir, out = []) {

@@ -23,4 +23,4 @@ If a row feels wrong, open the cited example before changing the rule.
 
 ## Use it
 
-Open the repo, run Patina on a draft, and read the audit before accepting a rewrite: <https://github.com/devswha/patina>. The hosted playground is tracked in [#208](https://github.com/devswha/patina/issues/208); until it is live, use the CLI or editor skill.
+Paste a draft into the hosted playground, then run Patina locally when you want a rewrite: <https://patina.vibetip.help/>. Source and install notes live at <https://github.com/devswha/patina>.

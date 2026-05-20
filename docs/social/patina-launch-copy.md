@@ -9,8 +9,8 @@ Run the launch in this order. Do not skip the Korean-first pass: it is the wedge
 | Order | Surface | Primary angle | Launch state |
 |---:|---|---|---|
 | 1 | Korean communities: GeekNews, Velog, Clien | Korean AI tells plus auditable edits | Ready after final score pass |
-| 2 | Show HN | Local, auditable, benchmarked prose cleanup | Wait for playground URL |
-| 3 | Product Hunt | Visual demo plus “keep the meaning” | Wait for playground URL and share card |
+| 2 | Show HN | Local, auditable, benchmarked prose cleanup | Ready after final score pass |
+| 3 | Product Hunt | Visual demo plus “keep the meaning” | Ready after final score pass |
 | 4 | Reddit / X / Threads / LinkedIn | Local/no-key angle or editing/voice angle | Reuse the channel drafts below |
 
 ## Prerequisite checklist
@@ -22,7 +22,7 @@ Run the launch in this order. Do not skip the Korean-first pass: it is the wedge
 | README score badge (#282) | Done | Use as adoption/social proof. |
 | Ethics framing (#164, [`docs/ETHICS.md`](../ETHICS.md)) | Done | Never imply detector evasion. |
 | Comparison page (#213, [`docs/COMPARISON.md`](../COMPARISON.md)) | Done | Cite only factual comparisons. |
-| Web playground (#208) | Blocker | Broad launch waits for the try-it-now URL. |
+| Web playground (#208) | Ready | Use <https://patina.vibetip.help/> as the try-it-now URL. |
 | Shareable card generator (#283) | Helpful | Product Hunt and X work better with it. |
 | “Signs of AI writing” guide (#285) | Helpful | Use as top-of-funnel content. |
 
@@ -33,7 +33,7 @@ Run the launch in this order. Do not skip the Korean-first pass: it is the wedge
 - Lead with the writing problem. Mention the tool after the reader recognizes the problem.
 - Do not use “bypass,” “undetectable,” or “beats detectors.”
 - Avoid hype vocabulary, emoji-bullet stacks, and tidy three-item slogans.
-- Link the playground from every broad-launch post once #208 is live. Until then, link the repo.
+- Link the playground from every broad-launch post: <https://patina.vibetip.help/>. Keep the repo link nearby for source, install, and issues.
 
 Score command:
 
@@ -85,6 +85,9 @@ patina는 그런 패턴을 찾아서 고칩니다. 한국어, 영어, 중국어,
 
 API 키 없이도 쓸 수 있습니다. codex, claude, gemini CLI 중 하나에 로그인돼 있으면 됩니다.
 
+웹에서 먼저:
+https://patina.vibetip.help/
+
 레포:
 https://github.com/devswha/patina
 
@@ -116,6 +119,9 @@ If you are already logged into codex, claude, or gemini CLI, you can use it with
 
 This is not meant as a detector-bypass tool. I treat the score as an editing signal, not proof of authorship. False positives are documented because the useful output is the audit and diff, not a verdict.
 
+Try:
+https://patina.vibetip.help/
+
 Repo:
 https://github.com/devswha/patina
 
@@ -143,7 +149,7 @@ I built Patina because I was tired of removing the same AI tells from drafts by 
 
 I do not want this framed as “make text undetectable.” Detectors are noisy. Patina is an editing pass: find the synthetic packaging, remove it, and keep the claim intact.
 
-Try it on something you wrote and tell me where it is wrong. False positives are the most useful reports.
+Try it on something you wrote at https://patina.vibetip.help/ and tell me where it is wrong. False positives are the most useful reports.
 ```
 
 ## Reddit
@@ -159,6 +165,9 @@ The tool finds recurring LLM writing habits, rewrites the affected text, and che
 
 This is not an “undetectable text” project. The score is an editing signal. The useful artifact is the audit: what pattern fired, what changed, and whether meaning drifted.
 
+Try:
+https://patina.vibetip.help/
+
 Repo:
 https://github.com/devswha/patina
 
@@ -173,6 +182,9 @@ I built a tool that spots and rewrites AI-sounding patterns in writing, includin
 The goal is not to hide authorship. It is to make AI-assisted drafts easier to edit. Patina points out habits like inflated phrasing, tidy generic structure, and Korean AI tells such as “~적인”, “~하고 있다”, and needless formal nouns.
 
 It then rewrites the affected passages and checks that the original meaning survived. You can see the audit and diff instead of trusting a black-box paraphrase.
+
+Try:
+https://patina.vibetip.help/
 
 Repo:
 https://github.com/devswha/patina

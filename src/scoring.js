@@ -1,4 +1,5 @@
 import { callLLM as defaultCallLLM } from './api.js';
+import { createLogger } from './logger.js';
 
 class SchemaError extends Error {
   constructor(message, raw) {
@@ -39,6 +40,7 @@ async function callAndParseJson({
   deadline,
   signal,
   callLLM = defaultCallLLM,
+  logger = createLogger(),
   now,
   sleep,
 }) {
@@ -61,7 +63,9 @@ async function callAndParseJson({
     } catch (e) {
       lastError = e;
       if (attempt === 0) {
-        console.error(`[patina] score JSON parse failed (${e.message}); retrying at temperature 0`);
+        logger.warn('score.json_parse_retry', {
+          message: `[patina] score JSON parse failed (${e.message}); retrying at temperature 0`,
+        });
       }
     }
   }
@@ -78,6 +82,7 @@ export async function scoreText({
   deadline,
   signal,
   callLLM = defaultCallLLM,
+  logger = createLogger(),
   now,
   sleep,
 }) {
@@ -123,13 +128,16 @@ ${text}
       deadline,
       signal,
       callLLM,
+      logger,
       now,
       sleep,
     });
     return parsed;
   } catch (e) {
     rethrowIfAborted(e, signal);
-    console.error(`[patina] scoreText schema failure after retry: ${e.message}`);
+    logger.warn('score.text_schema_failure', {
+      message: `[patina] scoreText schema failure after retry: ${e.message}`,
+    });
     return { overall: null, error: 'schema-failure', raw: e.raw };
   }
 }
@@ -143,6 +151,7 @@ export async function scoreMPS({
   deadline,
   signal,
   callLLM = defaultCallLLM,
+  logger = createLogger(),
   now,
   sleep,
 }) {
@@ -186,13 +195,16 @@ ${rewritten}
       deadline,
       signal,
       callLLM,
+      logger,
       now,
       sleep,
     });
     return parsed;
   } catch (e) {
     rethrowIfAborted(e, signal);
-    console.error(`[patina] scoreMPS schema failure after retry: ${e.message}`);
+    logger.warn('score.mps_schema_failure', {
+      message: `[patina] scoreMPS schema failure after retry: ${e.message}`,
+    });
     return { mps: null, error: 'schema-failure', raw: e.raw };
   }
 }
@@ -224,6 +236,7 @@ export async function scoreFidelity({
   deadline,
   signal,
   callLLM = defaultCallLLM,
+  logger = createLogger(),
   now,
   sleep,
 }) {
@@ -269,13 +282,16 @@ ${rewritten}
       deadline,
       signal,
       callLLM,
+      logger,
       now,
       sleep,
     });
     parsed = result.parsed;
   } catch (e) {
     rethrowIfAborted(e, signal);
-    console.error(`[patina] scoreFidelity schema failure after retry: ${e.message}`);
+    logger.warn('score.fidelity_schema_failure', {
+      message: `[patina] scoreFidelity schema failure after retry: ${e.message}`,
+    });
     schemaError = e;
   }
 

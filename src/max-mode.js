@@ -1,5 +1,6 @@
 import { callLLM as defaultCallLLM, callLLMMultiple } from './api.js';
 import { scoreText, scoreMPS } from './scoring.js';
+import { createLogger } from './logger.js';
 
 const DEFAULT_WALL_CLOCK_BUDGET_MS = 300_000;
 
@@ -20,8 +21,11 @@ export async function runMaxMode({
   scoreTextImpl = scoreText,
   scoreMPSImpl = scoreMPS,
   signal,
+  logger = createLogger(),
 }) {
-  console.error(`[patina-max] Dispatching to ${models.length} models: ${models.join(', ')}`);
+  logger.info('max.dispatch', {
+    message: `[patina-max] Dispatching to ${models.length} models: ${models.join(', ')}`,
+  });
 
   const controller = new AbortController();
   const abortFromCaller = () => controller.abort();
@@ -35,12 +39,24 @@ export async function runMaxMode({
     }
   }
   const deadline = now() + wallClockBudgetMs;
+  const progressStartedAt = now();
+  const modelStatus = new Map(models.map((model) => [model, '...']));
+  const modelStartedAt = new Map();
   let timedOut = false;
   const timeout = setTimeout(() => {
     timedOut = true;
     controller.abort();
-    console.error(`[patina-max] MAX wall-clock timeout reached; returning partial results`);
+    logger.warn('max.timeout', { message: '[patina-max] MAX wall-clock timeout reached; returning partial results' });
   }, wallClockBudgetMs);
+
+  const renderProgress = () => {
+    const statuses = models.map((model) => `${model} ${modelStatus.get(model) || '...'}`).join('  ');
+    const elapsedSeconds = Math.max(0, Math.round((now() - progressStartedAt) / 1000));
+    logger.progress('max.progress', {
+      message: `[patina-max] ${statuses}  (${elapsedSeconds}s)`,
+      elapsed_ms: Math.max(0, now() - progressStartedAt),
+    });
+  };
 
   const candidates = [];
   try {
@@ -55,8 +71,20 @@ export async function runMaxMode({
       callLLM,
       now,
       sleep,
-      onStart: (model) => console.error(`[patina-max] Starting ${model}...`),
-      onComplete: (model, ok) => console.error(`[patina-max] ${model} ${ok ? 'completed' : 'failed'}`),
+      onStart: (model) => {
+        modelStartedAt.set(model, now());
+        modelStatus.set(model, '...');
+        renderProgress();
+      },
+      onComplete: (model, ok) => {
+        const latencyMs = modelStartedAt.has(model) ? Math.max(0, now() - modelStartedAt.get(model)) : undefined;
+        modelStatus.set(model, ok ? '✓' : '✗');
+        logger.progress('max.model_complete', {
+          message: formatMaxProgress(models, modelStatus, progressStartedAt, now),
+          model,
+          latency_ms: latencyMs,
+        });
+      },
     });
 
     for (const r of results) {
@@ -79,6 +107,7 @@ export async function runMaxMode({
           deadline,
           signal: controller.signal,
           callLLM,
+          logger,
           now,
           sleep,
         });
@@ -94,6 +123,7 @@ export async function runMaxMode({
           deadline,
           signal: controller.signal,
           callLLM,
+          logger,
           now,
           sleep,
         });
@@ -112,9 +142,12 @@ export async function runMaxMode({
   } finally {
     clearTimeout(timeout);
     cleanupCallerSignal();
+    logger.closeProgress();
   }
 
-  const { candidate: best, fallback } = selectBest(candidates);
+  const { candidate: best, fallback } = selectBest(candidates, {
+    log: (message) => logger.warn('max.selection_tie', { message }),
+  });
   const allFailed = best === null;
 
   return {
@@ -127,7 +160,10 @@ export async function runMaxMode({
   };
 }
 
-export function selectBest(candidates, { log = console.error } = {}) {
+export function selectBest(
+  candidates,
+  { log = (message) => createLogger().warn('max.selection_tie', { message }) } = {}
+) {
   const valid = candidates.filter((c) => c.ok && c.aiScore !== null);
 
   if (valid.length === 0) {
@@ -162,4 +198,10 @@ export function selectBest(candidates, { log = console.error } = {}) {
   }
 
   return { candidate: best, fallback: true };
+}
+
+function formatMaxProgress(models, modelStatus, startedAt, now) {
+  const statuses = models.map((model) => `${model} ${modelStatus.get(model) || '...'}`).join('  ');
+  const elapsedSeconds = Math.max(0, Math.round((now() - startedAt) / 1000));
+  return `[patina-max] ${statuses}  (${elapsedSeconds}s)`;
 }

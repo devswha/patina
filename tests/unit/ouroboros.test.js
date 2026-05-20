@@ -175,3 +175,47 @@ test('runOuroboros rolls back on MPS-floor violation', async () => {
   assert.equal(result.iterations, 1);
   assert.equal(result.reason, 'MPS floor violation');
 });
+
+test('runOuroboros logs per-iteration score progress and latency', async () => {
+  const fixture = createLLMFixture({
+    scores: [80, 70],
+    rewrites: ['Lower score claim text.'],
+    mps: [100],
+    fidelityGrades: [3],
+  });
+  const records = [];
+  const logger = {
+    info(event, fields) {
+      records.push({ event, ...fields });
+    },
+    warn() {},
+    progress() {},
+    closeProgress() {},
+  };
+  let currentTime = 1_000;
+
+  const result = await runOuroboros({
+    config: baseConfig({ 'target-score': 75 }),
+    patterns: [],
+    profile: null,
+    voice: null,
+    scoring: null,
+    text: BASE_TEXT,
+    apiKey: 'test-key',
+    baseURL: 'https://example.com/v1',
+    model: 'test-model',
+    now: () => currentTime,
+    logger,
+    callLLM: async (args) => {
+      currentTime += 250;
+      return fixture.callLLM(args);
+    },
+  });
+
+  assert.equal(result.reason, 'Target met');
+  assert.equal(records.length, 1);
+  assert.equal(records[0].event, 'ouroboros.iteration');
+  assert.equal(records[0].model, 'test-model');
+  assert.equal(records[0].latency_ms, 500);
+  assert.match(records[0].message, /\[ouroboros\] iter 1\/3 score 80 → 70 \(0\.5s\)/);
+});

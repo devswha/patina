@@ -1,6 +1,7 @@
 import { callLLM as defaultCallLLM } from './api.js';
 import { scoreText, scoreMPS, scoreFidelity, combinedScore } from './scoring.js';
 import { buildPrompt } from './prompt-builder.js';
+import { createLogger } from './logger.js';
 
 export async function runOuroboros({
   config,
@@ -16,6 +17,7 @@ export async function runOuroboros({
   now,
   sleep,
   signal,
+  logger = createLogger(),
 }) {
   const ouroborosConfig = config.ouroboros || {};
   const targetScore = ouroborosConfig['target-score'] ?? 30;
@@ -37,6 +39,7 @@ export async function runOuroboros({
     now,
     sleep,
     signal,
+    logger,
   });
 
   const initialScore = initialScoreResult?.overall ?? 100;
@@ -83,6 +86,7 @@ export async function runOuroboros({
       mode: 'rewrite',
     });
 
+    const iterationStartedAt = now ? now() : Date.now();
     const humanized = await callLLM({
       prompt,
       apiKey,
@@ -104,10 +108,17 @@ export async function runOuroboros({
       now,
       sleep,
       signal,
+      logger,
     });
 
     let currentScore = scoreResult?.overall ?? 100;
     const delta = previousScore - currentScore;
+    const latencyMs = Math.max(0, (now ? now() : Date.now()) - iterationStartedAt);
+    logger.info('ouroboros.iteration', {
+      message: `[ouroboros] iter ${iteration}/${maxIterations} score ${previousScore} → ${currentScore} (${formatElapsed(latencyMs)})`,
+      model,
+      latency_ms: latencyMs,
+    });
 
     const [mpsResult, fidelityResult] = await Promise.all([
       scoreMPS({
@@ -120,6 +131,7 @@ export async function runOuroboros({
         now,
         sleep,
         signal,
+        logger,
       }),
       scoreFidelity({
         original: text,
@@ -131,6 +143,7 @@ export async function runOuroboros({
         now,
         sleep,
         signal,
+        logger,
       }),
     ]);
 
@@ -209,4 +222,8 @@ export async function runOuroboros({
     reason: iterationLog[iterationLog.length - 1]?.reason || 'Completed',
     log: iterationLog,
   };
+}
+
+function formatElapsed(ms) {
+  return `${Math.round(ms / 100) / 10}s`;
 }

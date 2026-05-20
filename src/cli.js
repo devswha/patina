@@ -12,6 +12,7 @@ import { runDoctor } from './commands/doctor.js';
 import { runInit } from './commands/init.js';
 import { PatinaCliError, inputError, runtimeError, renderCliError, getExitCode } from './errors.js';
 import { inspectHttpApiKeySource, providerHttpKeyEnvVars, resolveHttpApiKey } from './auth.js';
+import { createLogger } from './logger.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, basename, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +37,7 @@ export async function main(args) {
   }
 
   const parsed = parseArgs(args);
+  const logger = createLogger({ quiet: parsed.quiet, json: parsed.jsonLogs });
 
   if (parsed.help) {
     printHelp();
@@ -80,7 +82,7 @@ export async function main(args) {
   if (parsed.profile) config.profile = parsed.profile;
 
   const provider = selectProvider(parsed.provider ?? config.provider);
-  const apiKey = resolveApiKey(parsed, provider);
+  const apiKey = resolveApiKey(parsed, provider, logger);
   const resolved = resolveProviderConfig({
     provider,
     apiKey,
@@ -103,7 +105,7 @@ export async function main(args) {
   // zh/ja + explicit tone → unsupported_language_fallback (warn + profile-only path).
   const toneResolution = resolveTone({ cliTone: parsed.tone, configTone: config.tone, lang });
   if (toneResolution.warning) {
-    console.error(`[patina] ${toneResolution.warning}`);
+    logger.warn('tone.warning', { message: `[patina] ${toneResolution.warning}` });
   }
 
   // Backbone profile mapping: explicit user tone (not auto, not fallback) maps to a
@@ -131,8 +133,8 @@ export async function main(args) {
     : parsed.ouroboros ? 'ouroboros'
     : 'rewrite';
 
-  const inputTexts = await loadInputs(parsed);
-  const cancellation = createCancellationController();
+  const inputTexts = await loadInputs(parsed, logger);
+  const cancellation = createCancellationController({ logger });
 
   cancellation.install();
   try {
@@ -168,6 +170,7 @@ export async function main(args) {
           maxConcurrency: parsed.maxConcurrency,
           wallClockBudgetMs: parsed.maxTimeoutSeconds === undefined ? undefined : parsed.maxTimeoutSeconds * 1000,
           signal: cancellation.signal,
+          logger,
         });
       } else if (parsed.ouroboros) {
         result = await runOuroboros({
@@ -181,6 +184,7 @@ export async function main(args) {
           baseURL: resolved.baseURL,
           model: resolved.model,
           signal: cancellation.signal,
+          logger,
         });
       } else {
         const { backend, autoSelected, reason } = selectBackend({
@@ -189,7 +193,9 @@ export async function main(args) {
         });
 
         if (autoSelected) {
-          console.error(`[patina] Using ${backend.name} backend (${reason}). Run \`patina auth status\` for details.`);
+          logger.info('backend.selected', {
+            message: `[patina] Using ${backend.name} backend (${reason}). Run \`patina auth status\` for details.`,
+          });
         }
 
         if (backend.name === 'openai-http' && !resolved.apiKey) {
@@ -226,12 +232,12 @@ export async function main(args) {
       let scoreValidationOutput = null;
       if (parsed.ouroboros) {
         const ouroborosBody = formatOuroborosOutput(result);
-        output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution });
+        output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution, logger });
         scoreValidationOutput = ouroborosBody;
       } else {
-        output = formatOutput(result, mode, parsed, { tone: toneResolution });
+        output = formatOutput(result, mode, parsed, { tone: toneResolution, logger });
         if (mode === 'score') {
-          scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' });
+          scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' }, { logger });
         }
       }
 
@@ -241,11 +247,11 @@ export async function main(args) {
         const configWeights = config.ouroboros?.['category-weights']?.[lang] || {};
         const warnings = validateScoreWeights(scoreValidationOutput || output, configWeights);
         for (const w of warnings) {
-          console.error(`[patina] ${w}`);
+          logger.warn('score.weight_check', { message: `[patina] ${w}` });
         }
 
         if (parsed.gate !== undefined) {
-          applyScoreGate(result, output, parsed.gate);
+          applyScoreGate(result, output, parsed.gate, logger);
         }
       }
 
@@ -275,6 +281,7 @@ export async function main(args) {
     throw err;
   } finally {
     cancellation.cleanup();
+    logger.closeProgress();
   }
 
   if (parsed.saveRun) {
@@ -297,7 +304,7 @@ export async function main(args) {
       manifest,
       manifestOutputs
     );
-    console.error(`[patina] wrote manifest to ${manifestPath}`);
+    logger.info('manifest.written', { message: `[patina] wrote manifest to ${manifestPath}` });
   }
 }
 
@@ -367,6 +374,12 @@ function parseArgs(args) {
       }
       case '--json':
         parsed.format = 'json';
+        break;
+      case '--quiet':
+        parsed.quiet = true;
+        break;
+      case '--json-logs':
+        parsed.jsonLogs = true;
         break;
       case '--gate': {
         const value = readOptionValue(args, i, arg, { allowFlagLike: true });
@@ -560,14 +573,18 @@ function cancellationError() {
 export function createCancellationController({
   processObj = process,
   stderr = process.stderr,
+  logger = null,
 } = {}) {
   const controller = new AbortController();
   let sigintCount = 0;
   let installed = false;
 
   const writeStatus = (message) => {
+    if (logger) {
+      logger.warn('cli.cancel', { message: message.trimEnd() });
+      return;
+    }
     if (stderr && typeof stderr.write === 'function') stderr.write(message);
-    else console.error(message.trimEnd());
   };
 
   const onSigint = () => {
@@ -638,7 +655,7 @@ export function resolvePromptMode(mode, { backend, model }) {
 // of argv and shell history (CWE-214). Precedence: --api-key-file >
 // PATINA_API_KEY_FILE > --api-key (with deprecation warning) > provider/default
 // env vars.
-function resolveApiKey(parsed, provider) {
+function resolveApiKey(parsed, provider, logger = createLogger()) {
   const hasApiKeyFile = Boolean(parsed.apiKeyFile || process.env.PATINA_API_KEY_FILE);
   const apiKey = resolveHttpApiKey({
     explicitApiKey: parsed.apiKey,
@@ -646,18 +663,20 @@ function resolveApiKey(parsed, provider) {
     envVars: providerHttpKeyEnvVars(provider?.apiKeyEnv),
   });
   if (hasApiKeyFile && parsed.apiKey) {
-    console.error('[patina] both --api-key-file and --api-key were provided; using --api-key-file');
+    logger.warn('auth.api_key_file_precedence', {
+      message: '[patina] both --api-key-file and --api-key were provided; using --api-key-file',
+    });
   }
   if (parsed.apiKey && !hasApiKeyFile) {
-    console.error(
-      '[patina] warning: --api-key exposes the secret in shell history and `ps` output.\n' +
-      '         Prefer PATINA_API_KEY env var, --api-key-file <path>, or PATINA_API_KEY_FILE.'
-    );
+    logger.warn('auth.argv_secret_warning', {
+      message: '[patina] warning: --api-key exposes the secret in shell history and `ps` output.\n' +
+        '         Prefer PATINA_API_KEY env var, --api-key-file <path>, or PATINA_API_KEY_FILE.',
+    });
   }
   return apiKey;
 }
 
-async function loadInputs(parsed) {
+async function loadInputs(parsed, logger = createLogger()) {
   if (parsed.files.length === 0) {
     if (process.stdin.isTTY) {
       if (parsed.noInteractive) {
@@ -667,7 +686,7 @@ async function loadInputs(parsed) {
           'Pass a file path, pipe text via stdin, or omit --no-interactive to paste text and press Ctrl-D.'
         );
       }
-      console.error('[patina] Paste text, then press Ctrl-D to run (Ctrl-C to cancel).');
+      logger.info('stdin.prompt', { message: '[patina] Paste text, then press Ctrl-D to run (Ctrl-C to cancel).' });
     }
     const stdin = await readStdin({ interactive: Boolean(process.stdin.isTTY) });
     if (!stdin.trim()) {
@@ -792,6 +811,8 @@ MODES
 OUTPUT & BATCH
   --format <fmt>          Output format: markdown (default), text, json
   --json                  Alias for --format json
+  --quiet                 Suppress patina status/warning logs on stderr
+  --json-logs             Emit stderr logs as NDJSON objects
   --batch                 Process multiple files
   --in-place              Overwrite original files (with --batch)
   --suffix <ext>          Save as {name}{ext}{extname}
@@ -851,13 +872,13 @@ backends opt-in (issue #88).
 `);
 }
 
-function applyScoreGate(result, output, gate) {
+function applyScoreGate(result, output, gate, logger = createLogger()) {
   const overall = extractScoreOverall(result, output);
   if (overall === null) {
     throw new Error('--gate could not find a numeric `overall` value in --score output.');
   }
   if (overall > gate) {
-    console.error(`[patina] score gate failed: overall ${overall} > ${gate}`);
+    logger.warn('score.gate_failed', { message: `[patina] score gate failed: overall ${overall} > ${gate}` });
     process.exitCode = Math.max(Number(process.exitCode) || 0, 3);
   }
 }
@@ -986,7 +1007,7 @@ function handleAuth(subArgs) {
 // the exports.
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   main(process.argv.slice(2)).catch((err) => {
-    console.error(renderCliError(err));
+    createLogger().error('cli.error', { message: renderCliError(err) });
     process.exit(getExitCode(err));
   });
 }

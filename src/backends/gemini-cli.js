@@ -2,9 +2,11 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEFAULT_BACKEND_TIMEOUT_MS } from './contract.js';
+import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand } from './contract.js';
 
 export const name = 'gemini-cli';
+export const loginCommand = 'gemini';
+export const installHint = 'Install Gemini CLI first, then run `patina auth login gemini-cli` again.';
 
 export function isAvailable() {
   try {
@@ -28,7 +30,17 @@ export function authHint() {
   if (process.env.GEMINI_API_KEY) {
     return 'Authenticated via GEMINI_API_KEY env var.';
   }
-  return 'Run `gemini` once interactively to log in via Google OAuth, or set GEMINI_API_KEY.';
+  return `Run \`${loginCommand}\` once interactively to log in via Google OAuth, or set GEMINI_API_KEY.`;
+}
+
+export function login(options = {}) {
+  return runInteractiveCommand({
+    backendName: name,
+    command: 'gemini',
+    args: [],
+    notFoundHint: installHint,
+    ...options,
+  });
 }
 
 export async function invoke({ prompt, model, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {

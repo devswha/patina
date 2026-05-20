@@ -8,6 +8,15 @@ import { inputError } from './errors.js';
 
 const PROFILE_NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_-]*$/;
 
+/**
+ * Validate a profile name before resolving profiles/{name}.md.
+ *
+ * @param {string} name Profile name supplied by CLI or config.
+ * @returns {void}
+ * @throws {PatinaCliError} When the name is empty, non-string, or contains unsafe characters.
+ * @example
+ * validateProfileName('default');
+ */
 export function validateProfileName(name) {
   if (typeof name !== 'string' || !PROFILE_NAME_RE.test(name)) {
     throw inputError(
@@ -18,6 +27,15 @@ export function validateProfileName(name) {
   }
 }
 
+/**
+ * Check whether a hostname is localhost or loopback.
+ *
+ * @param {string} hostname Hostname from a URL.
+ * @returns {boolean} True for localhost, 127/8, or ::1.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const local = isLoopbackHost('127.0.0.1');
+ */
 export function isLoopbackHost(hostname) {
   if (!hostname) return false;
   if (hostname === 'localhost') return true;
@@ -31,6 +49,15 @@ export function isLoopbackHost(hostname) {
 // so DNS rebinding is NOT covered by this check. The goal is to catch the
 // common case: --base-url pointed at 169.254.169.254 (cloud metadata) or
 // internal RFC 1918 hosts that should not receive Bearer tokens.
+/**
+ * Detect literal private, reserved, link-local, metadata, or multicast IP hosts.
+ *
+ * @param {string} hostname Hostname or bracketed IPv6 literal.
+ * @returns {boolean} True when the literal IP is private or special-use.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const blocked = isPrivateOrSpecialIP('169.254.169.254');
+ */
 export function isPrivateOrSpecialIP(hostname) {
   if (!hostname) return false;
   const h = hostname.startsWith('[') && hostname.endsWith(']')
@@ -63,6 +90,18 @@ export function isPrivateOrSpecialIP(hostname) {
   return false;
 }
 
+/**
+ * Validate a provider base URL before sending prompts and bearer tokens.
+ *
+ * @param {string} baseURL URL to validate.
+ * @param {object} [options] Validation opt-ins.
+ * @param {boolean} [options.allowInsecure=false] Allow non-loopback HTTP.
+ * @param {boolean} [options.allowPrivate=false] Allow private/reserved literal IPs.
+ * @returns {void}
+ * @throws {PatinaCliError} When the URL is invalid, unsupported, insecure, or private without opt-in.
+ * @example
+ * validateBaseURL('https://api.openai.com/v1');
+ */
 export function validateBaseURL(baseURL, { allowInsecure = false, allowPrivate = false } = {}) {
   let url;
   try {
@@ -108,24 +147,60 @@ export function validateBaseURL(baseURL, { allowInsecure = false, allowPrivate =
   }
 }
 
+/**
+ * Read CLI/env opt-in for non-loopback HTTP base URLs.
+ *
+ * @param {object} [parsed] Parsed CLI options.
+ * @returns {boolean} True when insecure base URLs are explicitly allowed.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const allowed = shouldAllowInsecureBaseURL({ allowInsecureBaseURL: true });
+ */
 export function shouldAllowInsecureBaseURL(parsed) {
   if (parsed && parsed.allowInsecureBaseURL) return true;
   const env = process.env.PATINA_ALLOW_INSECURE_BASE_URL;
   return env === '1' || env === 'true' || env === 'yes';
 }
 
+/**
+ * Persist CLI insecure-base-url opt-in into process.env for downstream calls.
+ *
+ * @param {object} [parsed] Parsed CLI options.
+ * @returns {void}
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * applyInsecureBaseURLOptIn({ allowInsecureBaseURL: true });
+ */
 export function applyInsecureBaseURLOptIn(parsed) {
   if (parsed && parsed.allowInsecureBaseURL) {
     process.env.PATINA_ALLOW_INSECURE_BASE_URL = '1';
   }
 }
 
+/**
+ * Read CLI/env opt-in for private or reserved literal IP base URLs.
+ *
+ * @param {object} [parsed] Parsed CLI options.
+ * @returns {boolean} True when private base URLs are explicitly allowed.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const allowed = shouldAllowPrivateBaseURL({ allowPrivateBaseURL: true });
+ */
 export function shouldAllowPrivateBaseURL(parsed) {
   if (parsed && parsed.allowPrivateBaseURL) return true;
   const env = process.env.PATINA_ALLOW_PRIVATE_BASE_URL;
   return env === '1' || env === 'true' || env === 'yes';
 }
 
+/**
+ * Persist CLI private-base-url opt-in into process.env for downstream calls.
+ *
+ * @param {object} [parsed] Parsed CLI options.
+ * @returns {void}
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * applyPrivateBaseURLOptIn({ allowPrivateBaseURL: true });
+ */
 export function applyPrivateBaseURLOptIn(parsed) {
   if (parsed && parsed.allowPrivateBaseURL) {
     process.env.PATINA_ALLOW_PRIVATE_BASE_URL = '1';

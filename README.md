@@ -290,6 +290,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Docker](docs/integrations/docker.md)** — GHCR image usage and release tags
 - **[Release workflow](docs/integrations/release.md)** — npm provenance + GHCR publishing checklist
 - **[CLI Contract](docs/CLI.md)** — score gate, JSON/text/Markdown output, and automation-safe surfaces
+- **[API Reference](docs/API.md)** — generated JSDoc reference for programmatic imports and scoring helpers
 - **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI vs `/patina` vs `/patina-max` option support
 - **[Exit Codes](docs/EXIT-CODES.md)** — process code contract for CI and editor integrations
 - **[Ethics](docs/ETHICS.md)** — intended use, non-use, and disclosure stance

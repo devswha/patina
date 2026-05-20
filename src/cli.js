@@ -32,6 +32,15 @@ const PACKAGE_VERSION = JSON.parse(
   readFileSync(resolve(getRepoRoot(), 'package.json'), 'utf8')
 ).version;
 
+/**
+ * Run the patina CLI command dispatcher.
+ *
+ * @param {string[]} args Command-line arguments excluding node and script path.
+ * @returns {Promise<void>} Resolves after command output is written.
+ * @throws {Error} For validation, provider, file, or runtime failures.
+ * @example
+ * await main(['--help']);
+ */
 export async function main(args) {
   if (args[0] === 'auth') {
     return handleAuth(args.slice(1));
@@ -675,6 +684,19 @@ function cancellationError() {
   });
 }
 
+/**
+ * Create a SIGINT-aware cancellation controller for long-running CLI operations.
+ *
+ * @param {object} [options] Cancellation integration points.
+ * @param {NodeJS.Process} [options.processObj=process] Process-like object used for signal listeners.
+ * @param {NodeJS.WritableStream} [options.stderr=process.stderr] Stream for fallback cancel messages.
+ * @param {object|null} [options.logger] Optional patina logger.
+ * @returns {{signal: AbortSignal, install: Function, uninstall: Function, throwIfCanceled: Function}} Controller facade.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const cancellation = createCancellationController();
+ * cancellation.install();
+ */
 export function createCancellationController({
   processObj = process,
   stderr = process.stderr,
@@ -745,6 +767,18 @@ function readOptionValue(args, index, option, { allowFlagLike = false } = {}) {
 // auto resolves to strict for codex-cli/claude (instruction-rich) and
 // minimal for gemini (voice-rich, over-constrained by long prompts).
 // Explicit strict/minimal pass through unchanged.
+/**
+ * Resolve the effective prompt style for backend/model auto mode.
+ *
+ * @param {string} mode Requested prompt mode: auto, strict, or minimal.
+ * @param {object} context Backend selection context.
+ * @param {string} [context.backend] Backend name.
+ * @param {string} [context.model] Model id.
+ * @returns {string} Resolved prompt mode.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const mode = resolvePromptMode('auto', { model: 'gemini-1.5-flash' });
+ */
 export function resolvePromptMode(mode, { backend, model }) {
   if (mode !== 'auto') return mode;
   const backendStr = (backend || '').toLowerCase();
@@ -756,6 +790,18 @@ export function resolvePromptMode(mode, { backend, model }) {
   return 'strict';
 }
 
+/**
+ * Choose the configured prompt mode before backend/model auto-resolution.
+ *
+ * @param {object} [options] Prompt-mode sources.
+ * @param {string} [options.cliPromptMode] CLI --prompt-mode value.
+ * @param {string} [options.configPromptMode] Config prompt-mode value.
+ * @param {boolean} [options.isMaxMode=false] Whether MAX mode is active.
+ * @returns {string} Requested prompt mode.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const requested = resolveConfiguredPromptMode({ isMaxMode: true });
+ */
 export function resolveConfiguredPromptMode({ cliPromptMode, configPromptMode, isMaxMode = false } = {}) {
   return cliPromptMode || configPromptMode || (isMaxMode ? 'minimal' : 'strict');
 }

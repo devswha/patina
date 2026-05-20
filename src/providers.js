@@ -4,6 +4,13 @@
 // equivalent to manually setting --base-url, --model, and the right key.
 import { inputError } from './errors.js';
 
+/**
+ * Built-in OpenAI-compatible provider presets.
+ *
+ * @type {Record<string, {name: string, baseURL: string, apiKeyEnv: string, defaultModel: string, freeTier: boolean, note: string}>}
+ * @example
+ * const openaiBaseURL = PROVIDERS.openai.baseURL;
+ */
 export const PROVIDERS = {
   openai: {
     name: 'openai',
@@ -39,6 +46,15 @@ export const PROVIDERS = {
   },
 };
 
+/**
+ * Resolve a provider preset by name.
+ *
+ * @param {string|null|undefined} name Provider name; falsy returns null.
+ * @returns {object|null} Provider preset or null.
+ * @throws {PatinaCliError} When name is unknown.
+ * @example
+ * const provider = selectProvider('openai');
+ */
 export function selectProvider(name) {
   if (!name) return null;
   const provider = PROVIDERS[name];
@@ -52,6 +68,19 @@ export function selectProvider(name) {
   return provider;
 }
 
+/**
+ * Resolve effective API key, base URL, and model from explicit values, provider, and env.
+ *
+ * @param {object} options Provider resolution inputs.
+ * @param {object|null} [options.provider] Provider preset from {@link selectProvider}.
+ * @param {string} [options.apiKey] Explicit API key.
+ * @param {string} [options.baseURL] Explicit base URL.
+ * @param {string} [options.model] Explicit model id.
+ * @returns {{apiKey: string|null, baseURL: string, model: string, apiKeySource: string|null, baseURLSource: string|null, modelSource: string|null}} Resolved provider config.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const resolved = resolveProviderConfig({ provider: selectProvider('openai') });
+ */
 export function resolveProviderConfig({ provider, apiKey, baseURL, model }) {
   // Explicit args win. Then provider preset. Then PATINA_* env vars.
   // Returns the resolved { apiKey, baseURL, model } and the source for each

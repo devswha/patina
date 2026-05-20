@@ -1,13 +1,14 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync, readdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
 const PATTERN_DIR = resolve(REPO_ROOT, 'patterns');
+const DOCS_DIR = resolve(REPO_ROOT, 'docs');
 const SCORING_PATH = resolve(REPO_ROOT, 'core/scoring.md');
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
 const LANGS = ['ko', 'en', 'zh', 'ja'];
@@ -63,6 +64,14 @@ function scoringTables() {
   return out;
 }
 
+function patternHeadings(path) {
+  const raw = readFileSync(path, 'utf8');
+  return [...raw.matchAll(/^###\s+(\d+)\.\s+(.+)$/gm)].map((m) => ({
+    number: Number(m[1]),
+    name: m[2].trim(),
+  }));
+}
+
 test('pattern pack frontmatter counts match numbered pattern headings', () => {
   for (const file of patternFiles()) {
     const parsed = parsePatternFile(file);
@@ -88,5 +97,32 @@ test('core/scoring.md category counts match pattern pack frontmatter', () => {
     }
     const expectedTotal = Object.values(packs[lang]).reduce((sum, n) => sum + n, 0);
     assert.equal(tables[lang].Total, expectedTotal, `${lang} scoring total drifted`);
+  }
+});
+
+test('per-language pattern references cover source pattern packs', () => {
+  const selector = readFileSync(resolve(DOCS_DIR, 'PATTERNS.md'), 'utf8');
+  for (const lang of LANGS) {
+    const pageName = `PATTERNS-${lang.toUpperCase()}.md`;
+    assert.match(selector, new RegExp(`\\[${pageName}\\]\\(${pageName}\\)`));
+
+    const doc = readFileSync(resolve(DOCS_DIR, pageName), 'utf8');
+    const sourceFiles = patternFiles().filter((file) => parsePatternFile(file).meta.language === lang);
+    const expectedHeadings = sourceFiles.flatMap((file) => patternHeadings(file));
+    const actualHeadingCount = (doc.match(/^###\s+/gm) || []).length;
+
+    assert.equal(
+      actualHeadingCount,
+      expectedHeadings.length,
+      `${pageName} must list every ${lang} pattern heading`
+    );
+
+    for (const file of sourceFiles) {
+      assert.match(doc, new RegExp(`\\[${basename(file)}\\]\\(\\.\\./patterns/`));
+    }
+
+    for (const { name } of expectedHeadings) {
+      assert.match(doc, new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    }
   }
 });

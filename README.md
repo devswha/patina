@@ -1,18 +1,27 @@
-**[한국어](README_KR.md)** | **[中文](README_ZH.md)** | **[日本語](README_JA.md)** | English
+<p align="center">
+  <a href="README_KR.md"><b>한국어</b></a> ·
+  <a href="README_ZH.md"><b>中文</b></a> ·
+  <a href="README_JA.md"><b>日本語</b></a> ·
+  <b>English</b>
+</p>
 
 <p align="center">
   <img src="assets/brand/patina-logo.svg" alt="patina — Strip the AI packaging. Keep the meaning." width="440">
 </p>
 
-# patina
+<h1 align="center">patina</h1>
 
-[![Tests](https://github.com/devswha/patina/actions/workflows/test.yml/badge.svg)](https://github.com/devswha/patina/actions/workflows/test.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#quick-start)
-[![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-3.11.0-blue)](CHANGELOG.md)
+<p align="center">
+  <strong>Strip the AI packaging. Keep the meaning.</strong>
+</p>
 
-> **Strip the AI packaging. Keep the meaning.**
+<p align="center">
+  <a href="https://github.com/devswha/patina/actions/workflows/test.yml"><img alt="Tests" src="https://github.com/devswha/patina/actions/workflows/test.yml/badge.svg"></a>
+  <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
+  <a href="#quick-start"><img alt="Skill: Claude Code | Codex | Cursor | OpenCode" src="https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet"></a>
+  <a href="https://github.com/devswha/patina"><img alt="Languages: KO | EN | ZH | JA" src="https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green"></a>
+  <a href="CHANGELOG.md"><img alt="Version 3.11.0" src="https://img.shields.io/badge/version-3.11.0-blue"></a>
+</p>
 
 patina looks for AI-sounding patterns in Korean, English, Chinese, and Japanese, then rewrites them without changing the claim. Use it as a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), and OpenCode, or run it as a standalone Node.js CLI.
 

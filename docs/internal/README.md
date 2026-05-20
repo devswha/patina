@@ -7,8 +7,6 @@ These files are maintainer/agent context, not public user documentation. Public 
 | File | Decision | Rationale |
 |---|---|---|
 | `DESIGN.md` | keep public | Active product/brand source of truth; linked from the README docs list. |
-| `HARNESS.md` | moved here | Agent/harness notes are useful for maintainers but not user-facing. |
-| `HARNESS-HARDENING-AUDIT.md` | internal | Current Wave 3 audit of local bot/harness hardening blockers; does not enable automation. |
 | `WARP.md` | moved here | Warp-specific agent context is useful for maintainers but was stale as public root docs. |
 | `AGENTS.md`, `BOOTSTRAP.md`, `USER.md`, `IDENTITY.md`, `SOUL.md`, `MEMORY.md`, `HEARTBEAT.md`, `TOOLS.md` | not tracked in this branch | Runtime/local agent files are intentionally outside the public docs set when absent from git. |
 

@@ -10,44 +10,31 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { analyzeText } from '../../src/features/index.js';
-import { loadLexicon } from '../../src/features/lexicon.js';
+import { scoreText } from '../../scripts/prose-score.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
 const THRESHOLD = 30;
-const TARGETS = ['README.md', 'docs/FAQ.md', 'SKILL.md'];
+const TARGETS = [
+  { file: 'README.md', lang: 'en' },
+  { file: 'README_KR.md', lang: 'ko' },
+  { file: 'README_ZH.md', lang: 'zh' },
+  { file: 'README_JA.md', lang: 'ja' },
+  { file: 'docs/FAQ.md', lang: 'en' },
+  { file: 'SKILL.md', lang: 'ko' },
+];
 
-function stripNonProse(markdown) {
-  return markdown
-    .replace(/```[\s\S]*?```/g, '\n')
-    .replace(/<svg[\s\S]*?<\/svg>/gi, '\n')
-    .replace(/^\|.*\|$/gm, '\n')
-    .replace(/^\s{0,3}[-*+]\s+/gm, '')
-    .replace(/^#{1,6}\s+/gm, '')
-    .trim();
-}
-
-function scoreFile(file) {
+function scoreFile({ file, lang }) {
   const raw = readFileSync(resolve(REPO_ROOT, file), 'utf8');
-  const text = stripNonProse(raw);
-  const result = analyzeText(text, {
-    lang: 'en',
-    repoRoot: REPO_ROOT,
-    lexicon: loadLexicon('en', REPO_ROOT),
-  });
-  const paragraphCount = result.paragraphs.length;
-  const hotCount = result.paragraphs.filter((p) => p.hot).length;
-  const score = paragraphCount ? (hotCount / paragraphCount) * 100 : 0;
-  return { file, paragraphCount, hotCount, score };
+  return scoreText(raw, { file, lang, gate: THRESHOLD, repoRoot: REPO_ROOT });
 }
 
 const rows = TARGETS.map(scoreFile);
 console.log('# Dogfood docs score');
-console.log('| file | paragraphs | hot | score | threshold |');
-console.log('|---|---:|---:|---:|---:|');
+console.log('| file | lang | paragraphs | hot | score | threshold |');
+console.log('|---|---|---:|---:|---:|---:|');
 for (const r of rows) {
-  console.log(`| ${r.file} | ${r.paragraphCount} | ${r.hotCount} | ${r.score.toFixed(1)} | ${THRESHOLD} |`);
+  console.log(`| ${r.file} | ${r.lang} | ${r.paragraphCount} | ${r.hotCount} | ${r.score.toFixed(1)} | ${THRESHOLD} |`);
 }
 
 const failures = rows.filter((r) => r.score > THRESHOLD);

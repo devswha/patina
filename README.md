@@ -14,9 +14,9 @@
 
 > **Strip the AI packaging. Keep the meaning.**
 
-Detects and rewrites AI writing patterns in Korean, English, Chinese, and Japanese. Runs as a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), and OpenCode, or as a standalone Node.js CLI.
+patina looks for AI-sounding patterns in Korean, English, Chinese, and Japanese, then rewrites them without changing the claim. Use it as a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), and OpenCode, or run it as a standalone Node.js CLI.
 
-Unlike a generic paraphraser, patina is **pattern-based and auditable**: it shows what it changed, why it changed it, and whether the original claims were preserved.
+It is not a black-box paraphraser. patina is **pattern-based and auditable**: it shows what changed, why it changed, and whether the original claims were preserved.
 
 ## Demo
 
@@ -115,7 +115,7 @@ printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon that has fund
 
 ### CI integrations
 
-Patina now includes no-key deterministic CI surfaces for prose review:
+Patina also ships a no-key, deterministic CI check for prose review:
 
 ```yaml
 # .github/workflows/patina.yml
@@ -140,7 +140,7 @@ Pre-commit, Husky, Lefthook, Docker, and release workflow notes live in [docs/in
 
 ## Intended Use
 
-Patina is for post-AI editing, audit trails, and voice cleanup when the author is allowed to use AI assistance. It is not a promise that text is “originally human,” and it should not be used for academic honor-code evasion, publisher disclosure circumvention, plagiarism laundering, or detector-bypass claims. See [ETHICS.md](docs/ETHICS.md).
+Use Patina for post-AI editing, audit trails, and voice cleanup when the author is allowed to use AI assistance. It does not promise that text was “originally human,” and it should not be used for academic honor-code evasion, publisher disclosure circumvention, plagiarism laundering, or detector-bypass claims. See [ETHICS.md](docs/ETHICS.md).
 
 ## Modes
 
@@ -168,7 +168,9 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 
 ### Score-only patterns
 
-`--score` and `--audit` measure a slightly broader set of signals than `--rewrite` does. The viral-hook packs (`ko/en/zh/ja-viral-hook`, 5 patterns each: shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, hyperbolic engagement lexicon) are **detection-only** — they surface in the score and audit so the benchmark matches human intuition for SNS-style marketing copy across all four languages, but `--rewrite`/`--diff`/`--ouroboros` skip them because those signals are often intentional rhetoric. Real-world demos: [`examples/viral-hook/`](examples/viral-hook/).
+`--score` and `--audit` measure a slightly broader set of signals than `--rewrite` does. The viral-hook packs (`ko/en/zh/ja-viral-hook`, 5 patterns each: shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, hyperbolic engagement lexicon) are **detection-only**.
+
+They appear in score and audit output so the benchmark matches human intuition for SNS-style marketing copy across all four languages. `--rewrite`/`--diff`/`--ouroboros` skip them because those signals are often intentional rhetoric. Real-world demos: [`examples/viral-hook/`](examples/viral-hook/).
 
 ### Prompt-mode tuning (v3.11)
 

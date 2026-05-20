@@ -81,11 +81,19 @@ test('appendResult records input + prompt hash + output ref', () => {
     inputPath: 'foo.md',
     prompt: 'PROMPT BODY',
     outputRef: { kind: 'file', name: 'output-1.txt' },
+    scores: {
+      llm: { overall: 23 },
+      deterministic: { overall: 40 },
+    },
   });
   assert.equal(results.length, 1);
   assert.equal(results[0].input, 'foo.md');
   assert.match(results[0].promptHash, /^sha256:[0-9a-f]{64}$/);
   assert.deepEqual(results[0].output, { kind: 'file', name: 'output-1.txt' });
+  assert.deepEqual(results[0].scores, {
+    llm: { overall: 23 },
+    deterministic: { overall: 40 },
+  });
 });
 
 test('writeManifest creates dir, writes manifest.json + outputs', () => {

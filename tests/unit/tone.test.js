@@ -179,14 +179,21 @@ test('formatOutput: text format omits YAML footer', () => {
 
 test('formatOutput: json format exposes score contract fields', () => {
   const tone = { tone: null, tone_source: 'profile_only', tone_evidence: [], tone_confidence: null };
-  const out = formatOutput('{ "overall": 18, "categories": { "style": { "score": 9 } } }', 'score', {
+  const out = formatOutput({
+    raw: '{ "overall": 18, "categories": { "style": { "score": 9 } } }',
+    overall: 21,
+    llmScore: { overall: 18 },
+    deterministicScore: { overall: 21, bands: { burstiness: { low: 1 } } },
+  }, 'score', {
     format: 'json',
     gate: 30,
   }, { tone });
   const parsed = JSON.parse(out);
-  assert.equal(parsed.overall, 18);
+  assert.equal(parsed.overall, 21);
   assert.equal(parsed.categories[0].name, 'style');
-  assert.deepEqual(parsed.gateResult, { threshold: 30, overall: 18, passed: true, exitCode: 0 });
+  assert.deepEqual(parsed.gateResult, { threshold: 30, overall: 21, passed: true, exitCode: 0 });
+  assert.equal(parsed.scores.llm.overall, 18);
+  assert.equal(parsed.scores.deterministic.overall, 21);
   assert.equal(parsed.tone.tone_source, 'profile_only');
 });
 

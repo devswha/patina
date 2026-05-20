@@ -229,11 +229,25 @@ function renderBody(result) {
     return result.trim();
   }
 
+  if (result && typeof result === 'object' && 'raw' in result) {
+    return String(result.raw).trim();
+  }
+
   if (result?.type === 'max-mode') {
     return formatMaxModeOutput(result);
   }
 
   return String(result).trim();
+}
+
+function extractScoreDetails(result) {
+  if (!result || typeof result !== 'object') return null;
+  if (!result.llmScore && !result.deterministicScore && !result.scorePreference) return null;
+  return {
+    llm: result.llmScore ?? null,
+    deterministic: result.deterministicScore ?? null,
+    preference: result.scorePreference ?? null,
+  };
 }
 
 function formatTextOutput(body, tone) {
@@ -264,6 +278,9 @@ function formatJsonOutput({ result, mode, body, tone, gate }) {
     gateResult: buildGateResult(overall, gate),
     output: body,
   };
+
+  const scoreDetails = extractScoreDetails(result);
+  if (scoreDetails) payload.scores = scoreDetails;
 
   if (result?.type === 'max-mode') {
     payload.max = {

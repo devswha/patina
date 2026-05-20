@@ -245,6 +245,9 @@ export async function callLLMMultiple({
   maxConcurrency,
   onStart,
   onComplete,
+  callLLM: callLLMImpl = callLLM,
+  sleep,
+  now = () => Date.now(),
 }) {
   validateBaseURL(baseURL, { allowInsecure: allowInsecureBaseURL });
   const effectiveMaxConcurrency =
@@ -256,7 +259,7 @@ export async function callLLMMultiple({
     const release = await sem.acquire();
     if (onStart) onStart(model);
     try {
-      const result = await callLLM({
+      const result = await callLLMImpl({
         prompt,
         apiKey,
         baseURL,
@@ -266,6 +269,8 @@ export async function callLLMMultiple({
         deadline,
         signal,
         allowInsecureBaseURL,
+        sleep,
+        now,
       });
       if (onComplete) onComplete(model, true);
       return { model, result, ok: true };

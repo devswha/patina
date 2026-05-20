@@ -28,7 +28,7 @@ patina는 한국어·영어·중국어·일본어 글에서 AI 냄새가 나는 
 
 |  |  |
 |---|---|
-| **146개 패턴** | 한국어 37 + 영어 36 + 중국어 36 + 일본어 37 (각 5개 스코어 전용 viral-hook 포함) — [PATTERNS.md](docs/PATTERNS.md) |
+| **160개 패턴** | 한국어 40 + 영어 40 + 중국어 40 + 일본어 40 (각 8개 스코어 전용 viral-hook 포함) — [PATTERNS.md](docs/PATTERNS.md) |
 | **편집 핫스팟 재현율** | 한국어 91% [84.0–95.4%] (n=100) / 영어 76% [66.7–83.3%] (n=100), binomial 95% CI |
 | **오탐율** | 사람 글 register별 13–25% 점추정 범위 *(CI 아님; 백과사전체의 본질적 한계, [문서화](core/stylometry.md))* |
 | **모드** | rewrite · audit · score · diff · ouroboros |
@@ -134,7 +134,7 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 
 ### 스코어 전용 패턴
 
-`--score`와 `--audit`는 `--rewrite`보다 약간 더 넓은 신호를 측정합니다. viral-hook 팩(`ko/en/zh/ja-viral-hook`, 각 5개 패턴: 숫자 충격 훅, 클릭베이트 종결, 출처 회피 권위 주장, 호흡 최적화 단문 배열, 과장된 참여 유도 어휘)은 **탐지 전용**입니다.
+`--score`와 `--audit`는 `--rewrite`보다 약간 더 넓은 신호를 측정합니다. viral-hook 팩(`ko/en/zh/ja-viral-hook`, 각 8개 패턴: 숫자 충격 훅, 클릭베이트 종결, 출처 회피 권위 주장, 호흡 최적화 단문 배열, 과장된 참여 유도 어휘, 가짜 통계 인용, 권위 타이틀 쌓기, 미래의 나/친밀한 2인칭 약속)은 **탐지 전용**입니다.
 
 이 신호들은 score와 audit에만 나타나 네 언어의 SNS 마케팅 카피에 대한 사용자 직관과 벤치마크를 맞춥니다. `--rewrite`/`--diff`/`--ouroboros`는 이런 표현이 의도된 수사일 수 있어 건너뜁니다. 실제 데모: [`examples/viral-hook/`](examples/viral-hook/).
 
@@ -224,7 +224,7 @@ max-models: [claude, gemini]
 
 - **[Glossary](docs/GLOSSARY.md)** — MPS, fidelity, burstiness, MATTR, 모드 등 반복 용어의 짧은 정의
 - **[Demo](docs/DEMO.md)** — 터미널 transcript와 여러 장르의 before/after 스냅샷
-- **[Patterns](docs/PATTERNS.md)** — 146개 패턴 카탈로그
+- **[Patterns](docs/PATTERNS.md)** — 160개 패턴 카탈로그
 - **[Authentication](docs/AUTHENTICATION_KR.md)** ([English](docs/AUTHENTICATION.md)) — 백엔드, 프로바이더, 무료 티어 설정
 - **[CLI Contract](docs/CLI.md)** — score gate, exit code, 자동화에 안전한 표면
 - **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI, `/patina`, `/patina-max` 옵션 지원 범위

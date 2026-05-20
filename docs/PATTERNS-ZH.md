@@ -3,7 +3,7 @@
 This page expands the Chinese pattern packs into a browsable reference. It is generated from `patterns/zh-*.md`, so the numbers, names, watch words, fire conditions, and examples mirror the source pattern files.
 
 - Rewrite-capable patterns: 32
-- Score/audit-only viral-hook patterns: 5
+- Score/audit-only viral-hook patterns: 8
 - Main selector: [PATTERNS.md](PATTERNS.md)
 
 ## Pattern Index
@@ -47,6 +47,9 @@ This page expands the Chinese pattern packs into a browsable reference. It is ge
 | VH-3 | score/audit only | 回避验证的权威断言 | [zh-viral-hook.md](../patterns/zh-viral-hook.md) |
 | VH-4 | score/audit only | 呼吸优化短句堆叠 | [zh-viral-hook.md](../patterns/zh-viral-hook.md) |
 | VH-5 | score/audit only | 夸张互动词汇 | [zh-viral-hook.md](../patterns/zh-viral-hook.md) |
+| VH-6 | score/audit only | 伪统计引用 | [zh-viral-hook.md](../patterns/zh-viral-hook.md) |
+| VH-7 | score/audit only | 头衔堆叠式权威 | [zh-viral-hook.md](../patterns/zh-viral-hook.md) |
+| VH-8 | score/audit only | 未来自我 / 拟亲密二人称承诺 | [zh-viral-hook.md](../patterns/zh-viral-hook.md) |
 
 ## 内容模式
 
@@ -659,3 +662,45 @@ Detection example:
 
 > 这工具真的绝了，开发者都疯了。
 > 不试试就亏大了的神级工具。
+
+### Viral 6. 伪统计引用
+
+- Source: [zh-viral-hook.md](../patterns/zh-viral-hook.md)
+- Type: score/audit only; rewrite modes skip this pack
+- Watch words: 研究显示 N% / 数据表明 N% / 有调查说 / 科学证明 / N% 的人 / 专家指出（无来源）/ 统计上
+- Fire condition: 数字或比例被归因给笼统的研究、数据、调查、科学或专家，但同一篇没有机构名、链接、样本、时间或方法说明。
+- Severity rubric: Low = 无来源统计支持次要点；Medium = 统计作为开头钩子或主要 CTA 依据；High = 精确百分比支撑高风险建议，或多条无来源统计同时出现。
+
+改写前 / 改写后示例：
+
+> 改写前：研究显示，73% 的创业者因为忽略这个习惯而亏钱。
+>
+> 改写后：这个 73% 没有给出来源。更稳妥的说法是：每周检查现金流可以更早发现亏损。
+
+### Viral 7. 头衔堆叠式权威
+
+- Source: [zh-viral-hook.md](../patterns/zh-viral-hook.md)
+- Type: score/audit only; rewrite modes skip this pack
+- Watch words: 斯坦福背景 / Y Combinator 支持 / 前 Google / 哈佛博士 / Forbes 报道 / 获奖 / 连续创业者 / 顶级 CEO 信任 / 行业领先专家
+- Fire condition: 学校、投资机构、前雇主、奖项、媒体、职称等权威标签连续出现 2 个以上，并被用来出售一个建议、产品或趋势，而不是补充已有证据。
+- Severity rubric: Low = 2 个标签但主张较窄；Medium = 3 个以上标签作为主要开场钩子；High = 高风险建议或购买/注册 CTA 中头衔堆叠取代证据。
+
+改写前 / 改写后示例：
+
+> 改写前：斯坦福背景、Y Combinator 支持的连续创业者，分享让增长翻 10 倍的工作流。
+>
+> 改写后：一位创业者分享了他们每周复盘增长指标的工作流；采用前先用自己的数据测试。
+
+### Viral 8. 未来自我 / 拟亲密二人称承诺
+
+- Source: [zh-viral-hook.md](../patterns/zh-viral-hook.md)
+- Type: score/audit only; rewrite modes skip this pack
+- Watch words: 朋友 / 听我说 / 先收藏 / 未来的你会感谢现在的自己 / 一年后的你会感谢 / 相信我 / 以后你会懂
+- Fire condition: 开头或结尾直接把读者称作朋友、未来的自己或亲密对象，并承诺未来会感谢/后悔，通常伴随收藏、分享、关注等动作要求，但同一篇缺少具体支撑。
+- Severity rubric: Low = 一次收藏/未来感谢式短语；Medium = 未来承诺构成标题、开头或结尾 CTA；High = 与紧迫感、稀缺性或高风险人生/职业建议组合。
+
+改写前 / 改写后示例：
+
+> 改写前：朋友，先收藏这篇。一年后的你一定会感谢现在的自己。
+>
+> 改写后：如果你下个月要做计划，可以保存这份清单。

@@ -81,8 +81,8 @@ Unknown categories (from custom packs not in the weight config) get default weig
 | communication | 0.13 | 4 | |
 | filler | 0.08 | 4 | |
 | structure | 0.15 | 5 | |
-| viral-hook | 0.10 | 5 | score-only (no rewrite) |
-| **Total** | **1.00** | **37** | |
+| viral-hook | 0.10 | 8 | score-only (no rewrite) |
+| **Total** | **1.00** | **40** | |
 
 ### English (en)
 
@@ -94,8 +94,8 @@ Unknown categories (from custom packs not in the weight config) get default weig
 | communication | 0.12 | 4 | |
 | filler | 0.08 | 4 | |
 | structure | 0.10 | 5 | |
-| viral-hook | 0.10 | 5 | score-only (no rewrite) |
-| **Total** | **1.00** | **37** | |
+| viral-hook | 0.10 | 8 | score-only (no rewrite) |
+| **Total** | **1.00** | **40** | |
 
 ### Chinese (zh)
 
@@ -107,8 +107,8 @@ Unknown categories (from custom packs not in the weight config) get default weig
 | communication | 0.13 | 4 | |
 | filler | 0.08 | 4 | |
 | structure | 0.15 | 5 | |
-| viral-hook | 0.10 | 5 | score-only (no rewrite) |
-| **Total** | **1.00** | **37** | |
+| viral-hook | 0.10 | 8 | score-only (no rewrite) |
+| **Total** | **1.00** | **40** | |
 
 ### Japanese (ja)
 
@@ -120,10 +120,12 @@ Unknown categories (from custom packs not in the weight config) get default weig
 | communication | 0.13 | 4 | |
 | filler | 0.08 | 4 | |
 | structure | 0.15 | 5 | |
-| viral-hook | 0.10 | 5 | score-only (no rewrite) |
-| **Total** | **1.00** | **37** | |
+| viral-hook | 0.10 | 8 | score-only (no rewrite) |
+| **Total** | **1.00** | **40** | |
 
 Weights are configurable via `ouroboros.category-weights.{lang}` in `.patina.yaml`.
+
+**viral-hook weight review (issue #154):** kept at `0.10`. The pack remains score-only and the three added patterns improve the category denominator/granularity rather than broadening it enough to justify a larger score contribution. Rewrite, diff, and Ouroboros modes still skip the pack.
 
 ---
 

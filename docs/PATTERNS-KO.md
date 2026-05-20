@@ -3,7 +3,7 @@
 This page expands the Korean pattern packs into a browsable reference. It is generated from `patterns/ko-*.md`, so the numbers, names, watch words, fire conditions, and examples mirror the source pattern files.
 
 - Rewrite-capable patterns: 32
-- Score/audit-only viral-hook patterns: 5
+- Score/audit-only viral-hook patterns: 8
 - Main selector: [PATTERNS.md](PATTERNS.md)
 
 ## Pattern Index
@@ -47,6 +47,9 @@ This page expands the Korean pattern packs into a browsable reference. It is gen
 | VH-3 | score/audit only | 검증 회피 단언 | [ko-viral-hook.md](../patterns/ko-viral-hook.md) |
 | VH-4 | score/audit only | 호흡 최적화 단문 배열 | [ko-viral-hook.md](../patterns/ko-viral-hook.md) |
 | VH-5 | score/audit only | AI 인플루언서 어휘 | [ko-viral-hook.md](../patterns/ko-viral-hook.md) |
+| VH-6 | score/audit only | 가짜 통계 인용 | [ko-viral-hook.md](../patterns/ko-viral-hook.md) |
+| VH-7 | score/audit only | 권위 타이틀 쌓기 | [ko-viral-hook.md](../patterns/ko-viral-hook.md) |
+| VH-8 | score/audit only | 미래의 나 / 친밀한 2인칭 약속 | [ko-viral-hook.md](../patterns/ko-viral-hook.md) |
 
 ## 콘텐츠 패턴
 
@@ -660,3 +663,45 @@ Detection example:
 
 > 전 세계 개발자들이 미친 듯이 달려든
 > 역대급 도구가 등장했다
+
+### Viral 6. 가짜 통계 인용
+
+- Source: [ko-viral-hook.md](../patterns/ko-viral-hook.md)
+- Type: score/audit only; rewrite modes skip this pack
+- Watch words: 연구에 따르면 N%, 조사 결과 N%, 데이터가 말하길, 과학적으로 증명, N명 중 N명, 전문가들은 말한다(출처 없음), 통계상
+- Fire condition: 통계·연구·조사·데이터를 언급하며 숫자나 비율을 제시하지만, 같은 글 안에 기관명·링크·표본·시점·조사 방법이 없는 경우.
+- Severity rubric: Low = 보조 설명으로 한 번 등장; Medium = 첫 문장이나 핵심 CTA를 지탱; High = 건강·금융·커리어·안전 조언에 정밀 퍼센트를 붙이거나 여러 통계가 함께 등장.
+
+이전 / 이후 예시:
+
+> 이전: 연구에 따르면 창업자의 73%가 이 습관 하나를 몰라서 돈을 잃는다.
+>
+> 이후: 그 73% 수치의 출처는 확인되지 않는다. 다만 주간 현금흐름 점검은 손실을 더 빨리 발견하는 데 도움이 된다.
+
+### Viral 7. 권위 타이틀 쌓기
+
+- Source: [ko-viral-hook.md](../patterns/ko-viral-hook.md)
+- Type: score/audit only; rewrite modes skip this pack
+- Watch words: 스탠퍼드 출신, Y Combinator 출신, 전 Google, 하버드 박사, Forbes 선정, 수상 경력, 연쇄 창업가, 업계 1위 전문가, 톱 CEO들이 신뢰한
+- Fire condition: 학교·투자사·전 직장·수상·매체·직함 등 권위 표지가 2개 이상 연속으로 등장하고, 그 권위가 주장 자체를 입증하는 근거로 제시되는 경우.
+- Severity rubric: Low = 2개 표지가 나오지만 주장 범위가 좁음; Medium = 3개 이상 표지가 조언·제품·트렌드의 핵심 훅; High = 고위험 조언이나 구매/가입 CTA에서 권위 나열이 근거를 대체.
+
+이전 / 이후 예시:
+
+> 이전: 스탠퍼드 출신, Y Combinator 출신 연쇄 창업가가 말하는 매출 10배 워크플로.
+>
+> 이후: 한 창업자가 매주 성장 지표를 점검할 때 쓰는 워크플로를 공유했다. 자기 지표에 맞는지 먼저 시험해 보자.
+
+### Viral 8. 미래의 나 / 친밀한 2인칭 약속
+
+- Source: [ko-viral-hook.md](../patterns/ko-viral-hook.md)
+- Type: score/audit only; rewrite modes skip this pack
+- Watch words: 친구야, 솔직히 말할게, 이건 저장해, 나중에 고마워할걸, 1년 뒤의 당신이 감사할 것이다, 미래의 내가 고마워할, 믿고 따라와
+- Fire condition: 글의 시작이나 끝에서 독자를 친구·미래의 나·친밀한 상담 대상처럼 직접 부르고, 같은 글 안에 구체적 근거 없이 미래의 감사/후회를 약속하는 경우.
+- Severity rubric: Low = 캐주얼 SNS 글에 한 번 등장; Medium = 제목·첫 문장·마지막 CTA를 구성; High = 긴급성·희소성·고위험 인생/커리어 조언과 함께 사용.
+
+이전 / 이후 예시:
+
+> 이전: 친구야, 이건 저장해. 1년 뒤의 당신이 분명 고마워할 거다.
+>
+> 이후: 다음 달 계획을 세울 때 쓸 체크리스트가 필요하면 저장해 두자.

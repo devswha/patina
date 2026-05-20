@@ -1,13 +1,13 @@
 # Pattern Catalog
 
-Patina ships 148 pattern entries across four languages. The language-specific references below expand each pack with pattern numbers, names, watch words, fire conditions, source links, and examples.
+Patina ships 160 pattern entries across four languages. The language-specific references below expand each pack with pattern numbers, names, watch words, fire conditions, source links, and examples.
 
 | Language | Reference | Rewrite-capable patterns | Score/audit-only viral-hook patterns |
 |----------|-----------|--------------------------|--------------------------------------|
-| Korean | [PATTERNS-KO.md](PATTERNS-KO.md) | 32 | 5 |
-| English | [PATTERNS-EN.md](PATTERNS-EN.md) | 32 | 5 |
-| Chinese | [PATTERNS-ZH.md](PATTERNS-ZH.md) | 32 | 5 |
-| Japanese | [PATTERNS-JA.md](PATTERNS-JA.md) | 32 | 5 |
+| Korean | [PATTERNS-KO.md](PATTERNS-KO.md) | 32 | 8 |
+| English | [PATTERNS-EN.md](PATTERNS-EN.md) | 32 | 8 |
+| Chinese | [PATTERNS-ZH.md](PATTERNS-ZH.md) | 32 | 8 |
+| Japanese | [PATTERNS-JA.md](PATTERNS-JA.md) | 32 | 8 |
 
 ## Notes
 

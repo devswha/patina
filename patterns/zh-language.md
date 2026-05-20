@@ -4,6 +4,11 @@ language: zh
 name: 语言/语法模式
 version: 1.0.0
 patterns: 7
+corpus-snapshot:
+  id: bootstrap-patterns-pre-provenance
+  status: needs-quarterly-refresh
+  source: maintainer-curated pattern packs before quarterly corpus snapshot tracking
+  last_validated: null
 ---
 
 # 语言/语法模式

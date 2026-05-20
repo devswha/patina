@@ -4,6 +4,11 @@ language: ko
 name: 바이럴 훅 패턴
 version: 1.0.0
 patterns: 8
+corpus-snapshot:
+  id: bootstrap-patterns-pre-provenance
+  status: needs-quarterly-refresh
+  source: maintainer-curated pattern packs before quarterly corpus snapshot tracking
+  last_validated: null
 score_only: true
 ---
 

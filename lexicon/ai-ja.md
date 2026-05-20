@@ -3,6 +3,11 @@ pack: ai-lexicon-ja
 language: ja
 version: 1.0.0
 entries: 60
+corpus-snapshot:
+  id: ja-v1.0-2026-05-20-starter
+  status: needs-external-calibration
+  source: phrase-only starter lexicon from PR #287; curated ja 200-paragraph calibration pending
+  last_validated: null
 ---
 
 # AI-favored vocabulary (Japanese)

@@ -1,7 +1,8 @@
 import { createServer } from 'node:http';
+import { spawnSync } from 'node:child_process';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
-import { main } from '../../src/cli.js';
+import { formatCliError, main } from '../../src/cli.js';
 import { getRepoRoot } from '../../src/config.js';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -55,6 +56,23 @@ async function captureConsole(fn) {
     console.error = originalError;
   }
   return { logs, errors };
+}
+
+async function captureProcessExit(fn) {
+  const originalExit = process.exit;
+  let exitCode;
+  process.exit = (code) => {
+    exitCode = code;
+    throw new Error(`process.exit:${code}`);
+  };
+  try {
+    await fn();
+  } catch (err) {
+    if (!String(err.message).startsWith('process.exit:')) throw err;
+  } finally {
+    process.exit = originalExit;
+  }
+  return exitCode;
 }
 
 describe('CLI End-to-End with Mock API', () => {
@@ -158,6 +176,91 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(
       help.includes('openai-http, codex-cli, claude-cli, gemini-cli'),
       'help should list every backend name'
+    );
+  });
+
+  it('should format no-input TTY errors without dumping help', async () => {
+    const originalIsTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, 'isTTY', {
+      configurable: true,
+      value: true,
+    });
+
+    try {
+      const { logs, errors } = await captureConsole(async () => {
+        const exitCode = await captureProcessExit(() =>
+          main(['--backend', 'codex-cli'])
+        );
+        assert.strictEqual(exitCode, 2);
+      });
+
+      assert.deepStrictEqual(logs, []);
+      assert.deepStrictEqual(errors, [
+        formatCliError(
+          'no input provided',
+          'patina needs a file path or piped stdin before it can run.',
+          'Pass a file path, pipe text via stdin, or run `patina --help`.'
+        ),
+      ]);
+    } finally {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        configurable: true,
+        value: originalIsTTY,
+      });
+    }
+  });
+
+  it('should format empty stdin errors with a concrete pipe example', () => {
+    const result = spawnSync(
+      process.execPath,
+      ['bin/patina.js', '--backend', 'codex-cli'],
+      {
+        cwd: REPO_ROOT,
+        input: '',
+        encoding: 'utf8',
+      }
+    );
+
+    assert.strictEqual(result.status, 2);
+    assert.strictEqual(result.stdout, '');
+    assert.strictEqual(
+      result.stderr.trim(),
+      formatCliError(
+        'empty input on stdin',
+        'stdin was present but contained only whitespace.',
+        'Try: echo "..." | patina --lang en'
+      )
+    );
+  });
+
+  it('should format missing API key errors without a stack trace', () => {
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    const result = spawnSync(
+      process.execPath,
+      ['bin/patina.js', '--backend', 'openai-http', testFile],
+      {
+        cwd: REPO_ROOT,
+        env: {
+          ...process.env,
+          PATINA_API_KEY: '',
+          PATINA_API_KEY_FILE: '',
+        },
+        encoding: 'utf8',
+      }
+    );
+
+    assert.strictEqual(result.status, 1);
+    assert.strictEqual(result.stdout, '');
+    assert.ok(result.stderr.includes('[patina] Error: no API key found'));
+    assert.ok(
+      result.stderr.includes(
+        '         openai-http needs an API key before it can call the provider.'
+      )
+    );
+    assert.ok(result.stderr.includes('         → Set PATINA_API_KEY'));
+    assert.ok(
+      !result.stderr.includes('\n    at '),
+      'should not print a stack trace'
     );
   });
 

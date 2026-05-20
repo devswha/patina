@@ -163,19 +163,29 @@ export async function main(args) {
       }
 
       if (backend.name === 'openai-http' && !resolved.apiKey) {
-        const msg = ['No API key found. Set PATINA_API_KEY or pass --api-key.'];
+        const next = [
+          provider
+            ? `Set ${provider.apiKeyEnv} or PATINA_API_KEY, or pass --api-key-file <path>.`
+            : 'Set PATINA_API_KEY or pass --api-key-file <path>.',
+        ];
         if (provider) {
-          msg.push(`(--provider ${provider.name} expects ${provider.apiKeyEnv} or PATINA_API_KEY.)`);
+          next.unshift(
+            `--provider ${provider.name} expects ${provider.apiKeyEnv} or PATINA_API_KEY.`
+          );
         }
         const codex = listBackends().find((b) => b.name === 'codex-cli');
         if (codex && codex.available && codex.authenticated) {
-          msg.push('Or pass `--backend codex-cli` to use the codex-cli backend (no key needed).');
+          next.push('Or pass `--backend codex-cli` to use the codex-cli backend.');
         } else if (codex && codex.available && !codex.authenticated) {
-          msg.push('Or run `codex login`, then pass `--backend codex-cli`.');
+          next.push('Or run `codex login`, then pass `--backend codex-cli`.');
         } else if (codex && !codex.available) {
-          msg.push('Or install `codex` from https://github.com/openai/codex and pass `--backend codex-cli`.');
+          next.push('Or install `codex` and pass `--backend codex-cli`.');
         }
-        throw new Error(msg.join('\n'));
+        throw new Error(formatCliError(
+          'no API key found',
+          'openai-http needs an API key before it can call the provider.',
+          next.join(' ')
+        ));
       }
 
       result = await backend.invoke({
@@ -437,18 +447,29 @@ function resolveApiKey(parsed) {
   return undefined;
 }
 
+export function formatCliError(what, why, nextAction) {
+  return `[patina] Error: ${what}\n         ${why}\n         → ${nextAction}`;
+}
+
 async function loadInputs(parsed) {
   if (parsed.files.length === 0) {
     // No file args. If stdin is a TTY (interactive terminal), there is no input
-    // to read — print help instead of hanging or sending empty text to the LLM.
+    // to read; fail instead of hanging or sending empty text to the LLM.
     if (process.stdin.isTTY) {
-      printHelp();
-      console.error('\nNo input provided. Pass a file path, pipe text via stdin, or run `patina --help`.');
+      console.error(formatCliError(
+        'no input provided',
+        'patina needs a file path or piped stdin before it can run.',
+        'Pass a file path, pipe text via stdin, or run `patina --help`.'
+      ));
       process.exit(2);
     }
     const stdin = await readStdin();
     if (!stdin.trim()) {
-      console.error('Error: empty input on stdin. Pipe text via stdin or pass a file path.');
+      console.error(formatCliError(
+        'empty input on stdin',
+        'stdin was present but contained only whitespace.',
+        'Try: echo "..." | patina --lang en'
+      ));
       process.exit(2);
     }
     return [{ path: '-', text: stdin }];

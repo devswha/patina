@@ -2,7 +2,7 @@
 
 This page expands the Chinese pattern packs into a browsable reference. It is generated from `patterns/zh-*.md`, so the numbers, names, watch words, fire conditions, and examples mirror the source pattern files.
 
-- Rewrite-capable patterns: 31
+- Rewrite-capable patterns: 32
 - Score/audit-only viral-hook patterns: 5
 - Main selector: [PATTERNS.md](PATTERNS.md)
 
@@ -22,6 +22,7 @@ This page expands the Chinese pattern packs into a browsable reference. It is ge
 | 10 | rewrite | 排比句过度使用 | [zh-language.md](../patterns/zh-language.md) |
 | 11 | rewrite | 同义词循环替换 | [zh-language.md](../patterns/zh-language.md) |
 | 12 | rewrite | 冗长的介词结构 | [zh-language.md](../patterns/zh-language.md) |
+| 32 | rewrite | “更”比较副词滥用 | [zh-language.md](../patterns/zh-language.md) |
 | 13 | rewrite | 过度使用连接词/过渡词 | [zh-style.md](../patterns/zh-style.md) |
 | 14 | rewrite | 加粗滥用 | [zh-style.md](../patterns/zh-style.md) |
 | 15 | rewrite | 内联标题列表 | [zh-style.md](../patterns/zh-style.md) |
@@ -242,6 +243,22 @@ Example before:
 Example after:
 
 > 公司今年把ERP系统换成了自研的，砍掉了三层审批流程。结果订单处理时间从4天缩到了1天半。
+
+### 32. “更”比较副词滥用
+
+- Source: [zh-language.md](../patterns/zh-language.md)
+- Type: rewrite-capable pattern
+- Watch words: 更具体、更高效、更全面、更深入、更清晰、更积极、更系统、更有效、更稳健、更广泛、更优质、更可持续、更具战略性
+- Fire condition: 同一文档中出现2个以上“更 + 形容词/副词/抽象名词化短语”，且没有明确比较对象、基准或指标。
+- Example files: [failure](../examples/zh-32-failure-01.md) · [success](../examples/zh-32-success-01.md)
+
+Example before:
+
+> 下一阶段，我们将制定更具体的项目里程碑，建立更高效的资源配置机制，并通过更深入的沟通推动更全面的协同。相关团队也将形成更具战略性的执行框架。
+
+Example after:
+
+> 下一阶段先做三件事：把里程碑拆到每周，给每个任务指定负责人，重新核对预算表。产品、运营和法务每周二开30分钟会，专门处理跨部门卡住的事项。
 
 ## 风格模式
 

@@ -279,14 +279,12 @@ Already done or mostly done:
 - Scoring/stylometry quality wave is complete: zh/ja char n-grams, deterministic shadow scoring, manifest v2 observability, response cache, and voice anchors. Issues: [#151](https://github.com/devswha/patina/issues/151), [#136](https://github.com/devswha/patina/issues/136), [#134](https://github.com/devswha/patina/issues/134), [#135](https://github.com/devswha/patina/issues/135), [#137](https://github.com/devswha/patina/issues/137).
 - Pattern/profile wave is complete: zh/ja risk notes, comparison-adverb backport, zh/ja profile overrides, overlap audit, developer-prose profiles, and viral-hook expansion to 8 score-only patterns per language. Issues: [#147](https://github.com/devswha/patina/issues/147), [#148](https://github.com/devswha/patina/issues/148), [#149](https://github.com/devswha/patina/issues/149), [#152](https://github.com/devswha/patina/issues/152), [#153](https://github.com/devswha/patina/issues/153), [#154](https://github.com/devswha/patina/issues/154).
 
-Next executable wave order (snapshot: 2026-05-20 after PR #273):
+Next executable wave order (snapshot: 2026-05-20 after the npm/action release wave):
 
-### Blocked release wave — keep visible, do not start yet
+### Completed release wave
 
-These are the only open high-priority issues. They stay blocked until package ownership, release credentials, versioning, and support policy are settled.
-
-1. Settle npm support policy, then publish `patina-cli` / `patina-humanizer` with release workflow. Issue: [#203](https://github.com/devswha/patina/issues/203).
-2. Ship `devswha/patina-action@v1` for PR-comment scoring after the release/versioning path is stable. Issue: [#204](https://github.com/devswha/patina/issues/204).
+1. `patina-cli` / `patina-humanizer` are published on npm. Issue: [#203](https://github.com/devswha/patina/issues/203).
+2. `devswha/patina-action@v1` is released for PR-comment scoring. Issue: [#204](https://github.com/devswha/patina/issues/204).
 
 ### Wave 1 — medium, executable after release policy is unblocked
 

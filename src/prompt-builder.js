@@ -194,11 +194,12 @@ function buildOutputFormatBlock({ variants = 1 } = {}) {
 }
 
 function buildDiffInstructions() {
-  return `Show what changed and why, pattern by pattern. For each change:\n` +
-    `- Show the original text\n` +
-    `- Show the corrected text\n` +
-    `- Name the pattern that triggered the change (use exact \`N. Pattern Name\` from the loaded packs)\n` +
-    `- Explain why it was changed\n`;
+  return `Show what changed and why, pattern by pattern. For each change use this exact label format:\n\n` +
+    `Pattern: N. Pattern Name\n` +
+    `Removed: original text\n` +
+    `Added: corrected text\n` +
+    `Why: one short reason\n\n` +
+    `Use the exact \`N. Pattern Name\` from the loaded packs. Do not invent pattern names.\n`;
 }
 
 function buildAuditInstructions() {

@@ -2,6 +2,7 @@
 // Each provider maps to a base URL + a recommended default model + the env
 // variable users typically set to authenticate. Selecting a provider is
 // equivalent to manually setting --base-url, --model, and the right key.
+import { inputError } from './errors.js';
 
 export const PROVIDERS = {
   openai: {
@@ -42,8 +43,10 @@ export function selectProvider(name) {
   if (!name) return null;
   const provider = PROVIDERS[name];
   if (!provider) {
-    throw new Error(
-      `Unknown provider: ${name}. Available: ${Object.keys(PROVIDERS).join(', ')}`
+    throw inputError(
+      `Unknown provider: ${name}`,
+      `Available providers are: ${Object.keys(PROVIDERS).join(', ')}.`,
+      'Run `patina --list-providers` to inspect provider presets.'
     );
   }
   return provider;

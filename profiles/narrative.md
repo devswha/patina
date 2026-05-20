@@ -24,6 +24,18 @@ pattern-overrides:
     14: suppress               # Boldface — unnecessary in essay prose
     15: suppress               # Inline-header lists — breaks narrative continuity
     25: suppress               # Numbered structure — not appropriate for essays
+  zh:
+    26: reduce                 # 翻译腔 — 叙事里可保留少量口语化/外来节奏
+    13: reduce                 # 连接词 — 叙事推进中少量“后来/然后”可自然存在
+    14: suppress               # 加粗 — 叙事散文里强调标记通常不需要
+    15: suppress               # 内联标题 — 会打断叙事连续性
+    25: suppress               # 结构性重复 — 编号/模板段落不适合个人叙事
+  ja:
+    26: reduce                 # 翻訳調 — 語りの中では少量の会話調を許容
+    13: reduce                 # 接続表現 — 時間の流れを示す接続は一部許容
+    14: suppress               # 太字 — エッセイ本文では不要
+    15: suppress               # インラインヘッダー — 物語の流れを切る
+    25: suppress               # 構造的繰り返し — 番号/テンプレ段落は個人叙事に不向き
 ---
 
 # 내러티브/에세이 프로필

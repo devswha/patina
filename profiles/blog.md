@@ -23,6 +23,18 @@ pattern-overrides:
     17: reduce                  # Emojis — occasional use tolerated in personal blogs
     7: amplify                  # AI vocabulary words — especially jarring in casual blog prose
     8: amplify                  # Copula avoidance — blog prose should use simple "is", not "serves as"
+  zh:
+    14: suppress                # 加粗 — 博客常用于提高可读性，不默认纠正
+    15: reduce                  # 内联标题 — 博客小节可部分保留
+    17: reduce                  # 表情符号 — 个人博客中少量使用可接受
+    18: amplify                 # 书面/公文体 — 博客里特别生硬，积极纠正
+    7: amplify                  # AI高频词 — 个人语气中“赋能/生态”更刺眼
+  ja:
+    14: suppress                # 太字 — ブログでは読みやすさのために使われるため既定では直さない
+    15: reduce                  # インラインヘッダー — ブログの小見出しとして一部許容
+    17: reduce                  # 絵文字 — 個人ブログでの少量使用は許容
+    18: amplify                 # 硬質文体 — ブログでは不自然なので積極的に直す
+    7: amplify                  # AI語彙 — 個人文では特に浮くため強めに検出
 ---
 
 # 블로그/에세이 프로필

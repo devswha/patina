@@ -17,10 +17,10 @@ allowed-tools:
 당신은 여러 AI 모델을 동시에 사용하여 텍스트를 humanize하고, 가장 자연스러운 결과를 자동 선택하는 오케스트레이터입니다. 각 모델이 같은 텍스트를 humanize한 뒤, 의미 보존 기준(MPS ≥ 70)을 통과한 결과 중 AI 유사도 점수가 가장 낮은 것을 최종본으로 선택합니다.
 
 > **전제 조건:**
-> - **oh-my-claudecode (OMC)** 가 설치되어 있어야 합니다 (tmux dispatch 모드)
-> - **tmux** 세션 안에서 실행해야 합니다 (`$TMUX` 환경변수 확인)
+> - **oh-my-claudecode (OMC)** 가 설치되어 있어야 합니다 (`dispatch: omc` 병렬 모드)
+> - **tmux** 세션 안에서 실행해야 합니다 (`dispatch: omc` 병렬 모드, `$TMUX` 환경변수 확인)
 > - 선택한 모델의 로컬 CLI가 설치되어 있어야 합니다 (`claude`, `gemini`, `codex`)
-> - `dispatch: direct` 모드에서는 OMC/tmux 없이도 동작합니다 (순차 실행)
+> - `dispatch: direct` 모드에서는 OMC/tmux 없이도 동작합니다 (순차 실행, tmux fallback 경고 없음)
 
 ---
 
@@ -71,7 +71,9 @@ Glob .patina.default.yaml → Read
 
 4. **OMC/tmux 확인** (`dispatch: omc` 선택 시):
    - `$TMUX` 환경변수로 tmux 세션 여부 확인
-   - tmux가 아니면 경고하고 `dispatch: direct`로 자동 전환 제안
+   - tmux가 아니면 아래의 정확한 경고를 stderr에 출력하고 `dispatch: direct`로 자동 전환:
+     `[patina-max] tmux not detected. Falling back to sequential dispatch (expect ~Xmin instead of ~Ys). Pass --dispatch direct to silence.`
+   - 사용자가 명시적으로 `--dispatch direct`를 선택한 경우에는 경고를 출력하지 않는다
 
 인터뷰 결과를 `.patina.yaml`에 저장한다:
 
@@ -203,9 +205,23 @@ Claude/Codex는 **stdin pipe**, Gemini는 **`$(cat file)` 인자 치환**으로 
 
 고정 `/tmp/patina-max-*` 파일명은 사용하지 않는다. 모든 산출물은 `$RUN_DIR` 아래에 저장한다.
 
+### Dispatch preflight
+
+`DISPATCH_MODE`는 설정 파일과 `--dispatch` 플래그를 반영한 최종 dispatch 값이다. 사용자가 `--dispatch direct`를 명시했으면 이 preflight는 경고 없이 direct 모드를 유지한다.
+
+```bash
+if [ "$DISPATCH_MODE" = "omc" ] && [ -z "${TMUX:-}" ]; then
+  MODEL_COUNT=$(printf '%s\n' $SELECTED_MODELS | sed '/^$/d' | wc -l | tr -d ' ')
+  DIRECT_MIN=$(( (MODEL_COUNT * TIMEOUT_SECONDS + 59) / 60 ))
+  printf '[patina-max] tmux not detected. Falling back to sequential dispatch (expect ~%smin instead of ~%ss). Pass --dispatch direct to silence.\n' \
+    "$DIRECT_MIN" "$TIMEOUT_SECONDS" >&2
+  DISPATCH_MODE="direct"
+fi
+```
+
 ### 모드 A: OMC dispatch (`dispatch: omc`)
 
-tmux pane을 사용하여 모든 모델을 **병렬** 실행한다. 각 pane에서 프롬프트 파일을 읽어 전달하고, 완료 시 sentinel 파일을 생성한다.
+tmux pane을 사용하여 모든 모델을 **병렬** 실행한다. 각 pane에서 프롬프트 파일을 읽어 전달하고, 완료 시 sentinel 파일을 생성한다. wall-clock 상한은 가장 느린 모델 하나에 가깝다 (`TIMEOUT_SECONDS=900`이면 약 900초).
 
 ```bash
 SELECTED_MODELS="claude gemini codex"   # 실제로는 설정/플래그에서 선택된 모델만 포함
@@ -264,7 +280,7 @@ done
 
 ### 모드 B: Direct dispatch (`dispatch: direct`)
 
-tmux 없이 순차적으로 실행한다. OMC/tmux가 없는 환경에서의 fallback.
+tmux 없이 순차적으로 실행한다. OMC/tmux가 없는 환경에서의 fallback. wall-clock 상한은 선택한 모델 수에 비례한다 (`TIMEOUT_SECONDS=900`, 모델 3개면 약 45분까지 가능). 병렬 tmux 실행보다 느릴 수 있으므로, 의도적으로 direct를 쓰는 경우 `--dispatch direct`를 명시하면 fallback 경고를 끌 수 있다.
 
 ```bash
 # Claude
@@ -358,7 +374,8 @@ touch "$RUN_DIR/claude.done"
 - `.timeout` 파일이 있거나 exit code가 `124`이면 → `timed out`으로 기록하고 `failed`로 표시
 - `.done` 파일은 생겼지만 output 파일이 비어 있으면 → CLI가 빈 응답을 반환한 것이므로 `failed`로 표시
 - 모든 모델이 실패한 경우 → 에러 메시지와 함께 각 모델의 output/log 파일 내용을 진단 정보로 출력하고 종료
-- `dispatch: omc`에서 tmux가 없으면 (`$TMUX` 미설정) → 경고 후 자동으로 direct 모드로 전환
+- `dispatch: omc`에서 tmux가 없으면 (`$TMUX` 미설정) → `[patina-max] tmux not detected. Falling back to sequential dispatch (expect ~Xmin instead of ~Ys). Pass --dispatch direct to silence.` 형식의 경고 후 direct 모드로 자동 전환
+- `--dispatch direct`를 명시한 경우 → 이미 순차 실행을 선택한 것이므로 tmux fallback 경고를 출력하지 않음
 
 ---
 

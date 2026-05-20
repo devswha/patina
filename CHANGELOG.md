@@ -29,6 +29,8 @@ Semver rationale: minor — adds CI/release/distribution surfaces and documentat
 
 - Added release metadata checks so package/config/skill/changelog versions stay synchronized.
 - Added deterministic prose-score tests and pre-commit E2E coverage.
+- Expanded the deterministic suspect-zone benchmark to ko/en/zh/ja with checked-in per-fixture metric ranges.
+- Added an offline detector-comparison harness and 2025+ re-baseline plan for future benchmark evidence.
 
 ## 3.10.0 — 2026-05-06
 

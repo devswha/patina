@@ -14,6 +14,8 @@ Outputs:
 - A markdown table per language (accuracy, precision, recall, F1, confusion matrix)
 - A list of any misclassified fixtures with their feature values
 - `tests/quality/results.json` — full per-fixture log (gitignored)
+- `docs/benchmarks/latest.md` / `latest.json` when run via `npm run benchmark:report`
+- `docs/benchmarks/detector-comparison.md` / `.json` when run via `npm run benchmark:compare`
 
 ## What it measures
 
@@ -69,7 +71,29 @@ Per-language metrics use `expected_hot=true` as the positive class.
 
 3. Add `expected_metrics` when a fixture is meant to pin a specific deterministic signal. This is useful for real-world chat-register fixtures where a future tokenizer or threshold change should fail loudly instead of silently changing the benchmark meaning.
 
-4. Re-run `npm run benchmark` and confirm it classifies as expected.
+4. Refresh the central per-fixture regression ranges after reviewing the new fixture:
+
+   ```bash
+   npm run benchmark:ranges
+   ```
+
+   This updates `tests/fixtures/suspect-zones/expected-ranges.json`, which pins CV, MATTR, lexicon density, and detector sub-signal expectations for every fixture.
+
+5. Re-run `npm run benchmark` and confirm it classifies as expected.
+
+## Third-party detector comparison
+
+Patina does not scrape detector websites or send fixture text to vendors. For
+manual comparisons:
+
+```bash
+cp tests/quality/detectors.manual.example.json /tmp/detectors.manual.json
+$EDITOR /tmp/detectors.manual.json
+node scripts/detector-comparison.mjs --input /tmp/detectors.manual.json
+```
+
+The checked-in report always includes Patina's own deterministic analyzer. Any
+third-party rows are manual, timestamped, and opt-in.
 
 ## Tuning the thresholds
 
@@ -82,7 +106,8 @@ calibration documented in `core/stylometry.md` §13 §16.
 
 ## Languages
 
-Currently runs on `ko` and `en` fixtures. `zh` and `ja` are tracked in
-[issue #104](https://github.com/devswha/patina/issues/104) — they
-require lexicon curation and tokenization-policy decisions before the
-benchmark can be extended.
+Currently runs on all supported pattern-pack languages: `ko`, `en`, `zh`, and
+`ja`. Chinese and Japanese use a deterministic character-token fallback because
+normal prose often has no whitespace; ko/en keep whitespace tokenization.
+Language-specific zh/ja lexicons are still future work, so current zh/ja
+fixtures are mainly burstiness/MATTR regression coverage.

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "runId": "manual-example-2026-05-20",
+  "collectedAt": "2026-05-20",
+  "note": "Example only. Replace with manually collected third-party detector labels before drawing conclusions.",
+  "detectors": [
+    {
+      "id": "example-third-party",
+      "name": "Example Third-Party Detector",
+      "kind": "manual-third-party",
+      "scoreScale": "0..1",
+      "threshold": 0.5
+    }
+  ],
+  "results": [
+    {
+      "fixture_id": "en-ai-01",
+      "detector": "example-third-party",
+      "label": "hot",
+      "score": 0.87,
+      "notes": "Example row; do not treat as real vendor evidence."
+    },
+    {
+      "fixture_id": "en-nat-01",
+      "detector": "example-third-party",
+      "label": "cold",
+      "score": 0.12,
+      "notes": "Example row; do not treat as real vendor evidence."
+    }
+  ]
+}

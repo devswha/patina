@@ -61,5 +61,8 @@ jobs:
       - name: Benchmark report schema
         run: npm run benchmark:report
 
+      - name: Detector comparison harness
+        run: npm run benchmark:compare
+
       - name: Dogfood public docs
         run: npm run dogfood

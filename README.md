@@ -1,18 +1,18 @@
 <p align="center">
-  <a href="README_KR.md"><b>한국어</b></a> ·
-  <a href="README_ZH.md"><b>中文</b></a> ·
-  <a href="README_JA.md"><b>日本語</b></a> ·
-  <b>English</b>
-</p>
-
-<p align="center">
-  <img src="assets/brand/patina-icon.svg" alt="patina icon" width="120">
+  <img src="assets/brand/patina-mark.svg" alt="patina mark" width="132">
 </p>
 
 <h1 align="center">patina</h1>
 
 <p align="center">
   <strong>Strip the AI packaging. Keep the meaning.</strong>
+</p>
+
+<p align="center">
+  <a href="README_KR.md"><b>한국어</b></a> ·
+  <a href="README_ZH.md"><b>中文</b></a> ·
+  <a href="README_JA.md"><b>日本語</b></a> ·
+  <b>English</b>
 </p>
 
 <p align="center">
@@ -46,7 +46,7 @@ It is not a black-box paraphraser. patina is **pattern-based and auditable**: it
 | Technical | “핵심적인 역할”, future-standard hype | GPU management, one-command provisioning, 5× result caveat |
 
 Try it quickly: [30-second terminal demo](docs/DEMO.md). More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)).
-Brand assets: [logo](assets/brand/patina-logo.svg), [icon](assets/brand/patina-icon.svg),
+Brand assets: [logo](assets/brand/patina-logo.svg), [mark](assets/brand/patina-mark.svg), [icon](assets/brand/patina-icon.svg),
 [social preview](assets/social/patina-og.svg), and [before/after card](assets/social/patina-before-after.svg).
 Usage notes: [BRANDING.md](docs/BRANDING.md).
 

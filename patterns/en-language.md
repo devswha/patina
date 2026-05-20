@@ -4,6 +4,19 @@ language: en
 name: Language Patterns
 version: 1.0.0
 patterns: 7
+dedupe-with:
+  - source: "en-language:7"
+    target: "en-filler:24"
+    owner: "en-filler:24"
+    reason: "The phrase 'stands as a testament' belongs to filler #24; language #7 keeps 'testament' only as one word in a broader AI-vocabulary cluster."
+  - source: "en-language:7"
+    target: "en-language:8"
+    owner: "en-language:8"
+    reason: "When 'testament' appears inside a copula-avoidance construction, pattern #8 owns the rewrite; pattern #7 only fires on a broader AI-vocabulary cluster."
+  - source: "en-language:8"
+    target: "en-filler:24"
+    owner: "en-filler:24"
+    reason: "The exact phrase 'stands as a testament' is a generic positive-conclusion marker when used as vague praise; pattern #8 still owns non-conclusion copula avoidance such as 'serves as'."
 ---
 
 # Language Patterns

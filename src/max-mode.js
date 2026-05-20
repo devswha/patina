@@ -1,4 +1,4 @@
-import { callLLMMultiple } from './api.js';
+import { callLLM as defaultCallLLM, callLLMMultiple } from './api.js';
 import { scoreText, scoreMPS } from './scoring.js';
 
 const DEFAULT_WALL_CLOCK_BUDGET_MS = 300_000;
@@ -13,6 +13,9 @@ export async function runMaxMode({
   patterns,
   maxConcurrency,
   wallClockBudgetMs = DEFAULT_WALL_CLOCK_BUDGET_MS,
+  callLLM = defaultCallLLM,
+  now = () => Date.now(),
+  sleep,
   callLLMMultipleImpl = callLLMMultiple,
   scoreTextImpl = scoreText,
   scoreMPSImpl = scoreMPS,
@@ -20,7 +23,7 @@ export async function runMaxMode({
   console.error(`[patina-max] Dispatching to ${models.length} models: ${models.join(', ')}`);
 
   const controller = new AbortController();
-  const deadline = Date.now() + wallClockBudgetMs;
+  const deadline = now() + wallClockBudgetMs;
   let timedOut = false;
   const timeout = setTimeout(() => {
     timedOut = true;
@@ -38,6 +41,9 @@ export async function runMaxMode({
       maxConcurrency,
       deadline,
       signal: controller.signal,
+      callLLM,
+      now,
+      sleep,
       onStart: (model) => console.error(`[patina-max] Starting ${model}...`),
       onComplete: (model, ok) => console.error(`[patina-max] ${model} ${ok ? 'completed' : 'failed'}`),
     });
@@ -61,6 +67,9 @@ export async function runMaxMode({
           model: r.model,
           deadline,
           signal: controller.signal,
+          callLLM,
+          now,
+          sleep,
         });
       }
 
@@ -73,6 +82,9 @@ export async function runMaxMode({
           model: r.model,
           deadline,
           signal: controller.signal,
+          callLLM,
+          now,
+          sleep,
         });
       }
 

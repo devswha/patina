@@ -54,7 +54,7 @@ Usage notes: [BRANDING.md](docs/BRANDING.md).
 
 |  |  |
 |---|---|
-| **146 patterns** | 37 KO + 36 EN + 36 ZH + 37 JA (each incl. 5 score-only viral-hook) — see [PATTERNS.md](docs/PATTERNS.md) |
+| **148 patterns** | 37 KO + 37 EN + 37 ZH + 37 JA (each incl. 5 score-only viral-hook) — see [PATTERNS.md](docs/PATTERNS.md) |
 | **Editing hotspot recall** | 91% Korean [84.0–95.4%] (n=100) / 76% English [66.7–83.3%] (n=100), binomial 95% CI |
 | **Benchmark report** | Reproducible ko/en/zh/ja suspect-zone benchmark: [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [detector comparison](docs/benchmarks/detector-comparison.md) |
 | **False positives** | 13–25% point-estimate range across human registers *(not a CI; boundary intrinsic to encyclopedic register, [documented](core/stylometry.md))* |
@@ -281,7 +281,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Cookbook](docs/COOKBOOK.md)** — practical recipes (Hugo batch scoring, GitHub Actions, MAX-mode comparison, false-positive triage, custom profiles, pre-commit)
 - **[Glossary](docs/GLOSSARY.md)** — short definitions for MPS, fidelity, burstiness, MATTR, modes, and other recurring terms
 - **[Demo](docs/DEMO.md)** — terminal transcript and multi-genre before/after snapshots
-- **[Patterns](docs/PATTERNS.md)** — full 146-pattern catalog
+- **[Patterns](docs/PATTERNS.md)** — full 148-pattern catalog
 - **[Authentication](docs/AUTHENTICATION.md)** ([한국어](docs/AUTHENTICATION_KR.md)) — backends, providers, free-tier setup
 - **[GitHub Action](docs/integrations/github-action.md)** — PR hotspot comments without a live model key
 - **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit, Husky, and Lefthook score-only recipes

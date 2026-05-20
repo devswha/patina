@@ -2,7 +2,7 @@
 
 This page expands the English pattern packs into a browsable reference. It is generated from `patterns/en-*.md`, so the numbers, names, watch words, fire conditions, and examples mirror the source pattern files.
 
-- Rewrite-capable patterns: 31
+- Rewrite-capable patterns: 32
 - Score/audit-only viral-hook patterns: 5
 - Main selector: [PATTERNS.md](PATTERNS.md)
 
@@ -22,6 +22,7 @@ This page expands the English pattern packs into a browsable reference. It is ge
 | 10 | rewrite | Rule of Three Overuse | [en-language.md](../patterns/en-language.md) |
 | 11 | rewrite | Elegant Variation (Synonym Cycling) | [en-language.md](../patterns/en-language.md) |
 | 12 | rewrite | False Ranges | [en-language.md](../patterns/en-language.md) |
+| 32 | rewrite | Comparison Adverb Overuse ("more" without target) | [en-language.md](../patterns/en-language.md) |
 | 13 | rewrite | Em Dash Overuse | [en-style.md](../patterns/en-style.md) |
 | 14 | rewrite | Boldface Overuse | [en-style.md](../patterns/en-style.md) |
 | 15 | rewrite | Inline-Header Vertical Lists | [en-style.md](../patterns/en-style.md) |
@@ -242,6 +243,22 @@ Example before:
 Example after:
 
 > The festival has three stages. The main stage books established acts (this year: Yo-Yo Ma, Thundercat). The tent stage is for local bands. There is also a children's area with instrument demos.
+
+### 32. Comparison Adverb Overuse ("more" without target)
+
+- Source: [en-language.md](../patterns/en-language.md)
+- Type: rewrite-capable pattern
+- Watch words: more specific, more concrete, more efficient, more effective, more comprehensive, more robust, more seamless, more meaningful, more strategic, more impactful, more nuanced, more proactive, more sustainable, more scalable
+- Fire condition: 2+ "more + adjective/adverb" comparative phrases appear in one document without a clear target, baseline, or metric.
+- Example files: [failure](../examples/en-32-failure-01.md) · [success](../examples/en-32-success-01.md)
+
+Example before:
+
+> The initiative will enable more specific milestones, more efficient resource allocation, and more comprehensive stakeholder alignment. Moving forward, the team should develop a more strategic framework for more meaningful collaboration.
+
+Example after:
+
+> The initiative needs dated milestones, named owners, and a budget review. The team also needs one shared plan for partner handoffs, because the current spreadsheet has three conflicting owners for the same launch tasks.
 
 ## Style Patterns
 

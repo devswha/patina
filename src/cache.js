@@ -2,9 +2,35 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+/**
+ * On-disk response cache schema version.
+ *
+ * @type {number}
+ * @example
+ * const version = CACHE_SCHEMA_VERSION;
+ */
 export const CACHE_SCHEMA_VERSION = 1;
+/**
+ * Default response cache time-to-live: one day.
+ *
+ * @type {number}
+ * @example
+ * const ttl = DEFAULT_CACHE_TTL_SECONDS;
+ */
 export const DEFAULT_CACHE_TTL_SECONDS = 24 * 60 * 60;
 
+/**
+ * Create a filesystem-backed cache for LLM responses.
+ *
+ * @param {object} [options] Cache options.
+ * @param {string} [options.dir] Directory for cache JSON files; returns null when omitted.
+ * @param {number} [options.ttlSeconds=DEFAULT_CACHE_TTL_SECONDS] Entry TTL in seconds.
+ * @param {Function} [options.now] Clock returning epoch milliseconds.
+ * @returns {null|{dir: string, ttlSeconds: number, stats: object, get: Function, set: Function}} Cache object or null.
+ * @throws {Error} Propagates filesystem or JSON errors when cache entries are read or written through the returned object.
+ * @example
+ * const cache = createResponseCache({ dir: '.patina-cache' });
+ */
 export function createResponseCache({
   dir,
   ttlSeconds = DEFAULT_CACHE_TTL_SECONDS,
@@ -83,6 +109,19 @@ export function createResponseCache({
   };
 }
 
+/**
+ * Derive a stable cache key from prompt and provider settings.
+ *
+ * @param {object} [options] Cache-key inputs.
+ * @param {string} [options.prompt] Prompt text.
+ * @param {string} [options.model] Model id.
+ * @param {number} [options.temperature] Sampling temperature.
+ * @param {string} [options.baseURL] Provider base URL.
+ * @returns {string} sha256-prefixed cache key.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const key = responseCacheKey({ prompt: 'Hi', model: 'gpt-4o' });
+ */
 export function responseCacheKey({ prompt, model, temperature, baseURL } = {}) {
   const input = [
     String(prompt ?? ''),
@@ -93,10 +132,29 @@ export function responseCacheKey({ prompt, model, temperature, baseURL } = {}) {
   return `sha256:${createHash('sha256').update(input).digest('hex')}`;
 }
 
+/**
+ * Resolve the JSON file path for a response cache key.
+ *
+ * @param {string} dir Cache directory.
+ * @param {string} key sha256-prefixed or raw cache key.
+ * @returns {string} Absolute or relative cache JSON path under dir.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const path = responseCachePath('.cache', 'sha256:abc');
+ */
 export function responseCachePath(dir, key) {
   return resolve(dir, `${String(key).replace(/^sha256:/, '')}.json`);
 }
 
+/**
+ * Normalize a provider base URL to its host component for cache keys.
+ *
+ * @param {string} [baseURL] Provider base URL.
+ * @returns {string} Parsed host, or the original string when parsing fails.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const host = baseURLHost('https://api.openai.com/v1');
+ */
 export function baseURLHost(baseURL) {
   try {
     return new URL(baseURL || 'https://api.openai.com/v1').host;

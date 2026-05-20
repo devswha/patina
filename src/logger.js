@@ -6,6 +6,20 @@ const LEVELS = {
   silent: Infinity,
 };
 
+/**
+ * Create a small stderr logger with text, JSON, and progress modes.
+ *
+ * @param {object} [options] Logger options.
+ * @param {string} [options.level=info] Minimum log level.
+ * @param {boolean} [options.quiet=false] Suppress all log output.
+ * @param {boolean} [options.json=false] Emit structured JSON records.
+ * @param {NodeJS.WritableStream} [options.stream=process.stderr] Progress stream.
+ * @returns {{debug: Function, info: Function, warn: Function, error: Function, progress: Function, closeProgress: Function, child: Function}} Logger facade.
+ * @throws {Error} Propagates stream write errors from the configured output stream.
+ * @example
+ * const logger = createLogger({ json: true });
+ * logger.info('event', { message: 'ready' });
+ */
 export function createLogger({
   level = process.env.PATINA_LOG_LEVEL || 'info',
   quiet = false,
@@ -67,4 +81,11 @@ function record(level, event, fields = {}) {
   };
 }
 
+/**
+ * Default stderr logger used by simple callers.
+ *
+ * @type {Object}
+ * @example
+ * defaultLogger.info('patina.ready', { message: 'ready' });
+ */
 export const defaultLogger = createLogger();

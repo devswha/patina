@@ -4,6 +4,13 @@ const DEFAULT_TIMEOUT = 120000;
 const DEFAULT_MAX_RETRIES = 2;
 const DEFAULT_BASE_BACKOFF_MS = 1000;
 const DEFAULT_MAX_BACKOFF_MS = 30000;
+/**
+ * Default sampling temperature for OpenAI-compatible chat completion calls.
+ *
+ * @type {number}
+ * @example
+ * const temperature = DEFAULT_TEMPERATURE; // 0.7
+ */
 export const DEFAULT_TEMPERATURE = 0.7;
 
 // Status codes that warrant a retry. Network errors (no status, AbortError)
@@ -12,6 +19,15 @@ const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 // Subclassed error so the retry loop can read `.status` + `.retryAfter`
 // without re-parsing strings.
+/**
+ * Error raised for non-2xx HTTP responses from an LLM provider.
+ *
+ * @param {number} status HTTP status code returned by the provider.
+ * @param {string} body Response body text, truncated in the message.
+ * @param {string|null} retryAfter Raw Retry-After response header, if present.
+ * @example
+ * throw new HttpError(429, 'rate limit', '2');
+ */
 export class HttpError extends Error {
   constructor(status, body, retryAfter) {
     super(`HTTP ${status}: ${truncate(body)}`);
@@ -67,6 +83,15 @@ function sleepWithSignal(sleep, ms, signal) {
   });
 }
 
+/**
+ * Decide whether an LLM call failure should be retried.
+ *
+ * @param {Error|Object} err Error thrown by fetch or {@link HttpError}.
+ * @returns {boolean} True for retryable HTTP statuses, aborts, and common network failures.
+ * @throws {Error} Does not intentionally throw; unexpected Error-like inputs may still propagate JavaScript runtime failures.
+ * @example
+ * const retry = isRetryable(new HttpError(429, 'rate limit', '1'));
+ */
 export function isRetryable(err) {
   if (!err) return false;
   if (err.name === 'AbortError') return true;
@@ -77,6 +102,21 @@ export function isRetryable(err) {
 
 // Honors Retry-After (seconds or HTTP-date). Falls back to exponential
 // backoff with up to 50% jitter, capped at maxDelay.
+/**
+ * Compute retry delay from Retry-After or exponential backoff with jitter.
+ *
+ * @param {number} attempt Zero-based retry attempt.
+ * @param {string|null|undefined} retryAfter Retry-After seconds or HTTP-date header.
+ * @param {object} [opts] Backoff tuning and deterministic test hooks.
+ * @param {number} [opts.base=1000] Initial exponential backoff in milliseconds.
+ * @param {number} [opts.max=30000] Maximum returned delay in milliseconds.
+ * @param {Function} [opts.now] Clock returning epoch milliseconds.
+ * @param {Function} [opts.random] Random number provider used for jitter.
+ * @returns {number} Delay in milliseconds, capped at opts.max.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const delay = computeBackoffMs(1, '2'); // 2000
+ */
 export function computeBackoffMs(attempt, retryAfter, opts = {}) {
   const {
     base = DEFAULT_BASE_BACKOFF_MS,
@@ -103,6 +143,16 @@ export function computeBackoffMs(attempt, retryAfter, opts = {}) {
 
 // Bounded-concurrency semaphore. `max <= 0` yields a no-op gate for callers
 // that explicitly opt into unlimited fanout.
+/**
+ * Create a small async semaphore for bounded parallel LLM dispatch.
+ *
+ * @param {number} max Maximum concurrent acquisitions; values <=0 create an unlimited no-op gate.
+ * @returns {{acquire: function(): Promise<Function>}} Semaphore whose acquire resolves to a release callback.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const release = await createSemaphore(2).acquire();
+ * release();
+ */
 export function createSemaphore(max) {
   if (!max || max <= 0) {
     return { acquire: () => Promise.resolve(() => {}) };
@@ -129,6 +179,31 @@ export function createSemaphore(max) {
   };
 }
 
+/**
+ * Call an OpenAI-compatible chat completions endpoint with retries, timeout, optional cache, and abort support.
+ *
+ * @param {object} options LLM request options.
+ * @param {string} options.prompt User prompt sent as the single chat message.
+ * @param {string} [options.apiKey] Bearer token for the provider.
+ * @param {string} [options.baseURL=https://api.openai.com/v1] OpenAI-compatible API base URL.
+ * @param {string} [options.model=gpt-4o] Model id to request.
+ * @param {number} [options.temperature=DEFAULT_TEMPERATURE] Sampling temperature.
+ * @param {number|string} [options.seed] Optional deterministic seed forwarded to the provider.
+ * @param {number} [options.timeout=120000] Per-attempt timeout in milliseconds.
+ * @param {number} [options.maxRetries=2] Retry count after the first attempt.
+ * @param {number} [options.deadline] Absolute epoch-millisecond deadline for all attempts.
+ * @param {AbortSignal} [options.signal] External cancellation signal.
+ * @param {boolean} [options.allowInsecureBaseURL=false] Allow non-loopback HTTP base URLs.
+ * @param {Function} [options.onResponse] Callback receiving provider/cache metadata.
+ * @param {object} [options.cache] Response cache with get/set methods.
+ * @param {Function} [options.sleep] Injectable sleep function for tests.
+ * @param {Function} [options.now] Clock returning epoch milliseconds.
+ * @returns {Promise<string>} Assistant message content.
+ * @throws {HttpError} When the provider returns a non-2xx response after retries.
+ * @throws {Error} On abort, timeout, malformed provider payload, or base URL validation failure.
+ * @example
+ * const text = await callLLM({ prompt: 'Rewrite this', apiKey: process.env.OPENAI_API_KEY });
+ */
 export async function callLLM({
   prompt,
   apiKey,
@@ -270,6 +345,31 @@ export async function callLLM({
   throw err;
 }
 
+/**
+ * Fan out one prompt across multiple model ids with bounded concurrency.
+ *
+ * @param {object} options Multi-model dispatch options.
+ * @param {string} options.prompt Prompt to send to each model.
+ * @param {string[]} options.models Ordered model ids to call.
+ * @param {string} [options.apiKey] Provider API key.
+ * @param {string} [options.baseURL=https://api.openai.com/v1] Provider base URL.
+ * @param {number} [options.temperature=DEFAULT_TEMPERATURE] Sampling temperature.
+ * @param {number|string} [options.seed] Optional deterministic seed.
+ * @param {number} [options.timeout] Per-call timeout in milliseconds.
+ * @param {boolean} [options.allowInsecureBaseURL=false] Allow non-loopback HTTP base URLs.
+ * @param {number} [options.deadline] Absolute epoch-millisecond deadline.
+ * @param {AbortSignal} [options.signal] External cancellation signal.
+ * @param {number} [options.maxConcurrency] Maximum in-flight model calls.
+ * @param {Function} [options.onStart] Called with each model before dispatch.
+ * @param {Function} [options.onComplete] Called with each model and success flag.
+ * @param {Function} [options.onResponse] Called with response metadata.
+ * @param {object} [options.cache] Response cache shared by calls.
+ * @param {Function} [options.callLLM] Injectable single-model implementation.
+ * @returns {Promise<Array<Object>>} Per-model results in input order.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const results = await callLLMMultiple({ prompt: 'Hi', models: ['gpt-4o', 'gpt-4o-mini'] });
+ */
 export async function callLLMMultiple({
   prompt,
   models,

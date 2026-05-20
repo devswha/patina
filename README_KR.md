@@ -225,11 +225,11 @@ max-models: [claude, gemini]
 - **[Glossary](docs/GLOSSARY.md)** — MPS, fidelity, burstiness, MATTR, 모드 등 반복 용어의 짧은 정의
 - **[Demo](docs/DEMO.md)** — 터미널 transcript와 여러 장르의 before/after 스냅샷
 - **[Patterns](docs/PATTERNS.md)** — 146개 패턴 카탈로그
-- **[Authentication](docs/AUTHENTICATION.md)** — 백엔드, 프로바이더, 무료 티어 설정
+- **[Authentication](docs/AUTHENTICATION_KR.md)** ([English](docs/AUTHENTICATION.md)) — 백엔드, 프로바이더, 무료 티어 설정
 - **[CLI Contract](docs/CLI.md)** — score gate, exit code, 자동화에 안전한 표면
 - **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI, `/patina`, `/patina-max` 옵션 지원 범위
 - **[Ethics](docs/ETHICS.md)** — 의도한 사용, 금지 사용, disclosure 입장
-- **[FAQ](docs/FAQ.md)** — detector-bypass 우려, MPS, 오탐, 기여 시작점
+- **[FAQ](docs/FAQ_KR.md)** ([English](docs/FAQ.md)) — detector-bypass 우려, MPS, 오탐, 기여 시작점
 - **[Comparison](docs/COMPARISON.md)** — 일반 paraphraser/humanizer 도구와의 사실 기반 비교
 - **[Branding](docs/BRANDING.md)** — canonical 로고/소셜 asset과 OG 설정 메모
 - **[Design](DESIGN.md)** — repo-native SVG와 README surface의 제품/브랜드 기준
@@ -240,7 +240,8 @@ max-models: [claude, gemini]
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 어휘 알고리즘
 - **[Scoring](core/scoring.md)** — AI 유사도 + 충실도 + MPS
 - **[Changelog](CHANGELOG.md)** — 릴리스 노트와 방법론
-- **[Contributing](CONTRIBUTING.md)** — 패턴 제출, 오탐 triage, 벤치마크 fixture, 버전 관리
+- **[Examples](docs/EXAMPLES_KR.md)** ([English](docs/EXAMPLES.md)) — before/after 갤러리와 예시 fixture 안내
+- **[Contributing](CONTRIBUTING_KR.md)** ([English](CONTRIBUTING.md)) — 패턴 제출, 오탐 triage, 벤치마크 fixture, 버전 관리
 - **[Governance](GOVERNANCE.md)** / **[Maintainers](MAINTAINERS.md)** — 가벼운 프로젝트 의사결정 규칙
 
 ## 영감

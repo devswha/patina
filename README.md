@@ -45,7 +45,7 @@ It is not a black-box paraphraser. patina is **pattern-based and auditable**: it
 | Academic | “획기적인 성과”, broad significance claims | 60 GitHub projects, 72h→10m setup time, p<0.01, limits noted |
 | Technical | “핵심적인 역할”, future-standard hype | GPU management, one-command provisioning, 5× result caveat |
 
-Try it quickly: [30-second terminal demo](docs/DEMO.md). More examples: [Before/After Gallery](docs/EXAMPLES.md).
+Try it quickly: [30-second terminal demo](docs/DEMO.md). More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)).
 Brand assets: [logo](assets/brand/patina-logo.svg), [icon](assets/brand/patina-icon.svg),
 [social preview](assets/social/patina-og.svg), and [before/after card](assets/social/patina-before-after.svg).
 Usage notes: [BRANDING.md](docs/BRANDING.md).
@@ -274,7 +274,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Glossary](docs/GLOSSARY.md)** — short definitions for MPS, fidelity, burstiness, MATTR, modes, and other recurring terms
 - **[Demo](docs/DEMO.md)** — terminal transcript and multi-genre before/after snapshots
 - **[Patterns](docs/PATTERNS.md)** — full 146-pattern catalog
-- **[Authentication](docs/AUTHENTICATION.md)** — backends, providers, free-tier setup
+- **[Authentication](docs/AUTHENTICATION.md)** ([한국어](docs/AUTHENTICATION_KR.md)) — backends, providers, free-tier setup
 - **[GitHub Action](docs/integrations/github-action.md)** — PR hotspot comments without a live model key
 - **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit, Husky, and Lefthook score-only recipes
 - **[Docker](docs/integrations/docker.md)** — GHCR image usage and release tags
@@ -283,7 +283,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI vs `/patina` vs `/patina-max` option support
 - **[Exit Codes](docs/EXIT-CODES.md)** — process code contract for CI and editor integrations
 - **[Ethics](docs/ETHICS.md)** — intended use, non-use, and disclosure stance
-- **[FAQ](docs/FAQ.md)** — detector-bypass concerns, MPS, false positives, contribution starting points
+- **[FAQ](docs/FAQ.md)** ([한국어](docs/FAQ_KR.md)) — detector-bypass concerns, MPS, false positives, contribution starting points
 - **[Comparison](docs/COMPARISON.md)** — factual comparison with common paraphraser/humanizer tools
 - **[Branding](docs/BRANDING.md)** — canonical logo/social assets and OG setup notes
 - **[Design](DESIGN.md)** — product/brand source of truth for repo-native SVG and README surfaces
@@ -296,7 +296,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI-lexicon algorithm
 - **[Scoring](core/scoring.md)** — AI-likeness + fidelity + MPS
 - **[Changelog](CHANGELOG.md)** — release notes and methodology
-- **[Contributing](CONTRIBUTING.md)** — pattern submissions, false-positive triage, benchmark fixtures, versioning
+- **[Contributing](CONTRIBUTING.md)** ([한국어](CONTRIBUTING_KR.md)) — pattern submissions, false-positive triage, benchmark fixtures, versioning
 - **[Governance](GOVERNANCE.md)** / **[Maintainers](MAINTAINERS.md)** — lightweight project decision rules
 
 ## Acknowledgements

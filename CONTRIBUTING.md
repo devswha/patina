@@ -8,6 +8,18 @@ User-facing documentation lives in `README*.md`, `docs/`, `examples/`, `patterns
 
 When moving a root-level Markdown file, either link it from `README.md` if it is public, or place it under `docs/internal/` with a short status note explaining its audience.
 
+## Korean Translation Policy
+
+Primary user docs should keep a Korean companion when they explain installation, support, contribution, examples, or troubleshooting. The required pairs are:
+
+- `README.md` → `README_KR.md`
+- `CONTRIBUTING.md` → `CONTRIBUTING_KR.md`
+- `docs/FAQ.md` → `docs/FAQ_KR.md`
+- `docs/AUTHENTICATION.md` → `docs/AUTHENTICATION_KR.md`
+- `docs/EXAMPLES.md` → `docs/EXAMPLES_KR.md`
+
+When a PR changes one of these English files, update the Korean pair in the same PR or explain why the translation can safely lag. Keep commands, paths, config keys, issue numbers, and code fences unchanged unless the source file itself changes them.
+
 ## Adding a New Pattern
 
 1. **Pick the right pack.** Patterns live in `patterns/{lang}-{category}.md`. Categories: content, language, style, structure, communication, filler.

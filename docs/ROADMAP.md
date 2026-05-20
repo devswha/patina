@@ -250,27 +250,29 @@ Do not lead with “bypass AI detectors.” Lead with:
 
 ## 5. Immediate next actions
 
-Last triaged: 2026-05-21, after the final high-ultragoal backlog campaign sync.
+Last triaged: 2026-05-21, after Launch Wave 1 score-badge/playbook work.
 
 Current GitHub issue inventory:
 
-- 17 open issues; 131 closed issues; 148 tracked issues total.
+- 16 open issues; 132 closed issues; 148 tracked issues total.
 - Open PRs: 0.
-- Open priority split: 2 high, 5 medium, 10 low, and 0 without priority labels.
-- Current high-priority issues: #282 README score badge, #286 launch tracking/playbook.
+- Open priority split: 1 high, 5 medium, 10 low, and 0 without priority labels.
+- Current high-priority issue: #286 launch tracking/playbook.
 
 Campaign state:
 
 - Merged campaign PRs: #281, #287, #288, #289, #290, #292, #293.
 - Concurrent cleanup merged during the final gate: #294 closed #291.
 - Final review blocker cleanup: #295.
+- Launch Wave 1 badge work: #297 closed #282; companion patina-action#1 added `badge-json` / `badge-branch`.
+- #286 now has a checked-in launch playbook/copy source and remains open as the launch execution tracker until #208/#283/#285 are ready or explicitly waived.
 - Closed or verified during the campaign: #99, #165, #186, #191, #199, #209, #210.
 - Kept open with explicit blocker comments: #104, #155, #156, #157, #158, #159, #160, #206, #207, #208, #211, #212.
 - Legacy bot/harness notes were removed from the public repo; restart autonomous bot work only from a fresh, tracked design if it becomes necessary.
 
 Next recommended order:
 
-1. Resolve the two high-priority launch issues (#282, #286).
-2. Continue medium research/content items (#104, #155, #160, #283, #285).
+1. Keep #286 as the launch execution tracker; do not broad-launch until #208 has a URL, or explicitly waive the playground dependency.
+2. Continue launch-support medium items (#283 share card generator, #285 educational guide), then research/process items (#104, #155, #160).
 3. Treat low-priority research/ecosystem items (#156-#159, #206-#208, #211, #212, #284) as parked until corpus, external repo, hosting, or governance prerequisites exist.
 4. Keep new campaign PRs short-lived: green checks, merged, or explicitly blocked with issue comments.

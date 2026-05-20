@@ -44,3 +44,4 @@ memory/
 # Generated benchmark artifacts (regenerated per `npm run benchmark`)
 tests/quality/results.json
 tests/e2e/temp-prompt.txt
+.vercel

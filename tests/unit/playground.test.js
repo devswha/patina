@@ -73,7 +73,7 @@ test('playground HTML points canonical and OG metadata at patina.vibetip.help', 
 
 test('Vercel config exposes the playground at the domain root', () => {
   const config = JSON.parse(readFileSync(resolve(REPO_ROOT, 'vercel.json'), 'utf8'));
-  assert.ok(config.rewrites.some((rule) => rule.source === '/' && rule.destination === '/playground/index.html'));
+  assert.ok(config.rewrites.some((rule) => rule.source === '/' && rule.destination === '/playground'));
   assert.ok(config.rewrites.some((rule) => rule.source === '/data/:path*' && rule.destination === '/playground/data/:path*'));
   assert.ok(config.headers[0].headers.some((header) => header.key === 'Content-Security-Policy'));
 });

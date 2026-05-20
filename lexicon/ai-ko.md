@@ -3,6 +3,11 @@ pack: ai-lexicon-ko
 language: ko
 version: 1.1.0
 entries: 102
+corpus-snapshot:
+  id: ko-v1.1-2026-05-04-claude-namu-wiki
+  status: partial
+  source: ko/AI 100 Claude-generated paragraphs vs NamuWiki human 100 paragraphs; see inline v1.1 notes
+  last_validated: 2026-05-04
 ---
 
 # AI-favored 어휘 (Korean)

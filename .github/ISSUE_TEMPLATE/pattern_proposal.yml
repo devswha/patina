@@ -17,11 +17,32 @@ body:
       placeholder: "e.g. generic positive conclusion"
     validations:
       required: true
+  - type: input
+    id: register_scope
+    attributes:
+      label: Register scope
+      placeholder: "e.g. product docs + chat updates; not academic abstracts"
+    validations:
+      required: true
   - type: textarea
     id: examples
     attributes:
       label: AI-like examples
       description: Provide at least 2-3 short examples if possible.
+    validations:
+      required: true
+  - type: textarea
+    id: evaluation_fixture
+    attributes:
+      label: 50-document evaluation fixture
+      description: Link to a 25-hot / 25-cold fixture or manifest, or describe the collection plan required before promotion.
+    validations:
+      required: true
+  - type: textarea
+    id: measurement
+    attributes:
+      label: Precision / recall evidence
+      description: Paste the precision/recall or hot/cold firing summary when available; otherwise state what still blocks promotion.
     validations:
       required: true
   - type: textarea

@@ -4,6 +4,11 @@ language: ko
 name: 채움/완화 패턴
 version: 1.2.0
 patterns: 4
+corpus-snapshot:
+  id: bootstrap-patterns-pre-provenance
+  status: needs-quarterly-refresh
+  source: maintainer-curated pattern packs before quarterly corpus snapshot tracking
+  last_validated: null
 ---
 
 # 채움/완화 패턴

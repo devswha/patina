@@ -4,6 +4,11 @@ language: ja
 name: 言語・文法パターン
 version: 1.1.0
 patterns: 7
+corpus-snapshot:
+  id: bootstrap-patterns-pre-provenance
+  status: needs-quarterly-refresh
+  source: maintainer-curated pattern packs before quarterly corpus snapshot tracking
+  last_validated: null
 dedupe-with:
   - source: "ja-language:7"
     target: "ja-style:13"

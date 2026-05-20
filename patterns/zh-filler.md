@@ -4,6 +4,11 @@ language: zh
 name: 填充/弱化模式
 version: 1.1.0
 patterns: 4
+corpus-snapshot:
+  id: bootstrap-patterns-pre-provenance
+  status: needs-quarterly-refresh
+  source: maintainer-curated pattern packs before quarterly corpus snapshot tracking
+  last_validated: null
 ---
 
 # 填充/弱化模式

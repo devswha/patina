@@ -3,6 +3,11 @@ pack: ai-lexicon-en
 language: en
 version: 1.0.0
 entries: 108
+corpus-snapshot:
+  id: bootstrap-en-lexicon-pre-provenance
+  status: needs-re-mine
+  source: maintainer-curated English lexicon before per-entry provenance; not a 2025+ paired corpus
+  last_validated: null
 ---
 
 # AI-favored vocabulary (English)

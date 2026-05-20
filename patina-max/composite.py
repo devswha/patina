@@ -9,7 +9,7 @@ Edit Conservativeness (EditCons) — and reselects the winner.
 
 Usage
 -----
-    python3 patina-max/composite.py <run_dir> [--judge] [--weights ...]
+    python3 patina-max/composite.py <run_dir> [--weights ...]
 
 Layout consumed
 ---------------
@@ -324,7 +324,6 @@ def render_composite_md(
     weights: dict[str, float],
     candidates: list[Candidate],
     winner: Optional[Candidate],
-    judge_requested: bool,
 ) -> str:
     lines: list[str] = []
     lines.append(f"# patina-composite scores for `{run_dir.name}`")
@@ -355,8 +354,6 @@ def render_composite_md(
     else:
         lines.append("**Winner:** none (no candidate scored successfully)")
     lines.append("")
-    if judge_requested:
-        lines.append("> `--judge` requested but not implemented; deterministic 4-axis result above is authoritative.")
     if any(cand.notes for cand in candidates):
         lines.append("")
         lines.append("## Notes")
@@ -374,11 +371,6 @@ def main(argv: Optional[list[str]] = None) -> int:
         type=str,
         default=None,
         help="override weights, comma-separated (e.g. ai=0.4,rss=0.3)",
-    )
-    parser.add_argument(
-        "--judge",
-        action="store_true",
-        help="opt-in LLM-as-Judge tiebreaker (currently a stub; logs and proceeds with 4-axis only)",
     )
     parser.add_argument(
         "--config",
@@ -438,7 +430,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     composite_path = run_dir / "composite.md"
     composite_path.write_text(
-        render_composite_md(run_dir, weights, candidates, winner, args.judge),
+        render_composite_md(run_dir, weights, candidates, winner),
         encoding="utf-8",
     )
 

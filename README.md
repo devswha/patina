@@ -88,7 +88,13 @@ Auto-detect and apply the best-fit tone:
 
 ### As a standalone CLI
 
-Requires Node.js ≥ 18.
+Requires Node.js ≥ 18. After the npm release is cut, use the package directly:
+
+```bash
+npx patina-cli --lang en input.txt
+```
+
+Until then, or when you want to hack on the repo:
 
 ```bash
 git clone https://github.com/devswha/patina.git
@@ -104,6 +110,29 @@ printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon that has fund
 ```
 
 > 🆓 **No API key required** if you have any of [`codex`](https://github.com/openai/codex), [`claude`](https://docs.anthropic.com/en/docs/claude-code), or [`gemini`](https://github.com/google-gemini/gemini-cli) CLIs logged in. Pick one with `--backend codex-cli | claude-cli | gemini-cli`, or let the model heuristic route automatically (`--model claude-*` → claude-cli, etc.). See [AUTHENTICATION.md](docs/AUTHENTICATION.md) for the full backend list.
+
+### CI integrations
+
+Patina now includes no-key deterministic CI surfaces for prose review:
+
+```yaml
+# .github/workflows/patina.yml
+steps:
+  - uses: actions/checkout@v6
+  - uses: devswha/patina@main # pin to @v1 after the release tag exists
+    with:
+      gate: 30
+      comment: true
+```
+
+Docker release images are published to GHCR on version tags:
+
+```bash
+printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
+  | docker run --rm -i -e PATINA_API_KEY ghcr.io/devswha/patina:3.11.0 --lang en --provider openai
+```
+
+Pre-commit, Husky, Lefthook, Docker, and release workflow notes live in [docs/integrations/](docs/integrations/).
 
 ## Intended Use
 
@@ -218,6 +247,10 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Demo](docs/DEMO.md)** — terminal transcript and multi-genre before/after snapshots
 - **[Patterns](docs/PATTERNS.md)** — full 146-pattern catalog
 - **[Authentication](docs/AUTHENTICATION.md)** — backends, providers, free-tier setup
+- **[GitHub Action](docs/integrations/github-action.md)** — PR hotspot comments without a live model key
+- **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit, Husky, and Lefthook score-only recipes
+- **[Docker](docs/integrations/docker.md)** — GHCR image usage and release tags
+- **[Release workflow](docs/integrations/release.md)** — npm provenance + GHCR publishing checklist
 - **[CLI Contract](docs/CLI.md)** — score gate, exit codes, and automation-safe surfaces
 - **[Ethics](docs/ETHICS.md)** — intended use, non-use, and disclosure stance
 - **[FAQ](docs/FAQ.md)** — detector-bypass concerns, MPS, false positives, contribution starting points

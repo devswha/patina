@@ -1,0 +1,16 @@
+.git
+.github
+.omc
+.omx
+.claude
+.openclaw
+.workclaw
+node_modules
+artifacts
+custom
+memory
+.env
+npm-debug.log*
+.DS_Store
+tests
+docs/benchmarks/latest.json

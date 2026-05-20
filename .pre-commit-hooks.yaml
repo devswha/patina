@@ -1,0 +1,7 @@
+- id: patina-score
+  name: patina prose score
+  description: Flag AI-sounding prose hotspots in Markdown without rewriting files.
+  entry: patina-score --gate 30 --lang auto
+  language: node
+  files: \.(md|mdx)$
+  pass_filenames: true

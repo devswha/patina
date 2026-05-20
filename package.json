@@ -5,7 +5,8 @@
   "type": "module",
   "main": "src/cli.js",
   "bin": {
-    "patina": "bin/patina.js"
+    "patina": "bin/patina.js",
+    "patina-score": "scripts/precommit-score.mjs"
   },
   "scripts": {
     "test": "node --test tests/unit/*.test.js tests/e2e/*.test.js",
@@ -14,7 +15,9 @@
     "benchmark": "node tests/quality/benchmark.mjs",
     "benchmark:report": "node scripts/benchmark-report.mjs",
     "dogfood": "node tests/quality/dogfood.mjs",
-    "lint": "node scripts/lint.mjs"
+    "lint": "node scripts/lint.mjs",
+    "release:check": "node scripts/check-release-metadata.mjs",
+    "prepublishOnly": "npm run release:check && npm test && npm run benchmark:report && npm run dogfood"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
@@ -69,6 +72,12 @@
     "patina-max/SKILL.md",
     ".patina.default.yaml",
     "LICENSE",
-    "CHANGELOG.md"
-  ]
+    "CHANGELOG.md",
+    "scripts/check-release-metadata.mjs",
+    "scripts/prose-score.mjs",
+    "scripts/precommit-score.mjs"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 }

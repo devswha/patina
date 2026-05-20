@@ -90,7 +90,13 @@ Pick the row matching the host the user is running you in, and run **only that c
 
 ### Step 3 (optional): Install the standalone Node CLI
 
-Only if the user wants to invoke `patina` from a shell without going through an agent:
+Only if the user wants to invoke `patina` from a shell without going through an agent. After the npm package is published, the shortest path is:
+
+```bash
+npx patina-cli --lang en input.txt
+```
+
+For local development or unpublished commits:
 
 ```bash
 cd ~/.claude/skills/patina && npm install && npm link
@@ -158,6 +164,15 @@ Or via the standalone Node CLI (only if Step 3 of Path B was run):
 ```
 patina --lang ko input.txt
 ```
+
+Or through Docker after the GHCR release image exists:
+
+```bash
+printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
+  | docker run --rm -i -e PATINA_API_KEY ghcr.io/devswha/patina:3.11.0 --lang en --provider openai
+```
+
+The Docker image intentionally does not bake in codex/claude/gemini CLI binaries or logins. Use API-backed providers inside the container, or mount your own authenticated tooling explicitly.
 
 Free tier: when [`codex`](https://github.com/openai/codex) is installed and logged in, patina works **without** an API key — it dispatches through the codex backend automatically.
 

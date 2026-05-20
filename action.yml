@@ -1,0 +1,63 @@
+name: patina-action
+branding:
+  icon: edit-3
+  color: green
+description: Comment on pull requests with deterministic Patina prose hotspot scores.
+inputs:
+  files:
+    description: Optional newline- or comma-separated file list. Defaults to changed PR files.
+    required: false
+    default: ''
+  lang:
+    description: "Language hint: auto, ko, en, zh, or ja."
+    required: false
+    default: auto
+  gate:
+    description: Maximum allowed percentage of hot prose paragraphs.
+    required: false
+    default: '30'
+  max-files:
+    description: Maximum number of changed prose files to score.
+    required: false
+    default: '50'
+  comment:
+    description: Create or update a sticky PR comment.
+    required: false
+    default: 'true'
+  fail-on-gate:
+    description: Fail the workflow when any scored file exceeds the gate.
+    required: false
+    default: 'false'
+  token:
+    description: GitHub token used to list PR files and write comments.
+    required: false
+    default: ''
+outputs:
+  file-count:
+    description: Number of prose files scored.
+    value: ${{ steps.score.outputs.file-count }}
+  failed-count:
+    description: Number of files above the gate.
+    value: ${{ steps.score.outputs.failed-count }}
+  max-score:
+    description: Highest file score percentage.
+    value: ${{ steps.score.outputs.max-score }}
+runs:
+  using: composite
+  steps:
+    - name: Install action dependencies
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm ci --omit=dev --ignore-scripts
+    - name: Score prose files
+      id: score
+      shell: bash
+      env:
+        INPUT_FILES: ${{ inputs.files }}
+        INPUT_LANG: ${{ inputs.lang }}
+        INPUT_GATE: ${{ inputs.gate }}
+        INPUT_MAX_FILES: ${{ inputs.max-files }}
+        INPUT_COMMENT: ${{ inputs.comment }}
+        INPUT_FAIL_ON_GATE: ${{ inputs.fail-on-gate }}
+        INPUT_TOKEN: ${{ inputs.token || github.token }}
+      run: node "${{ github.action_path }}/scripts/github-action.mjs"

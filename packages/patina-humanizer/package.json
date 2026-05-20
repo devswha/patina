@@ -1,0 +1,28 @@
+{
+  "name": "patina-humanizer",
+  "version": "3.11.0",
+  "description": "SEO-friendly alias for patina-cli",
+  "type": "module",
+  "bin": {
+    "patina-humanizer": "bin/patina-humanizer.js"
+  },
+  "dependencies": {
+    "patina-cli": "3.11.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devswha/patina.git"
+  },
+  "homepage": "https://github.com/devswha/patina#readme",
+  "bugs": {
+    "url": "https://github.com/devswha/patina/issues"
+  },
+  "files": [
+    "bin/",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

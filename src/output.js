@@ -390,6 +390,9 @@ function formatMaxModeOutput(result) {
   const { candidates, best } = result;
 
   let output = '## MAX Mode Results\n\n';
+  if (result.timedOut) {
+    output += '⚠ MAX wall-clock timeout reached; showing partial results.\n\n';
+  }
   output += '| Model | AI Score | MPS | Status |\n';
   output += '|-------|----------|-----|--------|\n';
 

@@ -162,6 +162,7 @@ export async function main(args) {
         config,
         patterns,
         maxConcurrency: parsed.maxConcurrency,
+        wallClockBudgetMs: parsed.maxTimeoutSeconds === undefined ? undefined : parsed.maxTimeoutSeconds * 1000,
       });
     } else if (parsed.ouroboros) {
       result = await runOuroboros({
@@ -423,6 +424,20 @@ function parseArgs(args) {
           );
         }
         parsed.maxConcurrency = n;
+        break;
+      }
+      case '--max-timeout': {
+        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
+        i++;
+        const n = Number(value);
+        if (!Number.isFinite(n) || n <= 0) {
+          throw inputError(
+            '--max-timeout expects a positive number of seconds',
+            `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
+            'Use `--max-timeout 300`, or omit it for the default 300 seconds.'
+          );
+        }
+        parsed.maxTimeoutSeconds = n;
         break;
       }
       case '--model':
@@ -729,6 +744,7 @@ MODEL & AUTH
   --models <list>         MAX mode: comma-separated model list
   --max-concurrency <n>   Cap parallel MAX-mode requests (default: min(models, 3);
                           use 0 for unlimited, which can hit free-tier quotas)
+  --max-timeout <sec>     Wall-clock budget for standalone MAX mode (default: 300)
 
 ADVANCED
   --variants <n>          Generate N rewrite variants (1-5; rewrite mode only)

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-import { selectBest } from '../../src/max-mode.js';
+import { runMaxMode, selectBest } from '../../src/max-mode.js';
 
 test('selectBest keeps config order and logs AI-score ties among MPS-passing candidates', () => {
   const logs = [];
@@ -25,4 +25,37 @@ test('selectBest keeps config order and logs MPS ties when no candidate passes M
 
   assert.equal(best.model, 'claude');
   assert.deepEqual(logs, ['[patina-max] Tie on MPS — picked claude by config order']);
+});
+
+test('runMaxMode aborts dispatch and returns partial results on wall-clock timeout', async () => {
+  let sawAbortSignal = false;
+  let signalWasAborted = false;
+
+  const result = await runMaxMode({
+    prompt: 'rewrite this',
+    sourceText: 'source text',
+    models: ['slow-model'],
+    apiKey: 'test',
+    baseURL: 'https://example.com/v1',
+    config: {},
+    patterns: [],
+    wallClockBudgetMs: 1,
+    callLLMMultipleImpl: ({ signal }) => new Promise((resolve) => {
+      sawAbortSignal = typeof signal?.addEventListener === 'function';
+      signal.addEventListener('abort', () => {
+        signalWasAborted = signal.aborted;
+        resolve([{ model: 'slow-model', ok: false, error: 'aborted' }]);
+      }, { once: true });
+    }),
+  });
+
+  assert.equal(sawAbortSignal, true);
+  assert.equal(signalWasAborted, true);
+  assert.equal(result.timedOut, true);
+  assert.equal(result.allFailed, true);
+  assert.equal(result.mpsFallback, false);
+  assert.deepEqual(result.candidates, [
+    { model: 'slow-model', ok: false, error: 'aborted' },
+  ]);
+  assert.equal(result.best, null);
 });

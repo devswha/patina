@@ -30,11 +30,11 @@ function parseStrictJson(text) {
 }
 
 // Call LLM and parse strict JSON. On schema failure, retry once at temperature 0.
-async function callAndParseJson({ prompt, apiKey, baseURL, model, temperature = 0.1 }) {
+async function callAndParseJson({ prompt, apiKey, baseURL, model, temperature = 0.1, deadline, signal }) {
   let lastError;
   for (let attempt = 0; attempt < 2; attempt++) {
     const t = attempt === 0 ? temperature : 0;
-    const result = await callLLM({ prompt, apiKey, baseURL, model, temperature: t });
+    const result = await callLLM({ prompt, apiKey, baseURL, model, temperature: t, deadline, signal });
     try {
       return { parsed: parseStrictJson(result), raw: result };
     } catch (e) {
@@ -47,7 +47,7 @@ async function callAndParseJson({ prompt, apiKey, baseURL, model, temperature = 
   throw lastError;
 }
 
-export async function scoreText({ text, config, patterns, apiKey, baseURL, model }) {
+export async function scoreText({ text, config, patterns, apiKey, baseURL, model, deadline, signal }) {
   const lang = config.language || 'ko';
   const weights = config.ouroboros?.['category-weights']?.[lang] || {};
 
@@ -82,7 +82,7 @@ ${text}
 `;
 
   try {
-    const { parsed } = await callAndParseJson({ prompt, apiKey, baseURL, model });
+    const { parsed } = await callAndParseJson({ prompt, apiKey, baseURL, model, deadline, signal });
     return parsed;
   } catch (e) {
     console.error(`[patina] scoreText schema failure after retry: ${e.message}`);
@@ -90,7 +90,7 @@ ${text}
   }
 }
 
-export async function scoreMPS({ original, rewritten, apiKey, baseURL, model }) {
+export async function scoreMPS({ original, rewritten, apiKey, baseURL, model, deadline, signal }) {
   const prompt = `You are a Meaning Preservation evaluator. Compare the ORIGINAL text with the REWRITTEN text.
 
 Extract semantic anchors from the original (claims, polarity, causation, quantifiers, negations) and check if each is preserved in the rewritten text.
@@ -123,7 +123,7 @@ ${rewritten}
 `;
 
   try {
-    const { parsed } = await callAndParseJson({ prompt, apiKey, baseURL, model });
+    const { parsed } = await callAndParseJson({ prompt, apiKey, baseURL, model, deadline, signal });
     return parsed;
   } catch (e) {
     console.error(`[patina] scoreMPS schema failure after retry: ${e.message}`);

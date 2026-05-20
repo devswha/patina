@@ -49,7 +49,7 @@ export function analyzeText(text, opts = {}) {
 
   const analyzed = paragraphs.map((paragraph, idx) => {
     const sentences = splitSentences(paragraph);
-    const sentenceTokens = sentences.map(tokenize);
+    const sentenceTokens = sentences.map((sentence) => tokenize(sentence, { lang }));
     const sentenceTokenCounts = sentenceTokens.map((t) => t.length);
     const allTokens = sentenceTokens.flat();
 

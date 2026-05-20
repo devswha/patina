@@ -21,6 +21,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
 const FIXTURES_ROOT = resolve(REPO_ROOT, 'tests/fixtures/suspect-zones');
 const RESULTS_PATH = resolve(__dirname, 'results.json');
+const EXPECTED_RANGES_PATH = resolve(FIXTURES_ROOT, 'expected-ranges.json');
 const FIXTURE_SCHEMA_VERSION = 1;
 
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
@@ -47,6 +48,15 @@ function listFixtures() {
     }
   }
   return out.sort();
+}
+
+function loadExpectedRanges() {
+  const raw = readFileSync(EXPECTED_RANGES_PATH, 'utf8');
+  const ranges = JSON.parse(raw);
+  if (ranges?.schemaVersion !== 1 || !ranges?.metrics || typeof ranges.metrics !== 'object') {
+    throw new Error(`${EXPECTED_RANGES_PATH}: expected schemaVersion=1 and metrics object`);
+  }
+  return ranges.metrics;
 }
 
 function emptyMetrics() {
@@ -125,14 +135,42 @@ function validateExpectedMetrics(path, expected = {}, observed = {}) {
   if (typeof expected.lexicon_density_max === 'number' && observed.lexicon_density > expected.lexicon_density_max) {
     failures.push(`lexicon_density expected <= ${expected.lexicon_density_max}, got ${observed.lexicon_density}`);
   }
+  if (Array.isArray(expected.cv_range) && !inRange(observed.cv, expected.cv_range)) {
+    failures.push(`cv expected ${formatRange(expected.cv_range)}, got ${observed.cv}`);
+  }
+  if (Array.isArray(expected.mattr_range) && !inRange(observed.mattr, expected.mattr_range)) {
+    failures.push(`mattr expected ${formatRange(expected.mattr_range)}, got ${observed.mattr}`);
+  }
+  if (Array.isArray(expected.lexicon_density_range) && !inRange(observed.lexicon_density, expected.lexicon_density_range)) {
+    failures.push(`lexicon_density expected ${formatRange(expected.lexicon_density_range)}, got ${observed.lexicon_density}`);
+  }
+  if (expected.detectors) {
+    for (const [name, expectedHot] of Object.entries(expected.detectors)) {
+      if (observed.detectors?.[name] !== expectedHot) {
+        failures.push(`detector.${name} expected ${expectedHot}, got ${observed.detectors?.[name]}`);
+      }
+    }
+  }
+  if (typeof expected.predicted_hot === 'boolean' && observed.predicted_hot !== expected.predicted_hot) {
+    failures.push(`predicted_hot expected ${expected.predicted_hot}, got ${observed.predicted_hot}`);
+  }
   if (failures.length) {
     throw new Error(`${path}: expected_metrics regression failed: ${failures.join('; ')}`);
   }
 }
 
+function inRange(value, [min, max]) {
+  return typeof value === 'number' && value >= min && value <= max;
+}
+
+function formatRange([min, max]) {
+  return `[${min}, ${max}]`;
+}
+
 function main() {
   const quiet = process.argv.includes('--quiet');
   const fixtures = listFixtures();
+  const expectedRanges = loadExpectedRanges();
 
   if (fixtures.length === 0) {
     console.error('No fixtures found under', FIXTURES_ROOT);
@@ -177,6 +215,15 @@ function main() {
       lexicon_density: round(p.lexicon?.density ?? 0),
       lexicon_hits: p.lexicon?.hits ?? [],
     };
+    const pinned = expectedRanges[meta.fixture_id];
+    if (!pinned) {
+      throw new Error(
+        `${path}: missing benchmark regression range. Run node scripts/update-benchmark-ranges.mjs after reviewing the fixture.`
+      );
+    }
+    observed.detectors = detectors;
+    observed.predicted_hot = predicted;
+    validateExpectedMetrics(path, pinned, observed);
     if (meta.expected_metrics) validateExpectedMetrics(path, meta.expected_metrics, observed);
     fixtureLog.push({
       fixture_id: meta.fixture_id,

@@ -20,6 +20,7 @@ test('splitSentences handles ., !, ?, 。, … and newlines', () => {
     splitSentences('First. Second! Third? Fourth。 Fifth…\nSixth'),
     ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth']
   );
+  assert.deepEqual(splitSentences('第一句。第二句！第三句？'), ['第一句', '第二句', '第三句']);
 });
 
 test('tokenize strips edge punctuation but keeps internal hyphens / apostrophes', () => {
@@ -29,6 +30,11 @@ test('tokenize strips edge punctuation but keeps internal hyphens / apostrophes'
   );
   assert.deepEqual(tokenize(`don't 좋은-도구`), [`don't`, '좋은-도구']);
   assert.deepEqual(tokenize('이 도구는 자동완성처럼 동작한다'), ['이', '도구는', '자동완성처럼', '동작한다']);
+});
+
+test('tokenize uses CJK character fallback for zh/ja without spaces', () => {
+  assert.deepEqual(tokenize('这项工具保留原意。', { lang: 'zh' }), ['这', '项', '工', '具', '保', '留', '原', '意']);
+  assert.deepEqual(tokenize('この道具は意味を守る。', { lang: 'ja' }), ['こ', 'の', '道', '具', 'は', '意', '味', 'を', '守', 'る']);
 });
 
 test('burstinessCV returns 0 when all sentences have identical token counts', () => {

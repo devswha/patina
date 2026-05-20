@@ -23,3 +23,16 @@ A fair benchmark should avoid sending private text to third-party tools. Use 10 
 5. Manual meaning-preservation notes for numbers, negation, causation, and named entities.
 
 The checked-in benchmark currently covers patina's deterministic suspect-zone analyzer only. Third-party output capture is left out until fixture redistribution and tool terms are reviewed.
+
+## Offline comparison harness
+
+Patina now ships an offline harness for this recipe:
+
+```bash
+npm run benchmark:compare
+node scripts/detector-comparison.mjs --input tests/quality/detectors.manual.example.json
+```
+
+The default report lives at [`docs/benchmarks/detector-comparison.md`](benchmarks/detector-comparison.md) and includes only Patina's in-tree deterministic analyzer. Third-party rows must be entered manually from redistributable fixtures, with the collection date and visible plan/version notes. The harness does not scrape vendor sites, call detector APIs, or send private text out of the repository.
+
+Treat any comparison row as time-stamped evidence for a small corpus, not as a universal claim that one tool "beats" another.

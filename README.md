@@ -47,7 +47,7 @@ Usage notes: [BRANDING.md](docs/BRANDING.md).
 |---|---|
 | **146 patterns** | 37 KO + 36 EN + 36 ZH + 37 JA (each incl. 5 score-only viral-hook) — see [PATTERNS.md](docs/PATTERNS.md) |
 | **Editing hotspot recall** | 91% Korean [84.0–95.4%] (n=100) / 76% English [66.7–83.3%] (n=100), binomial 95% CI |
-| **Benchmark report** | Reproducible suspect-zone benchmark: [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) |
+| **Benchmark report** | Reproducible ko/en/zh/ja suspect-zone benchmark: [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [detector comparison](docs/benchmarks/detector-comparison.md) |
 | **False positives** | 13–25% point-estimate range across human registers *(not a CI; boundary intrinsic to encyclopedic register, [documented](core/stylometry.md))* |
 | **Modes** | rewrite · audit · score · diff · ouroboros |
 | **Free tier** | Yes — via `codex` CLI (no API key) |
@@ -258,7 +258,9 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Branding](docs/BRANDING.md)** — canonical logo/social assets and OG setup notes
 - **[Roadmap](docs/ROADMAP.md)** — quality, benchmark, product, community, and launch priorities
 - **[Benchmark Report](docs/benchmarks/latest.md)** — latest reproducible suspect-zone benchmark summary
+- **[Detector Comparison Harness](docs/benchmarks/detector-comparison.md)** — offline/manual comparison protocol for third-party detectors
 - **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — benchmark design notes for measuring AI-like writing signals
+- **[2025+ Re-baseline Plan](docs/research/2025-rebaseline-plan.md)** — evidence gate before broader model-era claims
 - **[Launch Copy](docs/social/patina-launch-copy.md)** — Show HN, Reddit, X, Korean community drafts
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI-lexicon algorithm
 - **[Scoring](core/scoring.md)** — AI-likeness + fidelity + MPS

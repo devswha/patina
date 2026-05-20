@@ -7,7 +7,7 @@ patina runs through one of several backends. Pick whichever matches your existin
 | Backend | Setup | Cost |
 |---------|-------|------|
 | `codex-cli` | `codex login` | **Free** (ChatGPT OAuth) |
-| `claude-cli` | `claude` (one-time interactive OAuth) | **Free** (Claude subscription) |
+| `claude-cli` | `claude auth login` (one-time interactive OAuth) | **Free** (Claude subscription) |
 | `gemini-cli` | `gemini` (one-time interactive OAuth) or `GEMINI_API_KEY=...` | **Free** (Code Assist OAuth or AI Studio) |
 | OpenAI-compatible HTTP | `PATINA_API_KEY=...` | Per provider |
 | Google Gemini (HTTP) | `GEMINI_API_KEY=...` + `--provider gemini` | Free tier |
@@ -18,6 +18,7 @@ patina runs through one of several backends. Pick whichever matches your existin
 ```bash
 patina auth status         # backend availability + auth state
 patina auth login          # per-backend login instructions
+patina auth login codex-cli # confirm, then run `codex login`
 patina --list-providers    # preset providers + key status
 ```
 
@@ -39,6 +40,7 @@ patina dispatches via the local [`codex`](https://github.com/openai/codex) CLI, 
 
 ```bash
 codex login                                # one-time
+patina auth login codex-cli                # same, with confirmation
 patina --backend codex-cli --lang ko input.txt
 patina --model codex --lang ko input.txt   # same — auto-routes by model name
 ```
@@ -48,7 +50,8 @@ patina --model codex --lang ko input.txt   # same — auto-routes by model name
 Spawns local [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p` with the patina prompt on stdin. Free for anyone with a Claude subscription.
 
 ```bash
-claude                                     # one-time interactive OAuth
+claude auth login                          # one-time interactive OAuth
+patina auth login claude-cli               # same, with confirmation
 patina --backend claude-cli --lang ko input.txt
 patina --model claude-sonnet-4-6 --lang ko input.txt   # auto-routes
 ```
@@ -61,9 +64,16 @@ Spawns local [`gemini`](https://github.com/google-gemini/gemini-cli) `-p '' --ou
 
 ```bash
 gemini                                     # one-time interactive OAuth, OR
+patina auth login gemini-cli               # same, with confirmation
 export GEMINI_API_KEY="..."                # AI Studio key
 patina --backend gemini-cli --lang ko input.txt
 patina --model gemini-3-flash-preview --lang ko input.txt   # auto-routes
+```
+
+Use `--yes` only for automation where the launch is already intentional:
+
+```bash
+patina auth login codex-cli --yes
 ```
 
 Notes: patina passes `--skip-trust` because the prompt runs from a fresh temp directory (containment for prompt-injection in user text). Default timeout is higher than other CLIs because gemini's startup latency is longer.

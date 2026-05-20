@@ -7,7 +7,7 @@ patina는 여러 backend 중 하나를 통해 실행됩니다. 이미 쓰고 있
 | Backend | Setup | Cost |
 |---------|-------|------|
 | `codex-cli` | `codex login` | **Free** (ChatGPT OAuth) |
-| `claude-cli` | `claude` (one-time interactive OAuth) | **Free** (Claude subscription) |
+| `claude-cli` | `claude auth login` (one-time interactive OAuth) | **Free** (Claude subscription) |
 | `gemini-cli` | `gemini` (one-time interactive OAuth) or `GEMINI_API_KEY=...` | **Free** (Code Assist OAuth or AI Studio) |
 | OpenAI-compatible HTTP | `PATINA_API_KEY=...` | Per provider |
 | Google Gemini (HTTP) | `GEMINI_API_KEY=...` + `--provider gemini` | Free tier |
@@ -18,6 +18,7 @@ patina는 여러 backend 중 하나를 통해 실행됩니다. 이미 쓰고 있
 ```bash
 patina auth status         # backend availability + auth state
 patina auth login          # per-backend login instructions
+patina auth login codex-cli # confirm 후 `codex login` 실행
 patina --list-providers    # preset providers + key status
 ```
 
@@ -39,6 +40,7 @@ patina는 local [`codex`](https://github.com/openai/codex) CLI를 통해 dispatc
 
 ```bash
 codex login                                # one-time
+patina auth login codex-cli                # same, with confirmation
 patina --backend codex-cli --lang ko input.txt
 patina --model codex --lang ko input.txt   # same — auto-routes by model name
 ```
@@ -48,7 +50,8 @@ patina --model codex --lang ko input.txt   # same — auto-routes by model name
 local [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p`를 실행하고 patina prompt를 stdin으로 넘깁니다. Claude subscription이 있으면 무료로 사용할 수 있습니다.
 
 ```bash
-claude                                     # one-time interactive OAuth
+claude auth login                          # one-time interactive OAuth
+patina auth login claude-cli               # same, with confirmation
 patina --backend claude-cli --lang ko input.txt
 patina --model claude-sonnet-4-6 --lang ko input.txt   # auto-routes
 ```
@@ -61,9 +64,16 @@ local [`gemini`](https://github.com/google-gemini/gemini-cli) `-p '' --output-fo
 
 ```bash
 gemini                                     # one-time interactive OAuth, OR
+patina auth login gemini-cli               # same, with confirmation
 export GEMINI_API_KEY="..."                # AI Studio key
 patina --backend gemini-cli --lang ko input.txt
 patina --model gemini-3-flash-preview --lang ko input.txt   # auto-routes
+```
+
+자동화에서 이미 실행 의도가 명확할 때만 `--yes`를 사용하세요.
+
+```bash
+patina auth login codex-cli --yes
 ```
 
 Notes: patina는 user text 안의 prompt-injection을 격리하기 위해 새 temp directory에서 prompt를 실행하고 `--skip-trust`를 넘깁니다. gemini는 startup latency가 더 길어 default timeout이 다른 CLI보다 높습니다.

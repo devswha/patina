@@ -68,7 +68,7 @@ patina --model gemini-3-flash-preview --lang ko input.txt   # auto-routes
 
 Notes: patina passes `--skip-trust` because the prompt runs from a fresh temp directory (containment for prompt-injection in user text). Default timeout is higher than other CLIs because gemini's startup latency is longer.
 
-> **v1 limitation:** `codex-cli`, `claude-cli`, and `gemini-cli` all support single-mode rewrites only. `--audit`, `--score`, `--diff`, `--ouroboros`, and `--models`/MAX still go through the HTTP backend.
+> **Mode support:** `codex-cli`, `claude-cli`, and `gemini-cli` can be used for rewrite workers, including standalone CLI MAX candidates. Standalone MAX evaluates each local candidate through the same CLI backend, matching the existing per-candidate MAX evaluator behavior, so local-only MAX runs do not need `PATINA_API_KEY`; score/audit modes outside MAX still use the configured HTTP/evaluator path.
 
 ## Free-tier providers
 
@@ -102,4 +102,4 @@ The Claude Code `/patina-max` skill bypasses HTTP entirely — it dispatches via
 
 No `PATINA_API_KEY` needed for the Claude Code path.
 
-The standalone CLI MAX (`patina --models <list>`) calls models via the same `--base-url` endpoint, so all listed models must be served by that endpoint. To mix providers (OpenAI + Anthropic + Google), point `--base-url` at OpenRouter or another multi-provider gateway.
+The standalone CLI MAX (`patina --models <list>`) is no longer HTTP-only. `--models` accepts local CLI backend names (`claude-cli`, `codex-cli`, `gemini-cli`), their shorthand aliases (`claude`, `codex`, `gemini`), and HTTP model IDs. Local entries use the logged-in CLI backend and need no `PATINA_API_KEY`; HTTP entries still use the selected `--base-url` endpoint, so provider model IDs must be served there. To mix HTTP providers (OpenAI + Anthropic + Google), point `--base-url` at OpenRouter or another multi-provider gateway.

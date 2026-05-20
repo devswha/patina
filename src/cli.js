@@ -186,7 +186,11 @@ export async function main(args) {
         mode,
         tone: toneResolution,
         promptMode: resolvePromptMode(
-          parsed.promptMode || config['prompt-mode'] || 'strict',
+          resolveConfiguredPromptMode({
+            cliPromptMode: parsed.promptMode,
+            configPromptMode: config['prompt-mode'],
+            isMaxMode: Boolean(parsed.models),
+          }),
           { backend: parsed.backend ?? config.backend, model: resolved.model }
         ),
         variants: parsed.variants || 1,
@@ -751,6 +755,10 @@ export function resolvePromptMode(mode, { backend, model }) {
   return 'strict';
 }
 
+export function resolveConfiguredPromptMode({ cliPromptMode, configPromptMode, isMaxMode = false } = {}) {
+  return cliPromptMode || configPromptMode || (isMaxMode ? 'minimal' : 'strict');
+}
+
 // Resolve the API key, preferring file-based sources to keep the secret out
 // of argv and shell history (CWE-214). Precedence: --api-key-file >
 // PATINA_API_KEY_FILE > --api-key (with deprecation warning) > provider/default
@@ -945,8 +953,9 @@ MODEL & AUTH
   --list-backends         List available backends and their availability
   --provider <name>       Provider preset: openai, gemini, groq, together
   --list-providers        List provider presets and which keys are set
-  --models <list>         MAX mode: comma-separated model list
-  --max-concurrency <n>   Cap parallel MAX-mode requests (default: min(models, 3);
+  --models <list>         MAX mode: comma-separated model/backend list
+                          (HTTP IDs, or claude/codex/gemini CLI aliases)
+  --max-concurrency <n>   Cap parallel MAX-mode candidates (default: min(models, 3);
                           use 0 for unlimited, which can hit free-tier quotas)
   --max-timeout <sec>     Wall-clock budget for standalone MAX mode (default: 300)
 
@@ -954,6 +963,7 @@ ADVANCED
   --variants <n>          Generate N rewrite variants (1-5; rewrite mode only)
   --config <path>         Load config from <path> instead of .patina.default.yaml
   --prompt-mode <m>       strict | minimal | auto. auto picks per backend.
+                          MAX defaults to minimal; auto resolves once before dispatch.
   --allow-insecure-base-url  Permit plaintext http:// to non-localhost endpoints
   --allow-private-base-url   Permit private/IMDS base URLs
   -h, --help              Show this help message

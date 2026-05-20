@@ -636,6 +636,56 @@ describe('CLI End-to-End with Mock API', () => {
     await startMockServer('This is the humanized result.');
   });
 
+  it('uses minimal prompting by default for standalone CLI MAX', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    await stopMockServer();
+
+    const requests = [];
+    mockServer = createServer((req, res) => {
+      callCount++;
+      let body = '';
+      req.on('data', (chunk) => { body += chunk; });
+      req.on('end', () => {
+        const parsed = JSON.parse(body);
+        lastRequestBody = parsed;
+        requests.push(parsed);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          choices: [{ message: { content: 'Humanized result.' } }],
+        }));
+      });
+    });
+
+    await new Promise((resolve) => {
+      mockServer.listen(0, '127.0.0.1', () => {
+        mockPort = mockServer.address().port;
+        resolve();
+      });
+    });
+
+    const oldExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    try {
+      await captureConsole(() => main([
+        '--lang', 'en',
+        '--models', 'model-a',
+        '--api-key', 'test-key',
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        testFile,
+      ]));
+    } finally {
+      process.exitCode = oldExitCode;
+    }
+
+    const rewritePrompt = requests[0].messages[0].content;
+    assert.match(rewritePrompt, /This text reads like AI/);
+    assert.ok(!rewritePrompt.includes('## Pattern Packs'));
+    await stopMockServer();
+    await startMockServer('This is the humanized result.');
+  });
+
   it('should reject --variants with MAX mode instead of ignoring it', async () => {
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
 

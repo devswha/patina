@@ -58,8 +58,23 @@ stays reserved for the transformed text or JSON envelope.
 - `--quiet` suppresses stderr logs, including MAX/Ouroboros progress.
 - `--json-logs` emits newline-delimited JSON records with stable fields:
   `ts`, `level`, `event`, `model`, `latency_ms`, and optional `message`.
-- MAX mode (`--models`) reports elapsed per-model status (`...`, `✓`, `✗`).
+- MAX mode (`--models`) reports elapsed per-model status (`...`, `✓`, `✗`) for both local CLI and HTTP candidates.
 - Ouroboros reports per-iteration score movement and latency.
+
+
+## Standalone MAX mode
+
+`--models <list>` runs multiple rewrite workers and selects the lowest AI-score candidate that passes the MPS floor. Model entries can be mixed:
+
+- local CLI backend names: `claude-cli`, `codex-cli`, `gemini-cli`
+- local shorthand aliases: `claude`, `codex`, `gemini`
+- HTTP model IDs served by the selected provider/base URL, for example `gpt-4o` or OpenRouter model IDs
+
+```bash
+patina --lang en --models claude-cli,gpt-4o,gemini draft.md
+```
+
+Each candidate is evaluated through that candidate's backend/model. Local entries use the corresponding logged-in CLI backend for candidate rewrites and MAX scoring/MPS, so local-only MAX runs do not require `PATINA_API_KEY`. HTTP entries still use `--provider`, `--base-url`, and `--api-key`/env auth. `--max-concurrency` caps overall candidate fanout, including local CLI candidates. MAX rewrite workers default to `--prompt-mode minimal` unless `--prompt-mode` or config sets `strict`/`auto` explicitly; in MAX, `auto` resolves once before dispatch rather than separately per candidate.
 
 ## Backend fallback chains
 

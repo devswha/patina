@@ -243,7 +243,7 @@ Standalone CLI MAX (`patina --models ...`) caps HTTP fanout at `min(models, 3)` 
 Input
   ↓
 [Step 4.5]   Semantic anchor extraction (claims, polarity, causation, numbers)
-[Step 4.6]   Stylometric pre-pass (burstiness CV + MATTR)
+[Step 4.6]   Stylometric pre-pass (burstiness CV + MATTR; zh/ja character-token fallback)
 [Step 4.7]   AI-lexicon overlap (~108 EN / 102 KO entries)
 [Phase 1]    Structure scan + anchor verification
 [Phase 2]    Sentence rewrite + anchor verification

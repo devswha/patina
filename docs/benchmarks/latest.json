@@ -1,11 +1,21 @@
 {
-  "reportVersion": 1,
+  "reportVersion": 2,
   "benchmarkCommand": "node tests/quality/benchmark.mjs --quiet",
   "benchmarkStatus": 0,
   "note": "Deterministic suspect-zone benchmark; not an authorship detector.",
-  "generatedAt": "2026-05-20T02:23:17.955Z",
+  "schemaVersion": 2,
+  "fixtureSchemaVersion": 1,
+  "nodeVersion": "v22.17.1",
+  "generatedAt": "2026-05-20T03:08:27.314Z",
   "fixtureCount": 22,
   "overallAccuracy": 1,
+  "overall": {
+    "accuracy": 1,
+    "n": 22,
+    "ci_low": 0.851,
+    "ci_high": 1,
+    "confidence_method": "Wilson score interval, 95%"
+  },
   "perLanguage": {
     "en": {
       "tp": 6,
@@ -16,7 +26,58 @@
       "accuracy": 1,
       "precision": 1,
       "recall": 1,
-      "f1": 1
+      "f1": 1,
+      "n": 11,
+      "ci_low": 0.741,
+      "ci_high": 1,
+      "confidence_method": "Wilson score interval, 95%",
+      "byDetector": {
+        "burstiness": {
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "tn": 5,
+          "total": 11,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "n": 11,
+          "ci_low": 0.741,
+          "ci_high": 1,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "mattr": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 6,
+          "tn": 5,
+          "total": 11,
+          "accuracy": 0.455,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 11,
+          "ci_low": 0.213,
+          "ci_high": 0.72,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "lexicon": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 6,
+          "tn": 5,
+          "total": 11,
+          "accuracy": 0.455,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 11,
+          "ci_low": 0.213,
+          "ci_high": 0.72,
+          "confidence_method": "Wilson score interval, 95%"
+        }
+      }
     },
     "ko": {
       "tp": 6,
@@ -27,7 +88,58 @@
       "accuracy": 1,
       "precision": 1,
       "recall": 1,
-      "f1": 1
+      "f1": 1,
+      "n": 11,
+      "ci_low": 0.741,
+      "ci_high": 1,
+      "confidence_method": "Wilson score interval, 95%",
+      "byDetector": {
+        "burstiness": {
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "tn": 5,
+          "total": 11,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "n": 11,
+          "ci_low": 0.741,
+          "ci_high": 1,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "mattr": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 6,
+          "tn": 5,
+          "total": 11,
+          "accuracy": 0.455,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 11,
+          "ci_low": 0.213,
+          "ci_high": 0.72,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "lexicon": {
+          "tp": 4,
+          "fp": 0,
+          "fn": 2,
+          "tn": 5,
+          "total": 11,
+          "accuracy": 0.818,
+          "precision": 1,
+          "recall": 0.667,
+          "f1": 0.8,
+          "n": 11,
+          "ci_low": 0.523,
+          "ci_high": 0.949,
+          "confidence_method": "Wilson score interval, 95%"
+        }
+      }
     }
   },
   "fixtures": [
@@ -38,6 +150,11 @@
       "expected_hot": true,
       "predicted_hot": true,
       "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.058,
       "cv_band": "low",
       "mattr": 0.928,
@@ -53,6 +170,11 @@
       "expected_hot": true,
       "predicted_hot": true,
       "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.09,
       "cv_band": "low",
       "mattr": 0.841,
@@ -68,6 +190,11 @@
       "expected_hot": true,
       "predicted_hot": true,
       "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.065,
       "cv_band": "low",
       "mattr": 0.828,
@@ -83,6 +210,11 @@
       "expected_hot": true,
       "predicted_hot": true,
       "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.07,
       "cv_band": "low",
       "mattr": 0.84,
@@ -98,6 +230,11 @@
       "expected_hot": true,
       "predicted_hot": true,
       "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.093,
       "cv_band": "low",
       "mattr": 0.879,
@@ -113,6 +250,11 @@
       "expected_hot": true,
       "predicted_hot": true,
       "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.034,
       "cv_band": "low",
       "mattr": 0.814,
@@ -133,6 +275,11 @@
       "expected_hot": false,
       "predicted_hot": false,
       "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.881,
       "cv_band": "high",
       "mattr": 0.898,
@@ -148,6 +295,11 @@
       "expected_hot": false,
       "predicted_hot": false,
       "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.886,
       "cv_band": "high",
       "mattr": 0.884,
@@ -163,6 +315,11 @@
       "expected_hot": false,
       "predicted_hot": false,
       "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.914,
       "cv_band": "high",
       "mattr": 0.882,
@@ -178,6 +335,11 @@
       "expected_hot": false,
       "predicted_hot": false,
       "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.494,
       "cv_band": "mid",
       "mattr": 0.854,
@@ -193,6 +355,11 @@
       "expected_hot": false,
       "predicted_hot": false,
       "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.853,
       "cv_band": "high",
       "mattr": 0.875,
@@ -208,6 +375,11 @@
       "expected_hot": true,
       "predicted_hot": true,
       "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": true
+      },
       "cv": 0.093,
       "cv_band": "low",
       "mattr": 0.977,
@@ -225,6 +397,11 @@
       "expected_hot": true,
       "predicted_hot": true,
       "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": true
+      },
       "cv": 0.073,
       "cv_band": "low",
       "mattr": 0.82,
@@ -242,6 +419,11 @@
       "expected_hot": true,
       "predicted_hot": true,
       "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": true
+      },
       "cv": 0.073,
       "cv_band": "low",
       "mattr": 0.79,
@@ -259,6 +441,11 @@
       "expected_hot": true,
       "predicted_hot": true,
       "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.098,
       "cv_band": "low",
       "mattr": 0.853,
@@ -274,6 +461,11 @@
       "expected_hot": true,
       "predicted_hot": true,
       "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.098,
       "cv_band": "low",
       "mattr": 0.853,
@@ -289,6 +481,11 @@
       "expected_hot": true,
       "predicted_hot": true,
       "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": true
+      },
       "cv": 0.081,
       "cv_band": "low",
       "mattr": 1,
@@ -311,6 +508,11 @@
       "expected_hot": false,
       "predicted_hot": false,
       "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.717,
       "cv_band": "high",
       "mattr": 1,
@@ -326,6 +528,11 @@
       "expected_hot": false,
       "predicted_hot": false,
       "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.552,
       "cv_band": "high",
       "mattr": 1,
@@ -341,6 +548,11 @@
       "expected_hot": false,
       "predicted_hot": false,
       "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.68,
       "cv_band": "high",
       "mattr": 1,
@@ -356,6 +568,11 @@
       "expected_hot": false,
       "predicted_hot": false,
       "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.771,
       "cv_band": "high",
       "mattr": 0.975,
@@ -371,6 +588,11 @@
       "expected_hot": false,
       "predicted_hot": false,
       "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
       "cv": 0.996,
       "cv_band": "high",
       "mattr": 0.998,

@@ -29,8 +29,8 @@
 |  |  |
 |---|---|
 | **146 个模式** | 韩文 37 + 英文 36 + 中文 36 + 日文 37 (各含5个仅评分的 viral-hook) — [PATTERNS.md](docs/PATTERNS.md) |
-| **AI 检出率** | 韩文 91% / 英文 76% (HC3) |
-| **误检率** | 人类写作 13–25% *(百科风格本质局限，[已记录](core/stylometry.md))* |
+| **编辑热点召回率** | 韩文 91% [84.0–95.4%] (n=100) / 英文 76% [66.7–83.3%] (n=100), binomial 95% CI |
+| **误检率** | 人类文本不同体裁 13–25% 点估计范围 *(不是 CI；百科风格本质局限，[已记录](core/stylometry.md))* |
 | **模式** | rewrite · audit · score · diff · ouroboros |
 | **免费层** | 支持 — 通过 `codex` CLI（无需 API 密钥） |
 | **确定性** | 评分公式是确定性的；LLM 严重度判定阶段 ±8–10pt 波动（[scoring.md §8](core/scoring.md)） |
@@ -148,7 +148,7 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 
 任一验证阶段语义偏移则重试或回滚。
 
-**校准** *(500 段语料，可通过 `.omc/research/v3_8_remeasure.py` 复现)*：HC3 ChatGPT (en) AI 检出 76%，paired ko/AI 语料 91%，人类写作误检 13–25%。接受门槛：AI ≥ 75%，最大 FP ≤ 25%。算法见 [stylometry.md](core/stylometry.md)。
+**校准** *(500 段语料，可通过 `.omc/research/v3_8_remeasure.py` 复现)*：HC3 ChatGPT (en) 编辑热点召回率 76% [66.7–83.3%]，paired ko/AI 语料 91% [84.0–95.4%]（各 n=100，binomial 95% CI）。人类写作误检以不同体裁 13–25% 点估计范围单独报告。接受门槛：AI ≥ 75%，最大 FP ≤ 25%。算法见 [stylometry.md](core/stylometry.md)。
 
 ## 配置
 

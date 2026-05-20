@@ -7,20 +7,33 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 ## Current result
 
 - Status: **passing**
-- Generated at: 2026-05-20T02:23:17.955Z
+- Generated at: 2026-05-20T03:08:27.314Z
+- Node: v22.17.1
+- Fixture schema: v1
 - Fixtures: 22
 - Languages: 2
-- Overall accuracy: **100.0%**
+- Overall accuracy: **100.0%** [85.1%–100.0%] (n=22, Wilson score interval, 95%)
 - Source fixtures: `tests/fixtures/suspect-zones/**`
 - Reproduce: `npm run benchmark:report`
 - Raw JSON: [latest.json](latest.json)
 
 ## Language breakdown
 
-| lang | fixtures | accuracy | precision | recall | f1 | TP | FP | FN | TN |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| en | 11 | 100.0% | 100.0% | 100.0% | 1 | 6 | 0 | 0 | 5 |
-| ko | 11 | 100.0% | 100.0% | 100.0% | 1 | 6 | 0 | 0 | 5 |
+| lang | fixtures | accuracy | 95% CI | precision | recall | f1 | TP | FP | FN | TN |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| en | 11 | 100.0% | 74.1%–100.0% | 100.0% | 100.0% | 1 | 6 | 0 | 0 | 5 |
+| ko | 11 | 100.0% | 74.1%–100.0% | 100.0% | 100.0% | 1 | 6 | 0 | 0 | 5 |
+
+## Detector breakdown
+
+| lang | detector | fixtures | accuracy | 95% CI | precision | recall | f1 | TP | FP | FN | TN |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| en | burstiness | 11 | 100.0% | 74.1%–100.0% | 100.0% | 100.0% | 1 | 6 | 0 | 0 | 5 |
+| en | lexicon | 11 | 45.5% | 21.3%–72.0% | 0.0% | 0.0% | 0 | 0 | 0 | 6 | 5 |
+| en | mattr | 11 | 45.5% | 21.3%–72.0% | 0.0% | 0.0% | 0 | 0 | 0 | 6 | 5 |
+| ko | burstiness | 11 | 100.0% | 74.1%–100.0% | 100.0% | 100.0% | 1 | 6 | 0 | 0 | 5 |
+| ko | lexicon | 11 | 81.8% | 52.3%–94.9% | 100.0% | 66.7% | 0.8 | 4 | 0 | 2 | 5 |
+| ko | mattr | 11 | 45.5% | 21.3%–72.0% | 0.0% | 0.0% | 0 | 0 | 0 | 6 | 5 |
 
 ## Sample sizes
 
@@ -68,5 +81,5 @@ All fixtures classified correctly.
 - **Cold** means the fixture did not cross those thresholds.
 - The report is meant for regression tracking and contributor discussion, not for authorship accusation.
 - This deterministic corpus is intentionally small (22 fixtures) and currently covers only checked-in ko/en suspect-zone fixtures; do not treat 100% fixture accuracy as generalization to new models, genres, or edited AI text.
-- Confidence intervals, threshold sweeps, and 2025+ model rebaselines are tracked as benchmark follow-ups, not claimed by this report yet.
+- Confidence intervals use Wilson score intervals for the checked-in fixture set; external threshold sweeps and 2025+ model rebaselines are separate research follow-ups.
 - Broader methodology notes live in [AI/Human Metrics Research](../research/ai-human-metrics.md) and [Quality Checks](../../tests/quality/README.md).

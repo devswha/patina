@@ -6,6 +6,7 @@ import {
   isRetryable,
   computeBackoffMs,
   createSemaphore,
+  callLLM,
 } from '../../src/api.js';
 
 test('HttpError captures status, body, and Retry-After', () => {
@@ -104,4 +105,65 @@ test('createSemaphore enforces concurrency cap and drains the queue', async () =
   await Promise.all([work(), work(), work(), work(), work()]);
   assert.equal(peak, 2, 'never exceeds cap');
   assert.equal(active, 0, 'all releases run');
+});
+
+test('callLLM clamps Retry-After sleep to the remaining deadline budget', async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  let currentTime = 1_000;
+  const slept = [];
+  globalThis.fetch = async () => {
+    calls++;
+    return {
+      ok: false,
+      status: 503,
+      headers: { get: (name) => (name.toLowerCase() === 'retry-after' ? '30' : null) },
+      text: async () => 'busy',
+    };
+  };
+
+  try {
+    await assert.rejects(
+      callLLM({
+        prompt: 'x',
+        apiKey: 'test',
+        maxRetries: 2,
+        timeout: 120000,
+        deadline: currentTime + 5000,
+        now: () => currentTime,
+        sleep: async (ms) => {
+          slept.push(ms);
+          currentTime += ms;
+        },
+      }),
+      /deadline exceeded/
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(calls, 1, 'deadline should stop before a second retry attempt');
+  assert.deepEqual(slept, [5000], 'Retry-After must be clamped to remaining budget');
+});
+
+test('callLLM honors an externally passed AbortSignal before fetch', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error('fetch should not run');
+  };
+  const controller = new AbortController();
+  controller.abort();
+
+  try {
+    await assert.rejects(
+      callLLM({
+        prompt: 'x',
+        apiKey: 'test',
+        signal: controller.signal,
+      }),
+      /External abort signal/
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

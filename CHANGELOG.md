@@ -2,6 +2,16 @@
 
 All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 
+## Release entry template
+
+```md
+## X.Y.Z — YYYY-MM-DD
+
+**Short release title.**
+
+Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
+```
+
 ## 3.10.0 — 2026-05-06
 
 **Tone categorization v1 (6 tones + `auto`).**

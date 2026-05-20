@@ -15,6 +15,24 @@ Patina uses lightweight maintainer governance until the contributor base grows.
 3. Link verification evidence in the PR: tests, benchmark report, screenshots, or manual command output.
 4. Prefer follow-up issues over expanding a PR after review starts.
 
+## Main branch protection
+
+`main` is protected. The rule is intentionally small and reproducible:
+
+- force pushes are blocked;
+- branch deletion is blocked;
+- pull requests are required before normal merges;
+- one approving review is required for non-admin merges;
+- required checks must pass before merging, and branches must be up to date:
+  - `lint`
+  - `test (18.0.0)`
+  - `test (20)`
+  - `test (22)`
+  - `test (lts/*)`
+  - `quality`
+
+Administrators are not included in enforcement for now (`enforce_admins=false`) so the maintainer can recover the repository or unblock automation if a protection rule misconfiguration prevents release work. Admin bypass should be treated as an emergency path, not the normal merge path.
+
 ## Close criteria
 
 An issue can be closed when the linked PR is merged and the issue's acceptance criteria are met, or when the maintainer records why the request is duplicate, out of scope, not reproducible, or intentionally deferred. Partial fixes should leave a comment naming the remaining work.

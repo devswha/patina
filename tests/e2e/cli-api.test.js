@@ -491,6 +491,67 @@ describe('CLI End-to-End with Mock API', () => {
     await startMockServer('This is the humanized result.');
   });
 
+  it('should warn and set exit code 4 when MAX falls back to highest MPS', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    await stopMockServer();
+
+    mockServer = createServer((req, res) => {
+      callCount++;
+      let body = '';
+      req.on('data', (chunk) => { body += chunk; });
+      req.on('end', () => {
+        lastRequestBody = JSON.parse(body);
+        const prompt = lastRequestBody.messages[0].content;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+
+        if (prompt.includes('AI-likeness scoring engine')) {
+          res.end(JSON.stringify({
+            choices: [{ message: { content: '{ "overall": 85, "interpretation": "still AI-like" }' } }],
+          }));
+        } else if (prompt.includes('Meaning Preservation evaluator')) {
+          res.end(JSON.stringify({
+            choices: [{ message: { content: '{ "anchors": [], "pass_count": 1, "total_count": 1, "polarity_pass_count": 0, "polarity_total_count": 0, "mps": 65 }' } }],
+          }));
+        } else {
+          res.end(JSON.stringify({
+            choices: [{ message: { content: 'Still sounds packaged.' } }],
+          }));
+        }
+      });
+    });
+
+    await new Promise((resolve) => {
+      mockServer.listen(0, '127.0.0.1', () => {
+        mockPort = mockServer.address().port;
+        resolve();
+      });
+    });
+
+    const oldExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    try {
+      const { logs } = await captureConsole(() => main([
+        '--lang', 'en',
+        '--models', 'model-a',
+        '--api-key', 'test-key',
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        testFile,
+      ]));
+
+      assert.strictEqual(process.exitCode, 4);
+      assert.match(
+        logs.join('\n'),
+        /⚠ No candidate passed MPS ≥ 70 — selecting by highest MPS \(fallback\)/
+      );
+    } finally {
+      process.exitCode = oldExitCode;
+    }
+    await stopMockServer();
+    await startMockServer('This is the humanized result.');
+  });
+
   it('should handle API errors gracefully', async () => {
     callCount = 0;
     lastRequestBody = null;

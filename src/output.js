@@ -439,7 +439,8 @@ function formatMaxModeOutput(result) {
   if (result.allFailed) {
     output += '> No MAX candidate produced a scoreable result. Exit code: 4.\n\n';
   } else if (result.mpsFallback) {
-    output += '> No candidate reached MPS ≥ 70; selected the highest-MPS fallback. Exit code: 4.\n\n';
+    output += '⚠ No candidate passed MPS ≥ 70 — selecting by highest MPS (fallback)\n\n';
+    output += '> Exit code: 4.\n\n';
   }
 
   if (best?.result) {

@@ -146,7 +146,7 @@ export async function invokeBackendChain({
   throw lastError || new Error('backend fallback chain failed without an error');
 }
 
-function resolveBackend(name) {
+export function resolveBackend(name) {
   const backend = REGISTRY[name];
   if (!backend) {
     throw inputError(

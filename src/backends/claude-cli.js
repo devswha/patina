@@ -2,9 +2,11 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEFAULT_BACKEND_TIMEOUT_MS } from './contract.js';
+import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand } from './contract.js';
 
 export const name = 'claude-cli';
+export const loginCommand = 'claude auth login';
+export const installHint = 'Install Claude Code first, then run `patina auth login claude-cli` again.';
 
 export function isAvailable() {
   try {
@@ -23,7 +25,17 @@ export function isAuthenticated() {
 }
 
 export function authHint() {
-  return 'Run `claude` once interactively and follow the OAuth prompt to authenticate (uses your Claude subscription, no API key needed).';
+  return `Run \`${loginCommand}\` and follow the OAuth prompt to authenticate (uses your Claude subscription, no API key needed).`;
+}
+
+export function login(options = {}) {
+  return runInteractiveCommand({
+    backendName: name,
+    command: 'claude',
+    args: ['auth', 'login'],
+    notFoundHint: installHint,
+    ...options,
+  });
 }
 
 export async function invoke({ prompt, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {

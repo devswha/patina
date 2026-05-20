@@ -8,7 +8,7 @@ import {
   toneToBackboneProfile,
 } from './loader.js';
 import { buildPrompt } from './prompt-builder.js';
-import { invokeBackendChain, selectBackendChain, listBackends, listBackendNames } from './backends/index.js';
+import { invokeBackendChain, selectBackendChain, listBackends, listBackendNames, resolveBackend } from './backends/index.js';
 import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from './security.js';
 import { formatOutput, validateScoreWeights } from './output.js';
@@ -26,6 +26,7 @@ import { createLogger } from './logger.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, basename, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createInterface } from 'node:readline/promises';
 
 const PACKAGE_VERSION = JSON.parse(
   readFileSync(resolve(getRepoRoot(), 'package.json'), 'utf8')
@@ -906,6 +907,8 @@ COMMANDS
   patina doctor [--json]  Check Node, backends, tmux, and auth setup
   patina auth status      Show backend availability and authentication status
   patina auth login       Print per-backend authentication instructions
+  patina auth login <backend> [--yes]
+                         Launch a backend login flow after confirmation
 
 MODES
   --diff                  Show changes pattern by pattern
@@ -1257,13 +1260,19 @@ function providerKeySource(provider) {
   return source.ok ? source.source : 'missing';
 }
 
-function handleAuth(subArgs) {
+async function handleAuth(subArgs) {
   const sub = subArgs[0] || 'status';
   if (sub === 'status') {
     printBackendStatus();
     return;
   }
   if (sub === 'login') {
+    const parsed = parseAuthLoginArgs(subArgs.slice(1));
+    if (parsed.backendName) {
+      await runAuthLogin(parsed);
+      return;
+    }
+
     console.log('To authenticate a backend, follow the per-backend instructions:\n');
     for (const b of listBackends()) {
       const status = b.authenticated ? '✓ already authenticated' : '✗ not authenticated';
@@ -1275,8 +1284,99 @@ function handleAuth(subArgs) {
   throw inputError(
     `unknown auth subcommand ${sub}`,
     'Supported auth subcommands are status and login.',
-    'Try `patina auth status` or `patina auth login`.'
+    'Try `patina auth status`, `patina auth login`, or `patina auth login codex-cli`.'
   );
+}
+
+function parseAuthLoginArgs(args) {
+  let assumeYes = false;
+  let backendName = null;
+
+  for (const arg of args) {
+    if (arg === '--yes' || arg === '-y') {
+      assumeYes = true;
+      continue;
+    }
+    if (arg.startsWith('-')) {
+      throw inputError(
+        `unknown auth login option ${arg}`,
+        'Only --yes/-y is supported for non-interactive confirmation.',
+        'Run `patina auth login <backend> --yes` or omit --yes to confirm interactively.'
+      );
+    }
+    if (backendName) {
+      throw inputError(
+        'auth login expects at most one backend',
+        `Received both ${backendName} and ${arg}.`,
+        `Available backends are: ${listBackendNames().join(', ')}.`
+      );
+    }
+    backendName = arg;
+  }
+
+  return { backendName, assumeYes };
+}
+
+async function runAuthLogin({ backendName, assumeYes }) {
+  const backend = resolveBackend(backendName);
+  if (typeof backend.login !== 'function') {
+    throw inputError(
+      `${backend.name} does not support interactive login`,
+      backend.authHint ? backend.authHint() : 'This backend authenticates outside local CLI OAuth.',
+      'Set PATINA_API_KEY, PATINA_API_KEY_FILE, or the provider-specific API key env var for HTTP backends.'
+    );
+  }
+
+  if (!backend.isAvailable()) {
+    throw runtimeError(
+      `${backend.name} CLI is not installed or not on PATH`,
+      backend.installHint || backend.authHint(),
+      'Install the CLI named above, then rerun this command.'
+    );
+  }
+
+  const commandLabel = backend.loginCommand || backend.name;
+  const confirmed = await confirmAuthLogin(commandLabel, { assumeYes });
+  if (!confirmed) {
+    console.log('Cancelled.');
+    return;
+  }
+
+  const wasAuthenticated = backend.isAuthenticated();
+  await backend.login();
+  const authenticated = backend.isAuthenticated();
+
+  if (authenticated) {
+    console.log(`${backend.name}: authenticated.`);
+  } else if (wasAuthenticated) {
+    console.log(`${backend.name}: login command completed; previous authentication is still present.`);
+  } else {
+    console.log(`${backend.name}: login command completed, but patina could not confirm authentication yet.`);
+    console.log(`→ ${backend.authHint()}`);
+  }
+}
+
+async function confirmAuthLogin(commandLabel, { assumeYes = false } = {}) {
+  if (assumeYes) {
+    console.log(`Run ${commandLabel}? yes (--yes)`);
+    return true;
+  }
+
+  if (!process.stdin.isTTY) {
+    throw inputError(
+      `cannot confirm ${commandLabel} in a non-interactive session`,
+      'patina will not launch an interactive OAuth flow without explicit confirmation.',
+      `Rerun with \`patina auth login <backend> --yes\` if you intentionally want to start ${commandLabel}.`
+    );
+  }
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await rl.question(`Run ${commandLabel}? [Y/n] `);
+    return answer.trim() === '' || /^y(es)?$/i.test(answer.trim());
+  } finally {
+    rl.close();
+  }
 }
 
 // Self-invocation guard (#113): when run directly via `node src/cli.js ...`,

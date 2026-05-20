@@ -16,6 +16,15 @@ artifacts/harness/*/
 node_modules/
 .env
 
+# secrets / credentials
+.env.*
+*.key
+*.pem
+secrets/
+credentials/
+.aws/
+.ssh/
+
 # OpenClaw / Claude Code workspace files (runtime-specific, not part of the skill)
 .openclaw/
 .workclaw/

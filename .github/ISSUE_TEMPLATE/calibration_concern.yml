@@ -1,0 +1,40 @@
+name: Calibration concern
+description: Report a scoring threshold, false-positive, or false-negative concern
+title: "calibration: "
+labels: [benchmark]
+body:
+  - type: dropdown
+    id: concern_type
+    attributes:
+      label: Concern type
+      options: [false positive, false negative, score too high, score too low, threshold, benchmark method, other]
+    validations:
+      required: true
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language
+      options: [ko, en, zh, ja, mixed]
+    validations:
+      required: true
+  - type: textarea
+    id: safe_sample
+    attributes:
+      label: Safe sample or fixture reference
+      description: Paste only text you are allowed to share publicly, or link to a repo fixture.
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed patina output
+      description: Include score, audit findings, mode, and command/config if available.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected calibration behavior
+      description: Explain what score range or pattern behavior would be more appropriate.
+    validations:
+      required: true

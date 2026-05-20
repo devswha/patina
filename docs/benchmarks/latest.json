@@ -3,27 +3,27 @@
   "benchmarkCommand": "node tests/quality/benchmark.mjs --quiet",
   "benchmarkStatus": 0,
   "note": "Deterministic suspect-zone benchmark; not an authorship detector.",
-  "generatedAt": "2026-05-19T18:12:26.135Z",
-  "fixtureCount": 20,
+  "generatedAt": "2026-05-20T02:23:17.955Z",
+  "fixtureCount": 22,
   "overallAccuracy": 1,
   "perLanguage": {
     "en": {
-      "tp": 5,
+      "tp": 6,
       "fp": 0,
       "fn": 0,
       "tn": 5,
-      "total": 10,
+      "total": 11,
       "accuracy": 1,
       "precision": 1,
       "recall": 1,
       "f1": 1
     },
     "ko": {
-      "tp": 5,
+      "tp": 6,
       "fp": 0,
       "fn": 0,
       "tn": 5,
-      "total": 10,
+      "total": 11,
       "accuracy": 1,
       "precision": 1,
       "recall": 1,
@@ -43,7 +43,8 @@
       "mattr": 0.928,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "en-ai-02",
@@ -57,7 +58,8 @@
       "mattr": 0.841,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "en-ai-03",
@@ -71,7 +73,8 @@
       "mattr": 0.828,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "en-ai-04",
@@ -85,7 +88,8 @@
       "mattr": 0.84,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "en-ai-05",
@@ -99,7 +103,28 @@
       "mattr": 0.879,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "en-ai-06-chat-register",
+      "lang": "en",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "cv": 0.034,
+      "cv_band": "low",
+      "mattr": 0.814,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": {
+        "cv_band": "low",
+        "mattr_band": "high",
+        "lexicon_density_min": 0,
+        "lexicon_density_max": 80
+      }
     },
     {
       "fixture_id": "en-nat-01",
@@ -113,7 +138,8 @@
       "mattr": 0.898,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "en-nat-02",
@@ -127,7 +153,8 @@
       "mattr": 0.884,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "en-nat-03",
@@ -141,7 +168,8 @@
       "mattr": 0.882,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "en-nat-04",
@@ -155,7 +183,8 @@
       "mattr": 0.854,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "en-nat-05",
@@ -169,7 +198,8 @@
       "mattr": 0.875,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "ko-ai-01",
@@ -185,7 +215,8 @@
       "lexicon_density": 23.256,
       "lexicon_hits": [
         "추세"
-      ]
+      ],
+      "expected_metrics": null
     },
     {
       "fixture_id": "ko-ai-02",
@@ -201,7 +232,8 @@
       "lexicon_density": 19.608,
       "lexicon_hits": [
         "환경"
-      ]
+      ],
+      "expected_metrics": null
     },
     {
       "fixture_id": "ko-ai-03",
@@ -217,7 +249,8 @@
       "lexicon_density": 19.608,
       "lexicon_hits": [
         "추세"
-      ]
+      ],
+      "expected_metrics": null
     },
     {
       "fixture_id": "ko-ai-04",
@@ -231,7 +264,8 @@
       "mattr": 0.853,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "ko-ai-05",
@@ -245,7 +279,30 @@
       "mattr": 0.853,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "ko-ai-06-chat-register",
+      "lang": "ko",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "cv": 0.081,
+      "cv_band": "low",
+      "mattr": 1,
+      "mattr_band": "high",
+      "lexicon_density": 21.739,
+      "lexicon_hits": [
+        "흐름"
+      ],
+      "expected_metrics": {
+        "cv_band": "low",
+        "mattr_band": "high",
+        "lexicon_density_min": 0,
+        "lexicon_density_max": 80
+      }
     },
     {
       "fixture_id": "ko-nat-01",
@@ -259,7 +316,8 @@
       "mattr": 1,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "ko-nat-02",
@@ -273,7 +331,8 @@
       "mattr": 1,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "ko-nat-03",
@@ -287,7 +346,8 @@
       "mattr": 1,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "ko-nat-04",
@@ -301,7 +361,8 @@
       "mattr": 0.975,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     },
     {
       "fixture_id": "ko-nat-05",
@@ -315,7 +376,18 @@
       "mattr": 0.998,
       "mattr_band": "high",
       "lexicon_density": 0,
-      "lexicon_hits": []
+      "lexicon_hits": [],
+      "expected_metrics": null
     }
-  ]
+  ],
+  "sampleSizes": {
+    "en": {
+      "ai": 6,
+      "natural": 5
+    },
+    "ko": {
+      "ai": 6,
+      "natural": 5
+    }
+  }
 }

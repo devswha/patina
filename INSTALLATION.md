@@ -5,7 +5,7 @@
 > **Goal:** Make `/patina` and `/patina-max` available as a skill in the host agent, with no API key required when the host machine has [`codex`](https://github.com/openai/codex) logged in.
 
 **Repository:** `https://github.com/devswha/patina.git`
-**Version pinned by this guide:** v3.11.0 (any later tag also works — patina is backwards compatible within v3.x)
+**Version pinning:** the installer resolves remote `HEAD` once and checks out that concrete commit. For strict reproducibility, set `PATINA_REF=<tag-or-full-sha>`.
 **Languages supported:** Korean (ko), English (en), Chinese (zh), Japanese (ja)
 
 ---
@@ -26,10 +26,17 @@ Do not mix paths. Do not invent extra steps. If a step fails, stop and surface t
 
 ## Path A — One-liner installer (recommended)
 
-Run this command. It installs into Claude Code, Codex CLI, Cursor, and OpenCode in one shot.
+Run this command. It installs into Claude Code, Codex CLI, Cursor, and OpenCode in one shot. The installer resolves remote `HEAD` to a commit SHA before checkout so the local skill does not track a moving `main` branch.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
+```
+
+For a fully explicit install, pin the checked-out repo ref yourself:
+
+```bash
+PATINA_REF=<tag-or-full-sha> \
+  curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
 
 **What it does** (so you can explain to the user):
@@ -39,6 +46,7 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
   - `~/.codex/skills/` (Codex CLI)
   - `~/.cursor/rules/` (Cursor)
   - `~/.config/opencode/skills/` (OpenCode)
+- Checks out a detached commit resolved from `PATINA_REF`, or from remote `HEAD` when `PATINA_REF` is unset.
 - Skips any target whose corresponding env var is set to `false` (e.g. `INSTALL_CURSOR=false`).
 
 **Skip a target:**
@@ -60,7 +68,10 @@ Use this when `curl` is unavailable or the user explicitly wants to install for 
 
 ```bash
 mkdir -p ~/.claude/skills
-git clone https://github.com/devswha/patina.git ~/.claude/skills/patina
+PATINA_REF="$(git ls-remote https://github.com/devswha/patina.git HEAD | awk 'NR == 1 { print $1 }')"
+git clone --depth=1 https://github.com/devswha/patina.git ~/.claude/skills/patina
+git -C ~/.claude/skills/patina fetch --depth=1 origin "${PATINA_REF}"
+git -C ~/.claude/skills/patina checkout --detach FETCH_HEAD
 ```
 
 If `~/.claude/skills/patina` already exists but is not a git repo, **stop and ask the user** — do not delete it.
@@ -91,11 +102,15 @@ Requires Node.js ≥ 18. After this, `patina --help` works as a shell command.
 
 ## Path C — Update existing install
 
+Use the installer again, or fetch and check out a pinned ref. Do not leave the skill tracking a moving branch.
+
 ```bash
-cd ~/.claude/skills/patina && git pull --ff-only
+PATINA_REF="$(git ls-remote https://github.com/devswha/patina.git HEAD | awk 'NR == 1 { print $1 }')"
+git -C ~/.claude/skills/patina fetch --depth=1 origin "${PATINA_REF}"
+git -C ~/.claude/skills/patina checkout --detach FETCH_HEAD
 ```
 
-If the pull fails because of local changes, **stop and report to the user**. Do not run `git reset --hard` — that would discard work the user might want.
+If the fetch or checkout fails because of local changes, **stop and report to the user**. Do not run `git reset --hard` — that would discard work the user might want.
 
 ---
 

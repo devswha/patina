@@ -28,7 +28,15 @@ Unlike a generic paraphraser, patina is **pattern-based and auditable**: it show
 
 > **MPS = 100** · cultural transformation ✓ · community building ✓ · meaningful connections ✓ · cross-cultural dialogue ✓
 
-More examples: [Before/After Gallery](docs/EXAMPLES.md).
+**More demo slices**
+
+| Input type | AI packaging removed | Preserved meaning |
+|---|---|---|
+| Korean marketing | “혁신적인 솔루션”, “새로운 패러다임” | 30 Notion templates, workflow fit, copy-and-edit usage |
+| Academic | “획기적인 성과”, broad significance claims | 60 GitHub projects, 72h→10m setup time, p<0.01, limits noted |
+| Technical | “핵심적인 역할”, future-standard hype | GPU management, one-command provisioning, 5× result caveat |
+
+Try it quickly: [30-second terminal demo](docs/DEMO.md). More examples: [Before/After Gallery](docs/EXAMPLES.md).
 Brand assets: [logo](assets/brand/patina-logo.svg), [icon](assets/brand/patina-icon.svg),
 [social preview](assets/social/patina-og.svg), and [before/after card](assets/social/patina-before-after.svg).
 
@@ -53,7 +61,7 @@ Brand assets: [logo](assets/brand/patina-logo.svg), [icon](assets/brand/patina-i
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
 
-The installer wires patina into Claude Code, [Codex CLI](https://github.com/openai/codex), Cursor, and OpenCode. Then:
+The installer wires patina into Claude Code, [Codex CLI](https://github.com/openai/codex), Cursor, and OpenCode. It resolves the repository HEAD to a concrete commit before checkout; set `PATINA_REF=<tag-or-full-sha>` when you need a fully pinned install. Then:
 
 ```
 /patina --lang en
@@ -107,6 +115,7 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | *(default)* | Rewrite |
 | `--audit` | Detect AI patterns only |
 | `--score` | 0–100 AI-likeness score with category breakdown |
+| `--score --gate <n>` | Keep CI strict: exit code `3` when `overall > n` |
 | `--diff` | Show changes pattern by pattern |
 | `--ouroboros` | Iterate the rewrite until score converges (with MPS rollback) |
 | `--lang <ko\|en\|zh\|ja>` | Select language (default: `ko`) |
@@ -201,8 +210,10 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 ## Documentation
 
 - **[Glossary](docs/GLOSSARY.md)** — short definitions for MPS, fidelity, burstiness, MATTR, modes, and other recurring terms
+- **[Demo](docs/DEMO.md)** — terminal transcript and multi-genre before/after snapshots
 - **[Patterns](docs/PATTERNS.md)** — full 146-pattern catalog
 - **[Authentication](docs/AUTHENTICATION.md)** — backends, providers, free-tier setup
+- **[CLI Contract](docs/CLI.md)** — score gate, exit codes, and automation-safe surfaces
 - **[FAQ](docs/FAQ.md)** — detector-bypass concerns, MPS, false positives, contribution starting points
 - **[Roadmap](docs/ROADMAP.md)** — quality, benchmark, product, community, and launch priorities
 - **[Benchmark Report](docs/benchmarks/latest.md)** — latest reproducible suspect-zone benchmark summary
@@ -212,6 +223,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Scoring](core/scoring.md)** — AI-likeness + fidelity + MPS
 - **[Changelog](CHANGELOG.md)** — release notes and methodology
 - **[Contributing](CONTRIBUTING.md)** — pattern submissions, staleness reports
+- **[Governance](GOVERNANCE.md)** / **[Maintainers](MAINTAINERS.md)** — lightweight project decision rules
 
 ## Acknowledgements
 

@@ -71,6 +71,30 @@ function languageRows(perLanguage = {}) {
     );
 }
 
+function classRows(fixtures = []) {
+  const counts = new Map();
+  for (const f of fixtures) {
+    const key = `${f.lang}\0${f.class}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, count]) => {
+      const [lang, klass] = key.split('\0');
+      return `| ${cell(lang)} | ${cell(klass)} | ${count} |`;
+    });
+}
+
+function sampleSizeSummary(fixtures = []) {
+  return fixtures.reduce((acc, f) => {
+    const lang = f.lang || 'unknown';
+    const klass = f.class || 'unknown';
+    acc[lang] ||= {};
+    acc[lang][klass] = (acc[lang][klass] || 0) + 1;
+    return acc;
+  }, {});
+}
+
 function fixtureRows(fixtures = []) {
   return fixtures.map((f) => {
     const hits = cell((f.lexicon_hits || []).slice(0, 4).join(', '));
@@ -119,6 +143,12 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 ${languageRows(results.perLanguage).join('\n')}
 
+## Sample sizes
+
+| lang | class | fixtures |
+|---|---|---:|
+${classRows(results.fixtures).join('\n')}
+
 ## Misclassifications
 
 ${misclassificationSection(results.fixtures)}
@@ -134,6 +164,8 @@ ${fixtureRows(results.fixtures).join('\n')}
 - **Hot** means at least one deterministic signal crossed the benchmark threshold: low burstiness CV, low MATTR, or AI-lexicon density.
 - **Cold** means the fixture did not cross those thresholds.
 - The report is meant for regression tracking and contributor discussion, not for authorship accusation.
+- This deterministic corpus is intentionally small (${results.fixtureCount} fixtures) and currently covers only checked-in ko/en suspect-zone fixtures; do not treat 100% fixture accuracy as generalization to new models, genres, or edited AI text.
+- Confidence intervals, threshold sweeps, and 2025+ model rebaselines are tracked as benchmark follow-ups, not claimed by this report yet.
 - Broader methodology notes live in [AI/Human Metrics Research](../research/ai-human-metrics.md) and [Quality Checks](../../tests/quality/README.md).
 `;
 }
@@ -151,6 +183,7 @@ function main() {
     benchmarkStatus,
     note: 'Deterministic suspect-zone benchmark; not an authorship detector.',
     ...results,
+    sampleSizes: sampleSizeSummary(results.fixtures),
   };
 
   mkdirSync(REPORT_DIR, { recursive: true });

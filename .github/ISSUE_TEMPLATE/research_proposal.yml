@@ -1,0 +1,40 @@
+name: Research proposal
+description: Propose an evaluation, corpus, detector comparison, or methodology study
+title: "research: "
+labels: [research, benchmark]
+body:
+  - type: dropdown
+    id: research_type
+    attributes:
+      label: Research type
+      options: [human evaluation, detector comparison, corpus study, metric validation, multilingual study, adversarial audit, other]
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Research question
+      description: What should this study prove, disprove, or calibrate?
+    validations:
+      required: true
+  - type: textarea
+    id: method
+    attributes:
+      label: Proposed method
+      description: Include sample size, languages, data source, and validation idea if known.
+    validations:
+      required: true
+  - type: textarea
+    id: data_rights
+    attributes:
+      label: Data rights / privacy notes
+      description: State whether the data can be redistributed or only summarized.
+    validations:
+      required: true
+  - type: textarea
+    id: success
+    attributes:
+      label: Success criteria
+      description: What artifact should land in the repo when this is done?
+    validations:
+      required: true

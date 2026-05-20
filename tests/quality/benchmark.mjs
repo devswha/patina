@@ -78,6 +78,25 @@ function round(n, digits = 3) {
   return Math.round(n * 10 ** digits) / 10 ** digits;
 }
 
+function validateExpectedMetrics(path, expected = {}, observed = {}) {
+  const failures = [];
+  if (expected.cv_band && observed.cv_band !== expected.cv_band) {
+    failures.push(`cv_band expected ${expected.cv_band}, got ${observed.cv_band}`);
+  }
+  if (expected.mattr_band && observed.mattr_band !== expected.mattr_band) {
+    failures.push(`mattr_band expected ${expected.mattr_band}, got ${observed.mattr_band}`);
+  }
+  if (typeof expected.lexicon_density_min === 'number' && observed.lexicon_density < expected.lexicon_density_min) {
+    failures.push(`lexicon_density expected >= ${expected.lexicon_density_min}, got ${observed.lexicon_density}`);
+  }
+  if (typeof expected.lexicon_density_max === 'number' && observed.lexicon_density > expected.lexicon_density_max) {
+    failures.push(`lexicon_density expected <= ${expected.lexicon_density_max}, got ${observed.lexicon_density}`);
+  }
+  if (failures.length) {
+    throw new Error(`${path}: expected_metrics regression failed: ${failures.join('; ')}`);
+  }
+}
+
 function main() {
   const quiet = process.argv.includes('--quiet');
   const fixtures = listFixtures();
@@ -111,6 +130,15 @@ function main() {
     updateMetrics(perLanguage[lang], predicted, expected);
 
     const p = result.paragraphs[0] || {};
+    const observed = {
+      cv: round(p.burstiness?.cv ?? 0),
+      cv_band: p.burstiness?.band,
+      mattr: round(p.mattr?.value ?? 0),
+      mattr_band: p.mattr?.band,
+      lexicon_density: round(p.lexicon?.density ?? 0),
+      lexicon_hits: p.lexicon?.hits ?? [],
+    };
+    if (meta.expected_metrics) validateExpectedMetrics(path, meta.expected_metrics, observed);
     fixtureLog.push({
       fixture_id: meta.fixture_id,
       lang,
@@ -118,12 +146,8 @@ function main() {
       expected_hot: expected,
       predicted_hot: predicted,
       correct: predicted === expected,
-      cv: round(p.burstiness?.cv ?? 0),
-      cv_band: p.burstiness?.band,
-      mattr: round(p.mattr?.value ?? 0),
-      mattr_band: p.mattr?.band,
-      lexicon_density: round(p.lexicon?.density ?? 0),
-      lexicon_hits: p.lexicon?.hits ?? [],
+      ...observed,
+      expected_metrics: meta.expected_metrics ?? null,
     });
   }
 

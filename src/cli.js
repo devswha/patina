@@ -1,7 +1,7 @@
 import { loadConfig, getRepoRoot, resolveTone } from './config.js';
 import { loadPatterns, loadProfile, loadCoreFile, loadInputText, toneToBackboneProfile } from './loader.js';
 import { buildPrompt } from './prompt-builder.js';
-import { selectBackend, listBackends } from './backends/index.js';
+import { selectBackend, listBackends, listBackendNames } from './backends/index.js';
 import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from './security.js';
 import { formatOutput, validateScoreWeights } from './output.js';
@@ -31,6 +31,14 @@ export async function main(args) {
   if (parsed.version) {
     console.log(`patina ${PACKAGE_VERSION}`);
     return;
+  }
+
+  if (parsed.models && parsed.variants && parsed.variants > 1) {
+    throw new Error('--variants is not supported with --models/MAX mode yet. Omit --variants or run one model at a time.');
+  }
+
+  if (parsed.gate !== undefined && !parsed.score) {
+    throw new Error('--gate can only be used with --score.');
   }
 
   if (parsed.listBackends) {
@@ -194,6 +202,10 @@ export async function main(args) {
       for (const w of warnings) {
         console.error(`[patina] ${w}`);
       }
+
+      if (parsed.gate !== undefined) {
+        applyScoreGate(result, output, parsed.gate);
+      }
     }
 
     if (parsed.saveRun) {
@@ -281,6 +293,14 @@ function parseArgs(args) {
       case '--score':
         parsed.score = true;
         break;
+      case '--gate': {
+        const n = Number(args[++i]);
+        if (!Number.isFinite(n) || n < 0 || n > 100) {
+          throw new Error(`--gate expects a number from 0 to 100, got ${args[i]}`);
+        }
+        parsed.gate = n;
+        break;
+      }
       case '--ouroboros':
         parsed.ouroboros = true;
         break;
@@ -502,11 +522,12 @@ function formatOuroborosOutput(result) {
 }
 
 function printHelp() {
+  const backendChoices = listBackendNames().join(', ');
   console.log(`patina — AI text humanizer CLI
 
 Usage: patina [options] [file...]
 
-Options:
+Core options:
   -h, --help           Show this help message
   -v, --version        Show version
   --lang <code>        Language: ko, en, zh, ja (default: ko)
@@ -517,46 +538,57 @@ Options:
                        narrative, marketing, instructional, auto.
                        Resolution: --tone > config tone > config profile.
                        zh/ja with explicit tone → warns + profile-only fallback.
+
+Modes:
   --diff               Show changes pattern by pattern
   --audit              Detect patterns only (no rewrite)
   --score              Output AI-likeness score (0-100)
+  --gate <n>           With --score, set exit code 3 when overall score > n
   --ouroboros          Iterative self-improvement loop
+
+Batch / output:
   --batch              Process multiple files
   --in-place           Overwrite original files (with --batch)
   --suffix <ext>       Save as {name}{ext}{extname}
   --outdir <dir>       Save results to directory
+  --save-run <dir>     Write manifest.json + output-N.txt under <dir> after the
+                       run (records version, prompt/config hashes, patterns,
+                       provider/model — useful for reproducibility / audit)
+
+MAX / variants:
   --models <list>      MAX mode: comma-separated model list
   --max-concurrency <n>  Cap parallel MAX-mode requests (default: unlimited)
+  --variants <n>       Generate N stylistic variants of the rewrite (1-5,
+                       default 1). Each variant preserves facts/numbers but
+                       differs in voice (V1 casual, V2 direct, V3 measured…).
+                       Output prints each as ## Variant N. Only --rewrite mode.
+
+Model / auth / backend:
   --model <id>         Single model ID (default: gpt-4o)
   --api-key <key>      API key (DEPRECATED: leaks via ps/shell history; prefer
                        PATINA_API_KEY env or --api-key-file)
   --api-key-file <path>  Read API key from file (recommended for shared hosts)
   --base-url <url>     API base URL (or PATINA_API_BASE env)
-  --backend <name>     Backend: openai-http (default), codex-cli (no API key)
+  --backend <name>     Backend: ${backendChoices} (default: openai-http)
   --list-backends      List available backends and their availability
   --provider <name>    Provider preset: openai, gemini, groq, together
                        (sets base-url + default model + reads <PROVIDER>_API_KEY)
   --list-providers     List provider presets and which keys are set
   --allow-insecure-base-url  Permit plaintext http:// to non-localhost endpoints
                        (also enabled by PATINA_ALLOW_INSECURE_BASE_URL=1)
+  --allow-private-base-url   Permit base URL pointing at private/IMDS IPs
+                       (also enabled by PATINA_ALLOW_PRIVATE_BASE_URL=1).
+                       Default: refuse to send the API key to RFC 1918 / link-local
+                       hosts to block SSRF to cloud metadata endpoints.
+
+Prompt / config:
   --config <path>      Load config from <path> instead of .patina.default.yaml
-  --save-run <dir>     Write manifest.json + output-N.txt under <dir> after the
-                       run (records version, prompt/config hashes, patterns,
-                       provider/model — useful for reproducibility / audit)
   --prompt-mode <m>    Rewrite prompt mode: strict | minimal | auto.
                        strict (default): full pattern packs (~34KB).
                        minimal: compressed watch-words + casual instruction (~3KB).
                        auto: pick by backend — gemini → minimal, others → strict.
                        case-05 finding: minimal helps Gemini, hurts Claude,
                        neutral for Codex. Only affects --rewrite mode.
-  --variants <n>       Generate N stylistic variants of the rewrite (1-5,
-                       default 1). Each variant preserves facts/numbers but
-                       differs in voice (V1 casual, V2 direct, V3 measured…).
-                       Output prints each as ## Variant N. Only --rewrite mode.
-  --allow-private-base-url   Permit base URL pointing at private/IMDS IPs
-                       (also enabled by PATINA_ALLOW_PRIVATE_BASE_URL=1).
-                       Default: refuse to send the API key to RFC 1918 / link-local
-                       hosts to block SSRF to cloud metadata endpoints.
 
 Environment Variables:
   PATINA_API_KEY       API authentication key (any provider)
@@ -578,6 +610,52 @@ If no API key is set, pass --backend codex-cli to use a logged-in codex CLI
 (no key required). Auto-fallback was removed in v3.9 to keep agent-mode
 backends opt-in (issue #88).
 `);
+}
+
+function applyScoreGate(result, output, gate) {
+  const overall = extractScoreOverall(result, output);
+  if (overall === null) {
+    throw new Error('--gate could not find a numeric `overall` value in --score output.');
+  }
+  if (overall > gate) {
+    console.error(`[patina] score gate failed: overall ${overall} > ${gate}`);
+    process.exitCode = Math.max(Number(process.exitCode) || 0, 3);
+  }
+}
+
+function extractScoreOverall(result, output) {
+  const resultOverall = toFiniteScore(result?.overall);
+  if (resultOverall !== null) return resultOverall;
+
+  const text = String(output ?? result ?? '');
+  const parsed = parseJsonScore(text);
+  const parsedOverall = toFiniteScore(parsed?.overall);
+  if (parsedOverall !== null) return parsedOverall;
+
+  const match = text.match(/(?:^|[\s|{,"])overall(?:["\s]*[:|]|\s+score\s*[:|]?)\s*(\d+(?:\.\d+)?)/i);
+  if (!match) return null;
+  return Number(match[1]);
+}
+
+function toFiniteScore(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseJsonScore(text) {
+  const trimmed = text.trim();
+  const candidates = [
+    trimmed,
+    trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1],
+    trimmed.match(/\{[\s\S]*\}/)?.[0],
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {}
+  }
+  return null;
 }
 
 function printBackendStatus() {

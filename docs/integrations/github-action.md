@@ -2,8 +2,6 @@
 
 Patina's standalone Action repository is [`devswha/patina-action`](https://github.com/devswha/patina-action). It runs pull request prose review without a live model call, leaves a sticky comment with file-level hotspot scores, and can fail above an optional score threshold.
 
-> The Action defaults to `patina-cli@latest`, so the `@v1` tag should be cut after the npm publish in #203. Until then, pre-release workflows can use `@main` with `patina-package: github:devswha/patina`.
-
 ```yaml
 name: Patina prose score
 
@@ -23,22 +21,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: devswha/patina-action@main # replace with @v1 after npm publish + action tag
+      - uses: devswha/patina-action@v1
         with:
-          patina-package: github:devswha/patina # remove after patina-cli@latest is on npm
-          report-threshold: 30
+          score-threshold: 30
           lang: auto
           comment: true
-```
-
-Once `patina-cli` is on npm and `devswha/patina-action@v1` is tagged, the stable form is:
-
-```yaml
-- uses: actions/checkout@v6
-- uses: devswha/patina-action@v1
-  with:
-    score-threshold: 30
-    comment: true
 ```
 
 ## Inputs

@@ -4,6 +4,15 @@ language: ko
 name: 언어/문법 패턴
 version: 1.1.0
 patterns: 7
+dedupe-with:
+  - source: "ko-language:7"
+    target: "ko-style:13"
+    owner: "ko-style:13"
+    reason: "연결 표현은 style #13이 canonical owner이고, language #7에서는 다른 AI 어휘와 함께 군집으로 나타날 때만 보조 신호로 본다."
+  - source: "ko-language:7"
+    target: "ko-language:8"
+    owner: "ko-language:8"
+    reason: "\"~적\" 한자어 형용사 연쇄는 language #8이 canonical owner이고, language #7은 다른 AI 고빈도 어휘와 함께 나타나는 넓은 군집 신호로만 본다."
 ---
 
 # 언어/문법 패턴

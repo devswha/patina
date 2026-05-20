@@ -21,7 +21,7 @@ patina auth login          # per-backend login instructions
 patina --list-providers    # preset providers + key status
 ```
 
-Backend selection requires an explicit signal: pass `--backend <name>` directly, or use `--model <prefix>` (`codex-*`, `claude-*`, `gemini-*` route to the matching local CLI). With no flags and no API key, patina exits with an error rather than silently dispatching to a coding agent. See [issue #88](https://github.com/devswha/patina/issues/88) for the rationale.
+Backend selection requires an explicit signal: pass `--backend <name>` directly, pass a comma-separated fallback chain such as `--backend claude-cli,codex-cli`, or use `--model <prefix>` (`codex-*`, `claude-*`, `gemini-*` route to the matching local CLI). With no flags and no API key, patina exits with an error rather than silently dispatching to a coding agent. See [issue #88](https://github.com/devswha/patina/issues/88) for the rationale.
 
 ## Environment variables
 

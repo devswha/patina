@@ -221,3 +221,26 @@ test('callLLM honors an externally passed AbortSignal before fetch', async () =>
     globalThis.fetch = originalFetch;
   }
 });
+
+test('callLLM preserves final HTTP status for backend fallback classification', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 503,
+    headers: { get: () => null },
+    text: async () => 'busy',
+  });
+
+  try {
+    await assert.rejects(
+      callLLM({
+        prompt: 'x',
+        apiKey: 'test',
+        maxRetries: 0,
+      }),
+      (err) => err.status === 503 && /HTTP 503/.test(err.message)
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

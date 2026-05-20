@@ -2,6 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DEFAULT_BACKEND_TIMEOUT_MS } from './contract.js';
 
 export const name = 'claude-cli';
 
@@ -25,7 +26,7 @@ export function authHint() {
   return 'Run `claude` once interactively and follow the OAuth prompt to authenticate (uses your Claude subscription, no API key needed).';
 }
 
-export async function invoke({ prompt, signal, timeout = 180000 } = {}) {
+export async function invoke({ prompt, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('claude-cli backend: prompt must be a non-empty string');
   }

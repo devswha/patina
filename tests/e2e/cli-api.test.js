@@ -3,7 +3,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import { main } from '../../src/cli.js';
 import { fileURLToPath } from 'node:url';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
@@ -124,6 +124,35 @@ describe('CLI End-to-End with Mock API', () => {
     ]);
 
     assert.strictEqual(lastRequestBody.temperature, 0.7);
+  });
+
+  it('injects --voice-sample paragraphs into rewrite prompts', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    const dir = mkdtempSync(join(tmpdir(), 'patina-voice-sample-cli-'));
+    const samplePath = resolve(dir, 'sample.md');
+    writeFileSync(samplePath, [
+      'I tend to start with the awkward tradeoff, not the polished takeaway.',
+      'Then I add one concrete detail so the point does not float away.',
+      'A final short sentence is fine.',
+      'This fourth paragraph should be ignored.',
+    ].join('\n\n'), 'utf8');
+
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+
+    await main([
+      '--lang', 'en',
+      '--voice-sample', samplePath,
+      '--api-key', 'test-key',
+      '--base-url', `http://127.0.0.1:${mockPort}`,
+      testFile,
+    ]);
+
+    const prompt = lastRequestBody.messages[0].content;
+    assert.ok(prompt.includes('Voice Anchor Examples'));
+    assert.ok(prompt.includes('examples of how this person writes'));
+    assert.ok(prompt.includes('I tend to start with the awkward tradeoff'));
+    assert.ok(!prompt.includes('This fourth paragraph should be ignored.'));
   });
 
   it('uses OPENAI_API_KEY for the default HTTP backend when no --api-key is passed', async () => {

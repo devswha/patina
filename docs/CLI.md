@@ -45,6 +45,7 @@ patina --lang en --score --exit-on 30 draft.md
 - Score JSON may include `scores.llm`, `scores.deterministic`, and `scores.preference` when deterministic shadow scoring is available.
 - `mps` is populated for MAX-mode results when available.
 - `gateResult` is `null` unless `--exit-on` / `--gate` is used.
+- `--voice-sample <path>` or config `voice-sample: <path>` injects the first 1–3 user-written paragraphs into rewrite/Ouroboros prompts as style-only examples of how this person writes. `--profile` / `--tone` still define the outer register; samples refine cadence and texture without importing facts.
 - `--save-run <dir>` writes a schema-v2 `manifest.json` plus `output-N.txt` files for reproducible audit trails. Each result records prompt/response hashes, available token usage, temperature/seed, score details, per-call cost when providers return it, and the Ouroboros iteration log when used.
 - `--cache <dir>` or `PATINA_CACHE_DIR` enables an opt-in persistent HTTP response cache keyed by prompt, model, temperature, and API host. `--cache-ttl <sec>` / `PATINA_CACHE_TTL_SECONDS` set expiry, and `--no-cache` forces a fresh run.
 - `patina doctor --json` emits setup diagnostics for CI without making an LLM call.

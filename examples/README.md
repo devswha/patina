@@ -11,13 +11,15 @@
 ```
 {패턴번호}-{판정}-{순번}.md          ← 한국어 패턴
 en-{패턴번호}-{판정}-{순번}.md       ← 영어 패턴
+zh-{패턴번호}-{판정}-{순번}.md       ← 중국어 패턴
+ja-{패턴번호}-{판정}-{순번}.md       ← 일본어 패턴
 ```
 
 - `{패턴번호}`: 패턴 번호 (예: `25`, `06`)
 - `{판정}`: `success` (올바른 탐지/교정) 또는 `failure` (오탐/과교정)
 - `{순번}`: 두 자리 정수 (01, 02, ...)
 
-예시: `25-success-01.md`, `26-failure-01.md`, `en-01-success-01.md`
+예시: `25-success-01.md`, `26-failure-01.md`, `en-01-success-01.md`, `zh-01-success-01.md`, `ja-01-success-01.md`
 
 ## 판정 유형
 
@@ -145,6 +147,10 @@ en-{패턴번호}-{판정}-{순번}.md       ← 영어 패턴
 | `en-27-failure-01.md` | en #27 Zombie Nouns | Failure (false positive) | Legal text where noun forms carry specific technical meaning |
 | `en-28-success-01.md` | en #28 Stacked Subordinate Clauses | Success | 4+ embedded clauses before main verb → split into clear sentences |
 | `en-28-failure-01.md` | en #28 Stacked Subordinate Clauses | Failure (false positive) | Patent claim language requiring nested qualification by convention |
+
+## 중국어/일본어 패턴 예제 상태
+
+zh/ja 패턴 #1–28의 success 예제는 각 언어별 패턴 파일(`patterns/zh-*.md`, `patterns/ja-*.md`)의 수정 전/후 쌍을 독립 fixture로 옮긴 것이다. false-positive/failure 예제는 아직 #30–32 중심으로만 존재하므로, zh/ja failure parity는 추가 native-speaker 검토 후 보강해야 한다.
 
 ## 패턴 팩 참조
 

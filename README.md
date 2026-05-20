@@ -159,6 +159,8 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `--tone <name>` | Tone category: `casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | Treat positional args as a list of files (e.g. `--batch docs/*.md`) |
 | `--format json\|text\|markdown` | Select machine-readable JSON, plain text, or default Markdown output |
+| `--prompt-mode strict\|minimal\|auto` | Choose full pattern-pack prompting, compressed prompting, or backend-aware auto |
+| `--variants <1-5>` | Generate multiple rewrite variants with the same facts and meaning anchors |
 
 `patina --help` for the full flag list. `patina doctor --json` checks Node/backend/tmux/API-key readiness without making an LLM call, and `patina init` writes a project `.patina.yaml`.
 
@@ -264,11 +266,13 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Docker](docs/integrations/docker.md)** — GHCR image usage and release tags
 - **[Release workflow](docs/integrations/release.md)** — npm provenance + GHCR publishing checklist
 - **[CLI Contract](docs/CLI.md)** — score gate, JSON/text/Markdown output, and automation-safe surfaces
+- **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI vs `/patina` vs `/patina-max` option support
 - **[Exit Codes](docs/EXIT-CODES.md)** — process code contract for CI and editor integrations
 - **[Ethics](docs/ETHICS.md)** — intended use, non-use, and disclosure stance
 - **[FAQ](docs/FAQ.md)** — detector-bypass concerns, MPS, false positives, contribution starting points
 - **[Comparison](docs/COMPARISON.md)** — factual comparison with common paraphraser/humanizer tools
 - **[Branding](docs/BRANDING.md)** — canonical logo/social assets and OG setup notes
+- **[Design](DESIGN.md)** — product/brand source of truth for repo-native SVG and README surfaces
 - **[Roadmap](docs/ROADMAP.md)** — quality, benchmark, product, community, and launch priorities
 - **[Benchmark Report](docs/benchmarks/latest.md)** — latest reproducible suspect-zone benchmark summary
 - **[Detector Comparison Harness](docs/benchmarks/detector-comparison.md)** — offline/manual comparison protocol for third-party detectors

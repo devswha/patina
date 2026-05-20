@@ -221,7 +221,7 @@ fi
 
 ### 모드 A: OMC dispatch (`dispatch: omc`)
 
-tmux pane을 사용하여 모든 모델을 **병렬** 실행한다. 각 pane에서 프롬프트 파일을 읽어 전달하고, 완료 시 sentinel 파일을 생성한다. wall-clock 상한은 가장 느린 모델 하나에 가깝다 (`TIMEOUT_SECONDS=900`이면 약 900초).
+tmux pane을 사용하여 모든 모델을 **병렬** 실행한다. 각 pane에서 프롬프트 파일을 읽어 전달하고, 완료 시 sentinel 파일을 생성한다. 대기 루프는 OMC/tmux pane-liveness watchdog도 함께 돌려, pane이 sentinel 없이 죽으면 900초 timeout을 기다리지 않고 즉시 해당 모델을 `failed`로 표시한다. wall-clock 상한은 가장 느린 살아 있는 모델 하나에 가깝다 (`TIMEOUT_SECONDS=900`이면 약 900초).
 
 ```bash
 SELECTED_MODELS="claude gemini codex"   # 실제로는 설정/플래그에서 선택된 모델만 포함
@@ -244,16 +244,38 @@ CODEX_PANE=$(tmux split-window -d -P -F "#{pane_id}" -v \
 
 실제 실행은 `max-models`에 포함된 모델의 pane만 생성하고, pane id도 해당 모델에 대해서만 기록한다.
 
-**완료 대기**: Bash로 sentinel 파일을 폴링한다.
+**완료 대기**: Bash로 sentinel 파일을 폴링하고, 기록한 pane id가 아직 살아 있는지도 확인한다.
 
 ```bash
 START_TIME=$(date +%s)
+
+pane_for_model() {
+  case "$1" in
+    claude) printf '%s' "$CLAUDE_PANE" ;;
+    gemini) printf '%s' "$GEMINI_PANE" ;;
+    codex) printf '%s' "$CODEX_PANE" ;;
+  esac
+}
+
+mark_pane_dead() {
+  model="$1"
+  printf '1' > "$RUN_DIR/$model.exit"
+  printf '%s\n' 'tmux pane died before sentinel' > "$RUN_DIR/$model-log.txt"
+  touch "$RUN_DIR/$model.pane-dead" "$RUN_DIR/$model.done"
+}
 
 # 선택된 모델들의 .done 파일만 기다린다
 while true; do
   ALL_DONE=true
   for model in $SELECTED_MODELS; do
-    [ -f "$RUN_DIR/$model.done" ] || ALL_DONE=false
+    if [ ! -f "$RUN_DIR/$model.done" ]; then
+      pane=$(pane_for_model "$model")
+      if [ -n "$pane" ] && ! tmux list-panes -t "$pane" >/dev/null 2>&1; then
+        mark_pane_dead "$model"
+      else
+        ALL_DONE=false
+      fi
+    fi
   done
   $ALL_DONE && break
 
@@ -262,7 +284,7 @@ while true; do
     for model in $SELECTED_MODELS; do
       if [ ! -f "$RUN_DIR/$model.done" ]; then
         printf '124' > "$RUN_DIR/$model.exit"
-        printf 'timeout after %ss\n' "$TIMEOUT_SECONDS" > "$RUN_DIR/$model.log.txt"
+        printf 'timeout after %ss\n' "$TIMEOUT_SECONDS" > "$RUN_DIR/$model-log.txt"
         touch "$RUN_DIR/$model.timeout" "$RUN_DIR/$model.done"
       fi
     done
@@ -276,7 +298,7 @@ while true; do
 done
 ```
 
-> tmux pane은 실행 완료 후 자동으로 닫힌다. 진행 중에는 사용자가 pane을 전환하여 각 모델의 실행 상태를 시각적으로 확인할 수 있다. 타임아웃이 발생한 pane은 kill 후 `failed`로 표시한다.
+> tmux pane은 실행 완료 후 자동으로 닫힌다. 진행 중에는 사용자가 pane을 전환하여 각 모델의 실행 상태를 시각적으로 확인할 수 있다. 타임아웃이 발생한 pane은 kill 후 `failed`로 표시하고, sentinel 없이 사라진 pane은 `.pane-dead`로 기록해 900초 timeout 전에 `failed`로 표시한다.
 
 ### 모드 B: Direct dispatch (`dispatch: direct`)
 
@@ -372,6 +394,7 @@ touch "$RUN_DIR/claude.done"
 
 - 특정 모델의 exit code가 0이 아니거나, output 파일이 비어 있거나, 파일이 없으면 → 해당 모델을 `failed`로 표시하고 나머지로 계속 진행
 - `.timeout` 파일이 있거나 exit code가 `124`이면 → `timed out`으로 기록하고 `failed`로 표시
+- `.pane-dead` 파일이 있으면 → tmux/OMC pane이 sentinel 없이 종료된 것이므로 `failed`로 표시하고 900초 timeout까지 기다리지 않음
 - `.done` 파일은 생겼지만 output 파일이 비어 있으면 → CLI가 빈 응답을 반환한 것이므로 `failed`로 표시
 - 모든 모델이 실패한 경우 → 에러 메시지와 함께 각 모델의 output/log 파일 내용을 진단 정보로 출력하고 종료
 - `dispatch: omc`에서 tmux가 없으면 (`$TMUX` 미설정) → `[patina-max] tmux not detected. Falling back to sequential dispatch (expect ~Xmin instead of ~Ys). Pass --dispatch direct to silence.` 형식의 경고 후 direct 모드로 자동 전환
@@ -514,7 +537,7 @@ python3 patina-max/composite.py "$RUN_DIR"
 - 모델 추가/제거는 `.patina.default.yaml`의 `max-models` 또는 `--models` 플래그로 설정합니다
 - 지원 모델: `claude`, `codex`, `gemini` (Claude/Codex는 stdin pipe, Gemini는 `$(cat file)` 인자 치환)
 - 디스패치 모드: `omc` (tmux pane 병렬, 기본) / `direct` (순차 실행, fallback)
-- 각 실행은 고유 temp dir를 사용하며, 선택된 모델만 기다리고, timeout 모델은 자동으로 `failed` 처리한다
+- 각 실행은 고유 temp dir를 사용하며, 선택된 모델만 기다리고, timeout 또는 pane-dead 모델은 자동으로 `failed` 처리한다
 - 최초 실행 시 설치 인터뷰로 `.patina.yaml` 생성 (모델 선택, 디스패치 모드, CLI 설치 확인)
 - `--ouroboros`와 함께 사용 가능: 최고 점수가 target-score 이상이면 해당 모델 결과를 입력으로 재실행하여 점수를 수렴시킨다
 

@@ -188,7 +188,7 @@ They appear in score and audit output so the benchmark matches human intuition f
 
 ### Prompt-mode tuning (v3.11)
 
-`--prompt-mode strict|minimal|auto` lets you trade off between the full pattern packs (~34KB structured prompt) and a compressed casual instruction (~3KB). `auto` picks per backend — Gemini does better on minimal (it gets over-constrained by long structured prompts), while Claude leverages the full packs and Codex is roughly insensitive. case-05 documents the A/B.
+`--prompt-mode strict|minimal|auto` lets you trade off between the full pattern packs (~34KB structured prompt) and a compressed casual instruction (~3KB). `auto` picks per backend — Gemini does better on minimal (it gets over-constrained by long structured prompts), while Claude leverages the full packs and Codex is roughly insensitive. Standalone CLI MAX rewrite workers default to `minimal` unless `--prompt-mode` or config overrides it, so multi-candidate runs stay light by default; in MAX, `auto` resolves once before dispatch rather than separately per candidate. case-05 documents the A/B.
 
 ### Multiple stylistic variants (v3.11)
 
@@ -243,7 +243,7 @@ Run the same text through Claude, Codex, and Gemini independently. The lowest AI
 
 `/patina-max` uses tmux panes for parallel local-CLI dispatch when `dispatch: omc` is enabled. If tmux is unavailable, pass `--dispatch direct` for the no-tmux path; it runs the selected models sequentially and can take roughly one model timeout per model. When `dispatch: omc` falls back automatically outside tmux, Patina prints the expected sequential-vs-parallel wall-clock warning.
 
-Standalone CLI MAX (`patina --models ...`) caps HTTP fanout at `min(models, 3)` by default to avoid quota storms on free-tier providers. Pass `--max-concurrency <n>` to tune the cap, or `--max-concurrency 0` only when you intentionally want unlimited parallel requests.
+Standalone CLI MAX (`patina --models ...`) is no longer HTTP-only. The list may include local CLI backend aliases/names (`claude-cli`, `codex-cli`, `gemini-cli`, plus shorthand `claude`, `codex`, `gemini`) and ordinary HTTP model IDs such as `gpt-4o` or OpenRouter model names. HTTP candidates still use `--base-url`/provider auth, while local candidates use the logged-in CLI backend. Each candidate is evaluated through that candidate's backend/model, matching existing MAX scoring behavior. Candidate fanout is capped at `min(models, 3)` by default to avoid quota storms on free-tier providers; pass `--max-concurrency <n>` to tune the cap, or `--max-concurrency 0` only when you intentionally want unlimited parallelism.
 
 ## How It Works
 

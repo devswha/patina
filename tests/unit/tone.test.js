@@ -245,7 +245,7 @@ test('stripSelfAudit: only applied to rewrite/ouroboros modes', () => {
 
 // --- resolvePromptMode (v3.11 Phase 3.3) ---
 
-import { resolvePromptMode } from '../../src/cli.js';
+import { resolveConfiguredPromptMode, resolvePromptMode } from '../../src/cli.js';
 import { validateScoreWeights } from '../../src/output.js';
 
 test('resolvePromptMode: strict passes through unchanged', () => {
@@ -273,6 +273,13 @@ test('resolvePromptMode: auto + codex-cli → strict (default)', () => {
 test('resolvePromptMode: auto + unknown → strict (conservative)', () => {
   assert.equal(resolvePromptMode('auto', { backend: 'openai-http', model: 'gpt-5.5' }), 'strict');
   assert.equal(resolvePromptMode('auto', {}), 'strict');
+});
+
+test('resolveConfiguredPromptMode: MAX defaults to minimal unless overridden', () => {
+  assert.equal(resolveConfiguredPromptMode({ isMaxMode: true }), 'minimal');
+  assert.equal(resolveConfiguredPromptMode({ isMaxMode: false }), 'strict');
+  assert.equal(resolveConfiguredPromptMode({ configPromptMode: 'strict', isMaxMode: true }), 'strict');
+  assert.equal(resolveConfiguredPromptMode({ cliPromptMode: 'auto', configPromptMode: 'strict', isMaxMode: true }), 'auto');
 });
 
 // --- validateScoreWeights (v3.11 Phase 1.3) ---

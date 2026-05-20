@@ -66,8 +66,10 @@ allowlist: []              # additive merge: 감지에서 제외할 어휘
 # MAX mode: multi-model humanization
 # claude uses `claude -p`, gemini uses `gemini -p '' --output-format text`,
 # codex uses `codex exec --skip-git-repo-check --output-last-message <file>`
-# Supported models: claude, codex, gemini
-# Override with CLI: --models claude,gemini,codex
+# Skill/local dispatch aliases: claude, codex, gemini
+# Standalone CLI --models may also include claude-cli/codex-cli/gemini-cli
+# and HTTP model IDs such as gpt-4o or provider-specific IDs.
+# Override with CLI: --models claude-cli,gpt-4o,gemini
 max-models:
   - claude
   - gemini
@@ -75,7 +77,7 @@ max-models:
 # Dispatch mode for MAX mode CLI execution
 # omc: tmux pane parallel dispatch (recommended, requires oh-my-claudecode + tmux)
 #       - Uses a unique temp dir per run
-#       - Waits only for selected models and marks timed-out runs as failed
+#       - Waits only for selected models and marks timed-out or dead panes as failed
 #       - All providers receive the prompt via stdin
 # direct: sequential stdin dispatch (fallback; apply the same per-model timeout)
 # api: HTTP API dispatch (no local CLI needed; requires PATINA_API_KEY env var)

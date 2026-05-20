@@ -95,9 +95,10 @@ Patina는 live model key 없이도 prose review용 결정론적 CI 체크를 제
 # .github/workflows/patina.yml
 steps:
   - uses: actions/checkout@v6
-  - uses: devswha/patina@main # 릴리스 태그가 생기면 @v1 등으로 pin
+  - uses: devswha/patina-action@main # npm publish + Action 태그 후 @v1 사용
     with:
-      gate: 30
+      patina-package: github:devswha/patina # patina-cli@latest npm 공개 후 제거
+      report-threshold: 30
       comment: true
 ```
 

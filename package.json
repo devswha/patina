@@ -83,6 +83,7 @@
     "LICENSE",
     "CHANGELOG.md",
     "scripts/check-release-metadata.mjs",
+    "scripts/share-card.mjs",
     "scripts/prose-score.mjs",
     "scripts/badge-json.mjs",
     "scripts/precommit-score.mjs",

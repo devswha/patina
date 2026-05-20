@@ -14,7 +14,8 @@ import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } 
 import { formatOutput, validateScoreWeights } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
-import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from './scoring.js';
+import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals, scoreMPS, scoreText } from './scoring.js';
+import { renderShareCard } from '../scripts/share-card.mjs';
 import { callLLM, DEFAULT_TEMPERATURE } from './api.js';
 import { createResponseCache, DEFAULT_CACHE_TTL_SECONDS } from './cache.js';
 import { buildManifest, appendResult, writeManifest, hashSha256 } from './manifest.js';
@@ -24,7 +25,7 @@ import { PatinaCliError, inputError, runtimeError, renderCliError, getExitCode }
 import { inspectHttpApiKeySource, providerHttpKeyEnvVars, resolveHttpApiKey } from './auth.js';
 import { createLogger } from './logger.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { resolve, basename, extname } from 'node:path';
+import { resolve, basename, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 
@@ -154,6 +155,20 @@ export async function main(args) {
     : parsed.score ? 'score'
     : parsed.ouroboros ? 'ouroboros'
     : 'rewrite';
+  if (parsed.card && mode !== 'rewrite' && mode !== 'ouroboros') {
+    throw inputError(
+      '--card can only be used with rewrite or --ouroboros',
+      'Share cards need before/after text, AI score, and meaning-preservation metadata.',
+      'Run `patina --card card.svg draft.md` or `patina --ouroboros --card card.svg draft.md`.'
+    );
+  }
+  if (parsed.card && parsed.batch) {
+    throw inputError(
+      '--card cannot be combined with --batch',
+      'One output path cannot safely represent multiple input files.',
+      'Run one input at a time, or omit --batch.'
+    );
+  }
   const voiceSamplePath = (mode === 'rewrite' || mode === 'ouroboros')
     ? (parsed.voiceSample ?? config['voice-sample'])
     : null;
@@ -167,6 +182,13 @@ export async function main(args) {
   }
 
   const inputTexts = await loadInputs(parsed, logger);
+  if (parsed.card && inputTexts.length !== 1) {
+    throw inputError(
+      '--card expects exactly one input',
+      `Received ${inputTexts.length} inputs.`,
+      'Run patina once per share card.'
+    );
+  }
   const cancellation = createCancellationController({ logger });
 
   cancellation.install();
@@ -207,6 +229,7 @@ export async function main(args) {
       });
 
       let result;
+      let shareCardCallLLM = trackedCallLLM;
 
       if (parsed.models) {
         result = await runMaxMode({
@@ -245,6 +268,19 @@ export async function main(args) {
           model: resolved.model,
         });
         const backend = backends[0];
+        shareCardCallLLM = (callArgs) => invokeBackendChain({
+          backends,
+          prompt: callArgs.prompt,
+          apiKey: callArgs.apiKey ?? resolved.apiKey,
+          baseURL: callArgs.baseURL ?? resolved.baseURL,
+          model: callArgs.model ?? resolved.model,
+          signal: callArgs.signal ?? cancellation.signal,
+          temperature: callArgs.temperature,
+          seed: manifestSeed,
+          onResponse: recordManifestCall,
+          cache: responseCache,
+          logger,
+        });
 
         if (autoSelected) {
           logger.info('backend.selected', {
@@ -331,6 +367,26 @@ export async function main(args) {
 
       if (result?.type === 'max-mode' && (result.allFailed || result.mpsFallback)) {
         process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
+      }
+
+      if (parsed.card) {
+        const cardPayload = await buildShareCardPayload({
+          mode,
+          sourceText: text,
+          output,
+          result,
+          lang,
+          config,
+          patterns,
+          apiKey: resolved.apiKey,
+          baseURL: resolved.baseURL,
+          model: resolved.model,
+          callLLM: shareCardCallLLM,
+          signal: cancellation.signal,
+          logger,
+        });
+        const cardPath = writeShareCard(parsed.card, cardPayload);
+        logger.info('share_card.written', { message: `[patina] wrote share card to ${cardPath}` });
       }
 
       if (parsed.saveRun) {
@@ -473,6 +529,10 @@ function parseArgs(args) {
         break;
       case '--json-logs':
         parsed.jsonLogs = true;
+        break;
+      case '--card':
+        parsed.card = readOptionValue(args, i, arg);
+        i++;
         break;
       case '--gate': {
         const value = readOptionValue(args, i, arg, { allowFlagLike: true });
@@ -923,6 +983,122 @@ async function writeBatchOutput(parsed, inputPath, output) {
   console.log(`Written: ${outPath}`);
 }
 
+async function buildShareCardPayload({
+  mode,
+  sourceText,
+  output,
+  result,
+  lang,
+  config,
+  patterns,
+  apiKey,
+  baseURL,
+  model,
+  callLLM,
+  signal,
+  logger,
+}) {
+  const after = resolveShareCardAfterText({ mode, output, result, logger });
+  const metrics = existingShareCardMetrics({ mode, result, sourceText, after });
+
+  if (result?.type === 'max-mode' && !result.best) {
+    return { before: sourceText, after, aiScore: null, mps: null, lang };
+  }
+
+  if (metrics.aiScore !== null && metrics.mps !== null) {
+    return { before: sourceText, after, aiScore: metrics.aiScore, mps: metrics.mps, lang };
+  }
+
+  const [aiScoreResult, mpsResult] = await Promise.all([
+    metrics.aiScore === null
+      ? scoreText({
+        text: after,
+        config,
+        patterns,
+        apiKey,
+        baseURL,
+        model,
+        callLLM,
+        signal,
+        logger,
+      })
+      : Promise.resolve({ overall: metrics.aiScore }),
+    metrics.mps === null
+      ? scoreMPS({
+        original: sourceText,
+        rewritten: after,
+        apiKey,
+        baseURL,
+        model,
+        callLLM,
+        signal,
+        logger,
+      })
+      : Promise.resolve({ mps: metrics.mps }),
+  ]);
+
+  return {
+    before: sourceText,
+    after,
+    aiScore: toFiniteNumber(aiScoreResult?.overall),
+    mps: toFiniteNumber(mpsResult?.mps),
+    lang,
+  };
+}
+
+function resolveShareCardAfterText({ mode, output, result, logger }) {
+  if (result?.type === 'max-mode') {
+    return cleanShareCardText(result.best?.result || output);
+  }
+  if (mode === 'ouroboros') {
+    return cleanShareCardText(result?.finalText || output);
+  }
+  return cleanShareCardText(formatOutput(result, mode, { format: 'text' }, { logger }));
+}
+
+function existingShareCardMetrics({ mode, result, sourceText, after }) {
+  if (result?.type === 'max-mode') {
+    return {
+      aiScore: toFiniteNumber(result.best?.aiScore),
+      mps: toFiniteNumber(result.best?.mps),
+    };
+  }
+  if (mode === 'ouroboros') {
+    const aiScore = toFiniteNumber(result?.finalScore);
+    const mps = latestOuroborosMps(result?.log) ?? (sourceText.trim() === after.trim() ? 100 : null);
+    return { aiScore, mps };
+  }
+  return { aiScore: null, mps: null };
+}
+
+function latestOuroborosMps(log) {
+  if (!Array.isArray(log)) return null;
+  for (let i = log.length - 1; i >= 0; i--) {
+    const mps = toFiniteNumber(log[i]?.mps);
+    if (mps !== null) return mps;
+  }
+  return null;
+}
+
+function cleanShareCardText(output) {
+  return String(output || '')
+    .replace(/\n---\s*\ntone:[\s\S]*?\n---\s*$/u, '')
+    .trim();
+}
+
+function writeShareCard(cardPath, payload) {
+  const outPath = resolve(process.cwd(), cardPath);
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, renderShareCard(payload), 'utf8');
+  return outPath;
+}
+
+function toFiniteNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(String(value).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
 function formatOuroborosOutput(result) {
   let output = '## Ouroboros Iteration Log\n\n';
   output += '| Iter | Before | After | Improvement | Reason |\n';
@@ -970,6 +1146,7 @@ OUTPUT & BATCH
   --json                  Alias for --format json
   --quiet                 Suppress patina status/warning logs on stderr
   --json-logs             Emit stderr logs as NDJSON objects
+  --card <path>           Write a 1200x630 SVG before/after + score share card
   --batch                 Process multiple files
   --in-place              Overwrite original files (with --batch)
   --suffix <ext>          Save as {name}{ext}{extname}

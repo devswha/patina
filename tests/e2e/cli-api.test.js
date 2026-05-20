@@ -267,6 +267,7 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(help.includes('--format <fmt>'), 'help should document output format');
     assert.ok(help.includes('--quiet'), 'help should document quiet logs');
     assert.ok(help.includes('--json-logs'), 'help should document structured stderr logs');
+    assert.ok(help.includes('--card <path>'), 'help should document share-card SVG output');
     assert.ok(help.includes('--max-timeout <sec>'), 'help should document MAX wall-clock timeout');
     assert.ok(help.includes('--no-color'), 'help should document diff color opt-out');
     assert.ok(
@@ -457,6 +458,77 @@ describe('CLI End-to-End with Mock API', () => {
     assert.strictEqual(callCount, 1, 'Should make exactly one API call');
     assert.deepStrictEqual(errors, []);
     assert.match(logs.join('\n'), /This is the humanized result\./);
+  });
+
+  it('writes --card SVG for rewrite mode with AI score and MPS', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    await stopMockServer();
+
+    mockServer = createServer((req, res) => {
+      callCount++;
+      let body = '';
+      req.on('data', (chunk) => { body += chunk; });
+      req.on('end', () => {
+        lastRequestBody = JSON.parse(body);
+        const prompt = lastRequestBody.messages[0].content;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+
+        if (prompt.includes('AI-likeness scoring engine')) {
+          res.end(JSON.stringify({
+            choices: [{ message: { content: '{ "overall": 18, "interpretation": "mostly human" }' } }],
+          }));
+          return;
+        }
+
+        if (prompt.includes('Meaning Preservation evaluator')) {
+          res.end(JSON.stringify({
+            choices: [{ message: { content: '{ "anchors": [], "pass_count": 1, "total_count": 1, "polarity_pass_count": 0, "polarity_total_count": 0, "mps": 94 }' } }],
+          }));
+          return;
+        }
+
+        res.end(JSON.stringify({
+          choices: [{
+            message: {
+              content: '[BODY]AI 포장을 덜어내고 뜻은 그대로 둔 문장입니다.[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]',
+            },
+          }],
+        }));
+      });
+    });
+
+    await new Promise((resolve) => {
+      mockServer.listen(0, '127.0.0.1', () => {
+        mockPort = mockServer.address().port;
+        resolve();
+      });
+    });
+
+    const dir = mkdtempSync(join(tmpdir(), 'patina-share-card-'));
+    const inputPath = resolve(dir, 'input.txt');
+    const cardPath = resolve(dir, 'card.svg');
+    writeFileSync(inputPath, 'AI 티 나는 문장입니다. 의미는 유지해야 합니다.', 'utf8');
+
+    await captureConsole(() => main([
+      '--lang', 'ko',
+      '--card', cardPath,
+      '--api-key', 'test-key',
+      '--base-url', `http://127.0.0.1:${mockPort}`,
+      inputPath,
+    ]));
+
+    const svg = readFileSync(cardPath, 'utf8');
+    assert.strictEqual(callCount, 3, 'rewrite + AI score + MPS calls should run');
+    assert.match(svg, /width="1200" height="630"/u);
+    assert.match(svg, /AI 티 나는 문장입니다/u);
+    assert.match(svg, /AI 포장을 덜어내고 뜻은 그대로 둔 문장입니다/u);
+    assert.match(svg, /AI score 18\/100/u);
+    assert.match(svg, /MPS 94/u);
+    assert.match(svg, /patina-brand-mark/u);
+
+    await stopMockServer();
+    await startMockServer('This is the humanized result.');
   });
 
   it('should set exit code 3 when --score gate fails', async () => {

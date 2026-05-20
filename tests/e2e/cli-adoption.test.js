@@ -165,6 +165,7 @@ describe('CLI adoption exit/error behavior', () => {
     const cases = [
       { args: ['--tone'], message: /--tone requires a value/ },
       { args: ['--models'], message: /--models requires a value/ },
+      { args: ['--card'], message: /--card requires a value/ },
       { args: ['--gate', 'nope'], message: /--gate expects a number/ },
       { args: ['--prompt-mode', 'wrong'], message: /--prompt-mode expects/ },
       { args: ['--api-key', '--base-url'], message: /--api-key requires a value/ },

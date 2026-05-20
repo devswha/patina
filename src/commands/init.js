@@ -22,6 +22,10 @@ const PROFILES = [
   'marketing',
   'narrative',
   'instructional',
+  'casual-conversation',
+  'code-comment',
+  'commit-message',
+  'release-notes',
 ];
 const TONES = ['profile-only', 'casual', 'professional', 'academic', 'narrative', 'marketing', 'instructional', 'auto'];
 const DISPATCH_MODES = ['omc', 'direct', 'api'];

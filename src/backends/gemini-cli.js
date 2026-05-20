@@ -30,10 +30,11 @@ export function authHint() {
   return 'Run `gemini` once interactively to log in via Google OAuth, or set GEMINI_API_KEY.';
 }
 
-export async function invoke({ prompt, model, timeout = 240000 } = {}) {
+export async function invoke({ prompt, model, signal, timeout = 240000 } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('gemini-cli backend: prompt must be a non-empty string');
   }
+  throwIfAborted(signal);
 
   // gemini -p '' reads the prompt from stdin (when -p arg is empty, stdin is
   // appended). --output-format text avoids JSON wrapping. Spawn from a temp
@@ -54,30 +55,32 @@ export async function invoke({ prompt, model, timeout = 240000 } = {}) {
     proc.stdout.on('data', (chunk) => { stdout += chunk; });
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
 
+    let settled = false;
+    let cleanupSignal = () => {};
     const timer = setTimeout(() => {
-      proc.kill('SIGKILL');
-      cleanup();
-      reject(new Error(`gemini-cli backend: timed out after ${timeout}ms`));
+      finishReject(new Error(`gemini-cli backend: timed out after ${timeout}ms`), { kill: true });
     }, timeout);
+    if (signal) {
+      const onAbort = () => finishReject(abortError('gemini-cli backend: aborted'), { kill: true });
+      signal.addEventListener('abort', onAbort, { once: true });
+      cleanupSignal = () => signal.removeEventListener('abort', onAbort);
+    }
 
     proc.on('error', (err) => {
-      clearTimeout(timer);
-      cleanup();
       if (err.code === 'ENOENT') {
-        reject(new Error('gemini-cli backend: `gemini` CLI not found. Install Gemini CLI first.'));
+        finishReject(new Error('gemini-cli backend: `gemini` CLI not found. Install Gemini CLI first.'));
       } else {
-        reject(new Error(`gemini-cli backend: failed to spawn gemini (${err.message})`));
+        finishReject(new Error(`gemini-cli backend: failed to spawn gemini (${err.message})`));
       }
     });
 
     proc.on('close', (code) => {
-      clearTimeout(timer);
-      cleanup();
+      if (settled) return;
       if (code !== 0) {
-        reject(new Error(`gemini-cli backend: gemini exited with code ${code}\n${stderr}`));
+        finishReject(new Error(`gemini-cli backend: gemini exited with code ${code}\n${stderr}`));
         return;
       }
-      resolve(stripGeminiNoise(stdout));
+      finishResolve(stripGeminiNoise(stdout));
     });
 
     proc.stdin.write(prompt);
@@ -86,7 +89,36 @@ export async function invoke({ prompt, model, timeout = 240000 } = {}) {
     function cleanup() {
       try { rmSync(dir, { recursive: true, force: true }); } catch {}
     }
+
+    function finishReject(err, { kill = false } = {}) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanupSignal();
+      if (kill) proc.kill('SIGKILL');
+      cleanup();
+      reject(err);
+    }
+
+    function finishResolve(content) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanupSignal();
+      cleanup();
+      resolve(content);
+    }
   });
+}
+
+function abortError(message) {
+  const err = new Error(message);
+  err.name = 'AbortError';
+  return err;
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw abortError('gemini-cli backend: aborted');
 }
 
 // Gemini CLI prepends benign warnings to stdout (e.g. "Ripgrep is not

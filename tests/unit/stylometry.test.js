@@ -106,3 +106,40 @@ test('§10 Korean worked example: exact CV/MATTR/token counts', () => {
   assert.equal(p.mattr.band, 'mid');
   assert.equal(p.hot, true);
 });
+
+test('analyzeText accepts Chinese text and returns paragraph hot fields', () => {
+  let result;
+  assert.doesNotThrow(() => {
+    result = analyzeText('这个工具支持写作。 这个工具支持编辑。', { lang: 'zh' });
+  });
+
+  assert.equal(result.lang, 'zh');
+  assert.equal(typeof result.hot, 'boolean');
+  assert.ok(Array.isArray(result.paragraphs));
+  assert.equal(result.paragraphs.length, 1);
+  assert.equal(typeof result.paragraphs[0].hot, 'boolean');
+});
+
+test('analyzeText accepts Japanese text and returns paragraph hot fields', () => {
+  let result;
+  assert.doesNotThrow(() => {
+    result = analyzeText('このツールは文章を支援する。 このツールは編集を支援する。', { lang: 'ja' });
+  });
+
+  assert.equal(result.lang, 'ja');
+  assert.equal(typeof result.hot, 'boolean');
+  assert.ok(Array.isArray(result.paragraphs));
+  assert.equal(result.paragraphs.length, 1);
+  assert.equal(typeof result.paragraphs[0].hot, 'boolean');
+});
+
+test('Chinese uniform sentence block has low burstiness', () => {
+  const text =
+    '工具 提升 写作。 模型 提升 编辑。 系统 提升 审阅。 流程 提升 协作。 页面 提升 发布。';
+  const result = analyzeText(text, { lang: 'zh' });
+  const p = result.paragraphs[0];
+
+  assert.equal(p.sentenceCount, 5);
+  assert.deepEqual(p.burstiness, { cv: 0, band: 'low' });
+  assert.equal(p.hot, true);
+});

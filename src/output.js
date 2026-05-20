@@ -1,5 +1,20 @@
-export function formatOutput(result, mode, _parsed, opts = {}) {
+export function formatOutput(result, mode, parsed = {}, opts = {}) {
   const tone = opts.tone || null;
+  const format = parsed.format || 'markdown';
+  const body = renderFormattedBody(result, mode);
+
+  if (format === 'json') {
+    return formatJsonOutput({ result, mode, body, tone, gate: parsed.gate });
+  }
+
+  if (format === 'text') {
+    return formatTextOutput(body, tone);
+  }
+
+  return appendToneFooter(body, tone);
+}
+
+function renderFormattedBody(result, mode) {
   let body = renderBody(result);
   // Only rewrite and ouroboros emit [BODY]/[VARIANT n] tags; diff/audit/score
   // emit tables and don't need the extraction step.
@@ -7,7 +22,7 @@ export function formatOutput(result, mode, _parsed, opts = {}) {
     const variants = extractVariants(body);
     body = variants.length > 0 ? formatVariants(variants, body) : stripSelfAudit(body);
   }
-  return appendToneFooter(body, tone);
+  return body;
 }
 
 // v3.11 Phase 3.1: extract [VARIANT n]...[/VARIANT] blocks from a model
@@ -188,6 +203,149 @@ function renderBody(result) {
   return String(result).trim();
 }
 
+function formatTextOutput(body, tone) {
+  const lines = [body.trim()];
+  if (tone?.tone_source) {
+    lines.push(
+      '',
+      `Tone: ${tone.tone === null || tone.tone === undefined ? 'profile-only' : tone.tone} (${tone.tone_source})`
+    );
+  }
+  return lines.join('\n').trimEnd();
+}
+
+function formatJsonOutput({ result, mode, body, tone, gate }) {
+  const overall = extractOverall(result, body);
+  const payload = {
+    mode,
+    format: 'json',
+    overall,
+    categories: extractCategories(result, body),
+    tone: tone ? {
+      tone: tone.tone ?? null,
+      tone_source: tone.tone_source ?? null,
+      tone_evidence: Array.isArray(tone.tone_evidence) ? tone.tone_evidence : [],
+      tone_confidence: tone.tone_confidence ?? null,
+    } : null,
+    mps: extractMps(result, body),
+    gateResult: buildGateResult(overall, gate),
+    output: body,
+  };
+
+  if (result?.type === 'max-mode') {
+    payload.max = {
+      allFailed: Boolean(result.allFailed),
+      mpsFallback: Boolean(result.mpsFallback),
+      best: result.best ? {
+        model: result.best.model,
+        aiScore: result.best.aiScore ?? null,
+        mps: result.best.mps ?? null,
+      } : null,
+      candidates: result.candidates.map((candidate) => ({
+        model: candidate.model,
+        ok: Boolean(candidate.ok),
+        aiScore: candidate.aiScore ?? null,
+        mps: candidate.mps ?? null,
+        error: candidate.error ?? null,
+      })),
+    };
+  }
+
+  return JSON.stringify(payload, null, 2);
+}
+
+function buildGateResult(overall, gate) {
+  if (gate === undefined) return null;
+  if (overall === null) {
+    return { threshold: gate, overall: null, passed: null, exitCode: null };
+  }
+  const passed = overall <= gate;
+  return { threshold: gate, overall, passed, exitCode: passed ? 0 : 3 };
+}
+
+function extractOverall(result, body) {
+  const direct = toFiniteNumber(result?.overall);
+  if (direct !== null) return direct;
+  const parsed = parseFirstJson(body) || (typeof result === 'string' ? parseFirstJson(result) : null);
+  const parsedOverall = toFiniteNumber(parsed?.overall);
+  if (parsedOverall !== null) return parsedOverall;
+  const overallFromTable = String(body || '').match(/(?:^|\n)\|\s*(?:\*\*)?Overall(?:\*\*)?\s*\|[^|]*\|[^|]*\|[^|]*\|\s*(?:\*\*)?([0-9]+(?:\.[0-9]+)?)/i);
+  if (overallFromTable) return Number(overallFromTable[1]);
+  const overallFromText = String(body || '').match(/(?:^|[\s{,"])overall(?:["\s]*[:|]|\s+score\s*[:|]?)\s*(\d+(?:\.\d+)?)/i);
+  return overallFromText ? Number(overallFromText[1]) : null;
+}
+
+function extractMps(result, body) {
+  const direct = toFiniteNumber(result?.mps ?? result?.best?.mps);
+  if (direct !== null) return direct;
+  const parsed = parseFirstJson(body);
+  return toFiniteNumber(parsed?.mps);
+}
+
+function extractCategories(result, body) {
+  const direct = normalizeCategories(result?.categories);
+  if (direct.length > 0) return direct;
+
+  const parsed = parseFirstJson(body) || (typeof result === 'string' ? parseFirstJson(result) : null);
+  const parsedCategories = normalizeCategories(parsed?.categories);
+  if (parsedCategories.length > 0) return parsedCategories;
+
+  return parseMarkdownCategories(body);
+}
+
+function normalizeCategories(categories) {
+  if (Array.isArray(categories)) {
+    return categories.map((category) => ({ ...category }));
+  }
+  if (!categories || typeof categories !== 'object') {
+    return [];
+  }
+  return Object.entries(categories).map(([name, value]) => ({
+    name,
+    ...(value && typeof value === 'object' ? value : { value }),
+  }));
+}
+
+function parseMarkdownCategories(body) {
+  const rows = [];
+  for (const line of String(body || '').split(/\r?\n/)) {
+    if (!line.trim().startsWith('|')) continue;
+    const cells = line.split('|').slice(1, -1).map((cell) => cell.trim().replace(/^\*\*|\*\*$/g, ''));
+    if (cells.length < 5) continue;
+    const [name, weight, detected, rawScore, weighted] = cells;
+    if (!name || /^-+$/.test(name) || /^category$/i.test(name) || /^overall$/i.test(name)) continue;
+    rows.push({
+      name: normalizeCategoryName(name) || name,
+      weight: toFiniteNumber(weight),
+      detected: toFiniteNumber(detected),
+      rawScore: toFiniteNumber(rawScore),
+      weighted: toFiniteNumber(weighted),
+    });
+  }
+  return rows;
+}
+
+function toFiniteNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(String(value).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseFirstJson(text) {
+  if (!text || typeof text !== 'string') return null;
+  const candidates = [
+    text.trim(),
+    text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1],
+    text.match(/\{[\s\S]*\}/)?.[0],
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {}
+  }
+  return null;
+}
+
 // Append the v3.10 YAML footer to every output mode (rewrite/diff/audit/score).
 // SKILL.md Phase 6 spec: footer is the *only* sanctioned tone-info surface.
 // If the LLM already emitted a footer (it should, per SKILL.md), do not duplicate.
@@ -243,6 +401,12 @@ function formatMaxModeOutput(result) {
   }
 
   output += `\n**Best: ${best?.model || 'none'}**\n\n`;
+
+  if (result.allFailed) {
+    output += '> No MAX candidate produced a scoreable result. Exit code: 4.\n\n';
+  } else if (result.mpsFallback) {
+    output += '> No candidate reached MPS ≥ 70; selected the highest-MPS fallback. Exit code: 4.\n\n';
+  }
 
   if (best?.result) {
     output += '### Final Text\n\n';

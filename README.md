@@ -91,6 +91,8 @@ Auto-detect and apply the best-fit tone:
 Requires Node.js ≥ 18. After the npm release is cut, use the package directly:
 
 ```bash
+npx patina-cli init --defaults
+npx patina-cli doctor
 npx patina-cli --lang en input.txt
 ```
 
@@ -149,15 +151,16 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | *(default)* | Rewrite |
 | `--audit` | Detect AI patterns only |
 | `--score` | 0–100 AI-likeness score with category breakdown |
-| `--score --gate <n>` | Keep CI strict: exit code `3` when `overall > n` |
+| `--score --exit-on <n>` | Keep CI strict: exit code `3` when `overall > n` (`--gate` is kept as an alias) |
 | `--diff` | Show changes pattern by pattern |
 | `--ouroboros` | Iterate the rewrite until score converges (with MPS rollback) |
 | `--lang <ko\|en\|zh\|ja>` | Select language (default: `ko`) |
 | `--profile <name>` | Tone preset: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation` |
 | `--tone <name>` | Tone category: `casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | Treat positional args as a list of files (e.g. `--batch docs/*.md`) |
+| `--format json\|text\|markdown` | Select machine-readable JSON, plain text, or default Markdown output |
 
-`patina --help` for the full flag list.
+`patina --help` for the full flag list. `patina doctor --json` checks Node/backend/tmux/API-key readiness without making an LLM call, and `patina init` writes a project `.patina.yaml`.
 
 ### Score-only patterns
 
@@ -178,6 +181,10 @@ For inputs ≤200 chars or ≤3 paragraphs, register-sensitive categories (`lang
 ### Self-audit isolation (v3.11)
 
 In rewrite mode, the model emits its self-audit notes inside `[SELF_AUDIT]`/`[/SELF_AUDIT]` tags wrapped around a `[BODY]`/`[/BODY]` block (or `[VARIANT n]` blocks when `--variants > 1`). patina strips the audit before showing the user, so raw output is clean — earlier versions sometimes leaked phrases like "남아 있는 AI 티" or "Phase 3" preambles into the user-facing text.
+
+### Machine-readable output and exit codes
+
+`--format json` wraps every mode in a stable envelope with `overall`, `categories[]`, `tone`, `mps`, `gateResult`, and the cleaned `output` body. `--format markdown` is the default; `--format text` keeps the user-facing body without the YAML tone footer. Exit codes are standardized in [EXIT-CODES.md](docs/EXIT-CODES.md): `0` success, `1` runtime/backend, `2` input/usage, `3` score gate exceeded, `4` MAX MPS fallback/all-candidates-failed.
 
 ### Score weight drift detection (v3.11)
 
@@ -251,7 +258,8 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit, Husky, and Lefthook score-only recipes
 - **[Docker](docs/integrations/docker.md)** — GHCR image usage and release tags
 - **[Release workflow](docs/integrations/release.md)** — npm provenance + GHCR publishing checklist
-- **[CLI Contract](docs/CLI.md)** — score gate, exit codes, and automation-safe surfaces
+- **[CLI Contract](docs/CLI.md)** — score gate, JSON/text/Markdown output, and automation-safe surfaces
+- **[Exit Codes](docs/EXIT-CODES.md)** — process code contract for CI and editor integrations
 - **[Ethics](docs/ETHICS.md)** — intended use, non-use, and disclosure stance
 - **[FAQ](docs/FAQ.md)** — detector-bypass concerns, MPS, false positives, contribution starting points
 - **[Comparison](docs/COMPARISON.md)** — factual comparison with common paraphraser/humanizer tools

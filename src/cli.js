@@ -8,6 +8,9 @@ import { formatOutput, validateScoreWeights } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
 import { buildManifest, appendResult, writeManifest } from './manifest.js';
+import { runDoctor } from './commands/doctor.js';
+import { runInit } from './commands/init.js';
+import { inputError, runtimeError, renderCliError, getExitCode } from './errors.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, basename, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +22,16 @@ const PACKAGE_VERSION = JSON.parse(
 export async function main(args) {
   if (args[0] === 'auth') {
     return handleAuth(args.slice(1));
+  }
+  if (args[0] === 'doctor') {
+    return runDoctor(args.slice(1), { version: PACKAGE_VERSION });
+  }
+  if (args[0] === 'init') {
+    return runInit(args.slice(1));
+  }
+  if (args[0] === 'help') {
+    printHelp();
+    return;
   }
 
   const parsed = parseArgs(args);
@@ -38,7 +51,11 @@ export async function main(args) {
   }
 
   if (parsed.gate !== undefined && !parsed.score) {
-    throw new Error('--gate can only be used with --score.');
+    throw inputError(
+      '--gate can only be used with --score',
+      'Score gates need a parsed overall score.',
+      'Run `patina --score --exit-on 30 <file>`.'
+    );
   }
 
   if (parsed.listBackends) {
@@ -51,26 +68,27 @@ export async function main(args) {
     return;
   }
 
-  const provider = selectProvider(parsed.provider);
   const apiKey = resolveApiKey(parsed);
+  const configPath = parsed.config ? resolve(process.cwd(), parsed.config) : undefined;
+  const config = loadConfig(configPath);
+
+  if (parsed.lang) config.language = parsed.lang;
+  if (parsed.profile) config.profile = parsed.profile;
+
+  const provider = selectProvider(parsed.provider ?? config.provider);
   const resolved = resolveProviderConfig({
     provider,
     apiKey,
-    baseURL: parsed.baseURL,
-    model: parsed.model,
+    baseURL: parsed.baseURL ?? config.baseURL ?? config['base-url'],
+    model: parsed.model ?? config.model,
   });
   applyInsecureBaseURLOptIn(parsed);
   applyPrivateBaseURLOptIn(parsed);
   validateBaseURL(resolved.baseURL);
 
-  const configPath = parsed.config ? resolve(process.cwd(), parsed.config) : undefined;
-  const config = loadConfig(configPath);
   const startedAt = new Date().toISOString();
   const manifestResults = [];
   const manifestOutputs = [];
-
-  if (parsed.lang) config.language = parsed.lang;
-  if (parsed.profile) config.profile = parsed.profile;
 
   const repoRoot = getRepoRoot();
   const lang = config.language || 'ko';
@@ -122,7 +140,7 @@ export async function main(args) {
       tone: toneResolution,
       promptMode: resolvePromptMode(
         parsed.promptMode || config['prompt-mode'] || 'strict',
-        { backend: parsed.backend, model: resolved.model }
+        { backend: parsed.backend ?? config.backend, model: resolved.model }
       ),
       variants: parsed.variants || 1,
     });
@@ -154,7 +172,7 @@ export async function main(args) {
       });
     } else {
       const { backend, autoSelected, reason } = selectBackend({
-        name: parsed.backend,
+        name: parsed.backend ?? config.backend,
         model: resolved.model,
       });
 
@@ -175,7 +193,11 @@ export async function main(args) {
         } else if (codex && !codex.available) {
           msg.push('Or install `codex` from https://github.com/openai/codex and pass `--backend codex-cli`.');
         }
-        throw new Error(msg.join('\n'));
+        throw runtimeError(
+          'no API key found',
+          msg[0],
+          msg.slice(1).join(' ') || 'Set PATINA_API_KEY or pass --backend codex-cli after logging in.'
+        );
       }
 
       result = await backend.invoke({
@@ -208,6 +230,10 @@ export async function main(args) {
       }
     }
 
+    if (result?.type === 'max-mode' && (result.allFailed || result.mpsFallback)) {
+      process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
+    }
+
     if (parsed.saveRun) {
       const idx = manifestResults.length + 1;
       const outputName = `output-${idx}.txt`;
@@ -233,7 +259,7 @@ export async function main(args) {
       lang,
       profile: profileName,
       provider: provider?.name,
-      backend: parsed.backend ?? 'openai-http',
+      backend: parsed.backend ?? config.backend ?? 'openai-http',
       model: resolved.model,
       configPath: configPath ?? null,
       config,
@@ -253,6 +279,7 @@ export async function main(args) {
 function parseArgs(args) {
   const parsed = {
     files: [],
+    format: 'markdown',
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -293,10 +320,37 @@ function parseArgs(args) {
       case '--score':
         parsed.score = true;
         break;
+      case '--format': {
+        const value = args[++i];
+        if (!['json', 'text', 'markdown'].includes(value)) {
+          throw inputError(
+            '--format expects json, text, or markdown',
+            `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
+            'Use `--format json`, `--format text`, or `--format markdown`.'
+          );
+        }
+        parsed.format = value;
+        break;
+      }
+      case '--json':
+        parsed.format = 'json';
+        break;
       case '--gate': {
         const n = Number(args[++i]);
         if (!Number.isFinite(n) || n < 0 || n > 100) {
           throw new Error(`--gate expects a number from 0 to 100, got ${args[i]}`);
+        }
+        parsed.gate = n;
+        break;
+      }
+      case '--exit-on': {
+        const n = Number(args[++i]);
+        if (!Number.isFinite(n) || n < 0 || n > 100) {
+          throw inputError(
+            '--exit-on expects a number from 0 to 100',
+            `Received ${args[i] === undefined ? 'no value' : `"${args[i]}"`}.`,
+            'Use `patina --score --exit-on 30 <file>` for CI gates.'
+          );
         }
         parsed.gate = n;
         break;
@@ -379,9 +433,18 @@ function parseArgs(args) {
         parsed.variants = n;
         break;
       }
+      case '--no-interactive':
+        parsed.noInteractive = true;
+        break;
       default:
         if (!arg.startsWith('-')) {
           parsed.files.push(arg);
+        } else {
+          throw inputError(
+            `unknown option ${arg}`,
+            'patina does not recognize this CLI flag.',
+            'Run `patina --help` to see supported options.'
+          );
         }
         break;
     }
@@ -439,17 +502,23 @@ function resolveApiKey(parsed) {
 
 async function loadInputs(parsed) {
   if (parsed.files.length === 0) {
-    // No file args. If stdin is a TTY (interactive terminal), there is no input
-    // to read — print help instead of hanging or sending empty text to the LLM.
     if (process.stdin.isTTY) {
-      printHelp();
-      console.error('\nNo input provided. Pass a file path, pipe text via stdin, or run `patina --help`.');
-      process.exit(2);
+      if (parsed.noInteractive) {
+        throw inputError(
+          'no input provided',
+          'No file path or piped stdin was available.',
+          'Pass a file path, pipe text via stdin, or omit --no-interactive to paste text and press Ctrl-D.'
+        );
+      }
+      console.error('[patina] Paste text, then press Ctrl-D to run (Ctrl-C to cancel).');
     }
-    const stdin = await readStdin();
+    const stdin = await readStdin({ interactive: Boolean(process.stdin.isTTY) });
     if (!stdin.trim()) {
-      console.error('Error: empty input on stdin. Pipe text via stdin or pass a file path.');
-      process.exit(2);
+      throw inputError(
+        'empty input on stdin',
+        'patina received stdin, but it contained no non-whitespace text.',
+        'Try `echo "This is a draft." | patina --lang en` or pass a file path.'
+      );
     }
     return [{ path: '-', text: stdin }];
   }
@@ -462,17 +531,38 @@ async function loadInputs(parsed) {
   return inputs;
 }
 
-function readStdin() {
+function readStdin({ interactive = false } = {}) {
   return new Promise((resolve, reject) => {
     let data = '';
+    let cleanupSigint = () => {};
+    if (interactive) {
+      const onSigint = () => {
+        cleanupSigint();
+        const err = inputError(
+          'interrupted',
+          'Ctrl-C canceled interactive stdin before patina could process text.',
+          'Run the command again, or pass --no-interactive in scripts.'
+        );
+        err.exitCode = 130;
+        reject(err);
+        process.exitCode = 130;
+      };
+      process.once('SIGINT', onSigint);
+      cleanupSigint = () => process.removeListener('SIGINT', onSigint);
+    }
     process.stdin.setEncoding('utf8');
     process.stdin.on('data', (chunk) => {
       data += chunk;
     });
     process.stdin.on('end', () => {
+      cleanupSigint();
       resolve(data);
     });
-    process.stdin.on('error', reject);
+    process.stdin.on('error', (err) => {
+      cleanupSigint();
+      reject(err);
+    });
+    if (interactive) process.stdin.resume();
   });
 }
 
@@ -525,86 +615,75 @@ function printHelp() {
   const backendChoices = listBackendNames().join(', ');
   console.log(`patina — AI text humanizer CLI
 
-Usage: patina [options] [file...]
+Usage: patina [command] [options] [file...]
 
-Core options:
-  -h, --help           Show this help message
-  -v, --version        Show version
-  --lang <code>        Language: ko, en, zh, ja (default: ko)
-  --profile <name>     Profile: default, blog, academic, technical, formal,
-                       social, email, legal, medical, marketing,
-                       narrative, instructional
-  --tone <name>        Tone category: casual, professional, academic,
-                       narrative, marketing, instructional, auto.
-                       Resolution: --tone > config tone > config profile.
-                       zh/ja with explicit tone → warns + profile-only fallback.
+COMMANDS
+  patina init             Create a project .patina.yaml
+  patina doctor [--json]  Check Node, backends, tmux, and auth setup
+  patina auth status      Show backend availability and authentication status
+  patina auth login       Print per-backend authentication instructions
 
-Modes:
-  --diff               Show changes pattern by pattern
-  --audit              Detect patterns only (no rewrite)
-  --score              Output AI-likeness score (0-100)
-  --gate <n>           With --score, set exit code 3 when overall score > n
-  --ouroboros          Iterative self-improvement loop
+MODES
+  --diff                  Show changes pattern by pattern
+  --audit                 Detect patterns only (no rewrite)
+  --score                 Output AI-likeness score (0-100)
+  --gate <n>              With --score, exit 3 when overall score > n
+  --exit-on <n>           Alias for --gate, intended for CI scripts
+  --ouroboros             Iterative self-improvement loop
 
-Batch / output:
-  --batch              Process multiple files
-  --in-place           Overwrite original files (with --batch)
-  --suffix <ext>       Save as {name}{ext}{extname}
-  --outdir <dir>       Save results to directory
-  --save-run <dir>     Write manifest.json + output-N.txt under <dir> after the
-                       run (records version, prompt/config hashes, patterns,
-                       provider/model — useful for reproducibility / audit)
+OUTPUT & BATCH
+  --format <fmt>          Output format: markdown (default), text, json
+  --json                  Alias for --format json
+  --batch                 Process multiple files
+  --in-place              Overwrite original files (with --batch)
+  --suffix <ext>          Save as {name}{ext}{extname}
+  --outdir <dir>          Save results to directory
+  --save-run <dir>        Write manifest.json + output-N.txt for reproducibility
+  --no-interactive        Do not wait for TTY stdin; exit 2 when no input is given
 
-MAX / variants:
-  --models <list>      MAX mode: comma-separated model list
-  --max-concurrency <n>  Cap parallel MAX-mode requests (default: unlimited)
-  --variants <n>       Generate N stylistic variants of the rewrite (1-5,
-                       default 1). Each variant preserves facts/numbers but
-                       differs in voice (V1 casual, V2 direct, V3 measured…).
-                       Output prints each as ## Variant N. Only --rewrite mode.
+LANGUAGE & PROFILE
+  --lang <code>           Language: ko, en, zh, ja (default: ko)
+  --profile <name>        Profile: default, blog, academic, technical, formal,
+                          social, email, legal, medical, marketing,
+                          narrative, instructional
+  --tone <name>           Tone: casual, professional, academic, narrative,
+                          marketing, instructional, auto. Resolution:
+                          --tone > config tone > config profile.
 
-Model / auth / backend:
-  --model <id>         Single model ID (default: gpt-4o)
-  --api-key <key>      API key (DEPRECATED: leaks via ps/shell history; prefer
-                       PATINA_API_KEY env or --api-key-file)
-  --api-key-file <path>  Read API key from file (recommended for shared hosts)
-  --base-url <url>     API base URL (or PATINA_API_BASE env)
-  --backend <name>     Backend: ${backendChoices} (default: openai-http)
-  --list-backends      List available backends and their availability
-  --provider <name>    Provider preset: openai, gemini, groq, together
-                       (sets base-url + default model + reads <PROVIDER>_API_KEY)
-  --list-providers     List provider presets and which keys are set
+MODEL & AUTH
+  --model <id>            Single model ID (default: gpt-4o)
+  --api-key <key>         API key (DEPRECATED: leaks via ps/shell history; prefer
+                          PATINA_API_KEY env or --api-key-file)
+  --api-key-file <path>   Read API key from file (recommended)
+  --base-url <url>        API base URL (or PATINA_API_BASE env)
+  --backend <name>        Backend: ${backendChoices} (default: openai-http)
+  --list-backends         List available backends and their availability
+  --provider <name>       Provider preset: openai, gemini, groq, together
+  --list-providers        List provider presets and which keys are set
+  --models <list>         MAX mode: comma-separated model list
+  --max-concurrency <n>   Cap parallel MAX-mode requests (default: unlimited)
+
+ADVANCED
+  --variants <n>          Generate N rewrite variants (1-5; rewrite mode only)
+  --config <path>         Load config from <path> instead of .patina.default.yaml
+  --prompt-mode <m>       strict | minimal | auto. auto picks per backend.
   --allow-insecure-base-url  Permit plaintext http:// to non-localhost endpoints
-                       (also enabled by PATINA_ALLOW_INSECURE_BASE_URL=1)
-  --allow-private-base-url   Permit base URL pointing at private/IMDS IPs
-                       (also enabled by PATINA_ALLOW_PRIVATE_BASE_URL=1).
-                       Default: refuse to send the API key to RFC 1918 / link-local
-                       hosts to block SSRF to cloud metadata endpoints.
+  --allow-private-base-url   Permit private/IMDS base URLs
+  -h, --help              Show this help message
+  -v, --version           Show version
 
-Prompt / config:
-  --config <path>      Load config from <path> instead of .patina.default.yaml
-  --prompt-mode <m>    Rewrite prompt mode: strict | minimal | auto.
-                       strict (default): full pattern packs (~34KB).
-                       minimal: compressed watch-words + casual instruction (~3KB).
-                       auto: pick by backend — gemini → minimal, others → strict.
-                       case-05 finding: minimal helps Gemini, hurts Claude,
-                       neutral for Codex. Only affects --rewrite mode.
+EXAMPLES
+  echo "This is a draft." | patina --lang en --backend codex-cli
+  patina --score --exit-on 30 --format json draft.md
+  patina init --defaults
+  patina doctor --json
 
-Environment Variables:
-  PATINA_API_KEY       API authentication key (any provider)
-  PATINA_API_KEY_FILE  Path to file containing the API key (alt to PATINA_API_KEY)
-  PATINA_API_BASE      API base URL (default: https://api.openai.com/v1)
-  PATINA_MODEL         Default model ID
-  PATINA_ALLOW_INSECURE_BASE_URL  Set to 1 to permit plain HTTP to non-loopback
-  PATINA_ALLOW_PRIVATE_BASE_URL   Set to 1 to permit private/IMDS base URLs
-  GEMINI_API_KEY       Used when --provider gemini
-  GROQ_API_KEY         Used when --provider groq
-  TOGETHER_API_KEY     Used when --provider together
-  OPENAI_API_KEY       Used when --provider openai (alternative to PATINA_API_KEY)
+ENVIRONMENT
+  PATINA_API_KEY, PATINA_API_KEY_FILE, PATINA_API_BASE, PATINA_MODEL
+  OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, TOGETHER_API_KEY
 
-Subcommands:
-  patina auth status   Show backend availability and authentication status
-  patina auth login    Print per-backend instructions for authenticating
+EXIT CODES
+  0 success · 1 runtime/backend · 2 input/usage · 3 score gate exceeded · 4 MAX MPS fallback/all candidates failed
 
 If no API key is set, pass --backend codex-cli to use a logged-in codex CLI
 (no key required). Auto-fallback was removed in v3.9 to keep agent-mode
@@ -726,8 +805,11 @@ function handleAuth(subArgs) {
     }
     return;
   }
-  console.error(`Unknown auth subcommand: ${sub}. Try \`patina auth status\` or \`patina auth login\`.`);
-  process.exit(1);
+  throw inputError(
+    `unknown auth subcommand ${sub}`,
+    'Supported auth subcommands are status and login.',
+    'Try `patina auth status` or `patina auth login`.'
+  );
 }
 
 // Self-invocation guard (#113): when run directly via `node src/cli.js ...`,
@@ -735,7 +817,7 @@ function handleAuth(subArgs) {
 // the exports.
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   main(process.argv.slice(2)).catch((err) => {
-    console.error(err);
-    process.exit(1);
+    console.error(renderCliError(err));
+    process.exit(getExitCode(err));
   });
 }

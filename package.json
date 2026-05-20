@@ -72,6 +72,7 @@
     "SKILL.md",
     "SKILL-MAX.md",
     "patina-max/SKILL.md",
+    "patina-max/composite.py",
     ".patina.default.yaml",
     "LICENSE",
     "CHANGELOG.md",

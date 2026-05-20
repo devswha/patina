@@ -419,6 +419,45 @@ Best: claude (AI Score: 23, MPS: 92)
 - 모든 후보의 MPS < 70인 경우, MPS가 가장 높은 후보를 선택한다 (의미 보존 우선)
 - 동점이면 설정 파일의 모델 순서에서 먼저 오는 것을 우선한다
 
+### Composite 재선택 artifact (선택)
+
+`patina-max/composite.py`로 4축(AI, MPS, RSS, EditCons) 재선택을 실행하려면 `$RUN_DIR`에 아래 레이아웃을 생성한다. 기존 `*-output.txt`는 진단용으로 유지하고, 성공한 후보의 최종 텍스트를 모델별 Markdown 파일로도 저장한다.
+
+```text
+$RUN_DIR/
+  input.md
+  claude.md
+  gemini.md
+  codex.md
+  meta.md
+```
+
+- `input.md`: 사용자가 제공한 원문 텍스트
+- `{model}.md`: 해당 모델의 humanize 결과. 실패한 모델은 파일을 생략하거나 실패 메모만 둔다
+- `meta.md`: 후보별 `model`, `status`, `ai_score`, `mps` 값을 `candidates:` 목록으로 기록한다
+
+`meta.md` 예시:
+
+```yaml
+candidates:
+  - model: claude
+    status: success
+    ai_score: 23
+    mps: 92
+  - model: gemini
+    status: failed
+    ai_score: n/a
+    mps: n/a
+```
+
+실행:
+
+```bash
+python3 patina-max/composite.py "$RUN_DIR"
+```
+
+스크립트는 `$RUN_DIR/composite.md`와 `$RUN_DIR/winner.md`를 생성한다. `--weights ai=0.4,rss=0.3`처럼 가중치를 덮어쓸 수 있으며, 지정하지 않은 축은 기본값을 사용한 뒤 합계가 1이 되도록 정규화한다.
+
 ---
 
 ## 8단계: 출력

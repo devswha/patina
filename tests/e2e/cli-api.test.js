@@ -233,6 +233,7 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(help.includes('EXAMPLES'), 'help should include examples');
     assert.ok(help.includes('--gate <n>'), 'help should document score gate');
     assert.ok(help.includes('--format <fmt>'), 'help should document output format');
+    assert.ok(help.includes('--max-timeout <sec>'), 'help should document MAX wall-clock timeout');
     assert.ok(
       help.includes('openai-http, codex-cli, claude-cli, gemini-cli'),
       'help should list every backend name'

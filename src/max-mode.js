@@ -1,50 +1,93 @@
 import { callLLMMultiple } from './api.js';
 import { scoreText, scoreMPS } from './scoring.js';
 
-export async function runMaxMode({ prompt, sourceText, models, apiKey, baseURL, config, patterns, maxConcurrency }) {
+const DEFAULT_WALL_CLOCK_BUDGET_MS = 300_000;
+
+export async function runMaxMode({
+  prompt,
+  sourceText,
+  models,
+  apiKey,
+  baseURL,
+  config,
+  patterns,
+  maxConcurrency,
+  wallClockBudgetMs = DEFAULT_WALL_CLOCK_BUDGET_MS,
+  callLLMMultipleImpl = callLLMMultiple,
+  scoreTextImpl = scoreText,
+  scoreMPSImpl = scoreMPS,
+}) {
   console.error(`[patina-max] Dispatching to ${models.length} models: ${models.join(', ')}`);
 
-  const results = await callLLMMultiple({
-    prompt,
-    models,
-    apiKey,
-    baseURL,
-    maxConcurrency,
-    onStart: (model) => console.error(`[patina-max] Starting ${model}...`),
-    onComplete: (model, ok) => console.error(`[patina-max] ${model} ${ok ? 'completed' : 'failed'}`),
-  });
+  const controller = new AbortController();
+  const deadline = Date.now() + wallClockBudgetMs;
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+    console.error(`[patina-max] MAX wall-clock timeout reached; returning partial results`);
+  }, wallClockBudgetMs);
 
   const candidates = [];
-  for (const r of results) {
-    if (!r.ok) {
-      candidates.push({ model: r.model, ok: false, error: r.error });
-      continue;
+  try {
+    const results = await callLLMMultipleImpl({
+      prompt,
+      models,
+      apiKey,
+      baseURL,
+      maxConcurrency,
+      deadline,
+      signal: controller.signal,
+      onStart: (model) => console.error(`[patina-max] Starting ${model}...`),
+      onComplete: (model, ok) => console.error(`[patina-max] ${model} ${ok ? 'completed' : 'failed'}`),
+    });
+
+    for (const r of results) {
+      if (!r.ok) {
+        candidates.push({ model: r.model, ok: false, error: r.error });
+        continue;
+      }
+
+      let aiScoreResult = null;
+      let mpsResult = null;
+
+      if (!timedOut) {
+        aiScoreResult = await scoreTextImpl({
+          text: r.result,
+          config,
+          patterns,
+          apiKey,
+          baseURL,
+          model: r.model,
+          deadline,
+          signal: controller.signal,
+        });
+      }
+
+      if (!timedOut) {
+        mpsResult = await scoreMPSImpl({
+          original: sourceText,
+          rewritten: r.result,
+          apiKey,
+          baseURL,
+          model: r.model,
+          deadline,
+          signal: controller.signal,
+        });
+      }
+
+      candidates.push({
+        model: r.model,
+        ok: true,
+        result: r.result,
+        aiScore: aiScoreResult?.overall ?? null,
+        mps: mpsResult?.mps ?? null,
+      });
+
+      if (timedOut) break;
     }
-
-    const aiScoreResult = await scoreText({
-      text: r.result,
-      config,
-      patterns,
-      apiKey,
-      baseURL,
-      model: r.model,
-    });
-
-    const mpsResult = await scoreMPS({
-      original: sourceText,
-      rewritten: r.result,
-      apiKey,
-      baseURL,
-      model: r.model,
-    });
-
-    candidates.push({
-      model: r.model,
-      ok: true,
-      result: r.result,
-      aiScore: aiScoreResult?.overall ?? null,
-      mps: mpsResult?.mps ?? null,
-    });
+  } finally {
+    clearTimeout(timeout);
   }
 
   const best = selectBest(candidates);
@@ -58,6 +101,7 @@ export async function runMaxMode({ prompt, sourceText, models, apiKey, baseURL, 
     best,
     allFailed,
     mpsFallback,
+    timedOut,
   };
 }
 

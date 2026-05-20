@@ -23,6 +23,18 @@ pattern-overrides:
     28: suppress               # Over-qualifying — clarity requires commitment
     15: allow                  # Inline-header lists — useful for step delineation
     14: reduce                 # Boldface — allow for key terms/commands, correct overuse
+  zh:
+    25: allow                  # 结构/编号 — 教程需要清晰步骤，编号结构必须保留
+    22: reduce                 # 填充表达 — 指令文里减少铺垫和寒暄
+    23: amplify                # 过度弱化 — 步骤说明需要明确，不要层层对冲
+    15: allow                  # 内联标题 — 可用于步骤/参数分区
+    14: reduce                 # 加粗 — 命令、文件名、关键提醒可加粗，滥用才纠正
+  ja:
+    25: allow                  # 構造/番号 — 手順説明では番号構造が必要
+    22: reduce                 # フィラー — 手順では前置きや緩衝表現を減らす
+    23: amplify                # 過剰ヘッジ — 手順は明確さを優先する
+    15: allow                  # インラインヘッダー — 手順やパラメータ整理に有用
+    14: reduce                 # 太字 — コマンド/ファイル名/注意点の強調は許容
 ---
 
 # 인스트럭셔널/하우투 프로필

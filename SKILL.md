@@ -32,6 +32,7 @@ Glob .patina.default.yaml → Read
 - `output`: 출력 모드 (`rewrite` | `diff` | `audit` | `score`)
 - `blocklist`: 추가 감지 어휘
 - `allowlist`: 감지 제외 어휘
+- `prompt-mode`: 프롬프트 로딩 방식 (`strict` | `minimal` | `auto`, 기본: `strict`)
 
 `$ARGUMENTS`에서 옵션을 파싱하여 설정을 오버라이드:
 - `--profile <name>`: 프로필 변경
@@ -41,6 +42,8 @@ Glob .patina.default.yaml → Read
 - `--ouroboros`: ouroboros 모드 (반복 교정 + 점수 수렴)
 - `--lang <code>`: 처리 언어 변경 (ko, en, zh, ja). 설정 파일의 `language` 값을 오버라이드한다.
 - `--tone <name>`: 톤 카테고리 지정. 유효값: `casual | professional | academic | narrative | marketing | instructional | auto`. 알 수 없는 값이면 즉시 오류: "Unknown tone '<name>'. Valid tones: casual, professional, academic, narrative, marketing, instructional, auto"
+- `--prompt-mode <strict|minimal|auto>`: 패턴 팩 전체를 쓰는 strict 모드와 압축 지시문 minimal 모드 중 선택한다. `auto`는 백엔드/문맥별로 선택하되, 불확실하면 strict를 사용한다.
+- `--variants <1-5>`: rewrite 모드에서 같은 의미 앵커를 보존한 N개의 문체 변형을 요청한다. `--audit`, `--score`, `--diff`에는 적용하지 않는다.
 - `--batch <files>`: 여러 파일을 한꺼번에 처리 (glob 또는 명시적 경로 목록).
   - `--in-place`: 원본 파일을 교정된 텍스트로 덮어쓴다.
   - `--suffix <ext>`: 결과를 `{원본명}{ext}` 파일로 저장한다 (예: `--suffix .humanized`).
@@ -578,6 +581,14 @@ tone_confidence: low | medium | high
 5. YAML footer (위 공통 규칙 적용)
 
 > **주의 (A7):** rewrite 최종본 본문에 tone 정보를 언급하거나 삽입하지 않는다. "이 텍스트는 casual 톤으로 재작성되었습니다" 같은 내러티브 인터젝션 금지.
+
+#### 변형 출력 (`--variants`)
+
+`--variants N`이 주어지면 최종본을 하나로 고정하지 말고 `## Variant 1` … `## Variant N` 형식으로 반환한다. 각 변형은 같은 의미 앵커(주장, 수치, 인과관계, 고유명사, 극성)를 보존해야 하며, 문체 축만 달라져야 한다.
+
+- Variant 1: 기본 프로필/톤을 가장 충실히 따른다.
+- Variant 2+: 더 직설적, 더 캐주얼, 더 절제된 식으로 리듬과 레지스터를 바꾼다.
+- 각 variant마다 `[SELF_AUDIT]` 메모는 내부 검수용으로만 사용하고 사용자-facing 본문에는 남기지 않는다.
 
 ### diff 모드 (`--diff`)
 

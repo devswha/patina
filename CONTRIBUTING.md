@@ -2,6 +2,12 @@
 
 Thanks for considering a contribution. Patina is a pattern-based tool, so the most impactful contributions are usually new patterns, better examples, or profile refinements.
 
+## Public vs. Internal Docs
+
+User-facing documentation lives in `README*.md`, `docs/`, `examples/`, `patterns/`, `profiles/`, and the skill entrypoints. Maintainer or agent notes live under `docs/internal/` and should not be treated as install, CLI, or API contracts unless they are promoted back into the public docs list.
+
+When moving a root-level Markdown file, either link it from `README.md` if it is public, or place it under `docs/internal/` with a short status note explaining its audience.
+
 ## Adding a New Pattern
 
 1. **Pick the right pack.** Patterns live in `patterns/{lang}-{category}.md`. Categories: content, language, style, structure, communication, filler.

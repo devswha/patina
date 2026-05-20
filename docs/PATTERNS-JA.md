@@ -3,7 +3,7 @@
 This page expands the Japanese pattern packs into a browsable reference. It is generated from `patterns/ja-*.md`, so the numbers, names, watch words, fire conditions, and examples mirror the source pattern files.
 
 - Rewrite-capable patterns: 32
-- Score/audit-only viral-hook patterns: 5
+- Score/audit-only viral-hook patterns: 8
 - Main selector: [PATTERNS.md](PATTERNS.md)
 
 ## Pattern Index
@@ -47,6 +47,9 @@ This page expands the Japanese pattern packs into a browsable reference. It is g
 | VH-3 | score/audit only | 出典回避の権威主張 | [ja-viral-hook.md](../patterns/ja-viral-hook.md) |
 | VH-4 | score/audit only | 息継ぎ最適化の短文羅列 | [ja-viral-hook.md](../patterns/ja-viral-hook.md) |
 | VH-5 | score/audit only | 誇張エンゲージメント語彙 | [ja-viral-hook.md](../patterns/ja-viral-hook.md) |
+| VH-6 | score/audit only | 偽統計引用 | [ja-viral-hook.md](../patterns/ja-viral-hook.md) |
+| VH-7 | score/audit only | 肩書き積み上げ型の権威付け | [ja-viral-hook.md](../patterns/ja-viral-hook.md) |
+| VH-8 | score/audit only | 未来の自分 / 親密な二人称の約束 | [ja-viral-hook.md](../patterns/ja-viral-hook.md) |
 
 ## コンテンツパターン
 
@@ -659,3 +662,45 @@ Detection example:
 
 > このツール、マジでヤバい。神アプデ過ぎる。
 > 知らないと損する圧倒的なツール。
+
+### Viral 6. 偽統計引用
+
+- Source: [ja-viral-hook.md](../patterns/ja-viral-hook.md)
+- Type: score/audit only; rewrite modes skip this pack
+- Watch words: 調査によると N% / 研究では N% / データによれば / 科学的に証明 / N% の人が / 専門家によると（出典なし）/ 統計上
+- Fire condition: 数字や割合が、曖昧な研究・データ・調査・科学・専門家に帰属されている一方で、同じ投稿に機関名、リンク、サンプル、時点、方法が無い場合。
+- Severity rubric: Low = 出典なし統計が補助説明として1回; Medium = 統計が冒頭フックや主要 CTA の根拠; High = 高リスク助言に精密な割合を使う、または複数並ぶ。
+
+変更前 / 変更後例：
+
+> 変更前：研究によると、創業者の 73% はこの習慣を無視して損をしている。
+>
+> 変更後：この 73% には出典が示されていない。より安全に言うなら、毎週の資金確認は損失を早く見つける助けになる。
+
+### Viral 7. 肩書き積み上げ型の権威付け
+
+- Source: [ja-viral-hook.md](../patterns/ja-viral-hook.md)
+- Type: score/audit only; rewrite modes skip this pack
+- Watch words: スタンフォード出身 / Y Combinator 支援 / 元 Google / ハーバード博士 / Forbes 掲載 / 受賞歴 / 連続起業家 / トップ CEO が信頼 / 業界トップ専門家
+- Fire condition: 学校、投資家、前職、受賞、媒体、職位などの権威ラベルが2つ以上連続し、その権威だけで助言・製品・トレンドを売り込んでいる場合。
+- Severity rubric: Low = 2つのラベルだが主張が狭い; Medium = 3つ以上のラベルが主要フック; High = 高リスク助言や購入/登録 CTA で肩書きが証拠を置き換える。
+
+変更前 / 変更後例：
+
+> 変更前：スタンフォード出身、Y Combinator 支援の連続起業家が語る、成長を 10 倍にするワークフロー。
+>
+> 変更後：ある起業家が、毎週の成長指標レビューで使うワークフローを共有している。導入前に自分のデータで試す必要がある。
+
+### Viral 8. 未来の自分 / 親密な二人称の約束
+
+- Source: [ja-viral-hook.md](../patterns/ja-viral-hook.md)
+- Type: score/audit only; rewrite modes skip this pack
+- Watch words: 友よ / 聞いて / 保存して / 未来のあなたが感謝する / 1年後の自分が感謝する / 信じて / 後でわかる
+- Fire condition: 冒頭または末尾で読者を友人、未来の自分、親密な相談相手として直接呼び、同じ投稿内の具体的根拠なしに将来の感謝/後悔を約束する場合。
+- Severity rubric: Low = 保存/未来感謝の語句が1回; Medium = 未来の自分への約束がタイトル、冒頭、CTA を構成; High = 緊急性、希少性、高リスク助言と組み合わさる。
+
+変更前 / 変更後例：
+
+> 変更前：友よ、これは保存して。1年後のあなたが必ず感謝する。
+>
+> 変更後：来月の計画に使うチェックリストが必要なら保存しておくとよい。

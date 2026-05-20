@@ -28,7 +28,7 @@ patina は、韓国語・英語・中国語・日本語の文章から AI っぽ
 
 |  |  |
 |---|---|
-| **146 パターン** | 韓国語 37 + 英語 36 + 中国語 36 + 日本語 37 (各5個のスコア専用 viral-hook を含む) — [PATTERNS.md](docs/PATTERNS.md) |
+| **160 パターン** | 韓国語 40 + 英語 40 + 中国語 40 + 日本語 40 (各8個のスコア専用 viral-hook を含む) — [PATTERNS.md](docs/PATTERNS.md) |
 | **編集ホットスポット再現率** | 韓国語 91% [84.0–95.4%] (n=100) / 英語 76% [66.7–83.3%] (n=100), binomial 95% CI |
 | **誤検出率** | 人間文章レジスター別 13–25% の点推定範囲 *(CI ではない；百科事典体の本質的限界、[文書化済み](core/stylometry.md))* |
 | **モード** | rewrite · audit · score · diff · ouroboros |
@@ -136,7 +136,7 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 
 ### スコア専用パターン
 
-`--score`と`--audit`は`--rewrite`より少し広い範囲のシグナルを測定します。viral-hook パック（`ko/en/zh/ja-viral-hook`、各5パターン: 数字ショックフック、クリックベイト末尾、出典を飛ばした権威主張、息継ぎに最適化された短文の積み重ね、誇張されたエンゲージメント語彙）は**検出専用**です。
+`--score`と`--audit`は`--rewrite`より少し広い範囲のシグナルを測定します。viral-hook パック（`ko/en/zh/ja-viral-hook`、各8パターン: 数字ショックフック、クリックベイト末尾、出典を飛ばした権威主張、息継ぎに最適化された短文の積み重ね、誇張されたエンゲージメント語彙、偽統計引用、肩書き積み上げ、未来の自分への約束）は**検出専用**です。
 
 これらのシグナルはスコアと監査にだけ現れ、4言語のSNSマーケティングコピーに対するユーザーの直感とベンチマークを揃えるために使います。`--rewrite`/`--diff`/`--ouroboros` は、意図的な修辞であることが多いので対象外です。実例: [`examples/viral-hook/`](examples/viral-hook/).
 
@@ -226,7 +226,7 @@ max-models: [claude, gemini]
 
 - **[Glossary](docs/GLOSSARY.md)** — MPS、fidelity、burstiness、MATTR、モードなどの反復用語の短い定義
 - **[Demo](docs/DEMO.md)** — ターミナル transcript と複数ジャンルの before/after スナップショット
-- **[Patterns](docs/PATTERNS.md)** — 146 パターンカタログ
+- **[Patterns](docs/PATTERNS.md)** — 160 パターンカタログ
 - **[Authentication](docs/AUTHENTICATION.md)** — バックエンド、プロバイダ、無料ティア設定
 - **[CLI Contract](docs/CLI.md)** — score gate、終了コード、自動化に安全なインターフェイス
 - **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI、`/patina`、`/patina-max` のオプション対応範囲

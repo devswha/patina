@@ -90,17 +90,15 @@ export async function runMaxMode({
     clearTimeout(timeout);
   }
 
-  const best = selectBest(candidates);
-  const valid = candidates.filter((c) => c.ok && c.aiScore !== null);
+  const { candidate: best, fallback } = selectBest(candidates);
   const allFailed = best === null;
-  const mpsFallback = valid.length > 0 && !valid.some((c) => (c.mps ?? 0) >= 70);
 
   return {
     type: 'max-mode',
     candidates,
     best,
     allFailed,
-    mpsFallback,
+    mpsFallback: fallback,
     timedOut,
   };
 }
@@ -109,7 +107,7 @@ export function selectBest(candidates, { log = console.error } = {}) {
   const valid = candidates.filter((c) => c.ok && c.aiScore !== null);
 
   if (valid.length === 0) {
-    return null;
+    return { candidate: null, fallback: false };
   }
 
   const passingMps = valid.filter((c) => (c.mps ?? 0) >= 70);
@@ -124,7 +122,7 @@ export function selectBest(candidates, { log = console.error } = {}) {
       log(`[patina-max] Tie on AI score — picked ${best.model} by config order`);
     }
 
-    return best;
+    return { candidate: best, fallback: false };
   }
 
   const best = valid.reduce((best, current) => {
@@ -139,5 +137,5 @@ export function selectBest(candidates, { log = console.error } = {}) {
     log(`[patina-max] Tie on MPS — picked ${best.model} by config order`);
   }
 
-  return best;
+  return { candidate: best, fallback: true };
 }

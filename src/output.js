@@ -1,7 +1,7 @@
 export function formatOutput(result, mode, parsed = {}, opts = {}) {
   const tone = opts.tone || null;
   const format = parsed.format || 'markdown';
-  const body = renderFormattedBody(result, mode);
+  const body = renderFormattedBody(result, mode, parsed, opts);
 
   if (format === 'json') {
     return formatJsonOutput({ result, mode, body, tone, gate: parsed.gate });
@@ -14,7 +14,7 @@ export function formatOutput(result, mode, parsed = {}, opts = {}) {
   return appendToneFooter(body, tone);
 }
 
-function renderFormattedBody(result, mode) {
+function renderFormattedBody(result, mode, parsed = {}, opts = {}) {
   let body = renderBody(result);
   // Only rewrite and ouroboros emit [BODY]/[VARIANT n] tags; diff/audit/score
   // emit tables and don't need the extraction step.
@@ -22,7 +22,38 @@ function renderFormattedBody(result, mode) {
     const variants = extractVariants(body);
     body = variants.length > 0 ? formatVariants(variants, body) : stripSelfAudit(body);
   }
+  if (mode === 'diff') {
+    body = colorizeDiff(body, { parsed, env: opts.env, stdout: opts.stdout });
+  }
   return body;
+}
+
+const ANSI = {
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  bold: '\x1b[1m',
+  reset: '\x1b[0m',
+};
+
+function colorizeDiff(body, { parsed = {}, env = process.env, stdout = process.stdout } = {}) {
+  if (!shouldColorDiff({ parsed, env, stdout })) return body;
+
+  return String(body || '').split(/\r?\n/).map((line) => {
+    if (/^(\s*)(Removed:)(.*)$/u.test(line)) {
+      return line.replace(/^(\s*)(Removed:)(.*)$/u, `$1${ANSI.red}$2$3${ANSI.reset}`);
+    }
+    if (/^(\s*)(Added:)(.*)$/u.test(line)) {
+      return line.replace(/^(\s*)(Added:)(.*)$/u, `$1${ANSI.green}$2$3${ANSI.reset}`);
+    }
+    if (/^(\s*)(Pattern:)(.*)$/u.test(line)) {
+      return line.replace(/^(\s*)(Pattern:)(.*)$/u, `$1${ANSI.bold}$2$3${ANSI.reset}`);
+    }
+    return line;
+  }).join('\n');
+}
+
+function shouldColorDiff({ parsed = {}, env = process.env, stdout = process.stdout } = {}) {
+  return !parsed.noColor && env.NO_COLOR === undefined && stdout?.isTTY === true;
 }
 
 // v3.11 Phase 3.1: extract [VARIANT n]...[/VARIANT] blocks from a model

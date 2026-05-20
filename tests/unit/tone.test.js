@@ -105,6 +105,33 @@ test('formatOutput: no tone → no footer', () => {
   assert.equal(out, 'Hello world');
 });
 
+test('formatOutput: colorizes labeled diff output on TTY', () => {
+  const out = formatOutput(
+    'Pattern: 1. Generic polish\nRemoved: old phrasing\nAdded: sharper phrasing',
+    'diff',
+    {},
+    { env: {}, stdout: { isTTY: true } }
+  );
+
+  assert.ok(out.includes('\x1b[1mPattern: 1. Generic polish\x1b[0m'));
+  assert.ok(out.includes('\x1b[31mRemoved: old phrasing\x1b[0m'));
+  assert.ok(out.includes('\x1b[32mAdded: sharper phrasing\x1b[0m'));
+});
+
+test('formatOutput: disables diff colors for NO_COLOR, --no-color, and non-TTY', () => {
+  const raw = 'Pattern: 1. Generic polish\nRemoved: old phrasing\nAdded: sharper phrasing';
+
+  assert.equal(formatOutput(raw, 'diff', {}, { env: { NO_COLOR: '1' }, stdout: { isTTY: true } }), raw);
+  assert.equal(formatOutput(raw, 'diff', { noColor: true }, { env: {}, stdout: { isTTY: true } }), raw);
+  assert.equal(formatOutput(raw, 'diff', {}, { env: {}, stdout: { isTTY: false } }), raw);
+});
+
+test('formatOutput: does not colorize non-diff modes', () => {
+  const raw = 'Pattern: 1. Generic polish\nRemoved: old phrasing\nAdded: sharper phrasing';
+  const out = formatOutput(raw, 'audit', {}, { env: {}, stdout: { isTTY: true } });
+  assert.equal(out, raw);
+});
+
 test('formatOutput: does not duplicate complete footer', () => {
   const existing = 'Body text\n---\ntone: casual\ntone_source: user\ntone_evidence: []\ntone_confidence: high\n---';
   const tone = { tone: 'casual', tone_source: 'user', tone_evidence: [], tone_confidence: 'high' };

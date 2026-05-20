@@ -329,6 +329,9 @@ function parseArgs(args) {
       case '--diff':
         parsed.diff = true;
         break;
+      case '--no-color':
+        parsed.noColor = true;
+        break;
       case '--audit':
         parsed.audit = true;
         break;
@@ -706,6 +709,7 @@ COMMANDS
 
 MODES
   --diff                  Show changes pattern by pattern
+  --no-color              Disable ANSI colors in --diff output
   --audit                 Detect patterns only (no rewrite)
   --score                 Output AI-likeness score (0-100)
   --gate <n>              With --score, exit 3 when overall score > n

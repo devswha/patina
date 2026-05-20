@@ -5,6 +5,8 @@ Run `npm run docs:api` after changing public exports or their JSDoc.
 
 ## Worked example: programmatic scoring
 
+The package currently publishes these modules for CLI reuse, but deep imports should be treated as unstable until an explicit `exports` map is introduced.
+
 Use `scoreText` directly when you want patina's score envelope inside another Node.js tool. This example injects a mock `callLLM` so the snippet is deterministic; replace it with the default HTTP caller plus provider credentials in production.
 
 ```js
@@ -335,8 +337,8 @@ throw new PatinaCliError({ what: 'missing input', why: 'No file was provided', a
 ## DEFAULT\_TEMPERATURE : <code>number</code>
 Default sampling temperature for OpenAI-compatible chat completion calls.
 
-**Kind**: global constant  
-**Example**  
+**Kind**: global constant
+**Example**
 ```js
 const temperature = DEFAULT_TEMPERATURE; // 0.7
 ```
@@ -345,8 +347,8 @@ const temperature = DEFAULT_TEMPERATURE; // 0.7
 ## HTTP\_KEY\_ENV\_VARS : <code>Array.&lt;string&gt;</code>
 Environment variable names checked for HTTP provider authentication.
 
-**Kind**: global constant  
-**Example**  
+**Kind**: global constant
+**Example**
 ```js
 const supported = HTTP_KEY_ENV_VARS.includes('OPENAI_API_KEY');
 ```
@@ -355,8 +357,8 @@ const supported = HTTP_KEY_ENV_VARS.includes('OPENAI_API_KEY');
 ## DEFAULT\_HTTP\_KEY\_ENV\_VARS : <code>Array.&lt;string&gt;</code>
 Default key lookup order for the OpenAI-compatible HTTP provider.
 
-**Kind**: global constant  
-**Example**  
+**Kind**: global constant
+**Example**
 ```js
 const first = DEFAULT_HTTP_KEY_ENV_VARS[0]; // PATINA_API_KEY
 ```
@@ -365,8 +367,8 @@ const first = DEFAULT_HTTP_KEY_ENV_VARS[0]; // PATINA_API_KEY
 ## CACHE\_SCHEMA\_VERSION : <code>number</code>
 On-disk response cache schema version.
 
-**Kind**: global constant  
-**Example**  
+**Kind**: global constant
+**Example**
 ```js
 const version = CACHE_SCHEMA_VERSION;
 ```
@@ -375,8 +377,8 @@ const version = CACHE_SCHEMA_VERSION;
 ## DEFAULT\_CACHE\_TTL\_SECONDS : <code>number</code>
 Default response cache time-to-live: one day.
 
-**Kind**: global constant  
-**Example**  
+**Kind**: global constant
+**Example**
 ```js
 const ttl = DEFAULT_CACHE_TTL_SECONDS;
 ```
@@ -385,8 +387,8 @@ const ttl = DEFAULT_CACHE_TTL_SECONDS;
 ## defaultLogger : <code>Object</code>
 Default stderr logger used by simple callers.
 
-**Kind**: global constant  
-**Example**  
+**Kind**: global constant
+**Example**
 ```js
 defaultLogger.info('patina.ready', { message: 'ready' });
 ```
@@ -395,8 +397,8 @@ defaultLogger.info('patina.ready', { message: 'ready' });
 ## MANIFEST\_SCHEMA\_VERSION : <code>string</code>
 Current reproducibility manifest schema version.
 
-**Kind**: global constant  
-**Example**  
+**Kind**: global constant
+**Example**
 ```js
 const version = MANIFEST_SCHEMA_VERSION; // '2'
 ```
@@ -405,8 +407,8 @@ const version = MANIFEST_SCHEMA_VERSION; // '2'
 ## PROVIDERS : <code>Record.&lt;string, {name: string, baseURL: string, apiKeyEnv: string, defaultModel: string, freeTier: boolean, note: string}&gt;</code>
 Built-in OpenAI-compatible provider presets.
 
-**Kind**: global constant  
-**Example**  
+**Kind**: global constant
+**Example**
 ```js
 const openaiBaseURL = PROVIDERS.openai.baseURL;
 ```
@@ -415,8 +417,8 @@ const openaiBaseURL = PROVIDERS.openai.baseURL;
 ## DEFAULT\_DETERMINISTIC\_DIVERGENCE\_THRESHOLD : <code>number</code>
 Default maximum delta before deterministic and LLM scores are reconciled upward.
 
-**Kind**: global constant  
-**Example**  
+**Kind**: global constant
+**Example**
 ```js
 const threshold = DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD;
 ```
@@ -425,8 +427,8 @@ const threshold = DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD;
 ## isRetryable(err) ⇒ <code>boolean</code>
 Decide whether an LLM call failure should be retried.
 
-**Kind**: global function  
-**Returns**: <code>boolean</code> - True for retryable HTTP statuses, aborts, and common network failures.  
+**Kind**: global function
+**Returns**: <code>boolean</code> - True for retryable HTTP statuses, aborts, and common network failures.
 **Throws**:
 
 - <code>Error</code> Does not intentionally throw; unexpected Error-like inputs may still propagate JavaScript runtime failures.
@@ -436,7 +438,7 @@ Decide whether an LLM call failure should be retried.
 | --- | --- | --- |
 | err | <code>Error</code> \| <code>Object</code> | Error thrown by fetch or [HttpError](HttpError). |
 
-**Example**  
+**Example**
 ```js
 const retry = isRetryable(new HttpError(429, 'rate limit', '1'));
 ```
@@ -445,8 +447,8 @@ const retry = isRetryable(new HttpError(429, 'rate limit', '1'));
 ## computeBackoffMs(attempt, retryAfter, [opts]) ⇒ <code>number</code>
 Compute retry delay from Retry-After or exponential backoff with jitter.
 
-**Kind**: global function  
-**Returns**: <code>number</code> - Delay in milliseconds, capped at opts.max.  
+**Kind**: global function
+**Returns**: <code>number</code> - Delay in milliseconds, capped at opts.max.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -462,7 +464,7 @@ Compute retry delay from Retry-After or exponential backoff with jitter.
 | [opts.now] | <code>function</code> |  | Clock returning epoch milliseconds. |
 | [opts.random] | <code>function</code> |  | Random number provider used for jitter. |
 
-**Example**  
+**Example**
 ```js
 const delay = computeBackoffMs(1, '2'); // 2000
 ```
@@ -471,8 +473,8 @@ const delay = computeBackoffMs(1, '2'); // 2000
 ## createSemaphore(max) ⇒ <code>Object</code>
 Create a small async semaphore for bounded parallel LLM dispatch.
 
-**Kind**: global function  
-**Returns**: <code>Object</code> - Semaphore whose acquire resolves to a release callback.  
+**Kind**: global function
+**Returns**: <code>Object</code> - Semaphore whose acquire resolves to a release callback.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -482,7 +484,7 @@ Create a small async semaphore for bounded parallel LLM dispatch.
 | --- | --- | --- |
 | max | <code>number</code> | Maximum concurrent acquisitions; values <=0 create an unlimited no-op gate. |
 
-**Example**  
+**Example**
 ```js
 const release = await createSemaphore(2).acquire();
 release();
@@ -492,8 +494,8 @@ release();
 ## callLLM(options) ⇒ <code>Promise.&lt;string&gt;</code>
 Call an OpenAI-compatible chat completions endpoint with retries, timeout, optional cache, and abort support.
 
-**Kind**: global function  
-**Returns**: <code>Promise.&lt;string&gt;</code> - Assistant message content.  
+**Kind**: global function
+**Returns**: <code>Promise.&lt;string&gt;</code> - Assistant message content.
 **Throws**:
 
 - <code>HttpError</code> When the provider returns a non-2xx response after retries.
@@ -519,7 +521,7 @@ Call an OpenAI-compatible chat completions endpoint with retries, timeout, optio
 | [options.sleep] | <code>function</code> |  | Injectable sleep function for tests. |
 | [options.now] | <code>function</code> |  | Clock returning epoch milliseconds. |
 
-**Example**  
+**Example**
 ```js
 const text = await callLLM({ prompt: 'Rewrite this', apiKey: process.env.OPENAI_API_KEY });
 ```
@@ -528,8 +530,8 @@ const text = await callLLM({ prompt: 'Rewrite this', apiKey: process.env.OPENAI_
 ## callLLMMultiple(options) ⇒ <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code>
 Fan out one prompt across multiple model ids with bounded concurrency.
 
-**Kind**: global function  
-**Returns**: <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code> - Per-model results in input order.  
+**Kind**: global function
+**Returns**: <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code> - Per-model results in input order.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -555,7 +557,7 @@ Fan out one prompt across multiple model ids with bounded concurrency.
 | [options.cache] | <code>object</code> |  | Response cache shared by calls. |
 | [options.callLLM] | <code>function</code> |  | Injectable single-model implementation. |
 
-**Example**  
+**Example**
 ```js
 const results = await callLLMMultiple({ prompt: 'Hi', models: ['gpt-4o', 'gpt-4o-mini'] });
 ```
@@ -564,8 +566,8 @@ const results = await callLLMMultiple({ prompt: 'Hi', models: ['gpt-4o', 'gpt-4o
 ## providerHttpKeyEnvVars([providerApiKeyEnv]) ⇒ <code>Array.&lt;string&gt;</code>
 Build the key lookup order for a selected provider.
 
-**Kind**: global function  
-**Returns**: <code>Array.&lt;string&gt;</code> - Unique env var names in lookup order.  
+**Kind**: global function
+**Returns**: <code>Array.&lt;string&gt;</code> - Unique env var names in lookup order.
 **Throws**:
 
 - <code>Error</code> Does not intentionally throw; invalid non-string env names can still propagate JavaScript runtime failures.
@@ -575,7 +577,7 @@ Build the key lookup order for a selected provider.
 | --- | --- | --- |
 | [providerApiKeyEnv] | <code>string</code> | Provider-specific key env var, such as GEMINI_API_KEY. |
 
-**Example**  
+**Example**
 ```js
 const vars = providerHttpKeyEnvVars('GEMINI_API_KEY');
 ```
@@ -584,8 +586,8 @@ const vars = providerHttpKeyEnvVars('GEMINI_API_KEY');
 ## inspectHttpApiKeySource([options]) ⇒ <code>Object</code>
 Inspect where an HTTP API key would be read from without exposing the secret.
 
-**Kind**: global function  
-**Returns**: <code>Object</code> - Source diagnostics.  
+**Kind**: global function
+**Returns**: <code>Object</code> - Source diagnostics.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -598,7 +600,7 @@ Inspect where an HTTP API key would be read from without exposing the secret.
 | [options.readFile] | <code>function</code> |  | File reader for PATINA_API_KEY_FILE. |
 | [options.envVars] | <code>Array.&lt;string&gt;</code> | <code>DEFAULT_HTTP_KEY_ENV_VARS</code> | Env vars to check. |
 
-**Example**  
+**Example**
 ```js
 const source = inspectHttpApiKeySource({ env: { PATINA_API_KEY: 'sk-...' } });
 ```
@@ -607,8 +609,8 @@ const source = inspectHttpApiKeySource({ env: { PATINA_API_KEY: 'sk-...' } });
 ## resolveHttpApiKey([options]) ⇒ <code>string</code> \| <code>undefined</code>
 Resolve the HTTP API key from explicit args, key file, or environment.
 
-**Kind**: global function  
-**Returns**: <code>string</code> \| <code>undefined</code> - Resolved key value, or undefined when unauthenticated.  
+**Kind**: global function
+**Returns**: <code>string</code> \| <code>undefined</code> - Resolved key value, or undefined when unauthenticated.
 **Throws**:
 
 - <code>PatinaCliError</code> When the configured key file cannot be read or is empty.
@@ -623,7 +625,7 @@ Resolve the HTTP API key from explicit args, key file, or environment.
 | [options.readFile] | <code>function</code> |  | File reader for key files. |
 | [options.envVars] | <code>Array.&lt;string&gt;</code> | <code>DEFAULT_HTTP_KEY_ENV_VARS</code> | Env var lookup order. |
 
-**Example**  
+**Example**
 ```js
 const key = resolveHttpApiKey({ env: process.env });
 ```
@@ -632,8 +634,8 @@ const key = resolveHttpApiKey({ env: process.env });
 ## createResponseCache([options]) ⇒ <code>null</code> \| <code>Object</code>
 Create a filesystem-backed cache for LLM responses.
 
-**Kind**: global function  
-**Returns**: <code>null</code> \| <code>Object</code> - Cache object or null.  
+**Kind**: global function
+**Returns**: <code>null</code> \| <code>Object</code> - Cache object or null.
 **Throws**:
 
 - <code>Error</code> Propagates filesystem or JSON errors when cache entries are read or written through the returned object.
@@ -646,7 +648,7 @@ Create a filesystem-backed cache for LLM responses.
 | [options.ttlSeconds] | <code>number</code> | <code>DEFAULT_CACHE_TTL_SECONDS</code> | Entry TTL in seconds. |
 | [options.now] | <code>function</code> |  | Clock returning epoch milliseconds. |
 
-**Example**  
+**Example**
 ```js
 const cache = createResponseCache({ dir: '.patina-cache' });
 ```
@@ -655,8 +657,8 @@ const cache = createResponseCache({ dir: '.patina-cache' });
 ## responseCacheKey([options]) ⇒ <code>string</code>
 Derive a stable cache key from prompt and provider settings.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - sha256-prefixed cache key.  
+**Kind**: global function
+**Returns**: <code>string</code> - sha256-prefixed cache key.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -670,7 +672,7 @@ Derive a stable cache key from prompt and provider settings.
 | [options.temperature] | <code>number</code> | Sampling temperature. |
 | [options.baseURL] | <code>string</code> | Provider base URL. |
 
-**Example**  
+**Example**
 ```js
 const key = responseCacheKey({ prompt: 'Hi', model: 'gpt-4o' });
 ```
@@ -679,8 +681,8 @@ const key = responseCacheKey({ prompt: 'Hi', model: 'gpt-4o' });
 ## responseCachePath(dir, key) ⇒ <code>string</code>
 Resolve the JSON file path for a response cache key.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - Absolute or relative cache JSON path under dir.  
+**Kind**: global function
+**Returns**: <code>string</code> - Absolute or relative cache JSON path under dir.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -691,7 +693,7 @@ Resolve the JSON file path for a response cache key.
 | dir | <code>string</code> | Cache directory. |
 | key | <code>string</code> | sha256-prefixed or raw cache key. |
 
-**Example**  
+**Example**
 ```js
 const path = responseCachePath('.cache', 'sha256:abc');
 ```
@@ -700,8 +702,8 @@ const path = responseCachePath('.cache', 'sha256:abc');
 ## baseURLHost([baseURL]) ⇒ <code>string</code>
 Normalize a provider base URL to its host component for cache keys.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - Parsed host, or the original string when parsing fails.  
+**Kind**: global function
+**Returns**: <code>string</code> - Parsed host, or the original string when parsing fails.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -711,7 +713,7 @@ Normalize a provider base URL to its host component for cache keys.
 | --- | --- | --- |
 | [baseURL] | <code>string</code> | Provider base URL. |
 
-**Example**  
+**Example**
 ```js
 const host = baseURLHost('https://api.openai.com/v1');
 ```
@@ -720,8 +722,8 @@ const host = baseURLHost('https://api.openai.com/v1');
 ## main(args) ⇒ <code>Promise.&lt;void&gt;</code>
 Run the patina CLI command dispatcher.
 
-**Kind**: global function  
-**Returns**: <code>Promise.&lt;void&gt;</code> - Resolves after command output is written.  
+**Kind**: global function
+**Returns**: <code>Promise.&lt;void&gt;</code> - Resolves after command output is written.
 **Throws**:
 
 - <code>Error</code> For validation, provider, file, or runtime failures.
@@ -731,7 +733,7 @@ Run the patina CLI command dispatcher.
 | --- | --- | --- |
 | args | <code>Array.&lt;string&gt;</code> | Command-line arguments excluding node and script path. |
 
-**Example**  
+**Example**
 ```js
 await main(['--help']);
 ```
@@ -740,8 +742,8 @@ await main(['--help']);
 ## createCancellationController([options]) ⇒ <code>Object</code>
 Create a SIGINT-aware cancellation controller for long-running CLI operations.
 
-**Kind**: global function  
-**Returns**: <code>Object</code> - Controller facade.  
+**Kind**: global function
+**Returns**: <code>Object</code> - Controller facade.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -754,7 +756,7 @@ Create a SIGINT-aware cancellation controller for long-running CLI operations.
 | [options.stderr] | <code>NodeJS.WritableStream</code> | <code>process.stderr</code> | Stream for fallback cancel messages. |
 | [options.logger] | <code>object</code> \| <code>null</code> |  | Optional patina logger. |
 
-**Example**  
+**Example**
 ```js
 const cancellation = createCancellationController();
 cancellation.install();
@@ -764,8 +766,8 @@ cancellation.install();
 ## resolvePromptMode(mode, context) ⇒ <code>string</code>
 Resolve the effective prompt style for backend/model auto mode.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - Resolved prompt mode.  
+**Kind**: global function
+**Returns**: <code>string</code> - Resolved prompt mode.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -778,7 +780,7 @@ Resolve the effective prompt style for backend/model auto mode.
 | [context.backend] | <code>string</code> | Backend name. |
 | [context.model] | <code>string</code> | Model id. |
 
-**Example**  
+**Example**
 ```js
 const mode = resolvePromptMode('auto', { model: 'gemini-1.5-flash' });
 ```
@@ -787,8 +789,8 @@ const mode = resolvePromptMode('auto', { model: 'gemini-1.5-flash' });
 ## resolveConfiguredPromptMode([options]) ⇒ <code>string</code>
 Choose the configured prompt mode before backend/model auto-resolution.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - Requested prompt mode.  
+**Kind**: global function
+**Returns**: <code>string</code> - Requested prompt mode.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -801,7 +803,7 @@ Choose the configured prompt mode before backend/model auto-resolution.
 | [options.configPromptMode] | <code>string</code> |  | Config prompt-mode value. |
 | [options.isMaxMode] | <code>boolean</code> | <code>false</code> | Whether MAX mode is active. |
 
-**Example**  
+**Example**
 ```js
 const requested = resolveConfiguredPromptMode({ isMaxMode: true });
 ```
@@ -810,8 +812,8 @@ const requested = resolveConfiguredPromptMode({ isMaxMode: true });
 ## loadConfig([path]) ⇒ <code>object</code>
 Load default config and merge global/project .patina.yaml overrides.
 
-**Kind**: global function  
-**Returns**: <code>object</code> - Merged patina configuration object.  
+**Kind**: global function
+**Returns**: <code>object</code> - Merged patina configuration object.
 **Throws**:
 
 - <code>Error</code> When a config file is missing, invalid YAML, or not a mapping.
@@ -821,7 +823,7 @@ Load default config and merge global/project .patina.yaml overrides.
 | --- | --- | --- |
 | [path] | <code>string</code> | Base YAML config path. |
 
-**Example**  
+**Example**
 ```js
 const config = loadConfig();
 ```
@@ -830,13 +832,13 @@ const config = loadConfig();
 ## getRepoRoot() ⇒ <code>string</code>
 Return the repository root inferred from this source file location.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - Absolute repository root path.  
+**Kind**: global function
+**Returns**: <code>string</code> - Absolute repository root path.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
 
-**Example**  
+**Example**
 ```js
 const root = getRepoRoot();
 ```
@@ -845,8 +847,8 @@ const root = getRepoRoot();
 ## resolveTone(options) ⇒ <code>Object</code>
 Resolve CLI/config tone settings into prompt-ready tone metadata.
 
-**Kind**: global function  
-**Returns**: <code>Object</code> - Tone metadata.  
+**Kind**: global function
+**Returns**: <code>Object</code> - Tone metadata.
 **Throws**:
 
 - <code>Error</code> When cliTone or configTone is not supported.
@@ -859,7 +861,7 @@ Resolve CLI/config tone settings into prompt-ready tone metadata.
 | [options.configTone] | <code>string</code> \| <code>null</code> | Configured tone value. |
 | [options.lang] | <code>string</code> | Active language code. |
 
-**Example**  
+**Example**
 ```js
 const tone = resolveTone({ cliTone: 'casual', lang: 'ko' });
 ```
@@ -868,8 +870,8 @@ const tone = resolveTone({ cliTone: 'casual', lang: 'ko' });
 ## inputError(what, why, action) ⇒ <code>PatinaCliError</code>
 Create a user-input error that should exit with code 2.
 
-**Kind**: global function  
-**Returns**: <code>PatinaCliError</code> - Structured input error.  
+**Kind**: global function
+**Returns**: <code>PatinaCliError</code> - Structured input error.
 **Throws**:
 
 - <code>Error</code> Does not intentionally throw; returns an Error instance for callers to throw.
@@ -881,7 +883,7 @@ Create a user-input error that should exit with code 2.
 | why | <code>string</code> | Explanation of the invalid input. |
 | action | <code>string</code> | Suggested user action. |
 
-**Example**  
+**Example**
 ```js
 throw inputError('missing input', 'No file was provided.', 'Pass a file path.');
 ```
@@ -890,8 +892,8 @@ throw inputError('missing input', 'No file was provided.', 'Pass a file path.');
 ## runtimeError(what, why, action) ⇒ <code>PatinaCliError</code>
 Create a runtime error that should exit with code 1.
 
-**Kind**: global function  
-**Returns**: <code>PatinaCliError</code> - Structured runtime error.  
+**Kind**: global function
+**Returns**: <code>PatinaCliError</code> - Structured runtime error.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -903,7 +905,7 @@ Create a runtime error that should exit with code 1.
 | why | <code>string</code> | Explanation of the runtime failure. |
 | action | <code>string</code> | Suggested user action. |
 
-**Example**  
+**Example**
 ```js
 throw runtimeError('provider failed', 'The API timed out.', 'Retry later.');
 ```
@@ -912,8 +914,8 @@ throw runtimeError('provider failed', 'The API timed out.', 'Retry later.');
 ## renderCliError(err) ⇒ <code>string</code>
 Render any thrown value into the patina CLI error format.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - Multi-line user-facing error text.  
+**Kind**: global function
+**Returns**: <code>string</code> - Multi-line user-facing error text.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -923,7 +925,7 @@ Render any thrown value into the patina CLI error format.
 | --- | --- | --- |
 | err | <code>unknown</code> | Error-like value to render. |
 
-**Example**  
+**Example**
 ```js
 const message = renderCliError(inputError('bad flag', 'Unknown flag.', 'Run --help.'));
 ```
@@ -932,8 +934,8 @@ const message = renderCliError(inputError('bad flag', 'Unknown flag.', 'Run --he
 ## getExitCode(err, [fallback]) ⇒ <code>number</code>
 Extract a safe process exit code from an error-like value.
 
-**Kind**: global function  
-**Returns**: <code>number</code> - Non-negative integer exit code.  
+**Kind**: global function
+**Returns**: <code>number</code> - Non-negative integer exit code.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -944,7 +946,7 @@ Extract a safe process exit code from an error-like value.
 | err | <code>unknown</code> |  | Error-like value. |
 | [fallback] | <code>number</code> | <code>1</code> | Exit code used when err.exitCode is absent or invalid. |
 
-**Example**  
+**Example**
 ```js
 const code = getExitCode(inputError('bad', 'why', 'fix')); // 2
 ```
@@ -953,8 +955,8 @@ const code = getExitCode(inputError('bad', 'why', 'fix')); // 2
 ## loadFile(path) ⇒ <code>string</code>
 Read a UTF-8 text file.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - File contents.  
+**Kind**: global function
+**Returns**: <code>string</code> - File contents.
 **Throws**:
 
 - <code>Error</code> When the file cannot be read.
@@ -964,7 +966,7 @@ Read a UTF-8 text file.
 | --- | --- | --- |
 | path | <code>string</code> | File path to read. |
 
-**Example**  
+**Example**
 ```js
 const markdown = loadFile('README.md');
 ```
@@ -973,8 +975,8 @@ const markdown = loadFile('README.md');
 ## splitFrontmatter(content) ⇒ <code>Object</code>
 Split Markdown-style YAML frontmatter from a document body.
 
-**Kind**: global function  
-**Returns**: <code>Object</code> - Parsed frontmatter and trimmed body.  
+**Kind**: global function
+**Returns**: <code>Object</code> - Parsed frontmatter and trimmed body.
 **Throws**:
 
 - <code>Error</code> When YAML frontmatter is invalid.
@@ -984,7 +986,7 @@ Split Markdown-style YAML frontmatter from a document body.
 | --- | --- | --- |
 | content | <code>string</code> | File contents. |
 
-**Example**  
+**Example**
 ```js
 const { frontmatter, body } = splitFrontmatter('---\ntitle: x\n---\nBody');
 ```
@@ -993,8 +995,8 @@ const { frontmatter, body } = splitFrontmatter('---\ntitle: x\n---\nBody');
 ## loadPatterns(repoRoot, lang, [skipPatterns]) ⇒ <code>Array.&lt;{file: string, frontmatter: (object\|null), body: string, isStructure: boolean, isScoreOnly: boolean}&gt;</code>
 Load language-specific pattern packs from patterns/{lang}-*.md.
 
-**Kind**: global function  
-**Returns**: <code>Array.&lt;{file: string, frontmatter: (object\|null), body: string, isStructure: boolean, isScoreOnly: boolean}&gt;</code> - Pattern packs.  
+**Kind**: global function
+**Returns**: <code>Array.&lt;{file: string, frontmatter: (object\|null), body: string, isStructure: boolean, isScoreOnly: boolean}&gt;</code> - Pattern packs.
 **Throws**:
 
 - <code>Error</code> When the patterns directory or a pattern file cannot be read.
@@ -1006,7 +1008,7 @@ Load language-specific pattern packs from patterns/{lang}-*.md.
 | lang | <code>string</code> |  | Language code, such as ko, en, zh, or ja. |
 | [skipPatterns] | <code>Array.&lt;string&gt;</code> | <code>[]</code> | Pack names to omit, without .md. |
 
-**Example**  
+**Example**
 ```js
 const patterns = loadPatterns(getRepoRoot(), 'en');
 ```
@@ -1015,8 +1017,8 @@ const patterns = loadPatterns(getRepoRoot(), 'en');
 ## loadProfile(repoRoot, profileName) ⇒ <code>Object</code>
 Load a named profile from profiles/{profileName}.md after path validation.
 
-**Kind**: global function  
-**Returns**: <code>Object</code> - Parsed profile document.  
+**Kind**: global function
+**Returns**: <code>Object</code> - Parsed profile document.
 **Throws**:
 
 - <code>Error</code> When the profile name is invalid or the file cannot be read.
@@ -1027,7 +1029,7 @@ Load a named profile from profiles/{profileName}.md after path validation.
 | repoRoot | <code>string</code> | Repository root path. |
 | profileName | <code>string</code> | Profile file stem. |
 
-**Example**  
+**Example**
 ```js
 const profile = loadProfile(getRepoRoot(), 'default');
 ```
@@ -1036,8 +1038,8 @@ const profile = loadProfile(getRepoRoot(), 'default');
 ## loadCoreFile(repoRoot, filename) ⇒ <code>Object</code>
 Load a Markdown file from the core/ directory.
 
-**Kind**: global function  
-**Returns**: <code>Object</code> - Parsed core document.  
+**Kind**: global function
+**Returns**: <code>Object</code> - Parsed core document.
 **Throws**:
 
 - <code>Error</code> When the file cannot be read or frontmatter is invalid.
@@ -1048,7 +1050,7 @@ Load a Markdown file from the core/ directory.
 | repoRoot | <code>string</code> | Repository root path. |
 | filename | <code>string</code> | Core filename, such as scoring.md. |
 
-**Example**  
+**Example**
 ```js
 const scoring = loadCoreFile(getRepoRoot(), 'scoring.md');
 ```
@@ -1057,8 +1059,8 @@ const scoring = loadCoreFile(getRepoRoot(), 'scoring.md');
 ## loadInputText(path) ⇒ <code>string</code>
 Read user input text from disk.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - UTF-8 input text.  
+**Kind**: global function
+**Returns**: <code>string</code> - UTF-8 input text.
 **Throws**:
 
 - <code>Error</code> When the file cannot be read.
@@ -1068,7 +1070,7 @@ Read user input text from disk.
 | --- | --- | --- |
 | path | <code>string</code> | Input file path. |
 
-**Example**  
+**Example**
 ```js
 const text = loadInputText('draft.md');
 ```
@@ -1077,8 +1079,8 @@ const text = loadInputText('draft.md');
 ## loadVoiceSample(path) ⇒ <code>Object</code>
 Load up to three non-empty paragraphs from a voice sample file.
 
-**Kind**: global function  
-**Returns**: <code>Object</code> - Voice sample payload.  
+**Kind**: global function
+**Returns**: <code>Object</code> - Voice sample payload.
 **Throws**:
 
 - <code>Error</code> When the file is unreadable or has no non-empty paragraphs.
@@ -1088,7 +1090,7 @@ Load up to three non-empty paragraphs from a voice sample file.
 | --- | --- | --- |
 | path | <code>string</code> | Voice sample file path. |
 
-**Example**  
+**Example**
 ```js
 const sample = loadVoiceSample('voice.md');
 ```
@@ -1097,8 +1099,8 @@ const sample = loadVoiceSample('voice.md');
 ## toneToBackboneProfile(tone) ⇒ <code>string</code> \| <code>null</code>
 Map a resolved named tone to its primary backbone profile.
 
-**Kind**: global function  
-**Returns**: <code>string</code> \| <code>null</code> - Profile name, or null when no mapping exists.  
+**Kind**: global function
+**Returns**: <code>string</code> \| <code>null</code> - Profile name, or null when no mapping exists.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1108,7 +1110,7 @@ Map a resolved named tone to its primary backbone profile.
 | --- | --- | --- |
 | tone | <code>string</code> | Tone name. |
 
-**Example**  
+**Example**
 ```js
 const profile = toneToBackboneProfile('casual'); // blog
 ```
@@ -1117,8 +1119,8 @@ const profile = toneToBackboneProfile('casual'); // blog
 ## createLogger([options]) ⇒ <code>Object</code>
 Create a small stderr logger with text, JSON, and progress modes.
 
-**Kind**: global function  
-**Returns**: <code>Object</code> - Logger facade.  
+**Kind**: global function
+**Returns**: <code>Object</code> - Logger facade.
 **Throws**:
 
 - <code>Error</code> Propagates stream write errors from the configured output stream.
@@ -1132,7 +1134,7 @@ Create a small stderr logger with text, JSON, and progress modes.
 | [options.json] | <code>boolean</code> | <code>false</code> | Emit structured JSON records. |
 | [options.stream] | <code>NodeJS.WritableStream</code> | <code>process.stderr</code> | Progress stream. |
 
-**Example**  
+**Example**
 ```js
 const logger = createLogger({ json: true });
 logger.info('event', { message: 'ready' });
@@ -1142,8 +1144,8 @@ logger.info('event', { message: 'ready' });
 ## hashSha256(input) ⇒ <code>string</code> \| <code>null</code>
 Hash a string or JSON-serializable value with SHA-256.
 
-**Kind**: global function  
-**Returns**: <code>string</code> \| <code>null</code> - sha256-prefixed digest or null.  
+**Kind**: global function
+**Returns**: <code>string</code> \| <code>null</code> - sha256-prefixed digest or null.
 **Throws**:
 
 - <code>TypeError</code> When a non-string value cannot be JSON-serialized.
@@ -1153,7 +1155,7 @@ Hash a string or JSON-serializable value with SHA-256.
 | --- | --- | --- |
 | input | <code>unknown</code> | Value to hash; nullish values return null. |
 
-**Example**  
+**Example**
 ```js
 const hash = hashSha256('prompt');
 ```
@@ -1162,8 +1164,8 @@ const hash = hashSha256('prompt');
 ## buildManifest(options) ⇒ <code>object</code>
 Build a pure reproducibility manifest object for one patina run.
 
-**Kind**: global function  
-**Returns**: <code>object</code> - Manifest body ready to serialize.  
+**Kind**: global function
+**Returns**: <code>object</code> - Manifest body ready to serialize.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1188,7 +1190,7 @@ Build a pure reproducibility manifest object for one patina run.
 | [options.temperature] | <code>number</code> \| <code>null</code> | Sampling temperature. |
 | [options.seed] | <code>number</code> \| <code>string</code> \| <code>null</code> | Model seed. |
 
-**Example**  
+**Example**
 ```js
 const manifest = buildManifest({ patinaVersion: '3.11.0', mode: 'rewrite', lang: 'en', profile: 'default', startedAt: new Date().toISOString() });
 ```
@@ -1197,8 +1199,8 @@ const manifest = buildManifest({ patinaVersion: '3.11.0', mode: 'rewrite', lang:
 ## appendResult(results, entry) ⇒ <code>Array.&lt;object&gt;</code>
 Append one input/output result entry to an existing manifest results array.
 
-**Kind**: global function  
-**Returns**: <code>Array.&lt;object&gt;</code> - The same results array after mutation.  
+**Kind**: global function
+**Returns**: <code>Array.&lt;object&gt;</code> - The same results array after mutation.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1221,7 +1223,7 @@ Append one input/output result entry to an existing manifest results array.
 | [entry.iterationLog] | <code>Array.&lt;object&gt;</code> | Ouroboros iteration log. |
 | [entry.calls] | <code>Array.&lt;object&gt;</code> | Provider call metadata. |
 
-**Example**  
+**Example**
 ```js
 appendResult(results, { inputPath: 'in.md', prompt: 'p', outputRef: 'out.md', response: 'r' });
 ```
@@ -1230,8 +1232,8 @@ appendResult(results, { inputPath: 'in.md', prompt: 'p', outputRef: 'out.md', re
 ## readManifest(path) ⇒ <code>object</code>
 Read and normalize a manifest JSON file.
 
-**Kind**: global function  
-**Returns**: <code>object</code> - Normalized manifest.  
+**Kind**: global function
+**Returns**: <code>object</code> - Normalized manifest.
 **Throws**:
 
 - <code>Error</code> When JSON is invalid, unreadable, or schema is unsupported.
@@ -1241,7 +1243,7 @@ Read and normalize a manifest JSON file.
 | --- | --- | --- |
 | path | <code>string</code> | Manifest JSON path. |
 
-**Example**  
+**Example**
 ```js
 const manifest = readManifest('runs/latest/manifest.json');
 ```
@@ -1250,8 +1252,8 @@ const manifest = readManifest('runs/latest/manifest.json');
 ## normalizeManifest(manifest) ⇒ <code>object</code>
 Normalize supported manifest schema versions to stable result shapes.
 
-**Kind**: global function  
-**Returns**: <code>object</code> - Manifest with normalized results.  
+**Kind**: global function
+**Returns**: <code>object</code> - Manifest with normalized results.
 **Throws**:
 
 - <code>Error</code> When manifest is not an object or schema version is unsupported.
@@ -1261,7 +1263,7 @@ Normalize supported manifest schema versions to stable result shapes.
 | --- | --- | --- |
 | manifest | <code>object</code> | Manifest object to normalize. |
 
-**Example**  
+**Example**
 ```js
 const normalized = normalizeManifest({ manifestVersion: '1', results: [] });
 ```
@@ -1270,8 +1272,8 @@ const normalized = normalizeManifest({ manifestVersion: '1', results: [] });
 ## writeManifest(dir, manifest, [outputs]) ⇒ <code>string</code>
 Write manifest.json and optional output files into a run directory.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - Path to the written manifest.json.  
+**Kind**: global function
+**Returns**: <code>string</code> - Path to the written manifest.json.
 **Throws**:
 
 - <code>Error</code> When the directory or files cannot be written.
@@ -1283,7 +1285,7 @@ Write manifest.json and optional output files into a run directory.
 | manifest | <code>object</code> |  | Manifest object to serialize. |
 | [outputs] | <code>Array.&lt;{name: string, content: string}&gt;</code> | <code>[]</code> | Extra files to write beside manifest.json. |
 
-**Example**  
+**Example**
 ```js
 const path = writeManifest('runs/latest', manifest, [{ name: 'output.md', content: 'Done' }]);
 ```
@@ -1292,8 +1294,8 @@ const path = writeManifest('runs/latest', manifest, [{ name: 'output.md', conten
 ## runMaxMode(options) ⇒ <code>Promise.&lt;{type: string, candidates: Array.&lt;object&gt;, best: (object\|null), allFailed: boolean, mpsFallback: boolean, timedOut: boolean}&gt;</code>
 Run MAX mode: dispatch candidates, score them, and select the best passing result.
 
-**Kind**: global function  
-**Returns**: <code>Promise.&lt;{type: string, candidates: Array.&lt;object&gt;, best: (object\|null), allFailed: boolean, mpsFallback: boolean, timedOut: boolean}&gt;</code> - MAX result.  
+**Kind**: global function
+**Returns**: <code>Promise.&lt;{type: string, candidates: Array.&lt;object&gt;, best: (object\|null), allFailed: boolean, mpsFallback: boolean, timedOut: boolean}&gt;</code> - MAX result.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1321,7 +1323,7 @@ Run MAX mode: dispatch candidates, score them, and select the best passing resul
 | [options.signal] | <code>AbortSignal</code> |  | External cancellation signal. |
 | [options.logger] | <code>object</code> |  | patina logger. |
 
-**Example**  
+**Example**
 ```js
 const result = await runMaxMode({ prompt, sourceText, models: ['gpt-4o'], config, patterns });
 ```
@@ -1330,8 +1332,8 @@ const result = await runMaxMode({ prompt, sourceText, models: ['gpt-4o'], config
 ## selectBest(candidates, [options]) ⇒ <code>Object</code>
 Select the best MAX candidate, preferring lowest AI score with MPS >= 70.
 
-**Kind**: global function  
-**Returns**: <code>Object</code> - Selected candidate and whether MPS fallback was used.  
+**Kind**: global function
+**Returns**: <code>Object</code> - Selected candidate and whether MPS fallback was used.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1343,7 +1345,7 @@ Select the best MAX candidate, preferring lowest AI score with MPS >= 70.
 | [options] | <code>object</code> | Selection options. |
 | [options.log] | <code>function</code> | Tie-break logger. |
 
-**Example**  
+**Example**
 ```js
 const { candidate } = selectBest([{ ok: true, model: 'a', aiScore: 20, mps: 90 }]);
 ```
@@ -1352,8 +1354,8 @@ const { candidate } = selectBest([{ ok: true, model: 'a', aiScore: 20, mps: 90 }
 ## resolveMaxModelBackend(model) ⇒ <code>object</code> \| <code>null</code>
 Resolve an exact MAX model alias to a local backend implementation.
 
-**Kind**: global function  
-**Returns**: <code>object</code> \| <code>null</code> - Backend implementation, or null for HTTP models.  
+**Kind**: global function
+**Returns**: <code>object</code> \| <code>null</code> - Backend implementation, or null for HTTP models.
 **Throws**:
 
 - <code>Error</code> When the matching backend is unavailable.
@@ -1363,7 +1365,7 @@ Resolve an exact MAX model alias to a local backend implementation.
 | --- | --- | --- |
 | model | <code>string</code> | Model id or alias. |
 
-**Example**  
+**Example**
 ```js
 const backend = resolveMaxModelBackend('claude-cli');
 ```
@@ -1372,8 +1374,8 @@ const backend = resolveMaxModelBackend('claude-cli');
 ## dispatchMaxCandidates(options) ⇒ <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code>
 Dispatch MAX candidates across local backends and HTTP models.
 
-**Kind**: global function  
-**Returns**: <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code> - Candidate results.  
+**Kind**: global function
+**Returns**: <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code> - Candidate results.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1396,7 +1398,7 @@ Dispatch MAX candidates across local backends and HTTP models.
 | [options.onStart] | <code>function</code> | Per-model start callback. |
 | [options.onComplete] | <code>function</code> | Per-model completion callback. |
 
-**Example**  
+**Example**
 ```js
 const candidates = await dispatchMaxCandidates({ prompt: 'Hi', models: ['gpt-4o'] });
 ```
@@ -1405,8 +1407,8 @@ const candidates = await dispatchMaxCandidates({ prompt: 'Hi', models: ['gpt-4o'
 ## runOuroboros(options) ⇒ <code>Promise.&lt;{finalText: string, finalScore: number, iterations: number, reason: string, log: Array.&lt;object&gt;}&gt;</code>
 Run the iterative Ouroboros rewrite-and-score loop.
 
-**Kind**: global function  
-**Returns**: <code>Promise.&lt;{finalText: string, finalScore: number, iterations: number, reason: string, log: Array.&lt;object&gt;}&gt;</code> - Final text and iteration log.  
+**Kind**: global function
+**Returns**: <code>Promise.&lt;{finalText: string, finalScore: number, iterations: number, reason: string, log: Array.&lt;object&gt;}&gt;</code> - Final text and iteration log.
 **Throws**:
 
 - <code>Error</code> When model calls or scoring fail outside handled schema fallbacks.
@@ -1431,7 +1433,7 @@ Run the iterative Ouroboros rewrite-and-score loop.
 | [options.signal] | <code>AbortSignal</code> | External cancellation signal. |
 | [options.logger] | <code>object</code> | patina logger. |
 
-**Example**  
+**Example**
 ```js
 const result = await runOuroboros({ config, patterns, profile, voice, scoring, text });
 ```
@@ -1440,8 +1442,8 @@ const result = await runOuroboros({ config, patterns, profile, voice, scoring, t
 ## formatOutput(result, mode, [parsed], [opts]) ⇒ <code>string</code>
 Format a raw backend result for CLI output mode and requested format.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - User-facing formatted output.  
+**Kind**: global function
+**Returns**: <code>string</code> - User-facing formatted output.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1458,7 +1460,7 @@ Format a raw backend result for CLI output mode and requested format.
 | [opts.env] | <code>object</code> |  | Environment map for color decisions. |
 | [opts.stdout] | <code>object</code> |  | Stdout-like stream for color decisions. |
 
-**Example**  
+**Example**
 ```js
 const output = formatOutput('[BODY]Hi[/BODY]', 'rewrite');
 ```
@@ -1467,8 +1469,8 @@ const output = formatOutput('[BODY]Hi[/BODY]', 'rewrite');
 ## extractVariants(body) ⇒ <code>Array.&lt;{id: number, text: string}&gt;</code>
 Extract tagged [VARIANT n] blocks from a model response.
 
-**Kind**: global function  
-**Returns**: <code>Array.&lt;{id: number, text: string}&gt;</code> - Variants sorted by numeric id.  
+**Kind**: global function
+**Returns**: <code>Array.&lt;{id: number, text: string}&gt;</code> - Variants sorted by numeric id.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1478,7 +1480,7 @@ Extract tagged [VARIANT n] blocks from a model response.
 | --- | --- | --- |
 | body | <code>string</code> | Raw model response. |
 
-**Example**  
+**Example**
 ```js
 const variants = extractVariants('[VARIANT 1]\nHello\n[/VARIANT]');
 ```
@@ -1487,8 +1489,8 @@ const variants = extractVariants('[VARIANT 1]\nHello\n[/VARIANT]');
 ## validateScoreWeights(output, configWeights) ⇒ <code>Array.&lt;string&gt;</code>
 Validate that a model-emitted score table used configured category weights.
 
-**Kind**: global function  
-**Returns**: <code>Array.&lt;string&gt;</code> - Human-readable warnings for missing, mismatched, or unexpected categories.  
+**Kind**: global function
+**Returns**: <code>Array.&lt;string&gt;</code> - Human-readable warnings for missing, mismatched, or unexpected categories.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1499,7 +1501,7 @@ Validate that a model-emitted score table used configured category weights.
 | output | <code>string</code> | Score-mode markdown output. |
 | configWeights | <code>object</code> | Expected category weight map. |
 
-**Example**  
+**Example**
 ```js
 const warnings = validateScoreWeights('| content | 0.4 | 1 | 10 | 4 |', { content: 0.4 });
 ```
@@ -1508,8 +1510,8 @@ const warnings = validateScoreWeights('| content | 0.4 | 1 | 10 | 4 |', { conten
 ## stripSelfAudit(body, [options]) ⇒ <code>string</code>
 Remove SELF_AUDIT blocks and unwrap the BODY block from rewrite output.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - Clean user-facing body text.  
+**Kind**: global function
+**Returns**: <code>string</code> - Clean user-facing body text.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1521,7 +1523,7 @@ Remove SELF_AUDIT blocks and unwrap the BODY block from rewrite output.
 | [options] | <code>object</code> | Strip options. |
 | [options.logger] | <code>object</code> | Logger for malformed output warnings. |
 
-**Example**  
+**Example**
 ```js
 const clean = stripSelfAudit('[BODY]Hello[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]');
 ```
@@ -1530,8 +1532,8 @@ const clean = stripSelfAudit('[BODY]Hello[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]');
 ## buildPrompt(options) ⇒ <code>string</code>
 Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - Complete prompt text.  
+**Kind**: global function
+**Returns**: <code>string</code> - Complete prompt text.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1552,7 +1554,7 @@ Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.
 | [options.promptMode] | <code>string</code> | <code>&quot;strict&quot;</code> | Prompt mode: strict or minimal. |
 | [options.variants] | <code>number</code> | <code>1</code> | Number of rewrite variants. |
 
-**Example**  
+**Example**
 ```js
 const prompt = buildPrompt({ config, patterns, profile, voice, scoring, text: 'Draft' });
 ```
@@ -1561,8 +1563,8 @@ const prompt = buildPrompt({ config, patterns, profile, voice, scoring, text: 'D
 ## isShortText(text) ⇒ <code>boolean</code>
 Classify whether text should use the short-text scoring boost.
 
-**Kind**: global function  
-**Returns**: <code>boolean</code> - True when text is <=200 non-whitespace chars or <=3 paragraphs.  
+**Kind**: global function
+**Returns**: <code>boolean</code> - True when text is <=200 non-whitespace chars or <=3 paragraphs.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1572,7 +1574,7 @@ Classify whether text should use the short-text scoring boost.
 | --- | --- | --- |
 | text | <code>string</code> | Text to inspect. |
 
-**Example**  
+**Example**
 ```js
 const short = isShortText('A short note.');
 ```
@@ -1581,8 +1583,8 @@ const short = isShortText('A short note.');
 ## selectProvider(name) ⇒ <code>object</code> \| <code>null</code>
 Resolve a provider preset by name.
 
-**Kind**: global function  
-**Returns**: <code>object</code> \| <code>null</code> - Provider preset or null.  
+**Kind**: global function
+**Returns**: <code>object</code> \| <code>null</code> - Provider preset or null.
 **Throws**:
 
 - <code>PatinaCliError</code> When name is unknown.
@@ -1592,7 +1594,7 @@ Resolve a provider preset by name.
 | --- | --- | --- |
 | name | <code>string</code> \| <code>null</code> \| <code>undefined</code> | Provider name; falsy returns null. |
 
-**Example**  
+**Example**
 ```js
 const provider = selectProvider('openai');
 ```
@@ -1601,8 +1603,8 @@ const provider = selectProvider('openai');
 ## resolveProviderConfig(options) ⇒ <code>Object</code>
 Resolve effective API key, base URL, and model from explicit values, provider, and env.
 
-**Kind**: global function  
-**Returns**: <code>Object</code> - Resolved provider config.  
+**Kind**: global function
+**Returns**: <code>Object</code> - Resolved provider config.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1616,7 +1618,7 @@ Resolve effective API key, base URL, and model from explicit values, provider, a
 | [options.baseURL] | <code>string</code> | Explicit base URL. |
 | [options.model] | <code>string</code> | Explicit model id. |
 
-**Example**  
+**Example**
 ```js
 const resolved = resolveProviderConfig({ provider: selectProvider('openai') });
 ```
@@ -1625,8 +1627,8 @@ const resolved = resolveProviderConfig({ provider: selectProvider('openai') });
 ## scoreText(options) ⇒ <code>Promise.&lt;object&gt;</code>
 Score text for AI-likeness using an LLM JSON scorer plus deterministic shadow signals.
 
-**Kind**: global function  
-**Returns**: <code>Promise.&lt;object&gt;</code> - Score payload with overall, interpretation, llmScore, and deterministicScore.  
+**Kind**: global function
+**Returns**: <code>Promise.&lt;object&gt;</code> - Score payload with overall, interpretation, llmScore, and deterministicScore.
 **Throws**:
 
 - <code>Error</code> When the operation is aborted.
@@ -1648,7 +1650,7 @@ Score text for AI-likeness using an LLM JSON scorer plus deterministic shadow si
 | [options.now] | <code>function</code> | Clock returning epoch milliseconds. |
 | [options.sleep] | <code>function</code> | Sleep helper for tests. |
 
-**Example**  
+**Example**
 ```js
 const score = await scoreText({ text: 'Draft', config, patterns, callLLM: async () => '{"categories":{},"overall":20,"interpretation":"mostly human"}' });
 ```
@@ -1657,8 +1659,8 @@ const score = await scoreText({ text: 'Draft', config, patterns, callLLM: async 
 ## scoreDeterministicSignals([options]) ⇒ <code>object</code> \| <code>null</code>
 Compute deterministic stylometry/lexicon AI-likeness signals.
 
-**Kind**: global function  
-**Returns**: <code>object</code> \| <code>null</code> - Deterministic score payload, skipped payload, or null when disabled.  
+**Kind**: global function
+**Returns**: <code>object</code> \| <code>null</code> - Deterministic score payload, skipped payload, or null when disabled.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1672,7 +1674,7 @@ Compute deterministic stylometry/lexicon AI-likeness signals.
 | [options.repoRoot] | <code>string</code> |  | Repository root for analyzer resources. |
 | [options.analyzer] | <code>function</code> |  | Analyzer implementation. |
 
-**Example**  
+**Example**
 ```js
 const deterministic = scoreDeterministicSignals({ text: 'Draft', config });
 ```
@@ -1681,8 +1683,8 @@ const deterministic = scoreDeterministicSignals({ text: 'Draft', config });
 ## withShadowScore(parsed, [options]) ⇒ <code>object</code>
 Merge an LLM score payload with deterministic shadow-score reconciliation.
 
-**Kind**: global function  
-**Returns**: <code>object</code> - Score payload preserving llmScore and deterministicScore details.  
+**Kind**: global function
+**Returns**: <code>object</code> - Score payload preserving llmScore and deterministicScore details.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1696,7 +1698,7 @@ Merge an LLM score payload with deterministic shadow-score reconciliation.
 | [options.config] | <code>object</code> | <code>{}</code> | Effective config. |
 | [options.logger] | <code>object</code> |  | Logger for reconciliation warnings. |
 
-**Example**  
+**Example**
 ```js
 const score = withShadowScore({ overall: 20 }, { deterministicScore: { overall: 25 } });
 ```
@@ -1705,8 +1707,8 @@ const score = withShadowScore({ overall: 20 }, { deterministicScore: { overall: 
 ## reconcileScoreOverall([options]) ⇒ <code>Object</code>
 Reconcile LLM and deterministic overall scores according to config thresholds.
 
-**Kind**: global function  
-**Returns**: <code>Object</code> - Reconciled score and preference source.  
+**Kind**: global function
+**Returns**: <code>Object</code> - Reconciled score and preference source.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1720,7 +1722,7 @@ Reconcile LLM and deterministic overall scores according to config thresholds.
 | [options.config] | <code>object</code> | <code>{}</code> | Effective config. |
 | [options.logger] | <code>object</code> |  | Logger for warnings. |
 
-**Example**  
+**Example**
 ```js
 const result = reconcileScoreOverall({ llmOverall: 20, deterministicScore: { overall: 60 } });
 ```
@@ -1729,8 +1731,8 @@ const result = reconcileScoreOverall({ llmOverall: 20, deterministicScore: { ove
 ## scoreMPS(options) ⇒ <code>Promise.&lt;Object&gt;</code>
 Score meaning preservation between original and rewritten text.
 
-**Kind**: global function  
-**Returns**: <code>Promise.&lt;Object&gt;</code> - MPS result.  
+**Kind**: global function
+**Returns**: <code>Promise.&lt;Object&gt;</code> - MPS result.
 **Throws**:
 
 - <code>Error</code> When the operation is aborted.
@@ -1751,7 +1753,7 @@ Score meaning preservation between original and rewritten text.
 | [options.now] | <code>function</code> | Clock returning epoch milliseconds. |
 | [options.sleep] | <code>function</code> | Sleep helper for tests. |
 
-**Example**  
+**Example**
 ```js
 const mps = await scoreMPS({ original: 'A', rewritten: 'A', callLLM: async () => '{"mps":100,"anchors":[]}' });
 ```
@@ -1760,8 +1762,8 @@ const mps = await scoreMPS({ original: 'A', rewritten: 'A', callLLM: async () =>
 ## interpretScore(score) ⇒ <code>string</code>
 Convert a numeric AI-likeness score to a human-readable band.
 
-**Kind**: global function  
-**Returns**: <code>string</code> - Interpretation band.  
+**Kind**: global function
+**Returns**: <code>string</code> - Interpretation band.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1771,7 +1773,7 @@ Convert a numeric AI-likeness score to a human-readable band.
 | --- | --- | --- |
 | score | <code>number</code> | AI-likeness score from 0 to 100. |
 
-**Example**  
+**Example**
 ```js
 const label = interpretScore(28); // mostly human
 ```
@@ -1780,8 +1782,8 @@ const label = interpretScore(28); // mostly human
 ## lengthRatioPoints(original, rewritten) ⇒ <code>number</code>
 Score rewritten length ratio on the 0-3 fidelity scale.
 
-**Kind**: global function  
-**Returns**: <code>number</code> - Length-ratio points from 0 to 3.  
+**Kind**: global function
+**Returns**: <code>number</code> - Length-ratio points from 0 to 3.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1792,7 +1794,7 @@ Score rewritten length ratio on the 0-3 fidelity scale.
 | original | <code>string</code> | Original text. |
 | rewritten | <code>string</code> | Rewritten text. |
 
-**Example**  
+**Example**
 ```js
 const points = lengthRatioPoints('abcd', 'abcde');
 ```
@@ -1801,8 +1803,8 @@ const points = lengthRatioPoints('abcd', 'abcde');
 ## scoreFidelity(options) ⇒ <code>Promise.&lt;Object&gt;</code>
 Score fidelity between original and rewritten text using length plus LLM criteria.
 
-**Kind**: global function  
-**Returns**: <code>Promise.&lt;Object&gt;</code> - Fidelity result.  
+**Kind**: global function
+**Returns**: <code>Promise.&lt;Object&gt;</code> - Fidelity result.
 **Throws**:
 
 - <code>Error</code> When the operation is aborted.
@@ -1823,7 +1825,7 @@ Score fidelity between original and rewritten text using length plus LLM criteri
 | [options.now] | <code>function</code> | Clock returning epoch milliseconds. |
 | [options.sleep] | <code>function</code> | Sleep helper for tests. |
 
-**Example**  
+**Example**
 ```js
 const fidelity = await scoreFidelity({ original: 'A', rewritten: 'A', callLLM: async () => '{"criteria":{"meaning":3,"tone":3,"no_unintended_additions":3}}' });
 ```
@@ -1832,8 +1834,8 @@ const fidelity = await scoreFidelity({ original: 'A', rewritten: 'A', callLLM: a
 ## clamp03(v) ⇒ <code>number</code>
 Clamp and round a value into the inclusive 0-3 scoring range.
 
-**Kind**: global function  
-**Returns**: <code>number</code> - Integer from 0 to 3.  
+**Kind**: global function
+**Returns**: <code>number</code> - Integer from 0 to 3.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1843,7 +1845,7 @@ Clamp and round a value into the inclusive 0-3 scoring range.
 | --- | --- | --- |
 | v | <code>number</code> \| <code>string</code> | Value to clamp. |
 
-**Example**  
+**Example**
 ```js
 const value = clamp03(4.2); // 3
 ```
@@ -1852,8 +1854,8 @@ const value = clamp03(4.2); // 3
 ## combinedScore(options) ⇒ <code>number</code>
 Combine AI-likeness, inverted fidelity, and optional deterministic score.
 
-**Kind**: global function  
-**Returns**: <code>number</code> - Combined score, lower is better.  
+**Kind**: global function
+**Returns**: <code>number</code> - Combined score, lower is better.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1868,7 +1870,7 @@ Combine AI-likeness, inverted fidelity, and optional deterministic score.
 | [options.config] | <code>object</code> | Effective config. |
 | [options.deterministicScore] | <code>number</code> \| <code>object</code> \| <code>null</code> | Optional deterministic score. |
 
-**Example**  
+**Example**
 ```js
 const score = combinedScore({ aiLikeness: 20, fidelity: 90, profile: 'default', config: {} });
 ```
@@ -1877,7 +1879,7 @@ const score = combinedScore({ aiLikeness: 20, fidelity: 90, profile: 'default', 
 ## validateProfileName(name) ⇒ <code>void</code>
 Validate a profile name before resolving profiles/{name}.md.
 
-**Kind**: global function  
+**Kind**: global function
 **Throws**:
 
 - <code>PatinaCliError</code> When the name is empty, non-string, or contains unsafe characters.
@@ -1887,7 +1889,7 @@ Validate a profile name before resolving profiles/{name}.md.
 | --- | --- | --- |
 | name | <code>string</code> | Profile name supplied by CLI or config. |
 
-**Example**  
+**Example**
 ```js
 validateProfileName('default');
 ```
@@ -1896,8 +1898,8 @@ validateProfileName('default');
 ## isLoopbackHost(hostname) ⇒ <code>boolean</code>
 Check whether a hostname is localhost or loopback.
 
-**Kind**: global function  
-**Returns**: <code>boolean</code> - True for localhost, 127/8, or ::1.  
+**Kind**: global function
+**Returns**: <code>boolean</code> - True for localhost, 127/8, or ::1.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1907,7 +1909,7 @@ Check whether a hostname is localhost or loopback.
 | --- | --- | --- |
 | hostname | <code>string</code> | Hostname from a URL. |
 
-**Example**  
+**Example**
 ```js
 const local = isLoopbackHost('127.0.0.1');
 ```
@@ -1916,8 +1918,8 @@ const local = isLoopbackHost('127.0.0.1');
 ## isPrivateOrSpecialIP(hostname) ⇒ <code>boolean</code>
 Detect literal private, reserved, link-local, metadata, or multicast IP hosts.
 
-**Kind**: global function  
-**Returns**: <code>boolean</code> - True when the literal IP is private or special-use.  
+**Kind**: global function
+**Returns**: <code>boolean</code> - True when the literal IP is private or special-use.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1927,7 +1929,7 @@ Detect literal private, reserved, link-local, metadata, or multicast IP hosts.
 | --- | --- | --- |
 | hostname | <code>string</code> | Hostname or bracketed IPv6 literal. |
 
-**Example**  
+**Example**
 ```js
 const blocked = isPrivateOrSpecialIP('169.254.169.254');
 ```
@@ -1936,7 +1938,7 @@ const blocked = isPrivateOrSpecialIP('169.254.169.254');
 ## validateBaseURL(baseURL, [options]) ⇒ <code>void</code>
 Validate a provider base URL before sending prompts and bearer tokens.
 
-**Kind**: global function  
+**Kind**: global function
 **Throws**:
 
 - <code>PatinaCliError</code> When the URL is invalid, unsupported, insecure, or private without opt-in.
@@ -1949,7 +1951,7 @@ Validate a provider base URL before sending prompts and bearer tokens.
 | [options.allowInsecure] | <code>boolean</code> | <code>false</code> | Allow non-loopback HTTP. |
 | [options.allowPrivate] | <code>boolean</code> | <code>false</code> | Allow private/reserved literal IPs. |
 
-**Example**  
+**Example**
 ```js
 validateBaseURL('https://api.openai.com/v1');
 ```
@@ -1958,8 +1960,8 @@ validateBaseURL('https://api.openai.com/v1');
 ## shouldAllowInsecureBaseURL([parsed]) ⇒ <code>boolean</code>
 Read CLI/env opt-in for non-loopback HTTP base URLs.
 
-**Kind**: global function  
-**Returns**: <code>boolean</code> - True when insecure base URLs are explicitly allowed.  
+**Kind**: global function
+**Returns**: <code>boolean</code> - True when insecure base URLs are explicitly allowed.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1969,7 +1971,7 @@ Read CLI/env opt-in for non-loopback HTTP base URLs.
 | --- | --- | --- |
 | [parsed] | <code>object</code> | Parsed CLI options. |
 
-**Example**  
+**Example**
 ```js
 const allowed = shouldAllowInsecureBaseURL({ allowInsecureBaseURL: true });
 ```
@@ -1978,7 +1980,7 @@ const allowed = shouldAllowInsecureBaseURL({ allowInsecureBaseURL: true });
 ## applyInsecureBaseURLOptIn([parsed]) ⇒ <code>void</code>
 Persist CLI insecure-base-url opt-in into process.env for downstream calls.
 
-**Kind**: global function  
+**Kind**: global function
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -1988,7 +1990,7 @@ Persist CLI insecure-base-url opt-in into process.env for downstream calls.
 | --- | --- | --- |
 | [parsed] | <code>object</code> | Parsed CLI options. |
 
-**Example**  
+**Example**
 ```js
 applyInsecureBaseURLOptIn({ allowInsecureBaseURL: true });
 ```
@@ -1997,8 +1999,8 @@ applyInsecureBaseURLOptIn({ allowInsecureBaseURL: true });
 ## shouldAllowPrivateBaseURL([parsed]) ⇒ <code>boolean</code>
 Read CLI/env opt-in for private or reserved literal IP base URLs.
 
-**Kind**: global function  
-**Returns**: <code>boolean</code> - True when private base URLs are explicitly allowed.  
+**Kind**: global function
+**Returns**: <code>boolean</code> - True when private base URLs are explicitly allowed.
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -2008,7 +2010,7 @@ Read CLI/env opt-in for private or reserved literal IP base URLs.
 | --- | --- | --- |
 | [parsed] | <code>object</code> | Parsed CLI options. |
 
-**Example**  
+**Example**
 ```js
 const allowed = shouldAllowPrivateBaseURL({ allowPrivateBaseURL: true });
 ```
@@ -2017,7 +2019,7 @@ const allowed = shouldAllowPrivateBaseURL({ allowPrivateBaseURL: true });
 ## applyPrivateBaseURLOptIn([parsed]) ⇒ <code>void</code>
 Persist CLI private-base-url opt-in into process.env for downstream calls.
 
-**Kind**: global function  
+**Kind**: global function
 **Throws**:
 
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -2027,7 +2029,7 @@ Persist CLI private-base-url opt-in into process.env for downstream calls.
 | --- | --- | --- |
 | [parsed] | <code>object</code> | Parsed CLI options. |
 
-**Example**  
+**Example**
 ```js
 applyPrivateBaseURLOptIn({ allowPrivateBaseURL: true });
 ```

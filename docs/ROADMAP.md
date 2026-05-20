@@ -254,14 +254,16 @@ Last triaged: 2026-05-21, after the final high-ultragoal backlog campaign sync.
 
 Current GitHub issue inventory:
 
-- 18 open issues; 130 closed issues; 148 tracked issues total.
+- 17 open issues; 131 closed issues; 148 tracked issues total.
 - Open PRs: 0.
-- Open priority split: 2 high, 6 medium, 10 low, and 0 without priority labels.
+- Open priority split: 2 high, 5 medium, 10 low, and 0 without priority labels.
 - Current high-priority issues: #282 README score badge, #286 launch tracking/playbook.
 
 Campaign state:
 
-- Merged campaign PRs: #281, #287, #288, #289, #290, #292.
+- Merged campaign PRs: #281, #287, #288, #289, #290, #292, #293.
+- Concurrent cleanup merged during the final gate: #294 closed #291.
+- Final review blocker cleanup: #295.
 - Closed or verified during the campaign: #99, #165, #186, #191, #199, #209, #210.
 - Kept open with explicit blocker comments: #104, #155, #156, #157, #158, #159, #160, #206, #207, #208, #211, #212.
 - Bot/harness automation remains inactive/local-only until the tracked audit blockers in [`docs/internal/HARNESS-HARDENING-AUDIT.md`](internal/HARNESS-HARDENING-AUDIT.md) are resolved.
@@ -269,6 +271,6 @@ Campaign state:
 Next recommended order:
 
 1. Resolve the two high-priority launch issues (#282, #286).
-2. Fix the medium-priority Action cleanup issue (#291), then continue medium research/content items (#104, #155, #160, #283, #285).
+2. Continue medium research/content items (#104, #155, #160, #283, #285).
 3. Treat low-priority research/ecosystem items (#156-#159, #206-#208, #211, #212, #284) as parked until corpus, external repo, hosting, or governance prerequisites exist.
 4. Keep new campaign PRs short-lived: green checks, merged, or explicitly blocked with issue comments.

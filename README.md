@@ -285,7 +285,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Demo](docs/DEMO.md)** — terminal transcript and multi-genre before/after snapshots
 - **[Patterns](docs/PATTERNS.md)** — full 160-pattern catalog
 - **[Authentication](docs/AUTHENTICATION.md)** ([한국어](docs/AUTHENTICATION_KR.md)) — backends, providers, free-tier setup
-- **[GitHub Action](docs/integrations/github-action.md)** — PR hotspot comments without a live model key
+- **[GitHub Action](docs/integrations/github-action.md)** — PR hotspot comments and README score badges without a live model key
 - **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit, Husky, and Lefthook score-only recipes
 - **[Static-site Stencils](docs/integrations/static-sites.md)** — Hugo, Astro, and Next.js MDX build-time scoring recipes
 - **[Docker](docs/integrations/docker.md)** — GHCR image usage and release tags

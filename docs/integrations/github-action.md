@@ -28,6 +28,51 @@ jobs:
           comment: true
 ```
 
+## README score badge
+
+Patina can also produce a [Shields.io endpoint](https://shields.io/endpoint) JSON file from the same deterministic prose score used by the PR comment. The endpoint reports the highest scored file (`maxScore`) as an editing-hotspot percentage, not an authorship verdict.
+
+Generate the JSON locally:
+
+```bash
+npm run badge -- README.md docs/FAQ.md > patina-badge.json
+```
+
+Payload shape:
+
+```json
+{ "schemaVersion": 1, "label": "patina", "message": "25% · human-ish", "color": "brightgreen" }
+```
+
+Use it from a README once `patina-badge.json` is published on a stable branch:
+
+```md
+[![patina](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/<owner>/<repo>/<badge-branch>/patina-badge.json)](https://github.com/devswha/patina)
+```
+
+For the standalone Action, set `badge-branch` to publish `patina-badge.json` after scoring:
+
+```yaml
+permissions:
+  contents: write
+  pull-requests: read
+  issues: write
+
+steps:
+  - uses: actions/checkout@v6
+  - uses: devswha/patina-action@v1
+    with:
+      badge-branch: patina-badge
+```
+
+If you do not want a live score endpoint, use the static brand fallback instead:
+
+```md
+[![patina](https://raw.githubusercontent.com/devswha/patina/main/assets/brand/patina-badge.svg)](https://github.com/devswha/patina)
+```
+
+No badge mode performs per-visitor tracking; Shields reads a repository-owned JSON file or a static SVG.
+
 ## Inputs
 
 | Input | Default | Meaning |
@@ -39,6 +84,7 @@ jobs:
 | `report-threshold` | `30` | Advisory report gate when `score-threshold` is unset. |
 | `max-files` | `50` | Maximum Markdown files to score. |
 | `comment` | `true` | Create/update a sticky PR comment. |
+| `badge-branch` | unset | Optional branch where the Action publishes `patina-badge.json` for Shields.io. Requires `contents: write`. |
 | `patina-package` | `patina-cli@latest` | npm package spec used by `npx`. |
 
 ## What it measures

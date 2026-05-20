@@ -223,13 +223,13 @@ tone_confidence: high
 
 > **주의:** 텍스트가 단락 ≤2 또는 전체 문장 ≤2 이면 4.6단계를 통째로 건너뛴다 (4.5단계와 동일 임계).
 >
-> **언어 제한 (v1):** `stylometry.languages` 설정에 포함된 언어에서만 실행한다. 기본값은 `[ko, en]`. 처리 언어가 `zh` 또는 `ja` 인 경우 4.6단계를 skip 하고 파이프라인을 정상 진행한다 (zh/ja 토큰화는 v2 이후 로드맵).
+> **언어 제한:** `stylometry.languages` 설정에 포함된 언어에서만 실행한다. 기본값은 `[ko, en, zh, ja]`. 처리 언어가 `zh` 또는 `ja` 인 경우 whitespace 단어가 아니라 문자 토큰 fallback으로 4.6단계를 실행한다.
 
 ### 메트릭 정의
 
 전체 알고리즘 정의는 `core/stylometry.md`를 참조한다. 핵심 공식만 인라인으로 제시한다.
 
-**Tokenization** — whitespace 기준 분할 + edge-punctuation strip. ko=어절, en=단어. 형태소 분석기 미사용.
+**Tokenization** — ko/en은 whitespace 기준 분할 + edge-punctuation strip(ko=어절, en=단어)을 사용한다. zh/ja는 Han/Kana 문자와 ASCII run을 토큰으로 삼는 deterministic character-token fallback을 사용한다. 형태소 분석기 미사용.
 
 **Burstiness (CV, 문장 길이 변동성)**
 

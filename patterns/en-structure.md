@@ -140,11 +140,11 @@ phase: structure
 
 Even without dedicated structure patterns, apply these burstiness principles when rewriting English text in Phase 1 (structure pass) or Phase 2 (sentence/lexical pass):
 
-### What is burstiness?
+#### What is burstiness?
 
 Human writing varies sentence length and structure unpredictably. AI writing is uniform: similar sentence length, consistent clause structure, even paragraph size. Burstiness means introducing deliberate irregularity.
 
-### How to apply
+#### How to apply
 
 **Sentence length variation:**
 - Mix short punchy sentences (4–8 words) with longer ones (20–35 words).
@@ -163,7 +163,7 @@ Human writing varies sentence length and structure unpredictably. AI writing is 
 - Mix declarative sentences, rhetorical questions, and sentence fragments.
 - Not every sentence needs a subject-verb-object structure.
 
-### When to apply
+#### When to apply
 
 Apply burstiness corrections when:
 - All paragraphs are approximately the same length.

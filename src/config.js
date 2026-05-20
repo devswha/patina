@@ -34,6 +34,8 @@ function isPlainObject(v) {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
+const ADDITIVE_LIST_KEYS = new Set(['blocklist', 'allowlist', 'skip-patterns']);
+
 function deepMerge(target, source) {
   for (const key in source) {
     if (isPlainObject(source[key])) {
@@ -41,6 +43,11 @@ function deepMerge(target, source) {
         target[key] = {};
       }
       deepMerge(target[key], source[key]);
+    } else if (Array.isArray(source[key]) && ADDITIVE_LIST_KEYS.has(key)) {
+      const base = Array.isArray(target[key]) ? target[key] : [];
+      target[key] = [...new Set([...base, ...source[key]])];
+    } else if (Array.isArray(source[key])) {
+      target[key] = [...source[key]];
     } else {
       target[key] = source[key];
     }

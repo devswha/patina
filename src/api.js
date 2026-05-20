@@ -26,6 +26,46 @@ function truncate(text, max = 256) {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
+function abortError(message = 'The operation was aborted') {
+  const err = new Error(message);
+  err.name = 'AbortError';
+  return err;
+}
+
+function remainingBudgetMs(deadline, now) {
+  if (deadline === undefined || deadline === null) return Infinity;
+  return Math.max(0, deadline - now());
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) {
+    throw abortError('External abort signal canceled LLM API call');
+  }
+}
+
+function sleepWithSignal(sleep, ms, signal) {
+  if (ms <= 0) return Promise.resolve();
+  if (!signal) return sleep(ms);
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      cleanup();
+      reject(abortError('External abort signal canceled LLM API retry sleep'));
+    };
+    const cleanup = () => signal.removeEventListener('abort', onAbort);
+    signal.addEventListener('abort', onAbort, { once: true });
+    sleep(ms).then(
+      () => {
+        cleanup();
+        resolve();
+      },
+      (err) => {
+        cleanup();
+        reject(err);
+      }
+    );
+  });
+}
+
 export function isRetryable(err) {
   if (!err) return false;
   if (err.name === 'AbortError') return true;
@@ -97,9 +137,12 @@ export async function callLLM({
   temperature = 0.7,
   timeout = DEFAULT_TIMEOUT,
   maxRetries = DEFAULT_MAX_RETRIES,
+  deadline,
+  signal,
   allowInsecureBaseURL = false,
   // Allows tests to inject a deterministic delay function.
   sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
+  now = () => Date.now(),
 }) {
   validateBaseURL(baseURL, { allowInsecure: allowInsecureBaseURL });
   const url = `${baseURL}/chat/completions`;
@@ -110,11 +153,32 @@ export async function callLLM({
   };
 
   let lastError;
+  let attemptsMade = 0;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      throwIfAborted(signal);
+    } catch (err) {
+      lastError = err;
+      break;
+    }
+    const remainingBeforeAttempt = remainingBudgetMs(deadline, now);
+    if (remainingBeforeAttempt <= 0) {
+      lastError = new Error('LLM API deadline exceeded before the next retry attempt');
+      break;
+    }
+
     const controller = new AbortController();
     let timer;
+    let signalCleanup = () => {};
     try {
-      timer = setTimeout(() => controller.abort(), timeout);
+      const attemptTimeout = Math.min(timeout, remainingBeforeAttempt);
+      timer = setTimeout(() => controller.abort(), attemptTimeout);
+      if (signal) {
+        const onAbort = () => controller.abort();
+        signal.addEventListener('abort', onAbort, { once: true });
+        signalCleanup = () => signal.removeEventListener('abort', onAbort);
+      }
+      attemptsMade++;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -144,19 +208,29 @@ export async function callLLM({
       return content;
     } catch (err) {
       lastError = err;
+      if (signal?.aborted) break;
+      const remainingAfterAttempt = remainingBudgetMs(deadline, now);
+      if (remainingAfterAttempt <= 0) {
+        lastError = new Error(`LLM API deadline exceeded after attempt ${attempt + 1}: ${err.message}`);
+        break;
+      }
       if (attempt < maxRetries && isRetryable(err)) {
-        const delay = computeBackoffMs(attempt, err.retryAfter);
-        await sleep(delay);
+        const delay = computeBackoffMs(attempt, err.retryAfter, {
+          max: Math.min(DEFAULT_MAX_BACKOFF_MS, remainingAfterAttempt),
+          now,
+        });
+        await sleepWithSignal(sleep, delay, signal);
         continue;
       }
       // Non-retryable or out of attempts — bail out.
       break;
     } finally {
       clearTimeout(timer);
+      signalCleanup();
     }
   }
 
-  throw new Error(`LLM API failed after ${maxRetries + 1} attempts: ${lastError?.message ?? 'unknown'}`);
+  throw new Error(`LLM API failed after ${attemptsMade || 1} attempts: ${lastError?.message ?? 'unknown'}`);
 }
 
 export async function callLLMMultiple({
@@ -167,6 +241,8 @@ export async function callLLMMultiple({
   temperature = 0.7,
   timeout = DEFAULT_TIMEOUT,
   allowInsecureBaseURL = false,
+  deadline,
+  signal,
   maxConcurrency = 0, // 0 = unlimited (preserves prior behavior)
   onStart,
   onComplete,
@@ -184,6 +260,8 @@ export async function callLLMMultiple({
         model,
         temperature,
         timeout,
+        deadline,
+        signal,
         allowInsecureBaseURL,
       });
       if (onComplete) onComplete(model, true);

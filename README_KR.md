@@ -29,8 +29,8 @@
 |  |  |
 |---|---|
 | **146개 패턴** | 한국어 37 + 영어 36 + 중국어 36 + 일본어 37 (각 5개 스코어 전용 viral-hook 포함) — [PATTERNS.md](docs/PATTERNS.md) |
-| **AI 탐지율** | 한국어 91% / 영어 76% (HC3) |
-| **오탐율** | 사람 글에 13–25% *(백과사전체의 본질적 한계, [문서화](core/stylometry.md))* |
+| **편집 핫스팟 재현율** | 한국어 91% [84.0–95.4%] (n=100) / 영어 76% [66.7–83.3%] (n=100), binomial 95% CI |
+| **오탐율** | 사람 글 register별 13–25% 점추정 범위 *(CI 아님; 백과사전체의 본질적 한계, [문서화](core/stylometry.md))* |
 | **모드** | rewrite · audit · score · diff · ouroboros |
 | **무료 사용** | 가능 — `codex` CLI 로그인 시 API 키 불필요 |
 | **결정성** | 스코어링 공식은 결정적이지만 LLM severity 부여 단계는 ±8–10pt 변동 ([scoring.md §8](core/scoring.md)) |
@@ -146,7 +146,7 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 
 각 검증 단계에서 의미가 손상되면 재시도하거나 롤백합니다.
 
-**캘리브레이션** *(500단락 코퍼스, `.omc/research/v3_8_remeasure.py` 로 재현 가능)*: HC3 ChatGPT (en) AI 탐지 76%, paired ko/AI 코퍼스 91%, 사람 글 오탐 13–25%. 수용 기준: AI ≥ 75%, 최대 FP ≤ 25%. 알고리즘은 [stylometry.md](core/stylometry.md).
+**캘리브레이션** *(500단락 코퍼스, `.omc/research/v3_8_remeasure.py` 로 재현 가능)*: HC3 ChatGPT (en) 편집 핫스팟 재현율 76% [66.7–83.3%], paired ko/AI 코퍼스 91% [84.0–95.4%] (각 n=100, binomial 95% CI). 사람 글 오탐은 register별 13–25% 점추정 범위로 별도 보고합니다. 수용 기준: AI ≥ 75%, 최대 FP ≤ 25%. 알고리즘은 [stylometry.md](core/stylometry.md).
 
 ## 설정
 

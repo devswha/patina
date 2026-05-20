@@ -31,11 +31,31 @@ function runBenchmark() {
 
 function readResults() {
   try {
-    return JSON.parse(readFileSync(RESULTS_PATH, 'utf8'));
+    const results = JSON.parse(readFileSync(RESULTS_PATH, 'utf8'));
+    validateResultsSchema(results);
+    return results;
   } catch (error) {
     throw new Error(
       `Cannot read ${relative(REPO_ROOT, RESULTS_PATH)}. Run npm run benchmark first. ${error.message}`
     );
+  }
+}
+
+function validateResultsSchema(results) {
+  const missing = [];
+  if (results?.schemaVersion !== 2) missing.push('schemaVersion=2');
+  if (typeof results?.fixtureSchemaVersion !== 'number') missing.push('fixtureSchemaVersion');
+  if (typeof results?.nodeVersion !== 'string') missing.push('nodeVersion');
+  if (typeof results?.overall?.ci_low !== 'number') missing.push('overall.ci_low');
+  if (typeof results?.overall?.ci_high !== 'number') missing.push('overall.ci_high');
+  if (typeof results?.overall?.n !== 'number') missing.push('overall.n');
+  for (const [lang, summary] of Object.entries(results?.perLanguage || {})) {
+    for (const detector of ['burstiness', 'mattr', 'lexicon']) {
+      if (!summary.byDetector?.[detector]) missing.push(`perLanguage.${lang}.byDetector.${detector}`);
+    }
+  }
+  if (missing.length) {
+    throw new Error(`Benchmark results schema is stale or invalid; missing ${missing.join(', ')}. Re-run tests/quality/benchmark.mjs.`);
   }
 }
 
@@ -67,8 +87,20 @@ function languageRows(perLanguage = {}) {
   return Object.entries(perLanguage)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([lang, s]) =>
-      `| ${lang} | ${s.total} | ${pct(s.accuracy)} | ${pct(s.precision)} | ${pct(s.recall)} | ${num(s.f1, 2)} | ${s.tp} | ${s.fp} | ${s.fn} | ${s.tn} |`
+      `| ${lang} | ${s.total} | ${pct(s.accuracy)} | ${pct(s.ci_low)}–${pct(s.ci_high)} | ${pct(s.precision)} | ${pct(s.recall)} | ${num(s.f1, 2)} | ${s.tp} | ${s.fp} | ${s.fn} | ${s.tn} |`
     );
+}
+
+function detectorRows(perLanguage = {}) {
+  const rows = [];
+  for (const [lang, s] of Object.entries(perLanguage).sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [detector, d] of Object.entries(s.byDetector || {}).sort(([a], [b]) => a.localeCompare(b))) {
+      rows.push(
+        `| ${lang} | ${detector} | ${d.total} | ${pct(d.accuracy)} | ${pct(d.ci_low)}–${pct(d.ci_high)} | ${pct(d.precision)} | ${pct(d.recall)} | ${num(d.f1, 2)} | ${d.tp} | ${d.fp} | ${d.fn} | ${d.tn} |`
+      );
+    }
+  }
+  return rows;
 }
 
 function classRows(fixtures = []) {
@@ -119,6 +151,13 @@ function renderMarkdown(results, benchmarkStatus) {
   const generatedAt = results.generatedAt || new Date().toISOString();
   const languageCount = Object.keys(results.perLanguage || {}).length;
   const status = benchmarkStatus === 0 ? 'passing' : 'failing';
+  const overall = results.overall || {
+    accuracy: results.overallAccuracy,
+    ci_low: null,
+    ci_high: null,
+    n: results.fixtureCount,
+    confidence_method: 'unavailable',
+  };
 
   return `# Benchmark Report
 
@@ -130,18 +169,26 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 
 - Status: **${status}**
 - Generated at: ${generatedAt}
+- Node: ${results.nodeVersion}
+- Fixture schema: v${results.fixtureSchemaVersion}
 - Fixtures: ${results.fixtureCount}
 - Languages: ${languageCount}
-- Overall accuracy: **${pct(results.overallAccuracy)}**
+- Overall accuracy: **${pct(overall.accuracy)}** [${pct(overall.ci_low)}–${pct(overall.ci_high)}] (n=${overall.n}, ${overall.confidence_method})
 - Source fixtures: \`tests/fixtures/suspect-zones/**\`
 - Reproduce: \`npm run benchmark:report\`
 - Raw JSON: [latest.json](latest.json)
 
 ## Language breakdown
 
-| lang | fixtures | accuracy | precision | recall | f1 | TP | FP | FN | TN |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| lang | fixtures | accuracy | 95% CI | precision | recall | f1 | TP | FP | FN | TN |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 ${languageRows(results.perLanguage).join('\n')}
+
+## Detector breakdown
+
+| lang | detector | fixtures | accuracy | 95% CI | precision | recall | f1 | TP | FP | FN | TN |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+${detectorRows(results.perLanguage).join('\n')}
 
 ## Sample sizes
 
@@ -165,7 +212,7 @@ ${fixtureRows(results.fixtures).join('\n')}
 - **Cold** means the fixture did not cross those thresholds.
 - The report is meant for regression tracking and contributor discussion, not for authorship accusation.
 - This deterministic corpus is intentionally small (${results.fixtureCount} fixtures) and currently covers only checked-in ko/en suspect-zone fixtures; do not treat 100% fixture accuracy as generalization to new models, genres, or edited AI text.
-- Confidence intervals, threshold sweeps, and 2025+ model rebaselines are tracked as benchmark follow-ups, not claimed by this report yet.
+- Confidence intervals use Wilson score intervals for the checked-in fixture set; external threshold sweeps and 2025+ model rebaselines are separate research follow-ups.
 - Broader methodology notes live in [AI/Human Metrics Research](../research/ai-human-metrics.md) and [Quality Checks](../../tests/quality/README.md).
 `;
 }
@@ -178,7 +225,7 @@ function main() {
   if (!runBenchmarkFirst) benchmarkStatus = statusFromResults(results);
 
   const report = {
-    reportVersion: 1,
+    reportVersion: 2,
     benchmarkCommand: benchmarkCommand.join(' '),
     benchmarkStatus,
     note: 'Deterministic suspect-zone benchmark; not an authorship detector.',

@@ -14,9 +14,9 @@ This roadmap focuses on two things:
 - Current benchmark layer:
   - deterministic stylometry/lexicon benchmark: `npm run benchmark`
 - Current public calibration claim:
-  - Korean AI catch: 91%
-  - English AI catch: 76%
-  - human false positives: 13-25%
+  - Korean editing-hotspot recall: 91% [84.0-95.4%], n=100
+  - English HC3 editing-hotspot recall: 76% [66.7-83.3%], n=100
+  - human false positives: 13-25% point-estimate range across registers
 - Current distribution gap:
   - package name `patina-cli` is not published on npm as of 2026-05-20
 

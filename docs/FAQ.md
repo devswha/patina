@@ -36,9 +36,11 @@ It is not a truth machine. The scoring formula is deterministic, but severity as
 
 ## How accurate is it?
 
-Current calibration reports 91% catch rate on Korean AI text and 76% on HC3 English ChatGPT samples, with 13-25% false positives on human prose depending on register.
+Current calibration reports 91% editing-hotspot recall on Korean AI text [84.0-95.4%] and 76% on HC3 English ChatGPT samples [66.7-83.3%], each with n=100 and binomial 95% CI. Human-prose false positives are tracked separately as a 13-25% point-estimate range across registers.
 
 False positives are expected, especially for encyclopedic, corporate, academic, or heavily edited prose. patina is meant to help edit suspicious passages, not to accuse a writer.
+
+See [ETHICS.md](ETHICS.md) for the intended-use position statement.
 
 ## Does it work without an API key?
 

@@ -1,7 +1,7 @@
 **[한국어](README_KR.md)** | **[中文](README_ZH.md)** | **[日本語](README_JA.md)** | English
 
 <p align="center">
-  <img src="assets/brand/patina-readme-logo.svg" alt="patina — Strip the AI packaging. Keep the meaning." width="440">
+  <img src="assets/brand/patina-logo.svg" alt="patina — Strip the AI packaging. Keep the meaning." width="440">
 </p>
 
 # patina
@@ -39,15 +39,16 @@ Unlike a generic paraphraser, patina is **pattern-based and auditable**: it show
 Try it quickly: [30-second terminal demo](docs/DEMO.md). More examples: [Before/After Gallery](docs/EXAMPLES.md).
 Brand assets: [logo](assets/brand/patina-logo.svg), [icon](assets/brand/patina-icon.svg),
 [social preview](assets/social/patina-og.svg), and [before/after card](assets/social/patina-before-after.svg).
+Usage notes: [BRANDING.md](docs/BRANDING.md).
 
 ## At a Glance
 
 |  |  |
 |---|---|
 | **146 patterns** | 37 KO + 36 EN + 36 ZH + 37 JA (each incl. 5 score-only viral-hook) — see [PATTERNS.md](docs/PATTERNS.md) |
-| **AI catch rate** | 91% Korean / 76% English (HC3) |
+| **Editing hotspot recall** | 91% Korean [84.0–95.4%] (n=100) / 76% English [66.7–83.3%] (n=100), binomial 95% CI |
 | **Benchmark report** | Reproducible suspect-zone benchmark: [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) |
-| **False positives** | 13–25% on human prose *(boundary intrinsic to encyclopedic register, [documented](core/stylometry.md))* |
+| **False positives** | 13–25% point-estimate range across human registers *(not a CI; boundary intrinsic to encyclopedic register, [documented](core/stylometry.md))* |
 | **Modes** | rewrite · audit · score · diff · ouroboros |
 | **Free tier** | Yes — via `codex` CLI (no API key) |
 | **Determinism** | Scoring formula is deterministic; LLM severity assignment ±8–10 pt per run ([scoring.md §8](core/scoring.md)) |
@@ -103,6 +104,10 @@ printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon that has fund
 ```
 
 > 🆓 **No API key required** if you have any of [`codex`](https://github.com/openai/codex), [`claude`](https://docs.anthropic.com/en/docs/claude-code), or [`gemini`](https://github.com/google-gemini/gemini-cli) CLIs logged in. Pick one with `--backend codex-cli | claude-cli | gemini-cli`, or let the model heuristic route automatically (`--model claude-*` → claude-cli, etc.). See [AUTHENTICATION.md](docs/AUTHENTICATION.md) for the full backend list.
+
+## Intended Use
+
+Patina is for post-AI editing, audit trails, and voice cleanup when the author is allowed to use AI assistance. It is not a promise that text is “originally human,” and it should not be used for academic honor-code evasion, publisher disclosure circumvention, plagiarism laundering, or detector-bypass claims. See [ETHICS.md](docs/ETHICS.md).
 
 ## Modes
 
@@ -191,7 +196,7 @@ Natural-sounding text (meaning verified)
 
 If meaning drifts at any verification step, the change is retried or rolled back.
 
-**Calibration** *(500-paragraph corpus, reproducible via `.omc/research/v3_8_remeasure.py`)*: 76% AI catch on HC3 ChatGPT (en), 91% on paired ko/AI corpus, 13–25% FP on human prose. Acceptance gates: AI ≥ 75%, max FP ≤ 25%. See [stylometry.md](core/stylometry.md) for the algorithm.
+**Calibration** *(500-paragraph corpus, reproducible via `.omc/research/v3_8_remeasure.py`)*: 76% editing-hotspot recall on HC3 ChatGPT (en) [66.7–83.3%] and 91% on paired ko/AI corpus [84.0–95.4%], each n=100 with binomial 95% CI. Human-prose false positives are reported separately as a 13–25% point-estimate range across registers, not as a confidence interval. Acceptance gates: AI ≥ 75%, max FP ≤ 25%. See [stylometry.md](core/stylometry.md) for the algorithm.
 
 ## Configuration
 
@@ -205,7 +210,7 @@ tone:                     # casual | professional | academic | narrative | marke
 max-models: [claude, gemini]
 ```
 
-Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the working directory overrides defaults.
+Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the working directory overrides defaults. List keys that extend detection (`blocklist`, `allowlist`, `skip-patterns`) merge additively across default/global/project configs; provider lists such as `max-models` replace so users can choose an exact backend set.
 
 ## Documentation
 
@@ -214,7 +219,10 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Patterns](docs/PATTERNS.md)** — full 146-pattern catalog
 - **[Authentication](docs/AUTHENTICATION.md)** — backends, providers, free-tier setup
 - **[CLI Contract](docs/CLI.md)** — score gate, exit codes, and automation-safe surfaces
+- **[Ethics](docs/ETHICS.md)** — intended use, non-use, and disclosure stance
 - **[FAQ](docs/FAQ.md)** — detector-bypass concerns, MPS, false positives, contribution starting points
+- **[Comparison](docs/COMPARISON.md)** — factual comparison with common paraphraser/humanizer tools
+- **[Branding](docs/BRANDING.md)** — canonical logo/social assets and OG setup notes
 - **[Roadmap](docs/ROADMAP.md)** — quality, benchmark, product, community, and launch priorities
 - **[Benchmark Report](docs/benchmarks/latest.md)** — latest reproducible suspect-zone benchmark summary
 - **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — benchmark design notes for measuring AI-like writing signals
@@ -222,7 +230,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI-lexicon algorithm
 - **[Scoring](core/scoring.md)** — AI-likeness + fidelity + MPS
 - **[Changelog](CHANGELOG.md)** — release notes and methodology
-- **[Contributing](CONTRIBUTING.md)** — pattern submissions, staleness reports
+- **[Contributing](CONTRIBUTING.md)** — pattern submissions, false-positive triage, benchmark fixtures, versioning
 - **[Governance](GOVERNANCE.md)** / **[Maintainers](MAINTAINERS.md)** — lightweight project decision rules
 
 ## Acknowledgements

@@ -52,15 +52,17 @@ export function validateScoreWeights(output, configWeights) {
     return [];
   }
   const warnings = [];
-  // Match table rows where the first column is a category id and the
-  // second is a numeric weight. Skip header/separator rows by requiring
-  // the category to start with a letter.
-  const rowRe = /^\|\s*([a-z][\w-]*)\s*\|\s*([\d.]+)\s*\|/i;
+  // Match table rows where the first column is a category label and the
+  // second is a numeric weight. Category labels may be localized by weaker
+  // models (for example `내용` or `言語`), so parse Unicode letters and map
+  // them back to the canonical config keys before comparison.
+  const rowRe = /^\|\s*([\p{L}\p{N}_-][^|]*?)\s*\|\s*([0-9]+(?:\.[0-9]+)?)\s*\|/u;
   const seen = new Map();
   for (const line of output.split(/\r?\n/)) {
     const m = line.match(rowRe);
     if (!m) continue;
-    const cat = m[1].toLowerCase();
+    const cat = normalizeCategoryName(m[1]);
+    if (!cat) continue;
     const weight = parseFloat(m[2]);
     if (!Number.isNaN(weight) && !seen.has(cat)) {
       seen.set(cat, weight);
@@ -84,6 +86,68 @@ export function validateScoreWeights(output, configWeights) {
   return warnings;
 }
 
+const CATEGORY_ALIASES = new Map([
+  ['content', 'content'],
+  ['내용', 'content'],
+  ['콘텐츠', 'content'],
+  ['内容', 'content'],
+  ['language', 'language'],
+  ['언어', 'language'],
+  ['语言', 'language'],
+  ['語言', 'language'],
+  ['言語', 'language'],
+  ['style', 'style'],
+  ['문체', 'style'],
+  ['스타일', 'style'],
+  ['文体', 'style'],
+  ['文體', 'style'],
+  ['风格', 'style'],
+  ['風格', 'style'],
+  ['communication', 'communication'],
+  ['커뮤니케이션', 'communication'],
+  ['소통', 'communication'],
+  ['沟通', 'communication'],
+  ['溝通', 'communication'],
+  ['コミュニケーション', 'communication'],
+  ['filler', 'filler'],
+  ['채움', 'filler'],
+  ['필러', 'filler'],
+  ['填充', 'filler'],
+  ['フィラー', 'filler'],
+  ['structure', 'structure'],
+  ['구조', 'structure'],
+  ['结构', 'structure'],
+  ['結構', 'structure'],
+  ['構造', 'structure'],
+  ['viral-hook', 'viral-hook'],
+  ['viral hook', 'viral-hook'],
+  ['바이럴훅', 'viral-hook'],
+  ['바이럴-훅', 'viral-hook'],
+  ['病毒钩子', 'viral-hook'],
+  ['病毒鉤子', 'viral-hook'],
+  ['バイラルフック', 'viral-hook'],
+]);
+
+function normalizeCategoryName(raw) {
+  const cleaned = String(raw || '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/[`*_]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[：:]+$/u, '');
+
+  if (!cleaned || cleaned === 'total' || cleaned === '합계' || cleaned === '总计' || cleaned === '總計' || cleaned === '合計') {
+    return null;
+  }
+
+  const ascii = cleaned.match(/\b(content|language|style|communication|filler|structure|viral[\s-]?hook)\b/);
+  if (ascii) return ascii[1].replace(/\s+/, '-');
+
+  const compact = cleaned.replace(/[\s・·_/]+/gu, '');
+  return CATEGORY_ALIASES.get(cleaned) || CATEGORY_ALIASES.get(compact) || compact;
+}
+
 // v3.11: rewrite/diff/ouroboros prompts ask the model to wrap user-facing
 // text in [BODY]...[/BODY] and put audit notes in [SELF_AUDIT]...[/SELF_AUDIT].
 // We extract the body block and drop the audit so callers get clean text.
@@ -94,14 +158,22 @@ export function stripSelfAudit(body) {
   const bodyOpen = body.indexOf('[BODY]');
   const bodyClose = body.indexOf('[/BODY]', bodyOpen);
   if (bodyOpen < 0 || bodyClose <= bodyOpen) {
+    const stripped = removeSelfAuditBlocks(body).trim();
+    if (stripped !== body.trim()) {
+      console.error(
+        `[patina] warning: model output omitted [BODY] tags (${body.length} chars); stripped [SELF_AUDIT]. Re-run with --prompt-mode strict if the output looks wrong.`
+      );
+      return stripped;
+    }
     return body;
   }
   const inner = body.slice(bodyOpen + '[BODY]'.length, bodyClose).trim();
-  const tail = body
-    .slice(bodyClose + '[/BODY]'.length)
-    .replace(/\[SELF_AUDIT\][\s\S]*?\[\/SELF_AUDIT\]/g, '')
-    .trim();
+  const tail = removeSelfAuditBlocks(body.slice(bodyClose + '[/BODY]'.length)).trim();
   return tail ? `${inner}\n\n${tail}` : inner;
+}
+
+function removeSelfAuditBlocks(body) {
+  return String(body || '').replace(/\[SELF_AUDIT\][\s\S]*?\[\/SELF_AUDIT\]/g, '');
 }
 
 function renderBody(result) {
@@ -138,7 +210,7 @@ function appendToneFooter(body, tone) {
 // key. We avoid double-printing when the model honored Phase 6.
 function hasToneFooter(body) {
   if (!body) return false;
-  const tail = body.split(/\r?\n/).slice(-30).join('\n');
+  const tail = normalizeFooterTail(body.split(/\r?\n/).slice(-30));
   const m = tail.match(/(^|\n)---\s*\n([\s\S]*?)\n---\s*$/);
   if (!m) return false;
   const block = m[2];
@@ -146,6 +218,14 @@ function hasToneFooter(body) {
     && /\btone_source\s*:/.test(block)
     && /\btone_evidence\s*:/.test(block)
     && /\btone_confidence\s*:/.test(block);
+}
+
+function normalizeFooterTail(lines) {
+  return lines
+    .map((line) => line.replace(/^\s*>\s?/u, '').trimEnd())
+    .filter((line) => !/^\s*```[\w-]*\s*$/u.test(line))
+    .join('\n')
+    .trim();
 }
 
 function formatMaxModeOutput(result) {

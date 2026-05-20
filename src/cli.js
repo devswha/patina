@@ -557,7 +557,8 @@ Batch / output:
 
 MAX / variants:
   --models <list>      MAX mode: comma-separated model list
-  --max-concurrency <n>  Cap parallel MAX-mode requests (default: unlimited)
+  --max-concurrency <n>  Cap parallel MAX-mode requests (default: min(models, 3);
+                       0 = unlimited, risky on free-tier providers)
   --variants <n>       Generate N stylistic variants of the rewrite (1-5,
                        default 1). Each variant preserves facts/numbers but
                        differs in voice (V1 casual, V2 direct, V3 measured…).

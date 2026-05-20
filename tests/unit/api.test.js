@@ -7,6 +7,7 @@ import {
   computeBackoffMs,
   createSemaphore,
   callLLM,
+  callLLMMultiple,
 } from '../../src/api.js';
 
 test('HttpError captures status, body, and Retry-After', () => {
@@ -105,6 +106,38 @@ test('createSemaphore enforces concurrency cap and drains the queue', async () =
   await Promise.all([work(), work(), work(), work(), work()]);
   assert.equal(peak, 2, 'never exceeds cap');
   assert.equal(active, 0, 'all releases run');
+});
+
+test('callLLMMultiple defaults to a safe concurrency cap', async () => {
+  const originalFetch = globalThis.fetch;
+  let active = 0;
+  let peak = 0;
+  globalThis.fetch = async () => {
+    active++;
+    peak = Math.max(peak, active);
+    await new Promise((r) => setTimeout(r, 5));
+    active--;
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: 'ok' } }],
+      }),
+    };
+  };
+
+  try {
+    const results = await callLLMMultiple({
+      prompt: 'x',
+      apiKey: 'test',
+      baseURL: 'https://example.com/v1',
+      models: ['a', 'b', 'c', 'd', 'e'],
+    });
+
+    assert.equal(peak, 3, 'default should queue beyond min(models.length, 3)');
+    assert.deepEqual(results.map((r) => r.ok), [true, true, true, true, true]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('callLLM clamps Retry-After sleep to the remaining deadline budget', async () => {

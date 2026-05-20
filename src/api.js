@@ -100,9 +100,8 @@ export function computeBackoffMs(attempt, retryAfter, opts = {}) {
   return Math.min(exp + jitter, max);
 }
 
-// Bounded-concurrency semaphore. `max <= 0` (or undefined) yields a
-// no-op gate so the existing parallel-fanout behavior is unchanged when
-// the caller doesn't ask for a limit.
+// Bounded-concurrency semaphore. `max <= 0` yields a no-op gate for callers
+// that explicitly opt into unlimited parallelism.
 export function createSemaphore(max) {
   if (!max || max <= 0) {
     return { acquire: () => Promise.resolve(() => {}) };
@@ -243,12 +242,13 @@ export async function callLLMMultiple({
   allowInsecureBaseURL = false,
   deadline,
   signal,
-  maxConcurrency = 0, // 0 = unlimited (preserves prior behavior)
+  maxConcurrency,
   onStart,
   onComplete,
 }) {
   validateBaseURL(baseURL, { allowInsecure: allowInsecureBaseURL });
-  const sem = createSemaphore(maxConcurrency);
+  const effectiveMaxConcurrency = maxConcurrency ?? Math.min(models.length, 3);
+  const sem = createSemaphore(effectiveMaxConcurrency);
   const promises = models.map(async (model) => {
     const release = await sem.acquire();
     if (onStart) onStart(model);

@@ -15,6 +15,9 @@ CURSOR_RULES_DIR="${HOME}/.cursor/rules"
 OPCODE_SKILLS_DIR="${HOME}/.config/opencode/skills"
 PATINA_DIR="${CLAUDE_SKILLS_DIR}/patina"
 REPO_URL="https://github.com/devswha/patina.git"
+# Pin the installed checkout to a concrete ref. If unset, resolve the current
+# remote HEAD once and check out that commit instead of tracking main.
+PATINA_REF="${PATINA_REF:-}"
 
 # Colors (only when outputting to a terminal)
 if [ -t 1 ]; then
@@ -51,6 +54,43 @@ error() {
 # Check prerequisites
 command -v git >/dev/null 2>&1 || error "git is not installed. Please install git first."
 
+resolve_install_ref() {
+  if [ -n "${PATINA_REF}" ]; then
+    printf "%s" "${PATINA_REF}"
+    return 0
+  fi
+
+  git ls-remote "${REPO_URL}" HEAD 2>/dev/null | awk 'NR == 1 { print $1 }'
+}
+
+checkout_install_ref() {
+  dir="$1"
+  ref="$2"
+
+  set +e
+  (
+    cd "${dir}"
+    git fetch --depth=1 origin "${ref}" || exit 10
+    git checkout --detach FETCH_HEAD >/dev/null 2>&1 || exit 11
+  )
+  rc="$?"
+  set -e
+  if [ "${rc}" = "10" ]; then
+    error "Failed to fetch patina ref '${ref}'. Use PATINA_REF=<tag-or-full-sha>."
+  fi
+  if [ "${rc}" = "11" ]; then
+    error "Failed to check out patina ref '${ref}'."
+  fi
+  if [ "${rc}" != "0" ]; then
+    error "Failed to install patina ref '${ref}'."
+  fi
+}
+
+INSTALL_REF="$(resolve_install_ref)"
+if [ -z "${INSTALL_REF}" ]; then
+  error "Failed to resolve patina install ref. Set PATINA_REF=<tag-or-full-sha> and retry."
+fi
+
 # --- Claude Code ---
 if [ "${INSTALL_CLAUDE}" = "true" ]; then
   info "Installing for Claude Code..."
@@ -62,14 +102,14 @@ if [ "${INSTALL_CLAUDE}" = "true" ]; then
 
   if [ -d "${PATINA_DIR}/.git" ]; then
     info "Updating existing patina installation..."
-    cd "${PATINA_DIR}"
-    git pull --ff-only || error "Failed to update patina. You may have local changes."
+    checkout_install_ref "${PATINA_DIR}" "${INSTALL_REF}"
   else
     if [ -d "${PATINA_DIR}" ]; then
       error "${PATINA_DIR} exists but is not a git repo. Remove it and try again."
     fi
-    info "Cloning patina..."
-    git clone "${REPO_URL}" "${PATINA_DIR}" || error "Failed to clone patina. Check your network connection."
+    info "Cloning patina at ${INSTALL_REF}..."
+    git clone --depth=1 "${REPO_URL}" "${PATINA_DIR}" || error "Failed to clone patina. Check your network connection."
+    checkout_install_ref "${PATINA_DIR}" "${INSTALL_REF}"
   fi
 
   ln -snf "${PATINA_DIR}/patina-max" "${CLAUDE_SKILLS_DIR}/patina-max"
@@ -170,8 +210,9 @@ if [ "${INSTALL_OPCODE}" = "true" ]; then
 fi
 printf "\n"
 info "Environment variables to control installation:"
-printf "  INSTALL_CLAUDE=true|false   (default: true)\n"
-printf "  INSTALL_CODEX=true|false    (default: true)\n"
-printf "  INSTALL_CURSOR=true|false   (default: true)\n"
-printf "  INSTALL_OPCODE=true|false   (default: true)\n"
+printf "  PATINA_REF=<tag-or-full-sha>  Pin installed checkout (default: resolved remote HEAD SHA)\n"
+printf "  INSTALL_CLAUDE=true|false    (default: true)\n"
+printf "  INSTALL_CODEX=true|false     (default: true)\n"
+printf "  INSTALL_CURSOR=true|false    (default: true)\n"
+printf "  INSTALL_OPCODE=true|false    (default: true)\n"
 printf "\n"

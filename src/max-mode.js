@@ -27,7 +27,7 @@ export async function runMaxMode({ prompt, sourceText, models, apiKey, baseURL, 
       patterns,
       apiKey,
       baseURL,
-      model: models[0],
+      model: r.model,
     });
 
     const mpsResult = await scoreMPS({
@@ -35,7 +35,7 @@ export async function runMaxMode({ prompt, sourceText, models, apiKey, baseURL, 
       rewritten: r.result,
       apiKey,
       baseURL,
-      model: models[0],
+      model: r.model,
     });
 
     candidates.push({

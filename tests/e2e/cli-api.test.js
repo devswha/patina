@@ -41,6 +41,22 @@ function stopMockServer() {
   });
 }
 
+async function captureConsole(fn) {
+  const logs = [];
+  const errors = [];
+  const originalLog = console.log;
+  const originalError = console.error;
+  console.log = (...args) => logs.push(args.join(' '));
+  console.error = (...args) => errors.push(args.join(' '));
+  try {
+    await fn();
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+  }
+  return { logs, errors };
+}
+
 describe('CLI End-to-End with Mock API', () => {
   before(async () => {
     await startMockServer('This is the humanized result.');
@@ -131,23 +147,89 @@ describe('CLI End-to-End with Mock API', () => {
     await startMockServer('This is the humanized result.');
   });
 
-  it('should handle MAX mode with multiple models', async () => {
+  it('should group help output and list current backend names', async () => {
+    const { logs } = await captureConsole(() => main(['--help']));
+    const help = logs.join('\n');
+
+    assert.ok(help.includes('Core options:'), 'help should group core options');
+    assert.ok(help.includes('Modes:'), 'help should group modes');
+    assert.ok(help.includes('Model / auth / backend:'), 'help should group backend options');
+    assert.ok(help.includes('--gate <n>'), 'help should document score gate');
+    assert.ok(
+      help.includes('openai-http, codex-cli, claude-cli, gemini-cli'),
+      'help should list every backend name'
+    );
+  });
+
+  it('should set exit code 3 when --score gate fails', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    await stopMockServer();
+    await startMockServer('{ "overall": 42, "interpretation": "mixed" }');
+
+    const oldExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    try {
+      const { errors } = await captureConsole(() => main([
+        '--lang', 'en',
+        '--score',
+        '--gate', '30',
+        '--api-key', 'test-key',
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        testFile,
+      ]));
+
+      assert.strictEqual(process.exitCode, 3);
+      assert.ok(errors.some((line) => line.includes('score gate failed')));
+    } finally {
+      process.exitCode = oldExitCode;
+    }
+    await stopMockServer();
+    await startMockServer('This is the humanized result.');
+  });
+
+  it('should reject --gate outside score mode', async () => {
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+
+    await assert.rejects(
+      () => main([
+        '--gate', '30',
+        '--api-key', 'test-key',
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        testFile,
+      ]),
+      /--gate can only be used with --score/
+    );
+  });
+
+  it('should score each MAX candidate with its own model', async () => {
     callCount = 0;
     lastRequestBody = null;
     await stopMockServer();
 
-    let callNum = 0;
+    const requests = [];
     mockServer = createServer((req, res) => {
       callCount++;
       let body = '';
       req.on('data', (chunk) => { body += chunk; });
       req.on('end', () => {
         lastRequestBody = JSON.parse(body);
-        callNum++;
+        requests.push(lastRequestBody);
         const model = lastRequestBody.model;
+        const prompt = lastRequestBody.messages[0].content;
         res.writeHead(200, { 'Content-Type': 'application/json' });
 
-        if (model === 'model-a') {
+        if (prompt.includes('AI-likeness scoring engine')) {
+          const overall = prompt.includes('Result from model B') ? 20 : 40;
+          res.end(JSON.stringify({
+            choices: [{ message: { content: `{ "overall": ${overall}, "interpretation": "mostly human" }` } }],
+          }));
+        } else if (prompt.includes('Meaning Preservation evaluator')) {
+          res.end(JSON.stringify({
+            choices: [{ message: { content: '{ "anchors": [], "pass_count": 1, "total_count": 1, "polarity_pass_count": 0, "polarity_total_count": 0, "mps": 90 }' } }],
+          }));
+        } else if (model === 'model-a') {
           res.end(JSON.stringify({
             choices: [{ message: { content: 'Result from model A' } }],
           }));
@@ -157,7 +239,7 @@ describe('CLI End-to-End with Mock API', () => {
           }));
         } else {
           res.end(JSON.stringify({
-            choices: [{ message: { content: 'Score result' } }],
+            choices: [{ message: { content: 'Unexpected model' } }],
           }));
         }
       });
@@ -180,9 +262,33 @@ describe('CLI End-to-End with Mock API', () => {
       testFile,
     ]);
 
-    assert.ok(callCount >= 2, `Should make multiple API calls, got ${callCount}`);
+    const scoringModelsForB = requests
+      .filter((request) => request.messages[0].content.includes('Result from model B'))
+      .map((request) => request.model);
+
+    assert.deepStrictEqual(
+      scoringModelsForB,
+      ['model-b', 'model-b'],
+      'model-b candidate should be scored for AI-likeness and MPS by model-b'
+    );
+    assert.ok(callCount >= 6, `Should make rewrite + scoring calls, got ${callCount}`);
     await stopMockServer();
     await startMockServer('This is the humanized result.');
+  });
+
+  it('should reject --variants with MAX mode instead of ignoring it', async () => {
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+
+    await assert.rejects(
+      () => main([
+        '--models', 'model-a,model-b',
+        '--variants', '2',
+        '--api-key', 'test-key',
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        testFile,
+      ]),
+      /--variants is not supported with --models\/MAX mode yet/
+    );
   });
 
   it('should handle API errors gracefully', async () => {

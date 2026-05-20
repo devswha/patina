@@ -47,6 +47,10 @@ export function listBackends() {
   });
 }
 
+export function listBackendNames() {
+  return Object.keys(REGISTRY);
+}
+
 export function selectBackend({ name, model } = {}) {
   if (name) {
     const backend = REGISTRY[name];

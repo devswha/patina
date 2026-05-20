@@ -11,6 +11,7 @@ import { buildManifest, appendResult, writeManifest } from './manifest.js';
 import { runDoctor } from './commands/doctor.js';
 import { runInit } from './commands/init.js';
 import { inputError, runtimeError, renderCliError, getExitCode } from './errors.js';
+import { inspectHttpApiKeySource, providerHttpKeyEnvVars, resolveHttpApiKey } from './auth.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, basename, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,12 +48,16 @@ export async function main(args) {
   }
 
   if (parsed.models && parsed.variants && parsed.variants > 1) {
-    throw new Error('--variants is not supported with --models/MAX mode yet. Omit --variants or run one model at a time.');
+    throw inputError(
+      '--variants is not supported with --models/MAX mode yet',
+      'MAX mode already fans out across models, so variant fan-out is ambiguous.',
+      'Omit --variants or run one model at a time.'
+    );
   }
 
   if (parsed.gate !== undefined && !parsed.score) {
     throw inputError(
-      '--gate can only be used with --score',
+      `${parsed.gateOption || '--gate'} can only be used with --score`,
       'Score gates need a parsed overall score.',
       'Run `patina --score --exit-on 30 <file>`.'
     );
@@ -68,7 +73,6 @@ export async function main(args) {
     return;
   }
 
-  const apiKey = resolveApiKey(parsed);
   const configPath = parsed.config ? resolve(process.cwd(), parsed.config) : undefined;
   const config = loadConfig(configPath);
 
@@ -76,6 +80,7 @@ export async function main(args) {
   if (parsed.profile) config.profile = parsed.profile;
 
   const provider = selectProvider(parsed.provider ?? config.provider);
+  const apiKey = resolveApiKey(parsed, provider);
   const resolved = resolveProviderConfig({
     provider,
     apiKey,
@@ -181,7 +186,7 @@ export async function main(args) {
       }
 
       if (backend.name === 'openai-http' && !resolved.apiKey) {
-        const msg = ['No API key found. Set PATINA_API_KEY or pass --api-key.'];
+        const msg = ['No API key found. Set PATINA_API_KEY, PATINA_API_KEY_FILE, OPENAI_API_KEY, or pass --api-key.'];
         if (provider) {
           msg.push(`(--provider ${provider.name} expects ${provider.apiKeyEnv} or PATINA_API_KEY.)`);
         }
@@ -209,18 +214,23 @@ export async function main(args) {
     }
 
     let output;
+    let scoreValidationOutput = null;
     if (parsed.ouroboros) {
       const ouroborosBody = formatOuroborosOutput(result);
       output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution });
+      scoreValidationOutput = ouroborosBody;
     } else {
       output = formatOutput(result, mode, parsed, { tone: toneResolution });
+      if (mode === 'score') {
+        scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' });
+      }
     }
 
     // v3.11 Phase 1.3: surface weight drift between config and the score
     // table the model emitted. Warnings only — does not alter the output.
     if (mode === 'score') {
       const configWeights = config.ouroboros?.['category-weights']?.[lang] || {};
-      const warnings = validateScoreWeights(output, configWeights);
+      const warnings = validateScoreWeights(scoreValidationOutput || output, configWeights);
       for (const w of warnings) {
         console.error(`[patina] ${w}`);
       }
@@ -294,19 +304,23 @@ function parseArgs(args) {
         parsed.version = true;
         break;
       case '--lang':
-        parsed.lang = args[++i];
+        parsed.lang = readOptionValue(args, i, arg);
+        i++;
         break;
       case '--profile':
-        parsed.profile = args[++i];
+        parsed.profile = readOptionValue(args, i, arg);
+        i++;
         break;
       case '--tone': {
-        const t = args[++i];
-        if (t === undefined) {
-          throw new Error(`--tone requires a value. Valid tones: casual, professional, academic, narrative, marketing, instructional, auto`);
-        }
+        const t = readOptionValue(args, i, arg);
+        i++;
         const valid = ['casual', 'professional', 'academic', 'narrative', 'marketing', 'instructional', 'auto'];
         if (!valid.includes(t)) {
-          throw new Error(`Unknown tone '${t}'. Valid tones: ${valid.join(', ')}`);
+          throw inputError(
+            `unknown tone ${t}`,
+            `Valid tones are: ${valid.join(', ')}.`,
+            'Use `--tone auto` to let patina infer tone from the text.'
+          );
         }
         parsed.tone = t;
         break;
@@ -321,7 +335,8 @@ function parseArgs(args) {
         parsed.score = true;
         break;
       case '--format': {
-        const value = args[++i];
+        const value = readOptionValue(args, i, arg);
+        i++;
         if (!['json', 'text', 'markdown'].includes(value)) {
           throw inputError(
             '--format expects json, text, or markdown',
@@ -336,23 +351,33 @@ function parseArgs(args) {
         parsed.format = 'json';
         break;
       case '--gate': {
-        const n = Number(args[++i]);
+        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
+        i++;
+        const n = Number(value);
         if (!Number.isFinite(n) || n < 0 || n > 100) {
-          throw new Error(`--gate expects a number from 0 to 100, got ${args[i]}`);
+          throw inputError(
+            '--gate expects a number from 0 to 100',
+            `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
+            'Use `patina --score --gate 30 <file>` for CI gates.'
+          );
         }
         parsed.gate = n;
+        parsed.gateOption = '--gate';
         break;
       }
       case '--exit-on': {
-        const n = Number(args[++i]);
+        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
+        i++;
+        const n = Number(value);
         if (!Number.isFinite(n) || n < 0 || n > 100) {
           throw inputError(
             '--exit-on expects a number from 0 to 100',
-            `Received ${args[i] === undefined ? 'no value' : `"${args[i]}"`}.`,
+            `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
             'Use `patina --score --exit-on 30 <file>` for CI gates.'
           );
         }
         parsed.gate = n;
+        parsed.gateOption = '--exit-on';
         break;
       }
       case '--ouroboros':
@@ -365,45 +390,70 @@ function parseArgs(args) {
         parsed.inPlace = true;
         break;
       case '--suffix':
-        parsed.suffix = args[++i];
+        parsed.suffix = readOptionValue(args, i, arg, { allowFlagLike: true });
+        i++;
         break;
       case '--outdir':
-        parsed.outdir = args[++i];
+        parsed.outdir = readOptionValue(args, i, arg);
+        i++;
         break;
       case '--models':
-        parsed.models = args[++i].split(',').map((m) => m.trim());
+        parsed.models = readOptionValue(args, i, arg)
+          .split(',')
+          .map((m) => m.trim())
+          .filter(Boolean);
+        i++;
+        if (parsed.models.length === 0) {
+          throw inputError(
+            '--models expects at least one model id',
+            'The comma-separated model list was empty.',
+            'Use `--models gpt-4o,claude-3-5-sonnet`.'
+          );
+        }
         break;
       case '--max-concurrency': {
-        const n = Number(args[++i]);
-        if (!Number.isFinite(n) || n < 0) {
-          throw new Error(`--max-concurrency expects a non-negative integer, got ${args[i]}`);
+        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
+        i++;
+        const n = Number(value);
+        if (!Number.isInteger(n) || n < 0) {
+          throw inputError(
+            '--max-concurrency expects a non-negative integer',
+            `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
+            'Use `--max-concurrency 2` or omit it for unlimited concurrency.'
+          );
         }
         parsed.maxConcurrency = n;
         break;
       }
       case '--model':
-        parsed.model = args[++i];
+        parsed.model = readOptionValue(args, i, arg);
+        i++;
         break;
       case '--api-key':
-        parsed.apiKey = args[++i];
+        parsed.apiKey = readOptionValue(args, i, arg);
+        i++;
         break;
       case '--api-key-file':
-        parsed.apiKeyFile = args[++i];
+        parsed.apiKeyFile = readOptionValue(args, i, arg);
+        i++;
         break;
       case '--allow-private-base-url':
         parsed.allowPrivateBaseURL = true;
         break;
       case '--base-url':
-        parsed.baseURL = args[++i];
+        parsed.baseURL = readOptionValue(args, i, arg);
+        i++;
         break;
       case '--backend':
-        parsed.backend = args[++i];
+        parsed.backend = readOptionValue(args, i, arg);
+        i++;
         break;
       case '--list-backends':
         parsed.listBackends = true;
         break;
       case '--provider':
-        parsed.provider = args[++i];
+        parsed.provider = readOptionValue(args, i, arg);
+        i++;
         break;
       case '--list-providers':
         parsed.listProviders = true;
@@ -412,23 +462,36 @@ function parseArgs(args) {
         parsed.allowInsecureBaseURL = true;
         break;
       case '--config':
-        parsed.config = args[++i];
+        parsed.config = readOptionValue(args, i, arg);
+        i++;
         break;
       case '--save-run':
-        parsed.saveRun = args[++i];
+        parsed.saveRun = readOptionValue(args, i, arg);
+        i++;
         break;
       case '--prompt-mode': {
-        const m = args[++i];
+        const m = readOptionValue(args, i, arg);
+        i++;
         if (!m || !['strict', 'minimal', 'auto'].includes(m)) {
-          throw new Error(`--prompt-mode expects 'strict' | 'minimal' | 'auto', got ${m}`);
+          throw inputError(
+            '--prompt-mode expects strict, minimal, or auto',
+            `Received ${m === undefined ? 'no value' : `"${m}"`}.`,
+            'Use `--prompt-mode auto` unless you need a specific prompt style.'
+          );
         }
         parsed.promptMode = m;
         break;
       }
       case '--variants': {
-        const n = Number(args[++i]);
+        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
+        i++;
+        const n = Number(value);
         if (!Number.isInteger(n) || n < 1 || n > 5) {
-          throw new Error(`--variants expects an integer 1-5, got ${args[i]}`);
+          throw inputError(
+            '--variants expects an integer from 1 to 5',
+            `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
+            'Use `--variants 2` for alternate rewrite drafts.'
+          );
         }
         parsed.variants = n;
         break;
@@ -453,10 +516,18 @@ function parseArgs(args) {
   return parsed;
 }
 
-// Resolve the API key, preferring file-based sources to keep the secret out
-// of argv and shell history (CWE-214). Precedence: --api-key-file >
-// PATINA_API_KEY_FILE > --api-key (with deprecation warning) > parsed.apiKey
-// passed through to provider config (env var path stays in providers.js).
+function readOptionValue(args, index, option, { allowFlagLike = false } = {}) {
+  const value = args[index + 1];
+  if (value === undefined || (!allowFlagLike && value.startsWith('-'))) {
+    throw inputError(
+      `${option} requires a value`,
+      'The option was provided without the value it needs.',
+      `Run \`patina --help\` to see the expected ${option} syntax.`
+    );
+  }
+  return value;
+}
+
 // v3.11: case-05 found that prompt-mode preference is per-backend.
 // auto resolves to strict for codex-cli/claude (instruction-rich) and
 // minimal for gemini (voice-rich, over-constrained by long prompts).
@@ -472,32 +543,27 @@ export function resolvePromptMode(mode, { backend, model }) {
   return 'strict';
 }
 
-function resolveApiKey(parsed) {
-  const filePath = parsed.apiKeyFile || process.env.PATINA_API_KEY_FILE;
-  if (filePath) {
-    let contents;
-    try {
-      contents = readFileSync(filePath, 'utf8');
-    } catch (err) {
-      throw new Error(`Cannot read --api-key-file ${filePath}: ${err.message}`);
-    }
-    const key = contents.replace(/[\r\n]+$/, '').trim();
-    if (!key) {
-      throw new Error(`API key file ${filePath} is empty`);
-    }
-    if (parsed.apiKey) {
-      console.error('[patina] both --api-key-file and --api-key were provided; using --api-key-file');
-    }
-    return key;
+// Resolve the API key, preferring file-based sources to keep the secret out
+// of argv and shell history (CWE-214). Precedence: --api-key-file >
+// PATINA_API_KEY_FILE > --api-key (with deprecation warning) > provider/default
+// env vars.
+function resolveApiKey(parsed, provider) {
+  const hasApiKeyFile = Boolean(parsed.apiKeyFile || process.env.PATINA_API_KEY_FILE);
+  const apiKey = resolveHttpApiKey({
+    explicitApiKey: parsed.apiKey,
+    apiKeyFile: parsed.apiKeyFile,
+    envVars: providerHttpKeyEnvVars(provider?.apiKeyEnv),
+  });
+  if (hasApiKeyFile && parsed.apiKey) {
+    console.error('[patina] both --api-key-file and --api-key were provided; using --api-key-file');
   }
-  if (parsed.apiKey) {
+  if (parsed.apiKey && !hasApiKeyFile) {
     console.error(
       '[patina] warning: --api-key exposes the secret in shell history and `ps` output.\n' +
       '         Prefer PATINA_API_KEY env var, --api-key-file <path>, or PATINA_API_KEY_FILE.'
     );
-    return parsed.apiKey;
   }
-  return undefined;
+  return apiKey;
 }
 
 async function loadInputs(parsed) {
@@ -768,26 +834,35 @@ function printProviderStatus() {
   const rows = Object.values(PROVIDERS).map((p) => ({
     name: p.name,
     free: p.freeTier ? 'yes' : 'no',
-    keySet: process.env[p.apiKeyEnv] ? 'yes' : 'no',
+    keySource: providerKeySource(p),
+    providerEnv: process.env[p.apiKeyEnv] ? 'set' : 'missing',
     note: `${p.apiKeyEnv} → ${p.baseURL}`,
   }));
   const widths = {
     name: Math.max('Provider'.length, ...rows.map((r) => r.name.length)),
     free: Math.max('Free tier'.length, ...rows.map((r) => r.free.length)),
-    keySet: Math.max('Key set'.length, ...rows.map((r) => r.keySet.length)),
+    keySource: Math.max('Key source'.length, ...rows.map((r) => r.keySource.length)),
+    providerEnv: Math.max('Provider env'.length, ...rows.map((r) => r.providerEnv.length)),
   };
   const pad = (s, w) => s + ' '.repeat(Math.max(0, w - s.length));
   console.log(
-    `${pad('Provider', widths.name)}  ${pad('Free tier', widths.free)}  ${pad('Key set', widths.keySet)}  Notes`
+    `${pad('Provider', widths.name)}  ${pad('Free tier', widths.free)}  ${pad('Key source', widths.keySource)}  ${pad('Provider env', widths.providerEnv)}  Notes`
   );
   console.log(
-    `${'-'.repeat(widths.name)}  ${'-'.repeat(widths.free)}  ${'-'.repeat(widths.keySet)}  -----`
+    `${'-'.repeat(widths.name)}  ${'-'.repeat(widths.free)}  ${'-'.repeat(widths.keySource)}  ${'-'.repeat(widths.providerEnv)}  -----`
   );
   for (const r of rows) {
     console.log(
-      `${pad(r.name, widths.name)}  ${pad(r.free, widths.free)}  ${pad(r.keySet, widths.keySet)}  ${r.note}`
+      `${pad(r.name, widths.name)}  ${pad(r.free, widths.free)}  ${pad(r.keySource, widths.keySource)}  ${pad(r.providerEnv, widths.providerEnv)}  ${r.note}`
     );
   }
+}
+
+function providerKeySource(provider) {
+  const source = inspectHttpApiKeySource({
+    envVars: providerHttpKeyEnvVars(provider.apiKeyEnv),
+  });
+  return source.ok ? source.source : 'missing';
 }
 
 function handleAuth(subArgs) {

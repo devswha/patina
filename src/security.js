@@ -4,15 +4,16 @@
 // --base-url, PATINA_API_BASE, and provider presets. Both are sent into either
 // fs.readFileSync or fetch() with the API key attached, so they need to be
 // validated before use.
+import { inputError } from './errors.js';
 
 const PROFILE_NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_-]*$/;
 
 export function validateProfileName(name) {
   if (typeof name !== 'string' || !PROFILE_NAME_RE.test(name)) {
-    throw new Error(
-      `Invalid profile name: ${JSON.stringify(name)}. ` +
-      `Profile names must match /^[A-Za-z0-9_][A-Za-z0-9_-]*$/ ` +
-      `(no slashes, no "..", no path separators).`
+    throw inputError(
+      `Invalid profile name: ${JSON.stringify(name)}`,
+      'Profile names may only contain letters, numbers, underscore, and hyphen, and cannot contain slashes or "..".',
+      'Run `patina --help` to see profile examples.'
     );
   }
 }
@@ -67,11 +68,17 @@ export function validateBaseURL(baseURL, { allowInsecure = false, allowPrivate =
   try {
     url = new URL(baseURL);
   } catch {
-    throw new Error(`Invalid base URL: ${JSON.stringify(baseURL)}`);
+    throw inputError(
+      `Invalid base URL: ${JSON.stringify(baseURL)}`,
+      'The value is not a parseable URL.',
+      'Use an https:// URL, or http://127.0.0.1 for local test servers.'
+    );
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-    throw new Error(
-      `Base URL must use http or https (got ${url.protocol}): ${baseURL}`
+    throw inputError(
+      'base URL must use http or https',
+      `Received ${url.protocol}: ${baseURL}`,
+      'Use an https:// URL, or http://127.0.0.1 for local test servers.'
     );
   }
   // Either an explicit caller opt-in or the env var override is enough to
@@ -79,10 +86,10 @@ export function validateBaseURL(baseURL, { allowInsecure = false, allowPrivate =
   // is passed so downstream callLLM calls don't have to plumb the flag.
   const allowInsec = allowInsecure || shouldAllowInsecureBaseURL();
   if (url.protocol === 'http:' && !isLoopbackHost(url.hostname) && !allowInsec) {
-    throw new Error(
-      `Refusing to send prompts and API key over plaintext HTTP to ${url.hostname}.\n` +
-      `Use an https:// URL, or pass --allow-insecure-base-url ` +
-      `(or set PATINA_ALLOW_INSECURE_BASE_URL=1) to override for trusted private endpoints.`
+    throw inputError(
+      `refusing plaintext HTTP to ${url.hostname}`,
+      'patina will not send prompts and API keys over non-loopback HTTP by default.',
+      'Use an https:// URL, or pass --allow-insecure-base-url for a trusted endpoint.'
     );
   }
   // SSRF guard: refuse non-loopback private/IMDS literal IPs unless explicitly
@@ -93,11 +100,10 @@ export function validateBaseURL(baseURL, { allowInsecure = false, allowPrivate =
     isPrivateOrSpecialIP(url.hostname) &&
     !allowPriv
   ) {
-    throw new Error(
-      `Refusing to send the API key to private/reserved IP ${url.hostname}.\n` +
-      `This blocks SSRF to cloud metadata endpoints (169.254.169.254) and RFC 1918 hosts.\n` +
-      `Pass --allow-private-base-url (or set PATINA_ALLOW_PRIVATE_BASE_URL=1) ` +
-      `if you intentionally target an internal endpoint.`
+    throw inputError(
+      `refusing private/reserved base URL ${url.hostname}`,
+      'This blocks sending API keys to cloud metadata or RFC 1918/private endpoints by accident.',
+      'Pass --allow-private-base-url only if you intentionally target an internal endpoint.'
     );
   }
 }

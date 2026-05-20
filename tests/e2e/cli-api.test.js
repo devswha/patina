@@ -2,7 +2,6 @@ import { createServer } from 'node:http';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import { main } from '../../src/cli.js';
-import { getRepoRoot } from '../../src/config.js';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 

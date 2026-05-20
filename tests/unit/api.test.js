@@ -7,6 +7,7 @@ import {
   computeBackoffMs,
   createSemaphore,
   callLLM,
+  callLLMMultiple,
 } from '../../src/api.js';
 
 test('HttpError captures status, body, and Retry-After', () => {
@@ -88,6 +89,34 @@ test('createSemaphore(0) is a no-op (existing parallel behavior)', async () => {
   assert.equal(typeof r2, 'function');
   r1();
   r2();
+});
+
+test('callLLMMultiple defaults to a safe concurrency cap of min(models, 3)', async () => {
+  const originalFetch = globalThis.fetch;
+  let active = 0;
+  let peak = 0;
+  globalThis.fetch = async () => {
+    active++;
+    peak = Math.max(peak, active);
+    await new Promise((r) => setTimeout(r, 5));
+    active--;
+    return {
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'ok' } }] }),
+    };
+  };
+
+  try {
+    const results = await callLLMMultiple({
+      prompt: 'x',
+      apiKey: 'test',
+      models: ['m1', 'm2', 'm3', 'm4', 'm5'],
+    });
+    assert.equal(results.length, 5);
+    assert.equal(peak, 3, 'default semaphore queues instead of fanning out');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('createSemaphore enforces concurrency cap and drains the queue', async () => {

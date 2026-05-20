@@ -8,6 +8,7 @@ Status: internal maintainer note. This is not public installation guidance.
 - Use specification-first review for changes that touch pattern definitions, scoring logic, or meaning-preservation behavior.
 - Keep the core skill pipeline stable unless the change explicitly targets pipeline behavior.
 - For docs-only waves, prefer `docs-review` evidence and the standard npm verification gates.
+- The current bot/harness hardening audit lives in [`HARNESS-HARDENING-AUDIT.md`](HARNESS-HARDENING-AUDIT.md).
 
 ## Historical context
 

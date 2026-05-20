@@ -25,8 +25,9 @@ const openaiHttp = {
     temperature,
     seed,
     onResponse,
+    cache,
   }) =>
-    callLLM({ prompt, apiKey, baseURL, model, signal, timeout, temperature, seed, onResponse }),
+    callLLM({ prompt, apiKey, baseURL, model, signal, timeout, temperature, seed, onResponse, cache }),
 };
 
 const REGISTRY = {
@@ -114,6 +115,7 @@ export async function invokeBackendChain({
   temperature,
   seed,
   onResponse,
+  cache,
   logger,
 }) {
   if (!Array.isArray(backends) || backends.length === 0) {
@@ -128,7 +130,7 @@ export async function invokeBackendChain({
   for (let attemptIndex = 0; attemptIndex < backends.length; attemptIndex++) {
     const backend = backends[attemptIndex];
     try {
-      return await backend.invoke({ prompt, apiKey, baseURL, model, signal, timeout, temperature, seed, onResponse });
+      return await backend.invoke({ prompt, apiKey, baseURL, model, signal, timeout, temperature, seed, onResponse, cache });
     } catch (err) {
       lastError = err;
       const next = backends[attemptIndex + 1];

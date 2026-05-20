@@ -2,6 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DEFAULT_BACKEND_TIMEOUT_MS } from './contract.js';
 
 export const name = 'codex-cli';
 
@@ -22,7 +23,7 @@ export function authHint() {
   return 'Run `codex login` to authenticate (uses your ChatGPT Plus account, no API key needed).';
 }
 
-export async function invoke({ prompt, signal, timeout = 180000 } = {}) {
+export async function invoke({ prompt, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('codex-cli backend: prompt must be a non-empty string');
   }

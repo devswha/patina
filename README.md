@@ -217,6 +217,8 @@ Run the same text through Claude, Codex, and Gemini independently. The lowest AI
 
 `/patina-max` uses tmux panes for parallel local-CLI dispatch when `dispatch: omc` is enabled. If tmux is unavailable, pass `--dispatch direct` for the no-tmux path; it runs the selected models sequentially and can take roughly one model timeout per model. When `dispatch: omc` falls back automatically outside tmux, Patina prints the expected sequential-vs-parallel wall-clock warning.
 
+Standalone CLI MAX (`patina --models ...`) caps HTTP fanout at `min(models, 3)` by default to avoid quota storms on free-tier providers. Pass `--max-concurrency <n>` to tune the cap, or `--max-concurrency 0` only when you intentionally want unlimited parallel requests.
+
 ## How It Works
 
 ```

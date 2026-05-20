@@ -1,0 +1,38 @@
+{
+  "version": "0.2",
+  "language": "en,ko,zh,ja",
+  "useGitignore": true,
+  "ignorePaths": [
+    "node_modules/**",
+    ".git/**",
+    ".omx/**"
+  ],
+  "words": [
+    "brainer",
+    "burstiness",
+    "butoh",
+    "declaratives",
+    "ETRI",
+    "frontmatter",
+    "humanizer",
+    "jeok",
+    "Kastle",
+    "kintone",
+    "lexicon",
+    "listicles",
+    "MATTR",
+    "Namu",
+    "nominalization",
+    "Nominalization",
+    "nominalizations",
+    "nominalized",
+    "Patina",
+    "reimagining",
+    "skillset",
+    "stylometry",
+    "Thundercat",
+    "unsourced",
+    "Waymo",
+    "yyds"
+  ]
+}

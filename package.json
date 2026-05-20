@@ -15,11 +15,15 @@
     "benchmark": "node tests/quality/benchmark.mjs",
     "benchmark:report": "node scripts/benchmark-report.mjs",
     "dogfood": "node tests/quality/dogfood.mjs",
-    "lint": "node scripts/lint.mjs",
+    "lint": "npm run lint:syntax && npm run lint:eslint && npm run typecheck && npm run spellcheck",
     "release:check": "node scripts/check-release-metadata.mjs",
     "prepublishOnly": "npm run release:check && npm test && npm run benchmark:report && npm run dogfood",
     "benchmark:ranges": "node scripts/update-benchmark-ranges.mjs",
-    "benchmark:compare": "node scripts/detector-comparison.mjs"
+    "benchmark:compare": "node scripts/detector-comparison.mjs",
+    "lint:syntax": "node scripts/lint.mjs",
+    "lint:eslint": "eslint .",
+    "typecheck": "node scripts/typecheck.mjs",
+    "spellcheck": "cspell \"patterns/**/*.md\" \"lexicon/**/*.md\""
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
@@ -85,5 +89,12 @@
   ],
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "@eslint/js": "^8.57.1",
+    "@types/node": "^18.19.130",
+    "cspell": "^8.19.4",
+    "eslint": "^8.57.1",
+    "typescript": "^5.4.5"
   }
 }

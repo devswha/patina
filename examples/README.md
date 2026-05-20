@@ -150,7 +150,7 @@ ja-{패턴번호}-{판정}-{순번}.md       ← 일본어 패턴
 
 ## 중국어/일본어 패턴 예제 상태
 
-zh/ja 패턴 #1–28의 success 예제는 각 언어별 패턴 파일(`patterns/zh-*.md`, `patterns/ja-*.md`)의 수정 전/후 쌍을 독립 fixture로 옮긴 것이다. false-positive/failure 예제는 아직 #30–32 중심으로만 존재하므로, zh/ja failure parity는 추가 native-speaker 검토 후 보강해야 한다.
+zh/ja 패턴 #1–28은 각 언어별로 success와 failure(오탐/과교정 방지) 예제를 모두 갖춘다. success 예제는 패턴 파일(`patterns/zh-*.md`, `patterns/ja-*.md`)의 수정 전/후 쌍을 독립 fixture로 옮긴 것이고, failure 예제는 각 패턴의 배제 조건이 실제로 작동해야 하는 안전장치 사례다.
 
 ## 패턴 팩 참조
 

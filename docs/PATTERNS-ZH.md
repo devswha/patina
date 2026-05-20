@@ -55,7 +55,7 @@ This page expands the Chinese pattern packs into a browsable reference. It is ge
 - Type: rewrite-capable pattern
 - Watch words: 具有里程碑式的意义、划时代的、开创性的、革命性的、历史性的突破、标志着～的到来、具有深远意义、奠定了坚实基础、开辟了新纪元、谱写了新篇章、掀开了新的一页、具有划时代的意义
 - Fire condition: 同一段落中出现2个以上高频词汇，或"划时代"、"里程碑"等强调词被用于普通事件/产品。
-- Example files: [success](../examples/zh-01-success-01.md)
+- Example files: [failure](../examples/zh-01-failure-01.md) · [success](../examples/zh-01-success-01.md)
 
 Example before:
 
@@ -71,7 +71,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 引起了社会各界的广泛关注、受到了国内外媒体的高度关注、获得了业界的一致好评、在国际上产生了深远影响、赢得了广泛赞誉
 - Fire condition: 声称获得广泛关注/报道/好评，但未提供具体媒体名称、文章标题或日期。
-- Example files: [success](../examples/zh-02-success-01.md)
+- Example files: [failure](../examples/zh-02-failure-01.md) · [success](../examples/zh-02-success-01.md)
 
 Example before:
 
@@ -87,7 +87,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 展现了、彰显了、体现了、反映了、推动了、促进了、凸显了、见证了、标志着、意味着、象征着
 - Fire condition: 同一句或连续分句中出现3个以上此类动词，且没有具体因果解释。
-- Example files: [success](../examples/zh-03-success-01.md)
+- Example files: [failure](../examples/zh-03-failure-01.md) · [success](../examples/zh-03-success-01.md)
 
 Example before:
 
@@ -103,7 +103,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 美丽的、壮丽的、丰富多彩的、独具特色的、底蕴深厚的、享有盛誉的、闻名遐迩的、令人叹为观止的、令人流连忘返的、如诗如画的、人间仙境、～的瑰宝、～的明珠
 - Fire condition: 同一对象出现2个以上宣传性形容词，或在叙述性本文（非广告引文）中使用"人间仙境"、"令人叹为观止"等强修饰词。
-- Example files: [success](../examples/zh-04-success-01.md)
+- Example files: [failure](../examples/zh-04-failure-01.md) · [success](../examples/zh-04-success-01.md)
 
 Example before:
 
@@ -119,7 +119,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 专家表示、业内人士指出、有关研究表明、据了解、相关数据显示、有学者认为、有分析人士认为
 - Fire condition: 引用权威但未提供姓名、机构、发表日期，仅以"专家"、"业内人士"、"有关研究"等匿名表述呈现。
-- Example files: [success](../examples/zh-05-success-01.md)
+- Example files: [failure](../examples/zh-05-failure-01.md) · [success](../examples/zh-05-success-01.md)
 
 Example before:
 
@@ -135,7 +135,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 尽管如此～仍面临诸多挑战、但我们有理由相信、前景十分广阔、机遇与挑战并存、在～的浪潮下、站在～的历史节点上、百年未有之大变局、新时代新征程
 - Fire condition: 同一段落或结尾部分同时出现模糊的挑战表述（"仍面临诸多挑战"）和模糊的乐观表述（"前景十分广阔"）。或开头使用"百年未有之大变局"、"新时代新征程"等时代套话。
-- Example files: [success](../examples/zh-06-success-01.md)
+- Example files: [failure](../examples/zh-06-failure-01.md) · [success](../examples/zh-06-success-01.md)
 
 Example before:
 
@@ -153,7 +153,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 赋能、助力、深耕、布局、打造、构建、引领、聚焦、链接、生态、维度、颗粒度、底层逻辑、顶层设计、全方位、多层次、宽领域、高质量发展、新质生产力
 - Fire condition: 同一段落中出现3个以上高频AI词汇。
-- Example files: [success](../examples/zh-07-success-01.md)
+- Example files: [failure](../examples/zh-07-failure-01.md) · [success](../examples/zh-07-success-01.md)
 
 Example before:
 
@@ -169,7 +169,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 蓬勃发展、与日俱增、日新月异、任重道远、砥砺前行、不遗余力、齐心协力、众志成城、凝心聚力、守正创新、踔厉奋发、勇毅前行
 - Fire condition: 同一段落中出现3个以上四字成语/四字格词组，或连续2句都以四字格结尾。
-- Example files: [success](../examples/zh-08-success-01.md)
+- Example files: [failure](../examples/zh-08-failure-01.md) · [success](../examples/zh-08-success-01.md)
 
 Example before:
 
@@ -185,7 +185,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 积极地、有效地、充分地、深入地、全面地、切实地、进一步地、使得、以至于、鉴于此、有鉴于此
 - Fire condition: 同一段落中出现3个以上"X地+动词"结构（特别是"积极地"、"有效地"、"充分地"这类程度副词），或使用明显文言语法的书面化表达在日常文体中出现。
-- Example files: [success](../examples/zh-09-success-01.md)
+- Example files: [failure](../examples/zh-09-failure-01.md) · [success](../examples/zh-09-success-01.md)
 
 Example before:
 
@@ -201,7 +201,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 同一段落中出现2组以上排比结构，或单组排比中并列3个以上结构高度相似的分句且可以用更简练的方式表达。
-- Example files: [success](../examples/zh-10-success-01.md)
+- Example files: [failure](../examples/zh-10-failure-01.md) · [success](../examples/zh-10-success-01.md)
 
 Example before:
 
@@ -217,7 +217,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 同一段落中同一实体被3个以上不同的名称/同义词指代。
-- Example files: [success](../examples/zh-11-success-01.md)
+- Example files: [failure](../examples/zh-11-failure-01.md) · [success](../examples/zh-11-success-01.md)
 
 Example before:
 
@@ -233,7 +233,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 在～的过程中、在～的背景下、在～的基础上、在～的推动下、在～的带领下、以～为目标、以～为契机、以～为抓手、对于～而言、从～的角度来看
 - Fire condition: 同一段落中出现2个以上冗长介词结构，或删除后完全不影响意思的介词结构被单独使用。
-- Example files: [success](../examples/zh-12-success-01.md)
+- Example files: [failure](../examples/zh-12-failure-01.md) · [success](../examples/zh-12-success-01.md)
 
 Example before:
 
@@ -251,7 +251,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 与此同时、此外、另外、不仅如此、更为重要的是、值得一提的是、值得注意的是、在此基础上、总而言之、综上所述、由此可见、毋庸置疑
 - Fire condition: 连续3句以上每句都以连接词/过渡词开头，或同一段落中出现3个以上高频连接词。
-- Example files: [success](../examples/zh-13-success-01.md)
+- Example files: [failure](../examples/zh-13-failure-01.md) · [success](../examples/zh-13-success-01.md)
 
 Example before:
 
@@ -267,7 +267,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 同一段落中加粗处理的词/短语达3个以上，或全文达5个以上。
-- Example files: [success](../examples/zh-14-success-01.md)
+- Example files: [failure](../examples/zh-14-failure-01.md) · [success](../examples/zh-14-success-01.md)
 
 Example before:
 
@@ -283,7 +283,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 同一列表中出现2个以上"**标签：** 说明"格式的条目。
-- Example files: [success](../examples/zh-15-success-01.md)
+- Example files: [failure](../examples/zh-15-failure-01.md) · [success](../examples/zh-15-success-01.md)
 
 Example before:
 
@@ -301,7 +301,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 大力地、不断地、持续地、积极地、深入地、全面地、有效地、切实地、扎实地、稳步地
 - Fire condition: 同一段落中出现3个以上"～地+动词"结构，或连续2句都包含"～地+动词"修饰。
-- Example files: [success](../examples/zh-16-success-01.md)
+- Example files: [failure](../examples/zh-16-failure-01.md) · [success](../examples/zh-16-success-01.md)
 
 Example before:
 
@@ -317,7 +317,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 专业、学术或编辑类文本中出现1个以上表情符号。
-- Example files: [success](../examples/zh-17-success-01.md)
+- Example files: [failure](../examples/zh-17-failure-01.md) · [success](../examples/zh-17-success-01.md)
 
 Example before:
 
@@ -335,7 +335,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 切实、务必、着力、扎实推进、统筹协调、部署落实、深入贯彻、狠抓落实、严格把关、高度重视、强化担当、压实责任
 - Fire condition: 同一段落中出现3个以上公文体表达，或"深入贯彻"、"狠抓落实"、"统筹协调"等政府文件专用表达出现在一般文章中。
-- Example files: [success](../examples/zh-18-success-01.md)
+- Example files: [failure](../examples/zh-18-failure-01.md) · [success](../examples/zh-18-success-01.md)
 
 Example before:
 
@@ -353,7 +353,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 希望对您有所帮助、如有疑问请随时提问、以下为您整理了、让我为您详细介绍、如需了解更多信息、很高兴为您解答
 - Fire condition: 非实时对话的内容（文章、报告、文档）中出现1个以上聊天机器人式表达。
-- Example files: [success](../examples/zh-19-success-01.md)
+- Example files: [failure](../examples/zh-19-failure-01.md) · [success](../examples/zh-19-success-01.md)
 
 Example before:
 
@@ -369,7 +369,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 截至我的知识截止日期、我无法获取实时信息、请以最新信息为准、具体数据可能有变化、建议您查阅最新资料
 - Fire condition: 编辑/报道/分析类内容中出现1个以上AI训练数据限制的自我引用或免责表达。
-- Example files: [success](../examples/zh-20-success-01.md)
+- Example files: [failure](../examples/zh-20-failure-01.md) · [success](../examples/zh-20-success-01.md)
 
 Example before:
 
@@ -385,7 +385,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 非常好的问题、您说得非常对、这个问题问得很好、您的观点非常有深度、这是一个非常有价值的思考、感谢您的分享
 - Fire condition: 正文之前出现1个以上讨好/恭维表达。
-- Example files: [success](../examples/zh-21-success-01.md)
+- Example files: [failure](../examples/zh-21-failure-01.md) · [success](../examples/zh-21-success-01.md)
 
 Example before:
 
@@ -418,7 +418,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 众所周知、不言而喻、毫无疑问、毋庸置疑、不可否认的是、必须指出的是、需要强调的是、有必要指出、应当注意到、事实上
 - Fire condition: 同一段落中出现2个以上填充表达，或删除后完全不影响意思的填充表达被单独使用。
-- Example files: [success](../examples/zh-22-success-01.md)
+- Example files: [failure](../examples/zh-22-failure-01.md) · [success](../examples/zh-22-success-01.md)
 
 Example before:
 
@@ -434,7 +434,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 或许可以认为、在某种程度上可能、不排除～的可能性、从一定意义上来说、就某种角度而言、也许在一定条件下
 - Fire condition: 同一个论断叠加了3个以上弱化/限定表达，或陈述被弱化到完全无法证伪的程度。
-- Example files: [success](../examples/zh-23-success-01.md)
+- Example files: [failure](../examples/zh-23-failure-01.md) · [success](../examples/zh-23-success-01.md)
 
 Example before:
 
@@ -450,7 +450,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 未来可期、前景可期、未来已来、我们拭目以待、让我们共同期待、大有可为、令人振奋、前途光明、充满希望、值得期待
 - Fire condition: 同一段落或结尾部分出现2个以上空洞乐观表达，或最后一句完全由乐观套话组成。
-- Example files: [success](../examples/zh-24-success-01.md)
+- Example files: [failure](../examples/zh-24-failure-01.md) · [success](../examples/zh-24-success-01.md)
 
 Example before:
 
@@ -484,7 +484,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 连续3个以上段落遵循相同的内部结构模板。例如：每段都以总述开头、以"意义/展望"收尾。
-- Example files: [success](../examples/zh-25-success-01.md)
+- Example files: [failure](../examples/zh-25-failure-01.md) · [success](../examples/zh-25-success-01.md)
 
 Example before:
 
@@ -508,7 +508,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 这是一个～的事实、可以被认为是、作为一种～的方式、被～所～、对于～来说、基于～的原因、关于～的问题、通过～来实现
 - Fire condition: 同一段落中出现2个以上翻译腔表达。单次使用可容忍——正常中文偶尔也会出现。
-- Example files: [success](../examples/zh-26-success-01.md)
+- Example files: [failure](../examples/zh-26-failure-01.md) · [success](../examples/zh-26-success-01.md)
 
 Example before:
 
@@ -524,7 +524,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 被广泛应用于、被认为是、被视为、被誉为、被用于、被证明是、被期望
 - Fire condition: 同一段落中出现3个以上"被"字句，或"被"字句出现在主语明确的场合。
-- Example files: [success](../examples/zh-27-success-01.md)
+- Example files: [failure](../examples/zh-27-failure-01.md) · [success](../examples/zh-27-success-01.md)
 
 Example before:
 
@@ -540,7 +540,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 文章整体或单个段落呈现"开头总述→中间分点展开→结尾再次总结"的三段式结构，且结尾总结基本重复开头内容。
-- Example files: [success](../examples/zh-28-success-01.md)
+- Example files: [failure](../examples/zh-28-failure-01.md) · [success](../examples/zh-28-success-01.md)
 
 Example before:
 

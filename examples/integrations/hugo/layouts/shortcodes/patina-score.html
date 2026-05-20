@@ -1,0 +1,9 @@
+{{- $path := .Get "path" -}}
+{{- $scores := site.Data.patina_scores -}}
+{{- with index $scores $path -}}
+<span class="patina-score" data-score="{{ .overall }}">
+  Patina {{ .overall }}/100{{ if gt .overall .threshold }} — review suggested{{ end }}
+</span>
+{{- else -}}
+<span class="patina-score patina-score--missing">Patina score unavailable</span>
+{{- end -}}

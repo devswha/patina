@@ -1,3 +1,5 @@
+import { createLogger } from './logger.js';
+
 export function formatOutput(result, mode, parsed = {}, opts = {}) {
   const tone = opts.tone || null;
   const format = parsed.format || 'markdown';
@@ -20,7 +22,7 @@ function renderFormattedBody(result, mode, parsed = {}, opts = {}) {
   // emit tables and don't need the extraction step.
   if (mode === 'rewrite' || mode === 'ouroboros') {
     const variants = extractVariants(body);
-    body = variants.length > 0 ? formatVariants(variants, body) : stripSelfAudit(body);
+    body = variants.length > 0 ? formatVariants(variants, body) : stripSelfAudit(body, { logger: opts.logger });
   }
   if (mode === 'diff') {
     body = colorizeDiff(body, { parsed, env: opts.env, stdout: opts.stdout });
@@ -199,16 +201,16 @@ function normalizeCategoryName(raw) {
 // We extract the body block and drop the audit so callers get clean text.
 // If the model didn't honor the tags (older runs, mocked tests, etc.), we
 // fall back to returning the full output untouched.
-export function stripSelfAudit(body) {
+export function stripSelfAudit(body, { logger = createLogger() } = {}) {
   if (!body) return body;
   const bodyOpen = body.indexOf('[BODY]');
   const bodyClose = body.indexOf('[/BODY]', bodyOpen);
   if (bodyOpen < 0 || bodyClose <= bodyOpen) {
     const stripped = removeSelfAuditBlocks(body).trim();
     if (stripped !== body.trim()) {
-      console.error(
-        `[patina] warning: model output omitted [BODY] tags (${body.length} chars); stripped [SELF_AUDIT]. Re-run with --prompt-mode strict if the output looks wrong.`
-      );
+      logger.warn('output.missing_body_tags', {
+        message: `[patina] warning: model output omitted [BODY] tags (${body.length} chars); stripped [SELF_AUDIT]. Re-run with --prompt-mode strict if the output looks wrong.`,
+      });
       return stripped;
     }
     return body;

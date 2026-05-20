@@ -6,6 +6,7 @@ import { stdin as input, stdout as output } from 'node:process';
 import yaml from 'js-yaml';
 import { listBackends } from '../backends/index.js';
 import { inputError } from '../errors.js';
+import { createLogger } from '../logger.js';
 
 const LANGUAGES = ['ko', 'en', 'zh', 'ja'];
 const PROFILES = [
@@ -25,7 +26,7 @@ const PROFILES = [
 const TONES = ['profile-only', 'casual', 'professional', 'academic', 'narrative', 'marketing', 'instructional', 'auto'];
 const DISPATCH_MODES = ['omc', 'direct', 'api'];
 
-export async function runInit(args = []) {
+export async function runInit(args = [], { logger = createLogger() } = {}) {
   const parsed = parseInitArgs(args);
   if (parsed.help) {
     printInitHelp();
@@ -46,10 +47,10 @@ export async function runInit(args = []) {
   const detected = detectInitDefaults();
   const answers = parsed.defaults
     ? detected
-    : await promptForConfig(detected, { target, force: parsed.force });
+    : await promptForConfig(detected, { target, force: parsed.force, logger });
 
   if (!answers) {
-    console.error('[patina] kept existing .patina.yaml');
+    logger.info('init.kept_existing', { message: '[patina] kept existing .patina.yaml' });
     return;
   }
 
@@ -109,7 +110,7 @@ function parseInitArgs(args) {
   return parsed;
 }
 
-async function promptForConfig(defaults, { target, force }) {
+async function promptForConfig(defaults, { target, force, logger = createLogger() }) {
   if (!process.stdin.isTTY) {
     throw inputError(
       'init needs an interactive terminal',
@@ -121,42 +122,42 @@ async function promptForConfig(defaults, { target, force }) {
   const rl = createInterface({ input, output });
   try {
     if (existsSync(target) && !force) {
-      const overwrite = await ask(rl, `Overwrite existing .patina.yaml?`, 'no', ['yes', 'no']);
+      const overwrite = await ask(rl, `Overwrite existing .patina.yaml?`, 'no', ['yes', 'no'], logger);
       if (overwrite !== 'yes') return null;
     }
 
-    const language = await ask(rl, 'Language', defaults.language, LANGUAGES);
-    const profile = await ask(rl, 'Profile', defaults.profile, PROFILES);
-    const tone = await ask(rl, 'Tone', defaults.tone, TONES);
+    const language = await ask(rl, 'Language', defaults.language, LANGUAGES, logger);
+    const profile = await ask(rl, 'Profile', defaults.profile, PROFILES, logger);
+    const tone = await ask(rl, 'Tone', defaults.tone, TONES, logger);
     const backendChoices = listBackends().map((b) => b.name);
-    const backend = await ask(rl, 'Backend', defaults.backend, backendChoices);
-    const maxModels = await askMulti(rl, 'MAX models', defaults.maxModels, ['claude', 'codex', 'gemini']);
-    const dispatch = await ask(rl, 'Dispatch mode', defaults.dispatch, DISPATCH_MODES);
+    const backend = await ask(rl, 'Backend', defaults.backend, backendChoices, logger);
+    const maxModels = await askMulti(rl, 'MAX models', defaults.maxModels, ['claude', 'codex', 'gemini'], logger);
+    const dispatch = await ask(rl, 'Dispatch mode', defaults.dispatch, DISPATCH_MODES, logger);
     return { language, profile, tone, backend, maxModels, dispatch };
   } finally {
     rl.close();
   }
 }
 
-async function ask(rl, label, defaultValue, choices) {
+async function ask(rl, label, defaultValue, choices, logger = createLogger()) {
   const choiceHint = choices ? ` (${choices.join('/')})` : '';
   const raw = (await rl.question(`${label}${choiceHint} [${defaultValue}]: `)).trim();
   const value = raw || defaultValue;
   if (choices && !choices.includes(value)) {
-    console.error(`[patina] ${label}: unknown value "${value}", keeping ${defaultValue}`);
+    logger.warn('init.unknown_value', { message: `[patina] ${label}: unknown value "${value}", keeping ${defaultValue}` });
     return defaultValue;
   }
   return value;
 }
 
-async function askMulti(rl, label, defaultValues, choices) {
+async function askMulti(rl, label, defaultValues, choices, logger = createLogger()) {
   const raw = (await rl.question(`${label} (${choices.join(',')}) [${defaultValues.join(',')}]: `)).trim();
   const values = (raw ? raw.split(',') : defaultValues)
     .map((value) => value.trim())
     .filter(Boolean);
   const valid = values.filter((value) => choices.includes(value));
   if (valid.length === 0) {
-    console.error(`[patina] ${label}: no valid values, keeping ${defaultValues.join(',')}`);
+    logger.warn('init.no_valid_values', { message: `[patina] ${label}: no valid values, keeping ${defaultValues.join(',')}` });
     return defaultValues;
   }
   return [...new Set(valid)];

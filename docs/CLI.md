@@ -47,4 +47,15 @@ patina --lang en --score --exit-on 30 draft.md
 - `--save-run <dir>` writes `manifest.json` plus `output-N.txt` files for reproducible audit trails.
 - `patina doctor --json` emits setup diagnostics for CI without making an LLM call.
 
+## Stderr logs
+
+Human-facing status, warnings, and progress indicators go to stderr so stdout
+stays reserved for the transformed text or JSON envelope.
+
+- `--quiet` suppresses stderr logs, including MAX/Ouroboros progress.
+- `--json-logs` emits newline-delimited JSON records with stable fields:
+  `ts`, `level`, `event`, `model`, `latency_ms`, and optional `message`.
+- MAX mode (`--models`) reports elapsed per-model status (`...`, `✓`, `✗`).
+- Ouroboros reports per-iteration score movement and latency.
+
 See [EXIT-CODES.md](EXIT-CODES.md) for the full process contract.

@@ -28,7 +28,7 @@ patina 会在中文、韩文、英文和日文里找出 AI 味比较重的写作
 
 |  |  |
 |---|---|
-| **146 个模式** | 韩文 37 + 英文 36 + 中文 36 + 日文 37 (各含5个仅评分的 viral-hook) — [PATTERNS.md](docs/PATTERNS.md) |
+| **160 个模式** | 韩文 40 + 英文 40 + 中文 40 + 日文 40 (各含8个仅评分的 viral-hook) — [PATTERNS.md](docs/PATTERNS.md) |
 | **编辑热点召回率** | 韩文 91% [84.0–95.4%] (n=100) / 英文 76% [66.7–83.3%] (n=100), binomial 95% CI |
 | **误检率** | 人类文本不同体裁 13–25% 点估计范围 *(不是 CI；百科风格本质局限，[已记录](core/stylometry.md))* |
 | **模式** | rewrite · audit · score · diff · ouroboros |
@@ -136,7 +136,7 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 
 ### 仅评分模式
 
-`--score` 和 `--audit` 测量的信号范围比 `--rewrite` 略广。viral-hook 包（`ko/en/zh/ja-viral-hook`，每种语言 5 个模式：数字震撼钩子、标题党收尾、跳过来源的权威断言、适合呼吸节奏的短句堆叠、夸张互动词汇）为**仅检测**模式。
+`--score` 和 `--audit` 测量的信号范围比 `--rewrite` 略广。viral-hook 包（`ko/en/zh/ja-viral-hook`，每种语言 8 个模式：数字震撼钩子、标题党收尾、跳过来源的权威断言、适合呼吸节奏的短句堆叠、夸张互动词汇、伪统计引用、头衔堆叠、未来自我承诺）为**仅检测**模式。
 
 这些信号只会出现在评分和审计中，用来让基准更贴近用户对四种语言 SNS 营销文案的直觉。`--rewrite`/`--diff`/`--ouroboros` 会跳过它们，因为这些信号往往是有意的修辞。实例: [`examples/viral-hook/`](examples/viral-hook/).
 
@@ -226,7 +226,7 @@ max-models: [claude, gemini]
 
 - **[Glossary](docs/GLOSSARY.md)** — MPS、fidelity、burstiness、MATTR、模式等常见术语的简短定义
 - **[Demo](docs/DEMO.md)** — 终端 transcript 与多种体裁的 before/after 快照
-- **[Patterns](docs/PATTERNS.md)** — 146 个模式目录
+- **[Patterns](docs/PATTERNS.md)** — 160 个模式目录
 - **[Authentication](docs/AUTHENTICATION.md)** — 后端、服务商、免费层设置
 - **[CLI Contract](docs/CLI.md)** — score gate、退出码，以及适合自动化的接口边界
 - **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI、`/patina`、`/patina-max` 的选项支持范围

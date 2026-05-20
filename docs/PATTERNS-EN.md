@@ -3,7 +3,7 @@
 This page expands the English pattern packs into a browsable reference. It is generated from `patterns/en-*.md`, so the numbers, names, watch words, fire conditions, and examples mirror the source pattern files.
 
 - Rewrite-capable patterns: 32
-- Score/audit-only viral-hook patterns: 5
+- Score/audit-only viral-hook patterns: 8
 - Main selector: [PATTERNS.md](PATTERNS.md)
 
 ## Pattern Index
@@ -47,6 +47,9 @@ This page expands the English pattern packs into a browsable reference. It is ge
 | VH-3 | score/audit only | Source-Skipping Authority | [en-viral-hook.md](../patterns/en-viral-hook.md) |
 | VH-4 | score/audit only | Breath-Optimized Short-Sentence Stacking | [en-viral-hook.md](../patterns/en-viral-hook.md) |
 | VH-5 | score/audit only | Hyperbolic Engagement Lexicon | [en-viral-hook.md](../patterns/en-viral-hook.md) |
+| VH-6 | score/audit only | Fake Statistic Citation | [en-viral-hook.md](../patterns/en-viral-hook.md) |
+| VH-7 | score/audit only | Manufactured Authority Stacking | [en-viral-hook.md](../patterns/en-viral-hook.md) |
+| VH-8 | score/audit only | Future-Self / Parasocial Promise | [en-viral-hook.md](../patterns/en-viral-hook.md) |
 
 ## Content Patterns
 
@@ -671,3 +674,45 @@ Detection example:
 
 > This is absolutely insane and developers are losing their minds.
 > Hands down the best dev tool of the year — don't sleep on it.
+
+### Viral 6. Fake Statistic Citation
+
+- Source: [en-viral-hook.md](../patterns/en-viral-hook.md)
+- Type: score/audit only; rewrite modes skip this pack
+- Watch words: studies show N%, research says N%, data shows N%, according to research (with no named source), N% of people, science says, survey found (with no survey named)
+- Fire condition: A numeric or statistical claim is attributed to vague research, data, surveys, or science, and the same piece gives no named source, link, sample, date, or method.
+- Severity rubric: Low = one vague statistic supports a minor point; Medium = the statistic opens the piece or anchors the main CTA; High = precise percentages support high-stakes advice or multiple unsourced statistics appear together.
+
+Before / after example:
+
+> Before: Studies show 73% of founders lose money because they ignore this one habit.
+>
+> After: I do not have a source for that percentage, but weekly cash reviews can catch losses earlier.
+
+### Viral 7. Manufactured Authority Stacking
+
+- Source: [en-viral-hook.md](../patterns/en-viral-hook.md)
+- Type: score/audit only; rewrite modes skip this pack
+- Watch words: Stanford-trained, Y Combinator-backed, ex-Google, Harvard-trained, Forbes-featured, award-winning, serial founder, trusted by top CEOs, industry-leading expert
+- Fire condition: Two or more prestige credentials, titles, investors, schools, employers, awards, or media labels are stacked to sell a claim, and the piece does not show why those credentials prove the point.
+- Severity rubric: Low = two relevant labels on a narrow claim; Medium = 3+ labels introduce advice/product/trend without evidence; High = the stack replaces evidence for high-stakes advice or purchase/signup CTA.
+
+Before / after example:
+
+> Before: A Stanford-trained, Y Combinator-backed serial founder says this one workflow will 10x your growth.
+>
+> After: A founder shared the workflow they use for weekly growth reviews; test it on your own numbers before adopting it.
+
+### Viral 8. Future-Self / Parasocial Promise
+
+- Source: [en-viral-hook.md](../patterns/en-viral-hook.md)
+- Type: score/audit only; rewrite modes skip this pack
+- Watch words: your future self will thank you, thank me later, listen friend, friend, save this for later, one year from now you'll be glad, future you, trust me on this
+- Fire condition: An opener or close addresses the reader as a friend, future self, or intimate confidant and promises later gratitude, usually around a save/share/follow call, without concrete support in the same piece.
+- Severity rubric: Low = one soft save-this phrase; Medium = the future-self promise frames the title/opener/CTA; High = paired with urgency, scarcity, or high-stakes life/career advice.
+
+Before / after example:
+
+> Before: Listen, friend — your future self will thank you for saving this.
+>
+> After: Save this if you need a checklist for next month's planning.

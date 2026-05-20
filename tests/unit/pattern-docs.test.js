@@ -97,6 +97,25 @@ test('pattern pack frontmatter counts match numbered pattern headings', () => {
   }
 });
 
+test('viral-hook packs remain score-only with expanded severity-documented coverage', () => {
+  for (const lang of LANGS) {
+    const file = resolve(PATTERN_DIR, `${lang}-viral-hook.md`);
+    const parsed = parsePatternFile(file);
+    assert.equal(parsed.meta.score_only, true, `${lang}-viral-hook must stay score-only`);
+    assert.equal(parsed.meta.patterns, 8, `${lang}-viral-hook should ship eight patterns`);
+
+    const newSections = numberedSections(file).filter(({ number }) => number >= 6);
+    assert.equal(newSections.length, 3, `${lang}-viral-hook should add exactly three new patterns`);
+    for (const { number, body } of newSections) {
+      assert.match(body, /(?:Fire condition|발화 조건|触发条件|発火条件)/, `${lang}-viral-hook #${number} missing fire condition`);
+      assert.match(body, /(?:Severity rubric|심각도 기준|严重度标尺|重大度の目安)/, `${lang}-viral-hook #${number} missing severity rubric`);
+      assert.match(body, /(?:Exclusion|제외 조건|排除条件|除外条件)/, `${lang}-viral-hook #${number} missing exclusion`);
+      assert.match(body, /(?:Before|이전|改写前|変更前)/, `${lang}-viral-hook #${number} missing before example`);
+      assert.match(body, /(?:After|이후|改写后|変更後)/, `${lang}-viral-hook #${number} missing after example`);
+    }
+  }
+});
+
 test('core/scoring.md category counts match pattern pack frontmatter', () => {
   const packs = packCountsByLang();
   const tables = scoringTables();

@@ -3,13 +3,13 @@ pack: en-viral-hook
 language: en
 name: Viral Hook Patterns
 version: 1.0.0
-patterns: 5
+patterns: 8
 score_only: true
 ---
 
 # Viral Hook Patterns (score-only)
 
-This pack is **score- and audit-only**. It catches "AI marketing influencer" signals — shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, and hyperbolic engagement vocabulary — that are common in SNS and blog marketing copy. Rewrite mode does not touch them because they may be intentional rhetoric; the user decides.
+This pack is **score- and audit-only**. It catches "AI marketing influencer" signals — shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, hyperbolic engagement vocabulary, fake-stat citations, stacked credentials, and future-self promises — that are common in SNS and blog marketing copy. Rewrite mode does not touch them because they may be intentional rhetoric; the user decides.
 
 A hit here does not mean the text is AI-generated. Humans use these patterns too. But when several appear together, the score aligns with the reader's intuition that "this reads like AI-polished marketing."
 
@@ -126,3 +126,86 @@ A hit here does not mean the text is AI-generated. Humans use these patterns too
 > This is absolutely insane and developers are losing their minds.
 
 > Hands down the best dev tool of the year — don't sleep on it.
+
+---
+
+### 6. Fake Statistic Citation
+
+**Watch words:** studies show N%, research says N%, data shows N%, according to research (with no named source), N% of people, science says, survey found (with no survey named)
+
+**Problem:** A precise statistic borrows the feel of research without giving the reader a source to check. AI-polished marketing copy often uses fake precision to make ordinary advice feel proven.
+
+**Fire condition:** A numeric or statistical claim is attributed to vague research, data, surveys, or science, and the same piece gives no named source, link, sample, date, or method.
+
+**Severity rubric:**
+- Low: One vague statistic supports a minor point.
+- Medium: The statistic opens the piece or anchors the main call to action.
+- High: Precise percentages support health, finance, career, or safety advice, or multiple unsourced statistics appear together.
+
+**Exclusion:**
+- A named report, publication, dataset, or linked source is provided
+- The number is clearly labeled as an example or hypothetical
+- First-party analytics include scope and measurement context
+- Common public data that the reader can verify independently
+
+**Semantic Risk:** LOW — score-only.
+**Preservation Note:** Score-only by default; if the user asks to lower the hook, preserve real numbers and either cite, hedge, or remove the fake research frame. Do not invent a source.
+**Before / after examples (manual lower-signal rewrite):**
+> Before: Studies show 73% of founders lose money because they ignore this one habit.
+>
+> After: I do not have a source for that percentage, but weekly cash reviews can catch losses earlier.
+
+---
+
+### 7. Manufactured Authority Stacking
+
+**Watch words:** Stanford-trained, Y Combinator-backed, ex-Google, Harvard-trained, Forbes-featured, award-winning, serial founder, trusted by top CEOs, industry-leading expert
+
+**Problem:** Several prestige labels are stacked before a claim so the authority does the persuasive work. This reads like a growth-thread template when the credentials are vague, irrelevant, or not tied to evidence.
+
+**Fire condition:** Two or more prestige credentials, titles, investors, schools, employers, awards, or media labels are stacked to sell a claim, and the piece does not show why those credentials prove the point.
+
+**Severity rubric:**
+- Low: Two credentials appear, but the person or product is named and the claim is narrow.
+- Medium: Three or more credentials introduce advice, a product, or a trend without evidence.
+- High: The credential stack replaces evidence for high-stakes advice or a direct purchase/signup call.
+
+**Exclusion:**
+- Resume, bio, speaker note, or press boilerplate where credentials are the subject
+- Named, verifiable credentials that are relevant to the claim
+- A sourced article where credentials supplement, rather than replace, evidence
+
+**Semantic Risk:** LOW — score-only.
+**Preservation Note:** Score-only by default; if toned down, keep verifiable affiliations and remove only the pile-up or unsupported leap from title to conclusion.
+**Before / after examples (manual lower-signal rewrite):**
+> Before: A Stanford-trained, Y Combinator-backed serial founder says this one workflow will 10x your growth.
+>
+> After: A founder shared the workflow they use for weekly growth reviews; test it on your own numbers before adopting it.
+
+---
+
+### 8. Future-Self / Parasocial Promise
+
+**Watch words:** your future self will thank you, thank me later, listen friend, friend, save this for later, one year from now you'll be glad, future you, trust me on this
+
+**Problem:** The copy simulates intimacy or future gratitude to pressure the reader into saving, sharing, or obeying advice. It is common in viral threads because it creates emotional urgency without adding evidence.
+
+**Fire condition:** An opener or close addresses the reader as a friend, future self, or intimate confidant and promises later gratitude, usually around a save/share/follow call, without concrete support in the same piece.
+
+**Severity rubric:**
+- Low: One soft save-this or future-self phrase appears in a casual social post.
+- Medium: The future-self promise frames the title, opener, or final call to action.
+- High: The promise is paired with urgency, scarcity, or high-stakes life/career advice.
+
+**Exclusion:**
+- A real message to a known friend or community member
+- Coaching, therapy, or accountability writing where the relationship is explicit
+- Memoir or reflection addressed to the writer's own past/future self
+- Plain calendar or reminder instructions without emotional pressure
+
+**Semantic Risk:** LOW — score-only.
+**Preservation Note:** Score-only by default; if rewritten, keep any useful reminder or action while removing simulated intimacy and unverifiable future payoff.
+**Before / after examples (manual lower-signal rewrite):**
+> Before: Listen, friend — your future self will thank you for saving this.
+>
+> After: Save this if you need a checklist for next month's planning.

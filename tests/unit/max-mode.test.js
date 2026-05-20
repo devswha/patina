@@ -72,6 +72,43 @@ test('runMaxMode aborts dispatch and returns partial results on wall-clock timeo
   assert.equal(result.best, null);
 });
 
+test('runMaxMode uses callLLM, now, and sleep injectables across dispatch and scoring', async () => {
+  const seen = [];
+  const now = () => 1_000;
+  const sleep = async () => {};
+  const result = await runMaxMode({
+    prompt: 'rewrite this',
+    sourceText: 'source text',
+    models: ['model-a'],
+    apiKey: 'test',
+    baseURL: 'https://example.com/v1',
+    config: { language: 'en', ouroboros: { 'category-weights': { en: {} } } },
+    patterns: [],
+    wallClockBudgetMs: 1_000,
+    now,
+    sleep,
+    callLLM: async (args) => {
+      seen.push(args);
+      assert.equal(args.now, now);
+      assert.equal(args.sleep, sleep);
+
+      if (args.prompt.includes('AI-likeness scoring engine')) {
+        return '{ "overall": 12, "interpretation": "human" }';
+      }
+      if (args.prompt.includes('Meaning Preservation evaluator')) {
+        return '{ "anchors": [], "pass_count": 1, "total_count": 1, "polarity_pass_count": 0, "polarity_total_count": 0, "mps": 94 }';
+      }
+      return 'Humanized result.';
+    },
+  });
+
+  assert.equal(result.best.model, 'model-a');
+  assert.equal(result.best.aiScore, 12);
+  assert.equal(result.best.mps, 94);
+  assert.equal(result.mpsFallback, false);
+  assert.equal(seen.length, 3);
+});
+
 test('formatOutput surfaces the MAX MPS fallback warning', () => {
   const out = formatOutput({
     type: 'max-mode',

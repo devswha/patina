@@ -119,6 +119,31 @@ test('callLLMMultiple defaults to a safe concurrency cap of min(models, 3)', asy
   }
 });
 
+test('callLLMMultiple accepts callLLM, now, and sleep injectables', async () => {
+  const seen = [];
+  const now = () => 456;
+  const sleep = async () => {};
+  const results = await callLLMMultiple({
+    prompt: 'x',
+    apiKey: 'test',
+    models: ['m1', 'm2'],
+    callLLM: async (args) => {
+      seen.push(args);
+      assert.strictEqual(args.now, now);
+      assert.strictEqual(args.sleep, sleep);
+      return `ok:${args.model}`;
+    },
+    now,
+    sleep,
+  });
+
+  assert.deepStrictEqual(results, [
+    { model: 'm1', result: 'ok:m1', ok: true },
+    { model: 'm2', result: 'ok:m2', ok: true },
+  ]);
+  assert.strictEqual(seen.length, 2);
+});
+
 test('createSemaphore enforces concurrency cap and drains the queue', async () => {
   const sem = createSemaphore(2);
   let active = 0;

@@ -1,4 +1,4 @@
-import { callLLM } from './api.js';
+import { callLLM as defaultCallLLM } from './api.js';
 
 class SchemaError extends Error {
   constructor(message, raw) {
@@ -30,11 +30,32 @@ function parseStrictJson(text) {
 }
 
 // Call LLM and parse strict JSON. On schema failure, retry once at temperature 0.
-async function callAndParseJson({ prompt, apiKey, baseURL, model, temperature = 0.1, deadline, signal }) {
+async function callAndParseJson({
+  prompt,
+  apiKey,
+  baseURL,
+  model,
+  temperature = 0.1,
+  deadline,
+  signal,
+  callLLM = defaultCallLLM,
+  now,
+  sleep,
+}) {
   let lastError;
   for (let attempt = 0; attempt < 2; attempt++) {
     const t = attempt === 0 ? temperature : 0;
-    const result = await callLLM({ prompt, apiKey, baseURL, model, temperature: t, deadline, signal });
+    const result = await callLLM({
+      prompt,
+      apiKey,
+      baseURL,
+      model,
+      temperature: t,
+      deadline,
+      signal,
+      now,
+      sleep,
+    });
     try {
       return { parsed: parseStrictJson(result), raw: result };
     } catch (e) {
@@ -47,7 +68,19 @@ async function callAndParseJson({ prompt, apiKey, baseURL, model, temperature = 
   throw lastError;
 }
 
-export async function scoreText({ text, config, patterns, apiKey, baseURL, model, deadline, signal }) {
+export async function scoreText({
+  text,
+  config,
+  patterns,
+  apiKey,
+  baseURL,
+  model,
+  deadline,
+  signal,
+  callLLM = defaultCallLLM,
+  now,
+  sleep,
+}) {
   const lang = config.language || 'ko';
   const weights = config.ouroboros?.['category-weights']?.[lang] || {};
 
@@ -82,7 +115,17 @@ ${text}
 `;
 
   try {
-    const { parsed } = await callAndParseJson({ prompt, apiKey, baseURL, model, deadline, signal });
+    const { parsed } = await callAndParseJson({
+      prompt,
+      apiKey,
+      baseURL,
+      model,
+      deadline,
+      signal,
+      callLLM,
+      now,
+      sleep,
+    });
     return parsed;
   } catch (e) {
     console.error(`[patina] scoreText schema failure after retry: ${e.message}`);
@@ -90,7 +133,18 @@ ${text}
   }
 }
 
-export async function scoreMPS({ original, rewritten, apiKey, baseURL, model, deadline, signal }) {
+export async function scoreMPS({
+  original,
+  rewritten,
+  apiKey,
+  baseURL,
+  model,
+  deadline,
+  signal,
+  callLLM = defaultCallLLM,
+  now,
+  sleep,
+}) {
   const prompt = `You are a Meaning Preservation evaluator. Compare the ORIGINAL text with the REWRITTEN text.
 
 Extract semantic anchors from the original (claims, polarity, causation, quantifiers, negations) and check if each is preserved in the rewritten text.
@@ -123,7 +177,17 @@ ${rewritten}
 `;
 
   try {
-    const { parsed } = await callAndParseJson({ prompt, apiKey, baseURL, model, deadline, signal });
+    const { parsed } = await callAndParseJson({
+      prompt,
+      apiKey,
+      baseURL,
+      model,
+      deadline,
+      signal,
+      callLLM,
+      now,
+      sleep,
+    });
     return parsed;
   } catch (e) {
     console.error(`[patina] scoreMPS schema failure after retry: ${e.message}`);
@@ -149,7 +213,18 @@ export function lengthRatioPoints(original, rewritten) {
   return 0;
 }
 
-export async function scoreFidelity({ original, rewritten, apiKey, baseURL, model }) {
+export async function scoreFidelity({
+  original,
+  rewritten,
+  apiKey,
+  baseURL,
+  model,
+  deadline,
+  signal,
+  callLLM = defaultCallLLM,
+  now,
+  sleep,
+}) {
   // Length is deterministic; only ask LLM for the three judgment criteria.
   const lengthPoints = lengthRatioPoints(original, rewritten);
   const lengthRatio = original ? Math.round((rewritten.length / original.length) * 100) : 100;
@@ -184,7 +259,17 @@ ${rewritten}
   let parsed = null;
   let schemaError = null;
   try {
-    const result = await callAndParseJson({ prompt, apiKey, baseURL, model });
+    const result = await callAndParseJson({
+      prompt,
+      apiKey,
+      baseURL,
+      model,
+      deadline,
+      signal,
+      callLLM,
+      now,
+      sleep,
+    });
     parsed = result.parsed;
   } catch (e) {
     console.error(`[patina] scoreFidelity schema failure after retry: ${e.message}`);

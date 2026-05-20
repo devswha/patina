@@ -1,4 +1,4 @@
-import { callLLM } from './api.js';
+import { callLLM as defaultCallLLM } from './api.js';
 import { scoreText, scoreMPS, scoreFidelity, combinedScore } from './scoring.js';
 import { buildPrompt } from './prompt-builder.js';
 
@@ -12,6 +12,9 @@ export async function runOuroboros({
   apiKey,
   baseURL,
   model,
+  callLLM = defaultCallLLM,
+  now,
+  sleep,
 }) {
   const ouroborosConfig = config.ouroboros || {};
   const targetScore = ouroborosConfig['target-score'] ?? 30;
@@ -29,6 +32,9 @@ export async function runOuroboros({
     apiKey,
     baseURL,
     model,
+    callLLM,
+    now,
+    sleep,
   });
 
   const initialScore = initialScoreResult?.overall ?? 100;
@@ -80,6 +86,8 @@ export async function runOuroboros({
       apiKey,
       baseURL,
       model,
+      now,
+      sleep,
     });
 
     const scoreResult = await scoreText({
@@ -89,14 +97,35 @@ export async function runOuroboros({
       apiKey,
       baseURL,
       model,
+      callLLM,
+      now,
+      sleep,
     });
 
     let currentScore = scoreResult?.overall ?? 100;
     const delta = previousScore - currentScore;
 
     const [mpsResult, fidelityResult] = await Promise.all([
-      scoreMPS({ original: text, rewritten: humanized, apiKey, baseURL, model }),
-      scoreFidelity({ original: text, rewritten: humanized, apiKey, baseURL, model }),
+      scoreMPS({
+        original: text,
+        rewritten: humanized,
+        apiKey,
+        baseURL,
+        model,
+        callLLM,
+        now,
+        sleep,
+      }),
+      scoreFidelity({
+        original: text,
+        rewritten: humanized,
+        apiKey,
+        baseURL,
+        model,
+        callLLM,
+        now,
+        sleep,
+      }),
     ]);
 
     const mps = mpsResult?.mps ?? 100;

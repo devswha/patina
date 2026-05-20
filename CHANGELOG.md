@@ -12,6 +12,24 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## 3.11.0 — 2026-05-20
+
+**Launch-readiness polish for trust, benchmarks, and distribution.**
+
+Semver rationale: minor — adds CI/release/distribution surfaces and documentation, while preserving the core rewrite pipeline and existing CLI behavior.
+
+### New
+
+- Prepared npm release metadata for `patina-cli` plus the `patina-humanizer` alias package.
+- Added a release workflow for npm provenance publishing and GHCR image publishing.
+- Added deterministic GitHub Action and pre-commit scoring surfaces for Markdown review.
+- Added Dockerfile-based container runtime for API-backed CLI use.
+
+### Quality
+
+- Added release metadata checks so package/config/skill/changelog versions stay synchronized.
+- Added deterministic prose-score tests and pre-commit E2E coverage.
+
 ## 3.10.0 — 2026-05-06
 
 **Tone categorization v1 (6 tones + `auto`).**

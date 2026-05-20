@@ -21,6 +21,8 @@ const TARGETS = [
   { file: 'README_ZH.md', lang: 'zh' },
   { file: 'README_JA.md', lang: 'ja' },
   { file: 'docs/FAQ.md', lang: 'en' },
+  { file: 'docs/social/signs-of-ai-writing.md', lang: 'en' },
+  { file: 'docs/social/signs-of-ai-writing_KR.md', lang: 'ko' },
   { file: 'SKILL.md', lang: 'ko' },
 ];
 

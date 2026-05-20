@@ -6,8 +6,11 @@ import {
   validateProfileName,
   validateBaseURL,
   isLoopbackHost,
+  isPrivateOrSpecialIP,
   shouldAllowInsecureBaseURL,
   applyInsecureBaseURLOptIn,
+  shouldAllowPrivateBaseURL,
+  applyPrivateBaseURLOptIn,
 } from '../../src/security.js';
 import { loadProfile } from '../../src/loader.js';
 
@@ -125,6 +128,33 @@ describe('isLoopbackHost', () => {
   });
 });
 
+describe('isPrivateOrSpecialIP (issue #167)', () => {
+  it('matches private, reserved, link-local, metadata, and multicast IPs', () => {
+    const specialHosts = [
+      '10.0.0.1',
+      '172.16.0.1',
+      '192.168.1.1',
+      '169.254.169.254',
+      '100.64.0.1',
+      '0.0.0.0',
+      '224.0.0.1',
+      'fc00::1',
+      'fe80::1',
+      '::ffff:10.0.0.1',
+    ];
+
+    for (const host of specialHosts) {
+      assert.strictEqual(isPrivateOrSpecialIP(host), true, host);
+    }
+  });
+
+  it('does not classify public or documentation IPs as private targets', () => {
+    for (const host of ['8.8.8.8', '203.0.113.1', '2001:db8::1']) {
+      assert.strictEqual(isPrivateOrSpecialIP(host), false, host);
+    }
+  });
+});
+
 describe('shouldAllowInsecureBaseURL / applyInsecureBaseURLOptIn', () => {
   it('returns false by default', () => {
     withEnv({ PATINA_ALLOW_INSECURE_BASE_URL: undefined }, () => {
@@ -158,6 +188,81 @@ describe('shouldAllowInsecureBaseURL / applyInsecureBaseURLOptIn', () => {
     withEnv({ PATINA_ALLOW_INSECURE_BASE_URL: undefined }, () => {
       applyInsecureBaseURLOptIn({});
       assert.strictEqual(process.env.PATINA_ALLOW_INSECURE_BASE_URL, undefined);
+    });
+  });
+});
+
+describe('private base URL SSRF guard (issue #167)', () => {
+  it('rejects private literal IPs unless explicitly opted in', () => {
+    withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: undefined }, () => {
+      assert.throws(
+        () => validateBaseURL('https://10.0.0.1/v1'),
+        /private\/reserved IP/
+      );
+      assert.throws(
+        () => validateBaseURL('https://169.254.169.254/latest/meta-data'),
+        /private\/reserved IP/
+      );
+    });
+  });
+
+  it('allows private literal IPs with an explicit option or env override', () => {
+    withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: undefined }, () => {
+      assert.doesNotThrow(() =>
+        validateBaseURL('https://10.0.0.1/v1', { allowPrivate: true })
+      );
+    });
+
+    withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: '1' }, () => {
+      assert.doesNotThrow(() => validateBaseURL('https://10.0.0.1/v1'));
+    });
+  });
+});
+
+describe('shouldAllowPrivateBaseURL / applyPrivateBaseURLOptIn', () => {
+  it('returns false by default', () => {
+    withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: undefined }, () => {
+      assert.strictEqual(shouldAllowPrivateBaseURL(), false);
+      assert.strictEqual(shouldAllowPrivateBaseURL({}), false);
+    });
+  });
+
+  it('honors --allow-private-base-url flag', () => {
+    withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: undefined }, () => {
+      assert.strictEqual(
+        shouldAllowPrivateBaseURL({ allowPrivateBaseURL: true }),
+        true
+      );
+    });
+  });
+
+  it('honors PATINA_ALLOW_PRIVATE_BASE_URL env in 1/true/yes', () => {
+    withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: '1' }, () =>
+      assert.strictEqual(shouldAllowPrivateBaseURL(), true)
+    );
+    withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: 'true' }, () =>
+      assert.strictEqual(shouldAllowPrivateBaseURL(), true)
+    );
+    withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: 'yes' }, () =>
+      assert.strictEqual(shouldAllowPrivateBaseURL(), true)
+    );
+    withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: 'no' }, () =>
+      assert.strictEqual(shouldAllowPrivateBaseURL(), false)
+    );
+  });
+
+  it('applyPrivateBaseURLOptIn sets the env when flag is passed', () => {
+    withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: undefined }, () => {
+      applyPrivateBaseURLOptIn({ allowPrivateBaseURL: true });
+      assert.strictEqual(process.env.PATINA_ALLOW_PRIVATE_BASE_URL, '1');
+      delete process.env.PATINA_ALLOW_PRIVATE_BASE_URL;
+    });
+  });
+
+  it('applyPrivateBaseURLOptIn does nothing when flag is not passed', () => {
+    withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: undefined }, () => {
+      applyPrivateBaseURLOptIn({});
+      assert.strictEqual(process.env.PATINA_ALLOW_PRIVATE_BASE_URL, undefined);
     });
   });
 });

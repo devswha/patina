@@ -151,14 +151,51 @@ describe('CLI End-to-End with Mock API', () => {
     const { logs } = await captureConsole(() => main(['--help']));
     const help = logs.join('\n');
 
-    assert.ok(help.includes('Core options:'), 'help should group core options');
-    assert.ok(help.includes('Modes:'), 'help should group modes');
-    assert.ok(help.includes('Model / auth / backend:'), 'help should group backend options');
+    assert.ok(help.includes('MODES'), 'help should group modes');
+    assert.ok(help.includes('OUTPUT & BATCH'), 'help should group output options');
+    assert.ok(help.includes('LANGUAGE & PROFILE'), 'help should group language options');
+    assert.ok(help.includes('MODEL & AUTH'), 'help should group backend options');
+    assert.ok(help.includes('ADVANCED'), 'help should group advanced options');
+    assert.ok(help.includes('EXAMPLES'), 'help should include examples');
     assert.ok(help.includes('--gate <n>'), 'help should document score gate');
+    assert.ok(help.includes('--format <fmt>'), 'help should document output format');
     assert.ok(
       help.includes('openai-http, codex-cli, claude-cli, gemini-cli'),
       'help should list every backend name'
     );
+  });
+
+  it('should wrap score output in documented JSON when --format json is used', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    await stopMockServer();
+    await startMockServer('{ "overall": 23, "categories": { "style": { "score": 10 } }, "interpretation": "mostly human" }');
+
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    const { logs } = await captureConsole(() => main([
+      '--lang', 'en',
+      '--score',
+      '--exit-on', '30',
+      '--format', 'json',
+      '--api-key', 'test-key',
+      '--base-url', `http://127.0.0.1:${mockPort}`,
+      testFile,
+    ]));
+
+    const parsed = JSON.parse(logs.join('\n'));
+    assert.strictEqual(parsed.mode, 'score');
+    assert.strictEqual(parsed.format, 'json');
+    assert.strictEqual(parsed.overall, 23);
+    assert.deepStrictEqual(parsed.gateResult, {
+      threshold: 30,
+      overall: 23,
+      passed: true,
+      exitCode: 0,
+    });
+    assert.strictEqual(parsed.categories[0].name, 'style');
+    assert.ok(parsed.tone);
+    await stopMockServer();
+    await startMockServer('This is the humanized result.');
   });
 
   it('should set exit code 3 when --score gate fails', async () => {
@@ -182,6 +219,33 @@ describe('CLI End-to-End with Mock API', () => {
 
       assert.strictEqual(process.exitCode, 3);
       assert.ok(errors.some((line) => line.includes('score gate failed')));
+    } finally {
+      process.exitCode = oldExitCode;
+    }
+    await stopMockServer();
+    await startMockServer('This is the humanized result.');
+  });
+
+  it('should accept --exit-on as the CI score gate alias', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    await stopMockServer();
+    await startMockServer('{ "overall": 42, "interpretation": "mixed" }');
+
+    const oldExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    try {
+      await captureConsole(() => main([
+        '--lang', 'en',
+        '--score',
+        '--exit-on', '30',
+        '--api-key', 'test-key',
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        testFile,
+      ]));
+
+      assert.strictEqual(process.exitCode, 3);
     } finally {
       process.exitCode = oldExitCode;
     }
@@ -289,6 +353,33 @@ describe('CLI End-to-End with Mock API', () => {
       ]),
       /--variants is not supported with --models\/MAX mode yet/
     );
+  });
+
+  it('should set exit code 4 when every MAX candidate fails', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    await stopMockServer();
+    await startMockServer('Unauthorized', 401);
+
+    const oldExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    try {
+      const { logs } = await captureConsole(() => main([
+        '--lang', 'en',
+        '--models', 'model-a',
+        '--api-key', 'test-key',
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        testFile,
+      ]));
+
+      assert.strictEqual(process.exitCode, 4);
+      assert.match(logs.join('\n'), /Best: none/);
+    } finally {
+      process.exitCode = oldExitCode;
+    }
+    await stopMockServer();
+    await startMockServer('This is the humanized result.');
   });
 
   it('should handle API errors gracefully', async () => {

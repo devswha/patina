@@ -4,10 +4,10 @@ patina's CLI is optimized for interactive editing, but a few surfaces are stable
 
 ## Score gate
 
-Use `--score --gate <n>` when CI should fail if a text still reads too AI-like.
+Use `--score --exit-on <n>` (or the older `--gate <n>` alias) when CI should fail if a text still reads too AI-like.
 
 ```bash
-patina --lang en --score --gate 30 draft.md
+patina --lang en --score --exit-on 30 draft.md
 ```
 
 - `--score` still prints the model's score output.
@@ -18,15 +18,33 @@ patina --lang en --score --gate 30 draft.md
 
 | Code | Meaning |
 |---:|---|
-| `0` | Command completed; for `--score --gate`, the score was at or below the gate. |
+| `0` | Command completed; for `--score --exit-on`, the score was at or below the gate. |
 | `1` | Runtime or backend error, including API/auth/backend failures. |
 | `2` | Input/usage error from no interactive input or empty stdin. |
-| `3` | `--score --gate` completed, but the score exceeded the configured gate. |
+| `3` | `--score --exit-on` / `--score --gate` completed, but the score exceeded the configured gate. |
+| `4` | MAX mode all candidates failed, or patina fell back because no candidate met the MPS floor. |
 
-## Current machine-readable surfaces
+## Output formats
 
-- `--score` asks the backend to emit a JSON-like score with an `overall` field; `--gate` parses that field for exit-code decisions.
+`--format markdown` is the default and preserves the existing human-readable output. `--format text` emits the same user-facing content without the YAML tone footer. `--format json` wraps every mode in a stable envelope:
+
+```json
+{
+  "mode": "score",
+  "format": "json",
+  "overall": 23,
+  "categories": [],
+  "tone": { "tone": null, "tone_source": "profile_only" },
+  "mps": null,
+  "gateResult": { "threshold": 30, "overall": 23, "passed": true, "exitCode": 0 },
+  "output": "raw model output after patina cleanup"
+}
+```
+
+- `overall` and `categories[]` are populated when patina can parse them from score JSON or score tables.
+- `mps` is populated for MAX-mode results when available.
+- `gateResult` is `null` unless `--exit-on` / `--gate` is used.
 - `--save-run <dir>` writes `manifest.json` plus `output-N.txt` files for reproducible audit trails.
-- `--list-backends` and `--list-providers` print tabular status for auth/debugging.
+- `patina doctor --json` emits setup diagnostics for CI without making an LLM call.
 
-Future output-format work should keep these contracts backward-compatible instead of changing existing stdout by surprise.
+See [EXIT-CODES.md](EXIT-CODES.md) for the full process contract.

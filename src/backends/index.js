@@ -10,8 +10,8 @@ const openaiHttp = {
   isAvailable: () => true,
   isAuthenticated: () => inspectHttpApiKeySource().ok,
   authHint: () => inspectHttpApiKeySource().detail,
-  invoke: ({ prompt, apiKey, baseURL, model, timeout }) =>
-    callLLM({ prompt, apiKey, baseURL, model, timeout }),
+  invoke: ({ prompt, apiKey, baseURL, model, signal, timeout }) =>
+    callLLM({ prompt, apiKey, baseURL, model, signal, timeout }),
 };
 
 const REGISTRY = {

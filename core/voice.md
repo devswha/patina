@@ -1,6 +1,6 @@
 ---
 name: voice
-description: 개성과 목소리 지침 (Korean + English)
+description: 개성과 목소리 지침 (Korean, English, Japanese, Chinese)
 version: 1.1.0
 ---
 
@@ -149,13 +149,15 @@ The Korean guidance above is the reference — but English voice has its own spe
 
 The six v1 tones each pull different levers from the guidance above. Use `--tone <name>` to activate.
 
-| Tone | Voice lever emphasis | Profile backbone |
-|------|---------------------|-----------------|
-| `casual` | Contractions, first-person, opinions, humor, messiness | `blog` / `social` |
-| `professional` | Clarity and concision; formal register but not stiff; suppress filler | `email` / `formal` (legal/medical force fidelity floor 0.65) |
-| `academic` | Objective tone, evidence references, suppress first-person and emoticons | `academic` / `technical` |
-| `narrative` | First-person anchor, scene detail, emotional presence, time flow — see `profiles/narrative.md` | `profiles/narrative.md` (new) |
-| `marketing` | Short impact sentences, persuasive verbs, CTA-friendly; emoticons allowed | `marketing` |
-| `instructional` | Imperative verbs at sentence head, numbered structure preserved, hedging suppressed — see `profiles/instructional.md` | `profiles/instructional.md` (new) |
+Coverage note: the tone table below covers all six named tones for ko/en. zh/ja currently use the language-specific voice guidance above and fall back to profile-only mode for named tones, so separate 6-tone zh/ja voice notes are not defined yet.
+
+| Tone | Language coverage | Voice lever emphasis | Profile backbone |
+|------|-------------------|----------------------|-----------------|
+| `casual` | ko/en; zh/ja gap noted above | Contractions, first-person, opinions, humor, messiness | `blog` / `social` |
+| `professional` | ko/en; zh/ja gap noted above | Clarity and concision; formal register but not stiff; suppress filler | `email` / `formal` (legal/medical force fidelity floor 0.65) |
+| `academic` | ko/en; zh/ja gap noted above | Objective tone, evidence references, suppress first-person and emoticons | `academic` / `technical` |
+| `narrative` | ko/en; zh/ja gap noted above | First-person anchor, scene detail, emotional presence, time flow — see `profiles/narrative.md` | `profiles/narrative.md` (new) |
+| `marketing` | ko/en; zh/ja gap noted above | Short impact sentences, persuasive verbs, CTA-friendly; emoticons allowed | `marketing` |
+| `instructional` | ko/en; zh/ja gap noted above | Imperative verbs at sentence head, numbered structure preserved, hedging suppressed — see `profiles/instructional.md` | `profiles/instructional.md` (new) |
 
 Deeper voice guidance for each tone lives in the corresponding profile file. This table is a pointer only.

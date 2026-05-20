@@ -266,7 +266,7 @@ Campaign state:
 - Final review blocker cleanup: #295.
 - Closed or verified during the campaign: #99, #165, #186, #191, #199, #209, #210.
 - Kept open with explicit blocker comments: #104, #155, #156, #157, #158, #159, #160, #206, #207, #208, #211, #212.
-- Bot/harness automation remains inactive/local-only until the tracked audit blockers in [`docs/internal/HARNESS-HARDENING-AUDIT.md`](internal/HARNESS-HARDENING-AUDIT.md) are resolved.
+- Legacy bot/harness notes were removed from the public repo; restart autonomous bot work only from a fresh, tracked design if it becomes necessary.
 
 Next recommended order:
 

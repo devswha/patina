@@ -12,7 +12,6 @@ custom/
 *~
 
 # Ops / runtime logs
-artifacts/harness/*/
 node_modules/
 .env
 

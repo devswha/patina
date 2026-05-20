@@ -21,7 +21,7 @@ patina auth login          # per-backend login instructions
 patina --list-providers    # preset providers + key status
 ```
 
-Backend selection에는 명시적인 신호가 필요합니다. `--backend <name>`을 직접 넘기거나, `--model <prefix>`를 사용하세요. `codex-*`, `claude-*`, `gemini-*`는 각각 맞는 local CLI로 라우팅됩니다. flag도 API key도 없으면 patina는 coding agent로 조용히 보내지 않고 오류로 종료합니다. 이유는 [issue #88](https://github.com/devswha/patina/issues/88)를 참고하세요.
+Backend selection에는 명시적인 신호가 필요합니다. `--backend <name>`을 직접 넘기거나, `--backend claude-cli,codex-cli`처럼 comma-separated fallback chain을 넘기거나, `--model <prefix>`를 사용하세요. `codex-*`, `claude-*`, `gemini-*`는 각각 맞는 local CLI로 라우팅됩니다. flag도 API key도 없으면 patina는 coding agent로 조용히 보내지 않고 오류로 종료합니다. 이유는 [issue #88](https://github.com/devswha/patina/issues/88)를 참고하세요.
 
 ## Environment variables
 

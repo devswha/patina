@@ -2,6 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DEFAULT_BACKEND_TIMEOUT_MS } from './contract.js';
 
 export const name = 'gemini-cli';
 
@@ -30,7 +31,7 @@ export function authHint() {
   return 'Run `gemini` once interactively to log in via Google OAuth, or set GEMINI_API_KEY.';
 }
 
-export async function invoke({ prompt, model, signal, timeout = 240000 } = {}) {
+export async function invoke({ prompt, model, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('gemini-cli backend: prompt must be a non-empty string');
   }
@@ -41,8 +42,6 @@ export async function invoke({ prompt, model, signal, timeout = 240000 } = {}) {
   // directory for the same prompt-injection containment reason as codex-cli;
   // --skip-trust is required because the temp dir isn't in gemini's trusted
   // workspace list (otherwise gemini exits 55).
-  // Default timeout is higher than other CLIs because gemini's startup latency
-  // is longer (model warmup + auth check on each invocation).
   const dir = mkdtempSync(join(tmpdir(), 'patina-gemini-'));
   const args = ['-p', '', '--output-format', 'text', '--skip-trust'];
   if (model) args.push('-m', model);

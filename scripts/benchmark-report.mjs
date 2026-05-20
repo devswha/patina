@@ -149,7 +149,9 @@ function misclassificationSection(fixtures = []) {
 
 function renderMarkdown(results, benchmarkStatus) {
   const generatedAt = results.generatedAt || new Date().toISOString();
-  const languageCount = Object.keys(results.perLanguage || {}).length;
+  const languages = Object.keys(results.perLanguage || {}).sort();
+  const languageCount = languages.length;
+  const languageList = languages.join(', ');
   const status = benchmarkStatus === 0 ? 'passing' : 'failing';
   const overall = results.overall || {
     accuracy: results.overallAccuracy,
@@ -172,11 +174,14 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 - Node: ${results.nodeVersion}
 - Fixture schema: v${results.fixtureSchemaVersion}
 - Fixtures: ${results.fixtureCount}
-- Languages: ${languageCount}
+- Languages: ${languageCount} (${languageList})
 - Overall accuracy: **${pct(overall.accuracy)}** [${pct(overall.ci_low)}–${pct(overall.ci_high)}] (n=${overall.n}, ${overall.confidence_method})
 - Source fixtures: \`tests/fixtures/suspect-zones/**\`
+- Regression ranges: \`tests/fixtures/suspect-zones/expected-ranges.json\` (refresh with \`npm run benchmark:ranges\`)
 - Reproduce: \`npm run benchmark:report\`
 - Raw JSON: [latest.json](latest.json)
+- Detector comparison harness: [detector-comparison.md](detector-comparison.md)
+- 2025+ re-baseline plan: [docs/research/2025-rebaseline-plan.md](../research/2025-rebaseline-plan.md)
 
 ## Language breakdown
 
@@ -211,8 +216,8 @@ ${fixtureRows(results.fixtures).join('\n')}
 - **Hot** means at least one deterministic signal crossed the benchmark threshold: low burstiness CV, low MATTR, or AI-lexicon density.
 - **Cold** means the fixture did not cross those thresholds.
 - The report is meant for regression tracking and contributor discussion, not for authorship accusation.
-- This deterministic corpus is intentionally small (${results.fixtureCount} fixtures) and currently covers only checked-in ko/en suspect-zone fixtures; do not treat 100% fixture accuracy as generalization to new models, genres, or edited AI text.
-- Confidence intervals use Wilson score intervals for the checked-in fixture set; external threshold sweeps and 2025+ model rebaselines are separate research follow-ups.
+- This deterministic corpus is intentionally small (${results.fixtureCount} fixtures across ${languageList}); do not treat 100% fixture accuracy as generalization to new models, genres, or edited AI text.
+- Confidence intervals use Wilson score intervals for the checked-in fixture set; external threshold sweeps and 2025+ model rebaselines are separate research follow-ups tracked in [2025+ Re-baseline Plan](../research/2025-rebaseline-plan.md).
 - Broader methodology notes live in [AI/Human Metrics Research](../research/ai-human-metrics.md) and [Quality Checks](../../tests/quality/README.md).
 `;
 }
@@ -229,6 +234,7 @@ function main() {
     benchmarkCommand: benchmarkCommand.join(' '),
     benchmarkStatus,
     note: 'Deterministic suspect-zone benchmark; not an authorship detector.',
+    regressionRanges: 'tests/fixtures/suspect-zones/expected-ranges.json',
     ...results,
     sampleSizes: sampleSizeSummary(results.fixtures),
   };

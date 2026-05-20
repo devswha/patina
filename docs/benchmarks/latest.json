@@ -3,16 +3,17 @@
   "benchmarkCommand": "node tests/quality/benchmark.mjs --quiet",
   "benchmarkStatus": 0,
   "note": "Deterministic suspect-zone benchmark; not an authorship detector.",
+  "regressionRanges": "tests/fixtures/suspect-zones/expected-ranges.json",
   "schemaVersion": 2,
   "fixtureSchemaVersion": 1,
   "nodeVersion": "v22.17.1",
-  "generatedAt": "2026-05-20T03:08:27.314Z",
-  "fixtureCount": 22,
+  "generatedAt": "2026-05-20T03:54:28.607Z",
+  "fixtureCount": 34,
   "overallAccuracy": 1,
   "overall": {
     "accuracy": 1,
-    "n": 22,
-    "ci_low": 0.851,
+    "n": 34,
+    "ci_low": 0.898,
     "ci_high": 1,
     "confidence_method": "Wilson score interval, 95%"
   },
@@ -79,6 +80,68 @@
         }
       }
     },
+    "ja": {
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "tn": 3,
+      "total": 6,
+      "accuracy": 1,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "n": 6,
+      "ci_low": 0.61,
+      "ci_high": 1,
+      "confidence_method": "Wilson score interval, 95%",
+      "byDetector": {
+        "burstiness": {
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "tn": 3,
+          "total": 6,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "n": 6,
+          "ci_low": 0.61,
+          "ci_high": 1,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "mattr": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 3,
+          "tn": 3,
+          "total": 6,
+          "accuracy": 0.5,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 6,
+          "ci_low": 0.188,
+          "ci_high": 0.812,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "lexicon": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 3,
+          "tn": 3,
+          "total": 6,
+          "accuracy": 0.5,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 6,
+          "ci_low": 0.188,
+          "ci_high": 0.812,
+          "confidence_method": "Wilson score interval, 95%"
+        }
+      }
+    },
     "ko": {
       "tp": 6,
       "fp": 0,
@@ -137,6 +200,68 @@
           "n": 11,
           "ci_low": 0.523,
           "ci_high": 0.949,
+          "confidence_method": "Wilson score interval, 95%"
+        }
+      }
+    },
+    "zh": {
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "tn": 3,
+      "total": 6,
+      "accuracy": 1,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "n": 6,
+      "ci_low": 0.61,
+      "ci_high": 1,
+      "confidence_method": "Wilson score interval, 95%",
+      "byDetector": {
+        "burstiness": {
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "tn": 3,
+          "total": 6,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "n": 6,
+          "ci_low": 0.61,
+          "ci_high": 1,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "mattr": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 3,
+          "tn": 3,
+          "total": 6,
+          "accuracy": 0.5,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 6,
+          "ci_low": 0.188,
+          "ci_high": 0.812,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "lexicon": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 3,
+          "tn": 3,
+          "total": 6,
+          "accuracy": 0.5,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 6,
+          "ci_low": 0.188,
+          "ci_high": 0.812,
           "confidence_method": "Wilson score interval, 95%"
         }
       }
@@ -363,6 +488,126 @@
       "cv": 0.853,
       "cv_band": "high",
       "mattr": 0.875,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "ja-ai-01",
+      "lang": "ja",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.045,
+      "cv_band": "low",
+      "mattr": 0.833,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "ja-ai-02",
+      "lang": "ja",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.23,
+      "cv_band": "low",
+      "mattr": 0.785,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "ja-ai-03",
+      "lang": "ja",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.063,
+      "cv_band": "low",
+      "mattr": 0.795,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "ja-nat-01",
+      "lang": "ja",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.487,
+      "cv_band": "mid",
+      "mattr": 0.719,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "ja-nat-02",
+      "lang": "ja",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.65,
+      "cv_band": "high",
+      "mattr": 0.796,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "ja-nat-03",
+      "lang": "ja",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.395,
+      "cv_band": "mid",
+      "mattr": 0.807,
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
@@ -600,6 +845,126 @@
       "lexicon_density": 0,
       "lexicon_hits": [],
       "expected_metrics": null
+    },
+    {
+      "fixture_id": "zh-ai-01",
+      "lang": "zh",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.062,
+      "cv_band": "low",
+      "mattr": 0.902,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "zh-ai-02",
+      "lang": "zh",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.28,
+      "cv_band": "low",
+      "mattr": 0.734,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "zh-ai-03",
+      "lang": "zh",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "detectors": {
+        "burstiness": true,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.083,
+      "cv_band": "low",
+      "mattr": 0.933,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "zh-nat-01",
+      "lang": "zh",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.506,
+      "cv_band": "high",
+      "mattr": 0.875,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "zh-nat-02",
+      "lang": "zh",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.528,
+      "cv_band": "high",
+      "mattr": 0.936,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "zh-nat-03",
+      "lang": "zh",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.58,
+      "cv_band": "high",
+      "mattr": 0.907,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
     }
   ],
   "sampleSizes": {
@@ -607,9 +972,17 @@
       "ai": 6,
       "natural": 5
     },
+    "ja": {
+      "ai": 3,
+      "natural": 3
+    },
     "ko": {
       "ai": 6,
       "natural": 5
+    },
+    "zh": {
+      "ai": 3,
+      "natural": 3
     }
   }
 }

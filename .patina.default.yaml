@@ -15,6 +15,10 @@ tone:                       # one of: casual, professional, academic, narrative,
                             # Override with CLI: --tone <name>
                             # zh/ja with explicit tone: warns and falls back to profile.
 
+# Optional path to 1-3 user-written paragraphs. CLI --voice-sample wins.
+# Used as a style/register anchor only; facts stay sourced from the input text.
+voice-sample:
+
 # Supported languages: ko, en, zh, ja
 
 # patterns 목록은 기본 언어(ko)의 팩을 문서화합니다.

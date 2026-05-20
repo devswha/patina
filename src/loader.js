@@ -64,6 +64,26 @@ export function loadInputText(path) {
   return readFileSync(path, 'utf8');
 }
 
+export function loadVoiceSample(path) {
+  const content = loadFile(path);
+  const paragraphs = content
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  if (paragraphs.length === 0) {
+    throw new Error(`Voice sample is empty: ${path}`);
+  }
+
+  const selected = paragraphs.slice(0, 3);
+  return {
+    path,
+    paragraphs: selected,
+    body: selected.join('\n\n'),
+    truncated: paragraphs.length > selected.length,
+  };
+}
+
 // Tone → backbone profile mapping (v3.10, mirrors SKILL.md Phase 1).
 // Returns the *primary* backbone profile name for a resolved tone.
 // Multi-profile tones (e.g. professional → email + formal + legal + medical)

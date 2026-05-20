@@ -3,6 +3,30 @@ import { scoreText, scoreMPS, scoreFidelity, combinedScore } from './scoring.js'
 import { buildPrompt } from './prompt-builder.js';
 import { createLogger } from './logger.js';
 
+/**
+ * Run the iterative Ouroboros rewrite-and-score loop.
+ *
+ * @param {object} options Ouroboros options.
+ * @param {object} options.config Effective config with ouroboros settings.
+ * @param {object[]} options.patterns Loaded pattern packs.
+ * @param {object|null} options.profile Parsed profile.
+ * @param {object|null} options.voice Parsed voice guide.
+ * @param {object|null} [options.voiceSample] Optional voice sample payload.
+ * @param {object|null} options.scoring Parsed scoring guide.
+ * @param {string} options.text Source text to improve.
+ * @param {string} [options.apiKey] Provider API key.
+ * @param {string} [options.baseURL] Provider base URL.
+ * @param {string} [options.model] Model id.
+ * @param {Function} [options.callLLM] LLM implementation.
+ * @param {Function} [options.now] Clock returning epoch milliseconds.
+ * @param {Function} [options.sleep] Sleep helper for tests.
+ * @param {AbortSignal} [options.signal] External cancellation signal.
+ * @param {object} [options.logger] patina logger.
+ * @returns {Promise<{finalText: string, finalScore: number, iterations: number, reason: string, log: object[]}>} Final text and iteration log.
+ * @throws {Error} When model calls or scoring fail outside handled schema fallbacks.
+ * @example
+ * const result = await runOuroboros({ config, patterns, profile, voice, scoring, text });
+ */
 export async function runOuroboros({
   config,
   patterns,

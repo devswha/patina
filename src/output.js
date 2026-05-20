@@ -1,5 +1,21 @@
 import { createLogger } from './logger.js';
 
+/**
+ * Format a raw backend result for CLI output mode and requested format.
+ *
+ * @param {string|object} result Backend result or structured mode result.
+ * @param {string} mode Output mode: rewrite, diff, audit, score, or ouroboros.
+ * @param {object} [parsed={}] Parsed CLI options.
+ * @param {object} [opts={}] Formatting options.
+ * @param {object|null} [opts.tone] Tone metadata to append.
+ * @param {object} [opts.logger] Logger for output warnings.
+ * @param {object} [opts.env] Environment map for color decisions.
+ * @param {object} [opts.stdout] Stdout-like stream for color decisions.
+ * @returns {string} User-facing formatted output.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const output = formatOutput('[BODY]Hi[/BODY]', 'rewrite');
+ */
 export function formatOutput(result, mode, parsed = {}, opts = {}) {
   const tone = opts.tone || null;
   const format = parsed.format || 'markdown';
@@ -61,6 +77,15 @@ function shouldColorDiff({ parsed = {}, env = process.env, stdout = process.stdo
 // v3.11 Phase 3.1: extract [VARIANT n]...[/VARIANT] blocks from a model
 // response. Returns an array of { id, text } sorted by id, empty if no
 // variant tags are present.
+/**
+ * Extract tagged [VARIANT n] blocks from a model response.
+ *
+ * @param {string} body Raw model response.
+ * @returns {Array<{id: number, text: string}>} Variants sorted by numeric id.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const variants = extractVariants('[VARIANT 1]\nHello\n[/VARIANT]');
+ */
 export function extractVariants(body) {
   if (!body) return [];
   const re = /\[VARIANT\s*(\d+)\]\s*\n([\s\S]*?)\n\s*\[\/VARIANT\]/g;
@@ -95,6 +120,16 @@ function formatVariants(variants, raw) {
 //
 // Returns an array of human-readable warning strings (empty if everything
 // matches). Caller is responsible for emitting to stderr.
+/**
+ * Validate that a model-emitted score table used configured category weights.
+ *
+ * @param {string} output Score-mode markdown output.
+ * @param {object} configWeights Expected category weight map.
+ * @returns {string[]} Human-readable warnings for missing, mismatched, or unexpected categories.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const warnings = validateScoreWeights('| content | 0.4 | 1 | 10 | 4 |', { content: 0.4 });
+ */
 export function validateScoreWeights(output, configWeights) {
   if (!output || !configWeights || Object.keys(configWeights).length === 0) {
     return [];
@@ -201,6 +236,17 @@ function normalizeCategoryName(raw) {
 // We extract the body block and drop the audit so callers get clean text.
 // If the model didn't honor the tags (older runs, mocked tests, etc.), we
 // fall back to returning the full output untouched.
+/**
+ * Remove SELF_AUDIT blocks and unwrap the BODY block from rewrite output.
+ *
+ * @param {string} body Raw model response.
+ * @param {object} [options] Strip options.
+ * @param {object} [options.logger] Logger for malformed output warnings.
+ * @returns {string} Clean user-facing body text.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const clean = stripSelfAudit('[BODY]Hello[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]');
+ */
 export function stripSelfAudit(body, { logger = createLogger() } = {}) {
   if (!body) return body;
   const bodyOpen = body.indexOf('[BODY]');

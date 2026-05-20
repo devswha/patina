@@ -3,6 +3,13 @@ import { getRepoRoot } from './config.js';
 import { analyzeText } from './features/index.js';
 import { createLogger } from './logger.js';
 
+/**
+ * Default maximum delta before deterministic and LLM scores are reconciled upward.
+ *
+ * @type {number}
+ * @example
+ * const threshold = DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD;
+ */
 export const DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD = 20;
 
 class SchemaError extends Error {
@@ -76,6 +83,27 @@ async function callAndParseJson({
   throw lastError;
 }
 
+/**
+ * Score text for AI-likeness using an LLM JSON scorer plus deterministic shadow signals.
+ *
+ * @param {object} options Scoring options.
+ * @param {string} options.text Text to score.
+ * @param {object} options.config Effective patina config.
+ * @param {object[]} options.patterns Loaded pattern packs, retained for scorer compatibility.
+ * @param {string} [options.apiKey] Provider API key.
+ * @param {string} [options.baseURL] Provider base URL.
+ * @param {string} [options.model] Model id.
+ * @param {number} [options.deadline] Absolute epoch-millisecond deadline.
+ * @param {AbortSignal} [options.signal] External cancellation signal.
+ * @param {Function} [options.callLLM] Injectable LLM implementation.
+ * @param {object} [options.logger] patina logger.
+ * @param {Function} [options.now] Clock returning epoch milliseconds.
+ * @param {Function} [options.sleep] Sleep helper for tests.
+ * @returns {Promise<object>} Score payload with overall, interpretation, llmScore, and deterministicScore.
+ * @throws {Error} When the operation is aborted.
+ * @example
+ * const score = await scoreText({ text: 'Draft', config, patterns, callLLM: async () => '{"categories":{},"overall":20,"interpretation":"mostly human"}' });
+ */
 export async function scoreText({
   text,
   config,
@@ -153,6 +181,19 @@ ${text}
   }
 }
 
+/**
+ * Compute deterministic stylometry/lexicon AI-likeness signals.
+ *
+ * @param {object} [options] Deterministic scoring options.
+ * @param {string} [options.text] Text to analyze.
+ * @param {object} [options.config={}] Effective config.
+ * @param {string} [options.repoRoot] Repository root for analyzer resources.
+ * @param {Function} [options.analyzer] Analyzer implementation.
+ * @returns {object|null} Deterministic score payload, skipped payload, or null when disabled.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const deterministic = scoreDeterministicSignals({ text: 'Draft', config });
+ */
 export function scoreDeterministicSignals({
   text,
   config = {},
@@ -222,6 +263,19 @@ export function scoreDeterministicSignals({
   }
 }
 
+/**
+ * Merge an LLM score payload with deterministic shadow-score reconciliation.
+ *
+ * @param {object} parsed Parsed LLM scoring JSON.
+ * @param {object} [options] Reconciliation options.
+ * @param {object|null} [options.deterministicScore] Deterministic score payload.
+ * @param {object} [options.config={}] Effective config.
+ * @param {object} [options.logger] Logger for reconciliation warnings.
+ * @returns {object} Score payload preserving llmScore and deterministicScore details.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const score = withShadowScore({ overall: 20 }, { deterministicScore: { overall: 25 } });
+ */
 export function withShadowScore(parsed, { deterministicScore, config = {}, logger } = {}) {
   const llmOverall = toFiniteScore(parsed?.overall);
   const llmScore = {
@@ -248,6 +302,19 @@ export function withShadowScore(parsed, { deterministicScore, config = {}, logge
   };
 }
 
+/**
+ * Reconcile LLM and deterministic overall scores according to config thresholds.
+ *
+ * @param {object} [options] Reconciliation inputs.
+ * @param {number|null} [options.llmOverall] LLM overall score.
+ * @param {object|null} [options.deterministicScore] Deterministic score payload.
+ * @param {object} [options.config={}] Effective config.
+ * @param {object} [options.logger] Logger for warnings.
+ * @returns {{overall: number|null, scorePreference: string|null}} Reconciled score and preference source.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const result = reconcileScoreOverall({ llmOverall: 20, deterministicScore: { overall: 60 } });
+ */
 export function reconcileScoreOverall({
   llmOverall,
   deterministicScore,
@@ -283,6 +350,26 @@ export function reconcileScoreOverall({
   return { overall, scorePreference };
 }
 
+/**
+ * Score meaning preservation between original and rewritten text.
+ *
+ * @param {object} options MPS options.
+ * @param {string} options.original Original text.
+ * @param {string} options.rewritten Rewritten text.
+ * @param {string} [options.apiKey] Provider API key.
+ * @param {string} [options.baseURL] Provider base URL.
+ * @param {string} [options.model] Model id.
+ * @param {number} [options.deadline] Absolute epoch-millisecond deadline.
+ * @param {AbortSignal} [options.signal] External cancellation signal.
+ * @param {Function} [options.callLLM] Injectable LLM implementation.
+ * @param {object} [options.logger] patina logger.
+ * @param {Function} [options.now] Clock returning epoch milliseconds.
+ * @param {Function} [options.sleep] Sleep helper for tests.
+ * @returns {Promise<Object>} MPS result.
+ * @throws {Error} When the operation is aborted.
+ * @example
+ * const mps = await scoreMPS({ original: 'A', rewritten: 'A', callLLM: async () => '{"mps":100,"anchors":[]}' });
+ */
 export async function scoreMPS({
   original,
   rewritten,
@@ -350,6 +437,15 @@ ${rewritten}
   }
 }
 
+/**
+ * Convert a numeric AI-likeness score to a human-readable band.
+ *
+ * @param {number} score AI-likeness score from 0 to 100.
+ * @returns {string} Interpretation band.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const label = interpretScore(28); // mostly human
+ */
 export function interpretScore(score) {
   if (score <= 15) return 'human';
   if (score <= 30) return 'mostly human';
@@ -359,6 +455,16 @@ export function interpretScore(score) {
 }
 
 // Length ratio is deterministic — bucket per core/scoring.md §10.4.
+/**
+ * Score rewritten length ratio on the 0-3 fidelity scale.
+ *
+ * @param {string} original Original text.
+ * @param {string} rewritten Rewritten text.
+ * @returns {number} Length-ratio points from 0 to 3.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const points = lengthRatioPoints('abcd', 'abcde');
+ */
 export function lengthRatioPoints(original, rewritten) {
   if (!original || original.length === 0) return 3;
   const ratio = (rewritten.length / original.length) * 100;
@@ -368,6 +474,26 @@ export function lengthRatioPoints(original, rewritten) {
   return 0;
 }
 
+/**
+ * Score fidelity between original and rewritten text using length plus LLM criteria.
+ *
+ * @param {object} options Fidelity options.
+ * @param {string} options.original Original text.
+ * @param {string} options.rewritten Rewritten text.
+ * @param {string} [options.apiKey] Provider API key.
+ * @param {string} [options.baseURL] Provider base URL.
+ * @param {string} [options.model] Model id.
+ * @param {number} [options.deadline] Absolute epoch-millisecond deadline.
+ * @param {AbortSignal} [options.signal] External cancellation signal.
+ * @param {Function} [options.callLLM] Injectable LLM implementation.
+ * @param {object} [options.logger] patina logger.
+ * @param {Function} [options.now] Clock returning epoch milliseconds.
+ * @param {Function} [options.sleep] Sleep helper for tests.
+ * @returns {Promise<Object>} Fidelity result.
+ * @throws {Error} When the operation is aborted.
+ * @example
+ * const fidelity = await scoreFidelity({ original: 'A', rewritten: 'A', callLLM: async () => '{"criteria":{"meaning":3,"tone":3,"no_unintended_additions":3}}' });
+ */
 export async function scoreFidelity({
   original,
   rewritten,
@@ -455,6 +581,15 @@ ${rewritten}
   };
 }
 
+/**
+ * Clamp and round a value into the inclusive 0-3 scoring range.
+ *
+ * @param {number|string} v Value to clamp.
+ * @returns {number} Integer from 0 to 3.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const value = clamp03(4.2); // 3
+ */
 export function clamp03(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return 0;
@@ -469,6 +604,20 @@ function rethrowIfAborted(err, signal) {
 
 // Combined score per core/scoring.md §13: AI-likeness × ai_weight + (100 - fidelity) × fidelity_weight.
 // Lower is better. Falls back to default weights if profile not configured.
+/**
+ * Combine AI-likeness, inverted fidelity, and optional deterministic score.
+ *
+ * @param {object} options Combined score inputs.
+ * @param {number} options.aiLikeness AI-likeness score, lower is better.
+ * @param {number} options.fidelity Fidelity score, higher is better.
+ * @param {string} [options.profile] Profile name for configured weights.
+ * @param {object} [options.config] Effective config.
+ * @param {number|object|null} [options.deterministicScore] Optional deterministic score.
+ * @returns {number} Combined score, lower is better.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const score = combinedScore({ aiLikeness: 20, fidelity: 90, profile: 'default', config: {} });
+ */
 export function combinedScore({ aiLikeness, fidelity, profile, config, deterministicScore }) {
   const profileWeights = config?.ouroboros?.['combined-weights']?.[profile];
   const ai = profileWeights?.['ai-likeness'] ?? 0.6;

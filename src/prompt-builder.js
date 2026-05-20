@@ -1,3 +1,23 @@
+/**
+ * Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.
+ *
+ * @param {object} options Prompt inputs.
+ * @param {object} options.config Effective patina config.
+ * @param {object[]} options.patterns Loaded pattern packs.
+ * @param {object|null} options.profile Parsed profile document.
+ * @param {object|null} options.voice Parsed voice guide.
+ * @param {object|null} [options.voiceSample] Optional voice sample payload.
+ * @param {object|null} options.scoring Parsed scoring guide.
+ * @param {string} options.text Input text.
+ * @param {string} [options.mode=rewrite] Output mode.
+ * @param {object|null} [options.tone=null] Tone resolution metadata.
+ * @param {string} [options.promptMode=strict] Prompt mode: strict or minimal.
+ * @param {number} [options.variants=1] Number of rewrite variants.
+ * @returns {string} Complete prompt text.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const prompt = buildPrompt({ config, patterns, profile, voice, scoring, text: 'Draft' });
+ */
 export function buildPrompt({
   config,
   patterns,
@@ -271,6 +291,15 @@ function buildScoreInstructions(config, lang, text = '') {
 
 // v3.11 Phase 3.2 helper: classify a text as "short" for scoring boost.
 // Threshold: ≤200 non-whitespace chars OR ≤3 non-empty paragraphs.
+/**
+ * Classify whether text should use the short-text scoring boost.
+ *
+ * @param {string} text Text to inspect.
+ * @returns {boolean} True when text is <=200 non-whitespace chars or <=3 paragraphs.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const short = isShortText('A short note.');
+ */
 export function isShortText(text) {
   if (!text) return true;
   const stripped = text.replace(/\s+/g, '');

@@ -4,6 +4,11 @@ language: ja
 name: フィラー・ヘッジングパターン
 version: 1.1.0
 patterns: 4
+dedupe-with:
+  - source: "ja-filler:22"
+    target: "ja-filler:31"
+    owner: "ja-filler:31"
+    reason: "最終段落の結論マーカーは filler #31 が canonical owner。#22 は本文中で意味を足さないフィラー句を扱う。"
 ---
 
 # フィラー・ヘッジングパターン

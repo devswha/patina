@@ -4,6 +4,15 @@ language: zh
 name: 风格模式
 version: 1.0.0
 patterns: 6
+dedupe-with:
+  - source: "zh-style:13"
+    target: "zh-filler:22"
+    owner: "zh-filler:22"
+    reason: "断言型填充词由 filler #22 作为 canonical owner；style #13 仅在它们承担段落连接/过渡功能时作为辅助信号。"
+  - source: "zh-style:13"
+    target: "zh-filler:31"
+    owner: "zh-filler:31"
+    reason: "结论信号词由 filler #31 作为 canonical owner；style #13 仅记录其作为过渡词密集出现时的共现。"
 ---
 
 # 风格模式

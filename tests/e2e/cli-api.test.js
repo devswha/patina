@@ -16,7 +16,7 @@ let callCount = 0;
 let lastRequestBody = null;
 let lastAuthorization = null;
 
-function startMockServer(responseText, statusCode = 200) {
+function startMockServer(responseText, statusCode = 200, extraResponse = {}) {
   return new Promise((resolve) => {
     mockServer = createServer((req, res) => {
       callCount++;
@@ -28,6 +28,7 @@ function startMockServer(responseText, statusCode = 200) {
         res.writeHead(statusCode, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           choices: [{ message: { content: responseText } }],
+          ...extraResponse,
         }));
       });
     });
@@ -315,7 +316,14 @@ describe('CLI End-to-End with Mock API', () => {
     callCount = 0;
     lastRequestBody = null;
     await stopMockServer();
-    await startMockServer('{ "overall": 23, "interpretation": "mostly human" }');
+    await startMockServer('{ "overall": 23, "interpretation": "mostly human" }', 200, {
+      model: 'mock-score-model',
+      usage: {
+        prompt_tokens: 321,
+        completion_tokens: 12,
+        cost_usd: 0.0042,
+      },
+    });
 
     const outDir = mkdtempSync(join(tmpdir(), 'patina-save-run-'));
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
@@ -329,9 +337,17 @@ describe('CLI End-to-End with Mock API', () => {
     ]));
 
     const manifest = JSON.parse(readFileSync(resolve(outDir, 'manifest.json'), 'utf8'));
+    assert.strictEqual(manifest.manifestVersion, '2');
     const scores = manifest.results[0].scores;
     assert.strictEqual(scores.llm.overall, 23);
     assert.equal(typeof scores.deterministic.overall, 'number');
+    assert.match(manifest.results[0].responseHash, /^sha256:[0-9a-f]{64}$/);
+    assert.strictEqual(manifest.results[0].tokensIn, 321);
+    assert.strictEqual(manifest.results[0].tokensOut, 12);
+    assert.strictEqual(manifest.results[0].temperature, 0.7);
+    assert.strictEqual(manifest.results[0].cost.amount, 0.0042);
+    assert.strictEqual(manifest.results[0].calls[0].model, 'mock-score-model');
+    assert.strictEqual(manifest.results[0].calls[0].tokensIn, 321);
     await stopMockServer();
     await startMockServer('This is the humanized result.');
   });

@@ -4,6 +4,7 @@ const DEFAULT_TIMEOUT = 120000;
 const DEFAULT_MAX_RETRIES = 2;
 const DEFAULT_BASE_BACKOFF_MS = 1000;
 const DEFAULT_MAX_BACKOFF_MS = 30000;
+export const DEFAULT_TEMPERATURE = 0.7;
 
 // Status codes that warrant a retry. Network errors (no status, AbortError)
 // are also retryable; auth / validation 4xxs are not.
@@ -133,12 +134,14 @@ export async function callLLM({
   apiKey,
   baseURL = 'https://api.openai.com/v1',
   model = 'gpt-4o',
-  temperature = 0.7,
+  temperature = DEFAULT_TEMPERATURE,
+  seed,
   timeout = DEFAULT_TIMEOUT,
   maxRetries = DEFAULT_MAX_RETRIES,
   deadline,
   signal,
   allowInsecureBaseURL = false,
+  onResponse,
   // Allows tests to inject a deterministic delay function.
   sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
   now = () => Date.now(),
@@ -150,6 +153,7 @@ export async function callLLM({
     messages: [{ role: 'user', content: prompt }],
     temperature,
   };
+  if (seed !== undefined && seed !== null) body.seed = seed;
 
   let lastError;
   let attemptsMade = 0;
@@ -204,6 +208,17 @@ export async function callLLM({
         throw new Error('Empty response from LLM API');
       }
 
+      onResponse?.({
+        provider: 'openai-http',
+        model: data.model ?? model,
+        requestedModel: model,
+        temperature,
+        seed: seed ?? null,
+        usage: data.usage ?? null,
+        rawResponse: data,
+        content,
+      });
+
       return content;
     } catch (err) {
       lastError = err;
@@ -240,7 +255,8 @@ export async function callLLMMultiple({
   models,
   apiKey,
   baseURL = 'https://api.openai.com/v1',
-  temperature = 0.7,
+  temperature = DEFAULT_TEMPERATURE,
+  seed,
   timeout = DEFAULT_TIMEOUT,
   allowInsecureBaseURL = false,
   deadline,
@@ -248,6 +264,7 @@ export async function callLLMMultiple({
   maxConcurrency,
   onStart,
   onComplete,
+  onResponse,
   callLLM: callLLMImpl = callLLM,
   sleep,
   now = () => Date.now(),
@@ -268,10 +285,12 @@ export async function callLLMMultiple({
         baseURL,
         model,
         temperature,
+        seed,
         timeout,
         deadline,
         signal,
         allowInsecureBaseURL,
+        onResponse,
         sleep,
         now,
       });

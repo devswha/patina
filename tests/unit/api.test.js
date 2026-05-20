@@ -244,3 +244,51 @@ test('callLLM preserves final HTTP status for backend fallback classification', 
     globalThis.fetch = originalFetch;
   }
 });
+
+test('callLLM reports usage metadata without changing string return value', async () => {
+  const originalFetch = globalThis.fetch;
+  const seen = [];
+  let requestBody;
+  globalThis.fetch = async (_url, opts) => {
+    requestBody = JSON.parse(opts.body);
+    return {
+      ok: true,
+      json: async () => ({
+        model: 'served-model',
+        choices: [{ message: { content: 'hello' } }],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 3,
+          cost_usd: 0.001,
+        },
+      }),
+    };
+  };
+
+  try {
+    const content = await callLLM({
+      prompt: 'x',
+      apiKey: 'test',
+      model: 'requested-model',
+      temperature: 0.2,
+      seed: 42,
+      onResponse: (metadata) => seen.push(metadata),
+    });
+
+    assert.equal(content, 'hello');
+    assert.equal(requestBody.seed, 42);
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].model, 'served-model');
+    assert.equal(seen[0].requestedModel, 'requested-model');
+    assert.equal(seen[0].temperature, 0.2);
+    assert.equal(seen[0].seed, 42);
+    assert.deepEqual(seen[0].usage, {
+      prompt_tokens: 10,
+      completion_tokens: 3,
+      cost_usd: 0.001,
+    });
+    assert.equal(seen[0].content, 'hello');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

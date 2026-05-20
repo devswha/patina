@@ -15,8 +15,18 @@ const openaiHttp = {
   isAvailable: () => true,
   isAuthenticated: () => inspectHttpApiKeySource().ok,
   authHint: () => inspectHttpApiKeySource().detail,
-  invoke: ({ prompt, apiKey, baseURL, model, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS }) =>
-    callLLM({ prompt, apiKey, baseURL, model, signal, timeout }),
+  invoke: ({
+    prompt,
+    apiKey,
+    baseURL,
+    model,
+    signal,
+    timeout = DEFAULT_BACKEND_TIMEOUT_MS,
+    temperature,
+    seed,
+    onResponse,
+  }) =>
+    callLLM({ prompt, apiKey, baseURL, model, signal, timeout, temperature, seed, onResponse }),
 };
 
 const REGISTRY = {
@@ -101,6 +111,9 @@ export async function invokeBackendChain({
   model,
   signal,
   timeout = DEFAULT_BACKEND_TIMEOUT_MS,
+  temperature,
+  seed,
+  onResponse,
   logger,
 }) {
   if (!Array.isArray(backends) || backends.length === 0) {
@@ -115,7 +128,7 @@ export async function invokeBackendChain({
   for (let attemptIndex = 0; attemptIndex < backends.length; attemptIndex++) {
     const backend = backends[attemptIndex];
     try {
-      return await backend.invoke({ prompt, apiKey, baseURL, model, signal, timeout });
+      return await backend.invoke({ prompt, apiKey, baseURL, model, signal, timeout, temperature, seed, onResponse });
     } catch (err) {
       lastError = err;
       const next = backends[attemptIndex + 1];

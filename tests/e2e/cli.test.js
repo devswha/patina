@@ -95,11 +95,36 @@ describe('Profile Loading', () => {
       'casual-conversation',
       'instructional',
       'narrative',
+      'code-comment',
+      'commit-message',
+      'release-notes',
     ];
     for (const name of names) {
       const profile = loadProfile(REPO_ROOT, name);
       assert.ok(profile, `Profile ${name} should load`);
       assert.ok(profile.frontmatter || profile.body, `Profile ${name} should have content`);
+    }
+  });
+
+  it('should ship dev-native genre profiles with targeted guidance and examples', () => {
+    const expected = {
+      'code-comment': ['This function', 'TODO(#421)', 'Uninformative inline summary'],
+      'commit-message': ['This commit', 'Tested:', 'Inflated future promise'],
+      'release-notes': ['Generic excitement', 'Changed → Impact → Action', 'Breaking:'],
+    };
+
+    for (const [name, markers] of Object.entries(expected)) {
+      const profile = loadProfile(REPO_ROOT, name);
+      const overrides = profile.frontmatter?.['pattern-overrides'];
+      assert.ok(overrides, `Profile ${name} should define pattern-overrides`);
+      for (const lang of ['ko', 'en', 'zh', 'ja']) {
+        assert.ok(overrides[lang], `Profile ${name} should define ${lang} overrides`);
+      }
+      for (const marker of markers) {
+        assert.match(profile.body, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+      }
+      assert.match(profile.body, /\*\*Before\*\*/);
+      assert.match(profile.body, /\*\*After\*\*/);
     }
   });
 

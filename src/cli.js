@@ -927,7 +927,8 @@ LANGUAGE & PROFILE
   --lang <code>           Language: ko, en, zh, ja (default: ko)
   --profile <name>        Profile: default, blog, academic, technical, formal,
                           social, email, legal, medical, marketing,
-                          narrative, instructional
+                          narrative, instructional, casual-conversation,
+                          code-comment, commit-message, release-notes
   --tone <name>           Tone: casual, professional, academic, narrative,
                           marketing, instructional, auto. Resolution:
                           --tone > config tone > config profile.

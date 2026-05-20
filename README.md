@@ -307,7 +307,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — benchmark design notes for measuring AI-like writing signals
 - **[2025+ Re-baseline Plan](docs/research/2025-rebaseline-plan.md)** — evidence gate before broader model-era claims
 - **[zh/ja Lexicon Calibration](docs/research/zh-ja-lexicon-calibration.md)** — starter lexicon gate and remaining corpus risk
-- **[Launch Copy](docs/social/patina-launch-copy.md)** — Show HN, Reddit, X, Korean community drafts
+- **[Launch Copy](docs/social/patina-launch-copy.md)** — launch sequence, score gate, and Show HN/Product Hunt/Reddit/X/Korean drafts
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI-lexicon algorithm
 - **[Scoring](core/scoring.md)** — AI-likeness + fidelity + MPS
 - **[Changelog](CHANGELOG.md)** — release notes and methodology

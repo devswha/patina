@@ -127,11 +127,13 @@ steps:
       comment: true
 ```
 
-Docker release images are published to GHCR on version tags:
+Docker image publishing is tracked separately from the npm release path. Until
+the GHCR image is published, build the local image when you need a container:
 
 ```bash
+docker build -t patina:local .
 printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
-  | docker run --rm -i -e PATINA_API_KEY ghcr.io/devswha/patina:3.11.0 --lang en --provider openai
+  | docker run --rm -i -e PATINA_API_KEY patina:local --lang en --provider openai
 ```
 
 Pre-commit, Husky, Lefthook, Docker, and release workflow notes live in [docs/integrations/](docs/integrations/).

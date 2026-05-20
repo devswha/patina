@@ -7,7 +7,11 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish npm packages and GHCR image instead of running a dry-run.
+        description: Publish npm packages instead of running a dry-run.
+        type: boolean
+        default: false
+      publish_ghcr:
+        description: Also publish the experimental GHCR image. Keep false for npm-only releases.
         type: boolean
         default: false
 
@@ -83,7 +87,7 @@ jobs:
   ghcr:
     needs: verify
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish == true)
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_ghcr == true
     permissions:
       contents: read
       packages: write

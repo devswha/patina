@@ -18,6 +18,10 @@ For CI, prefer score gates over automatic rewrites:
 patina --lang en --backend codex-cli --score --exit-on 30 docs/**/*.md
 ```
 
+## Hosted playground
+
+The public audit-only playground is documented in [playground.md](playground.md) and targets [patina.vibetip.help](https://patina.vibetip.help/). It is a no-build static Vercel app, not a rewrite service.
+
 ## Hugo: JSON data + shortcode
 
 Use a small Node helper to score content and write a Hugo data file:

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>patina playground — audit AI-writing signals</title>
+  <meta name="description" content="Paste Korean, English, Chinese, or Japanese text and see patina's deterministic audit-only AI-writing signal score.">
+  <link rel="canonical" href="https://patina.vibetip.help/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="patina playground">
+  <meta property="og:description" content="Audit AI-writing signals without uploading keys or asking for a rewrite.">
+  <meta property="og:url" content="https://patina.vibetip.help/">
+  <meta property="og:image" content="https://patina.vibetip.help/assets/social/patina-og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="patina playground">
+  <meta name="twitter:description" content="Audit Korean, English, Chinese, and Japanese AI-writing signals in the browser.">
+  <meta name="twitter:image" content="https://patina.vibetip.help/assets/social/patina-og.svg">
+  <link rel="icon" href="/assets/brand/patina-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="hero">
+    <nav class="nav" aria-label="Main">
+      <a class="brand" href="https://github.com/devswha/patina" aria-label="patina GitHub repository">
+        <img src="/assets/brand/patina-mark.svg" alt="" width="44" height="44">
+        <span>patina</span>
+      </a>
+      <div class="nav__links">
+        <a href="https://github.com/devswha/patina">GitHub</a>
+        <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md">Ethics</a>
+        <a href="https://github.com/devswha/patina/blob/main/docs/benchmarks/latest.md">Benchmark</a>
+      </div>
+    </nav>
+
+    <section class="hero__copy">
+      <p class="eyebrow">audit-only playground</p>
+      <h1>Paste text. See where it sounds packaged.</h1>
+      <p>
+        patina checks deterministic stylometry and lexicon signals for Korean,
+        English, Chinese, and Japanese. v1 does not rewrite, call an LLM, or send
+        your text anywhere.
+      </p>
+      <div class="hero__actions" aria-label="Primary actions">
+        <a class="button ghost" href="https://github.com/devswha/patina#quick-start">Install CLI</a>
+        <a class="button ghost" href="https://github.com/devswha/patina/issues/208">Issue #208</a>
+      </div>
+    </section>
+  </header>
+
+  <main class="workspace">
+    <section class="panel input-panel" aria-labelledby="input-title">
+      <div class="panel__head">
+        <div>
+          <p class="eyebrow">input</p>
+          <h2 id="input-title">Text to audit</h2>
+        </div>
+        <label class="field">
+          <span>Language</span>
+          <select id="lang" name="lang">
+            <option value="ko">Korean</option>
+            <option value="en">English</option>
+            <option value="zh">Chinese</option>
+            <option value="ja">Japanese</option>
+          </select>
+        </label>
+      </div>
+
+      <textarea id="input" spellcheck="true" aria-label="Text to audit"></textarea>
+
+      <div class="button-row">
+        <button class="button" id="analyze" type="button">Run audit</button>
+        <button class="button secondary" id="sample" type="button">Load sample</button>
+        <button class="button secondary" id="copy-cli" type="button">Open in CLI</button>
+      </div>
+      <p class="status" id="copy-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="panel score-panel" aria-labelledby="score-title">
+      <div class="panel__head">
+        <div>
+          <p class="eyebrow">score</p>
+          <h2 id="score-title">AI-likeness signal</h2>
+        </div>
+        <span class="score-band" id="score-band" data-tone="good">Low AI-likeness</span>
+      </div>
+
+      <div class="score-meter" aria-label="AI-likeness score out of 100">
+        <div class="score-meter__number"><span id="score-value">0</span><small>/100</small></div>
+        <div class="score-meter__bar"><span id="score-bar"></span></div>
+      </div>
+
+      <ul class="summary" id="summary"></ul>
+
+      <div class="cli-box" aria-labelledby="cli-title">
+        <div class="cli-box__head">
+          <h3 id="cli-title">Copied by “Open in CLI”</h3>
+          <span>local audit</span>
+        </div>
+        <pre id="cli-preview"></pre>
+      </div>
+    </section>
+
+    <section class="panel full" aria-labelledby="audit-title">
+      <div class="panel__head">
+        <div>
+          <p class="eyebrow">audit</p>
+          <h2 id="audit-title">Deterministic signals</h2>
+        </div>
+        <p class="quiet">Burstiness, MATTR, and AI-favored lexicon density.</p>
+      </div>
+      <div id="audit"></div>
+    </section>
+
+    <section class="panel full" aria-labelledby="diff-title">
+      <div class="panel__head">
+        <div>
+          <p class="eyebrow">diff</p>
+          <h2 id="diff-title">Suspect-zone diff</h2>
+        </div>
+        <p class="quiet">v1 highlights review zones and lexicon hits only. No rewrite.</p>
+      </div>
+      <div id="diff" class="diff-list"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>
+      Scores measure editing hotspots, not authorship. Use patina only when AI assistance is allowed.
+      <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md">Read the ethics note.</a>
+    </p>
+  </footer>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

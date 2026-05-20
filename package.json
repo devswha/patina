@@ -25,7 +25,8 @@
     "lint:eslint": "eslint .",
     "typecheck": "node scripts/typecheck.mjs",
     "spellcheck": "cspell \"patterns/**/*.md\" \"lexicon/**/*.md\"",
-    "docs:api": "node scripts/generate-api-docs.mjs"
+    "docs:api": "node scripts/generate-api-docs.mjs",
+    "playground:data": "node scripts/generate-playground-data.mjs"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
@@ -89,7 +90,10 @@
     "scripts/precommit-score.mjs",
     "scripts/update-benchmark-ranges.mjs",
     "scripts/detector-comparison.mjs",
-    "tests/quality/detectors.manual.example.json"
+    "tests/quality/detectors.manual.example.json",
+    "playground/",
+    "vercel.json",
+    "scripts/generate-playground-data.mjs"
   ],
   "publishConfig": {
     "access": "public"

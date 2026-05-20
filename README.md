@@ -45,7 +45,8 @@ It is not a black-box paraphraser. patina is **pattern-based and auditable**: it
 | Academic | “획기적인 성과”, broad significance claims | 60 GitHub projects, 72h→10m setup time, p<0.01, limits noted |
 | Technical | “핵심적인 역할”, future-standard hype | GPU management, one-command provisioning, 5× result caveat |
 
-Try it quickly: [30-second terminal demo](docs/DEMO.md). More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)).
+Try it in the browser: [patina.vibetip.help](https://patina.vibetip.help/) (audit-only, no rewrite).
+Try it locally: [30-second terminal demo](docs/DEMO.md). More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)).
 Brand assets: [logo](assets/brand/patina-logo.svg), [mark](assets/brand/patina-mark.svg), [icon](assets/brand/patina-icon.svg),
 [social preview](assets/social/patina-og.svg), and [before/after card](assets/social/patina-before-after.svg).
 Usage notes: [BRANDING.md](docs/BRANDING.md).

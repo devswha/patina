@@ -22,7 +22,7 @@ Patina's production brand assets are hand-authored SVGs so maintainers can revie
 - Keep the app icon and logo lockup on a dark backplate so they work on GitHub light and dark themes. The transparent mark is for layouts that already provide their own page background.
 - Use system font fallbacks in SVG text; GitHub does not load external web fonts inside `<img>` SVGs.
 
-## Open Graph setup for a future docs site
+## Open Graph setup for the playground/docs site
 
 Markdown on GitHub cannot set Open Graph tags. If patina gets a docs site, use the checked-in social SVG or a generated PNG export and add:
 
@@ -30,9 +30,9 @@ Markdown on GitHub cannot set Open Graph tags. If patina gets a docs site, use t
 <meta property="og:title" content="patina — Strip the AI packaging. Keep the meaning.">
 <meta property="og:description" content="Auditable AI-prose cleanup for KO, EN, ZH, and JA with meaning-preservation checks.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://patina.dev/patina-og.png">
+<meta property="og:image" content="https://patina.vibetip.help/assets/social/patina-og.svg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://patina.dev/patina-og.png">
+<meta name="twitter:image" content="https://patina.vibetip.help/assets/social/patina-og.svg">
 ```
 
-Export note: many social crawlers handle PNG more reliably than SVG, so keep the SVG as source and publish a PNG derivative from CI or the docs-site build.
+Export note: the playground uses the checked-in SVG directly. If a platform requires PNG, keep the SVG as source and publish a PNG derivative from CI or the docs-site build.

@@ -23,4 +23,4 @@
 
 ## 써보기
 
-초안을 patina로 돌린 뒤 audit을 보고 고칠지 결정하세요: <https://github.com/devswha/patina>. 웹 playground는 [#208](https://github.com/devswha/patina/issues/208)에서 추적 중입니다. 그 전에는 CLI나 에디터 스킬을 쓰면 됩니다.
+초안을 웹 playground에 붙여 넣어 audit을 먼저 확인하세요: <https://patina.vibetip.help/>. 실제 rewrite가 필요하면 로컬 CLI나 에디터 스킬을 쓰면 됩니다. 소스와 설치 방법은 <https://github.com/devswha/patina>에 있습니다.

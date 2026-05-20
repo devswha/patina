@@ -1,11 +1,23 @@
-export function buildPrompt({ config, patterns, profile, voice, scoring, text, mode = 'rewrite', tone = null, promptMode = 'strict', variants = 1 }) {
+export function buildPrompt({
+  config,
+  patterns,
+  profile,
+  voice,
+  voiceSample,
+  scoring,
+  text,
+  mode = 'rewrite',
+  tone = null,
+  promptMode = 'strict',
+  variants = 1,
+}) {
   // v3.11+ prompt-mode dispatch (case-04 hypothesis test). minimal prompt
   // strips pattern definitions/examples and uses a casual instruction; only
   // applies to rewrite mode where voice prior matters most. Profile body is
   // still passed through (Round 2 found Gemini ignored casual-conversation
   // when the profile was dropped).
   if (promptMode === 'minimal' && mode === 'rewrite') {
-    return buildMinimalPrompt({ config, patterns, profile, text, tone, variants });
+    return buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, variants });
   }
 
   const lang = config.language || 'ko';
@@ -71,6 +83,10 @@ export function buildPrompt({ config, patterns, profile, voice, scoring, text, m
   prompt += `## Voice Guidelines\n\n`;
   if (voice) {
     prompt += `${voice.body}\n\n`;
+  }
+
+  if ((mode === 'rewrite' || mode === 'ouroboros') && voiceSample) {
+    prompt += formatVoiceSampleSection(voiceSample);
   }
 
   if (mode === 'score' || mode === 'ouroboros') {
@@ -268,7 +284,7 @@ export function isShortText(text) {
 // model's natural voice prior isn't overridden by analytical framing. Only
 // invoked for rewrite mode; score/audit/diff/ouroboros stay on the strict
 // path because they need precise pattern references.
-function buildMinimalPrompt({ config, patterns, profile, text, tone, variants = 1 }) {
+function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, variants = 1 }) {
   const lang = config.language || 'ko';
   const activePatterns = patterns.filter((p) => !p.isScoreOnly);
 
@@ -307,6 +323,10 @@ function buildMinimalPrompt({ config, patterns, profile, text, tone, variants = 
     prompt += `- source: ${tone.tone_source}\n\n`;
   }
 
+  if (voiceSample) {
+    prompt += formatVoiceSampleSection(voiceSample);
+  }
+
   prompt += lang === 'ko' ? `## 출력 형식\n\n` : `## Output format\n\n`;
   if (variants > 1) {
     prompt += `1. ${variants}개 voice variant를 각각 \`[VARIANT 1]\` ~ \`[VARIANT ${variants}]\` ` +
@@ -323,6 +343,25 @@ function buildMinimalPrompt({ config, patterns, profile, text, tone, variants = 
   prompt += lang === 'ko' ? `## 출력\n\n` : `## Output\n\n`;
 
   return prompt;
+}
+
+function formatVoiceSampleSection(voiceSample) {
+  const paragraphs = Array.isArray(voiceSample?.paragraphs)
+    ? voiceSample.paragraphs
+    : String(voiceSample?.body || '')
+      .split(/\n\s*\n/)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+  if (paragraphs.length === 0) return '';
+
+  let section = `## Voice Anchor Examples\n\n`;
+  section += `These are examples of how this person writes. Use them as a style/register anchor only: match cadence, specificity, point of view, and sentence texture, but do not import facts, names, claims, or events from the samples. If profile or tone settings conflict, keep the requested profile/tone as the outer boundary and use the samples to make that boundary sound like the user.\n\n`;
+  paragraphs.forEach((paragraph, index) => {
+    section += `### Example ${index + 1}\n\n`;
+    section += `${paragraph}\n\n`;
+  });
+  return section;
 }
 
 // Extract the comma-separated values that follow a "주의 어휘:" or "Watch words:"

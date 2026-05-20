@@ -44,7 +44,7 @@
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
 
-インストーラが Claude Code、[Codex CLI](https://github.com/openai/codex)、Cursor、OpenCode に一括で配線します。続いて：
+インストーラが Claude Code、[Codex CLI](https://github.com/openai/codex)、Cursor、OpenCode に一括で配線します。checkout 前に repository HEAD を具体的な commit に解決します。完全に固定したインストールが必要な場合は `PATINA_REF=<tag-or-full-sha>` を設定してください。続いて：
 
 ```
 /patina --lang ja
@@ -80,7 +80,18 @@ cd patina && npm install && npm link
 patina --lang ja input.txt
 ```
 
+link 後に stdin でも試せます:
+
+```bash
+printf '%s\n' 'コーヒーは、世界中の社会的交流を根本的に変えた重要な文化現象として浮上しました。' \
+  | patina --lang ja --backend codex-cli
+```
+
 > 🆓 **API キー不要** — [`codex`](https://github.com/openai/codex)、[`claude`](https://docs.anthropic.com/en/docs/claude-code)、[`gemini`](https://github.com/google-gemini/gemini-cli) のいずれか CLI にログイン済みであれば OK。`--backend codex-cli | claude-cli | gemini-cli` で直接選択するか、`--model claude-*` / `--model gemini-*` のようにモデル名でルーティングできます。全バックエンドは [AUTHENTICATION.md](docs/AUTHENTICATION.md) を参照。
+
+## 想定用途
+
+Patina は、著者が AI 支援を使うことを許されている場合の AI 後編集、audit trail、voice cleanup のためのツールです。テキストが「もともと人間によって書かれた」ことを約束するものではなく、学業上の honor-code 回避、出版社 disclosure の迂回、盗用の洗浄、detector-bypass 主張に使うべきではありません。[ETHICS.md](docs/ETHICS.md) を参照してください。
 
 ## モード
 
@@ -93,6 +104,7 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 | *(デフォルト)* | 書き換え |
 | `--audit` | AI パターン検出のみ |
 | `--score` | 0–100 AI 類似度スコア + カテゴリ別内訳 |
+| `--score --gate <n>` | CI を厳格に保つ: `overall > n` の場合は終了コード `3` |
 | `--diff` | 変更箇所をパターンごとに表示 |
 | `--ouroboros` | スコア収束まで反復（MPS ロールバック付き） |
 | `--lang <ko\|en\|zh\|ja>` | 言語選択（デフォルト：`ko`） |
@@ -104,7 +116,27 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 
 ### スコア専用パターン
 
-`--score`と`--audit`は`--rewrite`より少し広い範囲のシグナルを測定します。韓国語パック `ko-viral-hook`(数字ショックフック、クリックベイト末尾、出典回避の権威主張、息継ぎ最適化の短文羅列、誇張エンゲージメント語彙の5パターン)は**検出専用**です — スコアと監査に現れることでSNSマーケティングコピーに対するユーザーの直感とベンチマークを一致させますが、これらのシグナルは意図的な修辞であることが多いため `--rewrite`/`--diff`/`--ouroboros` は対象外です。実例: [`examples/viral-hook/`](examples/viral-hook/).
+`--score`と`--audit`は`--rewrite`より少し広い範囲のシグナルを測定します。viral-hook パック（`ko/en/zh/ja-viral-hook`、各5パターン: 数字ショックフック、クリックベイト末尾、出典を飛ばした権威主張、息継ぎに最適化された短文の積み重ね、誇張されたエンゲージメント語彙）は**検出専用**です — スコアと監査に現れることで、4言語のSNSマーケティングコピーに対するユーザーの直感とベンチマークを一致させますが、これらのシグナルは意図的な修辞であることが多いため `--rewrite`/`--diff`/`--ouroboros` は対象外です。実例: [`examples/viral-hook/`](examples/viral-hook/).
+
+### プロンプトモード調整 (v3.11)
+
+`--prompt-mode strict|minimal|auto` では、完全なパターンパック（約34KBの構造化プロンプト）と圧縮されたカジュアル指示（約3KB）のどちらを使うかを調整できます。`auto` はバックエンドごとに選択します — Gemini は minimal の方が良く（長い構造化プロンプトで過度に制約されるため）、Claude は完全なパックを活用し、Codex はおおむね影響を受けません。case-05 が A/B を記録しています。
+
+### 複数の文体バリアント (v3.11)
+
+`--variants <1-5>` は、1回の呼び出しで N 個のリライト音声バリアントを求めます（例: V1 casual、V2 direct、V3 measured）。事実、数値、因果関係はすべてのバリアントで同一に保たれます。各結果は `## Variant N` として返るため、必要な声色を選べます。
+
+### 短文スコアリング補正 (v3.11)
+
+入力が200文字以下、または3段落以下の場合、register に敏感なカテゴリ（`language`、`style`、`viral-hook`）へ 1.5 倍の severity multiplier を適用し、単一段落の声色変化もスコアに反映されるようにします。case-04 では、長文向けの式がこれらを過小評価していたことが確認されました。
+
+### セルフ監査の分離 (v3.11)
+
+rewrite モードでは、モデルは `[BODY]`/`[/BODY]` ブロック（`--variants > 1` の場合は `[VARIANT n]` ブロック）を囲む `[SELF_AUDIT]`/`[/SELF_AUDIT]` タグの中にセルフ監査メモを出力します。patina はユーザーに表示する前に監査部分を取り除くため、出力はクリーンです — 以前のバージョンでは "남아 있는 AI 티" や "Phase 3" のような前置きがユーザー向けテキストに漏れることがありました。
+
+### スコア重みドリフト検出 (v3.11)
+
+`--score` 実行時は、モデルが出力した Weight 列を設定の `category-weights` と照合します。モデルが存在しないカテゴリ（例: `discord`）を作ったり、別の数値に置き換えたりした場合、stderr に `[patina]` 警告が出ます — これは観測用であり、スコア自体は変更しません。
 
 ## トーン
 
@@ -162,16 +194,28 @@ tone:                     # casual | professional | academic | narrative | marke
 max-models: [claude, gemini]
 ```
 
-パターンパックは言語プレフィックスで自動検出されます。作業ディレクトリの `.patina.yaml` がデフォルトを上書きします。
+パターンパックは言語プレフィックスで自動検出されます。作業ディレクトリの `.patina.yaml` がデフォルトを上書きします。検出を拡張するリストキー（`blocklist`、`allowlist`、`skip-patterns`）は default/global/project 設定の間で追加的にマージされ、`max-models` などの provider リストはユーザーが正確なバックエンド集合を選べるように置き換えられます。
 
 ## ドキュメント
 
+- **[Glossary](docs/GLOSSARY.md)** — MPS、fidelity、burstiness、MATTR、モードなどの反復用語の短い定義
+- **[Demo](docs/DEMO.md)** — ターミナル transcript と複数ジャンルの before/after スナップショット
 - **[Patterns](docs/PATTERNS.md)** — 146 パターンカタログ
 - **[Authentication](docs/AUTHENTICATION.md)** — バックエンド、プロバイダ、無料ティア設定
+- **[CLI Contract](docs/CLI.md)** — score gate、終了コード、自動化に安全なインターフェイス
+- **[Ethics](docs/ETHICS.md)** — 想定用途、禁止用途、disclosure 方針
+- **[FAQ](docs/FAQ.md)** — detector-bypass の懸念、MPS、誤検出、貢献の始め方
+- **[Comparison](docs/COMPARISON.md)** — 一般的な paraphraser/humanizer ツールとの事実ベース比較
+- **[Branding](docs/BRANDING.md)** — canonical logo/social assets と OG 設定メモ
+- **[Roadmap](docs/ROADMAP.md)** — 品質、ベンチマーク、プロダクト、コミュニティ、ローンチ優先事項
+- **[Benchmark Report](docs/benchmarks/latest.md)** — 最新の再現可能な suspect-zone ベンチマーク要約
+- **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — AI-like writing signals 測定用ベンチマーク設計メモ
+- **[Launch Copy](docs/social/patina-launch-copy.md)** — Show HN、Reddit、X、韓国コミュニティ向け下書き
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 語彙アルゴリズム
 - **[Scoring](core/scoring.md)** — AI 類似度 + 忠実度 + MPS
 - **[Changelog](CHANGELOG.md)** — リリースノートと方法論
-- **[Contributing](CONTRIBUTING.md)** — パターン提出、陳腐化レポート
+- **[Contributing](CONTRIBUTING.md)** — パターン提出、誤検出 triage、ベンチマーク fixture、バージョン管理
+- **[Governance](GOVERNANCE.md)** / **[Maintainers](MAINTAINERS.md)** — 軽量なプロジェクト意思決定ルール
 
 ## 着想元
 

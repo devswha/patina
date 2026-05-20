@@ -7,18 +7,19 @@ Patina's production brand assets are hand-authored SVGs so maintainers can revie
 | Asset | Path | Use |
 |---|---|---|
 | Logo lockup | [`assets/brand/patina-logo.svg`](../assets/brand/patina-logo.svg) | Package pages and docs landing pages that need the full wordmark + tagline |
-| App icon | [`assets/brand/patina-icon.svg`](../assets/brand/patina-icon.svg) | README hero, favicon/app tile/avatar contexts |
+| Transparent mark | [`assets/brand/patina-mark.svg`](../assets/brand/patina-mark.svg) | README hero and other places where surrounding text already supplies the project name |
+| App icon | [`assets/brand/patina-icon.svg`](../assets/brand/patina-icon.svg) | Favicon/app tile/avatar contexts that need a dark backplate |
 | Social preview | [`assets/social/patina-og.svg`](../assets/social/patina-og.svg) | Open Graph / social card export source |
 | Before/after card | [`assets/social/patina-before-after.svg`](../assets/social/patina-before-after.svg) | Launch posts and docs examples |
 
-`patina-logo.svg` is the single canonical horizontal logo. README uses the square icon plus Markdown heading/tagline to avoid repeating the wordmark and tagline.
+`patina-logo.svg` is the single canonical horizontal logo. README uses the transparent mark plus Markdown heading/tagline to avoid repeating the wordmark and tagline.
 
 ## Accessibility checklist
 
 - Keep `role="img"` on standalone SVG assets.
 - Include `<title>` and `<desc>`, or an `aria-label` when a tiny decorative asset cannot carry children.
 - Keep the square icon recognizable at 32px.
-- Keep the logo on a dark backplate so it works on GitHub light and dark themes.
+- Keep the app icon and logo lockup on a dark backplate so they work on GitHub light and dark themes. The transparent mark is for layouts that already provide their own page background.
 - Use system font fallbacks in SVG text; GitHub does not load external web fonts inside `<img>` SVGs.
 
 ## Open Graph setup for a future docs site

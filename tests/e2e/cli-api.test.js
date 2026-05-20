@@ -154,7 +154,10 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(help.includes('Core options:'), 'help should group core options');
     assert.ok(help.includes('Modes:'), 'help should group modes');
     assert.ok(help.includes('Model / auth / backend:'), 'help should group backend options');
+    assert.ok(help.includes('Examples:'), 'help should include usage examples');
     assert.ok(help.includes('--gate <n>'), 'help should document score gate');
+    assert.ok(help.includes('patina --audit --lang ko draft.md'));
+    assert.ok(help.includes('patina --score --gate 35 --lang en report.md'));
     assert.ok(
       help.includes('openai-http, codex-cli, claude-cli, gemini-cli'),
       'help should list every backend name'

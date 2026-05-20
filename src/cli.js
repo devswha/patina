@@ -606,6 +606,11 @@ Subcommands:
   patina auth status   Show backend availability and authentication status
   patina auth login    Print per-backend instructions for authenticating
 
+Examples:
+  echo "Text to rewrite" | patina --lang en --backend codex-cli
+  patina --audit --lang ko draft.md
+  patina --score --gate 35 --lang en report.md
+
 If no API key is set, pass --backend codex-cli to use a logged-in codex CLI
 (no key required). Auto-fallback was removed in v3.9 to keep agent-mode
 backends opt-in (issue #88).

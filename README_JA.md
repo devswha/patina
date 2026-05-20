@@ -97,9 +97,10 @@ Patina には、live model key なしで使える deterministic な prose review
 # .github/workflows/patina.yml
 steps:
   - uses: actions/checkout@v6
-  - uses: devswha/patina@main # release tag ができたら @v1 などに pin
+  - uses: devswha/patina-action@main # npm publish + Action タグ後は @v1 を使用
     with:
-      gate: 30
+      patina-package: github:devswha/patina # patina-cli@latest が npm に出たら削除
+      report-threshold: 30
       comment: true
 ```
 

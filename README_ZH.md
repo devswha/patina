@@ -97,9 +97,10 @@ Patina 提供不需要 live model key 的确定性 CI prose review：
 # .github/workflows/patina.yml
 steps:
   - uses: actions/checkout@v6
-  - uses: devswha/patina@main # 发布标签存在后可 pin 到 @v1
+  - uses: devswha/patina-action@main # npm 发布并打 Action 标签后改用 @v1
     with:
-      gate: 30
+      patina-package: github:devswha/patina # patina-cli@latest 发布到 npm 后删除
+      report-threshold: 30
       comment: true
 ```
 

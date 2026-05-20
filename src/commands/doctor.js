@@ -1,17 +1,10 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { HTTP_KEY_ENV_VARS, inspectHttpApiKeySource, providerHttpKeyEnvVars } from '../auth.js';
 import { listBackends } from '../backends/index.js';
 import { PROVIDERS } from '../providers.js';
 import { inputError } from '../errors.js';
 
 const MIN_NODE_MAJOR = 18;
-const API_KEY_ENVS = [
-  'PATINA_API_KEY',
-  'OPENAI_API_KEY',
-  'GEMINI_API_KEY',
-  'GROQ_API_KEY',
-  'TOGETHER_API_KEY',
-];
 
 export function runDoctor(args = [], { version } = {}) {
   const parsed = parseDoctorArgs(args);
@@ -65,26 +58,27 @@ export function buildDoctorReport({ version } = {}) {
       : 'only needed for tmux-based MAX dispatch; direct/API modes still work',
   });
 
-  const apiKeys = API_KEY_ENVS.map((name) => ({
+  const apiKeySource = inspectHttpApiKeySource();
+  const apiKeys = HTTP_KEY_ENV_VARS.map((name) => ({
     name,
     set: Boolean(process.env[name]),
   }));
-  const apiKeyFile = checkApiKeyFile(process.env.PATINA_API_KEY_FILE);
   checks.push({
     name: 'api-key-env',
-    status: apiKeyFile.status === 'blocker'
+    status: apiKeySource.source === 'PATINA_API_KEY_FILE' && !apiKeySource.ok
       ? 'blocker'
-      : (apiKeys.some((k) => k.set) || apiKeyFile.status === 'ok' ? 'ok' : 'warning'),
-    summary: apiKeys.some((k) => k.set) || apiKeyFile.status === 'ok'
-      ? 'API key source detected'
-      : 'no API key env var detected',
-    detail: apiKeyFile.detail || 'HTTP provider use requires PATINA_API_KEY or a provider-specific key',
+      : (apiKeySource.ok ? 'ok' : 'warning'),
+    summary: apiKeySource.ok
+      ? 'default HTTP API key source detected'
+      : 'no default HTTP API key source detected',
+    detail: apiKeySource.detail,
   });
 
   const providerKeys = Object.values(PROVIDERS).map((provider) => ({
     name: provider.name,
     apiKeyEnv: provider.apiKeyEnv,
-    keySet: Boolean(process.env[provider.apiKeyEnv] || process.env.PATINA_API_KEY),
+    providerEnvSet: Boolean(process.env[provider.apiKeyEnv]),
+    keySource: getProviderKeySource(provider),
     baseURL: provider.baseURL,
     defaultModel: provider.defaultModel,
   }));
@@ -173,20 +167,11 @@ function checkCommand(cmd, args) {
   }
 }
 
-function checkApiKeyFile(path) {
-  if (!path) return { status: 'missing', detail: '' };
-  if (!existsSync(path)) {
-    return { status: 'blocker', detail: `PATINA_API_KEY_FILE points to a missing file: ${path}` };
-  }
-  try {
-    const contents = readFileSync(path, 'utf8').trim();
-    if (!contents) {
-      return { status: 'blocker', detail: `PATINA_API_KEY_FILE is empty: ${path}` };
-    }
-    return { status: 'ok', detail: `PATINA_API_KEY_FILE is readable: ${path}` };
-  } catch (err) {
-    return { status: 'blocker', detail: `Cannot read PATINA_API_KEY_FILE ${path}: ${err.message}` };
-  }
+function getProviderKeySource(provider) {
+  const source = inspectHttpApiKeySource({
+    envVars: providerHttpKeyEnvVars(provider.apiKeyEnv),
+  });
+  return source.ok ? source.source : null;
 }
 
 function formatDoctorText(report) {
@@ -212,7 +197,10 @@ function formatDoctorText(report) {
 
   lines.push('', 'Provider keys:');
   for (const provider of report.providers) {
-    lines.push(`  ${provider.keySet ? '✓' : '!'} ${provider.name}: ${provider.apiKeyEnv}=${provider.keySet ? 'set' : 'missing'}`);
+    lines.push(
+      `  ${provider.keySource ? '✓' : '!'} ${provider.name}: key=${provider.keySource || 'missing'} ` +
+      `(provider env ${provider.apiKeyEnv}=${provider.providerEnvSet ? 'set' : 'missing'})`
+    );
   }
 
   if (report.blockers.length > 0) {

@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/playground/index.html"
+      "destination": "/playground"
     },
     {
       "source": "/app.js",

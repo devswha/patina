@@ -32,7 +32,7 @@ Commit both lexicon markdown changes and `playground/data/lexicons.js` together.
 
 ## Vercel wiring
 
-Deploy the repository root with the `vercel.json` in this repo. The root route rewrites `/` to `playground/index.html` and keeps `/assets/social/patina-og.svg` available for OG cards.
+Deploy the repository root with the `vercel.json` in this repo. The root route rewrites `/` to the clean `/playground` static entry and keeps `/assets/social/patina-og.svg` available for OG cards.
 
 Production domain:
 

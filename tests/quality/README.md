@@ -41,6 +41,14 @@ Per-language metrics use `expected_hot=true` as the positive class.
   A separate live-mode benchmark would be its own follow-up.
 - Rewrite quality (does the rewritten text read better?). That requires
   human or LLM grading and lives in `tests/e2e/quality-test.js`.
+  That script is opt-in because it shells out to OpenCode:
+
+  ```bash
+  OPENCODE_AVAILABLE=1 node tests/e2e/quality-test.js
+  ```
+
+  The script uses `opencode/hy3-preview-free` by default. Override it with
+  `OPENCODE_MODEL=<provider/model>` when testing another OpenCode model.
 - AUROC against a ranked score — the current decision is binary
   (hot/cold), so we report accuracy + F1 instead.
 

@@ -35,6 +35,8 @@ Run \`npm run docs:api\` after changing public exports or their JSDoc.
 
 const scoringExample = `## Worked example: programmatic scoring
 
+The package currently publishes these modules for CLI reuse, but deep imports should be treated as unstable until an explicit \`exports\` map is introduced.
+
 Use \`scoreText\` directly when you want patina's score envelope inside another Node.js tool. This example injects a mock \`callLLM\` so the snippet is deterministic; replace it with the default HTTP caller plus provider credentials in production.
 
 \`\`\`js
@@ -83,8 +85,15 @@ const output = [
 ].filter(Boolean).join('\n\n') + '\n';
 
 await mkdir(dirname(OUT_PATH), { recursive: true });
-await writeFile(OUT_PATH, output);
+await writeFile(OUT_PATH, stripTrailingWhitespace(output));
 console.log(`Wrote ${OUT_PATH}`);
+
+function stripTrailingWhitespace(markdown) {
+  return markdown
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+$/u, ''))
+    .join('\n');
+}
 
 function renderClasses(doclets) {
   const classes = doclets

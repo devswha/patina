@@ -229,7 +229,10 @@ export async function callLLM({
     }
   }
 
-  throw new Error(`LLM API failed after ${attemptsMade || 1} attempts: ${lastError?.message ?? 'unknown'}`);
+  const err = new Error(`LLM API failed after ${attemptsMade || 1} attempts: ${lastError?.message ?? 'unknown'}`);
+  if (lastError?.name === 'AbortError') err.name = 'AbortError';
+  if (typeof lastError?.status === 'number') err.status = lastError.status;
+  throw err;
 }
 
 export async function callLLMMultiple({

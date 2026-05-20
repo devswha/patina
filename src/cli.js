@@ -1,7 +1,7 @@
 import { loadConfig, getRepoRoot, resolveTone } from './config.js';
 import { loadPatterns, loadProfile, loadCoreFile, loadInputText, toneToBackboneProfile } from './loader.js';
 import { buildPrompt } from './prompt-builder.js';
-import { selectBackend, listBackends, listBackendNames } from './backends/index.js';
+import { invokeBackendChain, selectBackendChain, listBackends, listBackendNames } from './backends/index.js';
 import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from './security.js';
 import { formatOutput, validateScoreWeights } from './output.js';
@@ -187,14 +187,20 @@ export async function main(args) {
           logger,
         });
       } else {
-        const { backend, autoSelected, reason } = selectBackend({
+        const { backends, autoSelected, reason } = selectBackendChain({
           name: parsed.backend ?? config.backend,
           model: resolved.model,
         });
+        const backend = backends[0];
 
         if (autoSelected) {
           logger.info('backend.selected', {
             message: `[patina] Using ${backend.name} backend (${reason}). Run \`patina auth status\` for details.`,
+          });
+        }
+        if (backends.length > 1) {
+          logger.info('backend.chain', {
+            message: `[patina] Backend fallback chain: ${backends.map((b) => b.name).join(' → ')}`,
           });
         }
 
@@ -218,12 +224,14 @@ export async function main(args) {
           );
         }
 
-        result = await backend.invoke({
+        result = await invokeBackendChain({
+          backends,
           prompt,
           apiKey: resolved.apiKey,
           baseURL: resolved.baseURL,
           model: resolved.model,
           signal: cancellation.signal,
+          logger,
         });
       }
       cancellation.throwIfCanceled();
@@ -835,7 +843,8 @@ MODEL & AUTH
                           PATINA_API_KEY env or --api-key-file)
   --api-key-file <path>   Read API key from file (recommended)
   --base-url <url>        API base URL (or PATINA_API_BASE env)
-  --backend <name>        Backend: ${backendChoices} (default: openai-http)
+  --backend <name[,name]> Backend or explicit fallback chain:
+                          ${backendChoices} (default: openai-http)
   --list-backends         List available backends and their availability
   --provider <name>       Provider preset: openai, gemini, groq, together
   --list-providers        List provider presets and which keys are set

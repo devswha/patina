@@ -58,4 +58,20 @@ stays reserved for the transformed text or JSON envelope.
 - MAX mode (`--models`) reports elapsed per-model status (`...`, `✓`, `✗`).
 - Ouroboros reports per-iteration score movement and latency.
 
+## Backend fallback chains
+
+`--backend <name>` selects one backend. `--backend a,b,c` selects an explicit
+fallback chain and tries each backend in order only for retryable failures:
+HTTP `429`, HTTP `503`, and a first-backend `AbortError`. User cancellation via
+Ctrl-C stops the chain instead of falling through.
+
+```bash
+patina --backend claude-cli,codex-cli --lang en draft.md
+```
+
+All backends share the same invocation contract:
+`invoke({ prompt, model, signal, timeout }): Promise<string>`. Local CLI
+backends honor `AbortSignal` by killing their child process; the HTTP backend
+bridges the same signal into fetch.
+
 See [EXIT-CODES.md](EXIT-CODES.md) for the full process contract.

@@ -30,7 +30,7 @@ Basis: local checkout `2e1fc04` plus `node bin/patina.js --help`, `SKILL.md`, an
 | `--api-key <key>` | ✓ | — | — | Deprecated CLI auth escape hatch; prefer env/file. |
 | `--api-key-file <path>` | ✓ | — | — | CLI auth. |
 | `--base-url <url>` | ✓ | — | — | CLI provider/backend config. |
-| `--backend <name>` | ✓ | — | — | CLI backend selection (`openai-http`, `codex-cli`, `claude-cli`, `gemini-cli`). |
+| `--backend <name[,name]>` | ✓ | — | — | CLI backend selection and explicit fallback chains (`openai-http`, `codex-cli`, `claude-cli`, `gemini-cli`). |
 | `--list-backends` | ✓ | — | — | CLI diagnostics. |
 | `--provider <name>` | ✓ | — | — | CLI provider preset. |
 | `--list-providers` | ✓ | — | — | CLI diagnostics. |

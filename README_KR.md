@@ -24,12 +24,17 @@ patina는 한국어·영어·중국어·일본어 글에서 AI 냄새가 나는 
 
 > **MPS = 100** · 사회적 변화 ✓ · 커뮤니티 구축 ✓ · 의미 있는 연결 ✓ · 문화 간 대화 ✓
 
+브라우저에서 먼저 보기: [patina.vibetip.help](https://patina.vibetip.help/) *(탐지만, 재작성 없음)*.
+로컬 데모: [30초 터미널 데모](docs/DEMO.md). 더 많은 예시는 [Before/After Gallery](docs/EXAMPLES_KR.md) ([English](docs/EXAMPLES.md))에 있습니다.
+브랜드 자산: [로고](assets/brand/patina-logo.svg), [마크](assets/brand/patina-mark.svg), [아이콘](assets/brand/patina-icon.svg), [소셜 프리뷰](assets/social/patina-og.svg), [before/after 카드](assets/social/patina-before-after.svg). 사용 메모는 [BRANDING.md](docs/BRANDING.md)를 참고하세요.
+
 ## 한눈에 보기
 
 |  |  |
 |---|---|
 | **160개 패턴** | 한국어 40 + 영어 40 + 중국어 40 + 일본어 40 (각 8개 스코어 전용 viral-hook 포함) — [PATTERNS.md](docs/PATTERNS.md) |
 | **편집 핫스팟 재현율** | 한국어 91% [84.0–95.4%] (n=100) / 영어 76% [66.7–83.3%] (n=100), binomial 95% CI |
+| **벤치마크 리포트** | 재현 가능한 ko/en/zh/ja 의심 구간 벤치마크: [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [detector comparison](docs/benchmarks/detector-comparison.md) |
 | **오탐율** | 사람 글 register별 13–25% 점추정 범위 *(CI 아님; 백과사전체의 본질적 한계, [문서화](core/stylometry.md))* |
 | **모드** | rewrite · audit · score · diff · ouroboros |
 | **무료 사용** | 가능 — `codex` CLI 로그인 시 API 키 불필요 |
@@ -70,7 +75,15 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
 
 ### 독립형 CLI 로
 
-Node.js ≥ 18 필요.
+Node.js ≥ 18 필요. npm 릴리스가 완료됐다면 패키지를 바로 실행할 수 있습니다:
+
+```bash
+npx patina-cli init --defaults
+npx patina-cli doctor
+npx patina-cli --lang ko input.txt
+```
+
+아직 릴리스 전이거나 저장소를 직접 고치려면:
 
 ```bash
 git clone https://github.com/devswha/patina.git
@@ -85,28 +98,35 @@ printf '%s\n' '커피는 전 세계의 사회적 상호작용을 근본적으로
   | patina --lang ko --backend codex-cli
 ```
 
-> 🆓 **API 키 없이 무료 사용 가능** — [`codex`](https://github.com/openai/codex), [`claude`](https://docs.anthropic.com/en/docs/claude-code), [`gemini`](https://github.com/google-gemini/gemini-cli) CLI 중 하나만 로그인되어 있으면 됩니다. `--backend codex-cli | claude-cli | gemini-cli` 로 직접 선택하거나 `--model claude-*` / `--model gemini-*` 처럼 모델명으로 라우팅됩니다. 전체 백엔드는 [AUTHENTICATION.md](docs/AUTHENTICATION.md) 참조.
+> 🆓 **API 키 없이 무료 사용 가능** — [`codex`](https://github.com/openai/codex), [`claude`](https://docs.anthropic.com/en/docs/claude-code), [`gemini`](https://github.com/google-gemini/gemini-cli) CLI 중 하나만 로그인되어 있으면 됩니다. `--backend codex-cli | claude-cli | gemini-cli` 로 직접 선택하거나, `--backend claude-cli,codex-cli` 처럼 백업 순서를 지정하거나, `--model claude-*` / `--model gemini-*` 처럼 모델명으로 라우팅할 수 있습니다. 전체 백엔드는 [AUTHENTICATION.md](docs/AUTHENTICATION.md) 참조.
 
-### CI integrations
+### CI 연동
 
-Patina는 live model key 없이도 prose review용 결정론적 CI 체크를 제공합니다:
+Patina는 모델 키 없이도 문서 리뷰용 결정론적 CI 체크를 제공합니다:
 
 ```yaml
 # .github/workflows/patina.yml
 steps:
   - uses: actions/checkout@v6
-  - uses: devswha/patina-action@main # npm publish + Action 태그 후 @v1 사용
+  - uses: devswha/patina-action@v1
     with:
-      patina-package: github:devswha/patina # patina-cli@latest npm 공개 후 제거
-      report-threshold: 30
+      score-threshold: 30
       comment: true
 ```
 
-Pre-commit, Husky, Lefthook, Docker, release workflow 메모는 [docs/integrations/](docs/integrations/)에 있습니다.
+Docker 이미지는 npm 릴리스와 별도로 추적합니다. GHCR 이미지가 공개되기 전에는 컨테이너가 필요할 때 로컬 이미지를 빌드하세요:
+
+```bash
+docker build -t patina:local .
+printf '%s\n' '커피는 전 세계의 사회적 상호작용을 근본적으로 바꾼 중요한 문화 현상으로 부상했다.' \
+  | docker run --rm -i -e PATINA_API_KEY patina:local --lang ko --provider openai
+```
+
+Pre-commit, Husky, Lefthook, Docker, 릴리스 워크플로우 메모는 [docs/integrations/](docs/integrations/)에 있습니다.
 
 ## 의도한 사용
 
-Patina는 작성자가 AI 지원을 써도 되는 상황에서 AI 이후 편집, audit trail, voice cleanup을 돕는 도구입니다. 텍스트가 "원래 사람이 쓴 것"이라는 약속은 아니며, 학업 honor-code 회피, 출판사 disclosure 우회, 표절 세탁, detector-bypass 주장에 사용해서는 안 됩니다. [ETHICS.md](docs/ETHICS.md)를 참고하세요.
+Patina는 작성자가 AI 도움을 써도 되는 상황에서 초안을 편집하고, 감사 가능한 흔적을 남기며, 문체를 정리하도록 돕는 도구입니다. 텍스트가 "원래 사람이 쓴 것"이라는 약속은 아니며, 학업 윤리 규정 회피, 출판사 고지 의무 우회, 표절 세탁, 탐지기 우회 주장에 사용해서는 안 됩니다. [ETHICS.md](docs/ETHICS.md)를 참고하세요.
 
 ## 모드
 
@@ -123,14 +143,20 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 | `--diff` | 변경 사항을 패턴별로 표시 |
 | `--ouroboros` | 점수가 수렴할 때까지 반복 (MPS 롤백 포함) |
 | `--lang <ko\|en\|zh\|ja>` | 언어 선택 (기본값: `ko`) |
-| `--profile <이름>` | 톤 프리셋: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation` |
+| `--profile <이름>` | 톤 프리셋: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes` |
 | `--tone <이름>` | 톤 카테고리: `casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | 위치 인자를 파일 목록으로 처리 (예: `--batch docs/*.md`) |
 | `--format json\|text\|markdown` | JSON, 일반 텍스트, 기본 Markdown 출력 선택 |
+| `--quiet` | stderr의 상태, 경고, 진행 로그를 숨김 |
+| `--json-logs` | stderr 로그를 `level`, `event`, `model`, `latency_ms` 필드가 있는 NDJSON으로 출력 |
 | `--prompt-mode strict\|minimal\|auto` | 전체 패턴 팩 프롬프트, 압축 프롬프트, 백엔드별 자동 선택 |
 | `--variants <1-5>` | 사실과 의미 앵커를 유지한 여러 rewrite 변형 생성 |
+| `--card <path>` | AI 점수와 MPS가 들어간 1200×630 SVG before/after 카드 생성 |
 
-전체 옵션은 `patina --help`.
+전체 옵션은 `patina --help`. `patina doctor --json`은 LLM 호출 없이 Node/backend/tmux/API-key 준비 상태를 점검하고, `patina init`은 프로젝트용 `.patina.yaml`을 씁니다.
+
+Markdown 중심의 개발 워크플로우에는 개발자용 프로필 단축키가 있습니다:
+`code-comment`는 인라인 주석과 docstring을 줄이고, `commit-message`는 의도와 검증 중심의 커밋 메시지로 다듬으며, `release-notes`는 변경 로그 항목을 사용자 영향과 마이그레이션 위험이 보이는 릴리스 노트로 바꿉니다.
 
 ### 스코어 전용 패턴
 
@@ -154,7 +180,7 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 
 rewrite 모드에서 모델은 `[BODY]`/`[/BODY]` 블록(또는 `--variants > 1`일 때 `[VARIANT n]` 블록)을 감싸는 `[SELF_AUDIT]`/`[/SELF_AUDIT]` 태그 안에 자기검수 메모를 냅니다. patina는 사용자에게 보여주기 전에 audit을 제거하므로 원시 출력이 깔끔합니다 — 이전 버전에서는 "남아 있는 AI 티"나 "Phase 3" 같은 프리앰블이 사용자-facing 텍스트에 새어 나오는 경우가 있었습니다.
 
-### Machine-readable output and exit codes
+### 기계가 읽기 쉬운 출력과 종료 코드
 
 `--format json`은 모든 모드를 `overall`, `categories[]`, `tone`, `mps`, `gateResult`, 정리된 `output` 본문을 담은 안정적인 envelope로 감쌉니다. `--format markdown`이 기본값이고, `--format text`는 YAML tone footer 없는 사용자-facing 본문만 유지합니다. 종료 코드는 [EXIT-CODES.md](docs/EXIT-CODES.md)에 정리되어 있습니다: `0` 성공, `1` runtime/backend, `2` input/usage, `3` score gate 초과, `4` MAX MPS fallback/all-candidates-failed.
 

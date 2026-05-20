@@ -214,6 +214,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 
 ## Documentation
 
+- **[Cookbook](docs/COOKBOOK.md)** — practical recipes (Hugo batch scoring, GitHub Actions, MAX-mode comparison, false-positive triage, custom profiles, pre-commit)
 - **[Glossary](docs/GLOSSARY.md)** — short definitions for MPS, fidelity, burstiness, MATTR, modes, and other recurring terms
 - **[Demo](docs/DEMO.md)** — terminal transcript and multi-genre before/after snapshots
 - **[Patterns](docs/PATTERNS.md)** — full 146-pattern catalog

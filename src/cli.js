@@ -9,6 +9,7 @@ import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from './scoring.js';
 import { callLLM, DEFAULT_TEMPERATURE } from './api.js';
+import { createResponseCache, DEFAULT_CACHE_TTL_SECONDS } from './cache.js';
 import { buildManifest, appendResult, writeManifest, hashSha256 } from './manifest.js';
 import { runDoctor } from './commands/doctor.js';
 import { runInit } from './commands/init.js';
@@ -100,6 +101,7 @@ export async function main(args) {
   const manifestOutputs = [];
   const manifestTemperature = DEFAULT_TEMPERATURE;
   const manifestSeed = null;
+  const responseCache = resolveResponseCache(parsed);
 
   const repoRoot = getRepoRoot();
   const lang = config.language || 'ko';
@@ -146,12 +148,13 @@ export async function main(args) {
       cancellation.throwIfCanceled();
       const manifestCalls = [];
       const recordManifestCall = parsed.saveRun ? createManifestCallRecorder(manifestCalls) : null;
-      const trackedCallLLM = parsed.saveRun
+      const trackedCallLLM = (parsed.saveRun || responseCache)
         ? (args) => callLLM({
           ...args,
+          cache: responseCache,
           onResponse: (metadata) => {
             args.onResponse?.(metadata);
-            recordManifestCall(metadata);
+            recordManifestCall?.(metadata);
           },
         })
         : undefined;
@@ -251,6 +254,7 @@ export async function main(args) {
           temperature: manifestTemperature,
           seed: manifestSeed,
           onResponse: recordManifestCall,
+          cache: responseCache,
           logger,
         });
       }
@@ -321,6 +325,10 @@ export async function main(args) {
       } else {
         console.log(output);
       }
+    }
+
+    if (responseCache) {
+      logger.info('cache.stats', { message: formatCacheStats(responseCache.stats) });
     }
   } catch (err) {
     if (cancellation.signal.aborted) throw cancellationError();
@@ -561,6 +569,27 @@ function parseArgs(args) {
       case '--save-run':
         parsed.saveRun = readOptionValue(args, i, arg);
         i++;
+        break;
+      case '--cache':
+        parsed.cacheDir = readOptionValue(args, i, arg);
+        i++;
+        break;
+      case '--cache-ttl': {
+        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
+        i++;
+        const n = Number(value);
+        if (!Number.isFinite(n) || n <= 0) {
+          throw inputError(
+            '--cache-ttl expects a positive number of seconds',
+            `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
+            'Use `--cache-ttl 86400` for a one-day response cache.'
+          );
+        }
+        parsed.cacheTtlSeconds = n;
+        break;
+      }
+      case '--no-cache':
+        parsed.noCache = true;
         break;
       case '--prompt-mode': {
         const m = readOptionValue(args, i, arg);
@@ -866,6 +895,9 @@ OUTPUT & BATCH
   --suffix <ext>          Save as {name}{ext}{extname}
   --outdir <dir>          Save results to directory
   --save-run <dir>        Write manifest.json + output-N.txt for reproducibility
+  --cache <dir>           Opt into persistent HTTP response cache
+  --cache-ttl <sec>       Cache TTL in seconds (default: ${DEFAULT_CACHE_TTL_SECONDS})
+  --no-cache              Bypass PATINA_CACHE_DIR / --cache for a fresh run
   --no-interactive        Do not wait for TTY stdin; exit 2 when no input is given
 
 LANGUAGE & PROFILE
@@ -910,6 +942,7 @@ EXAMPLES
 
 ENVIRONMENT
   PATINA_API_KEY, PATINA_API_KEY_FILE, PATINA_API_BASE, PATINA_MODEL
+  PATINA_CACHE_DIR, PATINA_CACHE_TTL_SECONDS
   OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, TOGETHER_API_KEY
 
 EXIT CODES
@@ -953,6 +986,41 @@ function manifestScoreDetails(result) {
   };
 }
 
+function resolveResponseCache(parsed) {
+  if (parsed.noCache) return null;
+  const dir = parsed.cacheDir ?? process.env.PATINA_CACHE_DIR;
+  if (!dir) return null;
+
+  const ttlSeconds =
+    parsed.cacheTtlSeconds ??
+    parseOptionalPositiveNumber(process.env.PATINA_CACHE_TTL_SECONDS, 'PATINA_CACHE_TTL_SECONDS') ??
+    DEFAULT_CACHE_TTL_SECONDS;
+
+  return createResponseCache({
+    dir: resolve(process.cwd(), dir),
+    ttlSeconds,
+  });
+}
+
+function parseOptionalPositiveNumber(value, name) {
+  if (value === undefined || value === null || value === '') return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) {
+    throw inputError(
+      `${name} expects a positive number of seconds`,
+      `Received "${value}".`,
+      `Set ${name}=86400 or omit it for the default.`
+    );
+  }
+  return n;
+}
+
+function formatCacheStats(stats) {
+  const expired = stats.expired ? `, expired ${stats.expired}` : '';
+  const errors = stats.errors ? `, errors ${stats.errors}` : '';
+  return `[patina] cache hits ${stats.hits}, misses ${stats.misses}, writes ${stats.writes}${expired}${errors}`;
+}
+
 function createManifestCallRecorder(calls) {
   return (metadata = {}) => {
     calls.push({
@@ -964,7 +1032,8 @@ function createManifestCallRecorder(calls) {
       responseHash: hashSha256(metadata.content),
       tokensIn: extractUsageToken(metadata.usage, ['prompt_tokens', 'input_tokens', 'tokens_in']),
       tokensOut: extractUsageToken(metadata.usage, ['completion_tokens', 'output_tokens', 'tokens_out']),
-      cost: extractResponseCost(metadata.rawResponse),
+      cost: extractResponseCost(metadata.rawResponse, metadata.usage),
+      cache: metadata.cache ?? null,
     });
   };
 }
@@ -978,8 +1047,10 @@ function extractUsageToken(usage, keys) {
   return null;
 }
 
-function extractResponseCost(rawResponse) {
-  const usage = rawResponse?.usage && typeof rawResponse.usage === 'object' ? rawResponse.usage : {};
+function extractResponseCost(rawResponse, fallbackUsage) {
+  const usage = rawResponse?.usage && typeof rawResponse.usage === 'object'
+    ? rawResponse.usage
+    : (fallbackUsage && typeof fallbackUsage === 'object' ? fallbackUsage : {});
   const candidates = [
     ['usage.cost_usd', usage.cost_usd, 'USD'],
     ['usage.total_cost_usd', usage.total_cost_usd, 'USD'],

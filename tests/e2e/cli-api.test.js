@@ -13,11 +13,13 @@ let mockServer;
 let mockPort;
 let callCount = 0;
 let lastRequestBody = null;
+let lastAuthorization = null;
 
 function startMockServer(responseText, statusCode = 200) {
   return new Promise((resolve) => {
     mockServer = createServer((req, res) => {
       callCount++;
+      lastAuthorization = req.headers.authorization || null;
       let body = '';
       req.on('data', (chunk) => { body += chunk; });
       req.on('end', () => {
@@ -55,6 +57,23 @@ async function captureConsole(fn) {
     console.error = originalError;
   }
   return { logs, errors };
+}
+
+async function withEnv(envOverrides, fn) {
+  const original = {};
+  for (const key of Object.keys(envOverrides)) {
+    original[key] = process.env[key];
+    if (envOverrides[key] === undefined) delete process.env[key];
+    else process.env[key] = envOverrides[key];
+  }
+  try {
+    return await fn();
+  } finally {
+    for (const key of Object.keys(original)) {
+      if (original[key] === undefined) delete process.env[key];
+      else process.env[key] = original[key];
+    }
+  }
 }
 
 describe('CLI End-to-End with Mock API', () => {
@@ -103,6 +122,62 @@ describe('CLI End-to-End with Mock API', () => {
     ]);
 
     assert.strictEqual(lastRequestBody.temperature, 0.7);
+  });
+
+  it('uses OPENAI_API_KEY for the default HTTP backend when no --api-key is passed', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    lastAuthorization = null;
+
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+
+    await withEnv({
+      PATINA_API_KEY: undefined,
+      PATINA_API_KEY_FILE: undefined,
+      OPENAI_API_KEY: 'openai-env-key',
+      GEMINI_API_KEY: undefined,
+      GROQ_API_KEY: undefined,
+      TOGETHER_API_KEY: undefined,
+    }, async () => {
+      await main([
+        '--lang', 'en',
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        '--model', 'gpt-5',
+        testFile,
+      ]);
+    });
+
+    assert.strictEqual(callCount, 1, 'Should make exactly one API call');
+    assert.strictEqual(lastAuthorization, 'Bearer openai-env-key');
+  });
+
+  it('keeps selected provider env keys ahead of generic PATINA_API_KEY', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    lastAuthorization = null;
+
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+
+    await withEnv({
+      PATINA_API_KEY: 'patina-env-key',
+      PATINA_API_KEY_FILE: undefined,
+      OPENAI_API_KEY: 'openai-env-key',
+      GEMINI_API_KEY: 'gemini-env-key',
+      GROQ_API_KEY: undefined,
+      TOGETHER_API_KEY: undefined,
+    }, async () => {
+      await main([
+        '--lang', 'en',
+        '--provider', 'gemini',
+        '--backend', 'openai-http',
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        '--model', 'provider-test',
+        testFile,
+      ]);
+    });
+
+    assert.strictEqual(callCount, 1, 'Should make exactly one API call');
+    assert.strictEqual(lastAuthorization, 'Bearer gemini-env-key');
   });
 
   it('should handle --audit mode', async () => {
@@ -194,6 +269,39 @@ describe('CLI End-to-End with Mock API', () => {
     });
     assert.strictEqual(parsed.categories[0].name, 'style');
     assert.ok(parsed.tone);
+    await stopMockServer();
+    await startMockServer('This is the humanized result.');
+  });
+
+  it('should validate score weights before wrapping --format json output', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    await stopMockServer();
+    await startMockServer([
+      '| Category | Weight | Detected | Raw Score | Weighted |',
+      '|---|---:|---:|---:|---:|',
+      '| content | 0.20 | 0 | 0 | 0 |',
+      '| language | 0.20 | 0 | 0 | 0 |',
+      '| style | 0.20 | 0 | 0 | 0 |',
+      '| communication | 0.12 | 0 | 0 | 0 |',
+      '| filler | 0.08 | 0 | 0 | 0 |',
+      '| structure | 0.10 | 0 | 0 | 0 |',
+      '| viral-hook | 0.10 | 0 | 0 | 0 |',
+      '| Overall | - | - | - | 23 |',
+    ].join('\n'));
+
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    const { errors, logs } = await captureConsole(() => main([
+      '--lang', 'en',
+      '--score',
+      '--format', 'json',
+      '--api-key', 'test-key',
+      '--base-url', `http://127.0.0.1:${mockPort}`,
+      testFile,
+    ]));
+
+    assert.strictEqual(JSON.parse(logs.join('\n')).overall, 23);
+    assert.ok(!errors.some((line) => line.includes('weight check')), errors.join('\n'));
     await stopMockServer();
     await startMockServer('This is the humanized result.');
   });

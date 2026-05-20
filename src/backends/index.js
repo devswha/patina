@@ -2,28 +2,14 @@ import { callLLM } from '../api.js';
 import * as codexCli from './codex-cli.js';
 import * as claudeCli from './claude-cli.js';
 import * as geminiCli from './gemini-cli.js';
-
-// Provider env vars patina recognizes via --provider <name>.
-// Keep in sync with PROVIDERS in src/providers.js.
-const HTTP_KEY_ENV_VARS = [
-  'PATINA_API_KEY',
-  'OPENAI_API_KEY',
-  'GEMINI_API_KEY',
-  'GROQ_API_KEY',
-  'TOGETHER_API_KEY',
-];
+import { inspectHttpApiKeySource } from '../auth.js';
+import { inputError } from '../errors.js';
 
 const openaiHttp = {
   name: 'openai-http',
   isAvailable: () => true,
-  isAuthenticated: () => HTTP_KEY_ENV_VARS.some((k) => process.env[k]),
-  authHint: () => {
-    const present = HTTP_KEY_ENV_VARS.filter((k) => process.env[k]);
-    if (present.length > 0) {
-      return `Authenticated via ${present.join(', ')}.`;
-    }
-    return 'Set PATINA_API_KEY (or use --provider gemini|groq|together with the matching <PROVIDER>_API_KEY).';
-  },
+  isAuthenticated: () => inspectHttpApiKeySource().ok,
+  authHint: () => inspectHttpApiKeySource().detail,
   invoke: ({ prompt, apiKey, baseURL, model, timeout }) =>
     callLLM({ prompt, apiKey, baseURL, model, timeout }),
 };
@@ -55,7 +41,11 @@ export function selectBackend({ name, model } = {}) {
   if (name) {
     const backend = REGISTRY[name];
     if (!backend) {
-      throw new Error(`Unknown backend: ${name}. Available: ${Object.keys(REGISTRY).join(', ')}`);
+      throw inputError(
+        `Unknown backend: ${name}`,
+        `Available backends are: ${Object.keys(REGISTRY).join(', ')}.`,
+        'Run `patina --list-backends` to inspect local availability.'
+      );
     }
     return { backend, autoSelected: false, reason: 'explicit' };
   }

@@ -250,12 +250,12 @@ Do not lead with “bypass AI detectors.” Lead with:
 
 ## 5. Immediate next actions
 
-Last triaged: 2026-05-20, after PR cleanup and live GitHub issue count refresh.
+Last triaged: 2026-05-20, after Wave 1 docs/governance quick wins.
 
 Current GitHub issue inventory:
 
-- 45 open issues; 97 closed issues; 142 tracked issues total.
-- Open priority split: 2 high, 28 medium, 13 low, and 2 without priority labels ([#99](https://github.com/devswha/patina/issues/99), [#104](https://github.com/devswha/patina/issues/104)).
+- 42 open issues; 100 closed issues; 142 tracked issues total.
+- Open priority split: 2 high, 26 medium, 14 low, and 0 without priority labels.
 - The only open `priority: high` issues are the blocked release-wave items [#203](https://github.com/devswha/patina/issues/203) and [#204](https://github.com/devswha/patina/issues/204).
 
 Already done or mostly done:
@@ -271,6 +271,10 @@ Already done or mostly done:
 - Deterministic `callLLM` seams exist across `ouroboros`, `max-mode`, and scoring test paths. Issue: [#130](https://github.com/devswha/patina/issues/130).
 - Localized READMEs have been dogfooded through patina to reduce AI tells. Issue: [#242](https://github.com/devswha/patina/issues/242).
 - zh/ja before-after examples have been backfilled to near parity with ko/en pattern coverage. Issue: [#146](https://github.com/devswha/patina/issues/146).
+- External promotional / solicitation issue policy is documented. Issue: [#245](https://github.com/devswha/patina/issues/245).
+- README hero block is centered. Issue: [#241](https://github.com/devswha/patina/issues/241).
+- Korean companion docs exist for contributing, FAQ, authentication, and examples. Issue: [#202](https://github.com/devswha/patina/issues/202).
+- Priority labels were added for the last unlabeled queue items. Issues: [#99](https://github.com/devswha/patina/issues/99), [#104](https://github.com/devswha/patina/issues/104).
 
 Next executable wave order:
 
@@ -283,12 +287,8 @@ These are still the two open high-priority issues, but they are blocked until pa
 
 ### Wave 1 — documentation, governance, and issue hygiene
 
-1. Document the policy for external promotional / third-party-platform solicitation issues. Issue: [#245](https://github.com/devswha/patina/issues/245).
-2. Center the README hero block once the social/brand surfaces settle. Issue: [#241](https://github.com/devswha/patina/issues/241).
-3. Document Korean translation policy and extend KR pairs for primary docs. Issue: [#202](https://github.com/devswha/patina/issues/202).
-4. Tie this roadmap to a GitHub Project board or Milestones. Issue: [#195](https://github.com/devswha/patina/issues/195).
-5. Add JSDoc public exports and publish generated API reference. Issue: [#191](https://github.com/devswha/patina/issues/191).
-6. Decide priority labels for [#99](https://github.com/devswha/patina/issues/99) and [#104](https://github.com/devswha/patina/issues/104) so the open-issue queue stays sortable.
+1. Tie this roadmap to a GitHub Project board or Milestones. Issue: [#195](https://github.com/devswha/patina/issues/195).
+2. Add JSDoc public exports and publish generated API reference. Issue: [#191](https://github.com/devswha/patina/issues/191).
 
 ### Wave 2 — tests and backend hardening
 

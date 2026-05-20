@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-import { runMaxMode, selectBest } from '../../src/max-mode.js';
+import { runMaxMode, resolveMaxModelBackend, selectBest } from '../../src/max-mode.js';
 import { formatOutput } from '../../src/output.js';
 
 test('selectBest keeps config order and logs AI-score ties among MPS-passing candidates', () => {
@@ -107,6 +107,62 @@ test('runMaxMode uses callLLM, now, and sleep injectables across dispatch and sc
   assert.equal(result.best.mps, 94);
   assert.equal(result.mpsFallback, false);
   assert.equal(seen.length, 3);
+});
+
+test('resolveMaxModelBackend maps only exact CLI aliases and names', () => {
+  assert.equal(resolveMaxModelBackend('claude')?.name, 'claude-cli');
+  assert.equal(resolveMaxModelBackend('claude-cli')?.name, 'claude-cli');
+  assert.equal(resolveMaxModelBackend('codex')?.name, 'codex-cli');
+  assert.equal(resolveMaxModelBackend('codex-cli')?.name, 'codex-cli');
+  assert.equal(resolveMaxModelBackend('gemini')?.name, 'gemini-cli');
+  assert.equal(resolveMaxModelBackend('gemini-cli')?.name, 'gemini-cli');
+  assert.equal(resolveMaxModelBackend('claude-3-5-sonnet'), null);
+  assert.equal(resolveMaxModelBackend('gpt-4o'), null);
+});
+
+test('runMaxMode dispatches local CLI MAX aliases and scores with the same backend', async () => {
+  const localPrompts = [];
+  const httpModels = [];
+  const fakeBackend = {
+    invoke: async ({ prompt, timeout }) => {
+      assert.ok(timeout > 0);
+      localPrompts.push(prompt);
+      if (prompt.includes('AI-likeness scoring engine')) {
+        return '{ "overall": 9, "interpretation": "human" }';
+      }
+      if (prompt.includes('Meaning Preservation evaluator')) {
+        return '{ "anchors": [], "pass_count": 1, "total_count": 1, "polarity_pass_count": 0, "polarity_total_count": 0, "mps": 92 }';
+      }
+      return 'Local CLI rewrite.';
+    },
+  };
+
+  const result = await runMaxMode({
+    prompt: 'rewrite this',
+    sourceText: 'source text',
+    models: ['claude', 'gpt-4o'],
+    apiKey: 'test',
+    baseURL: 'https://example.com/v1',
+    config: { language: 'en' },
+    patterns: [],
+    wallClockBudgetMs: 1_000,
+    modelBackendResolver: (model) => (model === 'claude' ? fakeBackend : null),
+    callLLM: async (args) => {
+      httpModels.push(args.model);
+      if (args.prompt.includes('AI-likeness scoring engine')) {
+        return '{ "overall": 40, "interpretation": "mostly human" }';
+      }
+      if (args.prompt.includes('Meaning Preservation evaluator')) {
+        return '{ "anchors": [], "pass_count": 1, "total_count": 1, "polarity_pass_count": 0, "polarity_total_count": 0, "mps": 88 }';
+      }
+      return 'HTTP rewrite.';
+    },
+  });
+
+  assert.equal(result.best.model, 'claude');
+  assert.equal(result.best.result, 'Local CLI rewrite.');
+  assert.equal(localPrompts.length, 3, 'local backend handles rewrite, score, and MPS');
+  assert.deepEqual(httpModels, ['gpt-4o', 'gpt-4o', 'gpt-4o']);
 });
 
 test('runMaxMode reports elapsed per-model progress through the logger', async () => {

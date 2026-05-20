@@ -14,6 +14,33 @@ const LOCAL_MAX_MODEL_BACKENDS = new Map([
   ['gemini-cli', 'gemini-cli'],
 ]);
 
+/**
+ * Run MAX mode: dispatch candidates, score them, and select the best passing result.
+ *
+ * @param {object} options MAX mode options.
+ * @param {string} options.prompt Prompt to send to each model.
+ * @param {string} options.sourceText Original source text for MPS scoring.
+ * @param {string[]} options.models Ordered model ids or local backend aliases.
+ * @param {string} [options.apiKey] Provider API key.
+ * @param {string} [options.baseURL] Provider base URL.
+ * @param {object} options.config Effective config.
+ * @param {object[]} options.patterns Loaded pattern packs.
+ * @param {number} [options.maxConcurrency] Maximum concurrent candidates.
+ * @param {number} [options.wallClockBudgetMs=300000] Total MAX-mode budget.
+ * @param {Function} [options.callLLM] HTTP LLM implementation.
+ * @param {Function} [options.now] Clock returning epoch milliseconds.
+ * @param {Function} [options.sleep] Sleep helper for tests.
+ * @param {Function} [options.callLLMMultipleImpl] Injectable dispatcher.
+ * @param {Function} [options.modelBackendResolver] Resolver for local aliases.
+ * @param {Function} [options.scoreTextImpl] Injectable AI-likeness scorer.
+ * @param {Function} [options.scoreMPSImpl] Injectable MPS scorer.
+ * @param {AbortSignal} [options.signal] External cancellation signal.
+ * @param {object} [options.logger] patina logger.
+ * @returns {Promise<{type: string, candidates: object[], best: object|null, allFailed: boolean, mpsFallback: boolean, timedOut: boolean}>} MAX result.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const result = await runMaxMode({ prompt, sourceText, models: ['gpt-4o'], config, patterns });
+ */
 export async function runMaxMode({
   prompt,
   sourceText,
@@ -176,6 +203,17 @@ export async function runMaxMode({
   };
 }
 
+/**
+ * Select the best MAX candidate, preferring lowest AI score with MPS >= 70.
+ *
+ * @param {object[]} candidates Candidate result objects.
+ * @param {object} [options] Selection options.
+ * @param {Function} [options.log] Tie-break logger.
+ * @returns {{candidate: object|null, fallback: boolean}} Selected candidate and whether MPS fallback was used.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const { candidate } = selectBest([{ ok: true, model: 'a', aiScore: 20, mps: 90 }]);
+ */
 export function selectBest(
   candidates,
   { log = (message) => createLogger().warn('max.selection_tie', { message }) } = {}
@@ -216,12 +254,43 @@ export function selectBest(
   return { candidate: best, fallback: true };
 }
 
+/**
+ * Resolve an exact MAX model alias to a local backend implementation.
+ *
+ * @param {string} model Model id or alias.
+ * @returns {object|null} Backend implementation, or null for HTTP models.
+ * @throws {Error} When the matching backend is unavailable.
+ * @example
+ * const backend = resolveMaxModelBackend('claude-cli');
+ */
 export function resolveMaxModelBackend(model) {
   const backendName = LOCAL_MAX_MODEL_BACKENDS.get(String(model || '').trim().toLowerCase());
   if (!backendName) return null;
   return selectBackend({ name: backendName }).backend;
 }
 
+/**
+ * Dispatch MAX candidates across local backends and HTTP models.
+ *
+ * @param {object} options Dispatch options.
+ * @param {string} options.prompt Prompt to send.
+ * @param {string[]} options.models Ordered model ids.
+ * @param {string} [options.apiKey] Provider API key.
+ * @param {string} [options.baseURL] Provider base URL.
+ * @param {number} [options.maxConcurrency] Maximum concurrent dispatches.
+ * @param {number} [options.deadline] Absolute epoch-millisecond deadline.
+ * @param {AbortSignal} [options.signal] External cancellation signal.
+ * @param {Function} [options.callLLM] HTTP LLM implementation.
+ * @param {Function} [options.modelBackendResolver] Local backend resolver.
+ * @param {Function} [options.now] Clock returning epoch milliseconds.
+ * @param {Function} [options.sleep] Sleep helper.
+ * @param {Function} [options.onStart] Per-model start callback.
+ * @param {Function} [options.onComplete] Per-model completion callback.
+ * @returns {Promise<Array<Object>>} Candidate results.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const candidates = await dispatchMaxCandidates({ prompt: 'Hi', models: ['gpt-4o'] });
+ */
 export async function dispatchMaxCandidates({
   prompt,
   models,

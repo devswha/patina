@@ -1,3 +1,14 @@
+/**
+ * Structured CLI error with separate what/why/action fields and exit code.
+ *
+ * @param {object} options Error fields.
+ * @param {string} options.what Short failure headline.
+ * @param {string} options.why Explanation of the failure.
+ * @param {string} options.action Suggested user action.
+ * @param {number} [options.exitCode=1] Process exit code.
+ * @example
+ * throw new PatinaCliError({ what: 'missing input', why: 'No file was provided', action: 'Pass a file path.' });
+ */
 export class PatinaCliError extends Error {
   constructor({ what, why, action, exitCode = 1 }) {
     super([what, why, action].filter(Boolean).join('\n'));
@@ -9,14 +20,45 @@ export class PatinaCliError extends Error {
   }
 }
 
+/**
+ * Create a user-input error that should exit with code 2.
+ *
+ * @param {string} what Short failure headline.
+ * @param {string} why Explanation of the invalid input.
+ * @param {string} action Suggested user action.
+ * @returns {PatinaCliError} Structured input error.
+ * @throws {Error} Does not intentionally throw; returns an Error instance for callers to throw.
+ * @example
+ * throw inputError('missing input', 'No file was provided.', 'Pass a file path.');
+ */
 export function inputError(what, why, action) {
   return new PatinaCliError({ what, why, action, exitCode: 2 });
 }
 
+/**
+ * Create a runtime error that should exit with code 1.
+ *
+ * @param {string} what Short failure headline.
+ * @param {string} why Explanation of the runtime failure.
+ * @param {string} action Suggested user action.
+ * @returns {PatinaCliError} Structured runtime error.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * throw runtimeError('provider failed', 'The API timed out.', 'Retry later.');
+ */
 export function runtimeError(what, why, action) {
   return new PatinaCliError({ what, why, action, exitCode: 1 });
 }
 
+/**
+ * Render any thrown value into the patina CLI error format.
+ *
+ * @param {unknown} err Error-like value to render.
+ * @returns {string} Multi-line user-facing error text.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const message = renderCliError(inputError('bad flag', 'Unknown flag.', 'Run --help.'));
+ */
 export function renderCliError(err) {
   const normalized = normalizeError(err);
   return [
@@ -26,6 +68,16 @@ export function renderCliError(err) {
   ].join('\n');
 }
 
+/**
+ * Extract a safe process exit code from an error-like value.
+ *
+ * @param {unknown} err Error-like value.
+ * @param {number} [fallback=1] Exit code used when err.exitCode is absent or invalid.
+ * @returns {number} Non-negative integer exit code.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const code = getExitCode(inputError('bad', 'why', 'fix')); // 2
+ */
 export function getExitCode(err, fallback = 1) {
   const n = Number(err?.exitCode);
   return Number.isInteger(n) && n >= 0 ? n : fallback;

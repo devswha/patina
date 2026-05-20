@@ -7,6 +7,15 @@ import yaml from 'js-yaml';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 
+/**
+ * Load default config and merge global/project .patina.yaml overrides.
+ *
+ * @param {string} [path] Base YAML config path.
+ * @returns {object} Merged patina configuration object.
+ * @throws {Error} When a config file is missing, invalid YAML, or not a mapping.
+ * @example
+ * const config = loadConfig();
+ */
 export function loadConfig(path = resolve(REPO_ROOT, '.patina.default.yaml')) {
   const raw = readFileSync(path, 'utf8');
   const parsed = yaml.load(raw);
@@ -54,6 +63,14 @@ function deepMerge(target, source) {
   }
 }
 
+/**
+ * Return the repository root inferred from this source file location.
+ *
+ * @returns {string} Absolute repository root path.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const root = getRepoRoot();
+ */
 export function getRepoRoot() {
   return REPO_ROOT;
 }
@@ -63,6 +80,18 @@ const VALID_TONES = ['casual', 'professional', 'academic', 'narrative', 'marketi
 // Resolve the effective tone from CLI flag and config (v3.10).
 // Priority: cliTone > configTone > unset. zh/ja + explicit tone → fallback path.
 // Returns: { tone, tone_source, tone_evidence, tone_confidence, warning? }
+/**
+ * Resolve CLI/config tone settings into prompt-ready tone metadata.
+ *
+ * @param {object} options Tone inputs.
+ * @param {string|null} [options.cliTone] CLI tone override.
+ * @param {string|null} [options.configTone] Configured tone value.
+ * @param {string} [options.lang] Active language code.
+ * @returns {Object} Tone metadata.
+ * @throws {Error} When cliTone or configTone is not supported.
+ * @example
+ * const tone = resolveTone({ cliTone: 'casual', lang: 'ko' });
+ */
 export function resolveTone({ cliTone, configTone, lang }) {
   if (cliTone !== undefined && cliTone !== null) {
     if (!VALID_TONES.includes(cliTone)) {

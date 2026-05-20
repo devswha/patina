@@ -1,11 +1,11 @@
 # Release
 
-`release.yml` is the maintainer path for distribution artifacts.
+`release.yml` is the maintainer path for npm distribution artifacts.
 
 ## Dry run
 
 ```bash
-gh workflow run release.yml -f publish=false
+gh workflow run release.yml -f publish=false -f publish_ghcr=false
 ```
 
 The dry run verifies:
@@ -18,7 +18,7 @@ The dry run verifies:
 
 ## Publish
 
-Publishing is intended for `v*.*.*` tags:
+Publishing the npm packages is intended for `v*.*.*` tags:
 
 ```bash
 git tag v3.11.0
@@ -32,5 +32,12 @@ Required secret:
 The publish job uploads:
 
 - `patina-cli` to npm;
-- `patina-humanizer` alias to npm;
-- `ghcr.io/devswha/patina:latest` and `ghcr.io/devswha/patina:<version>`.
+- `patina-humanizer` alias to npm.
+
+Docker / GHCR publishing is intentionally decoupled from npm releases while
+the container distribution issue is still open. Maintainers can run the
+experimental image path manually after npm verification:
+
+```bash
+gh workflow run release.yml --ref v3.11.0 -f publish=false -f publish_ghcr=true
+```

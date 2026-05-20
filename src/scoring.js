@@ -140,7 +140,7 @@ export function interpretScore(score) {
 }
 
 // Length ratio is deterministic — bucket per core/scoring.md §10.4.
-function lengthRatioPoints(original, rewritten) {
+export function lengthRatioPoints(original, rewritten) {
   if (!original || original.length === 0) return 3;
   const ratio = (rewritten.length / original.length) * 100;
   if (ratio >= 70 && ratio <= 130) return 3;
@@ -210,7 +210,7 @@ ${rewritten}
   };
 }
 
-function clamp03(v) {
+export function clamp03(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return 0;
   if (n < 0) return 0;

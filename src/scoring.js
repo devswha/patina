@@ -1,5 +1,9 @@
 import { callLLM as defaultCallLLM } from './api.js';
+import { getRepoRoot } from './config.js';
+import { analyzeText } from './features/index.js';
 import { createLogger } from './logger.js';
+
+export const DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD = 20;
 
 class SchemaError extends Error {
   constructor(message, raw) {
@@ -88,6 +92,7 @@ export async function scoreText({
 }) {
   const lang = config.language || 'ko';
   const weights = config.ouroboros?.['category-weights']?.[lang] || {};
+  const deterministicScore = scoreDeterministicSignals({ text, config });
 
   const prompt = `You are an AI-likeness scoring engine. Score the following text for AI-writing patterns.
 
@@ -132,14 +137,148 @@ ${text}
       now,
       sleep,
     });
-    return parsed;
+    return withShadowScore(parsed, { deterministicScore, config, logger });
   } catch (e) {
     rethrowIfAborted(e, signal);
     logger.warn('score.text_schema_failure', {
       message: `[patina] scoreText schema failure after retry: ${e.message}`,
     });
-    return { overall: null, error: 'schema-failure', raw: e.raw };
+    return {
+      overall: null,
+      llmScore: { overall: null, interpretation: null, error: 'schema-failure' },
+      deterministicScore,
+      error: 'schema-failure',
+      raw: e.raw,
+    };
   }
+}
+
+export function scoreDeterministicSignals({
+  text,
+  config = {},
+  repoRoot = getRepoRoot(),
+  analyzer = analyzeText,
+} = {}) {
+  const options = deterministicScoringOptions(config);
+  if (!options.enabled) return null;
+
+  const lang = config.language || 'ko';
+  const enabledLanguages = config.stylometry?.languages;
+  if (Array.isArray(enabledLanguages) && !enabledLanguages.includes(lang)) {
+    return {
+      overall: null,
+      interpretation: null,
+      skipped: true,
+      skipReason: 'language-disabled',
+      paragraphCount: 0,
+      hotParagraphs: 0,
+      bands: emptyDeterministicBands(),
+    };
+  }
+
+  try {
+    const result = analyzer(String(text || ''), {
+      lang,
+      repoRoot,
+      burstinessBands: config.stylometry?.burstiness?.bands,
+      mattrBands: config.stylometry?.ttr?.bands,
+      mattrWindow: config.stylometry?.ttr?.window,
+      lexiconDensityThreshold: config.lexicon?.density_threshold,
+    });
+    const paragraphs = Array.isArray(result?.paragraphs) ? result.paragraphs : [];
+    const paragraphCount = paragraphs.length;
+    const hotParagraphs = paragraphs.filter((p) => p.hot).length;
+    const overall = paragraphCount > 0 ? roundScore((hotParagraphs / paragraphCount) * 100) : 0;
+
+    return {
+      overall,
+      interpretation: interpretScore(overall),
+      skipped: Boolean(result?.skipped),
+      skipReason: result?.skipReason ?? null,
+      paragraphCount,
+      hotParagraphs,
+      bands: {
+        burstiness: countBands(paragraphs.map((p) => p.burstiness?.band)),
+        mattr: countBands(paragraphs.map((p) => p.mattr?.band)),
+        lexicon: {
+          hot: paragraphs.filter((p) => p.lexicon?.hot).length,
+          threshold: config.lexicon?.density_threshold ?? null,
+        },
+      },
+    };
+  } catch (err) {
+    return {
+      overall: null,
+      interpretation: null,
+      skipped: true,
+      skipReason: 'deterministic-failure',
+      paragraphCount: 0,
+      hotParagraphs: 0,
+      bands: emptyDeterministicBands(),
+      error: err?.message || 'deterministic scoring failed',
+    };
+  }
+}
+
+export function withShadowScore(parsed, { deterministicScore, config = {}, logger } = {}) {
+  const llmOverall = toFiniteScore(parsed?.overall);
+  const llmScore = {
+    overall: llmOverall,
+    interpretation: parsed?.interpretation ?? (llmOverall === null ? null : interpretScore(llmOverall)),
+    categories: parsed?.categories ?? null,
+  };
+  const reconciliation = reconcileScoreOverall({
+    llmOverall,
+    deterministicScore,
+    config,
+    logger,
+  });
+  const overall = reconciliation.overall ?? llmOverall;
+  return {
+    ...parsed,
+    overall,
+    interpretation: overall === null
+      ? parsed?.interpretation ?? null
+      : interpretScore(overall),
+    llmScore,
+    deterministicScore,
+    ...(reconciliation.scorePreference ? { scorePreference: reconciliation.scorePreference } : {}),
+  };
+}
+
+export function reconcileScoreOverall({
+  llmOverall,
+  deterministicScore,
+  config = {},
+  logger,
+} = {}) {
+  const llm = toFiniteScore(llmOverall);
+  const deterministic = toFiniteScore(deterministicScore?.overall);
+  if (llm === null) return { overall: null, scorePreference: null };
+  if (deterministic === null) return { overall: llm, scorePreference: null };
+  if (deterministicScore?.skipped) return { overall: llm, scorePreference: null };
+
+  const threshold = deterministicScoringOptions(config).divergenceThreshold;
+  const delta = Math.abs(llm - deterministic);
+  if (delta <= threshold) return { overall: llm, scorePreference: null };
+
+  const overall = Math.max(llm, deterministic);
+  const selected = overall === deterministic ? 'deterministic' : 'llm';
+  const scorePreference = {
+    reason: 'deterministic-divergence',
+    selected,
+    threshold,
+    llmOverall: llm,
+    deterministicOverall: deterministic,
+    overall,
+  };
+  logger?.warn?.('score.deterministic_divergence', {
+    message: `[patina] deterministic score diverged from LLM score (${llm} vs ${deterministic}); using pessimistic ${overall}`,
+    llm_overall: llm,
+    deterministic_overall: deterministic,
+    selected,
+  });
+  return { overall, scorePreference };
 }
 
 export async function scoreMPS({
@@ -328,10 +467,65 @@ function rethrowIfAborted(err, signal) {
 
 // Combined score per core/scoring.md §13: AI-likeness × ai_weight + (100 - fidelity) × fidelity_weight.
 // Lower is better. Falls back to default weights if profile not configured.
-export function combinedScore({ aiLikeness, fidelity, profile, config }) {
+export function combinedScore({ aiLikeness, fidelity, profile, config, deterministicScore }) {
   const profileWeights = config?.ouroboros?.['combined-weights']?.[profile];
   const ai = profileWeights?.['ai-likeness'] ?? 0.6;
   const fid = profileWeights?.fidelity ?? 0.4;
+  const deterministicWeight = deterministicScoringOptions(config).combinedWeight;
+  const deterministic = toFiniteScore(deterministicScore?.overall ?? deterministicScore);
   const fidelityInverted = 100 - fidelity;
-  return Math.round((aiLikeness * ai + fidelityInverted * fid) * 10) / 10;
+  if (deterministicWeight > 0 && deterministic !== null) {
+    const totalWeight = ai + fid + deterministicWeight;
+    return roundScore(
+      (aiLikeness * ai + fidelityInverted * fid + deterministic * deterministicWeight) /
+        totalWeight
+    );
+  }
+  return roundScore(aiLikeness * ai + fidelityInverted * fid);
+}
+
+function deterministicScoringOptions(config = {}) {
+  const cfg = config.scoring?.deterministic || {};
+  const enabled = cfg.enabled !== false;
+  const divergenceThreshold = Math.max(0, positiveNumber(
+    cfg['divergence-threshold'] ?? cfg.divergenceThreshold,
+    DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD
+  ));
+  const combinedWeight = Math.max(0, positiveNumber(
+    cfg['combined-weight'] ?? cfg.combinedWeight,
+    0
+  ));
+  return { enabled, divergenceThreshold, combinedWeight };
+}
+
+function positiveNumber(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function countBands(values) {
+  const counts = { low: 0, mid: 0, high: 0, null: 0 };
+  for (const value of values) {
+    if (value === 'low' || value === 'mid' || value === 'high') counts[value]++;
+    else counts.null++;
+  }
+  return counts;
+}
+
+function emptyDeterministicBands() {
+  return {
+    burstiness: { low: 0, mid: 0, high: 0, null: 0 },
+    mattr: { low: 0, mid: 0, high: 0, null: 0 },
+    lexicon: { hot: 0, threshold: null },
+  };
+}
+
+function toFiniteScore(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function roundScore(value) {
+  return Math.round(value * 10) / 10;
 }

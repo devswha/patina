@@ -3,7 +3,9 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import { main } from '../../src/cli.js';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -305,6 +307,31 @@ describe('CLI End-to-End with Mock API', () => {
 
     assert.strictEqual(JSON.parse(logs.join('\n')).overall, 23);
     assert.ok(!errors.some((line) => line.includes('weight check')), errors.join('\n'));
+    await stopMockServer();
+    await startMockServer('This is the humanized result.');
+  });
+
+  it('should record LLM and deterministic scores in save-run manifests', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    await stopMockServer();
+    await startMockServer('{ "overall": 23, "interpretation": "mostly human" }');
+
+    const outDir = mkdtempSync(join(tmpdir(), 'patina-save-run-'));
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    await captureConsole(() => main([
+      '--lang', 'en',
+      '--score',
+      '--save-run', outDir,
+      '--api-key', 'test-key',
+      '--base-url', `http://127.0.0.1:${mockPort}`,
+      testFile,
+    ]));
+
+    const manifest = JSON.parse(readFileSync(resolve(outDir, 'manifest.json'), 'utf8'));
+    const scores = manifest.results[0].scores;
+    assert.strictEqual(scores.llm.overall, 23);
+    assert.equal(typeof scores.deterministic.overall, 'number');
     await stopMockServer();
     await startMockServer('This is the humanized result.');
   });

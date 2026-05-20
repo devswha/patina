@@ -61,7 +61,7 @@ export async function runMaxMode({ prompt, sourceText, models, apiKey, baseURL, 
   };
 }
 
-function selectBest(candidates) {
+export function selectBest(candidates, { log = console.error } = {}) {
   const valid = candidates.filter((c) => c.ok && c.aiScore !== null);
 
   if (valid.length === 0) {
@@ -71,14 +71,29 @@ function selectBest(candidates) {
   const passingMps = valid.filter((c) => (c.mps ?? 0) >= 70);
 
   if (passingMps.length > 0) {
-    return passingMps.reduce((best, current) =>
+    const best = passingMps.reduce((best, current) =>
+      // Strict comparison preserves --models config order when AI scores tie.
       (current.aiScore < best.aiScore) ? current : best
     );
+
+    if (passingMps.some((c) => c !== best && c.aiScore === best.aiScore)) {
+      log(`[patina-max] Tie on AI score — picked ${best.model} by config order`);
+    }
+
+    return best;
   }
 
-  return valid.reduce((best, current) => {
+  const best = valid.reduce((best, current) => {
     const bestMps = best.mps ?? -1;
     const currentMps = current.mps ?? -1;
+    // Strict comparison preserves --models config order when MPS scores tie.
     return currentMps > bestMps ? current : best;
   });
+
+  const bestMps = best.mps ?? -1;
+  if (valid.some((c) => c !== best && (c.mps ?? -1) === bestMps)) {
+    log(`[patina-max] Tie on MPS — picked ${best.model} by config order`);
+  }
+
+  return best;
 }

@@ -22,6 +22,17 @@ pattern-overrides:
     8: amplify                  # Copula avoidance
     7: amplify                  # AI vocabulary
     14: suppress                # Boldface
+  zh:
+    7: amplify                  # AI高频词 — 亲密对话里“赋能/生态”特别不像人话
+    18: amplify                 # 书面/公文体 — 朋友语气中应换成口语
+    14: suppress                # 加粗 — 聊天/SNS语气中不作为AI痕迹处理
+    19: reduce                  # 聊天机器人痕迹 — 亲切服务语可少量保留
+  ja:
+    7: amplify                  # AI語彙 — 親しい会話では特に不自然
+    18: amplify                 # 硬質文体 — 友人向けなら口語へ寄せる
+    16: amplify                 # 過剰敬語 — 親密な会話では距離が出るため強めに直す
+    14: suppress                # 太字 — 会話調ではAI判定の主因にしない
+    19: reduce                  # チャットボット痕跡 — 親切な一言は一部許容
 ---
 
 # 친한 대화체 프로필 (`casual-conversation`)

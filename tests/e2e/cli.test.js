@@ -80,12 +80,45 @@ describe('Pattern Loading', () => {
 });
 
 describe('Profile Loading', () => {
-  it('should load all 10 profiles', () => {
-    const names = ['default', 'blog', 'academic', 'technical', 'social', 'email', 'formal', 'legal', 'medical', 'marketing'];
+  it('should load all checked-in profiles', () => {
+    const names = [
+      'default',
+      'blog',
+      'academic',
+      'technical',
+      'social',
+      'email',
+      'formal',
+      'legal',
+      'medical',
+      'marketing',
+      'casual-conversation',
+      'instructional',
+      'narrative',
+    ];
     for (const name of names) {
       const profile = loadProfile(REPO_ROOT, name);
       assert.ok(profile, `Profile ${name} should load`);
       assert.ok(profile.frontmatter || profile.body, `Profile ${name} should have content`);
+    }
+  });
+
+  it('should provide zh/ja pattern overrides for multilingual profile parity', () => {
+    const names = ['blog', 'casual-conversation', 'formal', 'instructional', 'narrative'];
+    const documentedValues = new Set(['suppress', 'reduce', 'amplify']);
+    for (const name of names) {
+      const profile = loadProfile(REPO_ROOT, name);
+      const overrides = profile.frontmatter?.['pattern-overrides'];
+      assert.ok(overrides, `Profile ${name} should define pattern-overrides`);
+      for (const lang of ['zh', 'ja']) {
+        assert.ok(overrides[lang], `Profile ${name} should define ${lang} overrides`);
+        const values = Object.values(overrides[lang]);
+        assert.ok(values.length > 0, `Profile ${name} ${lang} overrides should not be empty`);
+        assert.ok(
+          values.some((value) => documentedValues.has(value)),
+          `Profile ${name} ${lang} should document suppress/reduce/amplify behavior`
+        );
+      }
     }
   });
 });

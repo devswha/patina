@@ -22,6 +22,18 @@ pattern-overrides:
     15: reduce                 # Inline-header lists — bold labels are standard in resumes
     14: reduce                 # Boldface — job titles, company names in bold is convention
     16: suppress               # Title Case — formal document headings conventionally use title case
+  zh:
+    25: suppress               # 结构性重复 — 简历/报告条目可有统一结构
+    15: reduce                 # 内联标题 — “职责/成果”标签是正式文档惯例
+    14: reduce                 # 加粗 — 职位/公司名加粗可接受
+    18: reduce                 # 书面/公文体 — 正式文档允许适度正式
+    8: reduce                  # 四字格 — 正式文档中少量四字格可接受
+  ja:
+    25: suppress               # 構造的繰り返し — 職務経歴や提案書では統一構造が自然
+    15: reduce                 # インラインヘッダー — 役割/成果ラベルは正式文書の慣例
+    14: reduce                 # 太字 — 役職名・会社名の強調は許容
+    18: reduce                 # 硬質文体 — 正式文書では適度な硬さを許容
+    8: reduce                  # 〜的 — 正式文書では一部許容
 ---
 
 # 정형 문서 프로필

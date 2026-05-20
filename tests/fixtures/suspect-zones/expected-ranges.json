@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedBy": "node scripts/update-benchmark-ranges.mjs",
-  "generatedAt": "2026-05-20T03:49:33.350Z",
-  "fixtureCount": 34,
+  "generatedAt": "2026-05-20T17:48:35.049Z",
+  "fixtureCount": 38,
   "tolerances": {
     "cv": 0.025,
     "mattr": 0.03,
@@ -387,6 +387,43 @@
       ],
       "lexicon_hits": []
     },
+    "ja-ai-04-lexicon": {
+      "path": "tests/fixtures/suspect-zones/ja/ai/ja-ai-04-lexicon.md",
+      "lang": "ja",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": true
+      },
+      "cv_band": "high",
+      "cv_range": [
+        0.535,
+        0.585
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.773,
+        0.833
+      ],
+      "lexicon_density_range": [
+        58.83,
+        68.83
+      ],
+      "lexicon_hits": [
+        "まとめると",
+        "結論として",
+        "重要なのは",
+        "デジタル時代において",
+        "~が求められます",
+        "新たな可能性を切り開く",
+        "今後ますます重要になる",
+        "多様なニーズに応える",
+        "理解を深める"
+      ]
+    },
     "ja-nat-01": {
       "path": "tests/fixtures/suspect-zones/ja/natural/ja-nat-01.md",
       "lang": "ja",
@@ -461,6 +498,33 @@
       "mattr_range": [
         0.777,
         0.837
+      ],
+      "lexicon_density_range": [
+        0,
+        5
+      ],
+      "lexicon_hits": []
+    },
+    "ja-nat-04-lexicon-cold": {
+      "path": "tests/fixtures/suspect-zones/ja/natural/ja-nat-04-lexicon-cold.md",
+      "lang": "ja",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv_band": "mid",
+      "cv_range": [
+        0.371,
+        0.421
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.722,
+        0.782
       ],
       "lexicon_density_range": [
         0,
@@ -854,6 +918,44 @@
       ],
       "lexicon_hits": []
     },
+    "zh-ai-04-lexicon": {
+      "path": "tests/fixtures/suspect-zones/zh/ai/zh-ai-04-lexicon.md",
+      "lang": "zh",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": true
+      },
+      "cv_band": "high",
+      "cv_range": [
+        0.723,
+        0.773
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.864,
+        0.924
+      ],
+      "lexicon_density_range": [
+        87.593,
+        97.593
+      ],
+      "lexicon_hits": [
+        "总而言之",
+        "总的来说",
+        "值得注意的是",
+        "在数字时代",
+        "从长远来看",
+        "不仅~而且",
+        "为~提供了新的可能",
+        "优化整体流程",
+        "形成良性循环",
+        "为未来奠定基础"
+      ]
+    },
     "zh-nat-01": {
       "path": "tests/fixtures/suspect-zones/zh/natural/zh-nat-01.md",
       "lang": "zh",
@@ -928,6 +1030,33 @@
       "mattr_range": [
         0.877,
         0.937
+      ],
+      "lexicon_density_range": [
+        0,
+        5
+      ],
+      "lexicon_hits": []
+    },
+    "zh-nat-04-lexicon-cold": {
+      "path": "tests/fixtures/suspect-zones/zh/natural/zh-nat-04-lexicon-cold.md",
+      "lang": "zh",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv_band": "mid",
+      "cv_range": [
+        0.362,
+        0.412
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.901,
+        0.961
       ],
       "lexicon_density_range": [
         0,

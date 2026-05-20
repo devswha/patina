@@ -252,7 +252,7 @@ Input
   ↓
 [Step 4.5]   Semantic anchor extraction (claims, polarity, causation, numbers)
 [Step 4.6]   Stylometric pre-pass (burstiness CV + MATTR; zh/ja character-token fallback)
-[Step 4.7]   AI-lexicon overlap (~108 EN / 102 KO entries)
+[Step 4.7]   AI-lexicon overlap (~108 EN / 102 KO / 60 ZH / 60 JA entries)
 [Phase 1]    Structure scan + anchor verification
 [Phase 2]    Sentence rewrite + anchor verification
 [Phase 3]    Self-audit (polarity, regression, MPS)
@@ -302,6 +302,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Detector Comparison Harness](docs/benchmarks/detector-comparison.md)** — offline/manual comparison protocol for third-party detectors
 - **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — benchmark design notes for measuring AI-like writing signals
 - **[2025+ Re-baseline Plan](docs/research/2025-rebaseline-plan.md)** — evidence gate before broader model-era claims
+- **[zh/ja Lexicon Calibration](docs/research/zh-ja-lexicon-calibration.md)** — starter lexicon gate and remaining corpus risk
 - **[Launch Copy](docs/social/patina-launch-copy.md)** — Show HN, Reddit, X, Korean community drafts
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI-lexicon algorithm
 - **[Scoring](core/scoring.md)** — AI-likeness + fidelity + MPS

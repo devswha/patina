@@ -177,6 +177,7 @@ export function scoreDeterministicSignals({
   }
 
   try {
+    const lexiconAllowed = isLexiconEnabledForLanguage(config, lang);
     const result = analyzer(String(text || ''), {
       lang,
       repoRoot,
@@ -184,6 +185,7 @@ export function scoreDeterministicSignals({
       mattrBands: config.stylometry?.ttr?.bands,
       mattrWindow: config.stylometry?.ttr?.window,
       lexiconDensityThreshold: config.lexicon?.density_threshold,
+      ...(lexiconAllowed ? {} : { lexicon: { lang, path: null, strict: [], phrases: [] } }),
     });
     const paragraphs = Array.isArray(result?.paragraphs) ? result.paragraphs : [];
     const paragraphCount = paragraphs.length;
@@ -482,6 +484,12 @@ export function combinedScore({ aiLikeness, fidelity, profile, config, determini
     );
   }
   return roundScore(aiLikeness * ai + fidelityInverted * fid);
+}
+
+function isLexiconEnabledForLanguage(config = {}, lang) {
+  if (config.lexicon?.enabled === false) return false;
+  const enabledLanguages = config.lexicon?.languages;
+  return !Array.isArray(enabledLanguages) || enabledLanguages.includes(lang);
 }
 
 function deterministicScoringOptions(config = {}) {

@@ -7,13 +7,13 @@
   "schemaVersion": 2,
   "fixtureSchemaVersion": 1,
   "nodeVersion": "v22.17.1",
-  "generatedAt": "2026-05-20T03:54:28.607Z",
-  "fixtureCount": 34,
+  "generatedAt": "2026-05-20T17:49:53.957Z",
+  "fixtureCount": 38,
   "overallAccuracy": 1,
   "overall": {
     "accuracy": 1,
-    "n": 34,
-    "ci_low": 0.898,
+    "n": 38,
+    "ci_low": 0.908,
     "ci_high": 1,
     "confidence_method": "Wilson score interval, 95%"
   },
@@ -81,63 +81,63 @@
       }
     },
     "ja": {
-      "tp": 3,
+      "tp": 4,
       "fp": 0,
       "fn": 0,
-      "tn": 3,
-      "total": 6,
+      "tn": 4,
+      "total": 8,
       "accuracy": 1,
       "precision": 1,
       "recall": 1,
       "f1": 1,
-      "n": 6,
-      "ci_low": 0.61,
+      "n": 8,
+      "ci_low": 0.676,
       "ci_high": 1,
       "confidence_method": "Wilson score interval, 95%",
       "byDetector": {
         "burstiness": {
           "tp": 3,
           "fp": 0,
-          "fn": 0,
-          "tn": 3,
-          "total": 6,
-          "accuracy": 1,
+          "fn": 1,
+          "tn": 4,
+          "total": 8,
+          "accuracy": 0.875,
           "precision": 1,
-          "recall": 1,
-          "f1": 1,
-          "n": 6,
-          "ci_low": 0.61,
-          "ci_high": 1,
+          "recall": 0.75,
+          "f1": 0.857,
+          "n": 8,
+          "ci_low": 0.529,
+          "ci_high": 0.978,
           "confidence_method": "Wilson score interval, 95%"
         },
         "mattr": {
           "tp": 0,
           "fp": 0,
-          "fn": 3,
-          "tn": 3,
-          "total": 6,
+          "fn": 4,
+          "tn": 4,
+          "total": 8,
           "accuracy": 0.5,
           "precision": 0,
           "recall": 0,
           "f1": 0,
-          "n": 6,
-          "ci_low": 0.188,
-          "ci_high": 0.812,
+          "n": 8,
+          "ci_low": 0.215,
+          "ci_high": 0.785,
           "confidence_method": "Wilson score interval, 95%"
         },
         "lexicon": {
-          "tp": 0,
+          "tp": 1,
           "fp": 0,
           "fn": 3,
-          "tn": 3,
-          "total": 6,
-          "accuracy": 0.5,
-          "precision": 0,
-          "recall": 0,
-          "f1": 0,
-          "n": 6,
-          "ci_low": 0.188,
-          "ci_high": 0.812,
+          "tn": 4,
+          "total": 8,
+          "accuracy": 0.625,
+          "precision": 1,
+          "recall": 0.25,
+          "f1": 0.4,
+          "n": 8,
+          "ci_low": 0.306,
+          "ci_high": 0.863,
           "confidence_method": "Wilson score interval, 95%"
         }
       }
@@ -205,63 +205,63 @@
       }
     },
     "zh": {
-      "tp": 3,
+      "tp": 4,
       "fp": 0,
       "fn": 0,
-      "tn": 3,
-      "total": 6,
+      "tn": 4,
+      "total": 8,
       "accuracy": 1,
       "precision": 1,
       "recall": 1,
       "f1": 1,
-      "n": 6,
-      "ci_low": 0.61,
+      "n": 8,
+      "ci_low": 0.676,
       "ci_high": 1,
       "confidence_method": "Wilson score interval, 95%",
       "byDetector": {
         "burstiness": {
           "tp": 3,
           "fp": 0,
-          "fn": 0,
-          "tn": 3,
-          "total": 6,
-          "accuracy": 1,
+          "fn": 1,
+          "tn": 4,
+          "total": 8,
+          "accuracy": 0.875,
           "precision": 1,
-          "recall": 1,
-          "f1": 1,
-          "n": 6,
-          "ci_low": 0.61,
-          "ci_high": 1,
+          "recall": 0.75,
+          "f1": 0.857,
+          "n": 8,
+          "ci_low": 0.529,
+          "ci_high": 0.978,
           "confidence_method": "Wilson score interval, 95%"
         },
         "mattr": {
           "tp": 0,
           "fp": 0,
-          "fn": 3,
-          "tn": 3,
-          "total": 6,
+          "fn": 4,
+          "tn": 4,
+          "total": 8,
           "accuracy": 0.5,
           "precision": 0,
           "recall": 0,
           "f1": 0,
-          "n": 6,
-          "ci_low": 0.188,
-          "ci_high": 0.812,
+          "n": 8,
+          "ci_low": 0.215,
+          "ci_high": 0.785,
           "confidence_method": "Wilson score interval, 95%"
         },
         "lexicon": {
-          "tp": 0,
+          "tp": 1,
           "fp": 0,
           "fn": 3,
-          "tn": 3,
-          "total": 6,
-          "accuracy": 0.5,
-          "precision": 0,
-          "recall": 0,
-          "f1": 0,
-          "n": 6,
-          "ci_low": 0.188,
-          "ci_high": 0.812,
+          "tn": 4,
+          "total": 8,
+          "accuracy": 0.625,
+          "precision": 1,
+          "recall": 0.25,
+          "f1": 0.4,
+          "n": 8,
+          "ci_low": 0.306,
+          "ci_high": 0.863,
           "confidence_method": "Wilson score interval, 95%"
         }
       }
@@ -554,6 +554,36 @@
       "expected_metrics": null
     },
     {
+      "fixture_id": "ja-ai-04-lexicon",
+      "lang": "ja",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": true
+      },
+      "cv": 0.56,
+      "cv_band": "high",
+      "mattr": 0.803,
+      "mattr_band": "high",
+      "lexicon_density": 63.83,
+      "lexicon_hits": [
+        "まとめると",
+        "結論として",
+        "重要なのは",
+        "デジタル時代において",
+        "~が求められます",
+        "新たな可能性を切り開く",
+        "今後ますます重要になる",
+        "多様なニーズに応える",
+        "理解を深める"
+      ],
+      "expected_metrics": null
+    },
+    {
       "fixture_id": "ja-nat-01",
       "lang": "ja",
       "class": "natural",
@@ -608,6 +638,26 @@
       "cv": 0.395,
       "cv_band": "mid",
       "mattr": 0.807,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
+    },
+    {
+      "fixture_id": "ja-nat-04-lexicon-cold",
+      "lang": "ja",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.396,
+      "cv_band": "mid",
+      "mattr": 0.752,
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
@@ -907,6 +957,37 @@
       "expected_metrics": null
     },
     {
+      "fixture_id": "zh-ai-04-lexicon",
+      "lang": "zh",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": true
+      },
+      "cv": 0.748,
+      "cv_band": "high",
+      "mattr": 0.894,
+      "mattr_band": "high",
+      "lexicon_density": 92.593,
+      "lexicon_hits": [
+        "总而言之",
+        "总的来说",
+        "值得注意的是",
+        "在数字时代",
+        "从长远来看",
+        "不仅~而且",
+        "为~提供了新的可能",
+        "优化整体流程",
+        "形成良性循环",
+        "为未来奠定基础"
+      ],
+      "expected_metrics": null
+    },
+    {
       "fixture_id": "zh-nat-01",
       "lang": "zh",
       "class": "natural",
@@ -965,6 +1046,26 @@
       "lexicon_density": 0,
       "lexicon_hits": [],
       "expected_metrics": null
+    },
+    {
+      "fixture_id": "zh-nat-04-lexicon-cold",
+      "lang": "zh",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.387,
+      "cv_band": "mid",
+      "mattr": 0.931,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "expected_metrics": null
     }
   ],
   "sampleSizes": {
@@ -973,16 +1074,16 @@
       "natural": 5
     },
     "ja": {
-      "ai": 3,
-      "natural": 3
+      "ai": 4,
+      "natural": 4
     },
     "ko": {
       "ai": 6,
       "natural": 5
     },
     "zh": {
-      "ai": 3,
-      "natural": 3
+      "ai": 4,
+      "natural": 4
     }
   }
 }

@@ -28,7 +28,14 @@ jobs:
         run: npm ci
 
       - name: Run tests
+        if: matrix.node-version != '18.0.0'
         run: npm test
+
+      - name: Run minimum Node smoke
+        if: matrix.node-version == '18.0.0'
+        run: |
+          npm run lint
+          npm run benchmark
 
   quality:
     runs-on: ubuntu-latest

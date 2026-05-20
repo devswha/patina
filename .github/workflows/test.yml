@@ -8,11 +8,29 @@ on:
   workflow_dispatch:
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node 18.0.0
+        uses: actions/setup-node@v6
+        with:
+          node-version: "18.0.0"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint, typecheck, and codespell
+        run: npm run lint
+
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: ["18.0.0", 20, 22]
+        node-version: ["18.0.0", 20, 22, "lts/*"]
       fail-fast: false
 
     steps:
@@ -34,7 +52,7 @@ jobs:
       - name: Run minimum Node smoke
         if: matrix.node-version == '18.0.0'
         run: |
-          npm run lint
+          npm run lint:syntax
           npm run benchmark
 
   quality:
@@ -56,7 +74,7 @@ jobs:
         run: npm run release:check
 
       - name: Syntax lint
-        run: npm run lint
+        run: npm run lint:syntax
 
       - name: Benchmark report schema
         run: npm run benchmark:report

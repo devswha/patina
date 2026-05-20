@@ -419,7 +419,7 @@ function parseArgs(args) {
           throw inputError(
             '--max-concurrency expects a non-negative integer',
             `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
-            'Use `--max-concurrency 2` or omit it for unlimited concurrency.'
+            'Use `--max-concurrency 2`, omit it for the safe default, or pass 0 for unlimited concurrency.'
           );
         }
         parsed.maxConcurrency = n;
@@ -727,7 +727,8 @@ MODEL & AUTH
   --provider <name>       Provider preset: openai, gemini, groq, together
   --list-providers        List provider presets and which keys are set
   --models <list>         MAX mode: comma-separated model list
-  --max-concurrency <n>   Cap parallel MAX-mode requests (default: unlimited)
+  --max-concurrency <n>   Cap parallel MAX-mode requests (default: min(models, 3);
+                          use 0 for unlimited, which can hit free-tier quotas)
 
 ADVANCED
   --variants <n>          Generate N rewrite variants (1-5; rewrite mode only)

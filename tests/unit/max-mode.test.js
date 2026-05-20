@@ -109,6 +109,54 @@ test('runMaxMode uses callLLM, now, and sleep injectables across dispatch and sc
   assert.equal(seen.length, 3);
 });
 
+test('runMaxMode reports elapsed per-model progress through the logger', async () => {
+  let currentTime = 1_000;
+  const progress = [];
+  const logger = {
+    info() {},
+    warn() {},
+    progress(event, fields) {
+      progress.push({ event, ...fields });
+    },
+    closeProgress() {},
+  };
+
+  const result = await runMaxMode({
+    prompt: 'rewrite this',
+    sourceText: 'source text',
+    models: ['claude', 'gemini'],
+    apiKey: 'test',
+    baseURL: 'https://example.com/v1',
+    config: { language: 'en' },
+    patterns: [],
+    wallClockBudgetMs: 1_000,
+    now: () => currentTime,
+    logger,
+    callLLMMultipleImpl: async ({ onStart, onComplete }) => {
+      onStart('claude');
+      currentTime += 1_500;
+      onComplete('claude', true);
+      onStart('gemini');
+      currentTime += 500;
+      onComplete('gemini', false);
+      return [
+        { model: 'claude', ok: true, result: 'Humanized result.' },
+        { model: 'gemini', ok: false, error: 'backend failed' },
+      ];
+    },
+    scoreTextImpl: async () => ({ overall: 12 }),
+    scoreMPSImpl: async () => ({ mps: 94 }),
+  });
+
+  assert.equal(result.best.model, 'claude');
+  assert.ok(progress.some((entry) => entry.event === 'max.progress'));
+  const completed = progress.filter((entry) => entry.event === 'max.model_complete');
+  assert.equal(completed.length, 2);
+  assert.equal(completed.at(-1).message, '[patina-max] claude ✓  gemini ✗  (2s)');
+  assert.equal(completed[0].model, 'claude');
+  assert.equal(completed[0].latency_ms, 1500);
+});
+
 test('formatOutput surfaces the MAX MPS fallback warning', () => {
   const out = formatOutput({
     type: 'max-mode',

@@ -226,14 +226,20 @@ max-models: [claude, gemini]
 - **[Demo](docs/DEMO.md)** — 터미널 transcript와 여러 장르의 before/after 스냅샷
 - **[Patterns](docs/PATTERNS.md)** — 160개 패턴 카탈로그
 - **[Authentication](docs/AUTHENTICATION_KR.md)** ([English](docs/AUTHENTICATION.md)) — 백엔드, 프로바이더, 무료 티어 설정
+- **[GitHub Action](docs/integrations/github-action.md)** — live model key 없이 PR hotspot comment 생성
+- **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit, Husky, Lefthook score-only recipe
+- **[Static-site Stencils](docs/integrations/static-sites.md)** — Hugo, Astro, Next.js MDX build-time scoring recipe
+- **[Docker](docs/integrations/docker.md)** — GHCR image 사용법과 release tag
 - **[CLI Contract](docs/CLI.md)** — score gate, exit code, 자동화에 안전한 표면
 - **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI, `/patina`, `/patina-max` 옵션 지원 범위
 - **[Ethics](docs/ETHICS.md)** — 의도한 사용, 금지 사용, disclosure 입장
 - **[FAQ](docs/FAQ_KR.md)** ([English](docs/FAQ.md)) — detector-bypass 우려, MPS, 오탐, 기여 시작점
+- **[False-positive Gallery](docs/FALSE-POSITIVES.md)** — 작성자 비난이 아니라 편집 힌트로 보아야 하는 register 예시
 - **[Comparison](docs/COMPARISON.md)** — 일반 paraphraser/humanizer 도구와의 사실 기반 비교
 - **[Branding](docs/BRANDING.md)** — canonical 로고/소셜 asset과 OG 설정 메모
 - **[Design](DESIGN.md)** — repo-native SVG와 README surface의 제품/브랜드 기준
 - **[Roadmap](docs/ROADMAP.md)** — 품질, 벤치마크, 제품, 커뮤니티, 런칭 우선순위
+- **[Docs Platform RFC](docs/RESEARCH-DOCS-PLATFORM.md)** — Docusaurus, Astro Starlight, MkDocs, GitHub Pages 조사
 - **[Benchmark Report](docs/benchmarks/latest.md)** — 최신 재현 가능 suspect-zone 벤치마크 요약
 - **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — AI-like writing signal 측정용 벤치마크 설계 메모
 - **[Launch Copy](docs/social/patina-launch-copy.md)** — Show HN, Reddit, X, 한국 커뮤니티 초안

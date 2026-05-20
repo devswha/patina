@@ -233,6 +233,8 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(help.includes('EXAMPLES'), 'help should include examples');
     assert.ok(help.includes('--gate <n>'), 'help should document score gate');
     assert.ok(help.includes('--format <fmt>'), 'help should document output format');
+    assert.ok(help.includes('--quiet'), 'help should document quiet logs');
+    assert.ok(help.includes('--json-logs'), 'help should document structured stderr logs');
     assert.ok(help.includes('--max-timeout <sec>'), 'help should document MAX wall-clock timeout');
     assert.ok(help.includes('--no-color'), 'help should document diff color opt-out');
     assert.ok(
@@ -307,6 +309,24 @@ describe('CLI End-to-End with Mock API', () => {
     await startMockServer('This is the humanized result.');
   });
 
+  it('should suppress stderr status and warnings with --quiet', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    const { errors, logs } = await captureConsole(() => main([
+      '--lang', 'en',
+      '--quiet',
+      '--api-key', 'test-key',
+      '--base-url', `http://127.0.0.1:${mockPort}`,
+      testFile,
+    ]));
+
+    assert.strictEqual(callCount, 1, 'Should make exactly one API call');
+    assert.deepStrictEqual(errors, []);
+    assert.match(logs.join('\n'), /This is the humanized result\./);
+  });
+
   it('should set exit code 3 when --score gate fails', async () => {
     callCount = 0;
     lastRequestBody = null;
@@ -328,6 +348,41 @@ describe('CLI End-to-End with Mock API', () => {
 
       assert.strictEqual(process.exitCode, 3);
       assert.ok(errors.some((line) => line.includes('score gate failed')));
+    } finally {
+      process.exitCode = oldExitCode;
+    }
+    await stopMockServer();
+    await startMockServer('This is the humanized result.');
+  });
+
+  it('should emit stderr logs as NDJSON with stable fields', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    await stopMockServer();
+    await startMockServer('{ "overall": 42, "interpretation": "mixed" }');
+
+    const oldExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    try {
+      const { errors } = await captureConsole(() => main([
+        '--lang', 'en',
+        '--score',
+        '--gate', '30',
+        '--json-logs',
+        '--api-key', 'test-key',
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        testFile,
+      ]));
+
+      assert.strictEqual(process.exitCode, 3);
+      const records = errors.map((line) => JSON.parse(line));
+      assert.ok(records.some((record) => record.event === 'auth.argv_secret_warning'));
+      const gate = records.find((record) => record.event === 'score.gate_failed');
+      assert.ok(gate);
+      assert.strictEqual(gate.level, 'warn');
+      assert.strictEqual(gate.model, null);
+      assert.strictEqual(gate.latency_ms, null);
     } finally {
       process.exitCode = oldExitCode;
     }

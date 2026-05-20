@@ -13,6 +13,8 @@ Basis: local checkout `2e1fc04` plus `node bin/patina.js --help`, `SKILL.md`, an
 | `--ouroboros` | ✓ | ✓ | documented compatible | `/patina-max` can feed its winner into the existing convergence loop when used with `/patina` behavior. |
 | `--format <markdown\|text\|json>` | ✓ | — | — | CLI output-envelope feature. |
 | `--json` | ✓ | — | — | CLI alias for `--format json`; `patina doctor --json` also exists. |
+| `--quiet` | ✓ | — | — | CLI stderr log suppression for scripts. |
+| `--json-logs` | ✓ | — | — | CLI structured stderr logs for automation. |
 | `--batch` | ✓ | ✓ | — | Multi-file CLI/skill rewrite flow. |
 | `--in-place` | ✓ | ✓ | — | Batch-only write mode. |
 | `--suffix <ext>` | ✓ | ✓ | — | Batch-only alternate output naming. |

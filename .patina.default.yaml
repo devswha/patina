@@ -163,7 +163,7 @@ ouroboros:
 # See core/stylometry.md for the full algorithm reference.
 stylometry:
   enabled: true              # set false to bypass 4.6단계 entirely
-  languages: [ko, en]        # only languages where v1 stylometry runs
+  languages: [ko, en, zh, ja] # zh/ja use deterministic character-token fallback
   burstiness:
     bands:
       low: 0.30              # CV < 0.30 → low (suspect). Calibrated v3.5.1 from

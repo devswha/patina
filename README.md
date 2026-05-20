@@ -212,6 +212,8 @@ In rewrite mode, the model emits its self-audit notes inside `[SELF_AUDIT]`/`[/S
 
 For repeat benchmarks, opt into the HTTP response cache with `--cache <dir>` or `PATINA_CACHE_DIR`. Cache keys include prompt, model, temperature, and API host; `--cache-ttl <sec>` controls expiry and `--no-cache` bypasses it for fresh runs. Patina prints hit/miss/write stats at the end of cached runs.
 
+Use `--voice-sample <path>` or `voice-sample: <path>` in config to anchor rewrites to 1–3 paragraphs you wrote. Profile and tone still set the requested register; the sample only teaches cadence, specificity, POV, and sentence texture, and the prompt explicitly forbids importing sample facts.
+
 ## Tones
 
 `--tone` selects a named voice axis applied on top of pattern rewriting. Resolution order: `--tone` CLI > `tone:` config > `profile:` config.

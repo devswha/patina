@@ -1,5 +1,12 @@
 import { loadConfig, getRepoRoot, resolveTone } from './config.js';
-import { loadPatterns, loadProfile, loadCoreFile, loadInputText, toneToBackboneProfile } from './loader.js';
+import {
+  loadPatterns,
+  loadProfile,
+  loadCoreFile,
+  loadInputText,
+  loadVoiceSample,
+  toneToBackboneProfile,
+} from './loader.js';
 import { buildPrompt } from './prompt-builder.js';
 import { invokeBackendChain, selectBackendChain, listBackends, listBackendNames } from './backends/index.js';
 import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js';
@@ -132,12 +139,22 @@ export async function main(args) {
   const profile = loadProfile(repoRoot, profileName);
   const voice = loadCoreFile(repoRoot, 'voice.md');
   const scoring = loadCoreFile(repoRoot, 'scoring.md');
-
   const mode = parsed.diff ? 'diff'
     : parsed.audit ? 'audit'
     : parsed.score ? 'score'
     : parsed.ouroboros ? 'ouroboros'
     : 'rewrite';
+  const voiceSamplePath = (mode === 'rewrite' || mode === 'ouroboros')
+    ? (parsed.voiceSample ?? config['voice-sample'])
+    : null;
+  const voiceSample = voiceSamplePath
+    ? loadVoiceSample(resolve(process.cwd(), voiceSamplePath))
+    : null;
+  if (voiceSample?.truncated) {
+    logger.warn('voice_sample.truncated', {
+      message: '[patina] voice sample has more than 3 paragraphs; using the first 3 as anchors',
+    });
+  }
 
   const inputTexts = await loadInputs(parsed, logger);
   const cancellation = createCancellationController({ logger });
@@ -163,6 +180,7 @@ export async function main(args) {
         patterns,
         profile: profile.body ? profile : null,
         voice: voice.body ? voice : null,
+        voiceSample,
         scoring: scoring.body ? scoring : null,
         text,
         mode,
@@ -197,6 +215,7 @@ export async function main(args) {
           patterns,
           profile: profile.body ? profile : null,
           voice: voice.body ? voice : null,
+          voiceSample,
           scoring: scoring.body ? scoring : null,
           text,
           apiKey: resolved.apiKey,
@@ -403,6 +422,10 @@ function parseArgs(args) {
         parsed.tone = t;
         break;
       }
+      case '--voice-sample':
+        parsed.voiceSample = readOptionValue(args, i, arg);
+        i++;
+        break;
       case '--diff':
         parsed.diff = true;
         break;
@@ -908,6 +931,7 @@ LANGUAGE & PROFILE
   --tone <name>           Tone: casual, professional, academic, narrative,
                           marketing, instructional, auto. Resolution:
                           --tone > config tone > config profile.
+  --voice-sample <path>   Use 1-3 user paragraphs as style-only voice anchors
 
 MODEL & AUTH
   --model <id>            Single model ID (default: gpt-4o)

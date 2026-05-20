@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
@@ -123,6 +123,22 @@ test('per-language pattern references cover source pattern packs', () => {
 
     for (const { name } of expectedHeadings) {
       assert.match(doc, new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    }
+  }
+});
+
+test('zh and ja rewrite patterns have success and failure examples', () => {
+  for (const lang of ['zh', 'ja']) {
+    for (let n = 1; n <= 28; n++) {
+      const id = String(n).padStart(2, '0');
+      assert.ok(
+        existsSync(resolve(REPO_ROOT, `examples/${lang}-${id}-success-01.md`)),
+        `${lang} pattern ${id} must have a success example`
+      );
+      assert.ok(
+        existsSync(resolve(REPO_ROOT, `examples/${lang}-${id}-failure-01.md`)),
+        `${lang} pattern ${id} must have a failure example`
+      );
     }
   }
 });

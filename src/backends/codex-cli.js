@@ -2,9 +2,11 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEFAULT_BACKEND_TIMEOUT_MS } from './contract.js';
+import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand } from './contract.js';
 
 export const name = 'codex-cli';
+export const loginCommand = 'codex login';
+export const installHint = 'Install it from https://github.com/openai/codex, then run `patina auth login codex-cli` again.';
 
 export function isAvailable() {
   try {
@@ -20,7 +22,17 @@ export function isAuthenticated() {
 }
 
 export function authHint() {
-  return 'Run `codex login` to authenticate (uses your ChatGPT Plus account, no API key needed).';
+  return `Run \`${loginCommand}\` to authenticate (uses your ChatGPT Plus account, no API key needed).`;
+}
+
+export function login(options = {}) {
+  return runInteractiveCommand({
+    backendName: name,
+    command: 'codex',
+    args: ['login'],
+    notFoundHint: installHint,
+    ...options,
+  });
 }
 
 export async function invoke({ prompt, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {

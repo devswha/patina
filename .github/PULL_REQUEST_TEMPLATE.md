@@ -44,6 +44,7 @@ False-positive risk:
 - [ ] `npm run benchmark`
 - [ ] `npm run quality:live` when relevant
 - [ ] Docs reviewed manually
+- [ ] `_KR` companion docs updated or not affected
 - [ ] Not run — explain why:
 
 ## Meaning preservation
@@ -51,4 +52,3 @@ False-positive risk:
 For rewrite-related changes, explain how claims, polarity, causation, numbers, and negations are preserved.
 
 ## Risks / follow-ups
-

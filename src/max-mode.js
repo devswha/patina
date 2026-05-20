@@ -48,11 +48,16 @@ export async function runMaxMode({ prompt, sourceText, models, apiKey, baseURL, 
   }
 
   const best = selectBest(candidates);
+  const valid = candidates.filter((c) => c.ok && c.aiScore !== null);
+  const allFailed = best === null;
+  const mpsFallback = valid.length > 0 && !valid.some((c) => (c.mps ?? 0) >= 70);
 
   return {
     type: 'max-mode',
     candidates,
     best,
+    allFailed,
+    mpsFallback,
   };
 }
 

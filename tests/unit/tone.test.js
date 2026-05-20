@@ -144,6 +144,25 @@ test('formatOutput: null tone emits null values', () => {
   assert.ok(out.includes('tone_confidence: null'));
 });
 
+test('formatOutput: text format omits YAML footer', () => {
+  const tone = { tone: null, tone_source: 'profile_only', tone_evidence: [], tone_confidence: null };
+  const out = formatOutput('Text', 'rewrite', { format: 'text' }, { tone });
+  assert.equal(out, 'Text\n\nTone: profile-only (profile_only)');
+});
+
+test('formatOutput: json format exposes score contract fields', () => {
+  const tone = { tone: null, tone_source: 'profile_only', tone_evidence: [], tone_confidence: null };
+  const out = formatOutput('{ "overall": 18, "categories": { "style": { "score": 9 } } }', 'score', {
+    format: 'json',
+    gate: 30,
+  }, { tone });
+  const parsed = JSON.parse(out);
+  assert.equal(parsed.overall, 18);
+  assert.equal(parsed.categories[0].name, 'style');
+  assert.deepEqual(parsed.gateResult, { threshold: 30, overall: 18, passed: true, exitCode: 0 });
+  assert.equal(parsed.tone.tone_source, 'profile_only');
+});
+
 // --- stripSelfAudit (v3.11) ---
 
 test('stripSelfAudit: extracts [BODY] block and drops [SELF_AUDIT]', () => {

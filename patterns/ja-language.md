@@ -4,6 +4,23 @@ language: ja
 name: 言語・文法パターン
 version: 1.1.0
 patterns: 7
+dedupe-with:
+  - source: "ja-language:7"
+    target: "ja-style:13"
+    owner: "ja-style:13"
+    reason: "接続表現は style #13 が canonical owner。language #7 では他のAI語彙と同時に出る場合の補助信号として扱う。"
+  - source: "ja-language:7"
+    target: "ja-language:8"
+    owner: "ja-language:8"
+    reason: "「〜的」形容詞の連続は language #8 が canonical owner。language #7 は他のAI高頻度語と混ざる場合の広域クラスタ信号として扱う。"
+  - source: "ja-language:7"
+    target: "ja-language:12"
+    owner: "ja-language:12"
+    reason: "カタカナ外来語の過多は language #12 が canonical owner。language #7 は抽象的AI語彙の広域クラスタだけを担当する。"
+  - source: "ja-language:8"
+    target: "ja-language:12"
+    owner: "ja-language:8"
+    reason: "ビジネス文脈では「〜的」形容詞とカタカナ外来語が共起しやすいが、rewrite の優先度は文法的な「〜的」連鎖を先にほどき、残った外来語を #12 で処理する。"
 ---
 
 # 言語・文法パターン

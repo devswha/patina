@@ -3,7 +3,7 @@ pack: en-language
 language: en
 name: Language Patterns
 version: 1.0.0
-patterns: 6
+patterns: 7
 ---
 
 # Language Patterns
@@ -125,3 +125,26 @@ patterns: 6
 
 **After:**
 > The festival has three stages. The main stage books established acts (this year: Yo-Yo Ma, Thundercat). The tent stage is for local bands. There is also a children's area with instrument demos.
+
+---
+
+### 32. Comparison Adverb Overuse ("more" without target)
+
+**Watch words:** more specific, more concrete, more efficient, more effective, more comprehensive, more robust, more seamless, more meaningful, more strategic, more impactful, more nuanced, more proactive, more sustainable, more scalable
+
+**Fire condition:** 2+ "more + adjective/adverb" comparative phrases appear in one document without a clear target, baseline, or metric. A single instance can fire when it appears in the same paragraph as other formal AI markers such as "comprehensive", "strategic", "framework", "stakeholder", or "in-depth".
+
+**Exclusion:** Do not fire when the comparison target is explicit ("more efficient than the old process"), when a before/after metric is provided ("reduced latency from 240 ms to 130 ms"), in ordinary quantifiers ("more than 10 users"), or in fixed phrases such as "more or less".
+
+**Semantic Risk:** LOW
+**Preservation Note:** Comparative language can carry a real improvement claim. Preserve the target, metric, or priority if one exists; otherwise replace the vague comparative with the concrete requirement or result the sentence is trying to name.
+
+**Problem:** AI text often implies progress by stacking "more X" phrases while never saying compared with what. Human prose either names the baseline ("faster than last quarter's build") or drops the decorative comparison and states the concrete change.
+
+**Burstiness note:** Do not convert every "more X" phrase into the same alternative. Mix direct adjectives, named metrics, shorter verbs, and one retained comparative when the contrast is real.
+
+**Before:**
+> The initiative will enable more specific milestones, more efficient resource allocation, and more comprehensive stakeholder alignment. Moving forward, the team should develop a more strategic framework for more meaningful collaboration.
+
+**After:**
+> The initiative needs dated milestones, named owners, and a budget review. The team also needs one shared plan for partner handoffs, because the current spreadsheet has three conflicting owners for the same launch tasks.

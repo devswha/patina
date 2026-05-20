@@ -46,6 +46,7 @@ patina --lang en --score --exit-on 30 draft.md
 - `mps` is populated for MAX-mode results when available.
 - `gateResult` is `null` unless `--exit-on` / `--gate` is used.
 - `--save-run <dir>` writes a schema-v2 `manifest.json` plus `output-N.txt` files for reproducible audit trails. Each result records prompt/response hashes, available token usage, temperature/seed, score details, per-call cost when providers return it, and the Ouroboros iteration log when used.
+- `--cache <dir>` or `PATINA_CACHE_DIR` enables an opt-in persistent HTTP response cache keyed by prompt, model, temperature, and API host. `--cache-ttl <sec>` / `PATINA_CACHE_TTL_SECONDS` set expiry, and `--no-cache` forces a fresh run.
 - `patina doctor --json` emits setup diagnostics for CI without making an LLM call.
 
 ## Stderr logs

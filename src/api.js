@@ -142,6 +142,7 @@ export async function callLLM({
   signal,
   allowInsecureBaseURL = false,
   onResponse,
+  cache,
   // Allows tests to inject a deterministic delay function.
   sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
   now = () => Date.now(),
@@ -154,6 +155,22 @@ export async function callLLM({
     temperature,
   };
   if (seed !== undefined && seed !== null) body.seed = seed;
+
+  const cached = cache?.get?.({ prompt, model, temperature, baseURL });
+  if (cached) {
+    onResponse?.({
+      provider: 'cache',
+      model: cached.responseModel ?? cached.model ?? model,
+      requestedModel: model,
+      temperature,
+      seed: seed ?? null,
+      usage: cached.usage ?? null,
+      rawResponse: null,
+      content: cached.content,
+      cache: { hit: true, key: cached.key, path: cached.path },
+    });
+    return cached.content;
+  }
 
   let lastError;
   let attemptsMade = 0;
@@ -208,7 +225,7 @@ export async function callLLM({
         throw new Error('Empty response from LLM API');
       }
 
-      onResponse?.({
+      const metadata = {
         provider: 'openai-http',
         model: data.model ?? model,
         requestedModel: model,
@@ -217,7 +234,10 @@ export async function callLLM({
         usage: data.usage ?? null,
         rawResponse: data,
         content,
-      });
+        cache: cache ? { hit: false } : null,
+      };
+      cache?.set?.({ prompt, model, temperature, baseURL }, content, metadata);
+      onResponse?.(metadata);
 
       return content;
     } catch (err) {
@@ -265,6 +285,7 @@ export async function callLLMMultiple({
   onStart,
   onComplete,
   onResponse,
+  cache,
   callLLM: callLLMImpl = callLLM,
   sleep,
   now = () => Date.now(),
@@ -291,6 +312,7 @@ export async function callLLMMultiple({
         signal,
         allowInsecureBaseURL,
         onResponse,
+        cache,
         sleep,
         now,
       });

@@ -210,6 +210,8 @@ In rewrite mode, the model emits its self-audit notes inside `[SELF_AUDIT]`/`[/S
 
 `--save-run <dir>` now writes manifest schema v2: result entries include prompt and response hashes, available input/output token counts, temperature/seed, score details, per-call cost when a provider returns it, and Ouroboros iteration logs.
 
+For repeat benchmarks, opt into the HTTP response cache with `--cache <dir>` or `PATINA_CACHE_DIR`. Cache keys include prompt, model, temperature, and API host; `--cache-ttl <sec>` controls expiry and `--no-cache` bypasses it for fresh runs. Patina prints hit/miss/write stats at the end of cached runs.
+
 ## Tones
 
 `--tone` selects a named voice axis applied on top of pattern rewriting. Resolution order: `--tone` CLI > `tone:` config > `profile:` config.

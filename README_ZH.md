@@ -44,7 +44,7 @@
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
 
-安装脚本会一次性将 patina 接入 Claude Code、[Codex CLI](https://github.com/openai/codex)、Cursor、OpenCode。然后：
+安装脚本会一次性将 patina 接入 Claude Code、[Codex CLI](https://github.com/openai/codex)、Cursor、OpenCode。它会在 checkout 前把 repository HEAD 解析到具体 commit；如果需要完全固定安装，请设置 `PATINA_REF=<tag-or-full-sha>`。然后：
 
 ```
 /patina --lang zh
@@ -80,7 +80,18 @@ cd patina && npm install && npm link
 patina --lang zh input.txt
 ```
 
+也可以 link 后通过 stdin 试用：
+
+```bash
+printf '%s\n' '咖啡已成为一种关键文化现象，从根本上改变了全球各地的社会互动。' \
+  | patina --lang zh --backend codex-cli
+```
+
 > 🆓 **无需 API 密钥** — 只要 [`codex`](https://github.com/openai/codex)、[`claude`](https://docs.anthropic.com/en/docs/claude-code)、[`gemini`](https://github.com/google-gemini/gemini-cli) 任一 CLI 已登录即可。可通过 `--backend codex-cli | claude-cli | gemini-cli` 直接选择，或用 `--model claude-*` / `--model gemini-*` 按模型名路由。完整后端列表见 [AUTHENTICATION.md](docs/AUTHENTICATION.md)。
+
+## 预期用途
+
+Patina 用于作者被允许使用 AI 辅助时的 AI 后编辑、审计轨迹和 voice cleanup。它不承诺文本“原本由人类写成”，也不应被用于规避学术 honor-code、绕过出版方 disclosure、洗白抄袭，或声称 detector-bypass。见 [ETHICS.md](docs/ETHICS.md)。
 
 ## 模式
 
@@ -93,6 +104,7 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 | *(默认)* | 改写 |
 | `--audit` | 仅检测 AI 模式 |
 | `--score` | 0–100 AI 相似度评分 + 类别细分 |
+| `--score --gate <n>` | 保持 CI 严格：当 `overall > n` 时以退出码 `3` 结束 |
 | `--diff` | 按模式逐项展示改动 |
 | `--ouroboros` | 反复改写直到分数收敛（含 MPS 回滚） |
 | `--lang <ko\|en\|zh\|ja>` | 选择语言（默认：`ko`） |
@@ -104,7 +116,27 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 
 ### 仅评分模式
 
-`--score` 和 `--audit` 测量的信号范围比 `--rewrite` 略广。韩文模式包 `ko-viral-hook`（数字震撼钩子、标题党悬念结尾、回避验证的权威断言、呼吸优化短句堆叠、夸张互动词汇 共5个模式）为**仅检测**模式 — 它会出现在评分和审计中，使基准与用户对 SNS 营销文案的直觉一致，但 `--rewrite`/`--diff`/`--ouroboros` 会跳过它们，因为这些信号往往是有意的修辞。实例: [`examples/viral-hook/`](examples/viral-hook/).
+`--score` 和 `--audit` 测量的信号范围比 `--rewrite` 略广。viral-hook 包（`ko/en/zh/ja-viral-hook`，每种语言 5 个模式：数字震撼钩子、标题党收尾、跳过来源的权威断言、适合呼吸节奏的短句堆叠、夸张互动词汇）为**仅检测**模式 — 它会出现在评分和审计中，使基准与用户对四种语言 SNS 营销文案的直觉一致，但 `--rewrite`/`--diff`/`--ouroboros` 会跳过它们，因为这些信号往往是有意的修辞。实例: [`examples/viral-hook/`](examples/viral-hook/).
+
+### 提示模式调优 (v3.11)
+
+`--prompt-mode strict|minimal|auto` 可在完整模式包（约 34KB 结构化提示）和压缩的轻量指令（约 3KB）之间取舍。`auto` 会按后端选择 — Gemini 在 minimal 下表现更好（长结构化提示会让它过度受限），Claude 能利用完整模式包，Codex 大致不敏感。case-05 记录了 A/B 结果。
+
+### 多个风格变体 (v3.11)
+
+`--variants <1-5>` 会在一次调用中请求 N 个改写声音变体（例如 V1 casual、V2 direct、V3 measured）— 事实、数字和因果关系在所有变体中保持一致。每个结果会以 `## Variant N` 返回，方便你选择需要的语气。
+
+### 短文本评分增强 (v3.11)
+
+当输入不超过 200 个字符或不超过 3 个段落时，对 register 敏感的类别（`language`、`style`、`viral-hook`）会获得 1.5 倍 severity multiplier，让单段文本里的声音变化也能体现在分数中。case-04 发现这些信号会被长文本公式低估。
+
+### 自审隔离 (v3.11)
+
+在 rewrite 模式中，模型会把自审笔记放在 `[SELF_AUDIT]`/`[/SELF_AUDIT]` 标签内，并包裹一个 `[BODY]`/`[/BODY]` 块（当 `--variants > 1` 时则是 `[VARIANT n]` 块）。patina 会在展示给用户前移除审计内容，因此原始输出保持干净 — 早期版本有时会把 “남아 있는 AI 티” 或 “Phase 3” 之类的前言泄漏到用户可见文本中。
+
+### 分数权重漂移检测 (v3.11)
+
+`--score` 运行会把模型输出的 Weight 列与配置中的 `category-weights` 交叉检查。如果模型凭空创造类别（例如 `discord`）或替换成不同数字，stderr 会出现 `[patina]` 警告 — 这只用于可观测性，不会改变分数本身。
 
 ## 语调
 
@@ -162,20 +194,32 @@ tone:                     # casual | professional | academic | narrative | marke
 max-models: [claude, gemini]
 ```
 
-模式包按语言前缀自动发现。工作目录中的 `.patina.yaml` 会覆盖默认值。
+模式包按语言前缀自动发现。工作目录中的 `.patina.yaml` 会覆盖默认值。扩展检测的列表键（`blocklist`、`allowlist`、`skip-patterns`）会在 default/global/project 配置之间追加合并；`max-models` 等 provider 列表会替换原值，便于用户选择精确的后端集合。
 
 ## 文档
 
+- **[Glossary](docs/GLOSSARY.md)** — MPS、fidelity、burstiness、MATTR、模式等常见术语的简短定义
+- **[Demo](docs/DEMO.md)** — 终端 transcript 与多种体裁的 before/after 快照
 - **[Patterns](docs/PATTERNS.md)** — 146 个模式目录
 - **[Authentication](docs/AUTHENTICATION.md)** — 后端、服务商、免费层设置
+- **[CLI Contract](docs/CLI.md)** — score gate、退出码，以及适合自动化的接口边界
+- **[Ethics](docs/ETHICS.md)** — 预期用途、禁止用途和披露立场
+- **[FAQ](docs/FAQ.md)** — detector-bypass 疑虑、MPS、误报、贡献起点
+- **[Comparison](docs/COMPARISON.md)** — 与常见 paraphraser/humanizer 工具的事实比较
+- **[Branding](docs/BRANDING.md)** — canonical logo/social assets 和 OG 设置说明
+- **[Roadmap](docs/ROADMAP.md)** — 质量、基准、产品、社区和发布优先级
+- **[Benchmark Report](docs/benchmarks/latest.md)** — 最新可复现 suspect-zone 基准摘要
+- **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — 用于测量 AI-like writing signals 的基准设计说明
+- **[Launch Copy](docs/social/patina-launch-copy.md)** — Show HN、Reddit、X、韩国社区草稿
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 词汇算法
 - **[Scoring](core/scoring.md)** — AI 相似度 + 忠实度 + MPS
 - **[Changelog](CHANGELOG.md)** — 发布说明和方法论
-- **[Contributing](CONTRIBUTING.md)** — 模式提交、陈旧报告
+- **[Contributing](CONTRIBUTING.md)** — 模式提交、误报 triage、基准 fixture、版本管理
+- **[Governance](GOVERNANCE.md)** / **[Maintainers](MAINTAINERS.md)** — 轻量级项目决策规则
 
 ## 致谢
 
-灵感来自 [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh) 的插件架构（模式即插件，配置文件即主题）、[Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)、[blader/humanizer](https://github.com/blader/humanizer)。
+灵感来自 [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh) 的插件架构（模式即插件，profile 即主题）、[Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)、[blader/humanizer](https://github.com/blader/humanizer)。
 
 ## 许可证
 

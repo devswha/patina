@@ -174,6 +174,7 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `--json-logs` | Emit stderr logs as NDJSON with `level`, `event`, `model`, and `latency_ms` fields |
 | `--prompt-mode strict\|minimal\|auto` | Choose full pattern-pack prompting, compressed prompting, or backend-aware auto |
 | `--variants <1-5>` | Generate multiple rewrite variants with the same facts and meaning anchors |
+| `--card <path>` | Write a 1200×630 SVG before/after card with AI score and MPS |
 
 `patina --help` for the full flag list. `patina doctor --json` checks Node/backend/tmux/API-key readiness without making an LLM call, and `patina init` writes a project `.patina.yaml`.
 
@@ -309,6 +310,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[zh/ja Lexicon Calibration](docs/research/zh-ja-lexicon-calibration.md)** — starter lexicon gate and remaining corpus risk
 - **[Launch Copy](docs/social/patina-launch-copy.md)** — launch sequence, score gate, and Show HN/Product Hunt/Reddit/X/Korean drafts
 - **[Signs of AI Writing](docs/social/signs-of-ai-writing.md)** ([한국어](docs/social/signs-of-ai-writing_KR.md)) — shareable editing checklist with cited examples
+- **[Share Card SVGs](docs/social/share-card.md)** — `--card` before/after social cards with score and MPS pills
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI-lexicon algorithm
 - **[Scoring](core/scoring.md)** — AI-likeness + fidelity + MPS
 - **[Changelog](CHANGELOG.md)** — release notes and methodology

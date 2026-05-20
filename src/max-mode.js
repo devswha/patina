@@ -1,8 +1,18 @@
-import { callLLM as defaultCallLLM, callLLMMultiple } from './api.js';
+import { callLLM as defaultCallLLM, createSemaphore } from './api.js';
+import { selectBackend } from './backends/index.js';
 import { scoreText, scoreMPS } from './scoring.js';
 import { createLogger } from './logger.js';
 
 const DEFAULT_WALL_CLOCK_BUDGET_MS = 300_000;
+// Exact aliases only: model IDs such as claude-3-5-sonnet stay HTTP candidates.
+const LOCAL_MAX_MODEL_BACKENDS = new Map([
+  ['claude', 'claude-cli'],
+  ['claude-cli', 'claude-cli'],
+  ['codex', 'codex-cli'],
+  ['codex-cli', 'codex-cli'],
+  ['gemini', 'gemini-cli'],
+  ['gemini-cli', 'gemini-cli'],
+]);
 
 export async function runMaxMode({
   prompt,
@@ -17,7 +27,8 @@ export async function runMaxMode({
   callLLM = defaultCallLLM,
   now = () => Date.now(),
   sleep,
-  callLLMMultipleImpl = callLLMMultiple,
+  callLLMMultipleImpl = null,
+  modelBackendResolver = resolveMaxModelBackend,
   scoreTextImpl = scoreText,
   scoreMPSImpl = scoreMPS,
   signal,
@@ -60,7 +71,8 @@ export async function runMaxMode({
 
   const candidates = [];
   try {
-    const results = await callLLMMultipleImpl({
+    const dispatchImpl = callLLMMultipleImpl || dispatchMaxCandidates;
+    const results = await dispatchImpl({
       prompt,
       models,
       apiKey,
@@ -69,6 +81,7 @@ export async function runMaxMode({
       deadline,
       signal: controller.signal,
       callLLM,
+      modelBackendResolver,
       now,
       sleep,
       onStart: (model) => {
@@ -106,7 +119,10 @@ export async function runMaxMode({
           model: r.model,
           deadline,
           signal: controller.signal,
-          callLLM,
+          // MAX already scores each candidate with that candidate's model.
+          // Local aliases keep the same per-candidate evaluator contract via
+          // their backend wrapper instead of requiring an HTTP API key.
+          callLLM: r.callLLM || callLLM,
           logger,
           now,
           sleep,
@@ -122,7 +138,7 @@ export async function runMaxMode({
           model: r.model,
           deadline,
           signal: controller.signal,
-          callLLM,
+          callLLM: r.callLLM || callLLM,
           logger,
           now,
           sleep,
@@ -198,6 +214,79 @@ export function selectBest(
   }
 
   return { candidate: best, fallback: true };
+}
+
+export function resolveMaxModelBackend(model) {
+  const backendName = LOCAL_MAX_MODEL_BACKENDS.get(String(model || '').trim().toLowerCase());
+  if (!backendName) return null;
+  return selectBackend({ name: backendName }).backend;
+}
+
+export async function dispatchMaxCandidates({
+  prompt,
+  models,
+  apiKey,
+  baseURL,
+  maxConcurrency,
+  deadline,
+  signal,
+  callLLM: callLLMImpl = defaultCallLLM,
+  modelBackendResolver = resolveMaxModelBackend,
+  now = () => Date.now(),
+  sleep,
+  onStart,
+  onComplete,
+}) {
+  const effectiveMaxConcurrency =
+    maxConcurrency === undefined || maxConcurrency === null
+      ? Math.min(models.length, 3)
+      : maxConcurrency;
+  const sem = createSemaphore(effectiveMaxConcurrency);
+
+  return Promise.all(models.map(async (model) => {
+    const release = await sem.acquire();
+    if (onStart) onStart(model);
+    const backend = modelBackendResolver(model);
+    const candidateCallLLM = backend
+      ? makeBackendCallLLM(backend, { deadline, now })
+      : callLLMImpl;
+
+    try {
+      const result = await candidateCallLLM({
+        prompt,
+        apiKey,
+        baseURL,
+        model,
+        deadline,
+        signal,
+        sleep,
+        now,
+      });
+      if (onComplete) onComplete(model, true);
+      return backend
+        ? { model, result, ok: true, callLLM: candidateCallLLM }
+        : { model, result, ok: true };
+    } catch (err) {
+      if (onComplete) onComplete(model, false);
+      return { model, error: err.message, ok: false };
+    } finally {
+      release();
+    }
+  }));
+}
+
+function makeBackendCallLLM(backend, { deadline, now }) {
+  return ({ prompt, signal } = {}) =>
+    backend.invoke({
+      prompt,
+      signal,
+      timeout: timeoutFromDeadline(deadline, now),
+    });
+}
+
+function timeoutFromDeadline(deadline, now) {
+  if (deadline === undefined || deadline === null) return undefined;
+  return Math.max(1, deadline - now());
 }
 
 function formatMaxProgress(models, modelStatus, startedAt, now) {

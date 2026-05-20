@@ -72,6 +72,15 @@ function patternHeadings(path) {
   }));
 }
 
+function numberedSections(path) {
+  const raw = readFileSync(path, 'utf8');
+  const headings = [...raw.matchAll(/^###\s+(\d+)\.\s+.+$/gm)];
+  return headings.map((m, index) => ({
+    number: Number(m[1]),
+    body: raw.slice((m.index ?? 0) + m[0].length, headings[index + 1]?.index ?? raw.length),
+  }));
+}
+
 test('pattern pack frontmatter counts match numbered pattern headings', () => {
   for (const file of patternFiles()) {
     const parsed = parsePatternFile(file);
@@ -123,6 +132,18 @@ test('per-language pattern references cover source pattern packs', () => {
 
     for (const { name } of expectedHeadings) {
       assert.match(doc, new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    }
+  }
+});
+
+test('zh and ja patterns document semantic risk and preservation notes', () => {
+  for (const lang of ['zh', 'ja']) {
+    const sourceFiles = patternFiles().filter((file) => parsePatternFile(file).meta.language === lang);
+    for (const file of sourceFiles) {
+      for (const { number, body } of numberedSections(file)) {
+        assert.match(body, /\*\*Semantic Risk:\*\*\s+(LOW|MEDIUM|HIGH)/, `${file} #${number} missing Semantic Risk`);
+        assert.match(body, /\*\*Preservation Note:\*\*\s+\S/, `${file} #${number} missing Preservation Note`);
+      }
     }
   }
 });

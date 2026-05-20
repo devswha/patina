@@ -42,6 +42,7 @@ patina --lang en --score --exit-on 30 draft.md
 ```
 
 - `overall` and `categories[]` are populated when patina can parse them from score JSON or score tables.
+- Score JSON may include `scores.llm`, `scores.deterministic`, and `scores.preference` when deterministic shadow scoring is available.
 - `mps` is populated for MAX-mode results when available.
 - `gateResult` is `null` unless `--exit-on` / `--gate` is used.
 - `--save-run <dir>` writes `manifest.json` plus `output-N.txt` files for reproducible audit trails.

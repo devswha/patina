@@ -92,6 +92,20 @@ test('combinedScore uses default and profile-specific config weights', () => {
     combinedScore({ aiLikeness: 40, fidelity: 80, profile: 'marketing', config }),
     33
   );
+
+  assert.strictEqual(
+    combinedScore({
+      aiLikeness: 40,
+      fidelity: 80,
+      deterministicScore: { overall: 90 },
+      profile: 'legal',
+      config: {
+        ...config,
+        scoring: { deterministic: { 'combined-weight': 0.25 } },
+      },
+    }),
+    39.6
+  );
 });
 
 test('score helpers accept an injected callLLM implementation', async () => {
@@ -140,7 +154,30 @@ test('score helpers accept an injected callLLM implementation', async () => {
   });
 
   assert.strictEqual(score.overall, 22);
+  assert.strictEqual(score.llmScore.overall, 22);
+  assert.equal(typeof score.deterministicScore.overall, 'number');
   assert.strictEqual(mps.mps, 91);
   assert.strictEqual(fidelity.fidelity, 100);
   assert.strictEqual(seen.length, 3);
+});
+
+test('scoreText warns on deterministic divergence and keeps the pessimistic score', async () => {
+  const warnings = [];
+  const score = await scoreText({
+    text: [
+      'The tool is useful. The model is helpful. The system is reliable. The page is stable. The flow is simple.',
+      'The draft is useful. The note is helpful. The copy is reliable. The line is stable. The page is simple.',
+      'The output is useful. The result is helpful. The answer is reliable. The plan is stable. The text is simple.',
+    ].join('\n\n'),
+    config: loadConfig(),
+    patterns: [],
+    callLLM: async () => '{ "overall": 10, "interpretation": "human" }',
+    logger: { warn: (event, fields) => warnings.push({ event, ...fields }) },
+  });
+
+  assert.strictEqual(score.llmScore.overall, 10);
+  assert.strictEqual(score.deterministicScore.overall, 100);
+  assert.strictEqual(score.overall, 100);
+  assert.strictEqual(score.scorePreference.selected, 'deterministic');
+  assert.ok(warnings.some((entry) => entry.event === 'score.deterministic_divergence'));
 });

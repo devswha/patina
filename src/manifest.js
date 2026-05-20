@@ -52,12 +52,14 @@ export function buildManifest({
 
 // Add one input/output pair's hash + ref to the running results array.
 // Mutates the input array for convenience.
-export function appendResult(results, { inputPath, prompt, outputRef }) {
-  results.push({
+export function appendResult(results, { inputPath, prompt, outputRef, scores }) {
+  const entry = {
     input: inputPath,
     promptHash: hashSha256(prompt),
     output: outputRef,
-  });
+  };
+  if (scores) entry.scores = scores;
+  results.push(entry);
   return results;
 }
 

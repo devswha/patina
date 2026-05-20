@@ -7,6 +7,7 @@ import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } 
 import { formatOutput, validateScoreWeights } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
+import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from './scoring.js';
 import { buildManifest, appendResult, writeManifest } from './manifest.js';
 import { runDoctor } from './commands/doctor.js';
 import { runInit } from './commands/init.js';
@@ -236,6 +237,15 @@ export async function main(args) {
       }
       cancellation.throwIfCanceled();
 
+      if (mode === 'score' && !parsed.models && !parsed.ouroboros) {
+        result = withDeterministicScore(result, {
+          text,
+          config,
+          repoRoot,
+          logger,
+        });
+      }
+
       let output;
       let scoreValidationOutput = null;
       if (parsed.ouroboros) {
@@ -274,6 +284,7 @@ export async function main(args) {
           inputPath: path,
           prompt,
           outputRef: { kind: 'file', name: outputName },
+          scores: manifestScoreDetails(result),
         });
         manifestOutputs.push({ name: outputName, content: output });
       }
@@ -881,6 +892,38 @@ backends opt-in (issue #88).
 `);
 }
 
+function withDeterministicScore(rawResult, { text, config, repoRoot, logger }) {
+  const deterministicScore = scoreDeterministicSignals({ text, config, repoRoot });
+  const llmOverall = extractScoreOverall(rawResult, rawResult);
+  const reconciliation = reconcileScoreOverall({
+    llmOverall,
+    deterministicScore,
+    config,
+    logger,
+  });
+  const overall = reconciliation.overall ?? llmOverall;
+  return {
+    raw: String(rawResult || '').trim(),
+    overall,
+    llmScore: {
+      overall: llmOverall,
+      interpretation: llmOverall === null ? null : interpretScore(llmOverall),
+    },
+    deterministicScore,
+    ...(reconciliation.scorePreference ? { scorePreference: reconciliation.scorePreference } : {}),
+  };
+}
+
+function manifestScoreDetails(result) {
+  if (!result || typeof result !== 'object') return null;
+  if (!result.llmScore && !result.deterministicScore && !result.scorePreference) return null;
+  return {
+    llm: result.llmScore ?? null,
+    deterministic: result.deterministicScore ?? null,
+    preference: result.scorePreference ?? null,
+  };
+}
+
 function applyScoreGate(result, output, gate, logger = createLogger()) {
   const overall = extractScoreOverall(result, output);
   if (overall === null) {
@@ -901,12 +944,16 @@ function extractScoreOverall(result, output) {
   const parsedOverall = toFiniteScore(parsed?.overall);
   if (parsedOverall !== null) return parsedOverall;
 
+  const table = text.match(/(?:^|\n)\|\s*(?:\*\*)?Overall(?:\*\*)?\s*\|[^|]*\|[^|]*\|[^|]*\|\s*(?:\*\*)?([0-9]+(?:\.[0-9]+)?)/i);
+  if (table) return Number(table[1]);
+
   const match = text.match(/(?:^|[\s|{,"])overall(?:["\s]*[:|]|\s+score\s*[:|]?)\s*(\d+(?:\.\d+)?)/i);
   if (!match) return null;
   return Number(match[1]);
 }
 
 function toFiniteScore(value) {
+  if (value === null || value === undefined || value === '') return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }

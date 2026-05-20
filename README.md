@@ -206,7 +206,7 @@ In rewrite mode, the model emits its self-audit notes inside `[SELF_AUDIT]`/`[/S
 
 ### Score weight drift detection (v3.11)
 
-`--score` runs cross-check the Weight column the model emits against your config's `category-weights`. If the model invents a category (e.g., `discord`) or substitutes a different number, `[patina]` warnings hit stderr — observability only, the score itself isn't altered.
+`--score` runs cross-check the Weight column the model emits against your config's `category-weights`. If the model invents a category (e.g., `discord`) or substitutes a different number, `[patina]` warnings hit stderr — observability only, the weight check itself doesn't alter the score. A deterministic shadow score from `src/features/*` is also recorded; when it differs from the LLM score by more than 20 points, patina warns and uses the more pessimistic value for gates.
 
 ## Tones
 

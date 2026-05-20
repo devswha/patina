@@ -73,6 +73,7 @@ export async function runOuroboros({
     fidelity: 100,
     profile: config.profile,
     config,
+    deterministicScore: initialScoreResult?.deterministicScore,
   });
 
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
@@ -154,6 +155,7 @@ export async function runOuroboros({
       fidelity,
       profile: config.profile,
       config,
+      deterministicScore: scoreResult?.deterministicScore,
     });
     const combinedDelta = previousCombined - combined;
 

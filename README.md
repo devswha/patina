@@ -208,6 +208,8 @@ In rewrite mode, the model emits its self-audit notes inside `[SELF_AUDIT]`/`[/S
 
 `--score` runs cross-check the Weight column the model emits against your config's `category-weights`. If the model invents a category (e.g., `discord`) or substitutes a different number, `[patina]` warnings hit stderr — observability only, the weight check itself doesn't alter the score. A deterministic shadow score from `src/features/*` is also recorded; when it differs from the LLM score by more than 20 points, patina warns and uses the more pessimistic value for gates.
 
+`--save-run <dir>` now writes manifest schema v2: result entries include prompt and response hashes, available input/output token counts, temperature/seed, score details, per-call cost when a provider returns it, and Ouroboros iteration logs.
+
 ## Tones
 
 `--tone` selects a named voice axis applied on top of pattern rewriting. Resolution order: `--tone` CLI > `tone:` config > `profile:` config.

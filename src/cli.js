@@ -8,7 +8,8 @@ import { formatOutput, validateScoreWeights } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from './scoring.js';
-import { buildManifest, appendResult, writeManifest } from './manifest.js';
+import { callLLM, DEFAULT_TEMPERATURE } from './api.js';
+import { buildManifest, appendResult, writeManifest, hashSha256 } from './manifest.js';
 import { runDoctor } from './commands/doctor.js';
 import { runInit } from './commands/init.js';
 import { PatinaCliError, inputError, runtimeError, renderCliError, getExitCode } from './errors.js';
@@ -97,6 +98,8 @@ export async function main(args) {
   const startedAt = new Date().toISOString();
   const manifestResults = [];
   const manifestOutputs = [];
+  const manifestTemperature = DEFAULT_TEMPERATURE;
+  const manifestSeed = null;
 
   const repoRoot = getRepoRoot();
   const lang = config.language || 'ko';
@@ -141,6 +144,17 @@ export async function main(args) {
   try {
     for (const { path, text } of inputTexts) {
       cancellation.throwIfCanceled();
+      const manifestCalls = [];
+      const recordManifestCall = parsed.saveRun ? createManifestCallRecorder(manifestCalls) : null;
+      const trackedCallLLM = parsed.saveRun
+        ? (args) => callLLM({
+          ...args,
+          onResponse: (metadata) => {
+            args.onResponse?.(metadata);
+            recordManifestCall(metadata);
+          },
+        })
+        : undefined;
       const prompt = buildPrompt({
         config,
         patterns,
@@ -170,6 +184,7 @@ export async function main(args) {
           patterns,
           maxConcurrency: parsed.maxConcurrency,
           wallClockBudgetMs: parsed.maxTimeoutSeconds === undefined ? undefined : parsed.maxTimeoutSeconds * 1000,
+          callLLM: trackedCallLLM,
           signal: cancellation.signal,
           logger,
         });
@@ -184,6 +199,7 @@ export async function main(args) {
           apiKey: resolved.apiKey,
           baseURL: resolved.baseURL,
           model: resolved.model,
+          callLLM: trackedCallLLM,
           signal: cancellation.signal,
           logger,
         });
@@ -232,6 +248,9 @@ export async function main(args) {
           baseURL: resolved.baseURL,
           model: resolved.model,
           signal: cancellation.signal,
+          temperature: manifestTemperature,
+          seed: manifestSeed,
+          onResponse: recordManifestCall,
           logger,
         });
       }
@@ -283,8 +302,16 @@ export async function main(args) {
         appendResult(manifestResults, {
           inputPath: path,
           prompt,
+          response: manifestResponseText(result, output),
           outputRef: { kind: 'file', name: outputName },
+          tokensIn: sumManifestCalls(manifestCalls, 'tokensIn'),
+          tokensOut: sumManifestCalls(manifestCalls, 'tokensOut'),
+          temperature: manifestTemperature,
+          seed: manifestSeed,
+          cost: sumManifestCallCost(manifestCalls),
           scores: manifestScoreDetails(result),
+          iterationLog: manifestIterationLog(result),
+          calls: manifestCalls.length > 0 ? manifestCalls : undefined,
         });
         manifestOutputs.push({ name: outputName, content: output });
       }
@@ -317,6 +344,8 @@ export async function main(args) {
       patterns,
       results: manifestResults,
       startedAt,
+      temperature: manifestTemperature,
+      seed: manifestSeed,
     });
     const manifestPath = writeManifest(
       resolve(process.cwd(), parsed.saveRun),
@@ -921,6 +950,92 @@ function manifestScoreDetails(result) {
     llm: result.llmScore ?? null,
     deterministic: result.deterministicScore ?? null,
     preference: result.scorePreference ?? null,
+  };
+}
+
+function createManifestCallRecorder(calls) {
+  return (metadata = {}) => {
+    calls.push({
+      provider: metadata.provider ?? null,
+      model: metadata.model ?? null,
+      requestedModel: metadata.requestedModel ?? null,
+      temperature: metadata.temperature ?? null,
+      seed: metadata.seed ?? null,
+      responseHash: hashSha256(metadata.content),
+      tokensIn: extractUsageToken(metadata.usage, ['prompt_tokens', 'input_tokens', 'tokens_in']),
+      tokensOut: extractUsageToken(metadata.usage, ['completion_tokens', 'output_tokens', 'tokens_out']),
+      cost: extractResponseCost(metadata.rawResponse),
+    });
+  };
+}
+
+function extractUsageToken(usage, keys) {
+  if (!usage || typeof usage !== 'object') return null;
+  for (const key of keys) {
+    const value = Number(usage[key]);
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function extractResponseCost(rawResponse) {
+  const usage = rawResponse?.usage && typeof rawResponse.usage === 'object' ? rawResponse.usage : {};
+  const candidates = [
+    ['usage.cost_usd', usage.cost_usd, 'USD'],
+    ['usage.total_cost_usd', usage.total_cost_usd, 'USD'],
+    ['usage.cost', usage.cost, usage.currency],
+    ['usage.total_cost', usage.total_cost, usage.currency],
+    ['cost_usd', rawResponse?.cost_usd, 'USD'],
+    ['cost', rawResponse?.cost, rawResponse?.currency],
+  ];
+
+  for (const [source, value, currency] of candidates) {
+    const amount = Number(value);
+    if (Number.isFinite(amount)) {
+      return {
+        amount,
+        currency: currency || 'USD',
+        source,
+      };
+    }
+  }
+  return null;
+}
+
+function manifestResponseText(result, output) {
+  if (result?.type === 'max-mode') return result.best?.result ?? output;
+  if (typeof result?.finalText === 'string') return result.finalText;
+  if (typeof result?.raw === 'string') return result.raw;
+  if (typeof result === 'string') return result;
+  return output;
+}
+
+function manifestIterationLog(result) {
+  return Array.isArray(result?.log) ? result.log : null;
+}
+
+function sumManifestCalls(calls, key) {
+  const values = calls
+    .map((call) => call[key])
+    .filter((value) => value !== null && value !== undefined)
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value));
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0);
+}
+
+function sumManifestCallCost(calls) {
+  const costs = calls
+    .map((call) => call.cost)
+    .filter((cost) => cost && Number.isFinite(Number(cost.amount)));
+  if (costs.length === 0) return null;
+
+  const currency = costs[0].currency || 'USD';
+  if (!costs.every((cost) => (cost.currency || 'USD') === currency)) return null;
+  return {
+    amount: costs.reduce((sum, cost) => sum + Number(cost.amount), 0),
+    currency,
+    source: 'sum',
   };
 }
 

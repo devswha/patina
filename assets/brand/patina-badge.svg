@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="164" height="28" viewBox="0 0 164 28" role="img" aria-labelledby="title desc">
+  <title id="title">patina score badge</title>
+  <desc id="desc">Static patina README badge for repositories that want the mark without publishing a live score endpoint.</desc>
+  <defs>
+    <linearGradient id="score" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2dd4bf"/>
+      <stop offset="100%" stop-color="#34d399"/>
+    </linearGradient>
+  </defs>
+  <rect width="164" height="28" rx="14" fill="#020617"/>
+  <rect x="1" y="1" width="162" height="26" rx="13" fill="none" stroke="#1e293b"/>
+  <path d="M13 11c3.2-5.4 11-6 15.8-1.8l-3.5 3.5c-2.8-2.2-6.2-1.8-8.2 1z" fill="#c46a2a"/>
+  <path d="M28.8 17c-3.2 5.4-11 6-15.8 1.8l3.3-3.7c3 2.5 6.4 2.1 8.5-.8z" fill="#2dd4bf"/>
+  <circle cx="20.8" cy="14" r="2.7" fill="#ffe6a8"/>
+  <text x="38" y="18" fill="#f8fafc" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" font-weight="800" letter-spacing="-.2">patina</text>
+  <rect x="83" y="4" width="77" height="20" rx="10" fill="url(#score)"/>
+  <text x="93" y="18" fill="#042f2e" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="11" font-weight="800">human-ish</text>
+</svg>

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/brand/patina-mark.svg" alt="patina mark" width="132">
+  <img src="assets/brand/patina-mark.svg" alt="patina mark" width="172">
 </p>
 
 <h1 align="center">patina</h1>

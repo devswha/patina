@@ -29,8 +29,8 @@
 |  |  |
 |---|---|
 | **146 パターン** | 韓国語 37 + 英語 36 + 中国語 36 + 日本語 37 (各5個のスコア専用 viral-hook を含む) — [PATTERNS.md](docs/PATTERNS.md) |
-| **AI 検出率** | 韓国語 91% / 英語 76% (HC3) |
-| **誤検出率** | 人間文章で 13–25% *(百科事典体の本質的限界、[文書化済み](core/stylometry.md))* |
+| **編集ホットスポット再現率** | 韓国語 91% [84.0–95.4%] (n=100) / 英語 76% [66.7–83.3%] (n=100), binomial 95% CI |
+| **誤検出率** | 人間文章レジスター別 13–25% の点推定範囲 *(CI ではない；百科事典体の本質的限界、[文書化済み](core/stylometry.md))* |
 | **モード** | rewrite · audit · score · diff · ouroboros |
 | **無料利用** | 可能 — `codex` CLI 経由 (API キー不要) |
 | **決定性** | スコアリング式は決定的、LLM の severity 判定段階に ±8–10pt の変動 ([scoring.md §8](core/scoring.md)) |
@@ -148,7 +148,7 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 
 各検証ステップで意味が損なわれた場合、変更は再試行またはロールバックされます。
 
-**キャリブレーション** *(500 段落コーパス、`.omc/research/v3_8_remeasure.py` で再現可能)*：HC3 ChatGPT (en) AI 検出 76%、paired ko/AI コーパス 91%、人間文章誤検出 13–25%。受け入れ基準：AI ≥ 75%、最大 FP ≤ 25%。アルゴリズムは [stylometry.md](core/stylometry.md)。
+**キャリブレーション** *(500 段落コーパス、`.omc/research/v3_8_remeasure.py` で再現可能)*：HC3 ChatGPT (en) 編集ホットスポット再現率 76% [66.7–83.3%]、paired ko/AI コーパス 91% [84.0–95.4%]（各 n=100、binomial 95% CI）。人間文章の誤検出はレジスター別 13–25% の点推定範囲として別に報告します。受け入れ基準：AI ≥ 75%、最大 FP ≤ 25%。アルゴリズムは [stylometry.md](core/stylometry.md)。
 
 ## 設定
 

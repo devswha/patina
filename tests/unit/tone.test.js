@@ -113,6 +113,22 @@ test('formatOutput: does not duplicate complete footer', () => {
   assert.equal(count, 1);
 });
 
+test('formatOutput: detects tone footer inside fenced output', () => {
+  const existing = 'Body text\n```yaml\n---\ntone: casual\ntone_source: user\ntone_evidence: []\ntone_confidence: high\n---\n```';
+  const tone = { tone: 'casual', tone_source: 'user', tone_evidence: [], tone_confidence: 'high' };
+  const out = formatOutput(existing, 'rewrite', {}, { tone });
+  const count = (out.match(/tone_source:/g) || []).length;
+  assert.equal(count, 1);
+});
+
+test('formatOutput: detects tone footer inside blockquote output', () => {
+  const existing = 'Body text\n> ---\n> tone: casual\n> tone_source: user\n> tone_evidence: []\n> tone_confidence: high\n> ---';
+  const tone = { tone: 'casual', tone_source: 'user', tone_evidence: [], tone_confidence: 'high' };
+  const out = formatOutput(existing, 'rewrite', {}, { tone });
+  const count = (out.match(/tone_source:/g) || []).length;
+  assert.equal(count, 1);
+});
+
 test('formatOutput: appends footer when partial footer present (missing keys)', () => {
   const partial = 'Body text\n---\ntone: casual\n---';
   const tone = { tone: 'casual', tone_source: 'user', tone_evidence: [], tone_confidence: 'high' };
@@ -148,6 +164,22 @@ test('stripSelfAudit: passes through unchanged when no tags emitted', () => {
   const raw = 'Plain rewrite text without tags.';
   const out = formatOutput(raw, 'rewrite', {});
   assert.equal(out, 'Plain rewrite text without tags.');
+});
+
+test('stripSelfAudit: missing [BODY] strips audit and warns', () => {
+  const raw = 'Clean text\n\n[SELF_AUDIT]\ninternal notes\n[/SELF_AUDIT]';
+  const originalError = console.error;
+  const logs = [];
+  console.error = (msg) => logs.push(String(msg));
+  try {
+    const out = formatOutput(raw, 'rewrite', {});
+    assert.equal(out, 'Clean text');
+  } finally {
+    console.error = originalError;
+  }
+  assert.equal(logs.length, 1);
+  assert.match(logs[0], /omitted \[BODY\] tags/);
+  assert.match(logs[0], /--prompt-mode strict/);
 });
 
 test('stripSelfAudit: only applied to rewrite/ouroboros modes', () => {
@@ -220,6 +252,60 @@ test('validateScoreWeights: missing category → warning', () => {
   const warnings = validateScoreWeights('| content | 0.18 |', { content: 0.18, language: 0.18 });
   assert.equal(warnings.length, 1);
   assert.match(warnings[0], /language.*missing/);
+});
+
+test('validateScoreWeights: localized ko category labels map to config keys', () => {
+  const output = `| 카테고리 | 가중치 |
+|---|---:|
+| 내용 | 0.18 |
+| 언어 | 0.18 |
+| 문체 | 0.18 |
+| 커뮤니케이션 | 0.13 |
+| 채움 | 0.08 |
+| 구조 | 0.15 |
+| 바이럴 훅 | 0.10 |`;
+  const warnings = validateScoreWeights(output, {
+    content: 0.18,
+    language: 0.18,
+    style: 0.18,
+    communication: 0.13,
+    filler: 0.08,
+    structure: 0.15,
+    'viral-hook': 0.10,
+  });
+  assert.deepEqual(warnings, []);
+});
+
+test('validateScoreWeights: localized zh/ja labels map to config keys', () => {
+  const zh = `| 内容 | 0.18 |
+| 语言 | 0.18 |
+| 风格 | 0.18 |
+| 沟通 | 0.13 |
+| 填充 | 0.08 |
+| 结构 | 0.15 |`;
+  assert.deepEqual(validateScoreWeights(zh, {
+    content: 0.18,
+    language: 0.18,
+    style: 0.18,
+    communication: 0.13,
+    filler: 0.08,
+    structure: 0.15,
+  }), []);
+
+  const ja = `| 内容 | 0.18 |
+| 言語 | 0.18 |
+| 文体 | 0.18 |
+| コミュニケーション | 0.13 |
+| フィラー | 0.08 |
+| 構造 | 0.15 |`;
+  assert.deepEqual(validateScoreWeights(ja, {
+    content: 0.18,
+    language: 0.18,
+    style: 0.18,
+    communication: 0.13,
+    filler: 0.08,
+    structure: 0.15,
+  }), []);
 });
 
 test('validateScoreWeights: empty config → no-op', () => {

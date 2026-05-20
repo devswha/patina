@@ -18,6 +18,7 @@ Long tagline:
 
 - Run `npm run benchmark:report && npm test`.
 - Check the current benchmark: [`docs/benchmarks/latest.md`](../benchmarks/latest.md).
+- If comparing tools, link the factual comparison page: [`docs/COMPARISON.md`](../COMPARISON.md).
 - Use the launch social preview when the surface supports images: [`assets/social/patina-og.svg`](../../assets/social/patina-og.svg).
 - Keep claims to "editing signal" and "suspect-zone benchmark"; do not imply authorship proof.
 - Link issues for useful feedback: false positives, missing patterns, benchmark fixtures.
@@ -156,9 +157,9 @@ That is the part I care about most: editable output with a safety rail.
 Current calibration:
 
 - 146 pattern catalog
-- 91% Korean AI catch rate
-- 76% English HC3 catch rate
-- 13-25% false positives on human prose
+- 91% Korean editing-hotspot recall [84.0-95.4%], n=100
+- 76% English HC3 editing-hotspot recall [66.7-83.3%], n=100
+- 13-25% human-prose false-positive point-estimate range across registers
 - Latest fixture benchmark: https://github.com/devswha/patina/blob/main/docs/benchmarks/latest.md
 
 False positives are documented because this should be used as an editor, not a judge.

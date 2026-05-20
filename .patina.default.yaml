@@ -53,9 +53,11 @@ patterns:
 #   - ja-communication
 #   - ja-filler (4 patterns: #22-24, #31)
 
-skip-patterns: []
-blocklist: []              # 추가로 감지할 어휘
-allowlist: []              # 감지에서 제외할 어휘
+skip-patterns: []          # additive merge across default/global/project configs
+blocklist: []              # additive merge: 추가로 감지할 어휘
+allowlist: []              # additive merge: 감지에서 제외할 어휘
+# Other arrays (for example max-models) are replaced by the higher-precedence
+# config so users can intentionally choose an exact provider list.
 
 # MAX mode: multi-model humanization
 # claude uses `claude -p`, gemini uses `gemini -p '' --output-format text`,

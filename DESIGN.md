@@ -5,7 +5,7 @@
 - Last refreshed: 2026-05-20
 - Primary product surfaces: README logo, app/repo icon, social preview image, launch posts.
 - Evidence reviewed:
-  - Local: `README.md`, `docs/ROADMAP.md`, `assets/brand/patina-icon.svg`, `assets/brand/patina-logo.svg`, `assets/social/patina-og.svg`.
+  - Local: `README.md`, `docs/ROADMAP.md`, `docs/BRANDING.md`, `assets/brand/patina-icon.svg`, `assets/brand/patina-logo.svg`, `assets/social/patina-og.svg`.
   - External pattern references: Vite, Astro, Bun, Deno, Tailwind CSS, shadcn/ui README presentation patterns.
 
 ## Brand
@@ -61,6 +61,13 @@
 - Contrast/readability: logo lockup requires dark card/backplate or high-contrast text.
 - Screen-reader semantics: SVGs should keep `role="img"`, `<title>`, and `<desc>`.
 - Reduced motion and sensory considerations: no flashing or motion in static assets.
+
+### Static SVG checklist
+
+- Standalone brand/social SVGs use `role="img"` plus `<title>` and `<desc>` (or an explicit `aria-label` for decorative exceptions).
+- README logo uses the canonical `assets/brand/patina-logo.svg`; avoid duplicate byte-identical README variants.
+- SVG text relies on system fallback fonts because GitHub does not load web fonts inside `<img>` SVGs.
+- The logo lockup should be checked at README width (`width="440"`) and the icon at 32px before release.
 
 ## Responsive behavior
 - Supported breakpoints/devices: README desktop/mobile, favicon-scale icon, 1200x630 social preview.

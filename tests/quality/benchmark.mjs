@@ -21,6 +21,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
 const FIXTURES_ROOT = resolve(REPO_ROOT, 'tests/fixtures/suspect-zones');
 const RESULTS_PATH = resolve(__dirname, 'results.json');
+const FIXTURE_SCHEMA_VERSION = 1;
 
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
 
@@ -71,11 +72,43 @@ function summarize(m) {
     precision: round(precision),
     recall: round(recall),
     f1: round(f1),
+    n: m.total,
+    ci_low: round(wilsonInterval(m.tp + m.tn, m.total).low),
+    ci_high: round(wilsonInterval(m.tp + m.tn, m.total).high),
+    confidence_method: 'Wilson score interval, 95%',
   };
 }
 
 function round(n, digits = 3) {
   return Math.round(n * 10 ** digits) / 10 ** digits;
+}
+
+function wilsonInterval(successes, n, z = 1.959963984540054) {
+  if (!n) return { low: 0, high: 0 };
+  const phat = successes / n;
+  const denom = 1 + (z ** 2) / n;
+  const center = (phat + (z ** 2) / (2 * n)) / denom;
+  const margin = (z * Math.sqrt((phat * (1 - phat) + (z ** 2) / (4 * n)) / n)) / denom;
+  return {
+    low: Math.max(0, center - margin),
+    high: Math.min(1, center + margin),
+  };
+}
+
+function detectorHot(result) {
+  return {
+    burstiness: result.paragraphs.some((p) => p.burstiness?.band === 'low'),
+    mattr: result.paragraphs.some((p) => p.mattr?.band === 'low'),
+    lexicon: result.paragraphs.some((p) => p.lexicon?.hot),
+  };
+}
+
+function emptyDetectorMetrics() {
+  return {
+    burstiness: emptyMetrics(),
+    mattr: emptyMetrics(),
+    lexicon: emptyMetrics(),
+  };
 }
 
 function validateExpectedMetrics(path, expected = {}, observed = {}) {
@@ -108,6 +141,7 @@ function main() {
 
   const lexicons = {};
   const perLanguage = {};
+  const byDetector = {};
   const fixtureLog = [];
 
   for (const path of fixtures) {
@@ -120,6 +154,7 @@ function main() {
     }
     if (!lexicons[lang]) lexicons[lang] = loadLexicon(lang, REPO_ROOT);
     if (!perLanguage[lang]) perLanguage[lang] = emptyMetrics();
+    if (!byDetector[lang]) byDetector[lang] = emptyDetectorMetrics();
 
     const result = analyzeText(body, {
       lang,
@@ -128,6 +163,10 @@ function main() {
     const predicted = result.hot;
     const expected = meta.expected_hot;
     updateMetrics(perLanguage[lang], predicted, expected);
+    const detectors = detectorHot(result);
+    for (const [name, hot] of Object.entries(detectors)) {
+      updateMetrics(byDetector[lang][name], hot, expected);
+    }
 
     const p = result.paragraphs[0] || {};
     const observed = {
@@ -146,6 +185,7 @@ function main() {
       expected_hot: expected,
       predicted_hot: predicted,
       correct: predicted === expected,
+      detectors,
       ...observed,
       expected_metrics: meta.expected_metrics ?? null,
     });
@@ -156,15 +196,29 @@ function main() {
   let totalCount = 0;
   for (const [lang, m] of Object.entries(perLanguage)) {
     summary[lang] = summarize(m);
+    summary[lang].byDetector = Object.fromEntries(
+      Object.entries(byDetector[lang]).map(([name, metrics]) => [name, summarize(metrics)])
+    );
     totalCorrect += m.tp + m.tn;
     totalCount += m.total;
   }
   const overallAccuracy = totalCount ? totalCorrect / totalCount : 0;
+  const overallCi = wilsonInterval(totalCorrect, totalCount);
 
   const results = {
+    schemaVersion: 2,
+    fixtureSchemaVersion: FIXTURE_SCHEMA_VERSION,
+    nodeVersion: process.version,
     generatedAt: new Date().toISOString(),
     fixtureCount: fixtureLog.length,
     overallAccuracy: round(overallAccuracy),
+    overall: {
+      accuracy: round(overallAccuracy),
+      n: totalCount,
+      ci_low: round(overallCi.low),
+      ci_high: round(overallCi.high),
+      confidence_method: 'Wilson score interval, 95%',
+    },
     perLanguage: summary,
     fixtures: fixtureLog,
   };

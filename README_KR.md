@@ -87,6 +87,22 @@ printf '%s\n' '커피는 전 세계의 사회적 상호작용을 근본적으로
 
 > 🆓 **API 키 없이 무료 사용 가능** — [`codex`](https://github.com/openai/codex), [`claude`](https://docs.anthropic.com/en/docs/claude-code), [`gemini`](https://github.com/google-gemini/gemini-cli) CLI 중 하나만 로그인되어 있으면 됩니다. `--backend codex-cli | claude-cli | gemini-cli` 로 직접 선택하거나 `--model claude-*` / `--model gemini-*` 처럼 모델명으로 라우팅됩니다. 전체 백엔드는 [AUTHENTICATION.md](docs/AUTHENTICATION.md) 참조.
 
+### CI integrations
+
+Patina는 live model key 없이도 prose review를 위한 결정론적 CI 표면을 제공합니다:
+
+```yaml
+# .github/workflows/patina.yml
+steps:
+  - uses: actions/checkout@v6
+  - uses: devswha/patina@main # 릴리스 태그가 생기면 @v1 등으로 pin
+    with:
+      gate: 30
+      comment: true
+```
+
+Pre-commit, Husky, Lefthook, Docker, release workflow 메모는 [docs/integrations/](docs/integrations/)에 있습니다.
+
 ## 의도한 사용
 
 Patina는 작성자가 AI 지원을 사용할 수 있는 상황에서 AI 이후 편집, audit trail, voice cleanup을 돕는 도구입니다. 텍스트가 "원래 사람이 쓴 것"이라는 약속이 아니며, 학업 honor-code 회피, 출판사 disclosure 우회, 표절 세탁, detector-bypass 주장에 사용해서는 안 됩니다. [ETHICS.md](docs/ETHICS.md)를 참고하세요.
@@ -102,13 +118,16 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 | *(기본)* | 재작성 |
 | `--audit` | AI 패턴 탐지만 수행 |
 | `--score` | 0–100 AI 유사도 점수 + 카테고리별 분석 |
-| `--score --gate <n>` | CI를 엄격하게 유지: `overall > n`이면 종료 코드 `3` |
+| `--score --exit-on <n>` | CI를 엄격하게 유지: `overall > n`이면 종료 코드 `3` (`--gate`는 alias) |
 | `--diff` | 변경 사항을 패턴별로 표시 |
 | `--ouroboros` | 점수가 수렴할 때까지 반복 (MPS 롤백 포함) |
 | `--lang <ko\|en\|zh\|ja>` | 언어 선택 (기본값: `ko`) |
 | `--profile <이름>` | 톤 프리셋: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation` |
 | `--tone <이름>` | 톤 카테고리: `casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | 위치 인자를 파일 목록으로 처리 (예: `--batch docs/*.md`) |
+| `--format json\|text\|markdown` | JSON, 일반 텍스트, 기본 Markdown 출력 선택 |
+| `--prompt-mode strict\|minimal\|auto` | 전체 패턴 팩 프롬프트, 압축 프롬프트, 백엔드별 자동 선택 |
+| `--variants <1-5>` | 사실과 의미 앵커를 유지한 여러 rewrite 변형 생성 |
 
 전체 옵션은 `patina --help`.
 
@@ -131,6 +150,10 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 ### 자기검수 분리 (v3.11)
 
 rewrite 모드에서 모델은 `[BODY]`/`[/BODY]` 블록(또는 `--variants > 1`일 때 `[VARIANT n]` 블록)을 감싸는 `[SELF_AUDIT]`/`[/SELF_AUDIT]` 태그 안에 자기검수 메모를 냅니다. patina는 사용자에게 보여주기 전에 audit을 제거하므로 원시 출력이 깔끔합니다 — 이전 버전에서는 "남아 있는 AI 티"나 "Phase 3" 같은 프리앰블이 사용자-facing 텍스트에 새어 나오는 경우가 있었습니다.
+
+### Machine-readable output and exit codes
+
+`--format json`은 모든 모드를 `overall`, `categories[]`, `tone`, `mps`, `gateResult`, 정리된 `output` 본문을 담은 안정적인 envelope로 감쌉니다. `--format markdown`이 기본값이고, `--format text`는 YAML tone footer 없는 사용자-facing 본문만 유지합니다. 종료 코드는 [EXIT-CODES.md](docs/EXIT-CODES.md)에 정리되어 있습니다: `0` 성공, `1` runtime/backend, `2` input/usage, `3` score gate 초과, `4` MAX MPS fallback/all-candidates-failed.
 
 ### 점수 가중치 드리프트 감지 (v3.11)
 
@@ -201,10 +224,12 @@ max-models: [claude, gemini]
 - **[Patterns](docs/PATTERNS.md)** — 146개 패턴 카탈로그
 - **[Authentication](docs/AUTHENTICATION.md)** — 백엔드, 프로바이더, 무료 티어 설정
 - **[CLI Contract](docs/CLI.md)** — score gate, exit code, 자동화에 안전한 표면
+- **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI, `/patina`, `/patina-max` 옵션 지원 범위
 - **[Ethics](docs/ETHICS.md)** — 의도한 사용, 금지 사용, disclosure 입장
 - **[FAQ](docs/FAQ.md)** — detector-bypass 우려, MPS, 오탐, 기여 시작점
 - **[Comparison](docs/COMPARISON.md)** — 일반 paraphraser/humanizer 도구와의 사실 기반 비교
 - **[Branding](docs/BRANDING.md)** — canonical 로고/소셜 asset과 OG 설정 메모
+- **[Design](DESIGN.md)** — repo-native SVG와 README surface의 제품/브랜드 기준
 - **[Roadmap](docs/ROADMAP.md)** — 품질, 벤치마크, 제품, 커뮤니티, 런칭 우선순위
 - **[Benchmark Report](docs/benchmarks/latest.md)** — 최신 재현 가능 suspect-zone 벤치마크 요약
 - **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — AI-like writing signal 측정용 벤치마크 설계 메모

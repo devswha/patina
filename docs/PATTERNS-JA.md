@@ -56,6 +56,7 @@ This page expands the Japanese pattern packs into a browsable reference. It is g
 - Type: rewrite-capable pattern
 - Watch words: 画期的な、革新的な、パラダイムシフト、歴史的な転換点、新たな地平を切り開く、礎を築く、金字塔、～の先駆けとなる、～において極めて重要な意義を持つ、～の幕開け、時代を画する
 - Fire condition: 同一段落に注意語彙が2つ以上出現するか、「画期的」「パラダイムシフト」などの強い表現が日常的な事象・製品に使われている場合。
+- Example files: [success](../examples/ja-01-success-01.md)
 
 Example before:
 
@@ -71,6 +72,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 大きな注目を集めている、世界的に認められた、国内外のメディアから高い評価を受け、各方面から称賛の声が上がっている、話題を呼んでいる
 - Fire condition: 具体的な媒体名・記事タイトル・日付なしに、広範な注目・報道・評価を主張している場合。媒体名があっても文脈なく羅列しただけの場合。
+- Example files: [success](../examples/ja-02-success-01.md)
 
 Example before:
 
@@ -86,6 +88,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 示しながら、強調しつつ、反映しており、象徴するとともに、促進しながら、体現しつつ、見せながら、物語っており
 - Fire condition: 一文または連続する節に「～しながら/～しつつ/～しており」の連結形が3つ以上並び、具体的な因果説明なく羅列のみの場合。
+- Example files: [success](../examples/ja-03-success-01.md)
 
 Example before:
 
@@ -101,6 +104,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 素晴らしい、世界クラスの、必見の、息をのむような、魅力あふれる、唯一無二の、圧巻の、感動的な、類まれなる、他に類を見ない、～の宝庫、至高の
 - Fire condition: 同一対象に宣伝的な形容詞が2つ以上つくか、「息をのむような」「～の宝庫」などの強い修飾語が叙述文（広告引用ではない本文）に使われている場合。
+- Example files: [success](../examples/ja-04-success-01.md)
 
 Example before:
 
@@ -116,6 +120,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 専門家によると、研究によれば、関係者は、業界では、一部の見方では、調査結果が示すように（具体的調査名なし）
 - Fire condition: 出典が人名・機関・発表日なく「専門家」「関係者」「研究によれば」などの匿名権威のみで提示されている場合。
+- Example files: [success](../examples/ja-05-success-01.md)
 
 Example before:
 
@@ -131,6 +136,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 課題はあるものの、今後の発展が期待される、～にもかかわらず前途は明るい、さまざまな課題を乗り越え、急速に変化する現代社会において、～の時代を迎え、100年に一度の変革期、Society 5.0の実現に向けて
 - Fire condition: 同一段落または結論部で曖昧な課題表現（「さまざまな課題が残されている」）と曖昧な楽観表現（「今後の発展が期待される」）が同時に出現する場合。または導入部が「急速に変化する～」「100年に一度の変革期」などの時代公式で始まる場合。
+- Example files: [success](../examples/ja-06-success-01.md)
 
 Example before:
 
@@ -148,6 +154,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 同一段落に高頻度語彙が3つ以上出現する場合。
+- Example files: [success](../examples/ja-07-success-01.md)
 
 Example before:
 
@@ -163,6 +170,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 革新的、体系的、効果的、効率的、先進的、積極的、総合的、核心的、戦略的、実質的、根本的、画期的、抜本的
 - Fire condition: 一文に「〜的」形容詞が3つ以上、または連続2文にわたって4つ以上使用された場合。
+- Example files: [success](../examples/ja-08-success-01.md)
 
 Example before:
 
@@ -178,6 +186,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 〜にとどまらず、〜のみならず〜も、単に〜だけでなく、〜を超えて
 - Fire condition: 同一文書に否定並列構造が2回以上出現、または肯定文だけでより簡潔に表現できる箇所に使用された場合。
+- Example files: [success](../examples/ja-09-success-01.md)
 
 Example before:
 
@@ -193,6 +202,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 同一文書に3項目の列挙が2回以上出現、または3つにまとめた根拠が恣意的で他の数でも同等に成り立つ場合。
+- Example files: [success](../examples/ja-10-success-01.md)
 
 Example before:
 
@@ -208,6 +218,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 同一段落で同一対象が3つ以上の異なる名称・同義語で指称された場合。
+- Example files: [success](../examples/ja-11-success-01.md)
 
 Example before:
 
@@ -223,6 +234,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: イノベーション、ソリューション、パフォーマンス、ガバナンス、コンセンサス、シナジー、モメンタム、マイルストーン、トリガー、スケールアップ、オンボーディング、フィードバックループ、ペインポイント、ディシジョンメイキング、エコシステム、レジリエンス、サステナビリティ
 - Fire condition: 同一段落に日本語の代替がある外来語が3つ以上出現する場合。業界で定着した専門用語（マーケティング、ブランディング等）は除外。
+- Example files: [success](../examples/ja-12-success-01.md)
 
 Example before:
 
@@ -256,6 +268,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: これにより、こうした点で、こうした中、一方で、また、さらに、加えて、これに伴い、これに関連して、これを踏まえて、それゆえ、したがって
 - Fire condition: 連続3文以上で毎文の冒頭に接続表現が付く場合、または同一段落に注意語彙が3つ以上出現する場合。
+- Example files: [success](../examples/ja-13-success-01.md)
 
 Example before:
 
@@ -271,6 +284,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 同一段落に太字処理された語句が3つ以上、または文書全体で5つ以上。
+- Example files: [success](../examples/ja-14-success-01.md)
 
 Example before:
 
@@ -286,6 +300,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 同一リストに「**ラベル：** 説明」形式の項目が2つ以上。
+- Example files: [success](../examples/ja-15-success-01.md)
 
 Example before:
 
@@ -303,6 +318,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 〜でございます、〜ございます、〜いただけますと幸いです、〜させていただきます、〜いただければと存じます、〜いただけますでしょうか
 - Fire condition: 同一段落で「ございます」「させていただきます」が3回以上使われた場合、またはカジュアルな文脈（ブログ記事、解説文等）で過剰な敬語が使われた場合。
+- Example files: [success](../examples/ja-16-success-01.md)
 
 Example before:
 
@@ -318,6 +334,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 専門的・学術的・編集テキストに絵文字が1つでも出現する場合。
+- Example files: [success](../examples/ja-17-success-01.md)
 
 Example before:
 
@@ -335,6 +352,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 〜と言えよう、〜であると言わざるを得ない、〜の感が否めない、〜と言っても過言ではない、〜の一助となれば幸いである、鑑みるに、畢竟、蓋し
 - Fire condition: 同一段落に硬質文体表現が3つ以上出現する場合、または日常的な内容（ブログ、ガイド等）に学術的な結びの表現が使われた場合。
+- Example files: [success](../examples/ja-18-success-01.md)
 
 Example before:
 
@@ -352,6 +370,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: お役に立てれば幸いです、ご不明な点がございましたら、以下にまとめました、ご紹介させていただきます、さらに詳しい情報が必要な場合は、お答えします
 - Fire condition: リアルタイム対話ではないコンテンツ（記事、報告書、文書）にチャットボット的表現が1つでも出現する場合。
+- Example files: [success](../examples/ja-19-success-01.md)
 
 Example before:
 
@@ -367,6 +386,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 私の知識のカットオフ時点では、リアルタイム情報にはアクセスできません、最新の情報と異なる場合があります、具体的なデータは変動している可能性があります、最新の情報をご確認ください
 - Fire condition: 編集・報道・分析コンテンツにAI学習データの限界を示唆する自己参照または免責表現が1つでも出現する場合。
+- Example files: [success](../examples/ja-20-success-01.md)
 
 Example before:
 
@@ -382,6 +402,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 素晴らしいご質問ですね、おっしゃる通りです、非常に鋭いご指摘です、とても興味深いテーマですね、大変価値のあるお考えですね
 - Fire condition: 実質的な内容の前にお世辞・追従表現が1つでも出現する場合。
+- Example files: [success](../examples/ja-21-success-01.md)
 
 Example before:
 
@@ -414,6 +435,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 周知の通り、言うまでもなく、疑いなく、指摘すべきは、強調すべきは、注目すべきは、事実として、〜という点は注目に値する、〜に留意する必要がある
 - Fire condition: 同一段落にフィラー表現が2つ以上出現、または削除しても意味が変わらないフィラーが単独使用された場合。
+- Example files: [success](../examples/ja-22-success-01.md)
 
 Example before:
 
@@ -429,6 +451,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: おそらく〜かもしれない、ある程度〜の可能性がある、〜とも考えられなくはない、ある意味では〜とも言える、〜と言えるかもしれない、一概には〜とは言い切れない
 - Fire condition: 同一主張にヘッジ・限定表現が3つ以上重なる場合、またはヘッジが多すぎて反証不可能になっている場合。
+- Example files: [success](../examples/ja-23-success-01.md)
 
 Example before:
 
@@ -444,6 +467,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 今後が期待される、今後の展開に注目したい、大きな可能性を秘めている、輝かしい未来が待っている、ワクワクする未来、無限の可能性、新たな章の幕開け
 - Fire condition: 同一段落または結論部に空虚な楽観表現が2つ以上出現、または最終文が楽観フィラーだけで構成されている場合。
+- Example files: [success](../examples/ja-24-success-01.md)
 
 Example before:
 
@@ -477,6 +501,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 連続3つ以上の段落が同一の内部構造テンプレートに従う場合。
+- Example files: [success](../examples/ja-25-success-01.md)
 
 Example before:
 
@@ -500,6 +525,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 〜という事実、〜することが可能である、〜によって〜される、〜に関して、〜に基づいて、〜の観点から、〜する傾向がある
 - Fire condition: 同一段落に翻訳調の表現が2つ以上出現する場合。単独1回は許容。
+- Example files: [success](../examples/ja-26-success-01.md)
 
 Example before:
 
@@ -515,6 +541,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 〜している、〜を推進している、〜を展開している、〜に取り組んでいる、〜を進めている、〜に拍車をかけている
 - Fire condition: 同一段落で「〜ている」系の進行形が3回以上使用された場合、または連続2文がともに「〜ている」で終わる場合。
+- Example files: [success](../examples/ja-27-success-01.md)
 
 Example before:
 
@@ -530,6 +557,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 文章全体が「導入（テーマ提示）→展開（具体例）→転換（別の視点）→結論（まとめ）」の四段構成に明確に従い、結論が導入の繰り返しになっている場合。
+- Example files: [success](../examples/ja-28-success-01.md)
 
 Example before:
 

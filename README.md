@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/brand/patina-logo.svg" alt="patina — Strip the AI packaging. Keep the meaning." width="440">
+  <img src="assets/brand/patina-icon.svg" alt="patina icon" width="120">
 </p>
 
 <h1 align="center">patina</h1>

@@ -121,9 +121,10 @@ Patina also ships a no-key, deterministic CI check for prose review:
 # .github/workflows/patina.yml
 steps:
   - uses: actions/checkout@v6
-  - uses: devswha/patina@main # pin to @v1 after the release tag exists
+  - uses: devswha/patina-action@main # use @v1 after npm publish + action tag
     with:
-      gate: 30
+      patina-package: github:devswha/patina # remove after patina-cli@latest is on npm
+      report-threshold: 30
       comment: true
 ```
 

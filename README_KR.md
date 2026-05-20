@@ -10,9 +10,9 @@
 
 > **AI 포장만 벗기고, 의미는 그대로.**
 
-한국어, 영어, 중국어, 일본어 텍스트에서 AI 특유의 글쓰기 패턴을 탐지하고 교정합니다. [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), OpenCode 용 스킬 또는 독립형 Node.js CLI 로 동작합니다.
+patina는 한국어·영어·중국어·일본어 글에서 AI 냄새가 나는 패턴을 찾아, 원래 주장을 건드리지 않고 다듬습니다. [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), OpenCode 용 스킬로 쓰거나 독립형 Node.js CLI 로 실행할 수 있습니다.
 
-일반적인 패러프레이저와 달리 patina는 **패턴 기반이고 감사 가능**합니다. 무엇을, 왜 바꿨는지, 그리고 원문의 주장이 보존됐는지를 보여줍니다.
+블랙박스 패러프레이저가 아닙니다. patina는 **패턴 기반이고 감사 가능**해서, 무엇을 왜 바꿨는지와 원문의 주장이 보존됐는지를 보여줍니다.
 
 ## 데모
 
@@ -44,7 +44,7 @@
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
 
-설치 스크립트가 Claude Code, [Codex CLI](https://github.com/openai/codex), Cursor, OpenCode 에 한 번에 연결합니다. 체크아웃 전에 repository HEAD를 구체적인 commit으로 해석합니다. 완전히 고정된 설치가 필요하면 `PATINA_REF=<tag-or-full-sha>`를 설정하세요. 그런 다음:
+설치 스크립트가 Claude Code, [Codex CLI](https://github.com/openai/codex), Cursor, OpenCode 에 한 번에 연결합니다. 체크아웃 전에 repository HEAD를 구체적인 commit으로 해석하므로, 완전히 고정된 설치가 필요하면 `PATINA_REF=<tag-or-full-sha>`를 설정하세요. 그런 다음:
 
 ```
 /patina --lang ko
@@ -89,7 +89,7 @@ printf '%s\n' '커피는 전 세계의 사회적 상호작용을 근본적으로
 
 ### CI integrations
 
-Patina는 live model key 없이도 prose review를 위한 결정론적 CI 표면을 제공합니다:
+Patina는 live model key 없이도 prose review용 결정론적 CI 체크를 제공합니다:
 
 ```yaml
 # .github/workflows/patina.yml
@@ -105,7 +105,7 @@ Pre-commit, Husky, Lefthook, Docker, release workflow 메모는 [docs/integratio
 
 ## 의도한 사용
 
-Patina는 작성자가 AI 지원을 사용할 수 있는 상황에서 AI 이후 편집, audit trail, voice cleanup을 돕는 도구입니다. 텍스트가 "원래 사람이 쓴 것"이라는 약속이 아니며, 학업 honor-code 회피, 출판사 disclosure 우회, 표절 세탁, detector-bypass 주장에 사용해서는 안 됩니다. [ETHICS.md](docs/ETHICS.md)를 참고하세요.
+Patina는 작성자가 AI 지원을 써도 되는 상황에서 AI 이후 편집, audit trail, voice cleanup을 돕는 도구입니다. 텍스트가 "원래 사람이 쓴 것"이라는 약속은 아니며, 학업 honor-code 회피, 출판사 disclosure 우회, 표절 세탁, detector-bypass 주장에 사용해서는 안 됩니다. [ETHICS.md](docs/ETHICS.md)를 참고하세요.
 
 ## 모드
 
@@ -133,7 +133,9 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 
 ### 스코어 전용 패턴
 
-`--score`와 `--audit`는 `--rewrite`보다 약간 더 넓은 신호를 측정합니다. viral-hook 팩(`ko/en/zh/ja-viral-hook`, 각 5개 패턴: 숫자 충격 훅, 클릭베이트 종결, 출처 회피 권위 주장, 호흡 최적화 단문 배열, 과장된 참여 유도 어휘)은 **탐지 전용**입니다 — score와 audit에는 나타나서 네 언어의 SNS 마케팅 카피에 대한 사용자 직관과 벤치마크가 일치하도록 하지만, `--rewrite`/`--diff`/`--ouroboros`는 이 신호들이 의도된 수사일 수 있어 건너뜁니다. 실제 데모: [`examples/viral-hook/`](examples/viral-hook/).
+`--score`와 `--audit`는 `--rewrite`보다 약간 더 넓은 신호를 측정합니다. viral-hook 팩(`ko/en/zh/ja-viral-hook`, 각 5개 패턴: 숫자 충격 훅, 클릭베이트 종결, 출처 회피 권위 주장, 호흡 최적화 단문 배열, 과장된 참여 유도 어휘)은 **탐지 전용**입니다.
+
+이 신호들은 score와 audit에만 나타나 네 언어의 SNS 마케팅 카피에 대한 사용자 직관과 벤치마크를 맞춥니다. `--rewrite`/`--diff`/`--ouroboros`는 이런 표현이 의도된 수사일 수 있어 건너뜁니다. 실제 데모: [`examples/viral-hook/`](examples/viral-hook/).
 
 ### 프롬프트 모드 튜닝 (v3.11)
 

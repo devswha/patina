@@ -22,38 +22,45 @@ description: Deterministic statistical preprocessing that flags suspect paragrap
   어휘 다양성)를 결정론적 수치로 잡아낸다
 - 4.5단계 의미 앵커(Semantic Anchor)와 같은 "내부 작업 메모리" 패턴을 따라,
   hot 단락/문장 정보를 5a·5b 입력에 주입한다
-- 외부 의존성(형태소 분석기, 외부 detector API) 없이 whitespace 토큰화만으로 동작한다
+- 외부 의존성(형태소 분석기, 외부 detector API) 없이 ko/en은 whitespace 토큰화,
+  zh/ja는 deterministic character-token fallback으로 동작한다
 
 이 알고리즘은 5a 구조 분석 단계와 5b 문장/어휘 단계에 자연스럽게 결합되도록 설계되었다.
 - 5a는 단락 수준 hot 표시를 우선 검토 대상으로 사용한다
 - 5b는 문장 수준 hot 그룹을 우선 재작성 대상으로 사용한다
 
-### 언어 범위 (v1)
+### 언어 범위
 
-| 언어 | v1 지원 | 비고 |
+| 언어 | 지원 | 비고 |
 |------|---------|------|
 | ko | yes | 어절 단위 토큰화 |
 | en | yes | 단어 단위 토큰화 |
-| zh | no (v2+) | character-based 토큰화 별도 작업 필요 |
-| ja | no (v2+) | 형태소 분석기 의존성 분리 필요 |
+| zh | yes | Han character-token fallback |
+| ja | yes | Kana/Han character-token fallback; 형태소 분석 없음 |
 
-`stylometry.languages` 설정에 포함되지 않은 언어는 4.6단계를 skip 한다.
+기본 `stylometry.languages`는 `[ko, en, zh, ja]`이다. 사용자가 설정에서 언어를 제거하면
+해당 언어는 4.6단계를 skip 한다.
 
 ---
 
 ## 2. Tokenization Policy
 
-외부 의존성을 배제하기 위해 형태소 분석기 없이 whitespace + edge-punctuation strip 만으로
-토큰화한다. raw token만으로도 burstiness와 MATTR 신호는 충분히 안정적이다.
+외부 의존성을 배제하기 위해 형태소 분석기 없이 토큰화한다. ko/en은 whitespace +
+edge-punctuation strip, zh/ja는 Han/Kana 문자와 ASCII run을 token으로 삼는 fallback을
+사용한다. raw token만으로도 burstiness와 MATTR 신호는 충분히 안정적이다.
 
 ### 절차
 
 ```
 tokens = []
-FOR each whitespace-separated chunk IN sentence:
-    stripped = chunk with leading/trailing `\W` characters removed
-    IF stripped is non-empty:
-        tokens.append(stripped)
+IF language is zh or ja:
+    FOR each Han/Kana character or ASCII alnum run IN sentence:
+        tokens.append(match)
+ELSE:
+    FOR each whitespace-separated chunk IN sentence:
+        stripped = chunk with leading/trailing `\W` characters removed
+        IF stripped is non-empty:
+            tokens.append(stripped)
 ```
 
 - `\W` 는 정규식의 비단어 문자 클래스 (Unicode aware: 한글·영문 단어 문자는 보존)
@@ -66,9 +73,13 @@ FOR each whitespace-separated chunk IN sentence:
 |------|-----------|-----------|------|
 | ko | 어절 (whitespace 기준) | `이 도구는 자동완성처럼 동작한다` | `[이, 도구는, 자동완성처럼, 동작한다]` |
 | en | 단어 (whitespace 기준) | `The tool acts like autocomplete.` | `[The, tool, acts, like, autocomplete]` |
+| zh | 한자 문자 | `工具提升写作` | `[工, 具, 提, 升, 写, 作]` |
+| ja | 가나/한자 문자 | `道具が書く` | `[道, 具, が, 書, く]` |
 
 > **주의:** 한국어는 어절 기준이므로 morpheme-level 분석과 다르다. `도구는`과 `도구가`는
-> 서로 다른 토큰으로 취급된다. v1은 이 단순화로 진행하며, 형태소 분석기 도입은 v2 이후로 보류한다.
+> 서로 다른 토큰으로 취급된다. zh/ja 역시 형태소 단위가 아니라 문자 fallback이다. jieba,
+> sudachi, mecab 같은 형태소 분석기는 배포 의존성과 설치 실패면을 늘리므로 기본 경로에서
+> 제외한다.
 
 ---
 
@@ -235,7 +246,7 @@ emit groups of length ≥ 2 as sub-flags
 | 전체 문장 수 ≤ 2 | 4.6단계 전체 skip — meta block 생략 |
 | 단락 내 문장 수 < 2 | 해당 단락은 burstiness 계산 불가 → MATTR 만 평가 |
 | 단락 내 토큰 수 = 0 | 해당 단락 skip |
-| 언어가 `stylometry.languages` 에 없음 | 4.6단계 전체 skip |
+| 언어가 `stylometry.languages` 에 없음 | 4.6단계 전체 skip (기본값은 ko/en/zh/ja 포함) |
 
 임계값은 4.5단계 의미 앵커 추출의 skip 조건과 동일하다.
 
@@ -417,18 +428,24 @@ The tool is scalable. The tool is essential.
 
 ## 11. Roadmap (v2+)
 
-v1 범위에서 의도적으로 제외한 항목. v1 시드 평가 결과를 바탕으로 우선순위를 재조정한다.
+현재 기본 경로에서 의도적으로 제외했거나 ship 이후 후속 검토만 남은 항목.
+
+**zh/ja decision:** 기본 경로는 char-token fallback으로 확정한다. go 조건은 "무의존성,
+Node 18 호환, 문장 길이 CV/MATTR가 공백 없는 zh/ja 문장에서 0-token으로 붕괴하지 않음"이다.
+jieba/sudachi/mecab 같은 형태소 의존성은 no-go다. go 조건을 다시 열려면 (1) pure JS 또는
+optional dependency로 설치 실패가 없는 경로, (2) ko/en/zh/ja benchmark에서 false positive
+증가가 허용 범위 내라는 근거, (3) 패키지 크기/속도 회귀가 문서화되어야 한다.
 
 | 항목 | 설명 | 도입 후보 시점 |
 |------|------|----------------|
 | ~~n-gram redundancy~~ | ~~bi/trigram 반복도~~ — **dropped, §15 negative finding** | — |
 | ~~AI-lexicon overlap~~ | ~~28-패턴 외 AI 특유 어구 사전 매칭~~ — **shipped v3.7, §16** | v3.7 |
+| ~~zh/ja character fallback~~ | ~~Han/Kana character-token burstiness/TTR~~ — **shipped for 4.6** | current |
 | Perplexity proxy | small LM 또는 cloze prompt 기반 token-level surprise | v4 후보 |
 | Function-word distribution | 기능어 빈도 분포 차이 (Mosteller & Wallace 류) | v4 후보 |
 | GPTZero / Originality 연동 | 외부 detector API 결과를 hot 신호로 합산 | v4+ 후보 |
 | 형태소 분석 기반 ko 토큰화 | 어절 → 형태소 단위로 정밀화 | v2+ |
-| zh character-based 토큰화 | 한자 단위 burstiness/TTR 정의 | v2 |
-| ja 형태소 분석 통합 | 일본어 단어 경계 처리 | v2 |
+| zh/ja 형태소 분석 통합 | 단어 경계 처리; 위 go/no-go 충족 시에만 재검토 | v4+ 후보 |
 | 사용자 idiolect 학습 | 개인 작성 스타일 학습 후 false positive 억제 | 별도 트랙 |
 | 정량 라벨 데이터셋 | 언어별 50+ 라벨 데이터 기반 임계값 튜닝 | v1 결과 후 검토 |
 
@@ -449,8 +466,9 @@ v1 범위에서 의도적으로 제외한 항목. v1 시드 평가 결과를 바
   외부 신호는 v3 후보 로드맵 항목이다.
 - **False split**: 약어(`Mr.`, `e.g.`) 와 소수점(`3.14`) 같은 종결부호 오인식을 v1 에서
   감수한다. 시드 평가에서 false positive 비율이 한도를 넘기면 v1.1 에서 보강한다.
-- **Language scope**: v1 은 ko + en 만 지원한다. zh/ja 는 character-based 또는 형태소
-  분석기 의존성이 있어 별도 작업으로 분리했다.
+- **Language scope**: 4.6 stylometry는 ko/en/zh/ja를 지원한다. zh/ja는 형태소가 아니라
+  character-token fallback이므로 MATTR 해석은 보수적으로만 사용한다. 4.7 lexicon은
+  curated 사전이 있는 en/ko만 기본 지원한다.
 
 ---
 
@@ -613,7 +631,9 @@ paragraph is SUSPECT iff
 - `lexicon/ai-en.md` — 영어 50개 strict + 58개 phrase = 108 entries
 - `lexicon/ai-ko.md` — 한국어 41개 strict + 49개 phrase = 90 entries
 
-탐색은 `Glob lexicon/ai-{lang}.md`로 자동. zh/ja는 v1 미지원 (`lexicon.languages` 기본 `[en, ko]`). 사용자가 `custom/lexicon/ai-{lang}.md` 를 두면 우선 로드.
+탐색은 `Glob lexicon/ai-{lang}.md`로 자동. zh/ja는 4.6 stylometry만 기본 지원하고
+4.7 lexicon은 curated 사전이 없어 기본 미지원(`lexicon.languages` 기본 `[en, ko]`).
+사용자가 `custom/lexicon/ai-{lang}.md` 를 두면 우선 로드.
 
 ### 매칭 정책
 

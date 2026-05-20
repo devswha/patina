@@ -143,3 +143,17 @@ test('Chinese uniform sentence block has low burstiness', () => {
   assert.deepEqual(p.burstiness, { cv: 0, band: 'low' });
   assert.equal(p.hot, true);
 });
+
+test('Chinese/Japanese text without spaces keeps burstiness end-to-end', () => {
+  const zh = analyzeText('工具写作。模型编辑。系统审阅。流程协作。页面发布。', { lang: 'zh' });
+  assert.equal(zh.paragraphs[0].sentenceCount, 5);
+  assert.equal(zh.paragraphs[0].tokenCount, 20);
+  assert.deepEqual(zh.paragraphs[0].burstiness, { cv: 0, band: 'low' });
+  assert.equal(zh.hot, true);
+
+  const ja = analyzeText('道具が書く。模型が直す。体系が見る。流れが組む。画面が出す。', { lang: 'ja' });
+  assert.equal(ja.paragraphs[0].sentenceCount, 5);
+  assert.equal(ja.paragraphs[0].tokenCount, 25);
+  assert.deepEqual(ja.paragraphs[0].burstiness, { cv: 0, band: 'low' });
+  assert.equal(ja.hot, true);
+});

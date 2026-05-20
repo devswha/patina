@@ -250,13 +250,13 @@ Do not lead with “bypass AI detectors.” Lead with:
 
 ## 5. Immediate next actions
 
-Last triaged: 2026-05-20, after Wave 1 docs/governance quick wins.
+Last triaged: 2026-05-21, after MAX stabilization closed issues #141, #143, and #144.
 
 Current GitHub issue inventory:
 
-- 42 open issues; 100 closed issues; 142 tracked issues total.
-- Open priority split: 2 high, 26 medium, 14 low, and 0 without priority labels.
-- The only open `priority: high` issues are the blocked release-wave items [#203](https://github.com/devswha/patina/issues/203) and [#204](https://github.com/devswha/patina/issues/204).
+- 20 open issues; 122 closed issues; 142 tracked issues total.
+- Open priority split: 0 high, 7 medium, 13 low, and 0 without priority labels.
+- No `priority: high` issues are currently open.
 
 Already done or mostly done:
 
@@ -268,6 +268,7 @@ Already done or mostly done:
 - Launch copy drafts live in [`docs/social/patina-launch-copy.md`](social/patina-launch-copy.md).
 - Main branch protection is enabled. Issue: [#246](https://github.com/devswha/patina/issues/246).
 - MAX warns when every MAX candidate fails `MPS >= 70` and the highest-MPS candidate is selected as fallback. Issue: [#139](https://github.com/devswha/patina/issues/139).
+- MAX stabilization is complete: standalone MAX accepts local CLI backend candidates, defaults to minimal prompt weight, and documents pane-liveness watchdog behavior. Issues: [#141](https://github.com/devswha/patina/issues/141), [#143](https://github.com/devswha/patina/issues/143), [#144](https://github.com/devswha/patina/issues/144).
 - Deterministic `callLLM` seams exist across `ouroboros`, `max-mode`, and scoring test paths. Issue: [#130](https://github.com/devswha/patina/issues/130).
 - Localized READMEs have been dogfooded through patina to reduce AI tells. Issue: [#242](https://github.com/devswha/patina/issues/242).
 - zh/ja before-after examples have been backfilled to near parity with ko/en pattern coverage. Issue: [#146](https://github.com/devswha/patina/issues/146).
@@ -279,26 +280,23 @@ Already done or mostly done:
 - Scoring/stylometry quality wave is complete: zh/ja char n-grams, deterministic shadow scoring, manifest v2 observability, response cache, and voice anchors. Issues: [#151](https://github.com/devswha/patina/issues/151), [#136](https://github.com/devswha/patina/issues/136), [#134](https://github.com/devswha/patina/issues/134), [#135](https://github.com/devswha/patina/issues/135), [#137](https://github.com/devswha/patina/issues/137).
 - Pattern/profile wave is complete: zh/ja risk notes, comparison-adverb backport, zh/ja profile overrides, overlap audit, developer-prose profiles, and viral-hook expansion to 8 score-only patterns per language. Issues: [#147](https://github.com/devswha/patina/issues/147), [#148](https://github.com/devswha/patina/issues/148), [#149](https://github.com/devswha/patina/issues/149), [#152](https://github.com/devswha/patina/issues/152), [#153](https://github.com/devswha/patina/issues/153), [#154](https://github.com/devswha/patina/issues/154).
 
-Next executable wave order (snapshot: 2026-05-20 after the npm/action release wave):
+Next executable wave order (snapshot: 2026-05-21 after the MAX stabilization wave):
 
 ### Completed release wave
 
 1. `patina-cli` / `patina-humanizer` are published on npm. Issue: [#203](https://github.com/devswha/patina/issues/203).
 2. `devswha/patina-action@v1` is released for PR-comment scoring. Issue: [#204](https://github.com/devswha/patina/issues/204).
 
-### Wave 1 — medium, executable after release policy is unblocked
+### Wave 1 — remaining medium, executable now
 
 1. Add zh/ja AI-lexicon files for stylometry overlap detection. Issue: [#104](https://github.com/devswha/patina/issues/104).
-2. Let CLI backends participate in standalone MAX. Issue: [#141](https://github.com/devswha/patina/issues/141).
-3. Reduce MAX prompt weight by opting into a minimal default. Issue: [#143](https://github.com/devswha/patina/issues/143).
-4. Add MAX pane-liveness watchdogs for dead tmux panes. Issue: [#144](https://github.com/devswha/patina/issues/144).
-5. Make `patina auth login <backend>` launch the real login flow. Issue: [#186](https://github.com/devswha/patina/issues/186).
-6. Add JSDoc public exports and publish generated API reference. Issue: [#191](https://github.com/devswha/patina/issues/191).
-7. Tie this roadmap to a GitHub Project board or Milestones. Issue: [#195](https://github.com/devswha/patina/issues/195).
+2. Make `patina auth login <backend>` launch the real login flow. Issue: [#186](https://github.com/devswha/patina/issues/186).
+3. Add JSDoc public exports and publish generated API reference. Issue: [#191](https://github.com/devswha/patina/issues/191).
+4. Tie this roadmap to a GitHub Project board or Milestones. Issue: [#195](https://github.com/devswha/patina/issues/195).
 
 ### Wave 2 — research calibration, parked unless explicitly scheduled
 
-These are medium-priority but research-heavy. Keep them out of the critical path until release blockers and the core quality loop have stable owner time.
+These are medium-priority but research-heavy. Keep them out of the critical path until the remaining executable medium items and the core quality loop have stable owner time.
 
 1. Re-baseline AI catch rate against 2025+ models. Issue: [#155](https://github.com/devswha/patina/issues/155).
 2. Run the lexicon freshness audit with per-entry corpus provenance. Issue: [#160](https://github.com/devswha/patina/issues/160).
@@ -306,7 +304,7 @@ These are medium-priority but research-heavy. Keep them out of the critical path
 
 ### Wave 3 — low-priority parked ecosystem and research
 
-Do not start these until npm publication, action v1, and medium MAX/auth/docs work have a stable release path:
+Do not start these until the remaining medium auth/docs work and research calibration wave have a stable release path:
 
 - False-positive and benchmark calibration: [#99](https://github.com/devswha/patina/issues/99), [#156](https://github.com/devswha/patina/issues/156), [#157](https://github.com/devswha/patina/issues/157), [#158](https://github.com/devswha/patina/issues/158), [#159](https://github.com/devswha/patina/issues/159), [#163](https://github.com/devswha/patina/issues/163).
 - Documentation site exploration: [#199](https://github.com/devswha/patina/issues/199).

@@ -6,12 +6,12 @@ Patina's production brand assets are hand-authored SVGs so maintainers can revie
 
 | Asset | Path | Use |
 |---|---|---|
-| Logo lockup | [`assets/brand/patina-logo.svg`](../assets/brand/patina-logo.svg) | README hero, package pages, docs landing pages |
-| App icon | [`assets/brand/patina-icon.svg`](../assets/brand/patina-icon.svg) | Favicon/app tile/avatar contexts |
+| Logo lockup | [`assets/brand/patina-logo.svg`](../assets/brand/patina-logo.svg) | Package pages and docs landing pages that need the full wordmark + tagline |
+| App icon | [`assets/brand/patina-icon.svg`](../assets/brand/patina-icon.svg) | README hero, favicon/app tile/avatar contexts |
 | Social preview | [`assets/social/patina-og.svg`](../assets/social/patina-og.svg) | Open Graph / social card export source |
 | Before/after card | [`assets/social/patina-before-after.svg`](../assets/social/patina-before-after.svg) | Launch posts and docs examples |
 
-`patina-logo.svg` is the single canonical horizontal logo. Do not reintroduce README-only duplicates unless the variant is visibly different and documented here.
+`patina-logo.svg` is the single canonical horizontal logo. README uses the square icon plus Markdown heading/tagline to avoid repeating the wordmark and tagline.
 
 ## Accessibility checklist
 

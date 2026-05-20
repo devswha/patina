@@ -41,6 +41,8 @@ Glob .patina.default.yaml → Read
 - `--ouroboros`: ouroboros 모드 (반복 교정 + 점수 수렴)
 - `--lang <code>`: 처리 언어 변경 (ko, en, zh, ja). 설정 파일의 `language` 값을 오버라이드한다.
 - `--tone <name>`: 톤 카테고리 지정. 유효값: `casual | professional | academic | narrative | marketing | instructional | auto`. 알 수 없는 값이면 즉시 오류: "Unknown tone '<name>'. Valid tones: casual, professional, academic, narrative, marketing, instructional, auto"
+- `--prompt-mode <strict|minimal|auto>`: rewrite 프롬프트 크기와 구조를 선택한다. `strict`는 전체 패턴 팩을 사용하고, `minimal`은 압축 지시문을 사용하며, `auto`는 백엔드별 기본값을 고른다(Gemini는 minimal, 그 외는 strict).
+- `--variants <n>`: rewrite 모드에서 1-5개의 스타일 변형을 한 번에 생성한다. 각 변형은 사실, 수치, 인과관계를 동일하게 유지하고 최종 출력에서는 `## Variant N` 형식으로 표시한다. MAX 모드(`--models`)와는 함께 쓰지 않는다.
 - `--batch <files>`: 여러 파일을 한꺼번에 처리 (glob 또는 명시적 경로 목록).
   - `--in-place`: 원본 파일을 교정된 텍스트로 덮어쓴다.
   - `--suffix <ext>`: 결과를 `{원본명}{ext}` 파일로 저장한다 (예: `--suffix .humanized`).
@@ -81,6 +83,8 @@ if --lang in {zh, ja} and resolved_tone in 6-tone set:
 파일이 없으면 에러: "core/scoring.md not found. Please update patina."
 
 `--ouroboros`는 rewrite 출력 모드를 사용한다. `--audit`, `--diff`, `--score`와 함께 사용할 수 없다.
+
+`--prompt-mode`와 `--variants`는 rewrite 출력에만 적용된다. `--audit`, `--diff`, `--score`는 패턴 탐지와 스코어링 표면이므로 변형 출력을 만들지 않는다.
 
 ---
 

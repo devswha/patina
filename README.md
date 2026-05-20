@@ -123,6 +123,7 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `--score --gate <n>` | Keep CI strict: exit code `3` when `overall > n` |
 | `--diff` | Show changes pattern by pattern |
 | `--ouroboros` | Iterate the rewrite until score converges (with MPS rollback) |
+| `--variants <1-5>` | Generate multiple stylistic rewrite variants in one call |
 | `--lang <ko\|en\|zh\|ja>` | Select language (default: `ko`) |
 | `--profile <name>` | Tone preset: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation` |
 | `--tone <name>` | Tone category: `casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
@@ -219,6 +220,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Patterns](docs/PATTERNS.md)** — full 146-pattern catalog
 - **[Authentication](docs/AUTHENTICATION.md)** — backends, providers, free-tier setup
 - **[CLI Contract](docs/CLI.md)** — score gate, exit codes, and automation-safe surfaces
+- **[Flag Parity](docs/FLAG-PARITY.md)** — CLI vs skill flag coverage audit
 - **[Ethics](docs/ETHICS.md)** — intended use, non-use, and disclosure stance
 - **[FAQ](docs/FAQ.md)** — detector-bypass concerns, MPS, false positives, contribution starting points
 - **[Comparison](docs/COMPARISON.md)** — factual comparison with common paraphraser/humanizer tools

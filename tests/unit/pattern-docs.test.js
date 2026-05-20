@@ -8,6 +8,7 @@ import yaml from 'js-yaml';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
 const PATTERN_DIR = resolve(REPO_ROOT, 'patterns');
+const LEXICON_DIR = resolve(REPO_ROOT, 'lexicon');
 const DOCS_DIR = resolve(REPO_ROOT, 'docs');
 const SCORING_PATH = resolve(REPO_ROOT, 'core/scoring.md');
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
@@ -20,16 +21,28 @@ function patternFiles() {
     .sort();
 }
 
-function parsePatternFile(path) {
+function lexiconFiles() {
+  return readdirSync(LEXICON_DIR)
+    .filter((name) => name.endsWith('.md'))
+    .map((name) => resolve(LEXICON_DIR, name))
+    .sort();
+}
+
+function parseFrontmatterFile(path) {
   const raw = readFileSync(path, 'utf8');
   const m = raw.match(FRONTMATTER_RE);
   assert.ok(m, `${path} must have YAML frontmatter`);
   const meta = yaml.load(m[1]);
+  return { meta, body: m[2] };
+}
+
+function parsePatternFile(path) {
+  const parsed = parseFrontmatterFile(path);
   return {
     path,
-    meta,
-    patternHeadingCount: (m[2].match(/^###\s+\d+\./gm) || []).length,
-    plainH3Count: (m[2].match(/^###\s+/gm) || []).length,
+    meta: parsed.meta,
+    patternHeadingCount: (parsed.body.match(/^###\s+\d+\./gm) || []).length,
+    plainH3Count: (parsed.body.match(/^###\s+/gm) || []).length,
   };
 }
 
@@ -95,6 +108,35 @@ test('pattern pack frontmatter counts match numbered pattern headings', () => {
       `${file}: non-pattern subsections should not use ### because tooling counts ### as pattern headings`
     );
   }
+});
+
+test('pattern and lexicon packs carry corpus snapshot metadata', () => {
+  for (const file of [...patternFiles(), ...lexiconFiles()]) {
+    const { meta } = parseFrontmatterFile(file);
+    const snapshot = meta['corpus-snapshot'];
+    assert.equal(typeof snapshot, 'object', `${file}: corpus-snapshot metadata is required`);
+    assert.equal(typeof snapshot.id, 'string', `${file}: corpus-snapshot.id is required`);
+    assert.equal(typeof snapshot.status, 'string', `${file}: corpus-snapshot.status is required`);
+    assert.equal(typeof snapshot.source, 'string', `${file}: corpus-snapshot.source is required`);
+    assert.ok(
+      Object.prototype.hasOwnProperty.call(snapshot, 'last_validated'),
+      `${file}: corpus-snapshot.last_validated is required, use null when not validated`
+    );
+  }
+});
+
+test('pattern freshness process defines cadence, candidate fixtures, and promotion gates', () => {
+  const processDoc = readFileSync(resolve(REPO_ROOT, 'process/pattern-freshness.md'), 'utf8');
+  assert.match(processDoc, /quarterly review process/i);
+  assert.match(processDoc, /50-document evaluation fixture/i);
+  assert.match(processDoc, /Precision floor/);
+  assert.match(processDoc, /Recall floor/);
+  assert.match(processDoc, /corpus-snapshot:/);
+
+  const template = readFileSync(resolve(REPO_ROOT, '.github/ISSUE_TEMPLATE/pattern_proposal.yml'), 'utf8');
+  assert.match(template, /id: register_scope/);
+  assert.match(template, /id: evaluation_fixture/);
+  assert.match(template, /id: measurement/);
 });
 
 test('viral-hook packs remain score-only with expanded severity-documented coverage', () => {

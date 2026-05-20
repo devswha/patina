@@ -4,6 +4,11 @@ language: zh
 name: 内容模式
 version: 1.0.0
 patterns: 6
+corpus-snapshot:
+  id: bootstrap-patterns-pre-provenance
+  status: needs-quarterly-refresh
+  source: maintainer-curated pattern packs before quarterly corpus snapshot tracking
+  last_validated: null
 ---
 
 # 内容模式

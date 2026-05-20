@@ -4,6 +4,11 @@ language: en
 name: Structure Patterns
 version: 1.2.0
 patterns: 5
+corpus-snapshot:
+  id: bootstrap-patterns-pre-provenance
+  status: needs-quarterly-refresh
+  source: maintainer-curated pattern packs before quarterly corpus snapshot tracking
+  last_validated: null
 phase: structure
 ---
 

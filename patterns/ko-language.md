@@ -4,6 +4,11 @@ language: ko
 name: 언어/문법 패턴
 version: 1.1.0
 patterns: 7
+corpus-snapshot:
+  id: bootstrap-patterns-pre-provenance
+  status: needs-quarterly-refresh
+  source: maintainer-curated pattern packs before quarterly corpus snapshot tracking
+  last_validated: null
 dedupe-with:
   - source: "ko-language:7"
     target: "ko-style:13"

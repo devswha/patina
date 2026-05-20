@@ -4,21 +4,22 @@
  * Quality test — opt-in script (NOT part of `npm test`).
  *
  * Builds a patina prompt for an AI-generated paragraph, runs it through
- * `opencode run -m opencode/hy3-preview-free`, and grades the rewrite on
+ * `opencode run`, and grades the rewrite on
  * AI-buzzword removal, fact preservation, length sanity, personal voice,
  * and sentence variety.
  *
- * Requires the `opencode` CLI to be installed and authenticated.
- * Run with: `node tests/e2e/quality-test.js`
+ * Requires OPENCODE_AVAILABLE=1 and an authenticated `opencode` CLI.
+ * Run with: `OPENCODE_AVAILABLE=1 node tests/e2e/quality-test.js`
  */
 
 import { writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
+const DEFAULT_OPENCODE_MODEL = 'opencode/hy3-preview-free';
 
 const AI_TEXT = `Coffee has emerged as a pivotal cultural phenomenon that has fundamentally transformed social interactions across the globe. This beloved beverage serves as a catalyst for community building, fosters meaningful connections, and facilitates cross-cultural dialogue. From the bustling cafés of Paris to the serene tea houses repurposed for coffee in Tokyo, this remarkable journey showcases the innovative spirit of human culinary exploration.
 
@@ -60,13 +61,18 @@ async function buildPatinaPrompt(text, mode = 'rewrite') {
   });
 }
 
+function getOpenCodeModel() {
+  return process.env.OPENCODE_MODEL || DEFAULT_OPENCODE_MODEL;
+}
+
 async function runWithOpenCode(prompt) {
   const tempFile = resolve(REPO_ROOT, 'tests/e2e/temp-prompt.txt');
   writeFileSync(tempFile, prompt, 'utf8');
 
   try {
-    const result = execSync(
-      `opencode run -m opencode/hy3-preview-free --pure "$(cat ${tempFile})"`,
+    const result = execFileSync(
+      'opencode',
+      ['run', '-m', getOpenCodeModel(), '--pure', prompt],
       {
         encoding: 'utf8',
         timeout: 120000,
@@ -137,6 +143,18 @@ function evaluateQuality(original, humanized) {
 }
 
 async function main() {
+  if (!process.env.OPENCODE_AVAILABLE) {
+    console.log('=== Patina Quality Test ===\n');
+    console.log('Skipping OpenCode quality test.');
+    console.log(
+      'Set OPENCODE_AVAILABLE=1 after installing and authenticating the opencode CLI.'
+    );
+    console.log(
+      `Optional: set OPENCODE_MODEL to override ${DEFAULT_OPENCODE_MODEL}.`
+    );
+    return;
+  }
+
   console.log('=== Patina Quality Test ===\n');
   console.log('Original text (AI-generated):');
   console.log('---');
@@ -147,7 +165,7 @@ async function main() {
   const prompt = await buildPatinaPrompt(AI_TEXT, 'rewrite');
   console.log(`Prompt size: ${prompt.length} chars\n`);
 
-  console.log('Running through OpenCode (hy3-preview-free)...');
+  console.log(`Running through OpenCode (${getOpenCodeModel()})...`);
   console.log('This may take 30-60 seconds...\n');
 
   const humanized = await runWithOpenCode(prompt);

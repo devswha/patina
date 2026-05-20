@@ -52,6 +52,11 @@ Per-language metrics use `expected_hot=true` as the positive class.
    language: ko
    class: ai
    expected_hot: true
+   expected_metrics:
+     cv_band: low              # optional regression pin
+     mattr_band: high          # optional regression pin
+     lexicon_density_min: 0    # optional regression pin
+     lexicon_density_max: 80   # optional regression pin
    why_designed_this_way: |
      Brief note on which signals you expect to fire.
    topic: <subject>
@@ -62,7 +67,9 @@ Per-language metrics use `expected_hot=true` as the positive class.
 
 2. Drop it under `tests/fixtures/suspect-zones/{lang}/{ai|natural}/`.
 
-3. Re-run `npm run benchmark` and confirm it classifies as expected.
+3. Add `expected_metrics` when a fixture is meant to pin a specific deterministic signal. This is useful for real-world chat-register fixtures where a future tokenizer or threshold change should fail loudly instead of silently changing the benchmark meaning.
+
+4. Re-run `npm run benchmark` and confirm it classifies as expected.
 
 ## Tuning the thresholds
 

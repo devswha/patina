@@ -4,6 +4,11 @@ language: en
 name: Language Patterns
 version: 1.0.0
 patterns: 7
+corpus-snapshot:
+  id: bootstrap-patterns-pre-provenance
+  status: needs-quarterly-refresh
+  source: maintainer-curated pattern packs before quarterly corpus snapshot tracking
+  last_validated: null
 dedupe-with:
   - source: "en-language:7"
     target: "en-filler:24"

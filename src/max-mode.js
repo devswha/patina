@@ -19,10 +19,21 @@ export async function runMaxMode({
   callLLMMultipleImpl = callLLMMultiple,
   scoreTextImpl = scoreText,
   scoreMPSImpl = scoreMPS,
+  signal,
 }) {
   console.error(`[patina-max] Dispatching to ${models.length} models: ${models.join(', ')}`);
 
   const controller = new AbortController();
+  const abortFromCaller = () => controller.abort();
+  let cleanupCallerSignal = () => {};
+  if (signal) {
+    if (signal.aborted) {
+      controller.abort();
+    } else {
+      signal.addEventListener('abort', abortFromCaller, { once: true });
+      cleanupCallerSignal = () => signal.removeEventListener('abort', abortFromCaller);
+    }
+  }
   const deadline = now() + wallClockBudgetMs;
   let timedOut = false;
   const timeout = setTimeout(() => {
@@ -100,6 +111,7 @@ export async function runMaxMode({
     }
   } finally {
     clearTimeout(timeout);
+    cleanupCallerSignal();
   }
 
   const { candidate: best, fallback } = selectBest(candidates);

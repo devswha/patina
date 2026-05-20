@@ -10,7 +10,7 @@ import { runOuroboros } from './ouroboros.js';
 import { buildManifest, appendResult, writeManifest } from './manifest.js';
 import { runDoctor } from './commands/doctor.js';
 import { runInit } from './commands/init.js';
-import { inputError, runtimeError, renderCliError, getExitCode } from './errors.js';
+import { PatinaCliError, inputError, runtimeError, renderCliError, getExitCode } from './errors.js';
 import { inspectHttpApiKeySource, providerHttpKeyEnvVars, resolveHttpApiKey } from './auth.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, basename, extname } from 'node:path';
@@ -132,135 +132,149 @@ export async function main(args) {
     : 'rewrite';
 
   const inputTexts = await loadInputs(parsed);
+  const cancellation = createCancellationController();
 
-  for (const { path, text } of inputTexts) {
-    const prompt = buildPrompt({
-      config,
-      patterns,
-      profile: profile.body ? profile : null,
-      voice: voice.body ? voice : null,
-      scoring: scoring.body ? scoring : null,
-      text,
-      mode,
-      tone: toneResolution,
-      promptMode: resolvePromptMode(
-        parsed.promptMode || config['prompt-mode'] || 'strict',
-        { backend: parsed.backend ?? config.backend, model: resolved.model }
-      ),
-      variants: parsed.variants || 1,
-    });
-
-    let result;
-
-    if (parsed.models) {
-      result = await runMaxMode({
-        prompt,
-        sourceText: text,
-        models: parsed.models,
-        apiKey: resolved.apiKey,
-        baseURL: resolved.baseURL,
-        config,
-        patterns,
-        maxConcurrency: parsed.maxConcurrency,
-        wallClockBudgetMs: parsed.maxTimeoutSeconds === undefined ? undefined : parsed.maxTimeoutSeconds * 1000,
-      });
-    } else if (parsed.ouroboros) {
-      result = await runOuroboros({
+  cancellation.install();
+  try {
+    for (const { path, text } of inputTexts) {
+      cancellation.throwIfCanceled();
+      const prompt = buildPrompt({
         config,
         patterns,
         profile: profile.body ? profile : null,
         voice: voice.body ? voice : null,
         scoring: scoring.body ? scoring : null,
         text,
-        apiKey: resolved.apiKey,
-        baseURL: resolved.baseURL,
-        model: resolved.model,
-      });
-    } else {
-      const { backend, autoSelected, reason } = selectBackend({
-        name: parsed.backend ?? config.backend,
-        model: resolved.model,
+        mode,
+        tone: toneResolution,
+        promptMode: resolvePromptMode(
+          parsed.promptMode || config['prompt-mode'] || 'strict',
+          { backend: parsed.backend ?? config.backend, model: resolved.model }
+        ),
+        variants: parsed.variants || 1,
       });
 
-      if (autoSelected) {
-        console.error(`[patina] Using ${backend.name} backend (${reason}). Run \`patina auth status\` for details.`);
+      let result;
+
+      if (parsed.models) {
+        result = await runMaxMode({
+          prompt,
+          sourceText: text,
+          models: parsed.models,
+          apiKey: resolved.apiKey,
+          baseURL: resolved.baseURL,
+          config,
+          patterns,
+          maxConcurrency: parsed.maxConcurrency,
+          wallClockBudgetMs: parsed.maxTimeoutSeconds === undefined ? undefined : parsed.maxTimeoutSeconds * 1000,
+          signal: cancellation.signal,
+        });
+      } else if (parsed.ouroboros) {
+        result = await runOuroboros({
+          config,
+          patterns,
+          profile: profile.body ? profile : null,
+          voice: voice.body ? voice : null,
+          scoring: scoring.body ? scoring : null,
+          text,
+          apiKey: resolved.apiKey,
+          baseURL: resolved.baseURL,
+          model: resolved.model,
+          signal: cancellation.signal,
+        });
+      } else {
+        const { backend, autoSelected, reason } = selectBackend({
+          name: parsed.backend ?? config.backend,
+          model: resolved.model,
+        });
+
+        if (autoSelected) {
+          console.error(`[patina] Using ${backend.name} backend (${reason}). Run \`patina auth status\` for details.`);
+        }
+
+        if (backend.name === 'openai-http' && !resolved.apiKey) {
+          const msg = ['No API key found. Set PATINA_API_KEY, PATINA_API_KEY_FILE, OPENAI_API_KEY, or pass --api-key.'];
+          if (provider) {
+            msg.push(`(--provider ${provider.name} expects ${provider.apiKeyEnv} or PATINA_API_KEY.)`);
+          }
+          const codex = listBackends().find((b) => b.name === 'codex-cli');
+          if (codex && codex.available && codex.authenticated) {
+            msg.push('Or pass `--backend codex-cli` to use the codex-cli backend (no key needed).');
+          } else if (codex && codex.available && !codex.authenticated) {
+            msg.push('Or run `codex login`, then pass `--backend codex-cli`.');
+          } else if (codex && !codex.available) {
+            msg.push('Or install `codex` from https://github.com/openai/codex and pass `--backend codex-cli`.');
+          }
+          throw runtimeError(
+            'no API key found',
+            msg[0],
+            msg.slice(1).join(' ') || 'Set PATINA_API_KEY or pass --backend codex-cli after logging in.'
+          );
+        }
+
+        result = await backend.invoke({
+          prompt,
+          apiKey: resolved.apiKey,
+          baseURL: resolved.baseURL,
+          model: resolved.model,
+          signal: cancellation.signal,
+        });
+      }
+      cancellation.throwIfCanceled();
+
+      let output;
+      let scoreValidationOutput = null;
+      if (parsed.ouroboros) {
+        const ouroborosBody = formatOuroborosOutput(result);
+        output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution });
+        scoreValidationOutput = ouroborosBody;
+      } else {
+        output = formatOutput(result, mode, parsed, { tone: toneResolution });
+        if (mode === 'score') {
+          scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' });
+        }
       }
 
-      if (backend.name === 'openai-http' && !resolved.apiKey) {
-        const msg = ['No API key found. Set PATINA_API_KEY, PATINA_API_KEY_FILE, OPENAI_API_KEY, or pass --api-key.'];
-        if (provider) {
-          msg.push(`(--provider ${provider.name} expects ${provider.apiKeyEnv} or PATINA_API_KEY.)`);
-        }
-        const codex = listBackends().find((b) => b.name === 'codex-cli');
-        if (codex && codex.available && codex.authenticated) {
-          msg.push('Or pass `--backend codex-cli` to use the codex-cli backend (no key needed).');
-        } else if (codex && codex.available && !codex.authenticated) {
-          msg.push('Or run `codex login`, then pass `--backend codex-cli`.');
-        } else if (codex && !codex.available) {
-          msg.push('Or install `codex` from https://github.com/openai/codex and pass `--backend codex-cli`.');
-        }
-        throw runtimeError(
-          'no API key found',
-          msg[0],
-          msg.slice(1).join(' ') || 'Set PATINA_API_KEY or pass --backend codex-cli after logging in.'
-        );
-      }
-
-      result = await backend.invoke({
-        prompt,
-        apiKey: resolved.apiKey,
-        baseURL: resolved.baseURL,
-        model: resolved.model,
-      });
-    }
-
-    let output;
-    let scoreValidationOutput = null;
-    if (parsed.ouroboros) {
-      const ouroborosBody = formatOuroborosOutput(result);
-      output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution });
-      scoreValidationOutput = ouroborosBody;
-    } else {
-      output = formatOutput(result, mode, parsed, { tone: toneResolution });
+      // v3.11 Phase 1.3: surface weight drift between config and the score
+      // table the model emitted. Warnings only — does not alter the output.
       if (mode === 'score') {
-        scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' });
-      }
-    }
+        const configWeights = config.ouroboros?.['category-weights']?.[lang] || {};
+        const warnings = validateScoreWeights(scoreValidationOutput || output, configWeights);
+        for (const w of warnings) {
+          console.error(`[patina] ${w}`);
+        }
 
-    // v3.11 Phase 1.3: surface weight drift between config and the score
-    // table the model emitted. Warnings only — does not alter the output.
-    if (mode === 'score') {
-      const configWeights = config.ouroboros?.['category-weights']?.[lang] || {};
-      const warnings = validateScoreWeights(scoreValidationOutput || output, configWeights);
-      for (const w of warnings) {
-        console.error(`[patina] ${w}`);
+        if (parsed.gate !== undefined) {
+          applyScoreGate(result, output, parsed.gate);
+        }
       }
 
-      if (parsed.gate !== undefined) {
-        applyScoreGate(result, output, parsed.gate);
+      if (result?.type === 'max-mode' && (result.allFailed || result.mpsFallback)) {
+        process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
+      }
+
+      if (parsed.saveRun) {
+        const idx = manifestResults.length + 1;
+        const outputName = `output-${idx}.txt`;
+        appendResult(manifestResults, {
+          inputPath: path,
+          prompt,
+          outputRef: { kind: 'file', name: outputName },
+        });
+        manifestOutputs.push({ name: outputName, content: output });
+      }
+
+      if (parsed.batch) {
+        await writeBatchOutput(parsed, path, output);
+      } else {
+        console.log(output);
       }
     }
-
-    if (result?.type === 'max-mode' && (result.allFailed || result.mpsFallback)) {
-      process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
-    }
-
-    if (parsed.saveRun) {
-      const idx = manifestResults.length + 1;
-      const outputName = `output-${idx}.txt`;
-      appendResult(manifestResults, {
-        inputPath: path,
-        prompt,
-        outputRef: { kind: 'file', name: outputName },
-      });
-      manifestOutputs.push({ name: outputName, content: output });
-    }
-
-    if (parsed.batch) {
-      await writeBatchOutput(parsed, path, output);
-    } else {
-      console.log(output);
-    }
+  } catch (err) {
+    if (cancellation.signal.aborted) throw cancellationError();
+    throw err;
+  } finally {
+    cancellation.cleanup();
   }
 
   if (parsed.saveRun) {
@@ -534,6 +548,65 @@ function parseArgs(args) {
   return parsed;
 }
 
+function cancellationError() {
+  return new PatinaCliError({
+    what: 'interrupted',
+    why: 'Ctrl-C canceled the in-flight patina request.',
+    action: 'Any running backend process or HTTP request was asked to stop.',
+    exitCode: 130,
+  });
+}
+
+export function createCancellationController({
+  processObj = process,
+  stderr = process.stderr,
+} = {}) {
+  const controller = new AbortController();
+  let sigintCount = 0;
+  let installed = false;
+
+  const writeStatus = (message) => {
+    if (stderr && typeof stderr.write === 'function') stderr.write(message);
+    else console.error(message.trimEnd());
+  };
+
+  const onSigint = () => {
+    sigintCount++;
+    if (sigintCount === 1) {
+      processObj.exitCode = 130;
+      writeStatus('[patina] cancelling… press Ctrl-C again to exit immediately\n');
+      controller.abort();
+      return;
+    }
+
+    cleanup();
+    processObj.exit(130);
+  };
+
+  function install() {
+    if (!installed && typeof processObj.on === 'function') {
+      processObj.on('SIGINT', onSigint);
+      installed = true;
+    }
+  }
+
+  function cleanup() {
+    if (installed && typeof processObj.removeListener === 'function') {
+      processObj.removeListener('SIGINT', onSigint);
+      installed = false;
+    }
+  }
+
+  return {
+    signal: controller.signal,
+    install,
+    cleanup,
+    throwIfCanceled() {
+      if (controller.signal.aborted) throw cancellationError();
+    },
+  };
+}
+
 function readOptionValue(args, index, option, { allowFlagLike = false } = {}) {
   const value = args[index + 1];
   if (value === undefined || (!allowFlagLike && value.startsWith('-'))) {
@@ -770,7 +843,7 @@ ENVIRONMENT
   OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, TOGETHER_API_KEY
 
 EXIT CODES
-  0 success · 1 runtime/backend · 2 input/usage · 3 score gate exceeded · 4 MAX MPS fallback/all candidates failed
+  0 success · 1 runtime/backend · 2 input/usage · 3 score gate exceeded · 4 MAX MPS fallback/all candidates failed · 130 interrupted
 
 If no API key is set, pass --backend codex-cli to use a logged-in codex CLI
 (no key required). Auto-fallback was removed in v3.9 to keep agent-mode

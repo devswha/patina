@@ -15,6 +15,7 @@ export async function runOuroboros({
   callLLM = defaultCallLLM,
   now,
   sleep,
+  signal,
 }) {
   const ouroborosConfig = config.ouroboros || {};
   const targetScore = ouroborosConfig['target-score'] ?? 30;
@@ -35,6 +36,7 @@ export async function runOuroboros({
     callLLM,
     now,
     sleep,
+    signal,
   });
 
   const initialScore = initialScoreResult?.overall ?? 100;
@@ -88,6 +90,7 @@ export async function runOuroboros({
       model,
       now,
       sleep,
+      signal,
     });
 
     const scoreResult = await scoreText({
@@ -100,6 +103,7 @@ export async function runOuroboros({
       callLLM,
       now,
       sleep,
+      signal,
     });
 
     let currentScore = scoreResult?.overall ?? 100;
@@ -115,6 +119,7 @@ export async function runOuroboros({
         callLLM,
         now,
         sleep,
+        signal,
       }),
       scoreFidelity({
         original: text,
@@ -125,6 +130,7 @@ export async function runOuroboros({
         callLLM,
         now,
         sleep,
+        signal,
       }),
     ]);
 

@@ -128,6 +128,7 @@ ${text}
     });
     return parsed;
   } catch (e) {
+    rethrowIfAborted(e, signal);
     console.error(`[patina] scoreText schema failure after retry: ${e.message}`);
     return { overall: null, error: 'schema-failure', raw: e.raw };
   }
@@ -190,6 +191,7 @@ ${rewritten}
     });
     return parsed;
   } catch (e) {
+    rethrowIfAborted(e, signal);
     console.error(`[patina] scoreMPS schema failure after retry: ${e.message}`);
     return { mps: null, error: 'schema-failure', raw: e.raw };
   }
@@ -272,6 +274,7 @@ ${rewritten}
     });
     parsed = result.parsed;
   } catch (e) {
+    rethrowIfAborted(e, signal);
     console.error(`[patina] scoreFidelity schema failure after retry: ${e.message}`);
     schemaError = e;
   }
@@ -301,6 +304,10 @@ export function clamp03(v) {
   if (n < 0) return 0;
   if (n > 3) return 3;
   return Math.round(n);
+}
+
+function rethrowIfAborted(err, signal) {
+  if (signal?.aborted || err?.name === 'AbortError') throw err;
 }
 
 // Combined score per core/scoring.md §13: AI-likeness × ai_weight + (100 - fidelity) × fidelity_weight.

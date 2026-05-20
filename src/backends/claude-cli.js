@@ -25,10 +25,11 @@ export function authHint() {
   return 'Run `claude` once interactively and follow the OAuth prompt to authenticate (uses your Claude subscription, no API key needed).';
 }
 
-export async function invoke({ prompt, timeout = 180000 } = {}) {
+export async function invoke({ prompt, signal, timeout = 180000 } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('claude-cli backend: prompt must be a non-empty string');
   }
+  throwIfAborted(signal);
 
   // Spawn from a fresh temp directory so a prompt-injection in user text
   // cannot read or write inside the caller's repo. claude -p prints to
@@ -43,30 +44,32 @@ export async function invoke({ prompt, timeout = 180000 } = {}) {
     proc.stdout.on('data', (chunk) => { stdout += chunk; });
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
 
+    let settled = false;
+    let cleanupSignal = () => {};
     const timer = setTimeout(() => {
-      proc.kill('SIGKILL');
-      cleanup();
-      reject(new Error(`claude-cli backend: timed out after ${timeout}ms`));
+      finishReject(new Error(`claude-cli backend: timed out after ${timeout}ms`), { kill: true });
     }, timeout);
+    if (signal) {
+      const onAbort = () => finishReject(abortError('claude-cli backend: aborted'), { kill: true });
+      signal.addEventListener('abort', onAbort, { once: true });
+      cleanupSignal = () => signal.removeEventListener('abort', onAbort);
+    }
 
     proc.on('error', (err) => {
-      clearTimeout(timer);
-      cleanup();
       if (err.code === 'ENOENT') {
-        reject(new Error('claude-cli backend: `claude` CLI not found. Install Claude Code first.'));
+        finishReject(new Error('claude-cli backend: `claude` CLI not found. Install Claude Code first.'));
       } else {
-        reject(new Error(`claude-cli backend: failed to spawn claude (${err.message})`));
+        finishReject(new Error(`claude-cli backend: failed to spawn claude (${err.message})`));
       }
     });
 
     proc.on('close', (code) => {
-      clearTimeout(timer);
-      cleanup();
+      if (settled) return;
       if (code !== 0) {
-        reject(new Error(`claude-cli backend: claude exited with code ${code}\n${stderr}`));
+        finishReject(new Error(`claude-cli backend: claude exited with code ${code}\n${stderr}`));
         return;
       }
-      resolve(stdout);
+      finishResolve(stdout);
     });
 
     proc.stdin.write(prompt);
@@ -75,5 +78,34 @@ export async function invoke({ prompt, timeout = 180000 } = {}) {
     function cleanup() {
       try { rmSync(dir, { recursive: true, force: true }); } catch {}
     }
+
+    function finishReject(err, { kill = false } = {}) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanupSignal();
+      if (kill) proc.kill('SIGKILL');
+      cleanup();
+      reject(err);
+    }
+
+    function finishResolve(content) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanupSignal();
+      cleanup();
+      resolve(content);
+    }
   });
+}
+
+function abortError(message) {
+  const err = new Error(message);
+  err.name = 'AbortError';
+  return err;
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw abortError('claude-cli backend: aborted');
 }

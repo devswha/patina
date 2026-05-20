@@ -22,10 +22,11 @@ export function authHint() {
   return 'Run `codex login` to authenticate (uses your ChatGPT Plus account, no API key needed).';
 }
 
-export async function invoke({ prompt, timeout = 180000 } = {}) {
+export async function invoke({ prompt, signal, timeout = 180000 } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('codex-cli backend: prompt must be a non-empty string');
   }
+  throwIfAborted(signal);
 
   // Run codex from a fresh temp directory with the read-only sandbox so that
   // a prompt-injection in user text cannot read the caller's repo or write
@@ -46,37 +47,37 @@ export async function invoke({ prompt, timeout = 180000 } = {}) {
     let stderr = '';
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
 
+    let settled = false;
+    let cleanupSignal = () => {};
     const timer = setTimeout(() => {
-      proc.kill('SIGKILL');
-      cleanup();
-      reject(new Error(`codex-cli backend: timed out after ${timeout}ms`));
+      finishReject(new Error(`codex-cli backend: timed out after ${timeout}ms`), { kill: true });
     }, timeout);
+    if (signal) {
+      const onAbort = () => finishReject(abortError('codex-cli backend: aborted'), { kill: true });
+      signal.addEventListener('abort', onAbort, { once: true });
+      cleanupSignal = () => signal.removeEventListener('abort', onAbort);
+    }
 
     proc.on('error', (err) => {
-      clearTimeout(timer);
-      cleanup();
       if (err.code === 'ENOENT') {
-        reject(new Error('codex-cli backend: `codex` CLI not found. Install it from https://github.com/openai/codex'));
+        finishReject(new Error('codex-cli backend: `codex` CLI not found. Install it from https://github.com/openai/codex'));
       } else {
-        reject(new Error(`codex-cli backend: failed to spawn codex (${err.message})`));
+        finishReject(new Error(`codex-cli backend: failed to spawn codex (${err.message})`));
       }
     });
 
     proc.on('close', (code) => {
-      clearTimeout(timer);
+      if (settled) return;
       if (code !== 0) {
-        cleanup();
-        reject(new Error(`codex-cli backend: codex exited with code ${code}\n${stderr}`));
+        finishReject(new Error(`codex-cli backend: codex exited with code ${code}\n${stderr}`));
         return;
       }
 
       try {
         const content = readFileSync(outFile, 'utf8');
-        cleanup();
-        resolve(content);
+        finishResolve(content);
       } catch (err) {
-        cleanup();
-        reject(new Error(`codex-cli backend: failed to read output file (${err.message})`));
+        finishReject(new Error(`codex-cli backend: failed to read output file (${err.message})`));
       }
     });
 
@@ -86,6 +87,34 @@ export async function invoke({ prompt, timeout = 180000 } = {}) {
     function cleanup() {
       try { rmSync(dir, { recursive: true, force: true }); } catch {}
     }
+
+    function finishReject(err, { kill = false } = {}) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanupSignal();
+      if (kill) proc.kill('SIGKILL');
+      cleanup();
+      reject(err);
+    }
+
+    function finishResolve(content) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanupSignal();
+      cleanup();
+      resolve(content);
+    }
   });
 }
 
+function abortError(message) {
+  const err = new Error(message);
+  err.name = 'AbortError';
+  return err;
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw abortError('codex-cli backend: aborted');
+}

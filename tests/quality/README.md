@@ -37,6 +37,11 @@ paragraph is SUSPECT iff
 sentences; two-sentence CV is recorded for diagnostics but is not stable enough
 to make the paragraph hot by itself.
 
+For `lang=ko`, `analyzeText()` also records diagnostic-only Korean fields:
+`spacing`, `comma`, and `posDiversity` (a suffix-class proxy, not a morphology
+analyzer). These fields are for calibration and do not affect the hot/cold
+decision yet.
+
 Per-language metrics use `expected_hot=true` as the positive class.
 
 ## Opt-in live rewrite quality
@@ -210,6 +215,8 @@ in `.patina.default.yaml` (`stylometry.burstiness.bands`,
 classification. Sweep against this benchmark + your own corpus and
 update thresholds; the shipped values come from the v3.5.1 / v3.7
 calibration documented in `core/stylometry.md` §13 §16.
+`stylometry.ko_diagnostics` is informational in this release; do not tune it as
+a classifier until the Korean corpus calibration lands.
 
 `npm run benchmark:report` also records a diagnostic `signal_score` sweep. The
 prediction rule is `signal_score >= threshold`, and the PR-AUC value is average
@@ -221,5 +228,7 @@ as an authorship verdict.
 Currently runs on all supported pattern-pack languages: `ko`, `en`, `zh`, and
 `ja`. Chinese and Japanese use a deterministic character-token fallback because
 normal prose often has no whitespace; ko/en keep whitespace tokenization.
+Korean additionally emits dependency-free spacing/comma/suffix-diversity
+diagnostics for future calibration.
 zh/ja now include high-precision AI-lexicon fixtures as well as
 burstiness/MATTR regression coverage.

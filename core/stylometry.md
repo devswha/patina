@@ -24,6 +24,8 @@ description: Deterministic statistical preprocessing that flags suspect paragrap
   hot 단락/문장 정보를 5a·5b 입력에 주입한다
 - 외부 의존성(형태소 분석기, 외부 detector API) 없이 ko/en은 whitespace 토큰화,
   zh/ja는 deterministic character-token fallback으로 동작한다
+- ko는 hot 판정과 분리된 diagnostic-only 보조 지표(띄어쓰기 규칙성, 쉼표 밀도,
+  조사/어미 suffix diversity proxy)를 함께 기록해 후속 threshold 보정에 사용한다
 
 이 알고리즘은 5a 구조 분석 단계와 5b 문장/어휘 단계에 자연스럽게 결합되도록 설계되었다.
 - 5a는 단락 수준 hot 표시를 우선 검토 대상으로 사용한다
@@ -33,7 +35,7 @@ description: Deterministic statistical preprocessing that flags suspect paragrap
 
 | 언어 | 지원 | 비고 |
 |------|---------|------|
-| ko | yes | 어절 단위 토큰화 |
+| ko | yes | 어절 단위 토큰화 + dependency-free diagnostic signals |
 | en | yes | 단어 단위 토큰화 |
 | zh | yes | Han character-token fallback |
 | ja | yes | Kana/Han character-token fallback; 형태소 분석 없음 |
@@ -80,6 +82,10 @@ ELSE:
 > 서로 다른 토큰으로 취급된다. zh/ja 역시 형태소 단위가 아니라 문자 fallback이다. jieba,
 > sudachi, mecab 같은 형태소 분석기는 배포 의존성과 설치 실패면을 늘리므로 기본 경로에서
 > 제외한다.
+
+ko diagnostic POS diversity는 형태소 분석기가 아니라 suffix proxy다. 조사/어미 후보 목록으로
+어절 끝을 보수적으로 분류하고, class diversity와 coverage만 기록한다. 이 proxy는 진짜 POS
+tagger가 아니므로 hot 판정에 바로 사용하지 않는다.
 
 ---
 
@@ -183,26 +189,55 @@ ELSE:
 
 ---
 
+## 5.1 Korean Diagnostic Signals
+
+한국어는 어절 토큰화만으로는 조사/어미 변형과 띄어쓰기 습관을 충분히 보지 못한다. 그래서
+`analyzeText(text, { lang: "ko" })`는 다음 보조 지표를 단락 결과에 추가한다.
+
+| 필드 | 지표 | 목적 | 현재 판정 영향 |
+|------|------|------|----------------|
+| `spacing` | `eojeolLengthCV`, 평균 어절 길이, 1음절/긴 어절 비율 | LLM식으로 지나치게 균질한 띄어쓰기·어절 길이 후보 추적 | 없음 |
+| `comma` | 쉼표 수, 문장당 쉼표, 100자당 쉼표 | 과소/과다 쉼표 사용 후보 추적 | 없음 |
+| `posDiversity` | 조사/어미 suffix class coverage/diversity proxy | 형태소 분석기 없이 기능어 다양성 후보 추적 | 없음 |
+
+POS proxy 결정:
+- 새 런타임 의존성은 추가하지 않는다.
+- KoNLPy/mecab-ko/khaiii 같은 형태소 분석기는 설치 실패면과 배포 크기가 커서 기본 경로에서
+  제외한다.
+- suffix proxy는 `은/는`, `이/가`, `을/를`, `에게/에서`, `습니다/합니다` 같은 조사·어미
+  class를 세고, `proxy: "suffix"`로 명시한다.
+
+운영 규칙:
+- 현재 단계에서는 **diagnostic-only**다. `hot` OR-rule에는 참여하지 않는다.
+- 실제 corpus calibration(#155/#157/#303)이 끝난 뒤에만 ko 한정 threshold와 hot 연결을
+  검토한다.
+- `.patina.default.yaml`의 `stylometry.ko_diagnostics`는 어떤 지표가 기록되는지 설명하는
+  설정 메모이며, 현 버전에서 threshold로 읽히지는 않는다.
+
+---
+
 ## 6. Hot Decision Rule
 
-단락 수준 SUSPECT 판정은 단순한 OR 규칙으로 결정한다.
+단락 수준 SUSPECT 판정은 단순한 OR 규칙으로 결정한다. v3.7 이후 lexicon density가
+세 번째 hot 신호로 추가되었다(상세 calibration은 §16).
 
 ```
 paragraph is SUSPECT iff
-  burstiness_band == "low"  OR  MATTR_band == "low"
+  burstiness_band == "low"  OR  MATTR_band == "low"  OR  lexicon_density > threshold
 ```
 
 ### 근거
 
-- 두 신호 중 하나만 약해도 사람 글에서는 드물게 동시 발생한다
+- 세 신호 중 하나만 약해도 우선 검토할 만한 edit hotspot이 된다
 - AND 조건은 recall 이 너무 낮아 v1 acceptance criteria(AI 시드 7/10)를 만족하기 어렵다
 - false positive 는 `FalsePositiveControl` 평가(자연 시드 ≤2/10)로 견제한다
+- ko diagnostic signals(§5.1)는 calibration 전까지 이 OR-rule에 넣지 않는다
 
 ### 임계값 재조정
 
 v1 결과에서 false positive 가 한도(자연 시드 2/10)를 넘기면, `.patina.default.yaml`의
 `stylometry.burstiness.bands.low` 또는 `stylometry.ttr.bands.low` 를 보수적으로 낮춰
-재평가한다 (예: 0.30 → 0.27).
+재평가한다 (예: 0.30 → 0.27). lexicon 쪽은 `lexicon.density_threshold`로 조정한다.
 
 ---
 

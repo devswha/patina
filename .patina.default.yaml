@@ -190,6 +190,15 @@ stylometry:
       high: 0.70             # MATTR > 0.70 → high
   sentence_zoom:
     similarity_threshold: 0.20  # adjacent sentences within ±20% token count → grouped as sub-flag
+  ko_diagnostics:
+    enabled: true              # diagnostic-only; does not participate in hot until calibrated
+    spacing:
+      metric: eojeol_length_cv # dependency-free Korean spacing regularity proxy
+    comma:
+      metric: per_sentence_and_per_100_chars
+    pos_proxy:
+      metric: suffix_class_diversity
+      dependency: none         # no runtime morphology analyzer
   skip:
     min_paragraphs: 2
     min_sentences: 2

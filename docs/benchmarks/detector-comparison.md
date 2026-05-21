@@ -4,9 +4,9 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 
 ## Current run
 
-- Generated at: 2026-05-20T03:54:28.830Z
+- Generated at: 2026-05-21T10:10:46.820Z
 - Fixture source: `tests/fixtures/suspect-zones/**`
-- Fixture count: 34
+- Fixture count: 38
 - Manual third-party input: none
 - Reproduce built-in comparison: `npm run benchmark:compare`
 - Merge manual scores: `node scripts/detector-comparison.mjs --input tests/quality/detectors.manual.example.json`
@@ -15,7 +15,7 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 
 | detector | name | kind | covered | coverage | accuracy | precision | recall | TP | FP | FN | TN |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| patina-deterministic | Patina deterministic suspect-zone analyzer | in-tree | 34/34 | 100.0% | 100.0% | 100.0% | 100.0% | 18 | 0 | 0 | 16 |
+| patina-deterministic | Patina deterministic suspect-zone analyzer | in-tree | 38/38 | 100.0% | 100.0% | 100.0% | 100.0% | 20 | 0 | 0 | 18 |
 
 ## Fixture-level rows
 
@@ -35,9 +35,11 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 | ja-ai-01 | ja | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ja-ai-02 | ja | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ja-ai-03 | ja | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
+| ja-ai-04-lexicon | ja | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ja-nat-01 | ja | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | ja-nat-02 | ja | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | ja-nat-03 | ja | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
+| ja-nat-04-lexicon-cold | ja | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | ko-ai-01 | ko | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ko-ai-02 | ko | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ko-ai-03 | ko | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
@@ -52,9 +54,11 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 | zh-ai-01 | zh | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | zh-ai-02 | zh | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | zh-ai-03 | zh | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
+| zh-ai-04-lexicon | zh | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | zh-nat-01 | zh | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | zh-nat-02 | zh | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | zh-nat-03 | zh | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
+| zh-nat-04-lexicon-cold | zh | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 
 ## Manual third-party protocol
 

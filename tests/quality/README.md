@@ -143,8 +143,9 @@ sample can become a public fixture.
 
   The scaffold uses `opencode/hy3-preview-free` by default. Override it with
   `OPENCODE_MODEL=<provider/model>` when testing another OpenCode model.
-- AUROC against a ranked score — the current decision is binary
-  (hot/cold), so we report accuracy + F1 instead.
+- Generalized model-era detector claims. The report now includes
+  `signal_score` ranking diagnostics (ROC-AUC, PR-AUC, best-F1 threshold), but
+  those numbers are still limited to the checked-in fixture corpus.
 
 ## Extending the corpus
 
@@ -205,6 +206,11 @@ in `.patina.default.yaml` (`stylometry.burstiness.bands`,
 classification. Sweep against this benchmark + your own corpus and
 update thresholds; the shipped values come from the v3.5.1 / v3.7
 calibration documented in `core/stylometry.md` §13 §16.
+
+`npm run benchmark:report` also records a diagnostic `signal_score` sweep. The
+prediction rule is `signal_score >= threshold`, and the PR-AUC value is average
+precision over descending score groups. Use it to compare tuning candidates, not
+as an authorship verdict.
 
 ## Languages
 

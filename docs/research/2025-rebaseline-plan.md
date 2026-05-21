@@ -105,6 +105,7 @@ npm run benchmark:rebaseline:report
 node scripts/rebaseline-summary.mjs --input tests/quality/rebaseline-manifest.example.jsonl --json
 npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.example.jsonl --dry-run
 npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.local.example.jsonl --dry-run --require-source-review
+npm run benchmark:rebaseline:score -- --input artifacts/rebaseline-2025/private/web-human-controls.private.jsonl --output artifacts/rebaseline-2025/human-controls.public.jsonl --scored-at 2026-05-21
 node scripts/rebaseline-summary.mjs --input artifacts/rebaseline-2025/human-controls.public.jsonl --json
 ```
 
@@ -129,8 +130,9 @@ performance claim.
 
 The tracked `artifacts/rebaseline-2025/human-controls.public.jsonl` file is a
 10-row Korean web candidate manifest for validating the provenance and hash-only
-path. It contains no raw text and must not be used as a threshold or README
-performance claim by itself.
+path. It contains no raw text; score/outcome fields are deterministic smoke
+evidence only and must not be used as a threshold or README performance claim by
+themselves.
 
 Use the false-positive form for person-written samples that should feed the
 human/natural side of future calibration:

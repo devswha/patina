@@ -42,6 +42,10 @@ test('tracked web human-control candidates are hash-only metadata rows', () => {
     assert.equal(record.provider, 'web-human-control');
     assert.equal(record.text, undefined);
     assert.match(record.text_hash, /^sha256:[a-f0-9]{64}$/);
+    assert.equal(record.expected_hot, false);
+    assert.equal(typeof record.predicted_hot, 'boolean');
+    assert.equal(typeof record.patina_score, 'number');
+    assert.equal(record.score_review?.scorer, 'patina deterministic analyzer');
     assert.match(record.source_url, /^https:\/\//);
     assert.equal(typeof record.source_license, 'string');
     assert.equal(record.source_review?.status, 'hash-only-web-candidate');

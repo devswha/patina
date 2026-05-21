@@ -74,6 +74,15 @@ node scripts/rebaseline-summary.mjs \
   --json
 ```
 
+To score those candidates without committing raw text:
+
+```bash
+npm run benchmark:rebaseline:score -- \
+  --input artifacts/rebaseline-2025/private/web-human-controls.private.jsonl \
+  --output artifacts/rebaseline-2025/human-controls.public.jsonl \
+  --scored-at 2026-05-21
+```
+
 ## 25-row Korean pilot
 
 Before changing thresholds again, collect a small pilot that proves the workflow

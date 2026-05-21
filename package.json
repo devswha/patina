@@ -14,6 +14,7 @@
     "test:e2e": "node --test tests/e2e/*.test.js",
     "benchmark": "node tests/quality/benchmark.mjs",
     "benchmark:report": "node scripts/benchmark-report.mjs",
+    "benchmark:rebaseline": "node scripts/rebaseline-summary.mjs",
     "dogfood": "node tests/quality/dogfood.mjs",
     "badge": "node scripts/badge-json.mjs",
     "lint": "npm run lint:syntax && npm run lint:eslint && npm run typecheck && npm run spellcheck",
@@ -96,7 +97,9 @@
     "vercel.json",
     "scripts/generate-playground-data.mjs",
     "tests/quality/live-quality.mjs",
-    "tests/quality/live-fixtures.jsonl"
+    "tests/quality/live-fixtures.jsonl",
+    "scripts/rebaseline-summary.mjs",
+    "tests/quality/rebaseline-manifest.example.jsonl"
   ],
   "publishConfig": {
     "access": "public"

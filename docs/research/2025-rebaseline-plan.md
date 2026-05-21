@@ -24,6 +24,12 @@ Minimum matrix:
 | generators | at least one GPT-family, Claude-family, Gemini-family, and open-weight model |
 | sample size | start at 25 paragraphs per language × class × register cell before publishing claims |
 
+The 25-paragraph matrix is the first intake target for checking coverage holes.
+It is not the public benchmark gate. The stricter claim gate remains the
+`process/pattern-freshness.md` requirement: at least three generator families
+across at least two languages with n≥100 per claim cell and binomial 95%
+confidence intervals.
+
 ## Data rules
 
 - Use redistributable prompts and generated text; do not check private user text into the repo.
@@ -70,6 +76,29 @@ artifacts/rebaseline-2025/
 ```
 
 Checked-in public summaries should live under `docs/benchmarks/` after review.
+
+## Manifest scaffold
+
+Use the checked-in example manifest to validate the metadata contract before
+collecting a larger corpus:
+
+```bash
+npm run benchmark:rebaseline
+node scripts/rebaseline-summary.mjs --input tests/quality/rebaseline-manifest.example.jsonl --json
+```
+
+The manifest row schema is intentionally metadata-first:
+
+- required: `sample_id`, `language`, `class`, `register`, `model_family`,
+  `provider`, `model`, `generated_at`, `prompt_id`, `decoding`, `postprocess`,
+  `redistribution`, `text_hash`
+- optional: `text` only when redistribution permits it, `patina_score`,
+  `expected_hot`, `predicted_hot`, `reviewer_notes`
+
+`text_hash` uses the same `sha256:<hex>` style as runtime manifests. If a row
+contains `text`, the validator checks that the digest matches. If a row is
+`metadata-only`, `private`, or `no-redistribution`, full text must stay out of
+the repository.
 
 ## Publication gate
 

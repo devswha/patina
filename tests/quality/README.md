@@ -70,6 +70,30 @@ Passing evaluated rewrites should reach `after_score <= 30`,
 unless the live model path is deliberately allowed, because LLM output is
 non-deterministic.
 
+## 2025+ rebaseline manifest
+
+`npm run benchmark:rebaseline` validates the public JSONL manifest scaffold and
+prints matrix coverage. It does not collect text from vendors, call external
+detectors, or turn a small sample into a headline claim.
+
+```bash
+npm run benchmark:rebaseline
+node scripts/rebaseline-summary.mjs --input tests/quality/rebaseline-manifest.example.jsonl --json
+```
+
+Each row records the source metadata needed by
+`docs/research/2025-rebaseline-plan.md`: `sample_id`, `language`, `class`,
+`register`, `model_family`, `provider`, `model`, `generated_at`, `prompt_id`,
+`decoding`, `postprocess`, `redistribution`, and `text_hash`. Full `text` is
+allowed only for redistributable rows (`repo-ok`, `redistributable`, public
+license values). Private or vendor-copied rows must stay metadata-only and use
+hashes.
+
+The report keeps public performance claims blocked until the process gate in
+`process/pattern-freshness.md` is satisfied: scored outcome rows, at least three
+generator families across at least two languages, n≥100 per claim cell, and
+confidence intervals.
+
 ## Score vs signal strength
 
 The pre-commit prose gate keeps the older, conservative score semantics:

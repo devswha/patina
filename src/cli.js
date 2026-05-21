@@ -24,6 +24,7 @@ import { runInit } from './commands/init.js';
 import { PatinaCliError, inputError, runtimeError, renderCliError, getExitCode } from './errors.js';
 import { inspectHttpApiKeySource, providerHttpKeyEnvVars, resolveHttpApiKey } from './auth.js';
 import { createLogger } from './logger.js';
+import { maybeShowFirstRunNudge } from './nudge.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, basename, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -456,6 +457,15 @@ export async function main(args) {
     );
     logger.info('manifest.written', { message: `[patina] wrote manifest to ${manifestPath}` });
   }
+
+  maybeShowFirstRunNudge({
+    parsed,
+    inputTexts,
+    stdinIsTTY: Boolean(process.stdin.isTTY),
+    stderr: process.stderr,
+    stdout: process.stdout,
+    processObj: process,
+  });
 }
 
 function parseArgs(args) {
@@ -1231,6 +1241,7 @@ EXAMPLES
 ENVIRONMENT
   PATINA_API_KEY, PATINA_API_KEY_FILE, PATINA_API_BASE, PATINA_MODEL
   PATINA_CACHE_DIR, PATINA_CACHE_TTL_SECONDS
+  PATINA_NO_NUDGE=1 disables the one-time interactive star reminder
   OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, TOGETHER_API_KEY
 
 EXIT CODES

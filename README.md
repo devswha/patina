@@ -238,6 +238,10 @@ For repeat benchmarks, opt into the HTTP response cache with `--cache <dir>` or 
 
 Use `--voice-sample <path>` or `voice-sample: <path>` in config to anchor rewrites to 1–3 paragraphs you wrote. Profile and tone still set the requested register; the sample only teaches cadence, specificity, POV, and sentence texture, and the prompt explicitly forbids importing sample facts.
 
+On the first successful interactive CLI run, patina may print one short GitHub
+star reminder to stderr. It never goes to stdout, is skipped in CI/non-TTY
+scripted runs, and can be disabled with `PATINA_NO_NUDGE=1`.
+
 ## Tones
 
 `--tone` selects a named voice axis applied on top of pattern rewriting. Resolution order: `--tone` CLI > `tone:` config > `profile:` config.

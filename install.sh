@@ -20,7 +20,7 @@ REPO_URL="https://github.com/devswha/patina.git"
 PATINA_REF="${PATINA_REF:-}"
 
 # Colors (only when outputting to a terminal)
-if [ -t 1 ]; then
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
   GREEN='\033[0;32m'
   YELLOW='\033[0;33m'
   RED='\033[0;31m'
@@ -184,7 +184,8 @@ fi
 
 # Done
 printf "\n"
-success "patina installation complete!"
+success "✓ patina installed."
+info "  If it saves you edits, a star helps others find it → https://github.com/devswha/patina"
 printf "\n"
 info "Usage:"
 if [ "${INSTALL_CLAUDE}" = "true" ]; then

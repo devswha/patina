@@ -254,7 +254,7 @@ Last triaged: 2026-05-21, after launch-service parity and issue-inventory sync.
 
 Current GitHub issue inventory:
 
-- 13 open issues; 137 closed issues; 150 tracked issues total.
+- 13 open issues; 138 closed issues; 151 tracked issues total.
 - Open PRs: 0.
 - Open priority split: 1 high, 3 medium, 9 low, and 0 without priority labels.
 - Current high-priority issue: #286 launch tracking/playbook.
@@ -271,7 +271,9 @@ Campaign state:
 - Rebaseline reporting prep: `npm run benchmark:rebaseline:report` refreshes `docs/benchmarks/rebaseline-latest.{md,json}` from the sanitized manifest while keeping public claims blocked without real corpus evidence.
 - KO/2025+ corpus prep: `docs/research/ko-2025-corpus-sources.md` records usable Korean sources, `artifacts/rebaseline-2025/intake.local.example.jsonl` provides the 25-row pilot skeleton, `artifacts/rebaseline-2025/human-controls.public.jsonl` tracks 10 scored hash-only web human-control candidates, `npm run benchmark:rebaseline:intake -- --require-source-review` creates sanitized public manifests from local/private rows, and `npm run benchmark:rebaseline:score` refreshes deterministic outcome fields without copying raw text.
 - Launch feedback prep: the false-positive issue form now captures text origin, redistribution, fired paragraph, score output, and expected behavior.
-- Closed or verified during the campaign: #99, #104, #165, #186, #191, #199, #209, #210, #304.
+- Growth nudge prep: #305 adds the install success star line and a CI-safe,
+  stderr-only, one-time CLI reminder with `PATINA_NO_NUDGE=1`.
+- Closed or verified during the campaign: #99, #104, #165, #186, #191, #199, #209, #210, #304, #305.
 - Kept open with explicit blocker comments or pending external action: #155, #156, #157, #158, #159, #160, #206, #207, #211, #212, #286, #303.
 - Legacy bot/harness notes were removed from the public repo; restart autonomous bot work only from a fresh, tracked design if it becomes necessary.
 

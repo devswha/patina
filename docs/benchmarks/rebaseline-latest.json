@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-05-21T08:43:41.934Z",
+  "input": "tests/quality/rebaseline-manifest.example.jsonl",
+  "targets": {
+    "protocolPerLanguageClassRegister": 25,
+    "claimPerCell": 100,
+    "claimLanguages": 2,
+    "claimGeneratorFamilies": 3
+  },
+  "totalRecords": 5,
+  "byLanguage": {
+    "en": 2,
+    "ko": 1,
+    "ja": 1,
+    "zh": 1
+  },
+  "byClass": {
+    "ai-like": 2,
+    "natural-human": 1,
+    "lightly-edited-ai": 1,
+    "heavily-edited-ai": 1
+  },
+  "byRegister": {
+    "blog": 1,
+    "product-doc": 1,
+    "technical-how-to": 1,
+    "academic-summary": 1,
+    "chat-update": 1
+  },
+  "byModelFamily": {
+    "gpt-family": 1,
+    "human-reference": 1,
+    "gemini-family": 1,
+    "open-weight": 1,
+    "claude-family": 1
+  },
+  "protocolCoverage": {
+    "totalCells": 80,
+    "populatedCells": 5,
+    "emptyCells": 75,
+    "cellsMeetingTarget": 0,
+    "underfilledCells": [
+      {
+        "key": "ko|natural-human|product-doc",
+        "count": 1
+      },
+      {
+        "key": "en|ai-like|blog",
+        "count": 1
+      },
+      {
+        "key": "en|ai-like|chat-update",
+        "count": 1
+      },
+      {
+        "key": "zh|heavily-edited-ai|academic-summary",
+        "count": 1
+      },
+      {
+        "key": "ja|lightly-edited-ai|technical-how-to",
+        "count": 1
+      }
+    ]
+  },
+  "claimGate": {
+    "ready": false,
+    "blockers": [
+      "positive corpus has 0/2 languages with n≥100",
+      "positive corpus has 0/3 generator families with n≥100",
+      "natural/human corpus has 0/2 languages with n≥100",
+      "expected_hot and predicted_hot outcome rows are incomplete; run a scored report before README claims"
+    ],
+    "qualifiedPositiveCells": [],
+    "qualifiedNaturalCells": []
+  },
+  "metrics": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "tn": 0,
+    "total": 0,
+    "accuracy": 0,
+    "precision": 0,
+    "recall": 0,
+    "f1": 0,
+    "accuracyCi": {
+      "low": 0,
+      "high": 0,
+      "method": "Wilson score interval, 95%"
+    }
+  },
+  "validation": {
+    "errors": [],
+    "warnings": []
+  }
+}

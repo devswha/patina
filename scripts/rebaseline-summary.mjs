@@ -6,7 +6,7 @@
 // meet the process gate in process/pattern-freshness.md.
 
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,6 +15,8 @@ const REPO_ROOT = resolve(__dirname, '..');
 
 export const SCHEMA_VERSION = 1;
 export const DEFAULT_INPUT = 'tests/quality/rebaseline-manifest.example.jsonl';
+export const DEFAULT_REPORT_DIR = 'docs/benchmarks';
+export const DEFAULT_REPORT_BASENAME = 'rebaseline-latest';
 
 export const MATRIX = {
   languages: ['ko', 'en', 'zh', 'ja'],
@@ -103,6 +105,9 @@ export function parseArgs(argv = process.argv.slice(2)) {
   const args = {
     input: DEFAULT_INPUT,
     json: false,
+    write: false,
+    outputDir: DEFAULT_REPORT_DIR,
+    basename: DEFAULT_REPORT_BASENAME,
     requireClaimReady: false,
     help: false,
   };
@@ -111,6 +116,9 @@ export function parseArgs(argv = process.argv.slice(2)) {
     const arg = argv[i];
     if (arg === '--input') args.input = argv[++i];
     else if (arg === '--json') args.json = true;
+    else if (arg === '--write') args.write = true;
+    else if (arg === '--output-dir') args.outputDir = argv[++i];
+    else if (arg === '--basename') args.basename = argv[++i];
     else if (arg === '--require-claim-ready') args.requireClaimReady = true;
     else if (arg === '--help' || arg === '-h') args.help = true;
     else throw new Error(`Unknown argument: ${arg}`);
@@ -363,6 +371,37 @@ ${metrics.total ? renderMetrics(metrics) : 'No complete `expected_hot` + `predic
 `;
 }
 
+export function writeReportFiles(summary, validation = {}, options = {}) {
+  const outputDir = options.outputDir || DEFAULT_REPORT_DIR;
+  const basename = options.basename || DEFAULT_REPORT_BASENAME;
+  if (!/^[a-z0-9._-]+$/iu.test(basename)) {
+    throw new Error(`Invalid report basename: ${basename}`);
+  }
+
+  const absDir = resolve(REPO_ROOT, outputDir);
+  mkdirSync(absDir, { recursive: true });
+
+  const markdown = renderMarkdownReport(summary, validation);
+  const payload = {
+    ...summary,
+    validation: {
+      errors: validation.errors || [],
+      warnings: validation.warnings || [],
+    },
+  };
+  const markdownPath = resolve(absDir, `${basename}.md`);
+  const jsonPath = resolve(absDir, `${basename}.json`);
+  writeFileSync(markdownPath, markdown);
+  writeFileSync(jsonPath, `${JSON.stringify(payload, null, 2)}\n`);
+
+  return {
+    markdownPath,
+    jsonPath,
+    relativeMarkdownPath: relative(REPO_ROOT, markdownPath),
+    relativeJsonPath: relative(REPO_ROOT, jsonPath),
+  };
+}
+
 function summarizeProtocolCoverage(protocolCells) {
   const expectedKeys = [];
   for (const language of MATRIX.languages) {
@@ -544,9 +583,10 @@ function escapeMarkdown(value) {
 }
 
 function printHelp() {
-  console.log(`Usage: node scripts/rebaseline-summary.mjs [--input <manifest.jsonl>] [--json] [--require-claim-ready]
+  console.log(`Usage: node scripts/rebaseline-summary.mjs [--input <manifest.jsonl>] [--json] [--write] [--require-claim-ready]
 
 Validates a 2025+ rebaseline JSONL manifest and prints coverage/claim-gate status.
+Use --write to refresh ${DEFAULT_REPORT_DIR}/${DEFAULT_REPORT_BASENAME}.{md,json}.
 Default input: ${DEFAULT_INPUT}`);
 }
 
@@ -559,10 +599,19 @@ function main() {
 
   const manifest = loadManifest(args.input);
   const summary = summarizeManifest(manifest.records, { input: manifest.relativePath });
+  const validation = { errors: manifest.errors, warnings: manifest.warnings };
+  const written = args.write
+    ? writeReportFiles(summary, validation, { outputDir: args.outputDir, basename: args.basename })
+    : null;
+
   if (args.json) {
-    console.log(JSON.stringify({ ...summary, validation: { errors: manifest.errors, warnings: manifest.warnings } }, null, 2));
+    console.log(JSON.stringify({ ...summary, validation, written }, null, 2));
   } else {
-    console.log(renderMarkdownReport(summary, manifest));
+    console.log(renderMarkdownReport(summary, validation));
+    if (written) {
+      console.log(`Wrote ${written.relativeMarkdownPath}`);
+      console.log(`Wrote ${written.relativeJsonPath}`);
+    }
   }
 
   if (manifest.errors.length) process.exit(1);

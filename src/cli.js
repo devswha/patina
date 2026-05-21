@@ -145,6 +145,11 @@ export async function main(args) {
     const backbone = toneToBackboneProfile(toneResolution.tone);
     if (backbone) profileName = backbone;
   }
+  const resolvedProfileName = resolveProfileForLanguage(profileName, lang, logger);
+  if (resolvedProfileName !== profileName) {
+    profileName = resolvedProfileName;
+    config.profile = 'default';
+  }
 
   const patterns = loadPatterns(repoRoot, lang, config['skip-patterns'] || []);
   const profile = loadProfile(repoRoot, profileName);
@@ -851,6 +856,28 @@ export function resolvePromptMode(mode, { backend, model }) {
 }
 
 /**
+ * Resolve a profile name against language-specific profile limits.
+ *
+ * @param {string} profileName Requested profile name.
+ * @param {string} lang Active language code.
+ * @param {object} [logger] Logger with warn(event, payload).
+ * @returns {string} Effective profile name.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * resolveProfileForLanguage('namuwiki', 'en') // 'default'
+ */
+export function resolveProfileForLanguage(profileName, lang, logger = null) {
+  const effective = profileName || 'default';
+  if (effective === 'namuwiki' && lang !== 'ko') {
+    logger?.warn?.('profile.unsupported_language', {
+      message: `[patina] profile "namuwiki" is ko-only; falling back to default profile for --lang ${lang}`,
+    });
+    return 'default';
+  }
+  return effective;
+}
+
+/**
  * Choose the configured prompt mode before backend/model auto-resolution.
  *
  * @param {object} [options] Prompt-mode sources.
@@ -1162,7 +1189,7 @@ LANGUAGE & PROFILE
   --profile <name>        Profile: default, blog, academic, technical, formal,
                           social, email, legal, medical, marketing,
                           narrative, instructional, casual-conversation,
-                          code-comment, commit-message, release-notes
+                          code-comment, commit-message, release-notes, namuwiki
   --tone <name>           Tone: casual, professional, academic, narrative,
                           marketing, instructional, auto. Resolution:
                           --tone > config tone > config profile.

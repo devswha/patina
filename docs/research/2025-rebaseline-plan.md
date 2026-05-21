@@ -2,7 +2,7 @@
 
 Status: protocol template, no external detector/vendor claims yet.  
 Owner: maintainers.  
-Related issues: #155, #163, #170, #172, #213.
+Related issues: #155, #157, #160, #303, plus #156/#158/#159 for evaluator follow-up.
 
 Patina's checked-in benchmark is a deterministic regression corpus. It is useful
 for catching tokenizer, threshold, lexicon, and fixture drift. It is not enough
@@ -30,6 +30,14 @@ It is not the public benchmark gate. The stricter claim gate remains the
 across at least two languages with n≥100 per claim cell and binomial 95%
 confidence intervals.
 
+
+## Execution order
+
+1. Start with Korean calibration (#303/#157): collect natural Korean controls for academic/종결-다, blog, product-doc, and community registers before changing KO thresholds again.
+2. Then run the model-era rebaseline (#155): score the fixed manifest across at least three generator families and at least two languages.
+3. Only after the paired corpus exists, re-mine lexicon entries (#160) with per-entry provenance and ≥4× hot/cold lift.
+4. Use the same manifest for adversarial MPS, cross-judge, and blinded-panel follow-ups (#156/#158/#159) instead of creating separate incompatible samples.
+
 ## Data rules
 
 - Use redistributable prompts and generated text; do not check private user text into the repo.
@@ -43,7 +51,7 @@ For deterministic suspect-zone detection:
 
 - accuracy, precision, recall, F1
 - Wilson 95% confidence interval per language and register
-- detector sub-signal breakdown: burstiness, MATTR, lexicon
+- detector sub-signal breakdown: burstiness, MATTR, lexicon, koDiagnostics
 - expected metric ranges for checked-in fixtures
 
 For rewrite quality:

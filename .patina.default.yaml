@@ -166,6 +166,9 @@ ouroboros:
     marketing:
       ai-likeness: 0.65
       fidelity: 0.35
+    namuwiki:
+      ai-likeness: 0.65
+      fidelity: 0.35
   severity-points:
     high: 3
     medium: 2

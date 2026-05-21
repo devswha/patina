@@ -26,6 +26,7 @@ const PROFILES = [
   'code-comment',
   'commit-message',
   'release-notes',
+  'namuwiki',
 ];
 const TONES = ['profile-only', 'casual', 'professional', 'academic', 'narrative', 'marketing', 'instructional', 'auto'];
 const DISPATCH_MODES = ['omc', 'direct', 'api'];

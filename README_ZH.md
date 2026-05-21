@@ -175,7 +175,7 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 | `--diff` | 按模式逐项展示改动 |
 | `--ouroboros` | 反复改写直到分数收敛（含 MPS 回滚） |
 | `--lang <ko\|en\|zh\|ja>` | 选择语言（默认：`ko`） |
-| `--profile <名称>` | 语气预设：`blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes` |
+| `--profile <名称>` | 语气预设：`blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes`, `namuwiki` |
 | `--tone <名称>` | 语调类别：`casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | 把位置参数当作文件列表（例：`--batch docs/*.md`） |
 | `--format json\|text\|markdown` | 选择 JSON、纯文本或默认 Markdown 输出 |
@@ -187,7 +187,7 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 
 完整选项请运行 `patina --help`。`patina doctor --json` 可在不调用 LLM 的情况下检查 Node/backend/tmux/API-key 状态，`patina init` 会写入项目 `.patina.yaml`。
 
-Markdown-heavy 工程流程可使用开发者原生 profile shortcut：`code-comment` 收紧 inline comments/docstrings，`commit-message` 围绕意图和验证改写 Git 历史文本，`release-notes` 把 changelog bullets 改成面向用户影响的发布说明，并保留迁移风险。
+Markdown-heavy 工程流程可使用开发者原生 profile shortcut：`code-comment` 收紧 inline comments/docstrings，`commit-message` 围绕意图和验证改写 Git 历史文本，`release-notes` 把 changelog bullets 改成面向用户影响的发布说明，并保留迁移风险。`namuwiki` 是仅适用于韩文的 wiki 风格 profile，只包含原创的 license-safe 指南，不复制 NamuWiki 文章文本。
 
 ### 仅评分模式
 

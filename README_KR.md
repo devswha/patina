@@ -173,7 +173,7 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 | `--diff` | 변경 사항을 패턴별로 표시 |
 | `--ouroboros` | 점수가 수렴할 때까지 반복 (MPS 롤백 포함) |
 | `--lang <ko\|en\|zh\|ja>` | 언어 선택 (기본값: `ko`) |
-| `--profile <이름>` | 톤 프리셋: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes` |
+| `--profile <이름>` | 톤 프리셋: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes`, `namuwiki` |
 | `--tone <이름>` | 톤 카테고리: `casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | 위치 인자를 파일 목록으로 처리 (예: `--batch docs/*.md`) |
 | `--format json\|text\|markdown` | JSON, 일반 텍스트, 기본 Markdown 출력 선택 |
@@ -186,7 +186,7 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 전체 옵션은 `patina --help`. `patina doctor --json`은 LLM 호출 없이 Node/backend/tmux/API-key 준비 상태를 점검하고, `patina init`은 프로젝트용 `.patina.yaml`을 씁니다.
 
 Markdown 중심의 개발 워크플로우에는 개발자용 프로필 단축키가 있습니다:
-`code-comment`는 인라인 주석과 docstring을 줄이고, `commit-message`는 의도와 검증 중심의 커밋 메시지로 다듬으며, `release-notes`는 변경 로그 항목을 사용자 영향과 마이그레이션 위험이 보이는 릴리스 노트로 바꿉니다.
+`code-comment`는 인라인 주석과 docstring을 줄이고, `commit-message`는 의도와 검증 중심의 커밋 메시지로 다듬으며, `release-notes`는 변경 로그 항목을 사용자 영향과 마이그레이션 위험이 보이는 릴리스 노트로 바꿉니다. `namuwiki`는 한국어 전용 위키풍 프로필이며, 실제 나무위키 문서 텍스트를 복사하지 않는 license-safe 가이드만 포함합니다.
 
 ### 스코어 전용 패턴
 

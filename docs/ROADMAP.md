@@ -250,13 +250,13 @@ Do not lead with “bypass AI detectors.” Lead with:
 
 ## 5. Immediate next actions
 
-Last triaged: 2026-05-21, after false-positive feedback-loop and issue-inventory sync.
+Last triaged: 2026-05-21, after launch-service parity and issue-inventory sync.
 
 Current GitHub issue inventory:
 
-- 12 open issues; 136 closed issues; 148 tracked issues total.
+- 14 open issues; 136 closed issues; 150 tracked issues total.
 - Open PRs: 0.
-- Open priority split: 1 high, 2 medium, 9 low, and 0 without priority labels.
+- Open priority split: 1 high, 4 medium, 9 low, and 0 without priority labels.
 - Current high-priority issue: #286 launch tracking/playbook.
 
 Campaign state:
@@ -267,16 +267,18 @@ Campaign state:
 - Launch Wave 1 badge work: #297 closed #282; companion patina-action#1 added `badge-json` / `badge-branch`.
 - Launch Wave 2 support work: #299 closed #285; share-card generator work closed #283.
 - Launch Wave 3 static playground work closes #208 and targets <https://patina.vibetip.help/> for the try-it-now URL.
-- Launch execution prep: Korean-first channel drafts live in `docs/social/patina-launch-korean-first.md` and score 17.4%; `docs/social/patina-launch-copy.md` remains at 13.8%.
+- Launch execution prep: Korean-first channel drafts live in `docs/social/patina-launch-korean-first.md` and score 4.5%; `docs/social/patina-launch-copy.md` scores 6.7% after the KO diagnostic scoring update.
 - Rebaseline reporting prep: `npm run benchmark:rebaseline:report` refreshes `docs/benchmarks/rebaseline-latest.{md,json}` from the sanitized manifest while keeping public claims blocked without real corpus evidence.
 - Launch feedback prep: the false-positive issue form now captures text origin, redistribution, fired paragraph, score output, and expected behavior.
 - Closed or verified during the campaign: #99, #104, #165, #186, #191, #199, #209, #210.
-- Kept open with explicit blocker comments: #155, #156, #157, #158, #159, #160, #206, #207, #211, #212.
+- Kept open with explicit blocker comments, pending external action, or landing verification: #155, #156, #157, #158, #159, #160, #206, #207, #211, #212, #286, #303, #304.
 - Legacy bot/harness notes were removed from the public repo; restart autonomous bot work only from a fresh, tracked design if it becomes necessary.
 
 Next recommended order:
 
 1. Keep #286 as the launch execution tracker; infra is live and copy scores pass, so the next step is maintainer-owned Korean-first posting plus feedback capture.
-2. Continue research/process medium items (#155, #160) only when there is corpus, evaluator, or release bandwidth; use the rebaseline report writer for sanitized summaries.
-3. Treat low-priority research/ecosystem items (#156-#159, #206, #207, #211, #212, #284) as parked until corpus, external repo, hosting, or governance prerequisites exist.
-4. Keep new campaign PRs short-lived: green checks, merged, or explicitly blocked with issue comments.
+2. Close #304 after the NamuWiki profile wave is on main and GitHub checks agree; keep #303 open until external KO calibration lands.
+3. Continue research/process medium items (#155, #160) only when there is corpus, evaluator, or release bandwidth; use the rebaseline report writer for sanitized summaries.
+4. Treat low-priority research/ecosystem items (#156-#159, #206, #207, #211, #212, #284) as parked until corpus, external repo, hosting, or governance prerequisites exist; keep new campaign PRs short-lived.
+
+Detailed wave grouping lives in `docs/ISSUE-WAVES.md` so launch, profile, corpus-gated research, and parked ecosystem work can move independently without re-triage.

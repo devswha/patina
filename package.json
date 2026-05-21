@@ -15,6 +15,7 @@
     "benchmark": "node tests/quality/benchmark.mjs",
     "benchmark:report": "node scripts/benchmark-report.mjs",
     "benchmark:rebaseline": "node scripts/rebaseline-summary.mjs",
+    "benchmark:rebaseline:report": "node scripts/rebaseline-summary.mjs --write",
     "dogfood": "node tests/quality/dogfood.mjs",
     "badge": "node scripts/badge-json.mjs",
     "lint": "npm run lint:syntax && npm run lint:eslint && npm run typecheck && npm run spellcheck",

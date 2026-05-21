@@ -84,6 +84,7 @@ collecting a larger corpus:
 
 ```bash
 npm run benchmark:rebaseline
+npm run benchmark:rebaseline:report
 node scripts/rebaseline-summary.mjs --input tests/quality/rebaseline-manifest.example.jsonl --json
 ```
 
@@ -99,6 +100,11 @@ The manifest row schema is intentionally metadata-first:
 contains `text`, the validator checks that the digest matches. If a row is
 `metadata-only`, `private`, or `no-redistribution`, full text must stay out of
 the repository.
+
+`npm run benchmark:rebaseline:report` writes the sanitized summary to
+`docs/benchmarks/rebaseline-latest.md` and `.json`. The example report is
+expected to stay `BLOCKED`; use it to prove the gate is working, not as a public
+performance claim.
 
 ## Publication gate
 

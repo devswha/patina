@@ -1,5 +1,8 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
   hashText,
@@ -7,6 +10,7 @@ import {
   renderMarkdownReport,
   summarizeManifest,
   validateRecord,
+  writeReportFiles,
 } from '../../scripts/rebaseline-summary.mjs';
 
 test('example rebaseline manifest validates and keeps public claims blocked', () => {
@@ -93,4 +97,23 @@ test('complete outcome rows produce deterministic confusion metrics', () => {
   assert.equal(summary.metrics.fp, 1);
   assert.equal(summary.metrics.fn, 1);
   assert.equal(summary.metrics.accuracy, 0.5);
+});
+
+test('writeReportFiles writes markdown and JSON reports', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'patina-rebaseline-report-'));
+  try {
+    const manifest = loadManifest('tests/quality/rebaseline-manifest.example.jsonl');
+    const summary = summarizeManifest(manifest.records, { input: manifest.relativePath });
+    const written = writeReportFiles(summary, manifest, { outputDir: dir, basename: 'unit-rebaseline' });
+
+    const markdown = readFileSync(written.markdownPath, 'utf8');
+    const json = JSON.parse(readFileSync(written.jsonPath, 'utf8'));
+
+    assert.match(markdown, /Rebaseline Manifest Summary/);
+    assert.match(markdown, /Public performance claim: \*\*BLOCKED\*\*/);
+    assert.equal(json.totalRecords, 5);
+    assert.deepEqual(json.validation.errors, []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

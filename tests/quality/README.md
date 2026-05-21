@@ -78,6 +78,7 @@ detectors, or turn a small sample into a headline claim.
 
 ```bash
 npm run benchmark:rebaseline
+npm run benchmark:rebaseline:report
 node scripts/rebaseline-summary.mjs --input tests/quality/rebaseline-manifest.example.jsonl --json
 ```
 
@@ -93,6 +94,10 @@ The report keeps public performance claims blocked until the process gate in
 `process/pattern-freshness.md` is satisfied: scored outcome rows, at least three
 generator families across at least two languages, n≥100 per claim cell, and
 confidence intervals.
+
+`npm run benchmark:rebaseline:report` refreshes
+`docs/benchmarks/rebaseline-latest.md` and `.json`. The checked-in example
+report should stay blocked; a READY report requires a real scored manifest.
 
 ## Score vs signal strength
 

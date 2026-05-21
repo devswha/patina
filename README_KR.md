@@ -10,9 +10,9 @@
 
 > **AI 포장만 벗기고, 의미는 그대로.**
 
-patina는 한국어·영어·중국어·일본어 글에서 AI 냄새가 나는 패턴을 찾아, 원래 주장을 건드리지 않고 다듬습니다. [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), OpenCode 용 스킬로 쓰거나 독립형 Node.js CLI 로 실행할 수 있습니다.
+patina는 한국어·영어·중국어·일본어 글에서 AI 냄새가 나는 패턴을 찾아, 원래 주장·수치·극성·인과관계를 건드리지 않고 다듬습니다. [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), OpenCode 용 스킬로 쓰거나 독립형 Node.js CLI 로 실행할 수 있습니다.
 
-블랙박스 패러프레이저가 아닙니다. patina는 **패턴 기반이고 감사 가능**해서, 무엇을 왜 바꿨는지와 원문의 주장이 보존됐는지를 보여줍니다.
+블랙박스 패러프레이저도, 탐지기 우회 약속도 아닙니다. patina는 **패턴 기반이고 감사 가능**해서, 무엇을 왜 바꿨는지와 원문의 주장이 보존됐는지를 보여줍니다. `codex`, `claude`, `gemini` CLI 중 하나가 로그인되어 있으면 API 키 없이도 쓸 수 있습니다.
 
 ## 데모
 
@@ -24,8 +24,21 @@ patina는 한국어·영어·중국어·일본어 글에서 AI 냄새가 나는 
 
 > **MPS = 100** · 사회적 변화 ✓ · 커뮤니티 구축 ✓ · 의미 있는 연결 ✓ · 문화 간 대화 ✓
 
-브라우저에서 먼저 보기: [patina.vibetip.help](https://patina.vibetip.help/) *(탐지만, 재작성 없음)*.
-로컬 데모: [30초 터미널 데모](docs/DEMO.md). 더 많은 예시는 [Before/After Gallery](docs/EXAMPLES_KR.md) ([English](docs/EXAMPLES.md))에 있습니다.
+**더 많은 데모 조각**
+
+| 입력 유형 | 제거되는 AI 포장 | 보존되는 의미 |
+|---|---|---|
+| 한국어 마케팅 | “혁신적인 솔루션”, “새로운 패러다임” | 노션 템플릿 30개, workflow fit, 복사 후 수정 사용 |
+| 학술 문체 | “획기적인 성과”, 넓은 의의 주장 | GitHub 프로젝트 60개, 72h→10m 설정 시간, p<0.01, 한계 명시 |
+| 기술 문서 | “핵심적인 역할”, 미래 표준 hype | GPU 관리, one-command provisioning, 5× 결과 caveat |
+
+## 브라우저에서 바로 보기 — 설치 없음
+
+**[patina.vibetip.help](https://patina.vibetip.help/)** 에서 KO / EN / ZH / JA 문단의 AI 글쓰기 패턴을 브라우저 안에서 바로 점검할 수 있습니다.
+
+> **탐지 전용입니다.** playground는 결정론적 문체 통계만 로컬 브라우저에서 실행합니다. 텍스트를 재작성하지 않고, LLM을 호출하지 않으며, 키를 프록시하지 않습니다. 실제 rewrite가 필요하면 아래 CLI나 스킬을 사용하세요.
+
+전체 rewrite 흐름은 [30초 터미널 데모](docs/DEMO.md)에서 볼 수 있습니다. 더 많은 예시는 [Before/After Gallery](docs/EXAMPLES_KR.md) ([English](docs/EXAMPLES.md))에 있습니다.
 브랜드 자산: [로고](assets/brand/patina-logo.svg), [마크](assets/brand/patina-mark.svg), [아이콘](assets/brand/patina-icon.svg), [소셜 프리뷰](assets/social/patina-og.svg), [before/after 카드](assets/social/patina-before-after.svg). 사용 메모는 [BRANDING.md](docs/BRANDING.md)를 참고하세요.
 
 ## 한눈에 보기
@@ -37,7 +50,7 @@ patina는 한국어·영어·중국어·일본어 글에서 AI 냄새가 나는 
 | **벤치마크 리포트** | 재현 가능한 ko/en/zh/ja 의심 구간 벤치마크: [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [detector comparison](docs/benchmarks/detector-comparison.md) |
 | **오탐율** | 사람 글 register별 13–25% 점추정 범위 *(CI 아님; 백과사전체의 본질적 한계, [문서화](core/stylometry.md))* |
 | **모드** | rewrite · audit · score · diff · ouroboros |
-| **무료 사용** | 가능 — `codex` CLI 로그인 시 API 키 불필요 |
+| **무료 사용** | 가능 — 로그인된 `codex`, `claude`, `gemini` CLI 중 하나로 API 키 없이 실행 |
 | **결정성** | 스코어링 공식은 결정적이지만 LLM severity 부여 단계는 ±8–10pt 변동 ([scoring.md §8](core/scoring.md)) |
 | **라이선스** | MIT |
 
@@ -49,7 +62,7 @@ patina는 한국어·영어·중국어·일본어 글에서 AI 냄새가 나는 
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
 
-설치 스크립트가 Claude Code, [Codex CLI](https://github.com/openai/codex), Cursor, OpenCode 에 한 번에 연결합니다. 체크아웃 전에 repository HEAD를 구체적인 commit으로 해석하므로, 완전히 고정된 설치가 필요하면 `PATINA_REF=<tag-or-full-sha>`를 설정하세요. 그런 다음:
+설치 스크립트가 Claude Code, [Codex CLI](https://github.com/openai/codex), Cursor, OpenCode 에 한 번에 연결합니다. 설치 시점의 최신 커밋(HEAD)을 고정해서 설치하므로, 완전히 고정된 설치가 필요하면 `PATINA_REF=<tag-or-full-sha>`를 설정하세요. 그런 다음:
 
 ```
 /patina --lang ko
@@ -75,7 +88,7 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
 
 ### 독립형 CLI 로
 
-Node.js ≥ 18 필요. npm 릴리스가 완료됐다면 패키지를 바로 실행할 수 있습니다:
+Node.js ≥ 18 필요. npm 패키지가 공개되어 있으므로 바로 실행할 수 있습니다:
 
 ```bash
 npx patina-cli init --defaults
@@ -83,7 +96,7 @@ npx patina-cli doctor
 npx patina-cli --lang ko input.txt
 ```
 
-아직 릴리스 전이거나 저장소를 직접 고치려면:
+저장소를 직접 고치며 시험하려면:
 
 ```bash
 git clone https://github.com/devswha/patina.git
@@ -106,12 +119,29 @@ Patina는 모델 키 없이도 문서 리뷰용 결정론적 CI 체크를 제공
 
 ```yaml
 # .github/workflows/patina.yml
-steps:
-  - uses: actions/checkout@v6
-  - uses: devswha/patina-action@v1
-    with:
-      score-threshold: 30
-      comment: true
+name: Patina prose score
+
+on:
+  pull_request:
+    paths:
+      - '**/*.md'
+      - '**/*.mdx'
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  patina:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: devswha/patina-action@v1
+        with:
+          score-threshold: 30
+          lang: auto
+          comment: true
 ```
 
 Docker 이미지는 npm 릴리스와 별도로 추적합니다. GHCR 이미지가 공개되기 전에는 컨테이너가 필요할 때 로컬 이미지를 빌드하세요:
@@ -126,7 +156,7 @@ Pre-commit, Husky, Lefthook, Docker, 릴리스 워크플로우 메모는 [docs/i
 
 ## 의도한 사용
 
-Patina는 작성자가 AI 도움을 써도 되는 상황에서 초안을 편집하고, 감사 가능한 흔적을 남기며, 문체를 정리하도록 돕는 도구입니다. 텍스트가 "원래 사람이 쓴 것"이라는 약속은 아니며, 학업 윤리 규정 회피, 출판사 고지 의무 우회, 표절 세탁, 탐지기 우회 주장에 사용해서는 안 됩니다. [ETHICS.md](docs/ETHICS.md)를 참고하세요.
+Patina는 작성자가 AI 도움을 써도 되는 상황에서 초안을 편집하고, 어떤 부분을 왜 바꿨는지 투명하게 확인하면서 문체를 정리하도록 돕는 도구입니다. 텍스트가 "원래 사람이 쓴 것"이라는 약속은 아니며, 학업 윤리 규정 회피, 출판사 고지 의무 우회, 표절 세탁, 탐지기 우회 주장에 사용해서는 안 됩니다. 점수는 오탐과 미탐이 있는 편집 신호이지, 작성자 판정 근거가 아닙니다. [ETHICS.md](docs/ETHICS.md)를 참고하세요.
 
 ## 모드
 
@@ -166,7 +196,7 @@ Markdown 중심의 개발 워크플로우에는 개발자용 프로필 단축키
 
 ### 프롬프트 모드 튜닝 (v3.11)
 
-`--prompt-mode strict|minimal|auto` 는 전체 패턴 팩(약 34KB 구조화 프롬프트)과 압축된 캐주얼 지시문(약 3KB) 사이의 균형을 선택합니다. `auto` 는 백엔드별로 선택합니다 — Gemini는 minimal에서 더 잘 동작하고(긴 구조화 프롬프트에 과도하게 제약됨), Claude는 전체 팩을 활용하며, Codex는 대체로 차이가 작습니다. case-05가 A/B 결과를 문서화합니다.
+`--prompt-mode strict|minimal|auto` 는 전체 패턴 팩(약 34KB 구조화 프롬프트)과 압축된 캐주얼 지시문(약 3KB) 사이의 균형을 선택합니다. `auto` 는 백엔드별로 선택합니다 — Gemini는 minimal에서 더 잘 동작하고(너무 긴 구조화 프롬프트에는 얽매이는 경향이 있음), Claude는 전체 팩을 활용하며, Codex는 대체로 차이가 작습니다. Standalone CLI MAX rewrite worker는 `--prompt-mode`나 설정 override가 없으면 기본적으로 `minimal`을 쓰기 때문에 여러 후보를 돌려도 프롬프트가 가볍습니다. MAX에서 `auto`는 후보마다 따로 정하지 않고 dispatch 전에 한 번만 해석됩니다. case-05가 A/B 결과를 문서화합니다.
 
 ### 여러 스타일 변형 (v3.11)
 
@@ -174,7 +204,7 @@ Markdown 중심의 개발 워크플로우에는 개발자용 프로필 단축키
 
 ### 짧은 텍스트 점수 보정 (v3.11)
 
-입력이 200자 이하이거나 3문단 이하이면 레지스터에 민감한 카테고리(`language`, `style`, `viral-hook`)에 1.5배 severity multiplier를 적용해 단일 문단의 보이스 변화도 점수에 드러나게 합니다. case-04에서 긴 글 기준 공식이 이런 신호를 과소계산한다는 점을 확인했습니다.
+입력이 200자 이하이거나 3문단 이하이면 문장 스타일에 민감한 카테고리(`language`, `style`, `viral-hook`)에 1.5배 가중치를 주어, 짧은 단락의 미세한 어조 변화도 점수에 반영되게 합니다. case-04에서 긴 글 기준 공식이 이런 신호를 과소계산한다는 점을 확인했습니다.
 
 ### 자기검수 분리 (v3.11)
 
@@ -182,15 +212,21 @@ rewrite 모드에서 모델은 `[BODY]`/`[/BODY]` 블록(또는 `--variants > 1`
 
 ### 기계가 읽기 쉬운 출력과 종료 코드
 
-`--format json`은 모든 모드를 `overall`, `categories[]`, `tone`, `mps`, `gateResult`, 정리된 `output` 본문을 담은 안정적인 envelope로 감쌉니다. `--format markdown`이 기본값이고, `--format text`는 YAML tone footer 없는 사용자-facing 본문만 유지합니다. 종료 코드는 [EXIT-CODES.md](docs/EXIT-CODES.md)에 정리되어 있습니다: `0` 성공, `1` runtime/backend, `2` input/usage, `3` score gate 초과, `4` MAX MPS fallback/all-candidates-failed.
+`--format json`은 모든 모드를 `overall`, `categories[]`, `tone`, `mps`, `gateResult`, 정리된 `output` 본문이 들어 있는 일관된 JSON 구조(envelope)로 감싸 반환합니다. `--json-logs`는 stderr 로그도 NDJSON으로 유지하고, `--quiet`는 stdout만 필요한 스크립트를 위해 상태·경고·진행 로그를 숨깁니다. `--format markdown`이 기본값이고, `--format text`는 YAML tone footer 없이 사용자가 보게 될 본문만 남깁니다. 종료 코드는 [EXIT-CODES.md](docs/EXIT-CODES.md)에 정리되어 있습니다: `0` 성공, `1` runtime/backend, `2` input/usage, `3` score gate 초과, `4` MAX MPS fallback/all-candidates-failed.
 
 ### 점수 가중치 드리프트 감지 (v3.11)
 
-`--score` 실행은 모델이 출력한 Weight 열을 설정의 `category-weights`와 교차 확인합니다. 모델이 존재하지 않는 카테고리(예: `discord`)를 만들거나 다른 숫자로 바꾸면 `[patina]` 경고가 stderr에 출력됩니다 — 관측용일 뿐 점수 자체는 바꾸지 않습니다.
+`--score` 실행은 모델이 출력한 Weight 열을 설정의 `category-weights`와 교차 확인합니다. 모델이 존재하지 않는 카테고리(예: `discord`)를 만들거나 다른 숫자로 바꾸면 `[patina]` 경고가 stderr에 출력됩니다 — 관측용일 뿐 weight check 자체가 점수를 바꾸지는 않습니다. `src/features/*`의 결정론적 shadow score도 함께 기록되며, LLM 점수와 20점 넘게 벌어지면 patina가 경고를 내고 gate에는 더 보수적인 값을 사용합니다.
+
+`--save-run <dir>`는 manifest schema v2를 씁니다. 결과 entry에는 prompt/response hash, 가능한 input/output token 수, temperature/seed, score detail, provider가 반환한 per-call cost, Ouroboros iteration log가 포함됩니다.
+
+반복 benchmark에는 `--cache <dir>` 또는 `PATINA_CACHE_DIR`로 HTTP response cache를 켤 수 있습니다. Cache key에는 prompt, model, temperature, API host가 들어가고, `--cache-ttl <sec>`가 만료 시간을 정하며, `--no-cache`는 항상 fresh run을 강제합니다. cached run이 끝나면 hit/miss/write stats가 출력됩니다.
+
+`--voice-sample <path>` 또는 설정의 `voice-sample: <path>`로 본인이 쓴 1~3문단을 rewrite 기준으로 줄 수 있습니다. profile과 tone은 여전히 register를 정하고, sample은 cadence, 구체성, POV, sentence texture만 가르칩니다. prompt는 sample의 사실을 가져오지 말라고 명시합니다.
 
 ## 톤
 
-`--tone` 은 패턴 재작성 위에 적용되는 명명된 보이스 축입니다. 우선순위: `--tone` CLI > `tone:` 설정 > `profile:` 설정.
+`--tone` 은 패턴 기반 재작성과 함께 적용할 수 있는 톤(어조) 프리셋입니다. 우선순위: `--tone` CLI > `tone:` 설정 > `profile:` 설정.
 
 | 톤 | 용도 | 주요 특성 |
 |----|------|-----------|
@@ -213,14 +249,18 @@ rewrite 모드에서 모델은 `[BODY]`/`[/BODY]` 블록(또는 `--variants > 1`
 [텍스트를 여기에 붙여넣기]
 ```
 
+`dispatch: omc`가 켜져 있으면 `/patina-max`는 tmux pane을 써서 로컬 CLI 후보를 병렬로 돌립니다. tmux가 없다면 `--dispatch direct`로 no-tmux 경로를 선택하세요. 이 경우 선택한 모델이 순차 실행되므로 모델당 timeout이 누적될 수 있습니다. `dispatch: omc`가 tmux 밖에서 자동 fallback할 때는 예상되는 순차/병렬 wall-clock 차이를 출력합니다.
+
+Standalone CLI MAX(`patina --models ...`)는 더 이상 HTTP-only가 아닙니다. 모델 목록에는 로컬 CLI backend alias/name(`claude-cli`, `codex-cli`, `gemini-cli`, shorthand `claude`, `codex`, `gemini`)과 `gpt-4o`나 OpenRouter model name 같은 HTTP model ID를 함께 넣을 수 있습니다. HTTP 후보는 `--base-url`/provider auth를 쓰고, 로컬 후보는 로그인된 CLI backend를 씁니다. 후보 fanout은 free-tier quota storm을 피하려고 기본적으로 `min(models, 3)`으로 제한됩니다. `--max-concurrency <n>`으로 조정할 수 있고, 정말 무제한 병렬이 필요할 때만 `--max-concurrency 0`을 쓰세요.
+
 ## 동작 원리
 
 ```
 입력
   ↓
 [4.5단계]    의미 앵커 추출 (주장, 극성, 인과관계, 수치)
-[4.6단계]    문체 통계 전처리 (burstiness CV + MATTR)
-[4.7단계]    AI 어휘 오버랩 (영어 ~108 / 한국어 102 항목)
+[4.6단계]    문체 통계 전처리 (burstiness CV + MATTR; zh/ja 문자 토큰 fallback)
+[4.7단계]    AI 어휘 오버랩 (영어 ~108 / 한국어 102 / 중국어 60 / 일본어 60 항목)
 [Phase 1]    구조 스캔 + 앵커 검증
 [Phase 2]    문장 재작성 + 앵커 검증
 [Phase 3]    자기검수 (극성, 회귀, MPS)
@@ -230,7 +270,7 @@ rewrite 모드에서 모델은 `[BODY]`/`[/BODY]` 블록(또는 `--variants > 1`
 
 각 검증 단계에서 의미가 손상되면 재시도하거나 롤백합니다.
 
-**캘리브레이션** *(500단락 코퍼스, `.omc/research/v3_8_remeasure.py` 로 재현 가능)*: HC3 ChatGPT (en) 편집 핫스팟 재현율 76% [66.7–83.3%], paired ko/AI 코퍼스 91% [84.0–95.4%] (각 n=100, binomial 95% CI). 사람 글 오탐은 register별 13–25% 점추정 범위로 별도 보고합니다. 수용 기준: AI ≥ 75%, 최대 FP ≤ 25%. 알고리즘은 [stylometry.md](core/stylometry.md).
+**캘리브레이션** *(500단락 코퍼스; 방법론은 [stylometry.md](core/stylometry.md))*: HC3 ChatGPT (en) 편집 핫스팟 재현율 76% [66.7–83.3%], paired ko/AI 코퍼스 91% [84.0–95.4%] (각 n=100, binomial 95% CI). 사람 글 오탐은 register별 13–25% 점추정 범위로 별도 보고합니다. 수용 기준: AI ≥ 75%, 최대 FP ≤ 25%.
 
 ## 설정
 
@@ -244,20 +284,24 @@ tone:                     # casual | professional | academic | narrative | marke
 max-models: [claude, gemini]
 ```
 
-패턴 팩은 언어 접두사로 자동 탐색됩니다. 작업 디렉토리의 `.patina.yaml` 이 기본값을 오버라이드합니다. 탐지를 확장하는 목록 키(`blocklist`, `allowlist`, `skip-patterns`)는 default/global/project 설정 사이에서 추가 병합되고, `max-models` 같은 provider 목록은 사용자가 정확한 백엔드 세트를 선택할 수 있도록 대체됩니다.
+패턴 팩은 언어 접두사로 자동 탐색됩니다. 작업 디렉토리의 `.patina.yaml` 이 기본값을 오버라이드합니다. 탐지를 확장하는 목록 키(`blocklist`, `allowlist`, `skip-patterns`)는 default/global/project 설정 사이에서 누적 병합(additively merge)되며, `max-models` 같은 provider 목록은 사용자가 정확한 백엔드 세트를 선택할 수 있도록 대체됩니다.
 
 ## 문서
 
+- **[Cookbook](docs/COOKBOOK.md)** — Hugo 배치 스코어링, GitHub Actions, MAX 비교, 오탐 triage, 커스텀 프로필, pre-commit recipe
 - **[Glossary](docs/GLOSSARY.md)** — MPS, fidelity, burstiness, MATTR, 모드 등 반복 용어의 짧은 정의
 - **[Demo](docs/DEMO.md)** — 터미널 transcript와 여러 장르의 before/after 스냅샷
 - **[Patterns](docs/PATTERNS.md)** — 160개 패턴 카탈로그
 - **[Authentication](docs/AUTHENTICATION_KR.md)** ([English](docs/AUTHENTICATION.md)) — 백엔드, 프로바이더, 무료 티어 설정
-- **[GitHub Action](docs/integrations/github-action.md)** — live model key 없이 PR hotspot comment 생성
+- **[GitHub Action](docs/integrations/github-action.md)** — live model key 없이 PR hotspot comment와 README score badge 생성
 - **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit, Husky, Lefthook score-only recipe
 - **[Static-site Stencils](docs/integrations/static-sites.md)** — Hugo, Astro, Next.js MDX build-time scoring recipe
 - **[Docker](docs/integrations/docker.md)** — GHCR image 사용법과 release tag
-- **[CLI Contract](docs/CLI.md)** — score gate, exit code, 자동화에 안전한 표면
+- **[Release workflow](docs/integrations/release.md)** — npm provenance + GHCR publishing checklist
+- **[CLI Contract](docs/CLI.md)** — score gate, JSON/text/Markdown output, 자동화에 안전한 표면
+- **[API Reference](docs/API.md)** — programmatic import와 scoring helper용 생성 JSDoc reference
 - **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI, `/patina`, `/patina-max` 옵션 지원 범위
+- **[Exit Codes](docs/EXIT-CODES.md)** — CI와 editor integration용 process code contract
 - **[Ethics](docs/ETHICS.md)** — 의도한 사용, 금지 사용, disclosure 입장
 - **[FAQ](docs/FAQ_KR.md)** ([English](docs/FAQ.md)) — detector-bypass 우려, MPS, 오탐, 기여 시작점
 - **[False-positive Gallery](docs/FALSE-POSITIVES.md)** — 작성자 비난이 아니라 편집 힌트로 보아야 하는 register 예시
@@ -267,8 +311,13 @@ max-models: [claude, gemini]
 - **[Roadmap](docs/ROADMAP.md)** — 품질, 벤치마크, 제품, 커뮤니티, 런칭 우선순위
 - **[Docs Platform RFC](docs/RESEARCH-DOCS-PLATFORM.md)** — Docusaurus, Astro Starlight, MkDocs, GitHub Pages 조사
 - **[Benchmark Report](docs/benchmarks/latest.md)** — 최신 재현 가능 suspect-zone 벤치마크 요약
+- **[Detector Comparison Harness](docs/benchmarks/detector-comparison.md)** — third-party detector를 오프라인/수동 비교하는 프로토콜
 - **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — AI-like writing signal 측정용 벤치마크 설계 메모
-- **[Launch Copy](docs/social/patina-launch-copy.md)** — Show HN, Reddit, X, 한국 커뮤니티 초안
+- **[2025+ Re-baseline Plan](docs/research/2025-rebaseline-plan.md)** — 더 넓은 model-era claim 전 evidence gate
+- **[zh/ja Lexicon Calibration](docs/research/zh-ja-lexicon-calibration.md)** — starter lexicon gate와 남은 corpus risk
+- **[Launch Copy](docs/social/patina-launch-copy.md)** — launch sequence, score gate, Show HN/Product Hunt/Reddit/X/Korean drafts
+- **[Signs of AI Writing](docs/social/signs-of-ai-writing_KR.md)** ([English](docs/social/signs-of-ai-writing.md)) — cited example이 붙은 공유용 편집 checklist
+- **[Share Card SVGs](docs/social/share-card.md)** — `--card` before/after social card와 score/MPS pill
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 어휘 알고리즘
 - **[Scoring](core/scoring.md)** — AI 유사도 + 충실도 + MPS
 - **[Changelog](CHANGELOG.md)** — 릴리스 노트와 방법론

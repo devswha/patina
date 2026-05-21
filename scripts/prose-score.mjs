@@ -4,12 +4,20 @@ import { fileURLToPath } from 'node:url';
 
 import { analyzeText } from '../src/features/index.js';
 import { loadLexicon } from '../src/features/lexicon.js';
+import {
+  paragraphSignalStrength,
+  summarizeSignalStrength,
+} from '../src/features/signal-strength.js';
+import { loadPatterns } from '../src/loader.js';
+
+export { paragraphSignalStrength, summarizeSignalStrength };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_REPO_ROOT = resolve(__dirname, '..');
 export const DEFAULT_PROSE_EXTENSIONS = ['.md', '.mdx', '.txt', '.rst', '.adoc'];
 
 const lexiconCache = new Map();
+const patternTermCache = new Map();
 
 export function parseBoolean(value, defaultValue = false) {
   if (value === undefined || value === null || value === '') return defaultValue;
@@ -76,6 +84,14 @@ function getLexicon(lang, repoRoot) {
   return lexiconCache.get(key);
 }
 
+function getPatternWatchTerms(lang, repoRoot) {
+  const key = `${repoRoot}\0${lang}`;
+  if (!patternTermCache.has(key)) {
+    patternTermCache.set(key, extractPatternWatchTerms(loadPatterns(repoRoot, lang)));
+  }
+  return patternTermCache.get(key);
+}
+
 export function scoreText(text, { file = '', lang = 'auto', gate = 30, repoRoot = DEFAULT_REPO_ROOT } = {}) {
   const prose = stripNonProse(text);
   const resolvedLang = detectLanguage(file, prose, lang);
@@ -84,19 +100,74 @@ export function scoreText(text, { file = '', lang = 'auto', gate = 30, repoRoot 
     repoRoot,
     lexicon: getLexicon(resolvedLang, repoRoot),
   });
+  const patternHits = countPatternWatchHits(prose, getPatternWatchTerms(resolvedLang, repoRoot), resolvedLang);
   const paragraphCount = result.paragraphs.length;
   const hotCount = result.paragraphs.filter((p) => p.hot).length;
   const score = paragraphCount ? (hotCount / paragraphCount) * 100 : 0;
+  const signalScore = summarizeSignalStrength(result.paragraphs);
   return {
     file,
     lang: resolvedLang,
     paragraphCount,
     hotCount,
     score,
+    signalScore,
+    patternHits,
     gate,
     overGate: score > gate,
     skipped: paragraphCount === 0,
   };
+}
+
+export function extractPatternWatchTerms(patterns = []) {
+  const terms = [];
+  for (const pattern of patterns) {
+    for (const line of String(pattern.body || '').split('\n')) {
+      const match = line.match(/^\*\*([^*]+)\*\*\s*(.+)$/);
+      if (!match || !isWatchLabel(match[1])) continue;
+      const value = match[2].replace(/\s+—\s+/g, ', ');
+      for (const raw of value.split(/[,，、;]/)) {
+        const term = cleanPatternTerm(raw);
+        if (term.length >= 2) terms.push(term);
+      }
+    }
+  }
+  return [...new Set(terms)];
+}
+
+export function countPatternWatchHits(text, terms = [], lang = 'en') {
+  if (!text || !Array.isArray(terms) || terms.length === 0) return 0;
+  const haystack = lang === 'en' ? String(text).toLowerCase() : String(text);
+  let count = 0;
+  for (const term of terms) {
+    const needle = lang === 'en' ? term.toLowerCase() : term;
+    if (needle && haystack.includes(needle)) count++;
+  }
+  return count;
+}
+
+function isWatchLabel(label) {
+  const normalized = label.replace(/[：:]/g, '').trim().toLowerCase();
+  return [
+    'watch words',
+    '주의 어휘',
+    '고빈도 ai 어휘',
+    '고빈도 어휘',
+    '고빈도 표현',
+    '高频词汇',
+    '注意词汇',
+    '注意词',
+    '高頻度語彙',
+    '注意語彙',
+    '注意語',
+  ].some((needle) => normalized.includes(needle.toLowerCase()));
+}
+
+function cleanPatternTerm(term) {
+  return String(term || '')
+    .replace(/^[\s`*_"'“”‘’「」『』()（）]+|[\s`*_"'“”‘’「」『』()（）.。]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function isInside(base, candidate) {
@@ -160,11 +231,11 @@ export function formatMarkdownReport(rows, { gate = 30, title = 'Patina prose ho
     return lines.join('\n');
   }
 
-  lines.push('| status | file | lang | paragraphs | hot | score |');
-  lines.push('|---|---|---:|---:|---:|---:|');
+  lines.push('| status | file | lang | paragraphs | hot | score | signal | pattern hits |');
+  lines.push('|---|---|---:|---:|---:|---:|---:|---:|');
   for (const row of rows) {
     lines.push(
-      `| ${statusIcon(row)} | ${escapeCell(row.file)} | ${row.lang} | ${row.paragraphCount} | ${row.hotCount} | ${row.score.toFixed(1)}% |`
+      `| ${statusIcon(row)} | ${escapeCell(row.file)} | ${row.lang} | ${row.paragraphCount} | ${row.hotCount} | ${row.score.toFixed(1)}% | ${row.signalScore.toFixed(1)} | ${row.patternHits} |`
     );
   }
   return lines.join('\n');

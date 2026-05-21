@@ -34,6 +34,26 @@ paragraph is SUSPECT iff
 
 Per-language metrics use `expected_hot=true` as the positive class.
 
+## Score vs signal strength
+
+The pre-commit prose gate keeps the older, conservative score semantics:
+
+```text
+score = hot_paragraphs / total_paragraphs * 100
+```
+
+That binary ratio decides pass/fail because it is stable for CI. The report also
+prints two diagnostics:
+
+- `signal` — average paragraph intensity of the strongest deterministic trigger:
+  how far burstiness or MATTR is inside its low band, or how far lexicon density
+  is over the threshold.
+- `pattern hits` — count of pattern-pack watch terms found in the stripped prose.
+  This is diagnostic only; it helps reviewers see pattern-level cleanup that may
+  not change the binary hot-paragraph ratio.
+
+Treat both as editing diagnostics, not separate authorship verdicts or CI gates.
+
 ## What it does NOT measure
 
 - LLM-based scoring (`src/scoring.js`). The LLM is non-deterministic by

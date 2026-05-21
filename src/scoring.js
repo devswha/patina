@@ -1,6 +1,7 @@
 import { callLLM as defaultCallLLM } from './api.js';
 import { getRepoRoot } from './config.js';
 import { analyzeText } from './features/index.js';
+import { summarizeSignalStrength } from './features/signal-strength.js';
 import { createLogger } from './logger.js';
 
 /**
@@ -213,6 +214,7 @@ export function scoreDeterministicSignals({
       skipReason: 'language-disabled',
       paragraphCount: 0,
       hotParagraphs: 0,
+      signalScore: 0,
       bands: emptyDeterministicBands(),
     };
   }
@@ -232,6 +234,11 @@ export function scoreDeterministicSignals({
     const paragraphCount = paragraphs.length;
     const hotParagraphs = paragraphs.filter((p) => p.hot).length;
     const overall = paragraphCount > 0 ? roundScore((hotParagraphs / paragraphCount) * 100) : 0;
+    const signalScore = roundScore(summarizeSignalStrength(paragraphs, {
+      burstinessBands: config.stylometry?.burstiness?.bands,
+      mattrBands: config.stylometry?.ttr?.bands,
+      lexiconDensityThreshold: config.lexicon?.density_threshold,
+    }));
 
     return {
       overall,
@@ -240,6 +247,7 @@ export function scoreDeterministicSignals({
       skipReason: result?.skipReason ?? null,
       paragraphCount,
       hotParagraphs,
+      signalScore,
       bands: {
         burstiness: countBands(paragraphs.map((p) => p.burstiness?.band)),
         mattr: countBands(paragraphs.map((p) => p.mattr?.band)),
@@ -257,6 +265,7 @@ export function scoreDeterministicSignals({
       skipReason: 'deterministic-failure',
       paragraphCount: 0,
       hotParagraphs: 0,
+      signalScore: 0,
       bands: emptyDeterministicBands(),
       error: err?.message || 'deterministic scoring failed',
     };

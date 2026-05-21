@@ -33,10 +33,10 @@ function scoreFile({ file, lang }) {
 
 const rows = TARGETS.map(scoreFile);
 console.log('# Dogfood docs score');
-console.log('| file | lang | paragraphs | hot | score | threshold |');
-console.log('|---|---|---:|---:|---:|---:|');
+console.log('| file | lang | paragraphs | hot | score | signal | pattern hits | threshold |');
+console.log('|---|---|---:|---:|---:|---:|---:|---:|');
 for (const r of rows) {
-  console.log(`| ${r.file} | ${r.lang} | ${r.paragraphCount} | ${r.hotCount} | ${r.score.toFixed(1)} | ${THRESHOLD} |`);
+  console.log(`| ${r.file} | ${r.lang} | ${r.paragraphCount} | ${r.hotCount} | ${r.score.toFixed(1)} | ${r.signalScore.toFixed(1)} | ${r.patternHits} | ${THRESHOLD} |`);
 }
 
 const failures = rows.filter((r) => r.score > THRESHOLD);

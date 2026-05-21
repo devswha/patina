@@ -1,0 +1,6 @@
+# Keep raw/vendor/private rebaseline material local by default.
+*
+!.gitignore
+!README.md
+!*.example.jsonl
+!*.template.jsonl

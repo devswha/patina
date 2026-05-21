@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
@@ -96,6 +96,18 @@ test('pattern watch hits expose pattern-level prose cleanup outside the gate', (
   );
 });
 
+test('pattern watch extraction stays wired to checked-in pattern packs', () => {
+  const koTerms = extractPatternWatchTerms([
+    { body: readFileSync(resolve('patterns/ko-structure.md'), 'utf8') },
+  ]);
+  const enTerms = extractPatternWatchTerms([
+    { body: readFileSync(resolve('patterns/en-structure.md'), 'utf8') },
+  ]);
+
+  assert.ok(koTerms.includes('패러프레이저'));
+  assert.ok(enTerms.includes('was conducted'));
+});
+
 test('scoreFiles filters non-prose files and formats a markdown report', () => {
   const dir = mkdtempSync(resolve(tmpdir(), 'patina-score-'));
   writeFileSync(resolve(dir, 'hot.md'), 'This innovative solution is pivotal. This innovative solution is pivotal.');
@@ -107,4 +119,21 @@ test('scoreFiles filters non-prose files and formats a markdown report', () => {
   assert.match(report, /fail/);
   assert.match(report, /signal/);
   assert.match(report, /pattern hits/);
+});
+
+test('formatMarkdownReport keeps legacy rows renderable after diagnostic columns', () => {
+  const report = formatMarkdownReport([
+    {
+      file: 'legacy.md',
+      lang: 'en',
+      paragraphCount: 1,
+      hotCount: 0,
+      score: 0,
+      overGate: false,
+      skipped: false,
+    },
+  ]);
+
+  assert.match(report, /legacy\.md/);
+  assert.match(report, /\| 0\.0 \| 0 \|/);
 });

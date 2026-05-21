@@ -24,8 +24,23 @@ test('parseFileList accepts newline and comma separated paths', () => {
 test('stripNonProse keeps prose while removing code and tables', () => {
   const stripped = stripNonProse('# Title\n\nReal prose stays.\n\n```js\nconst x = 1;\n```\n\n| a | b |\n|---|---|');
   assert.match(stripped, /Real prose stays/);
+  assert.doesNotMatch(stripped, /Title/);
   assert.doesNotMatch(stripped, /const x/);
   assert.doesNotMatch(stripped, /\| a \|/);
+});
+
+test('stripNonProse removes table rows before p-value text can look like HTML', () => {
+  const stripped = stripNonProse([
+    '| Input type | AI packaging removed | Preserved meaning |',
+    '|---|---|---|',
+    '| Academic | broad claims | 60 projects, p<0.01, limits noted |',
+    '',
+    'Real prose stays.',
+  ].join('\n'));
+
+  assert.equal(stripped, 'Real prose stays.');
+  assert.doesNotMatch(stripped, /Academic/);
+  assert.doesNotMatch(stripped, /p<0\.01/);
 });
 
 test('detectLanguage uses filename and Unicode signals', () => {

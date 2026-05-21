@@ -126,6 +126,8 @@ burstiness_CV = stddev / mean
 - `CV` = Coefficient of Variation (변동계수)
 - mean 이 0 이면 정의되지 않음 → skip 처리
 - population stddev 사용 (표본 보정 없음, 단순화)
+- 단락 문장이 3개 미만이면 CV 값은 기록하되 burstiness band는 부여하지 않는다.
+  2문장 이하 샘플은 길이 변동성이 너무 불안정해서 hot 판정에서 제외한다.
 
 ### 밴드
 
@@ -244,7 +246,7 @@ emit groups of length ≥ 2 as sub-flags
 |------|------|
 | 단락 수 ≤ 2 | 4.6단계 전체 skip — meta block 생략 |
 | 전체 문장 수 ≤ 2 | 4.6단계 전체 skip — meta block 생략 |
-| 단락 내 문장 수 < 2 | 해당 단락은 burstiness 계산 불가 → MATTR 만 평가 |
+| 단락 내 문장 수 < 3 | CV 값은 기록하지만 burstiness band/hot 판정은 생략 → MATTR/lexicon 만 평가 |
 | 단락 내 토큰 수 = 0 | 해당 단락 skip |
 | 언어가 `stylometry.languages` 에 없음 | 4.6단계 전체 skip (기본값은 ko/en/zh/ja 포함) |
 

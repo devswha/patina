@@ -33,6 +33,10 @@ paragraph is SUSPECT iff
   lexicon_density > threshold
 ```
 
+`burstiness_band` is only assigned when a paragraph has at least three
+sentences; two-sentence CV is recorded for diagnostics but is not stable enough
+to make the paragraph hot by itself.
+
 Per-language metrics use `expected_hot=true` as the positive class.
 
 ## Opt-in live rewrite quality

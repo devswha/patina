@@ -66,6 +66,19 @@ test('classifyBurstiness uses default bands (low<0.30, high>0.50)', () => {
   assert.equal(classifyBurstiness(null), null);
 });
 
+test('analyzeText does not hot-classify burstiness with fewer than three sentences', () => {
+  const short = analyzeText('Alpha beta gamma. Delta epsilon zeta.', { lang: 'en' });
+  assert.equal(short.paragraphs[0].sentenceCount, 2);
+  assert.equal(short.paragraphs[0].burstiness.cv, 0);
+  assert.equal(short.paragraphs[0].burstiness.band, null);
+  assert.equal(short.paragraphs[0].hot, false);
+
+  const enough = analyzeText('Alpha beta. Gamma delta. Epsilon zeta.', { lang: 'en' });
+  assert.equal(enough.paragraphs[0].sentenceCount, 3);
+  assert.equal(enough.paragraphs[0].burstiness.band, 'low');
+  assert.equal(enough.paragraphs[0].hot, true);
+});
+
 test('classifyMattr uses default bands (low<0.55, high>0.70)', () => {
   assert.equal(classifyMattr(0.40), 'low');
   assert.equal(classifyMattr(0.55), 'mid');

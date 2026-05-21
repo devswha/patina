@@ -31,6 +31,9 @@ paragraph is SUSPECT iff
   OR lexicon_density > threshold
 ```
 
+`burstiness_band`는 단락 문장이 3개 이상일 때만 부여한다. 2문장 이하 CV는
+진단값으로만 남기고, 그 값만으로는 hot 판정을 만들지 않는다.
+
 현재 공개 benchmark 스냅샷은 ko/en/zh/ja fixture 38개 기준 전체 accuracy 1.0이다. 다만 이 corpus는 작고 설계된 synthetic/curated fixture이므로, 일반화 성능 증거로 과신하면 안 된다.
 
 ### 2.1 단기 benchmark 한계와 rebaseline 계획 (#155/#162)

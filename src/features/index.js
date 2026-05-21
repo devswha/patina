@@ -12,6 +12,7 @@ import {
   DEFAULT_BURSTINESS_BANDS,
   DEFAULT_MATTR_BANDS,
   DEFAULT_MATTR_WINDOW,
+  DEFAULT_MIN_BURSTINESS_SENTENCES,
 } from './stylometry.js';
 import { loadLexicon, computeDensity, DEFAULT_LEXICON_DENSITY_THRESHOLD } from './lexicon.js';
 
@@ -20,6 +21,7 @@ export function analyzeText(text, opts = {}) {
     lang = 'en',
     repoRoot,
     burstinessBands = DEFAULT_BURSTINESS_BANDS,
+    minBurstinessSentences = DEFAULT_MIN_BURSTINESS_SENTENCES,
     mattrBands = DEFAULT_MATTR_BANDS,
     mattrWindow = DEFAULT_MATTR_WINDOW,
     lexiconDensityThreshold = DEFAULT_LEXICON_DENSITY_THRESHOLD,
@@ -54,7 +56,10 @@ export function analyzeText(text, opts = {}) {
     const allTokens = sentenceTokens.flat();
 
     const cv = burstinessCV(sentenceTokenCounts);
-    const cvBand = classifyBurstiness(cv, burstinessBands);
+    const cvBand =
+      sentences.length >= minBurstinessSentences
+        ? classifyBurstiness(cv, burstinessBands)
+        : null;
     const mattrValue = mattr(allTokens, mattrWindow);
     const mattrBand = classifyMattr(mattrValue, mattrBands);
     const lex = computeDensity(paragraph, allTokens, lexicon);

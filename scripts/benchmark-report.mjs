@@ -207,7 +207,7 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 - Regression ranges: \`tests/fixtures/suspect-zones/expected-ranges.json\` (refresh with \`npm run benchmark:ranges\`)
 - Reproduce: \`npm run benchmark:report\`
 - Raw JSON: [latest.json](latest.json)
-- Detector comparison harness: [detector-comparison.md](detector-comparison.md)
+- Detector comparison protocol: [detector-comparison.md](detector-comparison.md)
 - 2025+ re-baseline plan: [docs/research/2025-rebaseline-plan.md](../research/2025-rebaseline-plan.md)
 
 ## Language breakdown

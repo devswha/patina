@@ -41,13 +41,16 @@ export function stripNonProse(markdown) {
     .replace(/^---\n[\s\S]*?\n---\s*/, '\n')
     .replace(/```[\s\S]*?```/g, '\n')
     .replace(/~~~[\s\S]*?~~~/g, '\n')
+    // Remove Markdown tables before stripping inline HTML. Cells such as
+    // `p<0.01` are prose-visible math, not HTML tags; if HTML stripping runs
+    // first it can consume across rows and leave table fragments behind.
+    .replace(/^\s*\|.*\|\s*$/gm, '\n')
     .replace(/`[^`]*`/g, ' ')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/<svg[\s\S]*?<\/svg>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
-    .replace(/^\s*\|.*\|\s*$/gm, '\n')
-    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s{0,3}#{1,6}\s+.*$/gm, '\n')
     .replace(/^\s{0,3}>\s?/gm, '')
     .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/gm, '')
     .replace(/^\s*[-*+]\s+/gm, '')

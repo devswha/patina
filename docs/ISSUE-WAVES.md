@@ -20,7 +20,8 @@ Latest local result: launch copy 6.7%, Korean-first copy 4.5%, EN guide 0.0%, KR
 
 Closed in the latest waves: #304 NamuWiki profile, via `83675bc`; #305
 one-time install/CLI star nudge; #306 first-screen README terminal demo GIF;
-#156 adversarial MPS repo-owned 10-fixture gate.
+#156 adversarial MPS repo-owned 10-fixture gate; #157 KO register FP
+coverage gate via `987995f`.
 
 | issue | status | next action |
 |---|---|---|
@@ -32,7 +33,6 @@ one-time install/CLI star nudge; #306 first-screen README terminal demo GIF;
 |---|---|---|
 | #155 2025+ rebaseline | blocked on positive/multilingual corpus; public-web KO human-control collection now has a 250-row hash-only pilot | Use `npm run benchmark:rebaseline:intake` for local rows, then collect ≥3 model families × ≥2 languages with n≥100 per claim cell before public catch-rate claims. See `docs/research/2026-rebaseline.md`. |
 | #160 lexicon freshness | metadata audit complete; per-entry remine blocked on corpus | Re-mine per-entry provenance only after the paired 2025+ corpus exists and the Korean pilot has separated lexicon lift from register false positives. See `docs/research/lexicon-freshness-audit.md`. |
-| #157 Korean register FP | close-candidate: n=50 for all five tracked registers; false positives are reported by register | Post the register-stratified evidence and close if no manual-source review objection remains. Keep actual threshold tuning under #303/#155 until positive controls exist. See `docs/benchmarks/register-stratified.md` and `docs/benchmarks/register-stratified-latest.md`. |
 | #158 cross-judge matrix | CLI judge-family warning implemented; full matrix blocked on evaluator budget | Use `--suspected-generator <family>` for score warnings now; run 3×3×30 agreement after a stable sample manifest exists. See `docs/research/judge-agreement.md`. |
 | #159 blinded human panel | study design ready; panel blocked on reviewer pool | Recruit 5 raters × 30 paired samples with consent/redistribution rules. See `docs/research/human-eval-panel.md`. |
 

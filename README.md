@@ -23,6 +23,14 @@
   <a href="CHANGELOG.md"><img alt="Version 3.11.0" src="https://img.shields.io/badge/version-3.11.0-blue"></a>
 </p>
 
+<p align="center">
+  <img src="assets/demo/patina-demo.gif" alt="Animated terminal demo showing patina rewriting Korean AI-sounding copy and scoring the cleaned result" width="780">
+</p>
+
+<p align="center">
+  <a href="https://patina.vibetip.help/"><b>Try it now on your own text — no install</b></a>
+</p>
+
 patina looks for AI-sounding patterns in Korean, English, Chinese, and Japanese, then rewrites them without changing the claim, numbers, polarity, or causation. Use it as a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), and OpenCode, or run it as a standalone Node.js CLI.
 
 It is not a black-box rewriting tool or an AI-detector bypass tool. patina is **clearly pattern-based and auditable**: it shows what changed, why it changed, and whether the original claims were preserved. No API key is needed when any of the `codex`, `claude`, or `gemini` CLIs is already logged in.

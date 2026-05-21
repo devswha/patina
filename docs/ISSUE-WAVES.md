@@ -19,7 +19,7 @@ Latest local result: launch copy 6.7%, Korean-first copy 4.5%, EN guide 0.0%, KR
 ## Wave B — implementable product/profile work
 
 Closed in the latest waves: #304 NamuWiki profile, via `83675bc`; #305
-one-time install/CLI star nudge.
+one-time install/CLI star nudge; #306 first-screen README terminal demo GIF.
 
 | issue | status | next action |
 |---|---|---|

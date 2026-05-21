@@ -254,9 +254,9 @@ Last triaged: 2026-05-21, after launch-service parity and issue-inventory sync.
 
 Current GitHub issue inventory:
 
-- 13 open issues; 138 closed issues; 151 tracked issues total.
+- 14 open issues; 139 closed issues; 153 tracked issues total.
 - Open PRs: 0.
-- Open priority split: 1 high, 3 medium, 9 low, and 0 without priority labels.
+- Open priority split: 1 high, 4 medium, 9 low, and 0 without priority labels.
 - Current high-priority issue: #286 launch tracking/playbook.
 
 Campaign state:
@@ -273,13 +273,15 @@ Campaign state:
 - Launch feedback prep: the false-positive issue form now captures text origin, redistribution, fired paragraph, score output, and expected behavior.
 - Growth nudge prep: #305 adds the install success star line and a CI-safe,
   stderr-only, one-time CLI reminder with `PATINA_NO_NUDGE=1`.
-- Closed or verified during the campaign: #99, #104, #165, #186, #191, #199, #209, #210, #304, #305.
-- Kept open with explicit blocker comments or pending external action: #155, #156, #157, #158, #159, #160, #206, #207, #211, #212, #286, #303.
+- README demo prep: #306 adds the first-screen terminal GIF, try-it-now
+  playground link, translated README references, and re-recording notes.
+- Closed or verified during the campaign: #99, #104, #165, #186, #191, #199, #209, #210, #304, #305, #306.
+- Kept open with explicit blocker comments or pending external action: #155, #156, #157, #158, #159, #160, #206, #207, #211, #212, #286, #303, #307.
 - Legacy bot/harness notes were removed from the public repo; restart autonomous bot work only from a fresh, tracked design if it becomes necessary.
 
 Next recommended order:
 
-1. Keep #286 as the launch execution tracker; infra is live and copy scores pass, so the next step is maintainer-owned Korean-first posting plus feedback capture.
+1. Keep #286 as the launch execution tracker; infra, copy, and the README demo GIF are live, so the next step is maintainer-owned Korean-first posting plus feedback capture.
 2. Keep #303 open until the 25-row KO pilot validates external calibration; the 10-row scored hash-only web candidate manifest proves collection/provenance, but it is not enough for threshold changes.
 3. Continue research/process medium items (#155, #160) only when there is corpus, evaluator, or release bandwidth; use the rebaseline intake and report writers for sanitized summaries.
 4. Treat low-priority research/ecosystem items (#156-#159, #206, #207, #211, #212, #284) as parked until corpus, external repo, hosting, or governance prerequisites exist; keep new campaign PRs short-lived.

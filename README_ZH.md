@@ -8,6 +8,14 @@
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
 [![Version](https://img.shields.io/badge/version-3.11.0-blue)](CHANGELOG.md)
 
+<p align="center">
+  <img src="assets/demo/patina-demo.gif" alt="patina 将带有 AI 味的韩文文案改写并显示评分的终端演示 GIF" width="780">
+</p>
+
+<p align="center">
+  <a href="https://patina.vibetip.help/"><b>用你自己的文本试用 — 无需安装</b></a>
+</p>
+
 > **只剥掉 AI 包装，保留原意。**
 
 patina 会在中文、韩文、英文和日文里找出 AI 味比较重的写作模式，并在不改动原意的前提下重写。它可以作为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex CLI](https://github.com/openai/codex)、[Cursor](https://cursor.sh)、OpenCode 的技能使用，也可以作为独立的 Node.js CLI 运行。

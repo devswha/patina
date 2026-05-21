@@ -144,17 +144,12 @@ review says otherwise.
 `artifacts/rebaseline-2025/human-controls.public.jsonl` is the first tracked
 web-sourced Korean human-control candidate manifest. It is metadata/hash-only:
 no raw source text is committed. Its deterministic outcome fields are register-stratified false-positive
-evidence; public catch-rate claims still require positive AI-like rows and
-claim-cell coverage.
+evidence; public catch-rate claims require positive AI-like rows and claim-cell coverage, now provided by `rebaseline-2026.scored.public.jsonl` for KO+EN.
 
-The report keeps public performance claims blocked until the process gate in
-`process/pattern-freshness.md` is satisfied: scored outcome rows, at least three
-generator families across at least two languages, n≥100 per claim cell, and
-confidence intervals.
+The #155 report is claim-ready only when the process gate is satisfied: scored outcome rows, at least three generator families across at least two languages, n≥100 per claim cell, and confidence intervals. The checked-in 2026 manifest now satisfies that gate for KO+EN.
 
 `npm run benchmark:rebaseline:report` refreshes
-`docs/benchmarks/rebaseline-latest.md` and `.json`. The checked-in example
-report should stay blocked; a READY report requires a real scored manifest.
+`docs/benchmarks/rebaseline-latest.md` and `.json`. Use `tests/quality/rebaseline-manifest.example.jsonl` for a BLOCKED smoke fixture; use `artifacts/rebaseline-2025/rebaseline-2026.scored.public.jsonl` for the current READY public report.
 
 ## Score vs signal strength
 

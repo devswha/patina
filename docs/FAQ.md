@@ -36,7 +36,7 @@ It is not a truth machine. The scoring formula is deterministic, but severity as
 
 ## How accurate is it?
 
-Current calibration reports 91% editing-hotspot recall on Korean AI text [84.0-95.4%] and 76% on HC3 English ChatGPT samples [66.7-83.3%], each with n=100 and binomial 95% CI. Human-prose false positives are tracked separately as a 13-25% point-estimate range across registers.
+Current calibration (2026-05-22) reports 67.3% editing-hotspot catch [63.5-71.0%] across GPT-5.5, Claude Sonnet 4.6, and Gemini 2.5 Pro CLI samples (n=600, Korean+English). Human-control false positives are 16.0% [11.6-21.7%] (n=200). See [2026-rebaseline.md](research/2026-rebaseline.md) for per-language/model cells.
 
 False positives are expected, especially for encyclopedic, corporate, academic, or heavily edited prose. patina is meant to help edit suspicious passages, not to accuse a writer.
 

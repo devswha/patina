@@ -34,7 +34,7 @@ score는 0부터 100까지의 대략적인 편집 신호입니다. 낮을수록 
 
 ## 정확도는 어느 정도인가요?
 
-현재 calibration은 한국어 AI 텍스트에서 91% editing-hotspot recall [84.0-95.4%], HC3 English ChatGPT 샘플에서 76% [66.7-83.3%]를 보고합니다. 각각 n=100, binomial 95% CI입니다. 사람 글 오탐은 문체별 13-25% point-estimate range로 따로 추적합니다.
+현재 calibration(2026-05-22)은 GPT-5.5, Claude Sonnet 4.6, Gemini 2.5 Pro CLI 샘플에서 67.3% editing-hotspot catch [63.5-71.0%] (n=600, 한국어+영어)를 보고합니다. 사람 글 컨트롤 오탐은 16.0% [11.6-21.7%] (n=200)입니다. 언어×모델별 수치는 [2026-rebaseline.md](research/2026-rebaseline.md)를 참고하세요.
 
 오탐은 예상되는 일입니다. 특히 백과사전식, 기업 문서, 학술 문서, 강하게 편집된 글에서 그렇습니다. patina는 수상한 구간을 편집하는 데 쓰는 도구이지, 작성자를 비난하는 도구가 아닙니다.
 

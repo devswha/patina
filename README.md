@@ -67,9 +67,9 @@ Brand resources: [logo](assets/brand/patina-logo.svg), [mark](assets/brand/patin
 |  |  |
 |---|---|
 | **160 patterns** | 40 KO + 40 EN + 40 ZH + 40 JA (each incl. 8 score-only viral-hook) — see [PATTERNS.md](docs/PATTERNS.md) |
-| **Editing hotspot recall** | 91% Korean [84.0–95.4%] (n=100) / 76% English [66.7–83.3%] (n=100), binomial 95% CI |
-| **Benchmark reports** | Reproducible ko/en/zh/ja suspect-zone benchmark: [overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [detector comparison](docs/benchmarks/detector-comparison.md) |
-| **False positives** | 13–25% point-estimate range across human registers *(not a CI; boundary intrinsic to encyclopedic register, [documented](core/stylometry.md))* — [report one](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
+| **Editing hotspot recall** | 2026-05-22 modern-model rebaseline: 67.3% overall catch [63.5–71.0%] across GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro (n=600, KO+EN) |
+| **Benchmark reports** | Reproducible ko/en/zh/ja suspect-zone benchmark: [overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [2026 rebaseline](docs/benchmarks/rebaseline-latest.md) · [detector comparison](docs/benchmarks/detector-comparison.md) |
+| **False positives** | 16.0% [11.6–21.7%] on 2026-05-22 KO+EN human controls (n=200); register boundaries remain documented in [stylometry.md](core/stylometry.md) — [report one](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
 | **Modes** | rewrite · audit · score · diff · ouroboros |
 | **Free tier** | Yes — via logged-in `codex`, `claude`, or `gemini` CLI (no API key) |
 | **Determinism** | Scoring formula is deterministic; LLM severity assignment ±8–10 pt per run ([scoring.md §8](core/scoring.md)) |
@@ -296,7 +296,7 @@ Natural-sounding text (meaning verified)
 
 If meaning drifts at any verification step, the change is retried or rolled back.
 
-**Calibration** *(500-paragraph corpus; methodology in [stylometry.md](core/stylometry.md))*: 76% editing-hotspot recall on HC3 ChatGPT (en) [66.7–83.3%] and 91% on paired ko/AI corpus [84.0–95.4%], each n=100 with binomial 95% CI. Human-prose false positives are reported separately as a 13–25% point-estimate range across registers, not as a confidence interval. Acceptance gates: AI ≥ 75%, max FP ≤ 25%.
+**Calibration** *(2026-05-22 modern-model rebaseline; methodology in [2026-rebaseline.md](docs/research/2026-rebaseline.md))*: deterministic editing-hotspot catch is 67.3% [63.5–71.0%] across GPT-5.5, Claude Sonnet 4.6, and Gemini 2.5 Pro CLI samples (n=600; Korean+English). Human-control false positives are 16.0% [11.6–21.7%] (n=200). Per-cell catch rates are reported in [rebaseline-latest.md](docs/benchmarks/rebaseline-latest.md). This is an editing signal, not an authorship verdict or detector-bypass promise.
 
 ## Configuration
 
@@ -340,7 +340,8 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Benchmark Report](docs/benchmarks/latest.md)** — latest reproducible suspect-zone benchmark summary
 - **[Detector Comparison Harness](docs/benchmarks/detector-comparison.md)** — offline/manual comparison protocol for third-party detectors
 - **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — benchmark design notes for measuring AI-like writing signals
-- **[2025+ Re-baseline Plan](docs/research/2025-rebaseline-plan.md)** — evidence gate before broader model-era claims
+- **[2026 Modern-model Rebaseline](docs/research/2026-rebaseline.md)** — current date-stamped KO+EN catch/FP claim
+- **[2025+ Re-baseline Plan](docs/research/2025-rebaseline-plan.md)** — protocol for broader model-era claims
 - **[zh/ja Lexicon Calibration](docs/research/zh-ja-lexicon-calibration.md)** — starter lexicon gate and remaining corpus risk
 - **[Launch Copy](docs/social/patina-launch-copy.md)** — launch sequence, score gate, and Show HN/Product Hunt/Reddit/X/Korean drafts
 - **[Signs of AI Writing](docs/social/signs-of-ai-writing.md)** ([한국어](docs/social/signs-of-ai-writing_KR.md)) — shareable editing checklist with cited examples

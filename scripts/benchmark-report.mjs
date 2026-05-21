@@ -43,12 +43,15 @@ function readResults() {
 
 function validateResultsSchema(results) {
   const missing = [];
-  if (results?.schemaVersion !== 2) missing.push('schemaVersion=2');
+  if (results?.schemaVersion !== 3) missing.push('schemaVersion=3');
   if (typeof results?.fixtureSchemaVersion !== 'number') missing.push('fixtureSchemaVersion');
   if (typeof results?.nodeVersion !== 'string') missing.push('nodeVersion');
   if (typeof results?.overall?.ci_low !== 'number') missing.push('overall.ci_low');
   if (typeof results?.overall?.ci_high !== 'number') missing.push('overall.ci_high');
   if (typeof results?.overall?.n !== 'number') missing.push('overall.n');
+  if (!isNumberOrNull(results?.ranking?.overall?.roc_auc)) missing.push('ranking.overall.roc_auc');
+  if (!isNumberOrNull(results?.ranking?.overall?.pr_auc)) missing.push('ranking.overall.pr_auc');
+  if (!results?.ranking?.overall?.bestF1) missing.push('ranking.overall.bestF1');
   for (const [lang, summary] of Object.entries(results?.perLanguage || {})) {
     for (const detector of ['burstiness', 'mattr', 'lexicon']) {
       if (!summary.byDetector?.[detector]) missing.push(`perLanguage.${lang}.byDetector.${detector}`);
@@ -59,12 +62,24 @@ function validateResultsSchema(results) {
   }
 }
 
+function isNumberOrNull(value) {
+  return value === null || typeof value === 'number';
+}
+
 function pct(value) {
   return `${((value ?? 0) * 100).toFixed(1)}%`;
 }
 
 function num(value, digits = 3) {
   return Number(value ?? 0).toFixed(digits).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+}
+
+function optionalPct(value) {
+  return value === null || value === undefined ? '—' : pct(value);
+}
+
+function optionalNum(value, digits = 3) {
+  return value === null || value === undefined ? '—' : num(value, digits);
 }
 
 function bool(value) {
@@ -103,6 +118,18 @@ function detectorRows(perLanguage = {}) {
   return rows;
 }
 
+function rankingRows(ranking = {}) {
+  const rows = [];
+  if (ranking.overall) rows.push(['overall', ranking.overall]);
+  for (const [lang, summary] of Object.entries(ranking.perLanguage || {}).sort(([a], [b]) => a.localeCompare(b))) {
+    rows.push([lang, summary]);
+  }
+  return rows.map(([scope, summary]) => {
+    const best = summary.bestF1 || {};
+    return `| ${cell(scope)} | ${summary.n} | ${summary.positives} | ${summary.negatives} | ${optionalNum(summary.roc_auc)} | ${optionalNum(summary.pr_auc)} | ${optionalNum(best.threshold)} | ${optionalPct(best.precision)} | ${optionalPct(best.recall)} | ${optionalNum(best.f1, 2)} | ${optionalPct(best.accuracy)} |`;
+  });
+}
+
 function classRows(fixtures = []) {
   const counts = new Map();
   for (const f of fixtures) {
@@ -130,7 +157,7 @@ function sampleSizeSummary(fixtures = []) {
 function fixtureRows(fixtures = []) {
   return fixtures.map((f) => {
     const hits = cell((f.lexicon_hits || []).slice(0, 4).join(', '));
-    return `| ${cell(f.fixture_id)} | ${cell(f.lang)} | ${cell(f.class)} | ${bool(f.expected_hot)} | ${bool(f.predicted_hot)} | ${resultMark(f.correct)} | ${num(f.cv)} ${cell(f.cv_band)} | ${num(f.mattr)} ${cell(f.mattr_band)} | ${num(f.lexicon_density)} | ${hits} |`;
+    return `| ${cell(f.fixture_id)} | ${cell(f.lang)} | ${cell(f.class)} | ${bool(f.expected_hot)} | ${bool(f.predicted_hot)} | ${resultMark(f.correct)} | ${num(f.signal_score)} | ${num(f.cv)} ${cell(f.cv_band)} | ${num(f.mattr)} ${cell(f.mattr_band)} | ${num(f.lexicon_density)} | ${hits} |`;
   });
 }
 
@@ -195,6 +222,16 @@ ${languageRows(results.perLanguage).join('\n')}
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 ${detectorRows(results.perLanguage).join('\n')}
 
+## Ranking diagnostics
+
+Signal-score ranking shows whether the diagnostic \`signal_score\` separates hot
+fixtures from natural fixtures before any threshold is chosen. It is computed
+only on the checked-in fixture corpus and is not a broader model-era claim.
+
+| scope | fixtures | positives | negatives | ROC-AUC | PR-AUC | best threshold | precision | recall | best F1 | accuracy |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+${rankingRows(results.ranking).join('\n')}
+
 ## Sample sizes
 
 | lang | class | fixtures |
@@ -207,14 +244,15 @@ ${misclassificationSection(results.fixtures)}
 
 ## Fixture log
 
-| fixture | lang | class | expected | predicted | ok | CV band | MATTR band | lexicon/1k | sample lexicon hits |
-|---|---|---|---|---|---:|---:|---:|---:|---|
+| fixture | lang | class | expected | predicted | ok | signal | CV band | MATTR band | lexicon/1k | sample lexicon hits |
+|---|---|---|---|---|---:|---:|---:|---:|---:|---|
 ${fixtureRows(results.fixtures).join('\n')}
 
 ## How to read this
 
 - **Hot** means at least one deterministic signal crossed the benchmark threshold: low burstiness CV, low MATTR, or AI-lexicon density.
 - **Cold** means the fixture did not cross those thresholds.
+- **Signal** is the 0–100 diagnostic strength of the strongest deterministic trigger. It supports ranking diagnostics but does not replace the binary hot/cold regression gate.
 - The report is meant for regression tracking and contributor discussion, not for authorship accusation.
 - This deterministic corpus is intentionally small (${results.fixtureCount} fixtures across ${languageList}); do not treat 100% fixture accuracy as generalization to new models, genres, or edited AI text.
 - Confidence intervals use Wilson score intervals for the checked-in fixture set; external threshold sweeps and 2025+ model rebaselines are separate research follow-ups tracked in [2025+ Re-baseline Plan](../research/2025-rebaseline-plan.md).
@@ -230,7 +268,7 @@ function main() {
   if (!runBenchmarkFirst) benchmarkStatus = statusFromResults(results);
 
   const report = {
-    reportVersion: 2,
+    reportVersion: 3,
     benchmarkCommand: benchmarkCommand.join(' '),
     benchmarkStatus,
     note: 'Deterministic suspect-zone benchmark; not an authorship detector.',
@@ -249,4 +287,10 @@ function main() {
   if (benchmarkStatus !== 0) process.exitCode = benchmarkStatus;
 }
 
-main();
+const isDirectRun = process.argv[1]
+  ? resolve(process.cwd(), process.argv[1]) === fileURLToPath(import.meta.url)
+  : false;
+
+if (isDirectRun) main();
+
+export { renderMarkdown, validateResultsSchema };

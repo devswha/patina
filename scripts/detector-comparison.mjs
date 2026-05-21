@@ -42,8 +42,8 @@ function runBenchmark() {
 
 function readBenchmarkResults() {
   const results = JSON.parse(readFileSync(RESULTS_PATH, 'utf8'));
-  if (results?.schemaVersion !== 2 || !Array.isArray(results?.fixtures)) {
-    throw new Error(`${relative(REPO_ROOT, RESULTS_PATH)} is not a benchmark schema v2 result`);
+  if (results?.schemaVersion !== 3 || !Array.isArray(results?.fixtures)) {
+    throw new Error(`${relative(REPO_ROOT, RESULTS_PATH)} is not a benchmark schema v3 result`);
   }
   return results;
 }

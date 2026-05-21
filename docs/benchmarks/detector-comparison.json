@@ -1,8 +1,8 @@
 {
   "reportVersion": 1,
-  "generatedAt": "2026-05-20T03:54:28.830Z",
-  "fixtureCount": 34,
-  "benchmarkGeneratedAt": "2026-05-20T03:54:28.820Z",
+  "generatedAt": "2026-05-21T10:10:46.820Z",
+  "fixtureCount": 38,
+  "benchmarkGeneratedAt": "2026-05-21T10:10:46.799Z",
   "note": "Offline comparison harness. Built-in Patina row uses deterministic suspect-zone analyzer; third-party rows are manual opt-in only.",
   "manualInput": null,
   "detectors": [
@@ -16,12 +16,12 @@
   ],
   "summaries": {
     "patina-deterministic": {
-      "tp": 18,
+      "tp": 20,
       "fp": 0,
       "fn": 0,
-      "tn": 16,
-      "total": 34,
-      "fixtureCount": 34,
+      "tn": 18,
+      "total": 38,
+      "fixtureCount": 38,
       "coverage": 1,
       "accuracy": 1,
       "precision": 1,
@@ -199,6 +199,18 @@
       "notes": null
     },
     {
+      "fixture_id": "ja-ai-04-lexicon",
+      "lang": "ja",
+      "class": "ai",
+      "detector": "patina-deterministic",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "score": 1,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
       "fixture_id": "ja-nat-01",
       "lang": "ja",
       "class": "natural",
@@ -224,6 +236,18 @@
     },
     {
       "fixture_id": "ja-nat-03",
+      "lang": "ja",
+      "class": "natural",
+      "detector": "patina-deterministic",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "score": 0,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
+      "fixture_id": "ja-nat-04-lexicon-cold",
       "lang": "ja",
       "class": "natural",
       "detector": "patina-deterministic",
@@ -403,6 +427,18 @@
       "notes": null
     },
     {
+      "fixture_id": "zh-ai-04-lexicon",
+      "lang": "zh",
+      "class": "ai",
+      "detector": "patina-deterministic",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "score": 1,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
       "fixture_id": "zh-nat-01",
       "lang": "zh",
       "class": "natural",
@@ -428,6 +464,18 @@
     },
     {
       "fixture_id": "zh-nat-03",
+      "lang": "zh",
+      "class": "natural",
+      "detector": "patina-deterministic",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "score": 0,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
+      "fixture_id": "zh-nat-04-lexicon-cold",
       "lang": "zh",
       "class": "natural",
       "detector": "patina-deterministic",

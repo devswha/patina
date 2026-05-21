@@ -31,15 +31,15 @@ paragraph is SUSPECT iff
   OR lexicon_density > threshold
 ```
 
-현재 레포의 로컬 `tests/quality/results.json` 스냅샷은 ko/en/zh/ja fixture 34개 기준 전체 accuracy 1.0이다. 다만 이 corpus는 작고 설계된 synthetic/curated fixture이므로, 일반화 성능 증거로 과신하면 안 된다.
+현재 공개 benchmark 스냅샷은 ko/en/zh/ja fixture 38개 기준 전체 accuracy 1.0이다. 다만 이 corpus는 작고 설계된 synthetic/curated fixture이므로, 일반화 성능 증거로 과신하면 안 된다.
 
 ### 2.1 단기 benchmark 한계와 rebaseline 계획 (#155/#162)
 
 현재 체크인된 deterministic report는 회귀 테스트로는 유용하지만, 공개 성능 주장으로 쓰기에는 아직 좁다.
 
-- 표본 수: ko/en/zh/ja suspect-zone fixture 34개. 언어·장르·출처별 신뢰구간을 낼 만큼 크지 않다.
+- 표본 수: ko/en/zh/ja suspect-zone fixture 38개. 언어·장르·출처별 신뢰구간을 낼 만큼 크지 않다.
 - 모델 시대성: 2025+ GPT/Claude/Gemini/Llama/Qwen 계열 생성문 rebaseline은 아직 별도 follow-up이다.
-- 통계 보고: `docs/benchmarks/latest.md`는 fixture 수, lang/class sample size, Wilson 95% CI를 공개한다. bootstrap interval과 threshold sweep은 아직 없다.
+- 통계 보고: `docs/benchmarks/latest.md`는 fixture 수, lang/class sample size, Wilson 95% CI와 `signal_score` 기반 ROC-AUC / PR-AUC / best-F1 threshold 진단을 공개한다. bootstrap interval은 아직 없다.
 - 범위: 현재 수치는 stylometry/lexicon hot 판정 회귀이며, rewrite 품질·MPS·fidelity의 live 품질 점수가 아니다.
 
 따라서 README/benchmark 문구는 “현재 fixture에서 회귀가 통과했다”로 해석해야 하며, “새 모델·새 장르에서도 100% 탐지한다”는 의미가 아니다. 다음 rebaseline에서는 최소한 언어 × class × register별 sample size를 고정하고, confidence interval과 threshold sweep을 함께 게시한다.
@@ -306,13 +306,13 @@ notes: |
 ### Phase 1 — 보고 강화, 의존성 없음
 
 - `tests/quality/results.json`에 feature vector를 더 상세히 저장
-- threshold sweep과 ROC-AUC/PR-AUC 계산 추가
+- 더 큰 2025+ corpus에서 threshold sweep과 ROC-AUC/PR-AUC 재계산
 - per-register/per-language/per-class 요약 추가
 - `tests/quality/README.md`에 “AI-likeness이지 provenance가 아님” 명시
 
 ### Phase 2 — corpus 확장
 
-- synthetic/curated fixture 34개에서 real-world sampled fixture로 확장
+- synthetic/curated fixture 38개에서 real-world sampled fixture로 확장
 - human false positive register를 먼저 늘린다
 - 목표: 언어별 최소 100 human + 100 AI paragraph
 

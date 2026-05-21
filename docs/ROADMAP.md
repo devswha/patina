@@ -58,7 +58,7 @@ Avoid overclaiming:
 Goal: make claims easier to verify and harder to dismiss.
 
 - Publish a short benchmark report generated from `tests/quality/results.json`.
-- Add ROC-AUC / PR-AUC and threshold sweep to the deterministic benchmark.
+- Keep ROC-AUC / PR-AUC and threshold sweep diagnostics current in the deterministic benchmark report.
 - Split reports by language, class, and register.
 - Add a visible warning that scores measure AI-likeness, not authorship.
 - Link [`docs/research/ai-human-metrics.md`](research/ai-human-metrics.md) from README.

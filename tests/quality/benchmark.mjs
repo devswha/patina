@@ -16,6 +16,8 @@ import yaml from 'js-yaml';
 
 import { analyzeText } from '../../src/features/index.js';
 import { loadLexicon } from '../../src/features/lexicon.js';
+import { summarizeSignalStrength } from '../../src/features/signal-strength.js';
+import { summarizeRanking } from './ranking-metrics.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -87,6 +89,29 @@ function summarize(m) {
     ci_high: round(wilsonInterval(m.tp + m.tn, m.total).high),
     confidence_method: 'Wilson score interval, 95%',
   };
+}
+
+function rankingRecords(fixtures) {
+  return fixtures.map((fixture) => ({
+    score: fixture.signal_score,
+    expected: fixture.expected_hot,
+  }));
+}
+
+function summarizeRankingByLanguage(fixtures) {
+  const byLanguage = {};
+  for (const fixture of fixtures) {
+    byLanguage[fixture.lang] ||= [];
+    byLanguage[fixture.lang].push({
+      score: fixture.signal_score,
+      expected: fixture.expected_hot,
+    });
+  }
+  return Object.fromEntries(
+    Object.entries(byLanguage)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([lang, records]) => [lang, summarizeRanking(records)])
+  );
 }
 
 function round(n, digits = 3) {
@@ -214,6 +239,7 @@ function main() {
       mattr_band: p.mattr?.band,
       lexicon_density: round(p.lexicon?.density ?? 0),
       lexicon_hits: p.lexicon?.hits ?? [],
+      signal_score: round(summarizeSignalStrength(result.paragraphs)),
     };
     const pinned = expectedRanges[meta.fixture_id];
     if (!pinned) {
@@ -253,7 +279,7 @@ function main() {
   const overallCi = wilsonInterval(totalCorrect, totalCount);
 
   const results = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     fixtureSchemaVersion: FIXTURE_SCHEMA_VERSION,
     nodeVersion: process.version,
     generatedAt: new Date().toISOString(),
@@ -267,6 +293,12 @@ function main() {
       confidence_method: 'Wilson score interval, 95%',
     },
     perLanguage: summary,
+    ranking: {
+      note: 'Signal-score ranking over the checked-in fixture corpus; diagnostic only, not a public generalization claim.',
+      score: 'signal_score from the strongest deterministic paragraph trigger, averaged per fixture',
+      overall: summarizeRanking(rankingRecords(fixtureLog)),
+      perLanguage: summarizeRankingByLanguage(fixtureLog),
+    },
     fixtures: fixtureLog,
   };
 
@@ -277,6 +309,7 @@ function main() {
   if (!quiet) {
     console.log(`# Quality benchmark — ${fixtureLog.length} fixtures`);
     console.log(`Overall accuracy: ${(overallAccuracy * 100).toFixed(1)}%`);
+    console.log(`Signal ROC-AUC: ${results.ranking.overall.roc_auc.toFixed(3)} · PR-AUC: ${results.ranking.overall.pr_auc.toFixed(3)} · best-F1 threshold: ${results.ranking.overall.bestF1.threshold}`);
     console.log();
     console.log('| lang | n | accuracy | precision | recall | f1 | TP | FP | FN | TN |');
     console.log('|------|---|----------|-----------|--------|----|----|----|----|----|');

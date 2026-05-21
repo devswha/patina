@@ -8,7 +8,7 @@ says the evidence is ready.
 
 | File | Source command | Use |
 |---|---|---|
-| `latest.md` / `latest.json` | `npm run benchmark:report` | Deterministic suspect-zone fixture benchmark for KO / EN / ZH / JA. |
+| `latest.md` / `latest.json` | `npm run benchmark:report` | Deterministic suspect-zone fixture benchmark for KO / EN / ZH / JA, including `signal_score` ROC-AUC / PR-AUC diagnostics. |
 | `detector-comparison.md` / `.json` | `npm run benchmark:compare` | Manual/offline comparison protocol for third-party detectors. |
 | `rebaseline-latest.md` / `.json` | `npm run benchmark:rebaseline:report` | Sanitized 2025+ model-era manifest summary. Public claims stay blocked until the corpus gate passes. |
 
@@ -30,6 +30,11 @@ Do not copy numbers into README, launch copy, or social posts unless the report
 itself contains the required evidence. The rebaseline report must stay
 `BLOCKED` until it has scored outcome rows, n≥100 per claim cell, at least two
 languages, at least three generator families, and confidence intervals.
+
+The `latest` report's ranking diagnostics are regression evidence for the
+checked-in fixtures only. They help compare thresholds and signal changes, but
+they are not a general claim that patina detects authorship or current model
+families.
 
 ## False-positive loop
 

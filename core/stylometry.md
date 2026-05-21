@@ -228,7 +228,8 @@ POS proxy 결정:
 ```
 paragraph is SUSPECT iff
   burstiness_band == "low"  OR  MATTR_band == "low"  OR
-  lexicon_density > threshold  OR  koDiagnostics.hot == true
+  (lexicon_density > threshold AND lexicon_min_hits is satisfied)  OR
+  koDiagnostics.hot == true
 ```
 
 ### 근거
@@ -236,6 +237,9 @@ paragraph is SUSPECT iff
 - 네 신호 중 하나만 약해도 우선 검토할 만한 edit hotspot이 된다
 - AND 조건은 recall 이 너무 낮아 v1 acceptance criteria(AI 시드 7/10)를 만족하기 어렵다
 - false positive 는 `FalsePositiveControl` 평가(자연 시드 ≤2/10)로 견제한다
+- ko/zh/ja lexicon은 단일 hit를 hot 판정으로 쓰지 않고 audit hint로만 남긴다. 짧은
+  한국어 전문/정책 문단에서 `기반`, `흐름` 같은 보통 명사가 단독으로 터지는 오탐을
+  막기 위해 CJK 기본 `lexicon_min_hits`는 2다.
 - ko diagnostic signal은 내부에서 AND composite를 사용하므로 쉼표/조사 같은 단일 특징만으로는
   OR-rule에 들어오지 않는다
 
@@ -660,16 +664,19 @@ For paragraph P with tokens T:
              substring for "Multi-word phrases")
   density = matches / len(T) * 1000   # matches per 1000 tokens
 
-  hot iff density > threshold
+  hot iff density > threshold AND min_hot_matches is satisfied
 ```
 
 기본 threshold = `2.0` (1,000 토큰당 2회). `lexicon.density_threshold`로 설정 가능.
+기본 `min_hot_matches`는 영어 1, 한국어/중국어/일본어 2다. CJK 단일 lexicon hit는
+audit hint로 표시하지만 단락을 hot으로 만들지는 않는다.
 
 ### 단락 hot 결정 규칙 (v3.7 당시 3-signal OR)
 
 ```
 paragraph is SUSPECT iff
-  burstiness_band == "low" OR MATTR_band == "low" OR lexicon_density > threshold
+  burstiness_band == "low" OR MATTR_band == "low" OR
+  (lexicon_density > threshold AND min_hot_matches is satisfied)
 ```
 
 v3.7에서는 §6의 2-signal OR 규칙을 3-signal OR로 확장했다. burstiness/MATTR는 분포적 신호, lexicon은 어휘적 신호 — 다른 축이라 OR 결합 시 둘 다 합산 효과를 냈다. 현재 전체 규칙은 §6의 4-signal OR이며, ko diagnostic composite가 네 번째 축이다.
@@ -743,7 +750,7 @@ Pareto frontier (3-signal OR, threshold sweep):
 
 ### Threshold 선택 근거
 
-`density_threshold = 2.0` 채택. 0.5–5.0 plateau 구간 어디에서도 동일한 catch/FP 가 나오므로 사양 기본값(2.0) 을 사용한다. 운용 의미: "1,000 토큰당 AI lexicon entry 가 2개 초과로 나타나면 단락 의심". 이는 사양 §3 Recommendation 과 일치한다.
+`density_threshold = 2.0` 채택. 0.5–5.0 plateau 구간 어디에서도 동일한 catch/FP 가 나오므로 사양 기본값(2.0) 을 사용한다. 운용 의미: "1,000 토큰당 AI lexicon entry 가 2개 초과로 나타나고, 언어별 최소 hit 수를 만족하면 단락 의심". 이는 사양 §3 Recommendation 과 일치한다. 2026-05 Korean 25-row register pilot 이후 CJK 단일 hit는 hot에서 audit hint로 낮췄다.
 
 ### Calibration drop list
 

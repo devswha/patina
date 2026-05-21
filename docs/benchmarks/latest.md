@@ -7,7 +7,7 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 ## Current result
 
 - Status: **passing**
-- Generated at: 2026-05-21T14:30:19.868Z
+- Generated at: 2026-05-21T15:02:18.857Z
 - Node: v22.17.1
 - Fixture schema: v1
 - Fixtures: 39
@@ -43,7 +43,7 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 | ja | mattr | 8 | 50.0% | 21.5%–78.5% | 0.0% | 0.0% | 0 | 0 | 0 | 4 | 4 |
 | ko | burstiness | 12 | 91.7% | 64.6%–98.5% | 100.0% | 85.7% | 0.92 | 6 | 0 | 1 | 5 |
 | ko | koDiagnostics | 12 | 83.3% | 55.2%–95.3% | 100.0% | 71.4% | 0.83 | 5 | 0 | 2 | 5 |
-| ko | lexicon | 12 | 75.0% | 46.8%–91.1% | 100.0% | 57.1% | 0.73 | 4 | 0 | 3 | 5 |
+| ko | lexicon | 12 | 41.7% | 19.3%–68.0% | 0.0% | 0.0% | 0 | 0 | 0 | 7 | 5 |
 | ko | mattr | 12 | 41.7% | 19.3%–68.0% | 0.0% | 0.0% | 0 | 0 | 0 | 7 | 5 |
 | zh | burstiness | 8 | 87.5% | 52.9%–97.8% | 100.0% | 75.0% | 0.86 | 3 | 0 | 1 | 4 |
 | zh | koDiagnostics | 8 | 50.0% | 21.5%–78.5% | 0.0% | 0.0% | 0 | 0 | 0 | 4 | 4 |
@@ -104,12 +104,12 @@ All fixtures classified correctly.
 | ja-nat-02 | ja | natural | cold | cold | ✓ | 0 | 0.65 high | 0.796 high | 0 | cold | — |
 | ja-nat-03 | ja | natural | cold | cold | ✓ | 0 | 0.395 mid | 0.807 high | 0 | cold | — |
 | ja-nat-04-lexicon-cold | ja | natural | cold | cold | ✓ | 0 | 0.396 mid | 0.752 high | 0 | cold | — |
-| ko-ai-01 | ko | ai | hot | hot | ✓ | 100 | 0.093 low | 0.977 high | 23.256 | cold | 추세 |
-| ko-ai-02 | ko | ai | hot | hot | ✓ | 100 | 0.073 low | 0.82 high | 19.608 | hot: regular-eojeol-length, low-comma-density, low-suffix-class-diversity | 환경 |
-| ko-ai-03 | ko | ai | hot | hot | ✓ | 100 | 0.073 low | 0.79 high | 19.608 | cold | 추세 |
+| ko-ai-01 | ko | ai | hot | hot | ✓ | 68.992 | 0.093 low | 0.977 high | 23.256 | cold | 추세 |
+| ko-ai-02 | ko | ai | hot | hot | ✓ | 75.545 | 0.073 low | 0.82 high | 19.608 | hot: regular-eojeol-length, low-comma-density, low-suffix-class-diversity | 환경 |
+| ko-ai-03 | ko | ai | hot | hot | ✓ | 75.545 | 0.073 low | 0.79 high | 19.608 | cold | 추세 |
 | ko-ai-04 | ko | ai | hot | hot | ✓ | 67.314 | 0.098 low | 0.853 high | 0 | hot: regular-eojeol-length, low-comma-density, low-suffix-class-diversity | — |
 | ko-ai-05 | ko | ai | hot | hot | ✓ | 67.314 | 0.098 low | 0.853 high | 0 | hot: regular-eojeol-length, low-comma-density, low-suffix-class-diversity | — |
-| ko-ai-06-chat-register | ko | ai | hot | hot | ✓ | 100 | 0.081 low | 1 high | 21.739 | hot: regular-eojeol-length, low-comma-density, low-suffix-class-diversity | 흐름 |
+| ko-ai-06-chat-register | ko | ai | hot | hot | ✓ | 72.887 | 0.081 low | 1 high | 21.739 | hot: regular-eojeol-length, low-comma-density, low-suffix-class-diversity | 흐름 |
 | ko-ai-07-ko-diagnostic | ko | ai | hot | hot | ✓ | 16.886 | 0.417 mid | 0.955 high | 0 | hot: regular-eojeol-length, low-comma-density, low-suffix-class-diversity | — |
 | ko-nat-01 | ko | natural | cold | cold | ✓ | 0 | 0.717 high | 1 high | 0 | cold | — |
 | ko-nat-02 | ko | natural | cold | cold | ✓ | 0 | 0.552 high | 1 high | 0 | cold | — |

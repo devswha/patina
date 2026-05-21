@@ -4,7 +4,7 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 
 ## Current run
 
-- Generated at: 2026-05-21T11:05:40.866Z
+- Generated at: 2026-05-21T15:02:19.159Z
 - Fixture source: `tests/fixtures/suspect-zones/**`
 - Fixture count: 39
 - Manual third-party input: none

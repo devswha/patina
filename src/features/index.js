@@ -19,7 +19,13 @@ import {
   DEFAULT_MATTR_WINDOW,
   DEFAULT_MIN_BURSTINESS_SENTENCES,
 } from './stylometry.js';
-import { loadLexicon, computeDensity, DEFAULT_LEXICON_DENSITY_THRESHOLD } from './lexicon.js';
+import {
+  classifyLexiconHot,
+  loadLexicon,
+  computeDensity,
+  DEFAULT_LEXICON_DENSITY_THRESHOLD,
+  DEFAULT_LEXICON_MIN_HOT_MATCHES,
+} from './lexicon.js';
 
 export function analyzeText(text, opts = {}) {
   const {
@@ -32,6 +38,7 @@ export function analyzeText(text, opts = {}) {
     koDiagnosticsEnabled = true,
     koDiagnosticBands = DEFAULT_KO_DIAGNOSTIC_BANDS,
     lexiconDensityThreshold = DEFAULT_LEXICON_DENSITY_THRESHOLD,
+    lexiconMinHotMatches = DEFAULT_LEXICON_MIN_HOT_MATCHES,
     lexicon: providedLexicon,
   } = opts;
 
@@ -77,7 +84,11 @@ export function analyzeText(text, opts = {}) {
         })
       : {};
 
-    const lexiconHot = lex.density > lexiconDensityThreshold;
+    const lexiconHot = classifyLexiconHot(lex, {
+      lang,
+      densityThreshold: lexiconDensityThreshold,
+      minHotMatches: lexiconMinHotMatches,
+    });
     const hot =
       cvBand === 'low' || mattrBand === 'low' || lexiconHot || Boolean(koSignals.koDiagnostics?.hot);
 

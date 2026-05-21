@@ -48,6 +48,14 @@ test('playground analyzer returns score, audit items, and diff HTML for ko/en/zh
   }
 });
 
+test('playground keeps one Korean lexicon hit as an audit hint', () => {
+  const analysis = analyzePlaygroundText('이 문서는 다음 작업의 기반을 설명한다.', { lang: 'ko' });
+  assert.equal(analysis.paragraphs[0].lexicon.matches, 1);
+  assert.equal(analysis.paragraphs[0].lexicon.hot, false);
+  assert.equal(analysis.paragraphs[0].hot, false);
+  assert.equal(analysis.auditItems.length, 1);
+});
+
 test('playground diff escapes pasted HTML before highlighting', () => {
   const analysis = analyzePlaygroundText('<script>alert(1)</script> This transformative workflow is seamless.', { lang: 'en' });
   const html = renderAuditDiff(analysis);

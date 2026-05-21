@@ -18,9 +18,10 @@ Latest local result: launch copy 6.7%, Korean-first copy 4.5%, EN guide 0.0%, KR
 
 ## Wave B — implementable product/profile work
 
+Closed in the latest wave: #304 NamuWiki profile, via `83675bc`.
+
 | issue | status | next action |
 |---|---|---|
-| #304 NamuWiki profile | implemented in this wave | Close after the main push and GitHub checks confirm the ko-only, license-safe profile plus original examples. |
 | #303 KO stylometry | partially implemented | Keep scoring code live; next work is external KatFish/KO corpus calibration and FP envelope measurement. |
 
 ## Wave C — corpus-gated research

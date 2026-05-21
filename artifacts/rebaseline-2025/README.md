@@ -60,6 +60,16 @@ node scripts/rebaseline-summary.mjs \
   --json
 ```
 
+To refresh their deterministic score/outcome fields from a private raw-text
+intake file:
+
+```bash
+npm run benchmark:rebaseline:score -- \
+  --input artifacts/rebaseline-2025/private/web-human-controls.private.jsonl \
+  --output artifacts/rebaseline-2025/human-controls.public.jsonl \
+  --scored-at 2026-05-21
+```
+
 ## What can be committed
 
 Do commit:

@@ -30,7 +30,8 @@
     "docs:api": "node scripts/generate-api-docs.mjs",
     "playground:data": "node scripts/generate-playground-data.mjs",
     "quality:live": "node tests/quality/live-quality.mjs",
-    "benchmark:rebaseline:intake": "node scripts/rebaseline-intake.mjs"
+    "benchmark:rebaseline:intake": "node scripts/rebaseline-intake.mjs",
+    "benchmark:rebaseline:score": "node scripts/rebaseline-score.mjs"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
@@ -103,6 +104,7 @@
     "tests/quality/live-fixtures.jsonl",
     "scripts/rebaseline-summary.mjs",
     "scripts/rebaseline-intake.mjs",
+    "scripts/rebaseline-score.mjs",
     "tests/quality/rebaseline-manifest.example.jsonl",
     "artifacts/rebaseline-2025/README.md",
     "artifacts/rebaseline-2025/intake.example.jsonl",

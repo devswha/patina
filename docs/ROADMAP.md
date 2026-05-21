@@ -269,7 +269,7 @@ Campaign state:
 - Launch Wave 3 static playground work closes #208 and targets <https://patina.vibetip.help/> for the try-it-now URL.
 - Launch execution prep: Korean-first channel drafts live in `docs/social/patina-launch-korean-first.md` and score 4.5%; `docs/social/patina-launch-copy.md` scores 6.7% after the KO diagnostic scoring update.
 - Rebaseline reporting prep: `npm run benchmark:rebaseline:report` refreshes `docs/benchmarks/rebaseline-latest.{md,json}` from the sanitized manifest while keeping public claims blocked without real corpus evidence.
-- KO/2025+ corpus prep: `docs/research/ko-2025-corpus-sources.md` records usable Korean sources, `artifacts/rebaseline-2025/intake.local.example.jsonl` provides the 25-row pilot skeleton, `artifacts/rebaseline-2025/human-controls.public.jsonl` tracks 10 hash-only web human-control candidates, and `npm run benchmark:rebaseline:intake -- --require-source-review` creates sanitized public manifests from local/private rows.
+- KO/2025+ corpus prep: `docs/research/ko-2025-corpus-sources.md` records usable Korean sources, `artifacts/rebaseline-2025/intake.local.example.jsonl` provides the 25-row pilot skeleton, `artifacts/rebaseline-2025/human-controls.public.jsonl` tracks 10 scored hash-only web human-control candidates, `npm run benchmark:rebaseline:intake -- --require-source-review` creates sanitized public manifests from local/private rows, and `npm run benchmark:rebaseline:score` refreshes deterministic outcome fields without copying raw text.
 - Launch feedback prep: the false-positive issue form now captures text origin, redistribution, fired paragraph, score output, and expected behavior.
 - Closed or verified during the campaign: #99, #104, #165, #186, #191, #199, #209, #210, #304.
 - Kept open with explicit blocker comments or pending external action: #155, #156, #157, #158, #159, #160, #206, #207, #211, #212, #286, #303.
@@ -278,7 +278,7 @@ Campaign state:
 Next recommended order:
 
 1. Keep #286 as the launch execution tracker; infra is live and copy scores pass, so the next step is maintainer-owned Korean-first posting plus feedback capture.
-2. Keep #303 open until the 25-row KO pilot validates external calibration; the 10-row hash-only web candidate manifest proves collection/provenance, but it is not enough for threshold changes.
+2. Keep #303 open until the 25-row KO pilot validates external calibration; the 10-row scored hash-only web candidate manifest proves collection/provenance, but it is not enough for threshold changes.
 3. Continue research/process medium items (#155, #160) only when there is corpus, evaluator, or release bandwidth; use the rebaseline intake and report writers for sanitized summaries.
 4. Treat low-priority research/ecosystem items (#156-#159, #206, #207, #211, #212, #284) as parked until corpus, external repo, hosting, or governance prerequisites exist; keep new campaign PRs short-lived.
 

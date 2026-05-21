@@ -23,9 +23,9 @@
   <a href="CHANGELOG.md"><img alt="Version 3.11.0" src="https://img.shields.io/badge/version-3.11.0-blue"></a>
 </p>
 
-patina looks for AI-sounding patterns in Korean, English, Chinese, and Japanese, then rewrites them without changing the claim. Use it as a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), and OpenCode, or run it as a standalone Node.js CLI.
+patina looks for AI-sounding patterns in Korean, English, Chinese, and Japanese, then rewrites them without changing the claim, numbers, polarity, or causation. Use it as a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), and OpenCode, or run it as a standalone Node.js CLI.
 
-It is not a black-box paraphraser. patina is **pattern-based and auditable**: it shows what changed, why it changed, and whether the original claims were preserved.
+It is not a black-box paraphraser or a detector-bypass promise. patina is **pattern-based and auditable**: it shows what changed, why it changed, and whether the original claims were preserved. No API key is needed when any of the `codex`, `claude`, or `gemini` CLIs is already logged in.
 
 ## Demo
 
@@ -45,11 +45,14 @@ It is not a black-box paraphraser. patina is **pattern-based and auditable**: it
 | Academic | “획기적인 성과”, broad significance claims | 60 GitHub projects, 72h→10m setup time, p<0.01, limits noted |
 | Technical | “핵심적인 역할”, future-standard hype | GPU management, one-command provisioning, 5× result caveat |
 
-Try it in the browser: [patina.vibetip.help](https://patina.vibetip.help/) (audit-only, no rewrite).
-Try it locally: [30-second terminal demo](docs/DEMO.md). More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)).
-Brand assets: [logo](assets/brand/patina-logo.svg), [mark](assets/brand/patina-mark.svg), [icon](assets/brand/patina-icon.svg),
-[social preview](assets/social/patina-og.svg), and [before/after card](assets/social/patina-before-after.svg).
-Usage notes: [BRANDING.md](docs/BRANDING.md).
+## Try it in your browser — no install
+
+**[patina.vibetip.help](https://patina.vibetip.help/)** scores KO / EN / ZH / JA paragraphs for AI-writing patterns, right in the browser.
+
+> **Audit-only.** The playground runs deterministic stylometry locally in your browser. It does not rewrite text, call an LLM, or proxy any key. Use the CLI or skill below when you want a rewrite.
+
+Try the full rewrite locally: [30-second terminal demo](docs/DEMO.md). More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)).
+Brand assets: [logo](assets/brand/patina-logo.svg), [mark](assets/brand/patina-mark.svg), [icon](assets/brand/patina-icon.svg), [social preview](assets/social/patina-og.svg), and [before/after card](assets/social/patina-before-after.svg). Usage notes: [BRANDING.md](docs/BRANDING.md).
 
 ## At a Glance
 
@@ -60,7 +63,7 @@ Usage notes: [BRANDING.md](docs/BRANDING.md).
 | **Benchmark report** | Reproducible ko/en/zh/ja suspect-zone benchmark: [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [detector comparison](docs/benchmarks/detector-comparison.md) |
 | **False positives** | 13–25% point-estimate range across human registers *(not a CI; boundary intrinsic to encyclopedic register, [documented](core/stylometry.md))* |
 | **Modes** | rewrite · audit · score · diff · ouroboros |
-| **Free tier** | Yes — via `codex` CLI (no API key) |
+| **Free tier** | Yes — via logged-in `codex`, `claude`, or `gemini` CLI (no API key) |
 | **Determinism** | Scoring formula is deterministic; LLM severity assignment ±8–10 pt per run ([scoring.md §8](core/scoring.md)) |
 | **License** | MIT |
 
@@ -98,7 +101,7 @@ Auto-detect and apply the best-fit tone:
 
 ### As a standalone CLI
 
-Requires Node.js ≥ 18. After the npm release is cut, use the package directly:
+Requires Node.js ≥ 18. The npm package is public, so you can run it directly:
 
 ```bash
 npx patina-cli init --defaults
@@ -106,7 +109,7 @@ npx patina-cli doctor
 npx patina-cli --lang en input.txt
 ```
 
-Until then, or when you want to hack on the repo:
+When you want to hack on the repo:
 
 ```bash
 git clone https://github.com/devswha/patina.git
@@ -129,12 +132,29 @@ Patina also ships a no-key, deterministic CI check for prose review:
 
 ```yaml
 # .github/workflows/patina.yml
-steps:
-  - uses: actions/checkout@v6
-  - uses: devswha/patina-action@v1
-    with:
-      score-threshold: 30
-      comment: true
+name: Patina prose score
+
+on:
+  pull_request:
+    paths:
+      - '**/*.md'
+      - '**/*.mdx'
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  patina:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: devswha/patina-action@v1
+        with:
+          score-threshold: 30
+          lang: auto
+          comment: true
 ```
 
 Docker image publishing is tracked separately from the npm release path. Until
@@ -150,7 +170,7 @@ Pre-commit, Husky, Lefthook, Docker, and release workflow notes live in [docs/in
 
 ## Intended Use
 
-Use Patina for post-AI editing, audit trails, and voice cleanup when the author is allowed to use AI assistance. It does not promise that text was “originally human,” and it should not be used for academic honor-code evasion, publisher disclosure circumvention, plagiarism laundering, or detector-bypass claims. See [ETHICS.md](docs/ETHICS.md).
+Use Patina for post-AI editing, audit trails, and voice cleanup when the author is allowed to use AI assistance. It does not promise that text was “originally human,” and it should not be used for academic honor-code evasion, publisher disclosure circumvention, plagiarism laundering, or detector-bypass claims. Scores are editing signals with false positives and false negatives, not authorship proof. See [ETHICS.md](docs/ETHICS.md).
 
 ## Modes
 
@@ -264,7 +284,7 @@ Natural-sounding text (meaning verified)
 
 If meaning drifts at any verification step, the change is retried or rolled back.
 
-**Calibration** *(500-paragraph corpus, reproducible via `.omc/research/v3_8_remeasure.py`)*: 76% editing-hotspot recall on HC3 ChatGPT (en) [66.7–83.3%] and 91% on paired ko/AI corpus [84.0–95.4%], each n=100 with binomial 95% CI. Human-prose false positives are reported separately as a 13–25% point-estimate range across registers, not as a confidence interval. Acceptance gates: AI ≥ 75%, max FP ≤ 25%. See [stylometry.md](core/stylometry.md) for the algorithm.
+**Calibration** *(500-paragraph corpus; methodology in [stylometry.md](core/stylometry.md))*: 76% editing-hotspot recall on HC3 ChatGPT (en) [66.7–83.3%] and 91% on paired ko/AI corpus [84.0–95.4%], each n=100 with binomial 95% CI. Human-prose false positives are reported separately as a 13–25% point-estimate range across registers, not as a confidence interval. Acceptance gates: AI ≥ 75%, max FP ≤ 25%.
 
 ## Configuration
 

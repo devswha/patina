@@ -14,7 +14,10 @@ Tracked files in this folder are scaffolding only:
 - `intake.local.example.jsonl` is a 25-row Korean pilot skeleton. It validates
   as metadata only; replace placeholder hashes locally before using it as
   evidence.
-- `human-controls.public.jsonl` is a 10-row Korean web human-control candidate
+- `sources.ko-public.jsonl` is a source inventory for collecting larger Korean
+  public-web human controls into ignored private files. It stores URLs and
+  license notes only, not page text.
+- `human-controls.public.jsonl` is a 141-row Korean web human-control candidate
   manifest. It contains source metadata and `sha256` digests only; the raw
   extracts stay in ignored `private/` intake files. It is a provenance smoke
   check, not benchmark evidence or a public performance claim.
@@ -60,14 +63,30 @@ node scripts/rebaseline-summary.mjs \
   --json
 ```
 
+To collect more Korean public-web candidates into the private workspace:
+
+```bash
+npm run benchmark:rebaseline:web -- \
+  --input artifacts/rebaseline-2025/sources.ko-public.jsonl \
+  --output artifacts/rebaseline-2025/private/web-human-controls.generated.private.jsonl \
+  --target-per-register 50 \
+  --max-per-source 10 \
+  --collected-at 2026-05-22
+```
+
+This script deliberately writes raw text only under `private/`. The repository
+uses MIT for its own code and documentation, but that license does not relicense
+third-party web pages. Keep web extracts hash-only unless the exact row has a
+redistribution review that permits publishing the text.
+
 To refresh their deterministic score/outcome fields from a private raw-text
 intake file:
 
 ```bash
 npm run benchmark:rebaseline:score -- \
-  --input artifacts/rebaseline-2025/private/web-human-controls.private.jsonl \
+  --input artifacts/rebaseline-2025/private/web-human-controls.generated.private.jsonl \
   --output artifacts/rebaseline-2025/human-controls.public.jsonl \
-  --scored-at 2026-05-21
+  --scored-at 2026-05-22
 ```
 
 ## What can be committed

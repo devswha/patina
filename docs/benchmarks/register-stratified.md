@@ -1,23 +1,23 @@
 # Korean register-stratified false-positive plan
 
-Status: 25-row pilot filled; threshold changes still blocked on representative rows.
+Status: 141-row pilot filled; threshold changes still blocked on balanced register rows and positive controls.
 Related issues: #157, #303, #155.
 
 Korean registers do not share one false-positive profile. This page keeps threshold work blocked until each register has enough reviewed controls.
 
 ## Current tracked pilot
 
-`artifacts/rebaseline-2025/human-controls.public.jsonl` currently contains 25 metadata/hash-only Korean human-control rows. The generated snapshot lives at `docs/benchmarks/register-stratified-latest.md`.
+`artifacts/rebaseline-2025/human-controls.public.jsonl` currently contains 141 metadata/hash-only Korean human-control rows. The generated snapshot lives at `docs/benchmarks/register-stratified-latest.md`.
 
 | register | current rows | target rows |
 |---|---:|---:|
-| academic / 종결-다 | 5 | 50 |
-| product / technical docs | 5 | 50 |
-| policy / notice / chat update | 5 | 50 |
-| blog / community | 5 | 50 |
-| technical how-to | 5 | 50 |
+| academic / 종결-다 | 16 | 50 |
+| product / technical docs | 22 | 50 |
+| policy / notice / chat update | 39 | 50 |
+| blog / community | 40 | 50 |
+| technical how-to | 24 | 50 |
 
-The current pilot has one predicted-hot row and 24 predicted-cold rows after the CJK lexicon single-hit guard. The same local set had five predicted-hot rows before that guard, all lexicon-only. This is useful false-positive evidence, but still intake evidence.
+The current pilot has 23 predicted-hot rows and 118 predicted-cold rows. Chat/update is clean in this snapshot, while academic-summary and technical-how-to remain the highest FP-rate registers. This is useful false-positive evidence, but still intake evidence rather than a public performance claim.
 
 ## Gate before threshold changes
 

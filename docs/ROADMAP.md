@@ -273,8 +273,8 @@ Campaign state:
 - Launch Wave 3 static playground work closes #208 and targets <https://patina.vibetip.help/> for the try-it-now URL.
 - Launch execution prep: Korean-first channel drafts live in `docs/social/patina-launch-korean-first.md` and score 4.5%; `docs/social/patina-launch-copy.md` scores 6.7% after the KO diagnostic scoring update.
 - Rebaseline reporting prep: `npm run benchmark:rebaseline:report` refreshes `docs/benchmarks/rebaseline-latest.{md,json}` from the sanitized manifest while keeping public claims blocked without real corpus evidence.
-- KO/2025+ corpus prep: `docs/research/ko-2025-corpus-sources.md` records usable Korean sources, `artifacts/rebaseline-2025/intake.local.example.jsonl` provides the 25-row pilot skeleton, `artifacts/rebaseline-2025/human-controls.public.jsonl` tracks 25 scored hash-only web human-control candidates, `npm run benchmark:rebaseline:intake -- --require-source-review` creates sanitized public manifests from local/private rows, and `npm run benchmark:rebaseline:score` refreshes deterministic outcome fields without copying raw text.
-- KO register pilot: `npm run benchmark:register-pilot -- --write --basename register-stratified-latest` refreshes false positives by register without committing raw text; the CJK single-hit lexicon guard reduced the current pilot false-positive count from 5/25 to 1/25.
+- KO/2025+ corpus prep: `docs/research/ko-2025-corpus-sources.md` records usable Korean sources, `artifacts/rebaseline-2025/intake.local.example.jsonl` provides the 25-row pilot skeleton, `artifacts/rebaseline-2025/sources.ko-public.jsonl` inventories public Korean web sources, `artifacts/rebaseline-2025/human-controls.public.jsonl` tracks 141 scored hash-only web human-control candidates, `npm run benchmark:rebaseline:web` collects raw text into ignored private rows, and `npm run benchmark:rebaseline:score` refreshes deterministic outcome fields without copying raw text.
+- KO register pilot: `npm run benchmark:register-pilot -- --write --basename register-stratified-latest` refreshes false positives by register without committing raw text; the expanded current pilot shows 23/141 predicted-hot human-control rows, split by register for threshold work.
 - Launch feedback prep: the false-positive issue form now captures text origin, redistribution, fired paragraph, score output, and expected behavior.
 - Growth nudge prep: #305 adds the install success star line and a CI-safe,
   stderr-only, one-time CLI reminder with `PATINA_NO_NUDGE=1`.
@@ -287,7 +287,7 @@ Campaign state:
 Next recommended order:
 
 1. Keep #286 as the launch execution tracker; infra, copy, and the README demo GIF are live, so the next step is maintainer-owned Korean-first posting plus feedback capture.
-2. Keep #303 open until n≥50/register validates external calibration; the 25-row scored hash-only web pilot proves collection/provenance and caught the CJK single-hit lexicon FP, but it is not enough for threshold changes.
+2. Keep #303 open until n≥50/register plus positive AI-like cells validate external calibration; the 141-row scored hash-only web pilot proves collection/provenance and exposes register-specific FPs, but it is not enough for threshold changes.
 3. Continue research/process medium items (#155, #160) only when there is corpus, evaluator, or release bandwidth; use the rebaseline intake and report writers for sanitized summaries.
 4. Treat low-priority research/ecosystem items (#157-#159, #206, #207, #211, #212, #284) as parked until corpus, external repo, hosting, or governance prerequisites exist; keep new campaign PRs short-lived.
 

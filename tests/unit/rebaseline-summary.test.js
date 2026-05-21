@@ -34,7 +34,7 @@ test('example rebaseline manifest validates and keeps public claims blocked', ()
 test('tracked web human-control candidates are hash-only metadata rows', () => {
   const manifest = loadManifest('artifacts/rebaseline-2025/human-controls.public.jsonl');
   assert.deepEqual(manifest.errors, []);
-  assert.equal(manifest.records.length, 25);
+  assert.ok(manifest.records.length >= 100);
 
   for (const record of manifest.records) {
     assert.equal(record.language, 'ko');

@@ -1,6 +1,6 @@
 # Open Issue Wave Plan
 
-Last synced: 2026-05-21. Source of truth is GitHub issues; this file records the current execution grouping so follow-up waves do not re-triage from scratch.
+Last synced: 2026-05-22. Source of truth is GitHub issues; this file records the current execution grouping so follow-up waves do not re-triage from scratch.
 
 ## Wave A — launch execution
 
@@ -24,15 +24,15 @@ one-time install/CLI star nudge; #306 first-screen README terminal demo GIF;
 
 | issue | status | next action |
 |---|---|---|
-| #303 KO stylometry | 25-row hash-only KO human-control pilot is scored; CJK single-hit lexicon guard reduced pilot FPs from 5/25 to 1/25 | Keep thresholds blocked until the n≥50/register gate is met, then compare spacing/comma/suffix signals against the expanded manifest. See `docs/benchmarks/register-stratified.md`. |
+| #303 KO stylometry | 141-row hash-only KO human-control pilot is scored; current FP snapshot is 23/141, with register splits in the report | Keep thresholds blocked until every register reaches n≥50 and positive AI-like cells exist, then compare spacing/comma/suffix signals against the expanded manifest. See `docs/benchmarks/register-stratified.md`. |
 
 ## Wave C — corpus-gated research
 
 | issue | status | next action |
 |---|---|---|
-| #155 2025+ rebaseline | blocked on corpus; intake scaffold and status doc ready | Use `npm run benchmark:rebaseline:intake` for local rows, then collect ≥3 model families × ≥2 languages with n≥100 per claim cell before public catch-rate claims. See `docs/research/2026-rebaseline.md`. |
+| #155 2025+ rebaseline | blocked on positive/multilingual corpus; public-web KO human-control collection now has a 141-row hash-only pilot | Use `npm run benchmark:rebaseline:intake` for local rows, then collect ≥3 model families × ≥2 languages with n≥100 per claim cell before public catch-rate claims. See `docs/research/2026-rebaseline.md`. |
 | #160 lexicon freshness | metadata audit complete; per-entry remine blocked on corpus | Re-mine per-entry provenance only after the paired 2025+ corpus exists and the Korean pilot has separated lexicon lift from register false positives. See `docs/research/lexicon-freshness-audit.md`. |
-| #157 Korean register FP | 25-row pilot unblocked; false positives now reported by register | Expand each register to n≥50 reviewed controls before loosening or tightening KO thresholds. See `docs/benchmarks/register-stratified.md` and `docs/benchmarks/register-stratified-latest.md`. |
+| #157 Korean register FP | 141-row pilot unblocked; false positives are reported by register | Expand underfilled registers to n≥50 reviewed controls and add AI-like controls before loosening or tightening KO thresholds. See `docs/benchmarks/register-stratified.md` and `docs/benchmarks/register-stratified-latest.md`. |
 | #158 cross-judge matrix | CLI judge-family warning implemented; full matrix blocked on evaluator budget | Use `--suspected-generator <family>` for score warnings now; run 3×3×30 agreement after a stable sample manifest exists. See `docs/research/judge-agreement.md`. |
 | #159 blinded human panel | study design ready; panel blocked on reviewer pool | Recruit 5 raters × 30 paired samples with consent/redistribution rules. See `docs/research/human-eval-panel.md`. |
 

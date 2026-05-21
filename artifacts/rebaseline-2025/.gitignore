@@ -4,4 +4,5 @@
 !README.md
 !*.example.jsonl
 !*.template.jsonl
+!sources.ko-public.jsonl
 !human-controls.public.jsonl

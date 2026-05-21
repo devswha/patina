@@ -3,24 +3,24 @@
 Status: blocked for public performance claims.
 Related issues: #155, #157, #160, #303.
 
-This page records the current state after the 2026-05-21 performance-issue pass. It does not replace the protocol in [`2025-rebaseline-plan.md`](2025-rebaseline-plan.md).
+This page records the current state after the 2026-05-22 performance-issue pass. It does not replace the protocol in [`2025-rebaseline-plan.md`](2025-rebaseline-plan.md).
 
 ## What exists now
 
 - `tests/quality/rebaseline-manifest.example.jsonl` validates the public row schema.
 - `artifacts/rebaseline-2025/intake.local.example.jsonl` is a 25-row local intake template.
-- `artifacts/rebaseline-2025/human-controls.public.jsonl` is a 10-row Korean human-control pilot. It stores metadata, hashes, and scores only; it does not store raw source text.
+- `artifacts/rebaseline-2025/human-controls.public.jsonl` is a 141-row Korean human-control pilot. It stores metadata, hashes, and scores only; it does not store raw source text.
 - `npm run benchmark:rebaseline:report` writes the current blocked summary to `docs/benchmarks/rebaseline-latest.md` and `.json`.
 
 Latest tracked KO pilot snapshot:
 
 | measure | value |
 |---|---:|
-| public rows | 10 |
+| public rows | 141 |
 | raw text in repo | 0 |
-| predicted hot | 1 |
-| predicted cold | 9 |
-| current point FP rate | 10% |
+| predicted hot | 23 |
+| predicted cold | 118 |
+| current point FP rate | 16.3% |
 
 The pilot is useful for checking the intake and scoring path. It is too small for claims.
 
@@ -40,8 +40,8 @@ Until that gate passes, README and launch copy should cite only checked-in deter
 
 ## Next data work
 
-1. Finish the Korean 25-row register pilot before touching thresholds.
+1. Fill the remaining under-target Korean registers to n≥50 before touching thresholds.
 2. Add a matching AI-like sample set for GPT, Claude, and Gemini families.
-3. Score the manifest with `npm run benchmark:rebaseline:score`.
+3. Refresh public-web controls with `npm run benchmark:rebaseline:web`, then score the private raw rows with `npm run benchmark:rebaseline:score`.
 4. Refresh `docs/benchmarks/rebaseline-latest.md`.
 5. Review per-register false positives before promoting any new number.

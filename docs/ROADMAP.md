@@ -17,8 +17,8 @@ This roadmap focuses on two things:
   - Korean editing-hotspot recall: 91% [84.0-95.4%], n=100
   - English HC3 editing-hotspot recall: 76% [66.7-83.3%], n=100
   - human false positives: 13-25% point-estimate range across registers
-- Current distribution gap:
-  - package name `patina-cli` is not published on npm as of 2026-05-20
+- Current distribution:
+  - npm package `patina-cli` is published; `npm view patina-cli version` returned `3.11.0` on 2026-05-21.
 
 ## 0. Positioning principles
 
@@ -250,13 +250,13 @@ Do not lead with “bypass AI detectors.” Lead with:
 
 ## 5. Immediate next actions
 
-Last triaged: 2026-05-21, after launch-copy and rebaseline-report follow-up work.
+Last triaged: 2026-05-21, after false-positive feedback-loop and issue-inventory sync.
 
 Current GitHub issue inventory:
 
-- 13 open issues; 135 closed issues; 148 tracked issues total.
+- 12 open issues; 136 closed issues; 148 tracked issues total.
 - Open PRs: 0.
-- Open priority split: 1 high, 3 medium, 9 low, and 0 without priority labels.
+- Open priority split: 1 high, 2 medium, 9 low, and 0 without priority labels.
 - Current high-priority issue: #286 launch tracking/playbook.
 
 Campaign state:
@@ -269,13 +269,14 @@ Campaign state:
 - Launch Wave 3 static playground work closes #208 and targets <https://patina.vibetip.help/> for the try-it-now URL.
 - Launch execution prep: Korean-first channel drafts live in `docs/social/patina-launch-korean-first.md` and score 17.4%; `docs/social/patina-launch-copy.md` remains at 13.8%.
 - Rebaseline reporting prep: `npm run benchmark:rebaseline:report` refreshes `docs/benchmarks/rebaseline-latest.{md,json}` from the sanitized manifest while keeping public claims blocked without real corpus evidence.
-- Closed or verified during the campaign: #99, #165, #186, #191, #199, #209, #210.
-- Kept open with explicit blocker comments: #104, #155, #156, #157, #158, #159, #160, #206, #207, #211, #212.
+- Launch feedback prep: the false-positive issue form now captures text origin, redistribution, fired paragraph, score output, and expected behavior.
+- Closed or verified during the campaign: #99, #104, #165, #186, #191, #199, #209, #210.
+- Kept open with explicit blocker comments: #155, #156, #157, #158, #159, #160, #206, #207, #211, #212.
 - Legacy bot/harness notes were removed from the public repo; restart autonomous bot work only from a fresh, tracked design if it becomes necessary.
 
 Next recommended order:
 
 1. Keep #286 as the launch execution tracker; infra is live and copy scores pass, so the next step is maintainer-owned Korean-first posting plus feedback capture.
-2. Continue research/process medium items (#104, #155, #160) only when there is corpus, evaluator, or release bandwidth; use the rebaseline report writer for sanitized summaries.
+2. Continue research/process medium items (#155, #160) only when there is corpus, evaluator, or release bandwidth; use the rebaseline report writer for sanitized summaries.
 3. Treat low-priority research/ecosystem items (#156-#159, #206, #207, #211, #212, #284) as parked until corpus, external repo, hosting, or governance prerequisites exist.
 4. Keep new campaign PRs short-lived: green checks, merged, or explicitly blocked with issue comments.

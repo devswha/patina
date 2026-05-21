@@ -20,7 +20,7 @@ into the repository.
 
 | source | role | evidence | repo policy | first intake |
 |---|---|---|---|---|
-| KatFish / KatFishNet | Korean AI-vs-human seed set; especially useful for #303 punctuation/spacing checks | ACL 2025/arXiv paper says KatFish covers human and four-LLM Korean text across three genres; the public GitHub repo contains `katfish_dataset/*.jsonl` | Treat raw rows as **license-review** until a license/redistribution decision is recorded. Hash-only rows are OK. | Pull 5 metadata-only rows per genre, record source file, row id, class, genre, and `sha256` hash. |
+| KatFish / KatFishNet | Korean AI-vs-human seed set; especially useful for #303 punctuation/spacing checks | ACL 2025/arXiv paper says KatFish covers human and four-LLM Korean text across three genres; the public GitHub repo contains `katfish_dataset/*.jsonl` but no repo-level license metadata is exposed | Treat raw rows as **license-review** until a license/redistribution decision is recorded. Aggregate metrics are OK; raw rows stay private. | `docs/benchmarks/katfish-ko-latest.md` reports aggregate-only calibration: Patina KO diagnostics improve KatFish catch rate by +15.9 pp with +0 public-web human-control FP rows. |
 | 모두의 말뭉치 | human Korean controls for product-doc, news/editorial, dialogue, summary registers | NIKL lists 2024/2025 corpora and requires corpus application/approval fields | Do not commit raw text. Store local extracts privately and commit only hashes/metrics unless approval explicitly allows publication. | Apply for research/evaluation use; start with 25 human-control paragraphs after approval. |
 | 한국어 학습자 말뭉치 | false-positive stress test for learner/second-language Korean, not a normal human baseline | Official site describes learner writing/speech corpora and notes original learner material is privacy-protected; Data.go.kr lists research-purpose distribution limits | Use as a separate FP envelope. Do not blend with native Korean controls. Commit metadata/hashes only. | Add `class: natural-human`, `register: learner-writing` only after schema/register decision, or map to `academic-summary` with reviewer note. |
 | HAERAE-HUB/KOREAN-SyntheticText-1.5B | broad synthetic Korean AI-like pool | Hugging Face dataset page shows text parquet with 1.55M rows | Synthetic side only. Check dataset card/license before committing full text; otherwise hash-only. | Sample short paragraphs for lexicon mining candidates, then manually review before pattern changes. |
@@ -61,7 +61,7 @@ Tracked starter files:
 - `artifacts/rebaseline-2025/human-controls.public.jsonl` — 250 web-sourced
   Korean natural-human candidate rows, balanced at 50 rows for each tracked
   register. It is hash-only and validates the collection path; absent AI-like
-  cells still block threshold changes.
+  cells still block public claim changes.
 
 To refresh public-web candidates from the tracked source inventory:
 
@@ -81,6 +81,8 @@ npm run benchmark:rebaseline:score -- \
 node scripts/rebaseline-summary.mjs \
   --input artifacts/rebaseline-2025/human-controls.public.jsonl \
   --json
+
+npm run benchmark:katfish-ko -- --write --basename katfish-ko-latest
 ```
 
 To score those candidates without committing raw text:
@@ -99,9 +101,9 @@ The 250-row public-web pilot proves the collection and scoring path and fills th
 | bucket | remaining need | notes |
 |---|---:|---|
 | native human controls | 0 for the five tracked registers | Current tracked split is n=50 each for academic-summary, product-doc, chat-update, blog, and technical-how-to. |
-| self-generated AI-like | n≥100 per GPT/Claude/Gemini/open-weight claim cell | Keep prompt ids, model ids, decoding, and provider terms notes. |
+| self-generated AI-like | n≥100 per GPT/Claude/Gemini/open-weight claim cell | Keep prompt ids, model ids, decoding, and provider terms notes; KatFish aggregate closes only the KO diagnostic calibration, not public claim coverage. |
 | lightly/heavily edited AI | at least one light and one heavy edit per target register | Preserve before/after hashes and edit policy. |
-| KatFish metadata-only comparison | one small metadata-only slice per available genre | Hash-only until license review. |
+| KatFish aggregate comparison | complete for #303 | Raw rows stay private; tracked output is aggregate-only. |
 | FP submissions / learner stress | separate reviewed envelope | Do not blend learner Korean into the native-human baseline. |
 
 Exit criteria for the pilot:

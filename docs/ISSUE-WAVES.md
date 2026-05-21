@@ -21,11 +21,11 @@ Latest local result: launch copy 6.7%, Korean-first copy 4.5%, EN guide 0.0%, KR
 Closed in the latest waves: #304 NamuWiki profile, via `83675bc`; #305
 one-time install/CLI star nudge; #306 first-screen README terminal demo GIF;
 #156 adversarial MPS repo-owned 10-fixture gate; #157 KO register FP
-coverage gate via `987995f`.
+coverage gate via `987995f`; #303 KO diagnostics calibration via the
+KatFish aggregate report.
 
 | issue | status | next action |
 |---|---|---|
-| #303 KO stylometry | 250-row hash-only KO human-control pilot is scored; current FP snapshot is 42/250, with n=50 for each tracked register | Keep thresholds blocked until positive AI-like cells exist, then compare spacing/comma/suffix signals against the expanded manifest. See `docs/benchmarks/register-stratified.md`. |
 
 ## Wave C — corpus-gated research
 

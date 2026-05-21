@@ -43,8 +43,7 @@ to make the paragraph hot by itself.
 For `lang=ko`, `analyzeText()` also records Korean diagnostic fields:
 `spacing`, `comma`, and `posDiversity` (a suffix-class proxy, not a morphology
 analyzer). They only affect the hot/cold decision through the conservative
-`koDiagnostics` composite: at least four sentences, at least 20 eojeols, no
-commas, regular eojeol length, and low suffix-class diversity.
+`koDiagnostics` composite: at least four sentences, at least 20 eojeols, fewer than one comma per sentence, regular eojeol length (`CV <= 0.38`), and low suffix-class diversity (`classDiversity <= 0.26`).
 
 Per-language metrics use `expected_hot=true` as the positive class.
 
@@ -263,9 +262,16 @@ in `.patina.default.yaml` (`stylometry.burstiness.bands`,
 classification. Sweep against this benchmark + your own corpus and
 update thresholds; the shipped values come from the v3.5.1 / v3.7
 calibration documented in `core/stylometry.md` §13 §16.
-`stylometry.ko_diagnostics.bands` controls the ko-only composite. Treat it as a
-conservative fixture-backed guard, not as a broad public performance claim until
-the Korean corpus calibration lands.
+`stylometry.ko_diagnostics.bands` controls the ko-only composite. The private
+KatFish calibration command below reports aggregate catch-rate and FP deltas
+without committing external raw text:
+
+```bash
+npm run benchmark:katfish-ko -- --write --basename katfish-ko-latest
+```
+
+Treat that report as a KO diagnostic calibration artifact, not as a broad public
+performance claim.
 
 `npm run benchmark:report` also records a diagnostic `signal_score` sweep. The
 prediction rule is `signal_score >= threshold`, and the PR-AUC value is average

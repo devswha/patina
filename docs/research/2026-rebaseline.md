@@ -1,7 +1,7 @@
 # 2026 rebaseline status
 
 Status: blocked for public performance claims.
-Related issues: #155, #157, #160, #303.
+Related issues: #155, #160. Closed calibration inputs: #157, #303.
 
 This page records the current state after the 2026-05-22 performance-issue pass. It does not replace the protocol in [`2025-rebaseline-plan.md`](2025-rebaseline-plan.md).
 
@@ -11,6 +11,7 @@ This page records the current state after the 2026-05-22 performance-issue pass.
 - `artifacts/rebaseline-2025/intake.local.example.jsonl` is a 25-row local intake template.
 - `artifacts/rebaseline-2025/human-controls.public.jsonl` is a 250-row Korean human-control pilot with 50 rows in each tracked register. It stores metadata, hashes, and scores only; it does not store raw source text.
 - `npm run benchmark:rebaseline:report` writes the current blocked summary to `docs/benchmarks/rebaseline-latest.md` and `.json`.
+- `npm run benchmark:katfish-ko -- --write --basename katfish-ko-latest` writes aggregate-only KO diagnostic calibration metrics from a private KatFish checkout plus the 250-row human-control set.
 
 Latest tracked KO pilot snapshot:
 
@@ -22,7 +23,7 @@ Latest tracked KO pilot snapshot:
 | predicted cold | 208 |
 | current point FP rate | 16.8% |
 
-The pilot is useful for Korean false-positive analysis and satisfies the n≥50×5 register coverage target. It is still human-control-only, so it is too small and too one-sided for public catch-rate claims.
+The pilot is useful for Korean false-positive analysis and satisfies the n≥50×5 register coverage target. The private KatFish aggregate adds a KO positive-side calibration result, but the overall rebaseline is still too narrow for public catch-rate claims.
 
 ## Claim gate
 
@@ -40,7 +41,7 @@ Until that gate passes, README and launch copy should cite only checked-in deter
 
 ## Next data work
 
-1. Add a matching AI-like sample set for GPT, Claude, and Gemini families.
+1. Add a redistributable matching AI-like sample set for GPT, Claude, and Gemini families.
 2. Add lightly/heavily edited-AI rows so threshold work checks rewrite behavior, not only raw AI-like text.
 3. Refresh public-web controls with `npm run benchmark:rebaseline:web`, then score the private raw rows with `npm run benchmark:rebaseline:score` when the source inventory changes.
 4. Refresh `docs/benchmarks/rebaseline-latest.md` only from a claim-ready manifest.

@@ -1,9 +1,9 @@
 # Korean register-stratified false-positive plan
 
-Status: KO human-control coverage gate met; threshold changes still blocked on positive controls.
+Status: KO diagnostic bands calibrated; public performance claims still blocked on the wider rebaseline gate.
 Related issues: #157, #303, #155.
 
-Korean registers do not share one false-positive profile. This page keeps threshold work blocked until register false positives and positive AI-like catch rates are both visible.
+Korean registers do not share one false-positive profile. This page keeps threshold work tied to both register false positives and positive AI-like catch rates.
 
 ## Current tracked pilot
 
@@ -31,12 +31,12 @@ Do not loosen or tighten Korean scoring thresholds until all gates below pass.
 | privacy | no raw private or no-redistribution text is committed | met: public rows are hash-only |
 | review | each row has source review notes or a license field | met: rows carry source/license notes |
 | reporting | the report shows false positives by register, not only in aggregate | met: see `register-stratified-latest.md` |
-| positive controls | threshold change is checked against AI-like and edited-AI rows | blocked: no positive corpus yet |
-| verification | any changed threshold is tested against `npm run benchmark` and `npm run benchmark:rebaseline` | blocked until a threshold changes |
+| positive controls | threshold change is checked against AI-like and edited-AI rows | met for KO diagnostics via private KatFish aggregate; edited-AI still belongs to #155 |
+| verification | any changed threshold is tested against `npm run benchmark` and `npm run benchmark:rebaseline` | met for the KO diagnostic band update |
 
 ## Recommendation
 
-Close the register-coverage part of #157 from this evidence, but do not change Korean thresholds yet. The next calibration pass should add positive AI-like rows, then compare two options: register-aware reporting/dampening for technical documents, or a small global threshold adjustment only if recall does not regress.
+The KO diagnostic band update uses the KatFish aggregate report, not a public headline claim. It improves KatFish catch rate by +15.9 pp versus Patina without KO diagnostics while keeping the 250-row public-web human-control FP count unchanged at 42/250. Keep broader 2025+ public claims under #155 until multilingual, multi-family claim cells exist.
 
 ## Why this matters
 

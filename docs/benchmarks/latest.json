@@ -7,7 +7,7 @@
   "schemaVersion": 3,
   "fixtureSchemaVersion": 1,
   "nodeVersion": "v22.17.1",
-  "generatedAt": "2026-05-21T15:02:18.857Z",
+  "generatedAt": "2026-05-21T16:24:29.822Z",
   "fixtureCount": 39,
   "overallAccuracy": 1,
   "overall": {
@@ -203,18 +203,18 @@
           "confidence_method": "Wilson score interval, 95%"
         },
         "koDiagnostics": {
-          "tp": 5,
+          "tp": 2,
           "fp": 0,
-          "fn": 2,
+          "fn": 5,
           "tn": 5,
           "total": 12,
-          "accuracy": 0.833,
+          "accuracy": 0.583,
           "precision": 1,
-          "recall": 0.714,
-          "f1": 0.833,
+          "recall": 0.286,
+          "f1": 0.444,
           "n": 12,
-          "ci_low": 0.552,
-          "ci_high": 0.953,
+          "ci_low": 0.32,
+          "ci_high": 0.807,
           "confidence_method": "Wilson score interval, 95%"
         },
         "mattr": {
@@ -341,7 +341,7 @@
       "roc_auc": 1,
       "pr_auc": 1,
       "bestF1": {
-        "threshold": 6.772,
+        "threshold": 3.846,
         "tp": 21,
         "fp": 0,
         "fn": 0,
@@ -366,7 +366,7 @@
           "f1": 0.7
         },
         {
-          "threshold": 6.772,
+          "threshold": 3.846,
           "tp": 21,
           "fp": 0,
           "fn": 0,
@@ -378,7 +378,7 @@
           "f1": 1
         },
         {
-          "threshold": 16.886,
+          "threshold": 6.772,
           "tp": 20,
           "fp": 0,
           "fn": 1,
@@ -825,7 +825,7 @@
         "roc_auc": 1,
         "pr_auc": 1,
         "bestF1": {
-          "threshold": 16.886,
+          "threshold": 3.846,
           "tp": 7,
           "fp": 0,
           "fn": 0,
@@ -850,7 +850,7 @@
             "f1": 0.737
           },
           {
-            "threshold": 16.886,
+            "threshold": 3.846,
             "tp": 7,
             "fp": 0,
             "fn": 0,
@@ -1549,7 +1549,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
-        "koDiagnostics": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1561,13 +1561,9 @@
       "lexicon_hits": [
         "환경"
       ],
-      "ko_diagnostics_hot": true,
-      "ko_diagnostics_reasons": [
-        "regular-eojeol-length",
-        "low-comma-density",
-        "low-suffix-class-diversity"
-      ],
-      "ko_diagnostics_strength": 5.882,
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 75.545,
       "expected_metrics": null
     },
@@ -1607,7 +1603,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
-        "koDiagnostics": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1617,13 +1613,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
-      "ko_diagnostics_hot": true,
-      "ko_diagnostics_reasons": [
-        "regular-eojeol-length",
-        "low-comma-density",
-        "low-suffix-class-diversity"
-      ],
-      "ko_diagnostics_strength": 7.121,
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 67.314,
       "expected_metrics": null
     },
@@ -1652,7 +1644,7 @@
         "low-comma-density",
         "low-suffix-class-diversity"
       ],
-      "ko_diagnostics_strength": 5.87,
+      "ko_diagnostics_strength": 0.285,
       "signal_score": 67.314,
       "expected_metrics": null
     },
@@ -1665,7 +1657,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
-        "koDiagnostics": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1677,13 +1669,9 @@
       "lexicon_hits": [
         "흐름"
       ],
-      "ko_diagnostics_hot": true,
-      "ko_diagnostics_reasons": [
-        "regular-eojeol-length",
-        "low-comma-density",
-        "low-suffix-class-diversity"
-      ],
-      "ko_diagnostics_strength": 0.631,
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 72.887,
       "expected_metrics": {
         "cv_band": "low",
@@ -1717,8 +1705,8 @@
         "low-comma-density",
         "low-suffix-class-diversity"
       ],
-      "ko_diagnostics_strength": 16.886,
-      "signal_score": 16.886,
+      "ko_diagnostics_strength": 3.846,
+      "signal_score": 3.846,
       "expected_metrics": null
     },
     {

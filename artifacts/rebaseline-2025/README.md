@@ -80,6 +80,15 @@ uses MIT for its own code and documentation, but that license does not relicense
 third-party web pages. Keep web extracts hash-only unless the exact row has a
 redistribution review that permits publishing the text.
 
+To run the private KatFish KO calibration after downloading `essay.jsonl`, `abstract.jsonl`, and `poetry.jsonl` into `artifacts/rebaseline-2025/private/katfish/`:
+
+```bash
+npm run benchmark:katfish-ko -- --write --basename katfish-ko-latest
+```
+
+The command writes only aggregate metrics to `docs/benchmarks/`; it must not
+commit KatFish raw rows unless a license review explicitly allows it.
+
 To refresh their deterministic score/outcome fields from a private raw-text
 intake file:
 

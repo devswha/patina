@@ -1,6 +1,6 @@
 # Rebaseline Manifest Summary
 
-- Generated at: 2026-05-21T15:59:59.900Z
+- Generated at: 2026-05-21T16:24:01.336Z
 - Input: `artifacts/rebaseline-2025/human-controls.public.jsonl`
 - Records: 250
 - Protocol target: 25 samples per language × class × register cell

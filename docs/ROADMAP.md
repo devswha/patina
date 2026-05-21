@@ -258,9 +258,9 @@ Last triaged: 2026-05-21, after launch-service parity and issue-inventory sync.
 
 Current GitHub issue inventory:
 
-- 12 open issues; 141 closed issues; 153 tracked issues total.
+- 11 open issues; 142 closed issues; 153 tracked issues total.
 - Open PRs: 0.
-- Open priority split: 1 high, 4 medium, 7 low, and 0 without priority labels.
+- Open priority split: 1 high, 3 medium, 7 low, and 0 without priority labels.
 - Current high-priority issue: #286 launch tracking/playbook.
 
 Campaign state:
@@ -275,20 +275,20 @@ Campaign state:
 - Rebaseline reporting prep: `npm run benchmark:rebaseline:report` refreshes `docs/benchmarks/rebaseline-latest.{md,json}` from the sanitized manifest while keeping public claims blocked without real corpus evidence.
 - KO/2025+ corpus prep: `docs/research/ko-2025-corpus-sources.md` records usable Korean sources, `artifacts/rebaseline-2025/intake.local.example.jsonl` provides the 25-row pilot skeleton, `artifacts/rebaseline-2025/sources.ko-public.jsonl` inventories public Korean web sources, `artifacts/rebaseline-2025/human-controls.public.jsonl` tracks 250 scored hash-only web human-control candidates at n=50 for each tracked register, `npm run benchmark:rebaseline:web` collects raw text into ignored private rows, and `npm run benchmark:rebaseline:score` refreshes deterministic outcome fields without copying raw text.
 - KO register pilot: `npm run benchmark:register-pilot -- --write --basename register-stratified-latest` refreshes false positives by register without committing raw text; the expanded current pilot shows 42/250 predicted-hot human-control rows, split by register for threshold work.
+- KO KatFish calibration: `npm run benchmark:katfish-ko -- --write --basename katfish-ko-latest` reports aggregate-only private KatFish metrics; current KO diagnostics improve catch rate from 58.9% to 74.8% versus Patina without KO diagnostics while public-web human-control FP stays 42/250.
 - Launch feedback prep: the false-positive issue form now captures text origin, redistribution, fired paragraph, score output, and expected behavior.
 - Growth nudge prep: #305 adds the install success star line and a CI-safe,
   stderr-only, one-time CLI reminder with `PATINA_NO_NUDGE=1`.
 - README demo prep: #306 adds the first-screen terminal GIF, try-it-now
   playground link, translated README references, and re-recording notes.
-- Closed or verified during the campaign: #99, #104, #156, #157, #165, #186, #191, #199, #209, #210, #304, #305, #306.
-- Kept open with explicit blocker comments or pending external action: #155, #158, #159, #160, #206, #207, #211, #212, #286, #303, #307.
+- Closed or verified during the campaign: #99, #104, #156, #157, #303, #165, #186, #191, #199, #209, #210, #304, #305, #306.
+- Kept open with explicit blocker comments or pending external action: #155, #158, #159, #160, #206, #207, #211, #212, #286, #307.
 - Legacy bot/harness notes were removed from the public repo; restart autonomous bot work only from a fresh, tracked design if it becomes necessary.
 
 Next recommended order:
 
 1. Keep #286 as the launch execution tracker; infra, copy, and the README demo GIF are live, so the next step is maintainer-owned Korean-first posting plus feedback capture.
-2. Keep #303 open until positive AI-like cells validate external calibration; the 250-row scored hash-only web pilot now meets n≥50/register and exposes register-specific FPs, but it is not enough for threshold changes by itself.
-3. Continue research/process medium items (#155, #160) only when there is corpus, evaluator, or release bandwidth; use the rebaseline intake and report writers for sanitized summaries.
-4. Treat low-priority research/ecosystem items (#158, #159, #206, #207, #211, #212, #284) as parked until corpus, external repo, hosting, or governance prerequisites exist; keep new campaign PRs short-lived.
+2. Continue research/process medium items (#155, #160) only when there is redistributable corpus, evaluator, or release bandwidth; use the rebaseline intake and report writers for sanitized summaries.
+3. Treat low-priority research/ecosystem items (#158, #159, #206, #207, #211, #212, #284) as parked until corpus, external repo, hosting, or governance prerequisites exist; keep new campaign PRs short-lived.
 
 Detailed wave grouping lives in `docs/ISSUE-WAVES.md` so launch, profile, corpus-gated research, and parked ecosystem work can move independently without re-triage.

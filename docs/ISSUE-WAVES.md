@@ -19,7 +19,8 @@ Latest local result: launch copy 6.7%, Korean-first copy 4.5%, EN guide 0.0%, KR
 ## Wave B — implementable product/profile work
 
 Closed in the latest waves: #304 NamuWiki profile, via `83675bc`; #305
-one-time install/CLI star nudge; #306 first-screen README terminal demo GIF.
+one-time install/CLI star nudge; #306 first-screen README terminal demo GIF;
+#156 adversarial MPS repo-owned 10-fixture gate.
 
 | issue | status | next action |
 |---|---|---|
@@ -32,7 +33,6 @@ one-time install/CLI star nudge; #306 first-screen README terminal demo GIF.
 | #155 2025+ rebaseline | blocked on corpus; intake scaffold and status doc ready | Use `npm run benchmark:rebaseline:intake` for local rows, then collect ≥3 model families × ≥2 languages with n≥100 per claim cell before public catch-rate claims. See `docs/research/2026-rebaseline.md`. |
 | #160 lexicon freshness | metadata audit complete; per-entry remine blocked on corpus | Re-mine per-entry provenance only after the paired 2025+ corpus exists and the Korean pilot has separated lexicon lift from register false positives. See `docs/research/lexicon-freshness-audit.md`. |
 | #157 Korean register FP | partially unblocked; scored hash-only web human-control candidates ready, register gate documented | Add enough academic/종결-다 controls to reach the 25-row KO pilot before loosening or tightening KO thresholds. See `docs/benchmarks/register-stratified.md`. |
-| #156 adversarial MPS | repo-owned 10-fixture gate implemented | Keep `npm run quality:adversarial-mps` passing and use the report at `docs/research/adversarial-mps.md` as the MPS-v2 companion-check input. |
 | #158 cross-judge matrix | CLI judge-family warning implemented; full matrix blocked on evaluator budget | Use `--suspected-generator <family>` for score warnings now; run 3×3×30 agreement after a stable sample manifest exists. See `docs/research/judge-agreement.md`. |
 | #159 blinded human panel | study design ready; panel blocked on reviewer pool | Recruit 5 raters × 30 paired samples with consent/redistribution rules. See `docs/research/human-eval-panel.md`. |
 

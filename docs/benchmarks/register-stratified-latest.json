@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-05-21T15:40:05.166Z",
+  "generatedAt": "2026-05-21T15:59:59.900Z",
   "input": "artifacts/rebaseline-2025/human-controls.public.jsonl",
   "targets": {
     "protocolPerLanguageClassRegister": 25,
@@ -8,42 +8,29 @@
     "claimLanguages": 2,
     "claimGeneratorFamilies": 3
   },
-  "totalRecords": 141,
+  "totalRecords": 250,
   "byLanguage": {
-    "ko": 141
+    "ko": 250
   },
   "byClass": {
-    "natural-human": 141
+    "natural-human": 250
   },
   "byRegister": {
-    "chat-update": 39,
-    "blog": 40,
-    "technical-how-to": 24,
-    "academic-summary": 16,
-    "product-doc": 22
+    "chat-update": 50,
+    "blog": 50,
+    "technical-how-to": 50,
+    "academic-summary": 50,
+    "product-doc": 50
   },
   "byModelFamily": {
-    "human-reference": 141
+    "human-reference": 250
   },
   "protocolCoverage": {
     "totalCells": 80,
     "populatedCells": 5,
     "emptyCells": 75,
-    "cellsMeetingTarget": 2,
-    "underfilledCells": [
-      {
-        "key": "ko|natural-human|academic-summary",
-        "count": 16
-      },
-      {
-        "key": "ko|natural-human|product-doc",
-        "count": 22
-      },
-      {
-        "key": "ko|natural-human|technical-how-to",
-        "count": 24
-      }
-    ]
+    "cellsMeetingTarget": 5,
+    "underfilledCells": []
   },
   "claimGate": {
     "ready": false,
@@ -56,53 +43,53 @@
     "qualifiedNaturalCells": [
       {
         "key": "ko",
-        "count": 141
+        "count": 250
       }
     ]
   },
   "metrics": {
     "tp": 0,
-    "fp": 23,
+    "fp": 42,
     "fn": 0,
-    "tn": 118,
-    "total": 141,
-    "accuracy": 0.837,
+    "tn": 208,
+    "total": 250,
+    "accuracy": 0.832,
     "precision": 0,
     "recall": 0,
     "f1": 0,
-    "falsePositiveRate": 0.163,
+    "falsePositiveRate": 0.168,
     "falseNegativeRate": 0,
     "accuracyCi": {
-      "low": 0.767,
-      "high": 0.889,
+      "low": 0.781,
+      "high": 0.873,
       "method": "Wilson score interval, 95%"
     }
   },
   "metricsByRegister": {
     "academic-summary": {
       "tp": 0,
-      "fp": 5,
+      "fp": 7,
       "fn": 0,
-      "tn": 11,
-      "total": 16,
-      "accuracy": 0.688,
+      "tn": 43,
+      "total": 50,
+      "accuracy": 0.86,
       "precision": 0,
       "recall": 0,
       "f1": 0,
-      "falsePositiveRate": 0.313,
+      "falsePositiveRate": 0.14,
       "falseNegativeRate": 0,
       "accuracyCi": {
-        "low": 0.444,
-        "high": 0.858,
+        "low": 0.738,
+        "high": 0.93,
         "method": "Wilson score interval, 95%"
       }
     },
     "blog": {
       "tp": 0,
-      "fp": 8,
+      "fp": 10,
       "fn": 0,
-      "tn": 32,
-      "total": 40,
+      "tn": 40,
+      "total": 50,
       "accuracy": 0.8,
       "precision": 0,
       "recall": 0,
@@ -110,62 +97,62 @@
       "falsePositiveRate": 0.2,
       "falseNegativeRate": 0,
       "accuracyCi": {
-        "low": 0.652,
-        "high": 0.895,
+        "low": 0.67,
+        "high": 0.888,
         "method": "Wilson score interval, 95%"
       }
     },
     "chat-update": {
       "tp": 0,
-      "fp": 0,
+      "fp": 2,
       "fn": 0,
-      "tn": 39,
-      "total": 39,
-      "accuracy": 1,
+      "tn": 48,
+      "total": 50,
+      "accuracy": 0.96,
       "precision": 0,
       "recall": 0,
       "f1": 0,
-      "falsePositiveRate": 0,
+      "falsePositiveRate": 0.04,
       "falseNegativeRate": 0,
       "accuracyCi": {
-        "low": 0.91,
-        "high": 1,
+        "low": 0.865,
+        "high": 0.989,
         "method": "Wilson score interval, 95%"
       }
     },
     "product-doc": {
       "tp": 0,
-      "fp": 2,
+      "fp": 6,
       "fn": 0,
-      "tn": 20,
-      "total": 22,
-      "accuracy": 0.909,
+      "tn": 44,
+      "total": 50,
+      "accuracy": 0.88,
       "precision": 0,
       "recall": 0,
       "f1": 0,
-      "falsePositiveRate": 0.091,
+      "falsePositiveRate": 0.12,
       "falseNegativeRate": 0,
       "accuracyCi": {
-        "low": 0.722,
-        "high": 0.975,
+        "low": 0.762,
+        "high": 0.944,
         "method": "Wilson score interval, 95%"
       }
     },
     "technical-how-to": {
       "tp": 0,
-      "fp": 8,
+      "fp": 17,
       "fn": 0,
-      "tn": 16,
-      "total": 24,
-      "accuracy": 0.667,
+      "tn": 33,
+      "total": 50,
+      "accuracy": 0.66,
       "precision": 0,
       "recall": 0,
       "f1": 0,
-      "falsePositiveRate": 0.333,
+      "falsePositiveRate": 0.34,
       "falseNegativeRate": 0,
       "accuracyCi": {
-        "low": 0.467,
-        "high": 0.82,
+        "low": 0.522,
+        "high": 0.776,
         "method": "Wilson score interval, 95%"
       }
     }

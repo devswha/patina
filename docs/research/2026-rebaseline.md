@@ -9,20 +9,20 @@ This page records the current state after the 2026-05-22 performance-issue pass.
 
 - `tests/quality/rebaseline-manifest.example.jsonl` validates the public row schema.
 - `artifacts/rebaseline-2025/intake.local.example.jsonl` is a 25-row local intake template.
-- `artifacts/rebaseline-2025/human-controls.public.jsonl` is a 141-row Korean human-control pilot. It stores metadata, hashes, and scores only; it does not store raw source text.
+- `artifacts/rebaseline-2025/human-controls.public.jsonl` is a 250-row Korean human-control pilot with 50 rows in each tracked register. It stores metadata, hashes, and scores only; it does not store raw source text.
 - `npm run benchmark:rebaseline:report` writes the current blocked summary to `docs/benchmarks/rebaseline-latest.md` and `.json`.
 
 Latest tracked KO pilot snapshot:
 
 | measure | value |
 |---|---:|
-| public rows | 141 |
+| public rows | 250 |
 | raw text in repo | 0 |
-| predicted hot | 23 |
-| predicted cold | 118 |
-| current point FP rate | 16.3% |
+| predicted hot | 42 |
+| predicted cold | 208 |
+| current point FP rate | 16.8% |
 
-The pilot is useful for checking the intake and scoring path. It is too small for claims.
+The pilot is useful for Korean false-positive analysis and satisfies the n≥50×5 register coverage target. It is still human-control-only, so it is too small and too one-sided for public catch-rate claims.
 
 ## Claim gate
 
@@ -40,8 +40,8 @@ Until that gate passes, README and launch copy should cite only checked-in deter
 
 ## Next data work
 
-1. Fill the remaining under-target Korean registers to n≥50 before touching thresholds.
-2. Add a matching AI-like sample set for GPT, Claude, and Gemini families.
-3. Refresh public-web controls with `npm run benchmark:rebaseline:web`, then score the private raw rows with `npm run benchmark:rebaseline:score`.
-4. Refresh `docs/benchmarks/rebaseline-latest.md`.
+1. Add a matching AI-like sample set for GPT, Claude, and Gemini families.
+2. Add lightly/heavily edited-AI rows so threshold work checks rewrite behavior, not only raw AI-like text.
+3. Refresh public-web controls with `npm run benchmark:rebaseline:web`, then score the private raw rows with `npm run benchmark:rebaseline:score` when the source inventory changes.
+4. Refresh `docs/benchmarks/rebaseline-latest.md` only from a claim-ready manifest.
 5. Review per-register false positives before promoting any new number.

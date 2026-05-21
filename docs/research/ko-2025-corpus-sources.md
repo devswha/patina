@@ -26,7 +26,7 @@ into the repository.
 | HAERAE-HUB/KOREAN-SyntheticText-1.5B | broad synthetic Korean AI-like pool | Hugging Face dataset page shows text parquet with 1.55M rows | Synthetic side only. Check dataset card/license before committing full text; otherwise hash-only. | Sample short paragraphs for lexicon mining candidates, then manually review before pattern changes. |
 | Maintainer-generated 2026 prompts | controlled GPT/Claude/Gemini/open-weight model-era rows | Generated from repo-owned prompts and reproducible metadata | Preferred public seed when provider terms and prompt contents allow redistribution. Keep prompts public; keep vendor UI copies private if unsure. | Generate 5 rows each for GPT-family, Claude-family, Gemini-family, and open-weight across blog/product-doc/chat-update. |
 | Community false-positive submissions | real Patina FP cases | GitHub false-positive issue template captures language/register/score output | Use only with explicit fixture permission. Strip account/private context by default. | Convert accepted issues into hash-only rows first; promote to fixture only after permission. |
-| Public Korean web pages (Korea.kr, Toss Tech, Kakao/Naver/Toss docs, KISTEP/KEI/NRF, Seoul OpenGov) | natural-human Korean pilot controls for source/provenance workflow | Public pages with visible source URLs and licensing/copyright guidance where available | Commit only hash-only metadata until page-level redistribution and attribution are reviewed. Keep raw extracts in ignored `artifacts/rebaseline-2025/private/`. | `artifacts/rebaseline-2025/human-controls.public.jsonl` contains 141 scored hash-only candidate rows across blog, product-doc, academic-summary, technical-how-to, and chat-update registers; underfilled registers still need more source rows before threshold work. |
+| Public Korean web pages (Korea.kr, Toss Tech, Kakao/Naver/Toss docs, KISTEP/KEI/NRF, Seoul OpenGov) | natural-human Korean pilot controls for source/provenance workflow | Public pages with visible source URLs and licensing/copyright guidance where available | Commit only hash-only metadata until page-level redistribution and attribution are reviewed. Keep raw extracts in ignored `artifacts/rebaseline-2025/private/`. | `artifacts/rebaseline-2025/human-controls.public.jsonl` contains 250 scored hash-only candidate rows, with 50 rows each for blog, product-doc, academic-summary, technical-how-to, and chat-update; positive AI-like rows still block threshold work. |
 
 ## Intake commands
 
@@ -58,10 +58,10 @@ Tracked starter files:
   them locally before treating the file as evidence.
 - `artifacts/rebaseline-2025/sources.ko-public.jsonl` — tracked public-source
   inventory for hash-only web collection.
-- `artifacts/rebaseline-2025/human-controls.public.jsonl` — 141 web-sourced
-  Korean natural-human candidate rows. It is hash-only and validates the
-  collection path; underfilled registers and absent AI-like cells still block
-  threshold changes.
+- `artifacts/rebaseline-2025/human-controls.public.jsonl` — 250 web-sourced
+  Korean natural-human candidate rows, balanced at 50 rows for each tracked
+  register. It is hash-only and validates the collection path; absent AI-like
+  cells still block threshold changes.
 
 To refresh public-web candidates from the tracked source inventory:
 
@@ -94,13 +94,11 @@ npm run benchmark:rebaseline:score -- \
 
 ## Remaining Korean pilot holes
 
-The 141-row public-web pilot proves the collection and scoring path, but still
-leaves threshold work blocked. Use the original 25-row skeleton only as a local
-intake template; future rows should fill these holes instead:
+The 250-row public-web pilot proves the collection and scoring path and fills the native-human register coverage gate for #157. Use the original 25-row skeleton only as a local intake template; future rows should fill the positive and comparison holes instead:
 
 | bucket | remaining need | notes |
 |---|---:|---|
-| native human controls | +34 academic, +28 product-doc, +11 chat/update, +10 blog, +26 technical-how-to | Fill every register to n≥50 before threshold changes. |
+| native human controls | 0 for the five tracked registers | Current tracked split is n=50 each for academic-summary, product-doc, chat-update, blog, and technical-how-to. |
 | self-generated AI-like | n≥100 per GPT/Claude/Gemini/open-weight claim cell | Keep prompt ids, model ids, decoding, and provider terms notes. |
 | lightly/heavily edited AI | at least one light and one heavy edit per target register | Preserve before/after hashes and edit policy. |
 | KatFish metadata-only comparison | one small metadata-only slice per available genre | Hash-only until license review. |

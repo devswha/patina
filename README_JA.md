@@ -8,6 +8,14 @@
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
 [![Version](https://img.shields.io/badge/version-3.11.0-blue)](CHANGELOG.md)
 
+<p align="center">
+  <img src="assets/demo/patina-demo.gif" alt="patina が韓国語のAIっぽい文を整え、スコアを表示するターミナルデモGIF" width="780">
+</p>
+
+<p align="center">
+  <a href="https://patina.vibetip.help/"><b>自分の文章で試す — インストール不要</b></a>
+</p>
+
 > **AI の装飾だけを剥がし、意味はそのまま。**
 
 patina は、韓国語・英語・中国語・日本語の文章から AI っぽさの強いパターンを見つけ、意味を変えずに書き換えます。[Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex CLI](https://github.com/openai/codex)、[Cursor](https://cursor.sh)、OpenCode 向けのスキルとして使うことも、スタンドアロン Node.js CLI として実行することもできます。

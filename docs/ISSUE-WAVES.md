@@ -23,18 +23,18 @@ one-time install/CLI star nudge; #306 first-screen README terminal demo GIF.
 
 | issue | status | next action |
 |---|---|---|
-| #303 KO stylometry | partially implemented; 10-row hash-only web candidate manifest is scored, pilot template ready | Fill the remaining 25-row KO pilot before comparing KatFish-style spacing/comma signals against the local manifest. |
+| #303 KO stylometry | partially implemented; 10-row hash-only web candidate manifest is scored, pilot template ready | Fill the remaining 25-row KO pilot before comparing KatFish-style spacing/comma signals against the local manifest. See `docs/benchmarks/register-stratified.md`. |
 
 ## Wave C — corpus-gated research
 
 | issue | status | next action |
 |---|---|---|
-| #155 2025+ rebaseline | blocked on corpus; intake scaffold ready | Use `npm run benchmark:rebaseline:intake` for local rows, then collect ≥3 model families × ≥2 languages with n≥100 per claim cell before public catch-rate claims. |
-| #160 lexicon freshness | blocked on corpus | Re-mine per-entry provenance only after the paired 2025+ corpus exists and the Korean pilot has separated lexicon lift from register false positives. |
-| #157 Korean register FP | partially unblocked; scored hash-only web human-control candidates ready | Add enough academic/종결-다 controls to reach the 25-row KO pilot before loosening or tightening KO thresholds. |
-| #156 adversarial MPS | blocked on evaluator set | Needs examples where MPS passes but prose remains AI-like. |
-| #158 cross-judge matrix | blocked on evaluator budget | Run only after a stable sample manifest exists. |
-| #159 blinded human panel | blocked on reviewer pool | Requires reviewer instructions and consent/redistribution rules. |
+| #155 2025+ rebaseline | blocked on corpus; intake scaffold and status doc ready | Use `npm run benchmark:rebaseline:intake` for local rows, then collect ≥3 model families × ≥2 languages with n≥100 per claim cell before public catch-rate claims. See `docs/research/2026-rebaseline.md`. |
+| #160 lexicon freshness | metadata audit complete; per-entry remine blocked on corpus | Re-mine per-entry provenance only after the paired 2025+ corpus exists and the Korean pilot has separated lexicon lift from register false positives. See `docs/research/lexicon-freshness-audit.md`. |
+| #157 Korean register FP | partially unblocked; scored hash-only web human-control candidates ready, register gate documented | Add enough academic/종결-다 controls to reach the 25-row KO pilot before loosening or tightening KO thresholds. See `docs/benchmarks/register-stratified.md`. |
+| #156 adversarial MPS | repo-owned 10-fixture gate implemented | Keep `npm run quality:adversarial-mps` passing and use the report at `docs/research/adversarial-mps.md` as the MPS-v2 companion-check input. |
+| #158 cross-judge matrix | CLI judge-family warning implemented; full matrix blocked on evaluator budget | Use `--suspected-generator <family>` for score warnings now; run 3×3×30 agreement after a stable sample manifest exists. See `docs/research/judge-agreement.md`. |
+| #159 blinded human panel | study design ready; panel blocked on reviewer pool | Recruit 5 raters × 30 paired samples with consent/redistribution rules. See `docs/research/human-eval-panel.md`. |
 
 ## Wave D — ecosystem/integration expansion
 

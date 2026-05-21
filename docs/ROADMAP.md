@@ -13,6 +13,8 @@ This roadmap focuses on two things:
 - Public scope: Korean, English, Chinese, Japanese AI-writing pattern rewriting
 - Current benchmark layer:
   - deterministic stylometry/lexicon benchmark: `npm run benchmark`
+  - adversarial MPS fixture gate: `npm run quality:adversarial-mps`
+  - 2026 rebaseline status: [`docs/research/2026-rebaseline.md`](research/2026-rebaseline.md)
 - Current public calibration claim:
   - Korean editing-hotspot recall: 91% [84.0-95.4%], n=100
   - English HC3 editing-hotspot recall: 76% [66.7-83.3%], n=100
@@ -62,10 +64,12 @@ Goal: make claims easier to verify and harder to dismiss.
 - Split reports by language, class, and register.
 - Add a visible warning that scores measure AI-likeness, not authorship.
 - Link [`docs/research/ai-human-metrics.md`](research/ai-human-metrics.md) from README.
+- Keep the adversarial MPS report current so high meaning preservation cannot hide unchanged AI-like style.
 
 Acceptance criteria:
 
 - `npm run benchmark` still passes.
+- `npm run quality:adversarial-mps` still passes.
 - Benchmark output includes current binary metrics plus ranked/threshold metrics.
 - README claims are traceable to a specific benchmark report or spec section.
 

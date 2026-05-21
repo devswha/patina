@@ -253,6 +253,32 @@ describe('CLI End-to-End with Mock API', () => {
     await startMockServer('This is the humanized result.');
   });
 
+  it('warns when score judge family matches the suspected generator family', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    await stopMockServer();
+    await startMockServer('{ "overall": 23, "interpretation": "mostly human" }');
+
+    const dir = mkdtempSync(join(tmpdir(), 'patina-key-'));
+    const keyPath = resolve(dir, 'key.txt');
+    writeFileSync(keyPath, 'test-key', 'utf8');
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+
+    const { errors } = await captureConsole(() => main([
+      '--lang', 'en',
+      '--score',
+      '--suspected-generator', 'gpt',
+      '--api-key-file', keyPath,
+      '--base-url', `http://127.0.0.1:${mockPort}`,
+      '--model', 'gpt-5',
+      testFile,
+    ]));
+
+    assert.ok(errors.some((line) => line.includes('score judge family (openai) matches --suspected-generator')));
+    await stopMockServer();
+    await startMockServer('This is the humanized result.');
+  });
+
   it('should group help output and list current backend names', async () => {
     const { logs } = await captureConsole(() => main(['--help']));
     const help = logs.join('\n');
@@ -267,6 +293,7 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(help.includes('--format <fmt>'), 'help should document output format');
     assert.ok(help.includes('--quiet'), 'help should document quiet logs');
     assert.ok(help.includes('--json-logs'), 'help should document structured stderr logs');
+    assert.ok(help.includes('--suspected-generator <family>'), 'help should document judge overlap warning');
     assert.ok(help.includes('--card <path>'), 'help should document share-card SVG output');
     assert.ok(help.includes('--max-timeout <sec>'), 'help should document MAX wall-clock timeout');
     assert.ok(help.includes('--no-color'), 'help should document diff color opt-out');

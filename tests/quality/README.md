@@ -82,6 +82,29 @@ Passing evaluated rewrites should reach `after_score <= 30`,
 unless the live model path is deliberately allowed, because LLM output is
 non-deterministic.
 
+## Adversarial MPS fixtures
+
+`npm run quality:adversarial-mps` validates a small, repo-owned fixture set
+where explicit meaning anchors are preserved but AI-like wording remains. This
+guards against treating MPS as a humanness score.
+
+```bash
+npm run quality:adversarial-mps
+node scripts/adversarial-mps-report.mjs --check --json
+```
+
+Inputs live in `tests/quality/adversarial-mps/fixtures.jsonl`; the report is
+written to `docs/research/adversarial-mps.md`. The gate is:
+
+- anchor-MPS proxy ≥90;
+- deterministic AI score ≥60;
+- no private or scraped source text.
+
+If this gate passes, the case is intentionally adversarial: meaning survived,
+but style still needs work. MAX/Ouroboros selection should prefer candidates
+that pass MPS and lower the AI score, rather than letting high MPS hide
+recurring AI markers.
+
 ## 2025+ rebaseline manifest
 
 `npm run benchmark:rebaseline` validates the public JSONL manifest scaffold and

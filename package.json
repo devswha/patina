@@ -35,7 +35,8 @@
     "benchmark:rebaseline:intake": "node scripts/rebaseline-intake.mjs",
     "benchmark:rebaseline:score": "node scripts/rebaseline-score.mjs",
     "benchmark:rebaseline:web": "node scripts/rebaseline-web-collect.mjs",
-    "benchmark:katfish-ko": "node scripts/katfish-calibration.mjs"
+    "benchmark:katfish-ko": "node scripts/katfish-calibration.mjs",
+    "lexicon:freshness": "node scripts/lexicon-freshness.mjs --check"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
@@ -119,6 +120,7 @@
     "artifacts/rebaseline-2025/human-controls.public.jsonl",
     "scripts/rebaseline-web-collect.mjs",
     "scripts/katfish-calibration.mjs",
+    "scripts/lexicon-freshness.mjs",
     "artifacts/rebaseline-2025/sources.ko-public.jsonl"
   ],
   "publishConfig": {

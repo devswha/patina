@@ -117,7 +117,7 @@ AI 문체 패턴은 모델이 미세 조정되면서 바뀝니다. 어떤 패턴
 - **커뮤니티 보고:** 더 이상 reliable signal이 아닌 패턴을 발견하면 이슈를 엽니다.
 - **새 패턴 제안:** 새 AI tell을 발견하면 실제 예시 3개 이상과 50문서 평가 fixture 또는 수집 계획을 포함해 이슈를 엽니다.
 - **분기별 리뷰:** 유지보수자는 [`process/pattern-freshness.md`](process/pattern-freshness.md)의 corpus freeze window, promotion threshold, frontmatter metadata 규칙을 따릅니다.
-- **Lexicon provenance:** 새로 마이닝하거나 다시 마이닝한 lexicon 항목은 동작을 바꾸기 전에 `added`, `source`, `last_validated` provenance를 기록해야 합니다.
+- **Lexicon provenance:** 새로 마이닝하거나 다시 마이닝한 lexicon 항목은 동작을 바꾸기 전에 `added`, `source`, `last_validated` provenance를 기록해야 하며, `npm run lexicon:freshness`로 sidecar가 실제 shipped entry와 맞는지 확인합니다.
 - **버전 메모:** 각 패턴 팩에는 `version` 필드가 있습니다. 패턴이 바뀌면 올립니다.
 - **대체 없는 삭제 금지:** 패턴을 바로 제거하지 않습니다. `low` severity로 낮추거나 프로필에서 `reduce`로 옮깁니다.
 

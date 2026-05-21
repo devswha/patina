@@ -117,7 +117,7 @@ How we handle this:
 - **Community reporting:** If you notice a pattern that's no longer a reliable signal, open an issue
 - **New pattern proposals:** If you spot a new AI tell, file an issue with 3+ real-world examples and a 50-document evaluation fixture or collection plan
 - **Quarterly review:** Maintainers follow [`process/pattern-freshness.md`](process/pattern-freshness.md) for corpus freeze windows, promotion thresholds, and frontmatter metadata
-- **Lexicon provenance:** Newly mined or re-mined lexicon entries need `added`, `source`, and `last_validated` provenance before changing shipped behavior
+- **Lexicon provenance:** Newly mined or re-mined lexicon entries need `added`, `source`, and `last_validated` provenance before changing shipped behavior; run `npm run lexicon:freshness` to verify sidecars match the shipped entries
 - **Version notes:** Each pattern pack has a `version` field — bump it when patterns change
 - **No deletion without replacement:** We don't remove patterns outright; we mark them as `low` severity or move them to `reduce` in profiles
 

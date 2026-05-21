@@ -1,0 +1,542 @@
+[
+  {
+    "kind": "phrase",
+    "entry": "总而言之",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "综上所述",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "总的来说",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "概括而言",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "不难看出",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "值得注意的是",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "需要指出的是",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "重要的是",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "至关重要的是",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "在当今社会",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "在数字时代",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "随着科技的发展",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "随着社会的进步",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "在这个过程中",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "从多个角度来看",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "从长远来看",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "不仅~而且",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "一方面~另一方面",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "对于~而言",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "从某种程度上说",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "可以说",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "不言而喻",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "显得尤为重要",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "具有重要意义",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "发挥着重要作用",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "起着至关重要的作用",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "为~提供了新的可能",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "带来了新的机遇",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "面临新的挑战",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "注入新的活力",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "赋予~新的内涵",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "打造更加",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "推动~高质量发展",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "提升用户体验",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "优化整体流程",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "实现可持续发展",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "构建完整生态",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "形成良性循环",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "助力~发展",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "让我们一起",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "深入探讨",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "全面了解",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "多维度分析",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "本文将带你",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "接下来我们将",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "不断推进",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "持续赋能",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "精准触达",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "有效提升",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "最大限度地",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "进一步增强",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "为未来奠定基础",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "开启新的篇章",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "迈向新的阶段",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "释放巨大潜力",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "展现出独特价值",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "成为不可或缺的一部分",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "以人为本的理念",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "兼顾效率与体验",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "为读者提供参考",
+    "added": "2026-05-20",
+    "source": "zh-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  }
+]

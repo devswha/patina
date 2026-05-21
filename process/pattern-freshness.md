@@ -94,8 +94,19 @@ lift: "hot/cold document-frequency ratio, e.g. 5.2x"
 
 Legacy lexicons can stay grouped under `corpus-snapshot:` until a remine lands, but they must not be described as fresh or 2025+ validated.
 
+Current lexicon provenance state:
+
+- English was re-mined on 2026-05-22 against the HAP-E English paired corpus and now stores per-entry lift evidence in `lexicon/provenance/ai-en.json`.
+- Korean, Mandarin Chinese, and Japanese carry per-entry sidecars too, but legacy or starter entries keep `null` fields where the repository does not have entry-level source/lift evidence yet.
+
+Run the provenance guard before changing lexicon behavior:
+
+```bash
+npm run lexicon:freshness
+```
+
 ## Re-baseline claim gate
 
 Issue #155 remains blocked until an executed report measures catch rate and false-positive rate on at least three model families across at least two languages with n≥100 per cell and binomial 95% confidence intervals. Until that report lands, README claims should point to the checked-in deterministic benchmark and label it as such.
 
-Issue #160 remains blocked for the actual per-entry remine until a 2025+ paired corpus exists. This process defines the metadata contract; it does not invent provenance for old entries.
+Issue #160's English remine is complete, but issue #155 remains the broader public-claim gate. Do not cite lexicon remine results as overall detector catch-rate claims.

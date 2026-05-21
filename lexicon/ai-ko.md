@@ -3,6 +3,7 @@ pack: ai-lexicon-ko
 language: ko
 version: 1.1.0
 entries: 102
+entry-provenance: lexicon/provenance/ai-ko.json
 corpus-snapshot:
   id: ko-v1.1-2026-05-04-claude-namu-wiki
   status: partial

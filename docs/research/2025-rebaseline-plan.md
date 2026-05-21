@@ -36,7 +36,7 @@ confidence intervals.
 
 1. Start with Korean calibration (#303/#157): collect natural Korean controls for academic/종결-다, blog, product-doc, and community registers before changing KO thresholds again.
 2. Then run the model-era rebaseline (#155): score the fixed manifest across at least three generator families and at least two languages.
-3. Only after the paired corpus exists, re-mine lexicon entries (#160) with per-entry provenance and ≥4× hot/cold lift.
+3. Keep lexicon freshness separate from public catch-rate claims: English #160 remine now has per-entry provenance and ≥4× hot/cold lift evidence; rerun it during quarterly reviews, and do the same for KO/ZH/JA when paired corpora exist.
 4. Use the same manifest for cross-judge and blinded-panel follow-ups (#158/#159) instead of creating separate incompatible samples; keep the in-tree adversarial MPS gate current as a companion check.
 
 ## Data rules

@@ -2,12 +2,13 @@
 pack: ai-lexicon-en
 language: en
 version: 1.0.0
-entries: 108
+entries: 88
+entry-provenance: lexicon/provenance/ai-en.json
 corpus-snapshot:
-  id: bootstrap-en-lexicon-pre-provenance
-  status: needs-re-mine
-  source: maintainer-curated English lexicon before per-entry provenance; not a 2025+ paired corpus
-  last_validated: null
+  id: hape-en-gpt4o-vs-human-2026-05-22
+  status: current
+  source: HAP-E English paired corpus, GPT-4o 2024-08-06 continuations vs human chunk_2; see docs/benchmarks/lexicon-freshness-en-2026-05-22.md
+  last_validated: 2026-05-22
 ---
 
 # AI-favored vocabulary (English)
@@ -31,7 +32,6 @@ Match policy:
 
 - transformative
 - cutting-edge
-- state-of-the-art
 - bespoke
 - curated
 - dynamic
@@ -42,21 +42,16 @@ Match policy:
 - streamlined
 - empower
 - empowering
-- enable
 - enabling
 - align
 - alignment
 - pivot
 - ecosystem
-- workflow
 - skillset
 - toolkit
-- framework
 - modalities
-- dimensions
 - harness
 - unlock
-- unleash
 - bolster
 - amplify
 - accelerate
@@ -74,7 +69,6 @@ Match policy:
 - thrive
 - thriving
 - elevate
-- elevated
 - reimagine
 - rethink
 - envision
@@ -82,15 +76,12 @@ Match policy:
 
 ## Multi-word phrases (case-insensitive substring)
 
-- a wide range of
 - a wide array of
-- a host of
 - a plethora of
 - a myriad of
 - in today's
 - in the modern era
 - in the digital age
-- in the age of
 - ever-evolving
 - ever-changing
 - rapidly evolving
@@ -108,35 +99,25 @@ Match policy:
 - a new era
 - a new chapter
 - a new frontier
-- gain a deeper understanding
 - gain valuable insights
 - glean insights
 - valuable insights
 - key insights
 - key takeaways
-- key drivers
-- driving force
 - play a crucial role
-- play a key role
 - plays a vital role
 - pave the path
 - bridge the gap
-- close the gap
 - at the forefront
 - at the heart of
 - at its core
-- end-to-end
 - holistic approach
 - comprehensive approach
 - best practices
 - continuous improvement
-- to ensure that
-- it is essential to
 - a deeper dive
-- under the hood
 - the bigger picture
 - a robust framework
-- on the other hand
 - the digital landscape
 - the regulatory landscape
 - the competitive landscape
@@ -144,9 +125,9 @@ Match policy:
 ## Notes on each entry (why AI-favored)
 
 Single words above cluster around three habits the catalog under-covers:
-modal scaffolding ("empower", "enable", "harness", "unlock"), abstraction
-nouns AI defaults to over concrete ones ("ecosystem", "workflow", "toolkit",
-"framework", "modalities", "dimensions"), and self-flattering quality
+modal scaffolding ("empower", "harness", "unlock"), abstraction
+nouns AI defaults to over concrete ones ("ecosystem", "toolkit",
+"modalities"), and self-flattering quality
 adjectives ("meaningful", "impactful", "thoughtful", "compelling"). None
 duplicate `en-language.md` Pattern 7's word list — they extend it.
 
@@ -155,6 +136,17 @@ Calibration drop list (v3.7 eval, see core/stylometry.md §16):
 "methodologies", "redefine", "accessible", "equitable", "one of the most",
 "in conjunction with", "the power of" — fired more on Wikipedia/HC3 human
 than on HC3 ChatGPT. Do not re-add without re-running the eval.
+
+Freshness drop list (2026-05-22 HAP-E re-mine, see
+`docs/benchmarks/lexicon-freshness-en-2026-05-22.md`):
+"state-of-the-art", "enable", "workflow", "framework", "dimensions",
+"unleash", "elevated", "a wide range of", "a host of", "in the age of",
+"gain a deeper understanding", "key drivers", "driving force",
+"play a key role", "close the gap", "end-to-end", "to ensure that",
+"it is essential to", "under the hood", "on the other hand" — missed the
+≥4× hot-vs-cold document-frequency lift or zero-hot floor against 8,290
+GPT-4o continuations and 8,290 paired human controls. Do not re-add without
+a newer paired-corpus lift report.
 
 The phrases above are templated openers and closers AI uses to package
 ordinary content as significant: "in today's [adjective] world", "the

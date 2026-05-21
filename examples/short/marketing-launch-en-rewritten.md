@@ -1,0 +1,1 @@
+If Notion still starts as a blank page for your team, open this pack first. It includes 30 templates for common workflows. Duplicate one, adjust the fields you need, and use it for a team project or your own planning without starting from scratch.

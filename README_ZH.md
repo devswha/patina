@@ -9,7 +9,7 @@
 [![Version](https://img.shields.io/badge/version-3.11.0-blue)](CHANGELOG.md)
 
 <p align="center">
-  <img src="assets/demo/patina-demo.gif" alt="patina 将带有 AI 味的韩文文案改写并显示评分的终端演示 GIF" width="780">
+  <img src="assets/demo/patina-demo-en.gif" alt="patina 将带有 AI 味的英文文案改写并显示评分的终端演示 GIF" width="780">
 </p>
 
 <p align="center">

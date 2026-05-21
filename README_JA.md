@@ -9,7 +9,7 @@
 [![Version](https://img.shields.io/badge/version-3.11.0-blue)](CHANGELOG.md)
 
 <p align="center">
-  <img src="assets/demo/patina-demo.gif" alt="patina が韓国語のAIっぽい文を整え、スコアを表示するターミナルデモGIF" width="780">
+  <img src="assets/demo/patina-demo-en.gif" alt="patina が英語のAIっぽい文を整え、スコアを表示するターミナルデモGIF" width="780">
 </p>
 
 <p align="center">

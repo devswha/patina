@@ -1,6 +1,6 @@
 # Rebaseline Manifest Summary
 
-- Generated at: 2026-05-21T08:43:41.934Z
+- Generated at: 2026-05-21T15:02:19.298Z
 - Input: `tests/quality/rebaseline-manifest.example.jsonl`
 - Records: 5
 - Protocol target: 25 samples per language × class × register cell
@@ -69,14 +69,18 @@ Validation: **PASS**
 
 Public performance claim: **BLOCKED**
 
-- positive corpus has 0/2 languages with n≥100
-- positive corpus has 0/3 generator families with n≥100
-- natural/human corpus has 0/2 languages with n≥100
-- expected_hot and predicted_hot outcome rows are incomplete; run a scored report before README claims
+| blocker |
+|---|
+| positive corpus has 0/2 languages with n≥100 |
+| positive corpus has 0/3 generator families with n≥100 |
+| natural/human corpus has 0/2 languages with n≥100 |
+| expected_hot and predicted_hot outcome rows are incomplete; run a scored report before README claims |
 
-Qualified positive cells (language × generator family, n≥100): 0
-Qualified natural-language cells (language, n≥100): 0
-Outcome rows with expected/predicted labels: 0
+| claim-gate count | value |
+|---|---:|
+| qualified positive cells (language × generator family, n≥100) | 0 |
+| qualified natural-language cells (language, n≥100) | 0 |
+| outcome rows with expected/predicted labels | 0 |
 
 ## Outcome metrics
 

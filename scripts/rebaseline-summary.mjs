@@ -306,6 +306,7 @@ export function summarizeManifest(records, options = {}) {
     protocolCoverage: summarizeProtocolCoverage(protocolCells),
     claimGate: evaluateClaimGate({ records, positiveClaimCells, naturalClaimCells, outcomeRecords }),
     metrics: summarizeOutcomes(outcomeRecords),
+    metricsByRegister: summarizeOutcomesBy(outcomeRecords, (record) => record.register),
   };
 }
 
@@ -325,7 +326,7 @@ export function renderMarkdownReport(summary, validation = {}) {
   const claim = summary.claimGate;
   const metrics = summary.metrics;
 
-  return `# Rebaseline Manifest Summary
+  const markdown = `# Rebaseline Manifest Summary
 
 - Generated at: ${summary.generatedAt}
 - Input: ${summary.input ? `\`${escapeMarkdown(summary.input)}\`` : 'not recorded'}
@@ -368,16 +369,17 @@ ${renderUnderfilled(summary.protocolCoverage.underfilledCells, 12)}
 
 Public performance claim: **${claim.ready ? 'READY' : 'BLOCKED'}**
 
-${claim.blockers.length ? claim.blockers.map((item) => `- ${escapeMarkdown(item)}`).join('\n') : '- Gate conditions met by this manifest.'}
+${claim.blockers.length ? renderBlockerTable(claim.blockers) : 'Gate conditions met by this manifest.'}
 
-Qualified positive cells (language × generator family, n≥${summary.targets.claimPerCell}): ${claim.qualifiedPositiveCells.length}
-Qualified natural-language cells (language, n≥${summary.targets.claimPerCell}): ${claim.qualifiedNaturalCells.length}
-Outcome rows with expected/predicted labels: ${metrics.total}
+${renderClaimGateStats(claim, metrics, summary.targets)}
 
 ## Outcome metrics
 
 ${metrics.total ? renderMetrics(metrics) : 'No complete `expected_hot` + `predicted_hot` outcome rows yet. This manifest is corpus metadata, not a benchmark claim.'}
+
+${metrics.total ? `### By register\n\n${renderMetricsByRegister(summary.metricsByRegister)}` : ''}
 `;
+  return `${markdown.trimEnd()}\n`;
 }
 
 export function writeReportFiles(summary, validation = {}, options = {}) {
@@ -494,14 +496,33 @@ function summarizeOutcomes(records) {
   const precision = metrics.tp + metrics.fp ? metrics.tp / (metrics.tp + metrics.fp) : 0;
   const recall = metrics.tp + metrics.fn ? metrics.tp / (metrics.tp + metrics.fn) : 0;
   const f1 = precision + recall ? (2 * precision * recall) / (precision + recall) : 0;
+  const falsePositiveRate = metrics.fp + metrics.tn ? metrics.fp / (metrics.fp + metrics.tn) : 0;
+  const falseNegativeRate = metrics.fn + metrics.tp ? metrics.fn / (metrics.fn + metrics.tp) : 0;
   return {
     ...metrics,
     accuracy: round(accuracy),
     precision: round(precision),
     recall: round(recall),
     f1: round(f1),
+    falsePositiveRate: round(falsePositiveRate),
+    falseNegativeRate: round(falseNegativeRate),
     accuracyCi: wilsonInterval(metrics.tp + metrics.tn, metrics.total),
   };
+}
+
+function summarizeOutcomesBy(records, keyFn) {
+  const groups = {};
+  for (const record of records) {
+    const key = keyFn(record) || 'unknown';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(record);
+  }
+
+  return Object.fromEntries(
+    Object.entries(groups)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, group]) => [key, summarizeOutcomes(group)])
+  );
 }
 
 function wilsonInterval(successes, n, z = 1.959963984540054) {
@@ -566,6 +587,24 @@ function renderUnderfilled(cells, limit) {
   return ['| cell | n |', '|---|---:|', ...rows].join('\n') + suffix;
 }
 
+function renderBlockerTable(blockers) {
+  return [
+    '| blocker |',
+    '|---|',
+    ...blockers.map((item) => `| ${escapeMarkdown(item)} |`),
+  ].join('\n');
+}
+
+function renderClaimGateStats(claim, metrics, targets) {
+  return [
+    '| claim-gate count | value |',
+    '|---|---:|',
+    `| qualified positive cells (language × generator family, n≥${targets.claimPerCell}) | ${claim.qualifiedPositiveCells.length} |`,
+    `| qualified natural-language cells (language, n≥${targets.claimPerCell}) | ${claim.qualifiedNaturalCells.length} |`,
+    `| outcome rows with expected/predicted labels | ${metrics.total} |`,
+  ].join('\n');
+}
+
 function renderMetrics(metrics) {
   return [
     '| metric | value |',
@@ -575,7 +614,25 @@ function renderMetrics(metrics) {
     `| precision | ${pct(metrics.precision)} |`,
     `| recall | ${pct(metrics.recall)} |`,
     `| F1 | ${metrics.f1.toFixed(3)} |`,
+    `| false positive rate | ${pct(metrics.falsePositiveRate)} |`,
+    `| false negative rate | ${pct(metrics.falseNegativeRate)} |`,
     `| TP/FP/FN/TN | ${metrics.tp}/${metrics.fp}/${metrics.fn}/${metrics.tn} |`,
+  ].join('\n');
+}
+
+function renderMetricsByRegister(metricsByRegister = {}) {
+  const keys = [...new Set([...MATRIX.registers, ...Object.keys(metricsByRegister).sort()])];
+  const rows = keys
+    .filter((key) => metricsByRegister[key])
+    .map((key) => {
+      const metrics = metricsByRegister[key];
+      return `| ${escapeMarkdown(key)} | ${metrics.total} | ${pct(metrics.falsePositiveRate)} | ${pct(metrics.falseNegativeRate)} | ${metrics.tp}/${metrics.fp}/${metrics.fn}/${metrics.tn} |`;
+    });
+  if (!rows.length) return 'No register-level outcome rows yet.';
+  return [
+    '| register | n | FP rate | FN rate | TP/FP/FN/TN |',
+    '|---|---:|---:|---:|---:|',
+    ...rows,
   ].join('\n');
 }
 

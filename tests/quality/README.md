@@ -30,12 +30,14 @@ follows the 4-signal OR rule from `core/stylometry.md` §16:
 paragraph is SUSPECT iff
   burstiness_band == "low"  OR
   MATTR_band == "low"       OR
-  lexicon_density > threshold OR
+  (lexicon_density > threshold AND lexicon_min_hits is satisfied) OR
   koDiagnostics.hot == true
 ```
 
 `burstiness_band` is only assigned when a paragraph has at least three
 sentences; two-sentence CV is recorded for diagnostics but is not stable enough
+to classify a paragraph by itself. For ko/zh/ja, a single lexicon hit is also
+only an audit hint; the default hot threshold requires at least two CJK hits.
 to make the paragraph hot by itself.
 
 For `lang=ko`, `analyzeText()` also records Korean diagnostic fields:

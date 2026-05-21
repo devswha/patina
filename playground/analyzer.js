@@ -6,6 +6,12 @@ import { PLAYGROUND_LEXICONS } from './data/lexicons.js';
 export const SUPPORTED_LANGS = ['ko', 'en', 'zh', 'ja'];
 export const DEFAULT_LANG = 'ko';
 export const DEFAULT_LEXICON_DENSITY_THRESHOLD = 2.0;
+export const DEFAULT_LEXICON_MIN_HOT_MATCHES = {
+  default: 1,
+  ko: 2,
+  zh: 2,
+  ja: 2,
+};
 export const DEFAULT_BURSTINESS_BANDS = { low: 0.30, high: 0.50 };
 export const DEFAULT_MATTR_BANDS = { low: 0.55, high: 0.70 };
 export const DEFAULT_MATTR_WINDOW = 50;
@@ -298,6 +304,7 @@ export function analyzePlaygroundText(text, opts = {}) {
   const lexicon = PLAYGROUND_LEXICONS[lang];
   const paragraphs = splitParagraphs(text);
   const threshold = opts.lexiconDensityThreshold ?? DEFAULT_LEXICON_DENSITY_THRESHOLD;
+  const minHotMatches = opts.lexiconMinHotMatches ?? DEFAULT_LEXICON_MIN_HOT_MATCHES;
 
   const analyzed = paragraphs.map((paragraph, idx) => {
     const sentences = splitSentences(paragraph);
@@ -312,7 +319,11 @@ export function analyzePlaygroundText(text, opts = {}) {
     const koSignals = lang === 'ko'
       ? buildKoreanSignals(paragraph, sentences.length)
       : {};
-    const lexiconHot = lex.density > threshold;
+    const lexiconHot = classifyLexiconHot(lex, {
+      lang,
+      densityThreshold: threshold,
+      minHotMatches,
+    });
     const hot =
       cvBand === 'low' || mattrBand === 'low' || lexiconHot || Boolean(koSignals.koDiagnostics?.hot);
     const reasons = buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics: koSignals.koDiagnostics });
@@ -346,6 +357,29 @@ export function analyzePlaygroundText(text, opts = {}) {
     auditItems: analyzed.filter((p) => p.hot || p.lexicon.matches > 0),
     note: 'Audit-only deterministic score. It marks editing hotspots, not authorship or intent.',
   };
+}
+
+function classifyLexiconHot(
+  lexiconStats,
+  {
+    lang,
+    densityThreshold = DEFAULT_LEXICON_DENSITY_THRESHOLD,
+    minHotMatches = DEFAULT_LEXICON_MIN_HOT_MATCHES,
+  } = {}
+) {
+  const matches = lexiconStats?.matches ?? 0;
+  const density = lexiconStats?.density ?? 0;
+  const minMatches = resolveMinHotMatches(lang, minHotMatches);
+  return matches >= minMatches && density > densityThreshold;
+}
+
+function resolveMinHotMatches(lang, minHotMatches) {
+  if (typeof minHotMatches === 'number' && Number.isFinite(minHotMatches)) {
+    return Math.max(1, minHotMatches);
+  }
+  const normalized = typeof lang === 'string' ? lang.toLowerCase() : 'default';
+  const value = minHotMatches?.[normalized] ?? minHotMatches?.default;
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(1, value) : 1;
 }
 
 export function scoreBand(score) {

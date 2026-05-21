@@ -24,7 +24,7 @@ one-time install/CLI star nudge; #306 first-screen README terminal demo GIF;
 
 | issue | status | next action |
 |---|---|---|
-| #303 KO stylometry | partially implemented; 10-row hash-only web candidate manifest is scored, pilot template ready | Fill the remaining 25-row KO pilot before comparing KatFish-style spacing/comma signals against the local manifest. See `docs/benchmarks/register-stratified.md`. |
+| #303 KO stylometry | 25-row hash-only KO human-control pilot is scored; CJK single-hit lexicon guard reduced pilot FPs from 5/25 to 1/25 | Keep thresholds blocked until the n≥50/register gate is met, then compare spacing/comma/suffix signals against the expanded manifest. See `docs/benchmarks/register-stratified.md`. |
 
 ## Wave C — corpus-gated research
 
@@ -32,7 +32,7 @@ one-time install/CLI star nudge; #306 first-screen README terminal demo GIF;
 |---|---|---|
 | #155 2025+ rebaseline | blocked on corpus; intake scaffold and status doc ready | Use `npm run benchmark:rebaseline:intake` for local rows, then collect ≥3 model families × ≥2 languages with n≥100 per claim cell before public catch-rate claims. See `docs/research/2026-rebaseline.md`. |
 | #160 lexicon freshness | metadata audit complete; per-entry remine blocked on corpus | Re-mine per-entry provenance only after the paired 2025+ corpus exists and the Korean pilot has separated lexicon lift from register false positives. See `docs/research/lexicon-freshness-audit.md`. |
-| #157 Korean register FP | partially unblocked; scored hash-only web human-control candidates ready, register gate documented | Add enough academic/종결-다 controls to reach the 25-row KO pilot before loosening or tightening KO thresholds. See `docs/benchmarks/register-stratified.md`. |
+| #157 Korean register FP | 25-row pilot unblocked; false positives now reported by register | Expand each register to n≥50 reviewed controls before loosening or tightening KO thresholds. See `docs/benchmarks/register-stratified.md` and `docs/benchmarks/register-stratified-latest.md`. |
 | #158 cross-judge matrix | CLI judge-family warning implemented; full matrix blocked on evaluator budget | Use `--suspected-generator <family>` for score warnings now; run 3×3×30 agreement after a stable sample manifest exists. See `docs/research/judge-agreement.md`. |
 | #159 blinded human panel | study design ready; panel blocked on reviewer pool | Recruit 5 raters × 30 paired samples with consent/redistribution rules. See `docs/research/human-eval-panel.md`. |
 

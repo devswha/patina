@@ -121,7 +121,7 @@ function builtInDetector(results) {
         name: 'Patina deterministic suspect-zone analyzer',
         kind: 'in-tree',
         mode: 'offline',
-        threshold: 'burstiness low OR MATTR low OR lexicon density > threshold OR koDiagnostics hot',
+        threshold: 'burstiness low OR MATTR low OR lexicon density > threshold with min hits OR koDiagnostics hot',
       },
     ],
     rows: results.fixtures.map((fixture) => ({

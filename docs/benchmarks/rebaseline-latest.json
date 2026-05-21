@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-05-21T08:43:41.934Z",
+  "generatedAt": "2026-05-21T15:02:19.298Z",
   "input": "tests/quality/rebaseline-manifest.example.jsonl",
   "targets": {
     "protocolPerLanguageClassRegister": 25,
@@ -84,12 +84,15 @@
     "precision": 0,
     "recall": 0,
     "f1": 0,
+    "falsePositiveRate": 0,
+    "falseNegativeRate": 0,
     "accuracyCi": {
       "low": 0,
       "high": 0,
       "method": "Wilson score interval, 95%"
     }
   },
+  "metricsByRegister": {},
   "validation": {
     "errors": [],
     "warnings": []

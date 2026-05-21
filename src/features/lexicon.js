@@ -7,6 +7,12 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export const DEFAULT_LEXICON_DENSITY_THRESHOLD = 2.0;
+export const DEFAULT_LEXICON_MIN_HOT_MATCHES = {
+  default: 1,
+  ko: 2,
+  zh: 2,
+  ja: 2,
+};
 
 // Parses the two well-known sections out of a lexicon markdown file.
 // Returns { strict: string[], phrases: string[] }.
@@ -88,4 +94,27 @@ export function computeDensity(paragraphText, tokens, lexicon) {
 
   const density = tokens.length > 0 ? (hits.length / tokens.length) * 1000 : 0;
   return { matches: hits.length, density, hits };
+}
+
+export function classifyLexiconHot(
+  lexiconStats,
+  {
+    lang,
+    densityThreshold = DEFAULT_LEXICON_DENSITY_THRESHOLD,
+    minHotMatches = DEFAULT_LEXICON_MIN_HOT_MATCHES,
+  } = {}
+) {
+  const matches = lexiconStats?.matches ?? 0;
+  const density = lexiconStats?.density ?? 0;
+  const minMatches = resolveMinHotMatches(lang, minHotMatches);
+  return matches >= minMatches && density > densityThreshold;
+}
+
+function resolveMinHotMatches(lang, minHotMatches) {
+  if (typeof minHotMatches === 'number' && Number.isFinite(minHotMatches)) {
+    return Math.max(1, minHotMatches);
+  }
+  const normalized = typeof lang === 'string' ? lang.toLowerCase() : 'default';
+  const value = minHotMatches?.[normalized] ?? minHotMatches?.default;
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(1, value) : 1;
 }

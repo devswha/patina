@@ -16,6 +16,7 @@
     "benchmark:report": "node scripts/benchmark-report.mjs",
     "benchmark:rebaseline": "node scripts/rebaseline-summary.mjs",
     "benchmark:rebaseline:report": "node scripts/rebaseline-summary.mjs --write",
+    "benchmark:register-pilot": "node scripts/rebaseline-summary.mjs --input artifacts/rebaseline-2025/human-controls.public.jsonl",
     "quality:adversarial-mps": "node scripts/adversarial-mps-report.mjs --check",
     "dogfood": "node tests/quality/dogfood.mjs",
     "badge": "node scripts/badge-json.mjs",

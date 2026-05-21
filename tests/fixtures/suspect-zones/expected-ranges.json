@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedBy": "node scripts/update-benchmark-ranges.mjs",
-  "generatedAt": "2026-05-21T11:05:04.888Z",
+  "generatedAt": "2026-05-21T14:56:50.085Z",
   "fixtureCount": 39,
   "tolerances": {
     "cv": 0.025,
@@ -561,7 +561,7 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -591,7 +591,7 @@
         "burstiness": true,
         "koDiagnostics": true,
         "mattr": false,
-        "lexicon": true
+        "lexicon": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -621,7 +621,7 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -707,7 +707,7 @@
         "burstiness": true,
         "koDiagnostics": true,
         "mattr": false,
-        "lexicon": true
+        "lexicon": false
       },
       "cv_band": "low",
       "cv_range": [

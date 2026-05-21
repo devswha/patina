@@ -1,8 +1,8 @@
 {
   "reportVersion": 1,
-  "generatedAt": "2026-05-21T11:05:40.866Z",
+  "generatedAt": "2026-05-21T15:02:19.159Z",
   "fixtureCount": 39,
-  "benchmarkGeneratedAt": "2026-05-21T11:05:40.849Z",
+  "benchmarkGeneratedAt": "2026-05-21T15:02:19.140Z",
   "note": "Offline comparison protocol. Built-in Patina row uses deterministic suspect-zone analyzer; third-party rows are manual opt-in only.",
   "manualInput": null,
   "detectors": [
@@ -11,7 +11,7 @@
       "name": "Patina deterministic suspect-zone analyzer",
       "kind": "in-tree",
       "mode": "offline",
-      "threshold": "burstiness low OR MATTR low OR lexicon density > threshold OR koDiagnostics hot"
+      "threshold": "burstiness low OR MATTR low OR lexicon density > threshold with min hits OR koDiagnostics hot"
     }
   ],
   "summaries": {

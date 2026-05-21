@@ -57,6 +57,18 @@ test('analyzeText exposes zh/ja lexicon hits as a hot signal', () => {
   assert.ok(result.paragraphs[0].lexicon.hits.includes('综上所述'));
 });
 
+test('single CJK lexicon hits remain audit hints instead of hot zones', () => {
+  const single = analyzeText('이 문서는 다음 작업의 기반을 설명한다.', { lang: 'ko', repoRoot: REPO_ROOT });
+  assert.equal(single.paragraphs[0].lexicon.matches, 1);
+  assert.equal(single.paragraphs[0].lexicon.hot, false);
+  assert.equal(single.hot, false);
+
+  const clustered = analyzeText('이 문서는 다음 작업의 핵심 기반과 변화 흐름을 설명한다.', { lang: 'ko', repoRoot: REPO_ROOT });
+  assert.ok(clustered.paragraphs[0].lexicon.matches >= 2);
+  assert.equal(clustered.paragraphs[0].lexicon.hot, true);
+  assert.equal(clustered.hot, true);
+});
+
 test('scoreDeterministicSignals respects lexicon.languages gating', () => {
   const text = '综上所述，在当今社会，写作工具发挥着重要作用。它为远程协作提供了新的可能。';
   const enabled = scoreDeterministicSignals({

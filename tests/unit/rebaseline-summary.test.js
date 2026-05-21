@@ -28,12 +28,13 @@ test('example rebaseline manifest validates and keeps public claims blocked', ()
   const markdown = renderMarkdownReport(summary, manifest);
   assert.match(markdown, /Public performance claim: \*\*BLOCKED\*\*/);
   assert.match(markdown, /Protocol matrix/);
+  assert.match(markdown, /### By register/);
 });
 
 test('tracked web human-control candidates are hash-only metadata rows', () => {
   const manifest = loadManifest('artifacts/rebaseline-2025/human-controls.public.jsonl');
   assert.deepEqual(manifest.errors, []);
-  assert.equal(manifest.records.length, 10);
+  assert.equal(manifest.records.length, 25);
 
   for (const record of manifest.records) {
     assert.equal(record.language, 'ko');
@@ -120,6 +121,9 @@ test('complete outcome rows produce deterministic confusion metrics', () => {
   assert.equal(summary.metrics.fp, 1);
   assert.equal(summary.metrics.fn, 1);
   assert.equal(summary.metrics.accuracy, 0.5);
+  assert.equal(summary.metrics.falsePositiveRate, 0.5);
+  assert.equal(summary.metrics.falseNegativeRate, 0.5);
+  assert.equal(summary.metricsByRegister.blog.total, 4);
 });
 
 test('writeReportFiles writes markdown and JSON reports', () => {

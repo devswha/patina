@@ -9,6 +9,20 @@ export const DEFAULT_LEXICON_DENSITY_THRESHOLD = 2.0;
 export const DEFAULT_BURSTINESS_BANDS = { low: 0.30, high: 0.50 };
 export const DEFAULT_MATTR_BANDS = { low: 0.55, high: 0.70 };
 export const DEFAULT_MATTR_WINDOW = 50;
+export const DEFAULT_KO_DIAGNOSTIC_BANDS = {
+  minSentences: 4,
+  minEojeols: 20,
+  spacing: {
+    maxEojeolLengthCV: 0.40,
+  },
+  comma: {
+    maxPerSentence: 0,
+  },
+  posProxy: {
+    minMatchedCount: 8,
+    maxClassDiversity: 0.34,
+  },
+};
 
 export const SAMPLE_TEXT = {
   ko: '이 솔루션은 혁신적인 접근을 통해 업무 생산성을 극대화하고, 다양한 이해관계자에게 지속 가능한 가치를 제공합니다. 더 나아가 조직의 디지털 전환을 가속화하는 핵심 기반으로 자리매김하고 있습니다.\n\n하지만 현장에서 필요한 것은 거창한 선언보다 오늘 바로 줄어드는 반복 작업입니다.',
@@ -21,6 +35,17 @@ const SENTENCE_SPLIT_RE = /[.!?]+\s+|(?<=[。！？…])|\n+/u;
 const PARAGRAPH_SPLIT_RE = /\n\s*\n/;
 const EDGE_PUNCT_RE = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
 const CJK_TOKEN_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\u30FC]|[A-Za-z0-9]+/gu;
+const HANGUL_RE = /[\u3131-\u318e\uac00-\ud7a3]/u;
+const COMMA_RE = /[,，、]/gu;
+const KO_SUFFIX_CLASSES = {
+  formal_ending: /(습니다|습니까|합니다|됩니다|입니다|입니다만|했습니다|됩니다)$/u,
+  plain_ending: /(다|었다|았다|겠다)$/u,
+  topic: /(은|는)$/u,
+  subject: /(이|가)$/u,
+  object: /을|를$/u,
+  location: /(에서|에게|으로|로)$/u,
+  connective: /(고|며|지만|면서|도록)$/u,
+};
 
 export function normalizeLang(lang) {
   return SUPPORTED_LANGS.includes(lang) ? lang : DEFAULT_LANG;
@@ -98,6 +123,104 @@ export function classifyMattr(value, bands = DEFAULT_MATTR_BANDS) {
   return 'mid';
 }
 
+export function koreanSpacingFeatures(paragraph) {
+  const eojeols = koreanEojeols(paragraph);
+  const lengths = eojeols.map(koreanLength).filter((length) => length > 0);
+  const eojeolCount = lengths.length;
+  return {
+    eojeolCount,
+    meanEojeolLength: mean(lengths),
+    eojeolLengthCV: coefficientOfVariation(lengths),
+    shortEojeolRatio:
+      eojeolCount > 0 ? lengths.filter((length) => length === 1).length / eojeolCount : null,
+    longEojeolRatio:
+      eojeolCount > 0 ? lengths.filter((length) => length >= 7).length / eojeolCount : null,
+  };
+}
+
+export function commaDensity(paragraph, sentenceCount = null) {
+  const commaCount = (paragraph.match(COMMA_RE) ?? []).length;
+  const charCount = Array.from(paragraph.replace(/\s+/gu, '')).length;
+  return {
+    count: commaCount,
+    perSentence: sentenceCount > 0 ? commaCount / sentenceCount : null,
+    per100Chars: charCount > 0 ? (commaCount / charCount) * 100 : null,
+  };
+}
+
+export function koreanPosDiversityProxy(paragraph) {
+  const eojeols = koreanEojeols(paragraph);
+  const classes = new Set();
+  let matchedCount = 0;
+  for (const token of eojeols) {
+    for (const [className, suffixPattern] of Object.entries(KO_SUFFIX_CLASSES)) {
+      if (suffixPattern.test(token)) {
+        classes.add(className);
+        matchedCount++;
+        break;
+      }
+    }
+  }
+  return {
+    proxy: 'suffix',
+    eojeolCount: eojeols.length,
+    matchedCount,
+    coverage: eojeols.length > 0 ? matchedCount / eojeols.length : null,
+    classCount: classes.size,
+    classDiversity: matchedCount > 0 ? classes.size / matchedCount : null,
+    classes: Array.from(classes).sort(),
+  };
+}
+
+export function classifyKoreanDiagnostics({
+  sentenceCount = 0,
+  spacing,
+  comma,
+  posDiversity,
+} = {}, bands = DEFAULT_KO_DIAGNOSTIC_BANDS) {
+  const thresholds = mergeKoreanDiagnosticBands(bands);
+  const reasons = [];
+
+  const hasEnoughText =
+    sentenceCount >= thresholds.minSentences &&
+    (spacing?.eojeolCount ?? 0) >= thresholds.minEojeols;
+  if (!hasEnoughText) {
+    return { hot: false, strength: 0, reasons, thresholds };
+  }
+
+  const spacingStrength = lowThresholdStrength(
+    spacing?.eojeolLengthCV,
+    thresholds.spacing.maxEojeolLengthCV
+  );
+  if (spacingStrength > 0) reasons.push('regular-eojeol-length');
+
+  const commaStrength = lowThresholdStrength(
+    comma?.perSentence,
+    thresholds.comma.maxPerSentence
+  );
+  if (commaStrength > 0) reasons.push('low-comma-density');
+
+  const posHasCoverage =
+    (posDiversity?.matchedCount ?? 0) >= thresholds.posProxy.minMatchedCount;
+  const posStrength = posHasCoverage
+    ? lowThresholdStrength(
+        posDiversity?.classDiversity,
+        thresholds.posProxy.maxClassDiversity
+      )
+    : 0;
+  if (posStrength > 0) reasons.push('low-suffix-class-diversity');
+
+  const componentStrengths = [spacingStrength, commaStrength, posStrength];
+  const hot = componentStrengths.every((value) => value > 0);
+
+  return {
+    hot,
+    strength: hot ? Math.min(...componentStrengths) : 0,
+    reasons: hot ? reasons : [],
+    thresholds,
+  };
+}
+
 function phraseToRegex(phrase) {
   const escaped = phrase.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(escaped.replace(/~/g, '.{0,40}'), 'u');
@@ -131,7 +254,7 @@ function fmt(value, digits = 2) {
   return value == null ? 'n/a' : Number(value).toFixed(digits);
 }
 
-function buildReasons({ cvBand, mattrBand, lexiconHot, lex }) {
+function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics }) {
   const reasons = [];
   if (cvBand === 'low') {
     reasons.push({
@@ -160,6 +283,13 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex }) {
       detail: `${lex.matches} lexicon hit${lex.matches === 1 ? '' : 's'}, below the hot-zone threshold.`,
     });
   }
+  if (koDiagnostics?.hot) {
+    reasons.push({
+      code: 'ko-diagnostics',
+      label: 'Korean rhythm composite',
+      detail: `Regular spacing, low comma rhythm, and low suffix diversity matched together (strength ${fmt(koDiagnostics.strength, 1)}).`,
+    });
+  }
   return reasons;
 }
 
@@ -179,9 +309,13 @@ export function analyzePlaygroundText(text, opts = {}) {
     const mattrValue = mattr(tokens);
     const mattrBand = classifyMattr(mattrValue);
     const lex = computeDensity(paragraph, tokens, lexicon);
+    const koSignals = lang === 'ko'
+      ? buildKoreanSignals(paragraph, sentences.length)
+      : {};
     const lexiconHot = lex.density > threshold;
-    const hot = cvBand === 'low' || mattrBand === 'low' || lexiconHot;
-    const reasons = buildReasons({ cvBand, mattrBand, lexiconHot, lex });
+    const hot =
+      cvBand === 'low' || mattrBand === 'low' || lexiconHot || Boolean(koSignals.koDiagnostics?.hot);
+    const reasons = buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics: koSignals.koDiagnostics });
 
     return {
       id: `P${idx + 1}`,
@@ -192,6 +326,7 @@ export function analyzePlaygroundText(text, opts = {}) {
       burstiness: { cv, band: cvBand },
       mattr: { value: mattrValue, band: mattrBand },
       lexicon: { ...lex, hot: lexiconHot },
+      ...koSignals,
       hot,
       reasons,
     };
@@ -226,6 +361,90 @@ export function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function buildKoreanSignals(paragraph, sentenceCount) {
+  const spacing = koreanSpacingFeatures(paragraph);
+  const comma = commaDensity(paragraph, sentenceCount);
+  const posDiversity = koreanPosDiversityProxy(paragraph);
+  const koDiagnostics = classifyKoreanDiagnostics({
+    sentenceCount,
+    spacing,
+    comma,
+    posDiversity,
+  });
+
+  return {
+    spacing,
+    comma,
+    posDiversity,
+    koDiagnostics,
+  };
+}
+
+function koreanEojeols(paragraph) {
+  if (!paragraph || !HANGUL_RE.test(paragraph)) return [];
+  return paragraph
+    .split(/\s+/u)
+    .map((chunk) => chunk.replace(/^[^\u3131-\u318e\uac00-\ud7a3]+|[^\u3131-\u318e\uac00-\ud7a3]+$/gu, ''))
+    .filter((chunk) => HANGUL_RE.test(chunk));
+}
+
+function koreanLength(value) {
+  return Array.from(value.match(/[\u3131-\u318e\uac00-\ud7a3]/gu) ?? []).length;
+}
+
+function mean(values) {
+  if (!Array.isArray(values) || values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function coefficientOfVariation(values) {
+  if (!Array.isArray(values) || values.length < 2) return null;
+  const avg = mean(values);
+  if (!avg) return null;
+  const variance = values.reduce((sum, value) => sum + (value - avg) ** 2, 0) / values.length;
+  return Math.sqrt(variance) / avg;
+}
+
+function mergeKoreanDiagnosticBands(bands = {}) {
+  return {
+    minSentences: resolveNumber(bands.minSentences, DEFAULT_KO_DIAGNOSTIC_BANDS.minSentences),
+    minEojeols: resolveNumber(bands.minEojeols, DEFAULT_KO_DIAGNOSTIC_BANDS.minEojeols),
+    spacing: {
+      maxEojeolLengthCV: resolveNumber(
+        bands.spacing?.maxEojeolLengthCV,
+        DEFAULT_KO_DIAGNOSTIC_BANDS.spacing.maxEojeolLengthCV
+      ),
+    },
+    comma: {
+      maxPerSentence: resolveNumber(
+        bands.comma?.maxPerSentence,
+        DEFAULT_KO_DIAGNOSTIC_BANDS.comma.maxPerSentence
+      ),
+    },
+    posProxy: {
+      minMatchedCount: resolveNumber(
+        bands.posProxy?.minMatchedCount,
+        DEFAULT_KO_DIAGNOSTIC_BANDS.posProxy.minMatchedCount
+      ),
+      maxClassDiversity: resolveNumber(
+        bands.posProxy?.maxClassDiversity,
+        DEFAULT_KO_DIAGNOSTIC_BANDS.posProxy.maxClassDiversity
+      ),
+    },
+  };
+}
+
+function resolveNumber(value, fallback) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function lowThresholdStrength(value, threshold) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  if (threshold === 0) return value <= 0 ? 100 : 0;
+  if (!threshold || threshold < 0 || value > threshold) return 0;
+  return Math.max(0, Math.min(100, (1 - value / threshold) * 100));
 }
 
 function collectHitRanges(text, hits) {

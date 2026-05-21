@@ -60,6 +60,7 @@ function range(value, tolerance, floor = 0) {
 function detectorHot(result) {
   return {
     burstiness: result.paragraphs.some((p) => p.burstiness?.band === 'low'),
+    koDiagnostics: result.paragraphs.some((p) => p.koDiagnostics?.hot),
     mattr: result.paragraphs.some((p) => p.mattr?.band === 'low'),
     lexicon: result.paragraphs.some((p) => p.lexicon?.hot),
   };

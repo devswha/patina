@@ -7,13 +7,13 @@
   "schemaVersion": 3,
   "fixtureSchemaVersion": 1,
   "nodeVersion": "v22.17.1",
-  "generatedAt": "2026-05-21T10:19:10.832Z",
-  "fixtureCount": 38,
+  "generatedAt": "2026-05-21T11:05:05.297Z",
+  "fixtureCount": 39,
   "overallAccuracy": 1,
   "overall": {
     "accuracy": 1,
-    "n": 38,
-    "ci_low": 0.908,
+    "n": 39,
+    "ci_low": 0.91,
     "ci_high": 1,
     "confidence_method": "Wilson score interval, 95%"
   },
@@ -46,6 +46,21 @@
           "n": 11,
           "ci_low": 0.741,
           "ci_high": 1,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "koDiagnostics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 6,
+          "tn": 5,
+          "total": 11,
+          "accuracy": 0.455,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 11,
+          "ci_low": 0.213,
+          "ci_high": 0.72,
           "confidence_method": "Wilson score interval, 95%"
         },
         "mattr": {
@@ -110,6 +125,21 @@
           "ci_high": 0.978,
           "confidence_method": "Wilson score interval, 95%"
         },
+        "koDiagnostics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 4,
+          "tn": 4,
+          "total": 8,
+          "accuracy": 0.5,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 8,
+          "ci_low": 0.215,
+          "ci_high": 0.785,
+          "confidence_method": "Wilson score interval, 95%"
+        },
         "mattr": {
           "tp": 0,
           "fp": 0,
@@ -143,63 +173,78 @@
       }
     },
     "ko": {
-      "tp": 6,
+      "tp": 7,
       "fp": 0,
       "fn": 0,
       "tn": 5,
-      "total": 11,
+      "total": 12,
       "accuracy": 1,
       "precision": 1,
       "recall": 1,
       "f1": 1,
-      "n": 11,
-      "ci_low": 0.741,
+      "n": 12,
+      "ci_low": 0.758,
       "ci_high": 1,
       "confidence_method": "Wilson score interval, 95%",
       "byDetector": {
         "burstiness": {
           "tp": 6,
           "fp": 0,
-          "fn": 0,
+          "fn": 1,
           "tn": 5,
-          "total": 11,
-          "accuracy": 1,
+          "total": 12,
+          "accuracy": 0.917,
           "precision": 1,
-          "recall": 1,
-          "f1": 1,
-          "n": 11,
-          "ci_low": 0.741,
-          "ci_high": 1,
+          "recall": 0.857,
+          "f1": 0.923,
+          "n": 12,
+          "ci_low": 0.646,
+          "ci_high": 0.985,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "koDiagnostics": {
+          "tp": 5,
+          "fp": 0,
+          "fn": 2,
+          "tn": 5,
+          "total": 12,
+          "accuracy": 0.833,
+          "precision": 1,
+          "recall": 0.714,
+          "f1": 0.833,
+          "n": 12,
+          "ci_low": 0.552,
+          "ci_high": 0.953,
           "confidence_method": "Wilson score interval, 95%"
         },
         "mattr": {
           "tp": 0,
           "fp": 0,
-          "fn": 6,
+          "fn": 7,
           "tn": 5,
-          "total": 11,
-          "accuracy": 0.455,
+          "total": 12,
+          "accuracy": 0.417,
           "precision": 0,
           "recall": 0,
           "f1": 0,
-          "n": 11,
-          "ci_low": 0.213,
-          "ci_high": 0.72,
+          "n": 12,
+          "ci_low": 0.193,
+          "ci_high": 0.68,
           "confidence_method": "Wilson score interval, 95%"
         },
         "lexicon": {
           "tp": 4,
           "fp": 0,
-          "fn": 2,
+          "fn": 3,
           "tn": 5,
-          "total": 11,
-          "accuracy": 0.818,
+          "total": 12,
+          "accuracy": 0.75,
           "precision": 1,
-          "recall": 0.667,
-          "f1": 0.8,
-          "n": 11,
-          "ci_low": 0.523,
-          "ci_high": 0.949,
+          "recall": 0.571,
+          "f1": 0.727,
+          "n": 12,
+          "ci_low": 0.468,
+          "ci_high": 0.911,
           "confidence_method": "Wilson score interval, 95%"
         }
       }
@@ -232,6 +277,21 @@
           "n": 8,
           "ci_low": 0.529,
           "ci_high": 0.978,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "koDiagnostics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 4,
+          "tn": 4,
+          "total": 8,
+          "accuracy": 0.5,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 8,
+          "ci_low": 0.215,
+          "ci_high": 0.785,
           "confidence_method": "Wilson score interval, 95%"
         },
         "mattr": {
@@ -271,8 +331,8 @@
     "note": "Signal-score ranking over the checked-in fixture corpus; diagnostic only, not a public generalization claim.",
     "score": "signal_score from the strongest deterministic paragraph trigger, averaged per fixture",
     "overall": {
-      "n": 38,
-      "positives": 20,
+      "n": 39,
+      "positives": 21,
       "negatives": 18,
       "scoreRange": {
         "min": 0,
@@ -282,11 +342,11 @@
       "pr_auc": 1,
       "bestF1": {
         "threshold": 6.772,
-        "tp": 20,
+        "tp": 21,
         "fp": 0,
         "fn": 0,
         "tn": 18,
-        "total": 38,
+        "total": 39,
         "accuracy": 1,
         "precision": 1,
         "recall": 1,
@@ -295,192 +355,204 @@
       "sweep": [
         {
           "threshold": 0,
-          "tp": 20,
+          "tp": 21,
           "fp": 18,
           "fn": 0,
           "tn": 0,
-          "total": 38,
-          "accuracy": 0.526,
-          "precision": 0.526,
+          "total": 39,
+          "accuracy": 0.538,
+          "precision": 0.538,
           "recall": 1,
-          "f1": 0.69
+          "f1": 0.7
         },
         {
           "threshold": 6.772,
-          "tp": 20,
+          "tp": 21,
           "fp": 0,
           "fn": 0,
           "tn": 18,
-          "total": 38,
+          "total": 39,
           "accuracy": 1,
           "precision": 1,
           "recall": 1,
           "f1": 1
         },
         {
-          "threshold": 23.167,
-          "tp": 19,
+          "threshold": 16.886,
+          "tp": 20,
           "fp": 0,
           "fn": 1,
           "tn": 18,
-          "total": 38,
+          "total": 39,
           "accuracy": 0.974,
           "precision": 1,
-          "recall": 0.95,
-          "f1": 0.974
+          "recall": 0.952,
+          "f1": 0.976
+        },
+        {
+          "threshold": 23.167,
+          "tp": 19,
+          "fp": 0,
+          "fn": 2,
+          "tn": 18,
+          "total": 39,
+          "accuracy": 0.949,
+          "precision": 1,
+          "recall": 0.905,
+          "f1": 0.95
         },
         {
           "threshold": 67.314,
           "tp": 18,
           "fp": 0,
-          "fn": 2,
+          "fn": 3,
           "tn": 18,
-          "total": 38,
-          "accuracy": 0.947,
+          "total": 39,
+          "accuracy": 0.923,
           "precision": 1,
-          "recall": 0.9,
-          "f1": 0.947
+          "recall": 0.857,
+          "f1": 0.923
         },
         {
           "threshold": 68.994,
           "tp": 16,
           "fp": 0,
-          "fn": 4,
+          "fn": 5,
           "tn": 18,
-          "total": 38,
-          "accuracy": 0.895,
+          "total": 39,
+          "accuracy": 0.872,
           "precision": 1,
-          "recall": 0.8,
-          "f1": 0.889
+          "recall": 0.762,
+          "f1": 0.865
         },
         {
           "threshold": 69.883,
           "tp": 15,
           "fp": 0,
-          "fn": 5,
+          "fn": 6,
           "tn": 18,
-          "total": 38,
-          "accuracy": 0.868,
+          "total": 39,
+          "accuracy": 0.846,
           "precision": 1,
-          "recall": 0.75,
-          "f1": 0.857
+          "recall": 0.714,
+          "f1": 0.833
         },
         {
           "threshold": 72.43,
           "tp": 14,
           "fp": 0,
-          "fn": 6,
+          "fn": 7,
           "tn": 18,
-          "total": 38,
-          "accuracy": 0.842,
+          "total": 39,
+          "accuracy": 0.821,
           "precision": 1,
-          "recall": 0.7,
-          "f1": 0.824
+          "recall": 0.667,
+          "f1": 0.8
         },
         {
           "threshold": 76.717,
           "tp": 13,
           "fp": 0,
-          "fn": 7,
+          "fn": 8,
           "tn": 18,
-          "total": 38,
-          "accuracy": 0.816,
+          "total": 39,
+          "accuracy": 0.795,
           "precision": 1,
-          "recall": 0.65,
-          "f1": 0.788
+          "recall": 0.619,
+          "f1": 0.765
         },
         {
           "threshold": 78.495,
           "tp": 12,
           "fp": 0,
-          "fn": 8,
+          "fn": 9,
           "tn": 18,
-          "total": 38,
-          "accuracy": 0.789,
+          "total": 39,
+          "accuracy": 0.769,
           "precision": 1,
-          "recall": 0.6,
-          "f1": 0.75
+          "recall": 0.571,
+          "f1": 0.727
         },
         {
           "threshold": 79.067,
           "tp": 11,
           "fp": 0,
-          "fn": 9,
+          "fn": 10,
           "tn": 18,
-          "total": 38,
-          "accuracy": 0.763,
+          "total": 39,
+          "accuracy": 0.744,
           "precision": 1,
-          "recall": 0.55,
-          "f1": 0.71
+          "recall": 0.524,
+          "f1": 0.688
         },
         {
           "threshold": 79.272,
           "tp": 10,
           "fp": 0,
-          "fn": 10,
+          "fn": 11,
           "tn": 18,
-          "total": 38,
-          "accuracy": 0.737,
+          "total": 39,
+          "accuracy": 0.718,
           "precision": 1,
-          "recall": 0.5,
-          "f1": 0.667
+          "recall": 0.476,
+          "f1": 0.645
         },
         {
           "threshold": 80.512,
           "tp": 9,
           "fp": 0,
-          "fn": 11,
+          "fn": 12,
           "tn": 18,
-          "total": 38,
-          "accuracy": 0.711,
+          "total": 39,
+          "accuracy": 0.692,
           "precision": 1,
-          "recall": 0.45,
-          "f1": 0.621
+          "recall": 0.429,
+          "f1": 0.6
         },
         {
           "threshold": 84.959,
           "tp": 8,
           "fp": 0,
-          "fn": 12,
+          "fn": 13,
           "tn": 18,
-          "total": 38,
-          "accuracy": 0.684,
+          "total": 39,
+          "accuracy": 0.667,
           "precision": 1,
-          "recall": 0.4,
-          "f1": 0.571
+          "recall": 0.381,
+          "f1": 0.552
         },
         {
           "threshold": 88.701,
           "tp": 7,
           "fp": 0,
-          "fn": 13,
+          "fn": 14,
           "tn": 18,
-          "total": 38,
-          "accuracy": 0.658,
+          "total": 39,
+          "accuracy": 0.641,
           "precision": 1,
-          "recall": 0.35,
-          "f1": 0.519
+          "recall": 0.333,
+          "f1": 0.5
         },
         {
           "threshold": 100,
           "tp": 6,
           "fp": 0,
-          "fn": 14,
+          "fn": 15,
           "tn": 18,
-          "total": 38,
-          "accuracy": 0.632,
+          "total": 39,
+          "accuracy": 0.615,
           "precision": 1,
-          "recall": 0.3,
-          "f1": 0.462
+          "recall": 0.286,
+          "f1": 0.444
         },
         {
           "threshold": 101,
           "tp": 0,
           "fp": 0,
-          "fn": 20,
+          "fn": 21,
           "tn": 18,
-          "total": 38,
-          "accuracy": 0.474,
+          "total": 39,
+          "accuracy": 0.462,
           "precision": 0,
           "recall": 0,
           "f1": 0
@@ -707,8 +779,8 @@
         ]
       },
       "ko": {
-        "n": 11,
-        "positives": 6,
+        "n": 12,
+        "positives": 7,
         "negatives": 5,
         "scoreRange": {
           "min": 0,
@@ -717,12 +789,12 @@
         "roc_auc": 1,
         "pr_auc": 1,
         "bestF1": {
-          "threshold": 67.314,
-          "tp": 6,
+          "threshold": 16.886,
+          "tp": 7,
           "fp": 0,
           "fn": 0,
           "tn": 5,
-          "total": 11,
+          "total": 12,
           "accuracy": 1,
           "precision": 1,
           "recall": 1,
@@ -731,48 +803,60 @@
         "sweep": [
           {
             "threshold": 0,
-            "tp": 6,
+            "tp": 7,
             "fp": 5,
             "fn": 0,
             "tn": 0,
-            "total": 11,
-            "accuracy": 0.545,
-            "precision": 0.545,
+            "total": 12,
+            "accuracy": 0.583,
+            "precision": 0.583,
             "recall": 1,
-            "f1": 0.706
+            "f1": 0.737
           },
           {
-            "threshold": 67.314,
-            "tp": 6,
+            "threshold": 16.886,
+            "tp": 7,
             "fp": 0,
             "fn": 0,
             "tn": 5,
-            "total": 11,
+            "total": 12,
             "accuracy": 1,
             "precision": 1,
             "recall": 1,
             "f1": 1
           },
           {
+            "threshold": 67.314,
+            "tp": 6,
+            "fp": 0,
+            "fn": 1,
+            "tn": 5,
+            "total": 12,
+            "accuracy": 0.917,
+            "precision": 1,
+            "recall": 0.857,
+            "f1": 0.923
+          },
+          {
             "threshold": 100,
             "tp": 4,
             "fp": 0,
-            "fn": 2,
+            "fn": 3,
             "tn": 5,
-            "total": 11,
-            "accuracy": 0.818,
+            "total": 12,
+            "accuracy": 0.75,
             "precision": 1,
-            "recall": 0.667,
-            "f1": 0.8
+            "recall": 0.571,
+            "f1": 0.727
           },
           {
             "threshold": 101,
             "tp": 0,
             "fp": 0,
-            "fn": 6,
+            "fn": 7,
             "tn": 5,
-            "total": 11,
-            "accuracy": 0.455,
+            "total": 12,
+            "accuracy": 0.417,
             "precision": 0,
             "recall": 0,
             "f1": 0
@@ -888,6 +972,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -897,6 +982,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 80.512,
       "expected_metrics": null
     },
@@ -909,6 +997,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -918,6 +1007,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 69.883,
       "expected_metrics": null
     },
@@ -930,6 +1022,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -939,6 +1032,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 78.495,
       "expected_metrics": null
     },
@@ -951,6 +1047,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -960,6 +1057,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 76.717,
       "expected_metrics": null
     },
@@ -972,6 +1072,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -981,6 +1082,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 68.994,
       "expected_metrics": null
     },
@@ -993,6 +1097,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1002,6 +1107,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 88.701,
       "expected_metrics": {
         "cv_band": "low",
@@ -1019,6 +1127,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1028,6 +1137,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1040,6 +1152,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1049,6 +1162,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1061,6 +1177,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1070,6 +1187,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1082,6 +1202,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1091,6 +1212,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1103,6 +1227,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1112,6 +1237,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1124,6 +1252,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1133,6 +1262,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 84.959,
       "expected_metrics": null
     },
@@ -1145,6 +1277,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1154,6 +1287,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 23.167,
       "expected_metrics": null
     },
@@ -1166,6 +1302,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1175,6 +1312,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 79.067,
       "expected_metrics": null
     },
@@ -1187,6 +1327,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": true
       },
@@ -1206,6 +1347,9 @@
         "多様なニーズに応える",
         "理解を深める"
       ],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "expected_metrics": null
     },
@@ -1218,6 +1362,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1227,6 +1372,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1239,6 +1387,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1248,6 +1397,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1260,6 +1412,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1269,6 +1422,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1281,6 +1437,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1290,6 +1447,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1302,6 +1462,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": true
       },
@@ -1313,6 +1474,9 @@
       "lexicon_hits": [
         "추세"
       ],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "expected_metrics": null
     },
@@ -1325,6 +1489,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": true,
         "mattr": false,
         "lexicon": true
       },
@@ -1336,6 +1501,13 @@
       "lexicon_hits": [
         "환경"
       ],
+      "ko_diagnostics_hot": true,
+      "ko_diagnostics_reasons": [
+        "regular-eojeol-length",
+        "low-comma-density",
+        "low-suffix-class-diversity"
+      ],
+      "ko_diagnostics_strength": 5.882,
       "signal_score": 100,
       "expected_metrics": null
     },
@@ -1348,6 +1520,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": true
       },
@@ -1359,6 +1532,9 @@
       "lexicon_hits": [
         "추세"
       ],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "expected_metrics": null
     },
@@ -1371,6 +1547,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": true,
         "mattr": false,
         "lexicon": false
       },
@@ -1380,6 +1557,13 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": true,
+      "ko_diagnostics_reasons": [
+        "regular-eojeol-length",
+        "low-comma-density",
+        "low-suffix-class-diversity"
+      ],
+      "ko_diagnostics_strength": 7.121,
       "signal_score": 67.314,
       "expected_metrics": null
     },
@@ -1392,6 +1576,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": true,
         "mattr": false,
         "lexicon": false
       },
@@ -1401,6 +1586,13 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": true,
+      "ko_diagnostics_reasons": [
+        "regular-eojeol-length",
+        "low-comma-density",
+        "low-suffix-class-diversity"
+      ],
+      "ko_diagnostics_strength": 5.87,
       "signal_score": 67.314,
       "expected_metrics": null
     },
@@ -1413,6 +1605,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": true,
         "mattr": false,
         "lexicon": true
       },
@@ -1424,6 +1617,13 @@
       "lexicon_hits": [
         "흐름"
       ],
+      "ko_diagnostics_hot": true,
+      "ko_diagnostics_reasons": [
+        "regular-eojeol-length",
+        "low-comma-density",
+        "low-suffix-class-diversity"
+      ],
+      "ko_diagnostics_strength": 0.631,
       "signal_score": 100,
       "expected_metrics": {
         "cv_band": "low",
@@ -1431,6 +1631,35 @@
         "lexicon_density_min": 0,
         "lexicon_density_max": 80
       }
+    },
+    {
+      "fixture_id": "ko-ai-07-ko-diagnostic",
+      "lang": "ko",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": true,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv": 0.417,
+      "cv_band": "mid",
+      "mattr": 0.955,
+      "mattr_band": "high",
+      "lexicon_density": 0,
+      "lexicon_hits": [],
+      "ko_diagnostics_hot": true,
+      "ko_diagnostics_reasons": [
+        "regular-eojeol-length",
+        "low-comma-density",
+        "low-suffix-class-diversity"
+      ],
+      "ko_diagnostics_strength": 16.886,
+      "signal_score": 16.886,
+      "expected_metrics": null
     },
     {
       "fixture_id": "ko-nat-01",
@@ -1441,6 +1670,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1450,6 +1680,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1462,6 +1695,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1471,6 +1705,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1483,6 +1720,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1492,6 +1730,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1504,6 +1745,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1513,6 +1755,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1525,6 +1770,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1534,6 +1780,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1546,6 +1795,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1555,6 +1805,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 79.272,
       "expected_metrics": null
     },
@@ -1567,6 +1820,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1576,6 +1830,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 6.772,
       "expected_metrics": null
     },
@@ -1588,6 +1845,7 @@
       "correct": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1597,6 +1855,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 72.43,
       "expected_metrics": null
     },
@@ -1609,6 +1870,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": true
       },
@@ -1629,6 +1891,9 @@
         "形成良性循环",
         "为未来奠定基础"
       ],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "expected_metrics": null
     },
@@ -1641,6 +1906,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1650,6 +1916,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1662,6 +1931,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1671,6 +1941,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1683,6 +1956,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1692,6 +1966,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     },
@@ -1704,6 +1981,7 @@
       "correct": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1713,6 +1991,9 @@
       "mattr_band": "high",
       "lexicon_density": 0,
       "lexicon_hits": [],
+      "ko_diagnostics_hot": false,
+      "ko_diagnostics_reasons": [],
+      "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "expected_metrics": null
     }
@@ -1727,7 +2008,7 @@
       "natural": 4
     },
     "ko": {
-      "ai": 6,
+      "ai": 7,
       "natural": 5
     },
     "zh": {

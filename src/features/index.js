@@ -9,10 +9,12 @@ import {
   mattr,
   classifyBurstiness,
   classifyMattr,
+  classifyKoreanDiagnostics,
   commaDensity,
   koreanPosDiversityProxy,
   koreanSpacingFeatures,
   DEFAULT_BURSTINESS_BANDS,
+  DEFAULT_KO_DIAGNOSTIC_BANDS,
   DEFAULT_MATTR_BANDS,
   DEFAULT_MATTR_WINDOW,
   DEFAULT_MIN_BURSTINESS_SENTENCES,
@@ -27,6 +29,8 @@ export function analyzeText(text, opts = {}) {
     minBurstinessSentences = DEFAULT_MIN_BURSTINESS_SENTENCES,
     mattrBands = DEFAULT_MATTR_BANDS,
     mattrWindow = DEFAULT_MATTR_WINDOW,
+    koDiagnosticsEnabled = true,
+    koDiagnosticBands = DEFAULT_KO_DIAGNOSTIC_BANDS,
     lexiconDensityThreshold = DEFAULT_LEXICON_DENSITY_THRESHOLD,
     lexicon: providedLexicon,
   } = opts;
@@ -66,18 +70,16 @@ export function analyzeText(text, opts = {}) {
     const mattrValue = mattr(allTokens, mattrWindow);
     const mattrBand = classifyMattr(mattrValue, mattrBands);
     const lex = computeDensity(paragraph, allTokens, lexicon);
-    const koSignals =
-      lang === 'ko'
-        ? {
-            spacing: koreanSpacingFeatures(paragraph),
-            comma: commaDensity(paragraph, sentences.length),
-            posDiversity: koreanPosDiversityProxy(paragraph),
-          }
-        : {};
+    const koSignals = lang === 'ko'
+      ? buildKoreanSignals(paragraph, sentences.length, {
+          enabled: koDiagnosticsEnabled,
+          bands: koDiagnosticBands,
+        })
+      : {};
 
     const lexiconHot = lex.density > lexiconDensityThreshold;
     const hot =
-      cvBand === 'low' || mattrBand === 'low' || lexiconHot;
+      cvBand === 'low' || mattrBand === 'low' || lexiconHot || Boolean(koSignals.koDiagnostics?.hot);
 
     return {
       id: `P${idx + 1}`,
@@ -108,9 +110,31 @@ export {
   mattr,
   classifyBurstiness,
   classifyMattr,
+  classifyKoreanDiagnostics,
   commaDensity,
   koreanPosDiversityProxy,
   koreanSpacingFeatures,
   loadLexicon,
   computeDensity,
 };
+
+function buildKoreanSignals(paragraph, sentenceCount, { enabled, bands }) {
+  const spacing = koreanSpacingFeatures(paragraph);
+  const comma = commaDensity(paragraph, sentenceCount);
+  const posDiversity = koreanPosDiversityProxy(paragraph);
+  const koDiagnostics = enabled
+    ? classifyKoreanDiagnostics({
+        sentenceCount,
+        spacing,
+        comma,
+        posDiversity,
+      }, bands)
+    : { hot: false, strength: 0, reasons: [], thresholds: bands };
+
+  return {
+    spacing,
+    comma,
+    posDiversity,
+    koDiagnostics,
+  };
+}

@@ -1,12 +1,12 @@
-# Detector Comparison Harness
+# Detector Comparison Protocol
 
-This report is generated offline from the checked-in suspect-zone fixtures. It is a comparison harness, not a vendor ranking claim.
+This report is generated offline from the checked-in suspect-zone fixtures. It is a comparison protocol, not a vendor ranking claim.
 
 ## Current run
 
-- Generated at: 2026-05-21T10:19:11.092Z
+- Generated at: 2026-05-21T11:05:40.866Z
 - Fixture source: `tests/fixtures/suspect-zones/**`
-- Fixture count: 38
+- Fixture count: 39
 - Manual third-party input: none
 - Reproduce built-in comparison: `npm run benchmark:compare`
 - Merge manual scores: `node scripts/detector-comparison.mjs --input tests/quality/detectors.manual.example.json`
@@ -15,7 +15,7 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 
 | detector | name | kind | covered | coverage | accuracy | precision | recall | TP | FP | FN | TN |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| patina-deterministic | Patina deterministic suspect-zone analyzer | in-tree | 38/38 | 100.0% | 100.0% | 100.0% | 100.0% | 20 | 0 | 0 | 18 |
+| patina-deterministic | Patina deterministic suspect-zone analyzer | in-tree | 39/39 | 100.0% | 100.0% | 100.0% | 100.0% | 21 | 0 | 0 | 18 |
 
 ## Fixture-level rows
 
@@ -46,6 +46,7 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 | ko-ai-04 | ko | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ko-ai-05 | ko | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ko-ai-06-chat-register | ko | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
+| ko-ai-07-ko-diagnostic | ko | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ko-nat-01 | ko | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | ko-nat-02 | ko | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | ko-nat-03 | ko | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |

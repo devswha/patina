@@ -53,7 +53,7 @@ function validateResultsSchema(results) {
   if (!isNumberOrNull(results?.ranking?.overall?.pr_auc)) missing.push('ranking.overall.pr_auc');
   if (!results?.ranking?.overall?.bestF1) missing.push('ranking.overall.bestF1');
   for (const [lang, summary] of Object.entries(results?.perLanguage || {})) {
-    for (const detector of ['burstiness', 'mattr', 'lexicon']) {
+    for (const detector of ['burstiness', 'koDiagnostics', 'mattr', 'lexicon']) {
       if (!summary.byDetector?.[detector]) missing.push(`perLanguage.${lang}.byDetector.${detector}`);
     }
   }
@@ -157,7 +157,10 @@ function sampleSizeSummary(fixtures = []) {
 function fixtureRows(fixtures = []) {
   return fixtures.map((f) => {
     const hits = cell((f.lexicon_hits || []).slice(0, 4).join(', '));
-    return `| ${cell(f.fixture_id)} | ${cell(f.lang)} | ${cell(f.class)} | ${bool(f.expected_hot)} | ${bool(f.predicted_hot)} | ${resultMark(f.correct)} | ${num(f.signal_score)} | ${num(f.cv)} ${cell(f.cv_band)} | ${num(f.mattr)} ${cell(f.mattr_band)} | ${num(f.lexicon_density)} | ${hits} |`;
+    const koDiag = f.ko_diagnostics_hot
+      ? `hot: ${(f.ko_diagnostics_reasons || []).join(', ')}`
+      : 'cold';
+    return `| ${cell(f.fixture_id)} | ${cell(f.lang)} | ${cell(f.class)} | ${bool(f.expected_hot)} | ${bool(f.predicted_hot)} | ${resultMark(f.correct)} | ${num(f.signal_score)} | ${num(f.cv)} ${cell(f.cv_band)} | ${num(f.mattr)} ${cell(f.mattr_band)} | ${num(f.lexicon_density)} | ${cell(koDiag)} | ${hits} |`;
   });
 }
 
@@ -244,13 +247,13 @@ ${misclassificationSection(results.fixtures)}
 
 ## Fixture log
 
-| fixture | lang | class | expected | predicted | ok | signal | CV band | MATTR band | lexicon/1k | sample lexicon hits |
-|---|---|---|---|---|---:|---:|---:|---:|---:|---|
+| fixture | lang | class | expected | predicted | ok | signal | CV band | MATTR band | lexicon/1k | KO diagnostic | sample lexicon hits |
+|---|---|---|---|---|---:|---:|---:|---:|---:|---|---|
 ${fixtureRows(results.fixtures).join('\n')}
 
 ## How to read this
 
-- **Hot** means at least one deterministic signal crossed the benchmark threshold: low burstiness CV, low MATTR, or AI-lexicon density.
+- **Hot** means at least one deterministic signal crossed the benchmark threshold: low burstiness CV, low MATTR, AI-lexicon density, or the conservative Korean diagnostic composite.
 - **Cold** means the fixture did not cross those thresholds.
 - **Signal** is the 0–100 diagnostic strength of the strongest deterministic trigger. It supports ranking diagnostics but does not replace the binary hot/cold regression gate.
 - The report is meant for regression tracking and contributor discussion, not for authorship accusation.

@@ -18,7 +18,8 @@ fallback added in `src/features/lexicon.js`.
 
 ## Regression corpus
 
-The committed regression corpus now has 38 fixtures:
+The committed regression corpus now has 39 fixtures overall. The zh/ja slice in
+this note remains:
 
 | language | AI | natural | expected FP |
 |---|---:|---:|---:|

@@ -24,23 +24,25 @@ Every fixture under `tests/fixtures/suspect-zones/{lang}/{ai|natural}/*.md`
 carries an `expected_hot` label in its frontmatter. The benchmark runs
 `analyzeText()` (defined in `src/features/index.js`) on the body and
 compares the predicted hot/cold decision against that label. The decision
-follows the 3-signal OR rule from `core/stylometry.md` §16:
+follows the 4-signal OR rule from `core/stylometry.md` §16:
 
 ```
 paragraph is SUSPECT iff
   burstiness_band == "low"  OR
   MATTR_band == "low"       OR
-  lexicon_density > threshold
+  lexicon_density > threshold OR
+  koDiagnostics.hot == true
 ```
 
 `burstiness_band` is only assigned when a paragraph has at least three
 sentences; two-sentence CV is recorded for diagnostics but is not stable enough
 to make the paragraph hot by itself.
 
-For `lang=ko`, `analyzeText()` also records diagnostic-only Korean fields:
+For `lang=ko`, `analyzeText()` also records Korean diagnostic fields:
 `spacing`, `comma`, and `posDiversity` (a suffix-class proxy, not a morphology
-analyzer). These fields are for calibration and do not affect the hot/cold
-decision yet.
+analyzer). They only affect the hot/cold decision through the conservative
+`koDiagnostics` composite: at least four sentences, at least 20 eojeols, no
+commas, regular eojeol length, and low suffix-class diversity.
 
 Per-language metrics use `expected_hot=true` as the positive class.
 
@@ -121,8 +123,8 @@ That binary ratio decides pass/fail because it is stable for CI. The report also
 prints two diagnostics:
 
 - `signal` — average paragraph intensity of the strongest deterministic trigger:
-  how far burstiness or MATTR is inside its low band, or how far lexicon density
-  is over the threshold.
+  how far burstiness or MATTR is inside its low band, how far lexicon density
+  is over the threshold, or how strong the Korean diagnostic composite is.
 - `pattern hits` — count of pattern-pack watch terms found in the stripped prose.
   This is diagnostic only; it helps reviewers see pattern-level cleanup that may
   not change the binary hot-paragraph ratio.
@@ -215,8 +217,9 @@ in `.patina.default.yaml` (`stylometry.burstiness.bands`,
 classification. Sweep against this benchmark + your own corpus and
 update thresholds; the shipped values come from the v3.5.1 / v3.7
 calibration documented in `core/stylometry.md` §13 §16.
-`stylometry.ko_diagnostics` is informational in this release; do not tune it as
-a classifier until the Korean corpus calibration lands.
+`stylometry.ko_diagnostics.bands` controls the ko-only composite. Treat it as a
+conservative fixture-backed guard, not as a broad public performance claim until
+the Korean corpus calibration lands.
 
 `npm run benchmark:report` also records a diagnostic `signal_score` sweep. The
 prediction rule is `signal_score >= threshold`, and the PR-AUC value is average
@@ -229,6 +232,6 @@ Currently runs on all supported pattern-pack languages: `ko`, `en`, `zh`, and
 `ja`. Chinese and Japanese use a deterministic character-token fallback because
 normal prose often has no whitespace; ko/en keep whitespace tokenization.
 Korean additionally emits dependency-free spacing/comma/suffix-diversity
-diagnostics for future calibration.
+diagnostics and a conservative ko-only composite detector.
 zh/ja now include high-precision AI-lexicon fixtures as well as
 burstiness/MATTR regression coverage.

@@ -7,6 +7,7 @@ import {
   lengthRatioPoints,
   scoreFidelity,
   scoreMPS,
+  scoreDeterministicSignals,
   scoreText,
 } from '../../src/scoring.js';
 import { loadConfig } from '../../src/config.js';
@@ -177,7 +178,45 @@ test('scoreText warns on deterministic divergence and keeps the pessimistic scor
 
   assert.strictEqual(score.llmScore.overall, 10);
   assert.strictEqual(score.deterministicScore.overall, 100);
+  assert.ok(score.deterministicScore.signalScore > 0);
   assert.strictEqual(score.overall, 100);
   assert.strictEqual(score.scorePreference.selected, 'deterministic');
   assert.ok(warnings.some((entry) => entry.event === 'score.deterministic_divergence'));
+});
+
+test('deterministic signal score is additive and does not replace hot-ratio overall', () => {
+  const deterministic = scoreDeterministicSignals({
+    text: [
+      'The tool is useful. The model is helpful. The system is reliable.',
+      'The draft is useful. The note is helpful. The copy is reliable.',
+    ].join('\n\n'),
+    config: loadConfig(),
+  });
+
+  assert.strictEqual(deterministic.overall, 100);
+  assert.equal(typeof deterministic.signalScore, 'number');
+  assert.ok(deterministic.signalScore > 0);
+});
+
+test('deterministic skipped and failure payloads pin signalScore to zero', () => {
+  const disabled = scoreDeterministicSignals({
+    text: 'Example.',
+    config: {
+      ...loadConfig(),
+      language: 'ko',
+      stylometry: { languages: ['en'] },
+    },
+  });
+  assert.strictEqual(disabled.skipped, true);
+  assert.strictEqual(disabled.signalScore, 0);
+
+  const failed = scoreDeterministicSignals({
+    text: 'Example.',
+    config: loadConfig(),
+    analyzer: () => {
+      throw new Error('boom');
+    },
+  });
+  assert.strictEqual(failed.skipped, true);
+  assert.strictEqual(failed.signalScore, 0);
 });

@@ -1,6 +1,6 @@
 # KO/2025+ Corpus Source Inventory
 
-Verified: 2026-05-21. This inventory turns the Korean rebaseline blocker
+Verified: 2026-05-22. This inventory turns the Korean rebaseline blocker
 (#303/#157/#155/#160) into an executable intake plan. It is not a public
 performance claim.
 
@@ -26,7 +26,7 @@ into the repository.
 | HAERAE-HUB/KOREAN-SyntheticText-1.5B | broad synthetic Korean AI-like pool | Hugging Face dataset page shows text parquet with 1.55M rows | Synthetic side only. Check dataset card/license before committing full text; otherwise hash-only. | Sample short paragraphs for lexicon mining candidates, then manually review before pattern changes. |
 | Maintainer-generated 2026 prompts | controlled GPT/Claude/Gemini/open-weight model-era rows | Generated from repo-owned prompts and reproducible metadata | Preferred public seed when provider terms and prompt contents allow redistribution. Keep prompts public; keep vendor UI copies private if unsure. | Generate 5 rows each for GPT-family, Claude-family, Gemini-family, and open-weight across blog/product-doc/chat-update. |
 | Community false-positive submissions | real Patina FP cases | GitHub false-positive issue template captures language/register/score output | Use only with explicit fixture permission. Strip account/private context by default. | Convert accepted issues into hash-only rows first; promote to fixture only after permission. |
-| KOGL / Korea.kr / MCST / Seoul OpenGov web pages | small natural-human Korean pilot controls for source/provenance workflow | Public policy/help pages with visible source URLs and licensing/copyright guidance | Commit only hash-only metadata until page-level redistribution and attribution are reviewed. Keep raw extracts in ignored `artifacts/rebaseline-2025/private/`. | `artifacts/rebaseline-2025/human-controls.public.jsonl` contains 10 hash-only candidate rows across blog, product-doc, academic-summary, technical-how-to, and chat-update registers. |
+| Public Korean web pages (Korea.kr, Toss Tech, Kakao/Naver/Toss docs, KISTEP/KEI/NRF, Seoul OpenGov) | natural-human Korean pilot controls for source/provenance workflow | Public pages with visible source URLs and licensing/copyright guidance where available | Commit only hash-only metadata until page-level redistribution and attribution are reviewed. Keep raw extracts in ignored `artifacts/rebaseline-2025/private/`. | `artifacts/rebaseline-2025/human-controls.public.jsonl` contains 141 scored hash-only candidate rows across blog, product-doc, academic-summary, technical-how-to, and chat-update registers; underfilled registers still need more source rows before threshold work. |
 
 ## Intake commands
 
@@ -56,18 +56,27 @@ Tracked starter files:
 - `artifacts/rebaseline-2025/intake.local.example.jsonl` — 25 metadata-only
   rows matching the pilot buckets below. The hashes are placeholders; replace
   them locally before treating the file as evidence.
-- `artifacts/rebaseline-2025/human-controls.public.jsonl` — 10 web-sourced
+- `artifacts/rebaseline-2025/sources.ko-public.jsonl` — tracked public-source
+  inventory for hash-only web collection.
+- `artifacts/rebaseline-2025/human-controls.public.jsonl` — 141 web-sourced
   Korean natural-human candidate rows. It is hash-only and validates the
-  collection path; it is not enough to change thresholds.
+  collection path; underfilled registers and absent AI-like cells still block
+  threshold changes.
 
-To regenerate the tracked web candidate manifest from a local/private raw file:
+To refresh public-web candidates from the tracked source inventory:
 
 ```bash
-npm run benchmark:rebaseline:intake -- \
-  --input artifacts/rebaseline-2025/private/web-human-controls.private.jsonl \
-  --public-output artifacts/rebaseline-2025/human-controls.public.jsonl \
-  --private-output artifacts/rebaseline-2025/private/web-human-controls.copy.private.jsonl \
-  --require-source-review
+npm run benchmark:rebaseline:web -- \
+  --input artifacts/rebaseline-2025/sources.ko-public.jsonl \
+  --output artifacts/rebaseline-2025/private/web-human-controls.generated.private.jsonl \
+  --target-per-register 50 \
+  --max-per-source 12 \
+  --collected-at 2026-05-22
+
+npm run benchmark:rebaseline:score -- \
+  --input artifacts/rebaseline-2025/private/web-human-controls.generated.private.jsonl \
+  --output artifacts/rebaseline-2025/human-controls.public.jsonl \
+  --scored-at 2026-05-22
 
 node scripts/rebaseline-summary.mjs \
   --input artifacts/rebaseline-2025/human-controls.public.jsonl \
@@ -78,23 +87,24 @@ To score those candidates without committing raw text:
 
 ```bash
 npm run benchmark:rebaseline:score -- \
-  --input artifacts/rebaseline-2025/private/web-human-controls.private.jsonl \
+  --input artifacts/rebaseline-2025/private/web-human-controls.generated.private.jsonl \
   --output artifacts/rebaseline-2025/human-controls.public.jsonl \
-  --scored-at 2026-05-21
+  --scored-at 2026-05-22
 ```
 
-## 25-row Korean pilot
+## Remaining Korean pilot holes
 
-Before changing thresholds again, collect a small pilot that proves the workflow
-and exposes label/register holes:
+The 141-row public-web pilot proves the collection and scoring path, but still
+leaves threshold work blocked. Use the original 25-row skeleton only as a local
+intake template; future rows should fill these holes instead:
 
-| bucket | target rows | notes |
+| bucket | remaining need | notes |
 |---|---:|---|
-| native human controls | 8 | At least two each for academic/종결-다, product-doc, blog, community/update. |
-| self-generated AI-like | 8 | GPT-family, Claude-family, Gemini-family, open-weight; keep prompt ids. |
-| lightly/heavily edited AI | 4 | One light and one heavy edit for two registers; preserve before/after hashes. |
-| KatFish metadata-only comparison | 3 | One each for essay, poetry, abstract; hash-only until license review. |
-| FP submissions / learner stress | 2 | Separate reviewer note so learner Korean does not distort native baseline. |
+| native human controls | +34 academic, +28 product-doc, +11 chat/update, +10 blog, +26 technical-how-to | Fill every register to n≥50 before threshold changes. |
+| self-generated AI-like | n≥100 per GPT/Claude/Gemini/open-weight claim cell | Keep prompt ids, model ids, decoding, and provider terms notes. |
+| lightly/heavily edited AI | at least one light and one heavy edit per target register | Preserve before/after hashes and edit policy. |
+| KatFish metadata-only comparison | one small metadata-only slice per available genre | Hash-only until license review. |
+| FP submissions / learner stress | separate reviewed envelope | Do not blend learner Korean into the native-human baseline. |
 
 Exit criteria for the pilot:
 
@@ -121,3 +131,5 @@ Exit criteria for the pilot:
 - MCST KOGL type guide: <https://www.mcst.go.kr/site/s_open/kogl/koglType.jsp>
 - MCST copyright Q&A: <https://www.mcst.go.kr/site/s_policy/copyright/question/question17.jsp>
 - Seoul OpenGov copyright policy: <https://opengov.seoul.go.kr/copyright>
+- Tracked public-web source inventory:
+  `artifacts/rebaseline-2025/sources.ko-public.jsonl`

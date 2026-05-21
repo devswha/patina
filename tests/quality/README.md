@@ -119,7 +119,8 @@ npm run benchmark:rebaseline:report
 node scripts/rebaseline-summary.mjs --input tests/quality/rebaseline-manifest.example.jsonl --json
 npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.example.jsonl --dry-run
 npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.local.example.jsonl --dry-run --require-source-review
-npm run benchmark:rebaseline:score -- --input artifacts/rebaseline-2025/private/web-human-controls.private.jsonl --output artifacts/rebaseline-2025/human-controls.public.jsonl --scored-at 2026-05-21
+npm run benchmark:rebaseline:web -- --target-per-register 50 --max-per-source 12 --collected-at 2026-05-22
+npm run benchmark:rebaseline:score -- --input artifacts/rebaseline-2025/private/web-human-controls.generated.private.jsonl --output artifacts/rebaseline-2025/human-controls.public.jsonl --scored-at 2026-05-22
 node scripts/rebaseline-summary.mjs --input artifacts/rebaseline-2025/human-controls.public.jsonl --json
 ```
 
@@ -144,7 +145,7 @@ review says otherwise.
 `artifacts/rebaseline-2025/human-controls.public.jsonl` is the first tracked
 web-sourced Korean human-control candidate manifest. It is metadata/hash-only:
 no raw source text is committed. Its deterministic outcome fields are a
-provenance/scoring smoke check until reviewer approval and scored 25-row pilot
+provenance/scoring smoke check until reviewer approval and balanced register
 coverage exist.
 
 The report keeps public performance claims blocked until the process gate in

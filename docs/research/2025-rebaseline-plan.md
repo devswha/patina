@@ -2,7 +2,7 @@
 
 Status: protocol template, no external detector/vendor claims yet.  
 Owner: maintainers.  
-Related issues: #155, #157, #160, #303, plus #156/#158/#159 for evaluator follow-up.
+Related issues: #155, #157, #160, #303, plus #158/#159 for evaluator follow-up. The #156 adversarial MPS gate is now in-tree.
 Korean source inventory: `docs/research/ko-2025-corpus-sources.md`.
 
 Patina's checked-in benchmark is a deterministic regression corpus. It is useful
@@ -37,7 +37,7 @@ confidence intervals.
 1. Start with Korean calibration (#303/#157): collect natural Korean controls for academic/종결-다, blog, product-doc, and community registers before changing KO thresholds again.
 2. Then run the model-era rebaseline (#155): score the fixed manifest across at least three generator families and at least two languages.
 3. Only after the paired corpus exists, re-mine lexicon entries (#160) with per-entry provenance and ≥4× hot/cold lift.
-4. Use the same manifest for adversarial MPS, cross-judge, and blinded-panel follow-ups (#156/#158/#159) instead of creating separate incompatible samples.
+4. Use the same manifest for cross-judge and blinded-panel follow-ups (#158/#159) instead of creating separate incompatible samples; keep the in-tree adversarial MPS gate current as a companion check.
 
 ## Data rules
 

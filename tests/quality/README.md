@@ -34,6 +34,42 @@ paragraph is SUSPECT iff
 
 Per-language metrics use `expected_hot=true` as the positive class.
 
+## Opt-in live rewrite quality
+
+`npm run quality:live` runs the live-quality scaffold without calling a model by
+default. The default path scores fixture inputs and marks the live rewrite step
+as skipped, so it is safe for local smoke checks and CI dry-runs.
+
+```bash
+npm run quality:live
+```
+
+To run actual rewrites, opt in explicitly after installing and authenticating
+the OpenCode CLI:
+
+```bash
+OPENCODE_AVAILABLE=1 npm run quality:live -- --limit 1
+OPENCODE_AVAILABLE=1 OPENCODE_MODEL=opencode/hy3-preview-free npm run quality:live -- --language ko --limit 1
+```
+
+The scaffold fixture set lives in `tests/quality/live-fixtures.jsonl`. Each
+fixture records `fixture_id`, `language`, `register`, `source_type`,
+`model_family`, `prompt_id`, `redistribution`, `facts`, and `text`. Live results
+report:
+
+- `before_score` / `after_score` from the deterministic prose score.
+- `humanization_gain = before_score - after_score`.
+- `meaning_safety`, a deterministic proxy using fact preservation and length
+  sanity. This is not a full MPS score.
+- `safe_gain = max(0, humanization_gain) * (meaning_safety / 100)`.
+- `pass`, `warn`, or `fail` for evaluated rewrites; `skipped` when live mode is
+  not enabled.
+
+Passing evaluated rewrites should reach `after_score <= 30`,
+`meaning_safety >= 70`, and `safe_gain > 0`. Keep this out of mandatory CI
+unless the live model path is deliberately allowed, because LLM output is
+non-deterministic.
+
 ## Score vs signal strength
 
 The pre-commit prose gate keeps the older, conservative score semantics:
@@ -62,15 +98,15 @@ compare `signal` values within the same entrypoint rather than across tools.
 - LLM-based scoring (`src/scoring.js`). The LLM is non-deterministic by
   design and adds API cost / latency, so it stays out of this layer.
   A separate live-mode benchmark would be its own follow-up.
-- Rewrite quality (does the rewritten text read better?). That requires
-  human or LLM grading and lives in `tests/e2e/quality-test.js`.
-  That script is opt-in because it shells out to OpenCode:
+- Mandatory rewrite quality gates. Live rewrite quality lives in
+  `tests/quality/live-quality.mjs` and remains opt-in because it can shell out
+  to OpenCode:
 
   ```bash
-  OPENCODE_AVAILABLE=1 node tests/e2e/quality-test.js
+  OPENCODE_AVAILABLE=1 npm run quality:live -- --limit 1
   ```
 
-  The script uses `opencode/hy3-preview-free` by default. Override it with
+  The scaffold uses `opencode/hy3-preview-free` by default. Override it with
   `OPENCODE_MODEL=<provider/model>` when testing another OpenCode model.
 - AUROC against a ranked score — the current decision is binary
   (hot/cold), so we report accuracy + F1 instead.

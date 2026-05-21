@@ -26,7 +26,8 @@
     "typecheck": "node scripts/typecheck.mjs",
     "spellcheck": "cspell \"patterns/**/*.md\" \"lexicon/**/*.md\"",
     "docs:api": "node scripts/generate-api-docs.mjs",
-    "playground:data": "node scripts/generate-playground-data.mjs"
+    "playground:data": "node scripts/generate-playground-data.mjs",
+    "quality:live": "node tests/quality/live-quality.mjs"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
@@ -93,7 +94,9 @@
     "tests/quality/detectors.manual.example.json",
     "playground/",
     "vercel.json",
-    "scripts/generate-playground-data.mjs"
+    "scripts/generate-playground-data.mjs",
+    "tests/quality/live-quality.mjs",
+    "tests/quality/live-fixtures.jsonl"
   ],
   "publishConfig": {
     "access": "public"

@@ -210,13 +210,15 @@ POS proxy 결정:
 
 운영 규칙:
 - 세 조건을 모두 만족할 때만 `koDiagnostics.hot=true`가 된다.
-- 기본값: `minSentences=4`, `minEojeols=20`, `spacing.eojeolLengthCV <= 0.40`,
-  `comma.perSentence <= 0`, `posProxy.matchedCount >= 8`,
-  `posProxy.classDiversity <= 0.34`.
-- 쉼표가 없다는 사실만으로 hot 처리하지 않는다. spacing과 suffix diversity가 동시에
+- 기본값: `minSentences=4`, `minEojeols=20`, `spacing.eojeolLengthCV <= 0.38`,
+  `comma.perSentence < 1`, `posProxy.matchedCount >= 10`,
+  `posProxy.classDiversity <= 0.26`.
+- 쉼표가 적다는 사실만으로 hot 처리하지 않는다. spacing과 suffix diversity가 동시에
   맞아야 한다.
 - `.patina.default.yaml`의 `stylometry.ko_diagnostics.enabled=false`로 이 composite만 끌 수
   있다. 기존 burstiness/MATTR/lexicon 신호는 그대로 동작한다.
+
+Calibration note (2026-05-22): `npm run benchmark:katfish-ko -- --write --basename katfish-ko-latest` evaluates this zero-dependency composite against a private KatFish checkout plus the 250-row public-web KO human-control set. Current aggregate result: KatFish catch rate improves from 58.9% without KO diagnostics to 74.8% with KO diagnostics (+15.9 pp), while the public-web human-control FP rate stays 42/250 (16.8%, +0 rows). The KatFish raw rows are not committed because the upstream repository does not expose repo-level license metadata; only aggregate reports are tracked.
 
 ---
 

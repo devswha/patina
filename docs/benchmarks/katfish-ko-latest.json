@@ -1,0 +1,657 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-05-21T16:25:42.849Z",
+  "inputs": {
+    "katfishRows": 2094,
+    "humanControlRows": 250
+  },
+  "modes": [
+    {
+      "id": "burstiness_mattr_only",
+      "label": "Burstiness+MATTR only"
+    },
+    {
+      "id": "patina_without_ko_diagnostics",
+      "label": "Patina without KO diagnostics"
+    },
+    {
+      "id": "patina_current",
+      "label": "Patina current"
+    }
+  ],
+  "katfish": {
+    "counts": {
+      "genre": {
+        "essay": 771,
+        "abstract": 378,
+        "poetry": 945
+      },
+      "model": {
+        "human": 470,
+        "gpt-4o-2024-05-13": 470,
+        "solar-1-mini-chat": 429,
+        "qwen2:72b-instruct": 387,
+        "llama3.1:70b": 338
+      },
+      "expectedHot": {
+        "false": 470,
+        "true": 1624
+      }
+    },
+    "metrics": {
+      "burstiness_mattr_only": {
+        "tp": 875,
+        "fp": 125,
+        "fn": 749,
+        "tn": 345,
+        "total": 2094,
+        "accuracy": 0.583,
+        "precision": 0.875,
+        "recall": 0.539,
+        "f1": 0.667,
+        "fpr": 0.266
+      },
+      "patina_without_ko_diagnostics": {
+        "tp": 957,
+        "fp": 137,
+        "fn": 667,
+        "tn": 333,
+        "total": 2094,
+        "accuracy": 0.616,
+        "precision": 0.875,
+        "recall": 0.589,
+        "f1": 0.704,
+        "fpr": 0.291
+      },
+      "patina_current": {
+        "tp": 1215,
+        "fp": 224,
+        "fn": 409,
+        "tn": 246,
+        "total": 2094,
+        "accuracy": 0.698,
+        "precision": 0.844,
+        "recall": 0.748,
+        "f1": 0.793,
+        "fpr": 0.477
+      }
+    },
+    "byGenre": {
+      "abstract": {
+        "burstiness_mattr_only": {
+          "tp": 171,
+          "fp": 53,
+          "fn": 107,
+          "tn": 47,
+          "total": 378,
+          "accuracy": 0.577,
+          "precision": 0.763,
+          "recall": 0.615,
+          "f1": 0.681,
+          "fpr": 0.53
+        },
+        "patina_without_ko_diagnostics": {
+          "tp": 185,
+          "fp": 58,
+          "fn": 93,
+          "tn": 42,
+          "total": 378,
+          "accuracy": 0.601,
+          "precision": 0.761,
+          "recall": 0.665,
+          "f1": 0.71,
+          "fpr": 0.58
+        },
+        "patina_current": {
+          "tp": 199,
+          "fp": 67,
+          "fn": 79,
+          "tn": 33,
+          "total": 378,
+          "accuracy": 0.614,
+          "precision": 0.748,
+          "recall": 0.716,
+          "f1": 0.732,
+          "fpr": 0.67
+        }
+      },
+      "essay": {
+        "burstiness_mattr_only": {
+          "tp": 210,
+          "fp": 16,
+          "fn": 380,
+          "tn": 165,
+          "total": 771,
+          "accuracy": 0.486,
+          "precision": 0.929,
+          "recall": 0.356,
+          "f1": 0.515,
+          "fpr": 0.088
+        },
+        "patina_without_ko_diagnostics": {
+          "tp": 278,
+          "fp": 23,
+          "fn": 312,
+          "tn": 158,
+          "total": 771,
+          "accuracy": 0.565,
+          "precision": 0.924,
+          "recall": 0.471,
+          "f1": 0.624,
+          "fpr": 0.127
+        },
+        "patina_current": {
+          "tp": 474,
+          "fp": 82,
+          "fn": 116,
+          "tn": 99,
+          "total": 771,
+          "accuracy": 0.743,
+          "precision": 0.853,
+          "recall": 0.803,
+          "f1": 0.827,
+          "fpr": 0.453
+        }
+      },
+      "poetry": {
+        "burstiness_mattr_only": {
+          "tp": 494,
+          "fp": 56,
+          "fn": 262,
+          "tn": 133,
+          "total": 945,
+          "accuracy": 0.663,
+          "precision": 0.898,
+          "recall": 0.653,
+          "f1": 0.757,
+          "fpr": 0.296
+        },
+        "patina_without_ko_diagnostics": {
+          "tp": 494,
+          "fp": 56,
+          "fn": 262,
+          "tn": 133,
+          "total": 945,
+          "accuracy": 0.663,
+          "precision": 0.898,
+          "recall": 0.653,
+          "f1": 0.757,
+          "fpr": 0.296
+        },
+        "patina_current": {
+          "tp": 542,
+          "fp": 75,
+          "fn": 214,
+          "tn": 114,
+          "total": 945,
+          "accuracy": 0.694,
+          "precision": 0.878,
+          "recall": 0.717,
+          "f1": 0.79,
+          "fpr": 0.397
+        }
+      }
+    },
+    "byModel": {
+      "gpt-4o-2024-05-13": {
+        "burstiness_mattr_only": {
+          "tp": 264,
+          "fp": 0,
+          "fn": 206,
+          "tn": 0,
+          "total": 470,
+          "accuracy": 0.562,
+          "precision": 1,
+          "recall": 0.562,
+          "f1": 0.719,
+          "fpr": 0
+        },
+        "patina_without_ko_diagnostics": {
+          "tp": 300,
+          "fp": 0,
+          "fn": 170,
+          "tn": 0,
+          "total": 470,
+          "accuracy": 0.638,
+          "precision": 1,
+          "recall": 0.638,
+          "f1": 0.779,
+          "fpr": 0
+        },
+        "patina_current": {
+          "tp": 370,
+          "fp": 0,
+          "fn": 100,
+          "tn": 0,
+          "total": 470,
+          "accuracy": 0.787,
+          "precision": 1,
+          "recall": 0.787,
+          "f1": 0.881,
+          "fpr": 0
+        }
+      },
+      "human": {
+        "burstiness_mattr_only": {
+          "tp": 0,
+          "fp": 125,
+          "fn": 0,
+          "tn": 345,
+          "total": 470,
+          "accuracy": 0.734,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.266
+        },
+        "patina_without_ko_diagnostics": {
+          "tp": 0,
+          "fp": 137,
+          "fn": 0,
+          "tn": 333,
+          "total": 470,
+          "accuracy": 0.709,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.291
+        },
+        "patina_current": {
+          "tp": 0,
+          "fp": 224,
+          "fn": 0,
+          "tn": 246,
+          "total": 470,
+          "accuracy": 0.523,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.477
+        }
+      },
+      "llama3.1:70b": {
+        "burstiness_mattr_only": {
+          "tp": 157,
+          "fp": 0,
+          "fn": 181,
+          "tn": 0,
+          "total": 338,
+          "accuracy": 0.464,
+          "precision": 1,
+          "recall": 0.464,
+          "f1": 0.634,
+          "fpr": 0
+        },
+        "patina_without_ko_diagnostics": {
+          "tp": 164,
+          "fp": 0,
+          "fn": 174,
+          "tn": 0,
+          "total": 338,
+          "accuracy": 0.485,
+          "precision": 1,
+          "recall": 0.485,
+          "f1": 0.653,
+          "fpr": 0
+        },
+        "patina_current": {
+          "tp": 211,
+          "fp": 0,
+          "fn": 127,
+          "tn": 0,
+          "total": 338,
+          "accuracy": 0.624,
+          "precision": 1,
+          "recall": 0.624,
+          "f1": 0.769,
+          "fpr": 0
+        }
+      },
+      "qwen2:72b-instruct": {
+        "burstiness_mattr_only": {
+          "tp": 161,
+          "fp": 0,
+          "fn": 226,
+          "tn": 0,
+          "total": 387,
+          "accuracy": 0.416,
+          "precision": 1,
+          "recall": 0.416,
+          "f1": 0.588,
+          "fpr": 0
+        },
+        "patina_without_ko_diagnostics": {
+          "tp": 192,
+          "fp": 0,
+          "fn": 195,
+          "tn": 0,
+          "total": 387,
+          "accuracy": 0.496,
+          "precision": 1,
+          "recall": 0.496,
+          "f1": 0.663,
+          "fpr": 0
+        },
+        "patina_current": {
+          "tp": 289,
+          "fp": 0,
+          "fn": 98,
+          "tn": 0,
+          "total": 387,
+          "accuracy": 0.747,
+          "precision": 1,
+          "recall": 0.747,
+          "f1": 0.855,
+          "fpr": 0
+        }
+      },
+      "solar-1-mini-chat": {
+        "burstiness_mattr_only": {
+          "tp": 293,
+          "fp": 0,
+          "fn": 136,
+          "tn": 0,
+          "total": 429,
+          "accuracy": 0.683,
+          "precision": 1,
+          "recall": 0.683,
+          "f1": 0.812,
+          "fpr": 0
+        },
+        "patina_without_ko_diagnostics": {
+          "tp": 301,
+          "fp": 0,
+          "fn": 128,
+          "tn": 0,
+          "total": 429,
+          "accuracy": 0.702,
+          "precision": 1,
+          "recall": 0.702,
+          "f1": 0.825,
+          "fpr": 0
+        },
+        "patina_current": {
+          "tp": 345,
+          "fp": 0,
+          "fn": 84,
+          "tn": 0,
+          "total": 429,
+          "accuracy": 0.804,
+          "precision": 1,
+          "recall": 0.804,
+          "f1": 0.891,
+          "fpr": 0
+        }
+      }
+    }
+  },
+  "humanControls": {
+    "counts": {
+      "register": {
+        "chat-update": 50,
+        "blog": 50,
+        "technical-how-to": 50,
+        "academic-summary": 50,
+        "product-doc": 50
+      }
+    },
+    "metrics": {
+      "burstiness_mattr_only": {
+        "tp": 0,
+        "fp": 32,
+        "fn": 0,
+        "tn": 218,
+        "total": 250,
+        "accuracy": 0.872,
+        "precision": 0,
+        "recall": 0,
+        "f1": 0,
+        "fpr": 0.128
+      },
+      "patina_without_ko_diagnostics": {
+        "tp": 0,
+        "fp": 42,
+        "fn": 0,
+        "tn": 208,
+        "total": 250,
+        "accuracy": 0.832,
+        "precision": 0,
+        "recall": 0,
+        "f1": 0,
+        "fpr": 0.168
+      },
+      "patina_current": {
+        "tp": 0,
+        "fp": 42,
+        "fn": 0,
+        "tn": 208,
+        "total": 250,
+        "accuracy": 0.832,
+        "precision": 0,
+        "recall": 0,
+        "f1": 0,
+        "fpr": 0.168
+      }
+    },
+    "byRegister": {
+      "academic-summary": {
+        "burstiness_mattr_only": {
+          "tp": 0,
+          "fp": 2,
+          "fn": 0,
+          "tn": 48,
+          "total": 50,
+          "accuracy": 0.96,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.04
+        },
+        "patina_without_ko_diagnostics": {
+          "tp": 0,
+          "fp": 7,
+          "fn": 0,
+          "tn": 43,
+          "total": 50,
+          "accuracy": 0.86,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.14
+        },
+        "patina_current": {
+          "tp": 0,
+          "fp": 7,
+          "fn": 0,
+          "tn": 43,
+          "total": 50,
+          "accuracy": 0.86,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.14
+        }
+      },
+      "blog": {
+        "burstiness_mattr_only": {
+          "tp": 0,
+          "fp": 10,
+          "fn": 0,
+          "tn": 40,
+          "total": 50,
+          "accuracy": 0.8,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.2
+        },
+        "patina_without_ko_diagnostics": {
+          "tp": 0,
+          "fp": 10,
+          "fn": 0,
+          "tn": 40,
+          "total": 50,
+          "accuracy": 0.8,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.2
+        },
+        "patina_current": {
+          "tp": 0,
+          "fp": 10,
+          "fn": 0,
+          "tn": 40,
+          "total": 50,
+          "accuracy": 0.8,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.2
+        }
+      },
+      "chat-update": {
+        "burstiness_mattr_only": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "tn": 50,
+          "total": 50,
+          "accuracy": 1,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0
+        },
+        "patina_without_ko_diagnostics": {
+          "tp": 0,
+          "fp": 2,
+          "fn": 0,
+          "tn": 48,
+          "total": 50,
+          "accuracy": 0.96,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.04
+        },
+        "patina_current": {
+          "tp": 0,
+          "fp": 2,
+          "fn": 0,
+          "tn": 48,
+          "total": 50,
+          "accuracy": 0.96,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.04
+        }
+      },
+      "product-doc": {
+        "burstiness_mattr_only": {
+          "tp": 0,
+          "fp": 6,
+          "fn": 0,
+          "tn": 44,
+          "total": 50,
+          "accuracy": 0.88,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.12
+        },
+        "patina_without_ko_diagnostics": {
+          "tp": 0,
+          "fp": 6,
+          "fn": 0,
+          "tn": 44,
+          "total": 50,
+          "accuracy": 0.88,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.12
+        },
+        "patina_current": {
+          "tp": 0,
+          "fp": 6,
+          "fn": 0,
+          "tn": 44,
+          "total": 50,
+          "accuracy": 0.88,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.12
+        }
+      },
+      "technical-how-to": {
+        "burstiness_mattr_only": {
+          "tp": 0,
+          "fp": 14,
+          "fn": 0,
+          "tn": 36,
+          "total": 50,
+          "accuracy": 0.72,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.28
+        },
+        "patina_without_ko_diagnostics": {
+          "tp": 0,
+          "fp": 17,
+          "fn": 0,
+          "tn": 33,
+          "total": 50,
+          "accuracy": 0.66,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.34
+        },
+        "patina_current": {
+          "tp": 0,
+          "fp": 17,
+          "fn": 0,
+          "tn": 33,
+          "total": 50,
+          "accuracy": 0.66,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "fpr": 0.34
+        }
+      }
+    }
+  },
+  "deltas": {
+    "currentVsBurstinessMattr": {
+      "accuracy": 0.115,
+      "precision": -0.031,
+      "recall": 0.209,
+      "f1": 0.126,
+      "fpr": 0.211,
+      "tp": 340,
+      "fp": 99,
+      "fn": -340,
+      "tn": -99
+    },
+    "currentVsNoKoDiagnostics": {
+      "accuracy": 0.082,
+      "precision": -0.031,
+      "recall": 0.159,
+      "f1": 0.089,
+      "fpr": 0.186,
+      "tp": 258,
+      "fp": 87,
+      "fn": -258,
+      "tn": -87
+    },
+    "humanFpCurrentVsNoKoDiagnostics": {
+      "fpr": 0,
+      "fp": 0
+    }
+  }
+}

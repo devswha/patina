@@ -9,14 +9,14 @@ export const DEFAULT_KO_DIAGNOSTIC_BANDS = {
   minSentences: 4,
   minEojeols: 20,
   spacing: {
-    maxEojeolLengthCV: 0.40,
+    maxEojeolLengthCV: 0.38,
   },
   comma: {
-    maxPerSentence: 0,
+    maxPerSentence: 1,
   },
   posProxy: {
-    minMatchedCount: 8,
-    maxClassDiversity: 0.34,
+    minMatchedCount: 10,
+    maxClassDiversity: 0.26,
   },
 };
 

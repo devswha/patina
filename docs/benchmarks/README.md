@@ -11,6 +11,7 @@ says the evidence is ready.
 | `latest.md` / `latest.json` | `npm run benchmark:report` | Deterministic suspect-zone fixture benchmark for KO / EN / ZH / JA, including `signal_score` ROC-AUC / PR-AUC diagnostics. |
 | `detector-comparison.md` / `.json` | `npm run benchmark:compare` | Manual/offline comparison protocol for third-party detectors. |
 | `rebaseline-latest.md` / `.json` | `npm run benchmark:rebaseline:report` | Sanitized 2025+ model-era manifest summary. Public claims stay blocked until the corpus gate passes. |
+| `katfish-ko-latest.md` / `.json` | `npm run benchmark:katfish-ko -- --write --basename katfish-ko-latest` | Aggregate-only private KatFish calibration for the Korean diagnostic layer; raw rows stay ignored/private. |
 
 ## Refresh
 
@@ -18,6 +19,7 @@ says the evidence is ready.
 npm run benchmark:report
 npm run benchmark:compare
 npm run benchmark:rebaseline:report
+npm run benchmark:katfish-ko -- --write --basename katfish-ko-latest
 ```
 
 Use `npm run benchmark` for the fast fixture classifier smoke check. Use

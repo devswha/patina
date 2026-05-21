@@ -58,6 +58,8 @@ stays reserved for the transformed text or JSON envelope.
 - `--quiet` suppresses stderr logs, including MAX/Ouroboros progress.
 - `--json-logs` emits newline-delimited JSON records with stable fields:
   `ts`, `level`, `event`, `model`, `latency_ms`, and optional `message`.
+- The one-time GitHub star reminder is stderr-only, skipped for CI/non-TTY or
+  scripted runs, and disabled with `PATINA_NO_NUDGE=1`.
 - MAX mode (`--models`) reports elapsed per-model status (`...`, `✓`, `✗`) for both local CLI and HTTP candidates.
 - Ouroboros reports per-iteration score movement and latency.
 

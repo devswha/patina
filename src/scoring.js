@@ -227,6 +227,8 @@ export function scoreDeterministicSignals({
       burstinessBands: config.stylometry?.burstiness?.bands,
       mattrBands: config.stylometry?.ttr?.bands,
       mattrWindow: config.stylometry?.ttr?.window,
+      koDiagnosticsEnabled: config.stylometry?.ko_diagnostics?.enabled !== false,
+      koDiagnosticBands: config.stylometry?.ko_diagnostics?.bands,
       lexiconDensityThreshold: config.lexicon?.density_threshold,
       ...(lexiconAllowed ? {} : { lexicon: { lang, path: null, strict: [], phrases: [] } }),
     });
@@ -254,6 +256,10 @@ export function scoreDeterministicSignals({
         lexicon: {
           hot: paragraphs.filter((p) => p.lexicon?.hot).length,
           threshold: config.lexicon?.density_threshold ?? null,
+        },
+        koDiagnostics: {
+          hot: paragraphs.filter((p) => p.koDiagnostics?.hot).length,
+          thresholds: config.stylometry?.ko_diagnostics?.bands ?? null,
         },
       },
     };
@@ -683,6 +689,7 @@ function emptyDeterministicBands() {
     burstiness: { low: 0, mid: 0, high: 0, null: 0 },
     mattr: { low: 0, mid: 0, high: 0, null: 0 },
     lexicon: { hot: 0, threshold: null },
+    koDiagnostics: { hot: 0, thresholds: null },
   };
 }
 

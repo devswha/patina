@@ -5,6 +5,20 @@ export const DEFAULT_BURSTINESS_BANDS = { low: 0.30, high: 0.50 };
 export const DEFAULT_MATTR_BANDS = { low: 0.55, high: 0.70 };
 export const DEFAULT_MATTR_WINDOW = 50;
 export const DEFAULT_MIN_BURSTINESS_SENTENCES = 3;
+export const DEFAULT_KO_DIAGNOSTIC_BANDS = {
+  minSentences: 4,
+  minEojeols: 20,
+  spacing: {
+    maxEojeolLengthCV: 0.40,
+  },
+  comma: {
+    maxPerSentence: 0,
+  },
+  posProxy: {
+    minMatchedCount: 8,
+    maxClassDiversity: 0.34,
+  },
+};
 
 const HANGUL_RE = /[\u3131-\u318e\uac00-\ud7a3]/u;
 const COMMA_RE = /[,，、]/gu;
@@ -158,6 +172,55 @@ export function koreanPosDiversityProxy(paragraph) {
   };
 }
 
+export function classifyKoreanDiagnostics({
+  sentenceCount = 0,
+  spacing,
+  comma,
+  posDiversity,
+} = {}, bands = DEFAULT_KO_DIAGNOSTIC_BANDS) {
+  const thresholds = mergeKoreanDiagnosticBands(bands);
+  const reasons = [];
+
+  const hasEnoughText =
+    sentenceCount >= thresholds.minSentences &&
+    (spacing?.eojeolCount ?? 0) >= thresholds.minEojeols;
+  if (!hasEnoughText) {
+    return { hot: false, strength: 0, reasons, thresholds };
+  }
+
+  const spacingStrength = lowThresholdStrength(
+    spacing?.eojeolLengthCV,
+    thresholds.spacing.maxEojeolLengthCV
+  );
+  if (spacingStrength > 0) reasons.push('regular-eojeol-length');
+
+  const commaStrength = lowThresholdStrength(
+    comma?.perSentence,
+    thresholds.comma.maxPerSentence
+  );
+  if (commaStrength > 0) reasons.push('low-comma-density');
+
+  const posHasCoverage =
+    (posDiversity?.matchedCount ?? 0) >= thresholds.posProxy.minMatchedCount;
+  const posStrength = posHasCoverage
+    ? lowThresholdStrength(
+        posDiversity?.classDiversity,
+        thresholds.posProxy.maxClassDiversity
+      )
+    : 0;
+  if (posStrength > 0) reasons.push('low-suffix-class-diversity');
+
+  const componentStrengths = [spacingStrength, commaStrength, posStrength];
+  const hot = componentStrengths.every((value) => value > 0);
+
+  return {
+    hot,
+    strength: hot ? Math.min(...componentStrengths) : 0,
+    reasons: hot ? reasons : [],
+    thresholds,
+  };
+}
+
 export function classifyBurstiness(cv, bands = DEFAULT_BURSTINESS_BANDS) {
   if (cv == null) return null;
   if (cv < bands.low) return 'low';
@@ -170,4 +233,44 @@ export function classifyMattr(value, bands = DEFAULT_MATTR_BANDS) {
   if (value < bands.low) return 'low';
   if (value > bands.high) return 'high';
   return 'mid';
+}
+
+function mergeKoreanDiagnosticBands(bands = {}) {
+  return {
+    minSentences: resolveNumber(bands.minSentences, DEFAULT_KO_DIAGNOSTIC_BANDS.minSentences),
+    minEojeols: resolveNumber(bands.minEojeols, DEFAULT_KO_DIAGNOSTIC_BANDS.minEojeols),
+    spacing: {
+      maxEojeolLengthCV: resolveNumber(
+        bands.spacing?.maxEojeolLengthCV,
+        DEFAULT_KO_DIAGNOSTIC_BANDS.spacing.maxEojeolLengthCV
+      ),
+    },
+    comma: {
+      maxPerSentence: resolveNumber(
+        bands.comma?.maxPerSentence,
+        DEFAULT_KO_DIAGNOSTIC_BANDS.comma.maxPerSentence
+      ),
+    },
+    posProxy: {
+      minMatchedCount: resolveNumber(
+        bands.posProxy?.minMatchedCount,
+        DEFAULT_KO_DIAGNOSTIC_BANDS.posProxy.minMatchedCount
+      ),
+      maxClassDiversity: resolveNumber(
+        bands.posProxy?.maxClassDiversity,
+        DEFAULT_KO_DIAGNOSTIC_BANDS.posProxy.maxClassDiversity
+      ),
+    },
+  };
+}
+
+function resolveNumber(value, fallback) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function lowThresholdStrength(value, threshold) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  if (threshold === 0) return value <= 0 ? 100 : 0;
+  if (!threshold || threshold < 0 || value > threshold) return 0;
+  return Math.max(0, Math.min(100, (1 - value / threshold) * 100));
 }

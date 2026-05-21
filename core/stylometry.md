@@ -24,8 +24,8 @@ description: Deterministic statistical preprocessing that flags suspect paragrap
   hot 단락/문장 정보를 5a·5b 입력에 주입한다
 - 외부 의존성(형태소 분석기, 외부 detector API) 없이 ko/en은 whitespace 토큰화,
   zh/ja는 deterministic character-token fallback으로 동작한다
-- ko는 hot 판정과 분리된 diagnostic-only 보조 지표(띄어쓰기 규칙성, 쉼표 밀도,
-  조사/어미 suffix diversity proxy)를 함께 기록해 후속 threshold 보정에 사용한다
+- ko는 dependency-free 보조 지표(띄어쓰기 규칙성, 쉼표 밀도, 조사/어미 suffix diversity
+  proxy)를 함께 기록하고, 세 지표가 모두 보수적 임계값을 넘을 때만 ko 전용 hot 신호로 사용한다
 
 이 알고리즘은 5a 구조 분석 단계와 5b 문장/어휘 단계에 자연스럽게 결합되도록 설계되었다.
 - 5a는 단락 수준 hot 표시를 우선 검토 대상으로 사용한다
@@ -84,8 +84,8 @@ ELSE:
 > 제외한다.
 
 ko diagnostic POS diversity는 형태소 분석기가 아니라 suffix proxy다. 조사/어미 후보 목록으로
-어절 끝을 보수적으로 분류하고, class diversity와 coverage만 기록한다. 이 proxy는 진짜 POS
-tagger가 아니므로 hot 판정에 바로 사용하지 않는다.
+어절 끝을 보수적으로 분류하고, class diversity와 coverage를 기록한다. 이 proxy는 진짜 POS
+tagger가 아니므로 단독 hot 신호가 아니라 spacing/comma와 결합된 ko composite에서만 사용한다.
 
 ---
 
@@ -196,9 +196,10 @@ ELSE:
 
 | 필드 | 지표 | 목적 | 현재 판정 영향 |
 |------|------|------|----------------|
-| `spacing` | `eojeolLengthCV`, 평균 어절 길이, 1음절/긴 어절 비율 | LLM식으로 지나치게 균질한 띄어쓰기·어절 길이 후보 추적 | 없음 |
-| `comma` | 쉼표 수, 문장당 쉼표, 100자당 쉼표 | 과소/과다 쉼표 사용 후보 추적 | 없음 |
-| `posDiversity` | 조사/어미 suffix class coverage/diversity proxy | 형태소 분석기 없이 기능어 다양성 후보 추적 | 없음 |
+| `spacing` | `eojeolLengthCV`, 평균 어절 길이, 1음절/긴 어절 비율 | LLM식으로 지나치게 균질한 띄어쓰기·어절 길이 후보 추적 | composite 조건 |
+| `comma` | 쉼표 수, 문장당 쉼표, 100자당 쉼표 | 쉼표 리듬이 사라진 장문 후보 추적 | composite 조건 |
+| `posDiversity` | 조사/어미 suffix class coverage/diversity proxy | 형태소 분석기 없이 기능어 다양성 후보 추적 | composite 조건 |
+| `koDiagnostics` | 세 지표의 보수적 AND 판정 | burstiness/MATTR/lexicon이 놓치는 ko hotspot 보강 | hot OR-rule 참여 |
 
 POS proxy 결정:
 - 새 런타임 의존성은 추가하지 않는다.
@@ -208,11 +209,14 @@ POS proxy 결정:
   class를 세고, `proxy: "suffix"`로 명시한다.
 
 운영 규칙:
-- 현재 단계에서는 **diagnostic-only**다. `hot` OR-rule에는 참여하지 않는다.
-- 실제 corpus calibration(#155/#157/#303)이 끝난 뒤에만 ko 한정 threshold와 hot 연결을
-  검토한다.
-- `.patina.default.yaml`의 `stylometry.ko_diagnostics`는 어떤 지표가 기록되는지 설명하는
-  설정 메모이며, 현 버전에서 threshold로 읽히지는 않는다.
+- 세 조건을 모두 만족할 때만 `koDiagnostics.hot=true`가 된다.
+- 기본값: `minSentences=4`, `minEojeols=20`, `spacing.eojeolLengthCV <= 0.40`,
+  `comma.perSentence <= 0`, `posProxy.matchedCount >= 8`,
+  `posProxy.classDiversity <= 0.34`.
+- 쉼표가 없다는 사실만으로 hot 처리하지 않는다. spacing과 suffix diversity가 동시에
+  맞아야 한다.
+- `.patina.default.yaml`의 `stylometry.ko_diagnostics.enabled=false`로 이 composite만 끌 수
+  있다. 기존 burstiness/MATTR/lexicon 신호는 그대로 동작한다.
 
 ---
 
@@ -223,21 +227,24 @@ POS proxy 결정:
 
 ```
 paragraph is SUSPECT iff
-  burstiness_band == "low"  OR  MATTR_band == "low"  OR  lexicon_density > threshold
+  burstiness_band == "low"  OR  MATTR_band == "low"  OR
+  lexicon_density > threshold  OR  koDiagnostics.hot == true
 ```
 
 ### 근거
 
-- 세 신호 중 하나만 약해도 우선 검토할 만한 edit hotspot이 된다
+- 네 신호 중 하나만 약해도 우선 검토할 만한 edit hotspot이 된다
 - AND 조건은 recall 이 너무 낮아 v1 acceptance criteria(AI 시드 7/10)를 만족하기 어렵다
 - false positive 는 `FalsePositiveControl` 평가(자연 시드 ≤2/10)로 견제한다
-- ko diagnostic signals(§5.1)는 calibration 전까지 이 OR-rule에 넣지 않는다
+- ko diagnostic signal은 내부에서 AND composite를 사용하므로 쉼표/조사 같은 단일 특징만으로는
+  OR-rule에 들어오지 않는다
 
 ### 임계값 재조정
 
 v1 결과에서 false positive 가 한도(자연 시드 2/10)를 넘기면, `.patina.default.yaml`의
 `stylometry.burstiness.bands.low` 또는 `stylometry.ttr.bands.low` 를 보수적으로 낮춰
 재평가한다 (예: 0.30 → 0.27). lexicon 쪽은 `lexicon.density_threshold`로 조정한다.
+ko composite는 `stylometry.ko_diagnostics.bands`에서 조정한다.
 
 ---
 
@@ -478,8 +485,9 @@ optional dependency로 설치 실패가 없는 경로, (2) ko/en/zh/ja benchmark
 | ~~n-gram redundancy~~ | ~~bi/trigram 반복도~~ — **dropped, §15 negative finding** | — |
 | ~~AI-lexicon overlap~~ | ~~28-패턴 외 AI 특유 어구 사전 매칭~~ — **shipped v3.7, §16** | v3.7 |
 | ~~zh/ja character fallback~~ | ~~Han/Kana character-token burstiness/TTR~~ — **shipped for 4.6** | current |
+| ~~ko diagnostic composite~~ | ~~spacing/comma/suffix proxy~~ — **shipped as conservative AND signal, §5.1** | current |
 | Perplexity proxy | small LM 또는 cloze prompt 기반 token-level surprise | v4 후보 |
-| Function-word distribution | 기능어 빈도 분포 차이 (Mosteller & Wallace 류) | v4 후보 |
+| Broader function-word distribution | en/zh/ja 포함 기능어 빈도 분포 차이 | v4 후보 |
 | GPTZero / Originality 연동 | 외부 detector API 결과를 hot 신호로 합산 | v4+ 후보 |
 | 형태소 분석 기반 ko 토큰화 | 어절 → 형태소 단위로 정밀화 | v2+ |
 | zh/ja 형태소 분석 통합 | 단어 경계 처리; 위 go/no-go 충족 시에만 재검토 | v4+ 후보 |
@@ -493,6 +501,9 @@ optional dependency로 설치 실패가 없는 경로, (2) ko/en/zh/ja benchmark
 - **Korean morphology coarseness**: 어절 단위 토큰화는 morpheme-level 분석과 다르다.
   같은 명사의 조사 변형(`도구는`, `도구가`, `도구를`)을 서로 다른 token 으로 취급하므로
   MATTR 이 실제보다 약간 높게 나올 수 있다.
+- **Korean diagnostic composite is conservative**: 쉼표 없음 + 균질한 어절 길이 + 낮은 suffix
+  class diversity가 모두 맞아야 하므로 recall보다는 false-positive 억제를 우선한다. 실제
+  KatFish/2025+ corpus 재보정 전에는 넓은 성능 주장으로 쓰지 않는다.
 - **Short text noise**: 단락 ≤2 또는 문장 ≤2 인 텍스트는 통계적으로 신뢰할 수 없어 skip
   한다. 이 경우 4.6단계 전체가 비활성화된다.
 - **Window=50 fallback**: MATTR window 보다 짧은 단락은 simple TTR 로 fallback 하므로
@@ -654,14 +665,14 @@ For paragraph P with tokens T:
 
 기본 threshold = `2.0` (1,000 토큰당 2회). `lexicon.density_threshold`로 설정 가능.
 
-### 단락 hot 결정 규칙 (3-signal OR)
+### 단락 hot 결정 규칙 (v3.7 당시 3-signal OR)
 
 ```
 paragraph is SUSPECT iff
   burstiness_band == "low" OR MATTR_band == "low" OR lexicon_density > threshold
 ```
 
-§6의 2-signal OR 규칙을 3-signal OR로 확장한다. burstiness/MATTR는 분포적 신호, lexicon은 어휘적 신호 — 다른 축이라 OR 결합 시 둘 다 합산 효과를 낸다.
+v3.7에서는 §6의 2-signal OR 규칙을 3-signal OR로 확장했다. burstiness/MATTR는 분포적 신호, lexicon은 어휘적 신호 — 다른 축이라 OR 결합 시 둘 다 합산 효과를 냈다. 현재 전체 규칙은 §6의 4-signal OR이며, ko diagnostic composite가 네 번째 축이다.
 
 ### 사전 파일
 

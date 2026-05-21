@@ -1,9 +1,9 @@
 {
   "reportVersion": 1,
-  "generatedAt": "2026-05-21T10:19:11.092Z",
-  "fixtureCount": 38,
-  "benchmarkGeneratedAt": "2026-05-21T10:19:11.076Z",
-  "note": "Offline comparison harness. Built-in Patina row uses deterministic suspect-zone analyzer; third-party rows are manual opt-in only.",
+  "generatedAt": "2026-05-21T11:05:40.866Z",
+  "fixtureCount": 39,
+  "benchmarkGeneratedAt": "2026-05-21T11:05:40.849Z",
+  "note": "Offline comparison protocol. Built-in Patina row uses deterministic suspect-zone analyzer; third-party rows are manual opt-in only.",
   "manualInput": null,
   "detectors": [
     {
@@ -11,17 +11,17 @@
       "name": "Patina deterministic suspect-zone analyzer",
       "kind": "in-tree",
       "mode": "offline",
-      "threshold": "burstiness low OR MATTR low OR lexicon density > threshold"
+      "threshold": "burstiness low OR MATTR low OR lexicon density > threshold OR koDiagnostics hot"
     }
   ],
   "summaries": {
     "patina-deterministic": {
-      "tp": 20,
+      "tp": 21,
       "fp": 0,
       "fn": 0,
       "tn": 18,
-      "total": 38,
-      "fixtureCount": 38,
+      "total": 39,
+      "fixtureCount": 39,
       "coverage": 1,
       "accuracy": 1,
       "precision": 1,
@@ -320,6 +320,18 @@
     },
     {
       "fixture_id": "ko-ai-06-chat-register",
+      "lang": "ko",
+      "class": "ai",
+      "detector": "patina-deterministic",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "score": 1,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
+      "fixture_id": "ko-ai-07-ko-diagnostic",
       "lang": "ko",
       "class": "ai",
       "detector": "patina-deterministic",

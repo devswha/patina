@@ -87,6 +87,15 @@ test('paragraph signal strength uses the strongest deterministic signal', () => 
     }),
     100
   );
+  assert.equal(
+    paragraphSignalStrength({
+      burstiness: { cv: 0.5, band: 'mid' },
+      mattr: { value: 0.8, band: 'high' },
+      lexicon: { density: 0, hot: false },
+      koDiagnostics: { hot: true, strength: 17 },
+    }),
+    17
+  );
   assert.equal(summarizeSignalStrength([]), 0);
 });
 

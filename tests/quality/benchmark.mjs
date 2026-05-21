@@ -133,6 +133,7 @@ function wilsonInterval(successes, n, z = 1.959963984540054) {
 function detectorHot(result) {
   return {
     burstiness: result.paragraphs.some((p) => p.burstiness?.band === 'low'),
+    koDiagnostics: result.paragraphs.some((p) => p.koDiagnostics?.hot),
     mattr: result.paragraphs.some((p) => p.mattr?.band === 'low'),
     lexicon: result.paragraphs.some((p) => p.lexicon?.hot),
   };
@@ -141,6 +142,7 @@ function detectorHot(result) {
 function emptyDetectorMetrics() {
   return {
     burstiness: emptyMetrics(),
+    koDiagnostics: emptyMetrics(),
     mattr: emptyMetrics(),
     lexicon: emptyMetrics(),
   };
@@ -239,6 +241,9 @@ function main() {
       mattr_band: p.mattr?.band,
       lexicon_density: round(p.lexicon?.density ?? 0),
       lexicon_hits: p.lexicon?.hits ?? [],
+      ko_diagnostics_hot: Boolean(p.koDiagnostics?.hot),
+      ko_diagnostics_reasons: p.koDiagnostics?.reasons ?? [],
+      ko_diagnostics_strength: round(p.koDiagnostics?.strength ?? 0),
       signal_score: round(summarizeSignalStrength(result.paragraphs)),
     };
     const pinned = expectedRanges[meta.fixture_id];

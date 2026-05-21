@@ -46,7 +46,13 @@ export function paragraphSignalStrength(paragraph = {}, options = {}) {
     ),
     paragraph.lexicon?.hot
   );
-  return Math.max(burstiness, mattr, lexicon);
+  const koDiagnostics =
+    paragraph.koDiagnostics?.hot &&
+    typeof paragraph.koDiagnostics?.strength === 'number' &&
+    Number.isFinite(paragraph.koDiagnostics.strength)
+      ? paragraph.koDiagnostics.strength
+      : 0;
+  return Math.max(burstiness, mattr, lexicon, koDiagnostics);
 }
 
 function resolveLowThreshold(bands, fallback) {

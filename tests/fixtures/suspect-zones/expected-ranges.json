@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedBy": "node scripts/update-benchmark-ranges.mjs",
-  "generatedAt": "2026-05-20T17:48:35.049Z",
-  "fixtureCount": 38,
+  "generatedAt": "2026-05-21T11:05:04.888Z",
+  "fixtureCount": 39,
   "tolerances": {
     "cv": 0.025,
     "mattr": 0.03,
@@ -17,6 +17,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -44,6 +45,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -71,6 +73,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -98,6 +101,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -125,6 +129,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -152,6 +157,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -179,6 +185,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -206,6 +213,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -233,6 +241,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -260,6 +269,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -287,6 +297,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -314,6 +325,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -341,6 +353,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -368,6 +381,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -395,6 +409,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": true
       },
@@ -432,6 +447,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -459,6 +475,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -486,6 +503,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -513,6 +531,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -540,6 +559,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": true
       },
@@ -569,6 +589,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": true,
         "mattr": false,
         "lexicon": true
       },
@@ -598,6 +619,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": true
       },
@@ -627,6 +649,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": true,
         "mattr": false,
         "lexicon": false
       },
@@ -654,6 +677,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": true,
         "mattr": false,
         "lexicon": false
       },
@@ -681,6 +705,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": true,
         "mattr": false,
         "lexicon": true
       },
@@ -702,6 +727,34 @@
         "흐름"
       ]
     },
+    "ko-ai-07-ko-diagnostic": {
+      "path": "tests/fixtures/suspect-zones/ko/ai/ko-ai-07-ko-diagnostic.md",
+      "lang": "ko",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": true,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv_band": "mid",
+      "cv_range": [
+        0.392,
+        0.442
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.925,
+        0.985
+      ],
+      "lexicon_density_range": [
+        0,
+        5
+      ],
+      "lexicon_hits": []
+    },
     "ko-nat-01": {
       "path": "tests/fixtures/suspect-zones/ko/natural/ko-nat-01.md",
       "lang": "ko",
@@ -710,6 +763,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -737,6 +791,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -764,6 +819,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -791,6 +847,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -818,6 +875,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -845,6 +903,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -872,6 +931,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -899,6 +959,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": true,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -926,6 +987,7 @@
       "predicted_hot": true,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": true
       },
@@ -964,6 +1026,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -991,6 +1054,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1018,6 +1082,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },
@@ -1045,6 +1110,7 @@
       "predicted_hot": false,
       "detectors": {
         "burstiness": false,
+        "koDiagnostics": false,
         "mattr": false,
         "lexicon": false
       },

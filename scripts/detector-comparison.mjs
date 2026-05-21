@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Offline detector-comparison harness for the suspect-zone benchmark.
+// Offline detector-comparison protocol for the suspect-zone benchmark.
 //
 // Default mode compares Patina's deterministic in-tree analyzer against the
 // checked-in fixture labels. Pass --input <manual-results.json> to merge scores
@@ -121,7 +121,7 @@ function builtInDetector(results) {
         name: 'Patina deterministic suspect-zone analyzer',
         kind: 'in-tree',
         mode: 'offline',
-        threshold: 'burstiness low OR MATTR low OR lexicon density > threshold',
+        threshold: 'burstiness low OR MATTR low OR lexicon density > threshold OR koDiagnostics hot',
       },
     ],
     rows: results.fixtures.map((fixture) => ({
@@ -205,9 +205,9 @@ function fixtureRows(rows) {
 }
 
 function renderMarkdown(report) {
-  return `# Detector Comparison Harness
+  return `# Detector Comparison Protocol
 
-This report is generated offline from the checked-in suspect-zone fixtures. It is a comparison harness, not a vendor ranking claim.
+This report is generated offline from the checked-in suspect-zone fixtures. It is a comparison protocol, not a vendor ranking claim.
 
 ## Current run
 
@@ -251,7 +251,7 @@ function main() {
     generatedAt: new Date().toISOString(),
     fixtureCount: results.fixtureCount,
     benchmarkGeneratedAt: results.generatedAt,
-    note: 'Offline comparison harness. Built-in Patina row uses deterministic suspect-zone analyzer; third-party rows are manual opt-in only.',
+    note: 'Offline comparison protocol. Built-in Patina row uses deterministic suspect-zone analyzer; third-party rows are manual opt-in only.',
     manualInput: manual ? relative(REPO_ROOT, manual.path) : null,
     detectors,
     summaries: computed.summaries,

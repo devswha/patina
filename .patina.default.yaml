@@ -191,7 +191,17 @@ stylometry:
   sentence_zoom:
     similarity_threshold: 0.20  # adjacent sentences within ±20% token count → grouped as sub-flag
   ko_diagnostics:
-    enabled: true              # diagnostic-only; does not participate in hot until calibrated
+    enabled: true              # conservative ko-only composite; requires all bands below
+    bands:
+      minSentences: 4
+      minEojeols: 20
+      spacing:
+        maxEojeolLengthCV: 0.40
+      comma:
+        maxPerSentence: 0
+      posProxy:
+        minMatchedCount: 8
+        maxClassDiversity: 0.34
     spacing:
       metric: eojeol_length_cv # dependency-free Korean spacing regularity proxy
     comma:

@@ -40,6 +40,7 @@ function benchmarkResults(overrides = {}) {
         ...metrics(),
         byDetector: {
           burstiness: detectorMetrics,
+          koDiagnostics: detectorMetrics,
           mattr: detectorMetrics,
           lexicon: detectorMetrics,
         },

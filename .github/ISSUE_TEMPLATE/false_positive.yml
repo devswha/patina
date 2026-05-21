@@ -3,37 +3,94 @@ description: Report human writing that patina marks as too AI-like
 title: "false positive: "
 labels: [false-positive, benchmark]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping calibrate patina. Please share only text you are allowed to publish in a GitHub issue.
+
+        Good reports include the exact paragraph that fired, the score output, and enough context to tell whether the text should become an allowlist/fixture case.
   - type: dropdown
     id: language
     attributes:
       label: Language
-      options: [ko, en, zh, ja]
+      options: [ko, en, zh, ja, mixed]
     validations:
       required: true
   - type: dropdown
     id: register
     attributes:
       label: Register / genre
-      options: [blog, academic, technical, legal, medical, marketing, social, narrative, encyclopedic, other]
+      options: [blog, academic, technical, legal, medical, marketing, social, narrative, encyclopedic, chat, product-doc, other]
+    validations:
+      required: true
+  - type: dropdown
+    id: origin
+    attributes:
+      label: Text origin
+      description: Pick the closest option. This is calibration metadata, not an authorship accusation.
+      options:
+        - human-written
+        - human-written with grammar/spellcheck tools
+        - human-written with light AI editing
+        - unknown / cannot say
+    validations:
+      required: true
+  - type: dropdown
+    id: redistribution
+    attributes:
+      label: Can this exact sample be kept as a public fixture?
+      description: If not, we can still use the report as a private calibration note.
+      options:
+        - yes, public fixture is OK
+        - yes, if anonymized first
+        - no, issue discussion only
+        - no, please delete sample after triage
     validations:
       required: true
   - type: textarea
-    id: sample
+    id: fired_paragraph
     attributes:
-      label: Safe sample
-      description: Paste only text you are allowed to share publicly.
+      label: Paragraph that was flagged
+      description: Paste the shortest paragraph or snippet that reproduces the false positive. Remove secrets, names, and private data first.
+      placeholder: |
+        Paste the flagged paragraph here.
     validations:
       required: true
   - type: textarea
-    id: result
+    id: score_output
     attributes:
-      label: patina result
-      description: Include score/audit output or the pattern that fired.
+      label: patina score / audit output
+      description: Include the command, score, hot paragraph count, signal, pattern hits, or audit finding. Screenshots are OK, but text is easier to reuse.
+      placeholder: |
+        Command: npx patina --score --lang ko sample.md
+        Score: 31.2%
+        Hot paragraphs: 1/3
+        Signal: ...
+        Pattern hits: ...
     validations:
       required: true
   - type: textarea
-    id: why_human
+    id: expected_behavior
     attributes:
-      label: Why this should be treated as human/acceptable prose
+      label: Expected behavior
+      description: What should patina do instead? Lower score, ignore a phrase, add an allowlist exception, or document this register as naturally high-risk?
+      placeholder: |
+        This should probably remain below the 30% gate because...
     validations:
       required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context that helps triage
+      description: Mention where this style appears, whether the register is naturally formulaic, and whether similar paragraphs were also flagged.
+      placeholder: |
+        Example: Korean academic summary ending in ~다; human-authored course note; several short declarative sentences.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checklist
+      options:
+        - label: I removed private, confidential, and identifying information.
+          required: true
+        - label: I understand patina scores are editing signals, not authorship verdicts.
+          required: true

@@ -60,8 +60,8 @@ Brand resources: [logo](assets/brand/patina-logo.svg), [mark](assets/brand/patin
 |---|---|
 | **160 patterns** | 40 KO + 40 EN + 40 ZH + 40 JA (each incl. 8 score-only viral-hook) — see [PATTERNS.md](docs/PATTERNS.md) |
 | **Editing hotspot recall** | 91% Korean [84.0–95.4%] (n=100) / 76% English [66.7–83.3%] (n=100), binomial 95% CI |
-| **Benchmark report** | Reproducible ko/en/zh/ja suspect-zone benchmark: [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [detector comparison](docs/benchmarks/detector-comparison.md) |
-| **False positives** | 13–25% point-estimate range across human registers *(not a CI; boundary intrinsic to encyclopedic register, [documented](core/stylometry.md))* |
+| **Benchmark reports** | Reproducible ko/en/zh/ja suspect-zone benchmark: [overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [detector comparison](docs/benchmarks/detector-comparison.md) |
+| **False positives** | 13–25% point-estimate range across human registers *(not a CI; boundary intrinsic to encyclopedic register, [documented](core/stylometry.md))* — [report one](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
 | **Modes** | rewrite · audit · score · diff · ouroboros |
 | **Free tier** | Yes — via logged-in `codex`, `claude`, or `gemini` CLI (no API key) |
 | **Determinism** | Scoring formula is deterministic; LLM severity assignment ±8–10 pt per run ([scoring.md §8](core/scoring.md)) |
@@ -324,6 +324,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Design](DESIGN.md)** — product/brand source of truth for repo-native SVG and README surfaces
 - **[Roadmap](docs/ROADMAP.md)** — quality, benchmark, product, community, and launch priorities
 - **[Docs Platform RFC](docs/RESEARCH-DOCS-PLATFORM.md)** — Docusaurus, Astro Starlight, MkDocs, and GitHub Pages investigation
+- **[Benchmark Reports](docs/benchmarks/README.md)** — checked-in benchmark outputs, refresh commands, and public-claim gates
 - **[Benchmark Report](docs/benchmarks/latest.md)** — latest reproducible suspect-zone benchmark summary
 - **[Detector Comparison Harness](docs/benchmarks/detector-comparison.md)** — offline/manual comparison protocol for third-party detectors
 - **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — benchmark design notes for measuring AI-like writing signals

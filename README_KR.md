@@ -47,8 +47,8 @@ patina는 한국어·영어·중국어·일본어 글에서 AI 냄새가 나는 
 |---|---|
 | **160개 패턴** | 한국어 40 + 영어 40 + 중국어 40 + 일본어 40 (각 8개 스코어 전용 viral-hook 포함) — [PATTERNS.md](docs/PATTERNS.md) |
 | **편집 핫스팟 재현율** | 한국어 91% [84.0–95.4%] (n=100) / 영어 76% [66.7–83.3%] (n=100), binomial 95% CI |
-| **벤치마크 리포트** | 재현 가능한 ko/en/zh/ja 의심 구간 벤치마크: [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [detector comparison](docs/benchmarks/detector-comparison.md) |
-| **오탐율** | 사람 글 register별 13–25% 점추정 범위 *(CI 아님; 백과사전체의 본질적 한계, [문서화](core/stylometry.md))* |
+| **벤치마크 리포트** | 재현 가능한 ko/en/zh/ja 의심 구간 벤치마크: [overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [detector comparison](docs/benchmarks/detector-comparison.md) |
+| **오탐율** | 사람 글 register별 13–25% 점추정 범위 *(CI 아님; 백과사전체의 본질적 한계, [문서화](core/stylometry.md))* — [오탐 제보](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
 | **모드** | rewrite · audit · score · diff · ouroboros |
 | **무료 사용** | 가능 — 로그인된 `codex`, `claude`, `gemini` CLI 중 하나로 API 키 없이 실행 |
 | **결정성** | 스코어링 공식은 결정적이지만 LLM severity 부여 단계는 ±8–10pt 변동 ([scoring.md §8](core/scoring.md)) |
@@ -310,6 +310,7 @@ max-models: [claude, gemini]
 - **[Design](DESIGN.md)** — repo-native SVG와 README surface의 제품/브랜드 기준
 - **[Roadmap](docs/ROADMAP.md)** — 품질, 벤치마크, 제품, 커뮤니티, 런칭 우선순위
 - **[Docs Platform RFC](docs/RESEARCH-DOCS-PLATFORM.md)** — Docusaurus, Astro Starlight, MkDocs, GitHub Pages 조사
+- **[Benchmark Reports](docs/benchmarks/README.md)** — 체크인된 벤치마크 산출물, 갱신 명령, public-claim gate
 - **[Benchmark Report](docs/benchmarks/latest.md)** — 최신 재현 가능 suspect-zone 벤치마크 요약
 - **[Detector Comparison Harness](docs/benchmarks/detector-comparison.md)** — third-party detector를 오프라인/수동 비교하는 프로토콜
 - **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — AI-like writing signal 측정용 벤치마크 설계 메모

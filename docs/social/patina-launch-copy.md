@@ -96,6 +96,8 @@ https://patina.vibetip.help/
 https://github.com/devswha/patina
 
 특히 한국어 오탐 사례가 필요합니다. 사람이 쓴 글인데 patina가 AI 티로 잡는 사례를 알려주시면 패턴을 다듬는 데 가장 도움이 됩니다.
+오탐 제보 폼:
+https://github.com/devswha/patina/issues/new?template=false_positive.yml
 ```
 
 ## Show HN
@@ -290,6 +292,7 @@ npx patina-cli --lang en input.txt
 ## Post-launch triage
 
 - Collect false-positive reports under the `false-positive` label.
+- Use <https://github.com/devswha/patina/issues/new?template=false_positive.yml> for public false-positive reports.
 - Turn repeated missing patterns into pattern issues with examples.
 - Add strong before/after examples to `docs/EXAMPLES.md` or `examples/`.
 - Re-score public copy after edits; keep the launch thread evidence attached.

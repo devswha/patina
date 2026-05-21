@@ -14,6 +14,7 @@ Outputs:
 - A markdown table per language (accuracy, precision, recall, F1, confusion matrix)
 - A list of any misclassified fixtures with their feature values
 - `tests/quality/results.json` — full per-fixture log (gitignored)
+- `docs/benchmarks/README.md` — report index, refresh commands, and public-claim rules
 - `docs/benchmarks/latest.md` / `latest.json` when run via `npm run benchmark:report`
 - `docs/benchmarks/detector-comparison.md` / `.json` when run via `npm run benchmark:compare`
 
@@ -121,6 +122,11 @@ Treat both as editing diagnostics, not separate authorship verdicts or CI gates.
 The prose gate uses the default deterministic thresholds and the current
 Markdown pattern packs. Runtime scoring may use project config thresholds, so
 compare `signal` values within the same entrypoint rather than across tools.
+
+Report person-written paragraphs that cross the gate through the false-positive
+form: <https://github.com/devswha/patina/issues/new?template=false_positive.yml>.
+Include the exact paragraph, language/register, score output, and whether the
+sample can become a public fixture.
 
 ## What it does NOT measure
 

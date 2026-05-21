@@ -106,6 +106,10 @@ the repository.
 expected to stay `BLOCKED`; use it to prove the gate is working, not as a public
 performance claim.
 
+Use the false-positive form for person-written samples that should feed the
+human/natural side of future calibration:
+<https://github.com/devswha/patina/issues/new?template=false_positive.yml>.
+
 ## Publication gate
 
 Do not publish competitive claims until the report includes:

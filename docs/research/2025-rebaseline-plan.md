@@ -130,10 +130,10 @@ expected to stay `BLOCKED`; use it to prove the gate is working, not as a public
 performance claim.
 
 The tracked `artifacts/rebaseline-2025/human-controls.public.jsonl` file is a
-141-row Korean web candidate manifest for validating the provenance and hash-only
-path. It contains no raw text; score/outcome fields are deterministic smoke
-evidence only and must not be used as a threshold or README performance claim by
-themselves.
+250-row Korean web candidate manifest for validating the provenance and hash-only
+path, balanced at 50 rows per tracked register. It contains no raw text;
+score/outcome fields are deterministic false-positive evidence only and must not
+be used as a threshold or README performance claim by themselves.
 
 Use the false-positive form for person-written samples that should feed the
 human/natural side of future calibration:

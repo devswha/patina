@@ -144,9 +144,9 @@ review says otherwise.
 
 `artifacts/rebaseline-2025/human-controls.public.jsonl` is the first tracked
 web-sourced Korean human-control candidate manifest. It is metadata/hash-only:
-no raw source text is committed. Its deterministic outcome fields are a
-provenance/scoring smoke check until reviewer approval and balanced register
-coverage exist.
+no raw source text is committed. Its deterministic outcome fields are register-stratified false-positive
+evidence; public catch-rate claims still require positive AI-like rows and
+claim-cell coverage.
 
 The report keeps public performance claims blocked until the process gate in
 `process/pattern-freshness.md` is satisfied: scored outcome rows, at least three

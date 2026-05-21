@@ -1,8 +1,8 @@
 # Rebaseline Manifest Summary
 
-- Generated at: 2026-05-21T15:40:05.166Z
+- Generated at: 2026-05-21T15:59:59.900Z
 - Input: `artifacts/rebaseline-2025/human-controls.public.jsonl`
-- Records: 141
+- Records: 250
 - Protocol target: 25 samples per language × class × register cell
 - Public claim target: 100 samples per claim cell, 2+ languages, 3+ generator families
 
@@ -16,7 +16,7 @@ Validation: **PASS**
 
 | value | n |
 |---|---:|
-| ko | 141 |
+| ko | 250 |
 | en | 0 |
 | zh | 0 |
 | ja | 0 |
@@ -26,7 +26,7 @@ Validation: **PASS**
 | value | n |
 |---|---:|
 | ai-like | 0 |
-| natural-human | 141 |
+| natural-human | 250 |
 | lightly-edited-ai | 0 |
 | heavily-edited-ai | 0 |
 
@@ -34,11 +34,11 @@ Validation: **PASS**
 
 | value | n |
 |---|---:|
-| blog | 40 |
-| academic-summary | 16 |
-| product-doc | 22 |
-| chat-update | 39 |
-| technical-how-to | 24 |
+| blog | 50 |
+| academic-summary | 50 |
+| product-doc | 50 |
+| chat-update | 50 |
+| technical-how-to | 50 |
 
 ### By model family
 
@@ -48,20 +48,16 @@ Validation: **PASS**
 | claude-family | 0 |
 | gemini-family | 0 |
 | open-weight | 0 |
-| human-reference | 141 |
+| human-reference | 250 |
 
 ## Protocol matrix
 
 - Populated language × class × register cells: 5/80
-- Cells meeting 25+ samples: 2
+- Cells meeting 25+ samples: 5
 - Empty cells: 75
-- Underfilled populated cells: 3
+- Underfilled populated cells: 0
 
-| cell | n |
-|---|---:|
-| ko × natural-human × academic-summary | 16 |
-| ko × natural-human × product-doc | 22 |
-| ko × natural-human × technical-how-to | 24 |
+No underfilled populated protocol cells.
 
 ## Public performance claim gate
 
@@ -77,27 +73,27 @@ Public performance claim: **BLOCKED**
 |---|---:|
 | qualified positive cells (language × generator family, n≥100) | 0 |
 | qualified natural-language cells (language, n≥100) | 1 |
-| outcome rows with expected/predicted labels | 141 |
+| outcome rows with expected/predicted labels | 250 |
 
 ## Outcome metrics
 
 | metric | value |
 |---|---:|
-| accuracy | 83.7% |
-| accuracy CI | 76.7%–88.9% |
+| accuracy | 83.2% |
+| accuracy CI | 78.1%–87.3% |
 | precision | 0.0% |
 | recall | 0.0% |
 | F1 | 0.000 |
-| false positive rate | 16.3% |
+| false positive rate | 16.8% |
 | false negative rate | 0.0% |
-| TP/FP/FN/TN | 0/23/0/118 |
+| TP/FP/FN/TN | 0/42/0/208 |
 
 ### By register
 
 | register | n | FP rate | FN rate | TP/FP/FN/TN |
 |---|---:|---:|---:|---:|
-| blog | 40 | 20.0% | 0.0% | 0/8/0/32 |
-| academic-summary | 16 | 31.3% | 0.0% | 0/5/0/11 |
-| product-doc | 22 | 9.1% | 0.0% | 0/2/0/20 |
-| chat-update | 39 | 0.0% | 0.0% | 0/0/0/39 |
-| technical-how-to | 24 | 33.3% | 0.0% | 0/8/0/16 |
+| blog | 50 | 20.0% | 0.0% | 0/10/0/40 |
+| academic-summary | 50 | 14.0% | 0.0% | 0/7/0/43 |
+| product-doc | 50 | 12.0% | 0.0% | 0/6/0/44 |
+| chat-update | 50 | 4.0% | 0.0% | 0/2/0/48 |
+| technical-how-to | 50 | 34.0% | 0.0% | 0/17/0/33 |

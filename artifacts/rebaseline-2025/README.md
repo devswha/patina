@@ -17,10 +17,11 @@ Tracked files in this folder are scaffolding only:
 - `sources.ko-public.jsonl` is a source inventory for collecting larger Korean
   public-web human controls into ignored private files. It stores URLs and
   license notes only, not page text.
-- `human-controls.public.jsonl` is a 141-row Korean web human-control candidate
-  manifest. It contains source metadata and `sha256` digests only; the raw
-  extracts stay in ignored `private/` intake files. It is a provenance smoke
-  check, not benchmark evidence or a public performance claim.
+- `human-controls.public.jsonl` is a 250-row Korean web human-control candidate
+  manifest with 50 rows in each tracked Korean register. It contains source
+  metadata and `sha256` digests only; the raw extracts stay in ignored
+  `private/` intake files. It is false-positive intake evidence, not a public
+  performance claim.
 
 ## Local intake flow
 
@@ -70,7 +71,7 @@ npm run benchmark:rebaseline:web -- \
   --input artifacts/rebaseline-2025/sources.ko-public.jsonl \
   --output artifacts/rebaseline-2025/private/web-human-controls.generated.private.jsonl \
   --target-per-register 50 \
-  --max-per-source 10 \
+  --max-per-source 12 \
   --collected-at 2026-05-22
 ```
 

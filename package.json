@@ -107,7 +107,8 @@
     "artifacts/rebaseline-2025/README.md",
     "artifacts/rebaseline-2025/intake.example.jsonl",
     "artifacts/rebaseline-2025/prompts.template.jsonl",
-    "artifacts/rebaseline-2025/intake.local.example.jsonl"
+    "artifacts/rebaseline-2025/intake.local.example.jsonl",
+    "artifacts/rebaseline-2025/human-controls.public.jsonl"
   ],
   "publishConfig": {
     "access": "public"

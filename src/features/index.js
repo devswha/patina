@@ -9,6 +9,9 @@ import {
   mattr,
   classifyBurstiness,
   classifyMattr,
+  commaDensity,
+  koreanPosDiversityProxy,
+  koreanSpacingFeatures,
   DEFAULT_BURSTINESS_BANDS,
   DEFAULT_MATTR_BANDS,
   DEFAULT_MATTR_WINDOW,
@@ -63,6 +66,14 @@ export function analyzeText(text, opts = {}) {
     const mattrValue = mattr(allTokens, mattrWindow);
     const mattrBand = classifyMattr(mattrValue, mattrBands);
     const lex = computeDensity(paragraph, allTokens, lexicon);
+    const koSignals =
+      lang === 'ko'
+        ? {
+            spacing: koreanSpacingFeatures(paragraph),
+            comma: commaDensity(paragraph, sentences.length),
+            posDiversity: koreanPosDiversityProxy(paragraph),
+          }
+        : {};
 
     const lexiconHot = lex.density > lexiconDensityThreshold;
     const hot =
@@ -75,6 +86,7 @@ export function analyzeText(text, opts = {}) {
       burstiness: { cv, band: cvBand },
       mattr: { value: mattrValue, band: mattrBand },
       lexicon: { ...lex, hot: lexiconHot },
+      ...koSignals,
       hot,
     };
   });
@@ -96,6 +108,9 @@ export {
   mattr,
   classifyBurstiness,
   classifyMattr,
+  commaDensity,
+  koreanPosDiversityProxy,
+  koreanSpacingFeatures,
   loadLexicon,
   computeDensity,
 };

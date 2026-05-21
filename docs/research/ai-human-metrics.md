@@ -34,6 +34,10 @@ paragraph is SUSPECT iff
 `burstiness_band`는 단락 문장이 3개 이상일 때만 부여한다. 2문장 이하 CV는
 진단값으로만 남기고, 그 값만으로는 hot 판정을 만들지 않는다.
 
+한국어(`lang=ko`)는 hot 판정과 별개로 `spacing`, `comma`, `posDiversity` 진단값을
+추가로 남긴다. `posDiversity`는 형태소 분석기가 아니라 조사/어미 suffix class proxy이며,
+현재는 calibration 전이라 OR 규칙에 참여하지 않는다.
+
 현재 공개 benchmark 스냅샷은 ko/en/zh/ja fixture 38개 기준 전체 accuracy 1.0이다. 다만 이 corpus는 작고 설계된 synthetic/curated fixture이므로, 일반화 성능 증거로 과신하면 안 된다.
 
 ### 2.1 단기 benchmark 한계와 rebaseline 계획 (#155/#162)
@@ -121,7 +125,9 @@ patina 판단: **기본 benchmark에는 넣지 말고 optional research track으
 - sentence opener diversity
 - POS-like rough proxy: 명사형 종결, 수동 표현, nominalization suffix
 
-patina 판단: **다음 deterministic feature 후보 1순위.** 외부 모델 없이 구현 가능하고, pattern/lexicon과 다른 축이다.
+patina 판단: **한국어부터 diagnostic-only로 시작했다.** 외부 모델 없이 구현 가능하고,
+pattern/lexicon과 다른 축이라 유망하지만, 실제 corpus calibration 전에는 hot 판정에 넣지
+않는다.
 
 ## 4. 탐지 연구에서 얻을 주의사항
 

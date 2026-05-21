@@ -14,6 +14,10 @@ Tracked files in this folder are scaffolding only:
 - `intake.local.example.jsonl` is a 25-row Korean pilot skeleton. It validates
   as metadata only; replace placeholder hashes locally before using it as
   evidence.
+- `human-controls.public.jsonl` is a 10-row Korean web human-control candidate
+  manifest. It contains source metadata and `sha256` digests only; the raw
+  extracts stay in ignored `private/` intake files. It is a provenance smoke
+  check, not benchmark evidence or a public performance claim.
 
 ## Local intake flow
 
@@ -48,11 +52,20 @@ npm run benchmark:rebaseline:intake -- \
   --require-source-review
 ```
 
+To validate the tracked web human-control candidates:
+
+```bash
+node scripts/rebaseline-summary.mjs \
+  --input artifacts/rebaseline-2025/human-controls.public.jsonl \
+  --json
+```
+
 ## What can be committed
 
 Do commit:
 
 - source inventory and protocols under `docs/research/`
+- hash-only candidate manifests that pass strict provenance review
 - sanitized reports under `docs/benchmarks/` after review
 - repo-owned examples with `redistribution: "repo-ok"`
 

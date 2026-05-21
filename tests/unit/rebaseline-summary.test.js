@@ -30,6 +30,25 @@ test('example rebaseline manifest validates and keeps public claims blocked', ()
   assert.match(markdown, /Protocol matrix/);
 });
 
+test('tracked web human-control candidates are hash-only metadata rows', () => {
+  const manifest = loadManifest('artifacts/rebaseline-2025/human-controls.public.jsonl');
+  assert.deepEqual(manifest.errors, []);
+  assert.equal(manifest.records.length, 10);
+
+  for (const record of manifest.records) {
+    assert.equal(record.language, 'ko');
+    assert.equal(record.class, 'natural-human');
+    assert.equal(record.model_family, 'human-reference');
+    assert.equal(record.provider, 'web-human-control');
+    assert.equal(record.text, undefined);
+    assert.match(record.text_hash, /^sha256:[a-f0-9]{64}$/);
+    assert.match(record.source_url, /^https:\/\//);
+    assert.equal(typeof record.source_license, 'string');
+    assert.equal(record.source_review?.status, 'hash-only-web-candidate');
+    assert.equal(typeof record.reviewer_notes, 'string');
+  }
+});
+
 test('private or metadata-only rows cannot carry full text', () => {
   const checked = validateRecord({
     sample_id: 'unit-private-text',

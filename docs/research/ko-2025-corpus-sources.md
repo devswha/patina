@@ -26,6 +26,7 @@ into the repository.
 | HAERAE-HUB/KOREAN-SyntheticText-1.5B | broad synthetic Korean AI-like pool | Hugging Face dataset page shows text parquet with 1.55M rows | Synthetic side only. Check dataset card/license before committing full text; otherwise hash-only. | Sample short paragraphs for lexicon mining candidates, then manually review before pattern changes. |
 | Maintainer-generated 2026 prompts | controlled GPT/Claude/Gemini/open-weight model-era rows | Generated from repo-owned prompts and reproducible metadata | Preferred public seed when provider terms and prompt contents allow redistribution. Keep prompts public; keep vendor UI copies private if unsure. | Generate 5 rows each for GPT-family, Claude-family, Gemini-family, and open-weight across blog/product-doc/chat-update. |
 | Community false-positive submissions | real Patina FP cases | GitHub false-positive issue template captures language/register/score output | Use only with explicit fixture permission. Strip account/private context by default. | Convert accepted issues into hash-only rows first; promote to fixture only after permission. |
+| KOGL / Korea.kr / MCST / Seoul OpenGov web pages | small natural-human Korean pilot controls for source/provenance workflow | Public policy/help pages with visible source URLs and licensing/copyright guidance | Commit only hash-only metadata until page-level redistribution and attribution are reviewed. Keep raw extracts in ignored `artifacts/rebaseline-2025/private/`. | `artifacts/rebaseline-2025/human-controls.public.jsonl` contains 10 hash-only candidate rows across blog, product-doc, academic-summary, technical-how-to, and chat-update registers. |
 
 ## Intake commands
 
@@ -55,6 +56,23 @@ Tracked starter files:
 - `artifacts/rebaseline-2025/intake.local.example.jsonl` — 25 metadata-only
   rows matching the pilot buckets below. The hashes are placeholders; replace
   them locally before treating the file as evidence.
+- `artifacts/rebaseline-2025/human-controls.public.jsonl` — 10 web-sourced
+  Korean natural-human candidate rows. It is hash-only and validates the
+  collection path; it is not enough to change thresholds.
+
+To regenerate the tracked web candidate manifest from a local/private raw file:
+
+```bash
+npm run benchmark:rebaseline:intake -- \
+  --input artifacts/rebaseline-2025/private/web-human-controls.private.jsonl \
+  --public-output artifacts/rebaseline-2025/human-controls.public.jsonl \
+  --private-output artifacts/rebaseline-2025/private/web-human-controls.copy.private.jsonl \
+  --require-source-review
+
+node scripts/rebaseline-summary.mjs \
+  --input artifacts/rebaseline-2025/human-controls.public.jsonl \
+  --json
+```
 
 ## 25-row Korean pilot
 
@@ -88,3 +106,9 @@ Exit criteria for the pilot:
 - 한국어 학습자 말뭉치: <https://kcorpus.korean.go.kr/index/goIntroduceSite.do>
 - 한국어 학습자 말뭉치 Data.go.kr metadata: <https://www.data.go.kr/data/15094033/fileData.do>
 - HAERAE Korean SyntheticText: <https://huggingface.co/datasets/HAERAE-HUB/KOREAN-SyntheticText-1.5B>
+- KOGL introduction: <https://www.kogl.or.kr/info/introduce.do>
+- KOGL license guide: <https://www.kogl.or.kr/info/license.do>
+- Korea.kr policy article: <https://www.korea.kr/news/policyNewsView.do?newsId=148959377>
+- MCST KOGL type guide: <https://www.mcst.go.kr/site/s_open/kogl/koglType.jsp>
+- MCST copyright Q&A: <https://www.mcst.go.kr/site/s_policy/copyright/question/question17.jsp>
+- Seoul OpenGov copyright policy: <https://opengov.seoul.go.kr/copyright>

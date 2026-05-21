@@ -94,6 +94,7 @@ npm run benchmark:rebaseline:report
 node scripts/rebaseline-summary.mjs --input tests/quality/rebaseline-manifest.example.jsonl --json
 npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.example.jsonl --dry-run
 npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.local.example.jsonl --dry-run --require-source-review
+node scripts/rebaseline-summary.mjs --input artifacts/rebaseline-2025/human-controls.public.jsonl --json
 ```
 
 Each row records the source metadata needed by
@@ -113,6 +114,11 @@ or `reviewer_notes`. The tracked `artifacts/rebaseline-2025/intake.example.jsonl
 fixture and `artifacts/rebaseline-2025/intake.local.example.jsonl` 25-row
 template are smoke checks only; real corpus rows stay local until a license
 review says otherwise.
+
+`artifacts/rebaseline-2025/human-controls.public.jsonl` is the first tracked
+web-sourced Korean human-control candidate manifest. It is metadata/hash-only:
+no raw source text is committed, and the file remains a provenance smoke check
+until reviewer approval and scored 25-row pilot coverage exist.
 
 The report keeps public performance claims blocked until the process gate in
 `process/pattern-freshness.md` is satisfied: scored outcome rows, at least three

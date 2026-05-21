@@ -82,6 +82,7 @@ artifacts/rebaseline-2025/
 ├── intake.example.jsonl       # tracked smoke fixture, not evidence
 ├── intake.local.jsonl         # gitignored local working input
 ├── manifest.public.jsonl      # gitignored sanitized output for local review
+├── human-controls.public.jsonl # tracked hash-only KO web candidate manifest
 ├── prompts.jsonl
 ├── generations.jsonl          # only redistributable text
 ├── generations.private.jsonl  # gitignored/private text if needed
@@ -104,6 +105,7 @@ npm run benchmark:rebaseline:report
 node scripts/rebaseline-summary.mjs --input tests/quality/rebaseline-manifest.example.jsonl --json
 npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.example.jsonl --dry-run
 npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.local.example.jsonl --dry-run --require-source-review
+node scripts/rebaseline-summary.mjs --input artifacts/rebaseline-2025/human-controls.public.jsonl --json
 ```
 
 The manifest row schema is intentionally metadata-first:
@@ -124,6 +126,11 @@ the repository.
 `docs/benchmarks/rebaseline-latest.md` and `.json`. The example report is
 expected to stay `BLOCKED`; use it to prove the gate is working, not as a public
 performance claim.
+
+The tracked `artifacts/rebaseline-2025/human-controls.public.jsonl` file is a
+10-row Korean web candidate manifest for validating the provenance and hash-only
+path. It contains no raw text and must not be used as a threshold or README
+performance claim by itself.
 
 Use the false-positive form for person-written samples that should feed the
 human/natural side of future calibration:

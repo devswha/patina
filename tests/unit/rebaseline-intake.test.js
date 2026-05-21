@@ -6,6 +6,7 @@ import { join } from 'node:path';
 
 import { hashText } from '../../scripts/rebaseline-summary.mjs';
 import {
+  parseArgs,
   processIntake,
   renderIntakeSummary,
   sanitizeIntakeRows,
@@ -104,6 +105,18 @@ test('processIntake writes only sanitized public output and ignored private outp
   }
 });
 
+test('tracked KO 25-row pilot template passes strict intake validation', () => {
+  const result = processIntake({
+    input: 'artifacts/rebaseline-2025/intake.local.example.jsonl',
+    requireSourceReview: true,
+  });
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.publicRecords.length, 25);
+  assert.equal(result.privateRecords.length, 0);
+  assert.equal(result.publicRecords.filter((record) => record.language === 'ko').length, 25);
+});
+
 test('hash mismatches fail before writing intake outputs', () => {
   const result = sanitizeIntakeRows([
     {
@@ -120,4 +133,72 @@ test('hash mismatches fail before writing intake outputs', () => {
 
   assert.match(result.errors.join('\n'), /text_hash mismatch/);
   assert.throws(() => writeIntakeOutputs(result), /refusing to write/);
+});
+
+test('non-public rows warn about missing source review by default', () => {
+  const result = sanitizeIntakeRows([
+    {
+      lineNumber: 1,
+      value: {
+        ...BASE_ROW,
+        sample_id: 'ko-no-review-ai-001',
+        redistribution: 'metadata-only',
+        text_hash: hashText('placeholder'),
+      },
+    },
+  ]);
+
+  assert.deepEqual(result.errors, []);
+  assert.match(result.warnings.join('\n'), /source_review or reviewer_notes/);
+});
+
+test('strict source-review mode fails non-public rows without provenance notes', () => {
+  const result = sanitizeIntakeRows(
+    [
+      {
+        lineNumber: 1,
+        value: {
+          ...BASE_ROW,
+          sample_id: 'ko-strict-no-review-ai-001',
+          redistribution: 'metadata-only',
+          text_hash: hashText('placeholder'),
+        },
+      },
+    ],
+    { requireSourceReview: true }
+  );
+
+  assert.match(result.errors.join('\n'), /source_review or reviewer_notes/);
+  assert.throws(() => writeIntakeOutputs(result), /refusing to write/);
+});
+
+test('strict source-review mode accepts source_review metadata', () => {
+  const result = sanitizeIntakeRows(
+    [
+      {
+        lineNumber: 1,
+        value: {
+          ...BASE_ROW,
+          sample_id: 'ko-strict-reviewed-ai-001',
+          redistribution: 'metadata-only',
+          text_hash: hashText('placeholder'),
+          source_review: {
+            status: 'hash-only',
+            rationale: 'provider terms not reviewed for redistribution',
+          },
+        },
+      },
+    ],
+    { requireSourceReview: true }
+  );
+
+  assert.deepEqual(result.errors, []);
+  assert.deepEqual(result.warnings, []);
+});
+
+test('parseArgs exposes strict source-review mode', () => {
+  const args = parseArgs(['--input', 'in.jsonl', '--require-source-review', '--dry-run']);
+  assert.equal(args.input, 'in.jsonl');
+  assert.equal(args.requireSourceReview, true);
+  assert.equal(args.dryRun, true);
 });

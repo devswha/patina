@@ -47,7 +47,7 @@ confidence intervals.
 - Separate detector-facing evaluation from rewrite-quality evaluation.
 - For Korean 2025+ rows, start from `docs/research/ko-2025-corpus-sources.md`
   and run the local intake helper before any public report:
-  `npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.local.jsonl`.
+  `npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.local.jsonl --require-source-review`.
 
 ## Metrics
 
@@ -103,6 +103,7 @@ npm run benchmark:rebaseline
 npm run benchmark:rebaseline:report
 node scripts/rebaseline-summary.mjs --input tests/quality/rebaseline-manifest.example.jsonl --json
 npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.example.jsonl --dry-run
+npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.local.example.jsonl --dry-run --require-source-review
 ```
 
 The manifest row schema is intentionally metadata-first:

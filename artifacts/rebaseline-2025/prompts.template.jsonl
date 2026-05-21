@@ -1,0 +1,7 @@
+{"prompt_id":"rb25-ko-academic-da-001","language":"ko","register":"academic-summary","purpose":"native-human-control or model generation anchor","prompt":"한국어 학술 요약체(종결-다)로, 특정 연구 결과를 120~180자 한 문단으로 요약한다. 과장된 표현 없이 방법, 결과, 한계를 모두 포함한다."}
+{"prompt_id":"rb25-ko-product-doc-001","language":"ko","register":"product-doc","purpose":"native-human-control or model generation anchor","prompt":"개발자 문서의 기능 설명처럼 120~180자 한 문단을 작성한다. 설정값, 예외 조건, 사용자가 확인할 항목을 구체적으로 쓴다."}
+{"prompt_id":"rb25-ko-blog-001","language":"ko","register":"blog","purpose":"model generation anchor","prompt":"개인 블로그 톤으로 도구를 써본 짧은 후기를 120~180자 한 문단으로 작성한다. 장점 하나와 아쉬운 점 하나를 모두 포함한다."}
+{"prompt_id":"rb25-ko-chat-update-001","language":"ko","register":"chat-update","purpose":"model generation anchor","prompt":"팀 채팅 업데이트처럼 오늘 진행한 일, 막힌 점, 다음 액션을 100~160자 한 문단으로 정리한다."}
+{"prompt_id":"rb25-ko-technical-howto-001","language":"ko","register":"technical-how-to","purpose":"model generation anchor","prompt":"터미널 명령을 실행하기 전 확인해야 할 조건과 실패 시 되돌리는 방법을 120~180자 한 문단으로 설명한다."}
+{"prompt_id":"rb25-ko-edit-light-001","language":"ko","register":"product-doc","purpose":"lightly-edited-ai","prompt":"AI가 작성한 제품 문서 문단을 사람이 맞춤법과 어색한 조사만 살짝 고친 버전으로 만든다. 의미와 문장 구조는 대부분 유지한다."}
+{"prompt_id":"rb25-ko-edit-heavy-001","language":"ko","register":"blog","purpose":"heavily-edited-ai","prompt":"AI가 작성한 블로그 문단을 사람이 구조와 어휘를 크게 바꾼 버전으로 만든다. 핵심 주장과 사실은 유지한다."}

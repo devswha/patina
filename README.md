@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/demo/patina-demo.gif" alt="Animated terminal demo showing patina rewriting Korean AI-sounding copy and scoring the cleaned result" width="780">
+  <img src="assets/demo/patina-demo-en.gif" alt="Animated terminal demo showing patina rewriting English AI-sounding copy and scoring the cleaned result" width="780">
 </p>
 
 <p align="center">

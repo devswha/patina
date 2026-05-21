@@ -2,11 +2,38 @@
 
 A copy/paste demo for showing what patina does: remove AI packaging while keeping the claims intact.
 
-The animated README demo uses the same fixture and is stored at [`assets/demo/patina-demo.gif`](../assets/demo/patina-demo.gif). Re-recording notes live in [`assets/demo/README.md`](../assets/demo/README.md).
+The animated README heroes are language-suffixed:
+
+- English README: [`assets/demo/patina-demo-en.gif`](../assets/demo/patina-demo-en.gif), using
+  [`examples/short/marketing-launch-en.md`](../examples/short/marketing-launch-en.md) →
+  [`examples/short/marketing-launch-en-rewritten.md`](../examples/short/marketing-launch-en-rewritten.md)
+- Korean README: [`assets/demo/patina-demo-ko.gif`](../assets/demo/patina-demo-ko.gif), using
+  [`examples/short/marketing-launch.md`](../examples/short/marketing-launch.md) →
+  [`examples/short/marketing-launch-rewritten.md`](../examples/short/marketing-launch-rewritten.md)
+- Chinese and Japanese READMEs currently fall back to the English GIF until
+  localized recordings are useful enough to maintain.
+
+Re-recording notes live in [`assets/demo/README.md`](../assets/demo/README.md).
 
 ## 30-second terminal transcript
 
-This transcript uses the checked-in short marketing fixture so the example is reviewable without screenshots or a live model run.
+This transcript uses the checked-in English marketing fixture so the example is reviewable without screenshots or a live model run.
+
+```bash
+$ cat examples/short/marketing-launch-en.md
+The newly released Notion template pack is an innovative solution designed to transform productivity for modern teams. It offers 30 templates optimized for diverse workflows, with a user-friendly design that enables anyone to leverage them effortlessly. This product introduces a new paradigm for maximizing work efficiency.
+
+$ patina --lang en --tone marketing examples/short/marketing-launch-en.md
+If Notion still starts as a blank page for your team, open this pack first. It includes 30 templates for common workflows. Duplicate one, adjust the fields you need, and use it for a team project or your own planning without starting from scratch.
+```
+
+Full source/expected pair:
+[`examples/short/marketing-launch-en.md`](../examples/short/marketing-launch-en.md) →
+[`examples/short/marketing-launch-en-rewritten.md`](../examples/short/marketing-launch-en-rewritten.md).
+
+## Korean terminal transcript
+
+This is the Korean fixture used by `README_KR.md`.
 
 ```bash
 $ cat examples/short/marketing-launch.md

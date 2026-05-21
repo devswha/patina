@@ -527,8 +527,8 @@ Example after:
 
 - Source: [ko-structure.md](../patterns/ko-structure.md)
 - Type: rewrite-capable pattern
-- Watch words: ~것은 사실이다, ~라고 할 수 있다, ~하는 것이 가능하다, ~에 의해 ~되다, ~에 대해 ~하다 (영어 "about"의 직역), ~하는 경향이 있다 (tend to), ~에 기반하여 (based on), ~를 통해서 (through), 그것은 ~이다 (It is ~)
-- Fire condition: 한 문단 내에 번역체 표현이 2개 이상 등장할 때. 단독 1회 사용은 허용 — 정상적인 한국어에서도 간혹 나타나는 표현이므로.
+- Watch words: ~것은 사실이다, ~라고 할 수 있다, ~하는 것이 가능하다, ~에 의해 ~되다, ~에 대해 ~하다 (영어 "about"의 직역), ~하는 경향이 있다 (tend to), ~에 기반하여 (based on), ~를 통해서 (through), 그것은 ~이다 (It is ~), 탐지기 우회 약속, detector-bypass 약속, ~보존 여부를 보여주다
+- Fire condition: 한 문단 내에 번역체 표현이 2개 이상 등장할 때. 단독 1회 사용은 허용 — 정상적인 한국어에서도 간혹 나타나는 표현이므로. 단, README·제품 소개·랜딩 카피처럼 첫인상이 중요한 문장에서는 뜻이 압축된 영어식 명사구가 독자의 이해를 막으면 1회만 있어도 교정한다.
 - Example files: [failure](../examples/26-failure-01.md) · [success](../examples/26-success-01.md)
 
 Example before:
@@ -559,9 +559,9 @@ Example after:
 
 - Source: [ko-structure.md](../patterns/ko-structure.md)
 - Type: rewrite-capable pattern
-- Watch words: 인사이트, 임팩트, 레버리지, 이노베이션, 솔루션, 퍼포먼스, 거버넌스, 컨센서스, 시너지, 모멘텀, 마일스톤, 트리거, 매니징, 스케일업, 온보딩, 피드백 루프, 페인 포인트, 디시전 메이킹
-- Fire condition: 한 문단 내에 한국어 대안이 있는 외래어가 3개 이상 등장할 때. 업계에서 정착된 전문 용어(예: 마케팅, 브랜딩)는 제외.
-- Example files: [failure](../examples/28-failure-01.md) · [success](../examples/28-success-01.md)
+- Watch words: 인사이트, 임팩트, 레버리지, 이노베이션, 솔루션, 퍼포먼스, 거버넌스, 컨센서스, 시너지, 모멘텀, 마일스톤, 트리거, 매니징, 스케일업, 온보딩, 피드백 루프, 페인 포인트, 디시전 메이킹, 패러프레이저, 바이패스, 휴먼라이저, 제너레이터, 옵티마이저
+- Fire condition: 한 문단 내에 한국어 대안이 있는 외래어가 3개 이상 등장할 때. 업계에서 정착된 전문 용어(예: 마케팅, 브랜딩)는 제외. 공개 README·제품 소개·랜딩 카피에서는 "패러프레이저"처럼 독자층 밖에서는 바로 뜻이 안 잡히는 외래어가 첫 설명에 쓰이면 단독 1회도 교정 대상이다.
+- Example files: [failure](../examples/28-failure-01.md) · [success](../examples/28-success-01.md) · [success 02](../examples/28-success-02.md)
 
 Example before:
 

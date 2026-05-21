@@ -12,7 +12,7 @@
 
 patina는 한국어·영어·중국어·일본어 글에서 AI 냄새가 나는 패턴을 찾아, 원래 주장·수치·극성·인과관계를 건드리지 않고 다듬습니다. [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), OpenCode 용 스킬로 쓰거나 독립형 Node.js CLI 로 실행할 수 있습니다.
 
-블랙박스 패러프레이저도, 탐지기 우회 약속도 아닙니다. patina는 **패턴 기반이고 감사 가능**해서, 무엇을 왜 바꿨는지와 원문의 주장이 보존됐는지를 보여줍니다. `codex`, `claude`, `gemini` CLI 중 하나가 로그인되어 있으면 API 키 없이도 쓸 수 있습니다.
+블랙박스형 재작성 도구도, AI 탐지기 우회 도구도 아닙니다. patina는 **명확한 패턴 기반**으로 작동하며, 무엇을 왜 바꿨는지와 원문의 주장이 보존됐는지를 투명하게 보여줍니다. `codex`, `claude`, `gemini` CLI 중 하나가 로그인되어 있으면 API 키 없이도 쓸 수 있습니다.
 
 ## 데모
 
@@ -36,10 +36,10 @@ patina는 한국어·영어·중국어·일본어 글에서 AI 냄새가 나는 
 
 **[patina.vibetip.help](https://patina.vibetip.help/)** 에서 KO / EN / ZH / JA 문단의 AI 글쓰기 패턴을 브라우저 안에서 바로 점검할 수 있습니다.
 
-> **탐지 전용입니다.** playground는 결정론적 문체 통계만 로컬 브라우저에서 실행합니다. 텍스트를 재작성하지 않고, LLM을 호출하지 않으며, 키를 프록시하지 않습니다. 실제 rewrite가 필요하면 아래 CLI나 스킬을 사용하세요.
+> **탐지 전용입니다.** playground는 정해진 문체 통계 분석만 사용자 브라우저 안에서 실행합니다. 텍스트를 재작성하지 않고, 외부 LLM을 호출하지 않으며, API 키를 서버로 보내지 않습니다. 실제 rewrite가 필요하면 아래 CLI나 스킬을 사용하세요.
 
 전체 rewrite 흐름은 [30초 터미널 데모](docs/DEMO.md)에서 볼 수 있습니다. 더 많은 예시는 [Before/After Gallery](docs/EXAMPLES_KR.md) ([English](docs/EXAMPLES.md))에 있습니다.
-브랜드 자산: [로고](assets/brand/patina-logo.svg), [마크](assets/brand/patina-mark.svg), [아이콘](assets/brand/patina-icon.svg), [소셜 프리뷰](assets/social/patina-og.svg), [before/after 카드](assets/social/patina-before-after.svg). 사용 메모는 [BRANDING.md](docs/BRANDING.md)를 참고하세요.
+브랜드 리소스: [로고](assets/brand/patina-logo.svg), [마크](assets/brand/patina-mark.svg), [아이콘](assets/brand/patina-icon.svg), [소셜 프리뷰](assets/social/patina-og.svg), [before/after 카드](assets/social/patina-before-after.svg). 사용 가이드라인은 [BRANDING.md](docs/BRANDING.md)를 참고하세요.
 
 ## 한눈에 보기
 
@@ -154,9 +154,9 @@ printf '%s\n' '커피는 전 세계의 사회적 상호작용을 근본적으로
 
 Pre-commit, Husky, Lefthook, Docker, 릴리스 워크플로우 메모는 [docs/integrations/](docs/integrations/)에 있습니다.
 
-## 의도한 사용
+## 올바른 사용 목적
 
-Patina는 작성자가 AI 도움을 써도 되는 상황에서 초안을 편집하고, 어떤 부분을 왜 바꿨는지 투명하게 확인하면서 문체를 정리하도록 돕는 도구입니다. 텍스트가 "원래 사람이 쓴 것"이라는 약속은 아니며, 학업 윤리 규정 회피, 출판사 고지 의무 우회, 표절 세탁, 탐지기 우회 주장에 사용해서는 안 됩니다. 점수는 오탐과 미탐이 있는 편집 신호이지, 작성자 판정 근거가 아닙니다. [ETHICS.md](docs/ETHICS.md)를 참고하세요.
+Patina는 글쓴이가 AI 도움을 써도 되는 상황에서 초안을 편집하고, 어떤 부분을 왜 바꿨는지 확인하며 문체를 자연스럽게 다듬도록 돕는 도구입니다. 텍스트가 "원래 사람이 쓴 것"이라는 보증은 아니며, 학업 윤리 규정 회피, 출판사 고지 의무 우회, 표절 세탁, 탐지기 우회 주장에 사용해서는 안 됩니다. 점수는 글을 고치기 위한 참고 신호일 뿐, 작성자가 AI인지 사람인지 판정하는 근거가 아닙니다. [ETHICS.md](docs/ETHICS.md)를 참고하세요.
 
 ## 모드
 
@@ -200,7 +200,7 @@ Markdown 중심의 개발 워크플로우에는 개발자용 프로필 단축키
 
 ### 여러 스타일 변형 (v3.11)
 
-`--variants <1-5>` 는 한 번의 호출에서 N개의 보이스 변형을 요청합니다(예: V1 캐주얼, V2 직설적, V3 절제됨). 사실, 수치, 인과관계는 모든 변형에서 동일하게 유지됩니다. 각 결과는 `## Variant N` 형식으로 돌아오므로 원하는 보이스를 고를 수 있습니다.
+`--variants <1-5>` 는 한 번의 호출로 텍스트 톤을 여러 버전으로 나누어 요청합니다(예: V1 캐주얼, V2 직설적, V3 절제됨). 사실, 수치, 인과관계는 모든 변형에서 동일하게 유지됩니다. 각 결과는 `## Variant N` 형식으로 돌아오므로 원하는 보이스를 고를 수 있습니다.
 
 ### 짧은 텍스트 점수 보정 (v3.11)
 
@@ -241,7 +241,7 @@ rewrite 모드에서 모델은 `[BODY]`/`[/BODY]` 블록(또는 `--variants > 1`
 
 ### MAX 모드
 
-같은 텍스트를 Claude, Codex, Gemini 에 독립적으로 돌립니다. MPS ≥ 70 을 통과한 결과 중 AI 점수가 가장 낮은 (가장 사람다운) 결과가 선택됩니다:
+같은 텍스트를 Claude, Codex, Gemini 에 독립적으로 돌립니다. MPS ≥ 70 을 통과한 결과 중 AI 점수가 가장 낮은 (가장 자연스러운) 결과가 선택됩니다:
 
 ```
 /patina-max
@@ -302,7 +302,7 @@ max-models: [claude, gemini]
 - **[API Reference](docs/API.md)** — programmatic import와 scoring helper용 생성 JSDoc reference
 - **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI, `/patina`, `/patina-max` 옵션 지원 범위
 - **[Exit Codes](docs/EXIT-CODES.md)** — CI와 editor integration용 process code contract
-- **[Ethics](docs/ETHICS.md)** — 의도한 사용, 금지 사용, disclosure 입장
+- **[Ethics](docs/ETHICS.md)** — 올바른 사용 목적, 금지 사용, disclosure 입장
 - **[FAQ](docs/FAQ_KR.md)** ([English](docs/FAQ.md)) — detector-bypass 우려, MPS, 오탐, 기여 시작점
 - **[False-positive Gallery](docs/FALSE-POSITIVES.md)** — 작성자 비난이 아니라 편집 힌트로 보아야 하는 register 예시
 - **[Comparison](docs/COMPARISON.md)** — 일반 paraphraser/humanizer 도구와의 사실 기반 비교

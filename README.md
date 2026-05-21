@@ -25,7 +25,7 @@
 
 patina looks for AI-sounding patterns in Korean, English, Chinese, and Japanese, then rewrites them without changing the claim, numbers, polarity, or causation. Use it as a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), and OpenCode, or run it as a standalone Node.js CLI.
 
-It is not a black-box paraphraser or a detector-bypass promise. patina is **pattern-based and auditable**: it shows what changed, why it changed, and whether the original claims were preserved. No API key is needed when any of the `codex`, `claude`, or `gemini` CLIs is already logged in.
+It is not a black-box rewriting tool or an AI-detector bypass tool. patina is **clearly pattern-based and auditable**: it shows what changed, why it changed, and whether the original claims were preserved. No API key is needed when any of the `codex`, `claude`, or `gemini` CLIs is already logged in.
 
 ## Demo
 
@@ -49,10 +49,10 @@ It is not a black-box paraphraser or a detector-bypass promise. patina is **patt
 
 **[patina.vibetip.help](https://patina.vibetip.help/)** scores KO / EN / ZH / JA paragraphs for AI-writing patterns, right in the browser.
 
-> **Audit-only.** The playground runs deterministic stylometry locally in your browser. It does not rewrite text, call an LLM, or proxy any key. Use the CLI or skill below when you want a rewrite.
+> **Audit-only.** The playground runs deterministic stylometry inside your browser. It does not rewrite text, call an external LLM, or send API keys to a server. Use the CLI or skill below when you want a rewrite.
 
 Try the full rewrite locally: [30-second terminal demo](docs/DEMO.md). More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)).
-Brand assets: [logo](assets/brand/patina-logo.svg), [mark](assets/brand/patina-mark.svg), [icon](assets/brand/patina-icon.svg), [social preview](assets/social/patina-og.svg), and [before/after card](assets/social/patina-before-after.svg). Usage notes: [BRANDING.md](docs/BRANDING.md).
+Brand resources: [logo](assets/brand/patina-logo.svg), [mark](assets/brand/patina-mark.svg), [icon](assets/brand/patina-icon.svg), [social preview](assets/social/patina-og.svg), and [before/after card](assets/social/patina-before-after.svg). Usage guidelines: [BRANDING.md](docs/BRANDING.md).
 
 ## At a Glance
 
@@ -170,7 +170,7 @@ Pre-commit, Husky, Lefthook, Docker, and release workflow notes live in [docs/in
 
 ## Intended Use
 
-Use Patina for post-AI editing, audit trails, and voice cleanup when the author is allowed to use AI assistance. It does not promise that text was “originally human,” and it should not be used for academic honor-code evasion, publisher disclosure circumvention, plagiarism laundering, or detector-bypass claims. Scores are editing signals with false positives and false negatives, not authorship proof. See [ETHICS.md](docs/ETHICS.md).
+Use Patina when an author is allowed to draft with AI and wants to edit the result, understand what changed, and make the voice read more naturally. It does not certify that text was “originally human,” and it should not be used for academic honor-code evasion, publisher disclosure circumvention, plagiarism laundering, or detector-bypass claims. Scores are editing signals with false positives and false negatives, not authorship proof. See [ETHICS.md](docs/ETHICS.md).
 
 ## Modes
 
@@ -214,7 +214,7 @@ They appear in score and audit output so the benchmark matches human intuition f
 
 ### Multiple stylistic variants (v3.11)
 
-`--variants <1-5>` asks the model for N voice variants of the rewrite in one call (e.g., V1 casual, V2 direct, V3 measured) — facts, numbers, and causation stay identical across variants. Each comes back as `## Variant N` so you can pick the voice you want.
+`--variants <1-5>` asks for several tone variants in one call (e.g., V1 casual, V2 direct, V3 measured) — facts, numbers, and causation stay identical across variants. Each comes back as `## Variant N` so you can pick the voice you want.
 
 ### Short-text scoring boost (v3.11)
 

@@ -1,0 +1,542 @@
+[
+  {
+    "kind": "phrase",
+    "entry": "まとめると",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "結論として",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "要するに",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "総じて",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "言い換えれば",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "重要なのは",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "注目すべきは",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "特筆すべきは",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "現代社会において",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "デジタル時代において",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "テクノロジーの進化により",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "社会の変化に伴い",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "多角的に見ると",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "長期的に見ると",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "一方で~他方で",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "~することが重要です",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "~と言えるでしょう",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "~と言えます",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "~が求められます",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "~につながります",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "~を実現します",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "~を促進します",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "~を支える重要な要素",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "重要な役割を果たします",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "新たな可能性を切り開く",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "新しい価値を生み出す",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "さらなる発展が期待されます",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "今後ますます重要になる",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "持続可能な成長",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "ユーザー体験を向上させる",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "より良い未来",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "課題解決に貢献する",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "多様なニーズに応える",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "柔軟に対応する",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "効果的に活用する",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "最大限に引き出す",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "価値を最大化する",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "本記事では",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "この記事では",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "ここでは~について解説します",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "ぜひ参考にしてください",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "理解を深める",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "具体的に見ていきましょう",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "さまざまな場面で活用できます",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "幅広い分野で注目されています",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "新たな選択肢",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "大きなメリットがあります",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "重要なポイントです",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "欠かせない存在",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "ますます注目を集めています",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "未来を切り拓く",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "一歩踏み出すきっかけ",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "可能性を広げる",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "安心して利用できます",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "より効果的な",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "最適な方法",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "本質的な価値",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "これからの時代に求められる",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "単なる~ではなく",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  },
+  {
+    "kind": "phrase",
+    "entry": "重要な鍵となります",
+    "added": "2026-05-20",
+    "source": "ja-v1.0-2026-05-20-starter",
+    "last_validated": null,
+    "lift": null,
+    "status": "needs-external-calibration"
+  }
+]

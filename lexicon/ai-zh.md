@@ -3,6 +3,7 @@ pack: ai-lexicon-zh
 language: zh
 version: 1.0.0
 entries: 60
+entry-provenance: lexicon/provenance/ai-zh.json
 corpus-snapshot:
   id: zh-v1.0-2026-05-20-starter
   status: needs-external-calibration

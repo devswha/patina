@@ -32,7 +32,7 @@ KatFish aggregate report.
 | issue | status | next action |
 |---|---|---|
 | #155 2025+ rebaseline | blocked on positive/multilingual corpus; public-web KO human-control collection now has a 250-row hash-only pilot | Use `npm run benchmark:rebaseline:intake` for local rows, then collect ≥3 model families × ≥2 languages with n≥100 per claim cell before public catch-rate claims. See `docs/research/2026-rebaseline.md`. |
-| #160 lexicon freshness | metadata audit complete; per-entry remine blocked on corpus | Re-mine per-entry provenance only after the paired 2025+ corpus exists and the Korean pilot has separated lexicon lift from register false positives. See `docs/research/lexicon-freshness-audit.md`. |
+| #160 lexicon freshness | English remine complete; sidecar provenance in place for all lexicons | Close after confirming `npm run lexicon:freshness` and the HAP-E aggregate report. Keep KO/ZH/JA calibration as future language-specific work. See `docs/research/lexicon-freshness-audit.md`. |
 | #158 cross-judge matrix | CLI judge-family warning implemented; full matrix blocked on evaluator budget | Use `--suspected-generator <family>` for score warnings now; run 3×3×30 agreement after a stable sample manifest exists. See `docs/research/judge-agreement.md`. |
 | #159 blinded human panel | study design ready; panel blocked on reviewer pool | Recruit 5 raters × 30 paired samples with consent/redistribution rules. See `docs/research/human-eval-panel.md`. |
 

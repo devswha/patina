@@ -35,6 +35,7 @@ describe('Config Loading', () => {
     assert.ok(weights.legal);
     assert.ok(weights.medical);
     assert.ok(weights.marketing);
+    assert.ok(weights.namuwiki);
   });
 });
 
@@ -98,12 +99,23 @@ describe('Profile Loading', () => {
       'code-comment',
       'commit-message',
       'release-notes',
+      'namuwiki',
     ];
     for (const name of names) {
       const profile = loadProfile(REPO_ROOT, name);
       assert.ok(profile, `Profile ${name} should load`);
       assert.ok(profile.frontmatter || profile.body, `Profile ${name} should have content`);
     }
+  });
+
+  it('ships the NamuWiki profile as a ko-scoped, license-safe profile', () => {
+    const profile = loadProfile(REPO_ROOT, 'namuwiki');
+    assert.strictEqual(profile.frontmatter?.language, 'ko');
+    assert.match(profile.frontmatter?.['license-note'], /do not copy/i);
+    assert.ok(profile.frontmatter?.['pattern-overrides']?.ko);
+    assert.match(profile.body, /실제 나무위키 문서 문장/);
+    assert.match(profile.body, /\*\*Before\*\*/);
+    assert.match(profile.body, /\*\*After\*\*/);
   });
 
   it('should ship dev-native genre profiles with targeted guidance and examples', () => {

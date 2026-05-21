@@ -175,7 +175,7 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 | `--diff` | 変更箇所をパターンごとに表示 |
 | `--ouroboros` | スコア収束まで反復（MPS ロールバック付き） |
 | `--lang <ko\|en\|zh\|ja>` | 言語選択（デフォルト：`ko`） |
-| `--profile <名前>` | トーンプリセット：`blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes` |
+| `--profile <名前>` | トーンプリセット：`blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes`, `namuwiki` |
 | `--tone <名前>` | トーンカテゴリ：`casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | 位置引数をファイル一覧として処理（例：`--batch docs/*.md`） |
 | `--format json\|text\|markdown` | JSON、プレーンテキスト、デフォルト Markdown 出力を選択 |
@@ -187,7 +187,7 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 
 全オプションは `patina --help`。`patina doctor --json` は LLM 呼び出しなしで Node/backend/tmux/API-key の準備状況を確認し、`patina init` はプロジェクト用 `.patina.yaml` を書きます。
 
-Markdown 中心の開発ワークフローには、開発者向け profile shortcut もあります。`code-comment` は inline comments/docstrings を締め、`commit-message` は Git 履歴テキストを意図と検証中心に整え、`release-notes` は changelog bullets をユーザー影響と移行リスクが見えるリリースノートに変えます。
+Markdown 中心の開発ワークフローには、開発者向け profile shortcut もあります。`code-comment` は inline comments/docstrings を締め、`commit-message` は Git 履歴テキストを意図と検証中心に整え、`release-notes` は changelog bullets をユーザー影響と移行リスクが見えるリリースノートに変えます。`namuwiki` は韓国語専用の wiki 風 profile で、NamuWiki の記事本文をコピーしない license-safe なオリジナルガイドだけを含みます。
 
 ### スコア専用パターン
 

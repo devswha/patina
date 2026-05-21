@@ -7,7 +7,7 @@ import { dirname } from 'node:path';
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import yaml from 'js-yaml';
-import { main } from '../../src/cli.js';
+import { main, resolveProfileForLanguage } from '../../src/cli.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -136,6 +136,16 @@ describe('CLI adoption commands', () => {
       process.chdir(cwd);
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it('falls back from the ko-only NamuWiki profile outside Korean', () => {
+    const warnings = [];
+    const resolved = resolveProfileForLanguage('namuwiki', 'en', {
+      warn: (event, payload) => warnings.push({ event, payload }),
+    });
+    assert.strictEqual(resolved, 'default');
+    assert.strictEqual(warnings[0]?.event, 'profile.unsupported_language');
+    assert.match(warnings[0]?.payload?.message, /profile "namuwiki" is ko-only/);
   });
 });
 

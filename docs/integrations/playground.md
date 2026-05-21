@@ -9,7 +9,7 @@ https://patina.vibetip.help/
 It is intentionally audit-only. The page runs deterministic string operations in the browser and shows:
 
 - a 0-100 editing-hotspot score;
-- paragraph-level burstiness, MATTR, and lexicon signals;
+- paragraph-level burstiness, MATTR, lexicon, and Korean rhythm diagnostic signals;
 - a suspect-zone diff that highlights review zones and lexicon hits;
 - an **Open in CLI** command that copies the pasted input plus `npx patina-cli --score` / `--audit` commands.
 
@@ -36,3 +36,22 @@ node scripts/generate-playground-data.mjs --check
 ## Deploy notes
 
 Deploy the repository root on Vercel so the root `vercel.json` can rewrite `/` to the playground while keeping brand and social assets under `/assets/`.
+
+After a production deploy, verify that the custom domain points at the latest
+deployment and not an older manual alias:
+
+```bash
+vercel --prod --yes --scope team_66lsrwOyA36bLnIH2eoEXqry
+vercel alias set <latest-patina-*.vercel.app> patina.vibetip.help --scope team_66lsrwOyA36bLnIH2eoEXqry
+vercel inspect https://patina.vibetip.help --scope team_66lsrwOyA36bLnIH2eoEXqry
+```
+
+Smoke the live deterministic payloads:
+
+```bash
+curl -fsSL https://patina.vibetip.help/docs/benchmarks/latest.json \
+  | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d); console.log(j.fixtureCount, !!j.perLanguage?.ko?.byDetector?.koDiagnostics)})"
+
+curl -fsSL https://patina.vibetip.help/analyzer.js \
+  | grep -E "DEFAULT_KO_DIAGNOSTIC_BANDS|Korean rhythm composite"
+```

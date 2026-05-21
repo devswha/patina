@@ -187,7 +187,7 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `--diff` | Show changes pattern by pattern |
 | `--ouroboros` | Iterate the rewrite until score converges (with MPS rollback) |
 | `--lang <ko\|en\|zh\|ja>` | Select language (default: `ko`) |
-| `--profile <name>` | Tone preset: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes` |
+| `--profile <name>` | Tone preset: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes`, `namuwiki` |
 | `--tone <name>` | Tone category: `casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
 | `--batch` | Treat positional args as a list of files (e.g. `--batch docs/*.md`) |
 | `--format json\|text\|markdown` | Select machine-readable JSON, plain text, or default Markdown output |
@@ -200,7 +200,7 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 `patina --help` for the full flag list. `patina doctor --json` checks Node/backend/tmux/API-key readiness without making an LLM call, and `patina init` writes a project `.patina.yaml`.
 
 Dev-native profile shortcuts are available for Markdown-heavy engineering workflows:
-`code-comment` tightens inline comments/docstrings, `commit-message` rewrites Git history text around intent and verification, and `release-notes` turns changelog bullets into user-impact notes with migration risks visible.
+`code-comment` tightens inline comments/docstrings, `commit-message` rewrites Git history text around intent and verification, and `release-notes` turns changelog bullets into user-impact notes with migration risks visible. `namuwiki` is a ko-only, license-safe wiki-style profile that uses original guidance only; it does not copy NamuWiki article text.
 
 ### Score-only patterns
 

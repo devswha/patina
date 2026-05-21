@@ -4,6 +4,7 @@
 export const DEFAULT_BURSTINESS_BANDS = { low: 0.30, high: 0.50 };
 export const DEFAULT_MATTR_BANDS = { low: 0.55, high: 0.70 };
 export const DEFAULT_MATTR_WINDOW = 50;
+export const DEFAULT_MIN_BURSTINESS_SENTENCES = 3;
 
 // Coefficient of variation of sentence token counts.
 // Returns null when the paragraph has fewer than 2 sentences or mean is 0.

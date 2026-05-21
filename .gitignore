@@ -44,4 +44,9 @@ memory/
 # Generated benchmark artifacts (regenerated per `npm run benchmark`)
 tests/quality/results.json
 tests/e2e/temp-prompt.txt
+
+# Private rebaseline corpora; check in only sanitized manifests/summaries.
+artifacts/rebaseline-*/generations.private.jsonl
+artifacts/rebaseline-*/*.private.jsonl
+artifacts/rebaseline-*/private/
 .vercel

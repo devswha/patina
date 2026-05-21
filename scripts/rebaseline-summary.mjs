@@ -101,6 +101,15 @@ const TEXT_BLOCKED_REDIS = new Set(['metadata-only', 'private', 'no-redistributi
 const POSITIVE_CLASSES = new Set(['ai-like', 'lightly-edited-ai', 'heavily-edited-ai']);
 const SHA256_RE = /^sha256:[0-9a-f]{64}$/u;
 
+export function canRedistributeText(redistribution) {
+  return TEXT_ALLOWED_REDIS.has(normalizeToken(redistribution));
+}
+
+export function blocksRedistributableText(redistribution) {
+  const normalized = normalizeToken(redistribution);
+  return TEXT_BLOCKED_REDIS.has(normalized) || !TEXT_ALLOWED_REDIS.has(normalized);
+}
+
 export function parseArgs(argv = process.argv.slice(2)) {
   const args = {
     input: DEFAULT_INPUT,

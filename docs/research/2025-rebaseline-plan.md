@@ -3,6 +3,7 @@
 Status: protocol template, no external detector/vendor claims yet.  
 Owner: maintainers.  
 Related issues: #155, #157, #160, #303, plus #156/#158/#159 for evaluator follow-up.
+Korean source inventory: `docs/research/ko-2025-corpus-sources.md`.
 
 Patina's checked-in benchmark is a deterministic regression corpus. It is useful
 for catching tokenizer, threshold, lexicon, and fixture drift. It is not enough
@@ -44,6 +45,9 @@ confidence intervals.
 - Store full text only when redistribution is allowed. Otherwise store hashes, metadata, and metrics.
 - Keep generation metadata: model, provider, date, prompt id, decoding params, language, register, and any editing pass.
 - Separate detector-facing evaluation from rewrite-quality evaluation.
+- For Korean 2025+ rows, start from `docs/research/ko-2025-corpus-sources.md`
+  and run the local intake helper before any public report:
+  `npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.local.jsonl`.
 
 ## Metrics
 
@@ -74,6 +78,10 @@ Recommended local/private layout before publishing sanitized summaries:
 
 ```text
 artifacts/rebaseline-2025/
+├── README.md                  # tracked scaffold and privacy rules
+├── intake.example.jsonl       # tracked smoke fixture, not evidence
+├── intake.local.jsonl         # gitignored local working input
+├── manifest.public.jsonl      # gitignored sanitized output for local review
 ├── prompts.jsonl
 ├── generations.jsonl          # only redistributable text
 ├── generations.private.jsonl  # gitignored/private text if needed
@@ -94,6 +102,7 @@ collecting a larger corpus:
 npm run benchmark:rebaseline
 npm run benchmark:rebaseline:report
 node scripts/rebaseline-summary.mjs --input tests/quality/rebaseline-manifest.example.jsonl --json
+npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.example.jsonl --dry-run
 ```
 
 The manifest row schema is intentionally metadata-first:
@@ -102,7 +111,8 @@ The manifest row schema is intentionally metadata-first:
   `provider`, `model`, `generated_at`, `prompt_id`, `decoding`, `postprocess`,
   `redistribution`, `text_hash`
 - optional: `text` only when redistribution permits it, `patina_score`,
-  `expected_hot`, `predicted_hot`, `reviewer_notes`
+  `expected_hot`, `predicted_hot`, `source_url`, `source_license`,
+  `source_review`, `reviewer_notes`
 
 `text_hash` uses the same `sha256:<hex>` style as runtime manifests. If a row
 contains `text`, the validator checks that the digest matches. If a row is

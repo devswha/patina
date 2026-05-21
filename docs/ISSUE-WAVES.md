@@ -22,15 +22,15 @@ Closed in the latest wave: #304 NamuWiki profile, via `83675bc`.
 
 | issue | status | next action |
 |---|---|---|
-| #303 KO stylometry | partially implemented | Keep scoring code live; next work is external KatFish/KO corpus calibration and FP envelope measurement. |
+| #303 KO stylometry | partially implemented | Run the 25-row Korean pilot from `docs/research/ko-2025-corpus-sources.md`, then compare KatFish-style spacing/comma signals against the local manifest. |
 
 ## Wave C — corpus-gated research
 
 | issue | status | next action |
 |---|---|---|
-| #155 2025+ rebaseline | blocked on corpus | Collect ≥3 model families × ≥2 languages with n≥100 per claim cell before public catch-rate claims. |
-| #160 lexicon freshness | blocked on corpus | Re-mine per-entry provenance only after the paired 2025+ corpus exists. |
-| #157 Korean register FP | blocked on human controls | Add academic/종결-다 human controls before loosening or tightening KO thresholds. |
+| #155 2025+ rebaseline | blocked on corpus; intake scaffold ready | Use `npm run benchmark:rebaseline:intake` for local rows, then collect ≥3 model families × ≥2 languages with n≥100 per claim cell before public catch-rate claims. |
+| #160 lexicon freshness | blocked on corpus | Re-mine per-entry provenance only after the paired 2025+ corpus exists and the Korean pilot has separated lexicon lift from register false positives. |
+| #157 Korean register FP | blocked on human controls; source inventory ready | Add academic/종결-다 human controls through the metadata-first intake flow before loosening or tightening KO thresholds. |
 | #156 adversarial MPS | blocked on evaluator set | Needs examples where MPS passes but prose remains AI-like. |
 | #158 cross-judge matrix | blocked on evaluator budget | Run only after a stable sample manifest exists. |
 | #159 blinded human panel | blocked on reviewer pool | Requires reviewer instructions and consent/redistribution rules. |
@@ -53,4 +53,5 @@ claim.
 
 - Keep launch posts and public claims separate: launch copy can cite checked-in benchmark reports, but not 2025+ model performance until #155 passes its gate.
 - Any scoring-threshold change must update benchmark ranges and dogfood evidence in the same change.
+- For KO/2025+ corpus work, keep raw text in `artifacts/rebaseline-2025/` or another private store and commit only redistributable examples, hashes, metadata, and aggregate reports.
 - For external-account actions (HN, Product Hunt, Reddit, X, Threads, LinkedIn), prepare copy and evidence; the maintainer posts or explicitly delegates posting.

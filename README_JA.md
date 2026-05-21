@@ -54,9 +54,9 @@ patina は、韓国語・英語・中国語・日本語の文章から AI っぽ
 |  |  |
 |---|---|
 | **160 パターン** | 韓国語 40 + 英語 40 + 中国語 40 + 日本語 40 (各8個のスコア専用 viral-hook を含む) — [PATTERNS.md](docs/PATTERNS.md) |
-| **編集ホットスポット再現率** | 韓国語 91% [84.0–95.4%] (n=100) / 英語 76% [66.7–83.3%] (n=100), binomial 95% CI |
-| **ベンチマークレポート** | 再現可能な ko/en/zh/ja suspect-zone ベンチマーク: [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [detector comparison](docs/benchmarks/detector-comparison.md) |
-| **誤検出率** | 人間文章レジスター別 13–25% の点推定範囲 *(CI ではない；百科事典体の本質的限界、[文書化済み](core/stylometry.md))* |
+| **編集ホットスポット再現率** | 2026-05-22 modern-model rebaseline: GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro で全体 catch 67.3% [63.5–71.0%]（n=600、韓国語+英語） |
+| **ベンチマークレポート** | 再現可能な ko/en/zh/ja suspect-zone benchmark: [overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [2026 rebaseline](docs/benchmarks/rebaseline-latest.md) · [detector comparison](docs/benchmarks/detector-comparison.md) |
+| **誤検出率** | 2026-05-22 KO+EN human controls で 16.0% [11.6–21.7%]（n=200）。レジスター別の境界は [stylometry.md](core/stylometry.md) に記録 — [誤検出を報告](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
 | **モード** | rewrite · audit · score · diff · ouroboros |
 | **無料利用** | 可能 — ログイン済みの `codex`、`claude`、`gemini` CLI 経由 (API キー不要) |
 | **決定性** | スコアリング式は決定的、LLM の severity 判定段階に ±8–10pt の変動 ([scoring.md §8](core/scoring.md)) |
@@ -275,7 +275,7 @@ rewrite モードでは、モデルは `[BODY]`/`[/BODY]` ブロック（`--vari
 
 各検証ステップで意味が損なわれた場合、変更は再試行またはロールバックされます。
 
-**キャリブレーション** *(500 段落コーパス；方法論は [stylometry.md](core/stylometry.md))*：HC3 ChatGPT (en) 編集ホットスポット再現率 76% [66.7–83.3%]、paired ko/AI コーパス 91% [84.0–95.4%]（各 n=100、binomial 95% CI）。人間文章の誤検出はレジスター別 13–25% の点推定範囲として別に報告し、信頼区間としては扱いません。受け入れ基準：AI ≥ 75%、最大 FP ≤ 25%。
+**キャリブレーション** *(2026-05-22 modern-model rebaseline；方法論は [2026-rebaseline.md](docs/research/2026-rebaseline.md))*：GPT-5.5、Claude Sonnet 4.6、Gemini 2.5 Pro CLI サンプルで、決定的な編集ホットスポット catch は 67.3% [63.5–71.0%]（n=600、韓国語+英語）。人間文章コントロールの誤検出は 16.0% [11.6–21.7%]（n=200）。言語×モデル別の結果は [rebaseline-latest.md](docs/benchmarks/rebaseline-latest.md) に記載しています。これは編集シグナルであり、作者判定や検出回避の約束ではありません。
 
 ## 設定
 

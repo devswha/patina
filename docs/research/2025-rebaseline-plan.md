@@ -125,9 +125,10 @@ contains `text`, the validator checks that the digest matches. If a row is
 the repository.
 
 `npm run benchmark:rebaseline:report` writes the sanitized summary to
-`docs/benchmarks/rebaseline-latest.md` and `.json`. The example report is
-expected to stay `BLOCKED`; use it to prove the gate is working, not as a public
-performance claim.
+`docs/benchmarks/rebaseline-latest.md` and `.json`. The default report now uses
+the #155 claim-ready 2026 manifest; `tests/quality/rebaseline-manifest.example.jsonl`
+remains the small `BLOCKED` fixture for proving the gate fails incomplete
+evidence.
 
 The tracked `artifacts/rebaseline-2025/human-controls.public.jsonl` file is a
 250-row Korean web candidate manifest for validating the provenance and hash-only

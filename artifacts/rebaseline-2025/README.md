@@ -22,6 +22,10 @@ Tracked files in this folder are scaffolding only:
   metadata and `sha256` digests only; the raw extracts stay in ignored
   `private/` intake files. It is false-positive intake evidence, not a public
   performance claim.
+- `rebaseline-2026.scored.public.jsonl` is the #155 claim-ready public manifest
+  for the 2026-05-22 KO+EN modern-model rebaseline. It contains 600 generated
+  positive rows plus 200 human controls, all hash-only with deterministic score
+  metadata and no raw text.
 
 ## Local intake flow
 
@@ -98,6 +102,32 @@ npm run benchmark:rebaseline:score -- \
   --output artifacts/rebaseline-2025/human-controls.public.jsonl \
   --scored-at 2026-05-22
 ```
+
+## 2026 modern-model claim flow
+
+The #155 claim-ready flow uses ignored raw model output and then commits only a
+hash-only scored manifest:
+
+```bash
+npm run benchmark:rebaseline:generate-modern -- \
+  --per-cell 100 \
+  --batch-size 50 \
+  --generated-at 2026-05-22
+
+npm run benchmark:rebaseline:claim-manifest -- \
+  --scored-at 2026-05-22
+
+node scripts/rebaseline-summary.mjs \
+  --input artifacts/rebaseline-2025/rebaseline-2026.scored.public.jsonl \
+  --write \
+  --basename rebaseline-latest \
+  --require-claim-ready
+```
+
+`benchmark:rebaseline:generate-modern` writes raw model text under
+`private/modern-generations.private.jsonl`; do not commit that file. The
+checked-in claim surface is `rebaseline-2026.scored.public.jsonl` plus
+`docs/benchmarks/rebaseline-latest.{md,json}`.
 
 ## What can be committed
 

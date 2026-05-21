@@ -133,6 +133,14 @@ test('complete outcome rows produce deterministic confusion metrics', () => {
   assert.equal(summary.metrics.falsePositiveRate, 0.5);
   assert.equal(summary.metrics.falseNegativeRate, 0.5);
   assert.equal(summary.metricsByRegister.blog.total, 4);
+  assert.equal(summary.catchByLanguageFamily['en|gpt-family'].catchRate, 1);
+  assert.equal(summary.catchByLanguageFamily['zh|claude-family'].catchRate, 0);
+  assert.equal(summary.falsePositiveByLanguage.ko.falsePositiveRate, 0);
+  assert.equal(summary.falsePositiveByLanguage.ja.falsePositiveRate, 1);
+
+  const markdown = renderMarkdownReport(summary);
+  assert.match(markdown, /Catch rate by language × model family/);
+  assert.match(markdown, /False-positive rate by language/);
 });
 
 test('writeReportFiles writes markdown and JSON reports', () => {

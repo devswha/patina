@@ -54,9 +54,9 @@ patina 会在中文、韩文、英文和日文里找出 AI 味比较重的写作
 |  |  |
 |---|---|
 | **160 个模式** | 韩文 40 + 英文 40 + 中文 40 + 日文 40 (各含8个仅评分的 viral-hook) — [PATTERNS.md](docs/PATTERNS.md) |
-| **编辑热点召回率** | 韩文 91% [84.0–95.4%] (n=100) / 英文 76% [66.7–83.3%] (n=100), binomial 95% CI |
-| **基准报告** | 可复现的 ko/en/zh/ja suspect-zone 基准：[latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [detector comparison](docs/benchmarks/detector-comparison.md) |
-| **误检率** | 人类文本不同体裁 13–25% 点估计范围 *(不是 CI；百科风格本质局限，[已记录](core/stylometry.md))* |
+| **编辑热点召回率** | 2026-05-22 现代模型重基线：GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro 的总体 catch 为 67.3% [63.5–71.0%]（n=600，韩文+英文） |
+| **基准报告** | 可复现的 ko/en/zh/ja 可疑区间基准：[overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [2026 rebaseline](docs/benchmarks/rebaseline-latest.md) · [detector comparison](docs/benchmarks/detector-comparison.md) |
+| **误检率** | 2026-05-22 KO+EN 人类对照为 16.0% [11.6–21.7%]（n=200）；不同文体边界见 [stylometry.md](core/stylometry.md) — [报告误检](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
 | **模式** | rewrite · audit · score · diff · ouroboros |
 | **免费层** | 支持 — 通过已登录的 `codex`、`claude` 或 `gemini` CLI（无需 API 密钥） |
 | **确定性** | 评分公式是确定性的；LLM 严重度判定阶段 ±8–10pt 波动（[scoring.md §8](core/scoring.md)） |
@@ -275,7 +275,7 @@ Markdown-heavy 工程流程可使用开发者原生 profile shortcut：`code-com
 
 任一验证阶段语义偏移则重试或回滚。
 
-**校准** *(500 段语料；方法论见 [stylometry.md](core/stylometry.md))*：HC3 ChatGPT (en) 编辑热点召回率 76% [66.7–83.3%]，paired ko/AI 语料 91% [84.0–95.4%]（各 n=100，binomial 95% CI）。人类写作误检以不同体裁 13–25% 点估计范围单独报告，不作为置信区间。接受门槛：AI ≥ 75%，最大 FP ≤ 25%。
+**校准** *(2026-05-22 现代模型重基线；方法见 [2026-rebaseline.md](docs/research/2026-rebaseline.md))*：在 GPT-5.5、Claude Sonnet 4.6、Gemini 2.5 Pro CLI 样本上，确定性编辑热点 catch 为 67.3% [63.5–71.0%]（n=600，韩文+英文）。人类对照误检率为 16.0% [11.6–21.7%]（n=200）。语言×模型的细分结果见 [rebaseline-latest.md](docs/benchmarks/rebaseline-latest.md)。这只是编辑信号，不是作者判定或绕过检测的承诺。
 
 ## 配置
 

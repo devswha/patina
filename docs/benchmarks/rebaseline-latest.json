@@ -1,98 +1,379 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-05-21T15:02:19.298Z",
-  "input": "tests/quality/rebaseline-manifest.example.jsonl",
+  "generatedAt": "2026-05-21T18:13:21.576Z",
+  "input": "artifacts/rebaseline-2025/rebaseline-2026.scored.public.jsonl",
   "targets": {
     "protocolPerLanguageClassRegister": 25,
     "claimPerCell": 100,
     "claimLanguages": 2,
     "claimGeneratorFamilies": 3
   },
-  "totalRecords": 5,
+  "totalRecords": 800,
   "byLanguage": {
-    "en": 2,
-    "ko": 1,
-    "ja": 1,
-    "zh": 1
+    "ko": 400,
+    "en": 400
   },
   "byClass": {
-    "ai-like": 2,
-    "natural-human": 1,
-    "lightly-edited-ai": 1,
-    "heavily-edited-ai": 1
+    "natural-human": 200,
+    "ai-like": 600
   },
   "byRegister": {
-    "blog": 1,
-    "product-doc": 1,
-    "technical-how-to": 1,
-    "academic-summary": 1,
-    "chat-update": 1
+    "product-doc": 140,
+    "academic-summary": 190,
+    "chat-update": 140,
+    "blog": 190,
+    "technical-how-to": 140
   },
   "byModelFamily": {
-    "gpt-family": 1,
-    "human-reference": 1,
-    "gemini-family": 1,
-    "open-weight": 1,
-    "claude-family": 1
+    "human-reference": 200,
+    "claude-family": 200,
+    "gemini-family": 200,
+    "gpt-family": 200
   },
   "protocolCoverage": {
     "totalCells": 80,
-    "populatedCells": 5,
-    "emptyCells": 75,
-    "cellsMeetingTarget": 0,
+    "populatedCells": 17,
+    "emptyCells": 63,
+    "cellsMeetingTarget": 12,
     "underfilledCells": [
       {
+        "key": "ko|natural-human|blog",
+        "count": 20
+      },
+      {
+        "key": "ko|natural-human|academic-summary",
+        "count": 20
+      },
+      {
         "key": "ko|natural-human|product-doc",
-        "count": 1
+        "count": 20
       },
       {
-        "key": "en|ai-like|blog",
-        "count": 1
+        "key": "ko|natural-human|chat-update",
+        "count": 20
       },
       {
-        "key": "en|ai-like|chat-update",
-        "count": 1
-      },
-      {
-        "key": "zh|heavily-edited-ai|academic-summary",
-        "count": 1
-      },
-      {
-        "key": "ja|lightly-edited-ai|technical-how-to",
-        "count": 1
+        "key": "ko|natural-human|technical-how-to",
+        "count": 20
       }
     ]
   },
   "claimGate": {
-    "ready": false,
-    "blockers": [
-      "positive corpus has 0/2 languages with n≥100",
-      "positive corpus has 0/3 generator families with n≥100",
-      "natural/human corpus has 0/2 languages with n≥100",
-      "expected_hot and predicted_hot outcome rows are incomplete; run a scored report before README claims"
+    "ready": true,
+    "blockers": [],
+    "qualifiedPositiveCells": [
+      {
+        "key": "en|claude-family",
+        "count": 100
+      },
+      {
+        "key": "en|gemini-family",
+        "count": 100
+      },
+      {
+        "key": "en|gpt-family",
+        "count": 100
+      },
+      {
+        "key": "ko|claude-family",
+        "count": 100
+      },
+      {
+        "key": "ko|gemini-family",
+        "count": 100
+      },
+      {
+        "key": "ko|gpt-family",
+        "count": 100
+      }
     ],
-    "qualifiedPositiveCells": [],
-    "qualifiedNaturalCells": []
+    "qualifiedNaturalCells": [
+      {
+        "key": "ko",
+        "count": 100
+      },
+      {
+        "key": "en",
+        "count": 100
+      }
+    ]
   },
   "metrics": {
-    "tp": 0,
-    "fp": 0,
-    "fn": 0,
-    "tn": 0,
-    "total": 0,
-    "accuracy": 0,
-    "precision": 0,
-    "recall": 0,
-    "f1": 0,
-    "falsePositiveRate": 0,
-    "falseNegativeRate": 0,
+    "tp": 404,
+    "fp": 32,
+    "fn": 196,
+    "tn": 168,
+    "total": 800,
+    "accuracy": 0.715,
+    "precision": 0.927,
+    "recall": 0.673,
+    "f1": 0.78,
+    "falsePositiveRate": 0.16,
+    "falseNegativeRate": 0.327,
     "accuracyCi": {
-      "low": 0,
-      "high": 0,
+      "low": 0.683,
+      "high": 0.745,
+      "method": "Wilson score interval, 95%"
+    },
+    "recallCi": {
+      "low": 0.635,
+      "high": 0.71,
+      "method": "Wilson score interval, 95%"
+    },
+    "falsePositiveRateCi": {
+      "low": 0.116,
+      "high": 0.217,
       "method": "Wilson score interval, 95%"
     }
   },
-  "metricsByRegister": {},
+  "catchByLanguageFamily": {
+    "en|claude-family": {
+      "language": "en",
+      "modelFamily": "claude-family",
+      "n": 100,
+      "caught": 74,
+      "missed": 26,
+      "catchRate": 0.74,
+      "catchRateCi": {
+        "low": 0.646,
+        "high": 0.816,
+        "method": "Wilson score interval, 95%"
+      }
+    },
+    "en|gemini-family": {
+      "language": "en",
+      "modelFamily": "gemini-family",
+      "n": 100,
+      "caught": 79,
+      "missed": 21,
+      "catchRate": 0.79,
+      "catchRateCi": {
+        "low": 0.7,
+        "high": 0.858,
+        "method": "Wilson score interval, 95%"
+      }
+    },
+    "en|gpt-family": {
+      "language": "en",
+      "modelFamily": "gpt-family",
+      "n": 100,
+      "caught": 77,
+      "missed": 23,
+      "catchRate": 0.77,
+      "catchRateCi": {
+        "low": 0.678,
+        "high": 0.842,
+        "method": "Wilson score interval, 95%"
+      }
+    },
+    "ko|claude-family": {
+      "language": "ko",
+      "modelFamily": "claude-family",
+      "n": 100,
+      "caught": 68,
+      "missed": 32,
+      "catchRate": 0.68,
+      "catchRateCi": {
+        "low": 0.583,
+        "high": 0.763,
+        "method": "Wilson score interval, 95%"
+      }
+    },
+    "ko|gemini-family": {
+      "language": "ko",
+      "modelFamily": "gemini-family",
+      "n": 100,
+      "caught": 62,
+      "missed": 38,
+      "catchRate": 0.62,
+      "catchRateCi": {
+        "low": 0.522,
+        "high": 0.709,
+        "method": "Wilson score interval, 95%"
+      }
+    },
+    "ko|gpt-family": {
+      "language": "ko",
+      "modelFamily": "gpt-family",
+      "n": 100,
+      "caught": 44,
+      "missed": 56,
+      "catchRate": 0.44,
+      "catchRateCi": {
+        "low": 0.347,
+        "high": 0.538,
+        "method": "Wilson score interval, 95%"
+      }
+    }
+  },
+  "falsePositiveByLanguage": {
+    "en": {
+      "language": "en",
+      "n": 100,
+      "falsePositives": 14,
+      "trueNegatives": 86,
+      "falsePositiveRate": 0.14,
+      "falsePositiveRateCi": {
+        "low": 0.085,
+        "high": 0.221,
+        "method": "Wilson score interval, 95%"
+      }
+    },
+    "ko": {
+      "language": "ko",
+      "n": 100,
+      "falsePositives": 18,
+      "trueNegatives": 82,
+      "falsePositiveRate": 0.18,
+      "falsePositiveRateCi": {
+        "low": 0.117,
+        "high": 0.267,
+        "method": "Wilson score interval, 95%"
+      }
+    }
+  },
+  "metricsByRegister": {
+    "academic-summary": {
+      "tp": 89,
+      "fp": 18,
+      "fn": 31,
+      "tn": 52,
+      "total": 190,
+      "accuracy": 0.742,
+      "precision": 0.832,
+      "recall": 0.742,
+      "f1": 0.784,
+      "falsePositiveRate": 0.257,
+      "falseNegativeRate": 0.258,
+      "accuracyCi": {
+        "low": 0.676,
+        "high": 0.799,
+        "method": "Wilson score interval, 95%"
+      },
+      "recallCi": {
+        "low": 0.657,
+        "high": 0.812,
+        "method": "Wilson score interval, 95%"
+      },
+      "falsePositiveRateCi": {
+        "low": 0.169,
+        "high": 0.37,
+        "method": "Wilson score interval, 95%"
+      }
+    },
+    "blog": {
+      "tp": 70,
+      "fp": 6,
+      "fn": 50,
+      "tn": 64,
+      "total": 190,
+      "accuracy": 0.705,
+      "precision": 0.921,
+      "recall": 0.583,
+      "f1": 0.714,
+      "falsePositiveRate": 0.086,
+      "falseNegativeRate": 0.417,
+      "accuracyCi": {
+        "low": 0.637,
+        "high": 0.766,
+        "method": "Wilson score interval, 95%"
+      },
+      "recallCi": {
+        "low": 0.494,
+        "high": 0.668,
+        "method": "Wilson score interval, 95%"
+      },
+      "falsePositiveRateCi": {
+        "low": 0.04,
+        "high": 0.175,
+        "method": "Wilson score interval, 95%"
+      }
+    },
+    "chat-update": {
+      "tp": 61,
+      "fp": 0,
+      "fn": 59,
+      "tn": 20,
+      "total": 140,
+      "accuracy": 0.579,
+      "precision": 1,
+      "recall": 0.508,
+      "f1": 0.674,
+      "falsePositiveRate": 0,
+      "falseNegativeRate": 0.492,
+      "accuracyCi": {
+        "low": 0.496,
+        "high": 0.657,
+        "method": "Wilson score interval, 95%"
+      },
+      "recallCi": {
+        "low": 0.42,
+        "high": 0.596,
+        "method": "Wilson score interval, 95%"
+      },
+      "falsePositiveRateCi": {
+        "low": 0,
+        "high": 0.161,
+        "method": "Wilson score interval, 95%"
+      }
+    },
+    "product-doc": {
+      "tp": 94,
+      "fp": 2,
+      "fn": 26,
+      "tn": 18,
+      "total": 140,
+      "accuracy": 0.8,
+      "precision": 0.979,
+      "recall": 0.783,
+      "f1": 0.87,
+      "falsePositiveRate": 0.1,
+      "falseNegativeRate": 0.217,
+      "accuracyCi": {
+        "low": 0.726,
+        "high": 0.858,
+        "method": "Wilson score interval, 95%"
+      },
+      "recallCi": {
+        "low": 0.701,
+        "high": 0.848,
+        "method": "Wilson score interval, 95%"
+      },
+      "falsePositiveRateCi": {
+        "low": 0.028,
+        "high": 0.301,
+        "method": "Wilson score interval, 95%"
+      }
+    },
+    "technical-how-to": {
+      "tp": 90,
+      "fp": 6,
+      "fn": 30,
+      "tn": 14,
+      "total": 140,
+      "accuracy": 0.743,
+      "precision": 0.938,
+      "recall": 0.75,
+      "f1": 0.833,
+      "falsePositiveRate": 0.3,
+      "falseNegativeRate": 0.25,
+      "accuracyCi": {
+        "low": 0.665,
+        "high": 0.808,
+        "method": "Wilson score interval, 95%"
+      },
+      "recallCi": {
+        "low": 0.666,
+        "high": 0.819,
+        "method": "Wilson score interval, 95%"
+      },
+      "falsePositiveRateCi": {
+        "low": 0.145,
+        "high": 0.519,
+        "method": "Wilson score interval, 95%"
+      }
+    }
+  },
   "validation": {
     "errors": [],
     "warnings": []

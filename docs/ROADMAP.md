@@ -16,9 +16,9 @@ This roadmap focuses on two things:
   - adversarial MPS fixture gate: `npm run quality:adversarial-mps`
   - 2026 rebaseline status: [`docs/research/2026-rebaseline.md`](research/2026-rebaseline.md)
 - Current public calibration claim:
-  - Korean editing-hotspot recall: 91% [84.0-95.4%], n=100
-  - English HC3 editing-hotspot recall: 76% [66.7-83.3%], n=100
-  - human false positives: 13-25% point-estimate range across registers
+  - 2026-05-22 modern-model catch: 67.3% [63.5-71.0%], n=600 across KO+EN × GPT/Claude/Gemini
+  - human-control false positives: 16.0% [11.6-21.7%], n=200 across KO+EN
+  - per-cell results: `docs/benchmarks/rebaseline-latest.md`
 - Current distribution:
   - npm package `patina-cli` is published; `npm view patina-cli version` returned `3.11.0` on 2026-05-21.
 
@@ -272,7 +272,7 @@ Campaign state:
 - Launch Wave 2 support work: #299 closed #285; share-card generator work closed #283.
 - Launch Wave 3 static playground work closes #208 and targets <https://patina.vibetip.help/> for the try-it-now URL.
 - Launch execution prep: Korean-first channel drafts live in `docs/social/patina-launch-korean-first.md` and score 4.5%; `docs/social/patina-launch-copy.md` scores 6.7% after the KO diagnostic scoring update.
-- Rebaseline reporting prep: `npm run benchmark:rebaseline:report` refreshes `docs/benchmarks/rebaseline-latest.{md,json}` from the sanitized manifest while keeping public claims blocked without real corpus evidence.
+- Rebaseline claim pass: `npm run benchmark:rebaseline:report` refreshes `docs/benchmarks/rebaseline-latest.{md,json}` from the #155 claim-ready sanitized manifest (800 rows, no raw text).
 - KO/2025+ corpus prep: `docs/research/ko-2025-corpus-sources.md` records usable Korean sources, `artifacts/rebaseline-2025/intake.local.example.jsonl` provides the 25-row pilot skeleton, `artifacts/rebaseline-2025/sources.ko-public.jsonl` inventories public Korean web sources, `artifacts/rebaseline-2025/human-controls.public.jsonl` tracks 250 scored hash-only web human-control candidates at n=50 for each tracked register, `npm run benchmark:rebaseline:web` collects raw text into ignored private rows, and `npm run benchmark:rebaseline:score` refreshes deterministic outcome fields without copying raw text.
 - KO register pilot: `npm run benchmark:register-pilot -- --write --basename register-stratified-latest` refreshes false positives by register without committing raw text; the expanded current pilot shows 42/250 predicted-hot human-control rows, split by register for threshold work.
 - KO KatFish calibration: `npm run benchmark:katfish-ko -- --write --basename katfish-ko-latest` reports aggregate-only private KatFish metrics; current KO diagnostics improve catch rate from 58.9% to 74.8% versus Patina without KO diagnostics while public-web human-control FP stays 42/250.

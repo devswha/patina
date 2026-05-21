@@ -14,7 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 
 export const SCHEMA_VERSION = 1;
-export const DEFAULT_INPUT = 'tests/quality/rebaseline-manifest.example.jsonl';
+export const DEFAULT_INPUT = 'artifacts/rebaseline-2025/rebaseline-2026.scored.public.jsonl';
 export const DEFAULT_REPORT_DIR = 'docs/benchmarks';
 export const DEFAULT_REPORT_BASENAME = 'rebaseline-latest';
 
@@ -306,6 +306,8 @@ export function summarizeManifest(records, options = {}) {
     protocolCoverage: summarizeProtocolCoverage(protocolCells),
     claimGate: evaluateClaimGate({ records, positiveClaimCells, naturalClaimCells, outcomeRecords }),
     metrics: summarizeOutcomes(outcomeRecords),
+    catchByLanguageFamily: summarizeCatchByLanguageFamily(outcomeRecords),
+    falsePositiveByLanguage: summarizeFalsePositiveByLanguage(outcomeRecords),
     metricsByRegister: summarizeOutcomesBy(outcomeRecords, (record) => record.register),
   };
 }
@@ -377,7 +379,7 @@ ${renderClaimGateStats(claim, metrics, summary.targets)}
 
 ${metrics.total ? renderMetrics(metrics) : 'No complete `expected_hot` + `predicted_hot` outcome rows yet. This manifest is corpus metadata, not a benchmark claim.'}
 
-${metrics.total ? `### By register\n\n${renderMetricsByRegister(summary.metricsByRegister)}` : ''}
+${metrics.total ? `### Catch rate by language × model family\n\n${renderCatchByLanguageFamily(summary.catchByLanguageFamily)}\n\n### False-positive rate by language\n\n${renderFalsePositiveByLanguage(summary.falsePositiveByLanguage)}\n\n### By register\n\n${renderMetricsByRegister(summary.metricsByRegister)}` : ''}
 `;
   return `${markdown.trimEnd()}\n`;
 }
@@ -498,6 +500,8 @@ function summarizeOutcomes(records) {
   const f1 = precision + recall ? (2 * precision * recall) / (precision + recall) : 0;
   const falsePositiveRate = metrics.fp + metrics.tn ? metrics.fp / (metrics.fp + metrics.tn) : 0;
   const falseNegativeRate = metrics.fn + metrics.tp ? metrics.fn / (metrics.fn + metrics.tp) : 0;
+  const positiveTotal = metrics.tp + metrics.fn;
+  const naturalTotal = metrics.fp + metrics.tn;
   return {
     ...metrics,
     accuracy: round(accuracy),
@@ -507,6 +511,8 @@ function summarizeOutcomes(records) {
     falsePositiveRate: round(falsePositiveRate),
     falseNegativeRate: round(falseNegativeRate),
     accuracyCi: wilsonInterval(metrics.tp + metrics.tn, metrics.total),
+    recallCi: wilsonInterval(metrics.tp, positiveTotal),
+    falsePositiveRateCi: wilsonInterval(metrics.fp, naturalTotal),
   };
 }
 
@@ -522,6 +528,47 @@ function summarizeOutcomesBy(records, keyFn) {
     Object.entries(groups)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, group]) => [key, summarizeOutcomes(group)])
+  );
+}
+
+function summarizeCatchByLanguageFamily(records) {
+  const positive = records.filter((record) => POSITIVE_CLASSES.has(record.class));
+  const grouped = groupBy(positive, (record) => `${record.language}|${record.model_family}`);
+  return Object.fromEntries(
+    Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, group]) => {
+        const caught = group.filter((record) => record.predicted_hot).length;
+        return [key, {
+          language: key.split('|')[0],
+          modelFamily: key.split('|')[1],
+          n: group.length,
+          caught,
+          missed: group.length - caught,
+          catchRate: round(caught / group.length),
+          catchRateCi: wilsonInterval(caught, group.length),
+        }];
+      })
+  );
+}
+
+function summarizeFalsePositiveByLanguage(records) {
+  const natural = records.filter((record) => record.class === 'natural-human');
+  const grouped = groupBy(natural, (record) => record.language);
+  return Object.fromEntries(
+    Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([language, group]) => {
+        const falsePositives = group.filter((record) => record.predicted_hot).length;
+        return [language, {
+          language,
+          n: group.length,
+          falsePositives,
+          trueNegatives: group.length - falsePositives,
+          falsePositiveRate: round(falsePositives / group.length),
+          falsePositiveRateCi: wilsonInterval(falsePositives, group.length),
+        }];
+      })
   );
 }
 
@@ -544,6 +591,17 @@ function countBy(records, fn) {
     const key = fn(record);
     if (!key) continue;
     out[key] = (out[key] || 0) + 1;
+  }
+  return out;
+}
+
+function groupBy(records, fn) {
+  const out = {};
+  for (const record of records) {
+    const key = fn(record);
+    if (!key) continue;
+    if (!out[key]) out[key] = [];
+    out[key].push(record);
   }
   return out;
 }
@@ -613,8 +671,10 @@ function renderMetrics(metrics) {
     `| accuracy CI | ${pct(metrics.accuracyCi.low)}–${pct(metrics.accuracyCi.high)} |`,
     `| precision | ${pct(metrics.precision)} |`,
     `| recall | ${pct(metrics.recall)} |`,
+    `| recall CI | ${pct(metrics.recallCi.low)}–${pct(metrics.recallCi.high)} |`,
     `| F1 | ${metrics.f1.toFixed(3)} |`,
     `| false positive rate | ${pct(metrics.falsePositiveRate)} |`,
+    `| false positive rate CI | ${pct(metrics.falsePositiveRateCi.low)}–${pct(metrics.falsePositiveRateCi.high)} |`,
     `| false negative rate | ${pct(metrics.falseNegativeRate)} |`,
     `| TP/FP/FN/TN | ${metrics.tp}/${metrics.fp}/${metrics.fn}/${metrics.tn} |`,
   ].join('\n');
@@ -631,6 +691,30 @@ function renderMetricsByRegister(metricsByRegister = {}) {
   if (!rows.length) return 'No register-level outcome rows yet.';
   return [
     '| register | n | FP rate | FN rate | TP/FP/FN/TN |',
+    '|---|---:|---:|---:|---:|',
+    ...rows,
+  ].join('\n');
+}
+
+function renderCatchByLanguageFamily(cells = {}) {
+  const rows = Object.values(cells)
+    .sort((a, b) => `${a.language}|${a.modelFamily}`.localeCompare(`${b.language}|${b.modelFamily}`))
+    .map((cell) => `| ${escapeMarkdown(cell.language)} | ${escapeMarkdown(cell.modelFamily)} | ${cell.n} | ${pct(cell.catchRate)} | ${pct(cell.catchRateCi.low)}–${pct(cell.catchRateCi.high)} | ${cell.caught}/${cell.missed} |`);
+  if (!rows.length) return 'No positive outcome rows yet.';
+  return [
+    '| language | model family | n | catch rate | 95% CI | caught/missed |',
+    '|---|---|---:|---:|---:|---:|',
+    ...rows,
+  ].join('\n');
+}
+
+function renderFalsePositiveByLanguage(cells = {}) {
+  const rows = Object.values(cells)
+    .sort((a, b) => a.language.localeCompare(b.language))
+    .map((cell) => `| ${escapeMarkdown(cell.language)} | ${cell.n} | ${pct(cell.falsePositiveRate)} | ${pct(cell.falsePositiveRateCi.low)}–${pct(cell.falsePositiveRateCi.high)} | ${cell.falsePositives}/${cell.trueNegatives} |`);
+  if (!rows.length) return 'No natural-human outcome rows yet.';
+  return [
+    '| language | n | false-positive rate | 95% CI | FP/TN |',
     '|---|---:|---:|---:|---:|',
     ...rows,
   ].join('\n');

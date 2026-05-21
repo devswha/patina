@@ -93,6 +93,7 @@ npm run benchmark:rebaseline
 npm run benchmark:rebaseline:report
 node scripts/rebaseline-summary.mjs --input tests/quality/rebaseline-manifest.example.jsonl --json
 npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.example.jsonl --dry-run
+npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.local.example.jsonl --dry-run --require-source-review
 ```
 
 Each row records the source metadata needed by
@@ -106,9 +107,12 @@ hashes.
 For local/private corpus intake, use `npm run benchmark:rebaseline:intake`.
 It computes missing `text_hash` values and writes a public manifest that strips
 full text from non-redistributable rows while preserving the full row in the
-gitignored private output. The tracked
-`artifacts/rebaseline-2025/intake.example.jsonl` fixture is a smoke check only;
-real corpus rows stay local until a license review says otherwise.
+gitignored private output. Use `--require-source-review` before pilot reports so
+non-public rows must explain their redistribution status through `source_review`
+or `reviewer_notes`. The tracked `artifacts/rebaseline-2025/intake.example.jsonl`
+fixture and `artifacts/rebaseline-2025/intake.local.example.jsonl` 25-row
+template are smoke checks only; real corpus rows stay local until a license
+review says otherwise.
 
 The report keeps public performance claims blocked until the process gate in
 `process/pattern-freshness.md` is satisfied: scored outcome rows, at least three

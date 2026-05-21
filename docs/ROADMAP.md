@@ -269,7 +269,7 @@ Campaign state:
 - Launch Wave 3 static playground work closes #208 and targets <https://patina.vibetip.help/> for the try-it-now URL.
 - Launch execution prep: Korean-first channel drafts live in `docs/social/patina-launch-korean-first.md` and score 4.5%; `docs/social/patina-launch-copy.md` scores 6.7% after the KO diagnostic scoring update.
 - Rebaseline reporting prep: `npm run benchmark:rebaseline:report` refreshes `docs/benchmarks/rebaseline-latest.{md,json}` from the sanitized manifest while keeping public claims blocked without real corpus evidence.
-- KO/2025+ corpus prep: `docs/research/ko-2025-corpus-sources.md` records usable Korean sources and `npm run benchmark:rebaseline:intake` creates hash-only public manifests from local/private rows.
+- KO/2025+ corpus prep: `docs/research/ko-2025-corpus-sources.md` records usable Korean sources, `artifacts/rebaseline-2025/intake.local.example.jsonl` provides the 25-row pilot skeleton, and `npm run benchmark:rebaseline:intake -- --require-source-review` creates hash-only public manifests from local/private rows.
 - Launch feedback prep: the false-positive issue form now captures text origin, redistribution, fired paragraph, score output, and expected behavior.
 - Closed or verified during the campaign: #99, #104, #165, #186, #191, #199, #209, #210, #304.
 - Kept open with explicit blocker comments or pending external action: #155, #156, #157, #158, #159, #160, #206, #207, #211, #212, #286, #303.

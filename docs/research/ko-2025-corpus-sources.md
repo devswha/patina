@@ -35,7 +35,8 @@ Use the local workspace scaffold:
 npm run benchmark:rebaseline:intake -- \
   --input artifacts/rebaseline-2025/intake.local.jsonl \
   --public-output artifacts/rebaseline-2025/manifest.public.jsonl \
-  --private-output artifacts/rebaseline-2025/private/generations.private.jsonl
+  --private-output artifacts/rebaseline-2025/private/generations.private.jsonl \
+  --require-source-review
 
 node scripts/rebaseline-summary.mjs \
   --input artifacts/rebaseline-2025/manifest.public.jsonl \
@@ -45,6 +46,15 @@ node scripts/rebaseline-summary.mjs \
 The intake helper computes missing `text_hash` values. If redistribution is not
 public, it strips `text` from the public manifest and writes the full row to the
 private output path.
+
+Tracked starter files:
+
+- `artifacts/rebaseline-2025/prompts.template.jsonl` — repo-owned prompt
+  anchors for Korean academic/종결-다, product-doc, blog, chat/update,
+  technical-how-to, and edited-AI rows.
+- `artifacts/rebaseline-2025/intake.local.example.jsonl` — 25 metadata-only
+  rows matching the pilot buckets below. The hashes are placeholders; replace
+  them locally before treating the file as evidence.
 
 ## 25-row Korean pilot
 
@@ -61,6 +71,8 @@ and exposes label/register holes:
 
 Exit criteria for the pilot:
 
+- `npm run benchmark:rebaseline:intake -- --input artifacts/rebaseline-2025/intake.local.jsonl --dry-run --require-source-review`
+  passes before any rows are scored.
 - `node scripts/rebaseline-summary.mjs --input <manifest>` validates with no errors.
 - every row has `source_review` or `reviewer_notes` explaining redistribution
   status when raw text is absent;

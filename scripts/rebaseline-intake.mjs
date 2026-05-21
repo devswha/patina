@@ -22,6 +22,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
     input: DEFAULT_INTAKE_INPUT,
     publicOutput: DEFAULT_PUBLIC_OUTPUT,
     privateOutput: DEFAULT_PRIVATE_OUTPUT,
+    requireSourceReview: false,
     dryRun: false,
     json: false,
     help: false,
@@ -32,6 +33,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
     if (arg === '--input') args.input = argv[++i];
     else if (arg === '--public-output') args.publicOutput = argv[++i];
     else if (arg === '--private-output') args.privateOutput = argv[++i];
+    else if (arg === '--require-source-review') args.requireSourceReview = true;
     else if (arg === '--dry-run') args.dryRun = true;
     else if (arg === '--json') args.json = true;
     else if (arg === '--help' || arg === '-h') args.help = true;
@@ -71,11 +73,12 @@ export function loadIntakeRows(inputPath = DEFAULT_INTAKE_INPUT) {
   return result;
 }
 
-export function sanitizeIntakeRows(rows) {
+export function sanitizeIntakeRows(rows, options = {}) {
   const publicRecords = [];
   const privateRecords = [];
   const errors = [];
   const warnings = [];
+  const requireSourceReview = Boolean(options.requireSourceReview);
 
   for (const row of rows) {
     const lineNumber = row.lineNumber ?? '?';
@@ -105,7 +108,9 @@ export function sanitizeIntakeRows(rows) {
       privateRecords.push(record);
     }
     if (!canRedistributeText(record.redistribution) && !record.source_review && !record.reviewer_notes) {
-      warnings.push(`${label}: add source_review or reviewer_notes for non-public redistribution status`);
+      const message = `${label}: add source_review or reviewer_notes for non-public redistribution status`;
+      if (requireSourceReview) errors.push(message);
+      else warnings.push(message);
     }
 
     const checked = validateRecord(publicRecord);
@@ -132,7 +137,7 @@ export function processIntake(options = {}) {
 
   return {
     input: loaded.relativePath,
-    ...sanitizeIntakeRows(loaded.rows),
+    ...sanitizeIntakeRows(loaded.rows, { requireSourceReview: options.requireSourceReview }),
   };
 }
 
@@ -202,10 +207,12 @@ function escapeMarkdown(value) {
 }
 
 function printHelp() {
-  console.log(`Usage: node scripts/rebaseline-intake.mjs --input <intake.jsonl> [--public-output <manifest.jsonl>] [--private-output <private.jsonl>] [--dry-run] [--json]
+  console.log(`Usage: node scripts/rebaseline-intake.mjs --input <intake.jsonl> [--public-output <manifest.jsonl>] [--private-output <private.jsonl>] [--require-source-review] [--dry-run] [--json]
 
 Computes missing text_hash values and writes a sanitized public manifest.
 Full text is kept in the public manifest only when redistribution is allowed.
+Use --require-source-review before pilot reports to fail non-public rows that
+lack source_review or reviewer_notes.
 Default input: ${DEFAULT_INTAKE_INPUT}`);
 }
 
@@ -216,7 +223,7 @@ function main() {
     return;
   }
 
-  const result = processIntake({ input: args.input });
+  const result = processIntake({ input: args.input, requireSourceReview: args.requireSourceReview });
   const written = !args.dryRun && result.errors.length === 0
     ? writeIntakeOutputs(result, { publicOutput: args.publicOutput, privateOutput: args.privateOutput })
     : null;

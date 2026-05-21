@@ -234,8 +234,10 @@ export function formatMarkdownReport(rows, { gate = 30, title = 'Patina prose ho
   lines.push('| status | file | lang | paragraphs | hot | score | signal | pattern hits |');
   lines.push('|---|---|---:|---:|---:|---:|---:|---:|');
   for (const row of rows) {
+    const signalScore = Number.isFinite(Number(row.signalScore)) ? Number(row.signalScore) : 0;
+    const patternHits = Number.isFinite(Number(row.patternHits)) ? Number(row.patternHits) : 0;
     lines.push(
-      `| ${statusIcon(row)} | ${escapeCell(row.file)} | ${row.lang} | ${row.paragraphCount} | ${row.hotCount} | ${row.score.toFixed(1)}% | ${row.signalScore.toFixed(1)} | ${row.patternHits} |`
+      `| ${statusIcon(row)} | ${escapeCell(row.file)} | ${row.lang} | ${row.paragraphCount} | ${row.hotCount} | ${row.score.toFixed(1)}% | ${signalScore.toFixed(1)} | ${patternHits} |`
     );
   }
   return lines.join('\n');

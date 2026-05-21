@@ -53,6 +53,9 @@ prints two diagnostics:
   not change the binary hot-paragraph ratio.
 
 Treat both as editing diagnostics, not separate authorship verdicts or CI gates.
+The prose gate uses the default deterministic thresholds and the current
+Markdown pattern packs. Runtime scoring may use project config thresholds, so
+compare `signal` values within the same entrypoint rather than across tools.
 
 ## What it does NOT measure
 

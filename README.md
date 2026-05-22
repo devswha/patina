@@ -24,11 +24,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/demo/patina-demo-en.gif" alt="Animated terminal demo showing patina rewriting English AI-sounding copy and scoring the cleaned result" width="780">
-</p>
-
-<p align="center">
-  <a href="https://patina.vibetip.help/"><b>Try it now on your own text — no install</b></a>
+  <a href="https://patina.vibetip.help/"><b>▶ Try it now on your own text — no install</b></a>
 </p>
 
 patina looks for AI-sounding patterns in Korean, English, Chinese, and Japanese, then rewrites them without changing the claim, numbers, polarity, or causation. Use it as a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Cursor](https://cursor.sh), and OpenCode, or run it as a standalone Node.js CLI.
@@ -52,6 +48,12 @@ It is not a black-box rewriting tool or an AI-detector bypass tool. patina is **
 | Korean marketing | “혁신적인 솔루션”, “새로운 패러다임” | 30 Notion templates, workflow fit, copy-and-edit usage |
 | Academic | “획기적인 성과”, broad significance claims | 60 GitHub projects, 72h→10m setup time, p<0.01, limits noted |
 | Technical | “핵심적인 역할”, future-standard hype | GPU management, one-command provisioning, 5× result caveat |
+
+**See it run** *(English)*:
+
+<p align="center">
+  <img src="assets/demo/patina-demo-en.gif" alt="Animated terminal demo showing patina rewriting English AI-sounding copy and scoring the cleaned result" width="780">
+</p>
 
 ## Try it in your browser — no install
 

@@ -254,13 +254,13 @@ Do not lead with “bypass AI detectors.” Lead with:
 
 ## 5. Immediate next actions
 
-Last triaged: 2026-05-21, after launch-service parity and issue-inventory sync.
+Last triaged: 2026-05-22, after README demo localization and issue-inventory sync.
 
 Current GitHub issue inventory:
 
-- 11 open issues; 142 closed issues; 153 tracked issues total.
+- 9 open issues; 145 closed issues; 154 tracked issues total.
 - Open PRs: 0.
-- Open priority split: 1 high, 3 medium, 7 low, and 0 without priority labels.
+- Open priority split: 1 high, 1 medium, 7 low, and 0 without priority labels.
 - Current high-priority issue: #286 launch tracking/playbook.
 
 Campaign state:
@@ -280,15 +280,17 @@ Campaign state:
 - Growth nudge prep: #305 adds the install success star line and a CI-safe,
   stderr-only, one-time CLI reminder with `PATINA_NO_NUDGE=1`.
 - README demo prep: #306 adds the first-screen terminal GIF, try-it-now
-  playground link, translated README references, and re-recording notes.
-- Closed or verified during the campaign: #99, #104, #156, #157, #303, #165, #186, #191, #199, #209, #210, #304, #305, #306.
-- Kept open with explicit blocker comments or pending external action: #155, #158, #159, #160, #206, #207, #211, #212, #286, #307.
+  playground link, translated README references, and re-recording notes; #308
+  localizes README hero GIF references so English uses `patina-demo-en.gif`,
+  Korean uses `patina-demo-ko.gif`, and ZH/JA intentionally fall back to EN.
+- Closed or verified during the campaign: #99, #104, #155, #156, #157, #160, #303, #165, #186, #191, #199, #209, #210, #304, #305, #306, #308.
+- Kept open with explicit blocker comments or pending external action: #158, #159, #206, #207, #211, #212, #284, #286, #307.
 - Legacy bot/harness notes were removed from the public repo; restart autonomous bot work only from a fresh, tracked design if it becomes necessary.
 
 Next recommended order:
 
 1. Keep #286 as the launch execution tracker; infra, copy, and the README demo GIF are live, so the next step is maintainer-owned Korean-first posting plus feedback capture.
-2. Continue research/process medium items (#155, #160) only when there is redistributable corpus, evaluator, or release bandwidth; use the rebaseline intake and report writers for sanitized summaries.
-3. Treat low-priority research/ecosystem items (#158, #159, #206, #207, #211, #212, #284) as parked until corpus, external repo, hosting, or governance prerequisites exist; keep new campaign PRs short-lived.
+2. Prepare #307 awesome-list discovery submissions only as candidate copy/checklists; maintainer-owned external submissions should stay outside automated repo changes.
+3. Treat low-priority research/ecosystem items (#158, #159, #206, #207, #211, #212, #284) as parked until evaluator budget, reviewer pool, redistributable corpus, external repo, hosting, or governance prerequisites exist; keep new campaign PRs short-lived.
 
-Detailed wave grouping lives in `docs/ISSUE-WAVES.md` so launch, profile, corpus-gated research, and parked ecosystem work can move independently without re-triage.
+Detailed wave grouping lives in `docs/ISSUE-WAVES.md` so launch/growth, completed profile work, evaluation-gated research, and parked ecosystem work can move independently without re-triage.

@@ -15,7 +15,7 @@ Current score proof:
 node scripts/precommit-score.mjs docs/social/patina-launch-copy.md docs/social/patina-launch-korean-first.md docs/social/signs-of-ai-writing.md docs/social/signs-of-ai-writing_KR.md
 ```
 
-Latest local result: launch copy 6.7%, Korean-first copy 4.5%, EN guide 0.0%, KR guide 20.0%.
+Latest local result: launch copy 6.3%, Korean-first copy 0.0%, EN guide 0.0%, KR guide 20.0%.
 
 ## Wave B — implementable product/profile work
 

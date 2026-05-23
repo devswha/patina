@@ -2,6 +2,9 @@
 
 Use this file as the source of truth for public launch posts. The positioning is deliberately **auditable cleanup / editing tool**, not detector bypass.
 
+Execution checklist and #286 update template:
+[`docs/social/patina-launch-execution.md`](patina-launch-execution.md).
+
 ## Launch sequence
 
 Run the launch in this order. Do not skip the Korean-first pass: it is the wedge that makes patina different from generic English humanizers.
@@ -41,11 +44,11 @@ Score command:
 node scripts/precommit-score.mjs docs/social/patina-launch-copy.md
 ```
 
-Last local score check: 2026-05-21, `docs/social/patina-launch-copy.md` scored 14.3% (`node scripts/precommit-score.mjs docs/social/patina-launch-copy.md`).
+Last local score check: 2026-05-23, `docs/social/patina-launch-copy.md` scored 6.3% (`node scripts/precommit-score.mjs docs/social/patina-launch-copy.md`).
 
 Korean-first launch drafts are now split out for exact channel copying:
 [`docs/social/patina-launch-korean-first.md`](patina-launch-korean-first.md).
-Last score check on 2026-05-21: Korean-first drafts 17.4%, this file 13.8%.
+Last score check on 2026-05-23: Korean-first drafts 0.0%, this file 6.3%.
 
 ## Positioning
 

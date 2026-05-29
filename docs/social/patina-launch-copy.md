@@ -108,7 +108,7 @@ https://github.com/devswha/patina/issues/new?template=false_positive.yml
 Title:
 
 ```text
-Show HN: Patina – rewrite AI text patterns in Korean, English, Chinese, Japanese
+Show HN: Patina – rewrite AI text patterns in Korean/English/Chinese/Japanese
 ```
 
 Post body:

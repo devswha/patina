@@ -108,7 +108,7 @@ https://github.com/devswha/patina/issues/new?template=false_positive.yml
 Title:
 
 ```text
-Show HN: Patina – strip AI-writing tells, Korean-first, with an audit trail
+Show HN: Patina – rewrite AI text patterns in Korean, English, Chinese, Japanese
 ```
 
 Post body:

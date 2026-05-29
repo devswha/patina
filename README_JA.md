@@ -293,25 +293,42 @@ max-models: [claude, gemini]
 
 ## ドキュメント
 
+- **[Cookbook](docs/COOKBOOK.md)** — 実用レシピ（Hugo バッチスコアリング、GitHub Actions、MAX モード比較、誤検出 triage、カスタム profile、pre-commit）
 - **[Glossary](docs/GLOSSARY.md)** — MPS、fidelity、burstiness、MATTR、モードなどの反復用語の短い定義
 - **[Demo](docs/DEMO.md)** — ターミナル transcript と複数ジャンルの before/after スナップショット
 - **[Patterns](docs/PATTERNS.md)** — 160 パターンカタログ
-- **[Authentication](docs/AUTHENTICATION.md)** — バックエンド、プロバイダ、無料ティア設定
-- **[CLI Contract](docs/CLI.md)** — score gate、終了コード、自動化に安全なインターフェイス
+- **[Authentication](docs/AUTHENTICATION.md)** ([한국어](docs/AUTHENTICATION_KR.md)) — バックエンド、プロバイダ、無料ティア設定
+- **[GitHub Action](docs/integrations/github-action.md)** — live model key なしで PR hotspot コメントと README score badge を生成
+- **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit、Husky、Lefthook の score-only レシピ
+- **[Static-site Stencils](docs/integrations/static-sites.md)** — Hugo、Astro、Next.js MDX のビルド時スコアリングレシピ
+- **[Docker](docs/integrations/docker.md)** — GHCR イメージの使い方と release tag
+- **[Release workflow](docs/integrations/release.md)** — npm provenance + GHCR 公開チェックリスト
+- **[CLI Contract](docs/CLI.md)** — score gate、JSON/text/Markdown 出力、自動化に安全なインターフェイス
+- **[API Reference](docs/API.md)** — プログラム的な import とスコアリング helper 向けの生成 JSDoc リファレンス
 - **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI、`/patina`、`/patina-max` のオプション対応範囲
+- **[Exit Codes](docs/EXIT-CODES.md)** — CI とエディタ統合向けのプロセス終了コード契約
 - **[Ethics](docs/ETHICS.md)** — 正しい使用目的、禁止用途、disclosure 方針
-- **[FAQ](docs/FAQ.md)** — detector-bypass の懸念、MPS、誤検出、貢献の始め方
+- **[FAQ](docs/FAQ.md)** ([한국어](docs/FAQ_KR.md)) — detector-bypass の懸念、MPS、誤検出、貢献の始め方
+- **[False-positive Gallery](docs/FALSE-POSITIVES.md)** — 指摘ではなく編集ヒントとして扱うべき人間らしい文体の例
 - **[Comparison](docs/COMPARISON.md)** — 一般的な paraphraser/humanizer ツールとの事実ベース比較
 - **[Branding](docs/BRANDING.md)** — canonical logo/social assets と OG 設定メモ
 - **[Design](DESIGN.md)** — repo-native SVG と README surface の製品/ブランド基準
 - **[Roadmap](docs/ROADMAP.md)** — 品質、ベンチマーク、プロダクト、コミュニティ、ローンチ優先事項
+- **[Docs Platform RFC](docs/RESEARCH-DOCS-PLATFORM.md)** — Docusaurus、Astro Starlight、MkDocs、GitHub Pages の調査
+- **[Benchmark Reports](docs/benchmarks/README.md)** — チェックインされたベンチマーク成果物、更新コマンド、public-claim gate
 - **[Benchmark Report](docs/benchmarks/latest.md)** — 最新の再現可能な suspect-zone ベンチマーク要約
+- **[Detector Comparison Harness](docs/benchmarks/detector-comparison.md)** — サードパーティ detector のオフライン/手動比較プロトコル
 - **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — AI-like writing signals 測定用ベンチマーク設計メモ
-- **[Launch Copy](docs/social/patina-launch-copy.md)** — Show HN、Reddit、X、韓国コミュニティ向け下書き
+- **[2026 Modern-model Rebaseline](docs/research/2026-rebaseline.md)** — 現在の日付スタンプ付き KO+EN catch/FP claim
+- **[2025+ Re-baseline Plan](docs/research/2025-rebaseline-plan.md)** — より広い model-era claim 向けのプロトコル
+- **[zh/ja Lexicon Calibration](docs/research/zh-ja-lexicon-calibration.md)** — starter lexicon gate と残りの corpus risk
+- **[Launch Copy](docs/social/patina-launch-copy.md)** — launch sequence、score gate、Show HN/Product Hunt/Reddit/X/韓国コミュニティ向け下書き
+- **[Signs of AI Writing](docs/social/signs-of-ai-writing.md)** ([한국어](docs/social/signs-of-ai-writing_KR.md)) — 引用例付きの共有用編集 checklist
+- **[Share Card SVGs](docs/social/share-card.md)** — score と MPS pill 付きの `--card` before/after social card
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 語彙アルゴリズム
 - **[Scoring](core/scoring.md)** — AI 類似度 + 忠実度 + MPS
 - **[Changelog](CHANGELOG.md)** — リリースノートと方法論
-- **[Contributing](CONTRIBUTING.md)** — パターン提出、誤検出 triage、ベンチマーク fixture、バージョン管理
+- **[Contributing](CONTRIBUTING.md)** ([한국어](CONTRIBUTING_KR.md)) — パターン提出、誤検出 triage、ベンチマーク fixture、バージョン管理
 - **[Governance](GOVERNANCE.md)** / **[Maintainers](MAINTAINERS.md)** — 軽量なプロジェクト意思決定ルール
 
 ## 着想元

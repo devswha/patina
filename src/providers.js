@@ -24,7 +24,7 @@ export const PROVIDERS = {
     name: 'gemini',
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
     apiKeyEnv: 'GEMINI_API_KEY',
-    defaultModel: 'gemini-1.5-flash',
+    defaultModel: 'gemini-2.5-flash',
     freeTier: true,
     note: 'Free tier available. Get a key at https://aistudio.google.com/app/apikey',
   },

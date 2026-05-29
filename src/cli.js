@@ -336,6 +336,7 @@ export async function main(args) {
           apiKey: resolved.apiKey,
           baseURL: resolved.baseURL,
           model: resolved.model,
+          modelSource: resolved.modelSource,
           signal: cancellation.signal,
           temperature: manifestTemperature,
           seed: manifestSeed,
@@ -1223,7 +1224,9 @@ LANGUAGE & PROFILE
   --voice-sample <path>   Use 1-3 user paragraphs as style-only voice anchors
 
 MODEL & AUTH
-  --model <id>            Single model ID (default: gpt-4o)
+  --model <id>            Single model ID (default: gpt-4o). Only affects
+                          gemini-cli and the HTTP provider path; claude-cli
+                          and codex-cli use their logged-in session model.
   --api-key <key>         API key (DEPRECATED: leaks via ps/shell history; prefer
                           PATINA_API_KEY env or --api-key-file)
   --api-key-file <path>   Read API key from file (recommended)

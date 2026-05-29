@@ -1,7 +1,7 @@
 ---
 pattern: 29
 type: failure
-name: 거짓 뉘앙스
+name: 거짓 뉘앙스 (소급적 재해석)
 pack: ko-communication
 ---
 

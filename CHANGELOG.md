@@ -12,6 +12,24 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## Unreleased
+
+**Post-3.11.0 launch-prep and distribution polish (not yet versioned).**
+
+Semver rationale: patch — docs, packaging, and benchmark-evidence changes only; no pattern, schema, or CLI-behavior changes.
+
+### Changed
+
+- Trimmed the npm tarball from ~10MB to 627KB by excluding non-runtime assets.
+- Reworked the README hero to be text-first and demoted the demo GIF below the static example; added per-language README demos.
+- Added a typewriter terminal animation for the README demo GIF.
+- Added a maintainer-owned launch-execution handoff packet (`docs/social/patina-launch-execution.md`).
+
+### Evidence
+
+- Refreshed modern-model and English/Korean lexicon-lift benchmark evidence; widened Korean false-positive register coverage with positive-side calibration.
+- Aligned the issue-wave map and backlog docs with live GitHub state.
+
 ## 3.11.0 — 2026-05-20
 
 **Launch-readiness polish for trust, benchmarks, and distribution.**

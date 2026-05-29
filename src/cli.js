@@ -868,7 +868,7 @@ function readOptionValue(args, index, option, { allowFlagLike = false } = {}) {
  * @returns {string} Resolved prompt mode.
  * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
- * const mode = resolvePromptMode('auto', { model: 'gemini-1.5-flash' });
+ * const mode = resolvePromptMode('auto', { model: 'gemini-2.5-flash' });
  */
 export function resolvePromptMode(mode, { backend, model }) {
   if (mode !== 'auto') return mode;

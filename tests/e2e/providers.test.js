@@ -73,7 +73,7 @@ describe('Provider Config Resolution', () => {
       assert.strictEqual(r.apiKey, 'gemini-env');
       assert.strictEqual(r.apiKeySource, 'env:GEMINI_API_KEY');
       assert.match(r.baseURL, /generativelanguage/);
-      assert.strictEqual(r.model, 'gemini-1.5-flash');
+      assert.strictEqual(r.model, 'gemini-2.5-flash');
     });
   });
 

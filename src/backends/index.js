@@ -110,6 +110,7 @@ export async function invokeBackendChain({
   apiKey,
   baseURL,
   model,
+  modelSource,
   signal,
   timeout = DEFAULT_BACKEND_TIMEOUT_MS,
   temperature,
@@ -130,7 +131,7 @@ export async function invokeBackendChain({
   for (let attemptIndex = 0; attemptIndex < backends.length; attemptIndex++) {
     const backend = backends[attemptIndex];
     try {
-      return await backend.invoke({ prompt, apiKey, baseURL, model, signal, timeout, temperature, seed, onResponse, cache });
+      return await backend.invoke({ prompt, apiKey, baseURL, model, modelSource, signal, timeout, temperature, seed, onResponse, cache, logger });
     } catch (err) {
       lastError = err;
       const next = backends[attemptIndex + 1];

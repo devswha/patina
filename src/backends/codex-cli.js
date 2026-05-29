@@ -35,11 +35,23 @@ export function login(options = {}) {
   });
 }
 
-export async function invoke({ prompt, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
+export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS, logger } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('codex-cli backend: prompt must be a non-empty string');
   }
   throwIfAborted(signal);
+
+  // The codex-cli backend runs `codex exec`, which uses the model configured in
+  // the logged-in codex session; it does not accept a model override here. Warn
+  // (don't fail) when the user explicitly asked for a model so a `--model X` is
+  // not a silent no-op. Forwarding the model to the CLI is left as future work.
+  // Only fires for explicit models, not the default/undefined path
+  // (modelSource 'default' or unset).
+  if (model && modelSource && modelSource !== 'default') {
+    logger?.warn?.('backend.model.ignored', {
+      message: `[patina] codex-cli backend ignores --model (${model}); it uses your logged-in codex model. Use --backend gemini-cli or the HTTP provider path to choose a model.`,
+    });
+  }
 
   // Run codex from a fresh temp directory with the read-only sandbox so that
   // a prompt-injection in user text cannot read the caller's repo or write

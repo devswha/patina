@@ -293,25 +293,42 @@ max-models: [claude, gemini]
 
 ## 文档
 
+- **[Cookbook](docs/COOKBOOK.md)** — 实用配方（Hugo 批量打分、GitHub Actions、MAX 模式对比、误报 triage、自定义 profile、pre-commit）
 - **[Glossary](docs/GLOSSARY.md)** — MPS、fidelity、burstiness、MATTR、模式等常见术语的简短定义
 - **[Demo](docs/DEMO.md)** — 终端 transcript 与多种体裁的 before/after 快照
 - **[Patterns](docs/PATTERNS.md)** — 160 个模式目录
-- **[Authentication](docs/AUTHENTICATION.md)** — 后端、服务商、免费层设置
-- **[CLI Contract](docs/CLI.md)** — score gate、退出码，以及适合自动化的接口边界
+- **[Authentication](docs/AUTHENTICATION.md)** ([한국어](docs/AUTHENTICATION_KR.md)) — 后端、服务商、免费层设置
+- **[GitHub Action](docs/integrations/github-action.md)** — 无需 live model key 即可生成 PR hotspot 评论与 README score badge
+- **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit、Husky 与 Lefthook 的 score-only 配方
+- **[Static-site Stencils](docs/integrations/static-sites.md)** — Hugo、Astro 与 Next.js MDX 构建期打分配方
+- **[Docker](docs/integrations/docker.md)** — GHCR 镜像用法与 release tag
+- **[Release workflow](docs/integrations/release.md)** — npm provenance + GHCR 发布清单
+- **[CLI Contract](docs/CLI.md)** — score gate、JSON/text/Markdown 输出，以及适合自动化的接口边界
+- **[API Reference](docs/API.md)** — 用于编程式导入与打分 helper 的生成 JSDoc 参考
 - **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI、`/patina`、`/patina-max` 的选项支持范围
+- **[Exit Codes](docs/EXIT-CODES.md)** — 面向 CI 与编辑器集成的进程退出码约定
 - **[Ethics](docs/ETHICS.md)** — 正确使用目的、禁止用途和披露立场
-- **[FAQ](docs/FAQ.md)** — detector-bypass 疑虑、MPS、误报、贡献起点
+- **[FAQ](docs/FAQ.md)** ([한국어](docs/FAQ_KR.md)) — detector-bypass 疑虑、MPS、误报、贡献起点
+- **[False-positive Gallery](docs/FALSE-POSITIVES.md)** — 应被视为编辑提示而非指控的人类文风示例
 - **[Comparison](docs/COMPARISON.md)** — 与常见 paraphraser/humanizer 工具的事实比较
 - **[Branding](docs/BRANDING.md)** — canonical logo/social assets 和 OG 设置说明
 - **[Design](DESIGN.md)** — repo-native SVG 与 README surface 的产品/品牌基准
 - **[Roadmap](docs/ROADMAP.md)** — 质量、基准、产品、社区和发布优先级
+- **[Docs Platform RFC](docs/RESEARCH-DOCS-PLATFORM.md)** — Docusaurus、Astro Starlight、MkDocs 与 GitHub Pages 调研
+- **[Benchmark Reports](docs/benchmarks/README.md)** — 已签入的基准产物、刷新命令与 public-claim gate
 - **[Benchmark Report](docs/benchmarks/latest.md)** — 最新可复现 suspect-zone 基准摘要
+- **[Detector Comparison Harness](docs/benchmarks/detector-comparison.md)** — 第三方 detector 的离线/手动对比协议
 - **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — 用于测量 AI-like writing signals 的基准设计说明
-- **[Launch Copy](docs/social/patina-launch-copy.md)** — Show HN、Reddit、X、韩国社区草稿
+- **[2026 Modern-model Rebaseline](docs/research/2026-rebaseline.md)** — 带当前日期戳的 KO+EN catch/FP claim
+- **[2025+ Re-baseline Plan](docs/research/2025-rebaseline-plan.md)** — 面向更广 model-era claim 的协议
+- **[zh/ja Lexicon Calibration](docs/research/zh-ja-lexicon-calibration.md)** — starter lexicon gate 与剩余 corpus risk
+- **[Launch Copy](docs/social/patina-launch-copy.md)** — launch sequence、score gate 与 Show HN/Product Hunt/Reddit/X/韩国社区草稿
+- **[Signs of AI Writing](docs/social/signs-of-ai-writing.md)** ([한국어](docs/social/signs-of-ai-writing_KR.md)) — 附带引用示例的可分享编辑 checklist
+- **[Share Card SVGs](docs/social/share-card.md)** — 带 score 与 MPS pill 的 `--card` before/after social card
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 词汇算法
 - **[Scoring](core/scoring.md)** — AI 相似度 + 忠实度 + MPS
 - **[Changelog](CHANGELOG.md)** — 发布说明和方法论
-- **[Contributing](CONTRIBUTING.md)** — 模式提交、误报 triage、基准 fixture、版本管理
+- **[Contributing](CONTRIBUTING.md)** ([한국어](CONTRIBUTING_KR.md)) — 模式提交、误报 triage、基准 fixture、版本管理
 - **[Governance](GOVERNANCE.md)** / **[Maintainers](MAINTAINERS.md)** — 轻量级项目决策规则
 
 ## 致谢

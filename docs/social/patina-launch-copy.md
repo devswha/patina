@@ -108,7 +108,7 @@ https://github.com/devswha/patina/issues/new?template=false_positive.yml
 Title:
 
 ```text
-Show HN: Patina – strip AI-writing tells from Korean/English/Chinese/Japanese text
+Show HN: Patina – rewrite AI text patterns in Korean, English, Chinese, Japanese
 ```
 
 Post body:
@@ -277,19 +277,19 @@ That is why I treat the score as a rough editing signal, not a truth machine. Th
 ### Install help
 
 ```text
-Install:
+Install (standalone CLI, nothing to trust beyond npm):
 
-curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
+npx patina-cli --lang en input.txt
 
-Then in Claude Code:
+Or inside Claude Code:
 
 /patina --lang en
 
 [paste text]
 
-Or as a standalone CLI:
+Prefer a one-line installer? Review the script first, then:
 
-npx patina-cli --lang en input.txt
+curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
 
 ## Post-launch triage

@@ -2,8 +2,8 @@
 
 This page expands the Chinese pattern packs into a browsable reference. It is generated from `patterns/zh-*.md`, so the numbers, names, watch words, fire conditions, and examples mirror the source pattern files.
 
-- Rewrite-capable patterns: 32
-- Score/audit-only viral-hook patterns: 8
+- Rewrite-capable patterns: 33
+- Score/audit-only viral-hook patterns: 9
 - Main selector: [PATTERNS.md](PATTERNS.md)
 
 ## Pattern Index
@@ -23,6 +23,7 @@ This page expands the Chinese pattern packs into a browsable reference. It is ge
 | 11 | rewrite | 同义词循环替换 | [zh-language.md](../patterns/zh-language.md) |
 | 12 | rewrite | 冗长的介词结构 | [zh-language.md](../patterns/zh-language.md) |
 | 32 | rewrite | “更”比较副词滥用 | [zh-language.md](../patterns/zh-language.md) |
+| 33 | rewrite | 定义式隐喻等式（"X 是 Z 的[抽象名词]"） | [zh-language.md](../patterns/zh-language.md) |
 | 13 | rewrite | 过度使用连接词/过渡词 | [zh-style.md](../patterns/zh-style.md) |
 | 14 | rewrite | 加粗滥用 | [zh-style.md](../patterns/zh-style.md) |
 | 15 | rewrite | 内联标题列表 | [zh-style.md](../patterns/zh-style.md) |
@@ -50,6 +51,7 @@ This page expands the Chinese pattern packs into a browsable reference. It is ge
 | VH-6 | score/audit only | 伪统计引用 | [zh-viral-hook.md](../patterns/zh-viral-hook.md) |
 | VH-7 | score/audit only | 头衔堆叠式权威 | [zh-viral-hook.md](../patterns/zh-viral-hook.md) |
 | VH-8 | score/audit only | 未来自我 / 拟亲密二人称承诺 | [zh-viral-hook.md](../patterns/zh-viral-hook.md) |
+| VH-9 | score/audit only | 格言式收尾 / 独立判断短句（伪深刻"金句"） | [zh-viral-hook.md](../patterns/zh-viral-hook.md) |
 
 ## 内容模式
 
@@ -262,6 +264,35 @@ Example before:
 Example after:
 
 > 下一阶段先做三件事：把里程碑拆到每周，给每个任务指定负责人，重新核对预算表。产品、运营和法务每周二开30分钟会，专门处理跨部门卡住的事项。
+
+### 33. 定义式隐喻等式（"X 是 Z 的[抽象名词]"）
+
+- Source: [zh-language.md](../patterns/zh-language.md)
+- Type: rewrite-capable pattern
+
+**注意词汇（抽象名词标记）：** 签名、印记、注脚、形状、轮廓、语言、货币、架构、骨架、引擎、心跳、脉搏、命脉、底色、基石、基因/DNA、底层逻辑、本质、缩影
+
+**问题：** AI 中文喜欢用一个系动词判断句把两个东西强行划等号——"X 是 Z 的[抽象名词]"——借宏大的隐喻制造深刻感。"对称是信任的架构""尴尬是你主动选择的那条梯度留下的可见印记"之类的句子听上去很有哲理，实则只是把一个抽象概念套在另一个上面，没有给出任何可验证的支撑。它常常单独成句，充当段落的"金句"。
+
+**与 #8（系动词回避）的区分（务必不要混淆）：** #8 标记的是**回避"是"**——把"X 是 Y"写成"X 充当 Y""X 起到 Y 的作用""X 相当于 Y"，修改方向是**改回"是"**。#33 恰好相反：它标记的是已经用了"是"、却把"是"膨胀成"X 是 Z 的[抽象名词]"这种**夸张的隐喻等式**，修改方向是**拆掉这个等式、换成具体陈述**。一个是缺"是"，一个是"是"被滥用造句，两者不是同一回事。
+
+**触发条件：** 出现"X 是 Z 的[抽象名词]"形式的判断句（抽象名词取自上方标记词或同类），该等式靠隐喻而非具体证据成立，且单独成句或被当作段落收束的"金句"。同一文档出现 2 处以上时信号显著增强。
+
+**排除条件：**
+- 字面或技术性定义（"水是万能溶剂""线粒体是细胞的能量工厂""哈希表是一种以键值映射为基础的数据结构"）
+- 约定俗成的固定说法或事实性等同（"北京是中国的首都""黄河是中华民族的母亲河"作为既有惯用语）
+- 后文用具体事实、数据或机制真正撑起这个等式的等同关系（不是空泛比喻，而是有论据的论断）
+
+**Semantic Risk:** MEDIUM
+**Preservation Note:** 拆解隐喻等式时，先判断作者到底想说什么真实主张：是"Z 依赖 X"、"X 能预测 Z"，还是"X 是 Z 的前提条件"？保留这个真实关系和它的方向、强度，只去掉"是…的[抽象名词]"这层装饰；若原文除了比喻之外没有任何可保留的信息，就改成一个具体的事实、动作或观察。
+
+**修改前：**
+> 对称是信任的架构。在产品设计里，一致性是用户体验的命脉，而留白则是高级感的语言。
+
+**修改后：**
+> 界面左右对齐、控件间距统一时，用户更容易预判下一步操作，投诉里"找不到按钮"的比例下降了。我们在两版改版里都验证过这一点。
+
+---
 
 ## 风格模式
 
@@ -704,3 +735,34 @@ Detection example:
 > 改写前：朋友，先收藏这篇。一年后的你一定会感谢现在的自己。
 >
 > 改写后：如果你下个月要做计划，可以保存这份清单。
+
+### Viral 9. 格言式收尾 / 独立判断短句（伪深刻"金句"）
+
+- Source: [zh-viral-hook.md](../patterns/zh-viral-hook.md)
+
+**关注词汇：**（结构性模式——按形式判断，不看具体词汇）
+
+**问题：** 一句很短（约 10 字以内）、语法完整的判断句被单独放在一行或一段，借这种"留白 + 收束"的排版制造庄重感和深刻感——典型的伪深刻"金句""mic drop"。一篇里出现 2 句以上，或每段都用这样一句收尾时，就成了 AI 网红长文的强信号。它靠的是**形式**（独立、短、斩钉截铁），而不是某个特定词汇。
+
+**触发条件：** 出现独立成行/成段、语法完整、约 10 字以内的判断式短句，且其作用是修辞性收束（金句、点题），而非传递新信息。一篇出现 1 句即可记为低信号，2 句及以上信号显著。
+
+**严重度标尺：**
+- Low：全篇仅 1 句独立格言短句。
+- Medium：出现 2 句独立格言短句。
+- High：出现 3 句及以上，或几乎每个段落都以一句这样的短句收尾。
+
+**排除条件：**
+- 诗、歌词、韵文
+- 本就简短的备忘、通知、提示、对问题的一两句回答
+- 有意为之且后文有具体支撑的格言（不是空泛点题，而是引出论据）
+- 对话、引语
+- 标题、小标题
+
+**Semantic Risk:** LOW —— 仅评分，重写时不动。
+**Preservation Note:** 该模式默认仅评分不重写；若用户明确要求降调，保留这句话真正想表达的判断或重点，把它并回相邻段落或补上具体支撑，而不是简单删掉，以免抹掉作者的核心观点。
+**改写前 / 改写后示例（手动降信号）：**
+> 改写前：增长是结果，不是目标。
+> 真正重要的从来不是数字。
+> 对称会变成陷阱。
+>
+> 改写后：我们今年没有把月活当成首要指标，而是盯着留存率和复购，因为一味追规模上次让我们烧掉了两个季度的预算。

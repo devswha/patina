@@ -3,7 +3,7 @@ pack: en-viral-hook
 language: en
 name: Viral Hook Patterns
 version: 1.0.0
-patterns: 8
+patterns: 9
 corpus-snapshot:
   id: bootstrap-patterns-pre-provenance
   status: needs-quarterly-refresh
@@ -14,7 +14,7 @@ score_only: true
 
 # Viral Hook Patterns (score-only)
 
-This pack is **score- and audit-only**. It catches "AI marketing influencer" signals — shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, hyperbolic engagement vocabulary, fake-stat citations, stacked credentials, and future-self promises — that are common in SNS and blog marketing copy. Rewrite mode does not touch them because they may be intentional rhetoric; the user decides.
+This pack is **score- and audit-only**. It catches "AI marketing influencer" signals — shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, hyperbolic engagement vocabulary, fake-stat citations, stacked credentials, future-self promises, and aphoristic standalone punchlines — that are common in SNS and blog marketing copy. Rewrite mode does not touch them because they may be intentional rhetoric; the user decides.
 
 A hit here does not mean the text is AI-generated. Humans use these patterns too. But when several appear together, the score aligns with the reader's intuition that "this reads like AI-polished marketing."
 
@@ -214,3 +214,38 @@ A hit here does not mean the text is AI-generated. Humans use these patterns too
 > Before: Listen, friend — your future self will thank you for saving this.
 >
 > After: Save this if you need a checklist for next month's planning.
+
+---
+
+### 9. Aphoristic Punchline / Standalone Declarative
+
+**Watch words:** (structural pattern — judged by form, not vocabulary)
+
+**Problem:** A short, grammatically complete declarative sentence (roughly ten words or fewer) is set on its own line or paragraph for rhetorical gravitas — a pseudo-profound mic-drop. One can be a stylistic choice; several across a piece, or one capping each paragraph, is a hallmark of AI-polished thought-leadership copy that gestures at depth without earning it. The judgment is about form and placement, not the words used.
+
+**Fire condition:** A standalone, grammatically complete declarative sentence of about ten words or fewer is isolated on its own line or paragraph as a punchline, and the piece contains two or more such isolated aphorisms or caps successive paragraphs with them.
+
+**Severity rubric:**
+- Low: One standalone aphorism appears in the piece.
+- Medium: Two standalone aphorisms appear.
+- High: Three or more appear, or nearly every paragraph is capped with one.
+
+**Exclusion:**
+- Poetry, song lyrics, verse
+- Genuinely short notes, answers, alerts, or one-line replies
+- A deliberate aphorism backed by concrete support in the same passage
+- Quoted speech or dialogue
+- Headings and section titles
+
+**Semantic Risk:** LOW — score-only; the isolated line may be intentional rhetoric.
+**Preservation Note:** Score-only by default; if the user asks to lower the hook, fold the standalone line back into the surrounding paragraph or attach the concrete reason it points at, so the claim survives without the staged mic-drop.
+**Before / after examples (manual lower-signal rewrite):**
+> Before: We rebuilt the onboarding flow over two sprints.
+>
+> Symmetry becomes a trap.
+>
+> The team learned to ship smaller.
+>
+> Constraints are a gift.
+>
+> After: We rebuilt the onboarding flow over two sprints, and matching every screen to the old layout slowed us down — chasing visual symmetry became a trap. The team learned to ship smaller pieces, and the tight scope each sprint actually helped more than it hurt.

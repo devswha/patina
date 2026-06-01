@@ -9,6 +9,7 @@ import { PLAYGROUND_LEXICONS } from '../../playground/data/lexicons.js';
 import {
   analyzePlaygroundText,
   buildCliCommand,
+  buildFalsePositiveReportUrl,
   renderAuditDiff,
   SUPPORTED_LANGS,
 } from '../../playground/analyzer.js';
@@ -70,6 +71,38 @@ test('Open in CLI command preserves input and avoids heredoc delimiter collision
   assert.match(command, /first line\nPATINA_TEXT\nlast line/);
   assert.match(command, /npx patina-cli --lang ko --score patina-input\.txt/);
   assert.match(command, /npx patina-cli --lang ko --audit patina-input\.txt/);
+});
+
+test('Report false positive pre-fills the GitHub false-positive form from the audit', () => {
+  const text = SAMPLES.ko;
+  const analysis = analyzePlaygroundText(text, { lang: 'ko' });
+  const url = buildFalsePositiveReportUrl(text, 'ko', analysis);
+  const parsed = new URL(url);
+  assert.equal(`${parsed.origin}${parsed.pathname}`, 'https://github.com/devswha/patina/issues/new');
+  assert.equal(parsed.searchParams.get('template'), 'false_positive.yml');
+  assert.equal(parsed.searchParams.get('language'), 'ko');
+  assert.match(parsed.searchParams.get('fired_paragraph'), /자리매김/);
+  const out = parsed.searchParams.get('score_output');
+  assert.match(out, /patina playground/);
+  assert.match(out, /Score: \d+\/100/);
+  assert.match(out, /Hot paragraphs: \d+\/\d+/);
+});
+
+test('Report false positive caps the pasted paragraph and tolerates empty input', () => {
+  const long = 'A'.repeat(5000);
+  const fired = new URL(buildFalsePositiveReportUrl(long, 'en')).searchParams.get('fired_paragraph');
+  assert.ok(fired.length < 2000, 'fired_paragraph should be truncated to keep the URL small');
+  assert.match(fired, /truncated/);
+
+  const empty = new URL(buildFalsePositiveReportUrl('', 'ja')).searchParams;
+  assert.equal(empty.get('language'), 'ja');
+  assert.equal(empty.get('template'), 'false_positive.yml');
+});
+
+test('playground HTML exposes the false-positive report button', () => {
+  const html = readFileSync(resolve(REPO_ROOT, 'playground/index.html'), 'utf8');
+  assert.match(html, /id="report-fp"/);
+  assert.match(html, /Report false positive/);
 });
 
 test('playground HTML points canonical and OG metadata at patina.vibetip.help', () => {

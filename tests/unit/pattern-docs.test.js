@@ -144,10 +144,10 @@ test('viral-hook packs remain score-only with expanded severity-documented cover
     const file = resolve(PATTERN_DIR, `${lang}-viral-hook.md`);
     const parsed = parsePatternFile(file);
     assert.equal(parsed.meta.score_only, true, `${lang}-viral-hook must stay score-only`);
-    assert.equal(parsed.meta.patterns, 8, `${lang}-viral-hook should ship eight patterns`);
+    assert.equal(parsed.meta.patterns, 9, `${lang}-viral-hook should ship nine patterns`);
 
     const newSections = numberedSections(file).filter(({ number }) => number >= 6);
-    assert.equal(newSections.length, 3, `${lang}-viral-hook should add exactly three new patterns`);
+    assert.equal(newSections.length, 4, `${lang}-viral-hook should add exactly four patterns beyond the original five`);
     for (const { number, body } of newSections) {
       assert.match(body, /(?:Fire condition|발화 조건|触发条件|発火条件)/, `${lang}-viral-hook #${number} missing fire condition`);
       assert.match(body, /(?:Severity rubric|심각도 기준|严重度标尺|重大度の目安)/, `${lang}-viral-hook #${number} missing severity rubric`);

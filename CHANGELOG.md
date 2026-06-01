@@ -16,7 +16,13 @@ Semver rationale: patch | minor | major — explain whether this changes pattern
 
 **Post-3.11.0 launch-prep and distribution polish (not yet versioned).**
 
-Semver rationale: patch — docs, packaging, and benchmark-evidence changes only; no pattern, schema, or CLI-behavior changes.
+Semver rationale: minor — adds two new detection patterns across ko/en/zh/ja (otherwise docs, packaging, and benchmark-evidence changes); preserves existing CLI behavior and schemas.
+
+### Patterns
+
+- Added language-pack pattern #33 **Definitional-Metaphor Equation ("X is the Y of Z")** (ko/en/zh/ja) — flags copula sentences that assert a grand abstract equivalence ("Cringe is the visible signature of …") to manufacture profundity; disambiguated from #8 Copula Avoidance.
+- Added viral-hook pattern #9 **Aphoristic Punchline (Standalone Declarative)** (score-only, ko/en/zh/ja) — flags short pseudo-profound declaratives given their own line for gravitas ("Symmetry becomes a trap.").
+- Externally sourced from "LLM smells" observations; updated `core/scoring.md` category counts (language 7→8, viral-hook 8→9, total 40→42) and `docs/PATTERNS-*.md` references to match.
 
 ### Changed
 

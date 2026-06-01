@@ -98,9 +98,8 @@ https://patina.vibetip.help/
 레포:
 https://github.com/devswha/patina
 
-특히 한국어 오탐 사례가 필요합니다. 사람이 쓴 글인데 patina가 AI 티로 잡는 사례를 알려주시면 패턴을 다듬는 데 가장 도움이 됩니다.
-오탐 제보 폼:
-https://github.com/devswha/patina/issues/new?template=false_positive.yml
+특히 한국어 오탐 사례가 궁금합니다. 사람이 쓴 글인데 patina가 AI 티로 잡는 문장이 있으면 이 글 댓글로 편하게 붙여주셔도 됩니다.
+웹에서 바로 신고: 플레이그라운드(https://patina.vibetip.help/)에서 '오탐 신고' 버튼을 누르면 걸린 문장이 자동으로 채워진 GitHub 폼이 열립니다.
 ```
 
 ## Show HN

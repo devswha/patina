@@ -563,3 +563,42 @@ export function buildCliCommand(text, lang = DEFAULT_LANG) {
     `npx patina-cli --lang ${safeLang} --audit patina-input.txt`,
   ].join('\n');
 }
+
+export const FALSE_POSITIVE_ISSUE_URL = 'https://github.com/devswha/patina/issues/new';
+const FALSE_POSITIVE_MAX_PARAGRAPH_CHARS = 1500;
+
+// Build a GitHub issue URL with the false-positive template pre-filled from the
+// current audit. Nothing is sent anywhere — the text only leaves the browser if
+// the user chooses to submit the GitHub issue, preserving the in-browser privacy
+// promise while removing the copy/paste friction of reporting by hand.
+export function buildFalsePositiveReportUrl(text, lang = DEFAULT_LANG, analysis = null) {
+  const safeLang = normalizeLang(lang);
+  const result = analysis ?? analyzePlaygroundText(text || '', { lang: safeLang });
+  const hotParas = result.paragraphs.filter((p) => p.hot);
+  const source = hotParas.length ? hotParas : result.paragraphs;
+
+  let fired = source.map((p) => p.text).join('\n\n').trim();
+  if (!fired) fired = (text || '').trim();
+  if (fired.length > FALSE_POSITIVE_MAX_PARAGRAPH_CHARS) {
+    fired = `${fired.slice(0, FALSE_POSITIVE_MAX_PARAGRAPH_CHARS)}\n…(truncated — paste the rest if it matters)`;
+  }
+
+  const signals =
+    [...new Set(source.flatMap((p) => p.reasons.map((r) => r.label)))].join(', ') || 'none';
+  const lexiconHits = result.paragraphs.reduce((sum, p) => sum + (p.lexicon?.matches ?? 0), 0);
+  const scoreOutput = [
+    'Source: patina playground (https://patina.vibetip.help/)',
+    `Score: ${result.overall}/100 (${result.band.label})`,
+    `Hot paragraphs: ${result.hotCount}/${result.paragraphCount}`,
+    `Signals: ${signals}`,
+    `Lexicon hits: ${lexiconHits}`,
+  ].join('\n');
+
+  const params = new globalThis.URLSearchParams({
+    template: 'false_positive.yml',
+    language: safeLang,
+    fired_paragraph: fired,
+    score_output: scoreOutput,
+  });
+  return `${FALSE_POSITIVE_ISSUE_URL}?${params.toString()}`;
+}

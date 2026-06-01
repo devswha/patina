@@ -3,6 +3,7 @@ import {
   SUPPORTED_LANGS,
   analyzePlaygroundText,
   buildCliCommand,
+  buildFalsePositiveReportUrl,
   escapeHtml,
   renderAuditDiff,
 } from './analyzer.js';
@@ -20,6 +21,7 @@ const nodes = {
   input: doc.querySelector('#input'),
   analyze: doc.querySelector('#analyze'),
   copyCli: doc.querySelector('#copy-cli'),
+  reportFp: doc.querySelector('#report-fp'),
   copyStatus: doc.querySelector('#copy-status'),
   scoreValue: doc.querySelector('#score-value'),
   scoreBand: doc.querySelector('#score-band'),
@@ -123,6 +125,18 @@ async function copyCli() {
   }
 }
 
+function reportFalsePositive() {
+  if (!state.text.trim()) {
+    nodes.copyStatus.textContent = 'Paste text and run the audit first, then report the false positive.';
+    return;
+  }
+  const url = buildFalsePositiveReportUrl(state.text, state.lang, state.analysis);
+  const opened = globalThis.open?.(url, '_blank', 'noopener');
+  nodes.copyStatus.textContent = opened
+    ? 'Opened a pre-filled GitHub report — review it, then submit. Your text only leaves the browser if you submit.'
+    : 'Pop-up blocked. Allow pop-ups, or open an issue from the GitHub link in the header.';
+}
+
 function bind() {
   nodes.lang.value = state.lang;
   nodes.input.value = state.text;
@@ -135,6 +149,7 @@ function bind() {
   nodes.analyze.addEventListener('click', runAnalysis);
   nodes.sample.addEventListener('click', setSample);
   nodes.copyCli.addEventListener('click', copyCli);
+  nodes.reportFp.addEventListener('click', reportFalsePositive);
 }
 
 readQueryState();

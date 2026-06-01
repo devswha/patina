@@ -15,6 +15,13 @@ export const DEFAULT_LEXICON_MIN_HOT_MATCHES = {
 export const DEFAULT_BURSTINESS_BANDS = { low: 0.30, high: 0.50 };
 export const DEFAULT_MATTR_BANDS = { low: 0.55, high: 0.70 };
 export const DEFAULT_MATTR_WINDOW = 50;
+// Document-level formatting tells (mirror catalog patterns #13 em-dash, #14 boldface).
+// These are doc-level by design: 3 em-dashes spread one-per-paragraph must still fire,
+// so we count across the whole document and then flag the paragraphs that carry the token.
+export const DEFAULT_FORMATTING_THRESHOLDS = {
+  emDashDoc: 3, // U+2014 occurrences across the document
+  boldDoc: 5, // **bold** spans across the document
+};
 export const DEFAULT_KO_DIAGNOSTIC_BANDS = {
   minSentences: 4,
   minEojeols: 20,
@@ -260,8 +267,30 @@ function fmt(value, digits = 2) {
   return value == null ? 'n/a' : Number(value).toFixed(digits);
 }
 
-function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics }) {
+// Count formatting tells in a chunk of raw text (em-dash U+2014, markdown **bold** spans).
+export function countFormatting(text) {
+  const str = String(text ?? '');
+  const emDash = (str.match(/—/gu) || []).length;
+  const bold = (str.match(/\*\*(?=\S)(?:[^*]|\*(?!\*))+?\*\*/gu) || []).length;
+  return { emDash, bold };
+}
+
+function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, formatting, formattingThresholds }) {
   const reasons = [];
+  if (formatting?.emDashHot) {
+    reasons.push({
+      code: 'em-dash-overuse',
+      label: 'Em dash overuse',
+      detail: `${formatting.docEmDash} em dashes in the document (threshold ${formattingThresholds.emDashDoc}); this paragraph carries ${formatting.emDash}.`,
+    });
+  }
+  if (formatting?.boldHot) {
+    reasons.push({
+      code: 'bold-overuse',
+      label: 'Boldface overuse',
+      detail: `${formatting.docBold} bold spans in the document (threshold ${formattingThresholds.boldDoc}); this paragraph carries ${formatting.bold}.`,
+    });
+  }
   if (cvBand === 'low') {
     reasons.push({
       code: 'low-burstiness',
@@ -305,6 +334,13 @@ export function analyzePlaygroundText(text, opts = {}) {
   const paragraphs = splitParagraphs(text);
   const threshold = opts.lexiconDensityThreshold ?? DEFAULT_LEXICON_DENSITY_THRESHOLD;
   const minHotMatches = opts.lexiconMinHotMatches ?? DEFAULT_LEXICON_MIN_HOT_MATCHES;
+  const formattingThresholds = opts.formattingThresholds ?? DEFAULT_FORMATTING_THRESHOLDS;
+
+  // Document-level formatting pass: count tells across all paragraphs first, then
+  // attribute hot status to the paragraphs that carry the token (catalog #13/#14 are doc-level).
+  const paraFormatting = paragraphs.map(countFormatting);
+  const docEmDash = paraFormatting.reduce((sum, f) => sum + f.emDash, 0);
+  const docBold = paraFormatting.reduce((sum, f) => sum + f.bold, 0);
 
   const analyzed = paragraphs.map((paragraph, idx) => {
     const sentences = splitSentences(paragraph);
@@ -324,9 +360,26 @@ export function analyzePlaygroundText(text, opts = {}) {
       densityThreshold: threshold,
       minHotMatches,
     });
+    const counts = paraFormatting[idx];
+    const emDashHot = docEmDash >= formattingThresholds.emDashDoc && counts.emDash >= 1;
+    const boldHot = docBold >= formattingThresholds.boldDoc && counts.bold >= 1;
+    const formatting = { ...counts, docEmDash, docBold, emDashHot, boldHot };
     const hot =
-      cvBand === 'low' || mattrBand === 'low' || lexiconHot || Boolean(koSignals.koDiagnostics?.hot);
-    const reasons = buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics: koSignals.koDiagnostics });
+      cvBand === 'low' ||
+      mattrBand === 'low' ||
+      lexiconHot ||
+      Boolean(koSignals.koDiagnostics?.hot) ||
+      emDashHot ||
+      boldHot;
+    const reasons = buildReasons({
+      cvBand,
+      mattrBand,
+      lexiconHot,
+      lex,
+      koDiagnostics: koSignals.koDiagnostics,
+      formatting,
+      formattingThresholds,
+    });
 
     return {
       id: `P${idx + 1}`,
@@ -337,6 +390,7 @@ export function analyzePlaygroundText(text, opts = {}) {
       burstiness: { cv, band: cvBand },
       mattr: { value: mattrValue, band: mattrBand },
       lexicon: { ...lex, hot: lexiconHot },
+      formatting,
       ...koSignals,
       hot,
       reasons,

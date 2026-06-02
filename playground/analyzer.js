@@ -291,6 +291,30 @@ export function detectMarkupLeakage(text) {
   return { leaked: hits.length > 0, hits };
 }
 
+// Fake-candor / manufactured-intimacy openers (issue #334). Density-gated:
+// humans use these once; 2+ per document is an AI tell. Mirrors
+// src/features/discourse-tells.js (fake-candor half; thematic-break is CLI-side).
+const FAKE_CANDOR_RULES = [
+  /\bhere'?s the thing\b/gi,
+  /\bhere'?s the kicker\b/gi,
+  /\blet'?s be honest\b/gi,
+  /\blet'?s be real\b/gi,
+  /\bthe truth is\b/gi,
+  /\bi'?ll be honest(?: with you)?\b/gi,
+  /\breal talk\b/gi,
+];
+export const DEFAULT_FAKE_CANDOR_MIN = 2;
+
+export function countFakeCandor(text) {
+  const str = typeof text === 'string' ? text : '';
+  let count = 0;
+  for (const re of FAKE_CANDOR_RULES) {
+    const m = str.match(re);
+    if (m) count += m.length;
+  }
+  return count;
+}
+
 // Count formatting tells in a chunk of raw text (em-dash U+2014, markdown **bold** spans).
 export function countFormatting(text) {
   const str = String(text ?? '');
@@ -299,8 +323,15 @@ export function countFormatting(text) {
   return { emDash, bold };
 }
 
-function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, formatting, formattingThresholds, leakage }) {
+function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, formatting, formattingThresholds, leakage, candor }) {
   const reasons = [];
+  if (candor?.hot) {
+    reasons.push({
+      code: 'fake-candor',
+      label: 'Fake-candor opener',
+      detail: `Manufactured-intimacy opener ("here's the thing", "the truth is", …); ${candor.docCount} in the document (threshold ${DEFAULT_FAKE_CANDOR_MIN}).`,
+    });
+  }
   if (leakage?.leaked) {
     const labels = leakage.hits.map((h) => h.label).join(', ');
     reasons.push({
@@ -373,6 +404,10 @@ export function analyzePlaygroundText(text, opts = {}) {
   const paraFormatting = paragraphs.map(countFormatting);
   const docEmDash = paraFormatting.reduce((sum, f) => sum + f.emDash, 0);
   const docBold = paraFormatting.reduce((sum, f) => sum + f.bold, 0);
+  // Fake-candor openers (#334): doc-level density gate, then attribute to the
+  // paragraphs that carry an opener (same shape as the em-dash doc-level pass).
+  const paraCandor = paragraphs.map(countFakeCandor);
+  const docCandor = paraCandor.reduce((sum, n) => sum + n, 0);
 
   const analyzed = paragraphs.map((paragraph, idx) => {
     const sentences = splitSentences(paragraph);
@@ -398,6 +433,8 @@ export function analyzePlaygroundText(text, opts = {}) {
     const formatting = { ...counts, docEmDash, docBold, emDashHot, boldHot };
     // Model-output leakage (#332): per-paragraph hit, fires on a single occurrence.
     const leakage = detectMarkupLeakage(paragraph);
+    // Fake-candor (#334): this paragraph carries an opener AND the doc total >= gate.
+    const candorHot = docCandor >= DEFAULT_FAKE_CANDOR_MIN && paraCandor[idx] >= 1;
     const hot =
       cvBand === 'low' ||
       mattrBand === 'low' ||
@@ -405,7 +442,8 @@ export function analyzePlaygroundText(text, opts = {}) {
       Boolean(koSignals.koDiagnostics?.hot) ||
       emDashHot ||
       boldHot ||
-      leakage.leaked;
+      leakage.leaked ||
+      candorHot;
     const reasons = buildReasons({
       cvBand,
       mattrBand,
@@ -415,6 +453,7 @@ export function analyzePlaygroundText(text, opts = {}) {
       formatting,
       formattingThresholds,
       leakage,
+      candor: { hot: candorHot, docCount: docCandor },
     });
 
     return {

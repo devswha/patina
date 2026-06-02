@@ -14,9 +14,15 @@ Semver rationale: patch | minor | major — explain whether this changes pattern
 
 ## Unreleased
 
-**Post-3.11.0 launch-prep and distribution polish (not yet versioned).**
+## 3.12.0 — 2026-06-02
 
-Semver rationale: patch — docs, packaging, and benchmark-evidence changes only; no pattern, schema, or CLI-behavior changes.
+Semver rationale: minor — adds new deterministic detection signals (new analyzer behavior); backward compatible.
+
+### Added
+
+- **Model-output leakage detection** (#332): a deterministic detector for pasted-LLM artifacts that never appear in human prose — OpenAI citation markup (`:contentReference` / `oaicite` / `oai_citation`), model tool tokens (`turn0search1`, `navlist`, `grok_card`), the U+FFFC object-replacement char, AI-tool tracking params (`utm_source=chatgpt.com`, …), and explicit self-identification (`as an AI language model`, …). A single hit is near-proof-grade, so it forces the document hot. New `src/features/markup-leakage.js`, mirrored in the playground.
+- **Em-dash and boldface overuse in the playground** (#333, partial): the browser analyzer now counts document-level em-dash (≥3) and markdown bold (≥5) overuse, mirroring catalog patterns #13/#14. Emoji / title-case / inline-header remain tracked in #333.
+- **Density-gated discourse tells** (#334): fake-candor / manufactured-intimacy openers (`here's the thing`, `the truth is`, …) fire at ≥2 per document; decorative thematic breaks (`---` / `***` / `___`) fire at ≥3. New `src/features/discourse-tells.js`; fake-candor mirrored in the playground.
 
 ### Changed
 
@@ -24,6 +30,7 @@ Semver rationale: patch — docs, packaging, and benchmark-evidence changes only
 - Reworked the README hero to be text-first and demoted the demo GIF below the static example; added per-language README demos.
 - Added a typewriter terminal animation for the README demo GIF.
 - Added a maintainer-owned launch-execution handoff packet (`docs/social/patina-launch-execution.md`).
+- One-click false-positive report button on the playground (#331).
 
 ### Evidence
 

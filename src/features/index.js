@@ -27,6 +27,7 @@ import {
   DEFAULT_LEXICON_MIN_HOT_MATCHES,
 } from './lexicon.js';
 import { detectMarkupLeakage } from './markup-leakage.js';
+import { detectDiscourseTells } from './discourse-tells.js';
 
 export function analyzeText(text, opts = {}) {
   const {
@@ -53,6 +54,9 @@ export function analyzeText(text, opts = {}) {
   // strong evidence of pasted model output, so it forces the document hot
   // regardless of the per-paragraph stylometry/lexicon signals.
   const markupLeakage = detectMarkupLeakage(normalized);
+  // Density-gated discourse tells (issue #334): fake-candor openers (>=2) and
+  // decorative thematic breaks (>=3). Document-level, weaker than leakage.
+  const discourseTells = detectDiscourseTells(normalized);
   const lexicon =
     providedLexicon ??
     (repoRoot ? loadLexicon(lang, repoRoot) : { strict: [], phrases: [] });
@@ -116,7 +120,8 @@ export function analyzeText(text, opts = {}) {
     skipReason,
     paragraphs: analyzed,
     markupLeakage,
-    hot: markupLeakage.leaked || analyzed.some((p) => p.hot),
+    discourseTells,
+    hot: markupLeakage.leaked || discourseTells.hot || analyzed.some((p) => p.hot),
   };
 }
 

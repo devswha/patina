@@ -267,6 +267,30 @@ function fmt(value, digits = 2) {
   return value == null ? 'n/a' : Number(value).toFixed(digits);
 }
 
+// Model-output leakage artifacts (issue #332): tokens LLM tooling injects that
+// never appear in human prose. A single hit is near-proof-grade, so it forces
+// the document hot. Mirrors src/features/markup-leakage.js.
+const MARKUP_LEAKAGE_RULES = [
+  { id: 'oai-citation-markup', label: 'OpenAI citation markup', build: () => /:contentReference|oaicite|oai_citation/gi },
+  { id: 'model-tool-token', label: 'Model tool token', build: () => /\bturn\d+(?:search|view|news|image|forecast|finance|fetch)\d*\b|\bnavlist\b|\bgrok_card\b/gi },
+  { id: 'object-replacement-char', label: 'Object-replacement character (￼)', build: () => /￼/g },
+  { id: 'ai-tracking-param', label: 'AI-tool tracking parameter in URL', build: () => /utm_source=(?:chatgpt\.com|openai\.com|perplexity\.ai|claude\.ai|gemini\.google\.com)|[?&](?:ref|utm_source)=chatgpt/gi },
+  { id: 'explicit-self-identification', label: 'Explicit AI self-identification', build: () => /\bas an? (?:AI|artificial intelligence) language model\b|\bas a large language model\b|\bas a language model\b|\bas an AI assistant\b|\bI am an AI\b|\bI'?m an AI\b/gi },
+];
+
+export function detectMarkupLeakage(text) {
+  const str = typeof text === 'string' ? text : '';
+  const hits = [];
+  if (!str) return { leaked: false, hits };
+  for (const rule of MARKUP_LEAKAGE_RULES) {
+    const m = str.match(rule.build());
+    if (m && m.length > 0) {
+      hits.push({ id: rule.id, label: rule.label, count: m.length, samples: [...new Set(m.map((x) => x.trim()).filter(Boolean))].slice(0, 3) });
+    }
+  }
+  return { leaked: hits.length > 0, hits };
+}
+
 // Count formatting tells in a chunk of raw text (em-dash U+2014, markdown **bold** spans).
 export function countFormatting(text) {
   const str = String(text ?? '');
@@ -275,8 +299,16 @@ export function countFormatting(text) {
   return { emDash, bold };
 }
 
-function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, formatting, formattingThresholds }) {
+function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, formatting, formattingThresholds, leakage }) {
   const reasons = [];
+  if (leakage?.leaked) {
+    const labels = leakage.hits.map((h) => h.label).join(', ');
+    reasons.push({
+      code: 'model-output-leakage',
+      label: 'Model-output leakage',
+      detail: `Pasted-LLM artifact present (${labels}). A single hit is near-proof-grade.`,
+    });
+  }
   if (formatting?.emDashHot) {
     reasons.push({
       code: 'em-dash-overuse',
@@ -364,13 +396,16 @@ export function analyzePlaygroundText(text, opts = {}) {
     const emDashHot = docEmDash >= formattingThresholds.emDashDoc && counts.emDash >= 1;
     const boldHot = docBold >= formattingThresholds.boldDoc && counts.bold >= 1;
     const formatting = { ...counts, docEmDash, docBold, emDashHot, boldHot };
+    // Model-output leakage (#332): per-paragraph hit, fires on a single occurrence.
+    const leakage = detectMarkupLeakage(paragraph);
     const hot =
       cvBand === 'low' ||
       mattrBand === 'low' ||
       lexiconHot ||
       Boolean(koSignals.koDiagnostics?.hot) ||
       emDashHot ||
-      boldHot;
+      boldHot ||
+      leakage.leaked;
     const reasons = buildReasons({
       cvBand,
       mattrBand,
@@ -379,6 +414,7 @@ export function analyzePlaygroundText(text, opts = {}) {
       koDiagnostics: koSignals.koDiagnostics,
       formatting,
       formattingThresholds,
+      leakage,
     });
 
     return {
@@ -391,6 +427,7 @@ export function analyzePlaygroundText(text, opts = {}) {
       mattr: { value: mattrValue, band: mattrBand },
       lexicon: { ...lex, hot: lexiconHot },
       formatting,
+      leakage,
       ...koSignals,
       hot,
       reasons,
@@ -407,6 +444,7 @@ export function analyzePlaygroundText(text, opts = {}) {
     paragraphCount: paragraphs.length,
     hotCount,
     totalTokens: analyzed.reduce((sum, p) => sum + p.tokenCount, 0),
+    markupLeakage: detectMarkupLeakage(text),
     paragraphs: analyzed,
     auditItems: analyzed.filter((p) => p.hot || p.lexicon.matches > 0),
     note: 'Audit-only deterministic score. It marks editing hotspots, not authorship or intent.',

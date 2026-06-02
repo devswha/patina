@@ -26,6 +26,7 @@ import {
   DEFAULT_LEXICON_DENSITY_THRESHOLD,
   DEFAULT_LEXICON_MIN_HOT_MATCHES,
 } from './lexicon.js';
+import { detectMarkupLeakage } from './markup-leakage.js';
 
 export function analyzeText(text, opts = {}) {
   const {
@@ -47,6 +48,11 @@ export function analyzeText(text, opts = {}) {
   // vs decomposed) would otherwise yield different MATTR/lexicon hits.
   const normalized = text ? text.normalize('NFC') : '';
   const paragraphs = splitParagraphs(normalized);
+
+  // Document-level leakage scan (issue #332). Near-proof-grade: a single hit is
+  // strong evidence of pasted model output, so it forces the document hot
+  // regardless of the per-paragraph stylometry/lexicon signals.
+  const markupLeakage = detectMarkupLeakage(normalized);
   const lexicon =
     providedLexicon ??
     (repoRoot ? loadLexicon(lang, repoRoot) : { strict: [], phrases: [] });
@@ -109,7 +115,8 @@ export function analyzeText(text, opts = {}) {
     skipped: Boolean(skipReason),
     skipReason,
     paragraphs: analyzed,
-    hot: analyzed.some((p) => p.hot),
+    markupLeakage,
+    hot: markupLeakage.leaked || analyzed.some((p) => p.hot),
   };
 }
 

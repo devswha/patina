@@ -16,12 +16,15 @@ export const DEFAULT_BURSTINESS_BANDS = { low: 0.30, high: 0.50 };
 export const DEFAULT_MIN_BURSTINESS_SENTENCES = 3;
 export const DEFAULT_MATTR_BANDS = { low: 0.55, high: 0.70 };
 export const DEFAULT_MATTR_WINDOW = 50;
-// Document-level formatting tells (mirror catalog patterns #13 em-dash, #14 boldface).
-// These are doc-level by design: 3 em-dashes spread one-per-paragraph must still fire,
-// so we count across the whole document and then flag the paragraphs that carry the token.
+// Formatting tells mirror catalog patterns #13/#14/#17.
+// Em dash is doc-level (3+ across the document). Bold fires at 5+ across the
+// document or 3+ within one paragraph. Emoji currently mirrors the catalog's
+// "any occurrence" contract for editorial/professional text.
 export const DEFAULT_FORMATTING_THRESHOLDS = {
   emDashDoc: 3, // U+2014 occurrences across the document
   boldDoc: 5, // **bold** spans across the document
+  boldParagraph: 3, // **bold** spans inside one paragraph
+  emojiDoc: 1, // any emoji occurrence in the document
 };
 export const DEFAULT_KO_DIAGNOSTIC_BANDS = {
   minSentences: 4,
@@ -388,12 +391,38 @@ export function detectThematicBreaks(text) {
   };
 }
 
-// Count formatting tells in a chunk of raw text (em-dash U+2014, markdown **bold** spans).
-export function countFormatting(text) {
+const EMOJI_BASE_RE = '\\p{Extended_Pictographic}(?:\\uFE0F|\\uFE0E)?(?:\\p{Emoji_Modifier})?';
+const EMOJI_CLUSTER_PATTERN = `(?:\\p{Regional_Indicator}{2}|[#*0-9]\\uFE0F?\\u20E3|${EMOJI_BASE_RE}(?:\\u200D${EMOJI_BASE_RE})*)`;
+const EMOJI_CLUSTER_RE = new RegExp(EMOJI_CLUSTER_PATTERN, 'u');
+const EMOJI_CLUSTER_RE_GLOBAL = new RegExp(EMOJI_CLUSTER_PATTERN, 'gu');
+
+function getGraphemeSegmenter() {
+  return typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
+    ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+    : null;
+}
+
+function countEmojiClusters(text, segmenter = getGraphemeSegmenter()) {
+  const str = String(text ?? '');
+  if (!str) return 0;
+  if (segmenter) {
+    let count = 0;
+    for (const { segment } of segmenter.segment(str)) {
+      if (EMOJI_CLUSTER_RE.test(segment)) count++;
+    }
+    return count;
+  }
+  return (str.match(EMOJI_CLUSTER_RE_GLOBAL) || []).length;
+}
+
+// Count formatting tells in a chunk of raw text (em-dash U+2014, markdown **bold**
+// spans, decorative emoji).
+export function countFormatting(text, opts = {}) {
   const str = String(text ?? '');
   const emDash = (str.match(/—/gu) || []).length;
   const bold = (str.match(/\*\*(?=\S)(?:[^*]|\*(?!\*))+?\*\*/gu) || []).length;
-  return { emDash, bold };
+  const emoji = countEmojiClusters(str, opts.segmenter);
+  return { emDash, bold, emoji };
 }
 
 function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, formatting, formattingThresholds, leakage, candor, thematicBreaks }) {
@@ -428,10 +457,20 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, forma
     });
   }
   if (formatting?.boldHot) {
+    const paragraphOnly = formatting.bold >= formattingThresholds.boldParagraph && formatting.docBold < formattingThresholds.boldDoc;
     reasons.push({
       code: 'bold-overuse',
       label: 'Boldface overuse',
-      detail: `${formatting.docBold} bold spans in the document (threshold ${formattingThresholds.boldDoc}); this paragraph carries ${formatting.bold}.`,
+      detail: paragraphOnly
+        ? `${formatting.bold} bold spans in this paragraph (threshold ${formattingThresholds.boldParagraph}).`
+        : `${formatting.docBold} bold spans in the document (threshold ${formattingThresholds.boldDoc}); this paragraph carries ${formatting.bold}.`,
+    });
+  }
+  if (formatting?.emojiHot) {
+    reasons.push({
+      code: 'emoji-overuse',
+      label: 'Emoji overuse',
+      detail: `${formatting.docEmoji} emoji in the document (catalog threshold: any occurrence); this paragraph carries ${formatting.emoji}.`,
     });
   }
   if (cvBand === 'low') {
@@ -484,6 +523,7 @@ export function analyzePlaygroundText(text, opts = {}) {
   const paraFormatting = paragraphs.map(countFormatting);
   const docEmDash = paraFormatting.reduce((sum, f) => sum + f.emDash, 0);
   const docBold = paraFormatting.reduce((sum, f) => sum + f.bold, 0);
+  const docEmoji = paraFormatting.reduce((sum, f) => sum + f.emoji, 0);
   // Fake-candor openers (#334): doc-level density gate, then attribute to the
   // paragraphs that carry an opener (same shape as the em-dash doc-level pass).
   const paraCandor = paragraphs.map(countFakeCandor);
@@ -513,8 +553,11 @@ export function analyzePlaygroundText(text, opts = {}) {
     });
     const counts = paraFormatting[idx];
     const emDashHot = docEmDash >= formattingThresholds.emDashDoc && counts.emDash >= 1;
-    const boldHot = docBold >= formattingThresholds.boldDoc && counts.bold >= 1;
-    const formatting = { ...counts, docEmDash, docBold, emDashHot, boldHot };
+    const boldHot =
+      (docBold >= formattingThresholds.boldDoc && counts.bold >= 1) ||
+      counts.bold >= formattingThresholds.boldParagraph;
+    const emojiHot = docEmoji >= formattingThresholds.emojiDoc && counts.emoji >= 1;
+    const formatting = { ...counts, docEmDash, docBold, docEmoji, emDashHot, boldHot, emojiHot };
     // Model-output leakage (#332): per-paragraph hit, fires on a single occurrence.
     const leakage = detectMarkupLeakage(paragraph);
     // Fake-candor (#334): this paragraph carries an opener AND the doc total >= gate.
@@ -527,6 +570,7 @@ export function analyzePlaygroundText(text, opts = {}) {
       Boolean(koSignals.koDiagnostics?.hot) ||
       emDashHot ||
       boldHot ||
+      emojiHot ||
       leakage.leaked ||
       candorHot ||
       thematicBreakHot;

@@ -14,6 +14,13 @@ Semver rationale: patch | minor | major — explain whether this changes pattern
 
 ## Unreleased
 
+### Added
+
+- **Opt-in `patina-hosted` backend** (open-core): a new `src/backends/patina-hosted.js` adapter registered in the backend registry. It is never auto-selected; you reach it with an explicit `--backend patina-hosted` (alone or inside a fallback chain) after setting `PATINA_HOSTED_URL` and `PATINA_HOSTED_KEY`. An unset URL/key or a server failure is an explicit error, never a silent baseline fallback (#88); fallback only happens for retryable statuses inside a user-spelled chain. The adapter speaks a versioned request/response schema (`src/backends/patina-hosted-schema.js`) that is isomorphic to the scorer — span offset, score, general category — and rejects any response that leaks internal lexicon/pattern identifiers or carries a mismatched schema version.
+- **Private-asset leak gate** (`scripts/check-no-private-assets.mjs`, `npm run check:no-private-assets`): enumerates `npm pack --dry-run --json` for both `patina-cli` and `packages/patina-humanizer` plus `git ls-files`, and fails if any forbidden cross-track path appears. Wired into `prepublishOnly` and CI.
+- **ko baseline-vs-hosted compare harness** (`scripts/ko-hosted-compare.mjs`, `npm run compare:ko-hosted`): paired bootstrap CIs for catch and false-positive rate deltas plus a McNemar test, runnable offline with a deterministic mock engine. Statistics live in `scripts/lib/paired-stats.mjs` with a unit regression guard.
+- **README "Open Core vs Hosted"** boundary section and a top-level `NOTICE`. License stays MIT.
+
 ## 3.12.0 — 2026-06-02
 
 Semver rationale: minor — adds new deterministic detection signals plus two new pattern-pack detections across ko/en/zh/ja; backward compatible.

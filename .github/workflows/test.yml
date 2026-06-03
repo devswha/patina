@@ -73,6 +73,9 @@ jobs:
       - name: Release metadata
         run: npm run release:check
 
+      - name: Private asset leak gate
+        run: npm run check:no-private-assets
+
       - name: Syntax lint
         run: npm run lint:syntax
 

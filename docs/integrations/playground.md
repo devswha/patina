@@ -13,7 +13,7 @@ It is intentionally audit-only. The page runs deterministic string operations in
 - a suspect-zone diff that highlights review zones and lexicon hits;
 - an **Open in CLI** command that copies the pasted input plus `npx patina-cli --score` / `--audit` commands.
 
-It does not rewrite text, call an LLM, or proxy user API keys.
+It does not rewrite text, call an LLM, proxy user API keys, or send pasted text off the page. The hosted Vercel deployment records page-view metadata with Web Analytics so maintainers can watch traffic.
 
 ## Source files
 
@@ -22,6 +22,7 @@ It does not rewrite text, call an LLM, or proxy user API keys.
 - DOM wiring: [`playground/app.js`](../../playground/app.js)
 - Generated lexicons: [`playground/data/lexicons.js`](../../playground/data/lexicons.js)
 - Vercel routes: [`vercel.json`](../../vercel.json)
+- Analytics shim: [`playground/analytics.js`](../../playground/analytics.js)
 - OG image: [`assets/social/patina-og.svg`](../../assets/social/patina-og.svg)
 
 ## Refreshing lexicon data

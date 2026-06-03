@@ -96,6 +96,10 @@ export function computeDensity(paragraphText, tokens, lexicon) {
   return { matches: hits.length, density, hits };
 }
 
+/**
+ * @param {{ matches?: number, density?: number }} [lexiconStats]
+ * @param {{ lang?: string, densityThreshold?: number, minHotMatches?: (number|Record<string, number>) }} [options]
+ */
 export function classifyLexiconHot(
   lexiconStats,
   {

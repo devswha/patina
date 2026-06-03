@@ -1,3 +1,4 @@
+// @ts-check
 import { createLogger } from './logger.js';
 
 /**
@@ -70,7 +71,7 @@ function colorizeDiff(body, { parsed = {}, env = process.env, stdout = process.s
   }).join('\n');
 }
 
-function shouldColorDiff({ parsed = {}, env = process.env, stdout = process.stdout } = {}) {
+function shouldColorDiff(/** @type {{ parsed?: { noColor?: boolean }, env?: Record<string, string|undefined>, stdout?: { isTTY?: boolean } }} */ { parsed = {}, env = process.env, stdout = process.stdout } = {}) {
   return !parsed.noColor && env.NO_COLOR === undefined && stdout?.isTTY === true;
 }
 

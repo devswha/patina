@@ -1,3 +1,4 @@
+// @ts-check
 import { validateBaseURL } from './security.js';
 
 const DEFAULT_TIMEOUT = 120000;
@@ -185,8 +186,8 @@ export function createSemaphore(max) {
  * @param {object} options LLM request options.
  * @param {string} options.prompt User prompt sent as the single chat message.
  * @param {string} [options.apiKey] Bearer token for the provider.
- * @param {string} [options.baseURL=https://api.openai.com/v1] OpenAI-compatible API base URL.
- * @param {string} [options.model=gpt-4o] Model id to request.
+ * @param {string} [options.baseURL] OpenAI-compatible API base URL. Defaults to https://api.openai.com/v1.
+ * @param {string} [options.model] Model id to request. Defaults to gpt-4o.
  * @param {number} [options.temperature=DEFAULT_TEMPERATURE] Sampling temperature.
  * @param {number|string} [options.seed] Optional deterministic seed forwarded to the provider.
  * @param {number} [options.timeout=120000] Per-attempt timeout in milliseconds.
@@ -339,9 +340,12 @@ export async function callLLM({
     }
   }
 
-  const err = new Error(`LLM API failed after ${attemptsMade || 1} attempts: ${lastError?.message ?? 'unknown'}`);
+  const err = /** @type {Error & { status?: number }} */ (
+    new Error(`LLM API failed after ${attemptsMade || 1} attempts: ${lastError?.message ?? 'unknown'}`)
+  );
   if (lastError?.name === 'AbortError') err.name = 'AbortError';
-  if (typeof lastError?.status === 'number') err.status = lastError.status;
+  const lastStatus = /** @type {{ status?: unknown }} */ (lastError ?? {}).status;
+  if (typeof lastStatus === 'number') err.status = lastStatus;
   throw err;
 }
 
@@ -352,7 +356,7 @@ export async function callLLM({
  * @param {string} options.prompt Prompt to send to each model.
  * @param {string[]} options.models Ordered model ids to call.
  * @param {string} [options.apiKey] Provider API key.
- * @param {string} [options.baseURL=https://api.openai.com/v1] Provider base URL.
+ * @param {string} [options.baseURL] Provider base URL. Defaults to https://api.openai.com/v1.
  * @param {number} [options.temperature=DEFAULT_TEMPERATURE] Sampling temperature.
  * @param {number|string} [options.seed] Optional deterministic seed.
  * @param {number} [options.timeout] Per-call timeout in milliseconds.
@@ -365,6 +369,8 @@ export async function callLLM({
  * @param {Function} [options.onResponse] Called with response metadata.
  * @param {object} [options.cache] Response cache shared by calls.
  * @param {Function} [options.callLLM] Injectable single-model implementation.
+ * @param {Function} [options.sleep] Sleep helper for tests.
+ * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @returns {Promise<Array<Object>>} Per-model results in input order.
  * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example

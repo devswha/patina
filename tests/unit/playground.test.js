@@ -12,6 +12,7 @@ import {
   buildFalsePositiveReportUrl,
   renderAuditDiff,
   SUPPORTED_LANGS,
+  splitProseSentences,
 } from '../../playground/analyzer.js';
 import { analyzeText } from '../../src/features/index.js';
 
@@ -135,8 +136,34 @@ test('playground ports thematic-break discourse tells from the node analyzer', (
   assert.ok(playgroundAnalysis.paragraphs.some((paragraph) => paragraph.reasons.some((reason) => reason.code === 'thematic-break')));
 });
 
+test('playground excludes Markdown list blocks from prose rhythm samples', () => {
+  const text = `Here is what the tool does for you:
+- send hook events to external gateways
+- discover and invoke MCP servers
+- hand bounded sub-questions to other CLIs and models
+- distribute work across Codex, Claude, and Gemini`;
+
+  assert.deepEqual(splitProseSentences(text), ['Here is what the tool does for you:']);
+
+  const nodeAnalysis = analyzeNodeText(text, 'en');
+  const playgroundAnalysis = analyzePlaygroundText(text, { lang: 'en' });
+  assert.equal(playgroundAnalysis.paragraphs[0].sentenceCount, nodeAnalysis.paragraphs[0].sentenceCount);
+  assert.equal(playgroundAnalysis.paragraphs[0].burstiness.band, nodeAnalysis.paragraphs[0].burstiness.band);
+  assert.equal(playgroundAnalysis.hotCount > 0, nodeAnalysis.hot);
+
+  const twoSentenceResidue = `This intro names the list. It stays under the burstiness gate.
+- send hook events to external gateways
+- discover and invoke MCP servers
+- hand bounded sub-questions to other CLIs and models`;
+  const residueNode = analyzeNodeText(twoSentenceResidue, 'en');
+  const residuePlayground = analyzePlaygroundText(twoSentenceResidue, { lang: 'en' });
+  assert.equal(residuePlayground.paragraphs[0].sentenceCount, residueNode.paragraphs[0].sentenceCount);
+  assert.equal(residuePlayground.paragraphs[0].burstiness.band, residueNode.paragraphs[0].burstiness.band);
+  assert.equal(residuePlayground.hotCount > 0, residueNode.hot);
+});
+
 test('playground keeps one Korean lexicon hit as an audit hint', () => {
-  const analysis = analyzePlaygroundText('이 문서는 다음 작업의 기반을 설명한다.', { lang: 'ko' });
+  const analysis = analyzePlaygroundText('이 문서는 다음 작업의 자리매김을 설명한다.', { lang: 'ko' });
   assert.equal(analysis.paragraphs[0].lexicon.matches, 1);
   assert.equal(analysis.paragraphs[0].lexicon.hot, false);
   assert.equal(analysis.paragraphs[0].hot, false);

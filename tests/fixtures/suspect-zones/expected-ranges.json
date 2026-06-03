@@ -604,12 +604,10 @@
         0.85
       ],
       "lexicon_density_range": [
-        14.608,
-        24.608
+        0,
+        5
       ],
-      "lexicon_hits": [
-        "환경"
-      ]
+      "lexicon_hits": []
     },
     "ko-ai-03": {
       "path": "tests/fixtures/suspect-zones/ko/ai/ko-ai-03.md",
@@ -720,12 +718,10 @@
         1.03
       ],
       "lexicon_density_range": [
-        16.739,
-        26.739
+        0,
+        5
       ],
-      "lexicon_hits": [
-        "흐름"
-      ]
+      "lexicon_hits": []
     },
     "ko-ai-07-ko-diagnostic": {
       "path": "tests/fixtures/suspect-zones/ko/ai/ko-ai-07-ko-diagnostic.md",

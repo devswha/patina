@@ -26,6 +26,9 @@ export const DEFAULT_FORMATTING_THRESHOLDS = {
   boldParagraph: 3, // **bold** spans inside one paragraph
   emojiDoc: 1, // any emoji occurrence in the document
 };
+// Model-output leakage (#332) is near-proof-grade, so any hit short-circuits the
+// document score into the 'heavily AI' band, mirroring src/scoring.js.
+export const LEAKAGE_SCORE_FLOOR = 90;
 export const DEFAULT_KO_DIAGNOSTIC_BANDS = {
   minSentences: 4,
   minEojeols: 20,
@@ -612,7 +615,9 @@ export function analyzePlaygroundText(text, opts = {}) {
   });
 
   const hotCount = analyzed.filter((p) => p.hot).length;
-  const overall = paragraphs.length === 0 ? 0 : Math.round((hotCount / paragraphs.length) * 100);
+  const hotRatio = paragraphs.length === 0 ? 0 : Math.round((hotCount / paragraphs.length) * 100);
+  const markupLeakage = detectMarkupLeakage(text);
+  const overall = markupLeakage.leaked ? Math.max(hotRatio, LEAKAGE_SCORE_FLOOR) : hotRatio;
 
   return {
     lang,
@@ -621,7 +626,7 @@ export function analyzePlaygroundText(text, opts = {}) {
     paragraphCount: paragraphs.length,
     hotCount,
     totalTokens: analyzed.reduce((sum, p) => sum + p.tokenCount, 0),
-    markupLeakage: detectMarkupLeakage(text),
+    markupLeakage,
     discourseTells: {
       fakeCandor: docFakeCandor,
       thematicBreaks: docThematicBreaks,

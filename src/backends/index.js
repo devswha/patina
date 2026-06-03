@@ -2,6 +2,7 @@ import { callLLM } from '../api.js';
 import * as codexCli from './codex-cli.js';
 import * as claudeCli from './claude-cli.js';
 import * as geminiCli from './gemini-cli.js';
+import * as patinaHosted from './patina-hosted.js';
 import { inspectHttpApiKeySource } from '../auth.js';
 import { inputError } from '../errors.js';
 import {
@@ -35,6 +36,11 @@ const REGISTRY = {
   'codex-cli': codexCli,
   'claude-cli': claudeCli,
   'gemini-cli': geminiCli,
+  // Opt-in hosted backend. Registered so `--backend patina-hosted` resolves and
+  // it shows up in `--list-backends`, but intentionally absent from selectBackend's
+  // auto/heuristic paths: it never auto-selects (issue #88). Misconfiguration is
+  // an explicit error, not a silent baseline fallback.
+  'patina-hosted': patinaHosted,
 };
 
 export function listBackends() {

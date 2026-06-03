@@ -45,6 +45,9 @@ jobs:
       - name: Dogfood public docs
         run: npm run dogfood
 
+      - name: Private asset leak gate
+        run: npm run check:no-private-assets
+
       - name: Root npm package dry run
         run: npm pack --dry-run
 

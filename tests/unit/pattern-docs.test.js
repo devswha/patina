@@ -286,16 +286,27 @@ test('mirrored docs keep fire conditions aligned for drift-prone numbered patter
   }
 });
 
-test('zh and ja rewrite patterns have success and failure examples', () => {
-  for (const lang of ['zh', 'ja']) {
-    for (let n = 1; n <= 28; n++) {
-      const id = String(n).padStart(2, '0');
+test('every rewrite pattern has success and failure examples in all four languages', () => {
+  // #322: the symmetric pack counts hid missing worked examples (e.g. #29 once
+  // had none). Derive the numbered pattern ids from the packs themselves so the
+  // guard tracks every rewrite pattern, in every language, and self-extends as
+  // patterns are added. Korean examples are unprefixed; en/zh/ja are prefixed.
+  for (const lang of LANGS) {
+    const sourceFiles = patternFiles().filter((file) => {
+      const { meta } = parsePatternFile(file);
+      return meta.language === lang && !meta.score_only;
+    });
+    const numbers = [...new Set(sourceFiles.flatMap((file) => patternHeadings(file).map((heading) => heading.number)))].sort((a, b) => a - b);
+    assert.ok(numbers.length > 0, `${lang} should expose numbered pattern headings`);
+    const prefix = lang === 'ko' ? '' : `${lang}-`;
+    for (const number of numbers) {
+      const id = String(number).padStart(2, '0');
       assert.ok(
-        existsSync(resolve(REPO_ROOT, `examples/${lang}-${id}-success-01.md`)),
+        existsSync(resolve(REPO_ROOT, `examples/${prefix}${id}-success-01.md`)),
         `${lang} pattern ${id} must have a success example`
       );
       assert.ok(
-        existsSync(resolve(REPO_ROOT, `examples/${lang}-${id}-failure-01.md`)),
+        existsSync(resolve(REPO_ROOT, `examples/${prefix}${id}-failure-01.md`)),
         `${lang} pattern ${id} must have a failure example`
       );
     }

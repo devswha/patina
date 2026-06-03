@@ -68,7 +68,7 @@ Brand resources: [logo](assets/brand/patina-logo.svg), [mark](assets/brand/patin
 
 |  |  |
 |---|---|
-| **160 patterns** | 40 KO + 40 EN + 40 ZH + 40 JA (each incl. 8 score-only viral-hook) — see [PATTERNS.md](docs/PATTERNS.md) |
+| **168 patterns** | 33 rewrite-capable + 9 score-only viral-hook per language (42 each across KO/EN/ZH/JA) — see [PATTERNS.md](docs/PATTERNS.md) |
 | **Editing hotspot recall** | 2026-05-22 modern-model rebaseline: 67.3% overall catch [63.5–71.0%] across GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro (n=600, KO+EN) |
 | **Benchmark reports** | Reproducible ko/en/zh/ja suspect-zone benchmark: [overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [2026 rebaseline](docs/benchmarks/rebaseline-latest.md) · [detector comparison](docs/benchmarks/detector-comparison.md) |
 | **False positives** | 16.0% [11.6–21.7%] on 2026-05-22 KO+EN human controls (n=200); register boundaries remain documented in [stylometry.md](core/stylometry.md) — [report one](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
@@ -214,7 +214,7 @@ Dev-native profile shortcuts are available for Markdown-heavy engineering workfl
 
 ### Score-only patterns
 
-`--score` and `--audit` measure a slightly broader set of signals than `--rewrite` does. The viral-hook packs (`ko/en/zh/ja-viral-hook`, 8 patterns each: shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, hyperbolic engagement lexicon, fake-stat citations, stacked credentials, future-self/parasocial promises) are **detection-only**.
+`--score` and `--audit` measure a slightly broader set of signals than `--rewrite` does. The viral-hook packs (`ko/en/zh/ja-viral-hook`, 9 patterns each: shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, hyperbolic engagement lexicon, fake-stat citations, stacked credentials, future-self/parasocial promises, aphoristic punchlines) are **detection-only**.
 
 They appear in score and audit output so the benchmark matches human intuition for SNS-style marketing copy across all four languages. `--rewrite`/`--diff`/`--ouroboros` skip them because those signals are often intentional rhetoric. Real-world demos: [`examples/viral-hook/`](examples/viral-hook/).
 
@@ -319,7 +319,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Cookbook](docs/COOKBOOK.md)** — practical recipes (Hugo batch scoring, GitHub Actions, MAX-mode comparison, false-positive triage, custom profiles, pre-commit)
 - **[Glossary](docs/GLOSSARY.md)** — short definitions for MPS, fidelity, burstiness, MATTR, modes, and other recurring terms
 - **[Demo](docs/DEMO.md)** — terminal transcript and multi-genre before/after snapshots
-- **[Patterns](docs/PATTERNS.md)** — full 160-pattern catalog
+- **[Patterns](docs/PATTERNS.md)** — full 168-pattern catalog
 - **[Authentication](docs/AUTHENTICATION.md)** ([한국어](docs/AUTHENTICATION_KR.md)) — backends, providers, free-tier setup
 - **[GitHub Action](docs/integrations/github-action.md)** — PR hotspot comments and README score badges without a live model key
 - **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit, Husky, and Lefthook score-only recipes

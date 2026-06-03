@@ -2,8 +2,8 @@
 
 This page expands the English pattern packs into a browsable reference. It is generated from `patterns/en-*.md`, so the numbers, names, watch words, fire conditions, and examples mirror the source pattern files.
 
-- Rewrite-capable patterns: 32
-- Score/audit-only viral-hook patterns: 8
+- Rewrite-capable patterns: 33
+- Score/audit-only viral-hook patterns: 9
 - Main selector: [PATTERNS.md](PATTERNS.md)
 
 ## Pattern Index
@@ -23,6 +23,7 @@ This page expands the English pattern packs into a browsable reference. It is ge
 | 11 | rewrite | Elegant Variation (Synonym Cycling) | [en-language.md](../patterns/en-language.md) |
 | 12 | rewrite | False Ranges | [en-language.md](../patterns/en-language.md) |
 | 32 | rewrite | Comparison Adverb Overuse ("more" without target) | [en-language.md](../patterns/en-language.md) |
+| 33 | rewrite | Definitional-Metaphor Equation ("X is the architecture of Z") | [en-language.md](../patterns/en-language.md) |
 | 13 | rewrite | Em Dash Overuse | [en-style.md](../patterns/en-style.md) |
 | 14 | rewrite | Boldface Overuse | [en-style.md](../patterns/en-style.md) |
 | 15 | rewrite | Inline-Header Vertical Lists | [en-style.md](../patterns/en-style.md) |
@@ -50,6 +51,7 @@ This page expands the English pattern packs into a browsable reference. It is ge
 | VH-6 | score/audit only | Fake Statistic Citation | [en-viral-hook.md](../patterns/en-viral-hook.md) |
 | VH-7 | score/audit only | Manufactured Authority Stacking | [en-viral-hook.md](../patterns/en-viral-hook.md) |
 | VH-8 | score/audit only | Future-Self / Parasocial Promise | [en-viral-hook.md](../patterns/en-viral-hook.md) |
+| VH-9 | score/audit only | Aphoristic Punchline / Standalone Declarative | [en-viral-hook.md](../patterns/en-viral-hook.md) |
 
 ## Content Patterns
 
@@ -252,7 +254,7 @@ Example after:
 - Source: [en-language.md](../patterns/en-language.md)
 - Type: rewrite-capable pattern
 - Watch words: more specific, more concrete, more efficient, more effective, more comprehensive, more robust, more seamless, more meaningful, more strategic, more impactful, more nuanced, more proactive, more sustainable, more scalable
-- Fire condition: 2+ "more + adjective/adverb" comparative phrases appear in one document without a clear target, baseline, or metric.
+- Fire condition: 2+ "more + adjective/adverb" comparative phrases appear in one document without a clear target, baseline, or metric. A single instance can fire when it appears in the same paragraph as other formal AI markers such as "comprehensive", "strategic", "framework", "stakeholder", or "in-depth".
 - Example files: [failure](../examples/en-32-failure-01.md) · [success](../examples/en-32-success-01.md)
 
 Example before:
@@ -262,6 +264,33 @@ Example before:
 Example after:
 
 > The initiative needs dated milestones, named owners, and a budget review. The team also needs one shared plan for partner handoffs, because the current spreadsheet has three conflicting owners for the same launch tasks.
+
+### 33. Definitional-Metaphor Equation ("X is the architecture of Z")
+
+- Source: [en-language.md](../patterns/en-language.md)
+- Type: rewrite-capable pattern
+
+**Watch words:** is the signature of, is the shape of, is the language of, is the currency of, is the architecture of, is the backbone of, is the engine of, is the heartbeat of, is the DNA of, is the cornerstone of, is the lifeblood of
+
+**Fire condition:** 2+ copula sentences of the form "X is the [abstract noun] of Z" appear in the same document/section without concrete support for the equation. A single instance is an audit hint only: do not rewrite unless the same inflated metaphor pattern recurs.
+
+- Example files: [failure](../examples/en-33-failure-01.md) · [success](../examples/en-33-success-01.md)
+**Exclusion:** Literal or technical definitions ("water is the universal solvent"), established idioms and textbook metaphors ("the mitochondria is the powerhouse of the cell"), factual "X is the capital/center of Z" statements, and genuine equivalences backed by concrete support in the same passage are not this pattern.
+
+**Disambiguation from #8 (Copula Avoidance):** #8 fires on text that *avoids* "is" ("serves as", "functions as" → rewrite to "is"). #33 is the opposite: the sentence already uses "is", but inflates it into an "is the [abstract noun] of [abstraction]" metaphor-equation to manufacture profundity. Do not conflate them — #8 wants the copula restored, #33 wants the empty metaphor-equation dismantled.
+
+**Semantic Risk:** MEDIUM
+**Preservation Note:** The metaphor sometimes points at a real claim ("trust depends on consistent behavior"); when rewriting, recover and state that underlying claim concretely rather than deleting it, so a genuine point is not lost along with the inflated framing.
+
+**Problem:** AI manufactures depth by equating one abstraction with another through a borrowed structural noun — "signature", "architecture", "currency". The sentence sounds like an insight but asserts nothing testable; swapping the abstract noun ("is the *language* of" → "is the *currency* of") barely changes the meaning, which exposes the equation as decorative rather than substantive.
+
+**Before:**
+> Symmetry is the architecture of trust. Cringe is the visible signature of moving along a gradient you chose. Consistency is the currency of every relationship that lasts.
+
+**After:**
+> People trust a process more when it behaves the same way every time, so they can predict it. That predictability is what makes a relationship hold up: you keep doing what you said you would, and the other side stops bracing for surprises.
+
+---
 
 ## Style Patterns
 
@@ -716,3 +745,38 @@ Before / after example:
 > Before: Listen, friend — your future self will thank you for saving this.
 >
 > After: Save this if you need a checklist for next month's planning.
+
+### Viral 9. Aphoristic Punchline / Standalone Declarative
+
+- Source: [en-viral-hook.md](../patterns/en-viral-hook.md)
+
+**Watch words:** (structural pattern — judged by form, not vocabulary)
+
+**Problem:** A short, grammatically complete declarative sentence (roughly ten words or fewer) is set on its own line or paragraph for rhetorical gravitas — a pseudo-profound mic-drop. One can be a stylistic choice; several across a piece, or one capping each paragraph, is a hallmark of AI-polished thought-leadership copy that gestures at depth without earning it. The judgment is about form and placement, not the words used.
+
+**Fire condition:** A standalone, grammatically complete declarative sentence of about ten words or fewer is isolated on its own line or paragraph as a punchline, and the piece contains two or more such isolated aphorisms or caps successive paragraphs with them.
+
+**Severity rubric:**
+- Low: One standalone aphorism appears in the piece.
+- Medium: Two standalone aphorisms appear.
+- High: Three or more appear, or nearly every paragraph is capped with one.
+
+**Exclusion:**
+- Poetry, song lyrics, verse
+- Genuinely short notes, answers, alerts, or one-line replies
+- A deliberate aphorism backed by concrete support in the same passage
+- Quoted speech or dialogue
+- Headings and section titles
+
+**Semantic Risk:** LOW — score-only; the isolated line may be intentional rhetoric.
+**Preservation Note:** Score-only by default; if the user asks to lower the hook, fold the standalone line back into the surrounding paragraph or attach the concrete reason it points at, so the claim survives without the staged mic-drop.
+**Before / after examples (manual lower-signal rewrite):**
+> Before: We rebuilt the onboarding flow over two sprints.
+>
+> Symmetry becomes a trap.
+>
+> The team learned to ship smaller.
+>
+> Constraints are a gift.
+>
+> After: We rebuilt the onboarding flow over two sprints, and matching every screen to the old layout slowed us down — chasing visual symmetry became a trap. The team learned to ship smaller pieces, and the tight scope each sprint actually helped more than it hurt.

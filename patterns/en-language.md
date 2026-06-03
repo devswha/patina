@@ -3,7 +3,7 @@ pack: en-language
 language: en
 name: Language Patterns
 version: 1.0.0
-patterns: 7
+patterns: 8
 corpus-snapshot:
   id: bootstrap-patterns-pre-provenance
   status: needs-quarterly-refresh
@@ -166,3 +166,26 @@ dedupe-with:
 
 **After:**
 > The initiative needs dated milestones, named owners, and a budget review. The team also needs one shared plan for partner handoffs, because the current spreadsheet has three conflicting owners for the same launch tasks.
+
+---
+
+### 33. Definitional-Metaphor Equation ("X is the architecture of Z")
+
+**Watch words:** is the signature of, is the shape of, is the language of, is the currency of, is the architecture of, is the backbone of, is the engine of, is the heartbeat of, is the DNA of, is the cornerstone of, is the lifeblood of
+
+**Fire condition:** 2+ copula sentences of the form "X is the [abstract noun] of Z" appear in the same document/section without concrete support for the equation. A single instance is an audit hint only: do not rewrite unless the same inflated metaphor pattern recurs.
+
+**Exclusion:** Literal or technical definitions ("water is the universal solvent"), established idioms and textbook metaphors ("the mitochondria is the powerhouse of the cell"), factual "X is the capital/center of Z" statements, and genuine equivalences backed by concrete support in the same passage are not this pattern.
+
+**Disambiguation from #8 (Copula Avoidance):** #8 fires on text that *avoids* "is" ("serves as", "functions as" → rewrite to "is"). #33 is the opposite: the sentence already uses "is", but inflates it into an "is the [abstract noun] of [abstraction]" metaphor-equation to manufacture profundity. Do not conflate them — #8 wants the copula restored, #33 wants the empty metaphor-equation dismantled.
+
+**Semantic Risk:** MEDIUM
+**Preservation Note:** The metaphor sometimes points at a real claim ("trust depends on consistent behavior"); when rewriting, recover and state that underlying claim concretely rather than deleting it, so a genuine point is not lost along with the inflated framing.
+
+**Problem:** AI manufactures depth by equating one abstraction with another through a borrowed structural noun — "signature", "architecture", "currency". The sentence sounds like an insight but asserts nothing testable; swapping the abstract noun ("is the *language* of" → "is the *currency* of") barely changes the meaning, which exposes the equation as decorative rather than substantive.
+
+**Before:**
+> Symmetry is the architecture of trust. Cringe is the visible signature of moving along a gradient you chose. Consistency is the currency of every relationship that lasts.
+
+**After:**
+> People trust a process more when it behaves the same way every time, so they can predict it. That predictability is what makes a relationship hold up: you keep doing what you said you would, and the other side stops bracing for surprises.

@@ -2,8 +2,8 @@
 
 This page expands the Korean pattern packs into a browsable reference. It is generated from `patterns/ko-*.md`, so the numbers, names, watch words, fire conditions, and examples mirror the source pattern files.
 
-- Rewrite-capable patterns: 32
-- Score/audit-only viral-hook patterns: 8
+- Rewrite-capable patterns: 33
+- Score/audit-only viral-hook patterns: 9
 - Main selector: [PATTERNS.md](PATTERNS.md)
 
 ## Pattern Index
@@ -23,6 +23,7 @@ This page expands the Korean pattern packs into a browsable reference. It is gen
 | 11 | rewrite | 유의어 순환 | [ko-language.md](../patterns/ko-language.md) |
 | 12 | rewrite | ~에 있어서/~함에 있어 장황한 조사 사용 | [ko-language.md](../patterns/ko-language.md) |
 | 32 | rewrite | "보다" 비교부사 남용 | [ko-language.md](../patterns/ko-language.md) |
+| 33 | rewrite | 정의형 은유 등식 | [ko-language.md](../patterns/ko-language.md) |
 | 13 | rewrite | 과도한 연결 표현 | [ko-style.md](../patterns/ko-style.md) |
 | 14 | rewrite | 볼드체 남발 | [ko-style.md](../patterns/ko-style.md) |
 | 15 | rewrite | 인라인 헤더 목록 | [ko-style.md](../patterns/ko-style.md) |
@@ -50,6 +51,7 @@ This page expands the Korean pattern packs into a browsable reference. It is gen
 | VH-6 | score/audit only | 가짜 통계 인용 | [ko-viral-hook.md](../patterns/ko-viral-hook.md) |
 | VH-7 | score/audit only | 권위 타이틀 쌓기 | [ko-viral-hook.md](../patterns/ko-viral-hook.md) |
 | VH-8 | score/audit only | 미래의 나 / 친밀한 2인칭 약속 | [ko-viral-hook.md](../patterns/ko-viral-hook.md) |
+| VH-9 | score/audit only | 잠언형 펀치라인 / 독립 단문 선언 | [ko-viral-hook.md](../patterns/ko-viral-hook.md) |
 
 ## 콘텐츠 패턴
 
@@ -262,6 +264,35 @@ Example before:
 Example after:
 
 > 프로젝트 일정에 더 구체적인 마일스톤이 있어야 할 것 같습니다. 예산 운영 방안도 한 번 점검이 필요해 보입니다. 다음 주에 자세히 이야기 나누면 좋겠습니다.
+
+### 33. 정의형 은유 등식
+
+- Source: [ko-language.md](../patterns/ko-language.md)
+- Type: rewrite-capable pattern
+
+**주의 어휘:** X는 Z의 [추상명사]다 / X는 Z의 [추상명사]이다 — 추상명사 자리에 오는 신호어: 시그니처, 서명, 형태, 언어, 통화, 화폐, 건축물, 설계도, 골격, 척추, 엔진, 심장박동, 맥박, DNA, 초석, 주춧돌, 생명선, 혈류, 문법, 풍경
+
+**문제:** "X는 Z의 시그니처다", "대칭은 신뢰의 건축물이다"처럼 계사("~다/~이다")로 추상적 은유 등식을 단언해 깊이 있어 보이게 만든다. 구체적 근거 없이 거창한 동일시만으로 통찰을 가장하는 AI 특유의 수사다. 비유 자체가 검증되지 않고, 어떤 명사에든 끼워 넣어도 그럴듯하게 들리기 때문에 실제 정보량은 거의 없다.
+
+**발화 조건:** "A는 B의 [추상명사]다/이다" 형태의 계사 문장이 같은 글/섹션 안에 2회 이상 등장하고, 그 등식을 뒷받침하는 구체적 근거(데이터·사례·메커니즘)가 없는 경우. 단일 1회 사용은 audit hint로만 취급하고, 같은 부풀린 은유 등식이 반복될 때만 rewrite 대상으로 본다.
+
+- Example files: [failure](../examples/33-failure-01.md) · [success](../examples/33-success-01.md)
+**제외 조건:**
+- 사전적·기술적 정의 — "물은 만능 용매다", "미토콘드리아는 세포의 발전소다"처럼 교과서적으로 확립된 정의·관용 비유
+- "서울은 한국의 수도다"처럼 지명·직함 등 사실 등식
+- 구체적 근거로 뒷받침된 진짜 동일시 — 바로 뒤에 메커니즘·사례·데이터가 이어져 그 비유가 실제로 성립함을 보여주는 경우 ("재고 회전율은 이 회사의 심장박동이다 — 회전율이 2주만 늦어져도 현금이 마르고 발주가 멈춘다")
+- 인용·대화체 안에서의 등장
+
+**의미 위험도:** MEDIUM
+**보존 주의사항:** 은유 등식을 풀어쓸 때 원문이 전달하려던 실제 주장(X와 Z가 어떤 관계라는 것)을 잃지 않도록 주의. 비유를 걷어내되 글쓴이가 말하려던 인과·기능 관계는 구체적 서술로 남긴다. 비유가 사실 아무 내용도 담고 있지 않다면 문장을 통째로 삭제하는 것이 가장 정직한 교정이다.
+
+**이 패턴이 아닌 것:** 패턴 8(계사 회피)은 "~의 역할을 한다", "~로 기능한다"처럼 "~다/이다"를 **피하는** 것을 잡아 계사로 되돌린다. 반대로 패턴 33은 계사를 써서 만든 **부풀린 "X는 Z의 OO다" 은유 등식**을 잡는다. 둘은 정반대 방향이므로 혼동하지 말 것 — 8은 계사 복원, 33은 과장된 계사 등식 해체.
+
+**수정 전:**
+> 침묵은 권력의 언어다. 회의실에서 누가 말하지 않는가를 보면 조직의 진짜 위계가 드러난다. 신뢰는 모든 협업의 통화이며, 투명성은 그 신뢰의 건축물이다.
+
+**수정 후:**
+> 회의에서 누가 말하지 않는지를 보면 조직의 실제 위계가 보인다. 발언권은 대개 직급이 아니라 평가 권한을 쥔 사람에게 쏠린다. 협업이 굴러가려면 서로 정보를 숨기지 않아야 하고, 그건 진행 상황을 공개적으로 공유하는 습관에서 나온다.
 
 ## 스타일 패턴
 
@@ -705,3 +736,34 @@ Detection example:
 > 이전: 친구야, 이건 저장해. 1년 뒤의 당신이 분명 고마워할 거다.
 >
 > 이후: 다음 달 계획을 세울 때 쓸 체크리스트가 필요하면 저장해 두자.
+
+### Viral 9. 잠언형 펀치라인 / 독립 단문 선언
+
+- Source: [ko-viral-hook.md](../patterns/ko-viral-hook.md)
+
+**주의 어휘:** (구조적 패턴 — 어휘가 아니라 형태로 판단)
+
+**문제:** 문법적으로 완결된 짧은 선언문(대략 10어절 이하)을 한 줄·한 단락에 독립시켜 무게감을 연출한다. "대칭은 함정이 된다." 같은 식으로, 근거 없이 격언처럼 떨어뜨려 깊이 있어 보이게 만드는 가짜 통찰 마이크드롭이다. 특히 한 글에 이런 단독 선언이 2개 이상 나오거나, 문단마다 끝을 이런 한 줄로 봉인하면 SNS·블로그용 AI 콘텐츠의 잠언 톤이 된다. 어휘가 아니라 **형태**(짧음 + 완결 + 독립 배치 + 단정)로 판단한다.
+
+**발화 조건:** 앞뒤 문장과 분리되어 독립된 줄·단락에 놓인, 문법적으로 완결된 짧은 단정 선언문(약 10어절 이하)이 등장하는 경우. 단발이면 약한 신호, 같은 글에 2개 이상이거나 문단마다 한 줄씩 봉인하면 강한 신호다.
+
+**심각도 기준:**
+- Low: 독립 잠언이 글 전체에 1개 등장.
+- Medium: 2개 등장.
+- High: 3개 이상 등장하거나, 거의 모든 문단이 이런 한 줄 선언으로 마무리되는 경우.
+
+**제외 조건:**
+- 시·운문·노래 가사
+- 본질적으로 짧은 메모·답변·공지·알림
+- 구체적 근거가 뒤따르는 의도된 잠언 (바로 다음 문장이 그 선언을 사례·데이터로 뒷받침)
+- 인용·대화체 안에서의 등장
+- 제목·소제목·헤딩
+
+**의미 위험도:** LOW — score-only
+**보존 메모:** 기본적으로 점수만 반영한다. 사용자가 톤을 낮추라고 요청하면, 단독으로 떠 있던 선언을 앞뒤 맥락에 다시 붙이고 구체적 근거를 덧대 평범한 서술로 흡수한다. 글쓴이가 말하려던 핵심 주장 자체는 보존하고, 마이크드롭 연출과 격언 톤만 낮춘다.
+**이전 / 이후 예시(수동 저신호 rewrite):**
+> 이전: 완벽주의는 결국 멈춤이다.
+>
+> 모든 선택은 비용이다.
+>
+> 이후: 완벽하게 다듬으려다 출시를 미루는 동안, 경쟁사는 거친 버전이라도 먼저 내놓고 사용자 반응을 모았다. 어느 쪽을 택하든 포기하는 것이 생기는 셈이다.

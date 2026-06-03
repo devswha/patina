@@ -2,8 +2,8 @@
 
 This page expands the Japanese pattern packs into a browsable reference. It is generated from `patterns/ja-*.md`, so the numbers, names, watch words, fire conditions, and examples mirror the source pattern files.
 
-- Rewrite-capable patterns: 32
-- Score/audit-only viral-hook patterns: 8
+- Rewrite-capable patterns: 33
+- Score/audit-only viral-hook patterns: 9
 - Main selector: [PATTERNS.md](PATTERNS.md)
 
 ## Pattern Index
@@ -23,6 +23,7 @@ This page expands the Japanese pattern packs into a browsable reference. It is g
 | 11 | rewrite | 類義語の循環 | [ja-language.md](../patterns/ja-language.md) |
 | 12 | rewrite | カタカナ外来語の多用 | [ja-language.md](../patterns/ja-language.md) |
 | 32 | rewrite | 「より」比較副詞の濫用 | [ja-language.md](../patterns/ja-language.md) |
+| 33 | rewrite | 定義的メタファー等式（「XはZの〜だ」構文） | [ja-language.md](../patterns/ja-language.md) |
 | 13 | rewrite | 接続表現の過剰使用 | [ja-style.md](../patterns/ja-style.md) |
 | 14 | rewrite | 太字の多用 | [ja-style.md](../patterns/ja-style.md) |
 | 15 | rewrite | インラインヘッダーリスト | [ja-style.md](../patterns/ja-style.md) |
@@ -50,6 +51,7 @@ This page expands the Japanese pattern packs into a browsable reference. It is g
 | VH-6 | score/audit only | 偽統計引用 | [ja-viral-hook.md](../patterns/ja-viral-hook.md) |
 | VH-7 | score/audit only | 肩書き積み上げ型の権威付け | [ja-viral-hook.md](../patterns/ja-viral-hook.md) |
 | VH-8 | score/audit only | 未来の自分 / 親密な二人称の約束 | [ja-viral-hook.md](../patterns/ja-viral-hook.md) |
+| VH-9 | score/audit only | 箴言オチ／独立した断定文（疑似深遠なドヤ締め） | [ja-viral-hook.md](../patterns/ja-viral-hook.md) |
 
 ## コンテンツパターン
 
@@ -262,6 +264,35 @@ Example before:
 Example after:
 
 > プロジェクトの日程は、もっと具体的なマイルストーンが必要そうです。予算の使い方についても、一度見直したほうがよさそうです。来週、もう少しじっくり話せる時間を取れたら助かります。
+
+### 33. 定義的メタファー等式（「XはZの〜だ」構文）
+
+- Source: [ja-language.md](../patterns/ja-language.md)
+- Type: rewrite-capable pattern
+
+**注意語彙：**（コピュラ「〜だ／である」＋抽象名詞）署名、痕跡、シグナル、形、輪郭、言語、通貨、設計図、屋台骨、背骨、エンジン、原動力、心臓、鼓動、DNA、礎、要、生命線、土台、地図、文法、レンズ
+
+**問題：** 「XはZの〔抽象名詞〕だ」という断定文で壮大なメタファー的等価を主張し、深遠さを人工的に演出する。具体的な裏付けがないまま「〜は〜の署名だ」「〜は〜の設計図だ」のように抽象名詞へ等号で結びつけると、思索の見かけだけが残り、検証可能な内容が抜け落ちる。SNSの格言調・ビジネス書のキャッチコピー・自己啓発系エッセイに頻出する。英語の "Cringe is the visible signature of moving along a gradient you chose."「Symmetry is the architecture of trust.」と同型の現象で、JAでも「〜は〜の署名だ／設計図だ／通貨だ」として現れる。
+
+**発火条件：** 同一文書/セクション内で「XはZの〔抽象名詞〕だ／である」というコピュラ構文が2回以上現れ、どれも具体的な根拠・機序・例示に支えられていない場合。単独1回の出現は audit hint にとどめ、同型の膨らんだ等式が反復するときだけ rewrite 対象にする。
+
+- Example files: [failure](../examples/ja-33-failure-01.md) · [success](../examples/ja-33-success-01.md)
+**除外条件：**
+- 字義どおりの定義・専門的定義（「水は万能溶媒だ」「ミトコンドリアは細胞の発電所だ」「東京は日本の首都だ」のような事実陳述・定着した教科書的比喩）
+- 慣用句・ことわざとして定着した表現（「時は金なり」など）
+- 具体例・データ・機序で等価が実際に支えられている場合（「このAPIは認証基盤の心臓だ――全リクエストがここを通り、月3億回呼ばれる」のように直後で実体を示すもの）
+- 比喩であることを明示し、その射程を限定している場合
+
+**Semantic Risk:** MEDIUM
+**Preservation Note:** メタファー等式をほどく際に、書き手が本当に伝えたい主張（XがZにとって重要だ、という関係性）まで消さないよう注意。比喩を外したら、その比喩が指していた具体的な役割・機能・因果を平叙文で言い換えて補う。
+
+**修正前：**
+> 対称性は信頼の設計図だ。一貫性は、ブランドが顧客と交わす無言の通貨である。そしてデザインの細部こそ、その企業の価値観の署名にほかならない。
+
+**修正後：**
+> ボタンの位置や余白を画面ごとに揃えておくと、ユーザーは次の操作を迷わず予測できる。実際、レイアウトを統一したあとはサポートへの「どこを押せばいい？」という問い合わせが3割減った。
+
+**このパターンではないもの：** コピュラ「だ／である」そのものを**避けて**「〜の役割を果たす」「〜として機能する」と書く回避癖 → Pattern 8（コピュラ回避）で扱う。#8 は「だ」を避ける癖を「だ」に戻す方向、#33 は逆に「Xは Z の〔抽象名詞〕だ」という**膨らんだメタファー等式**そのものを縮める方向で、両者を混同しない。字義どおり・専門的な定義文（「東京は日本の首都だ」）は #33 では発火しない。
 
 ## スタイルパターン
 
@@ -704,3 +735,37 @@ Detection example:
 > 変更前：友よ、これは保存して。1年後のあなたが必ず感謝する。
 >
 > 変更後：来月の計画に使うチェックリストが必要なら保存しておくとよい。
+
+### Viral 9. 箴言オチ／独立した断定文（疑似深遠なドヤ締め）
+
+- Source: [ja-viral-hook.md](../patterns/ja-viral-hook.md)
+
+**注意語彙：**（構造的パターン——語彙ではなく形で判断）短い（おおむね10語／20字以内）、文法的に完結した断定文を、1行・1段落として単独で置く。各段落の末尾を一文の格言で締める、あるいは本文の途中に短い断定文がぽつんと挟まる配置。「対称性は罠になる。」「すべては設計だ。」のような言い切り。
+
+**問題：** 短い完結文を独立行・独立段落に置き、語の選択ではなく**配置**で重みを演出する。読者に「深いことを言った」と錯覚させる疑似深遠なマイクドロップで、1本の文章に2つ以上、または各段落をこの形の一文で締めると、AIが整えた格言調コピーの典型シグナルになる。語彙が普通でも、形だけで発火する点が他のフックと異なる。
+
+**発火条件：** 短い（おおむね20字以内）文法的に完結した断定文が、前後と切り離されて単独の行・段落に置かれ、修辞的な締め／オチとして機能している場合。1本の文章に複数、または各段落の末尾がこの形で揃っているとシグナルが強い。
+
+**重大度の目安：**
+- Low：単独の箴言オチが文章全体で1回だけ。
+- Medium：2回出現。
+- High：3回以上、または各段落がこの形の一文で締められている。
+
+**除外条件：**
+- 詩・歌詞・韻文
+- 元々短いメモ・お知らせ・告知・アラート、質問への一行返答
+- 具体的な裏付けと地続きで置かれた意図的な箴言（直前直後で実例・データを示しているもの）
+- 引用・対話のセリフ
+- 見出し・小見出し
+
+**Semantic Risk:** LOW —— スコア専用、リライト時に変更しない。
+**Preservation Note:** この模式は既定ではスコア専用で、リライトしない。形を崩す場合も、書き手が本当に強調したかった一文や締めのテンポは残し、空疎な言い切りだけを本文に溶かす。意味のある要点まで削らない。
+
+**変更前 / 変更後例（手動で低信号化）：**
+> 変更前：完璧を目指すほど、人は動けなくなる。
+>
+> 対称性は罠になる。
+>
+> 結局、迷いを生むのは選択肢の多さだ。
+>
+> 変更後：レイアウト案を3パターンに絞ったら、レビューが半日で終わった。選択肢を増やすほど判断が止まりやすいので、最初から候補を狭めておくと進みが速い。

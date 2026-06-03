@@ -198,6 +198,26 @@ test('deterministic signal score is additive and does not replace hot-ratio over
   assert.ok(deterministic.signalScore > 0);
 });
 
+test('deterministic markup-leakage short-circuits the score into the heavily-AI band', () => {
+  const leakedText = [
+    'I rewrote the parser this morning and it finally handles nested quotes without choking on them. The previous version tripped over one rare edge case that took the better part of two days to track down and reproduce.',
+    'Reviewers wanted another pass on the error copy, so I split the longest messages into a short summary plus a separate hint. According to turn0search1 the phrasing still needs work, yet the overall structure holds together fine.',
+    'We shipped it behind a flag and watched the logs over lunch. Nothing broke. The on-call engineer shrugged and went back to her coffee.',
+  ].join('\n\n');
+  const leaked = scoreDeterministicSignals({ text: leakedText, config: loadConfig() });
+  // Every paragraph is ordinary human prose, so the hot ratio alone would be 0;
+  // the near-proof-grade leakage token is what lifts the score.
+  assert.strictEqual(leaked.hotParagraphs, 0);
+  assert.strictEqual(leaked.bands.markupLeakage.leaked, true);
+  assert.ok(leaked.overall >= 90, `expected leakage floor, got ${leaked.overall}`);
+  assert.strictEqual(leaked.interpretation, 'heavily AI');
+
+  const cleanText = leakedText.replace('According to turn0search1 the phrasing', 'According to the reviewer the phrasing');
+  const clean = scoreDeterministicSignals({ text: cleanText, config: loadConfig() });
+  assert.strictEqual(clean.bands.markupLeakage.leaked, false);
+  assert.ok(clean.overall < 90, `clean prose should not hit the leakage floor, got ${clean.overall}`);
+});
+
 test('deterministic skipped and failure payloads pin signalScore to zero', () => {
   const disabled = scoreDeterministicSignals({
     text: 'Example.',

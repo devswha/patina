@@ -79,7 +79,7 @@ export function renderCliError(err) {
  * const code = getExitCode(inputError('bad', 'why', 'fix')); // 2
  */
 export function getExitCode(err, fallback = 1) {
-  const n = Number(err?.exitCode);
+  const n = Number(/** @type {{ exitCode?: unknown }} */ (err ?? {}).exitCode);
   return Number.isInteger(n) && n >= 0 ? n : fallback;
 }
 

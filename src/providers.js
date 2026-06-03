@@ -1,3 +1,4 @@
+// @ts-check
 // Provider presets: shortcuts for common OpenAI-compatible endpoints.
 // Each provider maps to a base URL + a recommended default model + the env
 // variable users typically set to authenticate. Selecting a provider is

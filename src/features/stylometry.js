@@ -172,6 +172,10 @@ export function koreanPosDiversityProxy(paragraph) {
   };
 }
 
+/**
+ * @param {{ sentenceCount?: number, spacing?: object, comma?: object, posDiversity?: object }} [features]
+ * @param {object} [bands]
+ */
 export function classifyKoreanDiagnostics({
   sentenceCount = 0,
   spacing,

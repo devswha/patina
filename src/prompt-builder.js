@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.
  *

@@ -14,6 +14,20 @@ import { createLogger } from './logger.js';
  */
 export const DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD = 20;
 
+/**
+ * Score floor applied when deterministic markup-leakage is detected.
+ *
+ * Model-output leakage (issue #332) is near-proof-grade: a single token that
+ * LLM tooling injects and humans never type. Unlike the stylometric/lexical
+ * signals it is decisive on its own, so any hit short-circuits the deterministic
+ * `overall` into the 'heavily AI' band (>70) regardless of the per-paragraph
+ * hot ratio. It is a floor, not a hard 100, because the surrounding prose may
+ * still be genuinely human and we avoid claiming absolute proof.
+ *
+ * @type {number}
+ */
+export const LEAKAGE_SCORE_FLOOR = 90;
+
 class SchemaError extends Error {
   constructor(message, raw) {
     super(message);
@@ -236,7 +250,11 @@ export function scoreDeterministicSignals({
     const paragraphs = Array.isArray(result?.paragraphs) ? result.paragraphs : [];
     const paragraphCount = paragraphs.length;
     const hotParagraphs = paragraphs.filter((p) => p.hot).length;
-    const overall = paragraphCount > 0 ? roundScore((hotParagraphs / paragraphCount) * 100) : 0;
+    const hotRatioOverall = paragraphCount > 0 ? roundScore((hotParagraphs / paragraphCount) * 100) : 0;
+    // Model-output leakage (#332) is near-proof-grade and lives at the document
+    // level, so it short-circuits the hot-ratio score into the 'heavily AI' band.
+    const leaked = Boolean(result?.markupLeakage?.leaked);
+    const overall = leaked ? Math.max(hotRatioOverall, LEAKAGE_SCORE_FLOOR) : hotRatioOverall;
     const signalScore = roundScore(summarizeSignalStrength(paragraphs, {
       burstinessBands: config.stylometry?.burstiness?.bands,
       mattrBands: config.stylometry?.ttr?.bands,
@@ -261,6 +279,11 @@ export function scoreDeterministicSignals({
         koDiagnostics: {
           hot: paragraphs.filter((p) => p.koDiagnostics?.hot).length,
           thresholds: config.stylometry?.ko_diagnostics?.bands ?? null,
+        },
+        markupLeakage: {
+          leaked,
+          hits: Array.isArray(result?.markupLeakage?.hits) ? result.markupLeakage.hits.length : 0,
+          floor: LEAKAGE_SCORE_FLOOR,
         },
       },
     };

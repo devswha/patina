@@ -249,6 +249,22 @@ test('playground keeps one Korean lexicon hit as an audit hint', () => {
   assert.equal(analysis.auditItems.length, 1);
 });
 
+test('playground short-circuits the score when markup leakage is present', () => {
+  const text = `This paragraph reads like ordinary notes about the deploy and the on-call rotation.
+
+The middle paragraph mentions turn0search1 copied straight out of a model response.
+
+The closing paragraph stays calm and human, with uneven sentence lengths and no tells.`;
+  const analysis = analyzePlaygroundText(text, { lang: 'en' });
+
+  assert.equal(analysis.markupLeakage.leaked, true);
+  assert.ok(analysis.overall >= 90, `expected leakage floor, got ${analysis.overall}`);
+
+  const clean = analyzePlaygroundText(text.replace('turn0search1 copied straight out of a model response', 'a quote copied straight out of the meeting notes'), { lang: 'en' });
+  assert.equal(clean.markupLeakage.leaked, false);
+  assert.ok(clean.overall < 90, `clean prose should not hit the leakage floor, got ${clean.overall}`);
+});
+
 test('playground diff escapes pasted HTML before highlighting', () => {
   const analysis = analyzePlaygroundText('<script>alert(1)</script> This transformative workflow is seamless.', { lang: 'en' });
   const html = renderAuditDiff(analysis);

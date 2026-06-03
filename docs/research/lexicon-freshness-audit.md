@@ -10,7 +10,7 @@ Patina lexicons are detection hypotheses. They should not be described as fresh 
 | file | entries | current snapshot status | provenance | action |
 |---|---:|---|---|---|
 | `lexicon/ai-en.md` | 88 | `current` | `lexicon/provenance/ai-en.json` | keep; recheck at the next quarterly HAP-E or 2025+ paired refresh |
-| `lexicon/ai-ko.md` | 102 | `partial` | `lexicon/provenance/ai-ko.json` | keep; rerun against 2026 KO positive + human-control pairs before threshold changes |
+| `lexicon/ai-ko.md` | 96 | `partial` | `lexicon/provenance/ai-ko.json` | keep; rerun against 2026 KO positive + human-control pairs before threshold changes |
 | `lexicon/ai-zh.md` | 60 | `needs-external-calibration` | `lexicon/provenance/ai-zh.json` | calibrate before broad claims |
 | `lexicon/ai-ja.md` | 60 | `needs-external-calibration` | `lexicon/provenance/ai-ja.json` | calibrate before broad claims |
 

@@ -94,6 +94,11 @@ function numberedSections(path) {
   }));
 }
 
+function extractFireCondition(body) {
+  const match = body.match(/(?:\*\*(?:Fire condition|발화 조건|触发条件|発火条件)(?:：|:)\*\*|- (?:Fire condition|발화 조건|触发条件|発火条件):)\s+([^\n]+)/);
+  return match?.[1]?.trim() ?? null;
+}
+
 test('pattern pack frontmatter counts match numbered pattern headings', () => {
   for (const file of patternFiles()) {
     const parsed = parsePatternFile(file);
@@ -205,6 +210,78 @@ test('zh and ja patterns document semantic risk and preservation notes', () => {
         assert.match(body, /\*\*Semantic Risk:\*\*\s+(LOW|MEDIUM|HIGH)/, `${file} #${number} missing Semantic Risk`);
         assert.match(body, /\*\*Preservation Note:\*\*\s+\S/, `${file} #${number} missing Preservation Note`);
       }
+    }
+  }
+});
+
+test('README and PATTERNS selector counts stay aligned with pattern packs', () => {
+  const packs = packCountsByLang();
+  const rewriteCounts = Object.fromEntries(
+    LANGS.map((lang) => [lang, packs[lang].language + packs[lang].content + packs[lang].style + packs[lang].communication + packs[lang].structure + packs[lang].filler]),
+  );
+  const viralCounts = Object.fromEntries(LANGS.map((lang) => [lang, packs[lang]['viral-hook']]));
+  const totalPerLang = rewriteCounts.ko + viralCounts.ko;
+  const total = totalPerLang * LANGS.length;
+
+  const readme = readFileSync(resolve(REPO_ROOT, 'README.md'), 'utf8');
+  assert.match(
+    readme,
+    new RegExp(`\\*\\*${total} patterns\\*\\* \\| ${rewriteCounts.ko} rewrite-capable \\+ ${viralCounts.ko} score-only viral-hook per language \\(${totalPerLang} each across KO/EN/ZH/JA\\)`),
+  );
+  assert.match(readme, /full 168-pattern catalog/);
+
+  const selector = readFileSync(resolve(DOCS_DIR, 'PATTERNS.md'), 'utf8');
+  assert.match(selector, new RegExp(`Patina ships ${total} pattern entries across four languages\\.`));
+  const labels = { ko: 'Korean', en: 'English', zh: 'Chinese', ja: 'Japanese' };
+  for (const lang of LANGS) {
+    assert.match(selector, new RegExp(`\\| ${labels[lang]} \\| .* \\| ${rewriteCounts[lang]} \\| ${viralCounts[lang]} \\|`));
+  }
+});
+
+test('pattern 33 ships examples in every language, keeps a 2+ rewrite gate, and stays mirrored in docs', () => {
+  const checks = [
+    { lang: 'ko', source: resolve(PATTERN_DIR, 'ko-language.md'), success: 'examples/33-success-01.md', failure: 'examples/33-failure-01.md', threshold: /2회 이상/, audit: /audit hint/i },
+    { lang: 'en', source: resolve(PATTERN_DIR, 'en-language.md'), success: 'examples/en-33-success-01.md', failure: 'examples/en-33-failure-01.md', threshold: /2\+/, audit: /audit hint/i },
+    { lang: 'zh', source: resolve(PATTERN_DIR, 'zh-language.md'), success: 'examples/zh-33-success-01.md', failure: 'examples/zh-33-failure-01.md', threshold: /2 处以上|2处以上/, audit: /audit/i },
+    { lang: 'ja', source: resolve(PATTERN_DIR, 'ja-language.md'), success: 'examples/ja-33-success-01.md', failure: 'examples/ja-33-failure-01.md', threshold: /2回以上/, audit: /audit hint/i },
+  ];
+
+  for (const check of checks) {
+    assert.ok(existsSync(resolve(REPO_ROOT, check.success)), `${check.lang} pattern 33 must have a success example`);
+    assert.ok(existsSync(resolve(REPO_ROOT, check.failure)), `${check.lang} pattern 33 must have a failure example`);
+
+    const section = numberedSections(check.source).find(({ number }) => number === 33);
+    assert.ok(section, `${check.source} must include pattern 33`);
+    assert.match(section.body, check.threshold, `${check.source} pattern 33 must require recurrence before rewrite`);
+    assert.match(section.body, check.audit, `${check.source} pattern 33 must demote a single instance to audit-only`);
+
+    const docLang = check.lang === 'ko' ? 'KO' : check.lang.toUpperCase();
+    const doc = readFileSync(resolve(DOCS_DIR, `PATTERNS-${docLang}.md`), 'utf8');
+    assert.match(doc, check.threshold, `docs/PATTERNS-${docLang}.md pattern 33 must require recurrence before rewrite`);
+    assert.match(doc, check.audit, `docs/PATTERNS-${docLang}.md pattern 33 must demote a single instance to audit-only`);
+    assert.match(doc, new RegExp(check.success.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.match(doc, new RegExp(check.failure.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
+
+test('mirrored docs keep fire conditions aligned for drift-prone numbered patterns', () => {
+  const docByLang = {
+    ko: resolve(DOCS_DIR, 'PATTERNS-KO.md'),
+    en: resolve(DOCS_DIR, 'PATTERNS-EN.md'),
+    zh: resolve(DOCS_DIR, 'PATTERNS-ZH.md'),
+    ja: resolve(DOCS_DIR, 'PATTERNS-JA.md'),
+  };
+
+  for (const lang of LANGS) {
+    const source = resolve(PATTERN_DIR, `${lang}-language.md`);
+    const sourceSections = Object.fromEntries(numberedSections(source).map((section) => [section.number, section.body]));
+    const docSections = Object.fromEntries(numberedSections(docByLang[lang]).map((section) => [section.number, section.body]));
+    for (const number of [32, 33]) {
+      assert.equal(
+        extractFireCondition(docSections[number]),
+        extractFireCondition(sourceSections[number]),
+        `${lang} pattern ${number} fire condition drifted between source and docs`,
+      );
     }
   }
 });

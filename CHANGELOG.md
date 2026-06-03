@@ -14,12 +14,15 @@ Semver rationale: patch | minor | major — explain whether this changes pattern
 
 ## Unreleased
 
-**Post-3.11.0 launch-prep and distribution polish (not yet versioned).**
+## 3.12.0 — 2026-06-02
 
-Semver rationale: minor — adds two new detection patterns across ko/en/zh/ja (otherwise docs, packaging, and benchmark-evidence changes); preserves existing CLI behavior and schemas.
+Semver rationale: minor — adds new deterministic detection signals plus two new pattern-pack detections across ko/en/zh/ja; backward compatible.
 
-### Patterns
+### Added
 
+- **Model-output leakage detection** (#332): a deterministic detector for pasted-LLM artifacts that never appear in human prose — OpenAI citation markup (`:contentReference` / `oaicite` / `oai_citation`), model tool tokens (`turn0search1`, `navlist`, `grok_card`), the U+FFFC object-replacement char, AI-tool tracking params (`utm_source=chatgpt.com`, …), and explicit self-identification (`as an AI language model`, …). A single hit is near-proof-grade, so it forces the document hot. New `src/features/markup-leakage.js`, mirrored in the playground.
+- **Em-dash and boldface overuse in the playground** (#333, partial): the browser analyzer now counts document-level em-dash (≥3) and markdown bold (≥5) overuse, mirroring catalog patterns #13/#14. Emoji / title-case / inline-header remain tracked in #333.
+- **Density-gated discourse tells** (#334): fake-candor / manufactured-intimacy openers (`here's the thing`, `the truth is`, …) fire at ≥2 per document; decorative thematic breaks (`---` / `***` / `___`) fire at ≥3. New `src/features/discourse-tells.js`; fake-candor mirrored in the playground.
 - Added language-pack pattern #33 **Definitional-Metaphor Equation ("X is the Y of Z")** (ko/en/zh/ja) — flags copula sentences that assert a grand abstract equivalence ("Cringe is the visible signature of …") to manufacture profundity; disambiguated from #8 Copula Avoidance.
 - Added viral-hook pattern #9 **Aphoristic Punchline (Standalone Declarative)** (score-only, ko/en/zh/ja) — flags short pseudo-profound declaratives given their own line for gravitas ("Symmetry becomes a trap.").
 - Externally sourced from "LLM smells" observations; updated `core/scoring.md` category counts (language 7→8, viral-hook 8→9, total 40→42) and `docs/PATTERNS-*.md` references to match.
@@ -30,6 +33,7 @@ Semver rationale: minor — adds two new detection patterns across ko/en/zh/ja (
 - Reworked the README hero to be text-first and demoted the demo GIF below the static example; added per-language README demos.
 - Added a typewriter terminal animation for the README demo GIF.
 - Added a maintainer-owned launch-execution handoff packet (`docs/social/patina-launch-execution.md`).
+- One-click false-positive report button on the playground (#331).
 
 ### Evidence
 

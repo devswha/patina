@@ -254,7 +254,7 @@ Example after:
 - Source: [en-language.md](../patterns/en-language.md)
 - Type: rewrite-capable pattern
 - Watch words: more specific, more concrete, more efficient, more effective, more comprehensive, more robust, more seamless, more meaningful, more strategic, more impactful, more nuanced, more proactive, more sustainable, more scalable
-- Fire condition: 2+ "more + adjective/adverb" comparative phrases appear in one document without a clear target, baseline, or metric.
+- Fire condition: 2+ "more + adjective/adverb" comparative phrases appear in one document without a clear target, baseline, or metric. A single instance can fire when it appears in the same paragraph as other formal AI markers such as "comprehensive", "strategic", "framework", "stakeholder", or "in-depth".
 - Example files: [failure](../examples/en-32-failure-01.md) · [success](../examples/en-32-success-01.md)
 
 Example before:
@@ -272,8 +272,9 @@ Example after:
 
 **Watch words:** is the signature of, is the shape of, is the language of, is the currency of, is the architecture of, is the backbone of, is the engine of, is the heartbeat of, is the DNA of, is the cornerstone of, is the lifeblood of
 
-**Fire condition:** A copula sentence of the form "X is the [abstract noun] of Z" asserts a grand metaphorical equivalence between two abstractions to sound profound, with no concrete evidence supporting the equation. A single instance can fire when the equated terms are both abstract and the sentence stands as a standalone pronouncement.
+**Fire condition:** 2+ copula sentences of the form "X is the [abstract noun] of Z" appear in the same document/section without concrete support for the equation. A single instance is an audit hint only: do not rewrite unless the same inflated metaphor pattern recurs.
 
+- Example files: [failure](../examples/en-33-failure-01.md) · [success](../examples/en-33-success-01.md)
 **Exclusion:** Literal or technical definitions ("water is the universal solvent"), established idioms and textbook metaphors ("the mitochondria is the powerhouse of the cell"), factual "X is the capital/center of Z" statements, and genuine equivalences backed by concrete support in the same passage are not this pattern.
 
 **Disambiguation from #8 (Copula Avoidance):** #8 fires on text that *avoids* "is" ("serves as", "functions as" → rewrite to "is"). #33 is the opposite: the sentence already uses "is", but inflates it into an "is the [abstract noun] of [abstraction]" metaphor-equation to manufacture profundity. Do not conflate them — #8 wants the copula restored, #33 wants the empty metaphor-equation dismantled.

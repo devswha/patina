@@ -9,9 +9,12 @@ import { PLAYGROUND_LEXICONS } from '../../playground/data/lexicons.js';
 import {
   analyzePlaygroundText,
   buildCliCommand,
+  buildFalsePositiveReportUrl,
   renderAuditDiff,
   SUPPORTED_LANGS,
+  splitProseSentences,
 } from '../../playground/analyzer.js';
+import { analyzeText } from '../../src/features/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -22,6 +25,10 @@ const SAMPLES = {
   zh: '总而言之，这一方案能够全面提升用户体验，并为未来发展提供新的可能。',
   ja: 'まとめると、この仕組みはユーザー体験を向上させ、より良い未来につながります。',
 };
+
+function analyzeNodeText(text, lang) {
+  return analyzeText(text, { lang, repoRoot: REPO_ROOT });
+}
 
 test('playground lexicons are generated for every supported language', () => {
   assert.deepEqual(Object.keys(PLAYGROUND_LEXICONS).sort(), [...SUPPORTED_LANGS].sort());
@@ -48,8 +55,115 @@ test('playground analyzer returns score, audit items, and diff HTML for ko/en/zh
   }
 });
 
+test('playground and node analyzers agree on shared deterministic signals', () => {
+  for (const lang of SUPPORTED_LANGS) {
+    const nodeAnalysis = analyzeNodeText(SAMPLES[lang], lang);
+    const playgroundAnalysis = analyzePlaygroundText(SAMPLES[lang], { lang });
+    assert.equal(
+      playgroundAnalysis.paragraphs[0].lexicon.matches > 0,
+      nodeAnalysis.paragraphs[0].lexicon.matches > 0,
+      `${lang} lexicon-hit presence should match node analyzer`,
+    );
+  }
+
+  const cases = [
+    {
+      name: 'model-output leakage',
+      text: 'This paragraph contains turn0search0 from copied model output.',
+      lang: 'en',
+      nodeHot: (analysis) => analysis.markupLeakage.leaked,
+      playgroundHot: (analysis) => analysis.markupLeakage.leaked,
+    },
+    {
+      name: 'fake-candor opener density',
+      text: "Here's the thing. Let's be honest. The rollout still needs one owner and one deadline.",
+      lang: 'en',
+      nodeHot: (analysis) => analysis.discourseTells.fakeCandor.hot,
+      playgroundHot: (analysis) => analysis.discourseTells.fakeCandor.hot,
+    },
+    {
+      name: 'short non-hot control',
+      text: 'I changed one parser branch and wrote down the reason.',
+      lang: 'en',
+      nodeHot: (analysis) => analysis.hot,
+      playgroundHot: (analysis) => analysis.hotCount > 0,
+    },
+  ];
+
+  for (const sample of cases) {
+    const nodeAnalysis = analyzeNodeText(sample.text, sample.lang);
+    const playgroundAnalysis = analyzePlaygroundText(sample.text, { lang: sample.lang });
+    assert.equal(
+      sample.playgroundHot(playgroundAnalysis),
+      sample.nodeHot(nodeAnalysis),
+      `${sample.name} verdict should match node analyzer`,
+    );
+  }
+});
+
+test('playground ports thematic-break discourse tells from the node analyzer', () => {
+  const text = [
+    '---',
+    '# First section',
+    'This practical note uses a plain sentence with uneven length.',
+    '',
+    '***',
+    '# Second section',
+    'The middle paragraph records the concrete tradeoff before the recommendation.',
+    '',
+    '___',
+    '# Third section',
+    'The final paragraph names the owner and the next review window.',
+  ].join('\n');
+
+  const nodeAnalysis = analyzeNodeText(text, 'en');
+  const playgroundAnalysis = analyzePlaygroundText(text, { lang: 'en' });
+
+  assert.equal(nodeAnalysis.discourseTells.thematicBreaks.hot, true);
+  assert.equal(
+    playgroundAnalysis.discourseTells.thematicBreaks.count,
+    nodeAnalysis.discourseTells.thematicBreaks.count,
+  );
+  assert.equal(
+    playgroundAnalysis.discourseTells.thematicBreaks.adjacentToHeading,
+    nodeAnalysis.discourseTells.thematicBreaks.adjacentToHeading,
+  );
+  assert.equal(
+    playgroundAnalysis.discourseTells.thematicBreaks.hot,
+    nodeAnalysis.discourseTells.thematicBreaks.hot,
+  );
+  assert.ok(playgroundAnalysis.paragraphs.some((paragraph) => paragraph.thematicBreaks.hot));
+  assert.ok(playgroundAnalysis.paragraphs.some((paragraph) => paragraph.reasons.some((reason) => reason.code === 'thematic-break')));
+});
+
+test('playground excludes Markdown list blocks from prose rhythm samples', () => {
+  const text = `Here is what the tool does for you:
+- send hook events to external gateways
+- discover and invoke MCP servers
+- hand bounded sub-questions to other CLIs and models
+- distribute work across Codex, Claude, and Gemini`;
+
+  assert.deepEqual(splitProseSentences(text), ['Here is what the tool does for you:']);
+
+  const nodeAnalysis = analyzeNodeText(text, 'en');
+  const playgroundAnalysis = analyzePlaygroundText(text, { lang: 'en' });
+  assert.equal(playgroundAnalysis.paragraphs[0].sentenceCount, nodeAnalysis.paragraphs[0].sentenceCount);
+  assert.equal(playgroundAnalysis.paragraphs[0].burstiness.band, nodeAnalysis.paragraphs[0].burstiness.band);
+  assert.equal(playgroundAnalysis.hotCount > 0, nodeAnalysis.hot);
+
+  const twoSentenceResidue = `This intro names the list. It stays under the burstiness gate.
+- send hook events to external gateways
+- discover and invoke MCP servers
+- hand bounded sub-questions to other CLIs and models`;
+  const residueNode = analyzeNodeText(twoSentenceResidue, 'en');
+  const residuePlayground = analyzePlaygroundText(twoSentenceResidue, { lang: 'en' });
+  assert.equal(residuePlayground.paragraphs[0].sentenceCount, residueNode.paragraphs[0].sentenceCount);
+  assert.equal(residuePlayground.paragraphs[0].burstiness.band, residueNode.paragraphs[0].burstiness.band);
+  assert.equal(residuePlayground.hotCount > 0, residueNode.hot);
+});
+
 test('playground keeps one Korean lexicon hit as an audit hint', () => {
-  const analysis = analyzePlaygroundText('이 문서는 다음 작업의 기반을 설명한다.', { lang: 'ko' });
+  const analysis = analyzePlaygroundText('이 문서는 다음 작업의 자리매김을 설명한다.', { lang: 'ko' });
   assert.equal(analysis.paragraphs[0].lexicon.matches, 1);
   assert.equal(analysis.paragraphs[0].lexicon.hot, false);
   assert.equal(analysis.paragraphs[0].hot, false);
@@ -70,6 +184,38 @@ test('Open in CLI command preserves input and avoids heredoc delimiter collision
   assert.match(command, /first line\nPATINA_TEXT\nlast line/);
   assert.match(command, /npx patina-cli --lang ko --score patina-input\.txt/);
   assert.match(command, /npx patina-cli --lang ko --audit patina-input\.txt/);
+});
+
+test('Report false positive pre-fills the GitHub false-positive form from the audit', () => {
+  const text = SAMPLES.ko;
+  const analysis = analyzePlaygroundText(text, { lang: 'ko' });
+  const url = buildFalsePositiveReportUrl(text, 'ko', analysis);
+  const parsed = new URL(url);
+  assert.equal(`${parsed.origin}${parsed.pathname}`, 'https://github.com/devswha/patina/issues/new');
+  assert.equal(parsed.searchParams.get('template'), 'false_positive.yml');
+  assert.equal(parsed.searchParams.get('language'), 'ko');
+  assert.match(parsed.searchParams.get('fired_paragraph'), /자리매김/);
+  const out = parsed.searchParams.get('score_output');
+  assert.match(out, /patina playground/);
+  assert.match(out, /Score: \d+\/100/);
+  assert.match(out, /Hot paragraphs: \d+\/\d+/);
+});
+
+test('Report false positive caps the pasted paragraph and tolerates empty input', () => {
+  const long = 'A'.repeat(5000);
+  const fired = new URL(buildFalsePositiveReportUrl(long, 'en')).searchParams.get('fired_paragraph');
+  assert.ok(fired.length < 2000, 'fired_paragraph should be truncated to keep the URL small');
+  assert.match(fired, /truncated/);
+
+  const empty = new URL(buildFalsePositiveReportUrl('', 'ja')).searchParams;
+  assert.equal(empty.get('language'), 'ja');
+  assert.equal(empty.get('template'), 'false_positive.yml');
+});
+
+test('playground HTML exposes the false-positive report button', () => {
+  const html = readFileSync(resolve(REPO_ROOT, 'playground/index.html'), 'utf8');
+  assert.match(html, /id="report-fp"/);
+  assert.match(html, /Report false positive/);
 });
 
 test('playground HTML points canonical and OG metadata at patina.vibetip.help', () => {

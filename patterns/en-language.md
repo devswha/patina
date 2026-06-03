@@ -173,7 +173,7 @@ dedupe-with:
 
 **Watch words:** is the signature of, is the shape of, is the language of, is the currency of, is the architecture of, is the backbone of, is the engine of, is the heartbeat of, is the DNA of, is the cornerstone of, is the lifeblood of
 
-**Fire condition:** A copula sentence of the form "X is the [abstract noun] of Z" asserts a grand metaphorical equivalence between two abstractions to sound profound, with no concrete evidence supporting the equation. A single instance can fire when the equated terms are both abstract and the sentence stands as a standalone pronouncement.
+**Fire condition:** 2+ copula sentences of the form "X is the [abstract noun] of Z" appear in the same document/section without concrete support for the equation. A single instance is an audit hint only: do not rewrite unless the same inflated metaphor pattern recurs.
 
 **Exclusion:** Literal or technical definitions ("water is the universal solvent"), established idioms and textbook metaphors ("the mitochondria is the powerhouse of the cell"), factual "X is the capital/center of Z" statements, and genuine equivalences backed by concrete support in the same passage are not this pattern.
 

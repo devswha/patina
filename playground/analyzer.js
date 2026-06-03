@@ -291,9 +291,8 @@ export function detectMarkupLeakage(text) {
   return { leaked: hits.length > 0, hits };
 }
 
-// Fake-candor / manufactured-intimacy openers (issue #334). Density-gated:
-// humans use these once; 2+ per document is an AI tell. Mirrors
-// src/features/discourse-tells.js (fake-candor half; thematic-break is CLI-side).
+// Density-gated discourse tells (issue #334): fake-candor / manufactured-intimacy
+// openers and decorative thematic breaks. Mirrors src/features/discourse-tells.js.
 const FAKE_CANDOR_RULES = [
   /\bhere'?s the thing\b/gi,
   /\bhere'?s the kicker\b/gi,
@@ -304,15 +303,47 @@ const FAKE_CANDOR_RULES = [
   /\breal talk\b/gi,
 ];
 export const DEFAULT_FAKE_CANDOR_MIN = 2;
+export const DEFAULT_THEMATIC_BREAK_MIN = 3;
+const THEMATIC_BREAK_LINE = /^[ \t]*(?:-[ \t]*){3,}$|^[ \t]*(?:\*[ \t]*){3,}$|^[ \t]*(?:_[ \t]*){3,}$/;
+const HEADING_LINE = /^[ \t]*#{1,6}[ \t]+\S/;
 
-export function countFakeCandor(text) {
+export function detectFakeCandor(text) {
   const str = typeof text === 'string' ? text : '';
+  const hits = [];
   let count = 0;
   for (const re of FAKE_CANDOR_RULES) {
     const m = str.match(re);
-    if (m) count += m.length;
+    if (m && m.length) {
+      count += m.length;
+      hits.push(...new Set(m.map((x) => x.trim().toLowerCase())));
+    }
   }
-  return count;
+  return { count, hits: [...new Set(hits)].slice(0, 5), hot: count >= DEFAULT_FAKE_CANDOR_MIN, threshold: DEFAULT_FAKE_CANDOR_MIN };
+}
+
+export function countFakeCandor(text) {
+  return detectFakeCandor(text).count;
+}
+
+export function detectThematicBreaks(text) {
+  const lines = (typeof text === 'string' ? text : '').split(/\r?\n/);
+  let count = 0;
+  let adjacentToHeading = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (!THEMATIC_BREAK_LINE.test(lines[i])) continue;
+    count++;
+    for (let j = i + 1; j < lines.length; j++) {
+      if (lines[j].trim() === '') continue;
+      if (HEADING_LINE.test(lines[j])) adjacentToHeading++;
+      break;
+    }
+  }
+  return {
+    count,
+    adjacentToHeading,
+    hot: count >= DEFAULT_THEMATIC_BREAK_MIN,
+    threshold: DEFAULT_THEMATIC_BREAK_MIN,
+  };
 }
 
 // Count formatting tells in a chunk of raw text (em-dash U+2014, markdown **bold** spans).
@@ -323,13 +354,20 @@ export function countFormatting(text) {
   return { emDash, bold };
 }
 
-function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, formatting, formattingThresholds, leakage, candor }) {
+function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, formatting, formattingThresholds, leakage, candor, thematicBreaks }) {
   const reasons = [];
   if (candor?.hot) {
     reasons.push({
       code: 'fake-candor',
       label: 'Fake-candor opener',
       detail: `Manufactured-intimacy opener ("here's the thing", "the truth is", …); ${candor.docCount} in the document (threshold ${DEFAULT_FAKE_CANDOR_MIN}).`,
+    });
+  }
+  if (thematicBreaks?.hot) {
+    reasons.push({
+      code: 'thematic-break',
+      label: 'Decorative thematic break',
+      detail: `${thematicBreaks.docCount} markdown dividers in the document (threshold ${DEFAULT_THEMATIC_BREAK_MIN}); this paragraph carries ${thematicBreaks.count}.`,
     });
   }
   if (leakage?.leaked) {
@@ -407,7 +445,11 @@ export function analyzePlaygroundText(text, opts = {}) {
   // Fake-candor openers (#334): doc-level density gate, then attribute to the
   // paragraphs that carry an opener (same shape as the em-dash doc-level pass).
   const paraCandor = paragraphs.map(countFakeCandor);
-  const docCandor = paraCandor.reduce((sum, n) => sum + n, 0);
+  const docFakeCandor = detectFakeCandor(text);
+  const docCandor = docFakeCandor.count;
+
+  const paraThematicBreaks = paragraphs.map(detectThematicBreaks);
+  const docThematicBreaks = detectThematicBreaks(text);
 
   const analyzed = paragraphs.map((paragraph, idx) => {
     const sentences = splitSentences(paragraph);
@@ -435,6 +477,7 @@ export function analyzePlaygroundText(text, opts = {}) {
     const leakage = detectMarkupLeakage(paragraph);
     // Fake-candor (#334): this paragraph carries an opener AND the doc total >= gate.
     const candorHot = docCandor >= DEFAULT_FAKE_CANDOR_MIN && paraCandor[idx] >= 1;
+    const thematicBreakHot = docThematicBreaks.hot && paraThematicBreaks[idx].count >= 1;
     const hot =
       cvBand === 'low' ||
       mattrBand === 'low' ||
@@ -443,7 +486,14 @@ export function analyzePlaygroundText(text, opts = {}) {
       emDashHot ||
       boldHot ||
       leakage.leaked ||
-      candorHot;
+      candorHot ||
+      thematicBreakHot;
+    const thematicBreaks = {
+      ...paraThematicBreaks[idx],
+      docCount: docThematicBreaks.count,
+      docAdjacentToHeading: docThematicBreaks.adjacentToHeading,
+      hot: thematicBreakHot,
+    };
     const reasons = buildReasons({
       cvBand,
       mattrBand,
@@ -454,6 +504,7 @@ export function analyzePlaygroundText(text, opts = {}) {
       formattingThresholds,
       leakage,
       candor: { hot: candorHot, docCount: docCandor },
+      thematicBreaks,
     });
 
     return {
@@ -468,6 +519,7 @@ export function analyzePlaygroundText(text, opts = {}) {
       formatting,
       leakage,
       ...koSignals,
+      thematicBreaks,
       hot,
       reasons,
     };
@@ -484,6 +536,11 @@ export function analyzePlaygroundText(text, opts = {}) {
     hotCount,
     totalTokens: analyzed.reduce((sum, p) => sum + p.tokenCount, 0),
     markupLeakage: detectMarkupLeakage(text),
+    discourseTells: {
+      fakeCandor: docFakeCandor,
+      thematicBreaks: docThematicBreaks,
+      hot: docCandor >= DEFAULT_FAKE_CANDOR_MIN || docThematicBreaks.hot,
+    },
     paragraphs: analyzed,
     auditItems: analyzed.filter((p) => p.hot || p.lexicon.matches > 0),
     note: 'Audit-only deterministic score. It marks editing hotspots, not authorship or intent.',

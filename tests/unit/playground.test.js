@@ -13,6 +13,7 @@ import {
   renderAuditDiff,
   SUPPORTED_LANGS,
 } from '../../playground/analyzer.js';
+import { analyzeText } from '../../src/features/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -23,6 +24,10 @@ const SAMPLES = {
   zh: '总而言之，这一方案能够全面提升用户体验，并为未来发展提供新的可能。',
   ja: 'まとめると、この仕組みはユーザー体験を向上させ、より良い未来につながります。',
 };
+
+function analyzeNodeText(text, lang) {
+  return analyzeText(text, { lang, repoRoot: REPO_ROOT });
+}
 
 test('playground lexicons are generated for every supported language', () => {
   assert.deepEqual(Object.keys(PLAYGROUND_LEXICONS).sort(), [...SUPPORTED_LANGS].sort());
@@ -47,6 +52,87 @@ test('playground analyzer returns score, audit items, and diff HTML for ko/en/zh
     assert.match(html, /diff-card/);
     assert.match(html, /<mark>/);
   }
+});
+
+test('playground and node analyzers agree on shared deterministic signals', () => {
+  for (const lang of SUPPORTED_LANGS) {
+    const nodeAnalysis = analyzeNodeText(SAMPLES[lang], lang);
+    const playgroundAnalysis = analyzePlaygroundText(SAMPLES[lang], { lang });
+    assert.equal(
+      playgroundAnalysis.paragraphs[0].lexicon.matches > 0,
+      nodeAnalysis.paragraphs[0].lexicon.matches > 0,
+      `${lang} lexicon-hit presence should match node analyzer`,
+    );
+  }
+
+  const cases = [
+    {
+      name: 'model-output leakage',
+      text: 'This paragraph contains turn0search0 from copied model output.',
+      lang: 'en',
+      nodeHot: (analysis) => analysis.markupLeakage.leaked,
+      playgroundHot: (analysis) => analysis.markupLeakage.leaked,
+    },
+    {
+      name: 'fake-candor opener density',
+      text: "Here's the thing. Let's be honest. The rollout still needs one owner and one deadline.",
+      lang: 'en',
+      nodeHot: (analysis) => analysis.discourseTells.fakeCandor.hot,
+      playgroundHot: (analysis) => analysis.discourseTells.fakeCandor.hot,
+    },
+    {
+      name: 'short non-hot control',
+      text: 'I changed one parser branch and wrote down the reason.',
+      lang: 'en',
+      nodeHot: (analysis) => analysis.hot,
+      playgroundHot: (analysis) => analysis.hotCount > 0,
+    },
+  ];
+
+  for (const sample of cases) {
+    const nodeAnalysis = analyzeNodeText(sample.text, sample.lang);
+    const playgroundAnalysis = analyzePlaygroundText(sample.text, { lang: sample.lang });
+    assert.equal(
+      sample.playgroundHot(playgroundAnalysis),
+      sample.nodeHot(nodeAnalysis),
+      `${sample.name} verdict should match node analyzer`,
+    );
+  }
+});
+
+test('playground ports thematic-break discourse tells from the node analyzer', () => {
+  const text = [
+    '---',
+    '# First section',
+    'This practical note uses a plain sentence with uneven length.',
+    '',
+    '***',
+    '# Second section',
+    'The middle paragraph records the concrete tradeoff before the recommendation.',
+    '',
+    '___',
+    '# Third section',
+    'The final paragraph names the owner and the next review window.',
+  ].join('\n');
+
+  const nodeAnalysis = analyzeNodeText(text, 'en');
+  const playgroundAnalysis = analyzePlaygroundText(text, { lang: 'en' });
+
+  assert.equal(nodeAnalysis.discourseTells.thematicBreaks.hot, true);
+  assert.equal(
+    playgroundAnalysis.discourseTells.thematicBreaks.count,
+    nodeAnalysis.discourseTells.thematicBreaks.count,
+  );
+  assert.equal(
+    playgroundAnalysis.discourseTells.thematicBreaks.adjacentToHeading,
+    nodeAnalysis.discourseTells.thematicBreaks.adjacentToHeading,
+  );
+  assert.equal(
+    playgroundAnalysis.discourseTells.thematicBreaks.hot,
+    nodeAnalysis.discourseTells.thematicBreaks.hot,
+  );
+  assert.ok(playgroundAnalysis.paragraphs.some((paragraph) => paragraph.thematicBreaks.hot));
+  assert.ok(playgroundAnalysis.paragraphs.some((paragraph) => paragraph.reasons.some((reason) => reason.code === 'thematic-break')));
 });
 
 test('playground keeps one Korean lexicon hit as an audit hint', () => {

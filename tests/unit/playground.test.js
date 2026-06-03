@@ -13,6 +13,7 @@ import {
   renderAuditDiff,
   SUPPORTED_LANGS,
   splitProseSentences,
+  countFormatting,
 } from '../../playground/analyzer.js';
 import { analyzeText } from '../../src/features/index.js';
 
@@ -160,6 +161,84 @@ test('playground excludes Markdown list blocks from prose rhythm samples', () =>
   assert.equal(residuePlayground.paragraphs[0].sentenceCount, residueNode.paragraphs[0].sentenceCount);
   assert.equal(residuePlayground.paragraphs[0].burstiness.band, residueNode.paragraphs[0].burstiness.band);
   assert.equal(residuePlayground.hotCount > 0, residueNode.hot);
+});
+
+test('playground flags a single emoji marker because pattern 17 is any-hit', () => {
+  const text = 'Status update 🙂 the deploy finished on time.';
+  const analysis = analyzePlaygroundText(text, { lang: 'en' });
+
+  assert.equal(analysis.hotCount, 1);
+  assert.equal(analysis.paragraphs[0].formatting.docEmoji, 1);
+  assert.ok(analysis.paragraphs[0].reasons.some((reason) => reason.code === 'emoji-overuse'));
+});
+
+test('playground counts joined emoji by visible glyph and still flags them once', () => {
+  const text = `Status update 👩‍💻 the deploy finished on time.
+
+Budget note 👨‍👩‍👧‍👦 the team stayed within plan.`;
+  const analysis = analyzePlaygroundText(text, { lang: 'en' });
+
+  assert.equal(analysis.paragraphs[0].formatting.docEmoji, 2);
+  assert.equal(analysis.hotCount, 2);
+  assert.ok(analysis.paragraphs.every((paragraph) => paragraph.reasons.some((reason) => reason.code === 'emoji-overuse')));
+
+  assert.deepEqual(countFormatting('👩‍💻 👨‍👩‍👧‍👦', { segmenter: null }), { emDash: 0, bold: 0, emoji: 2 });
+});
+
+test('playground marks repeated em dashes as a document-level formatting tell', () => {
+  const text = `Status update — the deploy finished on time.
+
+Budget note — the team stayed within plan.
+
+Support review — response time dropped this week.`;
+  const analysis = analyzePlaygroundText(text, { lang: 'en' });
+
+  assert.equal(analysis.hotCount, 3);
+  assert.ok(analysis.paragraphs.every((paragraph) => paragraph.formatting.docEmDash === 3));
+  assert.ok(analysis.paragraphs.every((paragraph) => paragraph.reasons.some((reason) => reason.code === 'em-dash-overuse')));
+});
+
+test('playground does not hot-classify em dashes below the threshold', () => {
+  const text = `Status update — the deploy finished on time.
+
+Budget note — the team stayed within plan.`;
+  const analysis = analyzePlaygroundText(text, { lang: 'en' });
+
+  assert.equal(analysis.hotCount, 0);
+  assert.ok(analysis.paragraphs.every((paragraph) => paragraph.reasons.every((reason) => reason.code !== 'em-dash-overuse')));
+});
+
+test('playground marks repeated bold spans as a document-level formatting tell', () => {
+  const text = `**Status** update for the deploy.
+
+**Budget** note for the team.
+
+**Support** review from this week.
+
+**Latency** trend from the dashboard.
+
+**Owner** list for the rollout.`;
+  const analysis = analyzePlaygroundText(text, { lang: 'en' });
+
+  assert.equal(analysis.hotCount, 5);
+  assert.ok(analysis.paragraphs.every((paragraph) => paragraph.formatting.docBold === 5));
+  assert.ok(analysis.paragraphs.every((paragraph) => paragraph.reasons.some((reason) => reason.code === 'bold-overuse')));
+});
+
+test('playground marks 3 bold spans in one paragraph even below the document threshold', () => {
+  const text = '**Status** update with a **Budget** note and a **Support** review.';
+  const analysis = analyzePlaygroundText(text, { lang: 'en' });
+
+  assert.equal(analysis.hotCount, 1);
+  assert.ok(analysis.paragraphs[0].reasons.some((reason) => reason.code === 'bold-overuse'));
+});
+
+test('playground does not hot-classify bold spans below both thresholds', () => {
+  const text = '**Status** update with a **Budget** note for the deploy.';
+  const analysis = analyzePlaygroundText(text, { lang: 'en' });
+
+  assert.equal(analysis.hotCount, 0);
+  assert.ok(analysis.paragraphs.every((paragraph) => paragraph.reasons.every((reason) => reason.code !== 'bold-overuse')));
 });
 
 test('playground keeps one Korean lexicon hit as an audit hint', () => {

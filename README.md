@@ -288,7 +288,7 @@ Input
   ↓
 [Step 4.5]   Semantic anchor extraction (claims, polarity, causation, numbers)
 [Step 4.6]   Stylometric pre-pass (burstiness CV + MATTR; zh/ja character-token fallback)
-[Step 4.7]   AI-lexicon overlap (88 EN / 102 KO / 60 ZH / 60 JA entries)
+[Step 4.7]   AI-lexicon overlap (88 EN / 96 KO / 60 ZH / 60 JA entries)
 [Phase 1]    Structure scan + anchor verification
 [Phase 2]    Sentence rewrite + anchor verification
 [Phase 3]    Self-audit (polarity, regression, MPS)

@@ -1,3 +1,4 @@
+// @ts-check
 import { callLLM as defaultCallLLM } from './api.js';
 import { getRepoRoot } from './config.js';
 import { analyzeText } from './features/index.js';
@@ -51,7 +52,7 @@ async function callAndParseJson({
   temperature = 0.1,
   deadline,
   signal,
-  callLLM = defaultCallLLM,
+  callLLM = /** @type {Function} */ (defaultCallLLM),
   logger = createLogger(),
   now,
   sleep,
@@ -325,7 +326,7 @@ export function withShadowScore(parsed, { deterministicScore, config = {}, logge
  * @param {object|null} [options.deterministicScore] Deterministic score payload.
  * @param {object} [options.config={}] Effective config.
  * @param {object} [options.logger] Logger for warnings.
- * @returns {{overall: number|null, scorePreference: string|null}} Reconciled score and preference source.
+ * @returns {{overall: number|null, scorePreference: (object|null)}} Reconciled score and preference source.
  * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const result = reconcileScoreOverall({ llmOverall: 20, deterministicScore: { overall: 60 } });

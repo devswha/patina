@@ -8,6 +8,7 @@ const nodeGlobals = {
   clearTimeout: 'readonly',
   fetch: 'readonly',
   globalThis: 'readonly',
+  Intl: 'readonly',
   process: 'readonly',
   setTimeout: 'readonly',
 };

@@ -1,6 +1,6 @@
 ---
 name: patina-max
-version: 3.11.0
+version: 3.12.0
 description: Best-of-N humanizer. Runs the same text through multiple model CLIs (claude / codex / gemini) and auto-picks the lowest AI-score result that passes the meaning-preservation floor (MPS ≥ 70).
 allowed-tools:
   - Read

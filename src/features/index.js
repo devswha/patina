@@ -3,7 +3,7 @@
 // is the in-tree port of the algorithm previously delegated to the LLM via
 // SKILL.md Step 4.6/4.7. It does not call any LLM.
 
-import { splitParagraphs, splitSentences, tokenize } from './segment.js';
+import { splitParagraphs, splitSentences, splitProseSentences, tokenize } from './segment.js';
 import {
   burstinessCV,
   mattr,
@@ -26,6 +26,8 @@ import {
   DEFAULT_LEXICON_DENSITY_THRESHOLD,
   DEFAULT_LEXICON_MIN_HOT_MATCHES,
 } from './lexicon.js';
+import { detectMarkupLeakage } from './markup-leakage.js';
+import { detectDiscourseTells } from './discourse-tells.js';
 
 export function analyzeText(text, opts = {}) {
   const {
@@ -47,6 +49,14 @@ export function analyzeText(text, opts = {}) {
   // vs decomposed) would otherwise yield different MATTR/lexicon hits.
   const normalized = text ? text.normalize('NFC') : '';
   const paragraphs = splitParagraphs(normalized);
+
+  // Document-level leakage scan (issue #332). Near-proof-grade: a single hit is
+  // strong evidence of pasted model output, so it forces the document hot
+  // regardless of the per-paragraph stylometry/lexicon signals.
+  const markupLeakage = detectMarkupLeakage(normalized);
+  // Density-gated discourse tells (issue #334): fake-candor openers (>=2) and
+  // decorative thematic breaks (>=3). Document-level, weaker than leakage.
+  const discourseTells = detectDiscourseTells(normalized);
   const lexicon =
     providedLexicon ??
     (repoRoot ? loadLexicon(lang, repoRoot) : { strict: [], phrases: [] });
@@ -55,7 +65,7 @@ export function analyzeText(text, opts = {}) {
   // can suppress meta-block emission, but the benchmark wants raw signals on
   // single-paragraph fixtures so we compute them unconditionally.
   const totalSentences = paragraphs.reduce(
-    (n, p) => n + splitSentences(p).length,
+    (n, p) => n + splitProseSentences(p).length,
     0
   );
   const skipReason =
@@ -64,7 +74,7 @@ export function analyzeText(text, opts = {}) {
     null;
 
   const analyzed = paragraphs.map((paragraph, idx) => {
-    const sentences = splitSentences(paragraph);
+    const sentences = splitProseSentences(paragraph);
     const sentenceTokens = sentences.map((sentence) => tokenize(sentence, { lang }));
     const sentenceTokenCounts = sentenceTokens.map((t) => t.length);
     const allTokens = sentenceTokens.flat();
@@ -109,13 +119,16 @@ export function analyzeText(text, opts = {}) {
     skipped: Boolean(skipReason),
     skipReason,
     paragraphs: analyzed,
-    hot: analyzed.some((p) => p.hot),
+    markupLeakage,
+    discourseTells,
+    hot: markupLeakage.leaked || discourseTells.hot || analyzed.some((p) => p.hot),
   };
 }
 
 export {
   splitParagraphs,
   splitSentences,
+  splitProseSentences,
   tokenize,
   burstinessCV,
   mattr,

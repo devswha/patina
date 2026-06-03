@@ -16,6 +16,7 @@ export default [
   {
     ignores: [
       '.git/**',
+      '.omc/**',
       '.omx/**',
       'node_modules/**',
       'docs/benchmarks/*.json',

@@ -13,8 +13,16 @@ export const DEFAULT_LEXICON_MIN_HOT_MATCHES = {
   ja: 2,
 };
 export const DEFAULT_BURSTINESS_BANDS = { low: 0.30, high: 0.50 };
+export const DEFAULT_MIN_BURSTINESS_SENTENCES = 3;
 export const DEFAULT_MATTR_BANDS = { low: 0.55, high: 0.70 };
 export const DEFAULT_MATTR_WINDOW = 50;
+// Document-level formatting tells (mirror catalog patterns #13 em-dash, #14 boldface).
+// These are doc-level by design: 3 em-dashes spread one-per-paragraph must still fire,
+// so we count across the whole document and then flag the paragraphs that carry the token.
+export const DEFAULT_FORMATTING_THRESHOLDS = {
+  emDashDoc: 3, // U+2014 occurrences across the document
+  boldDoc: 5, // **bold** spans across the document
+};
 export const DEFAULT_KO_DIAGNOSTIC_BANDS = {
   minSentences: 4,
   minEojeols: 20,
@@ -39,6 +47,7 @@ export const SAMPLE_TEXT = {
 
 const SENTENCE_SPLIT_RE = /[.!?]+\s+|(?<=[。！？…])|\n+/u;
 const PARAGRAPH_SPLIT_RE = /\n\s*\n/;
+const LIST_LINE_RE = /^\s*(?:[-*+]\s+|\d+[.)]\s+)/u;
 const EDGE_PUNCT_RE = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
 const CJK_TOKEN_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\u30FC]|[A-Za-z0-9]+/gu;
 const HANGUL_RE = /[\u3131-\u318e\uac00-\ud7a3]/u;
@@ -66,12 +75,52 @@ export function splitParagraphs(text) {
     .filter((p) => p.length > 0);
 }
 
+function stripListBlocks(paragraph) {
+  const lines = String(paragraph ?? '').split(/\r?\n/);
+  const proseLines = [];
+  let colonListRemaining = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+    if (trimmed === '') {
+      colonListRemaining = 0;
+      proseLines.push(rawLine);
+      continue;
+    }
+    if (LIST_LINE_RE.test(rawLine)) continue;
+    if (colonListRemaining > 0) {
+      colonListRemaining--;
+      continue;
+    }
+    if (trimmed.endsWith(':')) {
+      colonListRemaining = countFollowingPlainListLines(lines, i + 1);
+    }
+    proseLines.push(rawLine);
+  }
+  return proseLines.join('\n');
+}
+
+function countFollowingPlainListLines(lines, start) {
+  let count = 0;
+  for (let i = start; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed === '') break;
+    if (LIST_LINE_RE.test(lines[i])) continue;
+    count++;
+  }
+  return count >= 2 ? count : 0;
+}
+
 export function splitSentences(paragraph) {
   if (!paragraph) return [];
   return paragraph
     .split(SENTENCE_SPLIT_RE)
     .map((s) => s.trim().replace(/[.!?。！？…]+$/u, ''))
     .filter((s) => s.length > 0);
+}
+
+export function splitProseSentences(paragraph) {
+  return splitSentences(stripListBlocks(paragraph));
 }
 
 function tokenizeCjk(text) {
@@ -260,8 +309,131 @@ function fmt(value, digits = 2) {
   return value == null ? 'n/a' : Number(value).toFixed(digits);
 }
 
-function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics }) {
+// Model-output leakage artifacts (issue #332): tokens LLM tooling injects that
+// never appear in human prose. A single hit is near-proof-grade, so it forces
+// the document hot. Mirrors src/features/markup-leakage.js.
+const MARKUP_LEAKAGE_RULES = [
+  { id: 'oai-citation-markup', label: 'OpenAI citation markup', build: () => /:contentReference|oaicite|oai_citation/gi },
+  { id: 'model-tool-token', label: 'Model tool token', build: () => /\bturn\d+(?:search|view|news|image|forecast|finance|fetch)\d*\b|\bnavlist\b|\bgrok_card\b/gi },
+  { id: 'object-replacement-char', label: 'Object-replacement character (￼)', build: () => /￼/g },
+  { id: 'ai-tracking-param', label: 'AI-tool tracking parameter in URL', build: () => /utm_source=(?:chatgpt\.com|openai\.com|perplexity\.ai|claude\.ai|gemini\.google\.com)|[?&](?:ref|utm_source)=chatgpt/gi },
+  { id: 'explicit-self-identification', label: 'Explicit AI self-identification', build: () => /\bas an? (?:AI|artificial intelligence) language model\b|\bas a large language model\b|\bas a language model\b|\bas an AI assistant\b|\bI am an AI\b|\bI'?m an AI\b/gi },
+];
+
+export function detectMarkupLeakage(text) {
+  const str = typeof text === 'string' ? text : '';
+  const hits = [];
+  if (!str) return { leaked: false, hits };
+  for (const rule of MARKUP_LEAKAGE_RULES) {
+    const m = str.match(rule.build());
+    if (m && m.length > 0) {
+      hits.push({ id: rule.id, label: rule.label, count: m.length, samples: [...new Set(m.map((x) => x.trim()).filter(Boolean))].slice(0, 3) });
+    }
+  }
+  return { leaked: hits.length > 0, hits };
+}
+
+// Density-gated discourse tells (issue #334): fake-candor / manufactured-intimacy
+// openers and decorative thematic breaks. Mirrors src/features/discourse-tells.js.
+const FAKE_CANDOR_RULES = [
+  /\bhere'?s the thing\b/gi,
+  /\bhere'?s the kicker\b/gi,
+  /\blet'?s be honest\b/gi,
+  /\blet'?s be real\b/gi,
+  /\bthe truth is\b/gi,
+  /\bi'?ll be honest(?: with you)?\b/gi,
+  /\breal talk\b/gi,
+];
+export const DEFAULT_FAKE_CANDOR_MIN = 2;
+export const DEFAULT_THEMATIC_BREAK_MIN = 3;
+const THEMATIC_BREAK_LINE = /^[ \t]*(?:-[ \t]*){3,}$|^[ \t]*(?:\*[ \t]*){3,}$|^[ \t]*(?:_[ \t]*){3,}$/;
+const HEADING_LINE = /^[ \t]*#{1,6}[ \t]+\S/;
+
+export function detectFakeCandor(text) {
+  const str = typeof text === 'string' ? text : '';
+  const hits = [];
+  let count = 0;
+  for (const re of FAKE_CANDOR_RULES) {
+    const m = str.match(re);
+    if (m && m.length) {
+      count += m.length;
+      hits.push(...new Set(m.map((x) => x.trim().toLowerCase())));
+    }
+  }
+  return { count, hits: [...new Set(hits)].slice(0, 5), hot: count >= DEFAULT_FAKE_CANDOR_MIN, threshold: DEFAULT_FAKE_CANDOR_MIN };
+}
+
+export function countFakeCandor(text) {
+  return detectFakeCandor(text).count;
+}
+
+export function detectThematicBreaks(text) {
+  const lines = (typeof text === 'string' ? text : '').split(/\r?\n/);
+  let count = 0;
+  let adjacentToHeading = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (!THEMATIC_BREAK_LINE.test(lines[i])) continue;
+    count++;
+    for (let j = i + 1; j < lines.length; j++) {
+      if (lines[j].trim() === '') continue;
+      if (HEADING_LINE.test(lines[j])) adjacentToHeading++;
+      break;
+    }
+  }
+  return {
+    count,
+    adjacentToHeading,
+    hot: count >= DEFAULT_THEMATIC_BREAK_MIN,
+    threshold: DEFAULT_THEMATIC_BREAK_MIN,
+  };
+}
+
+// Count formatting tells in a chunk of raw text (em-dash U+2014, markdown **bold** spans).
+export function countFormatting(text) {
+  const str = String(text ?? '');
+  const emDash = (str.match(/—/gu) || []).length;
+  const bold = (str.match(/\*\*(?=\S)(?:[^*]|\*(?!\*))+?\*\*/gu) || []).length;
+  return { emDash, bold };
+}
+
+function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, formatting, formattingThresholds, leakage, candor, thematicBreaks }) {
   const reasons = [];
+  if (candor?.hot) {
+    reasons.push({
+      code: 'fake-candor',
+      label: 'Fake-candor opener',
+      detail: `Manufactured-intimacy opener ("here's the thing", "the truth is", …); ${candor.docCount} in the document (threshold ${DEFAULT_FAKE_CANDOR_MIN}).`,
+    });
+  }
+  if (thematicBreaks?.hot) {
+    reasons.push({
+      code: 'thematic-break',
+      label: 'Decorative thematic break',
+      detail: `${thematicBreaks.docCount} markdown dividers in the document (threshold ${DEFAULT_THEMATIC_BREAK_MIN}); this paragraph carries ${thematicBreaks.count}.`,
+    });
+  }
+  if (leakage?.leaked) {
+    const labels = leakage.hits.map((h) => h.label).join(', ');
+    reasons.push({
+      code: 'model-output-leakage',
+      label: 'Model-output leakage',
+      detail: `Pasted-LLM artifact present (${labels}). A single hit is near-proof-grade.`,
+    });
+  }
+  if (formatting?.emDashHot) {
+    reasons.push({
+      code: 'em-dash-overuse',
+      label: 'Em dash overuse',
+      detail: `${formatting.docEmDash} em dashes in the document (threshold ${formattingThresholds.emDashDoc}); this paragraph carries ${formatting.emDash}.`,
+    });
+  }
+  if (formatting?.boldHot) {
+    reasons.push({
+      code: 'bold-overuse',
+      label: 'Boldface overuse',
+      detail: `${formatting.docBold} bold spans in the document (threshold ${formattingThresholds.boldDoc}); this paragraph carries ${formatting.bold}.`,
+    });
+  }
   if (cvBand === 'low') {
     reasons.push({
       code: 'low-burstiness',
@@ -305,14 +477,29 @@ export function analyzePlaygroundText(text, opts = {}) {
   const paragraphs = splitParagraphs(text);
   const threshold = opts.lexiconDensityThreshold ?? DEFAULT_LEXICON_DENSITY_THRESHOLD;
   const minHotMatches = opts.lexiconMinHotMatches ?? DEFAULT_LEXICON_MIN_HOT_MATCHES;
+  const formattingThresholds = opts.formattingThresholds ?? DEFAULT_FORMATTING_THRESHOLDS;
+
+  // Document-level formatting pass: count tells across all paragraphs first, then
+  // attribute hot status to the paragraphs that carry the token (catalog #13/#14 are doc-level).
+  const paraFormatting = paragraphs.map(countFormatting);
+  const docEmDash = paraFormatting.reduce((sum, f) => sum + f.emDash, 0);
+  const docBold = paraFormatting.reduce((sum, f) => sum + f.bold, 0);
+  // Fake-candor openers (#334): doc-level density gate, then attribute to the
+  // paragraphs that carry an opener (same shape as the em-dash doc-level pass).
+  const paraCandor = paragraphs.map(countFakeCandor);
+  const docFakeCandor = detectFakeCandor(text);
+  const docCandor = docFakeCandor.count;
+
+  const paraThematicBreaks = paragraphs.map(detectThematicBreaks);
+  const docThematicBreaks = detectThematicBreaks(text);
 
   const analyzed = paragraphs.map((paragraph, idx) => {
-    const sentences = splitSentences(paragraph);
+    const sentences = splitProseSentences(paragraph);
     const sentenceTokens = sentences.map((sentence) => tokenize(sentence, { lang }));
     const sentenceTokenCounts = sentenceTokens.map((tokens) => tokens.length);
     const tokens = sentenceTokens.flat();
     const cv = burstinessCV(sentenceTokenCounts);
-    const cvBand = classifyBurstiness(cv);
+    const cvBand = sentences.length >= DEFAULT_MIN_BURSTINESS_SENTENCES ? classifyBurstiness(cv) : null;
     const mattrValue = mattr(tokens);
     const mattrBand = classifyMattr(mattrValue);
     const lex = computeDensity(paragraph, tokens, lexicon);
@@ -324,9 +511,43 @@ export function analyzePlaygroundText(text, opts = {}) {
       densityThreshold: threshold,
       minHotMatches,
     });
+    const counts = paraFormatting[idx];
+    const emDashHot = docEmDash >= formattingThresholds.emDashDoc && counts.emDash >= 1;
+    const boldHot = docBold >= formattingThresholds.boldDoc && counts.bold >= 1;
+    const formatting = { ...counts, docEmDash, docBold, emDashHot, boldHot };
+    // Model-output leakage (#332): per-paragraph hit, fires on a single occurrence.
+    const leakage = detectMarkupLeakage(paragraph);
+    // Fake-candor (#334): this paragraph carries an opener AND the doc total >= gate.
+    const candorHot = docCandor >= DEFAULT_FAKE_CANDOR_MIN && paraCandor[idx] >= 1;
+    const thematicBreakHot = docThematicBreaks.hot && paraThematicBreaks[idx].count >= 1;
     const hot =
-      cvBand === 'low' || mattrBand === 'low' || lexiconHot || Boolean(koSignals.koDiagnostics?.hot);
-    const reasons = buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics: koSignals.koDiagnostics });
+      cvBand === 'low' ||
+      mattrBand === 'low' ||
+      lexiconHot ||
+      Boolean(koSignals.koDiagnostics?.hot) ||
+      emDashHot ||
+      boldHot ||
+      leakage.leaked ||
+      candorHot ||
+      thematicBreakHot;
+    const thematicBreaks = {
+      ...paraThematicBreaks[idx],
+      docCount: docThematicBreaks.count,
+      docAdjacentToHeading: docThematicBreaks.adjacentToHeading,
+      hot: thematicBreakHot,
+    };
+    const reasons = buildReasons({
+      cvBand,
+      mattrBand,
+      lexiconHot,
+      lex,
+      koDiagnostics: koSignals.koDiagnostics,
+      formatting,
+      formattingThresholds,
+      leakage,
+      candor: { hot: candorHot, docCount: docCandor },
+      thematicBreaks,
+    });
 
     return {
       id: `P${idx + 1}`,
@@ -337,7 +558,10 @@ export function analyzePlaygroundText(text, opts = {}) {
       burstiness: { cv, band: cvBand },
       mattr: { value: mattrValue, band: mattrBand },
       lexicon: { ...lex, hot: lexiconHot },
+      formatting,
+      leakage,
       ...koSignals,
+      thematicBreaks,
       hot,
       reasons,
     };
@@ -353,6 +577,12 @@ export function analyzePlaygroundText(text, opts = {}) {
     paragraphCount: paragraphs.length,
     hotCount,
     totalTokens: analyzed.reduce((sum, p) => sum + p.tokenCount, 0),
+    markupLeakage: detectMarkupLeakage(text),
+    discourseTells: {
+      fakeCandor: docFakeCandor,
+      thematicBreaks: docThematicBreaks,
+      hot: docCandor >= DEFAULT_FAKE_CANDOR_MIN || docThematicBreaks.hot,
+    },
     paragraphs: analyzed,
     auditItems: analyzed.filter((p) => p.hot || p.lexicon.matches > 0),
     note: 'Audit-only deterministic score. It marks editing hotspots, not authorship or intent.',
@@ -562,4 +792,43 @@ export function buildCliCommand(text, lang = DEFAULT_LANG) {
     `npx patina-cli --lang ${safeLang} --score patina-input.txt`,
     `npx patina-cli --lang ${safeLang} --audit patina-input.txt`,
   ].join('\n');
+}
+
+export const FALSE_POSITIVE_ISSUE_URL = 'https://github.com/devswha/patina/issues/new';
+const FALSE_POSITIVE_MAX_PARAGRAPH_CHARS = 1500;
+
+// Build a GitHub issue URL with the false-positive template pre-filled from the
+// current audit. Nothing is sent anywhere — the text only leaves the browser if
+// the user chooses to submit the GitHub issue, preserving the in-browser privacy
+// promise while removing the copy/paste friction of reporting by hand.
+export function buildFalsePositiveReportUrl(text, lang = DEFAULT_LANG, analysis = null) {
+  const safeLang = normalizeLang(lang);
+  const result = analysis ?? analyzePlaygroundText(text || '', { lang: safeLang });
+  const hotParas = result.paragraphs.filter((p) => p.hot);
+  const source = hotParas.length ? hotParas : result.paragraphs;
+
+  let fired = source.map((p) => p.text).join('\n\n').trim();
+  if (!fired) fired = (text || '').trim();
+  if (fired.length > FALSE_POSITIVE_MAX_PARAGRAPH_CHARS) {
+    fired = `${fired.slice(0, FALSE_POSITIVE_MAX_PARAGRAPH_CHARS)}\n…(truncated — paste the rest if it matters)`;
+  }
+
+  const signals =
+    [...new Set(source.flatMap((p) => p.reasons.map((r) => r.label)))].join(', ') || 'none';
+  const lexiconHits = result.paragraphs.reduce((sum, p) => sum + (p.lexicon?.matches ?? 0), 0);
+  const scoreOutput = [
+    'Source: patina playground (https://patina.vibetip.help/)',
+    `Score: ${result.overall}/100 (${result.band.label})`,
+    `Hot paragraphs: ${result.hotCount}/${result.paragraphCount}`,
+    `Signals: ${signals}`,
+    `Lexicon hits: ${lexiconHits}`,
+  ].join('\n');
+
+  const params = new globalThis.URLSearchParams({
+    template: 'false_positive.yml',
+    language: safeLang,
+    fired_paragraph: fired,
+    score_output: scoreOutput,
+  });
+  return `${FALSE_POSITIVE_ISSUE_URL}?${params.toString()}`;
 }

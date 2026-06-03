@@ -244,15 +244,6 @@
   },
   {
     "kind": "strict",
-    "entry": "측면",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
     "entry": "양립",
     "added": null,
     "source": "ko-legacy-pre-provenance",
@@ -263,15 +254,6 @@
   {
     "kind": "strict",
     "entry": "추세",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "흐름",
     "added": null,
     "source": "ko-legacy-pre-provenance",
     "last_validated": null,
@@ -325,33 +307,6 @@
   },
   {
     "kind": "strict",
-    "entry": "토대",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "기반",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "환경",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
     "entry": "생태계",
     "added": null,
     "source": "ko-legacy-pre-provenance",
@@ -380,15 +335,6 @@
   {
     "kind": "strict",
     "entry": "꼽힌다",
-    "added": "2026-05-04",
-    "source": "ko-v1.1-2026-05-04-claude-namu-wiki",
-    "last_validated": "2026-05-04",
-    "lift": ">=4x",
-    "status": "partial"
-  },
-  {
-    "kind": "strict",
-    "entry": "가리킨다",
     "added": "2026-05-04",
     "source": "ko-v1.1-2026-05-04-claude-namu-wiki",
     "last_validated": "2026-05-04",

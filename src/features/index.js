@@ -3,7 +3,7 @@
 // is the in-tree port of the algorithm previously delegated to the LLM via
 // SKILL.md Step 4.6/4.7. It does not call any LLM.
 
-import { splitParagraphs, splitSentences, tokenize } from './segment.js';
+import { splitParagraphs, splitSentences, splitProseSentences, tokenize } from './segment.js';
 import {
   burstinessCV,
   mattr,
@@ -65,7 +65,7 @@ export function analyzeText(text, opts = {}) {
   // can suppress meta-block emission, but the benchmark wants raw signals on
   // single-paragraph fixtures so we compute them unconditionally.
   const totalSentences = paragraphs.reduce(
-    (n, p) => n + splitSentences(p).length,
+    (n, p) => n + splitProseSentences(p).length,
     0
   );
   const skipReason =
@@ -74,7 +74,7 @@ export function analyzeText(text, opts = {}) {
     null;
 
   const analyzed = paragraphs.map((paragraph, idx) => {
-    const sentences = splitSentences(paragraph);
+    const sentences = splitProseSentences(paragraph);
     const sentenceTokens = sentences.map((sentence) => tokenize(sentence, { lang }));
     const sentenceTokenCounts = sentenceTokens.map((t) => t.length);
     const allTokens = sentenceTokens.flat();
@@ -128,6 +128,7 @@ export function analyzeText(text, opts = {}) {
 export {
   splitParagraphs,
   splitSentences,
+  splitProseSentences,
   tokenize,
   burstinessCV,
   mattr,

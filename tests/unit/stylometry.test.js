@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-import { splitParagraphs, splitSentences, tokenize } from '../../src/features/segment.js';
+import { splitParagraphs, splitSentences, splitProseSentences, tokenize } from '../../src/features/segment.js';
 import {
   burstinessCV,
   mattr,
@@ -21,6 +21,22 @@ test('splitSentences handles ., !, ?, 。, … and newlines', () => {
     ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth']
   );
   assert.deepEqual(splitSentences('第一句。第二句！第三句？'), ['第一句', '第二句', '第三句']);
+});
+
+test('splitProseSentences excludes Markdown list blocks from prose rhythm samples', () => {
+  const bulleted = `Here is what the tool does for you:
+- send hook events to external gateways
+- discover and invoke MCP servers
+- hand bounded sub-questions to other CLIs and models
+- distribute work across Codex, Claude, and Gemini`;
+  assert.deepEqual(splitProseSentences(bulleted), ['Here is what the tool does for you:']);
+
+  const plain = `The tool does four things:
+send hook events to external gateways
+discover and invoke MCP servers
+hand bounded sub-questions to other CLIs and models
+distribute work across Codex, Claude, and Gemini`;
+  assert.deepEqual(splitProseSentences(plain), ['The tool does four things:']);
 });
 
 test('tokenize strips edge punctuation but keeps internal hyphens / apostrophes', () => {
@@ -77,6 +93,37 @@ test('analyzeText does not hot-classify burstiness with fewer than three sentenc
   assert.equal(enough.paragraphs[0].sentenceCount, 3);
   assert.equal(enough.paragraphs[0].burstiness.band, 'low');
   assert.equal(enough.paragraphs[0].hot, true);
+});
+
+test('analyzeText does not hot-classify Markdown lists as low-burstiness prose', () => {
+  const bulleted = `Here is what the tool does for you:
+- send hook events to external gateways
+- discover and invoke MCP servers
+- hand bounded sub-questions to other CLIs and models
+- distribute work across Codex, Claude, and Gemini`;
+  const bulletParagraph = analyzeText(bulleted, { lang: 'en' }).paragraphs[0];
+  assert.equal(bulletParagraph.sentenceCount, 1);
+  assert.equal(bulletParagraph.burstiness.band, null);
+  assert.equal(bulletParagraph.hot, false);
+
+  const twoSentenceResidue = `This intro names the list. It stays under the burstiness gate.
+- send hook events to external gateways
+- discover and invoke MCP servers
+- hand bounded sub-questions to other CLIs and models`;
+  const residueParagraph = analyzeText(twoSentenceResidue, { lang: 'en' }).paragraphs[0];
+  assert.equal(residueParagraph.sentenceCount, 2);
+  assert.equal(residueParagraph.burstiness.band, null);
+  assert.equal(residueParagraph.hot, false);
+
+  const plain = `The tool does four things:
+send hook events to external gateways
+discover and invoke MCP servers
+hand bounded sub-questions to other CLIs and models
+distribute work across Codex, Claude, and Gemini`;
+  const plainParagraph = analyzeText(plain, { lang: 'en' }).paragraphs[0];
+  assert.equal(plainParagraph.sentenceCount, 1);
+  assert.equal(plainParagraph.burstiness.band, null);
+  assert.equal(plainParagraph.hot, false);
 });
 
 test('classifyMattr uses default bands (low<0.55, high>0.70)', () => {

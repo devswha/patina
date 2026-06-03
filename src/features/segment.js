@@ -9,6 +9,7 @@
 
 const SENTENCE_SPLIT_RE = /[.!?]+\s+|(?<=[。！？…])|\n+/u;
 const PARAGRAPH_SPLIT_RE = /\n\s*\n/;
+const LIST_LINE_RE = /^\s*(?:[-*+]\s+|\d+[.)]\s+)/u;
 // \W in Unicode-aware mode. Strips edge punctuation but keeps internal
 // hyphens / apostrophes (e.g. "don't", "좋은-도구") as a single token.
 const EDGE_PUNCT_RE = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
@@ -22,12 +23,52 @@ export function splitParagraphs(text) {
     .filter((p) => p.length > 0);
 }
 
+function stripListBlocks(paragraph) {
+  const lines = String(paragraph ?? '').split(/\r?\n/);
+  const proseLines = [];
+  let colonListRemaining = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+    if (trimmed === '') {
+      colonListRemaining = 0;
+      proseLines.push(rawLine);
+      continue;
+    }
+    if (LIST_LINE_RE.test(rawLine)) continue;
+    if (colonListRemaining > 0) {
+      colonListRemaining--;
+      continue;
+    }
+    if (trimmed.endsWith(':')) {
+      colonListRemaining = countFollowingPlainListLines(lines, i + 1);
+    }
+    proseLines.push(rawLine);
+  }
+  return proseLines.join('\n');
+}
+
+function countFollowingPlainListLines(lines, start) {
+  let count = 0;
+  for (let i = start; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed === '') break;
+    if (LIST_LINE_RE.test(lines[i])) continue;
+    count++;
+  }
+  return count >= 2 ? count : 0;
+}
+
 export function splitSentences(paragraph) {
   if (!paragraph) return [];
   return paragraph
     .split(SENTENCE_SPLIT_RE)
     .map((s) => s.trim().replace(/[.!?。！？…]+$/u, ''))
     .filter((s) => s.length > 0);
+}
+
+export function splitProseSentences(paragraph) {
+  return splitSentences(stripListBlocks(paragraph));
 }
 
 function tokenizeCjk(text) {

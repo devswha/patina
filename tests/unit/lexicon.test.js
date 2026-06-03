@@ -58,15 +58,29 @@ test('analyzeText exposes zh/ja lexicon hits as a hot signal', () => {
 });
 
 test('single CJK lexicon hits remain audit hints instead of hot zones', () => {
-  const single = analyzeText('이 문서는 다음 작업의 기반을 설명한다.', { lang: 'ko', repoRoot: REPO_ROOT });
+  const single = analyzeText('이 문서는 다음 작업의 자리매김을 설명한다.', { lang: 'ko', repoRoot: REPO_ROOT });
   assert.equal(single.paragraphs[0].lexicon.matches, 1);
   assert.equal(single.paragraphs[0].lexicon.hot, false);
   assert.equal(single.hot, false);
 
-  const clustered = analyzeText('이 문서는 다음 작업의 핵심 기반과 변화 흐름을 설명한다.', { lang: 'ko', repoRoot: REPO_ROOT });
+  const clustered = analyzeText('이 문서는 핵심 가치를 자리매김하고 변화 양상을 설명한다.', { lang: 'ko', repoRoot: REPO_ROOT });
   assert.ok(clustered.paragraphs[0].lexicon.matches >= 2);
   assert.equal(clustered.paragraphs[0].lexicon.hot, true);
   assert.equal(clustered.hot, true);
+});
+
+test('Korean technical common words do not hot-classify as AI lexicon hits', () => {
+  const samples = [
+    '각 워커는 독립된 환경 변수로 공유 상태 루트를 가리킨다.',
+    '이 기능은 이벤트 기반으로 동작하며 인증 흐름을 그대로 따른다.',
+    '이 설계는 안정성 측면에서 견고한 토대를 제공한다.',
+  ];
+
+  for (const text of samples) {
+    const paragraph = analyzeText(text, { lang: 'ko', repoRoot: REPO_ROOT }).paragraphs[0];
+    assert.equal(paragraph.lexicon.hot, false, text);
+    assert.equal(paragraph.hot, false, text);
+  }
 });
 
 test('scoreDeterministicSignals respects lexicon.languages gating', () => {

@@ -4,12 +4,11 @@ language: ko
 class: ai
 expected_hot: true
 why_designed_this_way: |
-  MATTR only. The paragraph cycles the same narrow vocabulary cluster throughout:
+  Burstiness only. The paragraph cycles the same narrow vocabulary cluster throughout:
   원격근무/재택근무, 직원/구성원, 업무/일, 생산성/효율 — four content-word pairs reused
-  in every sentence with minor grammatical variation. Estimated raw-token MATTR (window=50):
-  ~0.48 (low band < 0.55). Sentence lengths vary slightly (14, 11, 15, 12, 13) giving
-  CV ≈ 0.14 (mid-low, not flagged by burstiness alone) — only MATTR triggers hot.
-  No catalogued patterns: no chatbot phrases, no ~적 stacking, no 다양한/혁신적 hype terms.
+  in every sentence with minor grammatical variation. Sentence lengths are still tightly packed
+  (10, 9, 11, 11, 10 어절) so CV stays ~0.07 (low band), while MATTR is healthy enough not to fire.
+  The removed common KO lexicon entries should no longer be needed for this fixture to stay hot.
 topic: 원격근무
 ---
 

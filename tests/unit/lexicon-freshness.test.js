@@ -27,7 +27,7 @@ test('repo lexicons have exact per-entry provenance sidecars', () => {
     result.files.map((file) => [file.file, file.entries, file.provenanceRows]),
     [
       ['lexicon/ai-en.md', 88, 88],
-      ['lexicon/ai-ko.md', 102, 102],
+      ['lexicon/ai-ko.md', 96, 96],
       ['lexicon/ai-zh.md', 60, 60],
       ['lexicon/ai-ja.md', 60, 60],
     ]

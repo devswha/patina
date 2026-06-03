@@ -13,6 +13,7 @@ export const DEFAULT_LEXICON_MIN_HOT_MATCHES = {
   ja: 2,
 };
 export const DEFAULT_BURSTINESS_BANDS = { low: 0.30, high: 0.50 };
+export const DEFAULT_MIN_BURSTINESS_SENTENCES = 3;
 export const DEFAULT_MATTR_BANDS = { low: 0.55, high: 0.70 };
 export const DEFAULT_MATTR_WINDOW = 50;
 // Document-level formatting tells (mirror catalog patterns #13 em-dash, #14 boldface).
@@ -46,6 +47,7 @@ export const SAMPLE_TEXT = {
 
 const SENTENCE_SPLIT_RE = /[.!?]+\s+|(?<=[。！？…])|\n+/u;
 const PARAGRAPH_SPLIT_RE = /\n\s*\n/;
+const LIST_LINE_RE = /^\s*(?:[-*+]\s+|\d+[.)]\s+)/u;
 const EDGE_PUNCT_RE = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
 const CJK_TOKEN_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\u30FC]|[A-Za-z0-9]+/gu;
 const HANGUL_RE = /[\u3131-\u318e\uac00-\ud7a3]/u;
@@ -73,12 +75,52 @@ export function splitParagraphs(text) {
     .filter((p) => p.length > 0);
 }
 
+function stripListBlocks(paragraph) {
+  const lines = String(paragraph ?? '').split(/\r?\n/);
+  const proseLines = [];
+  let colonListRemaining = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+    if (trimmed === '') {
+      colonListRemaining = 0;
+      proseLines.push(rawLine);
+      continue;
+    }
+    if (LIST_LINE_RE.test(rawLine)) continue;
+    if (colonListRemaining > 0) {
+      colonListRemaining--;
+      continue;
+    }
+    if (trimmed.endsWith(':')) {
+      colonListRemaining = countFollowingPlainListLines(lines, i + 1);
+    }
+    proseLines.push(rawLine);
+  }
+  return proseLines.join('\n');
+}
+
+function countFollowingPlainListLines(lines, start) {
+  let count = 0;
+  for (let i = start; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed === '') break;
+    if (LIST_LINE_RE.test(lines[i])) continue;
+    count++;
+  }
+  return count >= 2 ? count : 0;
+}
+
 export function splitSentences(paragraph) {
   if (!paragraph) return [];
   return paragraph
     .split(SENTENCE_SPLIT_RE)
     .map((s) => s.trim().replace(/[.!?。！？…]+$/u, ''))
     .filter((s) => s.length > 0);
+}
+
+export function splitProseSentences(paragraph) {
+  return splitSentences(stripListBlocks(paragraph));
 }
 
 function tokenizeCjk(text) {
@@ -452,12 +494,12 @@ export function analyzePlaygroundText(text, opts = {}) {
   const docThematicBreaks = detectThematicBreaks(text);
 
   const analyzed = paragraphs.map((paragraph, idx) => {
-    const sentences = splitSentences(paragraph);
+    const sentences = splitProseSentences(paragraph);
     const sentenceTokens = sentences.map((sentence) => tokenize(sentence, { lang }));
     const sentenceTokenCounts = sentenceTokens.map((tokens) => tokens.length);
     const tokens = sentenceTokens.flat();
     const cv = burstinessCV(sentenceTokenCounts);
-    const cvBand = classifyBurstiness(cv);
+    const cvBand = sentences.length >= DEFAULT_MIN_BURSTINESS_SENTENCES ? classifyBurstiness(cv) : null;
     const mattrValue = mattr(tokens);
     const mattrBand = classifyMattr(mattrValue);
     const lex = computeDensity(paragraph, tokens, lexicon);

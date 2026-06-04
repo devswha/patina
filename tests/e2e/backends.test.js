@@ -8,6 +8,7 @@ import {
 } from '../../src/backends/index.js';
 import { DEFAULT_BACKEND_TIMEOUT_MS } from '../../src/backends/contract.js';
 import { isAvailable as codexAvailable, isAuthenticated as codexAuthd } from '../../src/backends/codex-cli.js';
+import { DEFAULT_BEST_MODELS } from '../../src/model-defaults.js';
 
 describe('Backend Selection', () => {
   it('selects openai-http by default', () => {
@@ -60,6 +61,17 @@ describe('Backend Selection', () => {
     const { backend, reason } = selectBackend({ model: 'gemini-3-flash-preview' });
     assert.strictEqual(backend.name, 'gemini-cli');
     assert.strictEqual(reason, 'model heuristic');
+  });
+
+  it('does not route provider/default model sources into local CLI heuristics', () => {
+    assert.strictEqual(
+      selectBackend({ model: 'gemini-2.5-pro', modelSource: 'provider:gemini' }).backend.name,
+      'openai-http'
+    );
+    assert.strictEqual(
+      selectBackend({ model: 'claude-sonnet-4-6', modelSource: 'default' }).backend.name,
+      'openai-http'
+    );
   });
 
   it('does not match `claudette` or `gemininet` or other false positives', () => {
@@ -238,5 +250,13 @@ describe('Backend Listing', () => {
       assert.strictEqual(typeof b.authenticated, 'boolean');
       assert.strictEqual(typeof b.authHint, 'string');
     }
+  });
+
+  it('reports default best-model ids for user-facing backend status', () => {
+    const byName = new Map(listBackends().map((b) => [b.name, b.defaultModel]));
+    assert.strictEqual(byName.get('openai-http'), DEFAULT_BEST_MODELS.openai);
+    assert.strictEqual(byName.get('codex-cli'), DEFAULT_BEST_MODELS.codexCli);
+    assert.strictEqual(byName.get('claude-cli'), DEFAULT_BEST_MODELS.claudeCli);
+    assert.strictEqual(byName.get('gemini-cli'), DEFAULT_BEST_MODELS.geminiCli);
   });
 });

@@ -118,7 +118,7 @@ printf '%s\n' '커피는 전 세계의 사회적 상호작용을 근본적으로
   | patina --lang ko --backend codex-cli
 ```
 
-> 🆓 **API 키 없이 무료 사용 가능** — [`codex`](https://github.com/openai/codex), [`claude`](https://docs.anthropic.com/en/docs/claude-code), [`gemini`](https://github.com/google-gemini/gemini-cli) CLI 중 하나만 로그인되어 있으면 됩니다. `--backend codex-cli | claude-cli | gemini-cli` 로 직접 선택하거나, `--backend claude-cli,codex-cli` 처럼 백업 순서를 지정하거나, `--model claude-*` / `--model gemini-*` 처럼 모델명으로 라우팅할 수 있습니다. 전체 백엔드는 [AUTHENTICATION.md](docs/AUTHENTICATION.md) 참조.
+> 🆓 **API 키 없이 무료 사용 가능** — [`codex`](https://github.com/openai/codex), [`claude`](https://docs.anthropic.com/en/docs/claude-code), [`gemini`](https://github.com/google-gemini/gemini-cli) CLI 중 하나만 로그인되어 있으면 됩니다. `--backend codex-cli | claude-cli | gemini-cli` 로 직접 선택하거나, `--backend claude-cli,codex-cli` 처럼 백업 순서를 지정하거나, `--model claude-*` / `--model gemini-*` 처럼 모델명으로 라우팅할 수 있습니다. `--model`을 생략하면 backend별 최상위 기본 모델(`gpt-5.5`, `claude-sonnet-4-6`, `gemini-2.5-pro`)을 넘깁니다. 전체 백엔드는 [AUTHENTICATION.md](docs/AUTHENTICATION.md) 참조.
 
 ### CI 연동
 

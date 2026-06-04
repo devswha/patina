@@ -102,8 +102,8 @@ written to `docs/research/adversarial-mps.md`. The gate is:
 - no private or scraped source text.
 
 If this gate passes, the case is intentionally adversarial: meaning survived,
-but style still needs work. MAX/Ouroboros selection should prefer candidates
-that pass MPS and lower the AI score, rather than letting high MPS hide
+but style still needs work. Ouroboros selection should prefer candidates that
+pass MPS and lower the AI score, rather than letting high MPS hide
 recurring AI markers.
 
 ## 2025+ rebaseline manifest

@@ -53,8 +53,6 @@ Human-facing status, warnings, and progress indicators go to stderr so stdout
 stays reserved for the transformed text or JSON envelope.
 
 - `--quiet` suppresses stderr logs, including Ouroboros progress.
-- `--json-logs` emits newline-delimited JSON records with stable fields:
-  `ts`, `level`, `event`, `model`, `latency_ms`, and optional `message`.
 - Ouroboros reports per-iteration score movement and latency.
 
 

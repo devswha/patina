@@ -7,23 +7,21 @@ const LEVELS = {
 };
 
 /**
- * Create a small stderr logger with text, JSON, and progress modes.
+ * Create a small stderr logger with text and progress modes.
  *
  * @param {object} [options] Logger options.
  * @param {string} [options.level=info] Minimum log level.
  * @param {boolean} [options.quiet=false] Suppress all log output.
- * @param {boolean} [options.json=false] Emit structured JSON records.
  * @param {NodeJS.WritableStream} [options.stream=process.stderr] Progress stream.
  * @returns {{debug: Function, info: Function, warn: Function, error: Function, progress: Function, closeProgress: Function, child: Function}} Logger facade.
  * @throws {Error} Propagates stream write errors from the configured output stream.
  * @example
- * const logger = createLogger({ json: true });
+ * const logger = createLogger();
  * logger.info('event', { message: 'ready' });
  */
 export function createLogger({
   level = process.env.PATINA_LOG_LEVEL || 'info',
   quiet = false,
-  json = false,
   stream = process.stderr,
 } = {}) {
   const threshold = quiet ? LEVELS.silent : (LEVELS[String(level).toLowerCase()] ?? LEVELS.info);
@@ -32,19 +30,11 @@ export function createLogger({
   const emit = (levelName, event, fields = {}) => {
     if (LEVELS[levelName] < threshold) return;
     closeProgress();
-    if (json) {
-      console.error(JSON.stringify(record(levelName, event, fields)));
-      return;
-    }
     if (fields.message) console.error(fields.message);
   };
 
-  const progress = (event, fields = {}) => {
+  const progress = (_event, fields = {}) => {
     if (LEVELS.info < threshold) return;
-    if (json) {
-      console.error(JSON.stringify(record('info', event, fields)));
-      return;
-    }
     if (!fields.message || !stream?.write) return;
     stream.write(`\r${fields.message}`);
     progressOpen = true;
@@ -63,23 +53,11 @@ export function createLogger({
     progress,
     closeProgress,
     child(extra = {}) {
-      return createLogger({ level, quiet, json, stream, ...extra });
+      return createLogger({ level, quiet, stream, ...extra });
     },
   };
 }
 
-function record(level, event, fields = {}) {
-  const { message, model = null, latency_ms = null, ...rest } = fields;
-  return {
-    ts: new Date().toISOString(),
-    level,
-    event,
-    model,
-    latency_ms,
-    ...(message ? { message } : {}),
-    ...rest,
-  };
-}
 
 /**
  * Default stderr logger used by simple callers.

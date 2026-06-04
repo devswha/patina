@@ -188,7 +188,6 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 | `--batch` | 位置引数をファイル一覧として処理（例：`--batch docs/*.md`） |
 | `--format json\|text\|markdown` | JSON、プレーンテキスト、デフォルト Markdown 出力を選択 |
 | `--quiet` | stderr の状態・警告・進捗ログを抑制 |
-| `--json-logs` | `level`、`event`、`model`、`latency_ms` を持つ NDJSON として stderr ログを出力 |
 
 全オプションは `patina --help`。`patina doctor --json` は LLM 呼び出しなしで Node/backend/tmux/API-key の準備状況を確認し、`patina init` はプロジェクト用 `.patina.yaml` を書きます。
 
@@ -210,7 +209,7 @@ rewrite モードでは、モデルは `[BODY]`/`[/BODY]` ブロックを囲む 
 
 ### Machine-readable output and exit codes
 
-`--format json` は、すべてのモードを `overall`、`categories[]`、`tone`、`mps`、`gateResult`、クリーンな `output` 本文を含む安定した envelope で包みます。`--json-logs` は stderr も NDJSON のまま保ち、`--quiet` は stdout だけ欲しいスクリプトのために状態・警告・進捗ログを隠します。`--format markdown` がデフォルトで、`--format text` は YAML tone footer なしのユーザー向け本文だけを保持します。終了コードは [EXIT-CODES.md](docs/EXIT-CODES.md) にまとまっています: `0` success、`1` runtime/backend、`2` input/usage、`3` score gate exceeded。
+`--format json` は、すべてのモードを `overall`、`categories[]`、`tone`、`mps`、`gateResult`、クリーンな `output` 本文を含む安定した envelope で包みます。`--quiet` は stdout だけ欲しいスクリプトのために状態・警告・進捗ログを隠します。`--format markdown` がデフォルトで、`--format text` は YAML tone footer なしのユーザー向け本文だけを保持します。終了コードは [EXIT-CODES.md](docs/EXIT-CODES.md) にまとまっています: `0` success、`1` runtime/backend、`2` input/usage、`3` score gate exceeded。
 
 ### スコア重みドリフト検出 (v3.11)
 

@@ -291,7 +291,9 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(help.includes('--exit-on <n>'), 'help should document score gate');
     assert.ok(help.includes('--format <fmt>'), 'help should document output format');
     assert.ok(help.includes('--quiet'), 'help should document quiet logs');
-    assert.ok(help.includes('--json-logs'), 'help should document structured stderr logs');
+    assert.ok(!help.includes('--json-logs'), 'help should not document removed structured stderr logs');
+    assert.ok(!help.includes('--list-providers'), 'help should not document removed provider listing');
+    assert.ok(!/\n\s*--json\s+Alias for --format json/.test(help), 'help should not document removed json alias');
     assert.ok(help.includes('--no-color'), 'help should document diff color opt-out');
     assert.ok(
       help.includes('openai-http, codex-cli, claude-cli, gemini-cli'),
@@ -413,39 +415,6 @@ describe('CLI End-to-End with Mock API', () => {
     await startMockServer('This is the humanized result.');
   });
 
-  it('should emit stderr logs as NDJSON with stable fields', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    await stopMockServer();
-    await startMockServer('{ "overall": 42, "interpretation": "mixed" }');
-
-    const oldExitCode = process.exitCode;
-    process.exitCode = undefined;
-    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
-    try {
-      const { errors } = await captureConsole(() => main([
-        '--lang', 'en',
-        '--score',
-        '--exit-on', '30',
-        '--json-logs',
-        '--api-key-file', mockApiKeyPath,
-        '--base-url', `http://127.0.0.1:${mockPort}`,
-        testFile,
-      ]));
-
-      assert.strictEqual(process.exitCode, 3);
-      const records = errors.map((line) => JSON.parse(line));
-      const gate = records.find((record) => record.event === 'score.gate_failed');
-      assert.ok(gate);
-      assert.strictEqual(gate.level, 'warn');
-      assert.strictEqual(gate.model, null);
-      assert.strictEqual(gate.latency_ms, null);
-    } finally {
-      process.exitCode = oldExitCode;
-    }
-    await stopMockServer();
-    await startMockServer('This is the humanized result.');
-  });
 
   it('should accept --exit-on as the CI score gate', async () => {
     callCount = 0;

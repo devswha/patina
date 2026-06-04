@@ -196,7 +196,7 @@ still be genuinely human and we avoid claiming absolute proof.</p>
 <dd><p>Map a resolved named tone to its primary backbone profile.</p>
 </dd>
 <dt><a href="#createLogger">createLogger([options])</a> ⇒ <code>Object</code></dt>
-<dd><p>Create a small stderr logger with text, JSON, and progress modes.</p>
+<dd><p>Create a small stderr logger with text and progress modes.</p>
 </dd>
 <dt><a href="#runOuroboros">runOuroboros(options)</a> ⇒ <code>Promise.&lt;{finalText: string, finalScore: number, iterations: number, reason: string, log: Array.&lt;object&gt;}&gt;</code></dt>
 <dd><p>Run the iterative Ouroboros rewrite-and-score loop.</p>
@@ -884,7 +884,7 @@ const profile = toneToBackboneProfile('casual'); // blog
 <a name="createLogger"></a>
 
 ## createLogger([options]) ⇒ <code>Object</code>
-Create a small stderr logger with text, JSON, and progress modes.
+Create a small stderr logger with text and progress modes.
 
 **Kind**: global function
 **Returns**: <code>Object</code> - Logger facade.
@@ -898,12 +898,11 @@ Create a small stderr logger with text, JSON, and progress modes.
 | [options] | <code>object</code> |  | Logger options. |
 | [options.level] | <code>string</code> | <code>&quot;info&quot;</code> | Minimum log level. |
 | [options.quiet] | <code>boolean</code> | <code>false</code> | Suppress all log output. |
-| [options.json] | <code>boolean</code> | <code>false</code> | Emit structured JSON records. |
 | [options.stream] | <code>NodeJS.WritableStream</code> | <code>process.stderr</code> | Progress stream. |
 
 **Example**
 ```js
-const logger = createLogger({ json: true });
+const logger = createLogger();
 logger.info('event', { message: 'ready' });
 ```
 <a name="runOuroboros"></a>

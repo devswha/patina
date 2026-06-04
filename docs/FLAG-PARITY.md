@@ -11,9 +11,7 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 | `--exit-on <n>` | ✓ | — | CLI score-gate spelling for CI. |
 | `--ouroboros` | ✓ | ✓ | Iterative rewrite / score convergence loop. |
 | `--format <markdown\|text\|json>` | ✓ | — | CLI output-envelope feature. |
-| `--json` | ✓ | — | CLI alias for `--format json`; `patina doctor --json` also exists. |
 | `--quiet` | ✓ | — | CLI stderr log suppression for scripts. |
-| `--json-logs` | ✓ | — | CLI structured stderr logs for automation. |
 | `--batch` | ✓ | ✓ | Multi-file CLI/skill rewrite flow. |
 | `--in-place` | ✓ | ✓ | Batch-only write mode. |
 | `--suffix <ext>` | ✓ | ✓ | Batch-only alternate output naming. |
@@ -26,9 +24,8 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 | `--api-key-file <path>` | ✓ | — | CLI auth. |
 | `--base-url <url>` | ✓ | — | CLI provider/backend config. |
 | `--backend <name[,name]>` | ✓ | — | CLI backend selection and explicit fallback chains (`openai-http`, `codex-cli`, `claude-cli`, `gemini-cli`). |
-| `--list-backends` | ✓ | — | CLI diagnostics. |
+| `--list-backends` | ✓ | — | CLI diagnostics with selectors and auth state. |
 | `--provider <name>` | ✓ | — | CLI provider preset. |
-| `--list-providers` | ✓ | — | CLI diagnostics. |
 | `--config <path>` | ✓ | — | CLI config override. |
 | `--allow-insecure-base-url` | ✓ | — | CLI network safety override. |
 | `--allow-private-base-url` | ✓ | — | CLI SSRF/metadata-address safety override. |

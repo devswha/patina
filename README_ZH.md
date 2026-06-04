@@ -189,7 +189,6 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 | `--format json\|text\|markdown` | 选择 JSON、纯文本或默认 Markdown 输出 |
 | `--quiet` | 隐藏 stderr 中的状态、警告和进度日志 |
 | `--json-logs` | 以 NDJSON 输出 stderr 日志，包含 `level`、`event`、`model`、`latency_ms` 字段 |
-| `--prompt-mode strict\|minimal\|auto` | 选择完整模式包提示、压缩提示，或按后端自动选择 |
 
 完整选项请运行 `patina --help`。`patina doctor --json` 可在不调用 LLM 的情况下检查 Node/backend/tmux/API-key 状态，`patina init` 会写入项目 `.patina.yaml`。
 
@@ -200,10 +199,6 @@ Markdown-heavy 工程流程可使用开发者原生 profile shortcut：`code-com
 `--score` 和 `--audit` 测量的信号范围比 `--rewrite` 略广。viral-hook 包（`ko/en/zh/ja-viral-hook`，每种语言 9 个模式：数字震撼钩子、标题党收尾、跳过来源的权威断言、适合呼吸节奏的短句堆叠、夸张互动词汇、伪统计引用、头衔堆叠、未来自我承诺、格言式收束句）为**仅检测**模式。
 
 这些信号只会出现在评分和审计中，用来让基准更贴近用户对四种语言 SNS 营销文案的直觉。`--rewrite`/`--diff`/`--ouroboros` 会跳过它们，因为这些信号往往是有意的修辞。实例: [`examples/viral-hook/`](examples/viral-hook/).
-
-### 提示模式调优 (v3.11)
-
-`--prompt-mode strict|minimal|auto` 可在完整模式包（约 34KB 结构化提示）和压缩的轻量指令（约 3KB）之间取舍。`auto` 会按后端选择 — Gemini 在 minimal 下表现更好（长结构化提示会让它过度受限），Claude 能利用完整模式包，Codex 大致不敏感。case-05 记录了 A/B 结果。
 
 ### 短文本评分增强 (v3.11)
 

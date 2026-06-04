@@ -32,7 +32,6 @@ Glob .patina.default.yaml → Read
 - `output`: 출력 모드 (`rewrite` | `diff` | `audit` | `score`)
 - `blocklist`: 추가 감지 어휘
 - `allowlist`: 감지 제외 어휘
-- `prompt-mode`: 프롬프트 로딩 방식 (`strict` | `minimal` | `auto`, 기본: `strict`)
 
 `$ARGUMENTS`에서 옵션을 파싱하여 설정을 오버라이드:
 - `--profile <name>`: 프로필 변경
@@ -42,7 +41,6 @@ Glob .patina.default.yaml → Read
 - `--ouroboros`: ouroboros 모드 (반복 교정 + 점수 수렴)
 - `--lang <code>`: 처리 언어 변경 (ko, en, zh, ja). 설정 파일의 `language` 값을 오버라이드한다.
 - `--tone <name>`: 톤 카테고리 지정. 유효값: `casual | professional | academic | narrative | marketing | instructional | auto`. 알 수 없는 값이면 즉시 오류: "Unknown tone '<name>'. Valid tones: casual, professional, academic, narrative, marketing, instructional, auto"
-- `--prompt-mode <strict|minimal|auto>`: 패턴 팩 전체를 쓰는 strict 모드와 압축 지시문 minimal 모드 중 선택한다. `auto`는 백엔드/문맥별로 선택하되, 불확실하면 strict를 사용한다.
 - `--batch <files>`: 여러 파일을 한꺼번에 처리 (glob 또는 명시적 경로 목록).
   - `--in-place`: 원본 파일을 교정된 텍스트로 덮어쓴다.
   - `--suffix <ext>`: 결과를 `{원본명}{ext}` 파일로 저장한다 (예: `--suffix .humanized`).

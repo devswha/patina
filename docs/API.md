@@ -147,14 +147,8 @@ still be genuinely human and we avoid claiming absolute proof.</p>
 <dt><a href="#createCancellationController">createCancellationController([options])</a> ⇒ <code>Object</code></dt>
 <dd><p>Create a SIGINT-aware cancellation controller for long-running CLI operations.</p>
 </dd>
-<dt><a href="#resolvePromptMode">resolvePromptMode(mode, context)</a> ⇒ <code>string</code></dt>
-<dd><p>Resolve the effective prompt style for backend/model auto mode.</p>
-</dd>
 <dt><a href="#resolveProfileForLanguage">resolveProfileForLanguage(profileName, lang, [logger])</a> ⇒ <code>string</code></dt>
 <dd><p>Resolve a profile name against language-specific profile limits.</p>
-</dd>
-<dt><a href="#resolveConfiguredPromptMode">resolveConfiguredPromptMode([options])</a> ⇒ <code>string</code></dt>
-<dd><p>Choose the configured prompt mode before backend/model auto-resolution.</p>
 </dd>
 <dt><a href="#loadConfig">loadConfig([path])</a> ⇒ <code>object</code></dt>
 <dd><p>Load default config and merge global/project .patina.yaml overrides.</p>
@@ -558,29 +552,6 @@ Create a SIGINT-aware cancellation controller for long-running CLI operations.
 const cancellation = createCancellationController();
 cancellation.install();
 ```
-<a name="resolvePromptMode"></a>
-
-## resolvePromptMode(mode, context) ⇒ <code>string</code>
-Resolve the effective prompt style for backend/model auto mode.
-
-**Kind**: global function
-**Returns**: <code>string</code> - Resolved prompt mode.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| mode | <code>string</code> | Requested prompt mode: auto, strict, or minimal. |
-| context | <code>object</code> | Backend selection context. |
-| [context.backend] | <code>string</code> | Backend name. |
-| [context.model] | <code>string</code> | Model id. |
-
-**Example**
-```js
-const mode = resolvePromptMode('auto', { model: 'gemini-2.5-flash' });
-```
 <a name="resolveProfileForLanguage"></a>
 
 ## resolveProfileForLanguage(profileName, lang, [logger]) ⇒ <code>string</code>
@@ -602,28 +573,6 @@ Resolve a profile name against language-specific profile limits.
 **Example**
 ```js
 resolveProfileForLanguage('namuwiki', 'en') // 'default'
-```
-<a name="resolveConfiguredPromptMode"></a>
-
-## resolveConfiguredPromptMode([options]) ⇒ <code>string</code>
-Choose the configured prompt mode before backend/model auto-resolution.
-
-**Kind**: global function
-**Returns**: <code>string</code> - Requested prompt mode.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| [options] | <code>object</code> | Prompt-mode sources. |
-| [options.cliPromptMode] | <code>string</code> | CLI --prompt-mode value. |
-| [options.configPromptMode] | <code>string</code> | Config prompt-mode value. |
-
-**Example**
-```js
-const requested = resolveConfiguredPromptMode();
 ```
 <a name="loadConfig"></a>
 
@@ -1124,7 +1073,6 @@ Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.
 | options.text | <code>string</code> |  | Input text. |
 | [options.mode] | <code>string</code> | <code>&quot;rewrite&quot;</code> | Output mode. |
 | [options.tone] | <code>object</code> \| <code>null</code> | <code></code> | Tone resolution metadata. |
-| [options.promptMode] | <code>string</code> | <code>&quot;strict&quot;</code> | Prompt mode: strict or minimal. |
 
 **Example**
 ```js

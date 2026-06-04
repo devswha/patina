@@ -232,7 +232,7 @@ test('stripSelfAudit: missing [BODY] strips audit and warns', () => {
   }
   assert.equal(logs.length, 1);
   assert.match(logs[0], /omitted \[BODY\] tags/);
-  assert.match(logs[0], /--prompt-mode strict/);
+  assert.match(logs[0], /Try a different backend/);
 });
 
 test('stripSelfAudit: only applied to rewrite/ouroboros modes', () => {
@@ -243,45 +243,8 @@ test('stripSelfAudit: only applied to rewrite/ouroboros modes', () => {
   assert.ok(audit.includes('[SELF_AUDIT]'));
 });
 
-// --- resolvePromptMode (v3.11 Phase 3.3) ---
-
-import { resolveConfiguredPromptMode, resolvePromptMode } from '../../src/cli.js';
-import { validateScoreWeights } from '../../src/output.js';
-
-test('resolvePromptMode: strict passes through unchanged', () => {
-  assert.equal(resolvePromptMode('strict', { backend: 'codex-cli' }), 'strict');
-  assert.equal(resolvePromptMode('strict', { backend: 'gemini' }), 'strict');
-});
-
-test('resolvePromptMode: minimal passes through unchanged', () => {
-  assert.equal(resolvePromptMode('minimal', { backend: 'codex-cli' }), 'minimal');
-});
-
-test('resolvePromptMode: auto + gemini backend → minimal', () => {
-  assert.equal(resolvePromptMode('auto', { backend: 'gemini' }), 'minimal');
-  assert.equal(resolvePromptMode('auto', { backend: '', model: 'gemini-3-flash-preview' }), 'minimal');
-});
-
-test('resolvePromptMode: auto + claude model → strict', () => {
-  assert.equal(resolvePromptMode('auto', { backend: '', model: 'claude-sonnet-4-6' }), 'strict');
-});
-
-test('resolvePromptMode: auto + codex-cli → strict (default)', () => {
-  assert.equal(resolvePromptMode('auto', { backend: 'codex-cli' }), 'strict');
-});
-
-test('resolvePromptMode: auto + unknown → strict (conservative)', () => {
-  assert.equal(resolvePromptMode('auto', { backend: 'openai-http', model: 'gpt-5.5' }), 'strict');
-  assert.equal(resolvePromptMode('auto', {}), 'strict');
-});
-
-test('resolveConfiguredPromptMode defaults to strict unless overridden', () => {
-  assert.equal(resolveConfiguredPromptMode({}), 'strict');
-  assert.equal(resolveConfiguredPromptMode({ configPromptMode: 'strict' }), 'strict');
-  assert.equal(resolveConfiguredPromptMode({ cliPromptMode: 'auto', configPromptMode: 'strict' }), 'auto');
-});
-
 // --- validateScoreWeights (v3.11 Phase 1.3) ---
+import { validateScoreWeights } from '../../src/output.js';
 
 test('validateScoreWeights: matches → no warnings', () => {
   const output = `| Category | Weight | Detected | Raw | Weighted |

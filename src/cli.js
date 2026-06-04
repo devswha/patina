@@ -11,7 +11,7 @@ import { buildPrompt } from './prompt-builder.js';
 import { invokeBackendChain, selectBackendChain, listBackends, listBackendNames, resolveBackend } from './backends/index.js';
 import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from './security.js';
-import { formatOutput, validateScoreWeights } from './output.js';
+import { formatOutput, validateScoreWeights, buildDeterministicAuditBackstop } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals, scoreMPS, scoreText } from './scoring.js';
@@ -356,14 +356,18 @@ export async function main(args) {
         });
       }
 
+      const auditBackstop =
+        mode === 'audit' && (parsed.format ?? 'markdown') !== 'json' && !parsed.batch
+          ? buildDeterministicAuditBackstop(text, { lang, repoRoot })
+          : '';
       let output;
       let scoreValidationOutput = null;
       if (parsed.ouroboros) {
         const ouroborosBody = formatOuroborosOutput(result);
-        output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution, logger });
+        output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution, logger, auditBackstop });
         scoreValidationOutput = ouroborosBody;
       } else {
-        output = formatOutput(result, mode, parsed, { tone: toneResolution, logger });
+        output = formatOutput(result, mode, parsed, { tone: toneResolution, logger, auditBackstop });
         if (mode === 'score') {
           scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' }, { logger });
         }

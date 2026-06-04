@@ -188,7 +188,6 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 | `--quiet` | stderr의 상태, 경고, 진행 로그를 숨김 |
 | `--json-logs` | stderr 로그를 `level`, `event`, `model`, `latency_ms` 필드가 있는 NDJSON으로 출력 |
 | `--prompt-mode strict\|minimal\|auto` | 전체 패턴 팩 프롬프트, 압축 프롬프트, 백엔드별 자동 선택 |
-| `--variants <1-5>` | 사실과 의미 앵커를 유지한 여러 rewrite 변형 생성 |
 
 전체 옵션은 `patina --help`. `patina doctor --json`은 LLM 호출 없이 Node/backend/tmux/API-key 준비 상태를 점검하고, `patina init`은 프로젝트용 `.patina.yaml`을 씁니다.
 
@@ -205,17 +204,13 @@ Markdown 중심의 개발 워크플로우에는 개발자용 프로필 단축키
 
 `--prompt-mode strict|minimal|auto` 는 전체 패턴 팩(약 34KB 구조화 프롬프트)과 압축된 캐주얼 지시문(약 3KB) 사이의 균형을 선택합니다. `auto` 는 백엔드별로 선택합니다 — Gemini는 minimal에서 더 잘 동작하고(너무 긴 구조화 프롬프트에는 얽매이는 경향이 있음), Claude는 전체 팩을 활용하며, Codex는 대체로 차이가 작습니다. case-05가 A/B 결과를 문서화합니다.
 
-### 여러 스타일 변형 (v3.11)
-
-`--variants <1-5>` 는 한 번의 호출로 텍스트 톤을 여러 버전으로 나누어 요청합니다(예: V1 캐주얼, V2 직설적, V3 절제됨). 사실, 수치, 인과관계는 모든 변형에서 동일하게 유지됩니다. 각 결과는 `## Variant N` 형식으로 돌아오므로 원하는 보이스를 고를 수 있습니다.
-
 ### 짧은 텍스트 점수 보정 (v3.11)
 
 입력이 200자 이하이거나 3문단 이하이면 문장 스타일에 민감한 카테고리(`language`, `style`, `viral-hook`)에 1.5배 가중치를 주어, 짧은 단락의 미세한 어조 변화도 점수에 반영되게 합니다. case-04에서 긴 글 기준 공식이 이런 신호를 과소계산한다는 점을 확인했습니다.
 
 ### 자기검수 분리 (v3.11)
 
-rewrite 모드에서 모델은 `[BODY]`/`[/BODY]` 블록(또는 `--variants > 1`일 때 `[VARIANT n]` 블록)을 감싸는 `[SELF_AUDIT]`/`[/SELF_AUDIT]` 태그 안에 자기검수 메모를 냅니다. patina는 사용자에게 보여주기 전에 audit을 제거하므로 원시 출력이 깔끔합니다 — 이전 버전에서는 "남아 있는 AI 티"나 "Phase 3" 같은 프리앰블이 사용자-facing 텍스트에 새어 나오는 경우가 있었습니다.
+rewrite 모드에서 모델은 `[BODY]`/`[/BODY]` 블록을 감싸는 `[SELF_AUDIT]`/`[/SELF_AUDIT]` 태그 안에 자기검수 메모를 냅니다. patina는 사용자에게 보여주기 전에 audit을 제거하므로 원시 출력이 깔끔합니다 — 이전 버전에서는 "남아 있는 AI 티"나 "Phase 3" 같은 프리앰블이 사용자-facing 텍스트에 새어 나오는 경우가 있었습니다.
 
 ### 기계가 읽기 쉬운 출력과 종료 코드
 

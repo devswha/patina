@@ -251,9 +251,6 @@ still be genuinely human and we avoid claiming absolute proof.</p>
 </dd>
 <dt><a href="#shouldColorDiff">shouldColorDiff([options])</a></dt>
 <dd></dd>
-<dt><a href="#extractVariants">extractVariants(body)</a> ⇒ <code>Array.&lt;{id: number, text: string}&gt;</code></dt>
-<dd><p>Extract tagged [VARIANT n] blocks from a model response.</p>
-</dd>
 <dt><a href="#validateScoreWeights">validateScoreWeights(output, configWeights)</a> ⇒ <code>Array.&lt;string&gt;</code></dt>
 <dd><p>Validate that a model-emitted score table used configured category weights.</p>
 </dd>
@@ -1345,26 +1342,6 @@ const output = formatOutput('[BODY]Hi[/BODY]', 'rewrite');
 | [options.stdout] | <code>object</code> |
 | [options.stdout.isTTY] | <code>boolean</code> |
 
-<a name="extractVariants"></a>
-
-## extractVariants(body) ⇒ <code>Array.&lt;{id: number, text: string}&gt;</code>
-Extract tagged [VARIANT n] blocks from a model response.
-
-**Kind**: global function
-**Returns**: <code>Array.&lt;{id: number, text: string}&gt;</code> - Variants sorted by numeric id.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| body | <code>string</code> | Raw model response. |
-
-**Example**
-```js
-const variants = extractVariants('[VARIANT 1]\nHello\n[/VARIANT]');
-```
 <a name="validateScoreWeights"></a>
 
 ## validateScoreWeights(output, configWeights) ⇒ <code>Array.&lt;string&gt;</code>
@@ -1456,7 +1433,6 @@ Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.
 | [options.mode] | <code>string</code> | <code>&quot;rewrite&quot;</code> | Output mode. |
 | [options.tone] | <code>object</code> \| <code>null</code> | <code></code> | Tone resolution metadata. |
 | [options.promptMode] | <code>string</code> | <code>&quot;strict&quot;</code> | Prompt mode: strict or minimal. |
-| [options.variants] | <code>number</code> | <code>1</code> | Number of rewrite variants. |
 
 **Example**
 ```js

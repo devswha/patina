@@ -288,7 +288,7 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(help.includes('MODEL & AUTH'), 'help should group backend options');
     assert.ok(help.includes('ADVANCED'), 'help should group advanced options');
     assert.ok(help.includes('EXAMPLES'), 'help should include examples');
-    assert.ok(help.includes('--gate <n>'), 'help should document score gate');
+    assert.ok(help.includes('--exit-on <n>'), 'help should document score gate');
     assert.ok(help.includes('--format <fmt>'), 'help should document output format');
     assert.ok(help.includes('--quiet'), 'help should document quiet logs');
     assert.ok(help.includes('--json-logs'), 'help should document structured stderr logs');
@@ -398,7 +398,7 @@ describe('CLI End-to-End with Mock API', () => {
       const { errors } = await captureConsole(() => main([
         '--lang', 'en',
         '--score',
-        '--gate', '30',
+        '--exit-on', '30',
         '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
         testFile,
@@ -426,7 +426,7 @@ describe('CLI End-to-End with Mock API', () => {
       const { errors } = await captureConsole(() => main([
         '--lang', 'en',
         '--score',
-        '--gate', '30',
+        '--exit-on', '30',
         '--json-logs',
         '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
@@ -447,7 +447,7 @@ describe('CLI End-to-End with Mock API', () => {
     await startMockServer('This is the humanized result.');
   });
 
-  it('should accept --exit-on as the CI score gate alias', async () => {
+  it('should accept --exit-on as the CI score gate', async () => {
     callCount = 0;
     lastRequestBody = null;
     await stopMockServer();
@@ -474,17 +474,17 @@ describe('CLI End-to-End with Mock API', () => {
     await startMockServer('This is the humanized result.');
   });
 
-  it('should reject --gate outside score mode', async () => {
+  it('should reject --exit-on outside score mode', async () => {
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
 
     await assert.rejects(
       () => main([
-        '--gate', '30',
+        '--exit-on', '30',
         '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
         testFile,
       ]),
-      /--gate can only be used with --score/
+      /--exit-on can only be used with --score/
     );
   });
 

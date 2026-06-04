@@ -33,9 +33,10 @@ test('toShieldsEndpoint formats a valid Shields endpoint payload', () => {
   assert.equal(formatBadgeScore(18.6), '19%');
 });
 
-test('parseArgs defaults to README and validates numeric options', () => {
+test('parseArgs defaults to README and validates options', () => {
   assert.deepEqual(parseArgs([]).files, ['README.md']);
-  assert.throws(() => parseArgs(['--gate', '101']), /--gate expects/);
+  assert.throws(() => parseArgs(['--score-threshold', '101']), /--score-threshold expects/);
+  assert.throws(() => parseArgs(['--gate', '30']), /unknown option --gate/);
   assert.throws(() => parseArgs(['--max-files', '0']), /--max-files expects/);
 });
 

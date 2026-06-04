@@ -190,7 +190,6 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 | `--quiet` | 隐藏 stderr 中的状态、警告和进度日志 |
 | `--json-logs` | 以 NDJSON 输出 stderr 日志，包含 `level`、`event`、`model`、`latency_ms` 字段 |
 | `--prompt-mode strict\|minimal\|auto` | 选择完整模式包提示、压缩提示，或按后端自动选择 |
-| `--variants <1-5>` | 生成多个改写变体，同时保留相同事实和意义锚点 |
 
 完整选项请运行 `patina --help`。`patina doctor --json` 可在不调用 LLM 的情况下检查 Node/backend/tmux/API-key 状态，`patina init` 会写入项目 `.patina.yaml`。
 
@@ -206,17 +205,13 @@ Markdown-heavy 工程流程可使用开发者原生 profile shortcut：`code-com
 
 `--prompt-mode strict|minimal|auto` 可在完整模式包（约 34KB 结构化提示）和压缩的轻量指令（约 3KB）之间取舍。`auto` 会按后端选择 — Gemini 在 minimal 下表现更好（长结构化提示会让它过度受限），Claude 能利用完整模式包，Codex 大致不敏感。case-05 记录了 A/B 结果。
 
-### 多个风格变体 (v3.11)
-
-`--variants <1-5>` 会在一次调用中请求多个文本语气变体（例如 V1 casual、V2 direct、V3 measured）— 事实、数字和因果关系在所有变体中保持一致。每个结果会以 `## Variant N` 返回，方便你选择需要的语气。
-
 ### 短文本评分增强 (v3.11)
 
 当输入不超过 200 个字符或不超过 3 个段落时，对 register 敏感的类别（`language`、`style`、`viral-hook`）会获得 1.5 倍 severity multiplier，让单段文本里的声音变化也能体现在分数中。case-04 发现这些信号会被长文本公式低估。
 
 ### 自审隔离 (v3.11)
 
-在 rewrite 模式中，模型会把自审笔记放在 `[SELF_AUDIT]`/`[/SELF_AUDIT]` 标签内，并包裹一个 `[BODY]`/`[/BODY]` 块（当 `--variants > 1` 时则是 `[VARIANT n]` 块）。patina 会在展示给用户前移除审计内容，因此原始输出保持干净 — 早期版本有时会把 “남아 있는 AI 티” 或 “Phase 3” 之类的前言泄漏到用户可见文本中。
+在 rewrite 模式中，模型会把自审笔记放在 `[SELF_AUDIT]`/`[/SELF_AUDIT]` 标签内，并包裹一个 `[BODY]`/`[/BODY]` 块。patina 会在展示给用户前移除审计内容，因此原始输出保持干净 — 早期版本有时会把 “남아 있는 AI 티” 或 “Phase 3” 之类的前言泄漏到用户可见文本中。
 
 ### Machine-readable output and exit codes
 

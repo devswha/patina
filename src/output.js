@@ -42,11 +42,10 @@ export function formatOutput(result, mode, parsed = {}, opts = {}) {
 
 function renderFormattedBody(result, mode, parsed = {}, opts = {}) {
   let body = renderBody(result);
-  // Only rewrite and ouroboros emit [BODY]/[VARIANT n] tags; diff/audit/score
+  // Only rewrite and ouroboros emit [BODY] tags; diff/audit/score
   // emit tables and don't need the extraction step.
   if (mode === 'rewrite' || mode === 'ouroboros') {
-    const variants = extractVariants(body);
-    body = variants.length > 0 ? formatVariants(variants, body) : stripSelfAudit(body, { logger: opts.logger });
+    body = stripSelfAudit(body, { logger: opts.logger });
   }
   if (mode === 'diff') {
     body = colorizeDiff(body, { parsed, env: opts.env, stdout: opts.stdout });
@@ -90,44 +89,6 @@ function shouldColorDiff({ parsed = {}, env = process.env, stdout = process.stdo
   return !parsed.noColor && env.NO_COLOR === undefined && stdout?.isTTY === true;
 }
 
-// v3.11 Phase 3.1: extract [VARIANT n]...[/VARIANT] blocks from a model
-// response. Returns an array of { id, text } sorted by id, empty if no
-// variant tags are present.
-/**
- * Extract tagged [VARIANT n] blocks from a model response.
- *
- * @param {string} body Raw model response.
- * @returns {Array<{id: number, text: string}>} Variants sorted by numeric id.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
- * @example
- * const variants = extractVariants('[VARIANT 1]\nHello\n[/VARIANT]');
- */
-export function extractVariants(body) {
-  if (!body) return [];
-  const re = /\[VARIANT\s*(\d+)\]\s*\n([\s\S]*?)\n\s*\[\/VARIANT\]/g;
-  const out = [];
-  let m;
-  while ((m = re.exec(body)) !== null) {
-    const id = parseInt(m[1], 10);
-    const text = m[2].trim();
-    if (text) out.push({ id, text });
-  }
-  out.sort((a, b) => a.id - b.id);
-  return out;
-}
-
-function formatVariants(variants, raw) {
-  // Surface each variant with a labeled header so users can copy whichever
-  // voice they want. Strip [SELF_AUDIT] and any tail metadata that follows
-  // the last [/VARIANT] block, but preserve the YAML footer if present.
-  const lastClose = raw.lastIndexOf('[/VARIANT]');
-  const tail = lastClose >= 0
-    ? raw.slice(lastClose + '[/VARIANT]'.length).replace(/\[SELF_AUDIT\][\s\S]*?\[\/SELF_AUDIT\]/g, '').trim()
-    : '';
-  const blocks = variants.map(({ id, text }) => `## Variant ${id}\n\n${text}`);
-  const merged = blocks.join('\n\n');
-  return tail ? `${merged}\n\n${tail}` : merged;
-}
 
 // v3.11 Phase 1.3: parse the model's score table and check that the Weight
 // column matches the config-supplied category-weights. case-02 found that

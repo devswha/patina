@@ -13,7 +13,6 @@
  * @param {string} [options.mode=rewrite] Output mode.
  * @param {object|null} [options.tone=null] Tone resolution metadata.
  * @param {string} [options.promptMode=strict] Prompt mode: strict or minimal.
- * @param {number} [options.variants=1] Number of rewrite variants.
  * @returns {string} Complete prompt text.
  * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
@@ -30,7 +29,6 @@ export function buildPrompt({
   mode = 'rewrite',
   tone = null,
   promptMode = 'strict',
-  variants = 1,
 }) {
   // v3.11+ prompt-mode dispatch (case-04 hypothesis test). minimal prompt
   // strips pattern definitions/examples and uses a casual instruction; only
@@ -38,7 +36,7 @@ export function buildPrompt({
   // still passed through (Round 2 found Gemini ignored casual-conversation
   // when the profile was dropped).
   if (promptMode === 'minimal' && mode === 'rewrite') {
-    return buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, variants });
+    return buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone });
   }
 
   const lang = config.language || 'ko';
@@ -121,7 +119,7 @@ export function buildPrompt({
   prompt += `Process the following text according to the output mode "${mode}".\n\n`;
 
   if (mode === 'rewrite') {
-    prompt += buildRewriteInstructions(structurePacks, lexicalPacks, { variants });
+    prompt += buildRewriteInstructions(structurePacks, lexicalPacks);
   } else if (mode === 'diff') {
     prompt += buildDiffInstructions();
   } else if (mode === 'audit') {
@@ -138,7 +136,7 @@ export function buildPrompt({
   return prompt;
 }
 
-function buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAudit = true, variants = 1 } = {}) {
+function buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAudit = true } = {}) {
   const phaseCount = includeSelfAudit ? 3 : 2;
   let inst = `Follow the ${phaseCount}-Phase pipeline:\n\n`;
 
@@ -174,7 +172,7 @@ function buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAud
     inst += `3. Ensure Phase 1 corrections were not reverted in Phase 2\n`;
     inst += `4. Final check: meaning preserved?\n\n`;
 
-    inst += buildOutputFormatBlock({ variants });
+    inst += buildOutputFormatBlock();
   } else {
     // Self-audit suppressed: external evaluators (scoreText, scoreMPS,
     // scoreFidelity) handle AI-tell detection, polarity, and meaning checks
@@ -186,45 +184,22 @@ function buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAud
   return inst;
 }
 
-// v3.11: emit the strict-mode output-format block. Single-variant uses
-// [BODY]/[/BODY]; --variants > 1 uses [VARIANT n]/[/VARIANT] blocks.
-function buildOutputFormatBlock({ variants = 1 } = {}) {
-  const isVariants = variants > 1;
-  const tag = isVariants ? '[VARIANT n]/[/VARIANT]' : '[BODY]/[/BODY]';
-  const itemDesc = isVariants
-    ? `Produce ${variants} stylistic VARIANTS of the rewrite, each wrapped in ` +
-      `\`[VARIANT n]\`/\`[/VARIANT]\` tags where n is 1..${variants}. Each ` +
-      `variant must preserve all facts, numbers, and causation, but differ in ` +
-      `voice (e.g., V1 casual conversational, V2 direct/punchy, V3 measured/` +
-      `professional). No headings, no preamble inside the tags.`
-    : `The rewritten text wrapped in \`[BODY]\`/\`[/BODY]\` tags. The body ` +
-      `block must contain ONLY the user-facing rewrite — no headings, no ` +
-      `Phase labels, no preamble like "잔여 AI 티" or "최종 결과물".`;
-  const auditDesc = isVariants
-    ? `(brief: what differs across variants, residual AI signals, applied patterns)`
-    : `(brief: what still looks AI-written, which patterns were applied). ` +
-      `This block is for downstream review — patina strips it before showing the user`;
-
-  let exampleBody = '';
-  if (isVariants) {
-    for (let i = 1; i <= variants; i++) {
-      exampleBody += `[VARIANT ${i}]\n<rewritten text — voice ${i}>\n[/VARIANT]\n\n`;
-    }
-  } else {
-    exampleBody = `[BODY]\n<rewritten text>\n[/BODY]\n\n`;
-  }
-
+function buildOutputFormatBlock() {
   return (
     `### Output format (STRICT — v3.11)\n\n` +
     `Produce output in this exact order, with no other text outside the tagged blocks:\n\n` +
-    `1. ${itemDesc}\n` +
-    `2. Self-audit notes wrapped in \`[SELF_AUDIT]\`/\`[/SELF_AUDIT]\` tags ${auditDesc}.\n` +
+    `1. The rewritten text wrapped in \`[BODY]\`/\`[/BODY]\` tags. The body ` +
+      `block must contain ONLY the user-facing rewrite — no headings, no ` +
+      `Phase labels, no preamble like "잔여 AI 티" or "최종 결과물".\n` +
+    `2. Self-audit notes wrapped in \`[SELF_AUDIT]\`/\`[/SELF_AUDIT]\` tags ` +
+      `(brief: what still looks AI-written, which patterns were applied). ` +
+      `This block is for downstream review — patina strips it before showing the user.\n` +
     `3. The Phase 6 YAML footer if tone resolution requires it.\n\n` +
-    `Example shape (uses ${tag}):\n\n` +
+    `Example shape (uses [BODY]/[/BODY]):\n\n` +
     '```\n' +
-    exampleBody +
-    `[SELF_AUDIT]\n- ${isVariants ? 'voice axis' : 'residual signals'}: ...\n` +
-    `- ${isVariants ? 'residual signals' : 'patterns applied'}: ...\n[/SELF_AUDIT]\n\n` +
+    `[BODY]\n<rewritten text>\n[/BODY]\n\n` +
+    `[SELF_AUDIT]\n- residual signals: ...\n` +
+    `- patterns applied: ...\n[/SELF_AUDIT]\n\n` +
     `---\ntone: ...\ntone_source: ...\ntone_evidence: [...]\ntone_confidence: ...\n---\n` +
     '```\n'
   );
@@ -314,7 +289,7 @@ export function isShortText(text) {
 // model's natural voice prior isn't overridden by analytical framing. Only
 // invoked for rewrite mode; score/audit/diff/ouroboros stay on the strict
 // path because they need precise pattern references.
-function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, variants = 1 }) {
+function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone }) {
   const lang = config.language || 'ko';
   const activePatterns = patterns.filter((p) => !p.isScoreOnly);
 
@@ -358,16 +333,9 @@ function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone
   }
 
   prompt += lang === 'ko' ? `## 출력 형식\n\n` : `## Output format\n\n`;
-  if (variants > 1) {
-    prompt += `1. ${variants}개 voice variant를 각각 \`[VARIANT 1]\` ~ \`[VARIANT ${variants}]\` ` +
-      `태그 안에. 사실·숫자·인과관계는 동일하되 voice만 다르게 (예: V1 캐주얼 대화체, V2 직설·짧은 문장, V3 정중·차분).\n`;
-    prompt += `2. \`[SELF_AUDIT]\` ... \`[/SELF_AUDIT]\` 안에 짧게: variant별 voice 차이, 남은 AI 신호.\n`;
-    prompt += `3. 톤 정보가 있으면 마지막에 YAML 푸터.\n\n`;
-  } else {
-    prompt += `1. 다듬은 본문을 \`[BODY]\` ... \`[/BODY]\` 안에. 본문만, 머리말·메타·"최종 결과물" 같은 라벨 없이.\n`;
-    prompt += `2. \`[SELF_AUDIT]\` ... \`[/SELF_AUDIT]\` 안에 짧게: 어떤 부분 손봤는지, 남은 AI 신호 있는지.\n`;
-    prompt += `3. 톤 정보가 있으면 마지막에 YAML 푸터: \`---\\ntone: ...\\ntone_source: ...\\ntone_evidence: [...]\\ntone_confidence: ...\\n---\`\n\n`;
-  }
+  prompt += `1. 다듬은 본문을 \`[BODY]\` ... \`[/BODY]\` 안에. 본문만, 머리말·메타·"최종 결과물" 같은 라벨 없이.\n`;
+  prompt += `2. \`[SELF_AUDIT]\` ... \`[/SELF_AUDIT]\` 안에 짧게: 어떤 부분 손봤는지, 남은 AI 신호 있는지.\n`;
+  prompt += `3. 톤 정보가 있으면 마지막에 YAML 푸터: \`---\\ntone: ...\\ntone_source: ...\\ntone_evidence: [...]\\ntone_confidence: ...\\n---\`\n\n`;
 
   prompt += lang === 'ko' ? `## 입력\n\n${text}\n\n` : `## Input\n\n${text}\n\n`;
   prompt += lang === 'ko' ? `## 출력\n\n` : `## Output\n\n`;

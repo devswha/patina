@@ -190,7 +190,6 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 | `--quiet` | stderr の状態・警告・進捗ログを抑制 |
 | `--json-logs` | `level`、`event`、`model`、`latency_ms` を持つ NDJSON として stderr ログを出力 |
 | `--prompt-mode strict\|minimal\|auto` | 完全なパターンパック、圧縮プロンプト、またはバックエンド別 auto を選択 |
-| `--variants <1-5>` | 同じ事実と意味アンカーを保った複数の rewrite バリアントを生成 |
 
 全オプションは `patina --help`。`patina doctor --json` は LLM 呼び出しなしで Node/backend/tmux/API-key の準備状況を確認し、`patina init` はプロジェクト用 `.patina.yaml` を書きます。
 
@@ -206,17 +205,13 @@ Markdown 中心の開発ワークフローには、開発者向け profile short
 
 `--prompt-mode strict|minimal|auto` では、完全なパターンパック（約34KBの構造化プロンプト）と圧縮されたカジュアル指示（約3KB）のどちらを使うかを調整できます。`auto` はバックエンドごとに選択します — Gemini は minimal の方が良く（長い構造化プロンプトで過度に制約されるため）、Claude は完全なパックを活用し、Codex はおおむね影響を受けません。case-05 が A/B を記録しています。
 
-### 複数の文体バリアント (v3.11)
-
-`--variants <1-5>` は、1回の呼び出しで複数のトーン変体を求めます（例: V1 casual、V2 direct、V3 measured）。事実、数値、因果関係はすべてのバリアントで同一に保たれます。各結果は `## Variant N` として返るため、必要な声色を選べます。
-
 ### 短文スコアリング補正 (v3.11)
 
 入力が200文字以下、または3段落以下の場合、register に敏感なカテゴリ（`language`、`style`、`viral-hook`）へ 1.5 倍の severity multiplier を適用し、単一段落の声色変化もスコアに反映されるようにします。case-04 では、長文向けの式がこれらを過小評価していたことが確認されました。
 
 ### セルフ監査の分離 (v3.11)
 
-rewrite モードでは、モデルは `[BODY]`/`[/BODY]` ブロック（`--variants > 1` の場合は `[VARIANT n]` ブロック）を囲む `[SELF_AUDIT]`/`[/SELF_AUDIT]` タグの中にセルフ監査メモを出力します。patina はユーザーに表示する前に監査部分を取り除くため、出力はクリーンです — 以前のバージョンでは "남아 있는 AI 티" や "Phase 3" のような前置きがユーザー向けテキストに漏れることがありました。
+rewrite モードでは、モデルは `[BODY]`/`[/BODY]` ブロックを囲む `[SELF_AUDIT]`/`[/SELF_AUDIT]` タグの中にセルフ監査メモを出力します。patina はユーザーに表示する前に監査部分を取り除くため、出力はクリーンです — 以前のバージョンでは "남아 있는 AI 티" や "Phase 3" のような前置きがユーザー向けテキストに漏れることがありました。
 
 ### Machine-readable output and exit codes
 

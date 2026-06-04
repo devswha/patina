@@ -189,7 +189,6 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 | `--format json\|text\|markdown` | JSON、プレーンテキスト、デフォルト Markdown 出力を選択 |
 | `--quiet` | stderr の状態・警告・進捗ログを抑制 |
 | `--json-logs` | `level`、`event`、`model`、`latency_ms` を持つ NDJSON として stderr ログを出力 |
-| `--prompt-mode strict\|minimal\|auto` | 完全なパターンパック、圧縮プロンプト、またはバックエンド別 auto を選択 |
 
 全オプションは `patina --help`。`patina doctor --json` は LLM 呼び出しなしで Node/backend/tmux/API-key の準備状況を確認し、`patina init` はプロジェクト用 `.patina.yaml` を書きます。
 
@@ -200,10 +199,6 @@ Markdown 中心の開発ワークフローには、開発者向け profile short
 `--score`と`--audit`は`--rewrite`より少し広い範囲のシグナルを測定します。viral-hook パック（`ko/en/zh/ja-viral-hook`、各9パターン: 数字ショックフック、クリックベイト末尾、出典を飛ばした権威主張、息継ぎに最適化された短文の積み重ね、誇張されたエンゲージメント語彙、偽統計引用、肩書き積み上げ、未来の自分への約束、警句的パンチライン）は**検出専用**です。
 
 これらのシグナルはスコアと監査にだけ現れ、4言語のSNSマーケティングコピーに対するユーザーの直感とベンチマークを揃えるために使います。`--rewrite`/`--diff`/`--ouroboros` は、意図的な修辞であることが多いので対象外です。実例: [`examples/viral-hook/`](examples/viral-hook/).
-
-### プロンプトモード調整 (v3.11)
-
-`--prompt-mode strict|minimal|auto` では、完全なパターンパック（約34KBの構造化プロンプト）と圧縮されたカジュアル指示（約3KB）のどちらを使うかを調整できます。`auto` はバックエンドごとに選択します — Gemini は minimal の方が良く（長い構造化プロンプトで過度に制約されるため）、Claude は完全なパックを活用し、Codex はおおむね影響を受けません。case-05 が A/B を記録しています。
 
 ### 短文スコアリング補正 (v3.11)
 

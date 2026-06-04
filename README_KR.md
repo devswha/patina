@@ -187,7 +187,6 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 | `--format json\|text\|markdown` | JSON, 일반 텍스트, 기본 Markdown 출력 선택 |
 | `--quiet` | stderr의 상태, 경고, 진행 로그를 숨김 |
 | `--json-logs` | stderr 로그를 `level`, `event`, `model`, `latency_ms` 필드가 있는 NDJSON으로 출력 |
-| `--prompt-mode strict\|minimal\|auto` | 전체 패턴 팩 프롬프트, 압축 프롬프트, 백엔드별 자동 선택 |
 
 전체 옵션은 `patina --help`. `patina doctor --json`은 LLM 호출 없이 Node/backend/tmux/API-key 준비 상태를 점검하고, `patina init`은 프로젝트용 `.patina.yaml`을 씁니다.
 
@@ -199,10 +198,6 @@ Markdown 중심의 개발 워크플로우에는 개발자용 프로필 단축키
 `--score`와 `--audit`는 `--rewrite`보다 약간 더 넓은 신호를 측정합니다. viral-hook 팩(`ko/en/zh/ja-viral-hook`, 각 9개 패턴: 숫자 충격 훅, 클릭베이트 종결, 출처 회피 권위 주장, 호흡 최적화 단문 배열, 과장된 참여 유도 어휘, 가짜 통계 인용, 권위 타이틀 쌓기, 미래의 나/친밀한 2인칭 약속, 경구형 펀치라인)은 **탐지 전용**입니다.
 
 이 신호들은 score와 audit에만 나타나 네 언어의 SNS 마케팅 카피에 대한 사용자 직관과 벤치마크를 맞춥니다. `--rewrite`/`--diff`/`--ouroboros`는 이런 표현이 의도된 수사일 수 있어 건너뜁니다. 실제 데모: [`examples/viral-hook/`](examples/viral-hook/).
-
-### 프롬프트 모드 튜닝 (v3.11)
-
-`--prompt-mode strict|minimal|auto` 는 전체 패턴 팩(약 34KB 구조화 프롬프트)과 압축된 캐주얼 지시문(약 3KB) 사이의 균형을 선택합니다. `auto` 는 백엔드별로 선택합니다 — Gemini는 minimal에서 더 잘 동작하고(너무 긴 구조화 프롬프트에는 얽매이는 경향이 있음), Claude는 전체 팩을 활용하며, Codex는 대체로 차이가 작습니다. case-05가 A/B 결과를 문서화합니다.
 
 ### 짧은 텍스트 점수 보정 (v3.11)
 

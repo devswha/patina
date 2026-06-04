@@ -221,10 +221,6 @@ rewrite モードでは、モデルは `[BODY]`/`[/BODY]` ブロックを囲む 
 
 `--score` 実行時は、モデルが出力した Weight 列を設定の `category-weights` と照合します。モデルが存在しないカテゴリ（例: `discord`）を作ったり、別の数値に置き換えたりした場合、stderr に `[patina]` 警告が出ます — これは観測用であり、weight check 自体はスコアを変更しません。`src/features/*` からの deterministic shadow score も記録され、LLM スコアと 20 点以上ずれた場合は警告し、gate には悲観的な方の値を使います。
 
-`--save-run <dir>` は manifest schema v2 を書きます。結果エントリには prompt/response hash、取得できる input/output token count、temperature/seed、score details、provider が返す場合の per-call cost、Ouroboros iteration logs が入ります。
-
-繰り返し benchmark する場合は、`--cache <dir>` または `PATINA_CACHE_DIR` で HTTP response cache を有効にできます。Cache key には prompt、model、temperature、API host が入り、`--cache-ttl <sec>` で期限を制御し、`--no-cache` で fresh run に戻せます。cached run の最後には hit/miss/write stats が出ます。
-
 `--voice-sample <path>` または config の `voice-sample: <path>` を使うと、自分が書いた 1〜3 段落を rewrite のアンカーにできます。Profile と tone は引き続き目標 register を決め、sample は cadence、specificity、POV、sentence texture だけを教えます。prompt は sample facts の取り込みを明示的に禁止します。
 
 ## トーン

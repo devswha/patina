@@ -3,7 +3,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import { main } from '../../src/cli.js';
 import { fileURLToPath } from 'node:url';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
@@ -371,105 +371,6 @@ describe('CLI End-to-End with Mock API', () => {
     await startMockServer('This is the humanized result.');
   });
 
-  it('should record LLM and deterministic scores in save-run manifests', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    await stopMockServer();
-    await startMockServer('{ "overall": 23, "interpretation": "mostly human" }', 200, {
-      model: 'mock-score-model',
-      usage: {
-        prompt_tokens: 321,
-        completion_tokens: 12,
-        cost_usd: 0.0042,
-      },
-    });
-
-    const outDir = mkdtempSync(join(tmpdir(), 'patina-save-run-'));
-    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
-    await captureConsole(() => main([
-      '--lang', 'en',
-      '--score',
-      '--save-run', outDir,
-      '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
-      testFile,
-    ]));
-
-    const manifest = JSON.parse(readFileSync(resolve(outDir, 'manifest.json'), 'utf8'));
-    assert.strictEqual(manifest.manifestVersion, '2');
-    const scores = manifest.results[0].scores;
-    assert.strictEqual(scores.llm.overall, 23);
-    assert.equal(typeof scores.deterministic.overall, 'number');
-    assert.match(manifest.results[0].responseHash, /^sha256:[0-9a-f]{64}$/);
-    assert.strictEqual(manifest.results[0].tokensIn, 321);
-    assert.strictEqual(manifest.results[0].tokensOut, 12);
-    assert.strictEqual(manifest.results[0].temperature, 0.7);
-    assert.strictEqual(manifest.results[0].cost.amount, 0.0042);
-    assert.strictEqual(manifest.results[0].calls[0].model, 'mock-score-model');
-    assert.strictEqual(manifest.results[0].calls[0].tokensIn, 321);
-    await stopMockServer();
-    await startMockServer('This is the humanized result.');
-  });
-
-  it('uses --cache for repeated prompt/model/temperature calls and reports stats', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    await stopMockServer();
-    await startMockServer('Cached humanized result.');
-
-    const cacheDir = mkdtempSync(join(tmpdir(), 'patina-response-cache-'));
-    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
-    const args = [
-      '--lang', 'en',
-      '--cache', cacheDir,
-      '--cache-ttl', '3600',
-      '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
-      testFile,
-    ];
-
-    const first = await captureConsole(() => main(args));
-    const second = await captureConsole(() => main(args));
-
-    assert.strictEqual(callCount, 1, 'second identical run should use cache');
-    assert.match(first.errors.join('\n'), /cache hits 0, misses 1, writes 1/);
-    assert.match(second.errors.join('\n'), /cache hits 1, misses 0, writes 0/);
-    assert.match(second.logs.join('\n'), /Cached humanized result\./);
-
-    await stopMockServer();
-    await startMockServer('This is the humanized result.');
-  });
-
-  it('uses PATINA_CACHE_DIR and lets --no-cache bypass it', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    await stopMockServer();
-    await startMockServer('Env cached result.');
-
-    const cacheDir = mkdtempSync(join(tmpdir(), 'patina-env-cache-'));
-    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
-    await withEnv({ PATINA_CACHE_DIR: cacheDir, PATINA_CACHE_TTL_SECONDS: '3600' }, async () => {
-      await captureConsole(() => main([
-        '--lang', 'en',
-        '--api-key-file', mockApiKeyPath,
-        '--base-url', `http://127.0.0.1:${mockPort}`,
-        testFile,
-      ]));
-      const bypass = await captureConsole(() => main([
-        '--lang', 'en',
-        '--no-cache',
-        '--api-key-file', mockApiKeyPath,
-        '--base-url', `http://127.0.0.1:${mockPort}`,
-        testFile,
-      ]));
-
-      assert.strictEqual(callCount, 2, '--no-cache should force a fresh HTTP call');
-      assert.ok(!bypass.errors.some((line) => line.includes('cache hits')), bypass.errors.join('\n'));
-    });
-
-    await stopMockServer();
-    await startMockServer('This is the humanized result.');
-  });
 
   it('should suppress stderr status and warnings with --quiet', async () => {
     callCount = 0;

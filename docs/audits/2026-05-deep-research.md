@@ -1,6 +1,6 @@
 # patina 저장소 심층 분석 보고서
 
-> **Archive note:** 이 보고서는 MAX mode, hosted backend, `--card`, inline `--api-key` 제거 전 스냅샷이다. 아래 CLI surface 관찰은 당시 기준이며 현재 도움말/문서의 source of truth가 아니다.
+> **Archive note:** 이 보고서는 MAX mode, hosted backend, `--card`, inline `--api-key`, `--save-run`, response cache 제거 전 스냅샷이다. 아래 CLI surface 관찰은 당시 기준이며 현재 도움말/문서의 source of truth가 아니다.
 
 ## 경영진 요약
 

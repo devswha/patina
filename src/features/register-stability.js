@@ -11,7 +11,7 @@ import { splitProseSentences } from './segment.js';
 // Sentence-final ending vocabulary. Order matters — longer/more-specific forms
 // first so e.g. 합니다 matches 합쇼체 before 다 falls through to 해라체.
 // Mirrors patina-max/composite.py _ENDING_PATTERNS.
-const ENDING_PATTERNS = [
+const ENDING_PATTERNS = /** @type {Array<[string, RegExp]>} */ ([
   // 합쇼체 (deferential formal): ~ㅂ니다 / ~습니다 / ~ㅂ니까 / ~십시오
   ['hapsho', /(?:[가-힣]니다|[가-힣]니까|[가-힣]시오|십시오|십시요)$/],
   // 해요체 (polite informal)
@@ -20,7 +20,7 @@ const ENDING_PATTERNS = [
   ['haera', /(?:[가-힣]는다|한다|[가-힣]다|하라|마라|보라|들라|[가-힣]아라|[가-힣]어라|[가-힣]라)$/],
   // 해체 (casual / 반말)
   ['hae', /(?:해|야|아|어|네|군|지)$/],
-];
+]);
 
 const TRAILING_PUNCT = /[\s.,!?;:。、]+$/;
 
@@ -34,7 +34,7 @@ function stripFences(text) {
  * @returns {Record<string, number>} e.g. { hapsho: 3, haera: 1 }
  */
 export function endingDistribution(text) {
-  const dist = {};
+  const dist = /** @type {Record<string, number>} */ ({});
   for (const sentence of splitProseSentences(stripFences(text))) {
     const tail = sentence.replace(TRAILING_PUNCT, '');
     if (!tail) continue;

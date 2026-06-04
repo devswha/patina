@@ -100,16 +100,3 @@ patina --provider together --lang ko input.txt
 
 `--provider`는 알맞은 base URL, default model을 설정하고 provider-specific API key env var를 읽습니다. `--base-url`, `--model`, `--api-key-file`로 각각 덮어쓸 수 있습니다.
 
-## MAX mode dispatch
-
-Claude Code `/patina-max` skill은 HTTP를 완전히 우회합니다. local CLI로 dispatch합니다.
-
-| Model | Dispatch | Auth |
-|-------|----------|------|
-| `claude` | `claude -p` | Claude Code |
-| `codex` | `codex exec --skip-git-repo-check --output-last-message` | ChatGPT OAuth |
-| `gemini` | `gemini -p '' --output-format text` | Google AI Studio |
-
-Claude Code 경로에서는 `PATINA_API_KEY`가 필요 없습니다.
-
-Standalone CLI MAX(`patina --models <list>`)는 더 이상 HTTP-only가 아닙니다. `--models`에는 local CLI backend 이름(`claude-cli`, `codex-cli`, `gemini-cli`), shorthand alias(`claude`, `codex`, `gemini`), 그리고 HTTP model ID를 함께 넣을 수 있습니다. local 항목은 로그인된 CLI backend를 사용하므로 `PATINA_API_KEY`가 필요 없습니다. HTTP 항목은 여전히 선택한 `--base-url` endpoint를 사용하므로, 해당 provider가 그 model ID를 제공해야 합니다. HTTP provider를 섞으려면(OpenAI + Anthropic + Google) `--base-url`을 OpenRouter나 다른 multi-provider gateway로 지정하세요.

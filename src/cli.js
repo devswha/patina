@@ -12,7 +12,6 @@ import { invokeBackendChain, selectBackendChain, listBackends, listBackendNames,
 import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from './security.js';
 import { formatOutput, validateScoreWeights, buildDeterministicAuditBackstop } from './output.js';
-import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from './scoring.js';
 import { callLLM, DEFAULT_TEMPERATURE } from './api.js';
@@ -70,13 +69,6 @@ export async function main(args) {
     return;
   }
 
-  if (parsed.models && parsed.variants && parsed.variants > 1) {
-    throw inputError(
-      '--variants is not supported with --models/MAX mode yet',
-      'MAX mode already fans out across models, so variant fan-out is ambiguous.',
-      'Omit --variants or run one model at a time.'
-    );
-  }
 
   if (parsed.gate !== undefined && !parsed.score) {
     throw inputError(
@@ -205,7 +197,6 @@ export async function main(args) {
           resolveConfiguredPromptMode({
             cliPromptMode: parsed.promptMode,
             configPromptMode: config['prompt-mode'],
-            isMaxMode: Boolean(parsed.models),
           }),
           { backend: parsed.backend ?? config.backend, model: resolved.model }
         ),
@@ -214,22 +205,7 @@ export async function main(args) {
 
       let result;
 
-      if (parsed.models) {
-        result = await runMaxMode({
-          prompt,
-          sourceText: text,
-          models: parsed.models,
-          apiKey: resolved.apiKey,
-          baseURL: resolved.baseURL,
-          config,
-          patterns,
-          maxConcurrency: parsed.maxConcurrency,
-          wallClockBudgetMs: parsed.maxTimeoutSeconds === undefined ? undefined : parsed.maxTimeoutSeconds * 1000,
-          callLLM: trackedCallLLM,
-          signal: cancellation.signal,
-          logger,
-        });
-      } else if (parsed.ouroboros) {
+      if (parsed.ouroboros) {
         result = await runOuroboros({
           config,
           patterns,
@@ -310,7 +286,7 @@ export async function main(args) {
       }
       cancellation.throwIfCanceled();
 
-      if (mode === 'score' && !parsed.models && !parsed.ouroboros) {
+      if (mode === 'score' && !parsed.ouroboros) {
         result = withDeterministicScore(result, {
           text,
           config,
@@ -350,9 +326,6 @@ export async function main(args) {
         }
       }
 
-      if (result?.type === 'max-mode' && (result.allFailed || result.mpsFallback)) {
-        process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
-      }
 
 
       if (parsed.saveRun) {
@@ -548,48 +521,6 @@ function parseArgs(args) {
         parsed.outdir = readOptionValue(args, i, arg);
         i++;
         break;
-      case '--models':
-        parsed.models = readOptionValue(args, i, arg)
-          .split(',')
-          .map((m) => m.trim())
-          .filter(Boolean);
-        i++;
-        if (parsed.models.length === 0) {
-          throw inputError(
-            '--models expects at least one model id',
-            'The comma-separated model list was empty.',
-            'Use `--models gpt-4o,claude-3-5-sonnet`.'
-          );
-        }
-        break;
-      case '--max-concurrency': {
-        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
-        i++;
-        const n = Number(value);
-        if (!Number.isInteger(n) || n < 0) {
-          throw inputError(
-            '--max-concurrency expects a non-negative integer',
-            `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
-            'Use `--max-concurrency 2`, omit it for the safe default, or pass 0 for unlimited concurrency.'
-          );
-        }
-        parsed.maxConcurrency = n;
-        break;
-      }
-      case '--max-timeout': {
-        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
-        i++;
-        const n = Number(value);
-        if (!Number.isFinite(n) || n <= 0) {
-          throw inputError(
-            '--max-timeout expects a positive number of seconds',
-            `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
-            'Use `--max-timeout 300`, or omit it for the default 300 seconds.'
-          );
-        }
-        parsed.maxTimeoutSeconds = n;
-        break;
-      }
       case '--model':
         parsed.model = readOptionValue(args, i, arg);
         i++;
@@ -841,14 +772,13 @@ export function resolveProfileForLanguage(profileName, lang, logger = null) {
  * @param {object} [options] Prompt-mode sources.
  * @param {string} [options.cliPromptMode] CLI --prompt-mode value.
  * @param {string} [options.configPromptMode] Config prompt-mode value.
- * @param {boolean} [options.isMaxMode=false] Whether MAX mode is active.
  * @returns {string} Requested prompt mode.
  * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
- * const requested = resolveConfiguredPromptMode({ isMaxMode: true });
+ * const requested = resolveConfiguredPromptMode();
  */
-export function resolveConfiguredPromptMode({ cliPromptMode, configPromptMode, isMaxMode = false } = {}) {
-  return cliPromptMode || configPromptMode || (isMaxMode ? 'minimal' : 'strict');
+export function resolveConfiguredPromptMode({ cliPromptMode, configPromptMode } = {}) {
+  return cliPromptMode || configPromptMode || 'strict';
 }
 
 // Resolve the API key from file or environment. Precedence: --api-key-file >
@@ -1034,17 +964,10 @@ MODEL & AUTH
   --list-backends         List available backends and their availability
   --provider <name>       Provider preset: openai, gemini, groq, together
   --list-providers        List provider presets and which keys are set
-  --models <list>         MAX mode: comma-separated model/backend list
-                          (HTTP IDs, or claude/codex/gemini CLI aliases)
-  --max-concurrency <n>   Cap parallel MAX-mode candidates (default: min(models, 3);
-                          use 0 for unlimited, which can hit free-tier quotas)
-  --max-timeout <sec>     Wall-clock budget for standalone MAX mode (default: 300)
-
 ADVANCED
   --variants <n>          Generate N rewrite variants (1-5; rewrite mode only)
   --config <path>         Load config from <path> instead of .patina.default.yaml
   --prompt-mode <m>       strict | minimal | auto. auto picks per backend.
-                          MAX defaults to minimal; auto resolves once before dispatch.
   --allow-insecure-base-url  Permit plaintext http:// to non-localhost endpoints
   --allow-private-base-url   Permit private/IMDS base URLs
   -h, --help              Show this help message
@@ -1062,7 +985,7 @@ ENVIRONMENT
   OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, TOGETHER_API_KEY
 
 EXIT CODES
-  0 success · 1 runtime/backend · 2 input/usage · 3 score gate exceeded · 4 MAX MPS fallback/all candidates failed · 130 interrupted
+  0 success · 1 runtime/backend · 2 input/usage · 3 score gate exceeded · 130 interrupted
 
 If no API key is set, pass --backend codex-cli to use a logged-in codex CLI
 (no key required). Auto-fallback was removed in v3.9 to keep agent-mode
@@ -1190,7 +1113,6 @@ function extractResponseCost(rawResponse, fallbackUsage) {
 }
 
 function manifestResponseText(result, output) {
-  if (result?.type === 'max-mode') return result.best?.result ?? output;
   if (typeof result?.finalText === 'string') return result.finalText;
   if (typeof result?.raw === 'string') return result.raw;
   if (typeof result === 'string') return result;

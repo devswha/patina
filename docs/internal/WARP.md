@@ -13,7 +13,6 @@ Patina is a Claude Code / Codex / Cursor / OpenCode skill plus a standalone Node
 - `patterns/{ko,en,zh,ja}-*.md`: language-specific pattern packs, auto-discovered by prefix.
 - `docs/PATTERNS.md` and `docs/PATTERNS-{KO,EN,ZH,JA}.md`: generated/manual references for the pattern packs.
 - `core/voice.md`, `profiles/*.md`, and `core/scoring.md`: voice, profile, and scoring references.
-- `SKILL-MAX.md` and `patina-max/SKILL.md`: MAX-mode references and installable entrypoint.
 
 ## Safe-change rules
 

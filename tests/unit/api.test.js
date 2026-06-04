@@ -5,9 +5,7 @@ import {
   HttpError,
   isRetryable,
   computeBackoffMs,
-  createSemaphore,
   callLLM,
-  callLLMMultiple,
 } from '../../src/api.js';
 
 test('HttpError captures status, body, and Retry-After', () => {
@@ -81,85 +79,6 @@ test('computeBackoffMs caps Retry-After at maxDelay too', () => {
   assert.equal(ms, 30000);
 });
 
-test('createSemaphore(0) is a no-op (existing parallel behavior)', async () => {
-  const sem = createSemaphore(0);
-  const r1 = await sem.acquire();
-  const r2 = await sem.acquire();
-  assert.equal(typeof r1, 'function');
-  assert.equal(typeof r2, 'function');
-  r1();
-  r2();
-});
-
-test('callLLMMultiple defaults to a safe concurrency cap of min(models, 3)', async () => {
-  const originalFetch = globalThis.fetch;
-  let active = 0;
-  let peak = 0;
-  globalThis.fetch = async () => {
-    active++;
-    peak = Math.max(peak, active);
-    await new Promise((r) => setTimeout(r, 5));
-    active--;
-    return {
-      ok: true,
-      json: async () => ({ choices: [{ message: { content: 'ok' } }] }),
-    };
-  };
-
-  try {
-    const results = await callLLMMultiple({
-      prompt: 'x',
-      apiKey: 'test',
-      models: ['m1', 'm2', 'm3', 'm4', 'm5'],
-    });
-    assert.equal(results.length, 5);
-    assert.equal(peak, 3, 'default semaphore queues instead of fanning out');
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
-
-test('callLLMMultiple accepts callLLM, now, and sleep injectables', async () => {
-  const seen = [];
-  const now = () => 456;
-  const sleep = async () => {};
-  const results = await callLLMMultiple({
-    prompt: 'x',
-    apiKey: 'test',
-    models: ['m1', 'm2'],
-    callLLM: async (args) => {
-      seen.push(args);
-      assert.strictEqual(args.now, now);
-      assert.strictEqual(args.sleep, sleep);
-      return `ok:${args.model}`;
-    },
-    now,
-    sleep,
-  });
-
-  assert.deepStrictEqual(results, [
-    { model: 'm1', result: 'ok:m1', ok: true },
-    { model: 'm2', result: 'ok:m2', ok: true },
-  ]);
-  assert.strictEqual(seen.length, 2);
-});
-
-test('createSemaphore enforces concurrency cap and drains the queue', async () => {
-  const sem = createSemaphore(2);
-  let active = 0;
-  let peak = 0;
-  const work = async () => {
-    const release = await sem.acquire();
-    active++;
-    peak = Math.max(peak, active);
-    await new Promise((r) => setTimeout(r, 5));
-    active--;
-    release();
-  };
-  await Promise.all([work(), work(), work(), work(), work()]);
-  assert.equal(peak, 2, 'never exceeds cap');
-  assert.equal(active, 0, 'all releases run');
-});
 
 test('callLLM clamps Retry-After sleep to the remaining deadline budget', async () => {
   const originalFetch = globalThis.fetch;

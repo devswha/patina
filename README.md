@@ -219,7 +219,7 @@ They appear in score and audit output so the benchmark matches human intuition f
 
 ### Prompt-mode tuning (v3.11)
 
-`--prompt-mode strict|minimal|auto` lets you trade off between the full pattern packs (~34KB structured prompt) and a compressed casual instruction (~3KB). `auto` picks per backend — Gemini does better on minimal (it gets over-constrained by long structured prompts), while Claude leverages the full packs and Codex is roughly insensitive. Standalone CLI MAX rewrite workers default to `minimal` unless `--prompt-mode` or config overrides it, so multi-candidate runs stay light by default; in MAX, `auto` resolves once before dispatch rather than separately per candidate. case-05 documents the A/B.
+`--prompt-mode strict|minimal|auto` lets you trade off between the full pattern packs (~34KB structured prompt) and a compressed casual instruction (~3KB). `auto` picks per backend — Gemini does better on minimal (it gets over-constrained by long structured prompts), while Claude leverages the full packs and Codex is roughly insensitive. case-05 documents the A/B.
 
 ### Multiple stylistic variants (v3.11)
 
@@ -235,7 +235,7 @@ In rewrite mode, the model emits its self-audit notes inside `[SELF_AUDIT]`/`[/S
 
 ### Machine-readable output and exit codes
 
-`--format json` wraps every mode in a stable envelope with `overall`, `categories[]`, `tone`, `mps`, `gateResult`, and the cleaned `output` body. `--json-logs` keeps stderr machine-readable as NDJSON, while `--quiet` silences status/warning/progress logs for scripts that only want stdout. `--format markdown` is the default; `--format text` keeps the user-facing body without the YAML tone footer. Exit codes are standardized in [EXIT-CODES.md](docs/EXIT-CODES.md): `0` success, `1` runtime/backend, `2` input/usage, `3` score gate exceeded, `4` MAX MPS fallback/all-candidates-failed.
+`--format json` wraps every mode in a stable envelope with `overall`, `categories[]`, `tone`, `mps`, `gateResult`, and the cleaned `output` body. `--json-logs` keeps stderr machine-readable as NDJSON, while `--quiet` silences status/warning/progress logs for scripts that only want stdout. `--format markdown` is the default; `--format text` keeps the user-facing body without the YAML tone footer. Exit codes are standardized in [EXIT-CODES.md](docs/EXIT-CODES.md): `0` success, `1` runtime/backend, `2` input/usage, `3` score gate exceeded.
 
 ### Score weight drift detection (v3.11)
 
@@ -262,20 +262,6 @@ Use `--voice-sample <path>` or `voice-sample: <path>` in config to anchor rewrit
 | `instructional` | Tutorials, how-to guides, technical docs | Imperative verbs, numbered structure, hedging suppressed |
 
 `--tone auto` runs heuristic detection (lexical + structural signals) and selects the best-fit tone. zh/ja with any tone (including `auto`) emits a warning and falls back to profile-only mode — Phase 4.5b heuristics only cover ko/en.
-
-### MAX mode
-
-Run the same text through Claude, Codex, and Gemini independently. The lowest AI-score result that passes MPS ≥ 70 wins:
-
-```
-/patina-max
-
-[paste your text here]
-```
-
-`/patina-max` uses tmux panes for parallel local-CLI dispatch when `dispatch: omc` is enabled. If tmux is unavailable, pass `--dispatch direct` for the no-tmux path; it runs the selected models sequentially and can take roughly one model timeout per model. When `dispatch: omc` falls back automatically outside tmux, Patina prints the expected sequential-vs-parallel wall-clock warning.
-
-Standalone CLI MAX (`patina --models ...`) is no longer HTTP-only. The list may include local CLI backend aliases/names (`claude-cli`, `codex-cli`, `gemini-cli`, plus shorthand `claude`, `codex`, `gemini`) and ordinary HTTP model IDs such as `gpt-4o` or OpenRouter model names. HTTP candidates still use `--base-url`/provider auth, while local candidates use the logged-in CLI backend. Each candidate is evaluated through that candidate's backend/model, matching existing MAX scoring behavior. Candidate fanout is capped at `min(models, 3)` by default to avoid quota storms on free-tier providers; pass `--max-concurrency <n>` to tune the cap, or `--max-concurrency 0` only when you intentionally want unlimited parallelism.
 
 ## How It Works
 
@@ -305,14 +291,13 @@ language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
 tone:                     # casual | professional | academic | narrative | marketing | instructional | auto
-max-models: [claude, gemini]
 ```
 
-Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the working directory overrides defaults. List keys that extend detection (`blocklist`, `allowlist`, `skip-patterns`) merge additively across default/global/project configs; provider lists such as `max-models` replace so users can choose an exact backend set.
+Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the working directory overrides defaults. List keys that extend detection (`blocklist`, `allowlist`, `skip-patterns`) merge additively across default/global/project configs; other arrays replace so users can choose exact values.
 
 ## Documentation
 
-- **[Cookbook](docs/COOKBOOK.md)** — practical recipes (Hugo batch scoring, GitHub Actions, MAX-mode comparison, false-positive triage, custom profiles, pre-commit)
+- **[Cookbook](docs/COOKBOOK.md)** — practical recipes (Hugo batch scoring, GitHub Actions, false-positive triage, custom profiles, pre-commit)
 - **[Glossary](docs/GLOSSARY.md)** — short definitions for MPS, fidelity, burstiness, MATTR, modes, and other recurring terms
 - **[Demo](docs/DEMO.md)** — terminal transcript and multi-genre before/after snapshots
 - **[Patterns](docs/PATTERNS.md)** — full 168-pattern catalog
@@ -324,7 +309,7 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Release workflow](docs/integrations/release.md)** — npm provenance + GHCR publishing checklist
 - **[CLI Contract](docs/CLI.md)** — score gate, JSON/text/Markdown output, and automation-safe surfaces
 - **[API Reference](docs/API.md)** — generated JSDoc reference for programmatic imports and scoring helpers
-- **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI vs `/patina` vs `/patina-max` option support
+- **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI vs `/patina` option support
 - **[Exit Codes](docs/EXIT-CODES.md)** — process code contract for CI and editor integrations
 - **[Ethics](docs/ETHICS.md)** — intended use, non-use, and disclosure stance
 - **[FAQ](docs/FAQ.md)** ([한국어](docs/FAQ_KR.md)) — detector-bypass concerns, MPS, false positives, contribution starting points

@@ -60,32 +60,8 @@ patterns:
 skip-patterns: []          # additive merge across default/global/project configs
 blocklist: []              # additive merge: 추가로 감지할 어휘
 allowlist: []              # additive merge: 감지에서 제외할 어휘
-# Other arrays (for example max-models) are replaced by the higher-precedence
-# config so users can intentionally choose an exact provider list.
-
-# MAX mode: multi-model humanization
-# claude uses `claude -p`, gemini uses `gemini -p '' --output-format text`,
-# codex uses `codex exec --skip-git-repo-check --output-last-message <file>`
-# Skill/local dispatch aliases: claude, codex, gemini
-# Standalone CLI --models may also include claude-cli/codex-cli/gemini-cli
-# and HTTP model IDs such as gpt-4o or provider-specific IDs.
-# Override with CLI: --models claude-cli,gpt-4o,gemini
-max-models:
-  - claude
-  - gemini
-
-# Dispatch mode for MAX mode CLI execution
-# omc: tmux pane parallel dispatch (recommended, requires oh-my-claudecode + tmux)
-#       - Uses a unique temp dir per run
-#       - Waits only for selected models and marks timed-out or dead panes as failed
-#       - All providers receive the prompt via stdin
-# direct: sequential stdin dispatch (fallback; apply the same per-model timeout)
-# api: HTTP API dispatch (no local CLI needed; requires PATINA_API_KEY env var)
-#       - Uses OpenAI-compatible chat completions endpoint
-#       - Works with Anthropic, OpenAI, Google AI Studio, OpenRouter, etc.
-#       - Requires curl and jq
-#       - Model IDs configurable via PATINA_MODEL_* env vars
-dispatch: omc
+# Other arrays are replaced by the higher-precedence config so users can choose
+# an exact value instead of merging by accident.
 
 # Scoring: LLM score remains canonical, with a deterministic shadow score
 # from src/features/* for reproducible drift checks.

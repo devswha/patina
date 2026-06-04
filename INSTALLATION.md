@@ -2,7 +2,7 @@
 
 > **Audience:** This file is written for an AI coding agent (Claude Code, Codex CLI, Cursor, OpenCode, Gemini CLI, etc.) executing on the user's machine. If a user asks you to "install patina from https://github.com/devswha/patina.git", follow the steps below verbatim.
 >
-> **Goal:** Make `/patina` and `/patina-max` available as a skill in the host agent, with no API key required when the host machine has [`codex`](https://github.com/openai/codex) logged in.
+> **Goal:** Make `/patina` available as a skill in the host agent, with no API key required when the host machine has [`codex`](https://github.com/openai/codex) logged in.
 
 **Repository:** `https://github.com/devswha/patina.git`
 **Version pinning:** the installer resolves remote `HEAD` once and checks out that concrete commit. For strict reproducibility, set `PATINA_REF=<tag-or-full-sha>`.
@@ -41,7 +41,7 @@ PATINA_REF=<tag-or-full-sha> \
 
 **What it does** (so you can explain to the user):
 - Clones the repo into `~/.claude/skills/patina` (canonical location).
-- Symlinks `patina` and `patina-max` skills into:
+- Symlinks the `patina` skill into:
   - `~/.claude/skills/` (Claude Code)
   - `~/.codex/skills/` (Codex CLI)
   - `~/.cursor/rules/` (Cursor)
@@ -83,9 +83,9 @@ Pick the row matching the host the user is running you in, and run **only that c
 | Host | Symlink command |
 |---|---|
 | Claude Code | (none — Step 1 already placed it under `~/.claude/skills/patina`) |
-| Codex CLI | `mkdir -p ~/.codex/skills && ln -snf ~/.claude/skills/patina ~/.codex/skills/patina && ln -snf ~/.claude/skills/patina/patina-max ~/.codex/skills/patina-max` |
-| Cursor | `mkdir -p ~/.cursor/rules && ln -snf ~/.claude/skills/patina ~/.cursor/rules/patina && ln -snf ~/.claude/skills/patina/patina-max ~/.cursor/rules/patina-max` |
-| OpenCode | `mkdir -p ~/.config/opencode/skills && ln -snf ~/.claude/skills/patina ~/.config/opencode/skills/patina && ln -snf ~/.claude/skills/patina/patina-max ~/.config/opencode/skills/patina-max` |
+| Codex CLI | `mkdir -p ~/.codex/skills && ln -snf ~/.claude/skills/patina ~/.codex/skills/patina` |
+| Cursor | `mkdir -p ~/.cursor/rules && ln -snf ~/.claude/skills/patina ~/.cursor/rules/patina` |
+| OpenCode | `mkdir -p ~/.config/opencode/skills && ln -snf ~/.claude/skills/patina ~/.config/opencode/skills/patina` |
 | Gemini CLI | `mkdir -p ~/.gemini/skills && ln -snf ~/.claude/skills/patina ~/.gemini/skills/patina` |
 
 ### Step 3 (optional): Install the standalone Node CLI
@@ -184,9 +184,9 @@ For Gemini and Claude API backends, the user can set `GEMINI_API_KEY` or `PATINA
 
 ```bash
 # Remove all symlinks
-rm -f ~/.codex/skills/patina ~/.codex/skills/patina-max
-rm -f ~/.cursor/rules/patina ~/.cursor/rules/patina-max
-rm -f ~/.config/opencode/skills/patina ~/.config/opencode/skills/patina-max
+rm -f ~/.codex/skills/patina
+rm -f ~/.cursor/rules/patina
+rm -f ~/.config/opencode/skills/patina
 rm -f ~/.gemini/skills/patina
 
 # Remove the canonical clone last

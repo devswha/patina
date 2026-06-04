@@ -247,20 +247,6 @@ rewrite 모드에서 모델은 `[BODY]`/`[/BODY]` 블록(또는 `--variants > 1`
 
 `--tone auto` 는 휴리스틱(어휘 + 구조 신호)으로 가장 적합한 톤을 자동 선택합니다. zh/ja 에서는 `auto` 포함 모든 톤 지정 시 경고를 내고 프로필 전용 모드로 폴백합니다 — Phase 4.5b 휴리스틱이 ko/en만 지원하기 때문입니다.
 
-### MAX 모드
-
-같은 텍스트를 Claude, Codex, Gemini 에 독립적으로 돌립니다. MPS ≥ 70 을 통과한 결과 중 AI 점수가 가장 낮은 (가장 자연스러운) 결과가 선택됩니다:
-
-```
-/patina-max
-
-[텍스트를 여기에 붙여넣기]
-```
-
-`dispatch: omc`가 켜져 있으면 `/patina-max`는 tmux pane을 써서 로컬 CLI 후보를 병렬로 돌립니다. tmux가 없다면 `--dispatch direct`로 no-tmux 경로를 선택하세요. 이 경우 선택한 모델이 순차 실행되므로 모델당 timeout이 누적될 수 있습니다. `dispatch: omc`가 tmux 밖에서 자동 fallback할 때는 예상되는 순차/병렬 wall-clock 차이를 출력합니다.
-
-Standalone CLI MAX(`patina --models ...`)는 더 이상 HTTP-only가 아닙니다. 모델 목록에는 로컬 CLI backend alias/name(`claude-cli`, `codex-cli`, `gemini-cli`, shorthand `claude`, `codex`, `gemini`)과 `gpt-4o`나 OpenRouter model name 같은 HTTP model ID를 함께 넣을 수 있습니다. HTTP 후보는 `--base-url`/provider auth를 쓰고, 로컬 후보는 로그인된 CLI backend를 씁니다. 후보 fanout은 free-tier quota storm을 피하려고 기본적으로 `min(models, 3)`으로 제한됩니다. `--max-concurrency <n>`으로 조정할 수 있고, 정말 무제한 병렬이 필요할 때만 `--max-concurrency 0`을 쓰세요.
-
 ## 동작 원리
 
 ```
@@ -289,14 +275,13 @@ language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
 tone:                     # casual | professional | academic | narrative | marketing | instructional | auto
-max-models: [claude, gemini]
 ```
 
-패턴 팩은 언어 접두사로 자동 탐색됩니다. 작업 디렉토리의 `.patina.yaml` 이 기본값을 오버라이드합니다. 탐지를 확장하는 목록 키(`blocklist`, `allowlist`, `skip-patterns`)는 default/global/project 설정 사이에서 누적 병합(additively merge)되며, `max-models` 같은 provider 목록은 사용자가 정확한 백엔드 세트를 선택할 수 있도록 대체됩니다.
+패턴 팩은 언어 접두사로 자동 탐색됩니다. 작업 디렉토리의 `.patina.yaml` 이 기본값을 오버라이드합니다. 탐지를 확장하는 목록 키(`blocklist`, `allowlist`, `skip-patterns`)는 default/global/project 설정 사이에서 누적 병합(additively merge)되며, 다른 배열 값은 사용자가 정확한 값을 고를 수 있도록 대체됩니다.
 
 ## 문서
 
-- **[Cookbook](docs/COOKBOOK.md)** — Hugo 배치 스코어링, GitHub Actions, MAX 비교, 오탐 triage, 커스텀 프로필, pre-commit recipe
+- **[Cookbook](docs/COOKBOOK.md)** — Hugo 배치 스코어링, GitHub Actions, 오탐 triage, 커스텀 프로필, pre-commit recipe
 - **[Glossary](docs/GLOSSARY.md)** — MPS, fidelity, burstiness, MATTR, 모드 등 반복 용어의 짧은 정의
 - **[Demo](docs/DEMO.md)** — 터미널 transcript와 여러 장르의 before/after 스냅샷
 - **[Patterns](docs/PATTERNS.md)** — 160개 패턴 카탈로그
@@ -308,7 +293,7 @@ max-models: [claude, gemini]
 - **[Release workflow](docs/integrations/release.md)** — npm provenance + GHCR publishing checklist
 - **[CLI Contract](docs/CLI.md)** — score gate, JSON/text/Markdown output, 자동화에 안전한 표면
 - **[API Reference](docs/API.md)** — programmatic import와 scoring helper용 생성 JSDoc reference
-- **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI, `/patina`, `/patina-max` 옵션 지원 범위
+- **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI와 `/patina`의 옵션 지원 범위
 - **[Exit Codes](docs/EXIT-CODES.md)** — CI와 editor integration용 process code contract
 - **[Ethics](docs/ETHICS.md)** — 올바른 사용 목적, 금지 사용, disclosure 입장
 - **[FAQ](docs/FAQ_KR.md)** ([English](docs/FAQ.md)) — detector-bypass 우려, MPS, 오탐, 기여 시작점

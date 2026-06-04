@@ -100,16 +100,3 @@ patina --provider together --lang ko input.txt
 
 `--provider` sets the right base URL, default model, and reads the provider-specific API key env var. Override these with `--base-url`, `--model`, or `--api-key-file`.
 
-## MAX mode dispatch
-
-The Claude Code `/patina-max` skill bypasses HTTP entirely — it dispatches via local CLIs:
-
-| Model | Dispatch | Auth |
-|-------|----------|------|
-| `claude` | `claude -p` | Claude Code |
-| `codex` | `codex exec --skip-git-repo-check --output-last-message` | ChatGPT OAuth |
-| `gemini` | `gemini -p '' --output-format text` | Google AI Studio |
-
-No `PATINA_API_KEY` needed for the Claude Code path.
-
-The standalone CLI MAX (`patina --models <list>`) is no longer HTTP-only. `--models` accepts local CLI backend names (`claude-cli`, `codex-cli`, `gemini-cli`), their shorthand aliases (`claude`, `codex`, `gemini`), and HTTP model IDs. Local entries use the logged-in CLI backend and need no `PATINA_API_KEY`; HTTP entries still use the selected `--base-url` endpoint, so provider model IDs must be served there. To mix HTTP providers (OpenAI + Anthropic + Google), point `--base-url` at OpenRouter or another multi-provider gateway.

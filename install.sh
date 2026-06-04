@@ -112,8 +112,7 @@ if [ "${INSTALL_CLAUDE}" = "true" ]; then
     checkout_install_ref "${PATINA_DIR}" "${INSTALL_REF}"
   fi
 
-  ln -snf "${PATINA_DIR}/patina-max" "${CLAUDE_SKILLS_DIR}/patina-max"
-  success "Claude Code: /patina and /patina-max ready"
+  success "Claude Code: /patina ready"
 else
   warn "Skipping Claude Code installation (INSTALL_CLAUDE=false)"
 fi
@@ -129,8 +128,7 @@ if [ "${INSTALL_CODEX}" = "true" ]; then
 
   if [ -d "${PATINA_DIR}" ]; then
     ln -snf "${PATINA_DIR}" "${CODEX_SKILLS_DIR}/patina"
-    ln -snf "${PATINA_DIR}/patina-max" "${CODEX_SKILLS_DIR}/patina-max"
-    success "Codex: /patina and /patina-max linked to ${CODEX_SKILLS_DIR}"
+    success "Codex: /patina linked to ${CODEX_SKILLS_DIR}"
   else
     warn "Patina repo not found. Claude Code installation must succeed first."
   fi
@@ -192,13 +190,11 @@ if [ "${INSTALL_CLAUDE}" = "true" ]; then
   printf "  Claude Code:\n"
   printf "    /patina              Humanize Korean text\n"
   printf "    /patina --lang en    Humanize English text\n"
-  printf "    /patina-max          Multi-model humanization\n"
 fi
 if [ "${INSTALL_CODEX}" = "true" ]; then
   printf "  Codex CLI:\n"
   printf "    /patina              Humanize Korean text\n"
   printf "    /patina --lang en    Humanize English text\n"
-  printf "    /patina-max          Multi-model humanization\n"
 fi
 if [ "${INSTALL_CURSOR}" = "true" ]; then
   printf "  Cursor:\n"

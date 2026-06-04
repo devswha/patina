@@ -150,7 +150,7 @@ describe('CLI adoption commands', () => {
 
 describe('CLI adoption exit/error behavior', () => {
   it('unknown flags fail before stdin handling with a usage exit', () => {
-    for (const flag of ['--bogus', '--variants', '--save-run', '--cache', '--cache-ttl', '--no-cache', '--suspected-generator', '--prompt-mode']) {
+    for (const flag of ['--bogus', '--gate', '--variants', '--save-run', '--cache', '--cache-ttl', '--no-cache', '--suspected-generator', '--prompt-mode']) {
       const result = spawnSync(process.execPath, [BIN, flag], {
         cwd: REPO_ROOT,
         input: '',
@@ -175,7 +175,7 @@ describe('CLI adoption exit/error behavior', () => {
   it('value-taking usage errors use the standardized input exit code', () => {
     const cases = [
       { args: ['--tone'], message: /--tone requires a value/ },
-      { args: ['--gate', 'nope'], message: /--gate expects a number/ },
+      { args: ['--exit-on', 'nope'], message: /--exit-on expects a number/ },
       { args: ['--api-key-file'], message: /--api-key-file requires a value/ },
     ];
 

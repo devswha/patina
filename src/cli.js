@@ -68,7 +68,7 @@ export async function main(args) {
 
   if (parsed.gate !== undefined && !parsed.score) {
     throw inputError(
-      `${parsed.gateOption || '--gate'} can only be used with --score`,
+      '--exit-on can only be used with --score',
       'Score gates need a parsed overall score.',
       'Run `patina --score --exit-on 30 <file>`.'
     );
@@ -378,21 +378,6 @@ function parseArgs(args) {
       case '--json-logs':
         parsed.jsonLogs = true;
         break;
-      case '--gate': {
-        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
-        i++;
-        const n = Number(value);
-        if (!Number.isFinite(n) || n < 0 || n > 100) {
-          throw inputError(
-            '--gate expects a number from 0 to 100',
-            `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
-            'Use `patina --score --gate 30 <file>` for CI gates.'
-          );
-        }
-        parsed.gate = n;
-        parsed.gateOption = '--gate';
-        break;
-      }
       case '--exit-on': {
         const value = readOptionValue(args, i, arg, { allowFlagLike: true });
         i++;
@@ -405,7 +390,6 @@ function parseArgs(args) {
           );
         }
         parsed.gate = n;
-        parsed.gateOption = '--exit-on';
         break;
       }
       case '--ouroboros':
@@ -741,8 +725,7 @@ MODES
   --no-color              Disable ANSI colors in --diff output
   --audit                 Detect patterns only (no rewrite)
   --score                 Output AI-likeness score (0-100)
-  --gate <n>              With --score, exit 3 when overall score > n
-  --exit-on <n>           Alias for --gate, intended for CI scripts
+  --exit-on <n>           With --score, exit 3 when overall score > n
   --ouroboros             Iterative self-improvement loop
 
 OUTPUT & BATCH
@@ -831,7 +814,7 @@ function withDeterministicScore(rawResult, { text, config, repoRoot, logger }) {
 function applyScoreGate(result, output, gate, logger = createLogger()) {
   const overall = extractScoreOverall(result, output);
   if (overall === null) {
-    throw new Error('--gate could not find a numeric `overall` value in --score output.');
+    throw new Error('score gate could not find a numeric `overall` value in --score output.');
   }
   if (overall > gate) {
     logger.warn('score.gate_failed', { message: `[patina] score gate failed: overall ${overall} > ${gate}` });

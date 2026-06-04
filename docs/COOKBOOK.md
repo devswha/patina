@@ -20,7 +20,7 @@ patina --lang en --score --batch content/posts/*.md
 For a stricter sweep that flags anything above 30/100, fail the run instead of just printing:
 
 ```bash
-patina --lang en --score --gate 30 --batch content/posts/*.md
+patina --lang en --score --exit-on 30 --batch content/posts/*.md
 ```
 
 When any file's `overall` exceeds the gate, patina exits with code `3` ([`CLI.md`](CLI.md) §Exit codes), which is perfect for a pre-publish check.
@@ -53,13 +53,13 @@ jobs:
         run: |
           changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.md')
           [ -z "$changed" ] && echo "no markdown changes" && exit 0
-          patina --lang en --score --gate 30 --batch $changed
+          patina --lang en --score --exit-on 30 --batch $changed
         env:
           # pick one backend that has a token in repo secrets
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-Drop `--gate` while you calibrate the threshold for your project. Swap `GEMINI_API_KEY` for whichever backend you have (`claude` / `codex` / `gemini`) — see [`AUTHENTICATION.md`](AUTHENTICATION.md) for the full list.
+Drop `--exit-on` while you calibrate the threshold for your project. Swap `GEMINI_API_KEY` for whichever backend you have (`claude` / `codex` / `gemini`) — see [`AUTHENTICATION.md`](AUTHENTICATION.md) for the full list.
 
 ---
 
@@ -145,10 +145,10 @@ Block commits that introduce too-AI-sounding markdown. Drop this into `.git/hook
 set -euo pipefail
 changed=$(git diff --cached --name-only --diff-filter=ACM -- '*.md')
 [ -z "$changed" ] && exit 0
-patina --lang en --score --gate 30 --batch $changed
+patina --lang en --score --exit-on 30 --batch $changed
 ```
 
-`--gate` returns exit code `3` when any file's `overall` exceeds the threshold, which the shell treats as failure and aborts the commit. To bypass once (e.g. you intentionally want hype copy), commit with `--no-verify`.
+`--exit-on` returns exit code `3` when any file's `overall` exceeds the threshold, which the shell treats as failure and aborts the commit. To bypass once (e.g. you intentionally want hype copy), commit with `--no-verify`.
 
 ---
 

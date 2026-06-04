@@ -179,7 +179,7 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 | *(默认)* | 改写 |
 | `--audit` | 仅检测 AI 模式 |
 | `--score` | 0–100 AI 相似度评分 + 类别细分 |
-| `--score --exit-on <n>` | 保持 CI 严格：当 `overall > n` 时以退出码 `3` 结束（`--gate` 保留为 alias） |
+| `--score --exit-on <n>` | 保持 CI 严格：当 `overall > n` 时以退出码 `3` 结束 |
 | `--diff` | 按模式逐项展示改动 |
 | `--ouroboros` | 反复改写直到分数收敛（含 MPS 回滚） |
 | `--lang <ko\|en\|zh\|ja>` | 选择语言（默认：`ko`） |

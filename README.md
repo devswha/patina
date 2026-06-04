@@ -193,7 +193,7 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | *(default)* | Rewrite |
 | `--audit` | Detect AI patterns only |
 | `--score` | 0–100 AI-likeness score with category breakdown |
-| `--score --exit-on <n>` | Keep CI strict: exit code `3` when `overall > n` (`--gate` is kept as an alias) |
+| `--score --exit-on <n>` | Keep CI strict: exit code `3` when `overall > n` |
 | `--diff` | Show changes pattern by pattern |
 | `--ouroboros` | Iterate the rewrite until score converges (with MPS rollback) |
 | `--lang <ko\|en\|zh\|ja>` | Select language (default: `ko`) |

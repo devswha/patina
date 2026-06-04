@@ -7,7 +7,7 @@ patina uses stable exit codes so CI and editor integrations can distinguish cont
 | `0` | Success. For `--score --exit-on <n>`, the parsed `overall` score was at or below the threshold. |
 | `1` | Runtime/backend failure: API/auth/backend errors, failed doctor blockers, invalid runtime setup, or unexpected exceptions. |
 | `2` | Input/usage failure: unknown flags, missing required option values, empty stdin, or `--no-interactive` with no input. |
-| `3` | Score gate exceeded. `--score --exit-on <n>` or `--score --gate <n>` completed, but `overall > n`. |
+| `3` | Score gate exceeded. `--score --exit-on <n>` completed, but `overall > n`. |
 
 ## Score gates
 
@@ -15,7 +15,7 @@ patina uses stable exit codes so CI and editor integrations can distinguish cont
 patina --lang en --score --exit-on 30 draft.md
 ```
 
-`--gate <n>` remains as a backward-compatible alias for the same behavior. The command still prints the score output; only the process exit code changes to `3` when the gate fails.
+`--exit-on <n>` prints the score output as usual; only the process exit code changes to `3` when the threshold fails.
 
 ## Empty input
 

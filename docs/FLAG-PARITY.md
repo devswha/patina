@@ -8,8 +8,7 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 | `--diff` | ✓ | ✓ | Single-candidate pattern-by-pattern diff. |
 | `--audit` | ✓ | ✓ | Detection-only mode. |
 | `--score` | ✓ | ✓ | Score mode is available on both surfaces. |
-| `--gate <n>` | ✓ | — | CLI score-gate alias; automation-only. |
-| `--exit-on <n>` | ✓ | — | Preferred CLI score-gate spelling for CI. |
+| `--exit-on <n>` | ✓ | — | CLI score-gate spelling for CI. |
 | `--ouroboros` | ✓ | ✓ | Iterative rewrite / score convergence loop. |
 | `--format <markdown\|text\|json>` | ✓ | — | CLI output-envelope feature. |
 | `--json` | ✓ | — | CLI alias for `--format json`; `patina doctor --json` also exists. |

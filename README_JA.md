@@ -248,16 +248,6 @@ rewrite モードでは、モデルは `[BODY]`/`[/BODY]` ブロック（`--vari
 
 `--tone auto` はヒューリスティック（語彙 + 構造シグナル）で最適なトーンを自動選択します。zh/ja では `auto` を含む全トーン指定時に警告を出して profile-only モードにフォールバックします — Phase 4.5b ヒューリスティックは ko/en のみ対応のためです。
 
-### MAX モード
-
-同じテキストを Claude、Codex、Gemini に独立に通します。MPS ≥ 70 を満たす中で最もスコアが低い（最も自然な）結果が採用されます：
-
-```
-/patina-max
-
-[ここにテキストを貼り付け]
-```
-
 ## 仕組み
 
 ```
@@ -286,14 +276,13 @@ language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
 tone:                     # casual | professional | academic | narrative | marketing | instructional | auto
-max-models: [claude, gemini]
 ```
 
-パターンパックは言語プレフィックスで自動検出されます。作業ディレクトリの `.patina.yaml` がデフォルトを上書きします。検出を拡張するリストキー（`blocklist`、`allowlist`、`skip-patterns`）は default/global/project 設定の間で追加的にマージされ、`max-models` などの provider リストはユーザーが正確なバックエンド集合を選べるように置き換えられます。
+パターンパックは言語プレフィックスで自動検出されます。作業ディレクトリの `.patina.yaml` がデフォルトを上書きします。検出を拡張するリストキー（`blocklist`、`allowlist`、`skip-patterns`）は default/global/project 設定の間で追加的にマージされ、その他の配列キーは意図した値をそのまま選べるように置き換えられます。
 
 ## ドキュメント
 
-- **[Cookbook](docs/COOKBOOK.md)** — 実用レシピ（Hugo バッチスコアリング、GitHub Actions、MAX モード比較、誤検出 triage、カスタム profile、pre-commit）
+- **[Cookbook](docs/COOKBOOK.md)** — 実用レシピ（Hugo バッチスコアリング、GitHub Actions、誤検出 triage、カスタム profile、pre-commit）
 - **[Glossary](docs/GLOSSARY.md)** — MPS、fidelity、burstiness、MATTR、モードなどの反復用語の短い定義
 - **[Demo](docs/DEMO.md)** — ターミナル transcript と複数ジャンルの before/after スナップショット
 - **[Patterns](docs/PATTERNS.md)** — 160 パターンカタログ
@@ -305,7 +294,7 @@ max-models: [claude, gemini]
 - **[Release workflow](docs/integrations/release.md)** — npm provenance + GHCR 公開チェックリスト
 - **[CLI Contract](docs/CLI.md)** — score gate、JSON/text/Markdown 出力、自動化に安全なインターフェイス
 - **[API Reference](docs/API.md)** — プログラム的な import とスコアリング helper 向けの生成 JSDoc リファレンス
-- **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI、`/patina`、`/patina-max` のオプション対応範囲
+- **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI と `/patina` のオプション対応範囲
 - **[Exit Codes](docs/EXIT-CODES.md)** — CI とエディタ統合向けのプロセス終了コード契約
 - **[Ethics](docs/ETHICS.md)** — 正しい使用目的、禁止用途、disclosure 方針
 - **[FAQ](docs/FAQ.md)** ([한국어](docs/FAQ_KR.md)) — detector-bypass の懸念、MPS、誤検出、貢献の始め方

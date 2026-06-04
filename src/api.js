@@ -142,43 +142,6 @@ export function computeBackoffMs(attempt, retryAfter, opts = {}) {
   return Math.min(exp + jitter, max);
 }
 
-// Bounded-concurrency semaphore. `max <= 0` yields a no-op gate for callers
-// that explicitly opt into unlimited fanout.
-/**
- * Create a small async semaphore for bounded parallel LLM dispatch.
- *
- * @param {number} max Maximum concurrent acquisitions; values <=0 create an unlimited no-op gate.
- * @returns {{acquire: function(): Promise<Function>}} Semaphore whose acquire resolves to a release callback.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
- * @example
- * const release = await createSemaphore(2).acquire();
- * release();
- */
-export function createSemaphore(max) {
-  if (!max || max <= 0) {
-    return { acquire: () => Promise.resolve(() => {}) };
-  }
-  let active = 0;
-  const queue = [];
-  const drain = () => {
-    if (active < max && queue.length) {
-      active++;
-      const resolve = queue.shift();
-      resolve(() => {
-        active--;
-        drain();
-      });
-    }
-  };
-  return {
-    acquire() {
-      return new Promise((resolve) => {
-        queue.push(resolve);
-        if (active < max) drain();
-      });
-    },
-  };
-}
 
 /**
  * Call an OpenAI-compatible chat completions endpoint with retries, timeout, optional cache, and abort support.
@@ -340,97 +303,10 @@ export async function callLLM({
     }
   }
 
-  const err = /** @type {Error & { status?: number }} */ (
-    new Error(`LLM API failed after ${attemptsMade || 1} attempts: ${lastError?.message ?? 'unknown'}`)
-  );
+  const err = new Error(`LLM API failed after ${attemptsMade || 1} attempts: ${lastError?.message ?? 'unknown'}`);
   if (lastError?.name === 'AbortError') err.name = 'AbortError';
-  const lastStatus = /** @type {{ status?: unknown }} */ (lastError ?? {}).status;
-  if (typeof lastStatus === 'number') err.status = lastStatus;
+  const lastStatus = lastError ? /** @type {any} */ (lastError).status : undefined;
+  if (typeof lastStatus === 'number') /** @type {any} */ (err).status = lastStatus;
   throw err;
 }
 
-/**
- * Fan out one prompt across multiple model ids with bounded concurrency.
- *
- * @param {object} options Multi-model dispatch options.
- * @param {string} options.prompt Prompt to send to each model.
- * @param {string[]} options.models Ordered model ids to call.
- * @param {string} [options.apiKey] Provider API key.
- * @param {string} [options.baseURL] Provider base URL. Defaults to https://api.openai.com/v1.
- * @param {number} [options.temperature=DEFAULT_TEMPERATURE] Sampling temperature.
- * @param {number|string} [options.seed] Optional deterministic seed.
- * @param {number} [options.timeout] Per-call timeout in milliseconds.
- * @param {boolean} [options.allowInsecureBaseURL=false] Allow non-loopback HTTP base URLs.
- * @param {number} [options.deadline] Absolute epoch-millisecond deadline.
- * @param {AbortSignal} [options.signal] External cancellation signal.
- * @param {number} [options.maxConcurrency] Maximum in-flight model calls.
- * @param {Function} [options.onStart] Called with each model before dispatch.
- * @param {Function} [options.onComplete] Called with each model and success flag.
- * @param {Function} [options.onResponse] Called with response metadata.
- * @param {object} [options.cache] Response cache shared by calls.
- * @param {Function} [options.callLLM] Injectable single-model implementation.
- * @param {Function} [options.sleep] Sleep helper for tests.
- * @param {Function} [options.now] Clock returning epoch milliseconds.
- * @returns {Promise<Array<Object>>} Per-model results in input order.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
- * @example
- * const results = await callLLMMultiple({ prompt: 'Hi', models: ['gpt-4o', 'gpt-4o-mini'] });
- */
-export async function callLLMMultiple({
-  prompt,
-  models,
-  apiKey,
-  baseURL = 'https://api.openai.com/v1',
-  temperature = DEFAULT_TEMPERATURE,
-  seed,
-  timeout = DEFAULT_TIMEOUT,
-  allowInsecureBaseURL = false,
-  deadline,
-  signal,
-  maxConcurrency,
-  onStart,
-  onComplete,
-  onResponse,
-  cache,
-  callLLM: callLLMImpl = callLLM,
-  sleep,
-  now = () => Date.now(),
-}) {
-  validateBaseURL(baseURL, { allowInsecure: allowInsecureBaseURL });
-  const effectiveMaxConcurrency =
-    maxConcurrency === undefined || maxConcurrency === null
-      ? Math.min(models.length, 3)
-      : maxConcurrency;
-  const sem = createSemaphore(effectiveMaxConcurrency);
-  const promises = models.map(async (model) => {
-    const release = await sem.acquire();
-    if (onStart) onStart(model);
-    try {
-      const result = await callLLMImpl({
-        prompt,
-        apiKey,
-        baseURL,
-        model,
-        temperature,
-        seed,
-        timeout,
-        deadline,
-        signal,
-        allowInsecureBaseURL,
-        onResponse,
-        cache,
-        sleep,
-        now,
-      });
-      if (onComplete) onComplete(model, true);
-      return { model, result, ok: true };
-    } catch (err) {
-      if (onComplete) onComplete(model, false);
-      return { model, error: err.message, ok: false };
-    } finally {
-      release();
-    }
-  });
-
-  return Promise.all(promises);
-}

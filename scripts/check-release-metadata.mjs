@@ -10,8 +10,6 @@ expect(pkg.bin?.patina === 'bin/patina.js', 'package.json bin.patina must point 
 expect(pkg.bin?.['patina-score'] === 'scripts/precommit-score.mjs', 'package.json bin.patina-score must point to scripts/precommit-score.mjs');
 expect(existsSync('bin/patina.js'), 'bin/patina.js must exist');
 expect(readVersionField('SKILL.md') === version, 'SKILL.md version must match package.json');
-expect(readVersionField('SKILL-MAX.md') === version, 'SKILL-MAX.md version must match package.json');
-expect(readVersionField('patina-max/SKILL.md') === version, 'patina-max/SKILL.md version must match package.json');
 expect(readVersionField('.patina.default.yaml') === version, '.patina.default.yaml version must match package.json');
 expect(readFileSync('README.md', 'utf8').includes(`version: "${version}"`), 'README.md config example version must match package.json');
 expect(new RegExp(`^## ${escapeRegex(version)} — \\d{4}-\\d{2}-\\d{2}`, 'm').test(readFileSync('CHANGELOG.md', 'utf8')), 'CHANGELOG.md must contain a release heading for package.json version');

@@ -36,7 +36,7 @@ test('loadConfig: additive list keys union across default, global, and project c
 blocklist: [default-term, shared]
 allowlist: [safe]
 skip-patterns: [ko-filler]
-max-models: [claude, gemini]
+model-list: [claude, gemini]
 nested:
   blocklist: [nested-default]
 `);
@@ -44,7 +44,7 @@ nested:
 blocklist: [global-term, shared]
 allowlist: [safe, global-safe]
 skip-patterns: [ko-style]
-max-models: [codex]
+model-list: [codex]
 nested:
   blocklist: [nested-global]
 `);
@@ -52,7 +52,7 @@ nested:
 blocklist: [project-term]
 allowlist: [project-safe]
 skip-patterns: [ko-style, ko-content]
-max-models: [gemini]
+model-list: [gemini]
 nested:
   blocklist: [nested-project]
 `);
@@ -62,20 +62,20 @@ nested:
     assert.deepEqual(config.blocklist, ['default-term', 'shared', 'global-term', 'project-term']);
     assert.deepEqual(config.allowlist, ['safe', 'global-safe', 'project-safe']);
     assert.deepEqual(config['skip-patterns'], ['ko-filler', 'ko-style', 'ko-content']);
-    assert.deepEqual(config['max-models'], ['gemini']);
+    assert.deepEqual(config['model-list'], ['gemini']);
     assert.deepEqual(config.nested.blocklist, ['nested-default', 'nested-global', 'nested-project']);
   });
 });
 
-test('loadConfig: non-additive arrays replace so exact model/provider lists remain controllable', async () => {
+test('loadConfig: non-additive arrays replace so exact list values remain controllable', async () => {
   const { root, home, project } = tempWorkspace();
   const defaultPath = join(root, 'default.yaml');
-  writeFileSync(defaultPath, 'patterns: [ko-content, ko-style]\nmax-models: [claude, gemini]\n');
-  writeFileSync(join(home, '.patina.yaml'), 'patterns: [en-content]\nmax-models: [codex]\n');
+  writeFileSync(defaultPath, 'patterns: [ko-content, ko-style]\nmodel-list: [claude, gemini]\n');
+  writeFileSync(join(home, '.patina.yaml'), 'patterns: [en-content]\nmodel-list: [codex]\n');
 
   await withEnv({ home, cwd: project }, async () => {
     const config = loadConfig(defaultPath);
     assert.deepEqual(config.patterns, ['en-content']);
-    assert.deepEqual(config['max-models'], ['codex']);
+    assert.deepEqual(config['model-list'], ['codex']);
   });
 });

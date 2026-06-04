@@ -35,8 +35,8 @@ test('logger respects quiet and PATINA_LOG_LEVEL', () => {
 test('logger emits NDJSON records with stable fields', () => {
   const lines = captureConsoleError(() => {
     const logger = createLogger({ json: true });
-    logger.info('max.model_complete', {
-      message: '[patina-max] claude ✓  (1s)',
+    logger.info('rewrite.complete', {
+      message: '[patina] rewrite complete',
       model: 'claude',
       latency_ms: 1234,
     });
@@ -45,7 +45,7 @@ test('logger emits NDJSON records with stable fields', () => {
   assert.equal(lines.length, 1);
   const record = JSON.parse(lines[0]);
   assert.equal(record.level, 'info');
-  assert.equal(record.event, 'max.model_complete');
+  assert.equal(record.event, 'rewrite.complete');
   assert.equal(record.model, 'claude');
   assert.equal(record.latency_ms, 1234);
 });

@@ -248,16 +248,6 @@ Markdown-heavy 工程流程可使用开发者原生 profile shortcut：`code-com
 
 `--tone auto` 通过启发式（词汇 + 结构信号）自动选择最契合的语调。zh/ja 上使用任何语调（包括 `auto`）均会发出警告并回退到 profile-only 模式 — Phase 4.5b 启发式仅覆盖 ko/en。
 
-### MAX 模式
-
-将同一段文本独立交给 Claude、Codex、Gemini。通过 MPS ≥ 70 门槛后，AI 分数最低（最自然）的结果胜出：
-
-```
-/patina-max
-
-[在此粘贴你的文本]
-```
-
 ## 工作原理
 
 ```
@@ -286,14 +276,13 @@ language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
 tone:                     # casual | professional | academic | narrative | marketing | instructional | auto
-max-models: [claude, gemini]
 ```
 
-模式包按语言前缀自动发现。工作目录中的 `.patina.yaml` 会覆盖默认值。扩展检测的列表键（`blocklist`、`allowlist`、`skip-patterns`）会在 default/global/project 配置之间追加合并；`max-models` 等 provider 列表会替换原值，便于用户选择精确的后端集合。
+模式包按语言前缀自动发现。工作目录中的 `.patina.yaml` 会覆盖默认值。扩展检测的列表键（`blocklist`、`allowlist`、`skip-patterns`）会在 default/global/project 配置之间追加合并；其他数组键则直接替换，便于用户明确指定精确值。
 
 ## 文档
 
-- **[Cookbook](docs/COOKBOOK.md)** — 实用配方（Hugo 批量打分、GitHub Actions、MAX 模式对比、误报 triage、自定义 profile、pre-commit）
+- **[Cookbook](docs/COOKBOOK.md)** — 实用配方（Hugo 批量打分、GitHub Actions、误报 triage、自定义 profile、pre-commit）
 - **[Glossary](docs/GLOSSARY.md)** — MPS、fidelity、burstiness、MATTR、模式等常见术语的简短定义
 - **[Demo](docs/DEMO.md)** — 终端 transcript 与多种体裁的 before/after 快照
 - **[Patterns](docs/PATTERNS.md)** — 160 个模式目录
@@ -305,7 +294,7 @@ max-models: [claude, gemini]
 - **[Release workflow](docs/integrations/release.md)** — npm provenance + GHCR 发布清单
 - **[CLI Contract](docs/CLI.md)** — score gate、JSON/text/Markdown 输出，以及适合自动化的接口边界
 - **[API Reference](docs/API.md)** — 用于编程式导入与打分 helper 的生成 JSDoc 参考
-- **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI、`/patina`、`/patina-max` 的选项支持范围
+- **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI 与 `/patina` 的选项支持范围
 - **[Exit Codes](docs/EXIT-CODES.md)** — 面向 CI 与编辑器集成的进程退出码约定
 - **[Ethics](docs/ETHICS.md)** — 正确使用目的、禁止用途和披露立场
 - **[FAQ](docs/FAQ.md)** ([한국어](docs/FAQ_KR.md)) — detector-bypass 疑虑、MPS、误报、贡献起点

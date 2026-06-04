@@ -54,8 +54,8 @@ export function buildDoctorReport({ version } = {}) {
     status: tmux.ok ? 'ok' : 'warning',
     summary: tmux.ok ? tmux.stdout.trim() : 'tmux not found',
     detail: tmux.ok
-      ? 'available for MAX omc dispatch workflows'
-      : 'only needed for tmux-based MAX dispatch; direct/API modes still work',
+      ? 'available when you want tmux-based parallel workflows outside patina itself'
+      : 'optional; patina no longer requires tmux for any built-in mode',
   });
 
   const apiKeySource = inspectHttpApiKeySource();

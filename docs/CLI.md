@@ -35,7 +35,6 @@ the warning only means the result is not an independent cross-family check.
 | `1` | Runtime or backend error, including API/auth/backend failures. |
 | `2` | Input/usage error from no interactive input or empty stdin. |
 | `3` | `--score --exit-on` / `--score --gate` completed, but the score exceeded the configured gate. |
-| `4` | MAX mode all candidates failed, or patina fell back because no candidate met the MPS floor. |
 
 ## Output formats
 
@@ -56,7 +55,7 @@ the warning only means the result is not an independent cross-family check.
 
 - `overall` and `categories[]` are populated when patina can parse them from score JSON or score tables.
 - Score JSON may include `scores.llm`, `scores.deterministic`, and `scores.preference` when deterministic shadow scoring is available.
-- `mps` is populated for MAX-mode results when available.
+- `mps` is populated when the underlying mode emits it.
 - `gateResult` is `null` unless `--exit-on` / `--gate` is used.
 - `--voice-sample <path>` or config `voice-sample: <path>` injects the first 1–3 user-written paragraphs into rewrite/Ouroboros prompts as style-only examples of how this person writes. `--profile` / `--tone` still define the outer register; samples refine cadence and texture without importing facts.
 - `--save-run <dir>` writes a schema-v2 `manifest.json` plus `output-N.txt` files for reproducible audit trails. Each result records prompt/response hashes, available token usage, temperature/seed, score details, per-call cost when providers return it, and the Ouroboros iteration log when used.
@@ -68,26 +67,12 @@ the warning only means the result is not an independent cross-family check.
 Human-facing status, warnings, and progress indicators go to stderr so stdout
 stays reserved for the transformed text or JSON envelope.
 
-- `--quiet` suppresses stderr logs, including MAX/Ouroboros progress.
+- `--quiet` suppresses stderr logs, including Ouroboros progress.
 - `--json-logs` emits newline-delimited JSON records with stable fields:
   `ts`, `level`, `event`, `model`, `latency_ms`, and optional `message`.
-- MAX mode (`--models`) reports elapsed per-model status (`...`, `✓`, `✗`) for both local CLI and HTTP candidates.
 - Ouroboros reports per-iteration score movement and latency.
 
 
-## Standalone MAX mode
-
-`--models <list>` runs multiple rewrite workers and selects the lowest AI-score candidate that passes the MPS floor. Model entries can be mixed:
-
-- local CLI backend names: `claude-cli`, `codex-cli`, `gemini-cli`
-- local shorthand aliases: `claude`, `codex`, `gemini`
-- HTTP model IDs served by the selected provider/base URL, for example `gpt-4o` or OpenRouter model IDs
-
-```bash
-patina --lang en --models claude-cli,gpt-4o,gemini draft.md
-```
-
-Each candidate is evaluated through that candidate's backend/model. Local entries use the corresponding logged-in CLI backend for candidate rewrites and MAX scoring/MPS, so local-only MAX runs do not require `PATINA_API_KEY`. HTTP entries still use `--provider`, `--base-url`, `--api-key-file`, or environment auth. `--max-concurrency` caps overall candidate fanout, including local CLI candidates. MAX rewrite workers default to `--prompt-mode minimal` unless `--prompt-mode` or config sets `strict`/`auto` explicitly; in MAX, `auto` resolves once before dispatch rather than separately per candidate.
 
 ## Backend fallback chains
 

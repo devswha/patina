@@ -28,6 +28,7 @@ import {
 } from './lexicon.js';
 import { detectMarkupLeakage } from './markup-leakage.js';
 import { detectDiscourseTells } from './discourse-tells.js';
+import { detectTranslationese } from './translationese.js';
 
 export function analyzeText(text, opts = {}) {
   const {
@@ -57,6 +58,10 @@ export function analyzeText(text, opts = {}) {
   // Density-gated discourse tells (issue #334): fake-candor openers (>=2) and
   // decorative thematic breaks (>=3). Document-level, weaker than leakage.
   const discourseTells = detectDiscourseTells(normalized);
+  // ko translationese (번역투/calque) — lexical, NOT structural. Advisory signal:
+  // surfaced for callers/SKILL but deliberately NOT folded into `hot` (these
+  // constructions appear in good Korean too; gating hot would regress FP).
+  const translationese = detectTranslationese(normalized, { lang });
   const lexicon =
     providedLexicon ??
     (repoRoot ? loadLexicon(lang, repoRoot) : { strict: [], phrases: [] });
@@ -121,6 +126,7 @@ export function analyzeText(text, opts = {}) {
     paragraphs: analyzed,
     markupLeakage,
     discourseTells,
+    translationese,
     hot: markupLeakage.leaked || discourseTells.hot || analyzed.some((p) => p.hot),
   };
 }

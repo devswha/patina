@@ -15,7 +15,6 @@ import { formatOutput, validateScoreWeights, buildDeterministicAuditBackstop } f
 import { runOuroboros } from './ouroboros.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from './scoring.js';
 import { runDoctor } from './commands/doctor.js';
-import { runInit } from './commands/init.js';
 import { PatinaCliError, inputError, runtimeError, renderCliError, getExitCode } from './errors.js';
 import { providerHttpKeyEnvVars, resolveHttpApiKey } from './auth.js';
 import { createLogger } from './logger.js';
@@ -45,7 +44,11 @@ export async function main(args) {
     return runDoctor(args.slice(1), { version: PACKAGE_VERSION });
   }
   if (args[0] === 'init') {
-    return runInit(args.slice(1));
+    throw inputError(
+      'patina init was removed',
+      'patina is zero-config; use CLI flags for one-off runs or add .patina.yaml only when project defaults are needed.',
+      'Copy .patina.default.yaml to .patina.yaml and edit it manually, or pass --config <path>.'
+    );
   }
   if (args[0] === 'help') {
     printHelp();
@@ -699,7 +702,6 @@ function printHelp() {
 Usage: patina [command] [options] [file...]
 
 COMMANDS
-  patina init             Create a project .patina.yaml
   patina doctor [--json]  Check Node, backends, tmux, and auth setup
   patina auth status      Show backend availability and authentication status
   patina auth login       Print per-backend authentication instructions
@@ -754,7 +756,6 @@ ADVANCED
 EXAMPLES
   echo "This is a draft." | patina --lang en --backend codex-cli
   patina --score --exit-on 30 --format json draft.md
-  patina init --defaults
   patina doctor --json
 
 ENVIRONMENT

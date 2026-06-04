@@ -1,12 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import yaml from 'js-yaml';
+
 import { main, resolveProfileForLanguage } from '../../src/cli.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -114,20 +114,15 @@ describe('CLI adoption commands', () => {
     });
   });
 
-  it('patina init --defaults writes a parseable project config', async () => {
-    const cwd = process.cwd();
-    const dir = mkdtempSync(join(tmpdir(), 'patina-init-test-'));
-    try {
-      process.chdir(dir);
-      await captureConsole(() => main(['init', '--defaults']));
-      const config = yaml.load(readFileSync(join(dir, '.patina.yaml'), 'utf8'));
-      assert.strictEqual(config.language, 'ko');
-      assert.strictEqual(config.profile, 'default');
-      assert.ok(config.backend);
-    } finally {
-      process.chdir(cwd);
-      rmSync(dir, { recursive: true, force: true });
-    }
+  it('patina init exits with a removed-command usage error', () => {
+    const result = spawnSync(process.execPath, [BIN, 'init', '--defaults'], {
+      cwd: REPO_ROOT,
+      input: '',
+      encoding: 'utf8',
+    });
+    assert.strictEqual(result.status, 2);
+    assert.match(result.stderr, /\[patina\] Error: patina init was removed/);
+    assert.doesNotMatch(result.stderr, /empty input/);
   });
 
   it('falls back from the ko-only NamuWiki profile outside Korean', () => {

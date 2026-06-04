@@ -14,7 +14,6 @@ accounts.
 | Korean-first copy | [`patina-launch-korean-first.md`](patina-launch-korean-first.md) |
 | Top-of-funnel English guide | [`signs-of-ai-writing.md`](signs-of-ai-writing.md) |
 | Top-of-funnel Korean guide | [`signs-of-ai-writing_KR.md`](signs-of-ai-writing_KR.md) |
-| Share-card usage | [`share-card.md`](share-card.md) |
 
 ## Pre-post checklist
 

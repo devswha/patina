@@ -56,14 +56,11 @@ describe('leak gate: forbidden pattern set', () => {
 
   it('leaves the open-baseline package paths clean', () => {
     const benign = [
-      'src/backends/patina-hosted.js',
-      'src/backends/patina-hosted-schema.js',
       'src/backends/index.js',
       'README.md',
       'bin/patina.js',
       'scripts/check-no-private-assets.mjs',
       'artifacts/rebaseline-2025/human-controls.public.jsonl',
-      'tests/quality/ko-hosted-paired.example.jsonl',
       'lexicon/en-ai.md',
       'patterns/ko-style.md',
     ];

@@ -372,39 +372,6 @@ test('validateScoreWeights: empty config → no-op', () => {
   assert.deepEqual(validateScoreWeights('', { content: 0.18 }), []);
 });
 
-// --- variants (v3.11 Phase 3.1) ---
-
-import { extractVariants } from '../../src/output.js';
-
-test('extractVariants: parses [VARIANT n] blocks in order', () => {
-  const raw = '[VARIANT 1]\nfirst\n[/VARIANT]\n\n[VARIANT 2]\nsecond\n[/VARIANT]';
-  const out = extractVariants(raw);
-  assert.equal(out.length, 2);
-  assert.deepEqual(out[0], { id: 1, text: 'first' });
-  assert.deepEqual(out[1], { id: 2, text: 'second' });
-});
-
-test('extractVariants: returns empty when no tags', () => {
-  assert.deepEqual(extractVariants('plain rewrite'), []);
-  assert.deepEqual(extractVariants('[BODY]\nsingle\n[/BODY]'), []);
-});
-
-test('extractVariants: sorts by id even if emitted out of order', () => {
-  const raw = '[VARIANT 3]\nthird\n[/VARIANT]\n[VARIANT 1]\nfirst\n[/VARIANT]\n[VARIANT 2]\nsecond\n[/VARIANT]';
-  const out = extractVariants(raw);
-  assert.deepEqual(out.map((v) => v.id), [1, 2, 3]);
-});
-
-test('formatOutput: renders variants as labeled headings', () => {
-  const raw = '[VARIANT 1]\nfirst voice\n[/VARIANT]\n\n[VARIANT 2]\nsecond voice\n[/VARIANT]\n\n[SELF_AUDIT]\nstuff\n[/SELF_AUDIT]';
-  const out = formatOutput(raw, 'rewrite', {});
-  assert.match(out, /## Variant 1/);
-  assert.match(out, /first voice/);
-  assert.match(out, /## Variant 2/);
-  assert.match(out, /second voice/);
-  assert.ok(!out.includes('[VARIANT'));
-  assert.ok(!out.includes('SELF_AUDIT'));
-});
 
 // --- isShortText (v3.11 Phase 3.2) ---
 

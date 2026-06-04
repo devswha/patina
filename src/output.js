@@ -232,7 +232,7 @@ export function stripSelfAudit(body, { logger = createLogger() } = {}) {
     const stripped = removeSelfAuditBlocks(body).trim();
     if (stripped !== body.trim()) {
       logger.warn('output.missing_body_tags', {
-        message: `[patina] warning: model output omitted [BODY] tags (${body.length} chars); stripped [SELF_AUDIT]. Re-run with --prompt-mode strict if the output looks wrong.`,
+        message: `[patina] warning: model output omitted [BODY] tags (${body.length} chars); stripped [SELF_AUDIT]. Try a different backend if the output looks wrong.`,
       });
       return stripped;
     }

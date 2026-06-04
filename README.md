@@ -203,7 +203,6 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `--format json\|text\|markdown` | Select machine-readable JSON, plain text, or default Markdown output |
 | `--quiet` | Suppress status, warning, and progress logs on stderr |
 | `--json-logs` | Emit stderr logs as NDJSON with `level`, `event`, `model`, and `latency_ms` fields |
-| `--prompt-mode strict\|minimal\|auto` | Choose full pattern-pack prompting, compressed prompting, or backend-aware auto |
 
 `patina --help` for the full flag list. `patina doctor --json` checks Node/backend/tmux/API-key readiness without making an LLM call, and `patina init` writes a project `.patina.yaml`.
 
@@ -215,10 +214,6 @@ Dev-native profile shortcuts are available for Markdown-heavy engineering workfl
 `--score` and `--audit` measure a slightly broader set of signals than `--rewrite` does. The viral-hook packs (`ko/en/zh/ja-viral-hook`, 9 patterns each: shock-number hooks, clickbait closings, source-skipping authority claims, breath-optimized short-sentence stacking, hyperbolic engagement lexicon, fake-stat citations, stacked credentials, future-self/parasocial promises, aphoristic punchlines) are **detection-only**.
 
 They appear in score and audit output so the benchmark matches human intuition for SNS-style marketing copy across all four languages. `--rewrite`/`--diff`/`--ouroboros` skip them because those signals are often intentional rhetoric. Real-world demos: [`examples/viral-hook/`](examples/viral-hook/).
-
-### Prompt-mode tuning (v3.11)
-
-`--prompt-mode strict|minimal|auto` lets you trade off between the full pattern packs (~34KB structured prompt) and a compressed casual instruction (~3KB). `auto` picks per backend — Gemini does better on minimal (it gets over-constrained by long structured prompts), while Claude leverages the full packs and Codex is roughly insensitive. case-05 documents the A/B.
 
 ### Short-text scoring boost (v3.11)
 

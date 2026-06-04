@@ -31,7 +31,6 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 | `--provider <name>` | ✓ | — | CLI provider preset. |
 | `--list-providers` | ✓ | — | CLI diagnostics. |
 | `--config <path>` | ✓ | — | CLI config override. |
-| `--prompt-mode <strict\|minimal\|auto>` | ✓ | ✓ | User-visible prompt loading control. |
 | `--allow-insecure-base-url` | ✓ | — | CLI network safety override. |
 | `--allow-private-base-url` | ✓ | — | CLI SSRF/metadata-address safety override. |
 | `-h`, `--help` | ✓ | — | CLI help. |
@@ -42,5 +41,4 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 
 ## Audit notes
 
-- `--prompt-mode` is the main user-facing prompt-loading control that must stay visible in `SKILL.md` as well as the CLI.
 - Auth/provider/base-url flags and `doctor`/`auth` commands are CLI automation or transport controls; they do not map cleanly to prompt-only skills.

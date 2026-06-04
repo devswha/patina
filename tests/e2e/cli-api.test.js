@@ -113,6 +113,26 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(lastRequestBody.messages[0].content.includes('Input Text'));
   });
 
+  it('uses the compact rewrite prompt internally for gemini models', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+
+    await main([
+      '--lang', 'en',
+      '--backend', 'openai-http',
+      '--api-key-file', mockApiKeyPath,
+      '--base-url', `http://127.0.0.1:${mockPort}`,
+      '--model', 'gemini-3-flash-preview',
+      testFile,
+    ]);
+
+    const prompt = lastRequestBody.messages[0].content;
+    assert.ok(prompt.includes('AI signal words (reference)'));
+    assert.ok(!prompt.includes('Follow the 3-Phase pipeline'));
+  });
+
   it('should pass correct temperature', async () => {
     callCount = 0;
     lastRequestBody = null;

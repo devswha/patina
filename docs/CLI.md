@@ -71,8 +71,6 @@ stays reserved for the transformed text or JSON envelope.
 - `--quiet` suppresses stderr logs, including MAX/Ouroboros progress.
 - `--json-logs` emits newline-delimited JSON records with stable fields:
   `ts`, `level`, `event`, `model`, `latency_ms`, and optional `message`.
-- The one-time GitHub star reminder is stderr-only, skipped for CI/non-TTY or
-  scripted runs, and disabled with `PATINA_NO_NUDGE=1`.
 - MAX mode (`--models`) reports elapsed per-model status (`...`, `✓`, `✗`) for both local CLI and HTTP candidates.
 - Ouroboros reports per-iteration score movement and latency.
 
@@ -89,7 +87,7 @@ stays reserved for the transformed text or JSON envelope.
 patina --lang en --models claude-cli,gpt-4o,gemini draft.md
 ```
 
-Each candidate is evaluated through that candidate's backend/model. Local entries use the corresponding logged-in CLI backend for candidate rewrites and MAX scoring/MPS, so local-only MAX runs do not require `PATINA_API_KEY`. HTTP entries still use `--provider`, `--base-url`, and `--api-key`/env auth. `--max-concurrency` caps overall candidate fanout, including local CLI candidates. MAX rewrite workers default to `--prompt-mode minimal` unless `--prompt-mode` or config sets `strict`/`auto` explicitly; in MAX, `auto` resolves once before dispatch rather than separately per candidate.
+Each candidate is evaluated through that candidate's backend/model. Local entries use the corresponding logged-in CLI backend for candidate rewrites and MAX scoring/MPS, so local-only MAX runs do not require `PATINA_API_KEY`. HTTP entries still use `--provider`, `--base-url`, `--api-key-file`, or environment auth. `--max-concurrency` caps overall candidate fanout, including local CLI candidates. MAX rewrite workers default to `--prompt-mode minimal` unless `--prompt-mode` or config sets `strict`/`auto` explicitly; in MAX, `auto` resolves once before dispatch rather than separately per candidate.
 
 ## Backend fallback chains
 

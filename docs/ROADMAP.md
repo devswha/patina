@@ -269,7 +269,7 @@ Campaign state:
 - Concurrent cleanup merged during the final gate: #294 closed #291.
 - Final review blocker cleanup: #295.
 - Launch Wave 1 badge work: #297 closed #282; companion patina-action#1 added `badge-json` / `badge-branch`.
-- Launch Wave 2 support work: #299 closed #285; share-card generator work closed #283.
+- Launch Wave 2 support work: #299 closed #285; the experimental share-card generator from #283 has since been removed from the CLI surface.
 - Launch Wave 3 static playground work closes #208 and targets <https://patina.vibetip.help/> for the try-it-now URL.
 - Launch execution prep: Korean-first channel drafts live in `docs/social/patina-launch-korean-first.md` and score 0.0%; `docs/social/patina-launch-copy.md` scores 6.3% after the KO diagnostic scoring update. `docs/social/patina-launch-execution.md` now records the maintainer-owned posting checklist and #286 update template.
 - Rebaseline claim pass: `npm run benchmark:rebaseline:report` refreshes `docs/benchmarks/rebaseline-latest.{md,json}` from the #155 claim-ready sanitized manifest (800 rows, no raw text).
@@ -277,8 +277,7 @@ Campaign state:
 - KO register pilot: `npm run benchmark:register-pilot -- --write --basename register-stratified-latest` refreshes false positives by register without committing raw text; the expanded current pilot shows 42/250 predicted-hot human-control rows, split by register for threshold work.
 - KO KatFish calibration: `npm run benchmark:katfish-ko -- --write --basename katfish-ko-latest` reports aggregate-only private KatFish metrics; current KO diagnostics improve catch rate from 58.9% to 74.8% versus Patina without KO diagnostics while public-web human-control FP stays 42/250.
 - Launch feedback prep: the false-positive issue form now captures text origin, redistribution, fired paragraph, score output, and expected behavior.
-- Growth nudge prep: #305 adds the install success star line and a CI-safe,
-  stderr-only, one-time CLI reminder with `PATINA_NO_NUDGE=1`.
+- Growth nudge prep: the one-time CLI star reminder from #305 has since been removed to keep stderr operational-only.
 - README demo prep: #306 adds the first-screen terminal GIF, try-it-now
   playground link, translated README references, and re-recording notes; #308
   localizes README hero GIF references so English uses `patina-demo-en.gif`,

@@ -131,7 +131,6 @@ describe('CLI adoption commands', () => {
       assert.strictEqual(config.language, 'ko');
       assert.strictEqual(config.profile, 'default');
       assert.ok(config.backend);
-      assert.ok(Array.isArray(config['max-models']));
     } finally {
       process.chdir(cwd);
       rmSync(dir, { recursive: true, force: true });
@@ -174,7 +173,6 @@ describe('CLI adoption exit/error behavior', () => {
   it('value-taking usage errors use the standardized input exit code', () => {
     const cases = [
       { args: ['--tone'], message: /--tone requires a value/ },
-      { args: ['--models'], message: /--models requires a value/ },
       { args: ['--gate', 'nope'], message: /--gate expects a number/ },
       { args: ['--prompt-mode', 'wrong'], message: /--prompt-mode expects/ },
       { args: ['--api-key-file'], message: /--api-key-file requires a value/ },

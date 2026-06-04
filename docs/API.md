@@ -118,6 +118,15 @@ throw new PatinaCliError({ what: 'missing input', why: 'No file was provided', a
 <dt><a href="#DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD">DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD</a> : <code>number</code></dt>
 <dd><p>Default maximum delta before deterministic and LLM scores are reconciled upward.</p>
 </dd>
+<dt><a href="#LEAKAGE_SCORE_FLOOR">LEAKAGE_SCORE_FLOOR</a> : <code>number</code></dt>
+<dd><p>Score floor applied when deterministic markup-leakage is detected.</p>
+<p>Model-output leakage (issue #332) is near-proof-grade: a single token that
+LLM tooling injects and humans never type. Unlike the stylometric/lexical
+signals it is decisive on its own, so any hit short-circuits the deterministic
+<code>overall</code> into the &#39;heavily AI&#39; band (&gt;70) regardless of the per-paragraph
+hot ratio. It is a floor, not a hard 100, because the surrounding prose may
+still be genuinely human and we avoid claiming absolute proof.</p>
+</dd>
 </dl>
 
 ## Functions
@@ -129,14 +138,8 @@ throw new PatinaCliError({ what: 'missing input', why: 'No file was provided', a
 <dt><a href="#computeBackoffMs">computeBackoffMs(attempt, retryAfter, [opts])</a> ⇒ <code>number</code></dt>
 <dd><p>Compute retry delay from Retry-After or exponential backoff with jitter.</p>
 </dd>
-<dt><a href="#createSemaphore">createSemaphore(max)</a> ⇒ <code>Object</code></dt>
-<dd><p>Create a small async semaphore for bounded parallel LLM dispatch.</p>
-</dd>
 <dt><a href="#callLLM">callLLM(options)</a> ⇒ <code>Promise.&lt;string&gt;</code></dt>
 <dd><p>Call an OpenAI-compatible chat completions endpoint with retries, timeout, optional cache, and abort support.</p>
-</dd>
-<dt><a href="#callLLMMultiple">callLLMMultiple(options)</a> ⇒ <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code></dt>
-<dd><p>Fan out one prompt across multiple model ids with bounded concurrency.</p>
 </dd>
 <dt><a href="#providerHttpKeyEnvVars">providerHttpKeyEnvVars([providerApiKeyEnv])</a> ⇒ <code>Array.&lt;string&gt;</code></dt>
 <dd><p>Build the key lookup order for a selected provider.</p>
@@ -145,7 +148,7 @@ throw new PatinaCliError({ what: 'missing input', why: 'No file was provided', a
 <dd><p>Inspect where an HTTP API key would be read from without exposing the secret.</p>
 </dd>
 <dt><a href="#resolveHttpApiKey">resolveHttpApiKey([options])</a> ⇒ <code>string</code> | <code>undefined</code></dt>
-<dd><p>Resolve the HTTP API key from explicit args, key file, or environment.</p>
+<dd><p>Resolve the HTTP API key from a key file or environment.</p>
 </dd>
 <dt><a href="#createResponseCache">createResponseCache([options])</a> ⇒ <code>null</code> | <code>Object</code></dt>
 <dd><p>Create a filesystem-backed cache for LLM responses.</p>
@@ -167,6 +170,9 @@ throw new PatinaCliError({ what: 'missing input', why: 'No file was provided', a
 </dd>
 <dt><a href="#resolvePromptMode">resolvePromptMode(mode, context)</a> ⇒ <code>string</code></dt>
 <dd><p>Resolve the effective prompt style for backend/model auto mode.</p>
+</dd>
+<dt><a href="#resolveProfileForLanguage">resolveProfileForLanguage(profileName, lang, [logger])</a> ⇒ <code>string</code></dt>
+<dd><p>Resolve a profile name against language-specific profile limits.</p>
 </dd>
 <dt><a href="#resolveConfiguredPromptMode">resolveConfiguredPromptMode([options])</a> ⇒ <code>string</code></dt>
 <dd><p>Choose the configured prompt mode before backend/model auto-resolution.</p>
@@ -237,24 +243,14 @@ throw new PatinaCliError({ what: 'missing input', why: 'No file was provided', a
 <dt><a href="#writeManifest">writeManifest(dir, manifest, [outputs])</a> ⇒ <code>string</code></dt>
 <dd><p>Write manifest.json and optional output files into a run directory.</p>
 </dd>
-<dt><a href="#runMaxMode">runMaxMode(options)</a> ⇒ <code>Promise.&lt;{type: string, candidates: Array.&lt;object&gt;, best: (object|null), allFailed: boolean, mpsFallback: boolean, timedOut: boolean}&gt;</code></dt>
-<dd><p>Run MAX mode: dispatch candidates, score them, and select the best passing result.</p>
-</dd>
-<dt><a href="#selectBest">selectBest(candidates, [options])</a> ⇒ <code>Object</code></dt>
-<dd><p>Select the best MAX candidate, preferring lowest AI score with MPS &gt;= 70.</p>
-</dd>
-<dt><a href="#resolveMaxModelBackend">resolveMaxModelBackend(model)</a> ⇒ <code>object</code> | <code>null</code></dt>
-<dd><p>Resolve an exact MAX model alias to a local backend implementation.</p>
-</dd>
-<dt><a href="#dispatchMaxCandidates">dispatchMaxCandidates(options)</a> ⇒ <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code></dt>
-<dd><p>Dispatch MAX candidates across local backends and HTTP models.</p>
-</dd>
 <dt><a href="#runOuroboros">runOuroboros(options)</a> ⇒ <code>Promise.&lt;{finalText: string, finalScore: number, iterations: number, reason: string, log: Array.&lt;object&gt;}&gt;</code></dt>
 <dd><p>Run the iterative Ouroboros rewrite-and-score loop.</p>
 </dd>
 <dt><a href="#formatOutput">formatOutput(result, mode, [parsed], [opts])</a> ⇒ <code>string</code></dt>
 <dd><p>Format a raw backend result for CLI output mode and requested format.</p>
 </dd>
+<dt><a href="#shouldColorDiff">shouldColorDiff([options])</a></dt>
+<dd></dd>
 <dt><a href="#extractVariants">extractVariants(body)</a> ⇒ <code>Array.&lt;{id: number, text: string}&gt;</code></dt>
 <dd><p>Extract tagged [VARIANT n] blocks from a model response.</p>
 </dd>
@@ -263,6 +259,13 @@ throw new PatinaCliError({ what: 'missing input', why: 'No file was provided', a
 </dd>
 <dt><a href="#stripSelfAudit">stripSelfAudit(body, [options])</a> ⇒ <code>string</code></dt>
 <dd><p>Remove SELF_AUDIT blocks and unwrap the BODY block from rewrite output.</p>
+</dd>
+<dt><a href="#buildDeterministicAuditBackstop">buildDeterministicAuditBackstop(text, [opts])</a> ⇒ <code>string</code></dt>
+<dd><p>Build a deterministic &quot;backstop&quot; section for audit mode. The LLM audit is
+model-dependent (a weak model silently drops 번역투/calques); these signals are
+computed deterministically so they appear regardless of which model ran. ko
+translationese rules are listed even below the hot-density gate, because audit
+is a hint surface, not a verdict.</p>
 </dd>
 <dt><a href="#buildPrompt">buildPrompt(options)</a> ⇒ <code>string</code></dt>
 <dd><p>Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.</p>
@@ -422,6 +425,19 @@ Default maximum delta before deterministic and LLM scores are reconciled upward.
 ```js
 const threshold = DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD;
 ```
+<a name="LEAKAGE_SCORE_FLOOR"></a>
+
+## LEAKAGE\_SCORE\_FLOOR : <code>number</code>
+Score floor applied when deterministic markup-leakage is detected.
+
+Model-output leakage (issue #332) is near-proof-grade: a single token that
+LLM tooling injects and humans never type. Unlike the stylometric/lexical
+signals it is decisive on its own, so any hit short-circuits the deterministic
+`overall` into the 'heavily AI' band (>70) regardless of the per-paragraph
+hot ratio. It is a floor, not a hard 100, because the surrounding prose may
+still be genuinely human and we avoid claiming absolute proof.
+
+**Kind**: global constant
 <a name="isRetryable"></a>
 
 ## isRetryable(err) ⇒ <code>boolean</code>
@@ -468,27 +484,6 @@ Compute retry delay from Retry-After or exponential backoff with jitter.
 ```js
 const delay = computeBackoffMs(1, '2'); // 2000
 ```
-<a name="createSemaphore"></a>
-
-## createSemaphore(max) ⇒ <code>Object</code>
-Create a small async semaphore for bounded parallel LLM dispatch.
-
-**Kind**: global function
-**Returns**: <code>Object</code> - Semaphore whose acquire resolves to a release callback.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| max | <code>number</code> | Maximum concurrent acquisitions; values <=0 create an unlimited no-op gate. |
-
-**Example**
-```js
-const release = await createSemaphore(2).acquire();
-release();
-```
 <a name="callLLM"></a>
 
 ## callLLM(options) ⇒ <code>Promise.&lt;string&gt;</code>
@@ -507,8 +502,8 @@ Call an OpenAI-compatible chat completions endpoint with retries, timeout, optio
 | options | <code>object</code> |  | LLM request options. |
 | options.prompt | <code>string</code> |  | User prompt sent as the single chat message. |
 | [options.apiKey] | <code>string</code> |  | Bearer token for the provider. |
-| [options.baseURL] | <code>string</code> | <code>&quot;https://api.openai.com/v1&quot;</code> | OpenAI-compatible API base URL. |
-| [options.model] | <code>string</code> | <code>&quot;gpt-4o&quot;</code> | Model id to request. |
+| [options.baseURL] | <code>string</code> |  | OpenAI-compatible API base URL. Defaults to https://api.openai.com/v1. |
+| [options.model] | <code>string</code> |  | Model id to request. Defaults to gpt-4o. |
 | [options.temperature] | <code>number</code> | <code>DEFAULT_TEMPERATURE</code> | Sampling temperature. |
 | [options.seed] | <code>number</code> \| <code>string</code> |  | Optional deterministic seed forwarded to the provider. |
 | [options.timeout] | <code>number</code> | <code>120000</code> | Per-attempt timeout in milliseconds. |
@@ -524,42 +519,6 @@ Call an OpenAI-compatible chat completions endpoint with retries, timeout, optio
 **Example**
 ```js
 const text = await callLLM({ prompt: 'Rewrite this', apiKey: process.env.OPENAI_API_KEY });
-```
-<a name="callLLMMultiple"></a>
-
-## callLLMMultiple(options) ⇒ <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code>
-Fan out one prompt across multiple model ids with bounded concurrency.
-
-**Kind**: global function
-**Returns**: <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code> - Per-model results in input order.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
-
-| Param | Type | Default | Description |
-| --- | --- | --- | --- |
-| options | <code>object</code> |  | Multi-model dispatch options. |
-| options.prompt | <code>string</code> |  | Prompt to send to each model. |
-| options.models | <code>Array.&lt;string&gt;</code> |  | Ordered model ids to call. |
-| [options.apiKey] | <code>string</code> |  | Provider API key. |
-| [options.baseURL] | <code>string</code> | <code>&quot;https://api.openai.com/v1&quot;</code> | Provider base URL. |
-| [options.temperature] | <code>number</code> | <code>DEFAULT_TEMPERATURE</code> | Sampling temperature. |
-| [options.seed] | <code>number</code> \| <code>string</code> |  | Optional deterministic seed. |
-| [options.timeout] | <code>number</code> |  | Per-call timeout in milliseconds. |
-| [options.allowInsecureBaseURL] | <code>boolean</code> | <code>false</code> | Allow non-loopback HTTP base URLs. |
-| [options.deadline] | <code>number</code> |  | Absolute epoch-millisecond deadline. |
-| [options.signal] | <code>AbortSignal</code> |  | External cancellation signal. |
-| [options.maxConcurrency] | <code>number</code> |  | Maximum in-flight model calls. |
-| [options.onStart] | <code>function</code> |  | Called with each model before dispatch. |
-| [options.onComplete] | <code>function</code> |  | Called with each model and success flag. |
-| [options.onResponse] | <code>function</code> |  | Called with response metadata. |
-| [options.cache] | <code>object</code> |  | Response cache shared by calls. |
-| [options.callLLM] | <code>function</code> |  | Injectable single-model implementation. |
-
-**Example**
-```js
-const results = await callLLMMultiple({ prompt: 'Hi', models: ['gpt-4o', 'gpt-4o-mini'] });
 ```
 <a name="providerHttpKeyEnvVars"></a>
 
@@ -607,7 +566,7 @@ const source = inspectHttpApiKeySource({ env: { PATINA_API_KEY: 'sk-...' } });
 <a name="resolveHttpApiKey"></a>
 
 ## resolveHttpApiKey([options]) ⇒ <code>string</code> \| <code>undefined</code>
-Resolve the HTTP API key from explicit args, key file, or environment.
+Resolve the HTTP API key from a key file or environment.
 
 **Kind**: global function
 **Returns**: <code>string</code> \| <code>undefined</code> - Resolved key value, or undefined when unauthenticated.
@@ -781,7 +740,29 @@ Resolve the effective prompt style for backend/model auto mode.
 
 **Example**
 ```js
-const mode = resolvePromptMode('auto', { model: 'gemini-1.5-flash' });
+const mode = resolvePromptMode('auto', { model: 'gemini-2.5-flash' });
+```
+<a name="resolveProfileForLanguage"></a>
+
+## resolveProfileForLanguage(profileName, lang, [logger]) ⇒ <code>string</code>
+Resolve a profile name against language-specific profile limits.
+
+**Kind**: global function
+**Returns**: <code>string</code> - Effective profile name.
+**Throws**:
+
+- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+
+
+| Param | Type | Description |
+| --- | --- | --- |
+| profileName | <code>string</code> | Requested profile name. |
+| lang | <code>string</code> | Active language code. |
+| [logger] | <code>object</code> | Logger with warn(event, payload). |
+
+**Example**
+```js
+resolveProfileForLanguage('namuwiki', 'en') // 'default'
 ```
 <a name="resolveConfiguredPromptMode"></a>
 
@@ -795,16 +776,15 @@ Choose the configured prompt mode before backend/model auto-resolution.
 - <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
 
 
-| Param | Type | Default | Description |
-| --- | --- | --- | --- |
-| [options] | <code>object</code> |  | Prompt-mode sources. |
-| [options.cliPromptMode] | <code>string</code> |  | CLI --prompt-mode value. |
-| [options.configPromptMode] | <code>string</code> |  | Config prompt-mode value. |
-| [options.isMaxMode] | <code>boolean</code> | <code>false</code> | Whether MAX mode is active. |
+| Param | Type | Description |
+| --- | --- | --- |
+| [options] | <code>object</code> | Prompt-mode sources. |
+| [options.cliPromptMode] | <code>string</code> | CLI --prompt-mode value. |
+| [options.configPromptMode] | <code>string</code> | Config prompt-mode value. |
 
 **Example**
 ```js
-const requested = resolveConfiguredPromptMode({ isMaxMode: true });
+const requested = resolveConfiguredPromptMode();
 ```
 <a name="loadConfig"></a>
 
@@ -1288,119 +1268,6 @@ Write manifest.json and optional output files into a run directory.
 ```js
 const path = writeManifest('runs/latest', manifest, [{ name: 'output.md', content: 'Done' }]);
 ```
-<a name="runMaxMode"></a>
-
-## runMaxMode(options) ⇒ <code>Promise.&lt;{type: string, candidates: Array.&lt;object&gt;, best: (object\|null), allFailed: boolean, mpsFallback: boolean, timedOut: boolean}&gt;</code>
-Run MAX mode: dispatch candidates, score them, and select the best passing result.
-
-**Kind**: global function
-**Returns**: <code>Promise.&lt;{type: string, candidates: Array.&lt;object&gt;, best: (object\|null), allFailed: boolean, mpsFallback: boolean, timedOut: boolean}&gt;</code> - MAX result.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
-
-| Param | Type | Default | Description |
-| --- | --- | --- | --- |
-| options | <code>object</code> |  | MAX mode options. |
-| options.prompt | <code>string</code> |  | Prompt to send to each model. |
-| options.sourceText | <code>string</code> |  | Original source text for MPS scoring. |
-| options.models | <code>Array.&lt;string&gt;</code> |  | Ordered model ids or local backend aliases. |
-| [options.apiKey] | <code>string</code> |  | Provider API key. |
-| [options.baseURL] | <code>string</code> |  | Provider base URL. |
-| options.config | <code>object</code> |  | Effective config. |
-| options.patterns | <code>Array.&lt;object&gt;</code> |  | Loaded pattern packs. |
-| [options.maxConcurrency] | <code>number</code> |  | Maximum concurrent candidates. |
-| [options.wallClockBudgetMs] | <code>number</code> | <code>300000</code> | Total MAX-mode budget. |
-| [options.callLLM] | <code>function</code> |  | HTTP LLM implementation. |
-| [options.now] | <code>function</code> |  | Clock returning epoch milliseconds. |
-| [options.sleep] | <code>function</code> |  | Sleep helper for tests. |
-| [options.callLLMMultipleImpl] | <code>function</code> |  | Injectable dispatcher. |
-| [options.modelBackendResolver] | <code>function</code> |  | Resolver for local aliases. |
-| [options.scoreTextImpl] | <code>function</code> |  | Injectable AI-likeness scorer. |
-| [options.scoreMPSImpl] | <code>function</code> |  | Injectable MPS scorer. |
-| [options.signal] | <code>AbortSignal</code> |  | External cancellation signal. |
-| [options.logger] | <code>object</code> |  | patina logger. |
-
-**Example**
-```js
-const result = await runMaxMode({ prompt, sourceText, models: ['gpt-4o'], config, patterns });
-```
-<a name="selectBest"></a>
-
-## selectBest(candidates, [options]) ⇒ <code>Object</code>
-Select the best MAX candidate, preferring lowest AI score with MPS >= 70.
-
-**Kind**: global function
-**Returns**: <code>Object</code> - Selected candidate and whether MPS fallback was used.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| candidates | <code>Array.&lt;object&gt;</code> | Candidate result objects. |
-| [options] | <code>object</code> | Selection options. |
-| [options.log] | <code>function</code> | Tie-break logger. |
-
-**Example**
-```js
-const { candidate } = selectBest([{ ok: true, model: 'a', aiScore: 20, mps: 90 }]);
-```
-<a name="resolveMaxModelBackend"></a>
-
-## resolveMaxModelBackend(model) ⇒ <code>object</code> \| <code>null</code>
-Resolve an exact MAX model alias to a local backend implementation.
-
-**Kind**: global function
-**Returns**: <code>object</code> \| <code>null</code> - Backend implementation, or null for HTTP models.
-**Throws**:
-
-- <code>Error</code> When the matching backend is unavailable.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| model | <code>string</code> | Model id or alias. |
-
-**Example**
-```js
-const backend = resolveMaxModelBackend('claude-cli');
-```
-<a name="dispatchMaxCandidates"></a>
-
-## dispatchMaxCandidates(options) ⇒ <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code>
-Dispatch MAX candidates across local backends and HTTP models.
-
-**Kind**: global function
-**Returns**: <code>Promise.&lt;Array.&lt;Object&gt;&gt;</code> - Candidate results.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| options | <code>object</code> | Dispatch options. |
-| options.prompt | <code>string</code> | Prompt to send. |
-| options.models | <code>Array.&lt;string&gt;</code> | Ordered model ids. |
-| [options.apiKey] | <code>string</code> | Provider API key. |
-| [options.baseURL] | <code>string</code> | Provider base URL. |
-| [options.maxConcurrency] | <code>number</code> | Maximum concurrent dispatches. |
-| [options.deadline] | <code>number</code> | Absolute epoch-millisecond deadline. |
-| [options.signal] | <code>AbortSignal</code> | External cancellation signal. |
-| [options.callLLM] | <code>function</code> | HTTP LLM implementation. |
-| [options.modelBackendResolver] | <code>function</code> | Local backend resolver. |
-| [options.now] | <code>function</code> | Clock returning epoch milliseconds. |
-| [options.sleep] | <code>function</code> | Sleep helper. |
-| [options.onStart] | <code>function</code> | Per-model start callback. |
-| [options.onComplete] | <code>function</code> | Per-model completion callback. |
-
-**Example**
-```js
-const candidates = await dispatchMaxCandidates({ prompt: 'Hi', models: ['gpt-4o'] });
-```
 <a name="runOuroboros"></a>
 
 ## runOuroboros(options) ⇒ <code>Promise.&lt;{finalText: string, finalScore: number, iterations: number, reason: string, log: Array.&lt;object&gt;}&gt;</code>
@@ -1458,11 +1325,26 @@ Format a raw backend result for CLI output mode and requested format.
 | [opts.logger] | <code>object</code> |  | Logger for output warnings. |
 | [opts.env] | <code>object</code> |  | Environment map for color decisions. |
 | [opts.stdout] | <code>object</code> |  | Stdout-like stream for color decisions. |
+| [opts.auditBackstop] | <code>string</code> |  | Deterministic audit-mode section to append before the tone footer. |
 
 **Example**
 ```js
 const output = formatOutput('[BODY]Hi[/BODY]', 'rewrite');
 ```
+<a name="shouldColorDiff"></a>
+
+## shouldColorDiff([options])
+**Kind**: global function
+
+| Param | Type |
+| --- | --- |
+| [options] | <code>object</code> |
+| [options.parsed] | <code>object</code> |
+| [options.parsed.noColor] | <code>boolean</code> |
+| [options.env] | <code>Record.&lt;string, (string\|undefined)&gt;</code> |
+| [options.stdout] | <code>object</code> |
+| [options.stdout.isTTY] | <code>boolean</code> |
+
 <a name="extractVariants"></a>
 
 ## extractVariants(body) ⇒ <code>Array.&lt;{id: number, text: string}&gt;</code>
@@ -1526,6 +1408,29 @@ Remove SELF_AUDIT blocks and unwrap the BODY block from rewrite output.
 ```js
 const clean = stripSelfAudit('[BODY]Hello[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]');
 ```
+<a name="buildDeterministicAuditBackstop"></a>
+
+## buildDeterministicAuditBackstop(text, [opts]) ⇒ <code>string</code>
+Build a deterministic "backstop" section for audit mode. The LLM audit is
+model-dependent (a weak model silently drops 번역투/calques); these signals are
+computed deterministically so they appear regardless of which model ran. ko
+translationese rules are listed even below the hot-density gate, because audit
+is a hint surface, not a verdict.
+
+**Kind**: global function
+**Returns**: <code>string</code> - Markdown section (empty string when nothing fired).
+
+| Param | Type | Description |
+| --- | --- | --- |
+| text | <code>string</code> | Source text. |
+| [opts] | <code>object</code> |  |
+| [opts.lang] | <code>string</code> |  |
+| [opts.repoRoot] | <code>string</code> |  |
+
+<a name="buildDeterministicAuditBackstop..rows"></a>
+
+### buildDeterministicAuditBackstop~rows : <code>Array.&lt;{signal:string, label:string, severity:string, location:string}&gt;</code>
+**Kind**: inner constant of [<code>buildDeterministicAuditBackstop</code>](#buildDeterministicAuditBackstop)
 <a name="buildPrompt"></a>
 
 ## buildPrompt(options) ⇒ <code>string</code>

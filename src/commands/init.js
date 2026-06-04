@@ -1,7 +1,6 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
-import { spawnSync } from 'node:child_process';
 import { stdin as input, stdout as output } from 'node:process';
 import yaml from 'js-yaml';
 import { listBackends } from '../backends/index.js';
@@ -29,7 +28,6 @@ const PROFILES = [
   'namuwiki',
 ];
 const TONES = ['profile-only', 'casual', 'professional', 'academic', 'narrative', 'marketing', 'instructional', 'auto'];
-const DISPATCH_MODES = ['omc', 'direct', 'api'];
 
 export async function runInit(args = [], { logger = createLogger() } = {}) {
   const parsed = parseInitArgs(args);
@@ -73,17 +71,11 @@ export function detectInitDefaults() {
     backends.find((b) => b.name === 'openai-http')
   )?.name || 'openai-http';
 
-  const maxModels = authenticated
-    .map((b) => MODEL_BY_BACKEND[b.name])
-    .filter(Boolean);
-
   return {
     language: 'ko',
     profile: 'default',
     tone: 'profile-only',
     backend: preferredBackend,
-    maxModels: maxModels.length > 0 ? maxModels : ['claude', 'gemini'],
-    dispatch: commandAvailable('tmux') ? 'omc' : 'direct',
   };
 }
 
@@ -136,9 +128,7 @@ async function promptForConfig(defaults, { target, force, logger = createLogger(
     const tone = await ask(rl, 'Tone', defaults.tone, TONES, logger);
     const backendChoices = listBackends().map((b) => b.name);
     const backend = await ask(rl, 'Backend', defaults.backend, backendChoices, logger);
-    const maxModels = await askMulti(rl, 'MAX models', defaults.maxModels, ['claude', 'codex', 'gemini'], logger);
-    const dispatch = await ask(rl, 'Dispatch mode', defaults.dispatch, DISPATCH_MODES, logger);
-    return { language, profile, tone, backend, maxModels, dispatch };
+    return { language, profile, tone, backend };
   } finally {
     rl.close();
   }
@@ -155,18 +145,6 @@ async function ask(rl, label, defaultValue, choices, logger = createLogger()) {
   return value;
 }
 
-async function askMulti(rl, label, defaultValues, choices, logger = createLogger()) {
-  const raw = (await rl.question(`${label} (${choices.join(',')}) [${defaultValues.join(',')}]: `)).trim();
-  const values = (raw ? raw.split(',') : defaultValues)
-    .map((value) => value.trim())
-    .filter(Boolean);
-  const valid = values.filter((value) => choices.includes(value));
-  if (valid.length === 0) {
-    logger.warn('init.no_valid_values', { message: `[patina] ${label}: no valid values, keeping ${defaultValues.join(',')}` });
-    return defaultValues;
-  }
-  return [...new Set(valid)];
-}
 
 function buildInitConfig(answers) {
   return {
@@ -174,33 +152,17 @@ function buildInitConfig(answers) {
     profile: answers.profile,
     tone: answers.tone === 'profile-only' ? null : answers.tone,
     backend: answers.backend,
-    'max-models': answers.maxModels,
-    dispatch: answers.dispatch,
   };
 }
 
-function commandAvailable(name) {
-  try {
-    const result = spawnSync(name, ['-V'], { stdio: 'ignore' });
-    return result.status === 0;
-  } catch {
-    return false;
-  }
-}
-
-const MODEL_BY_BACKEND = {
-  'codex-cli': 'codex',
-  'claude-cli': 'claude',
-  'gemini-cli': 'gemini',
-};
 
 function printInitHelp() {
   console.log(`patina init — create a project .patina.yaml
 
 Usage: patina init [--defaults] [--force]
 
-Guided mode asks for language, profile, tone, backend, MAX models, and dispatch
-mode. It preselects authenticated local backends when available.
+Guided mode asks for language, profile, tone, and backend. It preselects
+authenticated local backends when available.
 
 Options:
   --defaults   Write detected defaults without prompts

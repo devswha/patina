@@ -275,11 +275,10 @@ test('resolvePromptMode: auto + unknown → strict (conservative)', () => {
   assert.equal(resolvePromptMode('auto', {}), 'strict');
 });
 
-test('resolveConfiguredPromptMode: MAX defaults to minimal unless overridden', () => {
-  assert.equal(resolveConfiguredPromptMode({ isMaxMode: true }), 'minimal');
-  assert.equal(resolveConfiguredPromptMode({ isMaxMode: false }), 'strict');
-  assert.equal(resolveConfiguredPromptMode({ configPromptMode: 'strict', isMaxMode: true }), 'strict');
-  assert.equal(resolveConfiguredPromptMode({ cliPromptMode: 'auto', configPromptMode: 'strict', isMaxMode: true }), 'auto');
+test('resolveConfiguredPromptMode defaults to strict unless overridden', () => {
+  assert.equal(resolveConfiguredPromptMode({}), 'strict');
+  assert.equal(resolveConfiguredPromptMode({ configPromptMode: 'strict' }), 'strict');
+  assert.equal(resolveConfiguredPromptMode({ cliPromptMode: 'auto', configPromptMode: 'strict' }), 'auto');
 });
 
 // --- validateScoreWeights (v3.11 Phase 1.3) ---

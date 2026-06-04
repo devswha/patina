@@ -8,7 +8,6 @@ patina uses stable exit codes so CI and editor integrations can distinguish cont
 | `1` | Runtime/backend failure: API/auth/backend errors, failed doctor blockers, invalid runtime setup, or unexpected exceptions. |
 | `2` | Input/usage failure: unknown flags, missing required option values, empty stdin, or `--no-interactive` with no input. |
 | `3` | Score gate exceeded. `--score --exit-on <n>` or `--score --gate <n>` completed, but `overall > n`. |
-| `4` | MAX mode could not produce a fully acceptable candidate: all candidates failed, or no candidate reached the MPS floor and patina selected the highest-MPS fallback. |
 
 ## Score gates
 

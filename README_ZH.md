@@ -188,7 +188,6 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 | `--batch` | 把位置参数当作文件列表（例：`--batch docs/*.md`） |
 | `--format json\|text\|markdown` | 选择 JSON、纯文本或默认 Markdown 输出 |
 | `--quiet` | 隐藏 stderr 中的状态、警告和进度日志 |
-| `--json-logs` | 以 NDJSON 输出 stderr 日志，包含 `level`、`event`、`model`、`latency_ms` 字段 |
 
 完整选项请运行 `patina --help`。`patina doctor --json` 可在不调用 LLM 的情况下检查 Node/backend/tmux/API-key 状态，`patina init` 会写入项目 `.patina.yaml`。
 
@@ -210,7 +209,7 @@ Markdown-heavy 工程流程可使用开发者原生 profile shortcut：`code-com
 
 ### Machine-readable output and exit codes
 
-`--format json` 会把所有模式包进稳定 envelope，包含 `overall`、`categories[]`、`tone`、`mps`、`gateResult` 和清理后的 `output` 正文。`--json-logs` 会让 stderr 也保持 NDJSON 格式，`--quiet` 则为只需要 stdout 的脚本隐藏状态、警告和进度日志。`--format markdown` 是默认值；`--format text` 保留无 YAML tone footer 的用户可见正文。退出码见 [EXIT-CODES.md](docs/EXIT-CODES.md)：`0` 成功，`1` runtime/backend，`2` input/usage，`3` score gate 超限。
+`--format json` 会把所有模式包进稳定 envelope，包含 `overall`、`categories[]`、`tone`、`mps`、`gateResult` 和清理后的 `output` 正文。`--quiet` 则为只需要 stdout 的脚本隐藏状态、警告和进度日志。`--format markdown` 是默认值；`--format text` 保留无 YAML tone footer 的用户可见正文。退出码见 [EXIT-CODES.md](docs/EXIT-CODES.md)：`0` 成功，`1` runtime/backend，`2` input/usage，`3` score gate 超限。
 
 ### 分数权重漂移检测 (v3.11)
 

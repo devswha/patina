@@ -36,14 +36,38 @@ const REGISTRY = {
   'gemini-cli': geminiCli,
 };
 
+const BACKEND_META = {
+  'openai-http': {
+    kind: 'http',
+    selectWith: 'default, --backend openai-http, --provider <name>',
+  },
+  'codex-cli': {
+    kind: 'local-cli',
+    selectWith: '--backend codex-cli, --model codex-*',
+  },
+  'claude-cli': {
+    kind: 'local-cli',
+    selectWith: '--backend claude-cli, --model claude-*',
+  },
+  'gemini-cli': {
+    kind: 'local-cli',
+    selectWith: '--backend gemini-cli, --model gemini-*',
+  },
+};
+
 export function listBackends() {
   return Object.keys(REGISTRY).map((key) => {
     const b = REGISTRY[key];
+    const meta = BACKEND_META[key] || { kind: 'unknown', selectWith: `--backend ${key}` };
     return {
       name: key,
+      kind: meta.kind,
+      selectWith: meta.selectWith,
       available: b.isAvailable(),
       authenticated: b.isAuthenticated(),
       authHint: b.authHint(),
+      loginCommand: b.loginCommand || null,
+      installHint: b.installHint || null,
     };
   });
 }

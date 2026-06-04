@@ -202,7 +202,6 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `--batch` | Treat positional args as a list of files (e.g. `--batch docs/*.md`) |
 | `--format json\|text\|markdown` | Select machine-readable JSON, plain text, or default Markdown output |
 | `--quiet` | Suppress status, warning, and progress logs on stderr |
-| `--json-logs` | Emit stderr logs as NDJSON with `level`, `event`, `model`, and `latency_ms` fields |
 
 `patina --help` for the full flag list. `patina doctor --json` checks Node/backend/tmux/API-key readiness without making an LLM call, and `patina init` writes a project `.patina.yaml`.
 
@@ -225,7 +224,7 @@ In rewrite mode, the model emits its self-audit notes inside `[SELF_AUDIT]`/`[/S
 
 ### Machine-readable output and exit codes
 
-`--format json` wraps every mode in a stable envelope with `overall`, `categories[]`, `tone`, `mps`, `gateResult`, and the cleaned `output` body. `--json-logs` keeps stderr machine-readable as NDJSON, while `--quiet` silences status/warning/progress logs for scripts that only want stdout. `--format markdown` is the default; `--format text` keeps the user-facing body without the YAML tone footer. Exit codes are standardized in [EXIT-CODES.md](docs/EXIT-CODES.md): `0` success, `1` runtime/backend, `2` input/usage, `3` score gate exceeded.
+`--format json` wraps every mode in a stable envelope with `overall`, `categories[]`, `tone`, `mps`, `gateResult`, and the cleaned `output` body. `--quiet` silences status, warning, and progress logs on stderr for scripts that only want stdout. `--format markdown` is the default; `--format text` keeps the user-facing body without the YAML tone footer. Exit codes are standardized in [EXIT-CODES.md](docs/EXIT-CODES.md): `0` success, `1` runtime/backend, `2` input/usage, `3` score gate exceeded.
 
 ### Score weight drift detection (v3.11)
 

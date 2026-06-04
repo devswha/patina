@@ -19,7 +19,7 @@ patina runs through one of several backends. Pick whichever matches your existin
 patina auth status         # backend availability + auth state
 patina auth login          # per-backend login instructions
 patina auth login codex-cli # confirm, then run `codex login`
-patina --list-providers    # preset providers + key status
+patina --list-backends     # backend selectors + auth state
 ```
 
 Backend selection requires an explicit signal: pass `--backend <name>` directly, pass a comma-separated fallback chain such as `--backend claude-cli,codex-cli`, or use `--model <prefix>` (`codex-*`, `claude-*`, `gemini-*` route to the matching local CLI). With no flags and no API key, patina exits with an error rather than silently dispatching to a coding agent. See [issue #88](https://github.com/devswha/patina/issues/88) for the rationale.

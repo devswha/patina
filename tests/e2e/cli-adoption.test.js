@@ -96,29 +96,22 @@ describe('CLI adoption commands', () => {
     }
   });
 
-  it('patina --list-providers shows the effective shared key source', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'patina-provider-key-file-'));
-    const keyFile = join(dir, 'key.txt');
-    writeFileSync(keyFile, 'file-key\n');
-    try {
-      await withEnv({
-        PATINA_API_KEY: undefined,
-        OPENAI_API_KEY: 'env-key',
-        GEMINI_API_KEY: undefined,
-        GROQ_API_KEY: undefined,
-        TOGETHER_API_KEY: undefined,
-        PATINA_API_KEY_FILE: keyFile,
-      }, async () => {
-        const { logs } = await captureConsole(() => main(['--list-providers']));
-        const output = logs.join('\n');
-        assert.match(output, /Key source/);
-        assert.match(output, /Provider env/);
-        assert.match(output, /PATINA_API_KEY_FILE/);
-        assert.match(output, /OPENAI_API_KEY/);
-      });
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+  it('patina --list-backends shows selectors and setup guidance', async () => {
+    await withEnv({
+      PATINA_API_KEY: 'test-key',
+      PATINA_API_KEY_FILE: undefined,
+      OPENAI_API_KEY: undefined,
+      GEMINI_API_KEY: 'gemini-key',
+    }, async () => {
+      const { logs } = await captureConsole(() => main(['--list-backends']));
+      const output = logs.join('\n');
+      assert.match(output, /Kind/);
+      assert.match(output, /Select with/);
+      assert.match(output, /default, --backend openai-http, --provider <name>/);
+      assert.match(output, /--model codex-\*/);
+      assert.match(output, /--model gemini-\*/);
+      assert.match(output, /PATINA_API_KEY/);
+    });
   });
 
   it('patina init --defaults writes a parseable project config', async () => {
@@ -150,7 +143,7 @@ describe('CLI adoption commands', () => {
 
 describe('CLI adoption exit/error behavior', () => {
   it('unknown flags fail before stdin handling with a usage exit', () => {
-    for (const flag of ['--bogus', '--gate', '--variants', '--save-run', '--cache', '--cache-ttl', '--no-cache', '--suspected-generator', '--prompt-mode']) {
+    for (const flag of ['--bogus', '--gate', '--json', '--json-logs', '--list-providers', '--variants', '--save-run', '--cache', '--cache-ttl', '--no-cache', '--suspected-generator', '--prompt-mode']) {
       const result = spawnSync(process.execPath, [BIN, flag], {
         cwd: REPO_ROOT,
         input: '',

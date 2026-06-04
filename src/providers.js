@@ -63,7 +63,7 @@ export function selectProvider(name) {
     throw inputError(
       `Unknown provider: ${name}`,
       `Available providers are: ${Object.keys(PROVIDERS).join(', ')}.`,
-      'Run `patina --list-providers` to inspect provider presets.'
+      'Run `patina --help` to see provider presets.'
     );
   }
   return provider;

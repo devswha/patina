@@ -4,7 +4,7 @@ patina's CLI is optimized for interactive editing, but a few surfaces are stable
 
 ## Score gate
 
-Use `--score --exit-on <n>` (or the older `--gate <n>` alias) when CI should fail if a text still reads too AI-like.
+Use `--score --exit-on <n>` when CI should fail if a text still reads too AI-like.
 
 ```bash
 patina --lang en --score --exit-on 30 draft.md
@@ -21,7 +21,7 @@ patina --lang en --score --exit-on 30 draft.md
 | `0` | Command completed; for `--score --exit-on`, the score was at or below the gate. |
 | `1` | Runtime or backend error, including API/auth/backend failures. |
 | `2` | Input/usage error from no interactive input or empty stdin. |
-| `3` | `--score --exit-on` / `--score --gate` completed, but the score exceeded the configured gate. |
+| `3` | `--score --exit-on` completed, but the score exceeded the configured gate. |
 
 ## Output formats
 
@@ -43,7 +43,7 @@ patina --lang en --score --exit-on 30 draft.md
 - `overall` and `categories[]` are populated when patina can parse them from score JSON or score tables.
 - Score JSON may include `scores.llm`, `scores.deterministic`, and `scores.preference` when deterministic shadow scoring is available.
 - `mps` is populated when the underlying mode emits it.
-- `gateResult` is `null` unless `--exit-on` / `--gate` is used.
+- `gateResult` is `null` unless `--exit-on` is used.
 - `--voice-sample <path>` or config `voice-sample: <path>` injects the first 1–3 user-written paragraphs into rewrite/Ouroboros prompts as style-only examples of how this person writes. `--profile` / `--tone` still define the outer register; samples refine cadence and texture without importing facts.
 - `patina doctor --json` emits setup diagnostics for CI without making an LLM call.
 

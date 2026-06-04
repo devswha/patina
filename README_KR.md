@@ -177,7 +177,7 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 | *(기본)* | 재작성 |
 | `--audit` | AI 패턴 탐지만 수행 |
 | `--score` | 0–100 AI 유사도 점수 + 카테고리별 분석 |
-| `--score --exit-on <n>` | CI를 엄격하게 유지: `overall > n`이면 종료 코드 `3` (`--gate`는 alias) |
+| `--score --exit-on <n>` | CI를 엄격하게 유지: `overall > n`이면 종료 코드 `3` |
 | `--diff` | 변경 사항을 패턴별로 표시 |
 | `--ouroboros` | 점수가 수렴할 때까지 반복 (MPS 롤백 포함) |
 | `--lang <ko\|en\|zh\|ja>` | 언어 선택 (기본값: `ko`) |

@@ -5,13 +5,14 @@ function parseArgs(argv) {
   const out = { files: [], gate: 30, lang: 'auto', maxFiles: 200 };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--gate' || arg === '--score-threshold') out.gate = Number(argv[++i]);
+    if (arg === '--score-threshold') out.gate = Number(argv[++i]);
     else if (arg === '--lang') out.lang = argv[++i] || 'auto';
     else if (arg === '--max-files') out.maxFiles = Number(argv[++i]);
-    else if (!arg.startsWith('-')) out.files.push(arg);
+    else if (arg.startsWith('-')) throw new Error(`unknown option ${arg}`);
+    else out.files.push(arg);
   }
   if (!Number.isFinite(out.gate) || out.gate < 0 || out.gate > 100) {
-    throw new Error(`--gate expects a number from 0 to 100, got ${out.gate}`);
+    throw new Error(`--score-threshold expects a number from 0 to 100, got ${out.gate}`);
   }
   return out;
 }

@@ -179,7 +179,7 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 | *(デフォルト)* | 書き換え |
 | `--audit` | AI パターン検出のみ |
 | `--score` | 0–100 AI 類似度スコア + カテゴリ別内訳 |
-| `--score --exit-on <n>` | CI を厳格に保つ: `overall > n` の場合は終了コード `3`（`--gate` は alias） |
+| `--score --exit-on <n>` | CI を厳格に保つ: `overall > n` の場合は終了コード `3` |
 | `--diff` | 変更箇所をパターンごとに表示 |
 | `--ouroboros` | スコア収束まで反復（MPS ロールバック付き） |
 | `--lang <ko\|en\|zh\|ja>` | 言語選択（デフォルト：`ko`） |

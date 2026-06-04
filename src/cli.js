@@ -11,7 +11,7 @@ import { buildPrompt } from './prompt-builder.js';
 import { invokeBackendChain, selectBackendChain, listBackends, listBackendNames, resolveBackend } from './backends/index.js';
 import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from './security.js';
-import { formatOutput, validateScoreWeights } from './output.js';
+import { formatOutput, validateScoreWeights, buildDeterministicAuditBackstop } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals, scoreMPS, scoreText } from './scoring.js';
@@ -367,6 +367,13 @@ export async function main(args) {
         if (mode === 'score') {
           scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' }, { logger });
         }
+      }
+
+      // Deterministic backstop for audit (issue: weak LLM backends drop 번역투).
+      // Appended so calques/leakage/discourse tells appear regardless of model.
+      // Skip json (structured) and batch (per-file) outputs.
+      if (mode === 'audit' && (parsed.format ?? 'markdown') !== 'json' && !parsed.batch) {
+        output += buildDeterministicAuditBackstop(text, { lang, repoRoot });
       }
 
       // v3.11 Phase 1.3: surface weight drift between config and the score

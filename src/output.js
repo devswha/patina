@@ -1,5 +1,7 @@
 // @ts-check
 import { createLogger } from './logger.js';
+import { analyzeText } from './features/index.js';
+import { TRANSLATIONESE_RULES } from './features/translationese.js';
 
 /**
  * Format a raw backend result for CLI output mode and requested format.
@@ -524,4 +526,54 @@ function formatMaxModeOutput(result) {
   }
 
   return output;
+}
+/**
+ * Build a deterministic "backstop" section for audit mode. The LLM audit is
+ * model-dependent (a weak model silently drops 번역투/calques); these signals are
+ * computed deterministically so they appear regardless of which model ran. ko
+ * translationese rules are listed even below the hot-density gate, because audit
+ * is a hint surface, not a verdict.
+ *
+ * @param {string} text Source text.
+ * @param {{ lang?: string, repoRoot?: string }} [opts]
+ * @returns {string} Markdown section (empty string when nothing fired).
+ */
+export function buildDeterministicAuditBackstop(text, opts = {}) {
+  const lang = opts.lang ?? 'ko';
+  const str = typeof text === 'string' ? text : '';
+  /** @type {{signal:string,label:string,severity:string,location:string}[]} */
+  const rows = [];
+
+  // ko translationese — per-rule, with matched samples (model-independent).
+  if (lang === 'ko' && str) {
+    for (const rule of TRANSLATIONESE_RULES) {
+      const matches = str.match(rule.re());
+      if (matches && matches.length) {
+        const samples = [...new Set(matches.map((m) => m.trim()).filter(Boolean))].slice(0, 4);
+        rows.push({ signal: `번역투: ${rule.id}`, label: rule.label, severity: rule.strong ? 'MEDIUM' : 'LOW', location: samples.join(', ') });
+      }
+    }
+  }
+
+  // markup leakage (near-proof) + density-gated discourse tells — language-agnostic.
+  const a = analyzeText(str, { lang, repoRoot: opts.repoRoot });
+  for (const h of a.markupLeakage?.hits ?? []) {
+    rows.push({ signal: 'markup-leakage', label: h.label, severity: 'HIGH', location: (h.samples ?? []).join(', ') });
+  }
+  if (a.discourseTells?.fakeCandor?.hot) {
+    rows.push({ signal: 'discourse: fake-candor', label: '친근함 위장 도입부', severity: 'MEDIUM', location: (a.discourseTells.fakeCandor.hits ?? []).join(', ') });
+  }
+  if (a.discourseTells?.thematicBreaks?.hot) {
+    rows.push({ signal: 'discourse: thematic-breaks', label: '장식용 구분선 남용', severity: 'LOW', location: `${a.discourseTells.thematicBreaks.count}개` });
+  }
+
+  if (rows.length === 0) return '';
+  const lines = [
+    '## 결정적 신호 (deterministic backstop — 모델과 무관하게 항상 검사)',
+    '',
+    '| 신호 | 설명 | 심각도 | 위치 |',
+    '|------|------|--------|------|',
+    ...rows.map((r) => `| ${r.signal} | ${r.label} | ${r.severity} | ${r.location} |`),
+  ];
+  return `\n\n${lines.join('\n')}`;
 }

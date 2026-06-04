@@ -349,23 +349,6 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[Contributing](CONTRIBUTING.md)** ([한국어](CONTRIBUTING_KR.md)) — pattern submissions, false-positive triage, benchmark fixtures, versioning
 - **[Governance](GOVERNANCE.md)** / **[Maintainers](MAINTAINERS.md)** — lightweight project decision rules
 
-## Open Core vs Hosted
-
-Patina is open core. Everything in this repository is the open baseline: the pattern packs, the deterministic stylometry and lexicon analyzer, the scorer, and every shipped backend. It stays MIT licensed and runs without an account.
-
-A separate, opt-in `patina-hosted` backend can route rewrites through a hosted endpoint backed by reinforced Korean detection assets. Those assets, the hosted server, and its corpus live in a private track. They are never part of this repository or the npm package. The public side carries only the adapter and a versioned request/response schema. That wire format exposes a span offset, a score, and a general category, and it withholds the internal lexicon and pattern identifiers, so the client cannot reconstruct the private assets.
-
-The hosted backend is never selected automatically. You opt in by name:
-
-```bash
-export PATINA_HOSTED_URL="https://your-hosted-endpoint"
-export PATINA_HOSTED_KEY="your-api-key"
-echo "초안 텍스트" | patina --lang ko --backend patina-hosted
-```
-
-When the URL or key is missing, or the server returns an error, patina stops with a clear message rather than quietly using the open baseline (issue #88). A fallback runs only when you write one out, such as `--backend patina-hosted,openai-http`, and even then only for retryable server errors.
-
-Two guards keep the boundary honest. `npm run check:no-private-assets` enumerates what both npm packages would publish, together with every tracked file, and fails when a private-asset path slips in. `npm run compare:ko-hosted` runs a paired baseline-versus-hosted comparison with bootstrap confidence intervals and a McNemar test, so a quality claim has to clear a false-positive non-regression bar before anyone can make it.
 
 ## Acknowledgements
 
@@ -375,4 +358,3 @@ Inspired by [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh)'s plugin architectur
 
 MIT. See [LICENSE](LICENSE) for the full text and [NOTICE](NOTICE) for attribution.
 
-The open baseline in this repository is MIT licensed. The optional hosted track (reinforced detection assets and the hosted server) is a separate, private project; it is not covered by this license and is not distributed here.

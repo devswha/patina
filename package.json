@@ -26,7 +26,6 @@
     "prepublishOnly": "npm run release:check && npm run check:no-private-assets && npm test && npm run benchmark:report && npm run dogfood",
     "benchmark:ranges": "node scripts/update-benchmark-ranges.mjs",
     "benchmark:compare": "node scripts/detector-comparison.mjs",
-    "compare:ko-hosted": "node scripts/ko-hosted-compare.mjs",
     "lint:syntax": "node scripts/lint.mjs",
     "lint:eslint": "eslint .",
     "typecheck": "node scripts/typecheck.mjs",

@@ -101,7 +101,6 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
 需要 Node.js ≥ 18。npm 包已公开，可以直接运行：
 
 ```bash
-npx patina-cli init --defaults
 npx patina-cli doctor
 npx patina-cli --lang zh input.txt
 ```
@@ -189,7 +188,7 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 | `--format json\|text\|markdown` | 选择 JSON、纯文本或默认 Markdown 输出 |
 | `--quiet` | 隐藏 stderr 中的状态、警告和进度日志 |
 
-完整选项请运行 `patina --help`。`patina doctor --json` 可在不调用 LLM 的情况下检查 Node/backend/tmux/API-key 状态，`patina init` 会写入项目 `.patina.yaml`。
+完整选项请运行 `patina --help`。`patina doctor --json` 可在不调用 LLM 的情况下检查 Node/backend/tmux/API-key 状态。项目配置是可选项；一次性运行请用 flags，只有需要固定默认值时再添加 `.patina.yaml`。
 
 Markdown-heavy 工程流程可使用开发者原生 profile shortcut：`code-comment` 收紧 inline comments/docstrings，`commit-message` 围绕意图和验证改写 Git 历史文本，`release-notes` 把 changelog bullets 改成面向用户影响的发布说明，并保留迁移风险。`namuwiki` 是仅适用于韩文的 wiki 风格 profile，只包含原创的 license-safe 指南，不复制 NamuWiki 文章文本。
 

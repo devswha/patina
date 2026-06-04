@@ -114,7 +114,6 @@ Auto-detect and apply the best-fit tone:
 Requires Node.js ≥ 18. The npm package is public, so you can run it directly:
 
 ```bash
-npx patina-cli init --defaults
 npx patina-cli doctor
 npx patina-cli --lang en input.txt
 ```
@@ -203,7 +202,7 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `--format json\|text\|markdown` | Select machine-readable JSON, plain text, or default Markdown output |
 | `--quiet` | Suppress status, warning, and progress logs on stderr |
 
-`patina --help` for the full flag list. `patina doctor --json` checks Node/backend/tmux/API-key readiness without making an LLM call, and `patina init` writes a project `.patina.yaml`.
+`patina --help` for the full flag list. `patina doctor --json` checks Node/backend/tmux/API-key readiness without making an LLM call. Project config is optional; use flags for one-off runs or add `.patina.yaml` only when you need stable defaults.
 
 Dev-native profile shortcuts are available for Markdown-heavy engineering workflows:
 `code-comment` tightens inline comments/docstrings, `commit-message` rewrites Git history text around intent and verification, and `release-notes` turns changelog bullets into user-impact notes with migration risks visible. `namuwiki` is a ko-only, license-safe wiki-style profile that uses original guidance only; it does not copy NamuWiki article text.

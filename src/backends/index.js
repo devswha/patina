@@ -82,19 +82,21 @@ export function listBackendNames() {
   return Object.keys(REGISTRY);
 }
 
-export function selectBackend({ name, model } = {}) {
+export function selectBackend({ name, model, modelSource } = {}) {
   if (name) {
     const backend = resolveBackend(name);
     return { backend, autoSelected: false, reason: 'explicit' };
   }
 
-  if (model && /^codex(-|$)/i.test(model)) {
+  const useModelHeuristic = model && (modelSource === undefined || modelSource === 'flag');
+
+  if (useModelHeuristic && /^codex(-|$)/i.test(model)) {
     return { backend: REGISTRY['codex-cli'], autoSelected: false, reason: 'model heuristic' };
   }
-  if (model && /^claude(-|$)/i.test(model)) {
+  if (useModelHeuristic && /^claude(-|$)/i.test(model)) {
     return { backend: REGISTRY['claude-cli'], autoSelected: false, reason: 'model heuristic' };
   }
-  if (model && /^gemini(-|$)/i.test(model)) {
+  if (useModelHeuristic && /^gemini(-|$)/i.test(model)) {
     return { backend: REGISTRY['gemini-cli'], autoSelected: false, reason: 'model heuristic' };
   }
 
@@ -105,7 +107,7 @@ export function selectBackend({ name, model } = {}) {
   return { backend: REGISTRY['openai-http'], autoSelected: false, reason: 'default' };
 }
 
-export function selectBackendChain({ name, model } = {}) {
+export function selectBackendChain({ name, model, modelSource } = {}) {
   if (name) {
     const names = String(name)
       .split(',')
@@ -125,7 +127,7 @@ export function selectBackendChain({ name, model } = {}) {
     };
   }
 
-  const selected = selectBackend({ model });
+  const selected = selectBackend({ model, modelSource });
   return {
     backends: [selected.backend],
     autoSelected: selected.autoSelected,

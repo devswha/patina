@@ -63,6 +63,17 @@ describe('Backend Selection', () => {
     assert.strictEqual(reason, 'model heuristic');
   });
 
+  it('does not route provider/default model sources into local CLI heuristics', () => {
+    assert.strictEqual(
+      selectBackend({ model: 'gemini-2.5-pro', modelSource: 'provider:gemini' }).backend.name,
+      'openai-http'
+    );
+    assert.strictEqual(
+      selectBackend({ model: 'claude-sonnet-4-6', modelSource: 'default' }).backend.name,
+      'openai-http'
+    );
+  });
+
   it('does not match `claudette` or `gemininet` or other false positives', () => {
     assert.strictEqual(selectBackend({ model: 'claudette-1' }).backend.name, 'openai-http');
     assert.strictEqual(selectBackend({ model: 'gemininet' }).backend.name, 'openai-http');

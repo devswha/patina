@@ -117,6 +117,24 @@ describe('CLI adoption commands', () => {
     });
   });
 
+  it('--provider gemini stays on the HTTP backend without a model heuristic detour', () => {
+    return withEnv({
+      PATINA_API_KEY: undefined,
+      PATINA_API_KEY_FILE: undefined,
+      GEMINI_API_KEY: undefined,
+    }, () => {
+      const result = spawnSync(process.execPath, [BIN, '--provider', 'gemini', '--lang', 'en'], {
+        cwd: REPO_ROOT,
+        input: 'This draft needs editing.\n',
+        encoding: 'utf8',
+      });
+      assert.strictEqual(result.status, 1);
+      assert.match(result.stderr, /no API key found/);
+      assert.match(result.stderr, /--provider gemini expects GEMINI_API_KEY/);
+      assert.doesNotMatch(result.stderr, /gemini-cli backend/);
+    });
+  });
+
   it('patina init exits with a removed-command usage error', () => {
     const result = spawnSync(process.execPath, [BIN, 'init', '--defaults'], {
       cwd: REPO_ROOT,

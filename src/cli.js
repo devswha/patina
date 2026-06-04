@@ -191,8 +191,9 @@ export async function main(args) {
         });
       } else {
         const { backends, autoSelected, reason } = selectBackendChain({
-          name: parsed.backend ?? config.backend,
+          name: parsed.backend ?? config.backend ?? (resolved.baseURLSource !== 'default' ? 'openai-http' : undefined),
           model: resolved.model,
+          modelSource: resolved.modelSource,
         });
         const backend = backends[0];
 

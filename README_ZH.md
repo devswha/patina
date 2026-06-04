@@ -53,7 +53,7 @@ patina 会在中文、韩文、英文和日文里找出 AI 味比较重的写作
 
 |  |  |
 |---|---|
-| **160 个模式** | 韩文 40 + 英文 40 + 中文 40 + 日文 40 (各含8个仅评分的 viral-hook) — [PATTERNS.md](docs/PATTERNS.md) |
+| **168 个模式** | 每种语言 33 个可 rewrite 模式 + 9 个仅评分 viral-hook（KO/EN/ZH/JA 各 42 个） — [PATTERNS.md](docs/PATTERNS.md) |
 | **编辑热点召回率** | 2026-05-22 现代模型重基线：GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro 的总体 catch 为 67.3% [63.5–71.0%]（n=600，韩文+英文） |
 | **基准报告** | 可复现的 ko/en/zh/ja 可疑区间基准：[overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [2026 rebaseline](docs/benchmarks/rebaseline-latest.md) · [detector comparison](docs/benchmarks/detector-comparison.md) |
 | **误检率** | 2026-05-22 KO+EN 人类对照为 16.0% [11.6–21.7%]（n=200）；不同文体边界见 [stylometry.md](core/stylometry.md) — [报告误检](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
@@ -191,7 +191,6 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 | `--json-logs` | 以 NDJSON 输出 stderr 日志，包含 `level`、`event`、`model`、`latency_ms` 字段 |
 | `--prompt-mode strict\|minimal\|auto` | 选择完整模式包提示、压缩提示，或按后端自动选择 |
 | `--variants <1-5>` | 生成多个改写变体，同时保留相同事实和意义锚点 |
-| `--card <path>` | 写出 1200×630 SVG before/after card，包含 AI 分数和 MPS |
 
 完整选项请运行 `patina --help`。`patina doctor --json` 可在不调用 LLM 的情况下检查 Node/backend/tmux/API-key 状态，`patina init` 会写入项目 `.patina.yaml`。
 
@@ -199,13 +198,13 @@ Markdown-heavy 工程流程可使用开发者原生 profile shortcut：`code-com
 
 ### 仅评分模式
 
-`--score` 和 `--audit` 测量的信号范围比 `--rewrite` 略广。viral-hook 包（`ko/en/zh/ja-viral-hook`，每种语言 8 个模式：数字震撼钩子、标题党收尾、跳过来源的权威断言、适合呼吸节奏的短句堆叠、夸张互动词汇、伪统计引用、头衔堆叠、未来自我承诺）为**仅检测**模式。
+`--score` 和 `--audit` 测量的信号范围比 `--rewrite` 略广。viral-hook 包（`ko/en/zh/ja-viral-hook`，每种语言 9 个模式：数字震撼钩子、标题党收尾、跳过来源的权威断言、适合呼吸节奏的短句堆叠、夸张互动词汇、伪统计引用、头衔堆叠、未来自我承诺、格言式收束句）为**仅检测**模式。
 
 这些信号只会出现在评分和审计中，用来让基准更贴近用户对四种语言 SNS 营销文案的直觉。`--rewrite`/`--diff`/`--ouroboros` 会跳过它们，因为这些信号往往是有意的修辞。实例: [`examples/viral-hook/`](examples/viral-hook/).
 
 ### 提示模式调优 (v3.11)
 
-`--prompt-mode strict|minimal|auto` 可在完整模式包（约 34KB 结构化提示）和压缩的轻量指令（约 3KB）之间取舍。`auto` 会按后端选择 — Gemini 在 minimal 下表现更好（长结构化提示会让它过度受限），Claude 能利用完整模式包，Codex 大致不敏感。Standalone CLI 的 MAX rewrite worker 默认使用 `minimal`，除非 `--prompt-mode` 或配置覆盖，这样多候选运行默认更轻；在 MAX 中，`auto` 会在 dispatch 前解析一次，而不是对每个候选单独解析。case-05 记录了 A/B 结果。
+`--prompt-mode strict|minimal|auto` 可在完整模式包（约 34KB 结构化提示）和压缩的轻量指令（约 3KB）之间取舍。`auto` 会按后端选择 — Gemini 在 minimal 下表现更好（长结构化提示会让它过度受限），Claude 能利用完整模式包，Codex 大致不敏感。case-05 记录了 A/B 结果。
 
 ### 多个风格变体 (v3.11)
 
@@ -221,7 +220,7 @@ Markdown-heavy 工程流程可使用开发者原生 profile shortcut：`code-com
 
 ### Machine-readable output and exit codes
 
-`--format json` 会把所有模式包进稳定 envelope，包含 `overall`、`categories[]`、`tone`、`mps`、`gateResult` 和清理后的 `output` 正文。`--json-logs` 会让 stderr 也保持 NDJSON 格式，`--quiet` 则为只需要 stdout 的脚本隐藏状态、警告和进度日志。`--format markdown` 是默认值；`--format text` 保留无 YAML tone footer 的用户可见正文。退出码见 [EXIT-CODES.md](docs/EXIT-CODES.md)：`0` 成功，`1` runtime/backend，`2` input/usage，`3` score gate 超限，`4` MAX MPS fallback/all-candidates-failed。
+`--format json` 会把所有模式包进稳定 envelope，包含 `overall`、`categories[]`、`tone`、`mps`、`gateResult` 和清理后的 `output` 正文。`--json-logs` 会让 stderr 也保持 NDJSON 格式，`--quiet` 则为只需要 stdout 的脚本隐藏状态、警告和进度日志。`--format markdown` 是默认值；`--format text` 保留无 YAML tone footer 的用户可见正文。退出码见 [EXIT-CODES.md](docs/EXIT-CODES.md)：`0` 成功，`1` runtime/backend，`2` input/usage，`3` score gate 超限。
 
 ### 分数权重漂移检测 (v3.11)
 
@@ -285,7 +284,7 @@ tone:                     # casual | professional | academic | narrative | marke
 - **[Cookbook](docs/COOKBOOK.md)** — 实用配方（Hugo 批量打分、GitHub Actions、误报 triage、自定义 profile、pre-commit）
 - **[Glossary](docs/GLOSSARY.md)** — MPS、fidelity、burstiness、MATTR、模式等常见术语的简短定义
 - **[Demo](docs/DEMO.md)** — 终端 transcript 与多种体裁的 before/after 快照
-- **[Patterns](docs/PATTERNS.md)** — 160 个模式目录
+- **[Patterns](docs/PATTERNS.md)** — 168 个模式目录
 - **[Authentication](docs/AUTHENTICATION.md)** ([한국어](docs/AUTHENTICATION_KR.md)) — 后端、服务商、免费层设置
 - **[GitHub Action](docs/integrations/github-action.md)** — 无需 live model key 即可生成 PR hotspot 评论与 README score badge
 - **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit、Husky 与 Lefthook 的 score-only 配方
@@ -313,7 +312,6 @@ tone:                     # casual | professional | academic | narrative | marke
 - **[zh/ja Lexicon Calibration](docs/research/zh-ja-lexicon-calibration.md)** — starter lexicon gate 与剩余 corpus risk
 - **[Launch Copy](docs/social/patina-launch-copy.md)** — launch sequence、score gate 与 Show HN/Product Hunt/Reddit/X/韩国社区草稿
 - **[Signs of AI Writing](docs/social/signs-of-ai-writing.md)** ([한국어](docs/social/signs-of-ai-writing_KR.md)) — 附带引用示例的可分享编辑 checklist
-- **[Share Card SVGs](docs/social/share-card.md)** — 带 score 与 MPS pill 的 `--card` before/after social card
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 词汇算法
 - **[Scoring](core/scoring.md)** — AI 相似度 + 忠实度 + MPS
 - **[Changelog](CHANGELOG.md)** — 发布说明和方法论

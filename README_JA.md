@@ -53,7 +53,7 @@ patina は、韓国語・英語・中国語・日本語の文章から AI っぽ
 
 |  |  |
 |---|---|
-| **160 パターン** | 韓国語 40 + 英語 40 + 中国語 40 + 日本語 40 (各8個のスコア専用 viral-hook を含む) — [PATTERNS.md](docs/PATTERNS.md) |
+| **168 パターン** | 各言語 33 個の rewrite-capable パターン + 9 個のスコア専用 viral-hook（KO/EN/ZH/JA 各 42 個） — [PATTERNS.md](docs/PATTERNS.md) |
 | **編集ホットスポット再現率** | 2026-05-22 modern-model rebaseline: GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro で全体 catch 67.3% [63.5–71.0%]（n=600、韓国語+英語） |
 | **ベンチマークレポート** | 再現可能な ko/en/zh/ja suspect-zone benchmark: [overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [2026 rebaseline](docs/benchmarks/rebaseline-latest.md) · [detector comparison](docs/benchmarks/detector-comparison.md) |
 | **誤検出率** | 2026-05-22 KO+EN human controls で 16.0% [11.6–21.7%]（n=200）。レジスター別の境界は [stylometry.md](core/stylometry.md) に記録 — [誤検出を報告](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
@@ -191,7 +191,6 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 | `--json-logs` | `level`、`event`、`model`、`latency_ms` を持つ NDJSON として stderr ログを出力 |
 | `--prompt-mode strict\|minimal\|auto` | 完全なパターンパック、圧縮プロンプト、またはバックエンド別 auto を選択 |
 | `--variants <1-5>` | 同じ事実と意味アンカーを保った複数の rewrite バリアントを生成 |
-| `--card <path>` | AI スコアと MPS 入りの 1200×630 SVG before/after card を書き出す |
 
 全オプションは `patina --help`。`patina doctor --json` は LLM 呼び出しなしで Node/backend/tmux/API-key の準備状況を確認し、`patina init` はプロジェクト用 `.patina.yaml` を書きます。
 
@@ -199,13 +198,13 @@ Markdown 中心の開発ワークフローには、開発者向け profile short
 
 ### スコア専用パターン
 
-`--score`と`--audit`は`--rewrite`より少し広い範囲のシグナルを測定します。viral-hook パック（`ko/en/zh/ja-viral-hook`、各8パターン: 数字ショックフック、クリックベイト末尾、出典を飛ばした権威主張、息継ぎに最適化された短文の積み重ね、誇張されたエンゲージメント語彙、偽統計引用、肩書き積み上げ、未来の自分への約束）は**検出専用**です。
+`--score`と`--audit`は`--rewrite`より少し広い範囲のシグナルを測定します。viral-hook パック（`ko/en/zh/ja-viral-hook`、各9パターン: 数字ショックフック、クリックベイト末尾、出典を飛ばした権威主張、息継ぎに最適化された短文の積み重ね、誇張されたエンゲージメント語彙、偽統計引用、肩書き積み上げ、未来の自分への約束、警句的パンチライン）は**検出専用**です。
 
 これらのシグナルはスコアと監査にだけ現れ、4言語のSNSマーケティングコピーに対するユーザーの直感とベンチマークを揃えるために使います。`--rewrite`/`--diff`/`--ouroboros` は、意図的な修辞であることが多いので対象外です。実例: [`examples/viral-hook/`](examples/viral-hook/).
 
 ### プロンプトモード調整 (v3.11)
 
-`--prompt-mode strict|minimal|auto` では、完全なパターンパック（約34KBの構造化プロンプト）と圧縮されたカジュアル指示（約3KB）のどちらを使うかを調整できます。`auto` はバックエンドごとに選択します — Gemini は minimal の方が良く（長い構造化プロンプトで過度に制約されるため）、Claude は完全なパックを活用し、Codex はおおむね影響を受けません。Standalone CLI の MAX rewrite worker は、`--prompt-mode` または設定で上書きしない限り `minimal` がデフォルトなので、複数候補の実行も軽く保てます。MAX では `auto` は候補ごとではなく dispatch 前に一度だけ解決されます。case-05 が A/B を記録しています。
+`--prompt-mode strict|minimal|auto` では、完全なパターンパック（約34KBの構造化プロンプト）と圧縮されたカジュアル指示（約3KB）のどちらを使うかを調整できます。`auto` はバックエンドごとに選択します — Gemini は minimal の方が良く（長い構造化プロンプトで過度に制約されるため）、Claude は完全なパックを活用し、Codex はおおむね影響を受けません。case-05 が A/B を記録しています。
 
 ### 複数の文体バリアント (v3.11)
 
@@ -221,7 +220,7 @@ rewrite モードでは、モデルは `[BODY]`/`[/BODY]` ブロック（`--vari
 
 ### Machine-readable output and exit codes
 
-`--format json` は、すべてのモードを `overall`、`categories[]`、`tone`、`mps`、`gateResult`、クリーンな `output` 本文を含む安定した envelope で包みます。`--json-logs` は stderr も NDJSON のまま保ち、`--quiet` は stdout だけ欲しいスクリプトのために状態・警告・進捗ログを隠します。`--format markdown` がデフォルトで、`--format text` は YAML tone footer なしのユーザー向け本文だけを保持します。終了コードは [EXIT-CODES.md](docs/EXIT-CODES.md) にまとまっています: `0` success、`1` runtime/backend、`2` input/usage、`3` score gate exceeded、`4` MAX MPS fallback/all-candidates-failed。
+`--format json` は、すべてのモードを `overall`、`categories[]`、`tone`、`mps`、`gateResult`、クリーンな `output` 本文を含む安定した envelope で包みます。`--json-logs` は stderr も NDJSON のまま保ち、`--quiet` は stdout だけ欲しいスクリプトのために状態・警告・進捗ログを隠します。`--format markdown` がデフォルトで、`--format text` は YAML tone footer なしのユーザー向け本文だけを保持します。終了コードは [EXIT-CODES.md](docs/EXIT-CODES.md) にまとまっています: `0` success、`1` runtime/backend、`2` input/usage、`3` score gate exceeded。
 
 ### スコア重みドリフト検出 (v3.11)
 
@@ -285,7 +284,7 @@ tone:                     # casual | professional | academic | narrative | marke
 - **[Cookbook](docs/COOKBOOK.md)** — 実用レシピ（Hugo バッチスコアリング、GitHub Actions、誤検出 triage、カスタム profile、pre-commit）
 - **[Glossary](docs/GLOSSARY.md)** — MPS、fidelity、burstiness、MATTR、モードなどの反復用語の短い定義
 - **[Demo](docs/DEMO.md)** — ターミナル transcript と複数ジャンルの before/after スナップショット
-- **[Patterns](docs/PATTERNS.md)** — 160 パターンカタログ
+- **[Patterns](docs/PATTERNS.md)** — 168 パターンカタログ
 - **[Authentication](docs/AUTHENTICATION.md)** ([한국어](docs/AUTHENTICATION_KR.md)) — バックエンド、プロバイダ、無料ティア設定
 - **[GitHub Action](docs/integrations/github-action.md)** — live model key なしで PR hotspot コメントと README score badge を生成
 - **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit、Husky、Lefthook の score-only レシピ
@@ -313,7 +312,6 @@ tone:                     # casual | professional | academic | narrative | marke
 - **[zh/ja Lexicon Calibration](docs/research/zh-ja-lexicon-calibration.md)** — starter lexicon gate と残りの corpus risk
 - **[Launch Copy](docs/social/patina-launch-copy.md)** — launch sequence、score gate、Show HN/Product Hunt/Reddit/X/韓国コミュニティ向け下書き
 - **[Signs of AI Writing](docs/social/signs-of-ai-writing.md)** ([한국어](docs/social/signs-of-ai-writing_KR.md)) — 引用例付きの共有用編集 checklist
-- **[Share Card SVGs](docs/social/share-card.md)** — score と MPS pill 付きの `--card` before/after social card
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 語彙アルゴリズム
 - **[Scoring](core/scoring.md)** — AI 類似度 + 忠実度 + MPS
 - **[Changelog](CHANGELOG.md)** — リリースノートと方法論

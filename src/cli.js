@@ -9,7 +9,7 @@ import {
 } from './loader.js';
 import { buildPrompt } from './prompt-builder.js';
 import { invokeBackendChain, selectBackendChain, listBackends, listBackendNames, resolveBackend } from './backends/index.js';
-import { selectProvider, resolveProviderConfig, PROVIDERS } from './providers.js';
+import { selectProvider, resolveProviderConfig } from './providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from './security.js';
 import { formatOutput, validateScoreWeights, buildDeterministicAuditBackstop } from './output.js';
 import { runOuroboros } from './ouroboros.js';
@@ -17,7 +17,7 @@ import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from
 import { runDoctor } from './commands/doctor.js';
 import { runInit } from './commands/init.js';
 import { PatinaCliError, inputError, runtimeError, renderCliError, getExitCode } from './errors.js';
-import { inspectHttpApiKeySource, providerHttpKeyEnvVars, resolveHttpApiKey } from './auth.js';
+import { providerHttpKeyEnvVars, resolveHttpApiKey } from './auth.js';
 import { createLogger } from './logger.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, basename, extname } from 'node:path';
@@ -53,7 +53,7 @@ export async function main(args) {
   }
 
   const parsed = parseArgs(args);
-  const logger = createLogger({ quiet: parsed.quiet, json: parsed.jsonLogs });
+  const logger = createLogger({ quiet: parsed.quiet });
 
   if (parsed.help) {
     printHelp();
@@ -76,11 +76,6 @@ export async function main(args) {
 
   if (parsed.listBackends) {
     printBackendStatus();
-    return;
-  }
-
-  if (parsed.listProviders) {
-    printProviderStatus();
     return;
   }
 
@@ -369,14 +364,8 @@ function parseArgs(args) {
         parsed.format = value;
         break;
       }
-      case '--json':
-        parsed.format = 'json';
-        break;
       case '--quiet':
         parsed.quiet = true;
-        break;
-      case '--json-logs':
-        parsed.jsonLogs = true;
         break;
       case '--exit-on': {
         const value = readOptionValue(args, i, arg, { allowFlagLike: true });
@@ -434,9 +423,6 @@ function parseArgs(args) {
       case '--provider':
         parsed.provider = readOptionValue(args, i, arg);
         i++;
-        break;
-      case '--list-providers':
-        parsed.listProviders = true;
         break;
       case '--allow-insecure-base-url':
         parsed.allowInsecureBaseURL = true;
@@ -730,9 +716,7 @@ MODES
 
 OUTPUT & BATCH
   --format <fmt>          Output format: markdown (default), text, json
-  --json                  Alias for --format json
   --quiet                 Suppress patina status/warning logs on stderr
-  --json-logs             Emit stderr logs as NDJSON objects
   --batch                 Process multiple files
   --in-place              Overwrite original files (with --batch)
   --suffix <ext>          Save as {name}{ext}{extname}
@@ -758,9 +742,8 @@ MODEL & AUTH
   --base-url <url>        API base URL (or PATINA_API_BASE env)
   --backend <name[,name]> Backend or explicit fallback chain:
                           ${backendChoices} (default: openai-http)
-  --list-backends         List available backends and their availability
+  --list-backends         List backends, selectors, and auth status
   --provider <name>       Provider preset: openai, gemini, groq, together
-  --list-providers        List provider presets and which keys are set
 ADVANCED
   --config <path>         Load config from <path> instead of .patina.default.yaml
   --allow-insecure-base-url  Permit plaintext http:// to non-localhost endpoints
@@ -865,62 +848,42 @@ function printBackendStatus() {
   const list = listBackends();
   const rows = list.map((b) => ({
     name: b.name,
+    kind: b.kind,
+    selectWith: b.selectWith,
     available: b.available ? 'yes' : 'no',
     authenticated: b.authenticated ? 'yes' : 'no',
-    note: b.authenticated ? '' : b.authHint,
+    note: backendStatusNote(b),
   }));
   const widths = {
     name: Math.max('Backend'.length, ...rows.map((r) => r.name.length)),
+    kind: Math.max('Kind'.length, ...rows.map((r) => r.kind.length)),
+    selectWith: Math.max('Select with'.length, ...rows.map((r) => r.selectWith.length)),
     available: Math.max('Available'.length, ...rows.map((r) => r.available.length)),
     authenticated: Math.max('Authenticated'.length, ...rows.map((r) => r.authenticated.length)),
   };
   const pad = (s, w) => s + ' '.repeat(Math.max(0, w - s.length));
   console.log(
-    `${pad('Backend', widths.name)}  ${pad('Available', widths.available)}  ${pad('Authenticated', widths.authenticated)}  Notes`
+    `${pad('Backend', widths.name)}  ${pad('Kind', widths.kind)}  ${pad('Select with', widths.selectWith)}  ${pad('Available', widths.available)}  ${pad('Authenticated', widths.authenticated)}  Notes`
   );
   console.log(
-    `${'-'.repeat(widths.name)}  ${'-'.repeat(widths.available)}  ${'-'.repeat(widths.authenticated)}  -----`
+    `${'-'.repeat(widths.name)}  ${'-'.repeat(widths.kind)}  ${'-'.repeat(widths.selectWith)}  ${'-'.repeat(widths.available)}  ${'-'.repeat(widths.authenticated)}  -----`
   );
   for (const r of rows) {
     console.log(
-      `${pad(r.name, widths.name)}  ${pad(r.available, widths.available)}  ${pad(r.authenticated, widths.authenticated)}  ${r.note}`
+      `${pad(r.name, widths.name)}  ${pad(r.kind, widths.kind)}  ${pad(r.selectWith, widths.selectWith)}  ${pad(r.available, widths.available)}  ${pad(r.authenticated, widths.authenticated)}  ${r.note}`
     );
   }
 }
 
-function printProviderStatus() {
-  const rows = Object.values(PROVIDERS).map((p) => ({
-    name: p.name,
-    free: p.freeTier ? 'yes' : 'no',
-    keySource: providerKeySource(p),
-    providerEnv: process.env[p.apiKeyEnv] ? 'set' : 'missing',
-    note: `${p.apiKeyEnv} → ${p.baseURL}`,
-  }));
-  const widths = {
-    name: Math.max('Provider'.length, ...rows.map((r) => r.name.length)),
-    free: Math.max('Free tier'.length, ...rows.map((r) => r.free.length)),
-    keySource: Math.max('Key source'.length, ...rows.map((r) => r.keySource.length)),
-    providerEnv: Math.max('Provider env'.length, ...rows.map((r) => r.providerEnv.length)),
-  };
-  const pad = (s, w) => s + ' '.repeat(Math.max(0, w - s.length));
-  console.log(
-    `${pad('Provider', widths.name)}  ${pad('Free tier', widths.free)}  ${pad('Key source', widths.keySource)}  ${pad('Provider env', widths.providerEnv)}  Notes`
-  );
-  console.log(
-    `${'-'.repeat(widths.name)}  ${'-'.repeat(widths.free)}  ${'-'.repeat(widths.keySource)}  ${'-'.repeat(widths.providerEnv)}  -----`
-  );
-  for (const r of rows) {
-    console.log(
-      `${pad(r.name, widths.name)}  ${pad(r.free, widths.free)}  ${pad(r.keySource, widths.keySource)}  ${pad(r.providerEnv, widths.providerEnv)}  ${r.note}`
-    );
+function backendStatusNote(backend) {
+  if (!backend.available) return backend.installHint || backend.authHint;
+  if (backend.name === 'openai-http') return backend.authHint;
+  if (backend.authenticated && backend.name === 'gemini-cli' && backend.authHint.startsWith('Authenticated via ')) {
+    return backend.authHint;
   }
-}
-
-function providerKeySource(provider) {
-  const source = inspectHttpApiKeySource({
-    envVars: providerHttpKeyEnvVars(provider.apiKeyEnv),
-  });
-  return source.ok ? source.source : 'missing';
+  if (backend.authenticated) return 'ready';
+  if (backend.loginCommand) return `${backend.authHint} Use \`patina auth login ${backend.name}\` for the guided flow.`;
+  return backend.authHint;
 }
 
 async function handleAuth(subArgs) {

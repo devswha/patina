@@ -100,17 +100,8 @@ throw new PatinaCliError({ what: 'missing input', why: 'No file was provided', a
 <dt><a href="#DEFAULT_HTTP_KEY_ENV_VARS">DEFAULT_HTTP_KEY_ENV_VARS</a> : <code>Array.&lt;string&gt;</code></dt>
 <dd><p>Default key lookup order for the OpenAI-compatible HTTP provider.</p>
 </dd>
-<dt><a href="#CACHE_SCHEMA_VERSION">CACHE_SCHEMA_VERSION</a> : <code>number</code></dt>
-<dd><p>On-disk response cache schema version.</p>
-</dd>
-<dt><a href="#DEFAULT_CACHE_TTL_SECONDS">DEFAULT_CACHE_TTL_SECONDS</a> : <code>number</code></dt>
-<dd><p>Default response cache time-to-live: one day.</p>
-</dd>
 <dt><a href="#defaultLogger">defaultLogger</a> : <code>Object</code></dt>
 <dd><p>Default stderr logger used by simple callers.</p>
-</dd>
-<dt><a href="#MANIFEST_SCHEMA_VERSION">MANIFEST_SCHEMA_VERSION</a> : <code>string</code></dt>
-<dd><p>Current reproducibility manifest schema version.</p>
 </dd>
 <dt><a href="#PROVIDERS">PROVIDERS</a> : <code>Record.&lt;string, {name: string, baseURL: string, apiKeyEnv: string, defaultModel: string, freeTier: boolean, note: string}&gt;</code></dt>
 <dd><p>Built-in OpenAI-compatible provider presets.</p>
@@ -139,7 +130,7 @@ still be genuinely human and we avoid claiming absolute proof.</p>
 <dd><p>Compute retry delay from Retry-After or exponential backoff with jitter.</p>
 </dd>
 <dt><a href="#callLLM">callLLM(options)</a> ⇒ <code>Promise.&lt;string&gt;</code></dt>
-<dd><p>Call an OpenAI-compatible chat completions endpoint with retries, timeout, optional cache, and abort support.</p>
+<dd><p>Call an OpenAI-compatible chat completions endpoint with retries, timeout, and abort support.</p>
 </dd>
 <dt><a href="#providerHttpKeyEnvVars">providerHttpKeyEnvVars([providerApiKeyEnv])</a> ⇒ <code>Array.&lt;string&gt;</code></dt>
 <dd><p>Build the key lookup order for a selected provider.</p>
@@ -149,18 +140,6 @@ still be genuinely human and we avoid claiming absolute proof.</p>
 </dd>
 <dt><a href="#resolveHttpApiKey">resolveHttpApiKey([options])</a> ⇒ <code>string</code> | <code>undefined</code></dt>
 <dd><p>Resolve the HTTP API key from a key file or environment.</p>
-</dd>
-<dt><a href="#createResponseCache">createResponseCache([options])</a> ⇒ <code>null</code> | <code>Object</code></dt>
-<dd><p>Create a filesystem-backed cache for LLM responses.</p>
-</dd>
-<dt><a href="#responseCacheKey">responseCacheKey([options])</a> ⇒ <code>string</code></dt>
-<dd><p>Derive a stable cache key from prompt and provider settings.</p>
-</dd>
-<dt><a href="#responseCachePath">responseCachePath(dir, key)</a> ⇒ <code>string</code></dt>
-<dd><p>Resolve the JSON file path for a response cache key.</p>
-</dd>
-<dt><a href="#baseURLHost">baseURLHost([baseURL])</a> ⇒ <code>string</code></dt>
-<dd><p>Normalize a provider base URL to its host component for cache keys.</p>
 </dd>
 <dt><a href="#main">main(args)</a> ⇒ <code>Promise.&lt;void&gt;</code></dt>
 <dd><p>Run the patina CLI command dispatcher.</p>
@@ -224,24 +203,6 @@ still be genuinely human and we avoid claiming absolute proof.</p>
 </dd>
 <dt><a href="#createLogger">createLogger([options])</a> ⇒ <code>Object</code></dt>
 <dd><p>Create a small stderr logger with text, JSON, and progress modes.</p>
-</dd>
-<dt><a href="#hashSha256">hashSha256(input)</a> ⇒ <code>string</code> | <code>null</code></dt>
-<dd><p>Hash a string or JSON-serializable value with SHA-256.</p>
-</dd>
-<dt><a href="#buildManifest">buildManifest(options)</a> ⇒ <code>object</code></dt>
-<dd><p>Build a pure reproducibility manifest object for one patina run.</p>
-</dd>
-<dt><a href="#appendResult">appendResult(results, entry)</a> ⇒ <code>Array.&lt;object&gt;</code></dt>
-<dd><p>Append one input/output result entry to an existing manifest results array.</p>
-</dd>
-<dt><a href="#readManifest">readManifest(path)</a> ⇒ <code>object</code></dt>
-<dd><p>Read and normalize a manifest JSON file.</p>
-</dd>
-<dt><a href="#normalizeManifest">normalizeManifest(manifest)</a> ⇒ <code>object</code></dt>
-<dd><p>Normalize supported manifest schema versions to stable result shapes.</p>
-</dd>
-<dt><a href="#writeManifest">writeManifest(dir, manifest, [outputs])</a> ⇒ <code>string</code></dt>
-<dd><p>Write manifest.json and optional output files into a run directory.</p>
 </dd>
 <dt><a href="#runOuroboros">runOuroboros(options)</a> ⇒ <code>Promise.&lt;{finalText: string, finalScore: number, iterations: number, reason: string, log: Array.&lt;object&gt;}&gt;</code></dt>
 <dd><p>Run the iterative Ouroboros rewrite-and-score loop.</p>
@@ -362,26 +323,6 @@ Default key lookup order for the OpenAI-compatible HTTP provider.
 ```js
 const first = DEFAULT_HTTP_KEY_ENV_VARS[0]; // PATINA_API_KEY
 ```
-<a name="CACHE_SCHEMA_VERSION"></a>
-
-## CACHE\_SCHEMA\_VERSION : <code>number</code>
-On-disk response cache schema version.
-
-**Kind**: global constant
-**Example**
-```js
-const version = CACHE_SCHEMA_VERSION;
-```
-<a name="DEFAULT_CACHE_TTL_SECONDS"></a>
-
-## DEFAULT\_CACHE\_TTL\_SECONDS : <code>number</code>
-Default response cache time-to-live: one day.
-
-**Kind**: global constant
-**Example**
-```js
-const ttl = DEFAULT_CACHE_TTL_SECONDS;
-```
 <a name="defaultLogger"></a>
 
 ## defaultLogger : <code>Object</code>
@@ -391,16 +332,6 @@ Default stderr logger used by simple callers.
 **Example**
 ```js
 defaultLogger.info('patina.ready', { message: 'ready' });
-```
-<a name="MANIFEST_SCHEMA_VERSION"></a>
-
-## MANIFEST\_SCHEMA\_VERSION : <code>string</code>
-Current reproducibility manifest schema version.
-
-**Kind**: global constant
-**Example**
-```js
-const version = MANIFEST_SCHEMA_VERSION; // '2'
 ```
 <a name="PROVIDERS"></a>
 
@@ -484,7 +415,7 @@ const delay = computeBackoffMs(1, '2'); // 2000
 <a name="callLLM"></a>
 
 ## callLLM(options) ⇒ <code>Promise.&lt;string&gt;</code>
-Call an OpenAI-compatible chat completions endpoint with retries, timeout, optional cache, and abort support.
+Call an OpenAI-compatible chat completions endpoint with retries, timeout, and abort support.
 
 **Kind**: global function
 **Returns**: <code>Promise.&lt;string&gt;</code> - Assistant message content.
@@ -508,8 +439,7 @@ Call an OpenAI-compatible chat completions endpoint with retries, timeout, optio
 | [options.deadline] | <code>number</code> |  | Absolute epoch-millisecond deadline for all attempts. |
 | [options.signal] | <code>AbortSignal</code> |  | External cancellation signal. |
 | [options.allowInsecureBaseURL] | <code>boolean</code> | <code>false</code> | Allow non-loopback HTTP base URLs. |
-| [options.onResponse] | <code>function</code> |  | Callback receiving provider/cache metadata. |
-| [options.cache] | <code>object</code> |  | Response cache with get/set methods. |
+| [options.onResponse] | <code>function</code> |  | Callback receiving provider metadata. |
 | [options.sleep] | <code>function</code> |  | Injectable sleep function for tests. |
 | [options.now] | <code>function</code> |  | Clock returning epoch milliseconds. |
 
@@ -583,94 +513,6 @@ Resolve the HTTP API key from a key file or environment.
 **Example**
 ```js
 const key = resolveHttpApiKey({ env: process.env });
-```
-<a name="createResponseCache"></a>
-
-## createResponseCache([options]) ⇒ <code>null</code> \| <code>Object</code>
-Create a filesystem-backed cache for LLM responses.
-
-**Kind**: global function
-**Returns**: <code>null</code> \| <code>Object</code> - Cache object or null.
-**Throws**:
-
-- <code>Error</code> Propagates filesystem or JSON errors when cache entries are read or written through the returned object.
-
-
-| Param | Type | Default | Description |
-| --- | --- | --- | --- |
-| [options] | <code>object</code> |  | Cache options. |
-| [options.dir] | <code>string</code> |  | Directory for cache JSON files; returns null when omitted. |
-| [options.ttlSeconds] | <code>number</code> | <code>DEFAULT_CACHE_TTL_SECONDS</code> | Entry TTL in seconds. |
-| [options.now] | <code>function</code> |  | Clock returning epoch milliseconds. |
-
-**Example**
-```js
-const cache = createResponseCache({ dir: '.patina-cache' });
-```
-<a name="responseCacheKey"></a>
-
-## responseCacheKey([options]) ⇒ <code>string</code>
-Derive a stable cache key from prompt and provider settings.
-
-**Kind**: global function
-**Returns**: <code>string</code> - sha256-prefixed cache key.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| [options] | <code>object</code> | Cache-key inputs. |
-| [options.prompt] | <code>string</code> | Prompt text. |
-| [options.model] | <code>string</code> | Model id. |
-| [options.temperature] | <code>number</code> | Sampling temperature. |
-| [options.baseURL] | <code>string</code> | Provider base URL. |
-
-**Example**
-```js
-const key = responseCacheKey({ prompt: 'Hi', model: 'gpt-4o' });
-```
-<a name="responseCachePath"></a>
-
-## responseCachePath(dir, key) ⇒ <code>string</code>
-Resolve the JSON file path for a response cache key.
-
-**Kind**: global function
-**Returns**: <code>string</code> - Absolute or relative cache JSON path under dir.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| dir | <code>string</code> | Cache directory. |
-| key | <code>string</code> | sha256-prefixed or raw cache key. |
-
-**Example**
-```js
-const path = responseCachePath('.cache', 'sha256:abc');
-```
-<a name="baseURLHost"></a>
-
-## baseURLHost([baseURL]) ⇒ <code>string</code>
-Normalize a provider base URL to its host component for cache keys.
-
-**Kind**: global function
-**Returns**: <code>string</code> - Parsed host, or the original string when parsing fails.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| [baseURL] | <code>string</code> | Provider base URL. |
-
-**Example**
-```js
-const host = baseURLHost('https://api.openai.com/v1');
 ```
 <a name="main"></a>
 
@@ -1114,156 +956,6 @@ Create a small stderr logger with text, JSON, and progress modes.
 ```js
 const logger = createLogger({ json: true });
 logger.info('event', { message: 'ready' });
-```
-<a name="hashSha256"></a>
-
-## hashSha256(input) ⇒ <code>string</code> \| <code>null</code>
-Hash a string or JSON-serializable value with SHA-256.
-
-**Kind**: global function
-**Returns**: <code>string</code> \| <code>null</code> - sha256-prefixed digest or null.
-**Throws**:
-
-- <code>TypeError</code> When a non-string value cannot be JSON-serialized.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| input | <code>unknown</code> | Value to hash; nullish values return null. |
-
-**Example**
-```js
-const hash = hashSha256('prompt');
-```
-<a name="buildManifest"></a>
-
-## buildManifest(options) ⇒ <code>object</code>
-Build a pure reproducibility manifest object for one patina run.
-
-**Kind**: global function
-**Returns**: <code>object</code> - Manifest body ready to serialize.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| options | <code>object</code> | Resolved run metadata. |
-| options.patinaVersion | <code>string</code> | Package version. |
-| options.mode | <code>string</code> | Output mode. |
-| options.lang | <code>string</code> | Language code. |
-| options.profile | <code>string</code> | Profile name. |
-| [options.provider] | <code>string</code> | Provider preset name. |
-| [options.backend] | <code>string</code> | Backend name. |
-| [options.model] | <code>string</code> | Model id. |
-| [options.configPath] | <code>string</code> | Config file path. |
-| [options.config] | <code>object</code> | Effective config. |
-| [options.patterns] | <code>Array.&lt;object&gt;</code> | Loaded pattern packs. |
-| [options.results] | <code>Array.&lt;object&gt;</code> | Manifest result entries. |
-| options.startedAt | <code>string</code> | ISO start timestamp. |
-| [options.finishedAt] | <code>string</code> | ISO finish timestamp. |
-| [options.temperature] | <code>number</code> \| <code>null</code> | Sampling temperature. |
-| [options.seed] | <code>number</code> \| <code>string</code> \| <code>null</code> | Model seed. |
-
-**Example**
-```js
-const manifest = buildManifest({ patinaVersion: '3.11.0', mode: 'rewrite', lang: 'en', profile: 'default', startedAt: new Date().toISOString() });
-```
-<a name="appendResult"></a>
-
-## appendResult(results, entry) ⇒ <code>Array.&lt;object&gt;</code>
-Append one input/output result entry to an existing manifest results array.
-
-**Kind**: global function
-**Returns**: <code>Array.&lt;object&gt;</code> - The same results array after mutation.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| results | <code>Array.&lt;object&gt;</code> | Mutable manifest results array. |
-| entry | <code>object</code> | Result metadata. |
-| entry.inputPath | <code>string</code> | Original input path. |
-| entry.prompt | <code>string</code> | Prompt text. |
-| entry.outputRef | <code>string</code> | Output file or stream reference. |
-| entry.response | <code>string</code> | Model response text. |
-| [entry.tokensIn] | <code>number</code> \| <code>null</code> | Input token count. |
-| [entry.tokensOut] | <code>number</code> \| <code>null</code> | Output token count. |
-| [entry.temperature] | <code>number</code> \| <code>null</code> | Sampling temperature. |
-| [entry.seed] | <code>number</code> \| <code>string</code> \| <code>null</code> | Model seed. |
-| [entry.cost] | <code>number</code> \| <code>null</code> | Estimated cost. |
-| [entry.scores] | <code>object</code> | Score payload. |
-| [entry.iterationLog] | <code>Array.&lt;object&gt;</code> | Ouroboros iteration log. |
-| [entry.calls] | <code>Array.&lt;object&gt;</code> | Provider call metadata. |
-
-**Example**
-```js
-appendResult(results, { inputPath: 'in.md', prompt: 'p', outputRef: 'out.md', response: 'r' });
-```
-<a name="readManifest"></a>
-
-## readManifest(path) ⇒ <code>object</code>
-Read and normalize a manifest JSON file.
-
-**Kind**: global function
-**Returns**: <code>object</code> - Normalized manifest.
-**Throws**:
-
-- <code>Error</code> When JSON is invalid, unreadable, or schema is unsupported.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| path | <code>string</code> | Manifest JSON path. |
-
-**Example**
-```js
-const manifest = readManifest('runs/latest/manifest.json');
-```
-<a name="normalizeManifest"></a>
-
-## normalizeManifest(manifest) ⇒ <code>object</code>
-Normalize supported manifest schema versions to stable result shapes.
-
-**Kind**: global function
-**Returns**: <code>object</code> - Manifest with normalized results.
-**Throws**:
-
-- <code>Error</code> When manifest is not an object or schema version is unsupported.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| manifest | <code>object</code> | Manifest object to normalize. |
-
-**Example**
-```js
-const normalized = normalizeManifest({ manifestVersion: '1', results: [] });
-```
-<a name="writeManifest"></a>
-
-## writeManifest(dir, manifest, [outputs]) ⇒ <code>string</code>
-Write manifest.json and optional output files into a run directory.
-
-**Kind**: global function
-**Returns**: <code>string</code> - Path to the written manifest.json.
-**Throws**:
-
-- <code>Error</code> When the directory or files cannot be written.
-
-
-| Param | Type | Default | Description |
-| --- | --- | --- | --- |
-| dir | <code>string</code> |  | Destination directory. |
-| manifest | <code>object</code> |  | Manifest object to serialize. |
-| [outputs] | <code>Array.&lt;{name: string, content: string}&gt;</code> | <code>[]</code> | Extra files to write beside manifest.json. |
-
-**Example**
-```js
-const path = writeManifest('runs/latest', manifest, [{ name: 'output.md', content: 'Done' }]);
 ```
 <a name="runOuroboros"></a>
 

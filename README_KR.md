@@ -220,10 +220,6 @@ rewrite 모드에서 모델은 `[BODY]`/`[/BODY]` 블록을 감싸는 `[SELF_AUD
 
 `--score` 실행은 모델이 출력한 Weight 열을 설정의 `category-weights`와 교차 확인합니다. 모델이 존재하지 않는 카테고리(예: `discord`)를 만들거나 다른 숫자로 바꾸면 `[patina]` 경고가 stderr에 출력됩니다 — 관측용일 뿐 weight check 자체가 점수를 바꾸지는 않습니다. `src/features/*`의 결정론적 shadow score도 함께 기록되며, LLM 점수와 20점 넘게 벌어지면 patina가 경고를 내고 gate에는 더 보수적인 값을 사용합니다.
 
-`--save-run <dir>`는 manifest schema v2를 씁니다. 결과 entry에는 prompt/response hash, 가능한 input/output token 수, temperature/seed, score detail, provider가 반환한 per-call cost, Ouroboros iteration log가 포함됩니다.
-
-반복 benchmark에는 `--cache <dir>` 또는 `PATINA_CACHE_DIR`로 HTTP response cache를 켤 수 있습니다. Cache key에는 prompt, model, temperature, API host가 들어가고, `--cache-ttl <sec>`가 만료 시간을 정하며, `--no-cache`는 항상 fresh run을 강제합니다. cached run이 끝나면 hit/miss/write stats가 출력됩니다.
-
 `--voice-sample <path>` 또는 설정의 `voice-sample: <path>`로 본인이 쓴 1~3문단을 rewrite 기준으로 줄 수 있습니다. profile과 tone은 여전히 register를 정하고, sample은 cadence, 구체성, POV, sentence texture만 가르칩니다. prompt는 sample의 사실을 가져오지 말라고 명시합니다.
 
 ## 톤

@@ -144,7 +144,7 @@ export function computeBackoffMs(attempt, retryAfter, opts = {}) {
 
 
 /**
- * Call an OpenAI-compatible chat completions endpoint with retries, timeout, optional cache, and abort support.
+ * Call an OpenAI-compatible chat completions endpoint with retries, timeout, and abort support.
  *
  * @param {object} options LLM request options.
  * @param {string} options.prompt User prompt sent as the single chat message.
@@ -158,8 +158,7 @@ export function computeBackoffMs(attempt, retryAfter, opts = {}) {
  * @param {number} [options.deadline] Absolute epoch-millisecond deadline for all attempts.
  * @param {AbortSignal} [options.signal] External cancellation signal.
  * @param {boolean} [options.allowInsecureBaseURL=false] Allow non-loopback HTTP base URLs.
- * @param {Function} [options.onResponse] Callback receiving provider/cache metadata.
- * @param {object} [options.cache] Response cache with get/set methods.
+ * @param {Function} [options.onResponse] Callback receiving provider metadata.
  * @param {Function} [options.sleep] Injectable sleep function for tests.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @returns {Promise<string>} Assistant message content.
@@ -181,7 +180,6 @@ export async function callLLM({
   signal,
   allowInsecureBaseURL = false,
   onResponse,
-  cache,
   // Allows tests to inject a deterministic delay function.
   sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
   now = () => Date.now(),
@@ -195,21 +193,6 @@ export async function callLLM({
   };
   if (seed !== undefined && seed !== null) body.seed = seed;
 
-  const cached = cache?.get?.({ prompt, model, temperature, baseURL });
-  if (cached) {
-    onResponse?.({
-      provider: 'cache',
-      model: cached.responseModel ?? cached.model ?? model,
-      requestedModel: model,
-      temperature,
-      seed: seed ?? null,
-      usage: cached.usage ?? null,
-      rawResponse: null,
-      content: cached.content,
-      cache: { hit: true, key: cached.key, path: cached.path },
-    });
-    return cached.content;
-  }
 
   let lastError;
   let attemptsMade = 0;
@@ -273,9 +256,7 @@ export async function callLLM({
         usage: data.usage ?? null,
         rawResponse: data,
         content,
-        cache: cache ? { hit: false } : null,
       };
-      cache?.set?.({ prompt, model, temperature, baseURL }, content, metadata);
       onResponse?.(metadata);
 
       return content;

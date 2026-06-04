@@ -11,13 +11,11 @@ const OUT_PATH = resolve(REPO_ROOT, 'docs/API.md');
 const SOURCES = [
   'src/api.js',
   'src/auth.js',
-  'src/cache.js',
   'src/cli.js',
   'src/config.js',
   'src/errors.js',
   'src/loader.js',
   'src/logger.js',
-  'src/manifest.js',
   'src/ouroboros.js',
   'src/output.js',
   'src/prompt-builder.js',

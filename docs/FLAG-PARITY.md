@@ -19,7 +19,6 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 | `--in-place` | ✓ | ✓ | Batch-only write mode. |
 | `--suffix <ext>` | ✓ | ✓ | Batch-only alternate output naming. |
 | `--outdir <dir>` | ✓ | ✓ | Batch-only output directory. |
-| `--save-run <dir>` | ✓ | — | CLI reproducibility manifest and outputs. |
 | `--no-interactive` | ✓ | — | CLI input safety for non-TTY automation. |
 | `--lang <code>` | ✓ | ✓ | `ko`, `en`, `zh`, `ja`. |
 | `--profile <name>` | ✓ | ✓ | Profile override. |
@@ -44,4 +43,4 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 ## Audit notes
 
 - `--prompt-mode` is the main user-facing prompt-loading control that must stay visible in `SKILL.md` as well as the CLI.
-- `--save-run`, auth/provider/base-url flags, and `doctor`/`auth` commands are CLI automation or transport controls; they do not map cleanly to prompt-only skills.
+- Auth/provider/base-url flags and `doctor`/`auth` commands are CLI automation or transport controls; they do not map cleanly to prompt-only skills.

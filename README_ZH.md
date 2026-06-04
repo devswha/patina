@@ -221,10 +221,6 @@ Markdown-heavy 工程流程可使用开发者原生 profile shortcut：`code-com
 
 `--score` 运行会把模型输出的 Weight 列与配置中的 `category-weights` 交叉检查。如果模型凭空创造类别（例如 `discord`）或替换成不同数字，stderr 会出现 `[patina]` 警告 — 这只用于可观测性，权重检查本身不会改变分数。确定性 shadow score 也会从 `src/features/*` 记录；当它与 LLM 分数相差超过 20 分时，patina 会警告并使用更悲观的分数作为 gate。
 
-`--save-run <dir>` 现在写入 manifest schema v2：结果条目包含 prompt/response hash、可用的输入/输出 token count、temperature/seed、score details、provider 返回时的 per-call cost，以及 Ouroboros iteration logs。
-
-重复 benchmark 可通过 `--cache <dir>` 或 `PATINA_CACHE_DIR` 启用 HTTP response cache。Cache key 包含 prompt、model、temperature 和 API host；`--cache-ttl <sec>` 控制过期时间，`--no-cache` 强制 fresh run。cached run 结束时会打印 hit/miss/write stats。
-
 使用 `--voice-sample <path>` 或配置中的 `voice-sample: <path>`，可以让 rewrite 参考你写过的 1–3 个段落。Profile 和 tone 仍然决定目标 register；sample 只用于学习节奏、具体度、视角和句子纹理，prompt 会明确禁止引入 sample facts。
 
 ## 语调

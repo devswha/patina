@@ -19,7 +19,6 @@ import { runInit } from './commands/init.js';
 import { PatinaCliError, inputError, runtimeError, renderCliError, getExitCode } from './errors.js';
 import { inspectHttpApiKeySource, providerHttpKeyEnvVars, resolveHttpApiKey } from './auth.js';
 import { createLogger } from './logger.js';
-import { maybeWarnJudgeOverlap } from './judge-warning.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, basename, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -216,15 +215,6 @@ export async function main(args) {
           });
         }
 
-        if (mode === 'score') {
-          maybeWarnJudgeOverlap({
-            suspectedGenerator: parsed.suspectedGenerator,
-            backendName: backend.name,
-            model: resolved.model,
-            providerName: provider?.name,
-            logger,
-          });
-        }
 
         if (backend.name === 'openai-http' && !resolved.apiKey) {
           const msg = ['No API key found. Set PATINA_API_KEY, PATINA_API_KEY_FILE, OPENAI_API_KEY, or use --api-key-file.'];
@@ -371,10 +361,6 @@ function parseArgs(args) {
         break;
       case '--score':
         parsed.score = true;
-        break;
-      case '--suspected-generator':
-        parsed.suspectedGenerator = readOptionValue(args, i, arg);
-        i++;
         break;
       case '--format': {
         const value = readOptionValue(args, i, arg);
@@ -808,8 +794,6 @@ MODES
   --score                 Output AI-likeness score (0-100)
   --gate <n>              With --score, exit 3 when overall score > n
   --exit-on <n>           Alias for --gate, intended for CI scripts
-  --suspected-generator <family>
-                          Warn when score judge matches source model family
   --ouroboros             Iterative self-improvement loop
 
 OUTPUT & BATCH

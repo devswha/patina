@@ -1,31 +1,9 @@
 # Cross-judge agreement plan
 
-Status: CLI warning implemented; full matrix blocked on evaluator budget.
+Status: CLI shortcut removed during surface simplification; full matrix blocked on evaluator budget.
 Related issue: #158.
 
-A score is more useful when the judge is not from the same model family as the suspected generator. Patina now exposes a warning for that risk, while the larger agreement matrix remains a research task.
-
-## Implemented safety check
-
-Use `--suspected-generator <family>` with `--score`:
-
-```bash
-patina --lang en --score --suspected-generator gpt draft.md
-```
-
-If the active judge appears to be from the same family, patina writes a stderr warning with event `score.judge_overlap_warning`. The warning does not fail the command. It tells the user to treat the score as a bias check rather than an independent judge.
-
-Known family mappings:
-
-| input examples | family |
-|---|---|
-| `gpt`, `openai`, `codex`, `chatgpt`, `o4` | openai |
-| `claude`, `anthropic` | claude |
-| `gemini`, `google` | gemini |
-| `llama`, `meta` | llama |
-| `mistral`, `mixtral` | mistral |
-| `qwen` | qwen |
-| `deepseek` | deepseek |
+A score is more useful when the judge is not from the same model family as the suspected generator. Patina no longer exposes a per-run CLI warning for this; cross-family independence belongs in an explicit evaluation matrix rather than everyday score UX.
 
 ## Full matrix gate
 

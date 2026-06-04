@@ -14,19 +14,6 @@ patina --lang en --score --exit-on 30 draft.md
 - If the parsed `overall` score is greater than the gate, patina prints a `[patina] score gate failed` warning to stderr and exits with code `3`.
 - The gate is intentionally limited to `--score`; rewrite/audit/diff modes should not fail a pipeline based on an output shape they do not own.
 
-## Judge-family warning
-
-Use `--suspected-generator <family>` when scoring text that likely came from a
-known model family:
-
-```bash
-patina --lang en --score --suspected-generator gpt draft.md
-```
-
-If the active score judge appears to be from the same family, patina writes a
-stderr warning with event `score.judge_overlap_warning`. The score still runs;
-the warning only means the result is not an independent cross-family check.
-
 ## Exit codes
 
 | Code | Meaning |

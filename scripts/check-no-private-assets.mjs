@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // Private-asset leak gate.
 //
-// patina ships as open-core: the public package must contain ZERO cross-track
-// private assets (the reinforced KO corpus, reinforced lexicon/patterns, hosted
-// server code, API keys). This gate enumerates what would actually be published
-// for BOTH npm packages (`patina-cli` and `packages/patina-humanizer`) via
-// `npm pack --dry-run --json`, plus every git-tracked file, and fails if any
-// path matches a forbidden pattern.
+// patina ships as a public package: it must contain ZERO private assets
+// (reinforced corpora, reinforced lexicon/patterns, service code, API keys).
+// This gate enumerates what would actually be published for BOTH npm packages
+// (`patina-cli` and `packages/patina-humanizer`) via `npm pack --dry-run
+// --json`, plus every git-tracked file, and fails if any path matches a
+// forbidden pattern.
 //
 // `npm pack` is run with `--dry-run --ignore-scripts` so wiring this gate into
 // `prepublishOnly` cannot recurse back into the publish lifecycle.
@@ -20,7 +20,7 @@ const REPO_ROOT = resolve(__dirname, '..');
 
 // Forbidden path patterns (glob: `*` = one segment, `**` = any depth).
 // All of these are intentionally absent from the public repo; a match means a
-// cross-track private asset slipped into the open package or git history.
+// private asset slipped into the open package or git history.
 export const FORBIDDEN_GLOBS = Object.freeze([
   '**/*.private.*', // explicitly private-marked files
   '**/*.enhanced.*', // explicitly enhancement-marked files
@@ -28,7 +28,7 @@ export const FORBIDDEN_GLOBS = Object.freeze([
   '**/enhanced/**', // any `enhanced/` directory (reinforced assets)
   '**/reinforced/**', // any `reinforced/` directory (reinforced assets)
   '**/corpus/**', // private corpus directories
-  'server/**', // hosted server implementation lives only in the private track
+  'server/**', // private service/server implementation
 ]);
 
 /**

@@ -28,6 +28,7 @@ import {
 } from './lexicon.js';
 import { detectMarkupLeakage } from './markup-leakage.js';
 import { detectDiscourseTells } from './discourse-tells.js';
+import { registerStability, endingDistribution, dominantRegister } from './register-stability.js';
 
 export function analyzeText(text, opts = {}) {
   const {
@@ -140,6 +141,9 @@ export {
   koreanSpacingFeatures,
   loadLexicon,
   computeDensity,
+  registerStability,
+  endingDistribution,
+  dominantRegister,
 };
 
 function buildKoreanSignals(paragraph, sentenceCount, { enabled, bands }) {

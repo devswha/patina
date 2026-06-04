@@ -13,7 +13,7 @@ repos:
     rev: main # replace with a release tag after v1 is cut
     hooks:
       - id: patina-score
-        args: [--gate, "30", --lang, auto]
+        args: [--score-threshold, "30", --lang, auto]
 ```
 
 Run it locally:
@@ -33,7 +33,7 @@ npx husky init
 // package.json
 {
   "lint-staged": {
-    "*.{md,mdx}": "patina-score --gate 30 --lang auto"
+    "*.{md,mdx}": "patina-score --score-threshold 30 --lang auto"
   }
 }
 ```
@@ -57,7 +57,7 @@ pre-commit:
   commands:
     patina-score:
       glob: "*.{md,mdx}"
-      run: npx patina-score --gate 30 --lang auto {staged_files}
+      run: npx patina-score --score-threshold 30 --lang auto {staged_files}
 ```
 
 A repo-local Lefthook command if this repository is vendored or checked out:
@@ -67,11 +67,11 @@ pre-commit:
   commands:
     patina-score:
       glob: "*.{md,mdx}"
-      run: node scripts/precommit-score.mjs --gate 30 --lang auto {staged_files}
+      run: node scripts/precommit-score.mjs --score-threshold 30 --lang auto {staged_files}
 ```
 
 ## Tuning
 
-- `--gate 30` means fail when more than 30% of prose paragraphs in a file trip a hot signal.
+- `--score-threshold 30` means fail when more than 30% of prose paragraphs in a file trip a hot signal.
 - `--lang auto` infers language from filename and Unicode ranges; pass `ko`, `en`, `zh`, or `ja` when a repo is single-language.
 - Use this as a discussion prompt, not as an accusation. See [ETHICS.md](../ETHICS.md).

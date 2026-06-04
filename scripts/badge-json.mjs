@@ -39,16 +39,17 @@ export function parseArgs(argv) {
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--gate' || arg === '--score-threshold') opts.gate = Number(argv[++i]);
+    if (arg === '--score-threshold') opts.gate = Number(argv[++i]);
     else if (arg === '--lang') opts.lang = argv[++i] || 'auto';
     else if (arg === '--max-files') opts.maxFiles = Number(argv[++i]);
     else if (arg === '--label') opts.label = argv[++i] || 'patina';
-    else if (!arg.startsWith('-')) opts.files.push(arg);
+    else if (arg.startsWith('-')) throw new Error(`unknown option ${arg}`);
+    else opts.files.push(arg);
   }
 
   if (opts.files.length === 0) opts.files.push('README.md');
   if (!Number.isFinite(opts.gate) || opts.gate < 0 || opts.gate > 100) {
-    throw new Error(`--gate expects a number from 0 to 100, got ${opts.gate}`);
+    throw new Error(`--score-threshold expects a number from 0 to 100, got ${opts.gate}`);
   }
   if (!Number.isInteger(opts.maxFiles) || opts.maxFiles < 1) {
     throw new Error(`--max-files expects a positive integer, got ${opts.maxFiles}`);

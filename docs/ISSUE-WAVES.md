@@ -33,7 +33,7 @@ MPS repo-owned 10-fixture gate; #157 KO register FP coverage gate via
 
 | issue | status | next action |
 |---|---|---|
-| #158 cross-judge matrix | CLI judge-family warning implemented; full matrix blocked on evaluator budget | Use `--suspected-generator <family>` for score warnings now; run 3×3×30 agreement after a stable sample manifest exists. See `docs/research/judge-agreement.md`. |
+| #158 cross-judge matrix | CLI shortcut removed during surface simplification; full matrix blocked on evaluator budget | Run 3×3×30 agreement after a stable sample set exists. See `docs/research/judge-agreement.md`. |
 | #159 blinded human panel | study design ready; panel blocked on reviewer pool | Recruit 5 raters × 30 paired samples with consent/redistribution rules. See `docs/research/human-eval-panel.md`. |
 
 ## Wave D — ecosystem/integration expansion

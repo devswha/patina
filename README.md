@@ -236,10 +236,6 @@ In rewrite mode, the model emits its self-audit notes inside `[SELF_AUDIT]`/`[/S
 
 `--score` runs cross-check the Weight column the model emits against your config's `category-weights`. If the model invents a category (e.g., `discord`) or substitutes a different number, `[patina]` warnings hit stderr — observability only, the weight check itself doesn't alter the score. A deterministic shadow score from `src/features/*` is also recorded; when it differs from the LLM score by more than 20 points, patina warns and uses the more pessimistic value for gates.
 
-`--save-run <dir>` now writes manifest schema v2: result entries include prompt and response hashes, available input/output token counts, temperature/seed, score details, per-call cost when a provider returns it, and Ouroboros iteration logs.
-
-For repeat benchmarks, opt into the HTTP response cache with `--cache <dir>` or `PATINA_CACHE_DIR`. Cache keys include prompt, model, temperature, and API host; `--cache-ttl <sec>` controls expiry and `--no-cache` bypasses it for fresh runs. Patina prints hit/miss/write stats at the end of cached runs.
-
 Use `--voice-sample <path>` or `voice-sample: <path>` in config to anchor rewrites to 1–3 paragraphs you wrote. Profile and tone still set the requested register; the sample only teaches cadence, specificity, POV, and sentence texture, and the prompt explicitly forbids importing sample facts.
 
 

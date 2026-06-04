@@ -24,7 +24,7 @@ test('adversarial MPS fixtures pass the repo-owned gate', () => {
 test('anchorMps fails when a required meaning anchor disappears', () => {
   const result = anchorMps({
     rewritten: 'The cache expires after 24 hours.',
-    anchors: ['expires after 24 hours', '--no-cache'],
+    anchors: ['expires after 24 hours', 'manual refresh'],
   });
 
   assert.strictEqual(result.pass_count, 1);

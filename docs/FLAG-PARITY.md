@@ -27,7 +27,6 @@ Basis: local checkout `2e1fc04` plus `node bin/patina.js --help`, `SKILL.md`, an
 | `--model <id>` | ✓ | — | — | CLI single-backend model selection. |
 | `--models <list>` | ✓ | — | ✓ | CLI MAX mode and `/patina-max` model fanout. |
 | `--max-concurrency <n>` | ✓ | — | — | CLI HTTP MAX fanout cap; `/patina-max` uses tmux/direct dispatch instead. |
-| `--api-key <key>` | ✓ | — | — | Deprecated CLI auth escape hatch; prefer env/file. |
 | `--api-key-file <path>` | ✓ | — | — | CLI auth. |
 | `--base-url <url>` | ✓ | — | — | CLI provider/backend config. |
 | `--backend <name[,name]>` | ✓ | — | — | CLI backend selection and explicit fallback chains (`openai-http`, `codex-cli`, `claude-cli`, `gemini-cli`). |

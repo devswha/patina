@@ -15,6 +15,7 @@ let mockPort;
 let callCount = 0;
 let lastRequestBody = null;
 let lastAuthorization = null;
+let mockApiKeyPath;
 
 function startMockServer(responseText, statusCode = 200, extraResponse = {}) {
   return new Promise((resolve) => {
@@ -81,6 +82,9 @@ async function withEnv(envOverrides, fn) {
 describe('CLI End-to-End with Mock API', () => {
   before(async () => {
     await startMockServer('This is the humanized result.');
+    const keyDir = mkdtempSync(join(tmpdir(), 'patina-api-key-'));
+    mockApiKeyPath = resolve(keyDir, 'key.txt');
+    writeFileSync(mockApiKeyPath, 'test-key\n');
   });
 
   after(async () => {
@@ -96,7 +100,7 @@ describe('CLI End-to-End with Mock API', () => {
     await main([
       '--lang', 'en',
       '--profile', 'default',
-      '--api-key', 'test-key',
+      '--api-key-file', mockApiKeyPath,
       '--base-url', `http://127.0.0.1:${mockPort}`,
       '--model', 'gpt-5',
       testFile,
@@ -117,7 +121,7 @@ describe('CLI End-to-End with Mock API', () => {
 
     await main([
       '--lang', 'en',
-      '--api-key', 'test-key',
+      '--api-key-file', mockApiKeyPath,
       '--base-url', `http://127.0.0.1:${mockPort}`,
       '--model', 'gpt-5',
       testFile,
@@ -143,7 +147,7 @@ describe('CLI End-to-End with Mock API', () => {
     await main([
       '--lang', 'en',
       '--voice-sample', samplePath,
-      '--api-key', 'test-key',
+      '--api-key-file', mockApiKeyPath,
       '--base-url', `http://127.0.0.1:${mockPort}`,
       testFile,
     ]);
@@ -155,7 +159,7 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(!prompt.includes('This fourth paragraph should be ignored.'));
   });
 
-  it('uses OPENAI_API_KEY for the default HTTP backend when no --api-key is passed', async () => {
+  it('uses OPENAI_API_KEY for the default HTTP backend when no key file flag is passed', async () => {
     callCount = 0;
     lastRequestBody = null;
     lastAuthorization = null;
@@ -222,7 +226,7 @@ describe('CLI End-to-End with Mock API', () => {
     await main([
       '--lang', 'en',
       '--audit',
-      '--api-key', 'test-key',
+      '--api-key-file', mockApiKeyPath,
       '--base-url', `http://127.0.0.1:${mockPort}`,
       testFile,
     ]);
@@ -243,7 +247,7 @@ describe('CLI End-to-End with Mock API', () => {
     await main([
       '--lang', 'en',
       '--score',
-      '--api-key', 'test-key',
+      '--api-key-file', mockApiKeyPath,
       '--base-url', `http://127.0.0.1:${mockPort}`,
       testFile,
     ]);
@@ -294,7 +298,6 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(help.includes('--quiet'), 'help should document quiet logs');
     assert.ok(help.includes('--json-logs'), 'help should document structured stderr logs');
     assert.ok(help.includes('--suspected-generator <family>'), 'help should document judge overlap warning');
-    assert.ok(help.includes('--card <path>'), 'help should document share-card SVG output');
     assert.ok(help.includes('--max-timeout <sec>'), 'help should document MAX wall-clock timeout');
     assert.ok(help.includes('--no-color'), 'help should document diff color opt-out');
     assert.ok(
@@ -315,7 +318,7 @@ describe('CLI End-to-End with Mock API', () => {
       '--score',
       '--exit-on', '30',
       '--format', 'json',
-      '--api-key', 'test-key',
+      '--api-key-file', mockApiKeyPath,
       '--base-url', `http://127.0.0.1:${mockPort}`,
       testFile,
     ]));
@@ -358,7 +361,7 @@ describe('CLI End-to-End with Mock API', () => {
       '--lang', 'en',
       '--score',
       '--format', 'json',
-      '--api-key', 'test-key',
+      '--api-key-file', mockApiKeyPath,
       '--base-url', `http://127.0.0.1:${mockPort}`,
       testFile,
     ]));
@@ -388,7 +391,7 @@ describe('CLI End-to-End with Mock API', () => {
       '--lang', 'en',
       '--score',
       '--save-run', outDir,
-      '--api-key', 'test-key',
+      '--api-key-file', mockApiKeyPath,
       '--base-url', `http://127.0.0.1:${mockPort}`,
       testFile,
     ]));
@@ -421,7 +424,7 @@ describe('CLI End-to-End with Mock API', () => {
       '--lang', 'en',
       '--cache', cacheDir,
       '--cache-ttl', '3600',
-      '--api-key', 'test-key',
+      '--api-key-file', mockApiKeyPath,
       '--base-url', `http://127.0.0.1:${mockPort}`,
       testFile,
     ];
@@ -449,14 +452,14 @@ describe('CLI End-to-End with Mock API', () => {
     await withEnv({ PATINA_CACHE_DIR: cacheDir, PATINA_CACHE_TTL_SECONDS: '3600' }, async () => {
       await captureConsole(() => main([
         '--lang', 'en',
-        '--api-key', 'test-key',
+        '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
         testFile,
       ]));
       const bypass = await captureConsole(() => main([
         '--lang', 'en',
         '--no-cache',
-        '--api-key', 'test-key',
+        '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
         testFile,
       ]));
@@ -477,7 +480,7 @@ describe('CLI End-to-End with Mock API', () => {
     const { errors, logs } = await captureConsole(() => main([
       '--lang', 'en',
       '--quiet',
-      '--api-key', 'test-key',
+      '--api-key-file', mockApiKeyPath,
       '--base-url', `http://127.0.0.1:${mockPort}`,
       testFile,
     ]));
@@ -487,76 +490,6 @@ describe('CLI End-to-End with Mock API', () => {
     assert.match(logs.join('\n'), /This is the humanized result\./);
   });
 
-  it('writes --card SVG for rewrite mode with AI score and MPS', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    await stopMockServer();
-
-    mockServer = createServer((req, res) => {
-      callCount++;
-      let body = '';
-      req.on('data', (chunk) => { body += chunk; });
-      req.on('end', () => {
-        lastRequestBody = JSON.parse(body);
-        const prompt = lastRequestBody.messages[0].content;
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-
-        if (prompt.includes('AI-likeness scoring engine')) {
-          res.end(JSON.stringify({
-            choices: [{ message: { content: '{ "overall": 18, "interpretation": "mostly human" }' } }],
-          }));
-          return;
-        }
-
-        if (prompt.includes('Meaning Preservation evaluator')) {
-          res.end(JSON.stringify({
-            choices: [{ message: { content: '{ "anchors": [], "pass_count": 1, "total_count": 1, "polarity_pass_count": 0, "polarity_total_count": 0, "mps": 94 }' } }],
-          }));
-          return;
-        }
-
-        res.end(JSON.stringify({
-          choices: [{
-            message: {
-              content: '[BODY]AI 포장을 덜어내고 뜻은 그대로 둔 문장입니다.[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]',
-            },
-          }],
-        }));
-      });
-    });
-
-    await new Promise((resolve) => {
-      mockServer.listen(0, '127.0.0.1', () => {
-        mockPort = mockServer.address().port;
-        resolve();
-      });
-    });
-
-    const dir = mkdtempSync(join(tmpdir(), 'patina-share-card-'));
-    const inputPath = resolve(dir, 'input.txt');
-    const cardPath = resolve(dir, 'card.svg');
-    writeFileSync(inputPath, 'AI 티 나는 문장입니다. 의미는 유지해야 합니다.', 'utf8');
-
-    await captureConsole(() => main([
-      '--lang', 'ko',
-      '--card', cardPath,
-      '--api-key', 'test-key',
-      '--base-url', `http://127.0.0.1:${mockPort}`,
-      inputPath,
-    ]));
-
-    const svg = readFileSync(cardPath, 'utf8');
-    assert.strictEqual(callCount, 3, 'rewrite + AI score + MPS calls should run');
-    assert.match(svg, /width="1200" height="630"/u);
-    assert.match(svg, /AI 티 나는 문장입니다/u);
-    assert.match(svg, /AI 포장을 덜어내고 뜻은 그대로 둔 문장입니다/u);
-    assert.match(svg, /AI score 18\/100/u);
-    assert.match(svg, /MPS 94/u);
-    assert.match(svg, /patina-brand-mark/u);
-
-    await stopMockServer();
-    await startMockServer('This is the humanized result.');
-  });
 
   it('should set exit code 3 when --score gate fails', async () => {
     callCount = 0;
@@ -572,7 +505,7 @@ describe('CLI End-to-End with Mock API', () => {
         '--lang', 'en',
         '--score',
         '--gate', '30',
-        '--api-key', 'test-key',
+        '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
         testFile,
       ]));
@@ -601,14 +534,13 @@ describe('CLI End-to-End with Mock API', () => {
         '--score',
         '--gate', '30',
         '--json-logs',
-        '--api-key', 'test-key',
+        '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
         testFile,
       ]));
 
       assert.strictEqual(process.exitCode, 3);
       const records = errors.map((line) => JSON.parse(line));
-      assert.ok(records.some((record) => record.event === 'auth.argv_secret_warning'));
       const gate = records.find((record) => record.event === 'score.gate_failed');
       assert.ok(gate);
       assert.strictEqual(gate.level, 'warn');
@@ -635,7 +567,7 @@ describe('CLI End-to-End with Mock API', () => {
         '--lang', 'en',
         '--score',
         '--exit-on', '30',
-        '--api-key', 'test-key',
+        '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
         testFile,
       ]));
@@ -654,7 +586,7 @@ describe('CLI End-to-End with Mock API', () => {
     await assert.rejects(
       () => main([
         '--gate', '30',
-        '--api-key', 'test-key',
+        '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
         testFile,
       ]),
@@ -716,7 +648,7 @@ describe('CLI End-to-End with Mock API', () => {
     await main([
       '--lang', 'en',
       '--models', 'model-a,model-b',
-      '--api-key', 'test-key',
+      '--api-key-file', mockApiKeyPath,
       '--base-url', `http://127.0.0.1:${mockPort}`,
       testFile,
     ]);
@@ -770,7 +702,7 @@ describe('CLI End-to-End with Mock API', () => {
       await captureConsole(() => main([
         '--lang', 'en',
         '--models', 'model-a',
-        '--api-key', 'test-key',
+        '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
         testFile,
       ]));
@@ -792,7 +724,7 @@ describe('CLI End-to-End with Mock API', () => {
       () => main([
         '--models', 'model-a,model-b',
         '--variants', '2',
-        '--api-key', 'test-key',
+        '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
         testFile,
       ]),
@@ -813,7 +745,7 @@ describe('CLI End-to-End with Mock API', () => {
       const { logs } = await captureConsole(() => main([
         '--lang', 'en',
         '--models', 'model-a',
-        '--api-key', 'test-key',
+        '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
         testFile,
       ]));
@@ -871,7 +803,7 @@ describe('CLI End-to-End with Mock API', () => {
       const { logs } = await captureConsole(() => main([
         '--lang', 'en',
         '--models', 'model-a',
-        '--api-key', 'test-key',
+        '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
         testFile,
       ]));
@@ -899,7 +831,7 @@ describe('CLI End-to-End with Mock API', () => {
     try {
       await main([
         '--lang', 'en',
-        '--api-key', 'test-key',
+        '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mockPort}`,
         testFile,
       ]);

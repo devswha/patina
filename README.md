@@ -205,7 +205,6 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `--json-logs` | Emit stderr logs as NDJSON with `level`, `event`, `model`, and `latency_ms` fields |
 | `--prompt-mode strict\|minimal\|auto` | Choose full pattern-pack prompting, compressed prompting, or backend-aware auto |
 | `--variants <1-5>` | Generate multiple rewrite variants with the same facts and meaning anchors |
-| `--card <path>` | Write a 1200×630 SVG before/after card with AI score and MPS |
 
 `patina --help` for the full flag list. `patina doctor --json` checks Node/backend/tmux/API-key readiness without making an LLM call, and `patina init` writes a project `.patina.yaml`.
 
@@ -248,9 +247,6 @@ For repeat benchmarks, opt into the HTTP response cache with `--cache <dir>` or 
 
 Use `--voice-sample <path>` or `voice-sample: <path>` in config to anchor rewrites to 1–3 paragraphs you wrote. Profile and tone still set the requested register; the sample only teaches cadence, specificity, POV, and sentence texture, and the prompt explicitly forbids importing sample facts.
 
-On the first successful interactive CLI run, patina may print one short GitHub
-star reminder to stderr. It never goes to stdout, is skipped in CI/non-TTY
-scripted runs, and can be disabled with `PATINA_NO_NUDGE=1`.
 
 ## Tones
 
@@ -347,7 +343,6 @@ Pattern packs are auto-discovered by language prefix. `.patina.yaml` in the work
 - **[zh/ja Lexicon Calibration](docs/research/zh-ja-lexicon-calibration.md)** — starter lexicon gate and remaining corpus risk
 - **[Launch Copy](docs/social/patina-launch-copy.md)** — launch sequence, score gate, and Show HN/Product Hunt/Reddit/X/Korean drafts
 - **[Signs of AI Writing](docs/social/signs-of-ai-writing.md)** ([한국어](docs/social/signs-of-ai-writing_KR.md)) — shareable editing checklist with cited examples
-- **[Share Card SVGs](docs/social/share-card.md)** — `--card` before/after social cards with score and MPS pills
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI-lexicon algorithm
 - **[Scoring](core/scoring.md)** — AI-likeness + fidelity + MPS
 - **[Changelog](CHANGELOG.md)** — release notes and methodology

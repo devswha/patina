@@ -619,7 +619,6 @@ Resolve the HTTP API key from explicit args, key file, or environment.
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
 | [options] | <code>object</code> |  | Resolution options. |
-| [options.explicitApiKey] | <code>string</code> |  | Deprecated direct key value. |
 | [options.apiKeyFile] | <code>string</code> |  | Explicit key file path. |
 | [options.env] | <code>object</code> | <code>process.env</code> | Environment map. |
 | [options.readFile] | <code>function</code> |  | File reader for key files. |

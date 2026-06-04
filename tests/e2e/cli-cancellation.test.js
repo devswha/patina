@@ -15,6 +15,8 @@ test('SIGINT cancels an in-flight HTTP backend request and exits 130', async () 
   const dir = mkdtempSync(join(tmpdir(), 'patina-sigint-'));
   const inputPath = join(dir, 'input.txt');
   writeFileSync(inputPath, 'This draft should wait on the mock backend.\n');
+  const keyPath = join(dir, 'key.txt');
+  writeFileSync(keyPath, 'test-key\n');
 
   let sawRequest;
   const requestSeen = new Promise((resolveRequest) => {
@@ -32,7 +34,7 @@ test('SIGINT cancels an in-flight HTTP backend request and exits 130', async () 
     const child = spawn(process.execPath, [
       BIN,
       '--lang', 'en',
-      '--api-key', 'test-key',
+      '--api-key-file', keyPath,
       '--base-url', `http://127.0.0.1:${port}`,
       '--model', 'gpt-5',
       inputPath,

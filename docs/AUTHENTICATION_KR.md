@@ -32,7 +32,7 @@ PATINA_API_BASE=https://api.openai.com/v1     # or proxy / OpenRouter / etc.
 PATINA_MODEL=gpt-4o                           # default model
 ```
 
-`--base-url`, `--model`, `--api-key`, `--provider` flag는 실행마다 이 값을 덮어씁니다.
+`--base-url`, `--model`, `--api-key-file`, `--provider` flag는 실행마다 이 값을 덮어씁니다.
 
 ## codex-cli backend
 
@@ -98,7 +98,7 @@ export TOGETHER_API_KEY="..."
 patina --provider together --lang ko input.txt
 ```
 
-`--provider`는 알맞은 base URL, default model을 설정하고 provider-specific API key env var를 읽습니다. `--base-url`, `--model`, `--api-key`로 각각 덮어쓸 수 있습니다.
+`--provider`는 알맞은 base URL, default model을 설정하고 provider-specific API key env var를 읽습니다. `--base-url`, `--model`, `--api-key-file`로 각각 덮어쓸 수 있습니다.
 
 ## MAX mode dispatch
 

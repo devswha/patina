@@ -32,7 +32,7 @@ PATINA_API_BASE=https://api.openai.com/v1     # or proxy / OpenRouter / etc.
 PATINA_MODEL=gpt-4o                           # default model
 ```
 
-`--base-url`, `--model`, `--api-key`, `--provider` flags override these per run.
+`--base-url`, `--model`, `--api-key-file`, and `--provider` flags override these per run.
 
 ## codex-cli backend
 
@@ -98,7 +98,7 @@ export TOGETHER_API_KEY="..."
 patina --provider together --lang ko input.txt
 ```
 
-`--provider` sets the right base URL, default model, and reads the provider-specific API key env var. Override any of these with `--base-url`, `--model`, or `--api-key`.
+`--provider` sets the right base URL, default model, and reads the provider-specific API key env var. Override these with `--base-url`, `--model`, or `--api-key-file`.
 
 ## MAX mode dispatch
 

@@ -16,7 +16,7 @@ The project uses a **plugin architecture**: patterns are plugins (`patterns/{lan
 - **Core definitions**: `core/voice.md`, `core/scoring.md`
 - **Examples**: `examples/{number}-success-01.md`, `{number}-failure-01.md`
   - English examples: `examples/en-{number}-success-01.md`
-- **Entry points**: `SKILL.md` (single model), `patina-max/SKILL.md` (multi-model)
+- **Entry point**: `SKILL.md`
 - **Config**: `.patina.default.yaml` — source of truth for defaults
 
 ## When Adding a New Pattern
@@ -60,19 +60,16 @@ The project uses a **plugin architecture**: patterns are plugins (`patterns/{lan
 - The **3-Phase pipeline** (5a structure → 5b sentence/lexical → 5c self-audit) is sacred. Do not change without explicit request.
 - Anchor verification logic must stay in sync with `core/scoring.md`
 - CLI flag parsing (`$ARGUMENTS`) must stay in sync with `.patina.default.yaml` options
-- Update `patina-max/SKILL.md` if the change affects MAX mode (scoring, ouroboros, profiles)
 
 ## When Modifying core/scoring.md
 
-- The scoring formula is canonical — any behavioral change must also update:
-  - `SKILL.md` §6 (score mode)
-  - `patina-max/SKILL.md` §6 (MAX mode scoring)
-- Severity rubric, category weights, and MPS formula are referenced by both skill files
+- The scoring formula is canonical — any behavioral change must also update `SKILL.md` §6 (score mode)
+- Severity rubric, category weights, and MPS formula are referenced by the skill and CLI surfaces
 
 ## Version Management
 
 - `.patina.default.yaml` `version:` is the **source of truth**
-- `SKILL.md`, `patina-max/SKILL.md`, `README.md` must match it
+- `SKILL.md` and `README.md` must match it
 - Pattern pack versions are independent — bump when patterns change
 - Profile versions are independent
 

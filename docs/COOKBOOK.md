@@ -63,30 +63,17 @@ Drop `--gate` while you calibrate the threshold for your project. Swap `GEMINI_A
 
 ---
 
-## 3. Compare Claude vs Gemini output via MAX mode
+## 3. Compare Claude vs Gemini output manually
 
-When you want a defensible "best" rewrite, run the same paragraph through multiple backends and let MAX mode pick the lowest-AI result that still passes the MPS (Meaning Preservation Score) floor:
-
-```yaml
-# .patina.yaml (project root)
-max-models: [claude, gemini]
-```
+When you want to compare how two backends rewrite the same paragraph, run them side by side and diff the outputs directly:
 
 ```bash
-# Skill flavor (Claude Code / Codex CLI / Cursor / OpenCode):
-/patina-max
-
-[paste your text here]
-```
-
-```bash
-# Standalone CLI flavor — same idea, MAX mode runs each backend independently
 patina --lang en --backend claude-cli draft.md > /tmp/claude.txt
 patina --lang en --backend gemini-cli draft.md > /tmp/gemini.txt
 diff /tmp/claude.txt /tmp/gemini.txt
 ```
 
-MAX mode requires MPS ≥ 70 on each candidate before comparing scores, so the winner is the *lowest AI-likeness rewrite that still preserves meaning*. See [`GLOSSARY.md`](GLOSSARY.md) for MPS and the [`README.md`](../README.md#max-mode) MAX mode section for the selection rules.
+This keeps the comparison explicit: you can read both rewrites, inspect which one preserves your meaning better, and keep whichever voice you prefer.
 
 ---
 

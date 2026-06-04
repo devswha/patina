@@ -78,7 +78,15 @@ function colorizeDiff(body, { parsed = {}, env = process.env, stdout = process.s
   }).join('\n');
 }
 
-function shouldColorDiff(/** @type {{ parsed?: { noColor?: boolean }, env?: Record<string, string|undefined>, stdout?: { isTTY?: boolean } }} */ { parsed = {}, env = process.env, stdout = process.stdout } = {}) {
+/**
+ * @param {object} [options]
+ * @param {object} [options.parsed]
+ * @param {boolean} [options.parsed.noColor]
+ * @param {Record<string, string|undefined>} [options.env]
+ * @param {object} [options.stdout]
+ * @param {boolean} [options.stdout.isTTY]
+ */
+function shouldColorDiff({ parsed = {}, env = process.env, stdout = process.stdout } = {}) {
   return !parsed.noColor && env.NO_COLOR === undefined && stdout?.isTTY === true;
 }
 
@@ -287,9 +295,6 @@ function renderBody(result) {
     return String(result.raw).trim();
   }
 
-  if (result?.type === 'max-mode') {
-    return formatMaxModeOutput(result);
-  }
 
   return String(result).trim();
 }
@@ -336,24 +341,6 @@ function formatJsonOutput({ result, mode, body, tone, gate }) {
   const scoreDetails = extractScoreDetails(result);
   if (scoreDetails) payload.scores = scoreDetails;
 
-  if (result?.type === 'max-mode') {
-    payload.max = {
-      allFailed: Boolean(result.allFailed),
-      mpsFallback: Boolean(result.mpsFallback),
-      best: result.best ? {
-        model: result.best.model,
-        aiScore: result.best.aiScore ?? null,
-        mps: result.best.mps ?? null,
-      } : null,
-      candidates: result.candidates.map((candidate) => ({
-        model: candidate.model,
-        ok: Boolean(candidate.ok),
-        aiScore: candidate.aiScore ?? null,
-        mps: candidate.mps ?? null,
-        error: candidate.error ?? null,
-      })),
-    };
-  }
 
   return JSON.stringify(payload, null, 2);
 }
@@ -490,48 +477,6 @@ function normalizeFooterTail(lines) {
     .trim();
 }
 
-function formatMaxModeOutput(result) {
-  const { candidates, best } = result;
-
-  let output = '## MAX Mode Results\n\n';
-  if (result.timedOut) {
-    output += '⚠ MAX wall-clock timeout reached; showing partial results.\n\n';
-  }
-  output += '| Model | AI Score | MPS | Status |\n';
-  output += '|-------|----------|-----|--------|\n';
-
-  for (const c of candidates) {
-    const status = c.ok ? (c.model === best?.model ? '✅ best' : '✅') : '❌ failed';
-    const score = c.aiScore ?? '--';
-    const mps = c.mps ?? '--';
-    output += `| ${c.model} | ${score} | ${mps} | ${status} |\n`;
-  }
-
-  output += `\n**Best: ${best?.model || 'none'}**\n\n`;
-
-  if (result.allFailed) {
-    output += '> No MAX candidate produced a scoreable result. Exit code: 4.\n\n';
-  } else if (result.mpsFallback) {
-    output += '⚠ No candidate passed MPS ≥ 70 — selecting by highest MPS (fallback)\n\n';
-    output += '> Exit code: 4.\n\n';
-  }
-
-  if (best?.result) {
-    output += '### Final Text\n\n';
-    output += best.result.trim();
-    output += '\n\n';
-  }
-
-  for (const c of candidates) {
-    if (c.model !== best?.model && c.ok && c.result) {
-      output += `\n<details>\n<summary>${c.model} result</summary>\n\n`;
-      output += c.result.trim();
-      output += '\n</details>\n';
-    }
-  }
-
-  return output;
-}
 /**
  * Build a deterministic "backstop" section for audit mode. The LLM audit is
  * model-dependent (a weak model silently drops 번역투/calques); these signals are
@@ -540,13 +485,15 @@ function formatMaxModeOutput(result) {
  * is a hint surface, not a verdict.
  *
  * @param {string} text Source text.
- * @param {{ lang?: string, repoRoot?: string }} [opts]
+ * @param {object} [opts]
+ * @param {string} [opts.lang]
+ * @param {string} [opts.repoRoot]
  * @returns {string} Markdown section (empty string when nothing fired).
  */
 export function buildDeterministicAuditBackstop(text, opts = {}) {
   const lang = opts.lang ?? 'ko';
   const str = typeof text === 'string' ? text : '';
-  /** @type {{signal:string,label:string,severity:string,location:string}[]} */
+  /** @type {Array<{signal:string,label:string,severity:string,location:string}>} */
   const rows = [];
 
   // ko translationese — per-rule, with matched samples (model-independent).

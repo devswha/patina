@@ -101,7 +101,6 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
 Node.js ≥ 18 が必要です。npm パッケージは公開済みなので、そのまま実行できます：
 
 ```bash
-npx patina-cli init --defaults
 npx patina-cli doctor
 npx patina-cli --lang ja input.txt
 ```
@@ -189,7 +188,7 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 | `--format json\|text\|markdown` | JSON、プレーンテキスト、デフォルト Markdown 出力を選択 |
 | `--quiet` | stderr の状態・警告・進捗ログを抑制 |
 
-全オプションは `patina --help`。`patina doctor --json` は LLM 呼び出しなしで Node/backend/tmux/API-key の準備状況を確認し、`patina init` はプロジェクト用 `.patina.yaml` を書きます。
+全オプションは `patina --help` を参照してください。`patina doctor --json` は LLM 呼び出しなしで Node/backend/tmux/API-key の準備状況を確認します。プロジェクト設定は任意なので、単発実行ではフラグを使い、固定のデフォルトが必要な場合だけ `.patina.yaml` を追加してください。
 
 Markdown 中心の開発ワークフローには、開発者向け profile shortcut もあります。`code-comment` は inline comments/docstrings を締め、`commit-message` は Git 履歴テキストを意図と検証中心に整え、`release-notes` は changelog bullets をユーザー影響と移行リスクが見えるリリースノートに変えます。`namuwiki` は韓国語専用の wiki 風 profile で、NamuWiki の記事本文をコピーしない license-safe なオリジナルガイドだけを含みます。
 

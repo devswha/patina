@@ -31,7 +31,6 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 | `--allow-private-base-url` | ✓ | — | CLI SSRF/metadata-address safety override. |
 | `-h`, `--help` | ✓ | — | CLI help. |
 | `-v`, `--version` | ✓ | — | CLI version. |
-| `patina init` | ✓ | — | CLI project config writer. |
 | `patina doctor` | ✓ | — | CLI environment diagnostic. |
 | `patina auth status/login` | ✓ | — | CLI authentication guidance. |
 

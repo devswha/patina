@@ -14,6 +14,7 @@ import { TRANSLATIONESE_RULES } from './features/translationese.js';
  * @param {object} [opts.logger] Logger for output warnings.
  * @param {object} [opts.env] Environment map for color decisions.
  * @param {object} [opts.stdout] Stdout-like stream for color decisions.
+ * @param {string} [opts.auditBackstop] Deterministic audit-mode section to append before the tone footer.
  * @returns {string} User-facing formatted output.
  * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
@@ -22,7 +23,11 @@ import { TRANSLATIONESE_RULES } from './features/translationese.js';
 export function formatOutput(result, mode, parsed = {}, opts = {}) {
   const tone = opts.tone || null;
   const format = parsed.format || 'markdown';
-  const body = renderFormattedBody(result, mode, parsed, opts);
+  let body = renderFormattedBody(result, mode, parsed, opts);
+
+  if (mode === 'audit' && format !== 'json' && opts.auditBackstop) {
+    body += opts.auditBackstop;
+  }
 
   if (format === 'json') {
     return formatJsonOutput({ result, mode, body, tone, gate: parsed.gate });

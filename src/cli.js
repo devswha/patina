@@ -356,24 +356,21 @@ export async function main(args) {
         });
       }
 
+      const auditBackstop =
+        mode === 'audit' && (parsed.format ?? 'markdown') !== 'json' && !parsed.batch
+          ? buildDeterministicAuditBackstop(text, { lang, repoRoot })
+          : '';
       let output;
       let scoreValidationOutput = null;
       if (parsed.ouroboros) {
         const ouroborosBody = formatOuroborosOutput(result);
-        output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution, logger });
+        output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution, logger, auditBackstop });
         scoreValidationOutput = ouroborosBody;
       } else {
-        output = formatOutput(result, mode, parsed, { tone: toneResolution, logger });
+        output = formatOutput(result, mode, parsed, { tone: toneResolution, logger, auditBackstop });
         if (mode === 'score') {
           scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' }, { logger });
         }
-      }
-
-      // Deterministic backstop for audit (issue: weak LLM backends drop 번역투).
-      // Appended so calques/leakage/discourse tells appear regardless of model.
-      // Skip json (structured) and batch (per-file) outputs.
-      if (mode === 'audit' && (parsed.format ?? 'markdown') !== 'json' && !parsed.batch) {
-        output += buildDeterministicAuditBackstop(text, { lang, repoRoot });
       }
 
       // v3.11 Phase 1.3: surface weight drift between config and the score

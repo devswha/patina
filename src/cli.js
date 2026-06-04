@@ -171,13 +171,7 @@ export async function main(args) {
         text,
         mode,
         tone: toneResolution,
-        promptMode: resolvePromptMode(
-          resolveConfiguredPromptMode({
-            cliPromptMode: parsed.promptMode,
-            configPromptMode: config['prompt-mode'],
-          }),
-          { backend: parsed.backend ?? config.backend, model: resolved.model }
-        ),
+        promptMode: resolvePromptMode({ backend: parsed.backend ?? config.backend, model: resolved.model }),
       });
 
       let result;
@@ -467,19 +461,6 @@ function parseArgs(args) {
         parsed.config = readOptionValue(args, i, arg);
         i++;
         break;
-      case '--prompt-mode': {
-        const m = readOptionValue(args, i, arg);
-        i++;
-        if (!m || !['strict', 'minimal', 'auto'].includes(m)) {
-          throw inputError(
-            '--prompt-mode expects strict, minimal, or auto',
-            `Received ${m === undefined ? 'no value' : `"${m}"`}.`,
-            'Use `--prompt-mode auto` unless you need a specific prompt style.'
-          );
-        }
-        parsed.promptMode = m;
-        break;
-      }
       case '--no-interactive':
         parsed.noInteractive = true;
         break;
@@ -588,30 +569,12 @@ function readOptionValue(args, index, option, { allowFlagLike = false } = {}) {
   return value;
 }
 
-// v3.11: case-05 found that prompt-mode preference is per-backend.
-// auto resolves to strict for codex-cli/claude (instruction-rich) and
-// minimal for gemini (voice-rich, over-constrained by long prompts).
-// Explicit strict/minimal pass through unchanged.
-/**
- * Resolve the effective prompt style for backend/model auto mode.
- *
- * @param {string} mode Requested prompt mode: auto, strict, or minimal.
- * @param {object} context Backend selection context.
- * @param {string} [context.backend] Backend name.
- * @param {string} [context.model] Model id.
- * @returns {string} Resolved prompt mode.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
- * @example
- * const mode = resolvePromptMode('auto', { model: 'gemini-2.5-flash' });
- */
-export function resolvePromptMode(mode, { backend, model }) {
-  if (mode !== 'auto') return mode;
+// Internal prompt style is selected per backend/model. Gemini gets the compact
+// rewrite prompt; everything else keeps the full pattern-pack prompt.
+function resolvePromptMode({ backend, model }) {
   const backendStr = (backend || '').toLowerCase();
   const modelStr = (model || '').toLowerCase();
   if (backendStr.includes('gemini') || modelStr.includes('gemini')) return 'minimal';
-  if (modelStr.includes('claude')) return 'strict';
-  // Default for codex-cli, openai-http with gpt-* models, and anything we
-  // can't classify — strict is the conservative choice (full pattern packs).
   return 'strict';
 }
 
@@ -637,20 +600,6 @@ export function resolveProfileForLanguage(profileName, lang, logger = null) {
   return effective;
 }
 
-/**
- * Choose the configured prompt mode before backend/model auto-resolution.
- *
- * @param {object} [options] Prompt-mode sources.
- * @param {string} [options.cliPromptMode] CLI --prompt-mode value.
- * @param {string} [options.configPromptMode] Config prompt-mode value.
- * @returns {string} Requested prompt mode.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
- * @example
- * const requested = resolveConfiguredPromptMode();
- */
-export function resolveConfiguredPromptMode({ cliPromptMode, configPromptMode } = {}) {
-  return cliPromptMode || configPromptMode || 'strict';
-}
 
 // Resolve the API key from file or environment. Precedence: --api-key-file >
 // PATINA_API_KEY_FILE > provider/default env vars.
@@ -831,7 +780,6 @@ MODEL & AUTH
   --list-providers        List provider presets and which keys are set
 ADVANCED
   --config <path>         Load config from <path> instead of .patina.default.yaml
-  --prompt-mode <m>       strict | minimal | auto. auto picks per backend.
   --allow-insecure-base-url  Permit plaintext http:// to non-localhost endpoints
   --allow-private-base-url   Permit private/IMDS base URLs
   -h, --help              Show this help message

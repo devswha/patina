@@ -12,29 +12,28 @@
  * @param {string} options.text Input text.
  * @param {string} [options.mode=rewrite] Output mode.
  * @param {object|null} [options.tone=null] Tone resolution metadata.
- * @param {string} [options.promptMode=strict] Prompt mode: strict or minimal.
  * @returns {string} Complete prompt text.
  * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const prompt = buildPrompt({ config, patterns, profile, voice, scoring, text: 'Draft' });
  */
-export function buildPrompt({
-  config,
-  patterns,
-  profile,
-  voice,
-  voiceSample,
-  scoring,
-  text,
-  mode = 'rewrite',
-  tone = null,
-  promptMode = 'strict',
-}) {
-  // v3.11+ prompt-mode dispatch (case-04 hypothesis test). minimal prompt
-  // strips pattern definitions/examples and uses a casual instruction; only
-  // applies to rewrite mode where voice prior matters most. Profile body is
-  // still passed through (Round 2 found Gemini ignored casual-conversation
-  // when the profile was dropped).
+export function buildPrompt(options) {
+  const {
+    config,
+    patterns,
+    profile,
+    voice,
+    voiceSample,
+    scoring,
+    text,
+    mode = 'rewrite',
+    tone = null,
+  } = options;
+  const promptMode = /** @type {any} */ (options).promptMode || 'strict';
+  // v3.11+ internal backend prompt-style dispatch. The compact prompt strips
+  // pattern definitions/examples and uses a casual instruction; it only applies
+  // to rewrite mode where voice prior matters most. Profile body is still passed
+  // through (Round 2 found Gemini ignored casual-conversation when omitted).
   if (promptMode === 'minimal' && mode === 'rewrite') {
     return buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone });
   }

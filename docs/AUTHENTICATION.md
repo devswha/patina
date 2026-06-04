@@ -29,25 +29,26 @@ Backend selection requires an explicit signal: pass `--backend <name>` directly,
 ```bash
 PATINA_API_KEY=...                            # required for HTTP backend
 PATINA_API_BASE=https://api.openai.com/v1     # or proxy / OpenRouter / etc.
-PATINA_MODEL=gpt-4o                           # default model
+PATINA_MODEL=gpt-5.5                           # HTTP/OpenAI default model
 ```
 
 `--base-url`, `--model`, `--api-key-file`, and `--provider` flags override these per run.
+When you do not pass `--model`, patina uses its strongest documented default per backend: `gpt-5.5` for OpenAI HTTP and `codex-cli`, `claude-sonnet-4-6` for `claude-cli`, and `gemini-2.5-pro` for Gemini HTTP/CLI. Exact selector aliases such as `--model codex`, `--model claude`, and `--model gemini` still route to the local CLI while using that backend default.
 
 ## codex-cli backend
 
-patina dispatches via the local [`codex`](https://github.com/openai/codex) CLI, which authenticates via OpenAI/ChatGPT OAuth — no API key needed.
+patina dispatches via the local [`codex`](https://github.com/openai/codex) CLI, which authenticates via OpenAI/ChatGPT OAuth — no API key needed. The default model passed to `codex exec` is `gpt-5.5` unless you provide a more specific Codex model id.
 
 ```bash
 codex login                                # one-time
 patina auth login codex-cli                # same, with confirmation
 patina --backend codex-cli --lang ko input.txt
-patina --model codex --lang ko input.txt   # same — auto-routes by model name
+patina --model codex --lang ko input.txt   # routes to codex-cli, uses gpt-5.5 default
 ```
 
 ## claude-cli backend
 
-Spawns local [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p` with the patina prompt on stdin. Free for anyone with a Claude subscription.
+Spawns local [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p` with the patina prompt on stdin. Free for anyone with a Claude subscription. The default model passed to Claude Code is `claude-sonnet-4-6`.
 
 ```bash
 claude auth login                          # one-time interactive OAuth
@@ -60,7 +61,7 @@ Auth file: `~/.claude/.credentials.json` (created by the OAuth flow).
 
 ## gemini-cli backend
 
-Spawns local [`gemini`](https://github.com/google-gemini/gemini-cli) `-p '' --output-format text` with the patina prompt on stdin. Works with the free Code Assist OAuth tier or with `GEMINI_API_KEY`.
+Spawns local [`gemini`](https://github.com/google-gemini/gemini-cli) `-p '' --output-format text` with the patina prompt on stdin. Works with the free Code Assist OAuth tier or with `GEMINI_API_KEY`. The default model is `gemini-2.5-pro`.
 
 ```bash
 gemini                                     # one-time interactive OAuth, OR

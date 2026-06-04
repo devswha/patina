@@ -1,5 +1,6 @@
 // @ts-check
 import { validateBaseURL } from './security.js';
+import { DEFAULT_BEST_MODELS } from './model-defaults.js';
 
 const DEFAULT_TIMEOUT = 120000;
 const DEFAULT_MAX_RETRIES = 2;
@@ -150,7 +151,7 @@ export function computeBackoffMs(attempt, retryAfter, opts = {}) {
  * @param {string} options.prompt User prompt sent as the single chat message.
  * @param {string} [options.apiKey] Bearer token for the provider.
  * @param {string} [options.baseURL] OpenAI-compatible API base URL. Defaults to https://api.openai.com/v1.
- * @param {string} [options.model] Model id to request. Defaults to gpt-4o.
+ * @param {string} [options.model] Model id to request. Defaults to gpt-5.5.
  * @param {number} [options.temperature=DEFAULT_TEMPERATURE] Sampling temperature.
  * @param {number|string} [options.seed] Optional deterministic seed forwarded to the provider.
  * @param {number} [options.timeout=120000] Per-attempt timeout in milliseconds.
@@ -171,7 +172,7 @@ export async function callLLM({
   prompt,
   apiKey,
   baseURL = 'https://api.openai.com/v1',
-  model = 'gpt-4o',
+  model = DEFAULT_BEST_MODELS.openai,
   temperature = DEFAULT_TEMPERATURE,
   seed,
   timeout = DEFAULT_TIMEOUT,

@@ -69,8 +69,10 @@ patina --backend claude-cli,codex-cli --lang en draft.md
 ```
 
 All backends share the same invocation contract:
-`invoke({ prompt, model, signal, timeout }): Promise<string>`. Local CLI
-backends honor `AbortSignal` by killing their child process; the HTTP backend
-bridges the same signal into fetch.
+`invoke({ prompt, model, modelSource, signal, timeout }): Promise<string>`.
+Local CLI backends honor `AbortSignal` by killing their child process. When no
+explicit model is set, local backends pass the strongest documented default to
+their CLI (`gpt-5.5`, `claude-sonnet-4-6`, or `gemini-2.5-pro`); the HTTP
+backend bridges the same signal into fetch.
 
 See [EXIT-CODES.md](EXIT-CODES.md) for the full process contract.

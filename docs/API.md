@@ -425,7 +425,7 @@ Call an OpenAI-compatible chat completions endpoint with retries, timeout, and a
 | options.prompt | <code>string</code> |  | User prompt sent as the single chat message. |
 | [options.apiKey] | <code>string</code> |  | Bearer token for the provider. |
 | [options.baseURL] | <code>string</code> |  | OpenAI-compatible API base URL. Defaults to https://api.openai.com/v1. |
-| [options.model] | <code>string</code> |  | Model id to request. Defaults to gpt-4o. |
+| [options.model] | <code>string</code> |  | Model id to request. Defaults to gpt-5.5. |
 | [options.temperature] | <code>number</code> | <code>DEFAULT_TEMPERATURE</code> | Sampling temperature. |
 | [options.seed] | <code>number</code> \| <code>string</code> |  | Optional deterministic seed forwarded to the provider. |
 | [options.timeout] | <code>number</code> | <code>120000</code> | Per-attempt timeout in milliseconds. |

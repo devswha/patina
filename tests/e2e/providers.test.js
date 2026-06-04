@@ -73,7 +73,7 @@ describe('Provider Config Resolution', () => {
       assert.strictEqual(r.apiKey, 'gemini-env');
       assert.strictEqual(r.apiKeySource, 'env:GEMINI_API_KEY');
       assert.match(r.baseURL, /generativelanguage/);
-      assert.strictEqual(r.model, 'gemini-2.5-flash');
+      assert.strictEqual(r.model, 'gemini-2.5-pro');
     });
   });
 
@@ -108,7 +108,7 @@ describe('Provider Config Resolution', () => {
       const r = resolveProviderConfig({ provider: null });
       assert.strictEqual(r.apiKey, null);
       assert.strictEqual(r.baseURL, 'https://api.openai.com/v1');
-      assert.strictEqual(r.model, 'gpt-4o');
+      assert.strictEqual(r.model, 'gpt-5.5');
       assert.strictEqual(r.baseURLSource, 'default');
     });
   });

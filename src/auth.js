@@ -84,10 +84,9 @@ export function inspectHttpApiKeySource({
 }
 
 /**
- * Resolve the HTTP API key from explicit args, key file, or environment.
+ * Resolve the HTTP API key from a key file or environment.
  *
  * @param {object} [options] Resolution options.
- * @param {string} [options.explicitApiKey] Deprecated direct key value.
  * @param {string} [options.apiKeyFile] Explicit key file path.
  * @param {object} [options.env=process.env] Environment map.
  * @param {Function} [options.readFile] File reader for key files.
@@ -98,7 +97,6 @@ export function inspectHttpApiKeySource({
  * const key = resolveHttpApiKey({ env: process.env });
  */
 export function resolveHttpApiKey({
-  explicitApiKey,
   apiKeyFile,
   env = process.env,
   readFile = readFileSync,
@@ -117,7 +115,6 @@ export function resolveHttpApiKey({
     return file.key;
   }
 
-  if (explicitApiKey) return explicitApiKey;
 
   const source = inspectHttpApiKeySource({ env, readFile, envVars });
   return source.ok && source.source !== 'PATINA_API_KEY_FILE'

@@ -14,8 +14,7 @@ import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } 
 import { formatOutput, validateScoreWeights, buildDeterministicAuditBackstop } from './output.js';
 import { runMaxMode } from './max-mode.js';
 import { runOuroboros } from './ouroboros.js';
-import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals, scoreMPS, scoreText } from './scoring.js';
-import { renderShareCard } from '../scripts/share-card.mjs';
+import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from './scoring.js';
 import { callLLM, DEFAULT_TEMPERATURE } from './api.js';
 import { createResponseCache, DEFAULT_CACHE_TTL_SECONDS } from './cache.js';
 import { buildManifest, appendResult, writeManifest, hashSha256 } from './manifest.js';
@@ -24,10 +23,9 @@ import { runInit } from './commands/init.js';
 import { PatinaCliError, inputError, runtimeError, renderCliError, getExitCode } from './errors.js';
 import { inspectHttpApiKeySource, providerHttpKeyEnvVars, resolveHttpApiKey } from './auth.js';
 import { createLogger } from './logger.js';
-import { maybeShowFirstRunNudge } from './nudge.js';
 import { maybeWarnJudgeOverlap } from './judge-warning.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { resolve, basename, dirname, extname } from 'node:path';
+import { resolve, basename, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 
@@ -105,7 +103,7 @@ export async function main(args) {
   if (parsed.profile) config.profile = parsed.profile;
 
   const provider = selectProvider(parsed.provider ?? config.provider);
-  const apiKey = resolveApiKey(parsed, provider, logger);
+  const apiKey = resolveApiKey(parsed, provider);
   const resolved = resolveProviderConfig({
     provider,
     apiKey,
@@ -162,20 +160,6 @@ export async function main(args) {
     : parsed.score ? 'score'
     : parsed.ouroboros ? 'ouroboros'
     : 'rewrite';
-  if (parsed.card && mode !== 'rewrite' && mode !== 'ouroboros') {
-    throw inputError(
-      '--card can only be used with rewrite or --ouroboros',
-      'Share cards need before/after text, AI score, and meaning-preservation metadata.',
-      'Run `patina --card card.svg draft.md` or `patina --ouroboros --card card.svg draft.md`.'
-    );
-  }
-  if (parsed.card && parsed.batch) {
-    throw inputError(
-      '--card cannot be combined with --batch',
-      'One output path cannot safely represent multiple input files.',
-      'Run one input at a time, or omit --batch.'
-    );
-  }
   const voiceSamplePath = (mode === 'rewrite' || mode === 'ouroboros')
     ? (parsed.voiceSample ?? config['voice-sample'])
     : null;
@@ -189,13 +173,6 @@ export async function main(args) {
   }
 
   const inputTexts = await loadInputs(parsed, logger);
-  if (parsed.card && inputTexts.length !== 1) {
-    throw inputError(
-      '--card expects exactly one input',
-      `Received ${inputTexts.length} inputs.`,
-      'Run patina once per share card.'
-    );
-  }
   const cancellation = createCancellationController({ logger });
 
   cancellation.install();
@@ -236,7 +213,6 @@ export async function main(args) {
       });
 
       let result;
-      let shareCardCallLLM = trackedCallLLM;
 
       if (parsed.models) {
         result = await runMaxMode({
@@ -275,19 +251,6 @@ export async function main(args) {
           model: resolved.model,
         });
         const backend = backends[0];
-        shareCardCallLLM = (callArgs) => invokeBackendChain({
-          backends,
-          prompt: callArgs.prompt,
-          apiKey: callArgs.apiKey ?? resolved.apiKey,
-          baseURL: callArgs.baseURL ?? resolved.baseURL,
-          model: callArgs.model ?? resolved.model,
-          signal: callArgs.signal ?? cancellation.signal,
-          temperature: callArgs.temperature,
-          seed: manifestSeed,
-          onResponse: recordManifestCall,
-          cache: responseCache,
-          logger,
-        });
 
         if (autoSelected) {
           logger.info('backend.selected', {
@@ -311,7 +274,7 @@ export async function main(args) {
         }
 
         if (backend.name === 'openai-http' && !resolved.apiKey) {
-          const msg = ['No API key found. Set PATINA_API_KEY, PATINA_API_KEY_FILE, OPENAI_API_KEY, or pass --api-key.'];
+          const msg = ['No API key found. Set PATINA_API_KEY, PATINA_API_KEY_FILE, OPENAI_API_KEY, or use --api-key-file.'];
           if (provider) {
             msg.push(`(--provider ${provider.name} expects ${provider.apiKeyEnv} or PATINA_API_KEY.)`);
           }
@@ -391,25 +354,6 @@ export async function main(args) {
         process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
       }
 
-      if (parsed.card) {
-        const cardPayload = await buildShareCardPayload({
-          mode,
-          sourceText: text,
-          output,
-          result,
-          lang,
-          config,
-          patterns,
-          apiKey: resolved.apiKey,
-          baseURL: resolved.baseURL,
-          model: resolved.model,
-          callLLM: shareCardCallLLM,
-          signal: cancellation.signal,
-          logger,
-        });
-        const cardPath = writeShareCard(parsed.card, cardPayload);
-        logger.info('share_card.written', { message: `[patina] wrote share card to ${cardPath}` });
-      }
 
       if (parsed.saveRun) {
         const idx = manifestResults.length + 1;
@@ -474,14 +418,6 @@ export async function main(args) {
     logger.info('manifest.written', { message: `[patina] wrote manifest to ${manifestPath}` });
   }
 
-  maybeShowFirstRunNudge({
-    parsed,
-    inputTexts,
-    stdinIsTTY: Boolean(process.stdin.isTTY),
-    stderr: process.stderr,
-    stdout: process.stdout,
-    processObj: process,
-  });
 }
 
 function parseArgs(args) {
@@ -564,10 +500,6 @@ function parseArgs(args) {
         break;
       case '--json-logs':
         parsed.jsonLogs = true;
-        break;
-      case '--card':
-        parsed.card = readOptionValue(args, i, arg);
-        i++;
         break;
       case '--gate': {
         const value = readOptionValue(args, i, arg, { allowFlagLike: true });
@@ -660,10 +592,6 @@ function parseArgs(args) {
       }
       case '--model':
         parsed.model = readOptionValue(args, i, arg);
-        i++;
-        break;
-      case '--api-key':
-        parsed.apiKey = readOptionValue(args, i, arg);
         i++;
         break;
       case '--api-key-file':
@@ -923,29 +851,13 @@ export function resolveConfiguredPromptMode({ cliPromptMode, configPromptMode, i
   return cliPromptMode || configPromptMode || (isMaxMode ? 'minimal' : 'strict');
 }
 
-// Resolve the API key, preferring file-based sources to keep the secret out
-// of argv and shell history (CWE-214). Precedence: --api-key-file >
-// PATINA_API_KEY_FILE > --api-key (with deprecation warning) > provider/default
-// env vars.
-function resolveApiKey(parsed, provider, logger = createLogger()) {
-  const hasApiKeyFile = Boolean(parsed.apiKeyFile || process.env.PATINA_API_KEY_FILE);
-  const apiKey = resolveHttpApiKey({
-    explicitApiKey: parsed.apiKey,
+// Resolve the API key from file or environment. Precedence: --api-key-file >
+// PATINA_API_KEY_FILE > provider/default env vars.
+function resolveApiKey(parsed, provider) {
+  return resolveHttpApiKey({
     apiKeyFile: parsed.apiKeyFile,
     envVars: providerHttpKeyEnvVars(provider?.apiKeyEnv),
   });
-  if (hasApiKeyFile && parsed.apiKey) {
-    logger.warn('auth.api_key_file_precedence', {
-      message: '[patina] both --api-key-file and --api-key were provided; using --api-key-file',
-    });
-  }
-  if (parsed.apiKey && !hasApiKeyFile) {
-    logger.warn('auth.argv_secret_warning', {
-      message: '[patina] warning: --api-key exposes the secret in shell history and `ps` output.\n' +
-        '         Prefer PATINA_API_KEY env var, --api-key-file <path>, or PATINA_API_KEY_FILE.',
-    });
-  }
-  return apiKey;
 }
 
 async function loadInputs(parsed, logger = createLogger()) {
@@ -1040,121 +952,6 @@ async function writeBatchOutput(parsed, inputPath, output) {
   console.log(`Written: ${outPath}`);
 }
 
-async function buildShareCardPayload({
-  mode,
-  sourceText,
-  output,
-  result,
-  lang,
-  config,
-  patterns,
-  apiKey,
-  baseURL,
-  model,
-  callLLM,
-  signal,
-  logger,
-}) {
-  const after = resolveShareCardAfterText({ mode, output, result, logger });
-  const metrics = existingShareCardMetrics({ mode, result, sourceText, after });
-
-  if (result?.type === 'max-mode' && !result.best) {
-    return { before: sourceText, after, aiScore: null, mps: null, lang };
-  }
-
-  if (metrics.aiScore !== null && metrics.mps !== null) {
-    return { before: sourceText, after, aiScore: metrics.aiScore, mps: metrics.mps, lang };
-  }
-
-  const [aiScoreResult, mpsResult] = await Promise.all([
-    metrics.aiScore === null
-      ? scoreText({
-        text: after,
-        config,
-        patterns,
-        apiKey,
-        baseURL,
-        model,
-        callLLM,
-        signal,
-        logger,
-      })
-      : Promise.resolve({ overall: metrics.aiScore }),
-    metrics.mps === null
-      ? scoreMPS({
-        original: sourceText,
-        rewritten: after,
-        apiKey,
-        baseURL,
-        model,
-        callLLM,
-        signal,
-        logger,
-      })
-      : Promise.resolve({ mps: metrics.mps }),
-  ]);
-
-  return {
-    before: sourceText,
-    after,
-    aiScore: toFiniteNumber(aiScoreResult?.overall),
-    mps: toFiniteNumber(mpsResult?.mps),
-    lang,
-  };
-}
-
-function resolveShareCardAfterText({ mode, output, result, logger }) {
-  if (result?.type === 'max-mode') {
-    return cleanShareCardText(result.best?.result || output);
-  }
-  if (mode === 'ouroboros') {
-    return cleanShareCardText(result?.finalText || output);
-  }
-  return cleanShareCardText(formatOutput(result, mode, { format: 'text' }, { logger }));
-}
-
-function existingShareCardMetrics({ mode, result, sourceText, after }) {
-  if (result?.type === 'max-mode') {
-    return {
-      aiScore: toFiniteNumber(result.best?.aiScore),
-      mps: toFiniteNumber(result.best?.mps),
-    };
-  }
-  if (mode === 'ouroboros') {
-    const aiScore = toFiniteNumber(result?.finalScore);
-    const mps = latestOuroborosMps(result?.log) ?? (sourceText.trim() === after.trim() ? 100 : null);
-    return { aiScore, mps };
-  }
-  return { aiScore: null, mps: null };
-}
-
-function latestOuroborosMps(log) {
-  if (!Array.isArray(log)) return null;
-  for (let i = log.length - 1; i >= 0; i--) {
-    const mps = toFiniteNumber(log[i]?.mps);
-    if (mps !== null) return mps;
-  }
-  return null;
-}
-
-function cleanShareCardText(output) {
-  return String(output || '')
-    .replace(/\n---\s*\ntone:[\s\S]*?\n---\s*$/u, '')
-    .trim();
-}
-
-function writeShareCard(cardPath, payload) {
-  const outPath = resolve(process.cwd(), cardPath);
-  mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, renderShareCard(payload), 'utf8');
-  return outPath;
-}
-
-function toFiniteNumber(value) {
-  if (value === null || value === undefined || value === '') return null;
-  const n = Number(String(value).replace(/[^\d.-]/g, ''));
-  return Number.isFinite(n) ? n : null;
-}
 
 function formatOuroborosOutput(result) {
   let output = '## Ouroboros Iteration Log\n\n';
@@ -1205,7 +1002,6 @@ OUTPUT & BATCH
   --json                  Alias for --format json
   --quiet                 Suppress patina status/warning logs on stderr
   --json-logs             Emit stderr logs as NDJSON objects
-  --card <path>           Write a 1200x630 SVG before/after + score share card
   --batch                 Process multiple files
   --in-place              Overwrite original files (with --batch)
   --suffix <ext>          Save as {name}{ext}{extname}
@@ -1231,8 +1027,6 @@ MODEL & AUTH
   --model <id>            Single model ID (default: gpt-4o). Only affects
                           gemini-cli and the HTTP provider path; claude-cli
                           and codex-cli use their logged-in session model.
-  --api-key <key>         API key (DEPRECATED: leaks via ps/shell history; prefer
-                          PATINA_API_KEY env or --api-key-file)
   --api-key-file <path>   Read API key from file (recommended)
   --base-url <url>        API base URL (or PATINA_API_BASE env)
   --backend <name[,name]> Backend or explicit fallback chain:
@@ -1265,7 +1059,6 @@ EXAMPLES
 ENVIRONMENT
   PATINA_API_KEY, PATINA_API_KEY_FILE, PATINA_API_BASE, PATINA_MODEL
   PATINA_CACHE_DIR, PATINA_CACHE_TTL_SECONDS
-  PATINA_NO_NUDGE=1 disables the one-time interactive star reminder
   OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, TOGETHER_API_KEY
 
 EXIT CODES

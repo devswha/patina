@@ -204,7 +204,6 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `--quiet` | Suppress status, warning, and progress logs on stderr |
 | `--json-logs` | Emit stderr logs as NDJSON with `level`, `event`, `model`, and `latency_ms` fields |
 | `--prompt-mode strict\|minimal\|auto` | Choose full pattern-pack prompting, compressed prompting, or backend-aware auto |
-| `--variants <1-5>` | Generate multiple rewrite variants with the same facts and meaning anchors |
 
 `patina --help` for the full flag list. `patina doctor --json` checks Node/backend/tmux/API-key readiness without making an LLM call, and `patina init` writes a project `.patina.yaml`.
 
@@ -221,17 +220,13 @@ They appear in score and audit output so the benchmark matches human intuition f
 
 `--prompt-mode strict|minimal|auto` lets you trade off between the full pattern packs (~34KB structured prompt) and a compressed casual instruction (~3KB). `auto` picks per backend — Gemini does better on minimal (it gets over-constrained by long structured prompts), while Claude leverages the full packs and Codex is roughly insensitive. case-05 documents the A/B.
 
-### Multiple stylistic variants (v3.11)
-
-`--variants <1-5>` asks for several tone variants in one call (e.g., V1 casual, V2 direct, V3 measured) — facts, numbers, and causation stay identical across variants. Each comes back as `## Variant N` so you can pick the voice you want.
-
 ### Short-text scoring boost (v3.11)
 
 For inputs ≤200 chars or ≤3 paragraphs, register-sensitive categories (`language`, `style`, `viral-hook`) get a 1.5× severity multiplier so single-paragraph voice shifts surface in the score. case-04 found these were undercounted by the long-text formula.
 
 ### Self-audit isolation (v3.11)
 
-In rewrite mode, the model emits its self-audit notes inside `[SELF_AUDIT]`/`[/SELF_AUDIT]` tags wrapped around a `[BODY]`/`[/BODY]` block (or `[VARIANT n]` blocks when `--variants > 1`). patina strips the audit before showing the user, so raw output is clean — earlier versions sometimes leaked phrases like "남아 있는 AI 티" or "Phase 3" preambles into the user-facing text.
+In rewrite mode, the model emits its self-audit notes inside `[SELF_AUDIT]`/`[/SELF_AUDIT]` tags wrapped around a `[BODY]`/`[/BODY]` block. patina strips the audit before showing the user, so raw output is clean — earlier versions sometimes leaked phrases like "남아 있는 AI 티" or "Phase 3" preambles into the user-facing text.
 
 ### Machine-readable output and exit codes
 

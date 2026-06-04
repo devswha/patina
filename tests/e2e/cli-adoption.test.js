@@ -150,13 +150,15 @@ describe('CLI adoption commands', () => {
 
 describe('CLI adoption exit/error behavior', () => {
   it('unknown flags fail before stdin handling with a usage exit', () => {
-    const result = spawnSync(process.execPath, [BIN, '--bogus'], {
-      cwd: REPO_ROOT,
-      input: '',
-      encoding: 'utf8',
-    });
-    assert.strictEqual(result.status, 2);
-    assert.match(result.stderr, /\[patina\] Error: unknown option --bogus/);
+    for (const flag of ['--bogus', '--variants']) {
+      const result = spawnSync(process.execPath, [BIN, flag], {
+        cwd: REPO_ROOT,
+        input: '',
+        encoding: 'utf8',
+      });
+      assert.strictEqual(result.status, 2);
+      assert.match(result.stderr, new RegExp(`\\[patina\\] Error: unknown option ${flag}`));
+    }
   });
 
   it('empty stdin uses the three-line patina error format and exits 2', () => {

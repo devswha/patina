@@ -200,7 +200,6 @@ export async function main(args) {
           }),
           { backend: parsed.backend ?? config.backend, model: resolved.model }
         ),
-        variants: parsed.variants || 1,
       });
 
       let result;
@@ -595,20 +594,6 @@ function parseArgs(args) {
         parsed.promptMode = m;
         break;
       }
-      case '--variants': {
-        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
-        i++;
-        const n = Number(value);
-        if (!Number.isInteger(n) || n < 1 || n > 5) {
-          throw inputError(
-            '--variants expects an integer from 1 to 5',
-            `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
-            'Use `--variants 2` for alternate rewrite drafts.'
-          );
-        }
-        parsed.variants = n;
-        break;
-      }
       case '--no-interactive':
         parsed.noInteractive = true;
         break;
@@ -965,7 +950,6 @@ MODEL & AUTH
   --provider <name>       Provider preset: openai, gemini, groq, together
   --list-providers        List provider presets and which keys are set
 ADVANCED
-  --variants <n>          Generate N rewrite variants (1-5; rewrite mode only)
   --config <path>         Load config from <path> instead of .patina.default.yaml
   --prompt-mode <m>       strict | minimal | auto. auto picks per backend.
   --allow-insecure-base-url  Permit plaintext http:// to non-localhost endpoints

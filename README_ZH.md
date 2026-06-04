@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#快速开始)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-3.12.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.0.0-blue)](CHANGELOG.md)
 
 <p align="center">
   <img src="assets/demo/patina-demo-en.gif" alt="patina 将带有 AI 味的英文文案改写并显示评分的终端演示 GIF" width="780">
@@ -254,7 +254,7 @@ Markdown-heavy 工程流程可使用开发者原生 profile shortcut：`code-com
 
 ```yaml
 # .patina.default.yaml
-version: "3.12.0"
+version: "4.0.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score

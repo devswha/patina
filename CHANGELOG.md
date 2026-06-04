@@ -14,15 +14,30 @@ Semver rationale: patch | minor | major — explain whether this changes pattern
 
 ## Unreleased
 
+## 4.0.0 — 2026-06-04
+
+**Surface reset for a smaller, zero-config patina.**
+
+Semver rationale: major — removes public CLI commands, flags, and backend surfaces that shipped before the npm 4.x line; users relying on those names must move to the remaining explicit CLI/API surfaces.
+
 ### Added
 
-- **Private-asset leak gate** (`scripts/check-no-private-assets.mjs`, `npm run check:no-private-assets`): enumerates `npm pack --dry-run --json` for both `patina-cli` and `packages/patina-humanizer` plus `git ls-files`, and fails if any forbidden private-asset path appears. Wired into `prepublishOnly` and CI.
+- **Private-asset leak gate** (`scripts/check-no-private-assets.mjs`, `npm run check:no-private-assets`): enumerates `npm pack --dry-run --json` for both `patina-cli` and `packages/patina-humanizer` plus tracked files, and fails if forbidden private-asset paths appear. Wired into `prepublishOnly` and CI.
+- Centralized backend default-model metadata and surfaced it in `--list-backends`: OpenAI/Codex default to `gpt-5.5`, Claude to `claude-sonnet-4-6`, and Gemini to `gemini-2.5-pro`.
+
+### Changed
+
+- Reworked the README into a shorter landing page focused on demo, quick start, common commands, CI, and core docs.
+- Expanded `--list-backends` from a name-only listing into backend diagnostics with kind, selector hints, default models, auth status, and setup notes.
+- Kept provider presets on the HTTP backend path so `--provider gemini` uses the Gemini HTTP API instead of being misrouted by local-CLI model heuristics.
 
 ### Removed
 
-- Removed the opt-in `patina-hosted` backend, hosted schema, and ko hosted-compare harness before release; the public CLI now keeps only local/HTTP backends.
+- Removed the opt-in `patina-hosted` backend, hosted schema, and ko hosted-compare harness; the public CLI now keeps local CLI and OpenAI-compatible HTTP backends only.
 - Removed standalone MAX mode (`/patina-max`, `--models`, `--max-concurrency`, `--max-timeout`) and its composite scorer.
-- Removed share-card SVG output (`--card`), the one-time star nudge, and the deprecated inline `--api-key` flag; use `--api-key-file` or environment variables for HTTP auth.
+- Removed `--variants`, `--save-run`, response cache flags, `--suspected-generator`, user-facing `--prompt-mode`, the `--gate` alias, main CLI `--json` alias, `--json-logs`, and `--list-providers`.
+- Removed share-card SVG output (`--card`), the one-time star nudge, and deprecated inline `--api-key`; use `--api-key-file` or environment variables for HTTP auth.
+- Removed `patina init`; patina remains zero-config, with optional manual `.patina.yaml` only when project defaults are needed.
 
 ## 3.12.0 — 2026-06-02
 

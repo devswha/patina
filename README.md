@@ -67,7 +67,7 @@ Then run the skill from Claude Code, Codex CLI, Cursor, or OpenCode:
 [paste your text here]
 ```
 
-Useful variants:
+Useful skill calls:
 
 ```text
 /patina --tone narrative

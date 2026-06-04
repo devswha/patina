@@ -11,7 +11,7 @@ body:
     id: area
     attributes:
       label: Area
-      options: [cli, skill, max-mode, benchmark, docs, integration, distribution, other]
+      options: [cli, skill, benchmark, docs, integration, distribution, other]
     validations:
       required: true
   - type: textarea

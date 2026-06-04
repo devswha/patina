@@ -78,7 +78,7 @@ patina auth login codex-cli --yes
 
 Notes: patina passes `--skip-trust` because the prompt runs from a fresh temp directory (containment for prompt-injection in user text). Default timeout is higher than other CLIs because gemini's startup latency is longer.
 
-> **Mode support:** `codex-cli`, `claude-cli`, and `gemini-cli` can be used for rewrite workers, including standalone CLI MAX candidates. Standalone MAX evaluates each local candidate through the same CLI backend, matching the existing per-candidate MAX evaluator behavior, so local-only MAX runs do not need `PATINA_API_KEY`; score/audit modes outside MAX still use the configured HTTP/evaluator path.
+> **Mode support:** `codex-cli`, `claude-cli`, and `gemini-cli` can be used as rewrite backends without `PATINA_API_KEY` when their local CLIs are already authenticated. API-backed score/audit paths still use the configured HTTP/evaluator key.
 
 ## Free-tier providers
 

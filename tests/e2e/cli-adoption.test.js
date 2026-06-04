@@ -150,7 +150,7 @@ describe('CLI adoption commands', () => {
 
 describe('CLI adoption exit/error behavior', () => {
   it('unknown flags fail before stdin handling with a usage exit', () => {
-    for (const flag of ['--bogus', '--variants', '--save-run', '--cache', '--cache-ttl', '--no-cache']) {
+    for (const flag of ['--bogus', '--variants', '--save-run', '--cache', '--cache-ttl', '--no-cache', '--suspected-generator']) {
       const result = spawnSync(process.execPath, [BIN, flag], {
         cwd: REPO_ROOT,
         input: '',

@@ -1,23 +1,19 @@
 patina-cli
 Copyright (c) devswha and patina contributors
 
-This product is the open-core baseline of patina, distributed under the MIT
-License. See the LICENSE file for the full license text.
+This repository and its npm packages are distributed under the MIT License. See
+the LICENSE file for the full license text.
 
 Open baseline (this repository; npm packages "patina-cli" and "patina-humanizer")
 --------------------------------------------------------------------------------
 The pattern packs, the deterministic stylometry/lexicon analyzer, the scorer,
-and the bundled backends — including the `patina-hosted` adapter and its
-versioned request/response schema — are part of the open baseline and are
-covered by the MIT License.
+and the bundled backends are part of the open baseline and are covered by the
+MIT License.
 
-Hosted track (NOT included here)
---------------------------------
-The reinforced Korean detection assets (corpus, lexicon, patterns), the
-reinforced LLM/prompt pipeline, and the hosted server are maintained in a
-separate, private project. They are reached only over the versioned hosted
-schema via an explicit `--backend patina-hosted`, and are never published in
-this repository or its npm packages.
+Private assets (NOT included)
+-----------------------------
+No private corpora, reinforced lexicons/patterns, prompts, or hosted-server
+assets are included in this repository or its npm packages.
 
 Acknowledgements
 ----------------

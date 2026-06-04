@@ -37,5 +37,5 @@ Keep MPS unchanged for semantic safety, then add an independent recurrence gate:
 
 1. Score the original and rewritten text with deterministic `analyzeText`.
 2. If `MPS ≥ 90` and rewritten AI score remains `≥ 60`, mark the candidate as `style_not_improved`.
-3. In MAX/Ouroboros selection, prefer candidates that pass MPS and lower the AI score; do not let high MPS alone rescue a visibly AI-like rewrite.
+3. In Ouroboros selection, prefer candidates that pass MPS and lower the AI score; do not let high MPS alone rescue a visibly AI-like rewrite.
 4. Report preserved anchors and recurring AI markers separately so users can decide whether to edit more or keep the register.

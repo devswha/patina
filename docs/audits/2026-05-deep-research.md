@@ -1,5 +1,7 @@
 # patina 저장소 심층 분석 보고서
 
+> **Archive note:** 이 보고서는 MAX mode, hosted backend, `--card`, inline `--api-key` 제거 전 스냅샷이다. 아래 CLI surface 관찰은 당시 기준이며 현재 도움말/문서의 source of truth가 아니다.
+
 ## 경영진 요약
 
 `devswha/patina`는 방향이 분명한 저장소다. 패턴 기반으로 AI 글쓰기 흔적을 탐지하고, 감사 가능한 방식으로 다시 쓰기를 수행하며, 한국어·영어·중국어·일본어에 대해 총 126개 패턴을 운영한다. 공개 문서와 코드 기준으로 보면, 이 도구는 standalone Node CLI이자 entity["company","Anthropic","ai company"] Claude Code·entity["company","OpenAI","ai company"] Codex CLI 계열 워크플로에 연결되는 스킬형 도구로 설계되어 있고, rewrite·audit·score·diff·ouroboros·MAX 실행 경로를 이미 갖추고 있다. 또한 backend와 provider를 분리했고, 패턴 팩·프로필·voice·scoring 문서를 프롬프트에 명시적으로 주입하는 구조라 추적 가능성도 좋다. citeturn18view0turn18view1turn26view6turn15view0turn14view2turn23view13

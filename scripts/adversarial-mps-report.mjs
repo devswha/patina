@@ -158,7 +158,7 @@ export function formatMarkdown(rows, { input = DEFAULT_INPUT } = {}) {
   lines.push('');
   lines.push('1. Score the original and rewritten text with deterministic `analyzeText`.');
   lines.push('2. If `MPS ≥ 90` and rewritten AI score remains `≥ 60`, mark the candidate as `style_not_improved`.');
-  lines.push('3. In MAX/Ouroboros selection, prefer candidates that pass MPS and lower the AI score; do not let high MPS alone rescue a visibly AI-like rewrite.');
+  lines.push('3. In Ouroboros selection, prefer candidates that pass MPS and lower the AI score; do not let high MPS alone rescue a visibly AI-like rewrite.');
   lines.push('4. Report preserved anchors and recurring AI markers separately so users can decide whether to edit more or keep the register.');
   return `${lines.join('\n')}\n`;
 }

@@ -107,9 +107,12 @@ describe('CLI adoption commands', () => {
       const output = logs.join('\n');
       assert.match(output, /Kind/);
       assert.match(output, /Select with/);
+      assert.match(output, /Default model/);
       assert.match(output, /default, --backend openai-http, --provider <name>/);
       assert.match(output, /--model codex-\*/);
       assert.match(output, /--model gemini-\*/);
+      assert.match(output, /gpt-5\.5/);
+      assert.match(output, /gemini-2\.5-pro/);
       assert.match(output, /PATINA_API_KEY/);
     });
   });

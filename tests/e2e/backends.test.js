@@ -8,6 +8,7 @@ import {
 } from '../../src/backends/index.js';
 import { DEFAULT_BACKEND_TIMEOUT_MS } from '../../src/backends/contract.js';
 import { isAvailable as codexAvailable, isAuthenticated as codexAuthd } from '../../src/backends/codex-cli.js';
+import { DEFAULT_BEST_MODELS } from '../../src/model-defaults.js';
 
 describe('Backend Selection', () => {
   it('selects openai-http by default', () => {
@@ -238,5 +239,13 @@ describe('Backend Listing', () => {
       assert.strictEqual(typeof b.authenticated, 'boolean');
       assert.strictEqual(typeof b.authHint, 'string');
     }
+  });
+
+  it('reports default best-model ids for user-facing backend status', () => {
+    const byName = new Map(listBackends().map((b) => [b.name, b.defaultModel]));
+    assert.strictEqual(byName.get('openai-http'), DEFAULT_BEST_MODELS.openai);
+    assert.strictEqual(byName.get('codex-cli'), DEFAULT_BEST_MODELS.codexCli);
+    assert.strictEqual(byName.get('claude-cli'), DEFAULT_BEST_MODELS.claudeCli);
+    assert.strictEqual(byName.get('gemini-cli'), DEFAULT_BEST_MODELS.geminiCli);
   });
 });

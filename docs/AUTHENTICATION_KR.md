@@ -29,25 +29,26 @@ Backend selection에는 명시적인 신호가 필요합니다. `--backend <name
 ```bash
 PATINA_API_KEY=...                            # required for HTTP backend
 PATINA_API_BASE=https://api.openai.com/v1     # or proxy / OpenRouter / etc.
-PATINA_MODEL=gpt-4o                           # default model
+PATINA_MODEL=gpt-5.5                           # HTTP/OpenAI default model
 ```
 
 `--base-url`, `--model`, `--api-key-file`, `--provider` flag는 실행마다 이 값을 덮어씁니다.
+`--model`을 넘기지 않으면 patina는 backend별로 문서화된 최상위 기본 모델을 씁니다. OpenAI HTTP와 `codex-cli`는 `gpt-5.5`, `claude-cli`는 `claude-sonnet-4-6`, Gemini HTTP/CLI는 `gemini-2.5-pro`입니다. `--model codex`, `--model claude`, `--model gemini`처럼 정확한 selector alias는 local CLI로 라우팅하되 해당 backend 기본 모델을 사용합니다.
 
 ## codex-cli backend
 
-patina는 local [`codex`](https://github.com/openai/codex) CLI를 통해 dispatch합니다. 이 CLI는 OpenAI/ChatGPT OAuth로 인증하므로 API key가 필요 없습니다.
+patina는 local [`codex`](https://github.com/openai/codex) CLI를 통해 dispatch합니다. 이 CLI는 OpenAI/ChatGPT OAuth로 인증하므로 API key가 필요 없습니다. 기본으로 `codex exec`에 넘기는 모델은 `gpt-5.5`이며, 더 구체적인 Codex model id를 직접 지정하면 그 값을 씁니다.
 
 ```bash
 codex login                                # one-time
 patina auth login codex-cli                # same, with confirmation
 patina --backend codex-cli --lang ko input.txt
-patina --model codex --lang ko input.txt   # same — auto-routes by model name
+patina --model codex --lang ko input.txt   # codex-cli로 라우팅하고 gpt-5.5 기본값 사용
 ```
 
 ## claude-cli backend
 
-local [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p`를 실행하고 patina prompt를 stdin으로 넘깁니다. Claude subscription이 있으면 무료로 사용할 수 있습니다.
+local [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p`를 실행하고 patina prompt를 stdin으로 넘깁니다. Claude subscription이 있으면 무료로 사용할 수 있습니다. Claude Code에 넘기는 기본 모델은 `claude-sonnet-4-6`입니다.
 
 ```bash
 claude auth login                          # one-time interactive OAuth
@@ -60,7 +61,7 @@ Auth file: `~/.claude/.credentials.json` (OAuth flow가 만듭니다).
 
 ## gemini-cli backend
 
-local [`gemini`](https://github.com/google-gemini/gemini-cli) `-p '' --output-format text`를 실행하고 patina prompt를 stdin으로 넘깁니다. 무료 Code Assist OAuth tier 또는 `GEMINI_API_KEY`로 동작합니다.
+local [`gemini`](https://github.com/google-gemini/gemini-cli) `-p '' --output-format text`를 실행하고 patina prompt를 stdin으로 넘깁니다. 무료 Code Assist OAuth tier 또는 `GEMINI_API_KEY`로 동작합니다. 기본 모델은 `gemini-2.5-pro`입니다.
 
 ```bash
 gemini                                     # one-time interactive OAuth, OR

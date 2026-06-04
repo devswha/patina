@@ -4,6 +4,7 @@ import * as claudeCli from './claude-cli.js';
 import * as geminiCli from './gemini-cli.js';
 import { inspectHttpApiKeySource } from '../auth.js';
 import { inputError } from '../errors.js';
+import { DEFAULT_BEST_MODELS } from '../model-defaults.js';
 import {
   DEFAULT_BACKEND_TIMEOUT_MS,
   describeBackendError,
@@ -40,18 +41,22 @@ const BACKEND_META = {
   'openai-http': {
     kind: 'http',
     selectWith: 'default, --backend openai-http, --provider <name>',
+    defaultModel: DEFAULT_BEST_MODELS.openai,
   },
   'codex-cli': {
     kind: 'local-cli',
     selectWith: '--backend codex-cli, --model codex-*',
+    defaultModel: DEFAULT_BEST_MODELS.codexCli,
   },
   'claude-cli': {
     kind: 'local-cli',
     selectWith: '--backend claude-cli, --model claude-*',
+    defaultModel: DEFAULT_BEST_MODELS.claudeCli,
   },
   'gemini-cli': {
     kind: 'local-cli',
     selectWith: '--backend gemini-cli, --model gemini-*',
+    defaultModel: DEFAULT_BEST_MODELS.geminiCli,
   },
 };
 
@@ -63,6 +68,7 @@ export function listBackends() {
       name: key,
       kind: meta.kind,
       selectWith: meta.selectWith,
+      defaultModel: meta.defaultModel || null,
       available: b.isAvailable(),
       authenticated: b.isAuthenticated(),
       authHint: b.authHint(),

@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand } from './contract.js';
+import { resolveLocalCliModel } from '../model-defaults.js';
 
 export const name = 'gemini-cli';
 export const loginCommand = 'gemini';
@@ -43,7 +44,7 @@ export function login(options = {}) {
   });
 }
 
-export async function invoke({ prompt, model, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
+export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('gemini-cli backend: prompt must be a non-empty string');
   }
@@ -55,8 +56,8 @@ export async function invoke({ prompt, model, signal, timeout = DEFAULT_BACKEND_
   // --skip-trust is required because the temp dir isn't in gemini's trusted
   // workspace list (otherwise gemini exits 55).
   const dir = mkdtempSync(join(tmpdir(), 'patina-gemini-'));
-  const args = ['-p', '', '--output-format', 'text', '--skip-trust'];
-  if (model) args.push('-m', model);
+  const cliModel = resolveLocalCliModel({ backendName: name, model, modelSource });
+  const args = ['-p', '', '--output-format', 'text', '--skip-trust', '-m', cliModel];
 
   return new Promise((resolve, reject) => {
     const proc = spawn('gemini', args, { stdio: ['pipe', 'pipe', 'pipe'], cwd: dir });

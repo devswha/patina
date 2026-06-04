@@ -4,6 +4,7 @@
 // variable users typically set to authenticate. Selecting a provider is
 // equivalent to manually setting --base-url, --model, and the right key.
 import { inputError } from './errors.js';
+import { DEFAULT_BEST_MODELS } from './model-defaults.js';
 
 /**
  * Built-in OpenAI-compatible provider presets.
@@ -17,7 +18,7 @@ export const PROVIDERS = {
     name: 'openai',
     baseURL: 'https://api.openai.com/v1',
     apiKeyEnv: 'OPENAI_API_KEY',
-    defaultModel: 'gpt-4o',
+    defaultModel: DEFAULT_BEST_MODELS.openai,
     freeTier: false,
     note: 'Paid. Default OpenAI Platform API.',
   },
@@ -25,7 +26,7 @@ export const PROVIDERS = {
     name: 'gemini',
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
     apiKeyEnv: 'GEMINI_API_KEY',
-    defaultModel: 'gemini-2.5-flash',
+    defaultModel: DEFAULT_BEST_MODELS.geminiCli,
     freeTier: true,
     note: 'Free tier available. Get a key at https://aistudio.google.com/app/apikey',
   },
@@ -122,7 +123,7 @@ export function resolveProviderConfig({ provider, apiKey, baseURL, model }) {
     resolved.baseURLSource = process.env.PATINA_API_BASE ? 'env:PATINA_API_BASE' : 'default';
   }
   if (!resolved.model) {
-    resolved.model = process.env.PATINA_MODEL || 'gpt-4o';
+    resolved.model = process.env.PATINA_MODEL || DEFAULT_BEST_MODELS.openai;
     resolved.modelSource = process.env.PATINA_MODEL ? 'env:PATINA_MODEL' : 'default';
   }
 

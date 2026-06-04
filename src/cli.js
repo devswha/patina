@@ -735,14 +735,14 @@ LANGUAGE & PROFILE
   --voice-sample <path>   Use 1-3 user paragraphs as style-only voice anchors
 
 MODEL & AUTH
-  --model <id>            Single model ID (default: gpt-4o). Only affects
-                          gemini-cli and the HTTP provider path; claude-cli
-                          and codex-cli use their logged-in session model.
+  --model <id>            Single model ID. Defaults use the strongest
+                          documented model per backend: openai/codex gpt-5.5,
+                          claude-sonnet-4-6, gemini-2.5-pro.
   --api-key-file <path>   Read API key from file (recommended)
   --base-url <url>        API base URL (or PATINA_API_BASE env)
   --backend <name[,name]> Backend or explicit fallback chain:
                           ${backendChoices} (default: openai-http)
-  --list-backends         List backends, selectors, and auth status
+  --list-backends         List backends, selectors, default models, and auth status
   --provider <name>       Provider preset: openai, gemini, groq, together
 ADVANCED
   --config <path>         Load config from <path> instead of .patina.default.yaml
@@ -850,6 +850,7 @@ function printBackendStatus() {
     name: b.name,
     kind: b.kind,
     selectWith: b.selectWith,
+    defaultModel: b.defaultModel || '-',
     available: b.available ? 'yes' : 'no',
     authenticated: b.authenticated ? 'yes' : 'no',
     note: backendStatusNote(b),
@@ -858,19 +859,20 @@ function printBackendStatus() {
     name: Math.max('Backend'.length, ...rows.map((r) => r.name.length)),
     kind: Math.max('Kind'.length, ...rows.map((r) => r.kind.length)),
     selectWith: Math.max('Select with'.length, ...rows.map((r) => r.selectWith.length)),
+    defaultModel: Math.max('Default model'.length, ...rows.map((r) => r.defaultModel.length)),
     available: Math.max('Available'.length, ...rows.map((r) => r.available.length)),
     authenticated: Math.max('Authenticated'.length, ...rows.map((r) => r.authenticated.length)),
   };
   const pad = (s, w) => s + ' '.repeat(Math.max(0, w - s.length));
   console.log(
-    `${pad('Backend', widths.name)}  ${pad('Kind', widths.kind)}  ${pad('Select with', widths.selectWith)}  ${pad('Available', widths.available)}  ${pad('Authenticated', widths.authenticated)}  Notes`
+    `${pad('Backend', widths.name)}  ${pad('Kind', widths.kind)}  ${pad('Select with', widths.selectWith)}  ${pad('Default model', widths.defaultModel)}  ${pad('Available', widths.available)}  ${pad('Authenticated', widths.authenticated)}  Notes`
   );
   console.log(
-    `${'-'.repeat(widths.name)}  ${'-'.repeat(widths.kind)}  ${'-'.repeat(widths.selectWith)}  ${'-'.repeat(widths.available)}  ${'-'.repeat(widths.authenticated)}  -----`
+    `${'-'.repeat(widths.name)}  ${'-'.repeat(widths.kind)}  ${'-'.repeat(widths.selectWith)}  ${'-'.repeat(widths.defaultModel)}  ${'-'.repeat(widths.available)}  ${'-'.repeat(widths.authenticated)}  -----`
   );
   for (const r of rows) {
     console.log(
-      `${pad(r.name, widths.name)}  ${pad(r.kind, widths.kind)}  ${pad(r.selectWith, widths.selectWith)}  ${pad(r.available, widths.available)}  ${pad(r.authenticated, widths.authenticated)}  ${r.note}`
+      `${pad(r.name, widths.name)}  ${pad(r.kind, widths.kind)}  ${pad(r.selectWith, widths.selectWith)}  ${pad(r.defaultModel, widths.defaultModel)}  ${pad(r.available, widths.available)}  ${pad(r.authenticated, widths.authenticated)}  ${r.note}`
     );
   }
 }

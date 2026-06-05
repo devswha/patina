@@ -47,17 +47,17 @@ Confirm the links used in broad posts:
 
 | Order | Channel | Copy source | Maintainer action |
 |---:|---|---|---|
-| 1 | GeekNews | `patina-launch-korean-first.md` → GeekNews | Post or mark deferred in #286. |
-| 2 | Velog | `patina-launch-korean-first.md` → Velog | Post or mark deferred in #286. |
-| 3 | Clien-style short post | `patina-launch-korean-first.md` → Clien-style short post | Post or mark deferred in #286. |
+| 1 | GeekNews | `patina-launch-korean-first.md` → GeekNews | Post or mark deferred in the maintainer launch note. |
+| 2 | Velog | `patina-launch-korean-first.md` → Velog | Post or mark deferred in the maintainer launch note. |
+| 3 | Clien-style short post | `patina-launch-korean-first.md` → Clien-style short post | Post or mark deferred in the maintainer launch note. |
 | 4 | Show HN | `patina-launch-copy.md` → Show HN | Post with playground + repo links. |
 | 5 | Product Hunt | `patina-launch-copy.md` → Product Hunt | Use brand/social assets and maker comment. |
 | 6 | Reddit | `patina-launch-copy.md` → Reddit | Pick LocalLLaMA or writing/Korean angle. |
 | 7 | X / Threads / LinkedIn | `patina-launch-copy.md` → X / Threads | Use short copy and link playground first. |
 
-## #286 update template
+## Maintainer update template
 
-After each channel action, add a short comment to #286:
+After each channel action, add a short entry to the maintainer launch note:
 
 ```text
 Channel:
@@ -85,9 +85,9 @@ Capture useful launch feedback with enough detail to reproduce it:
 Public false-positive reports should use:
 <https://github.com/devswha/patina/issues/new?template=false_positive.yml>.
 
-## Close criteria for #286
+## Close criteria for the launch note
 
-Keep #286 open until each channel is either:
+Keep the maintainer launch note open until each channel is either:
 
 - posted with URL and score proof,
 - queued with owner/date,

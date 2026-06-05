@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/brand/patina-logo.svg" alt="patina logo" width="260">
+  <img src="assets/brand/patina-mark.svg" alt="patina mark" width="172">
 </p>
 
 <h1 align="center">patina</h1>
@@ -33,16 +33,16 @@ It is not a black-box paraphraser, authorship detector, or detector-bypass tool.
 
 ## Demo
 
-**Before** *(AI-sounding)*:
-> Coffee has emerged as a **pivotal cultural phenomenon** that has **fundamentally transformed** social interactions across the globe. This beloved beverage serves as a catalyst for community building, fosters meaningful connections, and facilitates cross-cultural dialogue.
+**Before** *(AI-sounding; same fixture used by the GIF)*:
+> The newly released Notion template pack is an **innovative solution** designed to **transform productivity** for modern teams. It offers 30 templates optimized for diverse workflows, with a user-friendly design that enables anyone to leverage them effortlessly. This product introduces a **new paradigm** for maximizing work efficiency.
 
-**After** *(`/patina --lang en` — same claims, AI packaging removed)*:
-> Coffee has quietly changed how people meet. Sit across from someone long enough, and something like a real connection tends to form — even between people from very different cultures.
+**After** *(`/patina --lang en --tone marketing` — same claims, AI packaging removed)*:
+> If Notion still starts as a blank page for your team, open this pack first. It includes 30 templates for common workflows. Duplicate one, adjust the fields you need, and use it for a team project or your own planning without starting from scratch.
 
-> **MPS = 100** · cultural transformation ✓ · community building ✓ · meaningful connections ✓ · cross-cultural dialogue ✓
+> **Score = 0.0%** · 30 templates ✓ · workflow fit ✓ · copy-and-edit use ✓
 
 <p align="center">
-  <img src="assets/demo/patina-demo-en.gif" alt="Animated terminal demo showing patina rewriting English AI-sounding copy and scoring the cleaned result" width="780">
+  <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-demo-en.gif" alt="Animated terminal demo showing patina rewriting English AI-sounding copy and scoring the cleaned result" width="780">
 </p>
 
 More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)) · [30-second terminal demo](docs/DEMO.md).

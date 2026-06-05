@@ -170,3 +170,68 @@ describe('buildPrompt golden snapshots', () => {
     });
   }
 });
+
+describe('CJK clause-level rewrite guard', () => {
+  const koConfig = {
+    ...config,
+    language: 'ko',
+    ouroboros: {
+      ...config.ouroboros,
+      'category-weights': {
+        ...config.ouroboros['category-weights'],
+        ko: { content: 1 },
+      },
+    },
+  };
+
+  it('is present in strict Korean rewrite prompts', () => {
+    const prompt = buildPrompt({
+      config: koConfig,
+      patterns,
+      profile,
+      voice,
+      scoring,
+      text: '완전 자율, 무 TUI 세팅을 원한다면 자율 모드 플래그를 추가합니다.',
+      mode: 'rewrite',
+      tone,
+      promptMode: 'strict',
+    });
+
+    assert.match(prompt, /CJK clause-level rewrite guard/);
+    assert.match(prompt, /do not fix AI tells by swapping punctuation or single tokens in place/);
+    assert.match(prompt, /TUI 없이 완전 자율로 설치하려면/);
+  });
+
+  it('is present in minimal Korean rewrite prompts', () => {
+    const prompt = buildPrompt({
+      config: koConfig,
+      patterns,
+      profile,
+      voice,
+      scoring,
+      text: '"끝난 것 같아요"로는 부족한 열린 작업에 쓰세요.',
+      mode: 'rewrite',
+      tone,
+      promptMode: 'minimal',
+    });
+
+    assert.match(prompt, /CJK clause-level rewrite guard/);
+    assert.match(prompt, /"끝난 것 같아요"만으로는 부족한/);
+  });
+
+  it('does not add the CJK guard to English prompts', () => {
+    const prompt = buildPrompt({
+      config,
+      patterns,
+      profile,
+      voice,
+      scoring,
+      text: inputText,
+      mode: 'rewrite',
+      tone,
+      promptMode: 'strict',
+    });
+
+    assert.doesNotMatch(prompt, /CJK clause-level rewrite guard/);
+  });
+});

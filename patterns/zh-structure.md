@@ -62,6 +62,13 @@ phase: structure
 **Semantic Risk:** LOW
 **Preservation Note:** 自然化翻译腔时，保留原句的施事、受事、因果、比较和条件限制；不要为了顺口而改变谁做了什么。
 
+**Context rewrite guard (issue #352):** When literal phrasing appears around an em dash, colon, slash, comma splice, or parenthetical aside, do not replace only the punctuation. Read the whole sentence and rebuild the clause relation in natural Chinese. A literal "无 TUI 设置" should become a clause such as "不用 TUI 就能全自动安装时..." when that is the intended condition; an em dash should become a causal, contrastive, or appositive clause only when the original meaning supports that relation.
+
+**Context rewrite example:**
+> 如果想要完全自动、无 TUI 设置，请添加自律模式参数。
+>
+> → 如果想不用 TUI 就完成全自动安装，请添加自律模式参数。
+
 **Burstiness 指引：** 修正翻译腔时，替换后的句子长度不要整齐划一。有的缩短，有的展开，让节奏变化。
 
 **修改前：**

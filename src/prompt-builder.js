@@ -118,7 +118,7 @@ export function buildPrompt(options) {
   prompt += `Process the following text according to the output mode "${mode}".\n\n`;
 
   if (mode === 'rewrite') {
-    prompt += buildRewriteInstructions(structurePacks, lexicalPacks);
+    prompt += buildRewriteInstructions(structurePacks, lexicalPacks, { lang });
   } else if (mode === 'diff') {
     prompt += buildDiffInstructions();
   } else if (mode === 'audit') {
@@ -135,7 +135,7 @@ export function buildPrompt(options) {
   return prompt;
 }
 
-function buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAudit = true } = {}) {
+function buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAudit = true, lang = 'ko' } = {}) {
   const phaseCount = includeSelfAudit ? 3 : 2;
   let inst = `Follow the ${phaseCount}-Phase pipeline:\n\n`;
 
@@ -163,6 +163,11 @@ function buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAud
   inst += `4. Match profile tone\n`;
   inst += `5. Inject personality per voice guidelines\n`;
   inst += `6. Respect blocklist/allowlist and pattern overrides\n\n`;
+  const cjkGuard = buildCjkClauseRewriteGuard(lang);
+  if (cjkGuard) {
+    inst += `${cjkGuard}\n`;
+  }
+
 
   if (includeSelfAudit) {
     inst += `### Phase 3: Self-Audit\n\n`;
@@ -202,6 +207,34 @@ function buildOutputFormatBlock() {
     `---\ntone: ...\ntone_source: ...\ntone_evidence: [...]\ntone_confidence: ...\n---\n` +
     '```\n'
   );
+}
+
+function buildCjkClauseRewriteGuard(lang) {
+  if (!['ko', 'zh', 'ja'].includes(lang)) return '';
+
+  const shared = [
+    `### CJK clause-level rewrite guard`,
+    ``,
+    `For Korean, Chinese, and Japanese, do not fix AI tells by swapping punctuation or single tokens in place. Read the full sentence, then rewrite the affected clause or sentence so the clause relationship is idiomatic in the target language.`,
+    `- If the suspect segment uses connective punctuation (em dash, colon, semicolon, slash, comma splice, parenthetical aside), choose a natural clause structure, sentence split, or connective phrase; do not replace every mark 1:1 with a comma or parentheses.`,
+    `- If a calque/translationese phrase is attached to punctuation, fix both together at clause level. Preserve who did what, polarity, conditions, numbers, and causation.`,
+  ];
+
+  if (lang === 'ko') {
+    shared.push(
+      `- Korean examples: write "TUI 없이 완전 자율로 설치하려면 ..." rather than "무 TUI ..."; write "끝난 것 같아요"만으로는 부족한, 결과를 끝까지 확인해야 하는 열린 작업 rather than "끝난 것 같아요"로는 부족한 열린 작업.`
+    );
+  } else if (lang === 'zh') {
+    shared.push(
+      `- Chinese example: "不用 TUI 就能全自动安装时，打开自律模式参数" is preferable to a literal "无 TUI 设置"; an em dash should become a causal, contrastive, or appositive clause only when that relation is present.`
+    );
+  } else if (lang === 'ja') {
+    shared.push(
+      `- Japanese example: "TUIなしで完全自律インストールにしたい場合は..." is preferable to a literal calque; an em dash should become a natural 接続, 説明節, or sentence split only when the relation is present.`
+    );
+  }
+
+  return `${shared.join('\n')}\n`;
 }
 
 function buildDiffInstructions() {
@@ -306,6 +339,10 @@ function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone
     : `This text reads like AI. Rewrite it so it sounds like a real person wrote it. If you spot any of the phrases below, swap them out for something natural. Don't over-paraphrase — keep the meaning, numbers, and causation intact.`;
 
   let prompt = `${instruction}\n\n`;
+  const cjkGuard = buildCjkClauseRewriteGuard(lang);
+  if (cjkGuard) {
+    prompt += `${cjkGuard}\n`;
+  }
 
   if (watchWords.length > 0) {
     prompt += lang === 'ko' ? `## AI 신호 어휘 (참고)\n\n` : `## AI signal words (reference)\n\n`;
@@ -382,6 +419,7 @@ function buildOuroborosInstructions(config, structurePacks, lexicalPacks) {
   const fidelityFloor = ouroboros['fidelity-floor'] ?? 70;
   const mpsFloor = ouroboros['mps-floor'] ?? 70;
 
+  const lang = config.language || 'ko';
   let inst = `Iterative self-improvement loop:\n\n`;
   inst += `1. Measure initial AI-likeness score\n`;
   inst += `2. If score ≤ ${targetScore}, stop immediately\n`;
@@ -400,7 +438,7 @@ function buildOuroborosInstructions(config, structurePacks, lexicalPacks) {
   // Skip Phase 3 self-audit: each iteration runs through external evaluators
   // (scoreText, scoreMPS, scoreFidelity) in src/ouroboros.js, so an in-prompt
   // self-audit duplicates work and inflates token cost.
-  inst += buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAudit: false });
+  inst += buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAudit: false, lang });
 
   return inst;
 }

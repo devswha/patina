@@ -560,6 +560,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: ~것은 사실이다, ~라고 할 수 있다, ~하는 것이 가능하다, ~에 의해 ~되다, ~에 대해 ~하다 (영어 "about"의 직역), ~하는 경향이 있다 (tend to), ~에 기반하여 (based on), ~를 통해서 (through), 그것은 ~이다 (It is ~), 탐지기 우회 약속, detector-bypass 약속, ~보존 여부를 보여주다
 - Fire condition: 한 문단 내에 번역체 표현이 2개 이상 등장할 때. 단독 1회 사용은 허용 — 정상적인 한국어에서도 간혹 나타나는 표현이므로. 단, README·제품 소개·랜딩 카피처럼 첫인상이 중요한 문장에서는 뜻이 압축된 영어식 명사구가 독자의 이해를 막으면 1회만 있어도 교정한다.
+- Context guard: issue #352 — 구두점이나 단어만 1:1로 바꾸지 말고, `무 TUI` → `TUI 없이 완전 자율로 설치하려면 ...`, `"끝난 것 같아요"로는 부족한 열린 작업` → `"끝난 것 같아요"만으로는 부족한, 결과를 끝까지 확인해야 하는 열린 작업`처럼 절 관계를 한국어로 다시 짠다.
 - Example files: [failure](../examples/26-failure-01.md) · [success](../examples/26-success-01.md)
 
 Example before:

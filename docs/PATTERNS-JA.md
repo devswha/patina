@@ -559,6 +559,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 〜という事実、〜することが可能である、〜によって〜される、〜に関して、〜に基づいて、〜の観点から、〜する傾向がある
 - Fire condition: 同一段落に翻訳調の表現が2つ以上出現する場合。単独1回は許容。
+- Context guard: issue #352 — 翻訳調が em dash、コロン、スラッシュ、読点接続と一緒に出る場合、記号だけを置き換えず、`無 TUI 設定` → `TUIなしで完全自律インストールにしたい場合は...` のように節構造を自然な日本語に組み直す。
 - Example files: [failure](../examples/ja-26-failure-01.md) · [success](../examples/ja-26-success-01.md)
 
 Example before:

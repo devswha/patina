@@ -123,7 +123,7 @@ FOR each anchor IN anchor_list:
 Apply all remaining pattern packs (content, language, style, communication, filler).
 
 1. **AI pattern identification** — scan all loaded sentence/lexical patterns
-2. **Problem segment rewrite** — replace AI-sounding expressions with natural alternatives
+2. **Problem segment rewrite** — do not swap tokens in place; read the local context and rewrite the affected clause/sentence into a natural alternative
 3. **Meaning preservation** — keep core message intact
 4. **Tone matching** — adjust tone per the profile's guidance
 5. **Voice injection** — add personality per `core/voice.md`
@@ -133,6 +133,8 @@ Apply all remaining pattern packs (content, language, style, communication, fill
    - HIGH semantic risk patterns: inject paragraph anchors into correction prompt
    - MEDIUM semantic risk: inject only Polarity/Negation anchors
    - LOW semantic risk: no constraints
+
+**CJK clause-level rewrite guard (issue #352):** For `ko`, `zh`, and `ja`, do not fix AI tells by replacing one punctuation mark or one token at a time. If connective punctuation (em dash, colon, semicolon, slash, comma splice, parenthetical aside) appears with a suspect phrase, read the whole sentence and choose an idiomatic clause structure, sentence split, or connective phrase in the target language. If a translationese/calque phrase is attached to punctuation, fix both together at clause level. Korean examples: prefer `TUI 없이 완전 자율로 설치하려면 ...` over `무 TUI ...`, and `"끝난 것 같아요"만으로는 부족한, 결과를 끝까지 확인해야 하는 열린 작업` over `"끝난 것 같아요"로는 부족한 열린 작업`. Preserve actors, polarity, conditions, numbers, and causation.
 
 **Caution**: Do NOT re-tidy sections already corrected in Phase 1 back into "polished officialese".
 

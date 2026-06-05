@@ -1,12 +1,11 @@
 # Open Issue Wave Plan
 
-Last synced: 2026-05-22. Source of truth is GitHub issues; this file records the current execution grouping so follow-up waves do not re-triage from scratch.
+Last synced: 2026-06-05. Source of truth is GitHub issues; this file records the current execution grouping so follow-up waves do not re-triage from scratch.
 
-## Wave A — launch/growth execution
+## Wave A — growth execution
 
 | issue | status | next action |
 |---|---|---|
-| #286 launch tracker | ready, maintainer-owned | Post or explicitly defer each channel draft, then attach exact score output and feedback links to #286. Agents may prepare copy and score proof, but should not post from maintainer accounts. |
 | #307 awesome-list discovery | ready, external-submission owned | Prepare a short candidate-list/submission checklist for relevant awesome lists; maintainer submits where external account or repo ownership is required. |
 
 Current score proof:

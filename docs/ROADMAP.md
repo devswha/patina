@@ -254,14 +254,14 @@ Do not lead with “bypass AI detectors.” Lead with:
 
 ## 5. Immediate next actions
 
-Last triaged: 2026-05-22, after README demo localization and issue-inventory sync.
+Last triaged: 2026-06-05, after closing the public launch tracker and moving launch posting notes out of GitHub issues.
 
 Current GitHub issue inventory:
 
-- 9 open issues; 145 closed issues; 154 tracked issues total.
+- 9 open issues.
 - Open PRs: 0.
-- Open priority split: 1 high, 1 medium, 7 low, and 0 without priority labels.
-- Current high-priority issue: #286 launch tracking/playbook.
+- Open priority split: 0 high, 1 medium, 8 low, and 0 without priority labels.
+- No current high-priority issue.
 
 Campaign state:
 
@@ -271,7 +271,7 @@ Campaign state:
 - Launch Wave 1 badge work: #297 closed #282; companion patina-action#1 added `badge-json` / `badge-branch`.
 - Launch Wave 2 support work: #299 closed #285; the experimental share-card generator from #283 has since been removed from the CLI surface.
 - Launch Wave 3 static playground work closes #208 and targets <https://patina.vibetip.help/> for the try-it-now URL.
-- Launch execution prep: Korean-first channel drafts live in `docs/social/patina-launch-korean-first.md` and score 0.0%; `docs/social/patina-launch-copy.md` scores 6.3% after the KO diagnostic scoring update. `docs/social/patina-launch-execution.md` now records the maintainer-owned posting checklist and #286 update template.
+- Launch execution prep: Korean-first channel drafts live in `docs/social/patina-launch-korean-first.md` and score 0.0%; `docs/social/patina-launch-copy.md` scores 6.3% after the KO diagnostic scoring update. Launch posting/deferral notes are maintainer-owned operational bookkeeping and should be tracked outside public GitHub issues.
 - Rebaseline claim pass: `npm run benchmark:rebaseline:report` refreshes `docs/benchmarks/rebaseline-latest.{md,json}` from the #155 claim-ready sanitized manifest (800 rows, no raw text).
 - KO/2025+ corpus prep: `docs/research/ko-2025-corpus-sources.md` records usable Korean sources, `artifacts/rebaseline-2025/intake.local.example.jsonl` provides the 25-row pilot skeleton, `artifacts/rebaseline-2025/sources.ko-public.jsonl` inventories public Korean web sources, `artifacts/rebaseline-2025/human-controls.public.jsonl` tracks 250 scored hash-only web human-control candidates at n=50 for each tracked register, `npm run benchmark:rebaseline:web` collects raw text into ignored private rows, and `npm run benchmark:rebaseline:score` refreshes deterministic outcome fields without copying raw text.
 - KO register pilot: `npm run benchmark:register-pilot -- --write --basename register-stratified-latest` refreshes false positives by register without committing raw text; the expanded current pilot shows 42/250 predicted-hot human-control rows, split by register for threshold work.
@@ -282,14 +282,14 @@ Campaign state:
   playground link, translated README references, and re-recording notes; #308
   localizes README hero GIF references so English uses `patina-demo-en.gif`,
   Korean uses `patina-demo-ko.gif`, and ZH/JA intentionally fall back to EN.
-- Closed or verified during the campaign: #99, #104, #155, #156, #157, #160, #303, #165, #186, #191, #199, #209, #210, #304, #305, #306, #308.
-- Kept open with explicit blocker comments or pending external action: #158, #159, #206, #207, #211, #212, #284, #286, #307.
+- Closed or verified during the campaign: #99, #104, #155, #156, #157, #160, #303, #165, #186, #191, #199, #209, #210, #286, #304, #305, #306, #308.
+- Kept open with explicit blocker comments or pending external action: #158, #159, #206, #207, #211, #212, #284, #307, #324.
 - Legacy bot/harness notes were removed from the public repo; restart autonomous bot work only from a fresh, tracked design if it becomes necessary.
 
 Next recommended order:
 
-1. Keep #286 as the launch execution tracker; infra, copy, and the README demo GIF are live, so the next step is maintainer-owned Korean-first posting plus feedback capture.
-2. Prepare #307 awesome-list discovery submissions only as candidate copy/checklists; maintainer-owned external submissions should stay outside automated repo changes.
+1. Prepare #307 awesome-list discovery submissions only as candidate copy/checklists; maintainer-owned external submissions should stay outside automated repo changes.
+2. Re-implement #324 only when live credentialed quality checks are worth the larger local-runner investment.
 3. Treat low-priority research/ecosystem items (#158, #159, #206, #207, #211, #212, #284) as parked until evaluator budget, reviewer pool, redistributable corpus, external repo, hosting, or governance prerequisites exist; keep new campaign PRs short-lived.
 
 Detailed wave grouping lives in `docs/ISSUE-WAVES.md` so launch/growth, completed profile work, evaluation-gated research, and parked ecosystem work can move independently without re-triage.

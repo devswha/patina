@@ -77,7 +77,7 @@ playground(<https://patina.vibetip.help/>)의 '오탐 신고' 버튼으로도 �
 ## Posting checklist
 
 - Re-score the exact copied post after edits.
-- Attach the score output to issue #286 or the internal launch note.
+- Attach the score output to the internal launch note.
 - Do not promise authorship proof.
 - Capture false-positive examples with language, register, score output, and the paragraph that fired.
 - Send public false-positive examples to <https://github.com/devswha/patina/issues/new?template=false_positive.yml>.

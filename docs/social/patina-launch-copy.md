@@ -2,7 +2,7 @@
 
 Use this file as the source of truth for public launch posts. The positioning is deliberately **auditable cleanup / editing tool**, not detector bypass.
 
-Execution checklist and #286 update template:
+Execution checklist:
 [`docs/social/patina-launch-execution.md`](patina-launch-execution.md).
 
 ## Launch sequence

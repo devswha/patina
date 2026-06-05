@@ -6,7 +6,10 @@ import {
   selectBackendChain,
   listBackends,
 } from '../../src/backends/index.js';
-import { DEFAULT_BACKEND_TIMEOUT_MS } from '../../src/backends/contract.js';
+import {
+  DEFAULT_BACKEND_TIMEOUT_MS,
+  getBackendSafety,
+} from '../../src/backends/contract.js';
 import { isAvailable as codexAvailable, isAuthenticated as codexAuthd } from '../../src/backends/codex-cli.js';
 import { DEFAULT_BEST_MODELS } from '../../src/model-defaults.js';
 
@@ -140,6 +143,36 @@ describe('Backend Fallback Chain', () => {
 
     assert.strictEqual(result, 'ok');
     assert.strictEqual(seenTimeout, DEFAULT_BACKEND_TIMEOUT_MS);
+  });
+
+  it('passes backend retry defaults through the backend contract', async () => {
+    let seenMaxRetries = null;
+    const result = await invokeBackendChain({
+      backends: [
+        {
+          name: 'openai-http',
+          invoke: async ({ maxRetries }) => {
+            seenMaxRetries = maxRetries;
+            return 'ok';
+          },
+        },
+      ],
+      prompt: 'rewrite this',
+    });
+
+    assert.strictEqual(result, 'ok');
+    assert.strictEqual(seenMaxRetries, 2);
+  });
+
+  it('uses conservative safety defaults for local agent CLIs', () => {
+    assert.strictEqual(getBackendSafety('claude-cli').maxConcurrency, 1);
+    assert.strictEqual(getBackendSafety('claude-cli').maxRetries, 0);
+    assert.strictEqual(getBackendSafety('claude-cli').promptMode, 'minimal');
+    assert.strictEqual(getBackendSafety('kimi-cli').maxConcurrency, 1);
+    assert.strictEqual(getBackendSafety('kimi-cli').maxRetries, 0);
+    assert.strictEqual(getBackendSafety('kimi-cli').promptMode, 'minimal');
+    assert.strictEqual(getBackendSafety('openai-http').maxConcurrency, 4);
+    assert.strictEqual(getBackendSafety('openai-http').maxRetries, 2);
   });
 
   it('falls through 429/503 backend errors to the next backend', async () => {

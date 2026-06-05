@@ -21,6 +21,7 @@ import { createLogger } from './logger.js';
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
  * @param {AbortSignal} [options.signal] External cancellation signal.
+ * @param {number} [options.timeout] Per-attempt backend timeout in milliseconds.
  * @param {object} [options.logger] patina logger.
  * @returns {Promise<{finalText: string, finalScore: number, iterations: number, reason: string, log: object[]}>} Final text and iteration log.
  * @throws {Error} When model calls or scoring fail outside handled schema fallbacks.
@@ -42,6 +43,7 @@ export async function runOuroboros({
   now,
   sleep,
   signal,
+  timeout,
   logger = createLogger(),
 }) {
   const ouroborosConfig = config.ouroboros || {};
@@ -64,6 +66,7 @@ export async function runOuroboros({
     now,
     sleep,
     signal,
+    timeout,
     logger,
   });
 
@@ -122,6 +125,7 @@ export async function runOuroboros({
       now,
       sleep,
       signal,
+      timeout,
     });
 
     const scoreResult = await scoreText({
@@ -135,6 +139,7 @@ export async function runOuroboros({
       now,
       sleep,
       signal,
+      timeout,
       logger,
     });
 
@@ -158,6 +163,7 @@ export async function runOuroboros({
         now,
         sleep,
         signal,
+        timeout,
         logger,
       }),
       scoreFidelity({
@@ -170,6 +176,7 @@ export async function runOuroboros({
         now,
         sleep,
         signal,
+        timeout,
         logger,
       }),
     ]);

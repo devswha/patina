@@ -61,6 +61,11 @@ if (cli === 'gemini' && args.length === 0) {
   writeFileSync(join(homedir(), '.gemini', 'gemini-credentials.json'), '{}');
   process.exit(0);
 }
+if (cli === 'kimi' && args.join(' ') === 'login') {
+  mkdirSync(join(homedir(), '.kimi', 'credentials'), { recursive: true });
+  writeFileSync(join(homedir(), '.kimi', 'credentials', 'kimi-code.json'), '{}');
+  process.exit(0);
+}
 
 process.exit(64);
 `;
@@ -76,12 +81,14 @@ function makeFakeCliEnv() {
   const log = join(root, 'login.log');
   mkdirSync(binDir);
   mkdirSync(home);
-  for (const name of ['codex', 'claude', 'gemini']) writeFakeCli(binDir, name);
+  for (const name of ['codex', 'claude', 'gemini', 'kimi']) writeFakeCli(binDir, name);
   return {
     HOME: home,
     PATH: `${binDir}:${process.env.PATH || ''}`,
     PATINA_FAKE_LOGIN_LOG: log,
     GEMINI_API_KEY: undefined,
+    KIMI_API_KEY: undefined,
+    MOONSHOT_API_KEY: undefined,
     log,
     home,
   };
@@ -97,6 +104,7 @@ describe('patina auth login <backend>', () => {
     assert.match(output, /codex-cli/);
     assert.match(output, /claude-cli/);
     assert.match(output, /gemini-cli/);
+    assert.match(output, /kimi-cli/);
   });
 
   it('launches codex login and re-checks authentication', async () => {
@@ -110,20 +118,24 @@ describe('patina auth login <backend>', () => {
     assert.match(output, /codex-cli: authenticated/);
   });
 
-  it('launches claude auth login and gemini interactive login', async () => {
+  it('launches claude, gemini, and kimi interactive login flows', async () => {
     const env = makeFakeCliEnv();
     const output = await withEnv(env, () => captureConsole(async () => {
       await main(['auth', 'login', 'claude-cli', '--yes']);
       await main(['auth', 'login', 'gemini-cli', '--yes']);
+      await main(['auth', 'login', 'kimi-cli', '--yes']);
     }));
 
     const log = readFileSync(env.log, 'utf8');
     assert.match(log, /claude --version\nclaude auth login\n/);
     assert.match(log, /gemini --version\ngemini \n/);
+    assert.match(log, /kimi --version\nkimi login\n/);
     assert.ok(existsSync(join(env.home, '.claude', '.credentials.json')));
     assert.ok(existsSync(join(env.home, '.gemini', 'gemini-credentials.json')));
+    assert.ok(existsSync(join(env.home, '.kimi', 'credentials', 'kimi-code.json')));
     assert.match(output, /claude-cli: authenticated/);
     assert.match(output, /gemini-cli: authenticated/);
+    assert.match(output, /kimi-cli: authenticated/);
   });
 
   it('reports unsupported HTTP login instead of spawning', async () => {

@@ -38,6 +38,22 @@ export const PROVIDERS = {
     freeTier: true,
     note: 'Free tier with rate limits. Get a key at https://console.groq.com/keys',
   },
+  kimi: {
+    name: 'kimi',
+    baseURL: 'https://api.moonshot.ai/v1',
+    apiKeyEnv: 'KIMI_API_KEY',
+    defaultModel: 'kimi-k2.5',
+    freeTier: false,
+    note: 'Moonshot AI Kimi OpenAI-compatible API. Set KIMI_API_KEY or PATINA_API_KEY.',
+  },
+  moonshot: {
+    name: 'moonshot',
+    baseURL: 'https://api.moonshot.ai/v1',
+    apiKeyEnv: 'MOONSHOT_API_KEY',
+    defaultModel: 'kimi-k2.5',
+    freeTier: false,
+    note: 'Moonshot AI Kimi OpenAI-compatible API. Set MOONSHOT_API_KEY or PATINA_API_KEY.',
+  },
   together: {
     name: 'together',
     baseURL: 'https://api.together.xyz/v1',

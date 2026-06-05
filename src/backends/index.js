@@ -2,6 +2,7 @@ import { callLLM } from '../api.js';
 import * as codexCli from './codex-cli.js';
 import * as claudeCli from './claude-cli.js';
 import * as geminiCli from './gemini-cli.js';
+import * as kimiCli from './kimi-cli.js';
 import { inspectHttpApiKeySource } from '../auth.js';
 import { inputError } from '../errors.js';
 import { DEFAULT_BEST_MODELS } from '../model-defaults.js';
@@ -35,6 +36,7 @@ const REGISTRY = {
   'codex-cli': codexCli,
   'claude-cli': claudeCli,
   'gemini-cli': geminiCli,
+  'kimi-cli': kimiCli,
 };
 
 const BACKEND_META = {
@@ -57,6 +59,11 @@ const BACKEND_META = {
     kind: 'local-cli',
     selectWith: '--backend gemini-cli, --model gemini-*',
     defaultModel: DEFAULT_BEST_MODELS.geminiCli,
+  },
+  'kimi-cli': {
+    kind: 'local-cli',
+    selectWith: '--backend kimi-cli, --model kimi-*',
+    defaultModel: DEFAULT_BEST_MODELS.kimiCli,
   },
 };
 
@@ -98,6 +105,9 @@ export function selectBackend({ name, model, modelSource } = {}) {
   }
   if (useModelHeuristic && /^gemini(-|$)/i.test(model)) {
     return { backend: REGISTRY['gemini-cli'], autoSelected: false, reason: 'model heuristic' };
+  }
+  if (useModelHeuristic && /^kimi(-|$)/i.test(model)) {
+    return { backend: REGISTRY['kimi-cli'], autoSelected: false, reason: 'model heuristic' };
   }
 
   // No silent auto-fallback to any CLI backend. Sending arbitrary text to a

@@ -77,6 +77,8 @@ describe('CLI adoption commands', () => {
         GEMINI_API_KEY: undefined,
         GROQ_API_KEY: undefined,
         TOGETHER_API_KEY: undefined,
+        KIMI_API_KEY: undefined,
+        MOONSHOT_API_KEY: undefined,
         PATINA_API_KEY_FILE: keyFile,
       }, async () => {
         const { logs } = await captureConsole(() => main(['doctor', '--json']));
@@ -102,6 +104,8 @@ describe('CLI adoption commands', () => {
       PATINA_API_KEY_FILE: undefined,
       OPENAI_API_KEY: undefined,
       GEMINI_API_KEY: 'gemini-key',
+      KIMI_API_KEY: undefined,
+      MOONSHOT_API_KEY: undefined,
     }, async () => {
       const { logs } = await captureConsole(() => main(['--list-backends']));
       const output = logs.join('\n');
@@ -111,8 +115,10 @@ describe('CLI adoption commands', () => {
       assert.match(output, /default, --backend openai-http, --provider <name>/);
       assert.match(output, /--model codex-\*/);
       assert.match(output, /--model gemini-\*/);
+      assert.match(output, /--model kimi-\*/);
       assert.match(output, /gpt-5\.5/);
       assert.match(output, /gemini-2\.5-pro/);
+      assert.match(output, /kimi-code\/kimi-for-coding/);
       assert.match(output, /PATINA_API_KEY/);
     });
   });
@@ -122,6 +128,8 @@ describe('CLI adoption commands', () => {
       PATINA_API_KEY: undefined,
       PATINA_API_KEY_FILE: undefined,
       GEMINI_API_KEY: undefined,
+      KIMI_API_KEY: undefined,
+      MOONSHOT_API_KEY: undefined,
     }, () => {
       const result = spawnSync(process.execPath, [BIN, '--provider', 'gemini', '--lang', 'en'], {
         cwd: REPO_ROOT,

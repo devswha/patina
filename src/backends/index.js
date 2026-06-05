@@ -9,7 +9,11 @@ import { DEFAULT_BEST_MODELS } from '../model-defaults.js';
 import {
   DEFAULT_BACKEND_TIMEOUT_MS,
   describeBackendError,
+  getBackendSafety,
   isRetryableBackendError,
+  resolveBackendMaxConcurrency,
+  resolveBackendMaxRetries,
+  withBackendConcurrencySlot,
 } from './contract.js';
 
 const openaiHttp = {
@@ -24,11 +28,12 @@ const openaiHttp = {
     model,
     signal,
     timeout = DEFAULT_BACKEND_TIMEOUT_MS,
+    maxRetries,
     temperature,
     seed,
     onResponse,
   }) =>
-    callLLM({ prompt, apiKey, baseURL, model, signal, timeout, temperature, seed, onResponse }),
+    callLLM({ prompt, apiKey, baseURL, model, signal, timeout, maxRetries, temperature, seed, onResponse }),
 };
 
 const REGISTRY = {
@@ -71,11 +76,17 @@ export function listBackends() {
   return Object.keys(REGISTRY).map((key) => {
     const b = REGISTRY[key];
     const meta = BACKEND_META[key] || { kind: 'unknown', selectWith: `--backend ${key}` };
+    const safety = getBackendSafety(key);
     return {
       name: key,
       kind: meta.kind,
       selectWith: meta.selectWith,
       defaultModel: meta.defaultModel || null,
+      safety,
+      maxConcurrency: safety.maxConcurrency,
+      maxRetries: safety.maxRetries,
+      promptMode: safety.promptMode,
+      agentRuntime: safety.agentRuntime,
       available: b.isAvailable(),
       authenticated: b.isAuthenticated(),
       authHint: b.authHint(),
@@ -154,6 +165,8 @@ export async function invokeBackendChain({
   modelSource,
   signal,
   timeout = DEFAULT_BACKEND_TIMEOUT_MS,
+  maxConcurrency,
+  maxRetries,
   temperature,
   seed,
   onResponse,
@@ -170,8 +183,29 @@ export async function invokeBackendChain({
   let lastError = null;
   for (let attemptIndex = 0; attemptIndex < backends.length; attemptIndex++) {
     const backend = backends[attemptIndex];
+    const effectiveMaxConcurrency = resolveBackendMaxConcurrency(backend.name, maxConcurrency);
+    const effectiveMaxRetries = resolveBackendMaxRetries(backend.name, maxRetries);
     try {
-      return await backend.invoke({ prompt, apiKey, baseURL, model, modelSource, signal, timeout, temperature, seed, onResponse, logger });
+      return await withBackendConcurrencySlot({
+        backendName: backend.name,
+        maxConcurrency: effectiveMaxConcurrency,
+        signal,
+        timeout,
+        fn: () => backend.invoke({
+          prompt,
+          apiKey,
+          baseURL,
+          model,
+          modelSource,
+          signal,
+          timeout,
+          maxRetries: effectiveMaxRetries,
+          temperature,
+          seed,
+          onResponse,
+          logger,
+        }),
+      });
     } catch (err) {
       lastError = err;
       const next = backends[attemptIndex + 1];

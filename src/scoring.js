@@ -66,6 +66,7 @@ async function callAndParseJson({
   temperature = 0.1,
   deadline,
   signal,
+  timeout,
   callLLM = /** @type {Function} */ (defaultCallLLM),
   logger = createLogger(),
   now,
@@ -82,6 +83,7 @@ async function callAndParseJson({
       temperature: t,
       deadline,
       signal,
+      timeout,
       now,
       sleep,
     });
@@ -111,6 +113,7 @@ async function callAndParseJson({
  * @param {string} [options.model] Model id.
  * @param {number} [options.deadline] Absolute epoch-millisecond deadline.
  * @param {AbortSignal} [options.signal] External cancellation signal.
+ * @param {number} [options.timeout] Per-attempt backend timeout in milliseconds.
  * @param {Function} [options.callLLM] Injectable LLM implementation.
  * @param {object} [options.logger] patina logger.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
@@ -129,6 +132,7 @@ export async function scoreText({
   model,
   deadline,
   signal,
+  timeout,
   callLLM = defaultCallLLM,
   logger = createLogger(),
   now,
@@ -177,6 +181,7 @@ ${text}
       deadline,
       signal,
       callLLM,
+      timeout,
       logger,
       now,
       sleep,
@@ -400,6 +405,7 @@ export function reconcileScoreOverall({
  * @param {string} [options.model] Model id.
  * @param {number} [options.deadline] Absolute epoch-millisecond deadline.
  * @param {AbortSignal} [options.signal] External cancellation signal.
+ * @param {number} [options.timeout] Per-attempt backend timeout in milliseconds.
  * @param {Function} [options.callLLM] Injectable LLM implementation.
  * @param {object} [options.logger] patina logger.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
@@ -417,6 +423,7 @@ export async function scoreMPS({
   model,
   deadline,
   signal,
+  timeout,
   callLLM = defaultCallLLM,
   logger = createLogger(),
   now,
@@ -461,6 +468,7 @@ ${rewritten}
       model,
       deadline,
       signal,
+      timeout,
       callLLM,
       logger,
       now,
@@ -524,6 +532,7 @@ export function lengthRatioPoints(original, rewritten) {
  * @param {string} [options.model] Model id.
  * @param {number} [options.deadline] Absolute epoch-millisecond deadline.
  * @param {AbortSignal} [options.signal] External cancellation signal.
+ * @param {number} [options.timeout] Per-attempt backend timeout in milliseconds.
  * @param {Function} [options.callLLM] Injectable LLM implementation.
  * @param {object} [options.logger] patina logger.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
@@ -541,6 +550,7 @@ export async function scoreFidelity({
   model,
   deadline,
   signal,
+  timeout,
   callLLM = defaultCallLLM,
   logger = createLogger(),
   now,
@@ -588,6 +598,7 @@ ${rewritten}
       deadline,
       signal,
       callLLM,
+      timeout,
       logger,
       now,
       sleep,

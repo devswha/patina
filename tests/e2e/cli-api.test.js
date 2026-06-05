@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
-import { main } from '../../src/cli.js';
+import { main, resolvePromptMode } from '../../src/cli.js';
 import { fileURLToPath } from 'node:url';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -131,6 +131,13 @@ describe('CLI End-to-End with Mock API', () => {
     const prompt = lastRequestBody.messages[0].content;
     assert.ok(prompt.includes('AI signal words (reference)'));
     assert.ok(!prompt.includes('Follow the 3-Phase pipeline'));
+  });
+
+  it('uses compact prompt mode for local agent CLI backends', () => {
+    assert.strictEqual(resolvePromptMode({ backend: 'claude-cli' }), 'minimal');
+    assert.strictEqual(resolvePromptMode({ backend: 'kimi-cli' }), 'minimal');
+    assert.strictEqual(resolvePromptMode({ backend: 'gemini-cli' }), 'minimal');
+    assert.strictEqual(resolvePromptMode({ backend: 'openai-http', model: 'gpt-5' }), 'strict');
   });
 
   it('should pass correct temperature', async () => {
@@ -462,6 +469,40 @@ describe('CLI End-to-End with Mock API', () => {
   });
 
 
+
+  it('stops batch mode after the configured failure budget', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+    await stopMockServer();
+    await startMockServer('Error occurred', 500);
+
+    const dir = mkdtempSync(join(tmpdir(), 'patina-batch-breaker-'));
+    const first = resolve(dir, 'first.txt');
+    const second = resolve(dir, 'second.txt');
+    const third = resolve(dir, 'third.txt');
+    writeFileSync(first, 'This is the first draft.', 'utf8');
+    writeFileSync(second, 'This is the second draft.', 'utf8');
+    writeFileSync(third, 'This is the third draft.', 'utf8');
+
+    await assert.rejects(
+      () => captureConsole(() => main([
+        '--lang', 'en',
+        '--batch',
+        '--max-retries', '0',
+        '--max-failures', '2',
+        '--api-key-file', mockApiKeyPath,
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        first,
+        second,
+        third,
+      ])),
+      /batch circuit breaker stopped the run/
+    );
+
+    assert.strictEqual(callCount, 2, 'Should stop before the third file');
+    await stopMockServer();
+    await startMockServer('This is the humanized result.');
+  });
   it('should handle API errors gracefully', async () => {
     callCount = 0;
     lastRequestBody = null;

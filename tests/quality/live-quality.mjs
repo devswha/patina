@@ -1,41 +1,55 @@
 #!/usr/bin/env node
 
 /**
- * Opt-in live rewrite quality scaffold.
+ * Opt-in live rewrite quality runner.
  *
  * Default execution never calls a model: it scores fixture inputs and reports a
- * skipped live pass. Set OPENCODE_AVAILABLE=1 to run the OpenCode rewrite path,
- * or pass --candidate-dir with precomputed rewrites for offline metric checks.
+ * skipped live pass. Pass --live or set PATINA_LIVE=1 / PATINA_LIVE_* env vars
+ * to run credentialed OpenAI-compatible rewrites and model-graded checks.
  */
 
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import yaml from 'js-yaml';
 
+import { callLLM as defaultCallLLM } from '../../src/api.js';
+import { providerHttpKeyEnvVars, resolveHttpApiKey } from '../../src/auth.js';
 import { loadConfig, getRepoRoot } from '../../src/config.js';
 import { loadCoreFile, loadPatterns, loadProfile } from '../../src/loader.js';
-import { stripSelfAudit } from '../../src/output.js';
+import { formatOutput } from '../../src/output.js';
 import { buildPrompt } from '../../src/prompt-builder.js';
+import { resolveProviderConfig, selectProvider } from '../../src/providers.js';
+import { scoreFidelity, scoreMPS, scoreText } from '../../src/scoring.js';
 import { scoreText as scoreProseText } from '../../scripts/prose-score.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
-const DEFAULT_FIXTURE_PATH = resolve(REPO_ROOT, 'tests/quality/live-fixtures.jsonl');
-const DEFAULT_OPENCODE_MODEL = 'opencode/hy3-preview-free';
-const REQUIRED_FIXTURE_FIELDS = [
-  'fixture_id',
-  'language',
-  'register',
-  'source_type',
-  'model_family',
-  'prompt_id',
-  'redistribution',
-  'facts',
-  'text',
-];
+const DEFAULT_FIXTURE_DIR = resolve(REPO_ROOT, 'tests/fixtures/live-quality');
+const LEGACY_FIXTURE_PATH = resolve(REPO_ROOT, 'tests/quality/live-fixtures.jsonl');
 
-export function loadLiveFixtures(fixturePath = DEFAULT_FIXTURE_PATH) {
+export const LIVE_QUALITY_SCHEMA_VERSION = 1;
+export const DEFAULT_POLICY = Object.freeze({
+  aiAfterCeiling: 30,
+  mpsFloor: 70,
+  fidelityFloor: 70,
+  requireAiImprovement: true,
+});
+
+const REQUIRED_FIXTURE_FIELDS = ['fixture_id', 'language', 'redistribution', 'text'];
+
+export function loadLiveFixtures(source = DEFAULT_FIXTURE_DIR) {
+  const resolved = resolve(source);
+  if (existsSync(resolved) && statSync(resolved).isDirectory()) {
+    return loadMarkdownFixtureDir(resolved);
+  }
+  if (existsSync(resolved)) {
+    return loadJsonlFixtures(resolved);
+  }
+  return loadJsonlFixtures(LEGACY_FIXTURE_PATH);
+}
+
+function loadJsonlFixtures(fixturePath) {
   const body = readFileSync(fixturePath, 'utf8');
   return body
     .split('\n')
@@ -44,22 +58,65 @@ export function loadLiveFixtures(fixturePath = DEFAULT_FIXTURE_PATH) {
     .map((line, index) => validateFixture(JSON.parse(line), `${fixturePath}:${index + 1}`));
 }
 
+function loadMarkdownFixtureDir(root) {
+  const paths = collectMarkdownFiles(root);
+  if (paths.length === 0) throw new Error(`no live-quality markdown fixtures found in ${root}`);
+  return paths.map((path) => parseMarkdownFixture(path));
+}
+
+function collectMarkdownFiles(root) {
+  const entries = readdirSync(root, { withFileTypes: true });
+  const paths = [];
+  for (const entry of entries) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) paths.push(...collectMarkdownFiles(path));
+    else if (entry.isFile() && extname(entry.name) === '.md') paths.push(path);
+  }
+  return paths.sort();
+}
+
+function parseMarkdownFixture(path) {
+  const raw = readFileSync(path, 'utf8');
+  const match = raw.match(/^---\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
+  if (!match) throw new Error(`${path}: missing YAML frontmatter`);
+  const meta = yaml.load(match[1]) || {};
+  return validateFixture({ ...meta, text: match[2].trim() }, path);
+}
+
 function validateFixture(fixture, source) {
   for (const field of REQUIRED_FIXTURE_FIELDS) {
     if (!(field in fixture)) throw new Error(`missing ${field} in ${source}`);
   }
-  if (!Array.isArray(fixture.facts) || fixture.facts.length === 0) {
-    throw new Error(`facts must be a non-empty array in ${source}`);
-  }
   if (!['en', 'ko', 'zh', 'ja'].includes(fixture.language)) {
     throw new Error(`unsupported language ${fixture.language} in ${source}`);
   }
-  return fixture;
+  const anchors = normalizeStringArray(fixture.anchors ?? fixture.facts, `${source}: anchors`);
+  if (anchors.length === 0) throw new Error(`anchors/facts must be a non-empty array in ${source}`);
+  return {
+    register: 'unspecified',
+    source_type: 'fixture',
+    model_family: 'fixture',
+    prompt_id: 'live-quality-v2',
+    ...fixture,
+    anchors,
+    facts: anchors,
+    expected_focus: normalizeStringArray(fixture.expected_focus, `${source}: expected_focus`, { required: false }),
+  };
+}
+
+function normalizeStringArray(value, source, { required = true } = {}) {
+  if (value === undefined || value === null) {
+    if (required) throw new Error(`${source} must be an array`);
+    return [];
+  }
+  if (!Array.isArray(value)) throw new Error(`${source} must be an array`);
+  return value.map((item) => String(item).trim()).filter(Boolean);
 }
 
 export async function buildPatinaRewritePrompt(fixture, { repoRoot = getRepoRoot() } = {}) {
   const config = loadConfig();
   config.language = fixture.language;
+  if (fixture.profile) config.profile = fixture.profile;
 
   const patterns = loadPatterns(repoRoot, fixture.language);
   const profile = loadProfile(repoRoot, config.profile || 'default');
@@ -76,8 +133,12 @@ export async function buildPatinaRewritePrompt(fixture, { repoRoot = getRepoRoot
   });
 }
 
+export function deliveredRewrite(rawRewrite, { logger = { warn() {} } } = {}) {
+  return formatOutput(String(rawRewrite || ''), 'rewrite', {}, { logger }).trim();
+}
+
 export function evaluateRewriteQuality(fixture, rawRewrite, { repoRoot = REPO_ROOT } = {}) {
-  const rewrite = stripSelfAudit(String(rawRewrite || ''), { logger: { warn() {} } }).trim();
+  const rewrite = deliveredRewrite(rawRewrite);
   const before = scoreProseText(fixture.text, {
     file: `${fixture.fixture_id}.md`,
     lang: fixture.language,
@@ -98,6 +159,7 @@ export function evaluateRewriteQuality(fixture, rawRewrite, { repoRoot = REPO_RO
     fixture_id: fixture.fixture_id,
     language: fixture.language,
     register: fixture.register,
+    mode: 'offline-candidate',
     before_score: round1(before.score),
     after_score: round1(after.score),
     humanization_gain: humanizationGain,
@@ -107,6 +169,94 @@ export function evaluateRewriteQuality(fixture, rawRewrite, { repoRoot = REPO_RO
     preserved_facts: facts.preserved,
     total_facts: facts.total,
   };
+}
+
+export async function evaluateModelGradedRewrite(fixture, rawRewrite, options = {}) {
+  const repoRoot = options.repoRoot || REPO_ROOT;
+  const policy = options.policy || DEFAULT_POLICY;
+  const settings = options.settings || resolveLiveSettings(options);
+  const rewrite = deliveredRewrite(rawRewrite, { logger: options.logger });
+  const config = loadConfig();
+  config.language = fixture.language;
+  if (fixture.profile) config.profile = fixture.profile;
+  const patterns = loadPatterns(repoRoot, fixture.language);
+  const deadline = settings.timeoutMs ? Date.now() + settings.timeoutMs : undefined;
+  const callLLM = createLiveCallLLM(options.callLLM || defaultCallLLM, settings);
+
+  const common = {
+    apiKey: settings.apiKey,
+    baseURL: settings.baseURL,
+    model: settings.model,
+    deadline,
+    callLLM,
+    logger: options.logger,
+  };
+
+  const [beforeScore, afterScore, mpsResult, fidelityResult] = await Promise.all([
+    scoreText({ text: fixture.text, config, patterns, ...common }),
+    scoreText({ text: rewrite, config, patterns, ...common }),
+    scoreMPS({ original: fixture.text, rewritten: rewrite, ...common }),
+    scoreFidelity({ original: fixture.text, rewritten: rewrite, ...common }),
+  ]);
+
+  return modelGradedResult({
+    fixture,
+    beforeScore,
+    afterScore,
+    mpsResult,
+    fidelityResult,
+    policy,
+  });
+}
+
+function modelGradedResult({ fixture, beforeScore, afterScore, mpsResult, fidelityResult, policy }) {
+  const before = numberOrNull(beforeScore?.overall);
+  const after = numberOrNull(afterScore?.overall);
+  const mps = numberOrNull(mpsResult?.mps);
+  const fidelity = numberOrNull(fidelityResult?.fidelity);
+  const errors = [];
+  const violations = [];
+
+  if (before === null || beforeScore?.error) errors.push('before-score-unavailable');
+  if (after === null || afterScore?.error) errors.push('after-score-unavailable');
+  if (mps === null || mpsResult?.error) errors.push('mps-unavailable');
+  if (fidelity === null || fidelityResult?.error) errors.push('fidelity-unavailable');
+
+  if (mps !== null && mps < policy.mpsFloor) violations.push(`mps<${policy.mpsFloor}`);
+  if (fidelity !== null && fidelity < policy.fidelityFloor) violations.push(`fidelity<${policy.fidelityFloor}`);
+  if (after !== null && after > policy.aiAfterCeiling) violations.push(`ai_after>${policy.aiAfterCeiling}`);
+  if (policy.requireAiImprovement && before !== null && after !== null && after >= before) {
+    violations.push('ai_not_improved');
+  }
+
+  const meaningUnsafe = violations.some((item) => item.startsWith('mps<') || item.startsWith('fidelity<'));
+  const status = errors.length > 0 || meaningUnsafe
+    ? 'error'
+    : violations.length > 0
+      ? 'warn'
+      : 'pass';
+
+  return {
+    fixture_id: fixture.fixture_id,
+    language: fixture.language,
+    register: fixture.register,
+    mode: 'live-api',
+    status,
+    before_score: before,
+    after_score: after,
+    ai_delta: before !== null && after !== null ? round1(before - after) : null,
+    mps,
+    fidelity,
+    policy_violations: violations,
+    errors,
+  };
+}
+
+function createLiveCallLLM(callLLM, settings) {
+  return (args) => callLLM({
+    ...args,
+    timeout: settings.timeoutMs,
+  });
 }
 
 export function computeMeaningSafety(fixture, rewrite) {
@@ -123,59 +273,162 @@ export function classifyQuality({ afterScore, meaningSafety, safeGain }) {
 }
 
 export async function runLiveQuality(options = {}) {
+  const report = await runLiveQualityReport(options);
+  return report.results;
+}
+
+export async function runLiveQualityReport(options = {}) {
   const fixtures = selectFixtures(options.fixtures ?? loadLiveFixtures(options.fixturePath), options);
-  const shouldRunLive = options.live ?? (process.env.OPENCODE_AVAILABLE === '1' && !options.dryRun);
+  const policy = { ...DEFAULT_POLICY, ...(options.policy || {}) };
+  const liveRequested = shouldRunLive(options);
+  const settings = resolveLiveSettings(options);
   const candidateDir = options.candidateDir ? resolve(options.candidateDir) : null;
   const results = [];
 
+  if (fixtures.length === 0) throw new Error('no live-quality fixtures selected');
+
   for (const fixture of fixtures) {
     const candidate = candidateDir ? readCandidate(candidateDir, fixture.fixture_id) : null;
-    if (!shouldRunLive && !candidate) {
-      results.push(skippedResult(fixture, 'live rewrite disabled; set OPENCODE_AVAILABLE=1 or pass --candidate-dir'));
+    if (!liveRequested && !candidate) {
+      results.push(skippedResult(fixture, 'live rewrite disabled; pass --live, set PATINA_LIVE=1, or pass --candidate-dir'));
+      continue;
+    }
+    if (liveRequested && !settings.hasApiKey) {
+      results.push(failedResult(fixture, new Error('live rewrite requested but no API key was found')));
       continue;
     }
 
     try {
-      const rawRewrite = candidate ?? runWithOpenCode(
-        await buildPatinaRewritePrompt(fixture),
-        {
-          model: options.model || process.env.OPENCODE_MODEL || DEFAULT_OPENCODE_MODEL,
-          timeoutMs: options.timeoutMs,
-        }
-      );
-      results.push(evaluateRewriteQuality(fixture, rawRewrite, options));
+      const rawRewrite = candidate ?? await runWithApi(fixture, { ...options, settings });
+      const result = liveRequested
+        ? await evaluateModelGradedRewrite(fixture, rawRewrite, { ...options, settings, policy })
+        : evaluateRewriteQuality(fixture, rawRewrite, options);
+      results.push(result);
     } catch (err) {
       results.push(failedResult(fixture, err));
     }
   }
 
-  return results;
+  return buildReport({ results, settings: redactSettings(settings), policy });
 }
 
-export function renderMarkdownReport(results) {
+function shouldRunLive(options = {}) {
+  if (options.dryRun) return false;
+  if (options.live !== undefined) return Boolean(options.live);
+  const env = options.env || process.env;
+  return env.PATINA_LIVE === '1' ||
+    Boolean(env.PATINA_LIVE_PROVIDER || env.PATINA_LIVE_API_KEY || env.PATINA_LIVE_MODEL || env.PATINA_LIVE_API_BASE);
+}
+
+export function resolveLiveSettings(options = {}) {
+  const env = options.env || process.env;
+  const providerName = options.provider ?? env.PATINA_LIVE_PROVIDER ?? env.PATINA_PROVIDER ?? null;
+  const provider = selectProvider(providerName);
+  const explicitApiKey = options.apiKey ?? env.PATINA_LIVE_API_KEY ?? null;
+  const fallbackKey = explicitApiKey ? undefined : resolveOptionalApiKey(provider, env, options.apiKeyFile);
+  const apiKey = explicitApiKey || fallbackKey?.apiKey || null;
+  const apiKeySource = explicitApiKey
+    ? (options.apiKey ? 'option:apiKey' : 'env:PATINA_LIVE_API_KEY')
+    : fallbackKey?.source ?? null;
+  const baseURL = options.baseURL ?? env.PATINA_LIVE_API_BASE ?? env.PATINA_API_BASE;
+  const model = options.model ?? env.PATINA_LIVE_MODEL ?? env.PATINA_MODEL;
+  const resolved = resolveProviderConfig({ provider, apiKey, baseURL, model });
+  const timeoutMs = parsePositiveInt(options.timeoutMs ?? env.PATINA_LIVE_TIMEOUT_MS, 120000);
+
+  return {
+    provider: provider?.name ?? null,
+    baseURL: resolved.baseURL,
+    model: resolved.model,
+    apiKey,
+    hasApiKey: Boolean(apiKey),
+    apiKeySource,
+    baseURLSource: baseURL ? sourceLabel(options.baseURL, env.PATINA_LIVE_API_BASE, 'baseURL') : resolved.baseURLSource,
+    modelSource: model ? sourceLabel(options.model, env.PATINA_LIVE_MODEL, 'model') : resolved.modelSource,
+    timeoutMs,
+  };
+}
+
+function resolveOptionalApiKey(provider, env, apiKeyFile) {
+  try {
+    const envVars = providerHttpKeyEnvVars(provider?.apiKeyEnv);
+    const apiKey = resolveHttpApiKey({ apiKeyFile, env, envVars });
+    if (!apiKey) return null;
+    if (apiKeyFile) return { apiKey, source: 'option:apiKeyFile' };
+    const source = envVars.find((key) => env[key]) || 'env:PATINA_API_KEY';
+    return { apiKey, source: `env:${source}` };
+  } catch (err) {
+    if (apiKeyFile) throw err;
+    return null;
+  }
+}
+
+function sourceLabel(optionValue, liveEnvValue, name) {
+  if (optionValue) return `option:${name}`;
+  if (liveEnvValue) return `env:PATINA_LIVE_${name === 'baseURL' ? 'API_BASE' : 'MODEL'}`;
+  return 'env:PATINA';
+}
+
+function redactSettings(settings) {
+  const { apiKey: _apiKey, ...safe } = settings;
+  return safe;
+}
+
+function buildReport({ results, settings, policy }) {
+  const summary = {
+    total: results.length,
+    pass: results.filter((result) => result.status === 'pass').length,
+    warn: results.filter((result) => result.status === 'warn').length,
+    error: results.filter((result) => result.status === 'error' || result.status === 'fail').length,
+    skipped: results.filter((result) => result.status === 'skipped').length,
+  };
+  return {
+    schema_version: LIVE_QUALITY_SCHEMA_VERSION,
+    settings,
+    policy,
+    summary,
+    results,
+  };
+}
+
+export function renderMarkdownReport(reportOrResults) {
+  const report = Array.isArray(reportOrResults)
+    ? buildReport({ results: reportOrResults, settings: { legacy: true }, policy: DEFAULT_POLICY })
+    : reportOrResults;
   const lines = [
     '# Patina live rewrite quality',
     '',
-    '| status | fixture | lang | before | after | gain | meaning safety | safe gain | facts |',
-    '|---|---|---:|---:|---:|---:|---:|---:|---:|',
+    `schema_version: ${report.schema_version}`,
+    `provider: ${report.settings.provider ?? 'default'}`,
+    `model: ${report.settings.model ?? 'default'}`,
+    `api_key: ${report.settings.hasApiKey ? `present (${report.settings.apiKeySource || 'unknown source'})` : 'missing'}`,
+    `policy: AI-after<=${report.policy.aiAfterCeiling}, MPS>=${report.policy.mpsFloor}, fidelity>=${report.policy.fidelityFloor}`,
+    '',
+    '| status | fixture | lang | mode | before | after | delta | mps | fidelity | notes |',
+    '|---|---|---:|---|---:|---:|---:|---:|---:|---|',
   ];
 
-  for (const result of results) {
+  for (const result of report.results) {
+    const notes = [
+      ...(result.policy_violations || []),
+      ...(result.errors || []),
+      result.reason,
+    ].filter(Boolean).join('; ');
     const cells = [
       result.status,
       result.fixture_id,
       result.language,
+      result.mode || 'offline-candidate',
       formatNumber(result.before_score),
       formatNumber(result.after_score),
-      formatNumber(result.humanization_gain),
-      formatNumber(result.meaning_safety),
-      formatNumber(result.safe_gain),
-      `${result.preserved_facts?.length ?? 0}/${result.total_facts ?? 0}`,
+      formatNumber(result.ai_delta ?? result.humanization_gain),
+      formatNumber(result.mps),
+      formatNumber(result.fidelity ?? result.meaning_safety),
+      notes || '-',
     ];
     lines.push(`| ${cells.join(' | ')} |`);
-    if (result.reason) lines.push(`<!-- ${result.fixture_id}: ${result.reason} -->`);
   }
 
+  lines.push('', `Summary: ${report.summary.pass} pass, ${report.summary.warn} warn, ${report.summary.error} error, ${report.summary.skipped} skipped.`);
   return `${lines.join('\n')}\n`;
 }
 
@@ -185,11 +438,16 @@ export function parseArgs(argv = process.argv.slice(2)) {
     const arg = argv[i];
     if (arg === '--json') options.json = true;
     else if (arg === '--dry-run') options.dryRun = true;
+    else if (arg === '--live') options.live = true;
     else if (arg === '--fixtures') options.fixturePath = resolve(argv[++i]);
     else if (arg === '--candidate-dir') options.candidateDir = argv[++i];
     else if (arg === '--language') options.language = argv[++i];
     else if (arg === '--limit') options.limit = Number(argv[++i]);
     else if (arg === '--model') options.model = argv[++i];
+    else if (arg === '--provider') options.provider = argv[++i];
+    else if (arg === '--base-url') options.baseURL = argv[++i];
+    else if (arg === '--api-key-file') options.apiKeyFile = argv[++i];
+    else if (arg === '--timeout-ms') options.timeoutMs = Number(argv[++i]);
     else if (arg === '--help' || arg === '-h') options.help = true;
     else throw new Error(`unknown argument: ${arg}`);
   }
@@ -203,11 +461,24 @@ export async function main(argv = process.argv.slice(2)) {
     return;
   }
 
-  const results = await runLiveQuality(options);
-  if (options.json) console.log(JSON.stringify({ results }, null, 2));
-  else process.stdout.write(renderMarkdownReport(results));
+  const report = await runLiveQualityReport(options);
+  if (options.json) console.log(JSON.stringify(report, null, 2));
+  else process.stdout.write(renderMarkdownReport(report));
 
-  if (results.some((result) => result.status === 'fail')) process.exitCode = 1;
+  if (report.summary.error > 0) process.exitCode = 1;
+}
+
+async function runWithApi(fixture, options = {}) {
+  const prompt = await buildPatinaRewritePrompt(fixture, options);
+  const settings = options.settings || resolveLiveSettings(options);
+  const callLLM = createLiveCallLLM(options.callLLM || defaultCallLLM, settings);
+  return callLLM({
+    prompt,
+    apiKey: settings.apiKey,
+    baseURL: settings.baseURL,
+    model: settings.model,
+    temperature: 0.2,
+  });
 }
 
 function selectFixtures(fixtures, { language, limit } = {}) {
@@ -217,20 +488,10 @@ function selectFixtures(fixtures, { language, limit } = {}) {
   return selected;
 }
 
-function runWithOpenCode(prompt, { model = DEFAULT_OPENCODE_MODEL, timeoutMs = 120000 } = {}) {
-  return execFileSync('opencode', ['run', '-m', model, '--pure', prompt], {
-    encoding: 'utf8',
-    timeout: timeoutMs,
-    cwd: REPO_ROOT,
-  });
-}
-
 function readCandidate(candidateDir, fixtureId) {
-  for (const ext of ['.txt', '.md']) {
-    const path = resolve(candidateDir, `${fixtureId}${ext}`);
-    if (existsSync(path)) return readFileSync(path, 'utf8');
-  }
-  return null;
+  const path = resolve(candidateDir, `${fixtureId}.md`);
+  if (!existsSync(path)) throw new Error(`missing candidate rewrite: ${path}`);
+  return readFileSync(path, 'utf8');
 }
 
 function skippedResult(fixture, reason) {
@@ -243,6 +504,7 @@ function skippedResult(fixture, reason) {
     fixture_id: fixture.fixture_id,
     language: fixture.language,
     register: fixture.register,
+    mode: 'skipped',
     before_score: round1(before.score),
     after_score: null,
     humanization_gain: null,
@@ -250,8 +512,6 @@ function skippedResult(fixture, reason) {
     safe_gain: null,
     status: 'skipped',
     reason,
-    preserved_facts: [],
-    total_facts: fixture.facts.length,
   };
 }
 
@@ -260,54 +520,77 @@ function failedResult(fixture, err) {
     fixture_id: fixture.fixture_id,
     language: fixture.language,
     register: fixture.register,
+    mode: 'live-api',
     before_score: null,
     after_score: null,
-    humanization_gain: null,
-    meaning_safety: null,
-    safe_gain: null,
-    status: 'fail',
-    reason: err?.message || 'live rewrite failed',
-    preserved_facts: [],
-    total_facts: fixture.facts.length,
+    ai_delta: null,
+    mps: null,
+    fidelity: null,
+    status: 'error',
+    errors: [err.message],
   };
 }
 
-function preservedFacts(facts, text, language = 'en') {
-  const haystack = normalizeForMatch(text, language);
-  const preserved = facts.filter((fact) => haystack.includes(normalizeForMatch(fact, language)));
+function preservedFacts(facts, rewrite, language = 'en') {
+  const lowerRewrite = language === 'en' ? rewrite.toLowerCase() : rewrite;
+  const preserved = facts.filter((fact) => {
+    const needle = language === 'en' ? String(fact).toLowerCase() : String(fact);
+    return lowerRewrite.includes(needle);
+  });
   return { preserved, total: facts.length };
 }
 
-function normalizeForMatch(value, language) {
-  const normalized = String(value || '').normalize('NFC');
-  return language === 'en' ? normalized.toLowerCase() : normalized;
-}
-
 function lengthSafetyScore(original, rewrite) {
-  const originalLength = String(original || '').trim().length;
-  const rewriteLength = String(rewrite || '').trim().length;
-  if (!originalLength || !rewriteLength) return 0;
-  const ratio = rewriteLength / originalLength;
-  if (ratio >= 0.5 && ratio <= 1.5) return 100;
-  if (ratio < 0.5) return (ratio / 0.5) * 100;
-  return (1.5 / ratio) * 100;
+  if (!original || !rewrite) return 0;
+  const ratio = rewrite.length / original.length;
+  if (ratio >= 0.7 && ratio <= 1.3) return 100;
+  if (ratio >= 0.5 && ratio <= 1.5) return 80;
+  if (ratio >= 0.3 && ratio <= 2.0) return 60;
+  return 30;
 }
 
-function formatNumber(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? value.toFixed(1) : '—';
+function parsePositiveInt(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 }
 
-function round1(value) {
-  return Math.round(value * 10) / 10;
+function numberOrNull(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? round1(n) : null;
+}
+
+function round1(n) {
+  return Math.round(Number(n) * 10) / 10;
+}
+
+function formatNumber(n) {
+  return Number.isFinite(n) ? Number(n).toFixed(1) : '-';
 }
 
 function helpText() {
-  return `Usage: node tests/quality/live-quality.mjs [options]\n\nOptions:\n  --dry-run              Force no live model call\n  --json                 Print JSON instead of markdown\n  --fixtures <path>      JSONL fixture file\n  --candidate-dir <dir>  Score precomputed rewrites named <fixture_id>.txt|.md\n  --language <lang>      Filter fixtures by en|ko|zh|ja\n  --limit <n>            Limit selected fixtures\n  --model <provider/id>  Override OPENCODE_MODEL\n\nDefault run skips live rewrite. Set OPENCODE_AVAILABLE=1 to call opencode.\n`;
+  return `Usage: npm run quality:live -- [options]
+
+Runs the deliberate live rewrite quality probe. By default this does not call a model; pass --live or set PATINA_LIVE=1 to use an OpenAI-compatible provider.
+
+Options:
+  --live                  Run credentialed API rewrites and model-graded checks
+  --provider <name>       Provider preset (openai, gemini, groq, kimi, moonshot, together)
+  --model <id>            Model id (or PATINA_LIVE_MODEL)
+  --base-url <url>        OpenAI-compatible base URL (or PATINA_LIVE_API_BASE)
+  --api-key-file <path>   Read API key from a file
+  --timeout-ms <ms>       Per fixture live timeout budget (default: 120000)
+  --fixtures <path>       Fixture directory or legacy JSONL file
+  --candidate-dir <dir>   Score precomputed rewrites named <fixture_id>.md
+  --language <lang>       Filter fixtures by language
+  --limit <n>             Limit selected fixtures
+  --json                  Emit structured JSON report
+  --dry-run               Force skip mode even if PATINA_LIVE_* is set
+`;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((err) => {
-    console.error(err.stack || err.message);
-    process.exit(1);
+    console.error(err.message);
+    process.exitCode = 1;
   });
 }

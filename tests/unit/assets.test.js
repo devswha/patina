@@ -26,9 +26,9 @@ test('brand and social SVGs keep accessible image metadata', () => {
   }
 });
 
-test('README uses the canonical logo asset, not a duplicate README-only SVG', () => {
+test('README uses the canonical transparent mark asset, not a duplicate README-only SVG', () => {
   const readme = readFileSync(resolve(REPO_ROOT, 'README.md'), 'utf8');
-  assert.match(readme, /assets\/brand\/patina-logo\.svg/);
+  assert.match(readme, /assets\/brand\/patina-mark\.svg/);
   assert.doesNotMatch(readme, /patina-readme-logo\.svg/);
 });
 
@@ -47,9 +47,15 @@ function extractLocalImageRefs(markdown) {
 
 function extractDemoHero(file) {
   const markdown = readFileSync(resolve(REPO_ROOT, file), 'utf8');
-  const match = markdown.match(/<img\b[^>]*\bsrc="(assets\/demo\/[^"]+)"[^>]*\balt="([^"]+)"/);
+  const match = markdown.match(/<img\b[^>]*\bsrc="([^"]*assets\/demo\/[^"]+)"[^>]*\balt="([^"]+)"/);
   assert.ok(match, `${file}: missing demo hero image`);
-  return { src: match[1], alt: match[2] };
+  return { src: match[1], localSrc: localizeDemoSrc(match[1]), alt: match[2] };
+}
+
+function localizeDemoSrc(src) {
+  const match = src.match(/assets\/demo\/[^"?]+/);
+  assert.ok(match, `unexpected demo hero path: ${src}`);
+  return match[0];
 }
 
 test('localized READMEs point at language-suffixed demo GIFs that exist', () => {
@@ -61,10 +67,15 @@ test('localized READMEs point at language-suffixed demo GIFs that exist', () => 
   };
 
   for (const file of README_FILES) {
-    const { src } = extractDemoHero(file);
-    assert.equal(src, expected[file], `${file}: unexpected demo hero`);
-    assert.match(src, /assets\/demo\/patina-demo-(?:en|ko|zh|ja)\.gif$/);
-    assert.ok(existsSync(resolve(REPO_ROOT, src)), `${file}: missing ${src}`);
+    const { src, localSrc } = extractDemoHero(file);
+    if (file === 'README.md') {
+      assert.equal(src, `https://raw.githubusercontent.com/devswha/patina/main/${expected[file]}`);
+    } else {
+      assert.equal(src, expected[file], `${file}: unexpected demo hero`);
+    }
+    assert.equal(localSrc, expected[file], `${file}: unexpected demo hero`);
+    assert.match(localSrc, /assets\/demo\/patina-demo-(?:en|ko|zh|ja)\.gif$/);
+    assert.ok(existsSync(resolve(REPO_ROOT, localSrc)), `${file}: missing ${localSrc}`);
   }
 });
 
@@ -75,8 +86,8 @@ test('English demo hero copy does not describe a Korean recording', () => {
   assert.doesNotMatch(english.alt, /[\u3130-\u318f\uac00-\ud7af]/u);
 
   for (const file of ['README_ZH.md', 'README_JA.md']) {
-    const { src, alt } = extractDemoHero(file);
-    assert.equal(src, 'assets/demo/patina-demo-en.gif');
+    const { localSrc, alt } = extractDemoHero(file);
+    assert.equal(localSrc, 'assets/demo/patina-demo-en.gif');
     assert.doesNotMatch(alt, koreanTerms, `${file}: fallback alt should say English, not Korean`);
   }
 });

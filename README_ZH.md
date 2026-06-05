@@ -24,13 +24,13 @@ patina 会在中文、韩文、英文和日文里找出 AI 味比较重的写作
 
 ## 效果展示
 
-**修改前** *(AI 风格)*：
-> 咖啡已成为**深刻改变**全球社交互动的**核心文化现象**。这种备受喜爱的饮品充当了社区建设的催化剂，促进了有意义的联结，并推动了跨文化对话。
+**修改前** *(AI 风格；当前 GIF 使用的英文 fixture)*：
+> The newly released Notion template pack is an **innovative solution** designed to **transform productivity** for modern teams. It offers 30 templates optimized for diverse workflows, with a user-friendly design that enables anyone to leverage them effortlessly. This product introduces a **new paradigm** for maximizing work efficiency.
 
-**修改后** *(`/patina --lang zh` 处理 — 同样内容，仅去除 AI 包装)*：
-> 咖啡在不知不觉中改变了人们见面的方式。和人坐下来聊久了，关系自然就有了，哪怕文化背景完全不同也能聊到一起。
+**修改后** *(`/patina --lang en --tone marketing` — 同样事实，仅去除 AI 包装)*：
+> If Notion still starts as a blank page for your team, open this pack first. It includes 30 templates for common workflows. Duplicate one, adjust the fields you need, and use it for a team project or your own planning without starting from scratch.
 
-> **MPS = 100** · 社交变革 ✓ · 社区建设 ✓ · 有意义的联结 ✓ · 跨文化对话 ✓
+> **Score = 0.0%** · 30 个模板 ✓ · 工作流适配 ✓ · 复制后调整使用 ✓
 
 **更多示例片段**
 

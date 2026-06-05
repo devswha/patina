@@ -6,6 +6,7 @@ Static, audit-only web playground for `patina.vibetip.help`.
 - No runtime server.
 - No LLM rewrite or key proxying.
 - Deterministic browser-side scoring for `ko`, `en`, `zh`, and `ja`.
+- Vercel Web Analytics page-view telemetry for traffic counts; pasted text is not sent.
 
 ## Local preview
 
@@ -41,6 +42,10 @@ patina.vibetip.help
 ```
 
 DNS should point at Vercel, e.g. `A patina -> 76.76.21.21` or the CNAME Vercel shows for the project.
+
+Web Analytics is enabled with `playground/analytics.js` plus Vercel's same-origin
+`/_vercel/insights/script.js`, so the CSP keeps `script-src 'self'` and does not
+need inline-script relaxation.
 
 ## Verification
 

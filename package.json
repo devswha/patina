@@ -110,6 +110,7 @@
     "scripts/generate-playground-data.mjs",
     "tests/quality/live-quality.mjs",
     "tests/quality/live-fixtures.jsonl",
+    "tests/fixtures/live-quality/",
     "scripts/rebaseline-summary.mjs",
     "scripts/adversarial-mps-report.mjs",
     "scripts/rebaseline-intake.mjs",

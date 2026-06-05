@@ -560,6 +560,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 这是一个～的事实、可以被认为是、作为一种～的方式、被～所～、对于～来说、基于～的原因、关于～的问题、通过～来实现
 - Fire condition: 同一段落中出现2个以上翻译腔表达。单次使用可容忍——正常中文偶尔也会出现。
+- Context guard: issue #352 — when translationese appears around em dash/colon/slash/comma splice punctuation, do not replace only the punctuation; rebuild the clause relation in natural Chinese, e.g. `无 TUI 设置` → `不用 TUI 就完成全自动安装...`.
 - Example files: [failure](../examples/zh-26-failure-01.md) · [success](../examples/zh-26-success-01.md)
 
 Example before:

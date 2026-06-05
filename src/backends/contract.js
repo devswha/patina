@@ -1,6 +1,69 @@
 import { spawn } from 'node:child_process';
+import { mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-export const DEFAULT_BACKEND_TIMEOUT_MS = 180_000;
+export const DEFAULT_BACKEND_TIMEOUT_MS = 600_000;
+export const DEFAULT_HTTP_MAX_RETRIES = 2;
+export const PROMPT_SIZE_WARNING_CHARS = 20_000;
+
+export const BACKEND_SAFETY_DEFAULTS = Object.freeze({
+  'openai-http': {
+    maxConcurrency: 4,
+    maxRetries: DEFAULT_HTTP_MAX_RETRIES,
+    promptMode: 'strict',
+    agentRuntime: false,
+  },
+  'codex-cli': {
+    maxConcurrency: 2,
+    maxRetries: 0,
+    promptMode: 'minimal',
+    agentRuntime: true,
+  },
+  'claude-cli': {
+    maxConcurrency: 1,
+    maxRetries: 0,
+    promptMode: 'minimal',
+    agentRuntime: true,
+  },
+  'gemini-cli': {
+    maxConcurrency: 2,
+    maxRetries: 0,
+    promptMode: 'minimal',
+    agentRuntime: true,
+  },
+  'kimi-cli': {
+    maxConcurrency: 1,
+    maxRetries: 0,
+    promptMode: 'minimal',
+    agentRuntime: true,
+  },
+});
+
+const UNKNOWN_BACKEND_SAFETY = Object.freeze({
+  maxConcurrency: Infinity,
+  maxRetries: 0,
+  promptMode: 'strict',
+  agentRuntime: false,
+});
+
+export function getBackendSafety(backendName) {
+  return BACKEND_SAFETY_DEFAULTS[backendName] || UNKNOWN_BACKEND_SAFETY;
+}
+
+export function resolveBackendMaxConcurrency(backendName, override) {
+  const n = override === undefined || override === null
+    ? getBackendSafety(backendName).maxConcurrency
+    : Number(override);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : Infinity;
+}
+
+export function resolveBackendMaxRetries(backendName, override) {
+  const n = override === undefined || override === null
+    ? getBackendSafety(backendName).maxRetries
+    : Number(override);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+}
 
 export function isRetryableBackendError(err, { attemptIndex = 0, signal } = {}) {
   if (signal?.aborted) return false;
@@ -12,6 +75,8 @@ export function isRetryableBackendError(err, { attemptIndex = 0, signal } = {}) 
 export function describeBackendError(err) {
   const status = extractStatus(err);
   if (status) return `HTTP ${status}`;
+  const exitCode = extractExitCode(err);
+  if (exitCode) return `exit code ${exitCode}`;
   return err?.name || 'error';
 }
 
@@ -20,6 +85,130 @@ function extractStatus(err) {
   if (Number.isFinite(direct)) return direct;
   const match = String(err?.message || '').match(/\bHTTP\s+(429|503)\b/);
   return match ? Number(match[1]) : null;
+}
+
+function extractExitCode(err) {
+  const direct = Number(err?.code);
+  if (Number.isFinite(direct)) return direct;
+  const match = String(err?.message || '').match(/\bexited with code\s+(\d+)\b/i);
+  return match ? Number(match[1]) : null;
+}
+
+export async function withBackendConcurrencySlot({
+  backendName,
+  maxConcurrency,
+  signal,
+  timeout = DEFAULT_BACKEND_TIMEOUT_MS,
+  pollMs = 250,
+  staleMs = Math.max(timeout * 2, 30 * 60_000),
+  fn,
+} = {}) {
+  if (typeof fn !== 'function') {
+    throw new Error('backend concurrency slot requires fn');
+  }
+  if (!Number.isFinite(maxConcurrency)) {
+    return fn();
+  }
+
+  const slot = await acquireBackendSlot({
+    backendName,
+    maxConcurrency,
+    signal,
+    timeout,
+    pollMs,
+    staleMs,
+  });
+
+  try {
+    return await fn();
+  } finally {
+    releaseBackendSlot(slot);
+  }
+}
+
+async function acquireBackendSlot({
+  backendName,
+  maxConcurrency,
+  signal,
+  timeout,
+  pollMs,
+  staleMs,
+}) {
+  throwIfAborted(signal, `${backendName || 'backend'}: aborted while waiting for concurrency slot`);
+  const startedAt = Date.now();
+  const root = join(tmpdir(), 'patina-backend-slots', safePathSegment(backendName || 'backend'));
+  mkdirSync(root, { recursive: true });
+
+  for (;;) {
+    for (let index = 0; index < maxConcurrency; index++) {
+      const slot = join(root, `slot-${index}`);
+      cleanupStaleSlot(slot, staleMs);
+      try {
+        mkdirSync(slot);
+        writeFileSync(join(slot, 'owner.json'), JSON.stringify({
+          pid: process.pid,
+          backendName,
+          createdAt: new Date().toISOString(),
+        }), 'utf8');
+        return slot;
+      } catch (err) {
+        if (err?.code !== 'EEXIST') throw err;
+      }
+    }
+
+    throwIfAborted(signal, `${backendName || 'backend'}: aborted while waiting for concurrency slot`);
+    if (Date.now() - startedAt >= timeout) {
+      throw new Error(`${backendName || 'backend'}: timed out waiting for concurrency slot (cap ${maxConcurrency})`);
+    }
+    await sleepWithAbort(Math.min(pollMs, timeout), signal, backendName);
+  }
+}
+
+function cleanupStaleSlot(slot, staleMs) {
+  try {
+    const ageMs = Date.now() - statSync(slot).mtimeMs;
+    if (ageMs > staleMs) rmSync(slot, { recursive: true, force: true });
+  } catch {}
+}
+
+function releaseBackendSlot(slot) {
+  try {
+    rmSync(slot, { recursive: true, force: true });
+  } catch {}
+}
+
+function sleepWithAbort(ms, signal, backendName) {
+  if (ms <= 0) return Promise.resolve();
+  if (!signal) return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      cleanup();
+      reject(abortError(`${backendName || 'backend'}: aborted while waiting for concurrency slot`));
+    };
+    const cleanup = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+function throwIfAborted(signal, message) {
+  if (signal?.aborted) throw abortError(message);
+}
+
+function abortError(message) {
+  const err = new Error(message);
+  err.name = 'AbortError';
+  return err;
+}
+
+function safePathSegment(value) {
+  return String(value).replace(/[^a-z0-9._-]+/gi, '_');
 }
 
 export function runInteractiveCommand({

@@ -69,11 +69,53 @@ patina --backend claude-cli,codex-cli --lang en draft.md
 ```
 
 All backends share the same invocation contract:
-`invoke({ prompt, model, modelSource, signal, timeout }): Promise<string>`.
+`invoke({ prompt, model, modelSource, signal, timeout, maxRetries }): Promise<string>`.
 Local CLI backends honor `AbortSignal` by killing their child process. When no
 explicit model is set, local backends pass the strongest documented default to
 their CLI (`gpt-5.5`, `claude-sonnet-4-6`, `gemini-2.5-pro`, or
 `kimi-code/kimi-for-coding`); the HTTP backend bridges the same signal into
 fetch.
+
+## Batch safety controls
+
+Batch runs print a preflight safety line before the first request: file count,
+backend chain, prompt mode, backend concurrency cap, retry budget, timeout,
+worst-case request count, and largest/average prompt size.
+
+Defaults are intentionally conservative:
+
+| Backend | Prompt mode | Max concurrency | Max retries |
+|---|---|---:|---:|
+| `openai-http` | strict | 4 | 2 |
+| `codex-cli` | minimal | 2 | 0 |
+| `claude-cli` | minimal | 1 | 0 |
+| `gemini-cli` | minimal | 2 | 0 |
+| `kimi-cli` | minimal | 1 | 0 |
+
+Local CLIs are agent runtimes, not stateless completion APIs. For large rewrite
+batches, prefer an OpenAI-compatible HTTP provider. Override the guardrails only
+when you have measured the backend:
+
+```bash
+patina --batch --backend openai-http --max-concurrency 4 --max-retries 2 docs/*.md
+patina --batch --backend kimi-cli --max-concurrency 1 --max-retries 0 docs/*.md
+```
+
+Circuit breakers stop batch mode after repeated failure instead of burning quota:
+
+```bash
+patina --batch --max-failures 5 --max-failure-rate 0.25 --stop-on-retryable-storm docs/*.md
+patina --batch --timeout-ms 600000 docs/*.md
+```
+
+`--max-failure-rate` accepts either a ratio (`0.25`) or a percent (`25`). By
+default, batch mode stops after a small failure budget, after a 25% failure rate
+once enough files have run, or after repeated retryable storms such as HTTP 429,
+timeouts, empty local-CLI responses, or repeated Kimi/Claude process exits.
+
+MDX/frontmatter note: patina does not parse MDX or rewrite YAML frontmatter
+schemas. For `.mdx` batches, run your site's MDX/build validator after patina
+and keep project-specific guards for frontmatter quoting, trailing model footers,
+and JSX hazards such as malformed `<digit` fragments.
 
 See [EXIT-CODES.md](EXIT-CODES.md) for the full process contract.

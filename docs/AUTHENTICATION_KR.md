@@ -50,7 +50,7 @@ patina --model codex --lang ko input.txt   # codex-cli로 라우팅하고 gpt-5.
 
 ## claude-cli backend
 
-로컬 [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p`에 patina 프롬프트를 stdin으로 넘겨 실행합니다. Claude 구독이 있으면 추가 API 키 없이 쓸 수 있습니다. 기본 모델은 `claude-sonnet-4-6`입니다.
+로컬 [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p`에 patina 프롬프트를 stdin으로 넘겨 실행합니다. Claude 구독이 있으면 추가 API 키 없이 쓸 수 있습니다. Claude Code는 agent runtime이므로 batch 모드에서는 보수적으로 다룹니다: compact prompt mode, 기본 동시성 `1`, 기본 retry `0`. 기본 모델은 `claude-sonnet-4-6`이지만, Claude Code 자체의 모델/세션 정책은 patina가 완전히 통제하지 못할 수 있습니다.
 
 ```bash
 claude auth login                          # one-time interactive OAuth
@@ -75,7 +75,7 @@ patina --model gemini-3-flash-preview --lang ko input.txt   # auto-routes
 
 ## kimi-cli backend
 
-로컬 [`kimi`](https://moonshotai.github.io/kimi-cli/)를 print mode로 실행하고 patina 프롬프트를 stdin으로 넘깁니다. Kimi Code CLI 브라우저 로그인이나 `KIMI_API_KEY`, `MOONSHOT_API_KEY` 중 하나로 인증할 수 있습니다. 로컬 CLI 기본 모델은 `kimi-code/kimi-for-coding`입니다.
+로컬 [`kimi`](https://moonshotai.github.io/kimi-cli/)를 print mode로 실행하고 patina 프롬프트를 stdin으로 넘깁니다. Kimi Code CLI 브라우저 로그인이나 `KIMI_API_KEY`, `MOONSHOT_API_KEY` 중 하나로 인증할 수 있습니다. Kimi Code는 agent runtime이므로 batch 모드에서는 보수적으로 다룹니다: compact prompt mode, 기본 동시성 `1`, 기본 retry `0`. 로컬 CLI 기본 모델은 `kimi-code/kimi-for-coding`이며, CLI 표시 이름은 Moonshot HTTP 모델 ID와 다를 수 있습니다.
 
 ```bash
 kimi login                                  # one-time browser OAuth, OR
@@ -94,6 +94,12 @@ patina auth login codex-cli --yes
 참고: patina는 사용자 텍스트 안의 prompt injection 영향을 줄이려고 새 임시 디렉터리에서 프롬프트를 실행하고 `--skip-trust`를 함께 넘깁니다. gemini는 시작이 느린 편이라 기본 timeout도 다른 CLI보다 더 길게 잡혀 있습니다.
 
 > **지원 범위:** `codex-cli`, `claude-cli`, `gemini-cli`, `kimi-cli`는 로컬 CLI 로그인만 되어 있으면 `PATINA_API_KEY` 없이 rewrite 백엔드로 쓸 수 있습니다. 반면 API 기반 score/audit 경로는 계속 설정된 HTTP/evaluator 키를 사용합니다.
+
+대량 rewrite batch는 가능한 한 로컬 agent CLI보다 `openai-http` 같은 stateless
+OpenAI-compatible HTTP provider를 쓰세요. Batch 모드는 `--timeout-ms`,
+`--max-concurrency`, `--max-retries`, `--max-failures`,
+`--max-failure-rate`, `--stop-on-retryable-storm`을 제공합니다. 자세한 내용은
+[CLI.md](CLI.md#batch-safety-controls)를 보세요.
 
 ## HTTP provider examples
 

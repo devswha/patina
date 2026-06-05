@@ -18,6 +18,13 @@ import { runDoctor } from './commands/doctor.js';
 import { PatinaCliError, inputError, runtimeError, renderCliError, getExitCode } from './errors.js';
 import { providerHttpKeyEnvVars, resolveHttpApiKey } from './auth.js';
 import { createLogger } from './logger.js';
+import {
+  DEFAULT_BACKEND_TIMEOUT_MS,
+  PROMPT_SIZE_WARNING_CHARS,
+  getBackendSafety,
+  resolveBackendMaxConcurrency,
+  resolveBackendMaxRetries,
+} from './backends/contract.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, basename, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -153,143 +160,182 @@ export async function main(args) {
   }
 
   const inputTexts = await loadInputs(parsed, logger);
+  const timeoutMs = parsed.timeoutMs ?? DEFAULT_BACKEND_TIMEOUT_MS;
+  const backendSelection = parsed.ouroboros
+    ? null
+    : selectBackendChain({
+      name: parsed.backend ?? config.backend ?? (resolved.baseURLSource !== 'default' ? 'openai-http' : undefined),
+      model: resolved.model,
+      modelSource: resolved.modelSource,
+    });
+  const backends = backendSelection?.backends || [];
+  const backend = backends[0] || null;
+
+  if (backendSelection) {
+    if (backendSelection.autoSelected) {
+      logger.info('backend.selected', {
+        message: `[patina] Using ${backend.name} backend (${backendSelection.reason}). Run \`patina auth status\` for details.`,
+      });
+    }
+    if (backends.length > 1) {
+      logger.info('backend.chain', {
+        message: `[patina] Backend fallback chain: ${backends.map((b) => b.name).join(' → ')}`,
+      });
+    }
+    if (backend.name === 'openai-http' && !resolved.apiKey) {
+      const msg = ['No API key found. Set PATINA_API_KEY, PATINA_API_KEY_FILE, OPENAI_API_KEY, or use --api-key-file.'];
+      if (provider) {
+        msg.push(`(--provider ${provider.name} expects ${provider.apiKeyEnv} or PATINA_API_KEY.)`);
+      }
+      const codex = listBackends().find((b) => b.name === 'codex-cli');
+      if (codex && codex.available && codex.authenticated) {
+        msg.push('Or pass `--backend codex-cli` to use the codex-cli backend (no key needed).');
+      } else if (codex && codex.available && !codex.authenticated) {
+        msg.push('Or run `codex login`, then pass `--backend codex-cli`.');
+      } else if (codex && !codex.available) {
+        msg.push('Or install `codex` from https://github.com/openai/codex and pass `--backend codex-cli`.');
+      }
+      throw runtimeError(
+        'no API key found',
+        msg[0],
+        msg.slice(1).join(' ') || 'Set PATINA_API_KEY or pass --backend codex-cli after logging in.'
+      );
+    }
+  }
+
+  const promptMode = backendSelection
+    ? resolvePromptMode({ backend: backend.name, model: resolved.model })
+    : 'strict';
+  const jobs = inputTexts.map(({ path, text }) => ({
+    path,
+    text,
+    prompt: parsed.ouroboros ? null : buildPrompt({
+      config,
+      patterns,
+      profile: profile.body ? profile : null,
+      voice: voice.body ? voice : null,
+      voiceSample,
+      scoring: scoring.body ? scoring : null,
+      text,
+      mode,
+      tone: toneResolution,
+      promptMode,
+    }),
+  }));
+
+  if (backendSelection) {
+    logBatchSafetyPlan({
+      jobs,
+      backends,
+      parsed,
+      promptMode,
+      timeoutMs,
+      logger,
+    });
+  }
+
   const cancellation = createCancellationController({ logger });
+  const batchState = createBatchCircuitBreaker({ parsed, total: jobs.length });
 
   cancellation.install();
   try {
-    for (const { path, text } of inputTexts) {
-      cancellation.throwIfCanceled();
-      const prompt = buildPrompt({
-        config,
-        patterns,
-        profile: profile.body ? profile : null,
-        voice: voice.body ? voice : null,
-        voiceSample,
-        scoring: scoring.body ? scoring : null,
-        text,
-        mode,
-        tone: toneResolution,
-        promptMode: resolvePromptMode({ backend: parsed.backend ?? config.backend, model: resolved.model }),
-      });
+    for (const { path, text, prompt } of jobs) {
+      try {
+        cancellation.throwIfCanceled();
+        let result;
 
-      let result;
-
-      if (parsed.ouroboros) {
-        result = await runOuroboros({
-          config,
-          patterns,
-          profile: profile.body ? profile : null,
-          voice: voice.body ? voice : null,
-          voiceSample,
-          scoring: scoring.body ? scoring : null,
-          text,
-          apiKey: resolved.apiKey,
-          baseURL: resolved.baseURL,
-          model: resolved.model,
-          signal: cancellation.signal,
-          logger,
-        });
-      } else {
-        const { backends, autoSelected, reason } = selectBackendChain({
-          name: parsed.backend ?? config.backend ?? (resolved.baseURLSource !== 'default' ? 'openai-http' : undefined),
-          model: resolved.model,
-          modelSource: resolved.modelSource,
-        });
-        const backend = backends[0];
-
-        if (autoSelected) {
-          logger.info('backend.selected', {
-            message: `[patina] Using ${backend.name} backend (${reason}). Run \`patina auth status\` for details.`,
+        if (parsed.ouroboros) {
+          result = await runOuroboros({
+            config,
+            patterns,
+            profile: profile.body ? profile : null,
+            voice: voice.body ? voice : null,
+            voiceSample,
+            scoring: scoring.body ? scoring : null,
+            text,
+            apiKey: resolved.apiKey,
+            baseURL: resolved.baseURL,
+            model: resolved.model,
+            timeout: timeoutMs,
+            signal: cancellation.signal,
+            logger,
+          });
+        } else {
+          result = await invokeBackendChain({
+            backends,
+            prompt,
+            apiKey: resolved.apiKey,
+            baseURL: resolved.baseURL,
+            model: resolved.model,
+            modelSource: resolved.modelSource,
+            signal: cancellation.signal,
+            timeout: timeoutMs,
+            maxConcurrency: parsed.maxConcurrency,
+            maxRetries: parsed.maxRetries,
+            logger,
           });
         }
-        if (backends.length > 1) {
-          logger.info('backend.chain', {
-            message: `[patina] Backend fallback chain: ${backends.map((b) => b.name).join(' → ')}`,
+        cancellation.throwIfCanceled();
+
+        if (mode === 'score' && !parsed.ouroboros) {
+          result = withDeterministicScore(result, {
+            text,
+            config,
+            repoRoot,
+            logger,
           });
         }
 
-
-        if (backend.name === 'openai-http' && !resolved.apiKey) {
-          const msg = ['No API key found. Set PATINA_API_KEY, PATINA_API_KEY_FILE, OPENAI_API_KEY, or use --api-key-file.'];
-          if (provider) {
-            msg.push(`(--provider ${provider.name} expects ${provider.apiKeyEnv} or PATINA_API_KEY.)`);
+        const auditBackstop =
+          mode === 'audit' && (parsed.format ?? 'markdown') !== 'json' && !parsed.batch
+            ? buildDeterministicAuditBackstop(text, { lang, repoRoot })
+            : '';
+        let output;
+        let scoreValidationOutput = null;
+        if (parsed.ouroboros) {
+          const ouroborosBody = formatOuroborosOutput(result);
+          output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution, logger, auditBackstop });
+          scoreValidationOutput = ouroborosBody;
+        } else {
+          output = formatOutput(result, mode, parsed, { tone: toneResolution, logger, auditBackstop });
+          if (mode === 'score') {
+            scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' }, { logger });
           }
-          const codex = listBackends().find((b) => b.name === 'codex-cli');
-          if (codex && codex.available && codex.authenticated) {
-            msg.push('Or pass `--backend codex-cli` to use the codex-cli backend (no key needed).');
-          } else if (codex && codex.available && !codex.authenticated) {
-            msg.push('Or run `codex login`, then pass `--backend codex-cli`.');
-          } else if (codex && !codex.available) {
-            msg.push('Or install `codex` from https://github.com/openai/codex and pass `--backend codex-cli`.');
-          }
-          throw runtimeError(
-            'no API key found',
-            msg[0],
-            msg.slice(1).join(' ') || 'Set PATINA_API_KEY or pass --backend codex-cli after logging in.'
-          );
         }
 
-        result = await invokeBackendChain({
-          backends,
-          prompt,
-          apiKey: resolved.apiKey,
-          baseURL: resolved.baseURL,
-          model: resolved.model,
-          modelSource: resolved.modelSource,
-          signal: cancellation.signal,
-          logger,
-        });
-      }
-      cancellation.throwIfCanceled();
-
-      if (mode === 'score' && !parsed.ouroboros) {
-        result = withDeterministicScore(result, {
-          text,
-          config,
-          repoRoot,
-          logger,
-        });
-      }
-
-      const auditBackstop =
-        mode === 'audit' && (parsed.format ?? 'markdown') !== 'json' && !parsed.batch
-          ? buildDeterministicAuditBackstop(text, { lang, repoRoot })
-          : '';
-      let output;
-      let scoreValidationOutput = null;
-      if (parsed.ouroboros) {
-        const ouroborosBody = formatOuroborosOutput(result);
-        output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution, logger, auditBackstop });
-        scoreValidationOutput = ouroborosBody;
-      } else {
-        output = formatOutput(result, mode, parsed, { tone: toneResolution, logger, auditBackstop });
+        // v3.11 Phase 1.3: surface weight drift between config and the score
+        // table the model emitted. Warnings only — does not alter the output.
         if (mode === 'score') {
-          scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' }, { logger });
-        }
-      }
+          const configWeights = config.ouroboros?.['category-weights']?.[lang] || {};
+          const warnings = validateScoreWeights(scoreValidationOutput || output, configWeights);
+          for (const w of warnings) {
+            logger.warn('score.weight_check', { message: `[patina] ${w}` });
+          }
 
-      // v3.11 Phase 1.3: surface weight drift between config and the score
-      // table the model emitted. Warnings only — does not alter the output.
-      if (mode === 'score') {
-        const configWeights = config.ouroboros?.['category-weights']?.[lang] || {};
-        const warnings = validateScoreWeights(scoreValidationOutput || output, configWeights);
-        for (const w of warnings) {
-          logger.warn('score.weight_check', { message: `[patina] ${w}` });
+          if (parsed.gate !== undefined) {
+            applyScoreGate(result, output, parsed.gate, logger);
+          }
         }
 
-        if (parsed.gate !== undefined) {
-          applyScoreGate(result, output, parsed.gate, logger);
+        if (parsed.batch) {
+          await writeBatchOutput(parsed, path, output);
+        } else {
+          console.log(output);
         }
-      }
-
-
-      if (parsed.batch) {
-        await writeBatchOutput(parsed, path, output);
-      } else {
-        console.log(output);
+        batchState.recordSuccess();
+      } catch (err) {
+        if (!shouldHandleBatchFailure(parsed, jobs.length)) throw err;
+        batchState.recordFailure({ path, err });
+        logger.warn('batch.file_failed', {
+          message: `[patina] batch file failed: ${path} (${batchState.failures.length}/${batchState.maxFailures} failures): ${err.message}`,
+        });
+        if (batchState.shouldStop()) throw batchState.toError();
       }
     }
 
+    if (batchState.hasFailures()) {
+      throw batchState.toError({ completed: true });
+    }
   } catch (err) {
     if (cancellation.signal.aborted) throw cancellationError();
     throw err;
@@ -421,6 +467,39 @@ function parseArgs(args) {
         parsed.backend = readOptionValue(args, i, arg);
         i++;
         break;
+      case '--timeout-ms': {
+        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
+        i++;
+        parsed.timeoutMs = parsePositiveIntegerOption(value, arg);
+        break;
+      }
+      case '--max-concurrency': {
+        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
+        i++;
+        parsed.maxConcurrency = parsePositiveIntegerOption(value, arg);
+        break;
+      }
+      case '--max-retries': {
+        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
+        i++;
+        parsed.maxRetries = parseNonNegativeIntegerOption(value, arg);
+        break;
+      }
+      case '--max-failures': {
+        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
+        i++;
+        parsed.maxFailures = parsePositiveIntegerOption(value, arg);
+        break;
+      }
+      case '--max-failure-rate': {
+        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
+        i++;
+        parsed.maxFailureRate = parseFailureRateOption(value, arg);
+        break;
+      }
+      case '--stop-on-retryable-storm':
+        parsed.stopOnRetryableStorm = true;
+        break;
       case '--list-backends':
         parsed.listBackends = true;
         break;
@@ -543,12 +622,60 @@ function readOptionValue(args, index, option, { allowFlagLike = false } = {}) {
   return value;
 }
 
-// Internal prompt style is selected per backend/model. Gemini gets the compact
-// rewrite prompt; everything else keeps the full pattern-pack prompt.
-function resolvePromptMode({ backend, model }) {
+function parsePositiveIntegerOption(value, option) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n <= 0) {
+    throw inputError(
+      `${option} expects a positive integer`,
+      `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
+      `Use ${option} 1 or another whole number greater than zero.`
+    );
+  }
+  return n;
+}
+
+function parseNonNegativeIntegerOption(value, option) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) {
+    throw inputError(
+      `${option} expects a non-negative integer`,
+      `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
+      `Use ${option} 0 to disable retries, or another whole number.`
+    );
+  }
+  return n;
+}
+
+function parseFailureRateOption(value, option) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) {
+    throw inputError(
+      `${option} expects a ratio or percent`,
+      `Received ${value === undefined ? 'no value' : `"${value}"`}.`,
+      `Use ${option} 0.25 for 25%, or ${option} 25.`
+    );
+  }
+  const ratio = n > 1 ? n / 100 : n;
+  if (ratio > 1) {
+    throw inputError(
+      `${option} expects a value from 0 to 1 or 0 to 100`,
+      `Received "${value}".`,
+      `Use ${option} 0.25 for 25%, or ${option} 25.`
+    );
+  }
+  return ratio;
+}
+
+// Internal prompt style is selected from backend safety metadata. Local agent
+// CLIs use the compact rewrite prompt by default to avoid feeding large pattern
+// packs into batch-oriented agent runtimes.
+export function resolvePromptMode({ backend, model }) {
   const backendStr = (backend || '').toLowerCase();
   const modelStr = (model || '').toLowerCase();
-  if (backendStr.includes('gemini') || modelStr.includes('gemini')) return 'minimal';
+  if (backendStr && backendStr !== 'openai-http') return getBackendSafety(backendStr).promptMode;
+  if (modelStr.includes('gemini')) return 'minimal';
+  if (backendStr) return getBackendSafety(backendStr).promptMode;
+  if (modelStr.includes('kimi') || modelStr.includes('claude') || modelStr.includes('codex')) return 'minimal';
   return 'strict';
 }
 
@@ -582,6 +709,136 @@ function resolveApiKey(parsed, provider) {
     apiKeyFile: parsed.apiKeyFile,
     envVars: providerHttpKeyEnvVars(provider?.apiKeyEnv),
   });
+}
+
+function logBatchSafetyPlan({ jobs, backends, parsed, promptMode, timeoutMs, logger }) {
+  if (!parsed.batch || jobs.length <= 1) return;
+
+  const primary = backends[0];
+  const promptSizes = jobs
+    .map((job) => typeof job.prompt === 'string' ? job.prompt.length : 0)
+    .filter((size) => size > 0);
+  const maxPromptChars = promptSizes.length > 0 ? Math.max(...promptSizes) : 0;
+  const avgPromptChars = promptSizes.length > 0
+    ? Math.round(promptSizes.reduce((sum, size) => sum + size, 0) / promptSizes.length)
+    : 0;
+  const maxConcurrency = resolveBackendMaxConcurrency(primary?.name, parsed.maxConcurrency);
+  const perFileRequests = backends.reduce(
+    (sum, item) => sum + resolveBackendMaxRetries(item.name, parsed.maxRetries) + 1,
+    0
+  );
+
+  logger.info('batch.safety_plan', {
+    message: `[patina] batch safety: files=${jobs.length}, backend=${backends.map((b) => b.name).join('→')}, prompt_mode=${promptMode}, max_concurrency=${formatLimit(maxConcurrency)}, max_retries=${resolveBackendMaxRetries(primary?.name, parsed.maxRetries)}, timeout_ms=${timeoutMs}, worst_case_requests=${jobs.length * perFileRequests}, max_prompt_chars=${maxPromptChars}, avg_prompt_chars=${avgPromptChars}`,
+  });
+
+  if (primary && getBackendSafety(primary.name).agentRuntime) {
+    logger.warn('batch.local_cli_caveat', {
+      message: `[patina] ${primary.name} is a local agent CLI, not a stateless batch completion API. Large batches should prefer an OpenAI-compatible HTTP provider when possible.`,
+    });
+  }
+  if (maxPromptChars >= PROMPT_SIZE_WARNING_CHARS) {
+    logger.warn('batch.prompt_size', {
+      message: `[patina] largest prompt is ~${maxPromptChars.toLocaleString()} chars; failed attempts still send the full prompt.`,
+    });
+  }
+}
+
+function createBatchCircuitBreaker({ parsed, total }) {
+  const active = parsed.batch && total > 1;
+  const maxFailures = active
+    ? (parsed.maxFailures ?? Math.min(10, Math.max(3, Math.ceil(total * 0.1))))
+    : Infinity;
+  const maxFailureRate = active ? (parsed.maxFailureRate ?? 0.25) : Infinity;
+  const stormEnabled = active && (parsed.stopOnRetryableStorm ?? true);
+  const stormLimit = 3;
+  const failures = [];
+  const retryableBuckets = new Map();
+  let successes = 0;
+  let processed = 0;
+  let stopReason = null;
+
+  return {
+    get failures() {
+      return failures;
+    },
+    get maxFailures() {
+      return maxFailures;
+    },
+    recordSuccess() {
+      processed++;
+      successes++;
+    },
+    recordFailure({ path, err }) {
+      processed++;
+      failures.push({ path, err });
+      const bucket = classifyRetryableStorm(err);
+      if (bucket) {
+        retryableBuckets.set(bucket, (retryableBuckets.get(bucket) || 0) + 1);
+      }
+    },
+    hasFailures() {
+      return failures.length > 0;
+    },
+    shouldStop() {
+      if (!active) return false;
+      if (failures.length >= maxFailures) {
+        stopReason = `max failures reached (${failures.length}/${maxFailures})`;
+        return true;
+      }
+      if (
+        Number.isFinite(maxFailureRate) &&
+        processed >= (parsed.maxFailureRate === undefined ? Math.min(total, 4) : 1) &&
+        failures.length / processed > maxFailureRate
+      ) {
+        stopReason = `failure rate ${(failures.length / processed * 100).toFixed(1)}% exceeded ${(maxFailureRate * 100).toFixed(1)}%`;
+        return true;
+      }
+      if (stormEnabled) {
+        for (const [bucket, count] of retryableBuckets) {
+          if (count >= stormLimit) {
+            stopReason = `retryable storm detected (${count} × ${bucket})`;
+            return true;
+          }
+        }
+      }
+      return false;
+    },
+    toError({ completed = false } = {}) {
+      const summary = failures
+        .slice(0, 5)
+        .map((failure) => `${failure.path}: ${failure.err.message}`)
+        .join(' | ');
+      const why = stopReason || (completed
+        ? `Batch completed with ${failures.length} failed file(s).`
+        : `Batch stopped after ${failures.length} failed file(s).`);
+      return runtimeError(
+        completed ? 'batch completed with failures' : 'batch circuit breaker stopped the run',
+        `${why} Successes: ${successes}/${total}. Failures: ${failures.length}/${total}.`,
+        summary || 'Fix the backend failure, lower concurrency/retries, or rerun with a smaller batch.'
+      );
+    },
+  };
+}
+
+function shouldHandleBatchFailure(parsed, total) {
+  return parsed.batch && total > 1;
+}
+
+function classifyRetryableStorm(err) {
+  const message = String(err?.message || err || '');
+  if (/\bHTTP\s+429\b/i.test(message) || err?.status === 429) return 'HTTP 429';
+  if (/\bHTTP\s+503\b/i.test(message) || err?.status === 503) return 'HTTP 503';
+  if (/Provider stream timed out/i.test(message)) return 'provider stream timeout';
+  if (/timed out/i.test(message) || err?.name === 'AbortError') return 'timeout';
+  const exit = message.match(/\bexited with code\s+(75|1)\b/i);
+  if (exit) return `exit ${exit[1]}`;
+  if (/no final response body|empty response|final-message-only/i.test(message)) return 'empty response';
+  return null;
+}
+
+function formatLimit(value) {
+  return Number.isFinite(value) ? String(value) : 'unbounded';
 }
 
 async function loadInputs(parsed, logger = createLogger()) {
@@ -724,6 +981,10 @@ OUTPUT & BATCH
   --in-place              Overwrite original files (with --batch)
   --suffix <ext>          Save as {name}{ext}{extname}
   --outdir <dir>          Save results to directory
+  --max-failures <n>      Stop batch after n failed files
+  --max-failure-rate <r>  Stop batch when failure ratio exceeds r (0.25 or 25)
+  --stop-on-retryable-storm
+                          Stop batch after repeated 429/timeouts/empty local-CLI exits
   --no-interactive        Do not wait for TTY stdin; exit 2 when no input is given
 
 LANGUAGE & PROFILE
@@ -747,6 +1008,9 @@ MODEL & AUTH
   --backend <name[,name]> Backend or explicit fallback chain:
                           ${backendChoices} (default: openai-http)
   --list-backends         List backends, selectors, default models, and auth status
+  --timeout-ms <n>        Per-request/backend timeout in milliseconds
+  --max-concurrency <n>   Cross-process backend cap (safe defaults per backend)
+  --max-retries <n>       Retry budget per backend (local CLIs default to 0)
   --provider <name>       Provider preset: openai, gemini, groq, kimi, moonshot, together
 ADVANCED
   --config <path>         Load config from <path> instead of .patina.default.yaml
@@ -857,7 +1121,7 @@ function printBackendStatus() {
     defaultModel: b.defaultModel || '-',
     available: b.available ? 'yes' : 'no',
     authenticated: b.authenticated ? 'yes' : 'no',
-    note: backendStatusNote(b),
+    note: `${backendSafetyNote(b)} ${backendStatusNote(b)}`.trim(),
   }));
   const widths = {
     name: Math.max('Backend'.length, ...rows.map((r) => r.name.length)),
@@ -890,6 +1154,10 @@ function backendStatusNote(backend) {
   if (backend.authenticated) return 'ready';
   if (backend.loginCommand) return `${backend.authHint} Use \`patina auth login ${backend.name}\` for the guided flow.`;
   return backend.authHint;
+}
+
+function backendSafetyNote(backend) {
+  return `cap=${formatLimit(backend.maxConcurrency)}, retries=${backend.maxRetries}, prompt=${backend.promptMode};`;
 }
 
 async function handleAuth(subArgs) {

@@ -320,11 +320,26 @@ test('playground HTML points canonical and OG metadata at patina.vibetip.help', 
   assert.match(html, /audit-only playground/);
 });
 
+test('playground HTML wires Vercel analytics without inline script', () => {
+  const html = readFileSync(resolve(REPO_ROOT, 'playground/index.html'), 'utf8');
+  const analytics = readFileSync(resolve(REPO_ROOT, 'playground/analytics.js'), 'utf8');
+  assert.match(html, /<script defer src="\/analytics\.js"><\/script>/);
+  assert.match(html, /<script defer src="\/_vercel\/insights\/script\.js"><\/script>/);
+  assert.doesNotMatch(html, /window\.va\s*=/);
+  assert.match(analytics, /window\.va/);
+  assert.match(analytics, /window\.vaq/);
+});
+
+
 test('Vercel config exposes the playground at the domain root', () => {
   const config = JSON.parse(readFileSync(resolve(REPO_ROOT, 'vercel.json'), 'utf8'));
   assert.ok(config.rewrites.some((rule) => rule.source === '/' && rule.destination === '/playground'));
+  assert.ok(config.rewrites.some((rule) => rule.source === '/analytics.js' && rule.destination === '/playground/analytics.js'));
   assert.ok(config.rewrites.some((rule) => rule.source === '/data/:path*' && rule.destination === '/playground/data/:path*'));
-  assert.ok(config.headers[0].headers.some((header) => header.key === 'Content-Security-Policy'));
+  const csp = config.headers[0].headers.find((header) => header.key === 'Content-Security-Policy')?.value;
+  assert.match(csp, /script-src 'self'(?:;|$)/);
+  assert.doesNotMatch(csp, /script-src[^;]*'unsafe-inline'/);
+  assert.match(csp, /connect-src 'self'(?:;|$)/);
 });
 
 test('generated playground lexicon bundle is in sync with markdown lexicons', () => {

@@ -11,6 +11,10 @@
       "destination": "/playground/app.js"
     },
     {
+      "source": "/analytics.js",
+      "destination": "/playground/analytics.js"
+    },
+    {
       "source": "/analyzer.js",
       "destination": "/playground/analyzer.js"
     },

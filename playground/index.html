@@ -38,7 +38,7 @@
       <p>
         patina checks deterministic stylometry and lexicon signals for Korean,
         English, Chinese, and Japanese. v1 does not rewrite, call an LLM, or send
-        your text anywhere.
+        your pasted text anywhere.
       </p>
       <div class="hero__actions" aria-label="Primary actions">
         <a class="button ghost" href="https://github.com/devswha/patina#quick-start">Install CLI</a>
@@ -126,11 +126,13 @@
 
   <footer class="footer">
     <p>
-      Scores measure editing hotspots, not authorship. Use patina only when AI assistance is allowed.
+      Scores measure editing hotspots, not authorship. Pasted text stays in your browser; Vercel Web Analytics records page-view metadata only.
       <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md">Read the ethics note.</a>
     </p>
   </footer>
 
   <script type="module" src="/app.js"></script>
+  <script defer src="/analytics.js"></script>
+  <script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>

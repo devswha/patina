@@ -10,18 +10,21 @@ export const DEFAULT_BEST_MODELS = Object.freeze({
   codexCli: 'gpt-5.5',
   claudeCli: 'claude-sonnet-4-6',
   geminiCli: 'gemini-2.5-pro',
+  kimiCli: 'kimi-code/kimi-for-coding',
 });
 
 const BACKEND_MODEL_KEYS = Object.freeze({
   'codex-cli': 'codexCli',
   'claude-cli': 'claudeCli',
   'gemini-cli': 'geminiCli',
+  'kimi-cli': 'kimiCli',
 });
 
 const BACKEND_SELECTOR_ALIASES = Object.freeze({
   'codex-cli': 'codex',
   'claude-cli': 'claude',
   'gemini-cli': 'gemini',
+  'kimi-cli': 'kimi',
 });
 
 /**

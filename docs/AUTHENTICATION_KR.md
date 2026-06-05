@@ -1,6 +1,6 @@
 # 인증과 백엔드
 
-patina는 여러 backend 중 하나를 통해 실행됩니다. 이미 쓰고 있는 도구에 맞는 방식을 고르세요.
+patina는 여러 백엔드 가운데 하나로 실행됩니다. 지금 쓰는 도구와 인증 방식에 맞춰 고르면 됩니다.
 
 ## Backend matrix
 
@@ -9,9 +9,11 @@ patina는 여러 backend 중 하나를 통해 실행됩니다. 이미 쓰고 있
 | `codex-cli` | `codex login` | **Free** (ChatGPT OAuth) |
 | `claude-cli` | `claude auth login` (one-time interactive OAuth) | **Free** (Claude subscription) |
 | `gemini-cli` | `gemini` (one-time interactive OAuth) or `GEMINI_API_KEY=...` | **Free** (Code Assist OAuth or AI Studio) |
+| `kimi-cli` | `kimi login` (one-time browser OAuth) or `KIMI_API_KEY=...` | Kimi account / Moonshot API |
 | OpenAI-compatible HTTP | `PATINA_API_KEY=...` | Per provider |
 | Google Gemini (HTTP) | `GEMINI_API_KEY=...` + `--provider gemini` | Free tier |
 | Groq | `GROQ_API_KEY=...` + `--provider groq` | Free tier |
+| Kimi / Moonshot (HTTP) | `KIMI_API_KEY=...` + `--provider kimi`, 또는 `MOONSHOT_API_KEY=...` + `--provider moonshot` | Per provider |
 | Together AI | `TOGETHER_API_KEY=...` + `--provider together` | Free models available |
 | OpenRouter | `--base-url https://openrouter.ai/api/v1` + key | Per provider (mix any provider) |
 
@@ -22,7 +24,7 @@ patina auth login codex-cli # confirm 후 `codex login` 실행
 patina --list-backends     # backend selector와 auth 상태
 ```
 
-Backend selection에는 명시적인 신호가 필요합니다. `--backend <name>`을 직접 넘기거나, `--backend claude-cli,codex-cli`처럼 comma-separated fallback chain을 넘기거나, `--model <prefix>`를 사용하세요. `codex-*`, `claude-*`, `gemini-*`는 각각 맞는 local CLI로 라우팅됩니다. flag도 API key도 없으면 patina는 coding agent로 조용히 보내지 않고 오류로 종료합니다. 이유는 [issue #88](https://github.com/devswha/patina/issues/88)를 참고하세요.
+백엔드는 명시적으로 골라야 합니다. `--backend <name>`을 직접 넘기거나, `--backend claude-cli,codex-cli`처럼 우선순위를 적거나, `--model <prefix>`를 쓰세요. `codex-*`, `claude-*`, `gemini-*`, `kimi-*`는 각각 해당 CLI로 연결됩니다. 아무 플래그도 없고 API 키도 없으면 patina는 다른 에이전트로 몰래 넘기지 않고 바로 오류로 끝납니다. 배경은 [issue #88](https://github.com/devswha/patina/issues/88)를 보면 됩니다.
 
 ## Environment variables
 
@@ -32,12 +34,12 @@ PATINA_API_BASE=https://api.openai.com/v1     # or proxy / OpenRouter / etc.
 PATINA_MODEL=gpt-5.5                           # HTTP/OpenAI default model
 ```
 
-`--base-url`, `--model`, `--api-key-file`, `--provider` flag는 실행마다 이 값을 덮어씁니다.
-`--model`을 넘기지 않으면 patina는 backend별로 문서화된 최상위 기본 모델을 씁니다. OpenAI HTTP와 `codex-cli`는 `gpt-5.5`, `claude-cli`는 `claude-sonnet-4-6`, Gemini HTTP/CLI는 `gemini-2.5-pro`입니다. `--model codex`, `--model claude`, `--model gemini`처럼 정확한 selector alias는 local CLI로 라우팅하되 해당 backend 기본 모델을 사용합니다.
+`--base-url`, `--model`, `--api-key-file`, `--provider` 플래그는 그 실행에 한해서 이 값을 덮어씁니다.
+`--model`을 따로 주지 않으면 patina는 백엔드마다 문서에 적어 둔 기본 모델을 씁니다. OpenAI HTTP와 `codex-cli`는 `gpt-5.5`, `claude-cli`는 `claude-sonnet-4-6`, Gemini HTTP/CLI는 `gemini-2.5-pro`, `kimi-cli`는 `kimi-code/kimi-for-coding`, Kimi/Moonshot HTTP는 `kimi-k2.5`입니다. `--model codex`, `--model claude`, `--model gemini`, `--model kimi` 같은 별칭도 각 CLI로 라우팅되지만 실제로 넘기는 값은 그 백엔드의 기본 모델입니다.
 
 ## codex-cli backend
 
-patina는 local [`codex`](https://github.com/openai/codex) CLI를 통해 dispatch합니다. 이 CLI는 OpenAI/ChatGPT OAuth로 인증하므로 API key가 필요 없습니다. 기본으로 `codex exec`에 넘기는 모델은 `gpt-5.5`이며, 더 구체적인 Codex model id를 직접 지정하면 그 값을 씁니다.
+patina는 로컬 [`codex`](https://github.com/openai/codex) CLI로 요청을 보냅니다. 이 CLI는 OpenAI/ChatGPT OAuth로 인증하므로 API 키가 필요 없습니다. `codex exec`에 기본으로 넘기는 모델은 `gpt-5.5`이고, 더 구체적인 Codex 모델 ID를 직접 주면 그 값을 그대로 씁니다.
 
 ```bash
 codex login                                # one-time
@@ -48,7 +50,7 @@ patina --model codex --lang ko input.txt   # codex-cli로 라우팅하고 gpt-5.
 
 ## claude-cli backend
 
-local [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p`를 실행하고 patina prompt를 stdin으로 넘깁니다. Claude subscription이 있으면 무료로 사용할 수 있습니다. Claude Code에 넘기는 기본 모델은 `claude-sonnet-4-6`입니다.
+로컬 [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p`에 patina 프롬프트를 stdin으로 넘겨 실행합니다. Claude 구독이 있으면 추가 API 키 없이 쓸 수 있습니다. 기본 모델은 `claude-sonnet-4-6`입니다.
 
 ```bash
 claude auth login                          # one-time interactive OAuth
@@ -57,11 +59,11 @@ patina --backend claude-cli --lang ko input.txt
 patina --model claude-sonnet-4-6 --lang ko input.txt   # auto-routes
 ```
 
-Auth file: `~/.claude/.credentials.json` (OAuth flow가 만듭니다).
+인증 파일: `~/.claude/.credentials.json` (OAuth 로그인 뒤 생성됩니다).
 
 ## gemini-cli backend
 
-local [`gemini`](https://github.com/google-gemini/gemini-cli) `-p '' --output-format text`를 실행하고 patina prompt를 stdin으로 넘깁니다. 무료 Code Assist OAuth tier 또는 `GEMINI_API_KEY`로 동작합니다. 기본 모델은 `gemini-2.5-pro`입니다.
+로컬 [`gemini`](https://github.com/google-gemini/gemini-cli) `-p '' --output-format text`에 patina 프롬프트를 stdin으로 넘겨 실행합니다. 무료 Code Assist OAuth tier나 `GEMINI_API_KEY`로 쓸 수 있고, 기본 모델은 `gemini-2.5-pro`입니다.
 
 ```bash
 gemini                                     # one-time interactive OAuth, OR
@@ -71,19 +73,31 @@ patina --backend gemini-cli --lang ko input.txt
 patina --model gemini-3-flash-preview --lang ko input.txt   # auto-routes
 ```
 
-자동화에서 이미 실행 의도가 명확할 때만 `--yes`를 사용하세요.
+## kimi-cli backend
+
+로컬 [`kimi`](https://moonshotai.github.io/kimi-cli/)를 print mode로 실행하고 patina 프롬프트를 stdin으로 넘깁니다. Kimi Code CLI 브라우저 로그인이나 `KIMI_API_KEY`, `MOONSHOT_API_KEY` 중 하나로 인증할 수 있습니다. 로컬 CLI 기본 모델은 `kimi-code/kimi-for-coding`입니다.
+
+```bash
+kimi login                                  # one-time browser OAuth, OR
+patina auth login kimi-cli                  # same, with confirmation
+export KIMI_API_KEY="..."                   # optional API key path
+patina --backend kimi-cli --lang ko input.txt
+patina --model kimi --lang ko input.txt     # kimi-cli로 라우팅하고 backend 기본값 사용
+```
+
+자동화에서는 이미 실행 의도가 분명할 때만 `--yes`를 쓰세요.
 
 ```bash
 patina auth login codex-cli --yes
 ```
 
-Notes: patina는 user text 안의 prompt-injection을 격리하기 위해 새 temp directory에서 prompt를 실행하고 `--skip-trust`를 넘깁니다. gemini는 startup latency가 더 길어 default timeout이 다른 CLI보다 높습니다.
+참고: patina는 사용자 텍스트 안의 prompt injection 영향을 줄이려고 새 임시 디렉터리에서 프롬프트를 실행하고 `--skip-trust`를 함께 넘깁니다. gemini는 시작이 느린 편이라 기본 timeout도 다른 CLI보다 더 길게 잡혀 있습니다.
 
-> **Mode support:** `codex-cli`, `claude-cli`, `gemini-cli`는 로컬 CLI가 이미 인증되어 있으면 `PATINA_API_KEY` 없이 rewrite backend로 사용할 수 있습니다. API 기반 score/audit 경로는 계속 설정된 HTTP/evaluator key를 사용합니다.
+> **지원 범위:** `codex-cli`, `claude-cli`, `gemini-cli`, `kimi-cli`는 로컬 CLI 로그인만 되어 있으면 `PATINA_API_KEY` 없이 rewrite 백엔드로 쓸 수 있습니다. 반면 API 기반 score/audit 경로는 계속 설정된 HTTP/evaluator 키를 사용합니다.
 
-## Free-tier providers
+## HTTP provider examples
 
-API key를 한 번 발급받으면 무료 tier로 사용할 수 있습니다.
+호출할 프로바이더에 맞는 API 키를 준비한 뒤 아래처럼 실행하면 됩니다.
 
 ```bash
 # Google Gemini — https://aistudio.google.com/app/apikey
@@ -97,7 +111,14 @@ patina --provider groq --lang ko input.txt
 # Together AI (free models suffixed with "-Free")
 export TOGETHER_API_KEY="..."
 patina --provider together --lang ko input.txt
+
+# Kimi / Moonshot (paid API)
+export KIMI_API_KEY="..."
+patina --provider kimi --lang ko input.txt
+
+export MOONSHOT_API_KEY="..."
+patina --provider moonshot --lang ko input.txt
 ```
 
-`--provider`는 알맞은 base URL, default model을 설정하고 provider-specific API key env var를 읽습니다. `--base-url`, `--model`, `--api-key-file`로 각각 덮어쓸 수 있습니다.
+`--provider`를 쓰면 맞는 base URL과 기본 모델이 자동으로 잡히고, 그 프로바이더에 해당하는 API 키 환경변수도 함께 읽습니다. 필요하면 `--base-url`, `--model`, `--api-key-file`로 각각 덮어쓸 수 있습니다.
 

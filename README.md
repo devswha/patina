@@ -90,7 +90,7 @@ printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
   | npx patina-cli --lang en --backend codex-cli
 ```
 
-Supported local backends: `codex-cli`, `claude-cli`, `gemini-cli`. Without `--model`, patina passes the strongest documented default per backend: `gpt-5.5` for OpenAI/Codex, `claude-sonnet-4-6` for Claude, and `gemini-2.5-pro` for Gemini. See [Authentication](docs/AUTHENTICATION.md) ([한국어](docs/AUTHENTICATION_KR.md)).
+Supported local backends: `codex-cli`, `claude-cli`, `gemini-cli`, `kimi-cli`. Without `--model`, patina passes the strongest documented default per backend: `gpt-5.5` for OpenAI/Codex, `claude-sonnet-4-6` for Claude, `gemini-2.5-pro` for Gemini, and `kimi-code/kimi-for-coding` for Kimi Code. See [Authentication](docs/AUTHENTICATION.md) ([한국어](docs/AUTHENTICATION_KR.md)).
 
 ## What You Get
 

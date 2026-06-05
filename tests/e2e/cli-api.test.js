@@ -193,6 +193,8 @@ describe('CLI End-to-End with Mock API', () => {
       GEMINI_API_KEY: undefined,
       GROQ_API_KEY: undefined,
       TOGETHER_API_KEY: undefined,
+      KIMI_API_KEY: undefined,
+      MOONSHOT_API_KEY: undefined,
     }, async () => {
       await main([
         '--lang', 'en',
@@ -220,6 +222,8 @@ describe('CLI End-to-End with Mock API', () => {
       GEMINI_API_KEY: 'gemini-env-key',
       GROQ_API_KEY: undefined,
       TOGETHER_API_KEY: undefined,
+      KIMI_API_KEY: undefined,
+      MOONSHOT_API_KEY: undefined,
     }, async () => {
       await main([
         '--lang', 'en',
@@ -296,7 +300,7 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(!/\n\s*--json\s+Alias for --format json/.test(help), 'help should not document removed json alias');
     assert.ok(help.includes('--no-color'), 'help should document diff color opt-out');
     assert.ok(
-      help.includes('openai-http, codex-cli, claude-cli, gemini-cli'),
+      help.includes('openai-http, codex-cli, claude-cli, gemini-cli, kimi-cli'),
       'help should list every backend name'
     );
   });

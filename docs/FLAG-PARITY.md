@@ -23,7 +23,7 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 | `--model <id>` | ✓ | — | CLI single-backend model selection. |
 | `--api-key-file <path>` | ✓ | — | CLI auth. |
 | `--base-url <url>` | ✓ | — | CLI provider/backend config. |
-| `--backend <name[,name]>` | ✓ | — | CLI backend selection and explicit fallback chains (`openai-http`, `codex-cli`, `claude-cli`, `gemini-cli`). |
+| `--backend <name[,name]>` | ✓ | — | CLI backend selection and explicit fallback chains (`openai-http`, `codex-cli`, `claude-cli`, `gemini-cli`, `kimi-cli`). |
 | `--list-backends` | ✓ | — | CLI diagnostics with selectors and auth state. |
 | `--provider <name>` | ✓ | — | CLI provider preset. |
 | `--config <path>` | ✓ | — | CLI config override. |

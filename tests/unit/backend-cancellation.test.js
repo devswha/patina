@@ -7,11 +7,13 @@ import { strict as assert } from 'node:assert';
 import * as claudeCli from '../../src/backends/claude-cli.js';
 import * as codexCli from '../../src/backends/codex-cli.js';
 import * as geminiCli from '../../src/backends/gemini-cli.js';
+import * as kimiCli from '../../src/backends/kimi-cli.js';
 
 const BACKENDS = [
   { command: 'claude', backend: claudeCli },
   { command: 'codex', backend: codexCli },
   { command: 'gemini', backend: geminiCli },
+  { command: 'kimi', backend: kimiCli },
 ];
 
 test('CLI backends reject AbortSignal cancellation and kill their child process', async () => {

@@ -54,7 +54,7 @@ Other providers can be configured through the documented backend and provider se
 
 The web playground runs entirely in your browser. It makes no network calls and loads no analytics or trackers, so text you paste into it never leaves the page.
 
-The CLI runs its deterministic analysis (the audit and the score) locally. The only step that sends text off your machine is the rewrite, and it goes to the backend you choose: a CLI you are already logged into, such as Codex, Claude, or Gemini, under your own account, or an OpenAI-compatible API using your own key and base URL (the default is the official OpenAI endpoint, but you can point it at a local or self-hosted model). patina runs no server of its own, ships no telemetry, and never sends your text to a patina-owned endpoint.
+The CLI runs its deterministic analysis (the audit and the score) locally. The only step that sends text off your machine is the rewrite, and it goes to the backend you choose: a CLI you are already logged into, such as Codex, Claude, Gemini, or Kimi, under your own account, or an OpenAI-compatible API using your own key and base URL (the default is the official OpenAI endpoint, but you can point it at a local or self-hosted model). patina runs no server of its own, ships no telemetry, and never sends your text to a patina-owned endpoint.
 
 ## Does it only work in Claude Code?
 

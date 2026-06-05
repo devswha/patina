@@ -740,13 +740,14 @@ LANGUAGE & PROFILE
 MODEL & AUTH
   --model <id>            Single model ID. Defaults use the strongest
                           documented model per backend: openai/codex gpt-5.5,
-                          claude-sonnet-4-6, gemini-2.5-pro.
+                          claude-sonnet-4-6, gemini-2.5-pro,
+                          kimi-code/kimi-for-coding.
   --api-key-file <path>   Read API key from file (recommended)
   --base-url <url>        API base URL (or PATINA_API_BASE env)
   --backend <name[,name]> Backend or explicit fallback chain:
                           ${backendChoices} (default: openai-http)
   --list-backends         List backends, selectors, default models, and auth status
-  --provider <name>       Provider preset: openai, gemini, groq, together
+  --provider <name>       Provider preset: openai, gemini, groq, kimi, moonshot, together
 ADVANCED
   --config <path>         Load config from <path> instead of .patina.default.yaml
   --allow-insecure-base-url  Permit plaintext http:// to non-localhost endpoints
@@ -761,7 +762,8 @@ EXAMPLES
 
 ENVIRONMENT
   PATINA_API_KEY, PATINA_API_KEY_FILE, PATINA_API_BASE, PATINA_MODEL
-  OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, TOGETHER_API_KEY
+  OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, TOGETHER_API_KEY,
+  KIMI_API_KEY, MOONSHOT_API_KEY
 
 EXIT CODES
   0 success · 1 runtime/backend · 2 input/usage · 3 score gate exceeded · 130 interrupted

@@ -37,15 +37,17 @@ describe('Provider Selection', () => {
     assert.throws(() => selectProvider('madeup'), /Unknown provider/);
   });
 
-  it('lists all four providers', () => {
+  it('lists all six providers', () => {
     const names = Object.keys(PROVIDERS).sort();
-    assert.deepStrictEqual(names, ['gemini', 'groq', 'openai', 'together']);
+    assert.deepStrictEqual(names, ['gemini', 'groq', 'kimi', 'moonshot', 'openai', 'together']);
   });
 
   it('marks free-tier providers correctly', () => {
     assert.strictEqual(PROVIDERS.gemini.freeTier, true);
     assert.strictEqual(PROVIDERS.groq.freeTier, true);
     assert.strictEqual(PROVIDERS.together.freeTier, true);
+    assert.strictEqual(PROVIDERS.kimi.freeTier, false);
+    assert.strictEqual(PROVIDERS.moonshot.freeTier, false);
     assert.strictEqual(PROVIDERS.openai.freeTier, false);
   });
 });
@@ -74,6 +76,22 @@ describe('Provider Config Resolution', () => {
       assert.strictEqual(r.apiKeySource, 'env:GEMINI_API_KEY');
       assert.match(r.baseURL, /generativelanguage/);
       assert.strictEqual(r.model, 'gemini-2.5-pro');
+    });
+  });
+
+  it('reads Kimi and Moonshot provider-specific env vars', () => {
+    withEnv({ PATINA_API_KEY: undefined, KIMI_API_KEY: 'kimi-env', MOONSHOT_API_KEY: 'moonshot-env' }, () => {
+      const kimi = resolveProviderConfig({ provider: selectProvider('kimi') });
+      assert.strictEqual(kimi.apiKey, 'kimi-env');
+      assert.strictEqual(kimi.apiKeySource, 'env:KIMI_API_KEY');
+      assert.strictEqual(kimi.baseURL, 'https://api.moonshot.ai/v1');
+      assert.strictEqual(kimi.model, 'kimi-k2.5');
+
+      const moonshot = resolveProviderConfig({ provider: selectProvider('moonshot') });
+      assert.strictEqual(moonshot.apiKey, 'moonshot-env');
+      assert.strictEqual(moonshot.apiKeySource, 'env:MOONSHOT_API_KEY');
+      assert.strictEqual(moonshot.baseURL, 'https://api.moonshot.ai/v1');
+      assert.strictEqual(moonshot.model, 'kimi-k2.5');
     });
   });
 

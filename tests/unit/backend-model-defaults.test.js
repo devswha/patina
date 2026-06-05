@@ -7,6 +7,7 @@ import { strict as assert } from 'node:assert';
 import * as claudeCli from '../../src/backends/claude-cli.js';
 import * as codexCli from '../../src/backends/codex-cli.js';
 import * as geminiCli from '../../src/backends/gemini-cli.js';
+import * as kimiCli from '../../src/backends/kimi-cli.js';
 import { DEFAULT_BEST_MODELS, resolveLocalCliModel } from '../../src/model-defaults.js';
 
 const FAKE_CLI = [
@@ -30,7 +31,7 @@ async function withFakeCli(fn) {
   const binDir = mkdtempSync(join(tmpdir(), 'patina-model-cli-'));
   const oldPath = process.env.PATH;
   try {
-    for (const command of ['claude', 'codex', 'gemini']) {
+    for (const command of ['claude', 'codex', 'gemini', 'kimi']) {
       const path = join(binDir, command);
       writeFileSync(path, FAKE_CLI);
       chmodSync(path, 0o755);
@@ -53,6 +54,7 @@ test('local CLI model resolver uses best-known defaults and preserves explicit i
   assert.strictEqual(resolveLocalCliModel({ backendName: 'codex-cli' }), DEFAULT_BEST_MODELS.codexCli);
   assert.strictEqual(resolveLocalCliModel({ backendName: 'claude-cli' }), DEFAULT_BEST_MODELS.claudeCli);
   assert.strictEqual(resolveLocalCliModel({ backendName: 'gemini-cli' }), DEFAULT_BEST_MODELS.geminiCli);
+  assert.strictEqual(resolveLocalCliModel({ backendName: 'kimi-cli' }), DEFAULT_BEST_MODELS.kimiCli);
 
   assert.strictEqual(
     resolveLocalCliModel({ backendName: 'codex-cli', model: 'gpt-5.5', modelSource: 'default' }),
@@ -65,6 +67,10 @@ test('local CLI model resolver uses best-known defaults and preserves explicit i
   assert.strictEqual(
     resolveLocalCliModel({ backendName: 'claude-cli', model: 'claude-opus-custom', modelSource: 'flag' }),
     'claude-opus-custom'
+  );
+  assert.strictEqual(
+    resolveLocalCliModel({ backendName: 'kimi-cli', model: 'kimi', modelSource: 'flag' }),
+    DEFAULT_BEST_MODELS.kimiCli
   );
 });
 
@@ -84,6 +90,11 @@ test('local CLI backends pass default best-model flags to child processes', asyn
     assert.strictEqual(basename(gemini.command), 'gemini');
     assertArgValue(gemini.args, '-m', DEFAULT_BEST_MODELS.geminiCli);
     assert.strictEqual(gemini.stdin, 'rewrite this');
+
+    const kimi = JSON.parse(await kimiCli.invoke({ prompt: 'rewrite this', modelSource: 'default' }));
+    assert.strictEqual(basename(kimi.command), 'kimi');
+    assertArgValue(kimi.args, '--model', DEFAULT_BEST_MODELS.kimiCli);
+    assert.strictEqual(kimi.stdin, 'rewrite this');
   });
 });
 
@@ -102,5 +113,12 @@ test('local CLI backends pass explicit non-alias model ids', async () => {
       modelSource: 'flag',
     }));
     assertArgValue(gemini.args, '-m', 'gemini-3-flash-preview');
+
+    const kimi = JSON.parse(await kimiCli.invoke({
+      prompt: 'rewrite this',
+      model: 'kimi-k2.5',
+      modelSource: 'flag',
+    }));
+    assertArgValue(kimi.args, '--model', 'kimi-k2.5');
   });
 });

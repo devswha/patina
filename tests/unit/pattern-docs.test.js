@@ -286,6 +286,44 @@ test('mirrored docs keep fire conditions aligned for drift-prone numbered patter
   }
 });
 
+test('CJK translationese patterns require clause-level punctuation rewrites', () => {
+  const checks = [
+    {
+      lang: 'ko',
+      source: resolve(PATTERN_DIR, 'ko-structure.md'),
+      doc: resolve(DOCS_DIR, 'PATTERNS-KO.md'),
+      guard: /구두점만 바꾸지 않는다/,
+      example: /TUI 없이 완전 자율로 설치하려면/,
+    },
+    {
+      lang: 'zh',
+      source: resolve(PATTERN_DIR, 'zh-structure.md'),
+      doc: resolve(DOCS_DIR, 'PATTERNS-ZH.md'),
+      guard: /do not replace only the punctuation/,
+      example: /不用 TUI 就完成全自动安装/,
+    },
+    {
+      lang: 'ja',
+      source: resolve(PATTERN_DIR, 'ja-structure.md'),
+      doc: resolve(DOCS_DIR, 'PATTERNS-JA.md'),
+      guard: /記号だけを置き換えない/,
+      example: /TUIなしで完全自律インストール/,
+    },
+  ];
+
+  for (const check of checks) {
+    const section = numberedSections(check.source).find(({ number }) => number === 26);
+    assert.ok(section, `${check.lang} pattern 26 must exist`);
+    assert.match(section.body, /issue #352/, `${check.lang} pattern 26 must cite the CJK punctuation regression`);
+    assert.match(section.body, check.guard, `${check.lang} pattern 26 must ban token-level punctuation fixes`);
+    assert.match(section.body, check.example, `${check.lang} pattern 26 must include a before/after clause-level example`);
+
+    const doc = readFileSync(check.doc, 'utf8');
+    assert.match(doc, /Context guard: issue #352/, `${check.lang} pattern docs must mirror the clause-level guard`);
+    assert.match(doc, check.example, `${check.lang} pattern docs must mirror the clause-level example`);
+  }
+});
+
 test('every rewrite pattern has success and failure examples in all four languages', () => {
   // #322: the symmetric pack counts hid missing worked examples (e.g. #29 once
   // had none). Derive the numbered pattern ids from the packs themselves so the

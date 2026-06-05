@@ -44,6 +44,14 @@ The examples below are safe, redistributable false-positive **risk** examples. T
 
 **How to read the score:** check for over-smoothing, but do not punish public-sector caution or required measurement language.
 
+## 6. CJK punctuation cleanup that creates translationese
+
+> 완전 자율, 무 TUI 세팅을 원한다면 자율 모드 플래그를 추가합니다.
+
+**Why it may be flagged:** the source may contain real AI-like punctuation rhythm or calques, but a token-level fix can make Korean, Chinese, or Japanese worse. Replacing punctuation or isolated words without reading the sentence can create literal phrasing such as `무 TUI`.
+
+**How to read the score:** treat the flagged punctuation as a prompt to rewrite the clause, not the mark. A safer Korean rewrite is `TUI 없이 완전 자율로 설치하려면 자율 모드 플래그를 추가하세요.` Preserve the condition and action while rebuilding the clause boundary.
+
 ## Reporting a false positive
 
 Open a false-positive issue with:

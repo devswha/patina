@@ -105,6 +105,13 @@ describe('Backend Selection', () => {
     );
   });
 
+  it('suggests every backend when no fallback chain remains', async () => {
+    await assert.rejects(
+      invokeBackendChain({ backends: [], prompt: 'rewrite this' }),
+      /openai-http, codex-cli, claude-cli, gemini-cli, or kimi-cli/
+    );
+  });
+
   it('explicit --backend overrides --model heuristic', () => {
     const { backend } = selectBackend({ name: 'openai-http', model: 'codex' });
     assert.strictEqual(backend.name, 'openai-http');

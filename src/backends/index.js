@@ -163,7 +163,7 @@ export async function invokeBackendChain({
     throw inputError(
       'no backend selected',
       'patina could not resolve a backend to run.',
-      'Pass --backend openai-http, codex-cli, claude-cli, or gemini-cli.'
+      'Pass --backend openai-http, codex-cli, claude-cli, gemini-cli, or kimi-cli.'
     );
   }
 

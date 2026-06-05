@@ -24,13 +24,13 @@ patina は、韓国語・英語・中国語・日本語の文章から AI っぽ
 
 ## デモ
 
-**修正前** *(AI 風の文章)*：
-> コーヒーは、世界中の社会的交流を**根本的に変革した****中核的な文化現象**として台頭してきました。この愛される飲料はコミュニティ構築の触媒として機能し、意義ある繋がりを促進し、異文化間の対話を導いています。
+**修正前** *(AI 風の文章；現在の GIF が使う英語 fixture)*：
+> The newly released Notion template pack is an **innovative solution** designed to **transform productivity** for modern teams. It offers 30 templates optimized for diverse workflows, with a user-friendly design that enables anyone to leverage them effortlessly. This product introduces a **new paradigm** for maximizing work efficiency.
 
-**修正後** *(`/patina --lang ja` — 同じ内容、AI 装飾のみ除去)*：
-> コーヒーは、人の会い方をかなり変えてきたと思う。誰かと向かい合って座っているうちに自然と関係ができるし、文化が違う人同士でも会話が生まれやすくなる。
+**修正後** *(`/patina --lang en --tone marketing` — 同じ事実、AI 装飾のみ除去)*：
+> If Notion still starts as a blank page for your team, open this pack first. It includes 30 templates for common workflows. Duplicate one, adjust the fields you need, and use it for a team project or your own planning without starting from scratch.
 
-> **MPS = 100** · 社会的交流の変革 ✓ · コミュニティ構築 ✓ · 意義ある繋がり ✓ · 異文化間の対話 ✓
+> **Score = 0.0%** · 30 個のテンプレート ✓ · workflow fit ✓ · コピー後に調整して使えること ✓
 
 **その他のデモ片**
 

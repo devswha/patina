@@ -2,10 +2,10 @@
 
 ## Source of truth
 - Status: Draft
-- Last refreshed: 2026-05-21
-- Primary product surfaces: README logo, app/repo icon, social preview image, launch posts.
+- Last refreshed: 2026-06-05
+- Primary product surfaces: README mark, app/repo icon, social preview image, launch posts.
 - Evidence reviewed:
-  - Local: `README.md`, `README_KR.md`, `README_ZH.md`, `README_JA.md`, `docs/ROADMAP.md`, `docs/BRANDING.md`, `assets/brand/patina-icon.svg`, `assets/brand/patina-logo.svg`, `assets/social/patina-og.svg`, `assets/demo/patina-demo.gif`.
+  - Local: `README.md`, `README_KR.md`, `README_ZH.md`, `README_JA.md`, `docs/ROADMAP.md`, `docs/BRANDING.md`, `assets/brand/patina-mark.svg`, `assets/brand/patina-icon.svg`, `assets/brand/patina-logo.svg`, `assets/social/patina-og.svg`, `assets/demo/patina-demo-en.gif`, `assets/demo/patina-demo-ko.gif`.
   - External pattern references: Vite, Astro, Bun, Deno, Tailwind CSS, shadcn/ui README presentation patterns.
 
 ## Brand
@@ -46,14 +46,14 @@
 - Typography: system sans for README SVG lockup; no text inside app icon candidates.
 - Spacing/layout rhythm: centered hero, generous padding, compact badges/links below.
 - Shape/radius/elevation: rounded app tile, bold copper-to-teal pure mark, no shadows, no bevels, no pseudo-3D depth.
-- Motion: the README hero can use `assets/demo/patina-demo.gif` to show AI packaging being removed from a real fixture; avoid animated SVG for GitHub README motion because sanitization can strip animation.
+- Motion: README demo GIFs can use `assets/demo/patina-demo-en.gif` / `assets/demo/patina-demo-ko.gif` to show AI packaging being removed from real fixtures; avoid animated SVG for GitHub README motion because sanitization can strip animation.
 - Imagery/iconography: copper becoming patina teal around a warm preserved-meaning core. Avoid text-line clutter, document-card literalism, 3D realism, gradients, glow, texture, and bevel language in final SVG assets.
 
 ## Components
-- Existing components to reuse: `assets/brand/*.svg`, `assets/social/*.svg`, `assets/demo/patina-demo.gif`.
+- Existing components to reuse: `assets/brand/*.svg`, `assets/social/*.svg`, `assets/demo/patina-demo-*.gif`.
 - New/changed components: optional AI concept references under `.omx/artifacts/visual-ralph/` before SVG reconstruction; production assets remain hand-authored SVG.
 - Variants and states: square pure-mark icon, horizontal logo lockup, social preview.
-- Token/component ownership: brand assets stay under `assets/brand/`; social cards under `assets/social/`; README demo recordings under `assets/demo/`. Re-render demo GIFs with asciinema + `agg`, keep them under 10 MB, and verify the shown rewrite with `node scripts/precommit-score.mjs examples/short/marketing-launch-rewritten.md`.
+- Token/component ownership: brand assets stay under `assets/brand/`; social cards under `assets/social/`; README demo recordings stay under `assets/demo/`. Re-render demo GIFs with asciinema + `agg`, keep them under 10 MB, and verify the shown rewrites with `node scripts/precommit-score.mjs examples/short/marketing-launch-en-rewritten.md examples/short/marketing-launch-rewritten.md`.
 
 ## Accessibility
 - Target standard: readable on GitHub light/dark backgrounds and package pages.
@@ -65,9 +65,9 @@
 ### Static SVG checklist
 
 - Standalone brand/social SVGs use `role="img"` plus `<title>` and `<desc>` (or an explicit `aria-label` for decorative exceptions).
-- README logo uses the canonical `assets/brand/patina-logo.svg`; avoid duplicate byte-identical README variants.
+- README hero uses the canonical `assets/brand/patina-mark.svg`; avoid duplicating the wordmark because the heading and tagline are already rendered in Markdown.
 - SVG text relies on system fallback fonts because GitHub does not load web fonts inside `<img>` SVGs.
-- The logo lockup should be checked at README width (`width="440"`) and the icon at 32px before release.
+- The README mark should be checked at `width="172"` and the app icon at 32px before release.
 
 ## Responsive behavior
 - Supported breakpoints/devices: README desktop/mobile, favicon-scale icon, 1200x630 social preview.

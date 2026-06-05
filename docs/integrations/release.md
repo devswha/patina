@@ -21,8 +21,9 @@ The dry run verifies:
 Publishing the npm packages is intended for `v*.*.*` tags:
 
 ```bash
-git tag v3.11.0
-git push origin v3.11.0
+VERSION=v4.0.0
+git tag "$VERSION"
+git push origin "$VERSION"
 ```
 
 Required secret:
@@ -39,5 +40,6 @@ the container distribution issue is still open. Maintainers can run the
 experimental image path manually after npm verification:
 
 ```bash
-gh workflow run release.yml --ref v3.11.0 -f publish=false -f publish_ghcr=true
+VERSION=v4.0.0
+gh workflow run release.yml --ref "$VERSION" -f publish=false -f publish_ghcr=true
 ```

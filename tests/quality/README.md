@@ -49,39 +49,53 @@ Per-language metrics use `expected_hot=true` as the positive class.
 
 ## Opt-in live rewrite quality
 
-`npm run quality:live` runs the live-quality scaffold without calling a model by
+`npm run quality:live` runs the live-quality runner without calling a model by
 default. The default path scores fixture inputs and marks the live rewrite step
 as skipped, so it is safe for local smoke checks and CI dry-runs.
 
 ```bash
 npm run quality:live
+npm run quality:live -- --json
 ```
 
-To run actual rewrites, opt in explicitly after installing and authenticating
-the OpenCode CLI:
+To run actual rewrites, opt in explicitly with an OpenAI-compatible provider.
+Use `PATINA_LIVE_*` so this stays a deliberate local/manual probe rather than a
+per-PR network dependency:
 
 ```bash
-OPENCODE_AVAILABLE=1 npm run quality:live -- --limit 1
-OPENCODE_AVAILABLE=1 OPENCODE_MODEL=opencode/hy3-preview-free npm run quality:live -- --language ko --limit 1
+PATINA_LIVE=1 \
+PATINA_LIVE_PROVIDER=gemini \
+PATINA_LIVE_API_KEY=... \
+npm run quality:live -- --language ko --limit 1
 ```
 
-The scaffold fixture set lives in `tests/quality/live-fixtures.jsonl`. Each
-fixture records `fixture_id`, `language`, `register`, `source_type`,
-`model_family`, `prompt_id`, `redistribution`, `facts`, and `text`. Live results
-report:
+Supported live settings:
 
-- `before_score` / `after_score` from the deterministic prose score.
-- `humanization_gain = before_score - after_score`.
-- `meaning_safety`, a deterministic proxy using fact preservation and length
-  sanity. This is not a full MPS score.
-- `safe_gain = max(0, humanization_gain) * (meaning_safety / 100)`.
-- `pass`, `warn`, or `fail` for evaluated rewrites; `skipped` when live mode is
-  not enabled.
+- `PATINA_LIVE_PROVIDER` — provider preset (`openai`, `gemini`, `groq`,
+  `kimi`, `moonshot`, `together`).
+- `PATINA_LIVE_API_KEY` — live-run key; falls back to the provider key or
+  `PATINA_API_KEY`.
+- `PATINA_LIVE_MODEL` / `PATINA_LIVE_API_BASE` / `PATINA_LIVE_TIMEOUT_MS`.
 
-Passing evaluated rewrites should reach `after_score <= 30`,
-`meaning_safety >= 70`, and `safe_gain > 0`. Keep this out of mandatory CI
-unless the live model path is deliberately allowed, because LLM output is
-non-deterministic.
+The fixture set lives in `tests/fixtures/live-quality/{en,ko}/*.md` with YAML
+frontmatter (`fixture_id`, `language`, optional `profile`, `anchors`,
+`expected_focus`) plus the body text. The legacy
+`tests/quality/live-fixtures.jsonl` remains loadable via `--fixtures`.
+
+Live reports are structured JSON or Markdown with:
+
+- `schema_version`, redacted settings, and policy floors.
+- `before_score` / `after_score` from model-graded `scoreText`.
+- `mps` from `scoreMPS`.
+- `fidelity` from `scoreFidelity`.
+- `pass`, `warn`, `error`, or `skipped` per fixture.
+
+A live rewrite passes when `after_score <= 30`, MPS is at least 70, fidelity is
+at least 70, and the AI score improved. Missing credentials, provider failures,
+schema failures, and MPS/fidelity floor violations are `error` and exit
+nonzero; AI-score target misses remain `warn` so the report is still usable.
+Keep this out of mandatory CI unless the live model path is deliberately
+allowed, because LLM output is non-deterministic and may incur provider cost.
 
 ## Adversarial MPS fixtures
 

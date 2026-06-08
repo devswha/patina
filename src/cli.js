@@ -11,7 +11,13 @@ import { buildPrompt } from './prompt-builder.js';
 import { invokeBackendChain, selectBackendChain, listBackends, listBackendNames, resolveBackend } from './backends/index.js';
 import { selectProvider, resolveProviderConfig } from './providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from './security.js';
-import { formatOutput, validateScoreWeights, buildDeterministicAuditBackstop } from './output.js';
+import { formatOutput, formatRewriteBodyForBrowser, validateScoreWeights, buildDeterministicAuditBackstop } from './output.js';
+import {
+  buildBrowserDiffPromptInput,
+  renderBrowserDiffHtml,
+  writeBrowserDiffPage,
+  openBrowserDiffPage,
+} from './browser-diff.js';
 import { runOuroboros } from './ouroboros.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from './scoring.js';
 import { runDoctor } from './commands/doctor.js';
@@ -88,6 +94,8 @@ export async function main(args) {
     printBackendStatus();
     return;
   }
+
+  validateBrowserRequest(parsed);
 
   const configPath = parsed.config ? resolve(process.cwd(), parsed.config) : undefined;
   const config = loadConfig(configPath);
@@ -285,6 +293,7 @@ export async function main(args) {
             logger,
           });
         }
+        let browserPagePath = null;
 
         const auditBackstop =
           mode === 'audit' && (parsed.format ?? 'markdown') !== 'json' && !parsed.batch
@@ -301,6 +310,33 @@ export async function main(args) {
           if (mode === 'score') {
             scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' }, { logger });
           }
+        }
+
+        if (parsed.browser && mode === 'rewrite') {
+          ({ pagePath: browserPagePath } = await buildBrowserDiffArtifact({
+            originalText: text,
+            rawRewriteResult: result,
+            sourcePath: path,
+            parsed,
+            config,
+            repoRoot,
+            patterns,
+            profile: profile.body ? profile : null,
+            voice: voice.body ? voice : null,
+            voiceSample,
+            scoring: scoring.body ? scoring : null,
+            promptMode,
+            backends,
+            apiKey: resolved.apiKey,
+            baseURL: resolved.baseURL,
+            model: resolved.model,
+            modelSource: resolved.modelSource,
+            signal: cancellation.signal,
+            timeout: timeoutMs,
+            maxConcurrency: parsed.maxConcurrency,
+            maxRetries: parsed.maxRetries,
+            logger,
+          }));
         }
 
         // v3.11 Phase 1.3: surface weight drift between config and the score
@@ -321,6 +357,14 @@ export async function main(args) {
           await writeBatchOutput(parsed, path, output);
         } else {
           console.log(output);
+          if (browserPagePath) {
+            try {
+              await openBrowserDiffPage(browserPagePath);
+            } catch (err) {
+              console.error(`[patina] Browser diff page saved at ${browserPagePath}`);
+              console.error(`[patina] Browser open failed: ${err.message}`);
+            }
+          }
         }
         batchState.recordSuccess();
       } catch (err) {
@@ -388,6 +432,9 @@ function parseArgs(args) {
       case '--voice-sample':
         parsed.voiceSample = readOptionValue(args, i, arg);
         i++;
+        break;
+      case '--browser':
+        parsed.browser = true;
         break;
       case '--diff':
         parsed.diff = true;
@@ -532,6 +579,38 @@ function parseArgs(args) {
   }
 
   return parsed;
+}
+
+function validateBrowserRequest(parsed) {
+  if (!parsed.browser) return;
+  if (parsed.batch) {
+    throw inputError(
+      '--browser does not support --batch',
+      'The browser diff page is limited to one local file in this first release.',
+      'Run `patina --browser path/to/file.md`, or omit --browser for batch rewrites.'
+    );
+  }
+  if (parsed.diff || parsed.audit || parsed.score || parsed.ouroboros) {
+    throw inputError(
+      '--browser only works in rewrite mode',
+      'Browser diff pages are an additive rewrite surface, not a diff/audit/score/ouroboros mode.',
+      'Use `patina --browser path/to/file.md` by itself, without --diff, --audit, --score, or --ouroboros.'
+    );
+  }
+  if (parsed.files.length !== 1) {
+    throw inputError(
+      '--browser requires exactly one local file',
+      'No file, stdin, or multiple files were provided.',
+      'Pass one local file path such as `patina --browser draft.md`.'
+    );
+  }
+  if (/^https?:\/\//i.test(String(parsed.files[0] || ''))) {
+    throw inputError(
+      '--browser does not support URL input yet',
+      'This first PR is limited to a single local file and does not fetch homepage URLs.',
+      'Download the page to a local file first, or run plain patina without --browser.'
+    );
+  }
 }
 
 function cancellationError() {
@@ -973,9 +1052,10 @@ MODES
   --score                 Output AI-likeness score (0-100)
   --exit-on <n>           With --score, exit 3 when overall score > n
   --ouroboros             Iterative self-improvement loop
+  --browser               Rewrite one local file, then open a local before/after diff page (adds one diff explanation call)
 
 OUTPUT & BATCH
-  --format <fmt>          Output format: markdown (default), text, json
+  --format <fmt>          Stdout format: markdown (default), text, json
   --quiet                 Suppress patina status/warning logs on stderr
   --batch                 Process multiple files
   --in-place              Overwrite original files (with --batch)
@@ -1036,6 +1116,90 @@ If no API key is set, pass --backend codex-cli to use a logged-in codex CLI
 (no key required). Auto-fallback was removed in v3.9 to keep agent-mode
 backends opt-in (issue #88).
 `);
+}
+
+async function buildBrowserDiffArtifact({
+  originalText,
+  rawRewriteResult,
+  sourcePath,
+  parsed,
+  config,
+  repoRoot,
+  patterns,
+  profile,
+  voice,
+  voiceSample,
+  scoring,
+  promptMode,
+  backends,
+  apiKey,
+  baseURL,
+  model,
+  modelSource,
+  signal,
+  timeout,
+  maxConcurrency,
+  maxRetries,
+  logger,
+}) {
+  const rewrittenBody = formatRewriteBodyForBrowser(rawRewriteResult, { logger });
+  const beforeScore = scoreDeterministicSignals({ text: originalText, config, repoRoot });
+  const afterScore = scoreDeterministicSignals({ text: rewrittenBody, config, repoRoot });
+
+  let diffExplanation = '';
+  let diffError = null;
+  try {
+    const diffPrompt = buildPrompt({
+      config,
+      patterns,
+      profile,
+      voice,
+      voiceSample,
+      scoring,
+      text: buildBrowserDiffPromptInput(originalText, rewrittenBody),
+      mode: 'diff',
+      promptMode,
+    });
+    const diffResult = await invokeBackendChain({
+      backends,
+      prompt: diffPrompt,
+      apiKey,
+      baseURL,
+      model,
+      modelSource,
+      signal,
+      timeout,
+      maxConcurrency,
+      maxRetries,
+      logger,
+    });
+    diffExplanation = formatOutput(
+      diffResult,
+      'diff',
+      { ...parsed, format: 'markdown', noColor: true },
+      { logger, stdout: { isTTY: false } },
+    );
+  } catch (err) {
+    diffError = err?.message || 'browser diff explanation failed';
+    logger.warn('browser.diff_failed', {
+      message: `[patina] browser diff explanation failed: ${diffError}`,
+    });
+  }
+
+  const html = renderBrowserDiffHtml({
+    original: originalText,
+    rewrittenBody,
+    diffExplanation,
+    diffError,
+    beforeScore,
+    afterScore,
+    sourcePath,
+  });
+
+  return {
+    pagePath: writeBrowserDiffPage(html),
+    rewrittenBody,
+  };
 }
 
 function withDeterministicScore(rawResult, { text, config, repoRoot, logger }) {

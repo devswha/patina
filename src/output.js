@@ -238,13 +238,34 @@ export function stripSelfAudit(body, { logger = createLogger() } = {}) {
     }
     return body;
   }
-  const inner = body.slice(bodyOpen + '[BODY]'.length, bodyClose).trim();
+  const inner = removeSelfAuditBlocks(body.slice(bodyOpen + '[BODY]'.length, bodyClose)).trim();
   const tail = removeSelfAuditBlocks(body.slice(bodyClose + '[/BODY]'.length)).trim();
   return tail ? `${inner}\n\n${tail}` : inner;
 }
+export function formatRewriteBodyForBrowser(result, { logger = createLogger() } = {}) {
+  const body = stripSelfAudit(renderBody(result), { logger }).trim();
+  return removeToneFooter(body);
+}
+
 
 function removeSelfAuditBlocks(body) {
   return String(body || '').replace(/\[SELF_AUDIT\][\s\S]*?\[\/SELF_AUDIT\]/g, '');
+}
+
+function removeToneFooter(body) {
+  if (!hasToneFooter(body)) return body;
+  const match = String(body || '').match(/(^|\n)---\s*\n([\s\S]*?)\n---\s*$/);
+  if (!match) return body;
+  const block = match[2];
+  if (
+    !/\btone\s*:/.test(block)
+    || !/\btone_source\s*:/.test(block)
+    || !/\btone_evidence\s*:/.test(block)
+    || !/\btone_confidence\s*:/.test(block)
+  ) {
+    return body;
+  }
+  return String(body || '').slice(0, match.index).trimEnd();
 }
 
 function renderBody(result) {
@@ -385,11 +406,14 @@ function toFiniteNumber(value) {
 
 function parseFirstJson(text) {
   if (!text || typeof text !== 'string') return null;
-  const candidates = [
+  const rawCandidates = [
     text.trim(),
     text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1],
     text.match(/\{[\s\S]*\}/)?.[0],
-  ].filter(Boolean);
+  ];
+  const candidates = /** @type {string[]} */ (
+    rawCandidates.filter((candidate) => typeof candidate === 'string' && candidate.length > 0)
+  );
   for (const candidate of candidates) {
     try {
       return JSON.parse(candidate);

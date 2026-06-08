@@ -205,6 +205,12 @@ test('stripSelfAudit: extracts [BODY] block and drops [SELF_AUDIT]', () => {
   assert.equal(out, 'Hello world');
 });
 
+test('stripSelfAudit: removes nested SELF_AUDIT blocks inside BODY', () => {
+  const raw = '[BODY]\nHello\n[SELF_AUDIT]\ninternal\n[/SELF_AUDIT]\nworld\n[/BODY]';
+  const out = formatOutput(raw, 'rewrite', {});
+  assert.equal(out, 'Hello\n\nworld');
+});
+
 test('stripSelfAudit: keeps YAML footer that follows [/BODY]', () => {
   const raw = '[BODY]\nHello world\n[/BODY]\n\n[SELF_AUDIT]\nstuff\n[/SELF_AUDIT]\n\n---\ntone: null\ntone_source: profile_only\ntone_evidence: []\ntone_confidence: null\n---';
   const out = formatOutput(raw, 'rewrite', {});

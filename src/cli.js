@@ -288,7 +288,7 @@ export async function main(args) {
 
         const auditBackstop =
           mode === 'audit' && (parsed.format ?? 'markdown') !== 'json' && !parsed.batch
-            ? buildDeterministicAuditBackstop(text, { lang, repoRoot })
+            ? buildDeterministicAuditBackstop(text, { lang, repoRoot, config })
             : '';
         let output;
         let scoreValidationOutput = null;

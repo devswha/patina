@@ -29,6 +29,17 @@ import {
 import { detectMarkupLeakage } from './markup-leakage.js';
 import { detectDiscourseTells } from './discourse-tells.js';
 import { detectTranslationese } from './translationese.js';
+import { extractStructuralFeatures, structuralFeatureRecord, STRUCTURAL_FEATURE_NAMES } from './structural-features.js';
+import {
+  applyScaler,
+  fitScaler,
+  normalizeStructuralModel,
+  predictStructuralScore,
+  structuralModelVerdict,
+  thresholdForMaxFpr,
+  trainLogReg,
+} from './structural-classifier.js';
+import { loadStructuralModel, resolveStructuralModelPath } from './structural-model-loader.js';
 
 export function analyzeText(text, opts = {}) {
   const {
@@ -43,6 +54,7 @@ export function analyzeText(text, opts = {}) {
     lexiconDensityThreshold = DEFAULT_LEXICON_DENSITY_THRESHOLD,
     lexiconMinHotMatches = DEFAULT_LEXICON_MIN_HOT_MATCHES,
     lexicon: providedLexicon,
+    structuralModel = null,
   } = opts;
 
   // Normalize to NFC at the boundary so downstream tokenization and lexicon
@@ -62,6 +74,7 @@ export function analyzeText(text, opts = {}) {
   // surfaced for callers/SKILL but deliberately NOT folded into `hot` (these
   // constructions appear in good Korean too; gating hot would regress FP).
   const translationese = detectTranslationese(normalized, { lang });
+  const structuralClassifier = structuralModelVerdict(normalized, { lang, model: structuralModel });
   const lexicon =
     providedLexicon ??
     (repoRoot ? loadLexicon(lang, repoRoot) : { strict: [], phrases: [] });
@@ -127,7 +140,8 @@ export function analyzeText(text, opts = {}) {
     markupLeakage,
     discourseTells,
     translationese,
-    hot: markupLeakage.leaked || discourseTells.hot || analyzed.some((p) => p.hot),
+    hot: markupLeakage.leaked || discourseTells.hot || structuralClassifier.hot === true || analyzed.some((p) => p.hot),
+    structuralClassifier,
   };
 }
 
@@ -146,6 +160,18 @@ export {
   koreanSpacingFeatures,
   loadLexicon,
   computeDensity,
+  extractStructuralFeatures,
+  structuralFeatureRecord,
+  STRUCTURAL_FEATURE_NAMES,
+  applyScaler,
+  fitScaler,
+  normalizeStructuralModel,
+  predictStructuralScore,
+  structuralModelVerdict,
+  thresholdForMaxFpr,
+  trainLogReg,
+  loadStructuralModel,
+  resolveStructuralModelPath,
 };
 
 function buildKoreanSignals(paragraph, sentenceCount, { enabled, bands }) {

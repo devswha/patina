@@ -56,6 +56,25 @@ stays reserved for the transformed text or JSON envelope.
 - Ouroboros reports per-iteration score movement and latency.
 
 
+## Browser diff page
+
+`--browser` is a rewrite-mode add-on for reviewing one local file in the browser without changing stdout semantics.
+
+```bash
+patina --browser draft.md
+patina --browser --format json draft.md
+```
+
+Contract:
+- Supports exactly one local file path.
+- Rejects stdin, multiple files, `--batch`, URL-like input, and non-rewrite modes such as `--diff`, `--audit`, `--score`, and `--ouroboros`.
+- Preserves the normal rewrite stdout output byte-for-byte for the selected `--format`.
+- Generates a self-contained local HTML page under an OS temp directory and attempts to open it in the default browser.
+- Browser-open fallback reports the saved HTML path on stderr; it never appends the path to stdout.
+- The page shows side-by-side before/after text, conservative changed-block highlights, deterministic before/after score summaries, and Pattern/Removed/Added/Why explanation from a best-effort secondary diff call.
+- `--browser` makes one additional diff-explanation model/backend call after the primary rewrite, so it can add latency and consume extra backend quota.
+- If the secondary diff explanation call fails, the rewrite still succeeds and the page shows a failure notice in the explanation area.
+
 
 ## Backend fallback chains
 

@@ -1,7 +1,9 @@
 import { createServer } from 'node:http';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
+import { EventEmitter } from 'node:events';
 import { main, resolvePromptMode } from '../../src/cli.js';
+import { setBrowserDiffRuntimeForTests, resetBrowserDiffRuntimeForTests } from '../../src/browser-diff.js';
 import { fileURLToPath } from 'node:url';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,8 +18,17 @@ let callCount = 0;
 let lastRequestBody = null;
 let lastAuthorization = null;
 let mockApiKeyPath;
+let requestBodies = [];
 
 function startMockServer(responseText, statusCode = 200, extraResponse = {}) {
+  const queue = Array.isArray(responseText)
+    ? responseText.map((entry) => ({
+        responseText: entry.responseText,
+        statusCode: entry.statusCode ?? 200,
+        extraResponse: entry.extraResponse ?? {},
+      }))
+    : null;
+
   return new Promise((resolve) => {
     mockServer = createServer((req, res) => {
       callCount++;
@@ -26,10 +37,16 @@ function startMockServer(responseText, statusCode = 200, extraResponse = {}) {
       req.on('data', (chunk) => { body += chunk; });
       req.on('end', () => {
         lastRequestBody = JSON.parse(body);
-        res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+        requestBodies.push(lastRequestBody);
+        const current = queue ? (queue.shift() || { responseText: '', statusCode: 200, extraResponse: {} }) : {
+          responseText,
+          statusCode,
+          extraResponse,
+        };
+        res.writeHead(current.statusCode, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
-          choices: [{ message: { content: responseText } }],
-          ...extraResponse,
+          choices: [{ message: { content: current.responseText } }],
+          ...current.extraResponse,
         }));
       });
     });
@@ -60,6 +77,15 @@ async function captureConsole(fn) {
     console.error = originalError;
   }
   return { logs, errors };
+}
+
+function makeFakeSpawn(onSpawn) {
+  return (command, args) => {
+    const child = new EventEmitter();
+    child.unref = () => {};
+    onSpawn?.({ command, args, child });
+    return child;
+  };
 }
 
 async function withEnv(envOverrides, fn) {
@@ -288,6 +314,239 @@ describe('CLI End-to-End with Mock API', () => {
     await startMockServer('This is the humanized result.');
   });
 
+  it('supports --browser with JSON stdout while rendering prose HTML and a second diff call', async () => {
+    const rewriteResponse = [
+      '[BODY]',
+      'This is the humanized result.',
+      '[/BODY]',
+      '',
+      '[SELF_AUDIT]',
+      '- residual signals: none',
+      '[/SELF_AUDIT]',
+      '',
+      '---',
+      'tone: null',
+      'tone_source: profile_only',
+      'tone_evidence: []',
+      'tone_confidence: null',
+      '---',
+    ].join('\n');
+    const diffResponse = [
+      'Pattern: 1. Generic polish',
+      'Removed: This is the draft.',
+      'Added: This is the humanized result.',
+      'Why: one short reason',
+    ].join('\n');
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+
+    requestBodies = [];
+    await stopMockServer();
+    await startMockServer(rewriteResponse);
+    const baseline = await captureConsole(() => main([
+      '--lang', 'en',
+      '--format', 'json',
+      '--api-key-file', mockApiKeyPath,
+      '--base-url', `http://127.0.0.1:${mockPort}`,
+      testFile,
+    ]));
+
+    const writes = [];
+    const chmods = [];
+    const spawns = [];
+    setBrowserDiffRuntimeForTests({
+      tmpdir: () => '/tmp',
+      mkdtemp: (prefix) => {
+        assert.match(prefix, /patina-browser-diff-/);
+        return '/tmp/patina-browser-diff-123';
+      },
+      writeFile: (path, data, encoding) => {
+        writes.push({ path, data, encoding });
+      },
+      chmod: (path, mode) => {
+        chmods.push({ path, mode });
+      },
+      now: () => 123,
+      platform: 'linux',
+      spawn: makeFakeSpawn(({ command, args, child }) => {
+        spawns.push({ command, args });
+        process.nextTick(() => child.emit('close', 0));
+      }),
+    });
+
+    callCount = 0;
+    requestBodies = [];
+    lastRequestBody = null;
+    try {
+      await stopMockServer();
+      await startMockServer([
+        { responseText: rewriteResponse },
+        { responseText: diffResponse },
+      ]);
+
+      const browserRun = await captureConsole(() => main([
+        '--browser',
+        '--lang', 'en',
+        '--format', 'json',
+        '--api-key-file', mockApiKeyPath,
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        testFile,
+      ]));
+
+      assert.strictEqual(browserRun.logs.join('\n'), baseline.logs.join('\n'));
+      assert.deepStrictEqual(browserRun.errors, []);
+      assert.strictEqual(callCount, 2);
+      assert.strictEqual(requestBodies.length, 2);
+      assert.strictEqual(spawns[0].command, 'xdg-open');
+      assert.deepStrictEqual(spawns[0].args, ['/tmp/patina-browser-diff-123/browser-diff-123.html']);
+      assert.strictEqual(writes[0].path, '/tmp/patina-browser-diff-123/browser-diff-123.html');
+      assert.strictEqual(writes[0].encoding, 'utf8');
+      assert.ok(writes[0].data.includes('This is the humanized result.'));
+      assert.ok(writes[0].data.includes('Pattern: 1. Generic polish'));
+      assert.ok(writes[0].data.includes('Signal score'));
+      assert.ok(!writes[0].data.includes('[SELF_AUDIT]'));
+      assert.ok(!writes[0].data.includes('"mode": "rewrite"'));
+      assert.deepStrictEqual(chmods, [
+        { path: '/tmp/patina-browser-diff-123', mode: 0o700 },
+        { path: '/tmp/patina-browser-diff-123/browser-diff-123.html', mode: 0o600 },
+      ]);
+
+      const diffPrompt = requestBodies[1].messages[0].content;
+      assert.match(diffPrompt, /Compare BEFORE to AFTER\./);
+      assert.match(diffPrompt, /Do not rewrite either text\./);
+      assert.match(diffPrompt, /report only changes present in AFTER relative to BEFORE/i);
+      assert.match(diffPrompt, /## BEFORE/);
+      assert.match(diffPrompt, /## AFTER/);
+    } finally {
+      resetBrowserDiffRuntimeForTests();
+      await stopMockServer();
+      await startMockServer('This is the humanized result.');
+    }
+  });
+
+  it('keeps stdout pure and reports the temp path on stderr when browser open fails', async () => {
+    const rewriteResponse = '[BODY]\nThis is the humanized result.\n[/BODY]';
+    const diffResponse = 'Pattern: 1. Generic polish\nRemoved: old\nAdded: new\nWhy: reason';
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+
+    await stopMockServer();
+    await startMockServer(rewriteResponse);
+    const baseline = await captureConsole(() => main([
+      '--lang', 'en',
+      '--api-key-file', mockApiKeyPath,
+      '--base-url', `http://127.0.0.1:${mockPort}`,
+      testFile,
+    ]));
+
+    setBrowserDiffRuntimeForTests({
+      tmpdir: () => '/tmp',
+      mkdtemp: () => '/tmp/patina-browser-diff-456',
+      writeFile: () => {},
+      chmod: () => {},
+      now: () => 456,
+      platform: 'linux',
+      spawn: makeFakeSpawn(({ child }) => {
+        process.nextTick(() => child.emit('close', 1));
+      }),
+    });
+
+    callCount = 0;
+    requestBodies = [];
+    try {
+      await stopMockServer();
+      await startMockServer([
+        { responseText: rewriteResponse },
+        { responseText: diffResponse },
+      ]);
+
+      const browserRun = await captureConsole(() => main([
+        '--browser',
+        '--lang', 'en',
+        '--api-key-file', mockApiKeyPath,
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        testFile,
+      ]));
+
+      assert.strictEqual(browserRun.logs.join('\n'), baseline.logs.join('\n'));
+      assert.strictEqual(callCount, 2);
+      assert.ok(browserRun.errors.some((line) => line.includes('Browser diff page saved at /tmp/patina-browser-diff-456/browser-diff-456.html')));
+      assert.ok(browserRun.errors.some((line) => line.includes('Browser open failed: browser opener exited with code 1')));
+    } finally {
+      resetBrowserDiffRuntimeForTests();
+      await stopMockServer();
+      await startMockServer('This is the humanized result.');
+    }
+  });
+
+  it('keeps rewrite success and writes an HTML warning when the secondary diff call fails', async () => {
+    const rewriteResponse = '[BODY]\nThis is the humanized result.\n[/BODY]';
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    const writes = [];
+
+    setBrowserDiffRuntimeForTests({
+      tmpdir: () => '/tmp',
+      mkdtemp: () => '/tmp/patina-browser-diff-789',
+      writeFile: (_path, data) => {
+        writes.push(data);
+      },
+      chmod: () => {},
+      now: () => 789,
+      platform: 'linux',
+      spawn: makeFakeSpawn(({ child }) => {
+        process.nextTick(() => child.emit('close', 0));
+      }),
+    });
+
+    callCount = 0;
+    requestBodies = [];
+    try {
+      await stopMockServer();
+      await startMockServer([
+        { responseText: rewriteResponse },
+        { responseText: 'backend failed', statusCode: 500 },
+      ]);
+
+      const browserRun = await captureConsole(() => main([
+        '--browser',
+        '--lang', 'en',
+        '--max-retries',
+        '0',
+        '--api-key-file', mockApiKeyPath,
+        '--base-url', `http://127.0.0.1:${mockPort}`,
+        testFile,
+      ]));
+
+      assert.match(browserRun.logs.join('\n'), /This is the humanized result\./);
+      assert.strictEqual(callCount, 2);
+      assert.ok(browserRun.errors.some((line) => line.includes('browser diff explanation failed')));
+      assert.ok(writes[0].includes('Pattern explanation unavailable:'));
+      assert.ok(writes[0].includes('HTTP 500'));
+    } finally {
+      resetBrowserDiffRuntimeForTests();
+      await stopMockServer();
+      await startMockServer('This is the humanized result.');
+    }
+  });
+
+  it('rejects unsupported --browser inputs before any backend call', async () => {
+    const first = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    const second = first;
+    const cases = [
+      { args: ['--browser'], pattern: /requires exactly one local file/ },
+      { args: ['--browser', first, second], pattern: /requires exactly one local file/ },
+      { args: ['--browser', '--batch', first], pattern: /does not support --batch/ },
+      { args: ['--browser', '--diff', first], pattern: /only works in rewrite mode/ },
+      { args: ['--browser', 'https://example.test'], pattern: /does not support URL input yet/ },
+    ];
+
+    for (const testCase of cases) {
+      callCount = 0;
+      requestBodies = [];
+      await assert.rejects(() => main(testCase.args), testCase.pattern);
+      assert.strictEqual(callCount, 0, testCase.args.join(' '));
+      assert.strictEqual(requestBodies.length, 0, testCase.args.join(' '));
+    }
+  });
+
 
   it('should group help output and list current backend names', async () => {
     const { logs } = await captureConsole(() => main(['--help']));
@@ -306,6 +565,7 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(!help.includes('--list-providers'), 'help should not document removed provider listing');
     assert.ok(!/\n\s*--json\s+Alias for --format json/.test(help), 'help should not document removed json alias');
     assert.ok(help.includes('--no-color'), 'help should document diff color opt-out');
+    assert.ok(help.includes('--browser'), 'help should document browser diff mode');
     assert.ok(
       help.includes('openai-http, codex-cli, claude-cli, gemini-cli, kimi-cli'),
       'help should list every backend name'

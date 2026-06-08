@@ -1,6 +1,6 @@
 // @ts-check
 import { createLogger } from './logger.js';
-import { analyzeText } from './features/index.js';
+import { analyzeText, loadStructuralModel } from './features/index.js';
 import { TRANSLATIONESE_RULES } from './features/translationese.js';
 
 /**
@@ -449,6 +449,7 @@ function normalizeFooterTail(lines) {
  * @param {object} [opts]
  * @param {string} [opts.lang]
  * @param {string} [opts.repoRoot]
+ * @param {object} [opts.config]
  * @returns {string} Markdown section (empty string when nothing fired).
  */
 export function buildDeterministicAuditBackstop(text, opts = {}) {
@@ -469,7 +470,8 @@ export function buildDeterministicAuditBackstop(text, opts = {}) {
   }
 
   // markup leakage (near-proof) + density-gated discourse tells — language-agnostic.
-  const a = analyzeText(str, { lang, repoRoot: opts.repoRoot });
+  const structuralModel = loadStructuralModel(opts.config ?? {}, { lang });
+  const a = analyzeText(str, { lang, repoRoot: opts.repoRoot, structuralModel });
   for (const h of a.markupLeakage?.hits ?? []) {
     rows.push({ signal: 'markup-leakage', label: h.label, severity: 'HIGH', location: (h.samples ?? []).join(', ') });
   }
@@ -478,6 +480,9 @@ export function buildDeterministicAuditBackstop(text, opts = {}) {
   }
   if (a.discourseTells?.thematicBreaks?.hot) {
     rows.push({ signal: 'discourse: thematic-breaks', label: '장식용 구분선 남용', severity: 'LOW', location: `${a.discourseTells.thematicBreaks.count}개` });
+  }
+  if (a.structuralClassifier?.hot) {
+    rows.push({ signal: 'structural-classifier', label: '문서 단위 구조 분류기', severity: 'HIGH', location: `score ${a.structuralClassifier.score}` });
   }
 
   if (rows.length === 0) return '';

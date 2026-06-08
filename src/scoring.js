@@ -1,7 +1,7 @@
 // @ts-check
 import { callLLM as defaultCallLLM } from './api.js';
 import { getRepoRoot } from './config.js';
-import { analyzeText } from './features/index.js';
+import { analyzeText, loadStructuralModel } from './features/index.js';
 import { summarizeSignalStrength } from './features/signal-strength.js';
 import { createLogger } from './logger.js';
 
@@ -27,6 +27,15 @@ export const DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD = 20;
  * @type {number}
  */
 export const LEAKAGE_SCORE_FLOOR = 90;
+
+/**
+ * Structural classifier score is a calibrated probability-like document signal.
+ * It only affects the deterministic score when a private local model is loaded
+ * and the model verdict is hot; absent model means baseline behavior.
+ *
+ * @type {number}
+ */
+export const STRUCTURAL_CLASSIFIER_MIN_FLOOR = 70;
 
 class SchemaError extends Error {
   constructor(message, raw) {
@@ -241,6 +250,7 @@ export function scoreDeterministicSignals({
 
   try {
     const lexiconAllowed = isLexiconEnabledForLanguage(config, lang);
+    const structuralModel = loadStructuralModel(config, { lang });
     const result = analyzer(String(text || ''), {
       lang,
       repoRoot,
@@ -250,6 +260,7 @@ export function scoreDeterministicSignals({
       koDiagnosticsEnabled: config.stylometry?.ko_diagnostics?.enabled !== false,
       koDiagnosticBands: config.stylometry?.ko_diagnostics?.bands,
       lexiconDensityThreshold: config.lexicon?.density_threshold,
+      structuralModel,
       ...(lexiconAllowed ? {} : { lexicon: { lang, path: null, strict: [], phrases: [] } }),
     });
     const paragraphs = Array.isArray(result?.paragraphs) ? result.paragraphs : [];
@@ -259,7 +270,14 @@ export function scoreDeterministicSignals({
     // Model-output leakage (#332) is near-proof-grade and lives at the document
     // level, so it short-circuits the hot-ratio score into the 'heavily AI' band.
     const leaked = Boolean(result?.markupLeakage?.leaked);
-    const overall = leaked ? Math.max(hotRatioOverall, LEAKAGE_SCORE_FLOOR) : hotRatioOverall;
+    const structuralClassifier = result?.structuralClassifier ?? { available: false, hot: null, score: null };
+    const structuralFloor =
+      structuralClassifier.hot === true && typeof structuralClassifier.score === 'number'
+        ? Math.max(STRUCTURAL_CLASSIFIER_MIN_FLOOR, roundScore(structuralClassifier.score * 100))
+        : 0;
+    const overall = leaked
+      ? Math.max(hotRatioOverall, LEAKAGE_SCORE_FLOOR)
+      : Math.max(hotRatioOverall, structuralFloor);
     const signalScore = roundScore(summarizeSignalStrength(paragraphs, {
       burstinessBands: config.stylometry?.burstiness?.bands,
       mattrBands: config.stylometry?.ttr?.bands,
@@ -289,6 +307,12 @@ export function scoreDeterministicSignals({
           leaked,
           hits: Array.isArray(result?.markupLeakage?.hits) ? result.markupLeakage.hits.length : 0,
           floor: LEAKAGE_SCORE_FLOOR,
+        },
+        structuralClassifier: {
+          available: Boolean(structuralClassifier.available),
+          hot: structuralClassifier.hot ?? null,
+          score: structuralClassifier.score ?? null,
+          floor: structuralClassifier.hot === true ? structuralFloor : 0,
         },
       },
     };
@@ -725,6 +749,7 @@ function emptyDeterministicBands() {
     mattr: { low: 0, mid: 0, high: 0, null: 0 },
     lexicon: { hot: 0, threshold: null },
     koDiagnostics: { hot: 0, thresholds: null },
+    structuralClassifier: { available: false, hot: null, score: null, floor: 0 },
   };
 }
 

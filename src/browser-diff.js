@@ -223,7 +223,6 @@ export function openBrowserDiffPage(path, options = {}) {
       }
       reject(new Error(`browser opener exited with code ${code}`));
     });
-    child.unref?.();
   });
 }
 

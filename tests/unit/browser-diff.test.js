@@ -142,16 +142,20 @@ test('writeBrowserDiffPage fails loudly when chmod hardening fails on a POSIX-li
 
 test('openBrowserDiffPage selects the platform opener and propagates close failures', async () => {
   let seen = null;
+  let unrefCalled = false;
   const successSpawn = (command, args) => {
     seen = { command, args };
     const child = new EventEmitter();
-    child.unref = () => {};
+    child.unref = () => {
+      unrefCalled = true;
+    };
     process.nextTick(() => child.emit('close', 0));
     return child;
   };
 
   await openBrowserDiffPage('/tmp/demo.html', { platform: 'linux', spawn: successSpawn });
   assert.deepStrictEqual(seen, { command: 'xdg-open', args: ['/tmp/demo.html'] });
+  assert.strictEqual(unrefCalled, false);
 
   await assert.rejects(
     () => openBrowserDiffPage('/tmp/demo.html', {

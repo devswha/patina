@@ -406,7 +406,6 @@ function toFiniteNumber(value) {
  *
  * @param {string} text Raw model output that may embed JSON.
  * @returns {object|null} Parsed JSON value, or null when no candidate parses.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const data = parseFirstJson('```json\n{"overall": 12}\n```');
  */

@@ -17,6 +17,11 @@ import {
   stripProse,
   summarizeSignalStrength,
 } from '../../scripts/prose-score.mjs';
+import { analyzeText } from '../../src/features/index.js';
+import {
+  DISCOURSE_TELLS_SCORE_FLOOR,
+  LEAKAGE_SCORE_FLOOR,
+} from '../../src/scoring.js';
 
 test('parseFileList accepts newline and comma separated paths', () => {
   assert.deepEqual(parseFileList('README.md, docs/a.md\nnotes.mdx'), ['README.md', 'docs/a.md', 'notes.mdx']);
@@ -42,6 +47,102 @@ test('stripNonProse removes table rows before p-value text can look like HTML', 
   assert.equal(stripped, 'Real prose stays.');
   assert.doesNotMatch(stripped, /Academic/);
   assert.doesNotMatch(stripped, /p<0\.01/);
+});
+
+test('stripNonProse strips paired emphasis markers down to the inner text', () => {
+  assert.equal(
+    stripNonProse('**bold** and *ital* and __bold2__ and _ital2_ remain words'),
+    'bold and ital and bold2 and ital2 remain words'
+  );
+  assert.equal(
+    stripNonProse('**bold with *inner* emphasis** stays readable'),
+    'bold with inner emphasis stays readable'
+  );
+});
+
+test('stripNonProse strips emphasis spanning a soft line break, not a paragraph break', () => {
+  // CommonMark emphasis legitimately spans hard-wrapped lines (soft breaks).
+  assert.equal(
+    stripNonProse('This is **bold text\nthat wraps lines** in a paragraph.'),
+    'This is bold text\nthat wraps lines in a paragraph.'
+  );
+  assert.equal(
+    stripNonProse('A _quiet aside\nacross two lines_ ends here.'),
+    'A quiet aside\nacross two lines ends here.'
+  );
+  // A blank line is a paragraph boundary: no emphasis pair across it.
+  const acrossParagraphs = stripNonProse('An asterisk pair **never\n\ncrosses** paragraphs.');
+  assert.match(acrossParagraphs, /\*\*never/);
+  assert.match(acrossParagraphs, /crosses\*\*/);
+});
+
+test('stripNonProse keeps non-emphasis underscores and asterisks intact (issue #396)', () => {
+  const stripped = stripNonProse(
+    'Visit https://example.com/?utm_source=chatgpt.com and grok_card plus user_id and 2*3.'
+  );
+  assert.match(stripped, /utm_source=chatgpt\.com/);
+  assert.match(stripped, /grok_card/);
+  assert.match(stripped, /user_id/);
+  assert.match(stripped, /2\*3/);
+});
+
+test('markup-leakage tokens survive stripNonProse end-to-end (issue #396)', () => {
+  const raw = [
+    'Some intro prose for context here.',
+    '',
+    'See https://example.com/?utm_source=chatgpt.com for the **details**.',
+    '',
+    'The grok_card token appears in this paragraph.',
+  ].join('\n');
+
+  const result = analyzeText(stripNonProse(raw), { lang: 'en' });
+  assert.equal(result.markupLeakage.leaked, true);
+  const hitIds = result.markupLeakage.hits.map((hit) => hit.id);
+  assert.ok(hitIds.includes('ai-tracking-param'));
+  assert.ok(hitIds.includes('model-tool-token'));
+});
+
+test('scoreText surfaces leakage and the canonical LEAKAGE floor (issue #396/#398)', () => {
+  const row = scoreText(
+    [
+      'Some intro prose for context here.',
+      '',
+      'See https://example.com/?utm_source=chatgpt.com for details.',
+      '',
+      'The grok_card token appears in this paragraph.',
+    ].join('\n'),
+    { file: 'leak.md', lang: 'en' }
+  );
+
+  assert.equal(row.markupLeakage.leaked, true);
+  assert.ok(row.markupLeakage.hits >= 2);
+  assert.ok(row.flooredScore >= LEAKAGE_SCORE_FLOOR);
+  // Gate semantics stay ratio-based; the floor lives in flooredScore.
+  assert.ok(row.flooredScore >= row.score);
+});
+
+test('scoreText surfaces discourse tells and the canonical DISCOURSE floor', () => {
+  const row = scoreText(
+    [
+      "Here's the thing about deterministic detectors and why they matter for editors.",
+      '',
+      "Let's be honest, most drafts read fine until the third paragraph slips.",
+      '',
+      'A careful pass over each section catches the slips a checklist misses.',
+    ].join('\n'),
+    { file: 'candor.md', lang: 'en' }
+  );
+
+  assert.equal(row.discourseTells.hot, true);
+  assert.equal(row.discourseTells.fakeCandor, true);
+  assert.ok(row.flooredScore >= DISCOURSE_TELLS_SCORE_FLOOR);
+});
+
+test('scoreText exposes the analyzer skip verdict for thin prose', () => {
+  const row = scoreText('One short line of prose.', { file: 'thin.md', lang: 'en' });
+  assert.equal(row.analysisSkipped, true);
+  assert.equal(row.skipReason, 'paragraphs<=2');
+  assert.ok(row.proseLength > 0);
 });
 
 test('stripProse supports MDX scoring policy without a second stripper', () => {

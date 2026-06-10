@@ -12,6 +12,7 @@ import yaml from 'js-yaml';
 
 import { DEFAULT_INTAKE_INPUT, loadIntakeRows } from './rebaseline-intake.mjs';
 import { MATRIX, canRedistributeText, canonicalizeClass, hashText } from './rebaseline-summary.mjs';
+import { parseFixture } from './update-benchmark-ranges.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -30,8 +31,8 @@ export function parseArgs(argv = process.argv.slice(2)) {
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--input') args.input = argv[++i];
-    else if (arg === '--out-dir') args.outDir = argv[++i];
+    if (arg === '--input') args.input = takeValue(argv, ++i, arg);
+    else if (arg === '--out-dir') args.outDir = takeValue(argv, ++i, arg);
     else if (arg === '--dry-run') args.dryRun = true;
     else if (arg === '--json') args.json = true;
     else if (arg === '--help' || arg === '-h') args.help = true;
@@ -39,6 +40,16 @@ export function parseArgs(argv = process.argv.slice(2)) {
   }
 
   return args;
+}
+
+// A trailing flag without a value must fail loudly: a malformed --out-dir would
+// otherwise fall back to the default and write into the real benchmark corpus.
+function takeValue(argv, index, flag) {
+  const value = argv[index];
+  if (value === undefined || value.startsWith('--')) {
+    throw new Error(`Missing value for ${flag}`);
+  }
+  return value;
 }
 
 export function selectFixtureRows(rows) {
@@ -58,7 +69,7 @@ export function selectFixtureRows(rows) {
     const label = record.sample_id ? `line ${lineNumber} (${record.sample_id})` : `line ${lineNumber}`;
 
     if (record.class !== 'natural-human') {
-      refused.push(`${label}: class=${record.class || '<missing>'} is not natural-human; accepted false positives only`);
+      refused.push(`${label}: class=${record.class || '<missing>'} does not become a public fixture; only natural-human rows are exported, accepted lightly-edited reports stay manifest-only`);
       continue;
     }
     if (!canRedistributeText(record.redistribution)) {
@@ -124,31 +135,82 @@ export function buildFixtureFile(record, fixtureId) {
       `Source: ${record.source_doc}`,
       `Reviewer notes: ${String(record.reviewer_notes).trim()}`,
     ].join('\n'),
-    topic: String(record.topic || record.register || 'false-positive report').replace(/\s*\n\s*/gu, ' '),
+    topic: fixtureTopic(record),
   };
   return `---\n${yaml.dump(meta, { lineWidth: -1 })}---\n\n${record.text.trim()}\n`;
+}
+
+function fixtureTopic(record) {
+  // record.register is a corpus register ("blog"), not a topic; never pass it through as one.
+  const topic = record.topic
+    ? String(record.topic)
+    : `false-positive report${record.register ? ` (register: ${record.register})` : ''}`;
+  return topic.replace(/\s*\n\s*/gu, ' ');
+}
+
+// Index existing fixtures through the same parse path the ranges refresh uses,
+// so re-running the exporter against a cumulative intake file stays idempotent.
+export function indexExistingFixtures(naturalDir) {
+  const byBodyHash = new Map();
+  const bySourceDoc = new Map();
+  if (!existsSync(naturalDir)) return { byBodyHash, bySourceDoc };
+  for (const file of readdirSync(naturalDir)) {
+    if (!file.endsWith('.md')) continue;
+    const path = join(naturalDir, file);
+    let parsed;
+    try {
+      parsed = parseFixture(path);
+    } catch {
+      continue; // not a frontmatter fixture; nothing to dedupe against
+    }
+    const relativePath = toRepoRelative(path);
+    byBodyHash.set(hashText(parsed.body), relativePath);
+    const source = String(parsed.meta?.why_designed_this_way ?? '').match(/^Source:\s*(.+?)\s*$/mu);
+    if (source) bySourceDoc.set(source[1], relativePath);
+  }
+  return { byBodyHash, bySourceDoc };
 }
 
 export function planFixtureExports(selected, options = {}) {
   const outDir = resolveRepoPath(options.outDir || DEFAULT_OUT_DIR);
   const counters = {};
+  const existing = {};
   const files = [];
+  const alreadyExported = [];
   for (const record of selected) {
     const lang = record.language;
     const naturalDir = join(outDir, lang, 'natural');
+    if (existing[lang] === undefined) existing[lang] = indexExistingFixtures(naturalDir);
+
+    const label = record.sample_id || fixtureSlug(record);
+    const bodyHash = hashText(record.text.trim());
+    const bodyMatch = existing[lang].byBodyHash.get(bodyHash);
+    const sourceMatch = existing[lang].bySourceDoc.get(String(record.source_doc).trim());
+    if (bodyMatch || sourceMatch) {
+      alreadyExported.push(bodyMatch
+        ? `${label}: body text already exported as \`${bodyMatch}\``
+        : `${label}: source_doc already exported as \`${sourceMatch}\``);
+      continue;
+    }
+
     if (counters[lang] === undefined) counters[lang] = nextFixtureNumber(naturalDir, lang);
     const number = String(counters[lang]++).padStart(2, '0');
     const fixtureId = `${lang}-nat-${number}-${fixtureSlug(record)}`;
     const path = join(naturalDir, `${fixtureId}.md`);
+    const relativePath = toRepoRelative(path);
     files.push({
       record,
       fixtureId,
       path,
-      relativePath: toRepoRelative(path),
+      relativePath,
       content: buildFixtureFile(record, fixtureId),
     });
+    // Identical bodies repeated within one intake file must not duplicate either.
+    // source_doc is intentionally not added here: one issue may carry several
+    // distinct paragraphs in a single run.
+    existing[lang].byBodyHash.set(bodyHash, relativePath);
   }
-  return files;
+  return { files, alreadyExported };
 }
 
 export function writeFixtureFiles(files) {
@@ -171,13 +233,13 @@ export function writeFixtureFiles(files) {
 export function runFixtureExport(options = {}) {
   const loaded = loadIntakeRows(options.input || DEFAULT_INTAKE_INPUT);
   if (loaded.errors.length) {
-    return { input: loaded.relativePath, selected: [], refused: [], errors: loaded.errors, files: [], written: [] };
+    return { input: loaded.relativePath, selected: [], refused: [], alreadyExported: [], errors: loaded.errors, files: [], written: [] };
   }
 
   const { selected, refused, errors } = selectFixtureRows(loaded.rows);
-  const files = errors.length ? [] : planFixtureExports(selected, options);
-  const written = errors.length || options.dryRun ? [] : writeFixtureFiles(files);
-  return { input: loaded.relativePath, selected, refused, errors, files, written };
+  const planned = errors.length ? { files: [], alreadyExported: [] } : planFixtureExports(selected, options);
+  const written = errors.length || options.dryRun ? [] : writeFixtureFiles(planned.files);
+  return { input: loaded.relativePath, selected, refused, alreadyExported: planned.alreadyExported, errors, files: planned.files, written };
 }
 
 export function renderExportSummary(result, options = {}) {
@@ -186,6 +248,7 @@ export function renderExportSummary(result, options = {}) {
     '',
     `- Input: \`${result.input || 'not recorded'}\``,
     `- Selected rows: ${result.selected.length}`,
+    `- Already exported rows: ${result.alreadyExported.length}`,
     `- Refused rows: ${result.refused.length}`,
     `- Validation: **${result.errors.length ? 'FAIL' : 'PASS'}**`,
   ];
@@ -193,6 +256,9 @@ export function renderExportSummary(result, options = {}) {
 
   if (result.files.length) {
     lines.push('', '## Fixtures', ...result.files.map((file) => `- ${options.dryRun ? 'would write' : 'wrote'} \`${file.relativePath}\``));
+  }
+  if (result.alreadyExported.length) {
+    lines.push('', '## Already exported', ...result.alreadyExported.map((reason) => `- ${escapeMarkdown(reason)}`));
   }
   if (result.refused.length) {
     lines.push('', '## Refused', ...result.refused.map((reason) => `- ${escapeMarkdown(reason)}`));
@@ -225,8 +291,10 @@ function printHelp() {
 Promotes accepted false-positive intake rows (class natural-human, public
 redistribution) into ${DEFAULT_OUT_DIR}/{lang}/natural/ fixtures, numbering
 after the highest existing fixture per language. Rows that are private or
-no-redistribution are refused. After a real run, regenerate the benchmark
-baseline with \`npm run benchmark:ranges\` and review the diff.
+no-redistribution are refused; rows whose body text or source issue already
+matches an existing fixture are skipped as already exported, so re-running
+against a cumulative intake file is safe. After a real run, regenerate the
+benchmark baseline with \`npm run benchmark:ranges\` and review the diff.
 Default input: ${DEFAULT_INTAKE_INPUT}`);
 }
 

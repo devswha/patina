@@ -24,7 +24,9 @@ const TOLERANCES = {
   lexiconDensity: 5,
 };
 
-function parseFixture(path) {
+// Exported so fixture producers (scripts/fp-fixture-export.mjs) and their tests
+// can lock themselves to this exact parse path instead of re-implementing it.
+export function parseFixture(path) {
   const raw = readFileSync(path, 'utf8');
   const m = raw.match(FRONTMATTER_RE);
   if (!m) throw new Error(`Missing frontmatter: ${path}`);
@@ -106,4 +108,6 @@ function main() {
   console.log(`Wrote ${relative(REPO_ROOT, OUT_PATH)} (${out.fixtureCount} fixtures)`);
 }
 
-main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

@@ -7,6 +7,7 @@ const checks = [];
 
 expect(pkg.private === false, 'package.json private must be false');
 expect(pkg.bin?.patina === 'bin/patina.js', 'package.json bin.patina must point to bin/patina.js');
+expect(pkg.bin?.['patina-cli'] === 'bin/patina.js', 'package.json bin.patina-cli must point to bin/patina.js');
 expect(pkg.bin?.['patina-score'] === 'scripts/precommit-score.mjs', 'package.json bin.patina-score must point to scripts/precommit-score.mjs');
 expect(existsSync('bin/patina.js'), 'bin/patina.js must exist');
 expect(readVersionField('SKILL.md') === version, 'SKILL.md version must match package.json');

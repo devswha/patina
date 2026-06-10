@@ -62,7 +62,7 @@ Read `core/scoring.md`.
 
 Before rewriting, extract semantic anchors from the input text. These are internal working memory only — do NOT show them to the user.
 
-**Skip condition**: If text is ≤1 paragraph and ≤2 sentences, skip extraction. MPS is marked N/A and ouroboros/MAX MPS gating is bypassed.
+**Skip condition**: If text is ≤1 paragraph and ≤2 sentences, skip extraction. MPS is marked N/A and ouroboros MPS gating is bypassed.
 
 **Anchor types**:
 
@@ -334,33 +334,11 @@ If no anchors extracted: `MPS = N/A`
 
 ---
 
-## MAX Mode (Multi-Model)
-
-When using multiple models (claude, gemini, codex):
-1. Build one self-contained worker prompt (this template + inlined patterns/profile/voice)
-2. Dispatch to each model in parallel (tmux panes or sequential)
-3. Collect outputs
-4. Score each result independently using the same algorithm
-5. Calculate MPS for each result
-6. Select the candidate with the **lowest AI score where MPS ≥ 70**
-7. If all candidates have MPS < 70, select the one with the **highest MPS**
-
-### Dispatch Methods
-
-- **OMC (tmux)**: Split panes, run models in parallel, poll sentinel files
-- **Direct**: Sequential stdin pipe execution, no tmux dependency
-- **API**: Send prompt to LLM API endpoints, collect responses
-
-Each run uses a unique temp directory. Timeout models are marked `failed`.
-
----
-
 ## References
 
 - `.patina.default.yaml` — configuration defaults
 - `core/voice.md` — voice injection guidelines
 - `core/scoring.md` — complete scoring algorithm
 - `SKILL.md` — Claude Code-specific pipeline specification
-- `patina-max/SKILL.md` — Claude Code MAX mode specification
 - `AGENTS.md` — multi-agent project context
 - `.cursor/rules/patina.md` — Cursor IDE rules

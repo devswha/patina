@@ -13,12 +13,7 @@
 //
 // ko-only for now (calques are language-specific).
 import { splitProseSentences } from './segment.js';
-
-// Surface forms of a passive predicate (되다/받다/당하다/-어지다 families). Listed
-// as composed NFC syllables because the passive marker fuses into the stem
-// syllable (된다 = 되+ㄴ다), which a jamo alternation cannot match.
-const BY_PASSIVE_PREDICATE =
-  '(?:된다|된|될|됨|됐다|됐|돼|되었|되어|되는|되며|되고|됩니다|됩|받는다|받았다|받은|받을|받는|받습니다|받아|당한다|당했다|당하다|당하는|당해|(?:어|아|여)(?:진다|졌다|진|질|지는|집니다|져))';
+import { getKoInterferenceRule } from './catalog/ko-interference.js';
 
 // Strong rules are rarer and can satisfy the hot gate; weak rules are common
 // advisory evidence and never make the detector hot on their own.
@@ -45,45 +40,11 @@ const RULES = [
     re: () => /당신(?:은|이|의|에게|을|를|께서|께)?/g,
     example: { before: '당신은 이것을 설정할 수 있습니다.', after: '이건 설정할 수 있다.' },
   },
-  {
-    id: 'a16-pronoun-literal',
-    label: '영어식 3인칭 대명사 직역 (he/she/it/they)',
-    strong: true,
-    // Require a non-Hangul boundary before the pronoun (so 로그/버그/태그 don't match)
-    // and an eojeol boundary after it (so 그녀석/그것참 don't match).
-    re: () => /(?<![가-힣])(?:그녀(?:는|가|를|의|에게|와|도|만)?|그것(?:은|이|을|의|에|에게)?|그들(?:은|이|을|의|에게|과|도)?|그(?:는|가|를|의|에게|와|도|만))(?=\s|[.,!?。]|$)/g,
-    example: { before: '메리는 그녀가 그녀의 어머니에게 전화했다고 말했다.', after: '메리는 어머니에게 전화했다고 말했다.' },
-  },
-  {
-    id: 'a19-double-particle',
-    label: '이중 조사 결합 (-에서의/-으로의/-에의)',
-    strong: true,
-    re: () => /(?:에서의|에로의|으로의|에의|으로부터의|로부터의)/g,
-    example: { before: '회의에서의 결정은 앞으로의 운영으로의 전환을 앞당겼다.', after: '회의에서 나온 결정은 앞으로 운영을 전환하는 일을 앞당겼다.' },
-  },
-  {
-    id: 'passive-e-uihae',
-    label: '"~에 의해" 피동 (English by-passive)',
-    strong: false,
-    re: () => /에 의해/g,
-    example: { before: '작업은 에이전트에 의해 처리됩니다.', after: '에이전트가 작업을 처리합니다.' },
-  },
-  {
-    id: 't2-by-passive',
-    label: '"~에 의해" + 피동 동사 결합',
-    strong: true,
-    // "에 의해" + a passive predicate in the following token. Matches fused
-    // syllable forms (된다/됩니다/될/진다) that the old jamo alternation missed.
-    re: () => new RegExp('에\\s*의(?:해|하여)\\s+\\S{0,12}?' + BY_PASSIVE_PREDICATE, 'g'),
-    example: { before: '이 작업은 에이전트에 의해 처리되었다.', after: '에이전트가 이 작업을 처리했다.' },
-  },
-  {
-    id: 'a8-double-passive',
-    label: '이중 피동 표면형 (-되어진/-보여진/-쓰여진)',
-    strong: true,
-    re: () => /(?:되어진다|되어졌다|되어진|되어지는|보여진다|보여졌다|보여진|쓰여진다|쓰여졌다|쓰여진|잊혀진|잊혀졌|닫혀진|열려진|불려진|놓여진)/g,
-    example: { before: '이 문제는 분석되어진 뒤 보고서에 쓰여진다.', after: '이 문제는 분석된 뒤 보고서에 쓰인다.' },
-  },
+  getKoInterferenceRule('a16-pronoun-literal'),
+  getKoInterferenceRule('a19-double-particle'),
+  getKoInterferenceRule('passive-e-uihae'),
+  getKoInterferenceRule('t2-by-passive'),
+  getKoInterferenceRule('a8-double-passive'),
   {
     id: 'have-overuse',
     label: '"~을 가지고 있다" (English "have")',
@@ -91,13 +52,7 @@ const RULES = [
     re: () => /(?:을|를)\s*(?:가지(?:고 있|고 있습니다|고 있다)|갖(?:고 있|고 있습니다|고 있다))/g,
     example: { before: '이 도구는 유연성을 가지고 있습니다.', after: '이 도구는 유연합니다.' },
   },
-  {
-    id: 'a7-light-verb',
-    label: '영어식 have/make light verb 직역',
-    strong: false,
-    re: () => /(?:회의를\s*가(?:지|졌)|결정을\s*내(?:리|렸)|(?:을|를)\s*갖고\s*있(?:다|습니다|는|었|으)?)/g,
-    example: { before: '우리는 회의를 가졌고 중요한 결정을 내렸다.', after: '우리는 회의에서 중요한 결정을 했다.' },
-  },
+  getKoInterferenceRule('a7-light-verb'),
   {
     id: 'one-of',
     label: '"~중 하나" (English "one of the")',
@@ -126,14 +81,7 @@ const RULES = [
     re: () => /(?:쉽게|가능하게|간단하게|편하게)\s*(?:만들어\s*(?:줍니다|준다|줘)|만듭니다|만든다)/g,
     example: { before: '설치를 쉽게 만들어 줍니다.', after: '설치가 쉬워진다.' },
   },
-  {
-    id: 'c11-connective-comma',
-    label: '연결어미 뒤 쉼표 (-고,/-며,/-지만,)',
-    strong: false,
-    minCount: 2,
-    re: () => /(?:고|며|지만|면서|아서|어서)\s*,/g,
-    example: { before: '그는 자료를 검토하고, 결과를 정리하며, 보고서를 작성했다.', after: '그는 자료를 검토하고 결과를 정리한 뒤 보고서를 작성했다.' },
-  },
+  getKoInterferenceRule('c11-connective-comma'),
 ];
 
 const ABS_MIN = 4;        // need at least this many independent evidence spans, and

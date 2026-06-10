@@ -3,7 +3,15 @@ import test from 'node:test';
 
 import { detectTranslationese, TRANSLATIONESE_RULES } from '../../src/features/translationese.js';
 import { analyzeText } from '../../src/features/index.js';
-import { KO_POST_EDITESE_SCHEMA, koreanPostEditeseFeatures } from '../../src/features/stylometry.js';
+import {
+  KO_POST_EDITESE_INTERFERENCE_RULE_IDS as STYLOMETRY_KO_INTERFERENCE_RULE_IDS,
+  KO_POST_EDITESE_SCHEMA,
+  koreanPostEditeseFeatures,
+} from '../../src/features/stylometry.js';
+import {
+  KO_INTERFERENCE_RULE_IDS,
+  KO_POST_EDITESE_INTERFERENCE_RULE_IDS,
+} from '../../src/features/catalog/ko-interference.js';
 
 
 test('calque-dense ko fires (count + density gate met)', () => {
@@ -51,6 +59,18 @@ test('every rule ships a before/after example', () => {
     assert.ok(rule.re().test(rule.example.before), `rule ${rule.id} does not match its before example`);
   }
 });
+
+test('ko interference catalog drives translationese and post-editese consumers', () => {
+  const translationeseSharedIds = TRANSLATIONESE_RULES
+    .filter((rule) => KO_INTERFERENCE_RULE_IDS.includes(rule.id))
+    .map((rule) => rule.id);
+
+  assert.deepEqual(translationeseSharedIds, KO_INTERFERENCE_RULE_IDS);
+  assert.deepEqual(STYLOMETRY_KO_INTERFERENCE_RULE_IDS, KO_POST_EDITESE_INTERFERENCE_RULE_IDS);
+  for (const id of KO_POST_EDITESE_INTERFERENCE_RULE_IDS) {
+    assert.ok(KO_INTERFERENCE_RULE_IDS.includes(id), `${id} must come from the shared catalog`);
+  }
+});
 test('ko translationese detects im-not-ai derived advisory rules', () => {
   const text = [
     '메리는 그녀가 그녀의 어머니에게 전화했다고 말했다.',
@@ -83,6 +103,22 @@ test('ko translationese caveats keep common formal Korean below stronger rules',
   assert.equal(r.hot, false);
 });
 
+test('ko shared by-passive catalog accepts 의해 and 의하여 spellings', () => {
+  const texts = [
+    '이 작업은 에이전트에 의해 처리되었다.',
+    '이 보고서는 검토자에 의하여 작성되었다.',
+  ];
+
+  for (const text of texts) {
+    const translationese = detectTranslationese(text, { lang: 'ko' });
+    const ids = translationese.byRule.map((rule) => rule.id);
+
+    assert.ok(ids.includes('passive-e-uihae'), `${text} should hit the weak by-passive rule`);
+    assert.ok(ids.includes('t2-by-passive'), `${text} should hit the strong by-passive co-occurrence rule`);
+    assert.equal(koreanPostEditeseFeatures(text, { lang: 'ko' }).metrics.interference.byPassiveCount, 1);
+  }
+});
+
 test('ko pronoun literal rules ignore nouns ending in 그 and bound words', () => {
   const techText = '모든 로그는 남는다. 버그가 있으면 태그도 같이 적는다. 블로그를 고쳤고 플래그를 내렸다.';
   const colloquialText = '그녀석이 또 늦었다. 아 그것참 곤란하네. 그들먹은 상황이라고 했다.';
@@ -112,6 +148,19 @@ test('ko post-editese pronoun literal keeps stacked-particle calques (issue #395
   // Simple single-particle forms keep matching before space or sentence punctuation.
   assert.equal(pronounLiteralCount('그는 떠났다. 그녀는 남았다. 그것은 사실이다. 그들은 침묵했다.'), 4);
   assert.equal(pronounLiteralCount('그는, 결국 돌아왔다.'), 1);
+});
+
+test('ko translationese pronoun literal catches stacked-particle calques from shared a16 catalog', () => {
+  const stackedForms = ['그들에게는', '그녀에게도', '그들과의', '그것도', '그것만', '그들처럼', '그녀보다'];
+  const text = stackedForms.map((form) => `${form} 결과가 전달되었다.`).join(' ');
+  const r = detectTranslationese(text, { lang: 'ko' });
+  const row = r.byRule.find((rule) => rule.id === 'a16-pronoun-literal');
+
+  assert.ok(row, 'a16-pronoun-literal should fire');
+  assert.equal(row.count, stackedForms.length);
+  for (const form of stackedForms) {
+    assert.ok(r.hits.includes(form), `${form} should be reported as an a16 hit`);
+  }
 });
 
 test('ko post-editese pronoun literal still excludes bound nouns and word-internal 그', () => {

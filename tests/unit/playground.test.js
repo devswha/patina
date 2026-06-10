@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { dirname, resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { PLAYGROUND_LEXICONS } from '../../playground/data/lexicons.js';
@@ -306,18 +306,8 @@ test('playground mirrors ko post-editese schema and metrics in parity with node'
   assert.deepEqual(playgroundPayload, nodePayload);
 });
 
-test('playground pronoun literal regex stays pattern-identical to node (issue #395)', () => {
-  const extractRegexLiteral = (relativePath, constName) => {
-    const source = readFileSync(resolve(REPO_ROOT, relativePath), 'utf8');
-    const match = source.match(new RegExp(`const ${constName} = (/.+/g);`));
-    assert.ok(match, `${constName} regex literal not found in ${relativePath}`);
-    return match[1];
-  };
-
-  assert.equal(
-    extractRegexLiteral('playground/analyzer.js', 'KO_POST_EDITESE_PRONOUN_LITERAL_RE'),
-    extractRegexLiteral('src/features/stylometry.js', 'POST_EDITESE_PRONOUN_LITERAL_RE'),
-  );
+test('playground ko post-editese implementation is the shared node implementation (issue #395)', () => {
+  assert.equal(playgroundKoPostEditeseFeatures, nodeKoPostEditeseFeatures);
 });
 
 test('playground mirrors stacked-particle pronoun literal counts (issue #395)', () => {
@@ -708,6 +698,45 @@ test('Vercel config exposes the playground at the domain root', () => {
   assert.match(csp, /script-src 'self'(?:;|$)/);
   assert.doesNotMatch(csp, /script-src[^;]*'unsafe-inline'/);
   assert.match(csp, /connect-src 'self'(?:;|$)/);
+});
+
+function collectStaticImports(relativeEntry) {
+  const seen = new Set();
+  const pending = [resolve(REPO_ROOT, relativeEntry)];
+  const violations = [];
+
+  while (pending.length > 0) {
+    const file = pending.pop();
+    if (seen.has(file)) continue;
+    seen.add(file);
+
+    const source = readFileSync(file, 'utf8');
+    const importPattern = /\b(?:import|export)\s+(?:[^'"()]*?\s+from\s+)?['"]([^'"]+)['"]/g;
+    for (const match of source.matchAll(importPattern)) {
+      const specifier = match[1];
+      if (specifier.startsWith('node:') || (!specifier.startsWith('.') && !specifier.startsWith('/'))) {
+        violations.push(`${relative(REPO_ROOT, file)} -> ${specifier}`);
+        continue;
+      }
+
+      const child = specifier.startsWith('/')
+        ? resolve(REPO_ROOT, `.${specifier}`)
+        : resolve(dirname(file), specifier);
+      if (!child.startsWith(REPO_ROOT) || !child.endsWith('.js')) {
+        violations.push(`${relative(REPO_ROOT, file)} -> ${specifier}`);
+        continue;
+      }
+      pending.push(child);
+    }
+  }
+
+  return { seen, violations };
+}
+
+test('playground static module graph stays browser-pure', () => {
+  const { seen, violations } = collectStaticImports('playground/app.js');
+  assert.deepEqual(violations, []);
+  assert.ok([...seen].some((file) => file.endsWith('/src/features/segment.js')));
 });
 
 test('generated playground lexicon bundle is in sync with markdown lexicons', () => {

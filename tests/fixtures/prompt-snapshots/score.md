@@ -76,12 +76,12 @@ Compact pattern catalog digest:
 
 **Short-text boost (input ≤200 chars OR ≤3 paragraphs):** for register-sensitive categories (`language`, `style`, `viral-hook`) apply a 1.5x severity multiplier per detection (cap at 3). This surfaces voice/register shifts (e.g., `~다` ↔ `~습니다` swap) that the long-text formula otherwise undercounts.
 
+Interpretation: 0-15 human | 16-30 mostly human | 31-50 mixed | 51-70 AI-like | 71-100 heavily AI
+
 Output format (the Weight column must echo the values above verbatim):
 | Category | Weight | Detected | Raw Score | Weighted |
 |----------|--------|----------|-----------|----------|
 | **Overall** | | | | **XX.X (±10)** |
-
-Interpretation: 0-15 human | 16-30 mostly human | 31-50 mixed | 51-70 AI-like | 71-100 heavily AI
 
 ## Input Text
 

@@ -2,8 +2,9 @@
 import { callLLM as defaultCallLLM } from './api.js';
 import { getRepoRoot } from './config.js';
 import { analyzeText, loadStructuralModel } from './features/index.js';
+import { LEAKAGE_SCORE_FLOOR } from './features/markup-leakage.js';
 import { summarizeSignalStrength } from './features/signal-strength.js';
-import { buildScoreMathCore } from './prompt-builder.js';
+import { buildScoreMathCore, resolveSeverityPoints } from './prompt-builder.js';
 import { createLogger } from './logger.js';
 
 /**
@@ -15,19 +16,29 @@ import { createLogger } from './logger.js';
  */
 export const DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD = 20;
 
+// LEAKAGE_SCORE_FLOOR is owned by the browser-pure leakage module so the
+// playground shares the same constant; re-exported here for src consumers.
+export { LEAKAGE_SCORE_FLOOR };
+
 /**
- * Score floor applied when deterministic markup-leakage is detected.
+ * AI-likeness interpretation bands (upper bound inclusive, ascending).
  *
- * Model-output leakage (issue #332) is near-proof-grade: a single token that
- * LLM tooling injects and humans never type. Unlike the stylometric/lexical
- * signals it is decisive on its own, so any hit short-circuits the deterministic
- * `overall` into the 'heavily AI' band (>70) regardless of the per-paragraph
- * hot ratio. It is a floor, not a hard 100, because the surrounding prose may
- * still be genuinely human and we avoid claiming absolute proof.
+ * Single source for `interpretScore`, the score-prompt interpretation line
+ * (src/prompt-builder.js buildScoreMathCore), the `scoreText` strict-JSON
+ * contract's interpretation enum, and the core/scoring.md §7 table (gated by
+ * tests/unit/threshold-parity.test.js). The playground's `scoreBand`
+ * (playground/analyzer.js) intentionally uses coarser UI bands (<=20/<=50) and
+ * is NOT derived from this constant.
  *
- * @type {number}
+ * @type {ReadonlyArray<{max: number, label: string}>}
  */
-export const LEAKAGE_SCORE_FLOOR = 90;
+export const SCORE_INTERPRETATION_BANDS = Object.freeze([
+  Object.freeze({ max: 15, label: 'human' }),
+  Object.freeze({ max: 30, label: 'mostly human' }),
+  Object.freeze({ max: 50, label: 'mixed' }),
+  Object.freeze({ max: 70, label: 'AI-like' }),
+  Object.freeze({ max: 100, label: 'heavily AI' }),
+]);
 
 /**
  * Structural classifier score is a calibrated probability-like document signal.
@@ -154,6 +165,10 @@ export async function scoreText({
   // buildScoreMathCore carries the shared scoring math (weights, severity
   // scale, denominators, catalog digest) but no output contract; the strict
   // JSON contract below is the ONLY contract in this prompt (issue #397).
+  // The contract's example row and interpretation enum are derived from the
+  // same sources as the math core (pack frontmatter counts × effective
+  // severity points, SCORE_INTERPRETATION_BANDS) so an override or band
+  // relabel can never leave the contract contradicting the instructions.
   const prompt = `You are an AI-likeness scoring engine. Score the following text for AI-writing patterns.
 
 ## Scoring Instructions
@@ -166,11 +181,11 @@ Return ONLY a JSON object in this exact format (no markdown, no explanation):
 
 {
   "categories": {
-    "content": {"detected": 0, "sum": 0, "max": 18, "score": 0.0, "weighted": 0.0},
+    ${buildContractExampleCategoryRow(patterns, config)},
     ...
   },
   "overall": 0.0,
-  "interpretation": "human | mostly human | mixed | AI-like | heavily AI"
+  "interpretation": "${SCORE_INTERPRETATION_BANDS.map((band) => band.label).join(' | ')}"
 }
 
 ## Text to Score
@@ -206,6 +221,24 @@ ${text}
       raw: e.raw,
     };
   }
+}
+
+// Build the example category row for the scoreText strict-JSON contract.
+// Derived from the first loaded pack that declares a frontmatter pattern
+// count, so the illustrated `max` always equals the pattern_count × high
+// denominator the same prompt instructs the model to use — including under a
+// `severity-points` override. Falls back to an illustrative 6-pattern
+// "content" category when no pack metadata is available (mock/test paths);
+// in that case the prompt carries no pattern-count claims to contradict.
+function buildContractExampleCategoryRow(patterns, config) {
+  const severityPoints = resolveSeverityPoints(config);
+  const pack = (patterns || []).find((p) => Number.isFinite(Number(p?.frontmatter?.patterns)));
+  const packName = String(pack?.frontmatter?.pack || 'content');
+  // Category = pack name minus the language prefix (core/scoring.md §3).
+  const category = packName.replace(/^[a-z]{2}-/, '');
+  const patternCount = pack ? Number(pack.frontmatter.patterns) : 6;
+  const max = patternCount * severityPoints.high;
+  return `"${category}": {"detected": 0, "sum": 0, "max": ${max}, "score": 0.0, "weighted": 0.0}`;
 }
 
 /**
@@ -533,11 +566,11 @@ ${rewritten}
  * const label = interpretScore(28); // mostly human
  */
 export function interpretScore(score) {
-  if (score <= 15) return 'human';
-  if (score <= 30) return 'mostly human';
-  if (score <= 50) return 'mixed';
-  if (score <= 70) return 'AI-like';
-  return 'heavily AI';
+  for (const band of SCORE_INTERPRETATION_BANDS) {
+    if (score <= band.max) return band.label;
+  }
+  // Above the last band max (e.g. unclamped >100): still the top band.
+  return SCORE_INTERPRETATION_BANDS[SCORE_INTERPRETATION_BANDS.length - 1].label;
 }
 
 // Length ratio is deterministic — bucket per core/scoring.md §10.4.

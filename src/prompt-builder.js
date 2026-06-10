@@ -135,7 +135,11 @@ export function buildPrompt(options) {
   return prompt;
 }
 
-function buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAudit = true, lang = 'ko' } = {}) {
+function buildRewriteInstructions(
+  structurePacks,
+  lexicalPacks,
+  { includeSelfAudit = true, lang = 'ko', includeKoreanAdvisory = true } = {}
+) {
   const phaseCount = includeSelfAudit ? 3 : 2;
   let inst = `Follow the ${phaseCount}-Phase pipeline:\n\n`;
 
@@ -166,6 +170,10 @@ function buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAud
   const cjkGuard = buildCjkClauseRewriteGuard(lang);
   if (cjkGuard) {
     inst += `${cjkGuard}\n`;
+  }
+
+  if (includeKoreanAdvisory) {
+    inst += buildKoreanAdvisoryRewriteGuidance(lang);
   }
 
 
@@ -235,6 +243,19 @@ function buildCjkClauseRewriteGuard(lang) {
   }
 
   return `${shared.join('\n')}\n`;
+}
+
+function buildKoreanAdvisoryRewriteGuidance(lang) {
+  if (lang !== 'ko') return '';
+
+  return [
+    `### Korean advisory analyzer metadata`,
+    ``,
+    `If \`analysis.translationese\` or \`koPostEditese.v1\` metadata is available, treat it as advisory editing context only. It is not score, gate, hot-spot, severity, benchmark, z-score, baseline, percentile, prompt/rewrite gate, or authorship-verdict evidence.`,
+    `Use the hints to make natural Korean edits for calques, literal pronouns, by-passives, double particles, overly uniform endings, sentence rhythm, and suffix-diversity proxies.`,
+    `Preserve claims, numbers, polarity, causation, and register; do not add or remove facts to satisfy the metadata.`,
+    ``,
+  ].join('\n');
 }
 
 function buildDiffInstructions() {
@@ -339,6 +360,7 @@ function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone
     : `This text reads like AI. Rewrite it so it sounds like a real person wrote it. If you spot any of the phrases below, swap them out for something natural. Don't over-paraphrase — keep the meaning, numbers, and causation intact.`;
 
   let prompt = `${instruction}\n\n`;
+  prompt += buildKoreanAdvisoryRewriteGuidance(lang);
   const cjkGuard = buildCjkClauseRewriteGuard(lang);
   if (cjkGuard) {
     prompt += `${cjkGuard}\n`;
@@ -438,7 +460,11 @@ function buildOuroborosInstructions(config, structurePacks, lexicalPacks) {
   // Skip Phase 3 self-audit: each iteration runs through external evaluators
   // (scoreText, scoreMPS, scoreFidelity) in src/ouroboros.js, so an in-prompt
   // self-audit duplicates work and inflates token cost.
-  inst += buildRewriteInstructions(structurePacks, lexicalPacks, { includeSelfAudit: false, lang });
+  inst += buildRewriteInstructions(structurePacks, lexicalPacks, {
+    includeSelfAudit: false,
+    lang,
+    includeKoreanAdvisory: false,
+  });
 
   return inst;
 }

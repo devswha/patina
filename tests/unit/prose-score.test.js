@@ -18,10 +18,7 @@ import {
   summarizeSignalStrength,
 } from '../../scripts/prose-score.mjs';
 import { analyzeText } from '../../src/features/index.js';
-import {
-  DISCOURSE_TELLS_SCORE_FLOOR,
-  LEAKAGE_SCORE_FLOOR,
-} from '../../src/scoring.js';
+import { LEAKAGE_SCORE_FLOOR } from '../../src/scoring.js';
 
 test('parseFileList accepts newline and comma separated paths', () => {
   assert.deepEqual(parseFileList('README.md, docs/a.md\nnotes.mdx'), ['README.md', 'docs/a.md', 'notes.mdx']);
@@ -121,7 +118,7 @@ test('scoreText surfaces leakage and the canonical LEAKAGE floor (issue #396/#39
   assert.ok(row.flooredScore >= row.score);
 });
 
-test('scoreText surfaces discourse tells and the canonical DISCOURSE floor', () => {
+test('scoreText carries discourse tells through the hot ratio, not a floor (#391)', () => {
   const row = scoreText(
     [
       "Here's the thing about deterministic detectors and why they matter for editors.",
@@ -135,7 +132,14 @@ test('scoreText surfaces discourse tells and the canonical DISCOURSE floor', () 
 
   assert.equal(row.discourseTells.hot, true);
   assert.equal(row.discourseTells.fakeCandor, true);
-  assert.ok(row.flooredScore >= DISCOURSE_TELLS_SCORE_FLOOR);
+  // Per-paragraph attribution (#391): the two opener-carrying paragraphs are
+  // hot, the clean one is not, and the score is the plain hot ratio. The old
+  // DISCOURSE_TELLS_SCORE_FLOOR no longer exists, so flooredScore tracks the
+  // ratio exactly when nothing leaked.
+  assert.equal(row.hotCount, 2);
+  assert.equal(row.paragraphCount, 3);
+  assert.ok(Math.abs(row.score - (2 / 3) * 100) < 0.01);
+  assert.equal(row.flooredScore, row.score);
 });
 
 test('scoreText exposes the analyzer skip verdict for thin prose', () => {
@@ -223,6 +227,45 @@ test('paragraph signal strength uses the strongest deterministic signal', () => 
     17
   );
   assert.equal(summarizeSignalStrength([]), 0);
+});
+
+test('paragraph signal strength covers discourse-tell attribution (#391)', () => {
+  // One fake-candor opener normalized by the >=2 document gate.
+  assert.equal(paragraphSignalStrength({ candorHot: true, candorCount: 1 }), 50);
+  // Enough openers to clear the gate alone saturates at 100.
+  assert.equal(paragraphSignalStrength({ candorHot: true, candorCount: 2 }), 100);
+  // One divider line normalized by the >=3 document gate.
+  assert.ok(Math.abs(paragraphSignalStrength({ thematicBreakHot: true, thematicBreakCount: 1 }) - 100 / 3) < 0.01);
+  // Cold tells contribute nothing, even with counts present.
+  assert.equal(paragraphSignalStrength({ candorHot: false, candorCount: 1 }), 0);
+  assert.equal(paragraphSignalStrength({ thematicBreakHot: false, thematicBreakCount: 2 }), 0);
+});
+
+test('scoreText keeps the prose gate on prose while dividers stay visible to ranking (#391)', () => {
+  const row = scoreText(
+    [
+      'The standup ran long because the staging database fell over mid-demo again today.',
+      '---',
+      'Kwon restored it fast. Six minutes, snapshot from Tuesday, slow storage tier and all.',
+      '---',
+      'We still lost the seed data for the pricing experiment, which nobody mourned much.',
+      '---',
+    ].join('\n\n'),
+    { file: 'dividers.md', lang: 'en' }
+  );
+
+  // Divider-only pseudo-paragraphs are markup, not prose: the gate ratio
+  // (score/overGate) only counts the three human paragraphs, all cold.
+  assert.equal(row.paragraphCount, 3);
+  assert.equal(row.hotCount, 0);
+  assert.equal(row.score, 0);
+  assert.equal(row.overGate, false);
+  // The gated dividers still rank: the attributed ratio over all analyzer
+  // paragraphs (3 hot of 6) reaches flooredScore so mdx-score surfaces the doc.
+  assert.ok(Math.abs(row.flooredScore - 50) < 0.01);
+  assert.equal(row.discourseTells.hot, true);
+  assert.equal(row.discourseTells.thematicBreaks, true);
+  assert.equal(row.discourseTells.fakeCandor, false);
 });
 
 test('pattern watch hits expose pattern-level prose cleanup outside the gate', () => {

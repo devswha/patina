@@ -4,9 +4,9 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 
 ## Current run
 
-- Generated at: 2026-06-10T07:53:25.396Z
+- Generated at: 2026-06-10T11:56:25.146Z
 - Fixture source: `tests/fixtures/suspect-zones/**`
-- Fixture count: 47
+- Fixture count: 49
 - Manual third-party input: none
 - Reproduce built-in comparison: `npm run benchmark:compare`
 - Merge manual scores: `node scripts/detector-comparison.mjs --input tests/quality/detectors.manual.example.json`
@@ -15,7 +15,7 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 
 | detector | name | kind | covered | coverage | accuracy | precision | recall | TP | FP | FN | TN |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| patina-deterministic | Patina deterministic suspect-zone analyzer | in-tree | 47/47 | 100.0% | 100.0% | 100.0% | 100.0% | 25 | 0 | 0 | 22 |
+| patina-deterministic | Patina deterministic suspect-zone analyzer | in-tree | 49/49 | 100.0% | 100.0% | 100.0% | 100.0% | 26 | 0 | 0 | 23 |
 
 ## Fixture-level rows
 
@@ -27,11 +27,13 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 | en-ai-04 | en | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | en-ai-05 | en | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | en-ai-06-chat-register | en | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
+| en-ai-07-discourse-candor | en | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | en-nat-01 | en | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | en-nat-02 | en | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | en-nat-03 | en | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | en-nat-04 | en | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | en-nat-05 | en | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
+| en-nat-06-single-opener | en | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | ja-ai-01 | ja | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ja-ai-02 | ja | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ja-ai-03 | ja | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |

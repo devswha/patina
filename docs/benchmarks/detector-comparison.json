@@ -1,8 +1,8 @@
 {
   "reportVersion": 1,
-  "generatedAt": "2026-06-10T07:53:25.396Z",
-  "fixtureCount": 47,
-  "benchmarkGeneratedAt": "2026-06-10T07:53:25.380Z",
+  "generatedAt": "2026-06-10T11:56:25.146Z",
+  "fixtureCount": 49,
+  "benchmarkGeneratedAt": "2026-06-10T11:56:25.131Z",
   "note": "Offline comparison protocol. Built-in Patina row uses deterministic suspect-zone analyzer; third-party rows are manual opt-in only.",
   "manualInput": null,
   "detectors": [
@@ -16,12 +16,12 @@
   ],
   "summaries": {
     "patina-deterministic": {
-      "tp": 25,
+      "tp": 26,
       "fp": 0,
       "fn": 0,
-      "tn": 22,
-      "total": 47,
-      "fixtureCount": 47,
+      "tn": 23,
+      "total": 49,
+      "fixtureCount": 49,
       "coverage": 1,
       "accuracy": 1,
       "precision": 1,
@@ -103,6 +103,18 @@
       "notes": null
     },
     {
+      "fixture_id": "en-ai-07-discourse-candor",
+      "lang": "en",
+      "class": "ai",
+      "detector": "patina-deterministic",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "score": 1,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
       "fixture_id": "en-nat-01",
       "lang": "en",
       "class": "natural",
@@ -152,6 +164,18 @@
     },
     {
       "fixture_id": "en-nat-05",
+      "lang": "en",
+      "class": "natural",
+      "detector": "patina-deterministic",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "score": 0,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
+      "fixture_id": "en-nat-06-single-opener",
       "lang": "en",
       "class": "natural",
       "detector": "patina-deterministic",

@@ -181,6 +181,15 @@ function validateExpectedMetrics(path, expected = {}, observed = {}) {
   if (typeof expected.predicted_hot === 'boolean' && observed.predicted_hot !== expected.predicted_hot) {
     failures.push(`predicted_hot expected ${expected.predicted_hot}, got ${observed.predicted_hot}`);
   }
+  // Pins per-paragraph attribution (#391): a document-level OR could keep
+  // predicted_hot true while leaving every paragraph cold, which this catches.
+  if (typeof expected.hot_paragraphs === 'number' && observed.hot_paragraphs !== expected.hot_paragraphs) {
+    failures.push(`hot_paragraphs expected ${expected.hot_paragraphs}, got ${observed.hot_paragraphs}`);
+  }
+  // A hot fixture must stay visible to the signal-score ranking leg.
+  if (typeof expected.signal_score_min === 'number' && observed.signal_score < expected.signal_score_min) {
+    failures.push(`signal_score expected >= ${expected.signal_score_min}, got ${observed.signal_score}`);
+  }
   if (failures.length) {
     throw new Error(`${path}: expected_metrics regression failed: ${failures.join('; ')}`);
   }
@@ -245,6 +254,7 @@ function main() {
       ko_diagnostics_reasons: p.koDiagnostics?.reasons ?? [],
       ko_diagnostics_strength: round(p.koDiagnostics?.strength ?? 0),
       signal_score: round(summarizeSignalStrength(result.paragraphs)),
+      hot_paragraphs: result.paragraphs.filter((x) => x.hot).length,
     };
     const pinned = expectedRanges[meta.fixture_id];
     if (!pinned) {

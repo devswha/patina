@@ -14,6 +14,33 @@ Semver rationale: patch | minor | major — explain whether this changes pattern
 
 ## Unreleased
 
+**Detector calibration fixes and runtime hardening.**
+
+Semver rationale: patch — bug fixes to Korean detection rules and local-CLI backends; no schema or flag changes (one new mutual-exclusivity guard rejects already-invalid flag combinations).
+
+### Fixed
+- Korean `koPostEditese` no longer misclassifies regular formal `-ㅂ니다 / -ㅂ니까` endings (됩니다, 표시됩니다, 합니까…) as declarative `-다` style, so clean 합쇼체 prose is no longer pushed toward register-changing rewrites.
+- Translationese `a16-pronoun-literal` no longer fires on ordinary nouns ending in `그` (로그/버그/태그) or on 그녀석/그것참; it now requires eojeol boundaries on both sides.
+- Translationese `t2-by-passive` now matches the common fused passive forms (된다/됩니다/될/진다) that the previous jamo alternation silently missed.
+- Deterministic audit backstop now respects each rule's `minCount` (e.g. `c11-connective-comma` no longer surfaces on a single match).
+- Local-CLI backends (claude/gemini/kimi) decode stdout as streaming UTF-8, fixing silent corruption of multi-byte CJK output split across pipe reads; all four backends now handle stdin EPIPE instead of crashing the process when a child exits before draining a large prompt.
+- Ouroboros loop strips `[BODY]/[SELF_AUDIT]` tags before scoring and re-feeding, returns the best-scoring text paired with its score, and treats a failed MPS scorer as a floor violation (fail closed, matching fidelity).
+- Rewrite tone-footer removal anchors to the final `---` block, so a markdown thematic break in the body no longer truncates everything after it.
+- `--config <file>` now wins over an ambient `./.patina.yaml` / `~/.patina.yaml` (reproducible runs); config merge is guarded against prototype pollution.
+- Mutually exclusive output modes (`--diff` / `--audit` / `--score` / `--ouroboros`) are now rejected up front instead of silently resolving to one mode (which could make a `--score` CI gate always exit 0).
+
+### Changed
+- `kimi-cli` backend runs with `--max-steps-per-turn 20` (up from 1). It stays in non-interactive `--print` mode with no `--yolo`, so the agent cannot auto-approve shell/file tools — the extra steps only cover reasoning/formatting within a turn (verified that injected tool-use instructions in user text do not execute).
+
+## 4.0.1 — 2026-06-07
+
+**Fix npx package-name execution.**
+
+Semver rationale: patch — adds a bin alias so documented `npx patina-cli ...` commands resolve to the CLI entrypoint.
+
+### Fixed
+- Added the `patina-cli` binary alias alongside `patina`, so `npx patina-cli doctor` works without requiring `npx -p patina-cli patina ...`.
+
 ## 4.0.0 — 2026-06-04
 
 **Surface reset for a smaller, zero-config patina.**

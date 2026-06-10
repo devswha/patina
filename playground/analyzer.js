@@ -50,6 +50,183 @@ export const SAMPLE_TEXT = {
   zh: '总而言之，这一方案能够全面提升用户体验，并为未来发展提供新的可能。从长远来看，它将在数字时代发挥着重要作用。\n\n先看一个具体场景：团队每天少复制三次表格。',
   ja: 'まとめると、この仕組みはユーザー体験を向上させ、より良い未来につながります。重要なのは、さまざまな場面で効果的に活用できる点です。\n\nまずは、毎朝の確認作業が一つ減るかどうかを見ます。',
 };
+// Korean translationese (번역투/calque) advisory signal. This mirrors
+// src/features/translationese.js and intentionally stays out of score/hot
+// coupling; it is exposed as document-level audit metadata only.
+// Mirrors BY_PASSIVE_PREDICATE in src/features/translationese.js.
+const BY_PASSIVE_PREDICATE =
+  '(?:된다|된|될|됨|됐다|됐|돼|되었|되어|되는|되며|되고|됩니다|됩|받는다|받았다|받은|받을|받는|받습니다|받아|당한다|당했다|당하다|당하는|당해|(?:어|아|여)(?:진다|졌다|진|질|지는|집니다|져))';
+export const TRANSLATIONESE_RULES = [
+  {
+    id: 'noun-calque',
+    label: '직역 명사구 (pillar/layer 류 calque)',
+    strong: true,
+    re: () => /커맨드 기둥|명령(?:어)? 기둥|기둥 커맨드|[가-힣]+ 레이어로서/g,
+    example: { before: '세 가지 커맨드 기둥을 설치합니다.', after: '핵심 커맨드 세 가지를 설치합니다.' },
+  },
+  {
+    id: 'dummy-subject',
+    label: '가주어 "그것은/이것은" (English "it is")',
+    strong: true,
+    re: () => /(?:^|[.!?。]\s+|\n)\s*(?:그것은|이것은|그것이|이것이)\s/g,
+    example: { before: '그것은 매우 중요하다.', after: '매우 중요하다.' },
+  },
+  {
+    id: 'direct-address-you',
+    label: '"당신" 직접 호칭 (English "you")',
+    strong: true,
+    re: () => /당신(?:은|이|의|에게|을|를|께서|께)?/g,
+    example: { before: '당신은 이것을 설정할 수 있습니다.', after: '이건 설정할 수 있다.' },
+  },
+  {
+    id: 'a16-pronoun-literal',
+    label: '영어식 3인칭 대명사 직역 (he/she/it/they)',
+    strong: true,
+    // Require a non-Hangul boundary before the pronoun (so 로그/버그/태그 don't match)
+    // and an eojeol boundary after it (so 그녀석/그것참 don't match).
+    re: () => /(?<![가-힣])(?:그녀(?:는|가|를|의|에게|와|도|만)?|그것(?:은|이|을|의|에|에게)?|그들(?:은|이|을|의|에게|과|도)?|그(?:는|가|를|의|에게|와|도|만))(?=\s|[.,!?。]|$)/g,
+    example: { before: '메리는 그녀가 그녀의 어머니에게 전화했다고 말했다.', after: '메리는 어머니에게 전화했다고 말했다.' },
+  },
+  {
+    id: 'a19-double-particle',
+    label: '이중 조사 결합 (-에서의/-으로의/-에의)',
+    strong: true,
+    re: () => /(?:에서의|에로의|으로의|에의|으로부터의|로부터의)/g,
+    example: { before: '회의에서의 결정은 앞으로의 운영으로의 전환을 앞당겼다.', after: '회의에서 나온 결정은 앞으로 운영을 전환하는 일을 앞당겼다.' },
+  },
+  {
+    id: 'passive-e-uihae',
+    label: '"~에 의해" 피동 (English by-passive)',
+    strong: false,
+    re: () => /에 의해/g,
+    example: { before: '작업은 에이전트에 의해 처리됩니다.', after: '에이전트가 작업을 처리합니다.' },
+  },
+  {
+    id: 't2-by-passive',
+    label: '"~에 의해" + 피동 동사 결합',
+    strong: true,
+    // "에 의해" + a passive predicate in the following token. Matches fused
+    // syllable forms (된다/됩니다/될/진다) that the old jamo alternation missed.
+    re: () => new RegExp('에\\s*의(?:해|하여)\\s+\\S{0,12}?' + BY_PASSIVE_PREDICATE, 'g'),
+    example: { before: '이 작업은 에이전트에 의해 처리되었다.', after: '에이전트가 이 작업을 처리했다.' },
+  },
+  {
+    id: 'a8-double-passive',
+    label: '이중 피동 표면형 (-되어진/-보여진/-쓰여진)',
+    strong: true,
+    re: () => /(?:되어진다|되어졌다|되어진|되어지는|보여진다|보여졌다|보여진|쓰여진다|쓰여졌다|쓰여진|잊혀진|잊혀졌|닫혀진|열려진|불려진|놓여진)/g,
+    example: { before: '이 문제는 분석되어진 뒤 보고서에 쓰여진다.', after: '이 문제는 분석된 뒤 보고서에 쓰인다.' },
+  },
+  {
+    id: 'have-overuse',
+    label: '"~을 가지고 있다" (English "have")',
+    strong: false,
+    re: () => /(?:을|를)\s*(?:가지(?:고 있|고 있습니다|고 있다)|갖(?:고 있|고 있습니다|고 있다))/g,
+    example: { before: '이 도구는 유연성을 가지고 있습니다.', after: '이 도구는 유연합니다.' },
+  },
+  {
+    id: 'a7-light-verb',
+    label: '영어식 have/make light verb 직역',
+    strong: false,
+    re: () => /(?:회의를\s*가(?:지|졌)|결정을\s*내(?:리|렸)|(?:을|를)\s*갖고\s*있(?:다|습니다|는|었|으)?)/g,
+    example: { before: '우리는 회의를 가졌고 중요한 결정을 내렸다.', after: '우리는 회의에서 중요한 결정을 했다.' },
+  },
+  {
+    id: 'one-of',
+    label: '"~중 하나" (English "one of the")',
+    strong: false,
+    re: () => /중\s*하나(?:이다|입니다|인|로|다|예요)?/g,
+    example: { before: '가장 빠른 도구 중 하나입니다.', after: '손꼽히게 빠릅니다.' },
+  },
+  {
+    id: 'provides',
+    label: '"~을 제공합니다" (English "provides")',
+    strong: false,
+    re: () => /(?:을|를)\s*제공(?:합니다|한다|해 줍니다|해준다)/g,
+    example: { before: '다양한 기능을 제공합니다.', after: '여러 기능을 쓸 수 있다.' },
+  },
+  {
+    id: 'as-follows',
+    label: '"다음과 같습니다" (English "as follows")',
+    strong: false,
+    re: () => /다음과\s*같(?:습니다|다|은|이)/g,
+    example: { before: '사용법은 다음과 같습니다.', after: '사용법은 이렇다.' },
+  },
+  {
+    id: 'make-easy',
+    label: '"~하게 만들어 준다" (English "make it ~")',
+    strong: false,
+    re: () => /(?:쉽게|가능하게|간단하게|편하게)\s*(?:만들어\s*(?:줍니다|준다|줘)|만듭니다|만든다)/g,
+    example: { before: '설치를 쉽게 만들어 줍니다.', after: '설치가 쉬워진다.' },
+  },
+  {
+    id: 'c11-connective-comma',
+    label: '연결어미 뒤 쉼표 (-고,/-며,/-지만,)',
+    strong: false,
+    minCount: 2,
+    re: () => /(?:고|며|지만|면서|아서|어서)\s*,/g,
+    example: { before: '그는 자료를 검토하고, 결과를 정리하며, 보고서를 작성했다.', after: '그는 자료를 검토하고 결과를 정리한 뒤 보고서를 작성했다.' },
+  },
+];
+
+export const TRANSLATIONESE_ABS_MIN = 4;
+export const TRANSLATIONESE_DENSITY_MIN = 0.5;
+export const TRANSLATIONESE_STRONG_MIN = 1;
+export const KO_POST_EDITESE_SCHEMA = 'koPostEditese.v1';
+
+const KO_POST_EDITESE_SUFFIX_GROUPS = [
+  { className: 'quote', suffixes: ['라고', '이라고'] },
+  { className: 'source', suffixes: ['에게서', '한테서', '으로부터', '로부터'] },
+  { className: 'instrument', suffixes: ['으로써', '로써'] },
+  { className: 'standard', suffixes: ['으로서', '로서'] },
+  { className: 'topic', suffixes: ['은', '는'] },
+  { className: 'subject', suffixes: ['이', '가', '께서'] },
+  { className: 'object', suffixes: ['을', '를'] },
+  { className: 'genitive', suffixes: ['의'] },
+  { className: 'location', suffixes: ['에서', '에게', '한테', '께', '에'] },
+  { className: 'direction', suffixes: ['으로', '로'] },
+  { className: 'conjunction', suffixes: ['와', '과', '하고', '랑'] },
+  { className: 'additive', suffixes: ['도', '또한'] },
+  { className: 'delimiter', suffixes: ['만', '까지', '부터', '마다'] },
+  { className: 'comparison', suffixes: ['보다', '처럼'] },
+  { className: 'formal_ending', suffixes: ['습니다', '습니까', '합니다', '합니까', '입니다'] },
+  { className: 'polite_ending', suffixes: ['어요', '아요', '예요', '이에요', '네요', '군요', '지요'] },
+  { className: 'casual_ending', suffixes: ['죠', '네', '군'] },
+  { className: 'declarative_ending', suffixes: ['한다', '된다', '했다', '였다', '이다', '있다', '없다'] },
+];
+
+const KO_POST_EDITESE_SUFFIX_MATCHERS = KO_POST_EDITESE_SUFFIX_GROUPS
+  .flatMap((group) =>
+    group.suffixes.map((suffix) => ({
+      className: group.className,
+      suffix,
+      length: Array.from(suffix).length,
+    }))
+  )
+  .sort((a, b) => b.length - a.length);
+
+const KO_POST_EDITESE_ENDING_SUFFIXES = [
+  '습니다', '습니까', '합니다', '합니까', '입니다', '어요', '아요', '예요', '이에요',
+  '네요', '군요', '지요', '죠', '한다', '된다', '했다', '였다', '이다', '있다',
+  '없다', '왔다', '봤다', '다',
+].sort((a, b) => Array.from(b).length - Array.from(a).length);
+// Canonical token for regular formal '-ㅂ니다 / -ㅂ니까' endings (됩니다, 줍니다, 합니까…)
+// whose ㅂ marker fuses into the stem syllable and so isn't a literal suffix.
+const KO_POST_EDITESE_FORMAL_NIDA = 'ㅂ니다';
+const KO_POST_EDITESE_FORMAL_ENDINGS = new Set(['습니다', '습니까', '합니다', '합니까', '입니다', KO_POST_EDITESE_FORMAL_NIDA]);
+const KO_POST_EDITESE_POLITE_ENDINGS = new Set(['어요', '아요', '예요', '이에요', '네요', '군요', '지요', '죠']);
+const KO_POST_EDITESE_DECLARATIVE_DA_ENDINGS = new Set(['한다', '된다', '했다', '였다', '이다', '있다', '없다', '왔다', '봤다', '다']);
+
+const KO_POST_EDITESE_PRONOUN_LITERAL_RE = /(?:그녀(?:는|가|를|의|에게|와|도|만)?|그것(?:은|이|을|의|에|에게)?|그들(?:은|이|을|의|에게|과|도)?|그(?:는|가|를|의|에게|와|도|만)(?=\s|[.,!?。]|$))/g;
+const KO_POST_EDITESE_DOUBLE_PARTICLE_RE = /(?:에서의|에로의|으로의|에의|으로부터의|로부터의)/g;
+const KO_POST_EDITESE_PROGRESSIVE_ASPECT_RE = /고\s*있(?:다|습니다|는|었|으|고|지|기)?/g;
+const KO_POST_EDITESE_LIGHT_VERB_RE = /(?:회의를\s*가(?:지|졌)|결정을\s*내(?:리|렸)|(?:을|를)\s*갖고\s*있(?:다|습니다|는|었|으)?)/g;
+const KO_POST_EDITESE_BY_PASSIVE_RE = /에\s*의(?:해|하여)/g;
+const KO_POST_EDITESE_DOUBLE_PASSIVE_RE = /(?:되어진다|되어졌다|되어진|되어지는|보여진다|보여졌다|보여진|쓰여진다|쓰여졌다|쓰여진|잊혀진|잊혀졌|닫혀진|열려진|불려진|놓여진)/g;
+const KO_POST_EDITESE_CONNECTIVE_COMMA_RE = /(?:고|며|지만|면서|아서|어서)\s*,/g;
+const KO_POST_EDITESE_RELATIVE_CLAUSE_PROXY_RE = /[가-힣]+(?:하는|되는|받는|받은|쓰인|되어진|보여진|한|할|된|될|던|운|온|인|힌|진|린|킨|쓴)\s+[가-힣]+/g;
+
+
 
 const SENTENCE_SPLIT_RE = /[.!?]+\s+|(?<=[。！？…])|\n+/u;
 const PARAGRAPH_SPLIT_RE = /\n\s*\n/;
@@ -393,7 +570,312 @@ export function detectThematicBreaks(text) {
     threshold: DEFAULT_THEMATIC_BREAK_MIN,
   };
 }
+export function detectTranslationese(text, opts = {}) {
+  const lang = opts.lang ?? 'ko';
+  const str = typeof text === 'string' ? text : '';
+  if (lang !== 'ko' || !str) {
+    return {
+      count: 0,
+      density: 0,
+      sentences: 0,
+      byRule: [],
+      hits: [],
+      hot: false,
+      thresholds: { count: TRANSLATIONESE_ABS_MIN, density: TRANSLATIONESE_DENSITY_MIN, strong: TRANSLATIONESE_STRONG_MIN },
+    };
+  }
 
+  const byRule = [];
+  const hits = [];
+  const evidence = [];
+  for (const rule of TRANSLATIONESE_RULES) {
+    const matches = collectTranslationeseRuleMatches(str, rule);
+    const minCount = rule.minCount ?? 1;
+    if (matches.length >= minCount) {
+      byRule.push({ id: rule.id, label: rule.label, strong: rule.strong, count: matches.length, example: rule.example });
+      hits.push(...new Set(matches.map((m) => m.text.trim()).filter(Boolean)));
+      evidence.push(...matches.map((match) => ({ ...match, strong: Boolean(rule.strong) })));
+    }
+  }
+
+  const independentEvidence = selectIndependentTranslationeseEvidence(evidence);
+  const count = independentEvidence.length;
+  const strongCount = independentEvidence.filter((match) => match.strong).length;
+  const sentences = Math.max(1, splitProseSentences(str).length);
+  const density = count / sentences;
+  const hot = count >= TRANSLATIONESE_ABS_MIN &&
+    density >= TRANSLATIONESE_DENSITY_MIN &&
+    strongCount >= TRANSLATIONESE_STRONG_MIN;
+  return {
+    count,
+    density: Number(density.toFixed(3)),
+    sentences,
+    byRule: byRule.sort((a, b) => b.count - a.count),
+    hits: [...new Set(hits)].slice(0, 8),
+    hot,
+    thresholds: { count: TRANSLATIONESE_ABS_MIN, density: TRANSLATIONESE_DENSITY_MIN, strong: TRANSLATIONESE_STRONG_MIN },
+  };
+}
+
+function collectTranslationeseRuleMatches(str, rule) {
+  const re = rule.re();
+  const matches = [];
+  let match;
+  while ((match = re.exec(str)) !== null) {
+    matches.push({
+      text: match[0],
+      start: match.index,
+      end: match.index + match[0].length,
+    });
+    if (match[0] === '') re.lastIndex += 1;
+  }
+  return matches;
+}
+
+function selectIndependentTranslationeseEvidence(matches) {
+  const selected = [];
+  const ranked = [...matches].sort((a, b) => {
+    if (a.strong !== b.strong) return a.strong ? -1 : 1;
+    const lengthDelta = (b.end - b.start) - (a.end - a.start);
+    if (lengthDelta !== 0) return lengthDelta;
+    return a.start - b.start;
+  });
+
+  for (const match of ranked) {
+    if (!selected.some((kept) => translationeseEvidenceOverlaps(kept, match))) {
+      selected.push(match);
+    }
+  }
+
+  return selected.sort((a, b) => a.start - b.start);
+}
+
+function translationeseEvidenceOverlaps(a, b) {
+  return a.start < b.end && b.start < a.end;
+}
+
+
+export function koreanPostEditeseFeatures(text, opts = {}) {
+  const lang = opts.lang ?? 'ko';
+  const str = typeof text === 'string' ? text.normalize('NFC') : '';
+  if (lang !== 'ko') return skippedKoPostEditese(lang, 'non-ko');
+  if (str.trim().length === 0) return skippedKoPostEditese(lang, 'empty');
+
+  const paragraphs = splitParagraphs(str);
+  const totalEojeols = koreanEojeols(str);
+  if (totalEojeols.length === 0) return skippedKoPostEditese(lang, 'no-hangul-eojeols');
+
+  const paragraphRows = paragraphs.map((paragraph, index) => buildKoPostEditeseRow(paragraph, `P${index + 1}`));
+  const docSentences = paragraphs.flatMap((paragraph) => splitProseSentences(paragraph));
+  return {
+    schema: KO_POST_EDITESE_SCHEMA,
+    lang,
+    analyzed: true,
+    skipReason: null,
+    paragraphCount: paragraphRows.length,
+    sentenceCount: docSentences.length,
+    eojeolCount: totalEojeols.length,
+    metrics: buildKoPostEditeseMetrics(str, docSentences),
+    paragraphs: paragraphRows,
+  };
+}
+
+function skippedKoPostEditese(lang, skipReason) {
+  return {
+    schema: KO_POST_EDITESE_SCHEMA,
+    lang,
+    analyzed: false,
+    skipReason,
+    paragraphCount: 0,
+    sentenceCount: 0,
+    eojeolCount: 0,
+    metrics: zeroKoPostEditeseMetrics(),
+    paragraphs: [],
+  };
+}
+
+function zeroKoPostEditeseMetrics() {
+  return {
+    lexical: {
+      tokenCount: 0,
+      typeCount: 0,
+      ttr: null,
+      mattr: null,
+      endingTypeCount: 0,
+      endingDiversity: null,
+    },
+    endings: {
+      declarativeDaCount: 0,
+      declarativeDaRatio: null,
+      handaCount: 0,
+      doendaCount: 0,
+      idaCount: 0,
+      formalEndingCount: 0,
+      politeEndingCount: 0,
+      endingStreakMax: 0,
+    },
+    interference: {
+      pronounLiteralCount: 0,
+      doubleParticleCount: 0,
+      progressiveAspectCount: 0,
+      lightVerbCount: 0,
+      byPassiveCount: 0,
+      doublePassiveCount: 0,
+      connectiveCommaCount: 0,
+      relativeClauseProxyCount: 0,
+    },
+    rhythm: {
+      meanSentenceEojeols: null,
+      sentenceEojeolCV: null,
+      meanEojeolLength: null,
+      eojeolLengthCV: null,
+      commaPerSentence: null,
+      commaPer100Chars: null,
+      suffixMatchedCount: 0,
+      suffixClassDiversity: null,
+      suffixDiversity: null,
+    },
+  };
+}
+
+function buildKoPostEditeseRow(paragraph, id) {
+  const sentences = splitProseSentences(paragraph);
+  const eojeols = koreanEojeols(paragraph);
+  return {
+    id,
+    sentenceCount: sentences.length,
+    eojeolCount: eojeols.length,
+    metrics: buildKoPostEditeseMetrics(paragraph, sentences),
+  };
+}
+
+function buildKoPostEditeseMetrics(text, sentences = splitProseSentences(text)) {
+  const eojeols = koreanEojeols(text);
+  const lowerEojeols = eojeols.map((token) => token.toLowerCase());
+  const typeCount = new Set(lowerEojeols).size;
+  const lengths = eojeols.map(koreanLength).filter((length) => length > 0);
+  const endings = sentences.map(extractKoPostEditeseSentenceEnding).filter(Boolean);
+  const endingTypeCount = new Set(endings).size;
+  const suffixStats = koPostEditeseSuffixStats(eojeols);
+  const comma = commaDensity(text, sentences.length);
+  const sentenceEojeolCounts = sentences
+    .map((sentence) => koreanEojeols(sentence).length)
+    .filter((count) => count > 0);
+
+  return {
+    lexical: {
+      tokenCount: eojeols.length,
+      typeCount,
+      ttr: ratio(typeCount, eojeols.length),
+      mattr: roundMetric(mattr(eojeols)),
+      endingTypeCount,
+      endingDiversity: ratio(endingTypeCount, sentences.length),
+    },
+    endings: buildKoPostEditeseEndings(endings),
+    interference: {
+      pronounLiteralCount: countPattern(text, KO_POST_EDITESE_PRONOUN_LITERAL_RE),
+      doubleParticleCount: countPattern(text, KO_POST_EDITESE_DOUBLE_PARTICLE_RE),
+      progressiveAspectCount: countPattern(text, KO_POST_EDITESE_PROGRESSIVE_ASPECT_RE),
+      lightVerbCount: countPattern(text, KO_POST_EDITESE_LIGHT_VERB_RE),
+      byPassiveCount: countPattern(text, KO_POST_EDITESE_BY_PASSIVE_RE),
+      doublePassiveCount: countPattern(text, KO_POST_EDITESE_DOUBLE_PASSIVE_RE),
+      connectiveCommaCount: countPattern(text, KO_POST_EDITESE_CONNECTIVE_COMMA_RE),
+      relativeClauseProxyCount: countPattern(text, KO_POST_EDITESE_RELATIVE_CLAUSE_PROXY_RE),
+    },
+    rhythm: {
+      meanSentenceEojeols: ratio(eojeols.length, sentences.length),
+      sentenceEojeolCV: roundMetric(coefficientOfVariation(sentenceEojeolCounts)),
+      meanEojeolLength: roundMetric(mean(lengths)),
+      eojeolLengthCV: roundMetric(coefficientOfVariation(lengths)),
+      commaPerSentence: roundMetric(comma.perSentence),
+      commaPer100Chars: roundMetric(comma.per100Chars),
+      suffixMatchedCount: suffixStats.matchedCount,
+      suffixClassDiversity: roundMetric(suffixStats.classDiversity),
+      suffixDiversity: roundMetric(suffixStats.suffixDiversity),
+    },
+  };
+}
+
+function buildKoPostEditeseEndings(endings) {
+  const declarativeDaCount = endings.filter((ending) => KO_POST_EDITESE_DECLARATIVE_DA_ENDINGS.has(ending)).length;
+  return {
+    declarativeDaCount,
+    declarativeDaRatio: ratio(declarativeDaCount, endings.length),
+    handaCount: endings.filter((ending) => ending === '한다').length,
+    doendaCount: endings.filter((ending) => ending === '된다').length,
+    idaCount: endings.filter((ending) => ending === '이다').length,
+    formalEndingCount: endings.filter((ending) => KO_POST_EDITESE_FORMAL_ENDINGS.has(ending)).length,
+    politeEndingCount: endings.filter((ending) => KO_POST_EDITESE_POLITE_ENDINGS.has(ending)).length,
+    endingStreakMax: maxKoPostEditeseDeclarativeDaStreak(endings),
+  };
+}
+
+function extractKoPostEditeseSentenceEnding(sentence) {
+  const eojeol = koreanEojeols(sentence).at(-1);
+  if (!eojeol) return null;
+  const matched = KO_POST_EDITESE_ENDING_SUFFIXES.find((ending) => eojeol.endsWith(ending)) ?? null;
+  // Regular formal '-ㅂ니다 / -ㅂ니까' (됩니다, 표시됩니다, 합니까…) fuse the ㅂ marker into
+  // the stem syllable, so they fall through to the bare '다' bucket and get miscounted as
+  // declarative '-다' style. Reclassify them as a formal ending.
+  if ((matched === '다' || matched === null) && isKoPostEditeseFormalFusedEnding(eojeol)) {
+    return KO_POST_EDITESE_FORMAL_NIDA;
+  }
+  return matched;
+}
+
+// True for '-ㅂ니다 / -ㅂ니까' formal endings: the syllable before 니다/니까 carries a ㅂ
+// jongseong (batchim index 17). Distinguishes 됩니다/아닙니다 (formal) from 아니다 (plain).
+function isKoPostEditeseFormalFusedEnding(eojeol) {
+  const m = /(.)(?:니다|니까)$/.exec(eojeol);
+  if (!m) return false;
+  const code = m[1].charCodeAt(0);
+  if (code < 0xac00 || code > 0xd7a3) return false;
+  return (code - 0xac00) % 28 === 17;
+}
+
+function maxKoPostEditeseDeclarativeDaStreak(endings) {
+  let current = 0;
+  let max = 0;
+  for (const ending of endings) {
+    if (KO_POST_EDITESE_DECLARATIVE_DA_ENDINGS.has(ending)) {
+      current += 1;
+      max = Math.max(max, current);
+    } else {
+      current = 0;
+    }
+  }
+  return max;
+}
+
+function koPostEditeseSuffixStats(eojeols) {
+  const matches = [];
+  for (const token of eojeols) {
+    const match = KO_POST_EDITESE_SUFFIX_MATCHERS.find(
+      (candidate) => token.length > candidate.suffix.length && token.endsWith(candidate.suffix)
+    );
+    if (match) matches.push({ className: match.className, suffix: match.suffix });
+  }
+  const matchedCount = matches.length;
+  const classCount = new Set(matches.map((match) => match.className)).size;
+  const suffixCount = new Set(matches.map((match) => match.suffix)).size;
+  return {
+    matchedCount,
+    classDiversity: matchedCount > 0 ? classCount / matchedCount : null,
+    suffixDiversity: matchedCount > 0 ? suffixCount / matchedCount : null,
+  };
+}
+
+function countPattern(text, pattern) {
+  return (String(text ?? '').match(pattern) ?? []).length;
+}
+
+function ratio(numerator, denominator) {
+  return denominator > 0 ? roundMetric(numerator / denominator) : null;
+}
+
+function roundMetric(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? Number(value.toFixed(3)) : null;
+}
 const EMOJI_BASE_RE = '\\p{Extended_Pictographic}(?:\\uFE0F|\\uFE0E)?(?:\\p{Emoji_Modifier})?';
 const EMOJI_CLUSTER_PATTERN = `(?:\\p{Regional_Indicator}{2}|[#*0-9]\\uFE0F?\\u20E3|${EMOJI_BASE_RE}(?:\\u200D${EMOJI_BASE_RE})*)`;
 const EMOJI_CLUSTER_RE = new RegExp(EMOJI_CLUSTER_PATTERN, 'u');
@@ -535,6 +1017,8 @@ export function analyzePlaygroundText(text, opts = {}) {
 
   const paraThematicBreaks = paragraphs.map(detectThematicBreaks);
   const docThematicBreaks = detectThematicBreaks(text);
+  const translationese = detectTranslationese(text, { lang });
+  const koPostEditese = koreanPostEditeseFeatures(text, { lang });
 
   const analyzed = paragraphs.map((paragraph, idx) => {
     const sentences = splitProseSentences(paragraph);
@@ -632,6 +1116,8 @@ export function analyzePlaygroundText(text, opts = {}) {
       thematicBreaks: docThematicBreaks,
       hot: docCandor >= DEFAULT_FAKE_CANDOR_MIN || docThematicBreaks.hot,
     },
+    translationese,
+    koPostEditese,
     paragraphs: analyzed,
     auditItems: analyzed.filter((p) => p.hot || p.lexicon.matches > 0),
     note: 'Audit-only deterministic score. It marks editing hotspots, not authorship or intent.',
@@ -695,11 +1181,17 @@ function buildKoreanSignals(paragraph, sentenceCount) {
   };
 }
 
+function cleanKoreanEojeol(chunk) {
+  return String(chunk ?? '')
+    .normalize('NFC')
+    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+}
+
 function koreanEojeols(paragraph) {
   if (!paragraph || !HANGUL_RE.test(paragraph)) return [];
   return paragraph
     .split(/\s+/u)
-    .map((chunk) => chunk.replace(/^[^\u3131-\u318e\uac00-\ud7a3]+|[^\u3131-\u318e\uac00-\ud7a3]+$/gu, ''))
+    .map(cleanKoreanEojeol)
     .filter((chunk) => HANGUL_RE.test(chunk));
 }
 
@@ -817,6 +1309,107 @@ export function renderAuditDiff(analysis) {
       ${reasons}
     </section>`;
   }).join('\n');
+}
+function formatAdvisoryMetric(value, digits = 3) {
+  if (value == null) return 'n/a';
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Number.isInteger(value) ? String(value) : value.toFixed(digits);
+  }
+  return String(value);
+}
+
+function renderAdvisoryMetricRows(rows) {
+  return rows.map(([group, label, value]) => `<tr>
+      <th scope="row">${escapeHtml(group)}</th>
+      <td>${escapeHtml(label)}</td>
+      <td>${escapeHtml(formatAdvisoryMetric(value))}</td>
+    </tr>`).join('');
+}
+
+function renderTranslationeseAdvisory(translationese = {}) {
+  const rules = Array.isArray(translationese.byRule) ? translationese.byRule : [];
+  const samples = Array.isArray(translationese.hits) ? translationese.hits : [];
+  const ruleItems = rules.length > 0
+    ? `<ul class="advisory-list">${rules.map((rule) => {
+      const example = rule.example
+        ? `<span class="advisory-example">Example: <code>${escapeHtml(rule.example.before ?? '')}</code> → <code>${escapeHtml(rule.example.after ?? '')}</code></span>`
+        : '';
+      return `<li>
+          <strong>${escapeHtml(rule.label ?? rule.id ?? 'Translationese rule')}</strong>
+          <span class="muted">count ${escapeHtml(formatAdvisoryMetric(rule.count, 0))}${rule.strong ? ' · strong' : ''}</span>
+          ${example}
+        </li>`;
+    }).join('')}</ul>`
+    : '<p class="quiet">No Korean translationese rules surfaced. Treat this as an editing hint, not a score input.</p>';
+  const sampleHtml = samples.length > 0
+    ? `<p class="hits">Samples: ${samples.map((sample) => `<code>${escapeHtml(sample)}</code>`).join(' ')}</p>`
+    : '';
+  return `<section class="advisory-card" aria-labelledby="translationese-advisory-title">
+    <h3 id="translationese-advisory-title">Translationese hints</h3>
+    <p class="quiet">Advisory-only Korean calque metadata for revision. It does not affect score, hot paragraphs, or audit rows.</p>
+    <dl class="advisory-stats">
+      <div><dt>Count</dt><dd>${escapeHtml(formatAdvisoryMetric(translationese.count, 0))}</dd></div>
+      <div><dt>Density</dt><dd>${escapeHtml(formatAdvisoryMetric(translationese.density))}</dd></div>
+      <div><dt>Sentences</dt><dd>${escapeHtml(formatAdvisoryMetric(translationese.sentences, 0))}</dd></div>
+    </dl>
+    ${ruleItems}
+    ${sampleHtml}
+  </section>`;
+}
+
+function renderKoPostEditeseAdvisory(koPostEditese = {}) {
+  if (!koPostEditese.analyzed) {
+    const reason = koPostEditese.skipReason ?? 'unavailable';
+    return `<section class="advisory-card" aria-labelledby="ko-post-editese-advisory-title">
+      <h3 id="ko-post-editese-advisory-title">Korean post-editese metadata</h3>
+      <p class="quiet">Schema <code>${escapeHtml(koPostEditese.schema ?? KO_POST_EDITESE_SCHEMA)}</code> skipped: ${escapeHtml(reason)}. Advisory metadata is unavailable for this input.</p>
+    </section>`;
+  }
+
+  const metrics = koPostEditese.metrics ?? zeroKoPostEditeseMetrics();
+  const rows = [
+    ['endings', 'declarative -다 count', metrics.endings?.declarativeDaCount],
+    ['endings', 'declarative -다 ratio', metrics.endings?.declarativeDaRatio],
+    ['endings', 'formal ending count', metrics.endings?.formalEndingCount],
+    ['endings', 'polite ending count', metrics.endings?.politeEndingCount],
+    ['endings', 'ending streak max', metrics.endings?.endingStreakMax],
+    ['interference', 'pronoun literal count', metrics.interference?.pronounLiteralCount],
+    ['interference', 'double particle count', metrics.interference?.doubleParticleCount],
+    ['interference', 'progressive aspect count', metrics.interference?.progressiveAspectCount],
+    ['interference', 'light verb count', metrics.interference?.lightVerbCount],
+    ['interference', 'by-passive count', metrics.interference?.byPassiveCount],
+    ['interference', 'double passive count', metrics.interference?.doublePassiveCount],
+    ['interference', 'connective comma count', metrics.interference?.connectiveCommaCount],
+    ['rhythm', 'mean sentence eojeols', metrics.rhythm?.meanSentenceEojeols],
+    ['rhythm', 'sentence eojeol CV', metrics.rhythm?.sentenceEojeolCV],
+    ['rhythm', 'comma per sentence', metrics.rhythm?.commaPerSentence],
+    ['suffix diversity', 'suffix matched count', metrics.rhythm?.suffixMatchedCount],
+    ['suffix diversity', 'suffix class diversity', metrics.rhythm?.suffixClassDiversity],
+    ['suffix diversity', 'suffix diversity', metrics.rhythm?.suffixDiversity],
+  ];
+  return `<section class="advisory-card" aria-labelledby="ko-post-editese-advisory-title">
+    <h3 id="ko-post-editese-advisory-title">Korean post-editese metadata</h3>
+    <p class="quiet">Schema <code>${escapeHtml(koPostEditese.schema ?? KO_POST_EDITESE_SCHEMA)}</code> analyzed as editing guidance only.</p>
+    <dl class="advisory-stats">
+      <div><dt>Paragraphs</dt><dd>${escapeHtml(formatAdvisoryMetric(koPostEditese.paragraphCount, 0))}</dd></div>
+      <div><dt>Sentences</dt><dd>${escapeHtml(formatAdvisoryMetric(koPostEditese.sentenceCount, 0))}</dd></div>
+      <div><dt>Eojeols</dt><dd>${escapeHtml(formatAdvisoryMetric(koPostEditese.eojeolCount, 0))}</dd></div>
+    </dl>
+    <div class="table-wrap advisory-metrics"><table>
+      <thead><tr><th>Group</th><th>Metric</th><th>Value</th></tr></thead>
+      <tbody>${renderAdvisoryMetricRows(rows)}</tbody>
+    </table></div>
+  </section>`;
+}
+
+export function renderKoreanAdvisory(analysis) {
+  if (!analysis || analysis.lang !== 'ko') {
+    return `<p class="empty-state">Korean advisory metadata is unavailable for this language. This panel is separate from scoring, hotspots, and audit diff rendering.</p>`;
+  }
+  return `<div class="advisory-grid">
+    ${renderTranslationeseAdvisory(analysis.translationese)}
+    ${renderKoPostEditeseAdvisory(analysis.koPostEditese)}
+  </div>`;
 }
 
 function heredocDelimiter(text) {

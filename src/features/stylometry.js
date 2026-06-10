@@ -1,5 +1,6 @@
 // Burstiness CV, MATTR, and dependency-free KO diagnostics per core/stylometry.md.
 // Pure functions over token arrays; no I/O.
+import { splitParagraphs, splitProseSentences } from './segment.js';
 
 export const DEFAULT_BURSTINESS_BANDS = { low: 0.30, high: 0.50 };
 export const DEFAULT_MATTR_BANDS = { low: 0.55, high: 0.70 };
@@ -19,6 +20,7 @@ export const DEFAULT_KO_DIAGNOSTIC_BANDS = {
     maxClassDiversity: 0.26,
   },
 };
+export const KO_POST_EDITESE_SCHEMA = 'koPostEditese.v1';
 
 const HANGUL_RE = /[\u3131-\u318e\uac00-\ud7a3]/u;
 const COMMA_RE = /[,，、]/gu;
@@ -53,6 +55,27 @@ const KO_SUFFIX_MATCHERS = KO_SUFFIX_GROUPS
     }))
   )
   .sort((a, b) => b.length - a.length);
+
+const POST_EDITESE_ENDING_SUFFIXES = [
+  '습니다', '습니까', '합니다', '합니까', '입니다', '어요', '아요', '예요', '이에요',
+  '네요', '군요', '지요', '죠', '한다', '된다', '했다', '였다', '이다', '있다',
+  '없다', '왔다', '봤다', '다',
+].sort((a, b) => Array.from(b).length - Array.from(a).length);
+// Canonical token for regular formal '-ㅂ니다 / -ㅂ니까' endings (됩니다, 줍니다, 합니까…)
+// whose ㅂ marker fuses into the stem syllable and so isn't a literal suffix.
+const POST_EDITESE_FORMAL_NIDA = 'ㅂ니다';
+const POST_EDITESE_FORMAL_ENDINGS = new Set(['습니다', '습니까', '합니다', '합니까', '입니다', POST_EDITESE_FORMAL_NIDA]);
+const POST_EDITESE_POLITE_ENDINGS = new Set(['어요', '아요', '예요', '이에요', '네요', '군요', '지요', '죠']);
+const POST_EDITESE_DECLARATIVE_DA_ENDINGS = new Set(['한다', '된다', '했다', '였다', '이다', '있다', '없다', '왔다', '봤다', '다']);
+
+const POST_EDITESE_PRONOUN_LITERAL_RE = /(?:그녀(?:는|가|를|의|에게|와|도|만)?|그것(?:은|이|을|의|에|에게)?|그들(?:은|이|을|의|에게|과|도)?|그(?:는|가|를|의|에게|와|도|만)(?=\s|[.,!?。]|$))/g;
+const POST_EDITESE_DOUBLE_PARTICLE_RE = /(?:에서의|에로의|으로의|에의|으로부터의|로부터의)/g;
+const POST_EDITESE_PROGRESSIVE_ASPECT_RE = /고\s*있(?:다|습니다|는|었|으|고|지|기)?/g;
+const POST_EDITESE_LIGHT_VERB_RE = /(?:회의를\s*가(?:지|졌)|결정을\s*내(?:리|렸)|(?:을|를)\s*갖고\s*있(?:다|습니다|는|었|으)?)/g;
+const POST_EDITESE_BY_PASSIVE_RE = /에\s*의(?:해|하여)/g;
+const POST_EDITESE_DOUBLE_PASSIVE_RE = /(?:되어진다|되어졌다|되어진|되어지는|보여진다|보여졌다|보여진|쓰여진다|쓰여졌다|쓰여진|잊혀진|잊혀졌|닫혀진|열려진|불려진|놓여진)/g;
+const POST_EDITESE_CONNECTIVE_COMMA_RE = /(?:고|며|지만|면서|아서|어서)\s*,/g;
+const POST_EDITESE_RELATIVE_CLAUSE_PROXY_RE = /[가-힣]+(?:하는|되는|받는|받은|쓰인|되어진|보여진|한|할|된|될|던|운|온|인|힌|진|린|킨|쓴)\s+[가-힣]+/g;
 
 function mean(values) {
   if (!Array.isArray(values) || values.length === 0) return null;
@@ -113,6 +136,228 @@ export function mattr(tokens, window = DEFAULT_MATTR_WINDOW) {
     count++;
   }
   return sum / count;
+}
+
+export function koreanPostEditeseFeatures(text, opts = {}) {
+  const lang = opts.lang ?? 'ko';
+  const str = typeof text === 'string' ? text.normalize('NFC') : '';
+  if (lang !== 'ko') return skippedKoPostEditese(lang, 'non-ko');
+  if (str.trim().length === 0) return skippedKoPostEditese(lang, 'empty');
+
+  const paragraphs = splitParagraphs(str);
+  const totalEojeols = koreanEojeols(str);
+  if (totalEojeols.length === 0) return skippedKoPostEditese(lang, 'no-hangul-eojeols');
+
+  const paragraphRows = paragraphs.map((paragraph, index) => buildKoPostEditeseRow(paragraph, `P${index + 1}`));
+  const docSentences = paragraphs.flatMap((paragraph) => splitProseSentences(paragraph));
+  return {
+    schema: KO_POST_EDITESE_SCHEMA,
+    lang,
+    analyzed: true,
+    skipReason: null,
+    paragraphCount: paragraphRows.length,
+    sentenceCount: docSentences.length,
+    eojeolCount: totalEojeols.length,
+    metrics: buildKoPostEditeseMetrics(str, docSentences),
+    paragraphs: paragraphRows,
+  };
+}
+
+function skippedKoPostEditese(lang, skipReason) {
+  return {
+    schema: KO_POST_EDITESE_SCHEMA,
+    lang,
+    analyzed: false,
+    skipReason,
+    paragraphCount: 0,
+    sentenceCount: 0,
+    eojeolCount: 0,
+    metrics: zeroKoPostEditeseMetrics(),
+    paragraphs: [],
+  };
+}
+
+function zeroKoPostEditeseMetrics() {
+  return {
+    lexical: {
+      tokenCount: 0,
+      typeCount: 0,
+      ttr: null,
+      mattr: null,
+      endingTypeCount: 0,
+      endingDiversity: null,
+    },
+    endings: {
+      declarativeDaCount: 0,
+      declarativeDaRatio: null,
+      handaCount: 0,
+      doendaCount: 0,
+      idaCount: 0,
+      formalEndingCount: 0,
+      politeEndingCount: 0,
+      endingStreakMax: 0,
+    },
+    interference: {
+      pronounLiteralCount: 0,
+      doubleParticleCount: 0,
+      progressiveAspectCount: 0,
+      lightVerbCount: 0,
+      byPassiveCount: 0,
+      doublePassiveCount: 0,
+      connectiveCommaCount: 0,
+      relativeClauseProxyCount: 0,
+    },
+    rhythm: {
+      meanSentenceEojeols: null,
+      sentenceEojeolCV: null,
+      meanEojeolLength: null,
+      eojeolLengthCV: null,
+      commaPerSentence: null,
+      commaPer100Chars: null,
+      suffixMatchedCount: 0,
+      suffixClassDiversity: null,
+      suffixDiversity: null,
+    },
+  };
+}
+
+function buildKoPostEditeseRow(paragraph, id) {
+  const sentences = splitProseSentences(paragraph);
+  const eojeols = koreanEojeols(paragraph);
+  return {
+    id,
+    sentenceCount: sentences.length,
+    eojeolCount: eojeols.length,
+    metrics: buildKoPostEditeseMetrics(paragraph, sentences),
+  };
+}
+
+function buildKoPostEditeseMetrics(text, sentences = splitProseSentences(text)) {
+  const eojeols = koreanEojeols(text);
+  const lowerEojeols = eojeols.map((token) => token.toLowerCase());
+  const typeCount = new Set(lowerEojeols).size;
+  const lengths = eojeols.map(koreanLength).filter((length) => length > 0);
+  const endings = sentences.map(extractSentenceEnding).filter(Boolean);
+  const endingTypeCount = new Set(endings).size;
+  const suffixStats = koPostEditeseSuffixStats(eojeols);
+  const comma = commaDensity(text, sentences.length);
+  const sentenceEojeolCounts = sentences
+    .map((sentence) => koreanEojeols(sentence).length)
+    .filter((count) => count > 0);
+
+  return {
+    lexical: {
+      tokenCount: eojeols.length,
+      typeCount,
+      ttr: ratio(typeCount, eojeols.length),
+      mattr: roundMetric(mattr(eojeols)),
+      endingTypeCount,
+      endingDiversity: ratio(endingTypeCount, sentences.length),
+    },
+    endings: buildKoPostEditeseEndings(endings),
+    interference: {
+      pronounLiteralCount: countPattern(text, POST_EDITESE_PRONOUN_LITERAL_RE),
+      doubleParticleCount: countPattern(text, POST_EDITESE_DOUBLE_PARTICLE_RE),
+      progressiveAspectCount: countPattern(text, POST_EDITESE_PROGRESSIVE_ASPECT_RE),
+      lightVerbCount: countPattern(text, POST_EDITESE_LIGHT_VERB_RE),
+      byPassiveCount: countPattern(text, POST_EDITESE_BY_PASSIVE_RE),
+      doublePassiveCount: countPattern(text, POST_EDITESE_DOUBLE_PASSIVE_RE),
+      connectiveCommaCount: countPattern(text, POST_EDITESE_CONNECTIVE_COMMA_RE),
+      relativeClauseProxyCount: countPattern(text, POST_EDITESE_RELATIVE_CLAUSE_PROXY_RE),
+    },
+    rhythm: {
+      meanSentenceEojeols: ratio(eojeols.length, sentences.length),
+      sentenceEojeolCV: roundMetric(coefficientOfVariation(sentenceEojeolCounts)),
+      meanEojeolLength: roundMetric(mean(lengths)),
+      eojeolLengthCV: roundMetric(coefficientOfVariation(lengths)),
+      commaPerSentence: roundMetric(comma.perSentence),
+      commaPer100Chars: roundMetric(comma.per100Chars),
+      suffixMatchedCount: suffixStats.matchedCount,
+      suffixClassDiversity: roundMetric(suffixStats.classDiversity),
+      suffixDiversity: roundMetric(suffixStats.suffixDiversity),
+    },
+  };
+}
+
+function buildKoPostEditeseEndings(endings) {
+  const declarativeDaCount = endings.filter((ending) => POST_EDITESE_DECLARATIVE_DA_ENDINGS.has(ending)).length;
+  return {
+    declarativeDaCount,
+    declarativeDaRatio: ratio(declarativeDaCount, endings.length),
+    handaCount: endings.filter((ending) => ending === '한다').length,
+    doendaCount: endings.filter((ending) => ending === '된다').length,
+    idaCount: endings.filter((ending) => ending === '이다').length,
+    formalEndingCount: endings.filter((ending) => POST_EDITESE_FORMAL_ENDINGS.has(ending)).length,
+    politeEndingCount: endings.filter((ending) => POST_EDITESE_POLITE_ENDINGS.has(ending)).length,
+    endingStreakMax: maxDeclarativeDaStreak(endings),
+  };
+}
+
+function extractSentenceEnding(sentence) {
+  const eojeol = koreanEojeols(sentence).at(-1);
+  if (!eojeol) return null;
+  const matched = POST_EDITESE_ENDING_SUFFIXES.find((ending) => eojeol.endsWith(ending)) ?? null;
+  // Regular formal '-ㅂ니다 / -ㅂ니까' (됩니다, 표시됩니다, 합니까…) fuse the ㅂ marker into
+  // the stem syllable, so they fall through to the bare '다' bucket and get miscounted as
+  // declarative '-다' style. Reclassify them as a formal ending.
+  if ((matched === '다' || matched === null) && isFormalFusedEnding(eojeol)) {
+    return POST_EDITESE_FORMAL_NIDA;
+  }
+  return matched;
+}
+
+// True for '-ㅂ니다 / -ㅂ니까' formal endings: the syllable before 니다/니까 carries a ㅂ
+// jongseong (batchim index 17). Distinguishes 됩니다/아닙니다 (formal) from 아니다 (plain).
+function isFormalFusedEnding(eojeol) {
+  const m = /(.)(?:니다|니까)$/.exec(eojeol);
+  if (!m) return false;
+  const code = m[1].charCodeAt(0);
+  if (code < 0xac00 || code > 0xd7a3) return false;
+  return (code - 0xac00) % 28 === 17;
+}
+
+function maxDeclarativeDaStreak(endings) {
+  let current = 0;
+  let max = 0;
+  for (const ending of endings) {
+    if (POST_EDITESE_DECLARATIVE_DA_ENDINGS.has(ending)) {
+      current += 1;
+      max = Math.max(max, current);
+    } else {
+      current = 0;
+    }
+  }
+  return max;
+}
+
+function koPostEditeseSuffixStats(eojeols) {
+  const matches = [];
+  for (const token of eojeols) {
+    const match = KO_SUFFIX_MATCHERS.find(
+      (candidate) => token.length > candidate.suffix.length && token.endsWith(candidate.suffix)
+    );
+    if (match) matches.push({ className: match.className, suffix: match.suffix });
+  }
+  const matchedCount = matches.length;
+  const classCount = new Set(matches.map((match) => match.className)).size;
+  const suffixCount = new Set(matches.map((match) => match.suffix)).size;
+  return {
+    matchedCount,
+    classDiversity: matchedCount > 0 ? classCount / matchedCount : null,
+    suffixDiversity: matchedCount > 0 ? suffixCount / matchedCount : null,
+  };
+}
+
+function countPattern(text, pattern) {
+  return (String(text ?? '').match(pattern) ?? []).length;
+}
+
+function ratio(numerator, denominator) {
+  return denominator > 0 ? roundMetric(numerator / denominator) : null;
+}
+
+function roundMetric(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? Number(value.toFixed(3)) : null;
 }
 
 export function koreanSpacingFeatures(paragraph) {

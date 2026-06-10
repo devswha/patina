@@ -235,3 +235,86 @@ describe('CJK clause-level rewrite guard', () => {
     assert.doesNotMatch(prompt, /CJK clause-level rewrite guard/);
   });
 });
+
+describe('Korean advisory rewrite metadata wording', () => {
+  const koConfig = {
+    ...config,
+    language: 'ko',
+    ouroboros: {
+      ...config.ouroboros,
+      'category-weights': {
+        ...config.ouroboros['category-weights'],
+        ko: { content: 1 },
+      },
+    },
+  };
+
+  function buildTestPrompt({ language = 'ko', mode = 'rewrite', promptMode = 'strict' } = {}) {
+    return buildPrompt({
+      config: language === 'ko' ? koConfig : config,
+      patterns,
+      profile,
+      voice,
+      scoring,
+      text: language === 'ko'
+        ? '그것은 사용자에 의해 선택되었으며, 결과적으로 더 나은 경험을 제공합니다.'
+        : inputText,
+      mode,
+      tone,
+      promptMode,
+    });
+  }
+
+  it('is present in strict Korean rewrite prompts', () => {
+    const prompt = buildTestPrompt({ language: 'ko', mode: 'rewrite', promptMode: 'strict' });
+
+    assert.match(prompt, /koPostEditese\.v1/);
+    assert.match(prompt, /advisory editing context only/);
+    assert.match(prompt, /not score, gate, hot-spot, severity, benchmark, z-score, baseline, percentile, prompt\/rewrite gate, or authorship-verdict evidence/);
+    assert.match(prompt, /calques, literal pronouns, by-passives, double particles/);
+    assert.match(prompt, /suffix-diversity proxies/);
+    assert.match(prompt, /Preserve claims, numbers, polarity, causation, and register/);
+  });
+
+  it('is present in minimal Korean rewrite prompts', () => {
+    const prompt = buildTestPrompt({ language: 'ko', mode: 'rewrite', promptMode: 'minimal' });
+
+    assert.match(prompt, /koPostEditese\.v1/);
+    assert.match(prompt, /advisory editing context only/);
+    assert.match(prompt, /not score, gate, hot-spot, severity, benchmark, z-score, baseline, percentile, prompt\/rewrite gate, or authorship-verdict evidence/);
+  });
+
+  it('does not add Korean advisory wording to English rewrite prompts', () => {
+    const strictPrompt = buildTestPrompt({ language: 'en', mode: 'rewrite', promptMode: 'strict' });
+    const minimalPrompt = buildTestPrompt({ language: 'en', mode: 'rewrite', promptMode: 'minimal' });
+
+    assert.doesNotMatch(strictPrompt, /koPostEditese\.v1/);
+    assert.doesNotMatch(strictPrompt, /advisory editing context only/);
+    assert.doesNotMatch(minimalPrompt, /koPostEditese\.v1/);
+    assert.doesNotMatch(minimalPrompt, /advisory editing context only/);
+  });
+
+  it('does not include koPostEditese in score prompts', () => {
+    const prompt = buildTestPrompt({ language: 'ko', mode: 'score', promptMode: 'strict' });
+
+    assert.doesNotMatch(prompt, /koPostEditese/);
+  });
+
+  it('does not include Korean advisory wording in Korean non-rewrite prompts', () => {
+    for (const mode of ['diff', 'audit', 'score', 'ouroboros']) {
+      const prompt = buildTestPrompt({ language: 'ko', mode, promptMode: 'strict' });
+      assert.doesNotMatch(prompt, /koPostEditese\.v1/, mode);
+      assert.doesNotMatch(prompt, /advisory editing context only/, mode);
+    }
+  });
+
+  it('preserves ouroboros formula and termination language', () => {
+    const prompt = buildTestPrompt({ language: 'en', mode: 'ouroboros', promptMode: 'strict' });
+
+    assert.match(prompt, /If score ≤ 30, stop immediately/);
+    assert.match(prompt, /delta = previous - current \(positive = improvement\)/);
+    assert.match(prompt, /0 ≤ delta ≤ 10 → plateau/);
+    assert.match(prompt, /fidelity < 70 → fidelity violation → rollback/);
+    assert.match(prompt, /MPS < 70 → MPS violation → rollback/);
+  });
+});

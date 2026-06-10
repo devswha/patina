@@ -191,6 +191,24 @@ textarea:focus, select:focus, button:focus-visible, a:focus-visible {
 
 .summary { display: grid; gap: 8px; padding-left: 1.1rem; color: var(--muted); }
 .summary strong { color: var(--text); }
+.star-cta {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--line));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--panel-2) 92%, var(--amber));
+  color: var(--muted);
+}
+
+.star-cta strong {
+  color: var(--text);
+}
+
+.star-cta .button {
+  justify-self: start;
+}
 
 .cli-box {
   margin-top: 20px;
@@ -220,6 +238,66 @@ table { width: 100%; border-collapse: collapse; min-width: 850px; }
 th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }
 
+.advisory-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.advisory-card {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #0b0d11;
+  padding: 16px;
+}
+
+.advisory-card h3 { margin-bottom: 8px; }
+
+.advisory-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.advisory-stats div {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px;
+  background: #151820;
+}
+
+.advisory-stats dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.advisory-stats dd {
+  margin: 4px 0 0;
+  font-weight: 850;
+}
+
+.advisory-list {
+  display: grid;
+  gap: 10px;
+  padding-left: 1.2rem;
+  color: var(--muted);
+}
+
+.advisory-list li strong {
+  display: block;
+  color: var(--text);
+}
+
+.advisory-example {
+  display: block;
+  margin-top: 4px;
+}
+
+.advisory-metrics table { min-width: 620px; }
 .diff-list { display: grid; gap: 14px; }
 .diff-card {
   border: 1px solid var(--line);
@@ -232,7 +310,7 @@ th { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-s
 .diff-card__head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: var(--muted); }
 .diff-card p { line-height: 1.75; }
 .diff-card ul { color: var(--muted); padding-left: 1.2rem; }
-.diff-card code {
+.diff-card code, .advisory-card code {
   display: inline-block;
   margin: 0 4px 6px 0;
   padding: 3px 7px;
@@ -260,6 +338,7 @@ mark {
 
 @media (max-width: 880px) {
   .workspace { grid-template-columns: 1fr; }
+  .advisory-grid { grid-template-columns: 1fr; }
   .nav { align-items: flex-start; }
   .nav__links { flex-wrap: wrap; justify-content: flex-end; }
   .panel__head { align-items: flex-start; flex-direction: column; }

@@ -52,6 +52,13 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
 
   const dir = mkdtempSync(join(tmpdir(), 'patina-kimi-'));
   const cliModel = resolveLocalCliModel({ backendName: name, model, modelSource });
+  // `--print` runs non-interactively WITHOUT `--yolo`, so the agent cannot
+  // auto-approve any tool action — there is no terminal to confirm at, so
+  // shell/file tools stay blocked even if user text tries a prompt injection.
+  // (Verified: an injected "run this shell command" prompt produced no tool
+  // execution.) `--max-steps-per-turn 20` only lets the model take more
+  // reasoning/formatting steps within that sandboxed-by-non-interactivity turn;
+  // it does NOT grant tool execution. Keep `--print` and never add `--yolo`.
   const args = [
     '--print',
     '--input-format',
@@ -61,7 +68,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
     '--final-message-only',
     '--no-thinking',
     '--max-steps-per-turn',
-    '1',
+    '20',
   ];
   if (cliModel) args.push('--model', cliModel);
 
@@ -70,6 +77,10 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
 
     let stdout = '';
     let stderr = '';
+    // Decode with a streaming UTF-8 decoder so multi-byte CJK characters split
+    // across pipe-read boundaries are not corrupted into U+FFFD.
+    proc.stdout.setEncoding('utf8');
+    proc.stderr.setEncoding('utf8');
     proc.stdout.on('data', (chunk) => { stdout += chunk; });
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
 
@@ -101,6 +112,15 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       finishResolve(stripKimiNoise(stdout));
     });
 
+    // A child that exits before draining a large prompt makes the buffered
+    // stdin write fail with EPIPE; without a handler that becomes an unhandled
+    // 'error' event that crashes the process. Ignore EPIPE (the 'close' handler
+    // surfaces the real exit code + stderr); reject on anything else.
+    proc.stdin.on('error', (err) => {
+      if (err && err.code !== 'EPIPE') {
+        finishReject(new Error(`kimi-cli backend: stdin error (${err.message})`));
+      }
+    });
     proc.stdin.write(prompt);
     proc.stdin.end();
 

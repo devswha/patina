@@ -18,6 +18,7 @@ import {
   DEFAULT_MATTR_BANDS,
   DEFAULT_MATTR_WINDOW,
   DEFAULT_MIN_BURSTINESS_SENTENCES,
+  koreanPostEditeseFeatures,
 } from './stylometry.js';
 import {
   classifyLexiconHot,
@@ -74,6 +75,7 @@ export function analyzeText(text, opts = {}) {
   // surfaced for callers/SKILL but deliberately NOT folded into `hot` (these
   // constructions appear in good Korean too; gating hot would regress FP).
   const translationese = detectTranslationese(normalized, { lang });
+  const koPostEditese = koreanPostEditeseFeatures(normalized, { lang });
   const structuralClassifier = structuralModelVerdict(normalized, { lang, model: structuralModel });
   const lexicon =
     providedLexicon ??
@@ -140,6 +142,7 @@ export function analyzeText(text, opts = {}) {
     markupLeakage,
     discourseTells,
     translationese,
+    koPostEditese,
     hot: markupLeakage.leaked || discourseTells.hot || structuralClassifier.hot === true || analyzed.some((p) => p.hot),
     structuralClassifier,
   };
@@ -158,6 +161,7 @@ export {
   commaDensity,
   koreanPosDiversityProxy,
   koreanSpacingFeatures,
+  koreanPostEditeseFeatures,
   loadLexicon,
   computeDensity,
   extractStructuralFeatures,

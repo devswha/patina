@@ -16,4 +16,4 @@ Planned tags after the GHCR publishing issue is closed:
 - `ghcr.io/devswha/patina:<version>` — version tag from `v<version>`.
 - `ghcr.io/devswha/patina:latest` — latest release tag.
 
-The image uses `node:18-alpine`. It does **not** include codex, claude, or gemini CLI binaries, and it never carries local login state. For container runs, use an API-backed provider or mount your own authenticated tools explicitly.
+The image uses `node:22-alpine`. It does **not** include codex, claude, or gemini CLI binaries, and it never carries local login state. For container runs, use an API-backed provider or mount your own authenticated tools explicitly.

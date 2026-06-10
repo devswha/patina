@@ -42,6 +42,21 @@ jobs:
       - name: Benchmark report schema
         run: npm run benchmark:report
 
+      - name: Detector comparison harness
+        # Runs before the drift check so the regenerated
+        # docs/benchmarks/detector-comparison.{json,md} are drift-checked too.
+        run: npm run benchmark:compare
+
+      - name: Benchmark report drift check
+        # Same deterministic regen as test.yml's quality job (timestamp and
+        # node-version metadata lines ignored); a failure here means the
+        # tagged commit ships a stale public benchmark page.
+        run: |
+          git diff --exit-code -I '"generatedAt":' -I '"benchmarkGeneratedAt":' -I 'Generated at:' -I '"nodeVersion":' -I '^- Node: ' -- docs/benchmarks || {
+            echo '::error::docs/benchmarks is stale. Run `npm run benchmark:report && npm run benchmark:compare` and commit the result.'
+            exit 1
+          }
+
       - name: Dogfood public docs
         run: npm run dogfood
 

@@ -10,6 +10,24 @@
 // tokens will match. That is correct behavior (the text genuinely contains
 // them); callers scanning the repo's own meta-content should expect hits.
 
+/**
+ * Score floor applied when deterministic markup-leakage is detected.
+ *
+ * Model-output leakage (issue #332) is near-proof-grade: a single token that
+ * LLM tooling injects and humans never type. Unlike the stylometric/lexical
+ * signals it is decisive on its own, so any hit short-circuits the deterministic
+ * `overall` into the 'heavily AI' band (>70) regardless of the per-paragraph
+ * hot ratio. It is a floor, not a hard 100, because the surrounding prose may
+ * still be genuinely human and we avoid claiming absolute proof.
+ *
+ * Lives here — the browser-pure module that owns leakage detection — so both
+ * src/scoring.js and playground/analyzer.js consume the same constant
+ * (threshold parity gate: tests/unit/threshold-parity.test.js).
+ *
+ * @type {number}
+ */
+export const LEAKAGE_SCORE_FLOOR = 90;
+
 const OBJECT_REPLACEMENT_CHAR = '￼';
 
 // Each entry: { id, label, build() => fresh RegExp }. We build a fresh regex per

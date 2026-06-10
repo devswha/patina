@@ -13,6 +13,7 @@ const EXT_RE = /\.(?:js|mjs)$/;
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
+    if (entry === 'node_modules' || entry.startsWith('.')) continue;
     const path = resolve(dir, entry);
     const st = statSync(path);
     if (st.isDirectory()) walk(path, out);

@@ -1,67 +1,19 @@
-import { createServer } from 'node:http';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import { EventEmitter } from 'node:events';
 import { main, resolvePromptMode } from '../../src/cli.js';
 import { setBrowserDiffRuntimeForTests, resetBrowserDiffRuntimeForTests } from '../../src/browser-diff.js';
+import { startMockServer } from './helpers/mock-server.js';
 import { fileURLToPath } from 'node:url';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
 
-let mockServer;
-let mockPort;
-let callCount = 0;
-let lastRequestBody = null;
-let lastAuthorization = null;
+let mock;
 let mockApiKeyPath;
-let requestBodies = [];
-
-function startMockServer(responseText, statusCode = 200, extraResponse = {}) {
-  const queue = Array.isArray(responseText)
-    ? responseText.map((entry) => ({
-        responseText: entry.responseText,
-        statusCode: entry.statusCode ?? 200,
-        extraResponse: entry.extraResponse ?? {},
-      }))
-    : null;
-
-  return new Promise((resolve) => {
-    mockServer = createServer((req, res) => {
-      callCount++;
-      lastAuthorization = req.headers.authorization || null;
-      let body = '';
-      req.on('data', (chunk) => { body += chunk; });
-      req.on('end', () => {
-        lastRequestBody = JSON.parse(body);
-        requestBodies.push(lastRequestBody);
-        const current = queue ? (queue.shift() || { responseText: '', statusCode: 200, extraResponse: {} }) : {
-          responseText,
-          statusCode,
-          extraResponse,
-        };
-        res.writeHead(current.statusCode, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          choices: [{ message: { content: current.responseText } }],
-          ...current.extraResponse,
-        }));
-      });
-    });
-    mockServer.listen(0, '127.0.0.1', () => {
-      mockPort = mockServer.address().port;
-      resolve();
-    });
-  });
-}
-
-function stopMockServer() {
-  return new Promise((resolve) => {
-    mockServer.close(resolve);
-  });
-}
 
 async function captureConsole(fn) {
   const logs = [];
@@ -107,19 +59,19 @@ async function withEnv(envOverrides, fn) {
 
 describe('CLI End-to-End with Mock API', () => {
   before(async () => {
-    await startMockServer('This is the humanized result.');
+    mock = await startMockServer('This is the humanized result.');
     const keyDir = mkdtempSync(join(tmpdir(), 'patina-api-key-'));
     mockApiKeyPath = resolve(keyDir, 'key.txt');
     writeFileSync(mockApiKeyPath, 'test-key\n');
   });
 
   after(async () => {
-    await stopMockServer();
+    await mock.stop();
   });
 
   it('should call LLM API with correct prompt structure', async () => {
-    callCount = 0;
-    lastRequestBody = null;
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
 
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
 
@@ -127,21 +79,21 @@ describe('CLI End-to-End with Mock API', () => {
       '--lang', 'en',
       '--profile', 'default',
       '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
       '--model', 'gpt-5',
       testFile,
     ]);
 
-    assert.strictEqual(callCount, 1, 'Should make exactly one API call');
-    assert.ok(lastRequestBody, 'Request body should be captured');
-    assert.strictEqual(lastRequestBody.model, 'gpt-5');
-    assert.ok(lastRequestBody.messages[0].content.includes('Pattern Packs'));
-    assert.ok(lastRequestBody.messages[0].content.includes('Input Text'));
+    assert.strictEqual(mock.callCount, 1, 'Should make exactly one API call');
+    assert.ok(mock.lastRequestBody, 'Request body should be captured');
+    assert.strictEqual(mock.lastRequestBody.model, 'gpt-5');
+    assert.ok(mock.lastRequestBody.messages[0].content.includes('Pattern Packs'));
+    assert.ok(mock.lastRequestBody.messages[0].content.includes('Input Text'));
   });
 
   it('uses the compact rewrite prompt internally for gemini models', async () => {
-    callCount = 0;
-    lastRequestBody = null;
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
 
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
 
@@ -149,12 +101,12 @@ describe('CLI End-to-End with Mock API', () => {
       '--lang', 'en',
       '--backend', 'openai-http',
       '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
       '--model', 'gemini-3-flash-preview',
       testFile,
     ]);
 
-    const prompt = lastRequestBody.messages[0].content;
+    const prompt = mock.lastRequestBody.messages[0].content;
     assert.ok(prompt.includes('AI signal words (reference)'));
     assert.ok(!prompt.includes('Follow the 3-Phase pipeline'));
   });
@@ -167,55 +119,59 @@ describe('CLI End-to-End with Mock API', () => {
   });
 
   it('should pass correct temperature', async () => {
-    callCount = 0;
-    lastRequestBody = null;
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
 
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
 
     await main([
       '--lang', 'en',
       '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
       '--model', 'gpt-5',
       testFile,
     ]);
 
-    assert.strictEqual(lastRequestBody.temperature, 0.7);
+    assert.strictEqual(mock.lastRequestBody.temperature, 0.7);
   });
 
   it('injects --voice-sample paragraphs into rewrite prompts', async () => {
-    callCount = 0;
-    lastRequestBody = null;
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
     const dir = mkdtempSync(join(tmpdir(), 'patina-voice-sample-cli-'));
-    const samplePath = resolve(dir, 'sample.md');
-    writeFileSync(samplePath, [
-      'I tend to start with the awkward tradeoff, not the polished takeaway.',
-      'Then I add one concrete detail so the point does not float away.',
-      'A final short sentence is fine.',
-      'This fourth paragraph should be ignored.',
-    ].join('\n\n'), 'utf8');
+    try {
+      const samplePath = resolve(dir, 'sample.md');
+      writeFileSync(samplePath, [
+        'I tend to start with the awkward tradeoff, not the polished takeaway.',
+        'Then I add one concrete detail so the point does not float away.',
+        'A final short sentence is fine.',
+        'This fourth paragraph should be ignored.',
+      ].join('\n\n'), 'utf8');
 
-    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+      const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
 
-    await main([
-      '--lang', 'en',
-      '--voice-sample', samplePath,
-      '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
-      testFile,
-    ]);
+      await main([
+        '--lang', 'en',
+        '--voice-sample', samplePath,
+        '--api-key-file', mockApiKeyPath,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
+        testFile,
+      ]);
 
-    const prompt = lastRequestBody.messages[0].content;
-    assert.ok(prompt.includes('Voice Anchor Examples'));
-    assert.ok(prompt.includes('examples of how this person writes'));
-    assert.ok(prompt.includes('I tend to start with the awkward tradeoff'));
-    assert.ok(!prompt.includes('This fourth paragraph should be ignored.'));
+      const prompt = mock.lastRequestBody.messages[0].content;
+      assert.ok(prompt.includes('Voice Anchor Examples'));
+      assert.ok(prompt.includes('examples of how this person writes'));
+      assert.ok(prompt.includes('I tend to start with the awkward tradeoff'));
+      assert.ok(!prompt.includes('This fourth paragraph should be ignored.'));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('uses OPENAI_API_KEY for the default HTTP backend when no key file flag is passed', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    lastAuthorization = null;
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
+    mock.lastAuthorization = null;
 
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
 
@@ -231,20 +187,20 @@ describe('CLI End-to-End with Mock API', () => {
     }, async () => {
       await main([
         '--lang', 'en',
-        '--base-url', `http://127.0.0.1:${mockPort}`,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
         '--model', 'gpt-5',
         testFile,
       ]);
     });
 
-    assert.strictEqual(callCount, 1, 'Should make exactly one API call');
-    assert.strictEqual(lastAuthorization, 'Bearer openai-env-key');
+    assert.strictEqual(mock.callCount, 1, 'Should make exactly one API call');
+    assert.strictEqual(mock.lastAuthorization, 'Bearer openai-env-key');
   });
 
   it('keeps selected provider env keys ahead of generic PATINA_API_KEY', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    lastAuthorization = null;
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
+    mock.lastAuthorization = null;
 
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
 
@@ -262,21 +218,21 @@ describe('CLI End-to-End with Mock API', () => {
         '--lang', 'en',
         '--provider', 'gemini',
         '--backend', 'openai-http',
-        '--base-url', `http://127.0.0.1:${mockPort}`,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
         '--model', 'provider-test',
         testFile,
       ]);
     });
 
-    assert.strictEqual(callCount, 1, 'Should make exactly one API call');
-    assert.strictEqual(lastAuthorization, 'Bearer gemini-env-key');
+    assert.strictEqual(mock.callCount, 1, 'Should make exactly one API call');
+    assert.strictEqual(mock.lastAuthorization, 'Bearer gemini-env-key');
   });
 
   it('should handle --audit mode', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    await stopMockServer();
-    await startMockServer('Audit result: patterns detected.');
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
+    await mock.stop();
+    mock = await startMockServer('Audit result: patterns detected.');
 
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
 
@@ -284,20 +240,20 @@ describe('CLI End-to-End with Mock API', () => {
       '--lang', 'en',
       '--audit',
       '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
       testFile,
     ]);
 
-    assert.ok(lastRequestBody.messages[0].content.includes('audit'));
-    await stopMockServer();
-    await startMockServer('This is the humanized result.');
+    assert.ok(mock.lastRequestBody.messages[0].content.includes('audit'));
+    await mock.stop();
+    mock = await startMockServer('This is the humanized result.');
   });
 
   it('should handle --score mode', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    await stopMockServer();
-    await startMockServer('{ "overall": 23, "interpretation": "mostly human" }');
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
+    await mock.stop();
+    mock = await startMockServer('{ "overall": 23, "interpretation": "mostly human" }');
 
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
 
@@ -305,13 +261,13 @@ describe('CLI End-to-End with Mock API', () => {
       '--lang', 'en',
       '--score',
       '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
       testFile,
     ]);
 
-    assert.ok(lastRequestBody.messages[0].content.includes('score'));
-    await stopMockServer();
-    await startMockServer('This is the humanized result.');
+    assert.ok(mock.lastRequestBody.messages[0].content.includes('score'));
+    await mock.stop();
+    mock = await startMockServer('This is the humanized result.');
   });
 
   it('supports --browser with JSON stdout while rendering prose HTML and a second diff call', async () => {
@@ -339,14 +295,14 @@ describe('CLI End-to-End with Mock API', () => {
     ].join('\n');
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
 
-    requestBodies = [];
-    await stopMockServer();
-    await startMockServer(rewriteResponse);
+    mock.requestBodies = [];
+    await mock.stop();
+    mock = await startMockServer(rewriteResponse);
     const baseline = await captureConsole(() => main([
       '--lang', 'en',
       '--format', 'json',
       '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
       testFile,
     ]));
 
@@ -373,12 +329,12 @@ describe('CLI End-to-End with Mock API', () => {
       }),
     });
 
-    callCount = 0;
-    requestBodies = [];
-    lastRequestBody = null;
+    mock.callCount = 0;
+    mock.requestBodies = [];
+    mock.lastRequestBody = null;
     try {
-      await stopMockServer();
-      await startMockServer([
+      await mock.stop();
+      mock = await startMockServer([
         { responseText: rewriteResponse },
         { responseText: diffResponse },
       ]);
@@ -388,14 +344,14 @@ describe('CLI End-to-End with Mock API', () => {
         '--lang', 'en',
         '--format', 'json',
         '--api-key-file', mockApiKeyPath,
-        '--base-url', `http://127.0.0.1:${mockPort}`,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
         testFile,
       ]));
 
       assert.strictEqual(browserRun.logs.join('\n'), baseline.logs.join('\n'));
       assert.deepStrictEqual(browserRun.errors, []);
-      assert.strictEqual(callCount, 2);
-      assert.strictEqual(requestBodies.length, 2);
+      assert.strictEqual(mock.callCount, 2);
+      assert.strictEqual(mock.requestBodies.length, 2);
       assert.strictEqual(spawns[0].command, 'xdg-open');
       assert.deepStrictEqual(spawns[0].args, ['/tmp/patina-browser-diff-123/browser-diff-123.html']);
       assert.strictEqual(writes[0].path, '/tmp/patina-browser-diff-123/browser-diff-123.html');
@@ -410,7 +366,7 @@ describe('CLI End-to-End with Mock API', () => {
         { path: '/tmp/patina-browser-diff-123/browser-diff-123.html', mode: 0o600 },
       ]);
 
-      const diffPrompt = requestBodies[1].messages[0].content;
+      const diffPrompt = mock.requestBodies[1].messages[0].content;
       assert.match(diffPrompt, /Compare BEFORE to AFTER\./);
       assert.match(diffPrompt, /Do not rewrite either text\./);
       assert.match(diffPrompt, /report only changes present in AFTER relative to BEFORE/i);
@@ -418,8 +374,8 @@ describe('CLI End-to-End with Mock API', () => {
       assert.match(diffPrompt, /## AFTER/);
     } finally {
       resetBrowserDiffRuntimeForTests();
-      await stopMockServer();
-      await startMockServer('This is the humanized result.');
+      await mock.stop();
+      mock = await startMockServer('This is the humanized result.');
     }
   });
 
@@ -428,12 +384,12 @@ describe('CLI End-to-End with Mock API', () => {
     const diffResponse = 'Pattern: 1. Generic polish\nRemoved: old\nAdded: new\nWhy: reason';
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
 
-    await stopMockServer();
-    await startMockServer(rewriteResponse);
+    await mock.stop();
+    mock = await startMockServer(rewriteResponse);
     const baseline = await captureConsole(() => main([
       '--lang', 'en',
       '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
       testFile,
     ]));
 
@@ -449,11 +405,11 @@ describe('CLI End-to-End with Mock API', () => {
       }),
     });
 
-    callCount = 0;
-    requestBodies = [];
+    mock.callCount = 0;
+    mock.requestBodies = [];
     try {
-      await stopMockServer();
-      await startMockServer([
+      await mock.stop();
+      mock = await startMockServer([
         { responseText: rewriteResponse },
         { responseText: diffResponse },
       ]);
@@ -462,18 +418,18 @@ describe('CLI End-to-End with Mock API', () => {
         '--browser',
         '--lang', 'en',
         '--api-key-file', mockApiKeyPath,
-        '--base-url', `http://127.0.0.1:${mockPort}`,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
         testFile,
       ]));
 
       assert.strictEqual(browserRun.logs.join('\n'), baseline.logs.join('\n'));
-      assert.strictEqual(callCount, 2);
+      assert.strictEqual(mock.callCount, 2);
       assert.ok(browserRun.errors.some((line) => line.includes('Browser diff page saved at /tmp/patina-browser-diff-456/browser-diff-456.html')));
       assert.ok(browserRun.errors.some((line) => line.includes('Browser open failed: browser opener exited with code 1')));
     } finally {
       resetBrowserDiffRuntimeForTests();
-      await stopMockServer();
-      await startMockServer('This is the humanized result.');
+      await mock.stop();
+      mock = await startMockServer('This is the humanized result.');
     }
   });
 
@@ -496,11 +452,11 @@ describe('CLI End-to-End with Mock API', () => {
       }),
     });
 
-    callCount = 0;
-    requestBodies = [];
+    mock.callCount = 0;
+    mock.requestBodies = [];
     try {
-      await stopMockServer();
-      await startMockServer([
+      await mock.stop();
+      mock = await startMockServer([
         { responseText: rewriteResponse },
         { responseText: 'backend failed', statusCode: 500 },
       ]);
@@ -511,19 +467,19 @@ describe('CLI End-to-End with Mock API', () => {
         '--max-retries',
         '0',
         '--api-key-file', mockApiKeyPath,
-        '--base-url', `http://127.0.0.1:${mockPort}`,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
         testFile,
       ]));
 
       assert.match(browserRun.logs.join('\n'), /This is the humanized result\./);
-      assert.strictEqual(callCount, 2);
+      assert.strictEqual(mock.callCount, 2);
       assert.ok(browserRun.errors.some((line) => line.includes('browser diff explanation failed')));
       assert.ok(writes[0].includes('Pattern explanation unavailable:'));
       assert.ok(writes[0].includes('HTTP 500'));
     } finally {
       resetBrowserDiffRuntimeForTests();
-      await stopMockServer();
-      await startMockServer('This is the humanized result.');
+      await mock.stop();
+      mock = await startMockServer('This is the humanized result.');
     }
   });
 
@@ -539,11 +495,11 @@ describe('CLI End-to-End with Mock API', () => {
     ];
 
     for (const testCase of cases) {
-      callCount = 0;
-      requestBodies = [];
+      mock.callCount = 0;
+      mock.requestBodies = [];
       await assert.rejects(() => main(testCase.args), testCase.pattern);
-      assert.strictEqual(callCount, 0, testCase.args.join(' '));
-      assert.strictEqual(requestBodies.length, 0, testCase.args.join(' '));
+      assert.strictEqual(mock.callCount, 0, testCase.args.join(' '));
+      assert.strictEqual(mock.requestBodies.length, 0, testCase.args.join(' '));
     }
   });
 
@@ -573,10 +529,10 @@ describe('CLI End-to-End with Mock API', () => {
   });
 
   it('should wrap score output in documented JSON when --format json is used', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    await stopMockServer();
-    await startMockServer('{ "overall": 23, "categories": { "style": { "score": 10 } }, "interpretation": "mostly human" }');
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
+    await mock.stop();
+    mock = await startMockServer('{ "overall": 23, "categories": { "style": { "score": 10 } }, "interpretation": "mostly human" }');
 
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
     const { logs } = await captureConsole(() => main([
@@ -585,7 +541,7 @@ describe('CLI End-to-End with Mock API', () => {
       '--exit-on', '30',
       '--format', 'json',
       '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
       testFile,
     ]));
 
@@ -601,15 +557,15 @@ describe('CLI End-to-End with Mock API', () => {
     });
     assert.strictEqual(parsed.categories[0].name, 'style');
     assert.ok(parsed.tone);
-    await stopMockServer();
-    await startMockServer('This is the humanized result.');
+    await mock.stop();
+    mock = await startMockServer('This is the humanized result.');
   });
 
   it('should validate score weights before wrapping --format json output', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    await stopMockServer();
-    await startMockServer([
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
+    await mock.stop();
+    mock = await startMockServer([
       '| Category | Weight | Detected | Raw Score | Weighted |',
       '|---|---:|---:|---:|---:|',
       '| content | 0.20 | 0 | 0 | 0 |',
@@ -628,58 +584,58 @@ describe('CLI End-to-End with Mock API', () => {
       '--score',
       '--format', 'json',
       '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
       testFile,
     ]));
 
     assert.strictEqual(JSON.parse(logs.join('\n')).overall, 23);
     assert.ok(!errors.some((line) => line.includes('weight check')), errors.join('\n'));
-    await stopMockServer();
-    await startMockServer('This is the humanized result.');
+    await mock.stop();
+    mock = await startMockServer('This is the humanized result.');
   });
 
 
   it('should suppress stderr status and warnings with --quiet', async () => {
-    callCount = 0;
-    lastRequestBody = null;
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
 
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
     const { errors, logs } = await captureConsole(() => main([
       '--lang', 'en',
       '--quiet',
       '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
       testFile,
     ]));
 
-    assert.strictEqual(callCount, 1, 'Should make exactly one API call');
+    assert.strictEqual(mock.callCount, 1, 'Should make exactly one API call');
     assert.deepStrictEqual(errors, []);
     assert.match(logs.join('\n'), /This is the humanized result\./);
   });
 
   it('should keep --format text to the rewritten body without tone metadata', async () => {
-    callCount = 0;
-    lastRequestBody = null;
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
 
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
     const { logs } = await captureConsole(() => main([
       '--lang', 'en',
       '--format', 'text',
       '--api-key-file', mockApiKeyPath,
-      '--base-url', `http://127.0.0.1:${mockPort}`,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
       testFile,
     ]));
 
-    assert.strictEqual(callCount, 1, 'Should make exactly one API call');
+    assert.strictEqual(mock.callCount, 1, 'Should make exactly one API call');
     assert.strictEqual(logs.join('\n'), 'This is the humanized result.');
   });
 
 
   it('should set exit code 3 when --score gate fails', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    await stopMockServer();
-    await startMockServer('{ "overall": 42, "interpretation": "mixed" }');
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
+    await mock.stop();
+    mock = await startMockServer('{ "overall": 42, "interpretation": "mixed" }');
 
     const oldExitCode = process.exitCode;
     process.exitCode = undefined;
@@ -690,7 +646,7 @@ describe('CLI End-to-End with Mock API', () => {
         '--score',
         '--exit-on', '30',
         '--api-key-file', mockApiKeyPath,
-        '--base-url', `http://127.0.0.1:${mockPort}`,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
         testFile,
       ]));
 
@@ -699,16 +655,16 @@ describe('CLI End-to-End with Mock API', () => {
     } finally {
       process.exitCode = oldExitCode;
     }
-    await stopMockServer();
-    await startMockServer('This is the humanized result.');
+    await mock.stop();
+    mock = await startMockServer('This is the humanized result.');
   });
 
 
   it('should accept --exit-on as the CI score gate', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    await stopMockServer();
-    await startMockServer('{ "overall": 42, "interpretation": "mixed" }');
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
+    await mock.stop();
+    mock = await startMockServer('{ "overall": 42, "interpretation": "mixed" }');
 
     const oldExitCode = process.exitCode;
     process.exitCode = undefined;
@@ -719,7 +675,7 @@ describe('CLI End-to-End with Mock API', () => {
         '--score',
         '--exit-on', '30',
         '--api-key-file', mockApiKeyPath,
-        '--base-url', `http://127.0.0.1:${mockPort}`,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
         testFile,
       ]));
 
@@ -727,8 +683,8 @@ describe('CLI End-to-End with Mock API', () => {
     } finally {
       process.exitCode = oldExitCode;
     }
-    await stopMockServer();
-    await startMockServer('This is the humanized result.');
+    await mock.stop();
+    mock = await startMockServer('This is the humanized result.');
   });
 
   it('should reject --exit-on outside score mode', async () => {
@@ -738,7 +694,7 @@ describe('CLI End-to-End with Mock API', () => {
       () => main([
         '--exit-on', '30',
         '--api-key-file', mockApiKeyPath,
-        '--base-url', `http://127.0.0.1:${mockPort}`,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
         testFile,
       ]),
       /--exit-on can only be used with --score/
@@ -748,10 +704,10 @@ describe('CLI End-to-End with Mock API', () => {
 
 
   it('stops batch mode after the configured failure budget', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    await stopMockServer();
-    await startMockServer('Error occurred', 500);
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
+    await mock.stop();
+    mock = await startMockServer('Error occurred', 500);
 
     const dir = mkdtempSync(join(tmpdir(), 'patina-batch-breaker-'));
     const first = resolve(dir, 'first.txt');
@@ -768,7 +724,7 @@ describe('CLI End-to-End with Mock API', () => {
         '--max-retries', '0',
         '--max-failures', '2',
         '--api-key-file', mockApiKeyPath,
-        '--base-url', `http://127.0.0.1:${mockPort}`,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
         first,
         second,
         third,
@@ -776,15 +732,15 @@ describe('CLI End-to-End with Mock API', () => {
       /batch circuit breaker stopped the run/
     );
 
-    assert.strictEqual(callCount, 2, 'Should stop before the third file');
-    await stopMockServer();
-    await startMockServer('This is the humanized result.');
+    assert.strictEqual(mock.callCount, 2, 'Should stop before the third file');
+    await mock.stop();
+    mock = await startMockServer('This is the humanized result.');
   });
   it('should handle API errors gracefully', async () => {
-    callCount = 0;
-    lastRequestBody = null;
-    await stopMockServer();
-    await startMockServer('Error occurred', 500);
+    mock.callCount = 0;
+    mock.lastRequestBody = null;
+    await mock.stop();
+    mock = await startMockServer('Error occurred', 500);
 
     const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
 
@@ -792,7 +748,7 @@ describe('CLI End-to-End with Mock API', () => {
       await main([
         '--lang', 'en',
         '--api-key-file', mockApiKeyPath,
-        '--base-url', `http://127.0.0.1:${mockPort}`,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
         testFile,
       ]);
       assert.fail('Should have thrown an error');
@@ -800,7 +756,7 @@ describe('CLI End-to-End with Mock API', () => {
       assert.ok(err.message.includes('500') || err.message.includes('failed after'));
     }
 
-    await stopMockServer();
-    await startMockServer('This is the humanized result.');
+    await mock.stop();
+    mock = await startMockServer('This is the humanized result.');
   });
 });

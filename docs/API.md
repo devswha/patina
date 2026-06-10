@@ -103,20 +103,36 @@ throw new PatinaCliError({ what: 'missing input', why: 'No file was provided', a
 <dt><a href="#defaultLogger">defaultLogger</a> : <code>Object</code></dt>
 <dd><p>Default stderr logger used by simple callers.</p>
 </dd>
+<dt><a href="#DEFAULT_SEVERITY_POINTS">DEFAULT_SEVERITY_POINTS</a> : <code>Readonly.&lt;{high: number, medium: number, low: number}&gt;</code></dt>
+<dd><p>Default per-detection severity points.</p>
+<p>Mirrors <code>ouroboros.severity-points</code> in .patina.default.yaml and the
+core/scoring.md §1 table (both gated by tests/unit/threshold-parity.test.js).
+<code>buildScoreMathCore</code> derives the prompt&#39;s severity-scale line and the
+category-score denominator from these values via <code>resolveSeverityPoints</code>,
+and <code>buildPrompt</code> prepends an explicit precedence note when the embedded
+core/scoring.md reference (which documents the defaults) disagrees with an
+active override — so a config override cannot silently diverge from, or
+contradict, the emitted prompt.</p>
+</dd>
 <dt><a href="#PROVIDERS">PROVIDERS</a> : <code>Record.&lt;string, {name: string, baseURL: string, apiKeyEnv: string, defaultModel: string, freeTier: boolean, note: string}&gt;</code></dt>
 <dd><p>Built-in OpenAI-compatible provider presets.</p>
 </dd>
 <dt><a href="#DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD">DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD</a> : <code>number</code></dt>
 <dd><p>Default maximum delta before deterministic and LLM scores are reconciled upward.</p>
 </dd>
-<dt><a href="#LEAKAGE_SCORE_FLOOR">LEAKAGE_SCORE_FLOOR</a> : <code>number</code></dt>
-<dd><p>Score floor applied when deterministic markup-leakage is detected.</p>
-<p>Model-output leakage (issue #332) is near-proof-grade: a single token that
-LLM tooling injects and humans never type. Unlike the stylometric/lexical
-signals it is decisive on its own, so any hit short-circuits the deterministic
-<code>overall</code> into the &#39;heavily AI&#39; band (&gt;70) regardless of the per-paragraph
-hot ratio. It is a floor, not a hard 100, because the surrounding prose may
-still be genuinely human and we avoid claiming absolute proof.</p>
+<dt><a href="#SCORE_INTERPRETATION_BANDS">SCORE_INTERPRETATION_BANDS</a> : <code>ReadonlyArray.&lt;{max: number, label: string}&gt;</code></dt>
+<dd><p>AI-likeness interpretation bands (upper bound inclusive, ascending).</p>
+<p>Single source for <code>interpretScore</code>, the score-prompt interpretation line
+(src/prompt-builder.js buildScoreMathCore), the <code>scoreText</code> strict-JSON
+contract&#39;s interpretation enum, and the core/scoring.md §7 table (gated by
+tests/unit/threshold-parity.test.js). The playground&#39;s <code>scoreBand</code>
+(playground/analyzer.js) intentionally uses coarser UI bands (&lt;=20/&lt;=50) and
+is NOT derived from this constant.</p>
+</dd>
+<dt><a href="#STRUCTURAL_CLASSIFIER_MIN_FLOOR">STRUCTURAL_CLASSIFIER_MIN_FLOOR</a> : <code>number</code></dt>
+<dd><p>Structural classifier score is a calibrated probability-like document signal.
+It only affects the deterministic score when a private local model is loaded
+and the model verdict is hot; absent model means baseline behavior.</p>
 </dd>
 </dl>
 
@@ -150,8 +166,11 @@ still be genuinely human and we avoid claiming absolute proof.</p>
 <dt><a href="#resolveProfileForLanguage">resolveProfileForLanguage(profileName, lang, [logger])</a> ⇒ <code>string</code></dt>
 <dd><p>Resolve a profile name against language-specific profile limits.</p>
 </dd>
-<dt><a href="#loadConfig">loadConfig([path])</a> ⇒ <code>object</code></dt>
+<dt><a href="#loadConfig">loadConfig([path], [opts])</a> ⇒ <code>object</code></dt>
 <dd><p>Load default config and merge global/project .patina.yaml overrides.</p>
+<p>Precedence (low → high): base path → ~/.patina.yaml → ./.patina.yaml → overridePath.
+The explicit <code>--config</code> file is layered LAST so an ambient project .patina.yaml
+cannot silently override a pinned config (reproducible CI runs).</p>
 </dd>
 <dt><a href="#getRepoRoot">getRepoRoot()</a> ⇒ <code>string</code></dt>
 <dd><p>Return the repository root inferred from this source file location.</p>
@@ -212,6 +231,9 @@ still be genuinely human and we avoid claiming absolute proof.</p>
 <dt><a href="#stripSelfAudit">stripSelfAudit(body, [options])</a> ⇒ <code>string</code></dt>
 <dd><p>Remove SELF_AUDIT blocks and unwrap the BODY block from rewrite output.</p>
 </dd>
+<dt><a href="#parseFirstJson">parseFirstJson(text)</a> ⇒ <code>object</code> | <code>null</code></dt>
+<dd><p>Parse the first JSON value found in raw text, a fenced code block, or a brace span.</p>
+</dd>
 <dt><a href="#buildDeterministicAuditBackstop">buildDeterministicAuditBackstop(text, [opts])</a> ⇒ <code>string</code></dt>
 <dd><p>Build a deterministic &quot;backstop&quot; section for audit mode. The LLM audit is
 model-dependent (a weak model silently drops 번역투/calques); these signals are
@@ -219,8 +241,22 @@ computed deterministically so they appear regardless of which model ran. ko
 translationese rules are listed even below the hot-density gate, because audit
 is a hint surface, not a verdict.</p>
 </dd>
+<dt><a href="#resolveSeverityPoints">resolveSeverityPoints([config])</a> ⇒ <code>Object</code></dt>
+<dd><p>Resolve the effective per-detection severity points for a config.</p>
+<p>Single resolution path for every prompt surface: yaml
+<code>ouroboros.severity-points</code> overrides the documented defaults key-by-key.</p>
+</dd>
 <dt><a href="#buildPrompt">buildPrompt(options)</a> ⇒ <code>string</code></dt>
 <dd><p>Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.</p>
+</dd>
+<dt><a href="#buildScoreMathCore">buildScoreMathCore(config, lang, [text], [patterns])</a> ⇒ <code>string</code></dt>
+<dd><p>Build the shared scoring-math core used by every score surface.</p>
+<p>Contains the category weights, severity scale, formulas, pattern-count
+denominators, full catalog digest, short-text boost, and interpretation
+bands — everything both score surfaces need. It deliberately carries NO
+output contract: each surface appends exactly one contract of its own
+(markdown table for the skill prompt, strict JSON for scoreText), so a
+single prompt can never carry two contradictory contracts (issue #397).</p>
 </dd>
 <dt><a href="#isShortText">isShortText(text)</a> ⇒ <code>boolean</code></dt>
 <dd><p>Classify whether text should use the short-text scoring boost.</p>
@@ -327,6 +363,21 @@ Default stderr logger used by simple callers.
 ```js
 defaultLogger.info('patina.ready', { message: 'ready' });
 ```
+<a name="DEFAULT_SEVERITY_POINTS"></a>
+
+## DEFAULT\_SEVERITY\_POINTS : <code>Readonly.&lt;{high: number, medium: number, low: number}&gt;</code>
+Default per-detection severity points.
+
+Mirrors `ouroboros.severity-points` in .patina.default.yaml and the
+core/scoring.md §1 table (both gated by tests/unit/threshold-parity.test.js).
+`buildScoreMathCore` derives the prompt's severity-scale line and the
+category-score denominator from these values via `resolveSeverityPoints`,
+and `buildPrompt` prepends an explicit precedence note when the embedded
+core/scoring.md reference (which documents the defaults) disagrees with an
+active override — so a config override cannot silently diverge from, or
+contradict, the emitted prompt.
+
+**Kind**: global constant
 <a name="PROVIDERS"></a>
 
 ## PROVIDERS : <code>Record.&lt;string, {name: string, baseURL: string, apiKeyEnv: string, defaultModel: string, freeTier: boolean, note: string}&gt;</code>
@@ -347,17 +398,25 @@ Default maximum delta before deterministic and LLM scores are reconciled upward.
 ```js
 const threshold = DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD;
 ```
-<a name="LEAKAGE_SCORE_FLOOR"></a>
+<a name="SCORE_INTERPRETATION_BANDS"></a>
 
-## LEAKAGE\_SCORE\_FLOOR : <code>number</code>
-Score floor applied when deterministic markup-leakage is detected.
+## SCORE\_INTERPRETATION\_BANDS : <code>ReadonlyArray.&lt;{max: number, label: string}&gt;</code>
+AI-likeness interpretation bands (upper bound inclusive, ascending).
 
-Model-output leakage (issue #332) is near-proof-grade: a single token that
-LLM tooling injects and humans never type. Unlike the stylometric/lexical
-signals it is decisive on its own, so any hit short-circuits the deterministic
-`overall` into the 'heavily AI' band (>70) regardless of the per-paragraph
-hot ratio. It is a floor, not a hard 100, because the surrounding prose may
-still be genuinely human and we avoid claiming absolute proof.
+Single source for `interpretScore`, the score-prompt interpretation line
+(src/prompt-builder.js buildScoreMathCore), the `scoreText` strict-JSON
+contract's interpretation enum, and the core/scoring.md §7 table (gated by
+tests/unit/threshold-parity.test.js). The playground's `scoreBand`
+(playground/analyzer.js) intentionally uses coarser UI bands (<=20/<=50) and
+is NOT derived from this constant.
+
+**Kind**: global constant
+<a name="STRUCTURAL_CLASSIFIER_MIN_FLOOR"></a>
+
+## STRUCTURAL\_CLASSIFIER\_MIN\_FLOOR : <code>number</code>
+Structural classifier score is a calibrated probability-like document signal.
+It only affects the deterministic score when a private local model is loaded
+and the model verdict is hot; absent model means baseline behavior.
 
 **Kind**: global constant
 <a name="isRetryable"></a>
@@ -576,8 +635,12 @@ resolveProfileForLanguage('namuwiki', 'en') // 'default'
 ```
 <a name="loadConfig"></a>
 
-## loadConfig([path]) ⇒ <code>object</code>
+## loadConfig([path], [opts]) ⇒ <code>object</code>
 Load default config and merge global/project .patina.yaml overrides.
+
+Precedence (low → high): base path → ~/.patina.yaml → ./.patina.yaml → overridePath.
+The explicit `--config` file is layered LAST so an ambient project .patina.yaml
+cannot silently override a pinned config (reproducible CI runs).
 
 **Kind**: global function
 **Returns**: <code>object</code> - Merged patina configuration object.
@@ -589,6 +652,8 @@ Load default config and merge global/project .patina.yaml overrides.
 | Param | Type | Description |
 | --- | --- | --- |
 | [path] | <code>string</code> | Base YAML config path. |
+| [opts] | <code>object</code> | Optional load options. |
+| [opts.overridePath] | <code>string</code> | Explicit `--config` override path. |
 
 **Example**
 ```js
@@ -934,6 +999,7 @@ Run the iterative Ouroboros rewrite-and-score loop.
 | [options.now] | <code>function</code> | Clock returning epoch milliseconds. |
 | [options.sleep] | <code>function</code> | Sleep helper for tests. |
 | [options.signal] | <code>AbortSignal</code> | External cancellation signal. |
+| [options.timeout] | <code>number</code> | Per-attempt backend timeout in milliseconds. |
 | [options.logger] | <code>object</code> | patina logger. |
 
 **Example**
@@ -1025,6 +1091,20 @@ Remove SELF_AUDIT blocks and unwrap the BODY block from rewrite output.
 ```js
 const clean = stripSelfAudit('[BODY]Hello[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]');
 ```
+<a name="parseFirstJson"></a>
+
+## parseFirstJson(text) ⇒ <code>object</code> \| <code>null</code>
+Parse the first JSON value found in raw text, a fenced code block, or a brace span.
+
+**Kind**: global function
+**Returns**: <code>object</code> \| <code>null</code> - Parsed JSON value, or null when no candidate parses.
+
+| Param | Type | Description |
+| --- | --- | --- |
+| text | <code>string</code> | Raw model output that may embed JSON. |
+
+**Example**
+const data = parseFirstJson('```json\n{"overall": 12}\n```');
 <a name="buildDeterministicAuditBackstop"></a>
 
 ## buildDeterministicAuditBackstop(text, [opts]) ⇒ <code>string</code>
@@ -1043,11 +1123,40 @@ is a hint surface, not a verdict.
 | [opts] | <code>object</code> |  |
 | [opts.lang] | <code>string</code> |  |
 | [opts.repoRoot] | <code>string</code> |  |
+| [opts.config] | <code>object</code> |  |
+
+
+* [buildDeterministicAuditBackstop(text, [opts])](#buildDeterministicAuditBackstop) ⇒ <code>string</code>
+    * [~rows](#buildDeterministicAuditBackstop..rows) : <code>Array.&lt;{signal:string, label:string, severity:string, location:string}&gt;</code>
+    * [~translationeseRows](#buildDeterministicAuditBackstop..translationeseRows) : <code>Array.&lt;{signal:string, location:string, hint:string}&gt;</code>
 
 <a name="buildDeterministicAuditBackstop..rows"></a>
 
 ### buildDeterministicAuditBackstop~rows : <code>Array.&lt;{signal:string, label:string, severity:string, location:string}&gt;</code>
 **Kind**: inner constant of [<code>buildDeterministicAuditBackstop</code>](#buildDeterministicAuditBackstop)
+<a name="buildDeterministicAuditBackstop..translationeseRows"></a>
+
+### buildDeterministicAuditBackstop~translationeseRows : <code>Array.&lt;{signal:string, location:string, hint:string}&gt;</code>
+**Kind**: inner constant of [<code>buildDeterministicAuditBackstop</code>](#buildDeterministicAuditBackstop)
+<a name="resolveSeverityPoints"></a>
+
+## resolveSeverityPoints([config]) ⇒ <code>Object</code>
+Resolve the effective per-detection severity points for a config.
+
+Single resolution path for every prompt surface: yaml
+`ouroboros.severity-points` overrides the documented defaults key-by-key.
+
+**Kind**: global function
+**Returns**: <code>Object</code> - Effective severity points.
+
+| Param | Type | Description |
+| --- | --- | --- |
+| [config] | <code>object</code> | Effective patina config. |
+
+**Example**
+```js
+const points = resolveSeverityPoints(config);
+```
 <a name="buildPrompt"></a>
 
 ## buildPrompt(options) ⇒ <code>string</code>
@@ -1076,6 +1185,36 @@ Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.
 **Example**
 ```js
 const prompt = buildPrompt({ config, patterns, profile, voice, scoring, text: 'Draft' });
+```
+<a name="buildScoreMathCore"></a>
+
+## buildScoreMathCore(config, lang, [text], [patterns]) ⇒ <code>string</code>
+Build the shared scoring-math core used by every score surface.
+
+Contains the category weights, severity scale, formulas, pattern-count
+denominators, full catalog digest, short-text boost, and interpretation
+bands — everything both score surfaces need. It deliberately carries NO
+output contract: each surface appends exactly one contract of its own
+(markdown table for the skill prompt, strict JSON for scoreText), so a
+single prompt can never carry two contradictory contracts (issue #397).
+
+**Kind**: global function
+**Returns**: <code>string</code> - Scoring-math instruction block without an output contract.
+**Throws**:
+
+- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+
+
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| config | <code>object</code> |  | Effective patina config. |
+| lang | <code>string</code> |  | Language code. |
+| [text] | <code>string</code> | <code>&quot;&#x27;&#x27;&quot;</code> | Input text (drives the short-text boost). |
+| [patterns] | <code>Array.&lt;object&gt;</code> | <code>[]</code> | Loaded pattern packs. |
+
+**Example**
+```js
+const core = buildScoreMathCore(config, 'ko', 'Draft', patterns);
 ```
 <a name="isShortText"></a>
 
@@ -1164,6 +1303,7 @@ Score text for AI-likeness using an LLM JSON scorer plus deterministic shadow si
 | [options.model] | <code>string</code> | Model id. |
 | [options.deadline] | <code>number</code> | Absolute epoch-millisecond deadline. |
 | [options.signal] | <code>AbortSignal</code> | External cancellation signal. |
+| [options.timeout] | <code>number</code> | Per-attempt backend timeout in milliseconds. |
 | [options.callLLM] | <code>function</code> | Injectable LLM implementation. |
 | [options.logger] | <code>object</code> | patina logger. |
 | [options.now] | <code>function</code> | Clock returning epoch milliseconds. |
@@ -1191,6 +1331,7 @@ Compute deterministic stylometry/lexicon AI-likeness signals.
 | [options.text] | <code>string</code> |  | Text to analyze. |
 | [options.config] | <code>object</code> | <code>{}</code> | Effective config. |
 | [options.repoRoot] | <code>string</code> |  | Repository root for analyzer resources. |
+| [options.logger] | <code>object</code> |  | Optional logger for recoverable deterministic warnings. |
 | [options.analyzer] | <code>function</code> |  | Analyzer implementation. |
 
 **Example**
@@ -1267,6 +1408,7 @@ Score meaning preservation between original and rewritten text.
 | [options.model] | <code>string</code> | Model id. |
 | [options.deadline] | <code>number</code> | Absolute epoch-millisecond deadline. |
 | [options.signal] | <code>AbortSignal</code> | External cancellation signal. |
+| [options.timeout] | <code>number</code> | Per-attempt backend timeout in milliseconds. |
 | [options.callLLM] | <code>function</code> | Injectable LLM implementation. |
 | [options.logger] | <code>object</code> | patina logger. |
 | [options.now] | <code>function</code> | Clock returning epoch milliseconds. |
@@ -1339,6 +1481,7 @@ Score fidelity between original and rewritten text using length plus LLM criteri
 | [options.model] | <code>string</code> | Model id. |
 | [options.deadline] | <code>number</code> | Absolute epoch-millisecond deadline. |
 | [options.signal] | <code>AbortSignal</code> | External cancellation signal. |
+| [options.timeout] | <code>number</code> | Per-attempt backend timeout in milliseconds. |
 | [options.callLLM] | <code>function</code> | Injectable LLM implementation. |
 | [options.logger] | <code>object</code> | patina logger. |
 | [options.now] | <code>function</code> | Clock returning epoch milliseconds. |

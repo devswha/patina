@@ -54,6 +54,8 @@ The examples below are safe, redistributable false-positive **risk** examples. T
 
 ## Reporting a false positive
 
+Use the structured report form: https://github.com/devswha/patina/issues/new?template=false_positive.yml
+
 Open a false-positive issue with:
 
 1. language and register;
@@ -61,3 +63,5 @@ Open a false-positive issue with:
 3. the Patina score or audit output;
 4. why the passage should remain acceptable in that register;
 5. whether the fix should be an exclusion, lower severity, profile override, or benchmark fixture.
+
+Maintainer side: accepted reports follow the intake path in `docs/research/humanization-data-backlog.md` ("False-Positive Feedback Intake Path") from issue to intake row to benchmark fixture.

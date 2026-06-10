@@ -6,6 +6,7 @@ import {
   buildFalsePositiveReportUrl,
   escapeHtml,
   renderAuditDiff,
+  renderKoreanAdvisory,
 } from './analyzer.js';
 
 const doc = globalThis.document;
@@ -28,6 +29,7 @@ const nodes = {
   scoreBar: doc.querySelector('#score-bar'),
   summary: doc.querySelector('#summary'),
   audit: doc.querySelector('#audit'),
+  koreanAdvisory: doc.querySelector('#korean-advisory'),
   diff: doc.querySelector('#diff'),
   cliPreview: doc.querySelector('#cli-preview'),
 };
@@ -88,6 +90,7 @@ function render() {
     <li>Score is an editing signal, not an authorship verdict.</li>
   `;
   nodes.audit.innerHTML = metricsTable(analysis);
+  nodes.koreanAdvisory.innerHTML = renderKoreanAdvisory(analysis);
   nodes.diff.innerHTML = renderAuditDiff(analysis);
   nodes.cliPreview.textContent = buildCliCommand(state.text, state.lang);
 }

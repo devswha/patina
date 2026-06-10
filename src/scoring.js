@@ -3,7 +3,7 @@ import { callLLM as defaultCallLLM } from './api.js';
 import { getRepoRoot } from './config.js';
 import { analyzeText, loadStructuralModel } from './features/index.js';
 import { summarizeSignalStrength } from './features/signal-strength.js';
-import { buildScoreInstructions } from './prompt-builder.js';
+import { buildScoreMathCore } from './prompt-builder.js';
 import { createLogger } from './logger.js';
 
 /**
@@ -161,11 +161,14 @@ export async function scoreText({
   const lang = config.language || 'ko';
   const deterministicScore = scoreDeterministicSignals({ text, config, logger });
 
+  // buildScoreMathCore carries the shared scoring math (weights, severity
+  // scale, denominators, catalog digest) but no output contract; the strict
+  // JSON contract below is the ONLY contract in this prompt (issue #397).
   const prompt = `You are an AI-likeness scoring engine. Score the following text for AI-writing patterns.
 
 ## Scoring Instructions
 
-${buildScoreInstructions(config, lang, text, patterns)}
+${buildScoreMathCore(config, lang, text, patterns)}
 
 ## Output Format (strict JSON)
 

@@ -8,6 +8,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
 import { main, resolveProfileForLanguage } from '../../src/cli.js';
+import { startMockServer } from './helpers/mock-server.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -46,59 +47,24 @@ async function withEnv(envOverrides, fn) {
   }
 }
 
-function startRewriteMockServer(responseText) {
-  const script = `
-    const { createServer } = require('node:http');
-    const server = createServer((req, res) => {
-      req.resume();
-      req.on('end', () => {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ choices: [{ message: { content: ${JSON.stringify(responseText)} } }] }));
-      });
+// Async spawn wrapper for tests that talk to the in-process mock server:
+// spawnSync would block the event loop and deadlock the mock's responses.
+function runCli(args, { input = '', env = process.env } = {}) {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const child = spawn(process.execPath, [BIN, ...args], {
+      cwd: REPO_ROOT,
+      env,
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
-    server.listen(0, '127.0.0.1', () => {
-      process.stdout.write(String(server.address().port) + '\\n');
-    });
-    process.on('SIGTERM', () => server.close(() => process.exit(0)));
-  `;
-  const child = spawn(process.execPath, ['-e', script], {
-    cwd: REPO_ROOT,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-
-  return new Promise((resolve, reject) => {
     let stdout = '';
     let stderr = '';
-    const timer = setTimeout(() => {
-      child.kill('SIGTERM');
-      reject(new Error(`mock server did not start: ${stderr}`));
-    }, 5000);
-
-    child.stdout.on('data', (chunk) => {
-      stdout += chunk;
-      const line = stdout.split(/\r?\n/)[0];
-      if (!line) return;
-      clearTimeout(timer);
-      resolve({
-        port: Number(line),
-        stop: () => {
-          child.kill('SIGTERM');
-        },
-      });
-    });
-    child.stderr.on('data', (chunk) => {
-      stderr += chunk;
-    });
-    child.on('error', (err) => {
-      clearTimeout(timer);
-      reject(err);
-    });
-    child.on('exit', (code) => {
-      if (!stdout) {
-        clearTimeout(timer);
-        reject(new Error(`mock server exited before start (${code}): ${stderr}`));
-      }
-    });
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.on('error', rejectPromise);
+    child.on('close', (status) => resolvePromise({ status, stdout, stderr }));
+    child.stdin.end(input);
   });
 }
 
@@ -228,7 +194,7 @@ describe('CLI adoption commands', () => {
   });
 
   it('rewrites stdin through a real subprocess and keeps --quiet stdout to the humanized body', async () => {
-    const mock = await startRewriteMockServer([
+    const mock = await startMockServer([
       '[BODY]',
       'This is the subprocess humanized result.',
       '[/BODY]',
@@ -238,16 +204,13 @@ describe('CLI adoption commands', () => {
       '[/SELF_AUDIT]',
     ].join('\n'));
     try {
-      const result = spawnSync(process.execPath, [
-        BIN,
+      const result = await runCli([
         '--lang', 'en',
         '--quiet',
         '--format', 'text',
         '--base-url', `http://127.0.0.1:${mock.port}`,
       ], {
-        cwd: REPO_ROOT,
         input: 'This draft needs editing.\n',
-        encoding: 'utf8',
         env: {
           ...process.env,
           PATINA_API_KEY: 'test-key',
@@ -266,7 +229,7 @@ describe('CLI adoption commands', () => {
       assert.strictEqual(result.stderr, '');
       assert.strictEqual(result.stdout, 'This is the subprocess humanized result.\n');
     } finally {
-      mock.stop();
+      await mock.stop();
     }
   });
 

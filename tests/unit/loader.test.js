@@ -4,7 +4,7 @@ import { loadConfig } from '../../src/config.js';
 import { loadPatterns, loadProfile, loadCoreFile, loadVoiceSample, splitFrontmatter } from '../../src/loader.js';
 import { buildPrompt } from '../../src/prompt-builder.js';
 import { fileURLToPath } from 'node:url';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
@@ -175,12 +175,16 @@ describe('Core File Loading', () => {
 
   it('should load the first 1-3 voice sample paragraphs', () => {
     const dir = mkdtempSync(join(tmpdir(), 'patina-voice-sample-'));
-    const samplePath = resolve(dir, 'sample.md');
-    writeFileSync(samplePath, ['one', 'two', 'three', 'four'].join('\n\n'), 'utf8');
+    try {
+      const samplePath = resolve(dir, 'sample.md');
+      writeFileSync(samplePath, ['one', 'two', 'three', 'four'].join('\n\n'), 'utf8');
 
-    const sample = loadVoiceSample(samplePath);
-    assert.deepStrictEqual(sample.paragraphs, ['one', 'two', 'three']);
-    assert.strictEqual(sample.truncated, true);
+      const sample = loadVoiceSample(samplePath);
+      assert.deepStrictEqual(sample.paragraphs, ['one', 'two', 'three']);
+      assert.strictEqual(sample.truncated, true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

@@ -1,8 +1,8 @@
 {
   "reportVersion": 1,
-  "generatedAt": "2026-05-21T15:02:19.159Z",
-  "fixtureCount": 39,
-  "benchmarkGeneratedAt": "2026-05-21T15:02:19.140Z",
+  "generatedAt": "2026-06-10T07:53:25.396Z",
+  "fixtureCount": 47,
+  "benchmarkGeneratedAt": "2026-06-10T07:53:25.380Z",
   "note": "Offline comparison protocol. Built-in Patina row uses deterministic suspect-zone analyzer; third-party rows are manual opt-in only.",
   "manualInput": null,
   "detectors": [
@@ -16,12 +16,12 @@
   ],
   "summaries": {
     "patina-deterministic": {
-      "tp": 21,
+      "tp": 25,
       "fp": 0,
       "fn": 0,
-      "tn": 18,
-      "total": 39,
-      "fixtureCount": 39,
+      "tn": 22,
+      "total": 47,
+      "fixtureCount": 47,
       "coverage": 1,
       "accuracy": 1,
       "precision": 1,
@@ -211,6 +211,30 @@
       "notes": null
     },
     {
+      "fixture_id": "ja-ai-05-formulaic-summary",
+      "lang": "ja",
+      "class": "ai",
+      "detector": "patina-deterministic",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "score": 1,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
+      "fixture_id": "ja-ai-06-broad-tech",
+      "lang": "ja",
+      "class": "ai",
+      "detector": "patina-deterministic",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "score": 1,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
       "fixture_id": "ja-nat-01",
       "lang": "ja",
       "class": "natural",
@@ -248,6 +272,30 @@
     },
     {
       "fixture_id": "ja-nat-04-lexicon-cold",
+      "lang": "ja",
+      "class": "natural",
+      "detector": "patina-deterministic",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "score": 0,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
+      "fixture_id": "ja-nat-05-station-note",
+      "lang": "ja",
+      "class": "natural",
+      "detector": "patina-deterministic",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "score": 0,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
+      "fixture_id": "ja-nat-06-maintenance-log",
       "lang": "ja",
       "class": "natural",
       "detector": "patina-deterministic",
@@ -451,6 +499,30 @@
       "notes": null
     },
     {
+      "fixture_id": "zh-ai-05-formulaic-summary",
+      "lang": "zh",
+      "class": "ai",
+      "detector": "patina-deterministic",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "score": 1,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
+      "fixture_id": "zh-ai-06-broad-tech",
+      "lang": "zh",
+      "class": "ai",
+      "detector": "patina-deterministic",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "correct": true,
+      "score": 1,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
       "fixture_id": "zh-nat-01",
       "lang": "zh",
       "class": "natural",
@@ -488,6 +560,30 @@
     },
     {
       "fixture_id": "zh-nat-04-lexicon-cold",
+      "lang": "zh",
+      "class": "natural",
+      "detector": "patina-deterministic",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "score": 0,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
+      "fixture_id": "zh-nat-05-market-note",
+      "lang": "zh",
+      "class": "natural",
+      "detector": "patina-deterministic",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "score": 0,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
+      "fixture_id": "zh-nat-06-maintenance-log",
       "lang": "zh",
       "class": "natural",
       "detector": "patina-deterministic",

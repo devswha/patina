@@ -1159,8 +1159,8 @@ async function buildBrowserDiffArtifact({
   logger,
 }) {
   const rewrittenBody = formatRewriteBodyForBrowser(rawRewriteResult, { logger });
-  const beforeScore = scoreDeterministicSignals({ text: originalText, config, repoRoot });
-  const afterScore = scoreDeterministicSignals({ text: rewrittenBody, config, repoRoot });
+  const beforeScore = scoreDeterministicSignals({ text: originalText, config, repoRoot, logger });
+  const afterScore = scoreDeterministicSignals({ text: rewrittenBody, config, repoRoot, logger });
 
   let diffExplanation = '';
   let diffError = null;
@@ -1219,7 +1219,7 @@ async function buildBrowserDiffArtifact({
 }
 
 function withDeterministicScore(rawResult, { text, config, repoRoot, logger }) {
-  const deterministicScore = scoreDeterministicSignals({ text, config, repoRoot });
+  const deterministicScore = scoreDeterministicSignals({ text, config, repoRoot, logger });
   const llmOverall = extractScoreOverall(rawResult, rawResult);
   const reconciliation = reconcileScoreOverall({
     llmOverall,

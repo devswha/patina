@@ -283,7 +283,26 @@ function buildAuditInstructions() {
     `|---------|----------|----------|----------|\n`;
 }
 
-export function buildScoreInstructions(config, lang, text = '', patterns = []) {
+/**
+ * Build the shared scoring-math core used by every score surface.
+ *
+ * Contains the category weights, severity scale, formulas, pattern-count
+ * denominators, full catalog digest, short-text boost, and interpretation
+ * bands — everything both score surfaces need. It deliberately carries NO
+ * output contract: each surface appends exactly one contract of its own
+ * (markdown table for the skill prompt, strict JSON for scoreText), so a
+ * single prompt can never carry two contradictory contracts (issue #397).
+ *
+ * @param {object} config Effective patina config.
+ * @param {string} lang Language code.
+ * @param {string} [text=''] Input text (drives the short-text boost).
+ * @param {object[]} [patterns=[]] Loaded pattern packs.
+ * @returns {string} Scoring-math instruction block without an output contract.
+ * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @example
+ * const core = buildScoreMathCore(config, 'ko', 'Draft', patterns);
+ */
+export function buildScoreMathCore(config, lang, text = '', patterns = []) {
   const weights = config.ouroboros?.['category-weights']?.[lang] || {};
   let inst = `Calculate an AI-likeness score (0-100) using EXACTLY these category weights. Do NOT invent extra categories (no "discord", no "tone", no "general"). Use only the categories listed:\n\n`;
 
@@ -327,11 +346,21 @@ export function buildScoreInstructions(config, lang, text = '', patterns = []) {
     inst += `that the long-text formula otherwise undercounts.\n\n`;
   }
 
-  inst += `Output format (the Weight column must echo the values above verbatim):\n`;
+  inst += `Interpretation: 0-15 human | 16-30 mostly human | 31-50 mixed | 51-70 AI-like | 71-100 heavily AI\n`;
+
+  return inst;
+}
+
+export function buildScoreInstructions(config, lang, text = '', patterns = []) {
+  // Skill/table surface: scoring-math core plus the markdown-table contract.
+  // scoreText (src/scoring.js) embeds buildScoreMathCore directly and appends
+  // its own strict-JSON contract instead.
+  let inst = buildScoreMathCore(config, lang, text, patterns);
+
+  inst += `\nOutput format (the Weight column must echo the values above verbatim):\n`;
   inst += `| Category | Weight | Detected | Raw Score | Weighted |\n`;
   inst += `|----------|--------|----------|-----------|----------|\n`;
-  inst += `| **Overall** | | | | **XX.X (±10)** |\n\n`;
-  inst += `Interpretation: 0-15 human | 16-30 mostly human | 31-50 mixed | 51-70 AI-like | 71-100 heavily AI\n`;
+  inst += `| **Overall** | | | | **XX.X (±10)** |\n`;
 
   return inst;
 }
@@ -352,10 +381,13 @@ function buildPatternCatalogDigest(patterns = []) {
   for (const pack of patterns) {
     const packName = pack.frontmatter?.pack || pack.file;
     if (!packName) continue;
+    // List ALL pattern headings (one short name each). Truncating the digest
+    // while the pattern-count section advertises the full frontmatter count
+    // made the prompt claim denominators larger than the catalog it showed,
+    // hiding patterns 7+ from prompt-guided detection (issue #397).
     const headings = Array.from(String(pack.body || '').matchAll(/^###\s+(?:\d+\.\s*)?(.+)$/gm))
       .map((match) => match[1].trim())
-      .filter(Boolean)
-      .slice(0, 6);
+      .filter(Boolean);
     if (headings.length > 0) {
       lines.push(`- ${packName}: ${headings.join('; ')}`);
     } else {

@@ -401,7 +401,15 @@ function toFiniteNumber(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-function parseFirstJson(text) {
+/**
+ * Parse the first JSON value found in raw text, a fenced code block, or a brace span.
+ *
+ * @param {string} text Raw model output that may embed JSON.
+ * @returns {object|null} Parsed JSON value, or null when no candidate parses.
+ * @example
+ * const data = parseFirstJson('```json\n{"overall": 12}\n```');
+ */
+export function parseFirstJson(text) {
   if (!text || typeof text !== 'string') return null;
   const rawCandidates = [
     text.trim(),

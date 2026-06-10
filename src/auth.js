@@ -1,3 +1,5 @@
+// HTTP API key resolution helpers (env vars / key files) for the openai-http
+// backend. The `patina auth` subcommand lives in src/commands/auth.js.
 import { readFileSync } from 'node:fs';
 import { inputError } from './errors.js';
 

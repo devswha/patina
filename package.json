@@ -41,7 +41,8 @@
     "benchmark:katfish-ko": "node scripts/katfish-calibration.mjs",
     "lexicon:freshness": "node scripts/lexicon-freshness.mjs --check",
     "benchmark:rebaseline:generate-modern": "node scripts/rebaseline-generate-modern.mjs",
-    "benchmark:rebaseline:claim-manifest": "node scripts/rebaseline-build-claim-manifest.mjs"
+    "benchmark:rebaseline:claim-manifest": "node scripts/rebaseline-build-claim-manifest.mjs",
+    "benchmark:rebaseline:fp-fixtures": "node scripts/fp-fixture-export.mjs"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"

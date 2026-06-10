@@ -14,8 +14,9 @@ do **not** catch lexical translationese (e.g. "커맨드 기둥" for "command pi
   per-prose-sentence density (≥0.5) are met. A single "~에 의해" means nothing.
 - **Advisory, not a verdict.** `analyzeText` surfaces it as `translationese`
   but deliberately keeps it **out of the document `hot` decision**, so it cannot
-  regress benchmark false positives. The SKILL / callers act on it (e.g. the
-  rewrite loop), and the audit surface can display it.
+  regress benchmark false positives. SKILL, prompt, audit, and browser surfaces
+  may show it as editing context only; they must not treat it as a score, gate,
+  severity, benchmark, or authorship signal.
 - **ko-only** for now (calques are language-specific).
 - Each rule ships a `before → after` example (enforced by a unit test).
 
@@ -41,11 +42,81 @@ analyzeText(text, { lang: 'ko' }).translationese
 //     hits:[...], hot, thresholds:{count,density} }
 ```
 
+```js
+analyzeText(text, { lang: 'ko' }).koPostEditese
+// → { schema:'koPostEditese.v1', lang:'ko', analyzed, skipReason,
+//     paragraphCount, sentenceCount, eojeolCount,
+//     metrics:{ lexical, endings, interference, rhythm },
+//     paragraphs:[{ id, sentenceCount, eojeolCount, metrics }] }
+```
+
+`koPostEditese.v1` is a Korean-only advisory payload for post-edited machine
+translation texture. It exposes raw counts and ratios so an editor can inspect
+literal pronouns, by-passives, light verbs, repetitive endings, suffix/rhythm
+patterns, and related Korean surface features. It is **not calibrated evidence**:
+callers must not treat these raw metrics as an authorship verdict, benchmark
+claim, score input, gate input, severity band, percentile, or baseline-derived
+finding. Audit surfaces may show the payload in a separate editing-hint section
+only; they must not mix it into deterministic severity rows.
+
+## Phase 4 calibration protocol / approval boundary
+
+Phase 4 is a calibration and decision-report protocol only. It can measure whether
+`translationese` or `koPostEditese.v1` correlates with Korean editing needs, but
+it cannot by itself authorize coupling. Any future coupling to score, `hot`,
+gates, severity, prompt/rewrite gates, benchmark pass/fail, or authorship
+language requires a separate product/spec decision and separately approved
+execution plan after the evidence package below is complete.
+
+Required calibration package:
+
+- **Corpus strata:** balanced Korean native-human controls, acceptable human
+  translation/post-edit controls, raw machine-translationese samples, LLM Korean
+  drafts, post-edited LLM drafts, and patina rewrite before/after pairs across
+  blog, docs, marketing, academic/professional, forum/community, technical, and
+  short-form UI/help genres.
+- **Labels:** each item needs source/provenance, domain, length bucket, register,
+  translation/editing status, and blinded human labels for `needs_korean_edit`,
+  `translationese_present`, `post_editese_present`, and
+  `meaning_preservation_risk`. Use at least two Korean-proficient reviewers with
+  adjudication and agreement reporting.
+- **Metrics:** report precision/recall/F1 for the labels above, false-positive
+  rate on native-human and acceptable-human-translation controls,
+  genre-stratified and short-text false-positive rates, confidence intervals,
+  and representative wins/failures. If a separately approved offline prompt or
+  rewrite experiment is proposed, its report format must also include human
+  preference, MPS/fidelity regression, and edit churn.
+- **Ablations:** measure translationese only, `koPostEditese.v1` only, combined
+  signals, raw counts versus normalized ratios, and lexical/endings/interference
+  /rhythm groups independently.
+- **Decision thresholds:** pre-register the minimum precision, maximum control
+  false-positive rate, allowed MPS/fidelity regression bound, and minimum
+  per-stratum sample sizes before looking at holdout results. Thresholds must be
+  justified by holdout evidence, not by convenience on development examples.
+- **Rollback rules for any later approved coupling:** coupled experiments must be
+  feature-flagged or isolated; if false positives, MPS/fidelity regressions,
+  browser/Node parity drift, or domain skew exceed the approved bound, disable
+  the coupled behavior and keep advisory display.
+- **Deliverables:** publish a corpus manifest schema, Korean editor labeling
+  guide, offline experiment script/report format, representative wins/failures
+  appendix, ADR template, and follow-on approval checklist. The ADR may complete
+  inside Phase 4 only as advisory-only or reject-coupling. Prompt-context,
+  rewrite-priority, score/gate, benchmark, or authorship-related options may be
+  documented as follow-on proposals, but none may proceed without a separate
+  product/spec decision and separately approved execution plan.
+- **No-coupling default:** until a later approval explicitly names a coupling and
+  cites completed corpus evidence, no `translationese` or `koPostEditese.v1`
+  metric may feed score, `hot`, gates, severity, z-score, baseline, percentile,
+  prompt gates, rewrite gates, benchmark pass/fail, or authorship verdicts.
+
+
 ## Limitations / next
 
 - Calques are **lexical**; the structural stylometric classifier cannot learn
   them (proven separately). This is a rule catalog, like patina's pattern packs.
 - The catalog is intentionally small and conservative; expand with corpus
   evidence and keep the density gate to protect precision.
-- Not wired into `hot` yet — promote only after validating no FP regression on
-  the benchmark / a diverse human ko control set.
+- `koPostEditese.v1` is not wired into `hot`, scores, gates, severity, z-score,
+  baselines, percentiles, or benchmark decisions. Keep it advisory unless a
+  separate post-Phase4 product/spec approval explicitly authorizes a narrowly
+  scoped coupling.

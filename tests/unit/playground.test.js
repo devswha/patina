@@ -28,7 +28,6 @@ import {
 import { analyzeText } from '../../src/features/index.js';
 import {
   detectTranslationese as detectNodeTranslationese,
-  TRANSLATIONESE_RULES as NODE_TRANSLATIONESE_RULES,
   ABS_MIN as NODE_TRANSLATIONESE_ABS_MIN,
   DENSITY_MIN as NODE_TRANSLATIONESE_DENSITY_MIN,
   STRONG_MIN as NODE_TRANSLATIONESE_STRONG_MIN,
@@ -176,24 +175,55 @@ test('playground mirrors ko translationese advisory payload without score coupli
   assert.equal(nonKo.translationese.count, 0);
   assert.equal(nonKo.translationese.hot, false);
 });
-test('playground keeps translationese rules and thresholds in parity with node', () => {
-  const serializeRule = (rule) => ({
-    id: rule.id,
-    label: rule.label,
-    strong: rule.strong,
-    minCount: rule.minCount ?? 1,
-    source: rule.re().source,
-    flags: rule.re().flags,
-    example: rule.example,
-  });
-
+test('translationese rule catalog stays pinned (shared module)', () => {
+  // Playground and node now share one module binding, so a cross-surface
+  // deepEqual would compare the object to itself. Pin the catalog as literals
+  // instead, so accidental rule deletions/renames in src still fail a test.
   assert.deepEqual(
-    PLAYGROUND_TRANSLATIONESE_RULES.map(serializeRule),
-    NODE_TRANSLATIONESE_RULES.map(serializeRule),
+    PLAYGROUND_TRANSLATIONESE_RULES.map((rule) => rule.id),
+    [
+      'noun-calque',
+      'dummy-subject',
+      'direct-address-you',
+      'a16-pronoun-literal',
+      'a19-double-particle',
+      'passive-e-uihae',
+      't2-by-passive',
+      'a8-double-passive',
+      'have-overuse',
+      'a7-light-verb',
+      'one-of',
+      'provides',
+      'as-follows',
+      'make-easy',
+      'c11-connective-comma',
+    ],
   );
-  assert.equal(TRANSLATIONESE_ABS_MIN, NODE_TRANSLATIONESE_ABS_MIN);
-  assert.equal(TRANSLATIONESE_DENSITY_MIN, NODE_TRANSLATIONESE_DENSITY_MIN);
-  assert.equal(TRANSLATIONESE_STRONG_MIN, NODE_TRANSLATIONESE_STRONG_MIN);
+  assert.deepEqual(
+    PLAYGROUND_TRANSLATIONESE_RULES.filter((rule) => rule.strong).map((rule) => rule.id),
+    [
+      'noun-calque',
+      'dummy-subject',
+      'direct-address-you',
+      'a16-pronoun-literal',
+      'a19-double-particle',
+      't2-by-passive',
+      'a8-double-passive',
+    ],
+  );
+  assert.deepEqual(
+    PLAYGROUND_TRANSLATIONESE_RULES.filter((rule) => (rule.minCount ?? 1) !== 1)
+      .map((rule) => [rule.id, rule.minCount]),
+    [['c11-connective-comma', 2]],
+  );
+  for (const rule of PLAYGROUND_TRANSLATIONESE_RULES) {
+    assert.ok(rule.re() instanceof RegExp, `rule ${rule.id} must expose a regex factory`);
+    assert.ok(rule.label, `rule ${rule.id} must have a label`);
+    assert.ok(rule.example?.before, `rule ${rule.id} must have a before example`);
+  }
+  assert.equal(TRANSLATIONESE_ABS_MIN, 4);
+  assert.equal(TRANSLATIONESE_DENSITY_MIN, 0.5);
+  assert.equal(TRANSLATIONESE_STRONG_MIN, 1);
 
   for (const rule of PLAYGROUND_TRANSLATIONESE_RULES) {
     const signal = detectPlaygroundTranslationese(rule.example.before, { lang: 'ko' });
@@ -700,6 +730,64 @@ test('Vercel config exposes the playground at the domain root', () => {
   assert.match(csp, /connect-src 'self'(?:;|$)/);
 });
 
+// Single-pass scanner producing two views of a JS source: comments removed with
+// string contents kept (for reading import specifiers), and comments removed with
+// string/template contents blanked (for detecting dynamic import()/require()
+// without false-positives from words inside literals). Regex literals are not
+// modeled; an unescaped `//` can only appear inside one via a character class,
+// which none of the walked files use.
+function scanJsSource(source) {
+  let withStrings = '';
+  let codeOnly = '';
+  let state = 'code';
+  let i = 0;
+  while (i < source.length) {
+    const ch = source[i];
+    const next = source[i + 1];
+    if (state === 'code') {
+      if (ch === '/' && next === '/') { state = 'line'; i += 2; continue; }
+      if (ch === '/' && next === '*') { state = 'block'; i += 2; continue; }
+      if (ch === "'") state = 'single';
+      else if (ch === '"') state = 'double';
+      else if (ch === '`') state = 'template';
+      withStrings += ch;
+      codeOnly += ch;
+      i += 1;
+      continue;
+    }
+    if (state === 'line') {
+      if (ch === '\n') { state = 'code'; withStrings += ch; codeOnly += ch; }
+      i += 1;
+      continue;
+    }
+    if (state === 'block') {
+      if (ch === '*' && next === '/') { state = 'code'; i += 2; } else i += 1;
+      continue;
+    }
+    // Inside a string or template literal.
+    if (ch === '\\') {
+      withStrings += ch + (next ?? '');
+      i += 2;
+      continue;
+    }
+    if (
+      (state === 'single' && ch === "'") ||
+      (state === 'double' && ch === '"') ||
+      (state === 'template' && ch === '`')
+    ) {
+      state = 'code';
+      withStrings += ch;
+      codeOnly += ch;
+      i += 1;
+      continue;
+    }
+    withStrings += ch;
+    if (ch === '\n') codeOnly += ch;
+    i += 1;
+  }
+  return { withStrings, codeOnly };
+}
+
 function collectStaticImports(relativeEntry) {
   const seen = new Set();
   const pending = [resolve(REPO_ROOT, relativeEntry)];
@@ -710,7 +798,16 @@ function collectStaticImports(relativeEntry) {
     if (seen.has(file)) continue;
     seen.add(file);
 
-    const source = readFileSync(file, 'utf8');
+    const { withStrings: source, codeOnly } = scanJsSource(readFileSync(file, 'utf8'));
+
+    // The browser graph must stay fully static: dynamic import()/require()
+    // would be invisible to this walker, so their mere presence is a violation.
+    for (const dynamic of codeOnly.matchAll(/(?<![.\w])(?:import|require)\s*\(/g)) {
+      violations.push(
+        `${relative(REPO_ROOT, file)} -> ${dynamic[0].replace(/\s+/g, '')}...) (graph must be static)`,
+      );
+    }
+
     const importPattern = /\b(?:import|export)\s+(?:[^'"()]*?\s+from\s+)?['"]([^'"]+)['"]/g;
     for (const match of source.matchAll(importPattern)) {
       const specifier = match[1];

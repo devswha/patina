@@ -90,7 +90,6 @@ function sleepWithSignal(sleep, ms, signal) {
  *
  * @param {Error|Object} err Error thrown by fetch or {@link HttpError}.
  * @returns {boolean} True for retryable HTTP statuses, aborts, and common network failures.
- * @throws {Error} Does not intentionally throw; unexpected Error-like inputs may still propagate JavaScript runtime failures.
  * @example
  * const retry = isRetryable(new HttpError(429, 'rate limit', '1'));
  */
@@ -115,7 +114,6 @@ export function isRetryable(err) {
  * @param {Function} [opts.now] Clock returning epoch milliseconds.
  * @param {Function} [opts.random] Random number provider used for jitter.
  * @returns {number} Delay in milliseconds, capped at opts.max.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const delay = computeBackoffMs(1, '2'); // 2000
  */

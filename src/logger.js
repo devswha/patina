@@ -14,7 +14,6 @@ const LEVELS = {
  * @param {boolean} [options.quiet=false] Suppress all log output.
  * @param {NodeJS.WritableStream} [options.stream=process.stderr] Progress stream.
  * @returns {{debug: Function, info: Function, warn: Function, error: Function, progress: Function, closeProgress: Function, child: Function}} Logger facade.
- * @throws {Error} Propagates stream write errors from the configured output stream.
  * @example
  * const logger = createLogger();
  * logger.info('event', { message: 'ready' });

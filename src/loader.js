@@ -170,7 +170,6 @@ const TONE_BACKBONE = {
  *
  * @param {string} tone Tone name.
  * @returns {string|null} Profile name, or null when no mapping exists.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const profile = toneToBackboneProfile('casual'); // blog
  */

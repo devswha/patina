@@ -95,7 +95,6 @@ export function selectProvider(name) {
  * @param {string} [options.baseURL] Explicit base URL.
  * @param {string} [options.model] Explicit model id.
  * @returns {{apiKey: string|null, baseURL: string, model: string, apiKeySource: string|null, baseURLSource: string|null, modelSource: string|null}} Resolved provider config.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const resolved = resolveProviderConfig({ provider: selectProvider('openai') });
  */

@@ -247,7 +247,7 @@ Interpretation: 16-30 range = "거의 사람다움" (Mostly human, minor traces)
 - **LLM non-determinism** means the same text may score differently across runs.
   The formula is deterministic; the severity assignment is not.
 - **Fidelity scoring** (meaning preservation vs original) is defined in §§ 9–13 below
-  and integrated into `--score`, `--ouroboros`, and MAX mode pipelines.
+  and integrated into `--score` and `--ouroboros` pipelines.
 
 ### Short-text boost (v3.11 Phase 3.2)
 
@@ -277,8 +277,8 @@ Fidelity measures *how faithfully the output preserves the original meaning*.
 Both dimensions are necessary: aggressive humanization can achieve a low AI score
 by deleting content or changing meaning entirely. Fidelity scoring guards against this.
 
-Fidelity scoring is integrated into `--score`, `--ouroboros`, and MAX mode pipelines.
-See SKILL.md § 6 (score mode) and SKILL-MAX.md § 6 for integration details.
+Fidelity scoring is integrated into `--score` and `--ouroboros` pipelines.
+See SKILL.md § 6 (score mode) for integration details.
 
 ---
 
@@ -571,7 +571,6 @@ MPS = N/A (not applicable)
 When MPS = N/A:
 - `--score` mode displays: `의미 보존 (MPS): N/A (앵커 없음)`
 - Ouroboros loop: MPS floor check is bypassed (only fidelity floor applies)
-- MAX mode: MPS gate is bypassed (selection uses AI score only)
 
 ### MPS Interpretation
 
@@ -652,11 +651,3 @@ Configurable via `.patina.yaml`:
 ouroboros:
   mps-floor: 70  # default
 ```
-
-### MAX Mode Candidate Selection
-
-Current: Select candidate with lowest AI score.
-New: Select candidate with lowest AI score **WHERE MPS ≥ 70**.
-
-Candidates with MPS < 70 are disqualified regardless of AI score.
-If ALL candidates have MPS < 70, select the one with the highest MPS (least meaning loss).

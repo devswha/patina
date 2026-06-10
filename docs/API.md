@@ -160,6 +160,11 @@ and the model verdict is hot; absent model means baseline behavior.</p>
 <dt><a href="#main">main(args)</a> ⇒ <code>Promise.&lt;void&gt;</code></dt>
 <dd><p>Run the patina CLI command dispatcher.</p>
 </dd>
+<dt><a href="#runDefault">runDefault(parsed, logger)</a> ⇒ <code>Promise.&lt;void&gt;</code></dt>
+<dd><p>Run the default patina pipeline for an already-parsed CLI invocation:
+resolve config, provider, and backends, build prompts, then process each
+input job (rewrite/diff/audit/score/ouroboros, plus the browser-diff page).</p>
+</dd>
 <dt><a href="#createCancellationController">createCancellationController([options])</a> ⇒ <code>Object</code></dt>
 <dd><p>Create a SIGINT-aware cancellation controller for long-running CLI operations.</p>
 </dd>
@@ -587,6 +592,25 @@ Run the patina CLI command dispatcher.
 ```js
 await main(['--help']);
 ```
+<a name="runDefault"></a>
+
+## runDefault(parsed, logger) ⇒ <code>Promise.&lt;void&gt;</code>
+Run the default patina pipeline for an already-parsed CLI invocation:
+resolve config, provider, and backends, build prompts, then process each
+input job (rewrite/diff/audit/score/ouroboros, plus the browser-diff page).
+
+**Kind**: global function
+**Returns**: <code>Promise.&lt;void&gt;</code> - Resolves after all job output is written.
+**Throws**:
+
+- <code>Error</code> For validation, provider, file, or runtime failures.
+
+
+| Param | Type | Description |
+| --- | --- | --- |
+| parsed | <code>object</code> | Parsed CLI arguments from parseArgs. |
+| logger | <code>object</code> | Patina logger for this invocation. |
+
 <a name="createCancellationController"></a>
 
 ## createCancellationController([options]) ⇒ <code>Object</code>

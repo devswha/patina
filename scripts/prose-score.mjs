@@ -9,10 +9,7 @@ import {
   summarizeSignalStrength,
 } from '../src/features/signal-strength.js';
 import { loadPatterns } from '../src/loader.js';
-import {
-  DISCOURSE_TELLS_SCORE_FLOOR,
-  LEAKAGE_SCORE_FLOOR,
-} from '../src/scoring.js';
+import { LEAKAGE_SCORE_FLOOR } from '../src/scoring.js';
 
 export { paragraphSignalStrength, summarizeSignalStrength };
 
@@ -167,21 +164,31 @@ export function scoreText(text, {
     lexicon: getLexicon(resolvedLang, repoRoot),
   });
   const patternHits = countPatternWatchHits(prose, getPatternWatchTerms(resolvedLang, repoRoot), resolvedLang);
-  const paragraphCount = result.paragraphs.length;
-  const hotCount = result.paragraphs.filter((p) => p.hot).length;
+  // Gate semantics: `score`/`overGate` are the hot ratio over PROSE paragraphs.
+  // Bare `---` divider lines survive stripProse (only leading frontmatter is
+  // removed) and split into their own pseudo-paragraphs; with #391 attribution
+  // each gated divider is hot, which would let markup — not prose — drive the
+  // precommit/dogfood gates. Divider-only pseudo-paragraphs are therefore
+  // excluded from the gate ratio and from the prose signal average.
+  const proseParagraphs = result.paragraphs.filter((p) => !p.thematicBreakOnly);
+  const paragraphCount = proseParagraphs.length;
+  const hotCount = proseParagraphs.filter((p) => p.hot).length;
   const score = paragraphCount ? (hotCount / paragraphCount) * 100 : 0;
-  const signalScore = summarizeSignalStrength(result.paragraphs);
+  const signalScore = summarizeSignalStrength(proseParagraphs);
   const leaked = Boolean(result.markupLeakage?.leaked);
   const discourseHot = result.discourseTells?.hot === true;
-  // Canonical floors from src/scoring.js scoreDeterministicSignals: markup
-  // leakage is near-proof-grade and short-circuits to LEAKAGE_SCORE_FLOOR;
-  // density-gated discourse tells apply the weaker DISCOURSE_TELLS_SCORE_FLOOR.
-  // Exposed as `flooredScore` so ranking consumers (scripts/qa/mdx-score.mjs)
-  // surface pasted-model-markup files at the top, while `score`/`overGate`
-  // keep their hot-ratio semantics for the existing precommit/dogfood gates.
-  const flooredScore = leaked
-    ? Math.max(score, LEAKAGE_SCORE_FLOOR)
-    : Math.max(score, discourseHot ? DISCOURSE_TELLS_SCORE_FLOOR : 0);
+  // Ranking semantics (`flooredScore`, used by scripts/qa/mdx-score.mjs rows):
+  // detection scope stays wider than the gate. The attributed ratio over ALL
+  // analyzer paragraphs (divider pseudo-paragraphs included) can only raise the
+  // ranking, so `---`-spam documents still surface as editing hotspots, and the
+  // canonical near-proof-grade LEAKAGE_SCORE_FLOOR from src/scoring.js applies
+  // on top. Discourse tells carry no document-level floor (#391): they reach
+  // both scores through per-paragraph hot attribution.
+  const attributedScore = result.paragraphs.length
+    ? (result.paragraphs.filter((p) => p.hot).length / result.paragraphs.length) * 100
+    : 0;
+  const rankedScore = Math.max(score, attributedScore);
+  const flooredScore = leaked ? Math.max(rankedScore, LEAKAGE_SCORE_FLOOR) : rankedScore;
   return {
     file,
     lang: resolvedLang,
@@ -206,6 +213,7 @@ export function scoreText(text, {
     discourseTells: {
       hot: discourseHot,
       fakeCandor: result.discourseTells?.fakeCandor?.hot === true,
+      thematicBreaks: result.discourseTells?.thematicBreaks?.hot === true,
     },
   };
 }

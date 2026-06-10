@@ -28,7 +28,12 @@ import {
   DEFAULT_LEXICON_MIN_HOT_MATCHES,
 } from './lexicon.js';
 import { detectMarkupLeakage } from './markup-leakage.js';
-import { detectDiscourseTells } from './discourse-tells.js';
+import {
+  detectDiscourseTells,
+  detectFakeCandor,
+  detectThematicBreaks,
+  isThematicBreakOnly,
+} from './discourse-tells.js';
 import { detectTranslationese } from './translationese.js';
 import { extractStructuralFeatures, structuralFeatureRecord, STRUCTURAL_FEATURE_NAMES } from './structural-features.js';
 import {
@@ -69,8 +74,13 @@ export function analyzeText(text, opts = {}) {
   // regardless of the per-paragraph stylometry/lexicon signals.
   const markupLeakage = detectMarkupLeakage(normalized);
   // Density-gated discourse tells (issue #334): fake-candor openers (>=2) and
-  // decorative thematic breaks (>=3). Document-level, weaker than leakage.
+  // decorative thematic breaks (>=3). The density gate is document-level, but
+  // hot status is attributed to the paragraphs that carry a tell (issue #391,
+  // mirroring the playground's per-paragraph candorHot/thematicBreakHot), so
+  // flagged paragraphs enter rewrite scope and the hot ratio reflects them.
   const discourseTells = detectDiscourseTells(normalized);
+  const paraCandorCounts = paragraphs.map((p) => detectFakeCandor(p).count);
+  const paraThematicBreakCounts = paragraphs.map((p) => detectThematicBreaks(p).count);
   // ko translationese (번역투/calque) — lexical, NOT structural. Advisory signal:
   // surfaced for callers/SKILL but deliberately NOT folded into `hot` (these
   // constructions appear in good Korean too; gating hot would regress FP).
@@ -119,8 +129,17 @@ export function analyzeText(text, opts = {}) {
       densityThreshold: lexiconDensityThreshold,
       minHotMatches: lexiconMinHotMatches,
     });
+    // Discourse-tell attribution (#391): this paragraph carries a tell AND the
+    // document-level density gate fired (>=2 candor openers / >=3 breaks).
+    const candorHot = discourseTells.fakeCandor.hot && paraCandorCounts[idx] >= 1;
+    const thematicBreakHot = discourseTells.thematicBreaks.hot && paraThematicBreakCounts[idx] >= 1;
     const hot =
-      cvBand === 'low' || mattrBand === 'low' || lexiconHot || Boolean(koSignals.koDiagnostics?.hot);
+      cvBand === 'low' ||
+      mattrBand === 'low' ||
+      lexiconHot ||
+      Boolean(koSignals.koDiagnostics?.hot) ||
+      candorHot ||
+      thematicBreakHot;
 
     return {
       id: `P${idx + 1}`,
@@ -130,6 +149,14 @@ export function analyzeText(text, opts = {}) {
       mattr: { value: mattrValue, band: mattrBand },
       lexicon: { ...lex, hot: lexiconHot },
       ...koSignals,
+      candorHot,
+      candorCount: paraCandorCounts[idx],
+      thematicBreakHot,
+      thematicBreakCount: paraThematicBreakCounts[idx],
+      // Divider-only pseudo-paragraph (a bare `---` line between blank lines).
+      // Hot attribution still applies (the divider itself is rewrite scope),
+      // but prose gates use this to keep their ratios on actual prose.
+      thematicBreakOnly: isThematicBreakOnly(paragraph),
       hot,
     };
   });
@@ -143,7 +170,11 @@ export function analyzeText(text, opts = {}) {
     discourseTells,
     translationese,
     koPostEditese,
-    hot: markupLeakage.leaked || discourseTells.hot || structuralClassifier.hot === true || analyzed.some((p) => p.hot),
+    // No `discourseTells.hot` disjunct here: whenever the document-level density
+    // gate fires, at least one paragraph carries the tell (candor regexes cannot
+    // span paragraph breaks; thematic breaks are whole lines), so the
+    // per-paragraph attribution above already makes some paragraph hot.
+    hot: markupLeakage.leaked || structuralClassifier.hot === true || analyzed.some((p) => p.hot),
     structuralClassifier,
   };
 }

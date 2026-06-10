@@ -57,14 +57,75 @@ test('detectDiscourseTells aggregates both', () => {
   assert.equal(r.hot, true);
 });
 
-test('analyzeText surfaces discourseTells and ORs into hot', () => {
+test('analyzeText attributes gated fake-candor to the carrying paragraphs (#391)', () => {
+  // There is no document-level discourseTells.hot disjunct anymore: the
+  // document goes hot because the opener-carrying paragraphs go hot.
   const text =
     "Here's the thing about this tool, it varies sentence length nicely here.\n\n" +
     "And the truth is, a second plainly written human paragraph follows.\n\n" +
     'A third paragraph clears the short-input skip threshold cleanly.';
   const r = analyzeText(text, { lang: 'en' });
   assert.equal(r.discourseTells.fakeCandor.hot, true);
+  assert.deepEqual(r.paragraphs.map((p) => p.candorHot), [true, true, false]);
+  assert.deepEqual(r.paragraphs.map((p) => p.candorCount), [1, 1, 0]);
+  assert.equal(r.paragraphs[0].hot, true);
+  assert.equal(r.paragraphs[1].hot, true);
   assert.equal(r.hot, true);
+  assert.equal(
+    r.hot,
+    r.markupLeakage.leaked || r.structuralClassifier.hot === true || r.paragraphs.some((p) => p.hot),
+  );
+});
+
+test('analyzeText attributes gated thematic breaks and they alone carry the document verdict (#391)', () => {
+  // Three bare dividers between plainly human paragraphs: the dividers become
+  // their own pseudo-paragraphs, each goes hot via thematicBreakHot, and the
+  // document verdict rides on them — no other detector fires.
+  const text = [
+    'The standup ran long because the staging database fell over mid-demo again today.',
+    '---',
+    'Kwon restored it fast. Six minutes, snapshot from Tuesday, slow storage tier and all.',
+    '---',
+    'We still lost the seed data for the pricing experiment, which nobody mourned much.',
+    '---',
+  ].join('\n\n');
+  const r = analyzeText(text, { lang: 'en' });
+
+  assert.equal(r.discourseTells.thematicBreaks.hot, true);
+  assert.equal(r.discourseTells.fakeCandor.hot, false);
+  assert.equal(r.paragraphs.length, 6);
+  assert.deepEqual(
+    r.paragraphs.map((p) => p.thematicBreakHot),
+    [false, true, false, true, false, true],
+  );
+  assert.deepEqual(
+    r.paragraphs.map((p) => p.thematicBreakOnly),
+    [false, true, false, true, false, true],
+  );
+  // The divider pseudo-paragraphs are exactly the hot ones.
+  assert.deepEqual(
+    r.paragraphs.map((p) => p.hot),
+    [false, true, false, true, false, true],
+  );
+  assert.equal(r.markupLeakage.leaked, false);
+  assert.notEqual(r.structuralClassifier.hot, true);
+  assert.equal(r.hot, true);
+});
+
+test('thematic breaks below the document gate leave divider paragraphs cold', () => {
+  const text = [
+    'The standup ran long because the staging database fell over mid-demo again today.',
+    '---',
+    'Kwon restored it fast. Six minutes, snapshot from Tuesday, slow storage tier and all.',
+    'We still lost the seed data for the pricing experiment, which nobody mourned much.',
+  ].join('\n\n');
+  const r = analyzeText(text, { lang: 'en' });
+
+  assert.equal(r.discourseTells.thematicBreaks.hot, false);
+  assert.equal(r.paragraphs[1].thematicBreakOnly, true);
+  assert.equal(r.paragraphs[1].thematicBreakHot, false);
+  assert.equal(r.paragraphs[1].hot, false);
+  assert.equal(r.hot, false);
 });
 
 test('analyzeText leaves discourseTells clean on ordinary prose', () => {

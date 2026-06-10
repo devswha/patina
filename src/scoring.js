@@ -38,16 +38,6 @@ export const LEAKAGE_SCORE_FLOOR = 90;
  */
 export const STRUCTURAL_CLASSIFIER_MIN_FLOOR = 70;
 
-/**
- * Low document-level score floor for density-gated discourse tells.
- *
- * Discourse tells are auditable weak signals rather than proof-grade leakage, so
- * they only nudge deterministic scoring into the mixed band floor.
- *
- * @type {number}
- */
-export const DISCOURSE_TELLS_SCORE_FLOOR = 35;
-
 class SchemaError extends Error {
   constructor(message, raw) {
     super(message);
@@ -286,8 +276,10 @@ export function scoreDeterministicSignals({
     // Model-output leakage (#332) is near-proof-grade and lives at the document
     // level, so it short-circuits the hot-ratio score into the 'heavily AI' band.
     const leaked = Boolean(result?.markupLeakage?.leaked);
+    // Discourse tells (#334/#391) carry no document-level floor: the analyzer
+    // attributes them to the paragraphs that carry the tell, so they reach the
+    // score through the hot ratio like every other per-paragraph signal.
     const discourseTells = result?.discourseTells ?? null;
-    const discourseFloor = discourseTells?.hot === true ? DISCOURSE_TELLS_SCORE_FLOOR : 0;
     const structuralClassifier = result?.structuralClassifier ?? { available: false, hot: null, score: null };
     const structuralFloor =
       structuralClassifier.hot === true && typeof structuralClassifier.score === 'number'
@@ -295,7 +287,7 @@ export function scoreDeterministicSignals({
         : 0;
     const overall = leaked
       ? Math.max(hotRatioOverall, LEAKAGE_SCORE_FLOOR)
-      : Math.max(hotRatioOverall, structuralFloor, discourseFloor);
+      : Math.max(hotRatioOverall, structuralFloor);
     const signalScore = roundScore(summarizeSignalStrength(paragraphs, {
       burstinessBands: config.stylometry?.burstiness?.bands,
       mattrBands: config.stylometry?.ttr?.bands,
@@ -328,7 +320,6 @@ export function scoreDeterministicSignals({
         },
         discourseTells: {
           hot: discourseTells?.hot ?? null,
-          floor: discourseTells?.hot === true ? discourseFloor : 0,
           fakeCandor: discourseTells?.fakeCandor ?? null,
           thematicBreaks: discourseTells?.thematicBreaks ?? null,
         },
@@ -774,7 +765,7 @@ function emptyDeterministicBands() {
     lexicon: { hot: 0, threshold: null },
     koDiagnostics: { hot: 0, thresholds: null },
     markupLeakage: { leaked: false, hits: 0, floor: LEAKAGE_SCORE_FLOOR },
-    discourseTells: { hot: null, floor: 0, fakeCandor: null, thematicBreaks: null },
+    discourseTells: { hot: null, fakeCandor: null, thematicBreaks: null },
     structuralClassifier: { available: false, hot: null, score: null, floor: 0 },
   };
 }

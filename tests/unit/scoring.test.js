@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import {
-  DISCOURSE_TELLS_SCORE_FLOOR,
   clamp03,
   combinedScore,
   interpretScore,
@@ -341,7 +340,7 @@ test('configured structural-model load failure warns and preserves deterministic
   assert.ok(warnings.some((entry) => entry.event === 'score.structural_model_load_failure'));
 });
 
-test('discourse-only hot text is surfaced and contributes a low deterministic floor', () => {
+test('discourse tells are attributed to the paragraphs that carry them (#391)', () => {
   const deterministic = scoreDeterministicSignals({
     text: [
       "Here's the thing about this parser, Mira rewrote one branch after lunch and left the comments alone.",
@@ -353,10 +352,35 @@ test('discourse-only hot text is surfaced and contributes a low deterministic fl
     },
   });
 
-  assert.strictEqual(deterministic.hotParagraphs, 0);
+  // Both paragraphs carry a fake-candor opener and the document gate (>=2)
+  // fired, so both become hot and the hot ratio carries the whole score —
+  // no document-level floor involved.
+  assert.strictEqual(deterministic.hotParagraphs, 2);
+  assert.strictEqual(deterministic.paragraphCount, 2);
+  assert.strictEqual(deterministic.overall, 100);
   assert.strictEqual(deterministic.bands.discourseTells.hot, true);
-  assert.strictEqual(deterministic.bands.discourseTells.floor, DISCOURSE_TELLS_SCORE_FLOOR);
-  assert.ok(deterministic.overall >= DISCOURSE_TELLS_SCORE_FLOOR);
+  assert.strictEqual(deterministic.bands.discourseTells.fakeCandor.hot, true);
+  // A discourse-hot paragraph carries signal strength: overall and signalScore
+  // must not contradict each other (hot paragraphs with strength 0).
+  assert.ok(deterministic.signalScore > 0, `expected nonzero signalScore, got ${deterministic.signalScore}`);
+});
+
+test('a single rhetorical candor opener stays below the density gate (#391)', () => {
+  const deterministic = scoreDeterministicSignals({
+    text: [
+      "Let's be honest, the migration took longer than the estimate we gave in March.",
+      'Mira split the remaining work into two short branches and reviewed both before Friday.',
+      'The rollout notes stayed short because the team already knew the risks involved.',
+    ].join('\n\n'),
+    config: {
+      ...loadConfig(),
+      language: 'en',
+    },
+  });
+
+  assert.strictEqual(deterministic.bands.discourseTells.hot, false);
+  assert.strictEqual(deterministic.hotParagraphs, 0);
+  assert.strictEqual(deterministic.overall, 0);
 });
 
 test('deterministic skipped and failure payloads pin signalScore to zero', () => {

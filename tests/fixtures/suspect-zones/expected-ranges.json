@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedBy": "node scripts/update-benchmark-ranges.mjs",
-  "generatedAt": "2026-06-10T06:25:16.606Z",
-  "fixtureCount": 47,
+  "generatedAt": "2026-06-10T11:18:51.992Z",
+  "fixtureCount": 49,
   "tolerances": {
     "cv": 0.025,
     "mattr": 0.03,
@@ -177,6 +177,34 @@
       ],
       "lexicon_hits": []
     },
+    "en-ai-07-discourse-candor": {
+      "path": "tests/fixtures/suspect-zones/en/ai/en-ai-07-discourse-candor.md",
+      "lang": "en",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv_band": "mid",
+      "cv_range": [
+        0.333,
+        0.383
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.842,
+        0.902
+      ],
+      "lexicon_density_range": [
+        0,
+        5
+      ],
+      "lexicon_hits": []
+    },
     "en-nat-01": {
       "path": "tests/fixtures/suspect-zones/en/natural/en-nat-01.md",
       "lang": "en",
@@ -310,6 +338,34 @@
       "mattr_range": [
         0.845,
         0.905
+      ],
+      "lexicon_density_range": [
+        0,
+        5
+      ],
+      "lexicon_hits": []
+    },
+    "en-nat-06-single-opener": {
+      "path": "tests/fixtures/suspect-zones/en/natural/en-nat-06-single-opener.md",
+      "lang": "en",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv_band": "high",
+      "cv_range": [
+        0.527,
+        0.577
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.81,
+        0.87
       ],
       "lexicon_density_range": [
         0,

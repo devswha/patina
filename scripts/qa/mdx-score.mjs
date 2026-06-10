@@ -2,10 +2,11 @@
 // Score MDX docs through the canonical prose scorer (issue #398).
 //
 // Delegates to scoreText from scripts/prose-score.mjs so the cached lexicon,
-// repoRoot pattern packs, and the LEAKAGE/DISCOURSE score floors from
-// src/scoring.js all apply (rows rank by `flooredScore`). MDX ESM
-// import/export blocks are stripped first so they are not counted as prose
-// paragraphs.
+// repoRoot pattern packs, and the LEAKAGE score floor from src/scoring.js all
+// apply (rows rank by `flooredScore`). The old DISCOURSE floor is gone (#391):
+// discourse tells reach the ranking through per-paragraph hot attribution
+// instead. MDX ESM import/export blocks are stripped first so they are not
+// counted as prose paragraphs.
 //
 // Usage: node scripts/qa/mdx-score.mjs <docsDir> <lang>
 import { readFileSync, statSync } from 'node:fs';

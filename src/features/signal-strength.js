@@ -1,3 +1,4 @@
+import { FAKE_CANDOR_MIN, THEMATIC_BREAK_MIN } from './discourse-tells.js';
 import { DEFAULT_LEXICON_DENSITY_THRESHOLD } from './lexicon-core.js';
 import { DEFAULT_BURSTINESS_BANDS, DEFAULT_MATTR_BANDS } from './stylometry.js';
 
@@ -52,7 +53,33 @@ export function paragraphSignalStrength(paragraph = {}, options = {}) {
     Number.isFinite(paragraph.koDiagnostics.strength)
       ? paragraph.koDiagnostics.strength
       : 0;
-  return Math.max(burstiness, mattr, lexicon, koDiagnostics);
+  // Discourse-tell attribution (#391): candorHot/thematicBreakHot make a
+  // paragraph hot, so they must carry strength here too — otherwise a
+  // discourse-only hot paragraph would rank at 0, contradicting the hot
+  // verdict. Strength is the paragraph's tell count normalized by the
+  // document density gate (FAKE_CANDOR_MIN / THEMATIC_BREAK_MIN): a paragraph
+  // carrying enough tells to clear the gate alone scores 100.
+  const discourse = Math.max(
+    discourseTellStrength(paragraph.candorHot, paragraph.candorCount, FAKE_CANDOR_MIN),
+    discourseTellStrength(
+      paragraph.thematicBreakHot,
+      paragraph.thematicBreakCount,
+      THEMATIC_BREAK_MIN
+    )
+  );
+  return Math.max(burstiness, mattr, lexicon, koDiagnostics, discourse);
+}
+
+function discourseTellStrength(isHot, count, docThreshold) {
+  if (!isHot) return 0;
+  if (!docThreshold || docThreshold <= 0) return 0;
+  // Hot implies >= 1 carried tell; floor the count so older payloads without
+  // counts still register a nonzero strength.
+  const carried = Math.max(
+    typeof count === 'number' && Number.isFinite(count) ? count : 0,
+    1
+  );
+  return clampPercent((carried / docThreshold) * 100);
 }
 
 function resolveLowThreshold(bands, fallback) {

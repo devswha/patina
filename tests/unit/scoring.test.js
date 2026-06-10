@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import {
+  DISCOURSE_TELLS_SCORE_FLOOR,
   clamp03,
   combinedScore,
   interpretScore,
@@ -161,6 +162,43 @@ test('score helpers accept an injected callLLM implementation', async () => {
   assert.strictEqual(fidelity.fidelity, 100);
   assert.strictEqual(seen.length, 3);
 });
+test('scoreText prompt includes score instructions, pattern counts, and catalog digest', async () => {
+  let prompt = '';
+  await scoreText({
+    text: 'Short sample text.',
+    config: {
+      ...loadConfig(),
+      language: 'en',
+      scoring: { deterministic: { enabled: false } },
+    },
+    patterns: [
+      {
+        file: 'en-content.md',
+        frontmatter: { pack: 'en-content', patterns: 2 },
+        body: '### 1. Promotional Adjectives\n**Watch words:** robust\n\n### 2. Empty Contrast\nExample',
+      },
+      {
+        file: 'en-viral-hook.md',
+        frontmatter: { pack: 'en-viral-hook', patterns: 1 },
+        body: '### 1. Clickbait Mystery Close\n**Watch words:** nobody is talking about',
+      },
+    ],
+    callLLM: async (args) => {
+      prompt = args.prompt;
+      return '{ "overall": 12, "interpretation": "human" }';
+    },
+  });
+
+  assert.match(prompt, /AI-likeness scoring engine/);
+  assert.match(prompt, /Short-text boost/);
+  assert.match(prompt, /content: 0\.2/);
+  assert.match(prompt, /Pattern counts from pack frontmatter/);
+  assert.match(prompt, /- en-content: 2 patterns/);
+  assert.match(prompt, /- en-viral-hook: 1 patterns/);
+  assert.match(prompt, /Compact pattern catalog digest/);
+  assert.match(prompt, /en-content: Promotional Adjectives; Empty Contrast/);
+  assert.match(prompt, /en-viral-hook: Clickbait Mystery Close/);
+});
 
 test('scoreText warns on deterministic divergence and keeps the pessimistic score', async () => {
   const warnings = [];
@@ -216,6 +254,47 @@ test('deterministic markup-leakage short-circuits the score into the heavily-AI 
   const clean = scoreDeterministicSignals({ text: cleanText, config: loadConfig() });
   assert.strictEqual(clean.bands.markupLeakage.leaked, false);
   assert.ok(clean.overall < 90, `clean prose should not hit the leakage floor, got ${clean.overall}`);
+});
+test('configured structural-model load failure warns and preserves deterministic leakage floor', () => {
+  const warnings = [];
+  const leaked = scoreDeterministicSignals({
+    text: [
+      'I rewrote the parser this morning and it finally handles nested quotes without choking on them.',
+      'According to turn0search1 the phrasing still needs work, yet the overall structure holds together fine.',
+      'We shipped it behind a flag and watched the logs over lunch. Nothing broke.',
+    ].join('\n\n'),
+    config: {
+      ...loadConfig(),
+      stylometry: {
+        ...loadConfig().stylometry,
+        structural_model: { path: './does-not-exist-structural-model.json' },
+      },
+    },
+    logger: { warn: (event, fields) => warnings.push({ event, ...fields }) },
+  });
+
+  assert.strictEqual(leaked.bands.markupLeakage.leaked, true);
+  assert.ok(leaked.overall >= 90, `expected leakage floor, got ${leaked.overall}`);
+  assert.notStrictEqual(leaked.skipReason, 'deterministic-failure');
+  assert.ok(warnings.some((entry) => entry.event === 'score.structural_model_load_failure'));
+});
+
+test('discourse-only hot text is surfaced and contributes a low deterministic floor', () => {
+  const deterministic = scoreDeterministicSignals({
+    text: [
+      "Here's the thing about this parser, Mira rewrote one branch after lunch and left the comments alone.",
+      'And the truth is, Dae kept the rollout notes short because the team already knew the risks.',
+    ].join('\n\n'),
+    config: {
+      ...loadConfig(),
+      language: 'en',
+    },
+  });
+
+  assert.strictEqual(deterministic.hotParagraphs, 0);
+  assert.strictEqual(deterministic.bands.discourseTells.hot, true);
+  assert.strictEqual(deterministic.bands.discourseTells.floor, DISCOURSE_TELLS_SCORE_FLOOR);
+  assert.ok(deterministic.overall >= DISCOURSE_TELLS_SCORE_FLOOR);
 });
 
 test('deterministic skipped and failure payloads pin signalScore to zero', () => {

@@ -34,7 +34,7 @@ export function formatOutput(result, mode, parsed = {}, opts = {}) {
   }
 
   if (format === 'text') {
-    return formatTextOutput(body, tone);
+    return formatTextOutput(body);
   }
 
   return appendToneFooter(body, tone);
@@ -295,15 +295,8 @@ function extractScoreDetails(result) {
   };
 }
 
-function formatTextOutput(body, tone) {
-  const lines = [body.trim()];
-  if (tone?.tone_source) {
-    lines.push(
-      '',
-      `Tone: ${tone.tone === null || tone.tone === undefined ? 'profile-only' : tone.tone} (${tone.tone_source})`
-    );
-  }
-  return lines.join('\n').trimEnd();
+function formatTextOutput(body) {
+  return body.trim();
 }
 
 function formatJsonOutput({ result, mode, body, tone, gate }) {

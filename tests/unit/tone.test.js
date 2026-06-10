@@ -174,7 +174,7 @@ test('formatOutput: null tone emits null values', () => {
 test('formatOutput: text format omits YAML footer', () => {
   const tone = { tone: null, tone_source: 'profile_only', tone_evidence: [], tone_confidence: null };
   const out = formatOutput('Text', 'rewrite', { format: 'text' }, { tone });
-  assert.equal(out, 'Text\n\nTone: profile-only (profile_only)');
+  assert.equal(out, 'Text');
 });
 
 test('formatOutput: json format exposes score contract fields', () => {

@@ -217,7 +217,7 @@ const KO_POST_EDITESE_FORMAL_ENDINGS = new Set(['습니다', '습니까', '합�
 const KO_POST_EDITESE_POLITE_ENDINGS = new Set(['어요', '아요', '예요', '이에요', '네요', '군요', '지요', '죠']);
 const KO_POST_EDITESE_DECLARATIVE_DA_ENDINGS = new Set(['한다', '된다', '했다', '였다', '이다', '있다', '없다', '왔다', '봤다', '다']);
 
-const KO_POST_EDITESE_PRONOUN_LITERAL_RE = /(?:그녀(?:는|가|를|의|에게|와|도|만)?|그것(?:은|이|을|의|에|에게)?|그들(?:은|이|을|의|에게|과|도)?|그(?:는|가|를|의|에게|와|도|만)(?=\s|[.,!?。]|$))/g;
+const KO_POST_EDITESE_PRONOUN_LITERAL_RE = /(?<![가-힣])(?:그녀(?:는|가|를|의|에게|와|도|만)?|그것(?:은|이|을|의|에|에게)?|그들(?:은|이|을|의|에게|과|도)?|그(?:는|가|를|의|에게|와|도|만))(?=\s|[.,!?。]|$)/g;
 const KO_POST_EDITESE_DOUBLE_PARTICLE_RE = /(?:에서의|에로의|으로의|에의|으로부터의|로부터의)/g;
 const KO_POST_EDITESE_PROGRESSIVE_ASPECT_RE = /고\s*있(?:다|습니다|는|었|으|고|지|기)?/g;
 const KO_POST_EDITESE_LIGHT_VERB_RE = /(?:회의를\s*가(?:지|졌)|결정을\s*내(?:리|렸)|(?:을|를)\s*갖고\s*있(?:다|습니다|는|었|으)?)/g;
@@ -235,15 +235,6 @@ const EDGE_PUNCT_RE = /^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu;
 const CJK_TOKEN_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\u30FC]|[A-Za-z0-9]+/gu;
 const HANGUL_RE = /[\u3131-\u318e\uac00-\ud7a3]/u;
 const COMMA_RE = /[,，、]/gu;
-const KO_SUFFIX_CLASSES = {
-  formal_ending: /(습니다|습니까|합니다|됩니다|입니다|입니다만|했습니다|됩니다)$/u,
-  plain_ending: /(다|었다|았다|겠다)$/u,
-  topic: /(은|는)$/u,
-  subject: /(이|가)$/u,
-  object: /을|를$/u,
-  location: /(에서|에게|으로|로)$/u,
-  connective: /(고|며|지만|면서|도록)$/u,
-};
 
 export function normalizeLang(lang) {
   return SUPPORTED_LANGS.includes(lang) ? lang : DEFAULT_LANG;
@@ -369,7 +360,7 @@ export function koreanSpacingFeatures(paragraph) {
     eojeolCount,
     meanEojeolLength: mean(lengths),
     eojeolLengthCV: coefficientOfVariation(lengths),
-    shortEojeolRatio:
+    singleSyllableRatio:
       eojeolCount > 0 ? lengths.filter((length) => length === 1).length / eojeolCount : null,
     longEojeolRatio:
       eojeolCount > 0 ? lengths.filter((length) => length >= 7).length / eojeolCount : null,
@@ -388,25 +379,31 @@ export function commaDensity(paragraph, sentenceCount = null) {
 
 export function koreanPosDiversityProxy(paragraph) {
   const eojeols = koreanEojeols(paragraph);
-  const classes = new Set();
-  let matchedCount = 0;
+  const matches = [];
+
   for (const token of eojeols) {
-    for (const [className, suffixPattern] of Object.entries(KO_SUFFIX_CLASSES)) {
-      if (suffixPattern.test(token)) {
-        classes.add(className);
-        matchedCount++;
-        break;
-      }
+    const match = KO_POST_EDITESE_SUFFIX_MATCHERS.find(
+      (candidate) => token.length > candidate.suffix.length && token.endsWith(candidate.suffix)
+    );
+    if (match) {
+      matches.push({ className: match.className, suffix: match.suffix });
     }
   }
+
+  const matchedCount = matches.length;
+  const classes = [...new Set(matches.map((match) => match.className))].sort();
+  const suffixes = [...new Set(matches.map((match) => match.suffix))].sort();
+
   return {
     proxy: 'suffix',
     eojeolCount: eojeols.length,
     matchedCount,
     coverage: eojeols.length > 0 ? matchedCount / eojeols.length : null,
-    classCount: classes.size,
-    classDiversity: matchedCount > 0 ? classes.size / matchedCount : null,
-    classes: Array.from(classes).sort(),
+    distinctClassCount: classes.length,
+    classDiversity: matchedCount > 0 ? classes.length / matchedCount : null,
+    distinctSuffixCount: suffixes.length,
+    suffixDiversity: matchedCount > 0 ? suffixes.length / matchedCount : null,
+    classes,
   };
 }
 
@@ -998,7 +995,8 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, forma
 export function analyzePlaygroundText(text, opts = {}) {
   const lang = normalizeLang(opts.lang ?? DEFAULT_LANG);
   const lexicon = PLAYGROUND_LEXICONS[lang];
-  const paragraphs = splitParagraphs(text);
+  const normalized = text ? String(text).normalize('NFC') : '';
+  const paragraphs = splitParagraphs(normalized);
   const threshold = opts.lexiconDensityThreshold ?? DEFAULT_LEXICON_DENSITY_THRESHOLD;
   const minHotMatches = opts.lexiconMinHotMatches ?? DEFAULT_LEXICON_MIN_HOT_MATCHES;
   const formattingThresholds = opts.formattingThresholds ?? DEFAULT_FORMATTING_THRESHOLDS;
@@ -1012,13 +1010,13 @@ export function analyzePlaygroundText(text, opts = {}) {
   // Fake-candor openers (#334): doc-level density gate, then attribute to the
   // paragraphs that carry an opener (same shape as the em-dash doc-level pass).
   const paraCandor = paragraphs.map(countFakeCandor);
-  const docFakeCandor = detectFakeCandor(text);
+  const docFakeCandor = detectFakeCandor(normalized);
   const docCandor = docFakeCandor.count;
 
   const paraThematicBreaks = paragraphs.map(detectThematicBreaks);
-  const docThematicBreaks = detectThematicBreaks(text);
-  const translationese = detectTranslationese(text, { lang });
-  const koPostEditese = koreanPostEditeseFeatures(text, { lang });
+  const docThematicBreaks = detectThematicBreaks(normalized);
+  const translationese = detectTranslationese(normalized, { lang });
+  const koPostEditese = koreanPostEditeseFeatures(normalized, { lang });
 
   const analyzed = paragraphs.map((paragraph, idx) => {
     const sentences = splitProseSentences(paragraph);
@@ -1100,7 +1098,7 @@ export function analyzePlaygroundText(text, opts = {}) {
 
   const hotCount = analyzed.filter((p) => p.hot).length;
   const hotRatio = paragraphs.length === 0 ? 0 : Math.round((hotCount / paragraphs.length) * 100);
-  const markupLeakage = detectMarkupLeakage(text);
+  const markupLeakage = detectMarkupLeakage(normalized);
   const overall = markupLeakage.leaked ? Math.max(hotRatio, LEAKAGE_SCORE_FLOOR) : hotRatio;
 
   return {
@@ -1437,12 +1435,52 @@ export function buildCliCommand(text, lang = DEFAULT_LANG) {
 }
 
 export const FALSE_POSITIVE_ISSUE_URL = 'https://github.com/devswha/patina/issues/new';
-const FALSE_POSITIVE_MAX_PARAGRAPH_CHARS = 1500;
+const FALSE_POSITIVE_MAX_URL_LENGTH = 8000;
+const FALSE_POSITIVE_TRUNCATION_NOTICE = '\n…(truncated — paste the rest if it matters)';
 
 // Build a GitHub issue URL with the false-positive template pre-filled from the
 // current audit. Nothing is sent anywhere — the text only leaves the browser if
 // the user chooses to submit the GitHub issue, preserving the in-browser privacy
 // promise while removing the copy/paste friction of reporting by hand.
+function buildFalsePositiveIssueUrl(params) {
+  const query = new globalThis.URLSearchParams({
+    template: 'false_positive.yml',
+    ...params,
+  });
+  return `${FALSE_POSITIVE_ISSUE_URL}?${query.toString()}`;
+}
+
+function fitFalsePositiveParagraphToUrlBudget(fired, params) {
+  const fullUrl = buildFalsePositiveIssueUrl({ ...params, fired_paragraph: fired });
+  if (fullUrl.length < FALSE_POSITIVE_MAX_URL_LENGTH) return fired;
+
+  const chars = Array.from(fired);
+  let low = 0;
+  let high = chars.length;
+  let best = '';
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const candidate = `${chars.slice(0, mid).join('').trimEnd()}${FALSE_POSITIVE_TRUNCATION_NOTICE}`;
+    const url = buildFalsePositiveIssueUrl({ ...params, fired_paragraph: candidate });
+    if (url.length < FALSE_POSITIVE_MAX_URL_LENGTH) {
+      best = candidate;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  if (best) return best;
+  const noticeUrl = buildFalsePositiveIssueUrl({
+    ...params,
+    fired_paragraph: FALSE_POSITIVE_TRUNCATION_NOTICE.trimStart(),
+  });
+  return noticeUrl.length < FALSE_POSITIVE_MAX_URL_LENGTH
+    ? FALSE_POSITIVE_TRUNCATION_NOTICE.trimStart()
+    : '';
+}
+
 export function buildFalsePositiveReportUrl(text, lang = DEFAULT_LANG, analysis = null) {
   const safeLang = normalizeLang(lang);
   const result = analysis ?? analyzePlaygroundText(text || '', { lang: safeLang });
@@ -1451,9 +1489,6 @@ export function buildFalsePositiveReportUrl(text, lang = DEFAULT_LANG, analysis 
 
   let fired = source.map((p) => p.text).join('\n\n').trim();
   if (!fired) fired = (text || '').trim();
-  if (fired.length > FALSE_POSITIVE_MAX_PARAGRAPH_CHARS) {
-    fired = `${fired.slice(0, FALSE_POSITIVE_MAX_PARAGRAPH_CHARS)}\n…(truncated — paste the rest if it matters)`;
-  }
 
   const signals =
     [...new Set(source.flatMap((p) => p.reasons.map((r) => r.label)))].join(', ') || 'none';
@@ -1466,11 +1501,10 @@ export function buildFalsePositiveReportUrl(text, lang = DEFAULT_LANG, analysis 
     `Lexicon hits: ${lexiconHits}`,
   ].join('\n');
 
-  const params = new globalThis.URLSearchParams({
-    template: 'false_positive.yml',
+  const params = {
     language: safeLang,
-    fired_paragraph: fired,
     score_output: scoreOutput,
-  });
-  return `${FALSE_POSITIVE_ISSUE_URL}?${params.toString()}`;
+  };
+  const budgetedFired = fitFalsePositiveParagraphToUrlBudget(fired, params);
+  return buildFalsePositiveIssueUrl({ ...params, fired_paragraph: budgetedFired });
 }

@@ -11,6 +11,7 @@ const PATTERN_DIR = resolve(REPO_ROOT, 'patterns');
 const LEXICON_DIR = resolve(REPO_ROOT, 'lexicon');
 const DOCS_DIR = resolve(REPO_ROOT, 'docs');
 const SCORING_PATH = resolve(REPO_ROOT, 'core/scoring.md');
+const SKILL_PATH = resolve(REPO_ROOT, 'SKILL.md');
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
 const LANGS = ['ko', 'en', 'zh', 'ja'];
 
@@ -73,6 +74,25 @@ function scoringTables() {
     const total = section.match(/^\|\s*\*\*Total\*\*\s*\|\s*\*\*[0-9.]+\*\*\s*\|\s*\*\*(\d+)\*\*/m);
     assert.ok(total, `${lang} scoring table must include Total row`);
     out[lang].Total = Number(total[1]);
+  }
+  return out;
+}
+
+function skillScoreExampleCounts() {
+  const raw = readFileSync(SKILL_PATH, 'utf8');
+  const section = raw.match(/### score 모드[\s\S]*?\| 카테고리 \| 가중치 \| 감지 패턴 \| 원점수 \| 가중 점수 \|([\s\S]*?)\n\n>/)?.[1];
+  assert.ok(section, 'SKILL.md score-mode example table must be present');
+  const out = {};
+  for (const line of section.split('\n')) {
+    const cells = line
+      .split('|')
+      .slice(1, -1)
+      .map((cell) => cell.trim());
+    if (cells.length < 3) continue;
+    const [category, , detected] = cells;
+    if (!category || category.startsWith('**') || category === '카테고리' || /^-+$/.test(category)) continue;
+    const match = detected.match(/^\d+\/(\d+)$/);
+    if (match) out[category] = Number(match[1]);
   }
   return out;
 }
@@ -172,6 +192,14 @@ test('core/scoring.md category counts match pattern pack frontmatter', () => {
     }
     const expectedTotal = Object.values(packs[lang]).reduce((sum, n) => sum + n, 0);
     assert.equal(tables[lang].Total, expectedTotal, `${lang} scoring total drifted`);
+  }
+});
+
+test('SKILL.md score example counts match Korean pattern pack frontmatter', () => {
+  const packs = packCountsByLang().ko;
+  const skillCounts = skillScoreExampleCounts();
+  for (const [category, count] of Object.entries(packs)) {
+    assert.equal(skillCounts[category], count, `SKILL.md ${category} score example count drifted`);
   }
 });
 

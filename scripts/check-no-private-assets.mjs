@@ -24,6 +24,7 @@ const REPO_ROOT = resolve(__dirname, '..');
 export const FORBIDDEN_GLOBS = Object.freeze([
   '**/*.private.*', // explicitly private-marked files
   '**/*.enhanced.*', // explicitly enhancement-marked files
+  '**/*.reinforced.*', // explicitly reinforced-marked files
   '**/private/**', // any `private/` directory (corpus, keys, raw sources)
   '**/enhanced/**', // any `enhanced/` directory (reinforced assets)
   '**/reinforced/**', // any `reinforced/` directory (reinforced assets)

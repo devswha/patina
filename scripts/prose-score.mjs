@@ -36,27 +36,55 @@ export function isProsePath(file, extensions = DEFAULT_PROSE_EXTENSIONS) {
   return extensions.some((ext) => lower.endsWith(ext));
 }
 
-export function stripNonProse(markdown) {
-  return String(markdown || '')
+export function stripProse(markdown, {
+  dropListItems = false,
+  dropStandaloneLinks = false,
+  keepInlineCode = false,
+} = {}) {
+  let text = String(markdown || '')
     .replace(/^---\n[\s\S]*?\n---\s*/, '\n')
     .replace(/```[\s\S]*?```/g, '\n')
     .replace(/~~~[\s\S]*?~~~/g, '\n')
     // Remove Markdown tables before stripping inline HTML. Cells such as
     // `p<0.01` are prose-visible math, not HTML tags; if HTML stripping runs
     // first it can consume across rows and leave table fragments behind.
-    .replace(/^\s*\|.*\|\s*$/gm, '\n')
-    .replace(/`[^`]*`/g, ' ')
+    .replace(/^\s*\|.*\|\s*$/gm, '\n');
+
+  if (keepInlineCode) text = text.replace(/`([^`]*)`/g, '$1');
+  else text = text.replace(/`[^`]*`/g, ' ');
+
+  if (dropStandaloneLinks) {
+    text = text.replace(/^\s*\[[^\]]+\]\([^)]*\)\s*$/gm, '\n');
+  }
+
+  text = text
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/<svg[\s\S]*?<\/svg>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
     .replace(/^\s{0,3}#{1,6}\s+.*$/gm, '\n')
-    .replace(/^\s{0,3}>\s?/gm, '')
-    .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/gm, '')
-    .replace(/^\s*[-*+]\s+/gm, '')
-    .replace(/^\s*\d+[.)]\s+/gm, '')
+    .replace(/^\s{0,3}>\s?/gm, '');
+
+  if (dropListItems) {
+    text = text
+      .replace(/^\s*[-*+]\s+.*$/gm, '\n')
+      .replace(/^\s*\d+[.)]\s+.*$/gm, '\n');
+  } else {
+    text = text
+      .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/gm, '')
+      .replace(/^\s*[-*+]\s+/gm, '')
+      .replace(/^\s*\d+[.)]\s+/gm, '');
+  }
+
+  return text
+    .replace(/[*_]{1,3}/g, '')
     .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+export function stripNonProse(markdown) {
+  return stripProse(markdown);
 }
 
 export function detectLanguage(file, text = '', requested = 'auto') {

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedBy": "node scripts/update-benchmark-ranges.mjs",
-  "generatedAt": "2026-05-21T16:23:44.811Z",
-  "fixtureCount": 39,
+  "generatedAt": "2026-06-10T06:25:16.606Z",
+  "fixtureCount": 47,
   "tolerances": {
     "cv": 0.025,
     "mattr": 0.03,
@@ -439,6 +439,83 @@
         "理解を深める"
       ]
     },
+    "ja-ai-05-formulaic-summary": {
+      "path": "tests/fixtures/suspect-zones/ja/ai/ja-ai-05-formulaic-summary.md",
+      "lang": "ja",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "detectors": {
+        "burstiness": true,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": true
+      },
+      "cv_band": "low",
+      "cv_range": [
+        0.13,
+        0.18
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.74,
+        0.8
+      ],
+      "lexicon_density_range": [
+        69.074,
+        79.074
+      ],
+      "lexicon_hits": [
+        "まとめると",
+        "現代社会において",
+        "デジタル時代において",
+        "長期的に見ると",
+        "~につながります",
+        "新たな可能性を切り開く",
+        "持続可能な成長",
+        "ユーザー体験を向上させる",
+        "多様なニーズに応える",
+        "欠かせない存在"
+      ]
+    },
+    "ja-ai-06-broad-tech": {
+      "path": "tests/fixtures/suspect-zones/ja/ai/ja-ai-06-broad-tech.md",
+      "lang": "ja",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "detectors": {
+        "burstiness": true,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": true
+      },
+      "cv_band": "low",
+      "cv_range": [
+        0.218,
+        0.268
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.735,
+        0.795
+      ],
+      "lexicon_density_range": [
+        68.77,
+        78.77
+      ],
+      "lexicon_hits": [
+        "結論として",
+        "テクノロジーの進化により",
+        "一方で~他方で",
+        "~と言えるでしょう",
+        "今後ますます重要になる",
+        "柔軟に対応する",
+        "価値を最大化する",
+        "幅広い分野で注目されています",
+        "新たな選択肢"
+      ]
+    },
     "ja-nat-01": {
       "path": "tests/fixtures/suspect-zones/ja/natural/ja-nat-01.md",
       "lang": "ja",
@@ -544,6 +621,62 @@
       "mattr_range": [
         0.722,
         0.782
+      ],
+      "lexicon_density_range": [
+        0,
+        5
+      ],
+      "lexicon_hits": []
+    },
+    "ja-nat-05-station-note": {
+      "path": "tests/fixtures/suspect-zones/ja/natural/ja-nat-05-station-note.md",
+      "lang": "ja",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv_band": "high",
+      "cv_range": [
+        0.539,
+        0.589
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.792,
+        0.852
+      ],
+      "lexicon_density_range": [
+        0,
+        5
+      ],
+      "lexicon_hits": []
+    },
+    "ja-nat-06-maintenance-log": {
+      "path": "tests/fixtures/suspect-zones/ja/natural/ja-nat-06-maintenance-log.md",
+      "lang": "ja",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv_band": "high",
+      "cv_range": [
+        0.494,
+        0.544
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.85,
+        0.91
       ],
       "lexicon_density_range": [
         0,
@@ -1014,6 +1147,86 @@
         "为未来奠定基础"
       ]
     },
+    "zh-ai-05-formulaic-summary": {
+      "path": "tests/fixtures/suspect-zones/zh/ai/zh-ai-05-formulaic-summary.md",
+      "lang": "zh",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": true
+      },
+      "cv_band": "mid",
+      "cv_range": [
+        0.385,
+        0.435
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.901,
+        0.961
+      ],
+      "lexicon_density_range": [
+        100.263,
+        110.263
+      ],
+      "lexicon_hits": [
+        "综上所述",
+        "值得注意的是",
+        "在数字时代",
+        "从长远来看",
+        "不仅~而且",
+        "为~提供了新的可能",
+        "提升用户体验",
+        "优化整体流程",
+        "形成良性循环",
+        "持续赋能",
+        "为未来奠定基础",
+        "成为不可或缺的一部分"
+      ]
+    },
+    "zh-ai-06-broad-tech": {
+      "path": "tests/fixtures/suspect-zones/zh/ai/zh-ai-06-broad-tech.md",
+      "lang": "zh",
+      "class": "ai",
+      "expected_hot": true,
+      "predicted_hot": true,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": true
+      },
+      "cv_band": "mid",
+      "cv_range": [
+        0.418,
+        0.468
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.882,
+        0.942
+      ],
+      "lexicon_density_range": [
+        85.09,
+        95.09
+      ],
+      "lexicon_hits": [
+        "总而言之",
+        "需要指出的是",
+        "随着科技的发展",
+        "带来了新的机遇",
+        "面临新的挑战",
+        "打造更加",
+        "推动~高质量发展",
+        "有效提升",
+        "释放巨大潜力",
+        "展现出独特价值"
+      ]
+    },
     "zh-nat-01": {
       "path": "tests/fixtures/suspect-zones/zh/natural/zh-nat-01.md",
       "lang": "zh",
@@ -1119,6 +1332,62 @@
       "mattr_range": [
         0.901,
         0.961
+      ],
+      "lexicon_density_range": [
+        0,
+        5
+      ],
+      "lexicon_hits": []
+    },
+    "zh-nat-05-market-note": {
+      "path": "tests/fixtures/suspect-zones/zh/natural/zh-nat-05-market-note.md",
+      "lang": "zh",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv_band": "high",
+      "cv_range": [
+        0.573,
+        0.623
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.861,
+        0.921
+      ],
+      "lexicon_density_range": [
+        0,
+        5
+      ],
+      "lexicon_hits": []
+    },
+    "zh-nat-06-maintenance-log": {
+      "path": "tests/fixtures/suspect-zones/zh/natural/zh-nat-06-maintenance-log.md",
+      "lang": "zh",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": false
+      },
+      "cv_band": "high",
+      "cv_range": [
+        0.524,
+        0.574
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.922,
+        0.982
       ],
       "lexicon_density_range": [
         0,

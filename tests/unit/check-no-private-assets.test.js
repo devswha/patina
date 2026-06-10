@@ -54,6 +54,13 @@ describe('leak gate: forbidden pattern set', () => {
     assert.strictEqual(hits.length, planted.length, 'every planted private path must match');
   });
 
+  it('flags reinforced-marked lexicon files without catching benign open paths', () => {
+    assert.deepStrictEqual(matchForbidden(['lexicon/ko.reinforced.md']), [
+      { path: 'lexicon/ko.reinforced.md', pattern: '**/*.reinforced.*' },
+    ]);
+    assert.deepStrictEqual(matchForbidden(['lexicon/en-ai.md', 'patterns/ko-style.md']), []);
+  });
+
   it('leaves the open-baseline package paths clean', () => {
     const benign = [
       'src/backends/index.js',

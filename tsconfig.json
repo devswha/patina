@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
+    "skipLibCheck": true
+  },
+  "include": [
+    "bin/**/*.js",
+    "scripts/**/*.js",
+    "scripts/**/*.mjs",
+    "src/**/*.js",
+    "tests/**/*.js",
+    "packages/**/*.js",
+    "playground/**/*.js"
+  ],
+  "exclude": ["node_modules"]
+}

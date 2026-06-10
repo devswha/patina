@@ -124,7 +124,7 @@ export function buildPrompt(options) {
   } else if (mode === 'audit') {
     prompt += buildAuditInstructions();
   } else if (mode === 'score') {
-    prompt += buildScoreInstructions(config, lang, text);
+    prompt += buildScoreInstructions(config, lang, text, activePatterns);
   } else if (mode === 'ouroboros') {
     prompt += buildOuroborosInstructions(config, structurePacks, lexicalPacks);
   }
@@ -283,7 +283,7 @@ function buildAuditInstructions() {
     `|---------|----------|----------|----------|\n`;
 }
 
-function buildScoreInstructions(config, lang, text = '') {
+export function buildScoreInstructions(config, lang, text = '', patterns = []) {
   const weights = config.ouroboros?.['category-weights']?.[lang] || {};
   let inst = `Calculate an AI-likeness score (0-100) using EXACTLY these category weights. Do NOT invent extra categories (no "discord", no "tone", no "general"). Use only the categories listed:\n\n`;
 
@@ -294,6 +294,24 @@ function buildScoreInstructions(config, lang, text = '') {
   inst += `\nSeverity scale: Low=1, Medium=2, High=3 points per detection.\n`;
   inst += `Category score = (sum of adjusted severities / (pattern_count × 3)) × 100\n`;
   inst += `Overall = weighted average using the EXACT weights above (sum should equal 1.00).\n\n`;
+
+  const patternCounts = buildPatternCounts(patterns);
+  if (patternCounts.length > 0) {
+    inst += `Pattern counts from pack frontmatter (use as pattern_count denominators):\n`;
+    for (const line of patternCounts) {
+      inst += `${line}\n`;
+    }
+    inst += `\n`;
+  }
+
+  const catalogDigest = buildPatternCatalogDigest(patterns);
+  if (catalogDigest.length > 0) {
+    inst += `Compact pattern catalog digest:\n`;
+    for (const line of catalogDigest) {
+      inst += `${line}\n`;
+    }
+    inst += `\n`;
+  }
 
   // v3.11 Phase 3.2: short text (~200 chars or ≤3 paragraphs) often shows
   // clear voice/register shifts that the standard formula barely registers
@@ -316,6 +334,36 @@ function buildScoreInstructions(config, lang, text = '') {
   inst += `Interpretation: 0-15 human | 16-30 mostly human | 31-50 mixed | 51-70 AI-like | 71-100 heavily AI\n`;
 
   return inst;
+}
+
+function buildPatternCounts(patterns = []) {
+  return patterns
+    .map((pack) => {
+      const packName = pack.frontmatter?.pack || pack.file;
+      const count = pack.frontmatter?.patterns;
+      if (!packName || !Number.isFinite(Number(count))) return null;
+      return `- ${packName}: ${Number(count)} patterns`;
+    })
+    .filter(Boolean);
+}
+
+function buildPatternCatalogDigest(patterns = []) {
+  const lines = [];
+  for (const pack of patterns) {
+    const packName = pack.frontmatter?.pack || pack.file;
+    if (!packName) continue;
+    const headings = Array.from(String(pack.body || '').matchAll(/^###\s+(?:\d+\.\s*)?(.+)$/gm))
+      .map((match) => match[1].trim())
+      .filter(Boolean)
+      .slice(0, 6);
+    if (headings.length > 0) {
+      lines.push(`- ${packName}: ${headings.join('; ')}`);
+    } else {
+      const summary = String(pack.body || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+      if (summary) lines.push(`- ${packName}: ${summary}`);
+    }
+  }
+  return lines;
 }
 
 // v3.11 Phase 3.2 helper: classify a text as "short" for scoring boost.

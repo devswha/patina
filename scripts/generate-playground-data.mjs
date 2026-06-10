@@ -5,6 +5,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseLexiconBody } from '../src/features/lexicon-core.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -23,32 +24,13 @@ function parseFrontmatter(raw) {
   return { meta, body: raw.slice(end + 4) };
 }
 
-function parseLexiconBody(body) {
-  const strict = [];
-  const phrases = [];
-  let mode = null;
-  for (const rawLine of body.split('\n')) {
-    const line = rawLine.trim();
-    if (line.startsWith('## ')) {
-      const heading = line.toLowerCase();
-      if (heading.includes('strict matches')) mode = 'strict';
-      else if (heading.includes('multi-word phrases')) mode = 'phrases';
-      else mode = null;
-      continue;
-    }
-    if (!mode || !line.startsWith('- ')) continue;
-    const entry = line.slice(2).trim().normalize('NFC');
-    if (entry && !entry.startsWith('_')) (mode === 'strict' ? strict : phrases).push(entry);
-  }
-  return { strict, phrases };
-}
 
 const lexicons = {};
 for (const lang of LANGS) {
   const source = `lexicon/ai-${lang}.md`;
   const raw = readFileSync(resolve(REPO_ROOT, source), 'utf8');
   const { meta, body } = parseFrontmatter(raw);
-  const parsed = parseLexiconBody(body);
+  const parsed = parseLexiconBody(body, { skipUnderscore: true });
   lexicons[lang] = {
     lang,
     source,

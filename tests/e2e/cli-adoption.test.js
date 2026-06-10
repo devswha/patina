@@ -148,6 +148,20 @@ describe('CLI adoption commands', () => {
     }
   });
 
+  it('patina doctor --help and -h print usage and exit 0', () => {
+    for (const flag of ['--help', '-h']) {
+      const result = spawnSync(process.execPath, [BIN, 'doctor', flag], {
+        cwd: REPO_ROOT,
+        input: '',
+        encoding: 'utf8',
+      });
+      assert.strictEqual(result.status, 0, `doctor ${flag} should exit 0`);
+      assert.match(result.stdout, /patina doctor — check local CLI readiness/);
+      assert.match(result.stdout, /Usage: patina doctor \[--json\]/);
+      assert.doesNotMatch(result.stdout, /Checks:/, `doctor ${flag} should short-circuit the report`);
+    }
+  });
+
   it('patina --list-backends shows selectors and setup guidance', async () => {
     await withEnv({
       PATINA_API_KEY: 'test-key',
@@ -338,6 +352,17 @@ describe('CLI adoption exit/error behavior', () => {
       assert.strictEqual(result.status, 2, `${args.join(' ')} should exit 2`);
       assert.match(result.stderr, message);
     }
+  });
+
+  it('doctor rejects unknown options with usage exits', () => {
+    const result = spawnSync(process.execPath, [BIN, 'doctor', '--bogus'], {
+      cwd: REPO_ROOT,
+      input: '',
+      encoding: 'utf8',
+    });
+    assert.strictEqual(result.status, 2);
+    assert.match(result.stderr, /unknown doctor option --bogus/);
+    assert.match(result.stderr, /Run `patina doctor --help` for usage\./);
   });
 
   it('--exit-on outside score mode names the alias and exits 2', () => {

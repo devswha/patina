@@ -32,6 +32,7 @@
     "typecheck": "tsc -p .",
     "spellcheck": "cspell \"patterns/**/*.md\" \"lexicon/**/*.md\"",
     "docs:api": "node scripts/generate-api-docs.mjs",
+    "qa:mdx": "node scripts/qa/mdx-score.mjs",
     "playground:data": "node scripts/generate-playground-data.mjs",
     "quality:live": "node tests/quality/live-quality.mjs",
     "benchmark:rebaseline:intake": "node scripts/rebaseline-intake.mjs",

@@ -83,7 +83,22 @@ jobs:
         run: npm run benchmark:report
 
       - name: Detector comparison harness
+        # Runs before the drift check: it rewrites
+        # docs/benchmarks/detector-comparison.{json,md}, so the check below
+        # covers those files too (issue #399 item 1 staleness class).
         run: npm run benchmark:compare
+
+      - name: Benchmark report drift check
+        # The regen is deterministic except for the generatedAt /
+        # benchmarkGeneratedAt timestamps and the node version of the
+        # regenerating environment (CI pins Node 20, contributors run Node
+        # 22), so ignore those metadata lines and fail only on real
+        # fixture/metric drift.
+        run: |
+          git diff --exit-code -I '"generatedAt":' -I '"benchmarkGeneratedAt":' -I 'Generated at:' -I '"nodeVersion":' -I '^- Node: ' -- docs/benchmarks || {
+            echo '::error::docs/benchmarks is stale. Run `npm run benchmark:report && npm run benchmark:compare` and commit the result.'
+            exit 1
+          }
 
       - name: Dogfood public docs
         run: npm run dogfood

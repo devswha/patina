@@ -95,6 +95,46 @@ test('ko pronoun literal rules ignore nouns ending in 그 and bound words', () =
   assert.equal(koreanPostEditeseFeatures(techText, { lang: 'ko' }).metrics.interference.pronounLiteralCount, 0);
   assert.equal(koreanPostEditeseFeatures(colloquialText, { lang: 'ko' }).metrics.interference.pronounLiteralCount, 0);
 });
+
+test('ko post-editese pronoun literal keeps stacked-particle calques (issue #395)', () => {
+  const pronounLiteralCount = (text) =>
+    koreanPostEditeseFeatures(text, { lang: 'ko' }).metrics.interference.pronounLiteralCount;
+
+  const stackedForms = ['그들에게는', '그녀에게도', '그들과의', '그것도', '그것만', '그들처럼', '그녀보다'];
+  for (const form of stackedForms) {
+    const count = pronounLiteralCount(`${form} 결과가 전달되었다.`);
+    assert.ok(count >= 1, `${form} should count as a pronoun literal (got ${count})`);
+  }
+
+  // U+2026 ellipsis directly after the particle is an eojeol boundary too.
+  assert.ok(pronounLiteralCount('그녀는… 아무 말이 없었다.') >= 1, 'ellipsis boundary after particle');
+
+  // Simple single-particle forms keep matching before space or sentence punctuation.
+  assert.equal(pronounLiteralCount('그는 떠났다. 그녀는 남았다. 그것은 사실이다. 그들은 침묵했다.'), 4);
+  assert.equal(pronounLiteralCount('그는, 결국 돌아왔다.'), 1);
+});
+
+test('ko post-editese pronoun literal still excludes bound nouns and word-internal 그', () => {
+  const pronounLiteralCount = (text) =>
+    koreanPostEditeseFeatures(text, { lang: 'ko' }).metrics.interference.pronounLiteralCount;
+
+  assert.equal(pronounLiteralCount('그녀석이 또 늦었다. 아 그것참 곤란하네.'), 0);
+  assert.equal(pronounLiteralCount('블로그는 어제 고쳤다. 태그를 새로 달았다.'), 0);
+  assert.equal(pronounLiteralCount('그라데이션은 배경에 넣었다.'), 0, 'word-internal 그 must not match via the bare-그 branch');
+  assert.equal(pronounLiteralCount('그 사람이 그 다음에 왔다.'), 0, 'determiner 그 without a particle must not match');
+});
+
+test('ko post-editese pronoun literal restores pre-#394 count on MT-style paragraph', () => {
+  const text = [
+    '그들에게는 선택지가 없었다.',
+    '그녀에게도 같은 통지가 갔다.',
+    '그들과의 협상은 결렬되었다.',
+    '그것도 모자라 그것만 반복했다.',
+    '그들처럼 행동했고 그녀보다 빨랐다.',
+  ].join(' ');
+  const payload = koreanPostEditeseFeatures(text, { lang: 'ko' });
+  assert.equal(payload.metrics.interference.pronounLiteralCount, 7);
+});
 test('weak-only translationese stays advisory even above count and density gates', () => {
   const text = [
     '사용법은 다음과 같습니다.',

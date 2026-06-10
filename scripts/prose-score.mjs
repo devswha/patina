@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import { dirname, relative, resolve, sep } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { analyzeText } from '../src/features/index.js';
@@ -9,6 +9,10 @@ import {
   summarizeSignalStrength,
 } from '../src/features/signal-strength.js';
 import { loadPatterns } from '../src/loader.js';
+import {
+  DISCOURSE_TELLS_SCORE_FLOOR,
+  LEAKAGE_SCORE_FLOOR,
+} from '../src/scoring.js';
 
 export { paragraphSignalStrength, summarizeSignalStrength };
 
@@ -76,15 +80,40 @@ export function stripProse(markdown, {
       .replace(/^\s*\d+[.)]\s+/gm, '');
   }
 
-  return text
-    .replace(/[*_]{1,3}/g, '')
+  return stripEmphasisMarkers(text)
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
-export function stripNonProse(markdown) {
-  return stripProse(markdown);
+// Strip emphasis as *paired* markers only (issue #396). A blanket [*_] delete
+// mangles non-emphasis tokens (utm_source=chatgpt.com -> utmsource=chatgpt.com,
+// grok_card -> grokcard) before analyzeText runs, which kills the
+// markup-leakage detector's underscore-dependent signatures. Pairing rules:
+// the opener must not touch a word character on the outside (so `2*3` and
+// `user_id` survive), the inner text must not start/end with whitespace, and
+// the closing run must match the opening run length. The inner text may span
+// Markdown soft line breaks (hard-wrapped `**bold\nacross lines**` is valid
+// CommonMark emphasis) but never a blank line — emphasis cannot cross a
+// paragraph boundary.
+const PAIRED_ASTERISK_RE = /(?<![\w*])(\*{1,3})(?!\s)((?:[^*\n]|\n(?![ \t]*\n))+?)(?<!\s)\1(?![\w*])/g;
+const PAIRED_UNDERSCORE_RE = /(?<![\w_])(_{1,3})(?!\s)((?:[^\n]|\n(?![ \t]*\n))+?)(?<!\s)\1(?![\w_])/g;
+
+function stripEmphasisMarkers(text) {
+  let out = text;
+  // Fixpoint loop unwraps nesting such as **bold with *inner* emphasis**.
+  for (let i = 0; i < 3; i++) {
+    const next = out
+      .replace(PAIRED_ASTERISK_RE, '$2')
+      .replace(PAIRED_UNDERSCORE_RE, '$2');
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+}
+
+export function stripNonProse(markdown, options = {}) {
+  return stripProse(markdown, options);
 }
 
 export function detectLanguage(file, text = '', requested = 'auto') {
@@ -123,8 +152,14 @@ function getPatternWatchTerms(lang, repoRoot) {
   return patternTermCache.get(key);
 }
 
-export function scoreText(text, { file = '', lang = 'auto', gate = 30, repoRoot = DEFAULT_REPO_ROOT } = {}) {
-  const prose = stripNonProse(text);
+export function scoreText(text, {
+  file = '',
+  lang = 'auto',
+  gate = 30,
+  repoRoot = DEFAULT_REPO_ROOT,
+  strip = {},
+} = {}) {
+  const prose = stripNonProse(text, strip);
   const resolvedLang = detectLanguage(file, prose, lang);
   const result = analyzeText(prose, {
     lang: resolvedLang,
@@ -136,17 +171,42 @@ export function scoreText(text, { file = '', lang = 'auto', gate = 30, repoRoot 
   const hotCount = result.paragraphs.filter((p) => p.hot).length;
   const score = paragraphCount ? (hotCount / paragraphCount) * 100 : 0;
   const signalScore = summarizeSignalStrength(result.paragraphs);
+  const leaked = Boolean(result.markupLeakage?.leaked);
+  const discourseHot = result.discourseTells?.hot === true;
+  // Canonical floors from src/scoring.js scoreDeterministicSignals: markup
+  // leakage is near-proof-grade and short-circuits to LEAKAGE_SCORE_FLOOR;
+  // density-gated discourse tells apply the weaker DISCOURSE_TELLS_SCORE_FLOOR.
+  // Exposed as `flooredScore` so ranking consumers (scripts/qa/mdx-score.mjs)
+  // surface pasted-model-markup files at the top, while `score`/`overGate`
+  // keep their hot-ratio semantics for the existing precommit/dogfood gates.
+  const flooredScore = leaked
+    ? Math.max(score, LEAKAGE_SCORE_FLOOR)
+    : Math.max(score, discourseHot ? DISCOURSE_TELLS_SCORE_FLOOR : 0);
   return {
     file,
     lang: resolvedLang,
     paragraphCount,
     hotCount,
     score,
+    flooredScore,
     signalScore,
     patternHits,
     gate,
     overGate: score > gate,
     skipped: paragraphCount === 0,
+    // The analyzer's own skip verdict (paragraphs<=2 / sentences<=2): too
+    // little prose to trust a hot/total ratio.
+    analysisSkipped: Boolean(result.skipped),
+    skipReason: result.skipReason ?? null,
+    proseLength: prose.length,
+    markupLeakage: {
+      leaked,
+      hits: Array.isArray(result.markupLeakage?.hits) ? result.markupLeakage.hits.length : 0,
+    },
+    discourseTells: {
+      hot: discourseHot,
+      fakeCandor: result.discourseTells?.fakeCandor?.hot === true,
+    },
   };
 }
 
@@ -199,6 +259,23 @@ function cleanPatternTerm(term) {
     .replace(/^[\s`*_"'“”‘’「」『』()（）]+|[\s`*_"'“”‘’「」『』()（）.。]+$/g, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+// Shared recursive file walker for scripts/ consumers (issue #398 asked for
+// one walker instead of per-script copies).
+export function walkFiles(dir, {
+  match = () => true,
+  ignore = (name) => name === 'node_modules' || name.startsWith('.'),
+} = {}) {
+  const out = [];
+  for (const entry of readdirSync(dir)) {
+    if (ignore(entry)) continue;
+    const path = join(dir, entry);
+    const stats = statSync(path);
+    if (stats.isDirectory()) out.push(...walkFiles(path, { match, ignore }));
+    else if (stats.isFile() && match(path)) out.push(path);
+  }
+  return out.sort();
 }
 
 function isInside(base, candidate) {

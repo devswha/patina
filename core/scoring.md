@@ -197,7 +197,7 @@ Input text detected patterns:
 | #8 ~적 접미사 | language | Medium (2) | normal | 2 |
 | #14 볼드체 | style | High (3) | normal | 3 |
 | #17 이모지 | style | Medium (2) | normal | 2 |
-| #23 채움 표현 | filler | Low (1) | normal | 1 |
+| #22 채움 표현 | filler | Low (1) | normal | 1 |
 | #25 구조적 반복 | structure | High (3) | normal | 3 |
 
 Category scores:
@@ -213,8 +213,12 @@ Category scores:
 | viral-hook | 0/9 | 0 | 9×3=27 | 0.0 |
 
 Overall = 33.3×0.18 + 8.3×0.18 + 27.8×0.18 + 0.0×0.13 + 8.3×0.08 + 20.0×0.15 + 0.0×0.10
-       = 5.99 + 1.49 + 5.00 + 0.00 + 0.66 + 3.00 + 0.00
+       = 6.0 + 1.5 + 5.0 + 0.0 + 0.7 + 3.0 + 0.0
        = **16.2**
+
+(Weighted terms are computed from the unrounded category scores and shown to
+one decimal; they sum exactly to the displayed total. Unrounded: 6.000 + 1.500
++ 5.000 + 0.000 + 0.667 + 3.000 = 16.167 → 16.2.)
 
 Interpretation: 16-30 range = "거의 사람다움" (Mostly human, minor traces)
 

@@ -11,7 +11,8 @@ import {
   scoreDeterministicSignals,
   scoreText,
 } from '../../src/scoring.js';
-import { loadConfig } from '../../src/config.js';
+import { getRepoRoot, loadConfig } from '../../src/config.js';
+import { loadPatterns } from '../../src/loader.js';
 
 test('interpretScore maps documented AI-likeness boundaries', () => {
   const cases = [
@@ -198,6 +199,67 @@ test('scoreText prompt includes score instructions, pattern counts, and catalog 
   assert.match(prompt, /Compact pattern catalog digest/);
   assert.match(prompt, /en-content: Promotional Adjectives; Empty Contrast/);
   assert.match(prompt, /en-viral-hook: Clickbait Mystery Close/);
+  assert.match(prompt, /Interpretation: 0-15 human/);
+
+  // Issue #397: the scoreText prompt must carry exactly ONE output contract —
+  // the strict-JSON one. The markdown-table tail belongs to the skill surface.
+  assert.match(prompt, /## Output Format \(strict JSON\)/);
+  assert.match(prompt, /Return ONLY a JSON object/);
+  assert.doesNotMatch(prompt, /Output format \(the Weight column/);
+  assert.doesNotMatch(prompt, /\| Category \| Weight \| Detected \| Raw Score \| Weighted \|/);
+  assert.strictEqual((prompt.match(/Output [Ff]ormat/g) || []).length, 1);
+});
+
+test('scoreText prompt digest lists every pattern and matches the stated denominators', async () => {
+  const patterns = loadPatterns(getRepoRoot(), 'ko');
+  assert.ok(patterns.length > 0, 'expected real ko pattern packs');
+
+  let prompt = '';
+  await scoreText({
+    text: 'Sample text.',
+    config: {
+      ...loadConfig(),
+      language: 'ko',
+      scoring: { deterministic: { enabled: false } },
+    },
+    patterns,
+    callLLM: async (args) => {
+      prompt = args.prompt;
+      return '{ "overall": 12, "interpretation": "human" }';
+    },
+  });
+
+  const countsSection = prompt
+    .split('Pattern counts from pack frontmatter (use as pattern_count denominators):\n')[1]
+    .split('\n\n')[0];
+  const digestSection = prompt
+    .split('Compact pattern catalog digest:\n')[1]
+    .split('\n\n')[0];
+
+  const statedCounts = new Map(
+    countsSection.split('\n').map((line) => {
+      const match = line.match(/^- (\S+): (\d+) patterns$/);
+      assert.ok(match, `unparseable pattern-count line: ${line}`);
+      return [match[1], Number(match[2])];
+    })
+  );
+  assert.strictEqual(statedCounts.size, patterns.length);
+
+  const digestLines = digestSection.split('\n');
+  assert.strictEqual(digestLines.length, patterns.length);
+  for (const line of digestLines) {
+    const match = line.match(/^- (\S+): (.+)$/);
+    assert.ok(match, `unparseable digest line: ${line}`);
+    const [, pack, entries] = match;
+    assert.ok(statedCounts.has(pack), `digest pack ${pack} missing from pattern counts`);
+    // Issue #397: the digest must show as many catalog entries as the
+    // pattern_count denominator the same prompt instructs the model to use.
+    assert.strictEqual(
+      entries.split('; ').length,
+      statedCounts.get(pack),
+      `digest entries for ${pack} must equal its stated pattern_count denominator`
+    );
+  }
 });
 
 test('scoreText warns on deterministic divergence and keeps the pessimistic score', async () => {

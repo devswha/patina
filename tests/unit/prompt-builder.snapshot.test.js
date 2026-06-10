@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { buildPrompt } from '../../src/prompt-builder.js';
+import { buildPrompt, buildScoreInstructions, buildScoreMathCore } from '../../src/prompt-builder.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT_DIR = resolve(__dirname, '../fixtures/prompt-snapshots');
@@ -169,6 +169,61 @@ describe('buildPrompt golden snapshots', () => {
       assert.equal(actual, expected);
     });
   }
+});
+
+describe('score instruction surfaces (issue #397)', () => {
+  it('scoring-math core carries no output contract', () => {
+    const core = buildScoreMathCore(config, 'en', inputText, patterns);
+
+    assert.match(core, /Severity scale: Low=1, Medium=2, High=3 points per detection\./);
+    assert.match(core, /Category score = \(sum of adjusted severities \/ \(pattern_count × 3\)\) × 100/);
+    assert.match(core, /Compact pattern catalog digest:/);
+    assert.match(core, /Interpretation: 0-15 human/);
+    assert.doesNotMatch(core, /Output format/i);
+    assert.doesNotMatch(core, /strict JSON/);
+  });
+
+  it('skill surface appends exactly one contract: the markdown table', () => {
+    const inst = buildScoreInstructions(config, 'en', inputText, patterns);
+
+    assert.ok(
+      inst.startsWith(buildScoreMathCore(config, 'en', inputText, patterns)),
+      'table surface must reuse the shared scoring-math core verbatim'
+    );
+    assert.match(inst, /Output format \(the Weight column must echo the values above verbatim\):/);
+    assert.match(inst, /\| Category \| Weight \| Detected \| Raw Score \| Weighted \|/);
+    assert.doesNotMatch(inst, /strict JSON/);
+    assert.strictEqual((inst.match(/Output format/g) || []).length, 1);
+  });
+
+  it('catalog digest lists every pattern heading without truncation', () => {
+    const headingCount = 9;
+    const body = Array.from(
+      { length: headingCount },
+      (_, i) => `### ${i + 1}. Pattern ${i + 1}\n**Watch words:** sample`
+    ).join('\n\n');
+    const core = buildScoreMathCore(config, 'en', inputText, [
+      {
+        file: 'en-language.md',
+        isStructure: false,
+        isScoreOnly: false,
+        frontmatter: { pack: 'en-language', patterns: headingCount },
+        body,
+      },
+    ]);
+
+    assert.match(core, new RegExp(`- en-language: ${headingCount} patterns`));
+    const digestSection = core.split('Compact pattern catalog digest:\n')[1].split('\n\n')[0];
+    const digestLine = digestSection
+      .split('\n')
+      .find((line) => line.startsWith('- en-language: '));
+    assert.ok(digestLine, 'digest must include the pack line');
+    assert.strictEqual(
+      digestLine.slice('- en-language: '.length).split('; ').length,
+      headingCount,
+      'digest entry count must equal the stated pattern_count denominator'
+    );
+  });
 });
 
 describe('CJK clause-level rewrite guard', () => {

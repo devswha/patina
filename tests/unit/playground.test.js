@@ -306,6 +306,35 @@ test('playground mirrors ko post-editese schema and metrics in parity with node'
   assert.deepEqual(playgroundPayload, nodePayload);
 });
 
+test('playground pronoun literal regex stays pattern-identical to node (issue #395)', () => {
+  const extractRegexLiteral = (relativePath, constName) => {
+    const source = readFileSync(resolve(REPO_ROOT, relativePath), 'utf8');
+    const match = source.match(new RegExp(`const ${constName} = (/.+/g);`));
+    assert.ok(match, `${constName} regex literal not found in ${relativePath}`);
+    return match[1];
+  };
+
+  assert.equal(
+    extractRegexLiteral('playground/analyzer.js', 'KO_POST_EDITESE_PRONOUN_LITERAL_RE'),
+    extractRegexLiteral('src/features/stylometry.js', 'POST_EDITESE_PRONOUN_LITERAL_RE'),
+  );
+});
+
+test('playground mirrors stacked-particle pronoun literal counts (issue #395)', () => {
+  const text = [
+    '그들에게는 선택지가 없었다.',
+    '그녀에게도 같은 통지가 갔다.',
+    '그들과의 협상은 결렬되었다.',
+    '그것도 모자라 그것만 반복했다.',
+    '그들처럼 행동했고 그녀보다 빨랐다.',
+  ].join(' ');
+  const nodePayload = nodeKoPostEditeseFeatures(text, { lang: 'ko' });
+  const playgroundPayload = playgroundKoPostEditeseFeatures(text, { lang: 'ko' });
+
+  assert.deepEqual(playgroundPayload, nodePayload);
+  assert.equal(playgroundPayload.metrics.interference.pronounLiteralCount, 7);
+});
+
 test('playground returns stable skipped ko post-editese payloads in parity with node', () => {
   for (const sample of [
     { text: 'This is plain English.', lang: 'en' },

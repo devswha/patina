@@ -1,17 +1,23 @@
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { detectTranslationese, TRANSLATIONESE_RULES } from '../../src/features/translationese.js';
 import { analyzeText } from '../../src/features/index.js';
 import {
-  KO_POST_EDITESE_INTERFERENCE_RULE_IDS as STYLOMETRY_KO_INTERFERENCE_RULE_IDS,
   KO_POST_EDITESE_SCHEMA,
   koreanPostEditeseFeatures,
 } from '../../src/features/stylometry.js';
 import {
   KO_INTERFERENCE_RULE_IDS,
   KO_POST_EDITESE_INTERFERENCE_RULE_IDS,
+  KO_INTERFERENCE_TRANSLATIONESE_RULES,
+  getKoInterferenceRule,
 } from '../../src/features/catalog/ko-interference.js';
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
 
 test('calque-dense ko fires (count + density gate met)', () => {
@@ -61,14 +67,41 @@ test('every rule ships a before/after example', () => {
 });
 
 test('ko interference catalog drives translationese and post-editese consumers', () => {
-  const translationeseSharedIds = TRANSLATIONESE_RULES
-    .filter((rule) => KO_INTERFERENCE_RULE_IDS.includes(rule.id))
-    .map((rule) => rule.id);
+  // Object identity, not value equality: a re-forked local copy of a rule
+  // (the regression this catalog exists to prevent) is value-equal but not
+  // the same object, so === is what actually detects forking.
+  for (const id of KO_INTERFERENCE_RULE_IDS) {
+    const consumerRule = TRANSLATIONESE_RULES.find((rule) => rule.id === id);
+    assert.ok(consumerRule, `translationese is missing catalog rule ${id}`);
+    assert.equal(
+      consumerRule,
+      getKoInterferenceRule(id),
+      `translationese rule ${id} must be the catalog object itself, not a copy`,
+    );
+  }
 
-  assert.deepEqual(translationeseSharedIds, KO_INTERFERENCE_RULE_IDS);
-  assert.deepEqual(STYLOMETRY_KO_INTERFERENCE_RULE_IDS, KO_POST_EDITESE_INTERFERENCE_RULE_IDS);
+  // Stylometry consumes the catalog through buildKoInterferenceRegex(id) calls;
+  // pin each call site in the source so an inline re-fork of a counter fails here.
+  const stylometrySource = readFileSync(resolve(REPO_ROOT, 'src/features/stylometry.js'), 'utf8');
   for (const id of KO_POST_EDITESE_INTERFERENCE_RULE_IDS) {
     assert.ok(KO_INTERFERENCE_RULE_IDS.includes(id), `${id} must come from the shared catalog`);
+    assert.ok(
+      stylometrySource.includes(`buildKoInterferenceRegex('${id}')`),
+      `stylometry must build its ${id} counter from the catalog`,
+    );
+  }
+
+  // No consumer may carry a verbatim copy of a catalog regex body — the
+  // pattern text must exist only in catalog/ko-interference.js.
+  const translationeseSource = readFileSync(resolve(REPO_ROOT, 'src/features/translationese.js'), 'utf8');
+  for (const rule of KO_INTERFERENCE_TRANSLATIONESE_RULES) {
+    const body = rule.re().source;
+    for (const [name, source] of [['stylometry.js', stylometrySource], ['translationese.js', translationeseSource]]) {
+      assert.ok(
+        !source.includes(body),
+        `${name} carries a verbatim copy of the ${rule.id} regex; it must live only in the catalog`,
+      );
+    }
   }
 });
 test('ko translationese detects im-not-ai derived advisory rules', () => {
@@ -107,6 +140,11 @@ test('ko shared by-passive catalog accepts 의해 and 의하여 spellings', () =
   const texts = [
     '이 작업은 에이전트에 의해 처리되었다.',
     '이 보고서는 검토자에 의하여 작성되었다.',
+    // The \s* dimension: spacing variants must keep matching on both consumers
+    // (the catalog adopted stylometry's /에\s*의(?:해|하여)/ superset — a future
+    // edit must not silently narrow it back to single-space 에 의해).
+    '이 작업은 에이전트에  의해 처리되었다.',
+    '이 작업은 에이전트에의해 처리되었다.',
   ];
 
   for (const text of texts) {

@@ -1,4 +1,66 @@
 // @ts-check
+// Note: scoring.js also imports buildScoreMathCore from this module. The cycle
+// is benign — both bindings are only dereferenced at call time, never during
+// module evaluation.
+import { SCORE_INTERPRETATION_BANDS } from './scoring.js';
+
+/**
+ * Default per-detection severity points.
+ *
+ * Mirrors `ouroboros.severity-points` in .patina.default.yaml and the
+ * core/scoring.md §1 table (both gated by tests/unit/threshold-parity.test.js).
+ * `buildScoreMathCore` derives the prompt's severity-scale line and the
+ * category-score denominator from these values via `resolveSeverityPoints`,
+ * and `buildPrompt` prepends an explicit precedence note when the embedded
+ * core/scoring.md reference (which documents the defaults) disagrees with an
+ * active override — so a config override cannot silently diverge from, or
+ * contradict, the emitted prompt.
+ *
+ * @type {Readonly<{high: number, medium: number, low: number}>}
+ */
+export const DEFAULT_SEVERITY_POINTS = Object.freeze({ high: 3, medium: 2, low: 1 });
+
+/**
+ * Resolve the effective per-detection severity points for a config.
+ *
+ * Single resolution path for every prompt surface: yaml
+ * `ouroboros.severity-points` overrides the documented defaults key-by-key.
+ *
+ * @param {object} [config] Effective patina config.
+ * @returns {{high: number, medium: number, low: number}} Effective severity points.
+ * @example
+ * const points = resolveSeverityPoints(config);
+ */
+export function resolveSeverityPoints(config) {
+  return {
+    ...DEFAULT_SEVERITY_POINTS,
+    ...(config?.ouroboros?.['severity-points'] || {}),
+  };
+}
+
+// When an override is active, the embedded core/scoring.md reference (which
+// hardcodes the default scale in its §1 table, §6 formula, and worked
+// examples) would contradict the config-derived math emitted by
+// buildScoreMathCore. This note establishes precedence inside the prompt so
+// the model follows the configured scale (issue #383 Stage 4).
+function buildSeverityOverrideNote(config) {
+  const severityPoints = resolveSeverityPoints(config);
+  const isDefault =
+    severityPoints.high === DEFAULT_SEVERITY_POINTS.high &&
+    severityPoints.medium === DEFAULT_SEVERITY_POINTS.medium &&
+    severityPoints.low === DEFAULT_SEVERITY_POINTS.low;
+  if (isDefault) return '';
+  return (
+    `> **Severity-scale override active.** This run is configured with ` +
+    `Low=${severityPoints.low}, Medium=${severityPoints.medium}, High=${severityPoints.high} ` +
+    `points per detection, and the per-category denominator is ` +
+    `pattern_count × ${severityPoints.high}. The reference below documents the default scale ` +
+    `(Low=${DEFAULT_SEVERITY_POINTS.low}, Medium=${DEFAULT_SEVERITY_POINTS.medium}, ` +
+    `High=${DEFAULT_SEVERITY_POINTS.high}); wherever its tables, formulas, or worked examples ` +
+    `use the default points, substitute the configured values above.\n\n`
+  );
+}
+
 /**
  * Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.
  *
@@ -109,6 +171,10 @@ export function buildPrompt(options) {
 
   if (mode === 'score' || mode === 'ouroboros') {
     prompt += `## Scoring Algorithm\n\n`;
+    // Must precede the embedded reference: core/scoring.md hardcodes the
+    // default severity scale, so an active override needs an explicit
+    // precedence statement to keep the prompt self-consistent.
+    prompt += buildSeverityOverrideNote(config);
     if (scoring) {
       prompt += `${scoring.body}\n\n`;
     }
@@ -304,14 +370,17 @@ function buildAuditInstructions() {
  */
 export function buildScoreMathCore(config, lang, text = '', patterns = []) {
   const weights = config.ouroboros?.['category-weights']?.[lang] || {};
+  // Same config-read pattern as the weights above: yaml `severity-points`
+  // overrides the documented defaults, and the prompt text follows it.
+  const severityPoints = resolveSeverityPoints(config);
   let inst = `Calculate an AI-likeness score (0-100) using EXACTLY these category weights. Do NOT invent extra categories (no "discord", no "tone", no "general"). Use only the categories listed:\n\n`;
 
   for (const [cat, weight] of Object.entries(weights)) {
     inst += `- ${cat}: ${weight}\n`;
   }
 
-  inst += `\nSeverity scale: Low=1, Medium=2, High=3 points per detection.\n`;
-  inst += `Category score = (sum of adjusted severities / (pattern_count × 3)) × 100\n`;
+  inst += `\nSeverity scale: Low=${severityPoints.low}, Medium=${severityPoints.medium}, High=${severityPoints.high} points per detection.\n`;
+  inst += `Category score = (sum of adjusted severities / (pattern_count × ${severityPoints.high})) × 100\n`;
   inst += `Overall = weighted average using the EXACT weights above (sum should equal 1.00).\n\n`;
 
   const patternCounts = buildPatternCounts(patterns);
@@ -341,12 +410,20 @@ export function buildScoreMathCore(config, lang, text = '', patterns = []) {
   if (isShort) {
     inst += `**Short-text boost (input ≤200 chars OR ≤3 paragraphs):** for `;
     inst += `register-sensitive categories (\`language\`, \`style\`, \`viral-hook\`) `;
-    inst += `apply a 1.5x severity multiplier per detection (cap at 3). This `;
+    inst += `apply a 1.5x severity multiplier per detection (cap at ${severityPoints.high}). This `;
     inst += `surfaces voice/register shifts (e.g., \`~다\` ↔ \`~습니다\` swap) `;
     inst += `that the long-text formula otherwise undercounts.\n\n`;
   }
 
-  inst += `Interpretation: 0-15 human | 16-30 mostly human | 31-50 mixed | 51-70 AI-like | 71-100 heavily AI\n`;
+  // Derived from SCORE_INTERPRETATION_BANDS so this line can never disagree
+  // with interpretScore (src/scoring.js) or the core/scoring.md §7 table.
+  const interpretation = SCORE_INTERPRETATION_BANDS
+    .map((band, index) => {
+      const lower = index === 0 ? 0 : SCORE_INTERPRETATION_BANDS[index - 1].max + 1;
+      return `${lower}-${band.max} ${band.label}`;
+    })
+    .join(' | ');
+  inst += `Interpretation: ${interpretation}\n`;
 
   return inst;
 }

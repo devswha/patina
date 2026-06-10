@@ -12,6 +12,7 @@ const SOURCES = [
   'src/api.js',
   'src/auth.js',
   'src/cli.js',
+  'src/cli/run.js',
   'src/config.js',
   'src/errors.js',
   'src/loader.js',

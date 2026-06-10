@@ -1,6 +1,8 @@
 // Burstiness CV, MATTR, and dependency-free KO diagnostics per core/stylometry.md.
 // Pure functions over token arrays; no I/O.
 import { splitParagraphs, splitProseSentences } from './segment.js';
+// Interference regexes are owned by catalog/ko-interference.js — never inline
+// a copy here; the catalog-consumption test pins these call sites.
 import { buildKoInterferenceRegex } from './catalog/ko-interference.js';
 
 export const DEFAULT_BURSTINESS_BANDS = { low: 0.30, high: 0.50 };
@@ -22,7 +24,6 @@ export const DEFAULT_KO_DIAGNOSTIC_BANDS = {
   },
 };
 export const KO_POST_EDITESE_SCHEMA = 'koPostEditese.v1';
-export { KO_POST_EDITESE_INTERFERENCE_RULE_IDS } from './catalog/ko-interference.js';
 
 const HANGUL_RE = /[\u3131-\u318e\uac00-\ud7a3]/u;
 const COMMA_RE = /[,，、]/gu;

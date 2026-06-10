@@ -13,6 +13,8 @@
 //
 // ko-only for now (calques are language-specific).
 import { splitProseSentences } from './segment.js';
+// The six shared interference rules are owned by catalog/ko-interference.js —
+// embed the catalog objects via getKoInterferenceRule(); never copy a pattern.
 import { getKoInterferenceRule } from './catalog/ko-interference.js';
 
 // Strong rules are rarer and can satisfy the hot gate; weak rules are common

@@ -1,6 +1,12 @@
 // Shared Korean interference/calque rule catalog.
 // Browser-pure: consumed by translationese detection, ko post-editese metrics,
 // and the playground through direct ESM imports.
+//
+// SINGLE OWNER. These six regex families used to exist as four hand-synced
+// copies and drifted (issue #383/#395). Do not copy a pattern into a consumer —
+// import getKoInterferenceRule()/buildKoInterferenceRegex() instead. A test
+// (tests/unit/translationese.test.js, 'ko interference catalog drives…') fails
+// on object-identity breaks and verbatim copies in the consumers.
 
 // Surface forms of a passive predicate (되다/받다/당하다/-어지다 families). Listed
 // as composed NFC syllables because the passive marker fuses into the stem

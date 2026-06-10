@@ -57,6 +57,10 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
 
     let stdout = '';
     let stderr = '';
+    // Decode with a streaming UTF-8 decoder so multi-byte CJK characters split
+    // across pipe-read boundaries are not corrupted into U+FFFD.
+    proc.stdout.setEncoding('utf8');
+    proc.stderr.setEncoding('utf8');
     proc.stdout.on('data', (chunk) => { stdout += chunk; });
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
 
@@ -88,6 +92,15 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       finishResolve(stdout);
     });
 
+    // A child that exits before draining a large prompt makes the buffered
+    // stdin write fail with EPIPE; without a handler that becomes an unhandled
+    // 'error' event that crashes the process. Ignore EPIPE (the 'close' handler
+    // surfaces the real exit code + stderr); reject on anything else.
+    proc.stdin.on('error', (err) => {
+      if (err && err.code !== 'EPIPE') {
+        finishReject(new Error(`claude-cli backend: stdin error (${err.message})`));
+      }
+    });
     proc.stdin.write(prompt);
     proc.stdin.end();
 

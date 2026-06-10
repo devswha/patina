@@ -1,11 +1,12 @@
 {
   "name": "patina-cli",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "AI text humanizer CLI — detects and removes AI writing patterns",
   "type": "module",
   "main": "src/cli.js",
   "bin": {
     "patina": "bin/patina.js",
+    "patina-cli": "bin/patina.js",
     "patina-score": "scripts/precommit-score.mjs"
   },
   "scripts": {

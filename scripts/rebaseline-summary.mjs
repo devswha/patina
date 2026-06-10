@@ -105,6 +105,10 @@ export function canRedistributeText(redistribution) {
   return TEXT_ALLOWED_REDIS.has(normalizeToken(redistribution));
 }
 
+export function canonicalizeClass(value) {
+  return canonicalize(value, CLASS_ALIASES);
+}
+
 export function blocksRedistributableText(redistribution) {
   const normalized = normalizeToken(redistribution);
   return TEXT_BLOCKED_REDIS.has(normalized) || !TEXT_ALLOWED_REDIS.has(normalized);

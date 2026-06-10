@@ -102,6 +102,31 @@ Run `node scripts/rebaseline-intake.mjs --dry-run --require-source-review` befor
 writing any public manifest output. This keeps user reports connected to the
 benchmark corpus without publishing private raw text by accident.
 
+### From intake row to benchmark fixture
+
+Accepted rows become suspect-zones natural fixtures through
+`scripts/fp-fixture-export.mjs`:
+
+```
+npm run benchmark:rebaseline:fp-fixtures -- --dry-run
+npm run benchmark:rebaseline:fp-fixtures
+```
+
+The exporter only promotes rows that are both `natural-human` and publicly
+redistributable; private or no-redistribution rows are refused so raw text never
+leaves the intake file. Accepted lightly-edited reports stay manifest-only: they
+keep their intake/manifest row but are never promoted to a public fixture.
+Re-runs against a cumulative intake file are idempotent — rows whose body text
+or `source_doc` issue already matches an existing fixture are reported as
+already exported and skipped. Rows may set the optional `topic` and
+`fixture_slug` fields to control the fixture's `topic` frontmatter and filename
+slug; without them the exporter falls back to the issue number and a
+self-describing `false-positive report (register: …)` topic. New fixtures land in
+`tests/fixtures/suspect-zones/{lang}/natural/` as `{lang}-nat-NN-slug.md`,
+numbered after the highest existing fixture for that language. After a real run,
+regenerate the baseline with `npm run benchmark:ranges` and review the
+`tests/fixtures/suspect-zones/expected-ranges.json` diff before committing.
+
 ## Manifest Fields
 
 Use these fields for any new data issue unless a narrower schema already exists:

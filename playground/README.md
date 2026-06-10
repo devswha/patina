@@ -7,6 +7,7 @@ Static, audit-only web playground for `patina.vibetip.help`.
 - No LLM rewrite or key proxying.
 - Deterministic browser-side scoring for `ko`, `en`, `zh`, and `ja`.
 - Vercel Web Analytics page-view telemetry for traffic counts; pasted text is not sent.
+- Shared deterministic detectors are imported directly from browser-pure `src/features/*.js` modules; serve/deploy the repository root so `/src/features/…` paths are available.
 
 ## Local preview
 

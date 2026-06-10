@@ -15,7 +15,8 @@ const REPO_ROOT = resolve(__dirname, '..');
  * cannot silently override a pinned config (reproducible CI runs).
  *
  * @param {string} [path] Base YAML config path.
- * @param {{overridePath?: string}} [opts] Optional explicit `--config` override.
+ * @param {object} [opts] Optional load options.
+ * @param {string} [opts.overridePath] Explicit `--config` override path.
  * @returns {object} Merged patina configuration object.
  * @throws {Error} When a config file is missing, invalid YAML, or not a mapping.
  * @example

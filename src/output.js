@@ -16,7 +16,7 @@ import { TRANSLATIONESE_RULES } from './features/translationese.js';
  * @param {object} [opts.stdout] Stdout-like stream for color decisions.
  * @param {string} [opts.auditBackstop] Deterministic audit-mode section to append before the tone footer.
  * @returns {string} User-facing formatted output.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @throws {TypeError} When `result` or `opts.tone` carries values JSON.stringify cannot serialize (circular references, BigInt) — the json format serializes the result payload, and the tone footer serializes `opts.tone.tone_evidence`.
  * @example
  * const output = formatOutput('[BODY]Hi[/BODY]', 'rewrite');
  */
@@ -103,7 +103,6 @@ function shouldColorDiff({ parsed = {}, env = process.env, stdout = process.stdo
  * @param {string} output Score-mode markdown output.
  * @param {object} configWeights Expected category weight map.
  * @returns {string[]} Human-readable warnings for missing, mismatched, or unexpected categories.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const warnings = validateScoreWeights('| content | 0.4 | 1 | 10 | 4 |', { content: 0.4 });
  */
@@ -220,7 +219,6 @@ function normalizeCategoryName(raw) {
  * @param {object} [options] Strip options.
  * @param {object} [options.logger] Logger for malformed output warnings.
  * @returns {string} Clean user-facing body text.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const clean = stripSelfAudit('[BODY]Hello[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]');
  */
@@ -334,14 +332,49 @@ function buildGateResult(overall, gate) {
 }
 
 function extractOverall(result, body) {
-  const direct = toFiniteNumber(result?.overall);
+  return extractOverallScore(result, body, {
+    coerce: toFiniteNumber,
+    parseResultFallback: true,
+  });
+}
+
+/**
+ * Shared overall-score traversal: structured result field → embedded JSON →
+ * markdown score table → inline "overall: N" text. Used by extractOverall
+ * above and by the CLI score gate (src/cli/score-gate.js). The two call sites
+ * intentionally keep different numeric coercers (toFiniteNumber here strips
+ * non-numeric characters before Number(); the score gate's toFiniteScore
+ * rejects anything that is not already a plain number), so the coercer is a
+ * parameter rather than shared.
+ *
+ * @param {string|object|null} result Structured result whose `overall` field is checked first.
+ * @param {string} text Raw output text scanned for embedded JSON, a score table, or inline "overall: N".
+ * @param {object} options Extraction options (required).
+ * @param {function(*): (number|null)} options.coerce Numeric coercer applied to candidate values.
+ * @param {boolean} [options.parseResultFallback=false] When the text yields no JSON, also try parsing `result` itself if it is a string (output.js JSON formatter behavior).
+ * @param {boolean} [options.pipeBoundary=false] Accept a `|` table-cell boundary before "overall" in the inline-text regex (score-gate behavior).
+ * @returns {number|null} Extracted overall score, or null when none is found.
+ */
+export function extractOverallScore(result, text, {
+  coerce,
+  parseResultFallback = false,
+  pipeBoundary = false,
+}) {
+  const direct = coerce(result?.overall);
   if (direct !== null) return direct;
-  const parsed = parseFirstJson(body) || (typeof result === 'string' ? parseFirstJson(result) : null);
-  const parsedOverall = toFiniteNumber(parsed?.overall);
+
+  const str = String(text ?? '');
+  const parsed = parseFirstJson(str)
+    || (parseResultFallback && typeof result === 'string' ? parseFirstJson(result) : null);
+  const parsedOverall = coerce(parsed?.overall);
   if (parsedOverall !== null) return parsedOverall;
-  const overallFromTable = String(body || '').match(/(?:^|\n)\|\s*(?:\*\*)?Overall(?:\*\*)?\s*\|[^|]*\|[^|]*\|[^|]*\|\s*(?:\*\*)?([0-9]+(?:\.[0-9]+)?)/i);
+
+  const overallFromTable = str.match(/(?:^|\n)\|\s*(?:\*\*)?Overall(?:\*\*)?\s*\|[^|]*\|[^|]*\|[^|]*\|\s*(?:\*\*)?([0-9]+(?:\.[0-9]+)?)/i);
   if (overallFromTable) return Number(overallFromTable[1]);
-  const overallFromText = String(body || '').match(/(?:^|[\s{,"])overall(?:["\s]*[:|]|\s+score\s*[:|]?)\s*(\d+(?:\.\d+)?)/i);
+
+  const overallFromText = str.match(pipeBoundary
+    ? /(?:^|[\s|{,"])overall(?:["\s]*[:|]|\s+score\s*[:|]?)\s*(\d+(?:\.\d+)?)/i
+    : /(?:^|[\s{,"])overall(?:["\s]*[:|]|\s+score\s*[:|]?)\s*(\d+(?:\.\d+)?)/i);
   return overallFromText ? Number(overallFromText[1]) : null;
 }
 

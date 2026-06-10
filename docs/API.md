@@ -236,6 +236,15 @@ cannot silently override a pinned config (reproducible CI runs).</p>
 <dt><a href="#stripSelfAudit">stripSelfAudit(body, [options])</a> ⇒ <code>string</code></dt>
 <dd><p>Remove SELF_AUDIT blocks and unwrap the BODY block from rewrite output.</p>
 </dd>
+<dt><a href="#extractOverallScore">extractOverallScore(result, text, options)</a> ⇒ <code>number</code> | <code>null</code></dt>
+<dd><p>Shared overall-score traversal: structured result field → embedded JSON →
+markdown score table → inline &quot;overall: N&quot; text. Used by extractOverall
+above and by the CLI score gate (src/cli/score-gate.js). The two call sites
+intentionally keep different numeric coercers (toFiniteNumber here strips
+non-numeric characters before Number(); the score gate&#39;s toFiniteScore
+rejects anything that is not already a plain number), so the coercer is a
+parameter rather than shared.</p>
+</dd>
 <dt><a href="#parseFirstJson">parseFirstJson(text)</a> ⇒ <code>object</code> | <code>null</code></dt>
 <dd><p>Parse the first JSON value found in raw text, a fenced code block, or a brace span.</p>
 </dd>
@@ -431,10 +440,6 @@ Decide whether an LLM call failure should be retried.
 
 **Kind**: global function
 **Returns**: <code>boolean</code> - True for retryable HTTP statuses, aborts, and common network failures.
-**Throws**:
-
-- <code>Error</code> Does not intentionally throw; unexpected Error-like inputs may still propagate JavaScript runtime failures.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -451,10 +456,6 @@ Compute retry delay from Retry-After or exponential backoff with jitter.
 
 **Kind**: global function
 **Returns**: <code>number</code> - Delay in milliseconds, capped at opts.max.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -512,10 +513,6 @@ Build the key lookup order for a selected provider.
 
 **Kind**: global function
 **Returns**: <code>Array.&lt;string&gt;</code> - Unique env var names in lookup order.
-**Throws**:
-
-- <code>Error</code> Does not intentionally throw; invalid non-string env names can still propagate JavaScript runtime failures.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -532,10 +529,6 @@ Inspect where an HTTP API key would be read from without exposing the secret.
 
 **Kind**: global function
 **Returns**: <code>Object</code> - Source diagnostics.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -618,10 +611,6 @@ Create a SIGINT-aware cancellation controller for long-running CLI operations.
 
 **Kind**: global function
 **Returns**: <code>Object</code> - Controller facade.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -642,10 +631,6 @@ Resolve a profile name against language-specific profile limits.
 
 **Kind**: global function
 **Returns**: <code>string</code> - Effective profile name.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -690,10 +675,6 @@ Return the repository root inferred from this source file location.
 
 **Kind**: global function
 **Returns**: <code>string</code> - Absolute repository root path.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 **Example**
 ```js
 const root = getRepoRoot();
@@ -728,10 +709,6 @@ Create a user-input error that should exit with code 2.
 
 **Kind**: global function
 **Returns**: <code>PatinaCliError</code> - Structured input error.
-**Throws**:
-
-- <code>Error</code> Does not intentionally throw; returns an Error instance for callers to throw.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -750,10 +727,6 @@ Create a runtime error that should exit with code 1.
 
 **Kind**: global function
 **Returns**: <code>PatinaCliError</code> - Structured runtime error.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -772,10 +745,6 @@ Render any thrown value into the patina CLI error format.
 
 **Kind**: global function
 **Returns**: <code>string</code> - Multi-line user-facing error text.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -792,10 +761,6 @@ Extract a safe process exit code from an error-like value.
 
 **Kind**: global function
 **Returns**: <code>number</code> - Non-negative integer exit code.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -957,10 +922,6 @@ Map a resolved named tone to its primary backbone profile.
 
 **Kind**: global function
 **Returns**: <code>string</code> \| <code>null</code> - Profile name, or null when no mapping exists.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -977,10 +938,6 @@ Create a small stderr logger with text and progress modes.
 
 **Kind**: global function
 **Returns**: <code>Object</code> - Logger facade.
-**Throws**:
-
-- <code>Error</code> Propagates stream write errors from the configured output stream.
-
 
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1039,7 +996,7 @@ Format a raw backend result for CLI output mode and requested format.
 **Returns**: <code>string</code> - User-facing formatted output.
 **Throws**:
 
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+- <code>TypeError</code> When `result` or `opts.tone` carries values JSON.stringify cannot serialize (circular references, BigInt) — the json format serializes the result payload, and the tone footer serializes `opts.tone.tone_evidence`.
 
 
 | Param | Type | Default | Description |
@@ -1079,10 +1036,6 @@ Validate that a model-emitted score table used configured category weights.
 
 **Kind**: global function
 **Returns**: <code>Array.&lt;string&gt;</code> - Human-readable warnings for missing, mismatched, or unexpected categories.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -1100,10 +1053,6 @@ Remove SELF_AUDIT blocks and unwrap the BODY block from rewrite output.
 
 **Kind**: global function
 **Returns**: <code>string</code> - Clean user-facing body text.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -1115,6 +1064,29 @@ Remove SELF_AUDIT blocks and unwrap the BODY block from rewrite output.
 ```js
 const clean = stripSelfAudit('[BODY]Hello[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]');
 ```
+<a name="extractOverallScore"></a>
+
+## extractOverallScore(result, text, options) ⇒ <code>number</code> \| <code>null</code>
+Shared overall-score traversal: structured result field → embedded JSON →
+markdown score table → inline "overall: N" text. Used by extractOverall
+above and by the CLI score gate (src/cli/score-gate.js). The two call sites
+intentionally keep different numeric coercers (toFiniteNumber here strips
+non-numeric characters before Number(); the score gate's toFiniteScore
+rejects anything that is not already a plain number), so the coercer is a
+parameter rather than shared.
+
+**Kind**: global function
+**Returns**: <code>number</code> \| <code>null</code> - Extracted overall score, or null when none is found.
+
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| result | <code>string</code> \| <code>object</code> \| <code>null</code> |  | Structured result whose `overall` field is checked first. |
+| text | <code>string</code> |  | Raw output text scanned for embedded JSON, a score table, or inline "overall: N". |
+| options | <code>object</code> |  | Extraction options (required). |
+| options.coerce | <code>function</code> |  | Numeric coercer applied to candidate values. |
+| [options.parseResultFallback] | <code>boolean</code> | <code>false</code> | When the text yields no JSON, also try parsing `result` itself if it is a string (output.js JSON formatter behavior). |
+| [options.pipeBoundary] | <code>boolean</code> | <code>false</code> | Accept a `|` table-cell boundary before "overall" in the inline-text regex (score-gate behavior). |
+
 <a name="parseFirstJson"></a>
 
 ## parseFirstJson(text) ⇒ <code>object</code> \| <code>null</code>
@@ -1190,7 +1162,7 @@ Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.
 **Returns**: <code>string</code> - Complete prompt text.
 **Throws**:
 
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+- <code>TypeError</code> When `options.tone.tone_evidence` contains values JSON.stringify cannot serialize (circular references, BigInt).
 
 
 | Param | Type | Default | Description |
@@ -1224,10 +1196,6 @@ single prompt can never carry two contradictory contracts (issue #397).
 
 **Kind**: global function
 **Returns**: <code>string</code> - Scoring-math instruction block without an output contract.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1247,10 +1215,6 @@ Classify whether text should use the short-text scoring boost.
 
 **Kind**: global function
 **Returns**: <code>boolean</code> - True when text is <=200 non-whitespace chars or <=3 paragraphs.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -1287,10 +1251,6 @@ Resolve effective API key, base URL, and model from explicit values, provider, a
 
 **Kind**: global function
 **Returns**: <code>Object</code> - Resolved provider config.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -1344,10 +1304,6 @@ Compute deterministic stylometry/lexicon AI-likeness signals.
 
 **Kind**: global function
 **Returns**: <code>object</code> \| <code>null</code> - Deterministic score payload, skipped payload, or null when disabled.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1369,10 +1325,6 @@ Merge an LLM score payload with deterministic shadow-score reconciliation.
 
 **Kind**: global function
 **Returns**: <code>object</code> - Score payload preserving llmScore and deterministicScore details.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1393,10 +1345,6 @@ Reconcile LLM and deterministic overall scores according to config thresholds.
 
 **Kind**: global function
 **Returns**: <code>Object</code> - Reconciled score and preference source.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1449,10 +1397,6 @@ Convert a numeric AI-likeness score to a human-readable band.
 
 **Kind**: global function
 **Returns**: <code>string</code> - Interpretation band.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -1469,10 +1413,6 @@ Score rewritten length ratio on the 0-3 fidelity scale.
 
 **Kind**: global function
 **Returns**: <code>number</code> - Length-ratio points from 0 to 3.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -1522,10 +1462,6 @@ Clamp and round a value into the inclusive 0-3 scoring range.
 
 **Kind**: global function
 **Returns**: <code>number</code> - Integer from 0 to 3.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -1542,10 +1478,6 @@ Combine AI-likeness, inverted fidelity, and optional deterministic score.
 
 **Kind**: global function
 **Returns**: <code>number</code> - Combined score, lower is better.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -1586,10 +1518,6 @@ Check whether a hostname is localhost or loopback.
 
 **Kind**: global function
 **Returns**: <code>boolean</code> - True for localhost, 127/8, or ::1.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -1606,10 +1534,6 @@ Detect literal private, reserved, link-local, metadata, or multicast IP hosts.
 
 **Kind**: global function
 **Returns**: <code>boolean</code> - True when the literal IP is private or special-use.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -1648,10 +1572,6 @@ Read CLI/env opt-in for non-loopback HTTP base URLs.
 
 **Kind**: global function
 **Returns**: <code>boolean</code> - True when insecure base URLs are explicitly allowed.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -1667,10 +1587,6 @@ const allowed = shouldAllowInsecureBaseURL({ allowInsecureBaseURL: true });
 Persist CLI insecure-base-url opt-in into process.env for downstream calls.
 
 **Kind**: global function
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -1687,10 +1603,6 @@ Read CLI/env opt-in for private or reserved literal IP base URLs.
 
 **Kind**: global function
 **Returns**: <code>boolean</code> - True when private base URLs are explicitly allowed.
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -1706,10 +1618,6 @@ const allowed = shouldAllowPrivateBaseURL({ allowPrivateBaseURL: true });
 Persist CLI private-base-url opt-in into process.env for downstream calls.
 
 **Kind**: global function
-**Throws**:
-
-- <code>Error</code> Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
-
 
 | Param | Type | Description |
 | --- | --- | --- |

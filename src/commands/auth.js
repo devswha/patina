@@ -4,7 +4,7 @@
 import { createInterface } from 'node:readline/promises';
 import { listBackends, listBackendNames, resolveBackend } from '../backends/index.js';
 import { inputError, runtimeError } from '../errors.js';
-import { formatLimit } from '../cli/batch.js';
+import { formatLimit } from '../backends/contract.js';
 
 export function printBackendStatus() {
   const list = listBackends();

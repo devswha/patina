@@ -14,6 +14,7 @@ import {
   scoreFiles,
   scoreText,
   stripNonProse,
+  stripProse,
   summarizeSignalStrength,
 } from '../../scripts/prose-score.mjs';
 
@@ -41,6 +42,30 @@ test('stripNonProse removes table rows before p-value text can look like HTML', 
   assert.equal(stripped, 'Real prose stays.');
   assert.doesNotMatch(stripped, /Academic/);
   assert.doesNotMatch(stripped, /p<0\.01/);
+});
+
+test('stripProse supports MDX scoring policy without a second stripper', () => {
+  const mdx = [
+    '# Heading',
+    '',
+    '- uniform list item should disappear',
+    '',
+    '`A` and `B` intercept the request.',
+    '',
+    '[Related](/docs)',
+    '',
+    'Real prose stays.',
+  ].join('\n');
+  const stripped = stripProse(mdx, {
+    dropListItems: true,
+    dropStandaloneLinks: true,
+    keepInlineCode: true,
+  });
+
+  assert.doesNotMatch(stripped, /uniform list item/);
+  assert.doesNotMatch(stripped, /Related/);
+  assert.match(stripped, /A and B intercept/);
+  assert.match(stripped, /Real prose stays/);
 });
 
 test('detectLanguage uses filename and Unicode signals', () => {

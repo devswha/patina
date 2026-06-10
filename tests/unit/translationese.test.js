@@ -82,6 +82,19 @@ test('ko translationese caveats keep common formal Korean below stronger rules',
   assert.equal(ids.includes('passive-e-uihae'), true, 'bare 에 의해 remains a weak advisory hit');
   assert.equal(r.hot, false);
 });
+
+test('ko pronoun literal rules ignore nouns ending in 그 and bound words', () => {
+  const techText = '모든 로그는 남는다. 버그가 있으면 태그도 같이 적는다. 블로그를 고쳤고 플래그를 내렸다.';
+  const colloquialText = '그녀석이 또 늦었다. 아 그것참 곤란하네. 그들먹은 상황이라고 했다.';
+
+  const tech = detectTranslationese(techText, { lang: 'ko' });
+  const colloquial = detectTranslationese(colloquialText, { lang: 'ko' });
+  assert.equal(tech.byRule.some((row) => row.id === 'a16-pronoun-literal'), false);
+  assert.equal(colloquial.byRule.some((row) => row.id === 'a16-pronoun-literal'), false);
+
+  assert.equal(koreanPostEditeseFeatures(techText, { lang: 'ko' }).metrics.interference.pronounLiteralCount, 0);
+  assert.equal(koreanPostEditeseFeatures(colloquialText, { lang: 'ko' }).metrics.interference.pronounLiteralCount, 0);
+});
 test('weak-only translationese stays advisory even above count and density gates', () => {
   const text = [
     '사용법은 다음과 같습니다.',

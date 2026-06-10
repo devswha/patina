@@ -14,6 +14,10 @@ custom/
 # Ops / runtime logs
 node_modules/
 .env
+.gjc/
+plans/
+__pycache__/
+.pytest_cache/
 
 # secrets / credentials
 .env.*

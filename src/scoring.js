@@ -3,6 +3,7 @@ import { callLLM as defaultCallLLM } from './api.js';
 import { getRepoRoot } from './config.js';
 import { analyzeText, loadStructuralModel } from './features/index.js';
 import { summarizeSignalStrength } from './features/signal-strength.js';
+import { buildScoreInstructions } from './prompt-builder.js';
 import { createLogger } from './logger.js';
 
 /**
@@ -36,6 +37,16 @@ export const LEAKAGE_SCORE_FLOOR = 90;
  * @type {number}
  */
 export const STRUCTURAL_CLASSIFIER_MIN_FLOOR = 70;
+
+/**
+ * Low document-level score floor for density-gated discourse tells.
+ *
+ * Discourse tells are auditable weak signals rather than proof-grade leakage, so
+ * they only nudge deterministic scoring into the mixed band floor.
+ *
+ * @type {number}
+ */
+export const DISCOURSE_TELLS_SCORE_FLOOR = 35;
 
 class SchemaError extends Error {
   constructor(message, raw) {
@@ -148,22 +159,15 @@ export async function scoreText({
   sleep,
 }) {
   const lang = config.language || 'ko';
-  const weights = config.ouroboros?.['category-weights']?.[lang] || {};
-  const deterministicScore = scoreDeterministicSignals({ text, config });
+  const deterministicScore = scoreDeterministicSignals({ text, config, logger });
 
   const prompt = `You are an AI-likeness scoring engine. Score the following text for AI-writing patterns.
 
-## Scoring Rules
+## Scoring Instructions
 
-Severity per detection: Low=1, Medium=2, High=3 points.
+${buildScoreInstructions(config, lang, text, patterns)}
 
-Category weights for ${lang}:
-${Object.entries(weights).map(([cat, w]) => `- ${cat}: ${w}`).join('\n')}
-
-Per-category score = (sum of adjusted severities / (pattern_count × 3)) × 100
-Overall = weighted average of category scores.
-
-## Output Format (strict)
+## Output Format (strict JSON)
 
 Return ONLY a JSON object in this exact format (no markdown, no explanation):
 
@@ -218,6 +222,7 @@ ${text}
  * @param {string} [options.text] Text to analyze.
  * @param {object} [options.config={}] Effective config.
  * @param {string} [options.repoRoot] Repository root for analyzer resources.
+ * @param {object} [options.logger] Optional logger for recoverable deterministic warnings.
  * @param {Function} [options.analyzer] Analyzer implementation.
  * @returns {object|null} Deterministic score payload, skipped payload, or null when disabled.
  * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
@@ -229,6 +234,7 @@ export function scoreDeterministicSignals({
   config = {},
   repoRoot = getRepoRoot(),
   analyzer = analyzeText,
+  logger = createLogger(),
 } = {}) {
   const options = deterministicScoringOptions(config);
   if (!options.enabled) return null;
@@ -250,7 +256,14 @@ export function scoreDeterministicSignals({
 
   try {
     const lexiconAllowed = isLexiconEnabledForLanguage(config, lang);
-    const structuralModel = loadStructuralModel(config, { lang });
+    let structuralModel = null;
+    try {
+      structuralModel = loadStructuralModel(config, { lang });
+    } catch (err) {
+      logger?.warn?.('score.structural_model_load_failure', {
+        message: `[patina] structural model load failed; continuing without structural classifier: ${err?.message || err}`,
+      });
+    }
     const result = analyzer(String(text || ''), {
       lang,
       repoRoot,
@@ -270,6 +283,8 @@ export function scoreDeterministicSignals({
     // Model-output leakage (#332) is near-proof-grade and lives at the document
     // level, so it short-circuits the hot-ratio score into the 'heavily AI' band.
     const leaked = Boolean(result?.markupLeakage?.leaked);
+    const discourseTells = result?.discourseTells ?? null;
+    const discourseFloor = discourseTells?.hot === true ? DISCOURSE_TELLS_SCORE_FLOOR : 0;
     const structuralClassifier = result?.structuralClassifier ?? { available: false, hot: null, score: null };
     const structuralFloor =
       structuralClassifier.hot === true && typeof structuralClassifier.score === 'number'
@@ -277,7 +292,7 @@ export function scoreDeterministicSignals({
         : 0;
     const overall = leaked
       ? Math.max(hotRatioOverall, LEAKAGE_SCORE_FLOOR)
-      : Math.max(hotRatioOverall, structuralFloor);
+      : Math.max(hotRatioOverall, structuralFloor, discourseFloor);
     const signalScore = roundScore(summarizeSignalStrength(paragraphs, {
       burstinessBands: config.stylometry?.burstiness?.bands,
       mattrBands: config.stylometry?.ttr?.bands,
@@ -307,6 +322,12 @@ export function scoreDeterministicSignals({
           leaked,
           hits: Array.isArray(result?.markupLeakage?.hits) ? result.markupLeakage.hits.length : 0,
           floor: LEAKAGE_SCORE_FLOOR,
+        },
+        discourseTells: {
+          hot: discourseTells?.hot ?? null,
+          floor: discourseTells?.hot === true ? discourseFloor : 0,
+          fakeCandor: discourseTells?.fakeCandor ?? null,
+          thematicBreaks: discourseTells?.thematicBreaks ?? null,
         },
         structuralClassifier: {
           available: Boolean(structuralClassifier.available),
@@ -749,6 +770,8 @@ function emptyDeterministicBands() {
     mattr: { low: 0, mid: 0, high: 0, null: 0 },
     lexicon: { hot: 0, threshold: null },
     koDiagnostics: { hot: 0, thresholds: null },
+    markupLeakage: { leaked: false, hits: 0, floor: LEAKAGE_SCORE_FLOOR },
+    discourseTells: { hot: null, floor: 0, fakeCandor: null, thematicBreaks: null },
     structuralClassifier: { available: false, hot: null, score: null, floor: 0 },
   };
 }

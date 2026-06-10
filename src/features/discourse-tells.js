@@ -57,6 +57,26 @@ export function detectThematicBreaks(text) {
 }
 
 /**
+ * True when a paragraph consists solely of thematic-break lines (e.g. a bare
+ * `---` divider that splitParagraphs turned into its own pseudo-paragraph).
+ * Used by prose gates to keep hot-ratio denominators on actual prose while the
+ * analyzer still attributes hot status to the divider for rewrite scope.
+ *
+ * @param {string} text Paragraph text.
+ * @returns {boolean}
+ */
+export function isThematicBreakOnly(text) {
+  const lines = (typeof text === 'string' ? text : '').split(/\r?\n/);
+  let breaks = 0;
+  for (const line of lines) {
+    if (line.trim() === '') continue;
+    if (!THEMATIC_BREAK_LINE.test(line)) return false;
+    breaks++;
+  }
+  return breaks > 0;
+}
+
+/**
  * @returns {{ fakeCandor: object, thematicBreaks: object, hot: boolean }}
  */
 export function detectDiscourseTells(text) {

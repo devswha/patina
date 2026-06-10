@@ -7,12 +7,12 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 ## Current result
 
 - Status: **passing**
-- Generated at: 2026-06-10T07:53:15.101Z
+- Generated at: 2026-06-10T11:56:24.875Z
 - Node: v22.17.1
 - Fixture schema: v1
-- Fixtures: 47
+- Fixtures: 49
 - Languages: 4 (en, ja, ko, zh)
-- Overall accuracy: **100.0%** [92.4%–100.0%] (n=47, Wilson score interval, 95%)
+- Overall accuracy: **100.0%** [92.7%–100.0%] (n=49, Wilson score interval, 95%)
 - Source fixtures: `tests/fixtures/suspect-zones/**`
 - Regression ranges: `tests/fixtures/suspect-zones/expected-ranges.json` (refresh with `npm run benchmark:ranges`)
 - Reproduce: `npm run benchmark:report`
@@ -24,7 +24,7 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 
 | lang | fixtures | accuracy | 95% CI | precision | recall | f1 | TP | FP | FN | TN |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| en | 11 | 100.0% | 74.1%–100.0% | 100.0% | 100.0% | 1 | 6 | 0 | 0 | 5 |
+| en | 13 | 100.0% | 77.2%–100.0% | 100.0% | 100.0% | 1 | 7 | 0 | 0 | 6 |
 | ja | 12 | 100.0% | 75.8%–100.0% | 100.0% | 100.0% | 1 | 6 | 0 | 0 | 6 |
 | ko | 12 | 100.0% | 75.8%–100.0% | 100.0% | 100.0% | 1 | 7 | 0 | 0 | 5 |
 | zh | 12 | 100.0% | 75.8%–100.0% | 100.0% | 100.0% | 1 | 6 | 0 | 0 | 6 |
@@ -33,10 +33,10 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 
 | lang | detector | fixtures | accuracy | 95% CI | precision | recall | f1 | TP | FP | FN | TN |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| en | burstiness | 11 | 100.0% | 74.1%–100.0% | 100.0% | 100.0% | 1 | 6 | 0 | 0 | 5 |
-| en | koDiagnostics | 11 | 45.5% | 21.3%–72.0% | 0.0% | 0.0% | 0 | 0 | 0 | 6 | 5 |
-| en | lexicon | 11 | 45.5% | 21.3%–72.0% | 0.0% | 0.0% | 0 | 0 | 0 | 6 | 5 |
-| en | mattr | 11 | 45.5% | 21.3%–72.0% | 0.0% | 0.0% | 0 | 0 | 0 | 6 | 5 |
+| en | burstiness | 13 | 92.3% | 66.7%–98.6% | 100.0% | 85.7% | 0.92 | 6 | 0 | 1 | 6 |
+| en | koDiagnostics | 13 | 46.2% | 23.2%–70.9% | 0.0% | 0.0% | 0 | 0 | 0 | 7 | 6 |
+| en | lexicon | 13 | 46.2% | 23.2%–70.9% | 0.0% | 0.0% | 0 | 0 | 0 | 7 | 6 |
+| en | mattr | 13 | 46.2% | 23.2%–70.9% | 0.0% | 0.0% | 0 | 0 | 0 | 7 | 6 |
 | ja | burstiness | 12 | 91.7% | 64.6%–98.5% | 100.0% | 83.3% | 0.91 | 5 | 0 | 1 | 6 |
 | ja | koDiagnostics | 12 | 50.0% | 25.4%–74.6% | 0.0% | 0.0% | 0 | 0 | 0 | 6 | 6 |
 | ja | lexicon | 12 | 75.0% | 46.8%–91.1% | 100.0% | 50.0% | 0.67 | 3 | 0 | 3 | 6 |
@@ -58,8 +58,8 @@ only on the checked-in fixture corpus and is not a broader model-era claim.
 
 | scope | fixtures | positives | negatives | ROC-AUC | PR-AUC | best threshold | precision | recall | best F1 | accuracy |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| overall | 47 | 25 | 22 | 1 | 1 | 3.846 | 100.0% | 100.0% | 1 | 100.0% |
-| en | 11 | 6 | 5 | 1 | 1 | 68.994 | 100.0% | 100.0% | 1 | 100.0% |
+| overall | 49 | 26 | 23 | 1 | 1 | 3.846 | 100.0% | 100.0% | 1 | 100.0% |
+| en | 13 | 7 | 6 | 1 | 1 | 50 | 100.0% | 100.0% | 1 | 100.0% |
 | ja | 12 | 6 | 6 | 1 | 1 | 23.167 | 100.0% | 100.0% | 1 | 100.0% |
 | ko | 12 | 7 | 5 | 1 | 1 | 3.846 | 100.0% | 100.0% | 1 | 100.0% |
 | zh | 12 | 6 | 6 | 1 | 1 | 6.772 | 100.0% | 100.0% | 1 | 100.0% |
@@ -68,8 +68,8 @@ only on the checked-in fixture corpus and is not a broader model-era claim.
 
 | lang | class | fixtures |
 |---|---|---:|
-| en | ai | 6 |
-| en | natural | 5 |
+| en | ai | 7 |
+| en | natural | 6 |
 | ja | ai | 6 |
 | ja | natural | 6 |
 | ko | ai | 7 |
@@ -91,11 +91,13 @@ All fixtures classified correctly.
 | en-ai-04 | en | ai | hot | hot | ✓ | 76.717 | 0.07 low | 0.84 high | 0 | cold | — |
 | en-ai-05 | en | ai | hot | hot | ✓ | 68.994 | 0.093 low | 0.879 high | 0 | cold | — |
 | en-ai-06-chat-register | en | ai | hot | hot | ✓ | 88.701 | 0.034 low | 0.814 high | 0 | cold | — |
+| en-ai-07-discourse-candor | en | ai | hot | hot | ✓ | 50 | 0.358 mid | 0.872 high | 0 | cold | — |
 | en-nat-01 | en | natural | cold | cold | ✓ | 0 | 0.881 high | 0.898 high | 0 | cold | — |
 | en-nat-02 | en | natural | cold | cold | ✓ | 0 | 0.886 high | 0.884 high | 0 | cold | — |
 | en-nat-03 | en | natural | cold | cold | ✓ | 0 | 0.914 high | 0.882 high | 0 | cold | — |
 | en-nat-04 | en | natural | cold | cold | ✓ | 0 | 0.494 mid | 0.854 high | 0 | cold | — |
 | en-nat-05 | en | natural | cold | cold | ✓ | 0 | 0.853 high | 0.875 high | 0 | cold | — |
+| en-nat-06-single-opener | en | natural | cold | cold | ✓ | 0 | 0.552 high | 0.84 high | 0 | cold | — |
 | ja-ai-01 | ja | ai | hot | hot | ✓ | 84.959 | 0.045 low | 0.833 high | 0 | cold | — |
 | ja-ai-02 | ja | ai | hot | hot | ✓ | 23.167 | 0.23 low | 0.785 high | 0 | cold | — |
 | ja-ai-03 | ja | ai | hot | hot | ✓ | 79.067 | 0.063 low | 0.795 high | 0 | cold | — |
@@ -139,6 +141,6 @@ All fixtures classified correctly.
 - **Cold** means the fixture did not cross those thresholds.
 - **Signal** is the 0–100 diagnostic strength of the strongest deterministic trigger. It supports ranking diagnostics but does not replace the binary hot/cold regression gate.
 - The report is meant for regression tracking and contributor discussion, not for authorship accusation.
-- This deterministic corpus is intentionally small (47 fixtures across en, ja, ko, zh); do not treat 100% fixture accuracy as generalization to new models, genres, or edited AI text.
+- This deterministic corpus is intentionally small (49 fixtures across en, ja, ko, zh); do not treat 100% fixture accuracy as generalization to new models, genres, or edited AI text.
 - Confidence intervals use Wilson score intervals for the checked-in fixture set; external threshold sweeps and 2025+ model rebaselines are separate research follow-ups tracked in [2025+ Re-baseline Plan](../research/2025-rebaseline-plan.md).
 - Broader methodology notes live in [AI/Human Metrics Research](../research/ai-human-metrics.md) and [Quality Checks](../../tests/quality/README.md).

@@ -263,7 +263,7 @@ test('hot ko translationese remains advisory and outside the document hot verdic
   assert.equal(r.translationese.hot, true);
   assert.equal(
     r.hot,
-    r.markupLeakage.leaked || r.discourseTells.hot || r.paragraphs.some((p) => p.hot),
+    r.markupLeakage.leaked || r.structuralClassifier.hot === true || r.paragraphs.some((p) => p.hot),
   );
   assert.equal(r.hot, false);
 });
@@ -288,8 +288,12 @@ test('analyzeText keeps translationese OUT of the hot verdict (advisory only)', 
     '저녁엔 동네를 좀 걸었다. 바람이 시원했다.';
   const r = analyzeText(text, { lang: 'ko' });
   assert.equal(r.translationese.hot, false);
-  // hot is driven only by leakage / discourse / paragraph stylometry
-  assert.equal(r.hot, r.markupLeakage.leaked || r.discourseTells.hot || r.paragraphs.some((p) => p.hot));
+  // hot is driven only by leakage / structural classifier / per-paragraph
+  // signals (discourse tells reach it through paragraph attribution, #391)
+  assert.equal(
+    r.hot,
+    r.markupLeakage.leaked || r.structuralClassifier.hot === true || r.paragraphs.some((p) => p.hot),
+  );
 });
 const FORBIDDEN_KO_POST_EDITESE_KEYS = new Set([
   'hot',
@@ -442,7 +446,6 @@ test('analyzeText surfaces ko post-editese without hot coupling or forbidden key
   const text = '그녀는 회의에서의 결정을 검토하고 있다. 이 작업은 에이전트에 의해 처리되어진다.';
   const analysis = analyzeText(text, { lang: 'ko' });
   const expectedHot = analysis.markupLeakage.leaked ||
-    analysis.discourseTells.hot ||
     analysis.structuralClassifier.hot === true ||
     analysis.paragraphs.some((p) => p.hot);
 
@@ -463,7 +466,6 @@ test('analyzeText returns skipped ko post-editese for non-ko without changing ve
   assert.equal(
     analysis.hot,
     analysis.markupLeakage.leaked ||
-      analysis.discourseTells.hot ||
       analysis.structuralClassifier.hot === true ||
       analysis.paragraphs.some((p) => p.hot),
   );

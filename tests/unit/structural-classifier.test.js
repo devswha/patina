@@ -44,7 +44,9 @@ test('structuralModelVerdict is explicitly unavailable without supplied weights'
   assert.deepEqual(analysis.structuralClassifier, { available: false, hot: null, score: null });
   assert.equal(
     analysis.hot,
-    analysis.markupLeakage.leaked || analysis.discourseTells.hot || analysis.paragraphs.some((p) => p.hot),
+    analysis.markupLeakage.leaked ||
+      analysis.structuralClassifier.hot === true ||
+      analysis.paragraphs.some((p) => p.hot),
   );
 });
 

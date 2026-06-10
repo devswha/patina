@@ -1,4 +1,4 @@
-import { DEFAULT_LEXICON_DENSITY_THRESHOLD } from './lexicon.js';
+import { DEFAULT_LEXICON_DENSITY_THRESHOLD } from './lexicon-core.js';
 import { DEFAULT_BURSTINESS_BANDS, DEFAULT_MATTR_BANDS } from './stylometry.js';
 
 /**

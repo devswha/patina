@@ -85,7 +85,6 @@ function deepMerge(target, source) {
  * Return the repository root inferred from this source file location.
  *
  * @returns {string} Absolute repository root path.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const root = getRepoRoot();
  */

@@ -75,7 +75,7 @@ function buildSeverityOverrideNote(config) {
  * @param {string} [options.mode=rewrite] Output mode.
  * @param {object|null} [options.tone=null] Tone resolution metadata.
  * @returns {string} Complete prompt text.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @throws {TypeError} When `options.tone.tone_evidence` contains values JSON.stringify cannot serialize (circular references, BigInt).
  * @example
  * const prompt = buildPrompt({ config, patterns, profile, voice, scoring, text: 'Draft' });
  */
@@ -364,7 +364,6 @@ function buildAuditInstructions() {
  * @param {string} [text=''] Input text (drives the short-text boost).
  * @param {object[]} [patterns=[]] Loaded pattern packs.
  * @returns {string} Scoring-math instruction block without an output contract.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const core = buildScoreMathCore(config, 'ko', 'Draft', patterns);
  */
@@ -482,7 +481,6 @@ function buildPatternCatalogDigest(patterns = []) {
  *
  * @param {string} text Text to inspect.
  * @returns {boolean} True when text is <=200 non-whitespace chars or <=3 paragraphs.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const short = isShortText('A short note.');
  */

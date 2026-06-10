@@ -251,7 +251,6 @@ function buildContractExampleCategoryRow(patterns, config) {
  * @param {object} [options.logger] Optional logger for recoverable deterministic warnings.
  * @param {Function} [options.analyzer] Analyzer implementation.
  * @returns {object|null} Deterministic score payload, skipped payload, or null when disabled.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const deterministic = scoreDeterministicSignals({ text: 'Draft', config });
  */
@@ -388,7 +387,6 @@ export function scoreDeterministicSignals({
  * @param {object} [options.config={}] Effective config.
  * @param {object} [options.logger] Logger for reconciliation warnings.
  * @returns {object} Score payload preserving llmScore and deterministicScore details.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const score = withShadowScore({ overall: 20 }, { deterministicScore: { overall: 25 } });
  */
@@ -427,7 +425,6 @@ export function withShadowScore(parsed, { deterministicScore, config = {}, logge
  * @param {object} [options.config={}] Effective config.
  * @param {object} [options.logger] Logger for warnings.
  * @returns {{overall: number|null, scorePreference: (object|null)}} Reconciled score and preference source.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const result = reconcileScoreOverall({ llmOverall: 20, deterministicScore: { overall: 60 } });
  */
@@ -561,7 +558,6 @@ ${rewritten}
  *
  * @param {number} score AI-likeness score from 0 to 100.
  * @returns {string} Interpretation band.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const label = interpretScore(28); // mostly human
  */
@@ -580,7 +576,6 @@ export function interpretScore(score) {
  * @param {string} original Original text.
  * @param {string} rewritten Rewritten text.
  * @returns {number} Length-ratio points from 0 to 3.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const points = lengthRatioPoints('abcd', 'abcde');
  */
@@ -708,7 +703,6 @@ ${rewritten}
  *
  * @param {number|string} v Value to clamp.
  * @returns {number} Integer from 0 to 3.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const value = clamp03(4.2); // 3
  */
@@ -736,7 +730,6 @@ function rethrowIfAborted(err, signal) {
  * @param {object} [options.config] Effective config.
  * @param {number|object|null} [options.deterministicScore] Optional deterministic score.
  * @returns {number} Combined score, lower is better.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const score = combinedScore({ aiLikeness: 20, fidelity: 90, profile: 'default', config: {} });
  */

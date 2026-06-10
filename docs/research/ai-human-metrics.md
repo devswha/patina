@@ -43,12 +43,12 @@ paragraph is SUSPECT iff
 
 현재 공개 benchmark 스냅샷은 ko/en/zh/ja fixture 39개 기준 전체 accuracy 1.0이다. 다만 이 corpus는 작고 설계된 synthetic/curated fixture이므로, 일반화 성능 증거로 과신하면 안 된다.
 
-### 2.1 단기 benchmark 한계와 rebaseline 계획 (#155/#162)
+### 2.1 단기 benchmark 한계와 rebaseline 계획 (#155/#162, 둘 다 close됨)
 
 현재 체크인된 deterministic report는 회귀 테스트로는 유용하지만, 공개 성능 주장으로 쓰기에는 아직 좁다.
 
 - 표본 수: ko/en/zh/ja suspect-zone fixture 39개. 언어·장르·출처별 신뢰구간을 낼 만큼 크지 않다.
-- 모델 시대성: 2025+ GPT/Claude/Gemini/Llama/Qwen 계열 생성문 rebaseline은 아직 별도 follow-up이다.
+- 모델 시대성: 2025+ GPT/Claude/Gemini/Llama/Qwen 계열 생성문 rebaseline의 실행 프로토콜은 [2025+ Re-baseline Plan](2025-rebaseline-plan.md)이 추적하고, evaluator follow-up은 #158/#159다.
 - 통계 보고: `docs/benchmarks/latest.md`는 fixture 수, lang/class sample size, Wilson 95% CI와 `signal_score` 기반 ROC-AUC / PR-AUC / best-F1 threshold 진단을 공개한다. bootstrap interval은 아직 없다.
 - 범위: 현재 수치는 stylometry/lexicon hot 판정 회귀이며, rewrite 품질·MPS·fidelity의 live 품질 점수가 아니다.
 

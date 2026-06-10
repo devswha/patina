@@ -27,7 +27,6 @@ export class PatinaCliError extends Error {
  * @param {string} why Explanation of the invalid input.
  * @param {string} action Suggested user action.
  * @returns {PatinaCliError} Structured input error.
- * @throws {Error} Does not intentionally throw; returns an Error instance for callers to throw.
  * @example
  * throw inputError('missing input', 'No file was provided.', 'Pass a file path.');
  */
@@ -42,7 +41,6 @@ export function inputError(what, why, action) {
  * @param {string} why Explanation of the runtime failure.
  * @param {string} action Suggested user action.
  * @returns {PatinaCliError} Structured runtime error.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * throw runtimeError('provider failed', 'The API timed out.', 'Retry later.');
  */
@@ -55,7 +53,6 @@ export function runtimeError(what, why, action) {
  *
  * @param {unknown} err Error-like value to render.
  * @returns {string} Multi-line user-facing error text.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const message = renderCliError(inputError('bad flag', 'Unknown flag.', 'Run --help.'));
  */
@@ -74,7 +71,6 @@ export function renderCliError(err) {
  * @param {unknown} err Error-like value.
  * @param {number} [fallback=1] Exit code used when err.exitCode is absent or invalid.
  * @returns {number} Non-negative integer exit code.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const code = getExitCode(inputError('bad', 'why', 'fix')); // 2
  */

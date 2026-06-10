@@ -32,7 +32,6 @@ export function validateProfileName(name) {
  *
  * @param {string} hostname Hostname from a URL.
  * @returns {boolean} True for localhost, 127/8, or ::1.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const local = isLoopbackHost('127.0.0.1');
  */
@@ -54,7 +53,6 @@ export function isLoopbackHost(hostname) {
  *
  * @param {string} hostname Hostname or bracketed IPv6 literal.
  * @returns {boolean} True when the literal IP is private or special-use.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const blocked = isPrivateOrSpecialIP('169.254.169.254');
  */
@@ -152,7 +150,6 @@ export function validateBaseURL(baseURL, { allowInsecure = false, allowPrivate =
  *
  * @param {object} [parsed] Parsed CLI options.
  * @returns {boolean} True when insecure base URLs are explicitly allowed.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const allowed = shouldAllowInsecureBaseURL({ allowInsecureBaseURL: true });
  */
@@ -167,7 +164,6 @@ export function shouldAllowInsecureBaseURL(parsed) {
  *
  * @param {object} [parsed] Parsed CLI options.
  * @returns {void}
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * applyInsecureBaseURLOptIn({ allowInsecureBaseURL: true });
  */
@@ -182,7 +178,6 @@ export function applyInsecureBaseURLOptIn(parsed) {
  *
  * @param {object} [parsed] Parsed CLI options.
  * @returns {boolean} True when private base URLs are explicitly allowed.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const allowed = shouldAllowPrivateBaseURL({ allowPrivateBaseURL: true });
  */
@@ -197,7 +192,6 @@ export function shouldAllowPrivateBaseURL(parsed) {
  *
  * @param {object} [parsed] Parsed CLI options.
  * @returns {void}
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * applyPrivateBaseURLOptIn({ allowPrivateBaseURL: true });
  */

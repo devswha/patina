@@ -65,6 +65,10 @@ export function resolveBackendMaxRetries(backendName, override) {
   return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
 }
 
+export function formatLimit(value) {
+  return Number.isFinite(value) ? String(value) : 'unbounded';
+}
+
 export function isRetryableBackendError(err, { attemptIndex = 0, signal } = {}) {
   if (signal?.aborted) return false;
   const status = extractStatus(err);

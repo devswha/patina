@@ -29,7 +29,7 @@
     "benchmark:compare": "node scripts/detector-comparison.mjs",
     "lint:syntax": "node scripts/lint.mjs",
     "lint:eslint": "eslint .",
-    "typecheck": "node scripts/typecheck.mjs",
+    "typecheck": "tsc -p .",
     "spellcheck": "cspell \"patterns/**/*.md\" \"lexicon/**/*.md\"",
     "docs:api": "node scripts/generate-api-docs.mjs",
     "playground:data": "node scripts/generate-playground-data.mjs",

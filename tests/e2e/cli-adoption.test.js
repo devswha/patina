@@ -1,5 +1,5 @@
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,6 +46,62 @@ async function withEnv(envOverrides, fn) {
   }
 }
 
+function startRewriteMockServer(responseText) {
+  const script = `
+    const { createServer } = require('node:http');
+    const server = createServer((req, res) => {
+      req.resume();
+      req.on('end', () => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ choices: [{ message: { content: ${JSON.stringify(responseText)} } }] }));
+      });
+    });
+    server.listen(0, '127.0.0.1', () => {
+      process.stdout.write(String(server.address().port) + '\\n');
+    });
+    process.on('SIGTERM', () => server.close(() => process.exit(0)));
+  `;
+  const child = spawn(process.execPath, ['-e', script], {
+    cwd: REPO_ROOT,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  return new Promise((resolve, reject) => {
+    let stdout = '';
+    let stderr = '';
+    const timer = setTimeout(() => {
+      child.kill('SIGTERM');
+      reject(new Error(`mock server did not start: ${stderr}`));
+    }, 5000);
+
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk;
+      const line = stdout.split(/\r?\n/)[0];
+      if (!line) return;
+      clearTimeout(timer);
+      resolve({
+        port: Number(line),
+        stop: () => {
+          child.kill('SIGTERM');
+        },
+      });
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk;
+    });
+    child.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on('exit', (code) => {
+      if (!stdout) {
+        clearTimeout(timer);
+        reject(new Error(`mock server exited before start (${code}): ${stderr}`));
+      }
+    });
+  });
+}
+
 describe('CLI adoption commands', () => {
   it('patina doctor --json reports setup checks without an LLM call', async () => {
     const oldExitCode = process.exitCode;
@@ -58,6 +114,34 @@ describe('CLI adoption commands', () => {
         assert.ok(report.node.ok);
         assert.ok(report.backends.some((backend) => backend.name === 'openai-http'));
         assert.ok(report.providers.some((provider) => provider.name === 'openai'));
+      });
+    } finally {
+      process.exitCode = oldExitCode;
+    }
+  });
+
+  it('patina doctor defaults to text output and exits 1 when no backend is usable', async () => {
+    const oldExitCode = process.exitCode;
+    process.exitCode = undefined;
+    try {
+      await withEnv({
+        PATH: '',
+        PATINA_API_KEY: undefined,
+        PATINA_API_KEY_FILE: undefined,
+        OPENAI_API_KEY: undefined,
+        GEMINI_API_KEY: undefined,
+        GROQ_API_KEY: undefined,
+        TOGETHER_API_KEY: undefined,
+        KIMI_API_KEY: undefined,
+        MOONSHOT_API_KEY: undefined,
+      }, async () => {
+        const { logs } = await captureConsole(() => main(['doctor']));
+        const output = logs.join('\n');
+        assert.strictEqual(process.exitCode, 1);
+        assert.match(output, /^patina doctor — blockers found/);
+        assert.match(output, /Checks:/);
+        assert.match(output, /Blockers:/);
+        assert.match(output, /no authenticated backend/);
       });
     } finally {
       process.exitCode = oldExitCode;
@@ -143,6 +227,73 @@ describe('CLI adoption commands', () => {
     });
   });
 
+  it('rewrites stdin through a real subprocess and keeps --quiet stdout to the humanized body', async () => {
+    const mock = await startRewriteMockServer([
+      '[BODY]',
+      'This is the subprocess humanized result.',
+      '[/BODY]',
+      '',
+      '[SELF_AUDIT]',
+      'No user-facing output.',
+      '[/SELF_AUDIT]',
+    ].join('\n'));
+    try {
+      const result = spawnSync(process.execPath, [
+        BIN,
+        '--lang', 'en',
+        '--quiet',
+        '--format', 'text',
+        '--base-url', `http://127.0.0.1:${mock.port}`,
+      ], {
+        cwd: REPO_ROOT,
+        input: 'This draft needs editing.\n',
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATINA_API_KEY: 'test-key',
+          PATINA_API_KEY_FILE: '',
+          PATINA_API_BASE: '',
+          OPENAI_API_KEY: '',
+          GEMINI_API_KEY: '',
+          GROQ_API_KEY: '',
+          TOGETHER_API_KEY: '',
+          KIMI_API_KEY: '',
+          MOONSHOT_API_KEY: '',
+        },
+      });
+
+      assert.strictEqual(result.status, 0, result.stderr);
+      assert.strictEqual(result.stderr, '');
+      assert.strictEqual(result.stdout, 'This is the subprocess humanized result.\n');
+    } finally {
+      mock.stop();
+    }
+  });
+
+  it('patina-humanizer alias bin resolves the local patina-cli package and executes', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'patina-humanizer-alias-'));
+    try {
+      const nodeModules = join(dir, 'node_modules');
+      const aliasPackage = join(nodeModules, 'patina-humanizer');
+      mkdirSync(join(aliasPackage, 'bin'), { recursive: true });
+      symlinkSync(REPO_ROOT, join(nodeModules, 'patina-cli'), 'dir');
+
+      const sourceAliasBin = resolve(REPO_ROOT, 'packages/patina-humanizer/bin/patina-humanizer.js');
+      const aliasBin = join(aliasPackage, 'bin/patina-humanizer.js');
+      writeFileSync(aliasBin, readFileSync(sourceAliasBin, 'utf8'));
+      const result = spawnSync(process.execPath, [aliasBin, '--version'], {
+        cwd: dir,
+        input: '',
+        encoding: 'utf8',
+      });
+
+      assert.strictEqual(result.status, 0, result.stderr);
+      assert.match(result.stdout, /^patina \d+\.\d+\.\d+\n$/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('patina init exits with a removed-command usage error', () => {
     const result = spawnSync(process.execPath, [BIN, 'init', '--defaults'], {
       cwd: REPO_ROOT,
@@ -194,6 +345,25 @@ describe('CLI adoption exit/error behavior', () => {
       { args: ['--tone'], message: /--tone requires a value/ },
       { args: ['--exit-on', 'nope'], message: /--exit-on expects a number/ },
       { args: ['--api-key-file'], message: /--api-key-file requires a value/ },
+    ];
+
+    for (const { args, message } of cases) {
+      const result = spawnSync(process.execPath, [BIN, ...args], {
+        cwd: REPO_ROOT,
+        input: '',
+        encoding: 'utf8',
+      });
+      assert.strictEqual(result.status, 2, `${args.join(' ')} should exit 2`);
+      assert.match(result.stderr, message);
+    }
+  });
+
+  it('--format rejects missing and unsupported values with usage exits', () => {
+    const cases = [
+      { args: ['--format'], message: /--format requires a value/ },
+      { args: ['--format', 'xml'], message: /Received "xml"/ },
+      { args: ['doctor', '--format'], message: /patina doctor --format expects json or text|--format requires a value/ },
+      { args: ['doctor', '--format', 'markdown'], message: /Received "markdown"/ },
     ];
 
     for (const { args, message } of cases) {

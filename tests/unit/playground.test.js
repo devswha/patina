@@ -22,6 +22,8 @@ import {
   TRANSLATIONESE_STRONG_MIN,
   KO_POST_EDITESE_SCHEMA as PLAYGROUND_KO_POST_EDITESE_SCHEMA,
   koreanPostEditeseFeatures as playgroundKoPostEditeseFeatures,
+  koreanPosDiversityProxy as playgroundKoreanPosDiversityProxy,
+  koreanSpacingFeatures as playgroundKoreanSpacingFeatures,
 } from '../../playground/analyzer.js';
 import { analyzeText } from '../../src/features/index.js';
 import {
@@ -34,6 +36,8 @@ import {
 import {
   KO_POST_EDITESE_SCHEMA as NODE_KO_POST_EDITESE_SCHEMA,
   koreanPostEditeseFeatures as nodeKoPostEditeseFeatures,
+  koreanPosDiversityProxy as nodeKoreanPosDiversityProxy,
+  koreanSpacingFeatures as nodeKoreanSpacingFeatures,
 } from '../../src/features/stylometry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -247,6 +251,44 @@ test('playground mirrors weak-only and overlap de-duplication translationese sem
     assert.equal(playgroundSignal.count, sample.expectedCount, sample.name);
     assert.equal(playgroundSignal.hot, sample.expectedHot, sample.name);
   }
+});
+test('playground normalizes NFD Korean once before shared analysis', () => {
+  const text = '이 솔루션은 생산성 향상의 핵심 기반으로 자리매김하고 있습니다.';
+  const nfd = text.normalize('NFD');
+  const nodeAnalysis = analyzeNodeText(nfd, 'ko');
+  const playgroundAnalysis = analyzePlaygroundText(nfd, { lang: 'ko' });
+
+  assert.equal(playgroundAnalysis.paragraphs[0].text, text);
+  assert.equal(playgroundAnalysis.paragraphs[0].lexicon.matches, nodeAnalysis.paragraphs[0].lexicon.matches);
+  assert.equal(playgroundAnalysis.translationese.count, detectNodeTranslationese(nfd, { lang: 'ko' }).count);
+  assert.equal(playgroundAnalysis.koPostEditese.eojeolCount, nodeAnalysis.koPostEditese.eojeolCount);
+});
+
+test('playground Korean spacing payload matches node field names', () => {
+  const text = '한 두 사람은 오늘의 작업을 차분하게 검토합니다.';
+  const playgroundSpacing = playgroundKoreanSpacingFeatures(text);
+  const nodeSpacing = nodeKoreanSpacingFeatures(text);
+
+  assert.deepEqual(playgroundSpacing, nodeSpacing);
+  assert.equal(Object.hasOwn(playgroundSpacing, 'singleSyllableRatio'), true);
+  assert.equal(Object.hasOwn(playgroundSpacing, 'shortEojeolRatio'), false);
+});
+
+test('playground Korean POS diversity proxy uses longest suffix parity with node', () => {
+  const text = '회의에서의 결정으로의 전환은 사용자에게서 나온 자료로써 기준으로서 작동합니다.';
+  const playgroundProxy = playgroundKoreanPosDiversityProxy(text);
+  const nodeProxy = nodeKoreanPosDiversityProxy(text);
+
+  assert.deepEqual(playgroundProxy, nodeProxy);
+  assert.equal(playgroundProxy.matchedCount, 7);
+  assert.deepEqual(playgroundProxy.classes, [
+    'formal_ending',
+    'genitive',
+    'instrument',
+    'source',
+    'standard',
+    'topic',
+  ]);
 });
 test('playground mirrors ko post-editese schema and metrics in parity with node', () => {
   const text = [
@@ -572,14 +614,28 @@ test('Report false positive pre-fills the GitHub false-positive form from the au
 });
 
 test('Report false positive caps the pasted paragraph and tolerates empty input', () => {
-  const long = 'A'.repeat(5000);
-  const fired = new URL(buildFalsePositiveReportUrl(long, 'en')).searchParams.get('fired_paragraph');
-  assert.ok(fired.length < 2000, 'fired_paragraph should be truncated to keep the URL small');
+  const long = 'A'.repeat(10000);
+  const longUrl = buildFalsePositiveReportUrl(long, 'en');
+  const fired = new URL(longUrl).searchParams.get('fired_paragraph');
+  assert.ok(longUrl.length < 8000, 'report URL should be truncated to stay under the GitHub budget');
   assert.match(fired, /truncated/);
 
   const empty = new URL(buildFalsePositiveReportUrl('', 'ja')).searchParams;
   assert.equal(empty.get('language'), 'ja');
   assert.equal(empty.get('template'), 'false_positive.yml');
+});
+
+test('Report false positive caps long Korean by encoded URL budget', () => {
+  const longKo = `${'자리매김 '.repeat(3000)}마지막 문장입니다.`;
+  const url = buildFalsePositiveReportUrl(longKo, 'ko');
+  const parsed = new URL(url);
+  const fired = parsed.searchParams.get('fired_paragraph');
+
+  assert.ok(url.length < 8000, `expected URL below GitHub budget, got ${url.length}`);
+  assert.equal(parsed.searchParams.get('template'), 'false_positive.yml');
+  assert.equal(parsed.searchParams.get('language'), 'ko');
+  assert.match(fired, /truncated/);
+  assert.match(fired, /^자리매김/);
 });
 
 test('playground HTML exposes the false-positive report button', () => {

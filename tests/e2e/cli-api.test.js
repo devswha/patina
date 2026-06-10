@@ -657,6 +657,23 @@ describe('CLI End-to-End with Mock API', () => {
     assert.match(logs.join('\n'), /This is the humanized result\./);
   });
 
+  it('should keep --format text to the rewritten body without tone metadata', async () => {
+    callCount = 0;
+    lastRequestBody = null;
+
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    const { logs } = await captureConsole(() => main([
+      '--lang', 'en',
+      '--format', 'text',
+      '--api-key-file', mockApiKeyPath,
+      '--base-url', `http://127.0.0.1:${mockPort}`,
+      testFile,
+    ]));
+
+    assert.strictEqual(callCount, 1, 'Should make exactly one API call');
+    assert.strictEqual(logs.join('\n'), 'This is the humanized result.');
+  });
+
 
   it('should set exit code 3 when --score gate fails', async () => {
     callCount = 0;

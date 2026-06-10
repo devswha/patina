@@ -69,6 +69,11 @@ Severity scale: Low=1, Medium=2, High=3 points per detection.
 Category score = (sum of adjusted severities / (pattern_count × 3)) × 100
 Overall = weighted average using the EXACT weights above (sum should equal 1.00).
 
+Compact pattern catalog digest:
+- en-structure: Metronomic Paragraph Rhythm
+- en-content: Promotional Adjectives
+- en-viral-hook: Clickbait Mystery Close
+
 **Short-text boost (input ≤200 chars OR ≤3 paragraphs):** for register-sensitive categories (`language`, `style`, `viral-hook`) apply a 1.5x severity multiplier per detection (cap at 3). This surfaces voice/register shifts (e.g., `~다` ↔ `~습니다` swap) that the long-text formula otherwise undercounts.
 
 Output format (the Weight column must echo the values above verbatim):

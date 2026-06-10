@@ -1,17 +1,19 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import yaml from 'js-yaml';
 
 import {
+  buildFixtureFile,
   fixtureSlug,
   parseArgs,
   renderExportSummary,
   runFixtureExport,
   writeFixtureFiles,
 } from '../../scripts/fp-fixture-export.mjs';
+import { parseFixture } from '../../scripts/update-benchmark-ranges.mjs';
 
 const BASE_ROW = {
   sample_id: 'ko-fp-nat-001',
@@ -70,13 +72,31 @@ test('accepted public row becomes a numbered natural fixture', () => {
         `Source: ${BASE_ROW.source_doc}`,
         `Reviewer notes: ${BASE_ROW.reviewer_notes}`,
       ].join('\n'),
-      topic: 'blog',
+      topic: 'false-positive report (register: blog)',
     });
     assert.equal(match[2], `${TEXT}\n`);
 
     const summary = renderExportSummary(result);
     assert.match(summary, /Validation: \*\*PASS\*\*/);
     assert.match(summary, /npm run benchmark:ranges/);
+  });
+});
+
+test('exported fixtures parse through the update-benchmark-ranges parse path', () => {
+  withTempDir((dir) => {
+    const input = writeIntake(dir, [{ ...BASE_ROW, text: TEXT }]);
+    const outDir = join(dir, 'fixtures');
+
+    const result = runFixtureExport({ input, outDir });
+    assert.equal(result.written.length, 1);
+
+    // Same parseFixture the ranges refresh runs: FP row → fixture → ranges is a contract.
+    const parsed = parseFixture(join(outDir, 'ko', 'natural', 'ko-nat-01-fp-issue-412.md'));
+    assert.equal(parsed.meta.fixture_id, 'ko-nat-01-fp-issue-412');
+    assert.equal(parsed.meta.language, 'ko');
+    assert.equal(parsed.meta.class, 'natural');
+    assert.equal(parsed.meta.expected_hot, false);
+    assert.equal(parsed.body, TEXT);
   });
 });
 
@@ -101,6 +121,44 @@ test('numbering continues after the highest existing fixture and accepts class a
   });
 });
 
+test('re-running against the same intake writes nothing and reports rows as already exported', () => {
+  withTempDir((dir) => {
+    const input = writeIntake(dir, [{ ...BASE_ROW, text: TEXT }]);
+    const outDir = join(dir, 'fixtures');
+
+    const first = runFixtureExport({ input, outDir });
+    assert.deepEqual(first.alreadyExported, []);
+    assert.equal(first.written.length, 1);
+
+    const second = runFixtureExport({ input, outDir });
+    assert.deepEqual(second.errors, []);
+    assert.deepEqual(second.refused, []);
+    assert.equal(second.files.length, 0);
+    assert.equal(second.written.length, 0);
+    assert.equal(second.alreadyExported.length, 1);
+    assert.match(second.alreadyExported[0], /ko-fp-nat-001: body text already exported as `.*ko-nat-01-fp-issue-412\.md`/);
+    assert.deepEqual(readdirSync(join(outDir, 'ko', 'natural')), ['ko-nat-01-fp-issue-412.md']);
+
+    const summary = renderExportSummary(second);
+    assert.match(summary, /## Already exported/);
+    assert.doesNotMatch(summary, /## Refused/);
+    assert.match(summary, /Validation: \*\*PASS\*\*/);
+  });
+});
+
+test('rows whose source issue already produced a fixture are skipped even when the text was edited', () => {
+  withTempDir((dir) => {
+    const outDir = join(dir, 'fixtures');
+    runFixtureExport({ input: writeIntake(dir, [{ ...BASE_ROW, text: TEXT }]), outDir });
+
+    const edited = { ...BASE_ROW, text: `${TEXT} 관측 일지는 별관에 남았다.` };
+    const result = runFixtureExport({ input: writeIntake(dir, [edited]), outDir });
+    assert.equal(result.written.length, 0);
+    assert.equal(result.alreadyExported.length, 1);
+    assert.match(result.alreadyExported[0], /source_doc already exported as `.*ko-nat-01-fp-issue-412\.md`/);
+  });
+});
+
 test('non-redistributable rows are refused and never written', () => {
   withTempDir((dir) => {
     const input = writeIntake(dir, [{ ...BASE_ROW, redistribution: 'no-redistribution', text: TEXT }]);
@@ -122,7 +180,8 @@ test('non natural-human classes are refused', () => {
 
     const result = runFixtureExport({ input, outDir });
     assert.equal(result.refused.length, 1);
-    assert.match(result.refused[0], /class=ai-like is not natural-human/);
+    assert.match(result.refused[0], /class=ai-like does not become a public fixture/);
+    assert.match(result.refused[0], /lightly-edited reports stay manifest-only/);
     assert.equal(result.written.length, 0);
     assert.equal(existsSync(join(outDir, 'ko')), false);
   });
@@ -184,4 +243,19 @@ test('parseArgs exposes out-dir override and dry-run', () => {
   assert.equal(args.input, 'in.jsonl');
   assert.equal(args.outDir, 'tmp/fixtures');
   assert.equal(args.dryRun, true);
+});
+
+test('parseArgs rejects value flags without a value instead of falling back to defaults', () => {
+  assert.throws(() => parseArgs(['--input']), /Missing value for --input/);
+  assert.throws(() => parseArgs(['--out-dir']), /Missing value for --out-dir/);
+  assert.throws(() => parseArgs(['--out-dir', '--dry-run']), /Missing value for --out-dir/);
+});
+
+test('topic prefers the intake topic field and self-describes the register fallback', () => {
+  const explicit = buildFixtureFile({ ...BASE_ROW, text: TEXT, topic: '관측소 역사' }, 'ko-nat-01-fp-issue-412');
+  assert.match(explicit, /topic: 관측소 역사\n/);
+
+  const noRegister = { ...BASE_ROW, text: TEXT };
+  delete noRegister.register;
+  assert.match(buildFixtureFile(noRegister, 'ko-nat-01-fp-issue-412'), /topic: false-positive report\n/);
 });

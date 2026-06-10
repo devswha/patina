@@ -197,7 +197,7 @@ sample can become a public fixture.
 
 - LLM-based scoring (`src/scoring.js`). The LLM is non-deterministic by
   design and adds API cost / latency, so it stays out of this layer.
-  A separate live-mode benchmark would be its own follow-up.
+  A separate live-mode benchmark is its own follow-up (#412).
 - Mandatory rewrite quality gates. Live rewrite quality lives in
   `tests/quality/live-quality.mjs` and remains opt-in because it can shell out
   to OpenCode:

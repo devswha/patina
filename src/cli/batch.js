@@ -1,5 +1,6 @@
 import {
   PROMPT_SIZE_WARNING_CHARS,
+  formatLimit,
   getBackendSafety,
   resolveBackendMaxConcurrency,
   resolveBackendMaxRetries,
@@ -132,10 +133,6 @@ function classifyRetryableStorm(err) {
   if (exit) return `exit ${exit[1]}`;
   if (/no final response body|empty response|final-message-only/i.test(message)) return 'empty response';
   return null;
-}
-
-export function formatLimit(value) {
-  return Number.isFinite(value) ? String(value) : 'unbounded';
 }
 
 export async function writeBatchOutput(parsed, inputPath, output) {

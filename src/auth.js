@@ -39,7 +39,6 @@ export const DEFAULT_HTTP_KEY_ENV_VARS = [
  *
  * @param {string} [providerApiKeyEnv] Provider-specific key env var, such as GEMINI_API_KEY.
  * @returns {string[]} Unique env var names in lookup order.
- * @throws {Error} Does not intentionally throw; invalid non-string env names can still propagate JavaScript runtime failures.
  * @example
  * const vars = providerHttpKeyEnvVars('GEMINI_API_KEY');
  */
@@ -56,7 +55,6 @@ export function providerHttpKeyEnvVars(providerApiKeyEnv) {
  * @param {Function} [options.readFile] File reader for PATINA_API_KEY_FILE.
  * @param {string[]} [options.envVars=DEFAULT_HTTP_KEY_ENV_VARS] Env vars to check.
  * @returns {{ok: boolean, source: string|null, envVars: string[], filePath: string|null, detail: string}} Source diagnostics.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * const source = inspectHttpApiKeySource({ env: { PATINA_API_KEY: 'sk-...' } });
  */

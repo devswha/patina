@@ -348,8 +348,7 @@ function cancellationError() {
  * @param {NodeJS.Process} [options.processObj=process] Process-like object used for signal listeners.
  * @param {NodeJS.WritableStream} [options.stderr=process.stderr] Stream for fallback cancel messages.
  * @param {object|null} [options.logger] Optional patina logger.
- * @returns {{signal: AbortSignal, install: Function, uninstall: Function, throwIfCanceled: Function}} Controller facade.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
+ * @returns {{signal: AbortSignal, install: Function, cleanup: Function, throwIfCanceled: Function}} Controller facade.
  * @example
  * const cancellation = createCancellationController();
  * cancellation.install();
@@ -428,7 +427,6 @@ export function resolvePromptMode({ backend, model }) {
  * @param {string} lang Active language code.
  * @param {object} [logger] Logger with warn(event, payload).
  * @returns {string} Effective profile name.
- * @throws {Error} Propagates validation, filesystem, network, or dependency failures when the underlying operation cannot complete.
  * @example
  * resolveProfileForLanguage('namuwiki', 'en') // 'default'
  */

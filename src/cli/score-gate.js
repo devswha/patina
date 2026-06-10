@@ -1,4 +1,4 @@
-import { parseFirstJson } from '../output.js';
+import { extractOverallScore } from '../output.js';
 import { createLogger } from '../logger.js';
 
 export function applyScoreGate(result, output, gate, logger = createLogger()) {
@@ -13,20 +13,10 @@ export function applyScoreGate(result, output, gate, logger = createLogger()) {
 }
 
 export function extractScoreOverall(result, output) {
-  const resultOverall = toFiniteScore(result?.overall);
-  if (resultOverall !== null) return resultOverall;
-
-  const text = String(output ?? result ?? '');
-  const parsed = parseFirstJson(text);
-  const parsedOverall = toFiniteScore(parsed?.overall);
-  if (parsedOverall !== null) return parsedOverall;
-
-  const table = text.match(/(?:^|\n)\|\s*(?:\*\*)?Overall(?:\*\*)?\s*\|[^|]*\|[^|]*\|[^|]*\|\s*(?:\*\*)?([0-9]+(?:\.[0-9]+)?)/i);
-  if (table) return Number(table[1]);
-
-  const match = text.match(/(?:^|[\s|{,"])overall(?:["\s]*[:|]|\s+score\s*[:|]?)\s*(\d+(?:\.\d+)?)/i);
-  if (!match) return null;
-  return Number(match[1]);
+  return extractOverallScore(result, String(output ?? result ?? ''), {
+    coerce: toFiniteScore,
+    pipeBoundary: true,
+  });
 }
 
 // Not the same as output.js toFiniteNumber: that helper strips non-numeric

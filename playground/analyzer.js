@@ -26,7 +26,7 @@ import {
   computeDensity,
   classifyLexiconHot,
 } from '../src/features/lexicon-core.js';
-import { detectMarkupLeakage } from '../src/features/markup-leakage.js';
+import { detectMarkupLeakage, LEAKAGE_SCORE_FLOOR } from '../src/features/markup-leakage.js';
 import {
   detectFakeCandor,
   detectThematicBreaks,
@@ -65,6 +65,7 @@ export {
   computeDensity,
   classifyLexiconHot,
   detectMarkupLeakage,
+  LEAKAGE_SCORE_FLOOR,
   detectFakeCandor,
   detectThematicBreaks,
   DEFAULT_FAKE_CANDOR_MIN,
@@ -88,9 +89,9 @@ export const DEFAULT_FORMATTING_THRESHOLDS = {
   boldParagraph: 3, // **bold** spans inside one paragraph
   emojiDoc: 1, // any emoji occurrence in the document
 };
-// Model-output leakage (#332) is near-proof-grade, so any hit short-circuits the
-// document score into the 'heavily AI' band, mirroring src/scoring.js.
-export const LEAKAGE_SCORE_FLOOR = 90;
+// Model-output leakage (#332) short-circuits the document score via
+// LEAKAGE_SCORE_FLOOR, imported from src/features/markup-leakage.js — the same
+// constant src/scoring.js uses, so the two surfaces cannot drift.
 
 export const SAMPLE_TEXT = {
   ko: '이 솔루션은 혁신적인 접근을 통해 업무 생산성을 극대화하고, 다양한 이해관계자에게 지속 가능한 가치를 제공합니다. 더 나아가 조직의 디지털 전환을 가속화하는 핵심 기반으로 자리매김하고 있습니다.\n\n하지만 현장에서 필요한 것은 거창한 선언보다 오늘 바로 줄어드는 반복 작업입니다.',

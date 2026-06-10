@@ -10,13 +10,18 @@ const REPO_ROOT = resolve(__dirname, '..');
 /**
  * Load default config and merge global/project .patina.yaml overrides.
  *
+ * Precedence (low → high): base path → ~/.patina.yaml → ./.patina.yaml → overridePath.
+ * The explicit `--config` file is layered LAST so an ambient project .patina.yaml
+ * cannot silently override a pinned config (reproducible CI runs).
+ *
  * @param {string} [path] Base YAML config path.
+ * @param {{overridePath?: string}} [opts] Optional explicit `--config` override.
  * @returns {object} Merged patina configuration object.
  * @throws {Error} When a config file is missing, invalid YAML, or not a mapping.
  * @example
  * const config = loadConfig();
  */
-export function loadConfig(path = resolve(REPO_ROOT, '.patina.default.yaml')) {
+export function loadConfig(path = resolve(REPO_ROOT, '.patina.default.yaml'), { overridePath } = {}) {
   const raw = readFileSync(path, 'utf8');
   const parsed = yaml.load(raw);
   if (!isPlainObject(parsed)) {
@@ -27,16 +32,25 @@ export function loadConfig(path = resolve(REPO_ROOT, '.patina.default.yaml')) {
   // User config: ~/.patina.yaml (global), then ./.patina.yaml (project, takes precedence).
   for (const userPath of [resolve(homedir(), '.patina.yaml'), resolve(process.cwd(), '.patina.yaml')]) {
     if (!existsSync(userPath)) continue;
-    const userRaw = readFileSync(userPath, 'utf8');
-    const userConfig = yaml.load(userRaw);
-    if (userConfig === null || userConfig === undefined) continue; // empty file
-    if (!isPlainObject(userConfig)) {
-      throw new Error(`User config at ${userPath} must be a YAML mapping (got ${Array.isArray(userConfig) ? 'array' : typeof userConfig})`);
-    }
-    deepMerge(config, userConfig);
+    mergeYamlMapping(config, userPath, 'User config');
+  }
+
+  // Explicit --config wins over both defaults and the ambient project/global files.
+  if (overridePath) {
+    mergeYamlMapping(config, resolve(overridePath), 'Config');
   }
 
   return config;
+}
+
+function mergeYamlMapping(config, filePath, label) {
+  const raw = readFileSync(filePath, 'utf8');
+  const parsed = yaml.load(raw);
+  if (parsed === null || parsed === undefined) return; // empty file
+  if (!isPlainObject(parsed)) {
+    throw new Error(`${label} at ${filePath} must be a YAML mapping (got ${Array.isArray(parsed) ? 'array' : typeof parsed})`);
+  }
+  deepMerge(config, parsed);
 }
 
 function isPlainObject(v) {
@@ -44,9 +58,12 @@ function isPlainObject(v) {
 }
 
 const ADDITIVE_LIST_KEYS = new Set(['blocklist', 'allowlist', 'skip-patterns']);
+const PROTO_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 function deepMerge(target, source) {
   for (const key in source) {
+    // Guard against prototype pollution from an auto-loaded .patina.yaml.
+    if (!Object.prototype.hasOwnProperty.call(source, key) || PROTO_KEYS.has(key)) continue;
     if (isPlainObject(source[key])) {
       if (!isPlainObject(target[key])) {
         target[key] = {};

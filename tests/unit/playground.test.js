@@ -8,14 +8,33 @@ import { fileURLToPath } from 'node:url';
 import { PLAYGROUND_LEXICONS } from '../../playground/data/lexicons.js';
 import {
   analyzePlaygroundText,
+  detectTranslationese as detectPlaygroundTranslationese,
   buildCliCommand,
   buildFalsePositiveReportUrl,
   renderAuditDiff,
+  renderKoreanAdvisory,
   SUPPORTED_LANGS,
   splitProseSentences,
   countFormatting,
+  TRANSLATIONESE_RULES as PLAYGROUND_TRANSLATIONESE_RULES,
+  TRANSLATIONESE_ABS_MIN,
+  TRANSLATIONESE_DENSITY_MIN,
+  TRANSLATIONESE_STRONG_MIN,
+  KO_POST_EDITESE_SCHEMA as PLAYGROUND_KO_POST_EDITESE_SCHEMA,
+  koreanPostEditeseFeatures as playgroundKoPostEditeseFeatures,
 } from '../../playground/analyzer.js';
 import { analyzeText } from '../../src/features/index.js';
+import {
+  detectTranslationese as detectNodeTranslationese,
+  TRANSLATIONESE_RULES as NODE_TRANSLATIONESE_RULES,
+  ABS_MIN as NODE_TRANSLATIONESE_ABS_MIN,
+  DENSITY_MIN as NODE_TRANSLATIONESE_DENSITY_MIN,
+  STRONG_MIN as NODE_TRANSLATIONESE_STRONG_MIN,
+} from '../../src/features/translationese.js';
+import {
+  KO_POST_EDITESE_SCHEMA as NODE_KO_POST_EDITESE_SCHEMA,
+  koreanPostEditeseFeatures as nodeKoPostEditeseFeatures,
+} from '../../src/features/stylometry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -26,6 +45,34 @@ const SAMPLES = {
   zh: '总而言之，这一方案能够全面提升用户体验，并为未来发展提供新的可能。',
   ja: 'まとめると、この仕組みはユーザー体験を向上させ、より良い未来につながります。',
 };
+const FORBIDDEN_KO_POST_EDITESE_KEYS = new Set([
+  'hot',
+  'severity',
+  'score',
+  'zScore',
+  'zscore',
+  'baseline',
+  'percentile',
+]);
+
+function collectObjectKeys(value, keys = []) {
+  if (Array.isArray(value)) {
+    for (const item of value) collectObjectKeys(item, keys);
+    return keys;
+  }
+  if (value && typeof value === 'object') {
+    for (const [key, child] of Object.entries(value)) {
+      keys.push(key);
+      collectObjectKeys(child, keys);
+    }
+  }
+  return keys;
+}
+function cloneForTest(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+
 
 function analyzeNodeText(text, lang) {
   return analyzeText(text, { lang, repoRoot: REPO_ROOT });
@@ -100,6 +147,234 @@ test('playground and node analyzers agree on shared deterministic signals', () =
       `${sample.name} verdict should match node analyzer`,
     );
   }
+});
+test('playground mirrors ko translationese advisory payload without score coupling', () => {
+  const text = '메리는 그녀가 그녀의 책을 갖고 있다. 회의에서의 결정으로의 이동은 에이전트에 의해 처리되었다.';
+  const nodeSignal = detectNodeTranslationese(text, { lang: 'ko' });
+  const playgroundSignal = detectPlaygroundTranslationese(text, { lang: 'ko' });
+  const nodeIds = nodeSignal.byRule.map((x) => x.id).sort();
+  const playgroundIds = playgroundSignal.byRule.map((x) => x.id).sort();
+
+  assert.equal(nodeSignal.hot, true);
+  assert.equal(playgroundSignal.hot, true);
+  assert.deepEqual(playgroundIds, nodeIds);
+  assert.equal(playgroundSignal.thresholds.count, nodeSignal.thresholds.count);
+  assert.equal(playgroundSignal.thresholds.density, nodeSignal.thresholds.density);
+  assert.equal(playgroundSignal.thresholds.strong, nodeSignal.thresholds.strong);
+
+  const analysis = analyzePlaygroundText(text, { lang: 'ko' });
+  assert.equal(analysis.translationese.hot, true);
+  assert.equal(analysis.hotCount, 0);
+  assert.equal(analysis.overall, 0);
+  assert.equal(analysis.auditItems.length, 0);
+
+  const nonKo = analyzePlaygroundText(text, { lang: 'en' });
+  assert.equal(nonKo.translationese.count, 0);
+  assert.equal(nonKo.translationese.hot, false);
+});
+test('playground keeps translationese rules and thresholds in parity with node', () => {
+  const serializeRule = (rule) => ({
+    id: rule.id,
+    label: rule.label,
+    strong: rule.strong,
+    minCount: rule.minCount ?? 1,
+    source: rule.re().source,
+    flags: rule.re().flags,
+    example: rule.example,
+  });
+
+  assert.deepEqual(
+    PLAYGROUND_TRANSLATIONESE_RULES.map(serializeRule),
+    NODE_TRANSLATIONESE_RULES.map(serializeRule),
+  );
+  assert.equal(TRANSLATIONESE_ABS_MIN, NODE_TRANSLATIONESE_ABS_MIN);
+  assert.equal(TRANSLATIONESE_DENSITY_MIN, NODE_TRANSLATIONESE_DENSITY_MIN);
+  assert.equal(TRANSLATIONESE_STRONG_MIN, NODE_TRANSLATIONESE_STRONG_MIN);
+
+  for (const rule of PLAYGROUND_TRANSLATIONESE_RULES) {
+    const signal = detectPlaygroundTranslationese(rule.example.before, { lang: 'ko' });
+    assert.ok(
+      signal.byRule.some((hit) => hit.id === rule.id),
+      `playground rule ${rule.id} does not match its own before example`,
+    );
+  }
+
+  const empty = detectPlaygroundTranslationese('', { lang: 'ko' });
+  assert.deepEqual(empty.thresholds, {
+    count: NODE_TRANSLATIONESE_ABS_MIN,
+    density: NODE_TRANSLATIONESE_DENSITY_MIN,
+    strong: NODE_TRANSLATIONESE_STRONG_MIN,
+  });
+});
+
+test('playground mirrors weak-only and overlap de-duplication translationese semantics', () => {
+  const cases = [
+    {
+      name: 'weak-only advisory density',
+      text: '사용법은 다음과 같습니다. 다양한 기능을 제공합니다. 설치를 쉽게 만들어 줍니다. 가장 빠른 도구 중 하나입니다.',
+      expectedCount: 4,
+      expectedHot: false,
+    },
+    {
+      name: 'overlapping raw rules',
+      text: '그것은 중요하다. 그것은 필요하다. 이 작업은 에이전트에 의해 처리되었다.',
+      expectedCount: 3,
+      expectedHot: false,
+    },
+  ];
+
+  for (const sample of cases) {
+    const nodeSignal = detectNodeTranslationese(sample.text, { lang: 'ko' });
+    const playgroundSignal = detectPlaygroundTranslationese(sample.text, { lang: 'ko' });
+
+    assert.deepEqual(
+      {
+        ids: playgroundSignal.byRule.map((x) => x.id).sort(),
+        count: playgroundSignal.count,
+        density: playgroundSignal.density,
+        hot: playgroundSignal.hot,
+        thresholds: playgroundSignal.thresholds,
+      },
+      {
+        ids: nodeSignal.byRule.map((x) => x.id).sort(),
+        count: nodeSignal.count,
+        density: nodeSignal.density,
+        hot: nodeSignal.hot,
+        thresholds: nodeSignal.thresholds,
+      },
+      `${sample.name} should mirror node`,
+    );
+    assert.equal(playgroundSignal.count, sample.expectedCount, sample.name);
+    assert.equal(playgroundSignal.hot, sample.expectedHot, sample.name);
+  }
+});
+test('playground mirrors ko post-editese schema and metrics in parity with node', () => {
+  const text = [
+    '그녀는 회의에서의 결정을 검토하고 있다.',
+    '이 작업은 에이전트에 의해 처리되어진다.',
+    '',
+    '우리는 회의를 가졌고, 결정을 내렸다.',
+    '그것은 중요한 자료이다.',
+  ].join('\n');
+  const nodePayload = nodeKoPostEditeseFeatures(text, { lang: 'ko' });
+  const playgroundPayload = playgroundKoPostEditeseFeatures(text, { lang: 'ko' });
+
+  assert.equal(PLAYGROUND_KO_POST_EDITESE_SCHEMA, NODE_KO_POST_EDITESE_SCHEMA);
+  assert.equal(playgroundPayload.schema, 'koPostEditese.v1');
+  assert.deepEqual(playgroundPayload, nodePayload);
+});
+
+test('playground returns stable skipped ko post-editese payloads in parity with node', () => {
+  for (const sample of [
+    { text: 'This is plain English.', lang: 'en' },
+    { text: '   ', lang: 'ko' },
+    { text: '... !!!', lang: 'ko' },
+    { text: 'This English-labeled text mentions 그녀 and 그것.', lang: 'en' },
+  ]) {
+    const nodePayload = nodeKoPostEditeseFeatures(sample.text, { lang: sample.lang });
+    const playgroundPayload = playgroundKoPostEditeseFeatures(sample.text, { lang: sample.lang });
+    assert.deepEqual(playgroundPayload, nodePayload);
+    assert.equal(playgroundPayload.analyzed, false);
+    assert.equal(playgroundPayload.paragraphCount, 0);
+    assert.deepEqual(playgroundPayload.paragraphs, []);
+  }
+});
+
+test('playground surfaces ko post-editese without score, hot, or audit coupling', () => {
+  const text = '그녀는 회의에서의 결정을 검토하고 있다. 이 작업은 에이전트에 의해 처리되어진다.';
+  const analysis = analyzePlaygroundText(text, { lang: 'ko' });
+  const expectedHotRatio = analysis.paragraphCount === 0
+    ? 0
+    : Math.round((analysis.hotCount / analysis.paragraphCount) * 100);
+  const expectedOverall = analysis.markupLeakage.leaked
+    ? Math.max(expectedHotRatio, 90)
+    : expectedHotRatio;
+
+  assert.equal(analysis.koPostEditese.schema, 'koPostEditese.v1');
+  assert.equal(analysis.koPostEditese.analyzed, true);
+  assert.ok(analysis.koPostEditese.metrics.interference.pronounLiteralCount >= 1);
+  assert.equal(analysis.hotCount, analysis.paragraphs.filter((paragraph) => paragraph.hot).length);
+  assert.equal(analysis.overall, expectedOverall);
+  assert.deepEqual(
+    analysis.auditItems,
+    analysis.paragraphs.filter((paragraph) => paragraph.hot || paragraph.lexicon.matches > 0),
+  );
+  assert.equal(analysis.paragraphs.some((paragraph) => paragraph.reasons.some((reason) => reason.code.includes('post'))), false);
+
+  const forbidden = collectObjectKeys(analysis.koPostEditese)
+    .filter((key) => FORBIDDEN_KO_POST_EDITESE_KEYS.has(key));
+  assert.deepEqual(forbidden, []);
+});
+
+test('playground renders Korean advisory panel separately from audit and diff', () => {
+  const text = '메리는 그녀의 책을 갖고 있다. 회의에서의 결정은 에이전트에 의해 처리되어진다.';
+  const analysis = analyzePlaygroundText(text, { lang: 'ko' });
+  const before = {
+    overall: analysis.overall,
+    hotCount: analysis.hotCount,
+    auditItems: cloneForTest(analysis.auditItems),
+    paragraphHot: analysis.paragraphs.map((paragraph) => paragraph.hot),
+    reasons: analysis.paragraphs.map((paragraph) => cloneForTest(paragraph.reasons)),
+  };
+
+  const html = renderKoreanAdvisory(analysis);
+
+  assert.match(html, /advisory-grid/);
+  assert.match(html, /Translationese hints/);
+  assert.match(html, /Korean post-editese metadata/);
+  assert.match(html, /count 1/);
+  assert.match(html, /Density/);
+  assert.match(html, /Samples:/);
+  assert.match(html, /koPostEditese\.v1/);
+  assert.match(html, /Paragraphs/);
+  assert.match(html, /pronoun literal count/);
+  assert.match(html, /suffix diversity/);
+  assert.doesNotMatch(html, /diff-card/);
+  assert.doesNotMatch(html, /<mark>/);
+  assert.equal(analysis.overall, before.overall);
+  assert.equal(analysis.hotCount, before.hotCount);
+  assert.deepEqual(analysis.auditItems, before.auditItems);
+  assert.deepEqual(analysis.paragraphs.map((paragraph) => paragraph.hot), before.paragraphHot);
+  assert.deepEqual(analysis.paragraphs.map((paragraph) => paragraph.reasons), before.reasons);
+});
+
+test('playground advisory rendering escapes labels, examples, and samples', () => {
+  const analysis = analyzePlaygroundText('그것은 중요하다.', { lang: 'ko' });
+  analysis.translationese = {
+    count: 1,
+    density: 1,
+    sentences: 1,
+    byRule: [{
+      id: '<rule>',
+      label: '<img src=x onerror=alert(1)>',
+      count: 1,
+      strong: true,
+      example: { before: '<script>bad()</script>', after: '"safe" & revised' },
+    }],
+    hits: ['<b>sample</b>'],
+  };
+
+  const html = renderKoreanAdvisory(analysis);
+
+  assert.doesNotMatch(html, /<img src=x/);
+  assert.doesNotMatch(html, /<script>/);
+  assert.doesNotMatch(html, /<b>sample/);
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.match(html, /&lt;script&gt;bad\(\)&lt;\/script&gt;/);
+  assert.match(html, /&quot;safe&quot; &amp; revised/);
+  assert.match(html, /&lt;b&gt;sample&lt;\/b&gt;/);
+});
+
+test('playground advisory rendering handles skipped and non-Korean states', () => {
+  const emptyKo = analyzePlaygroundText('   ', { lang: 'ko' });
+  const emptyHtml = renderKoreanAdvisory(emptyKo);
+  assert.match(emptyHtml, /skipped: empty/);
+  assert.match(emptyHtml, /No Korean translationese rules surfaced/);
+
+  const en = analyzePlaygroundText('This transformative solution empowers teams.', { lang: 'en' });
+  const enHtml = renderKoreanAdvisory(en);
+  assert.match(enHtml, /unavailable for this language/);
+  assert.doesNotMatch(enHtml, /advisory-grid/);
 });
 
 test('playground ports thematic-break discourse tells from the node analyzer', () => {
@@ -311,6 +586,14 @@ test('playground HTML exposes the false-positive report button', () => {
   const html = readFileSync(resolve(REPO_ROOT, 'playground/index.html'), 'utf8');
   assert.match(html, /id="report-fp"/);
   assert.match(html, /Report false positive/);
+});
+
+test('playground HTML exposes the Korean advisory container with advisory-only copy', () => {
+  const html = readFileSync(resolve(REPO_ROOT, 'playground/index.html'), 'utf8');
+  assert.match(html, /id="korean-advisory"/);
+  assert.match(html, /Korean editing hints/);
+  assert.match(html, /advisory-only revision hints/);
+  assert.match(html, /never change score, hotspots, or audit rows/);
 });
 
 test('playground HTML points canonical and OG metadata at patina.vibetip.help', () => {

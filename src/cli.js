@@ -95,10 +95,12 @@ export async function main(args) {
     return;
   }
 
+  validateModeExclusivity(parsed);
   validateBrowserRequest(parsed);
 
-  const configPath = parsed.config ? resolve(process.cwd(), parsed.config) : undefined;
-  const config = loadConfig(configPath);
+  const config = loadConfig(undefined, parsed.config
+    ? { overridePath: resolve(process.cwd(), parsed.config) }
+    : {});
 
   if (parsed.lang) config.language = parsed.lang;
   if (parsed.profile) config.profile = parsed.profile;
@@ -579,6 +581,20 @@ function parseArgs(args) {
   }
 
   return parsed;
+}
+
+// The output modes are mutually exclusive (SKILL.md). Without this guard, a
+// combination like `--audit --score` resolves to 'audit' and silently skips the
+// score gate (exit 0 always), and `--score --ouroboros` throws deep in the gate.
+function validateModeExclusivity(parsed) {
+  const active = ['diff', 'audit', 'score', 'ouroboros'].filter((m) => parsed[m]);
+  if (active.length > 1) {
+    throw inputError(
+      `--${active[0]} and --${active[1]} cannot be combined`,
+      'The diff / audit / score / ouroboros output modes are mutually exclusive.',
+      `Pick one of --diff, --audit, --score, or --ouroboros.`
+    );
+  }
 }
 
 function validateBrowserRequest(parsed) {

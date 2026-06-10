@@ -1,6 +1,7 @@
 import { callLLM as defaultCallLLM } from './api.js';
 import { scoreText, scoreMPS, scoreFidelity, combinedScore } from './scoring.js';
 import { buildPrompt } from './prompt-builder.js';
+import { stripSelfAudit } from './output.js';
 import { createLogger } from './logger.js';
 
 /**
@@ -117,7 +118,7 @@ export async function runOuroboros({
     });
 
     const iterationStartedAt = now ? now() : Date.now();
-    const humanized = await callLLM({
+    const rawOutput = await callLLM({
       prompt,
       apiKey,
       baseURL,
@@ -127,6 +128,11 @@ export async function runOuroboros({
       signal,
       timeout,
     });
+    // The rewrite prompt asks the model to wrap output in [BODY]/[SELF_AUDIT] tags.
+    // Strip them before scoring and before re-feeding: otherwise the AI-likeness
+    // score, MPS, and fidelity all see the self-audit meta-commentary, and the next
+    // iteration humanizes text with nested tags.
+    const humanized = stripSelfAudit(rawOutput, { logger });
 
     const scoreResult = await scoreText({
       text: humanized,
@@ -181,7 +187,10 @@ export async function runOuroboros({
       }),
     ]);
 
-    const mps = mpsResult?.mps ?? 100;
+    // A failed MPS scorer returns { mps: null }. Treat that as a floor violation
+    // (fail closed) rather than defaulting to a passing 100 — scoreFidelity already
+    // fails closed (missing criteria clamp to 0), so MPS must match.
+    const mps = mpsResult?.mps ?? null;
     const fidelity = fidelityResult?.fidelity ?? 100;
     const combined = combinedScore({
       aiLikeness: currentScore,
@@ -207,8 +216,8 @@ export async function runOuroboros({
       reason = 'Fidelity floor violation';
       shouldStop = true;
       shouldRollback = true;
-    } else if (mps < mpsFloor) {
-      reason = 'MPS floor violation';
+    } else if (mps === null || mps < mpsFloor) {
+      reason = mps === null ? 'MPS scorer failure' : 'MPS floor violation';
       shouldStop = true;
       shouldRollback = true;
     } else if (delta <= plateauThreshold) {
@@ -250,8 +259,13 @@ export async function runOuroboros({
     }
   }
 
+  // Return the best-scoring text with its score. A non-rollback stop (plateau/target/max)
+  // leaves currentText at the last iteration, which can score worse than bestScore when
+  // combined-score improvements (e.g. fidelity) let an AI-likeness regression through;
+  // pairing currentText with bestScore would mislabel that text. bestText is only ever
+  // updated on floor-passing iterations, so it is always a safe result.
   return {
-    finalText: currentText,
+    finalText: bestText,
     finalScore: bestScore,
     iterations: iterationLog.length - 1,
     reason: iterationLog[iterationLog.length - 1]?.reason || 'Completed',

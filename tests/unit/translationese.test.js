@@ -3,6 +3,8 @@ import test from 'node:test';
 
 import { detectTranslationese, TRANSLATIONESE_RULES } from '../../src/features/translationese.js';
 import { analyzeText } from '../../src/features/index.js';
+import { KO_POST_EDITESE_SCHEMA, koreanPostEditeseFeatures } from '../../src/features/stylometry.js';
+
 
 test('calque-dense ko fires (count + density gate met)', () => {
   const text = '당신은 이 도구를 사용할 수 있습니다. 그것은 다양한 기능을 제공합니다. 이 작업은 에이전트에 의해 처리됩니다. 사용법은 다음과 같습니다.';
@@ -49,6 +51,82 @@ test('every rule ships a before/after example', () => {
     assert.ok(rule.re().test(rule.example.before), `rule ${rule.id} does not match its before example`);
   }
 });
+test('ko translationese detects im-not-ai derived advisory rules', () => {
+  const text = [
+    '메리는 그녀가 그녀의 어머니에게 전화했다고 말했다.',
+    '회의에서의 결정은 앞으로의 운영으로의 전환을 앞당겼다.',
+    '우리는 회의를 가졌고 중요한 결정을 내렸다.',
+    '이 작업은 에이전트에 의해 처리되었다.',
+    '이 문제는 분석되어진 뒤 보고서에 쓰여진다.',
+    '그는 자료를 검토하고, 결과를 정리하며, 보고서를 작성했다.',
+  ].join(' ');
+  const r = detectTranslationese(text, { lang: 'ko' });
+  const ids = r.byRule.map((x) => x.id);
+
+  assert.ok(ids.includes('a16-pronoun-literal'), 'A-16 pronoun literal mapping');
+  assert.ok(ids.includes('a19-double-particle'), 'A-19 double particles');
+  assert.ok(ids.includes('a7-light-verb'), 'A-7 light verbs');
+  assert.ok(ids.includes('t2-by-passive'), 'T2 by-passive co-occurrence');
+  assert.ok(ids.includes('a8-double-passive'), 'A-8 double passive');
+  assert.ok(ids.includes('c11-connective-comma'), 'C-11 connective-ending comma');
+  assert.equal(r.hot, true);
+});
+
+test('ko translationese caveats keep common formal Korean below stronger rules', () => {
+  const text = '한국의 미래는 밝다. 그의 의견은 다르다. 위원회에 의해 회의가 열렸다.';
+  const r = detectTranslationese(text, { lang: 'ko' });
+  const ids = r.byRule.map((x) => x.id);
+
+  assert.equal(ids.includes('a19-double-particle'), false, 'bare 의 is not a double particle');
+  assert.equal(ids.includes('t2-by-passive'), false, 'bare 에 의해 without passive co-occurrence is not the strong rule');
+  assert.equal(ids.includes('passive-e-uihae'), true, 'bare 에 의해 remains a weak advisory hit');
+  assert.equal(r.hot, false);
+});
+test('weak-only translationese stays advisory even above count and density gates', () => {
+  const text = [
+    '사용법은 다음과 같습니다.',
+    '다양한 기능을 제공합니다.',
+    '설치를 쉽게 만들어 줍니다.',
+    '가장 빠른 도구 중 하나입니다.',
+  ].join(' ');
+  const r = detectTranslationese(text, { lang: 'ko' });
+  const ids = r.byRule.map((x) => x.id).sort();
+
+  assert.deepEqual(ids, ['as-follows', 'make-easy', 'one-of', 'provides'].sort());
+  assert.equal(r.count, 4);
+  assert.ok(r.density >= r.thresholds.density, `density ${r.density}`);
+  assert.equal(r.thresholds.strong, 1);
+  assert.equal(r.hot, false);
+});
+
+test('overlapping translationese rules count independent evidence spans for the hot gate', () => {
+  const text = [
+    '그것은 중요하다.',
+    '그것은 필요하다.',
+    '이 작업은 에이전트에 의해 처리되었다.',
+  ].join(' ');
+  const r = detectTranslationese(text, { lang: 'ko' });
+  const ids = r.byRule.map((x) => x.id);
+
+  assert.ok(ids.includes('dummy-subject'), 'dummy-subject raw rule remains visible');
+  assert.ok(ids.includes('a16-pronoun-literal'), 'overlapping A-16 raw rule remains visible');
+  assert.ok(ids.includes('passive-e-uihae'), 'weak passive raw rule remains visible');
+  assert.ok(ids.includes('t2-by-passive'), 'overlapping strong T2 raw rule remains visible');
+  assert.equal(r.count, 3);
+  assert.equal(r.hot, false);
+});
+
+test('hot ko translationese remains advisory and outside the document hot verdict', () => {
+  const text = '메리는 그녀가 그녀의 책을 갖고 있다. 회의에서의 결정으로의 이동은 에이전트에 의해 처리되었다.';
+  const r = analyzeText(text, { lang: 'ko' });
+
+  assert.equal(r.translationese.hot, true);
+  assert.equal(
+    r.hot,
+    r.markupLeakage.leaked || r.discourseTells.hot || r.paragraphs.some((p) => p.hot),
+  );
+  assert.equal(r.hot, false);
+});
 
 test('analyzeText surfaces translationese as an advisory signal', () => {
   const text =
@@ -72,4 +150,181 @@ test('analyzeText keeps translationese OUT of the hot verdict (advisory only)', 
   assert.equal(r.translationese.hot, false);
   // hot is driven only by leakage / discourse / paragraph stylometry
   assert.equal(r.hot, r.markupLeakage.leaked || r.discourseTells.hot || r.paragraphs.some((p) => p.hot));
+});
+const FORBIDDEN_KO_POST_EDITESE_KEYS = new Set([
+  'hot',
+  'severity',
+  'score',
+  'zScore',
+  'zscore',
+  'baseline',
+  'percentile',
+]);
+
+function collectObjectKeys(value, keys = []) {
+  if (Array.isArray(value)) {
+    for (const item of value) collectObjectKeys(item, keys);
+    return keys;
+  }
+  if (value && typeof value === 'object') {
+    for (const [key, child] of Object.entries(value)) {
+      keys.push(key);
+      collectObjectKeys(child, keys);
+    }
+  }
+  return keys;
+}
+
+test('ko post-editese exposes the v1 raw descriptive schema', () => {
+  const text = [
+    '그녀는 회의에서의 결정을 검토하고 있다.',
+    '이 작업은 에이전트에 의해 처리되어진다.',
+    '',
+    '우리는 회의를 가졌고, 결정을 내렸다.',
+    '그것은 중요한 자료이다.',
+  ].join('\n');
+  const payload = koreanPostEditeseFeatures(text, { lang: 'ko' });
+
+  assert.equal(payload.schema, KO_POST_EDITESE_SCHEMA);
+  assert.equal(payload.schema, 'koPostEditese.v1');
+  assert.equal(payload.lang, 'ko');
+  assert.equal(payload.analyzed, true);
+  assert.equal(payload.skipReason, null);
+  assert.equal(payload.paragraphCount, 2);
+  assert.equal(payload.paragraphs.length, 2);
+  assert.ok(payload.sentenceCount >= 4);
+  assert.ok(payload.eojeolCount > 0);
+  const paragraphSentenceTotal = payload.paragraphs.reduce((sum, row) => sum + row.sentenceCount, 0);
+  const paragraphEojeolTotal = payload.paragraphs.reduce((sum, row) => sum + row.eojeolCount, 0);
+  assert.equal(payload.sentenceCount, paragraphSentenceTotal);
+  assert.equal(payload.eojeolCount, paragraphEojeolTotal);
+  assert.deepEqual(Object.keys(payload).sort(), [
+    'analyzed',
+    'eojeolCount',
+    'lang',
+    'metrics',
+    'paragraphCount',
+    'paragraphs',
+    'schema',
+    'sentenceCount',
+    'skipReason',
+  ].sort());
+  for (const row of payload.paragraphs) {
+    assert.deepEqual(Object.keys(row).sort(), ['eojeolCount', 'id', 'metrics', 'sentenceCount'].sort());
+    assert.deepEqual(Object.keys(row.metrics).sort(), ['endings', 'interference', 'lexical', 'rhythm'].sort());
+    assert.deepEqual(Object.keys(row.metrics.lexical).sort(), Object.keys(payload.metrics.lexical).sort());
+    assert.deepEqual(Object.keys(row.metrics.endings).sort(), Object.keys(payload.metrics.endings).sort());
+    assert.deepEqual(Object.keys(row.metrics.interference).sort(), Object.keys(payload.metrics.interference).sort());
+    assert.deepEqual(Object.keys(row.metrics.rhythm).sort(), Object.keys(payload.metrics.rhythm).sort());
+  }
+
+
+  assert.deepEqual(Object.keys(payload.metrics).sort(), ['endings', 'interference', 'lexical', 'rhythm'].sort());
+  assert.deepEqual(Object.keys(payload.metrics.lexical).sort(), [
+    'endingDiversity',
+    'endingTypeCount',
+    'mattr',
+    'tokenCount',
+    'ttr',
+    'typeCount',
+  ].sort());
+  assert.deepEqual(Object.keys(payload.metrics.endings).sort(), [
+    'declarativeDaCount',
+    'declarativeDaRatio',
+    'doendaCount',
+    'endingStreakMax',
+    'formalEndingCount',
+    'handaCount',
+    'idaCount',
+    'politeEndingCount',
+  ].sort());
+  assert.deepEqual(Object.keys(payload.metrics.interference).sort(), [
+    'byPassiveCount',
+    'connectiveCommaCount',
+    'doubleParticleCount',
+    'doublePassiveCount',
+    'lightVerbCount',
+    'progressiveAspectCount',
+    'pronounLiteralCount',
+    'relativeClauseProxyCount',
+  ].sort());
+  assert.deepEqual(Object.keys(payload.metrics.rhythm).sort(), [
+    'commaPer100Chars',
+    'commaPerSentence',
+    'eojeolLengthCV',
+    'meanEojeolLength',
+    'meanSentenceEojeols',
+    'sentenceEojeolCV',
+    'suffixClassDiversity',
+    'suffixDiversity',
+    'suffixMatchedCount',
+  ].sort());
+
+  assert.ok(payload.metrics.interference.pronounLiteralCount >= 2);
+  assert.ok(payload.metrics.interference.doubleParticleCount >= 1);
+  assert.ok(payload.metrics.interference.progressiveAspectCount >= 1);
+  assert.ok(payload.metrics.interference.byPassiveCount >= 1);
+  assert.ok(payload.metrics.interference.doublePassiveCount >= 1);
+  assert.ok(payload.metrics.interference.connectiveCommaCount >= 1);
+  assert.ok(payload.metrics.endings.idaCount >= 1);
+  assert.ok(payload.metrics.rhythm.suffixMatchedCount > 0);
+});
+
+test('ko post-editese skipped payloads are stable and zero-valued', () => {
+  const nonKo = koreanPostEditeseFeatures('This is plain English.', { lang: 'en' });
+  const empty = koreanPostEditeseFeatures('   ', { lang: 'ko' });
+  const punctuation = koreanPostEditeseFeatures('... !!!', { lang: 'ko' });
+  const mixedNonKo = koreanPostEditeseFeatures('This English-labeled text mentions 그녀 and 그것.', { lang: 'en' });
+
+
+  for (const [payload, reason] of [
+    [nonKo, 'non-ko'],
+    [empty, 'empty'],
+    [punctuation, 'no-hangul-eojeols'],
+    [mixedNonKo, 'non-ko'],
+  ]) {
+    assert.equal(payload.schema, 'koPostEditese.v1');
+    assert.equal(payload.analyzed, false);
+    assert.equal(payload.skipReason, reason);
+    assert.equal(payload.paragraphCount, 0);
+    assert.equal(payload.sentenceCount, 0);
+    assert.equal(payload.eojeolCount, 0);
+    assert.deepEqual(payload.paragraphs, []);
+    assert.equal(payload.metrics.lexical.tokenCount, 0);
+    assert.equal(payload.metrics.lexical.ttr, null);
+    assert.equal(payload.metrics.endings.declarativeDaRatio, null);
+    assert.equal(payload.metrics.rhythm.sentenceEojeolCV, null);
+    assert.equal(payload.metrics.rhythm.suffixMatchedCount, 0);
+  }
+});
+
+test('analyzeText surfaces ko post-editese without hot coupling or forbidden keys', () => {
+  const text = '그녀는 회의에서의 결정을 검토하고 있다. 이 작업은 에이전트에 의해 처리되어진다.';
+  const analysis = analyzeText(text, { lang: 'ko' });
+  const expectedHot = analysis.markupLeakage.leaked ||
+    analysis.discourseTells.hot ||
+    analysis.structuralClassifier.hot === true ||
+    analysis.paragraphs.some((p) => p.hot);
+
+  assert.equal(analysis.koPostEditese.schema, 'koPostEditese.v1');
+  assert.equal(analysis.koPostEditese.analyzed, true);
+  assert.ok(analysis.koPostEditese.metrics.interference.pronounLiteralCount >= 1);
+  assert.equal(analysis.hot, expectedHot);
+
+  const keys = collectObjectKeys(analysis.koPostEditese);
+  assert.deepEqual(keys.filter((key) => FORBIDDEN_KO_POST_EDITESE_KEYS.has(key)), []);
+});
+
+test('analyzeText returns skipped ko post-editese for non-ko without changing verdicts', () => {
+  const analysis = analyzeText('A short plain English note.', { lang: 'en' });
+  assert.equal(analysis.koPostEditese.schema, 'koPostEditese.v1');
+  assert.equal(analysis.koPostEditese.analyzed, false);
+  assert.equal(analysis.koPostEditese.skipReason, 'non-ko');
+  assert.equal(
+    analysis.hot,
+    analysis.markupLeakage.leaked ||
+      analysis.discourseTells.hot ||
+      analysis.structuralClassifier.hot === true ||
+      analysis.paragraphs.some((p) => p.hot),
+  );
 });

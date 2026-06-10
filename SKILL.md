@@ -1,6 +1,6 @@
 ---
 name: patina
-version: 4.0.0
+version: 4.0.1
 description: Detect and rewrite AI writing patterns in Korean, English, Chinese, and Japanese text so it reads as if a human wrote it. Meaning-preservation (MPS) verified.
 allowed-tools:
   - Read
@@ -227,6 +227,10 @@ tone_confidence: high
 전체 알고리즘 정의는 `core/stylometry.md`를 참조한다. 핵심 공식만 인라인으로 제시한다.
 
 **Tokenization** — ko/en은 whitespace 기준 분할 + edge-punctuation strip(ko=어절, en=단어)을 사용한다. zh/ja는 Han/Kana 문자와 ASCII run을 토큰으로 삼는 deterministic character-token fallback을 사용한다. 형태소 분석기 미사용.
+
+### Korean advisory metadata (`translationese`, `koPostEditese.v1`)
+
+Korean deterministic analysis may surface `analysis.translationese` and top-level `koPostEditese` / `koPostEditese.v1` as rewrite editing hints: calque candidates, literal pronouns, by-passives, double particles, uniform endings, rhythm, and suffix-diversity proxies. These hints are **advisory context only** for natural Korean editing and are separate from the 4.6/4.7 hot-zone computation. They must not feed or alter score, hot 판정, gates, benchmark claims, severity, z-score/baseline/percentile logic, prompt/rewrite gates, or authorship verdicts.
 
 **Burstiness (CV, 문장 길이 변동성)**
 

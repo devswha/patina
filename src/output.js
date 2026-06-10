@@ -254,9 +254,13 @@ function removeSelfAuditBlocks(body) {
 
 function removeToneFooter(body) {
   if (!hasToneFooter(body)) return body;
-  const match = String(body || '').match(/(^|\n)---\s*\n([\s\S]*?)\n---\s*$/);
+  const str = String(body || '');
+  // Anchor to the LAST '---'-fenced block: the inner content may not contain another
+  // '---' fence line, so a markdown thematic break earlier in the body cannot be
+  // mistaken for the footer opener (which would truncate everything after it).
+  const match = str.match(/(?:^|\n)---[ \t]*\n((?:(?!\n---[ \t]*(?:\n|$))[\s\S])*?)\n---[ \t]*$/);
   if (!match) return body;
-  const block = match[2];
+  const block = match[1];
   if (
     !/\btone\s*:/.test(block)
     || !/\btone_source\s*:/.test(block)
@@ -265,7 +269,7 @@ function removeToneFooter(body) {
   ) {
     return body;
   }
-  return String(body || '').slice(0, match.index).trimEnd();
+  return str.slice(0, match.index).trimEnd();
 }
 
 function renderBody(result) {
@@ -481,14 +485,23 @@ export function buildDeterministicAuditBackstop(text, opts = {}) {
   const str = typeof text === 'string' ? text : '';
   /** @type {Array<{signal:string,label:string,severity:string,location:string}>} */
   const rows = [];
+  /** @type {Array<{signal:string,location:string,hint:string}>} */
+  const translationeseRows = [];
 
   // ko translationese — per-rule, with matched samples (model-independent).
+  // This is an editing-hint surface, not calibrated severity evidence.
   if (lang === 'ko' && str) {
     for (const rule of TRANSLATIONESE_RULES) {
       const matches = str.match(rule.re());
-      if (matches && matches.length) {
+      if (matches && matches.length >= (rule.minCount ?? 1)) {
         const samples = [...new Set(matches.map((m) => m.trim()).filter(Boolean))].slice(0, 4);
-        rows.push({ signal: `번역투: ${rule.id}`, label: rule.label, severity: rule.strong ? 'MEDIUM' : 'LOW', location: samples.join(', ') });
+        translationeseRows.push({
+          signal: `번역투: ${rule.id} — ${rule.label}`,
+          location: samples.join(', '),
+          hint: rule.example?.after
+            ? `자연스러운 한국어 예: ${rule.example.after}`
+            : '문맥을 읽고 자연스러운 한국어 절·문장으로 다듬는다.',
+        });
       }
     }
   }
@@ -509,13 +522,77 @@ export function buildDeterministicAuditBackstop(text, opts = {}) {
     rows.push({ signal: 'structural-classifier', label: '문서 단위 구조 분류기', severity: 'HIGH', location: `score ${a.structuralClassifier.score}` });
   }
 
-  if (rows.length === 0) return '';
+  const koPostEditeseRows = buildKoPostEditeseAdvisoryRows(a.koPostEditese);
+  if (rows.length === 0 && translationeseRows.length === 0 && koPostEditeseRows.length === 0) return '';
+
   const lines = [
     '## 결정적 신호 (deterministic backstop — 모델과 무관하게 항상 검사)',
-    '',
-    '| 신호 | 설명 | 심각도 | 위치 |',
-    '|------|------|--------|------|',
-    ...rows.map((r) => `| ${r.signal} | ${r.label} | ${r.severity} | ${r.location} |`),
   ];
+  if (rows.length > 0) {
+    lines.push(
+      '',
+      '| 신호 | 설명 | 심각도 | 위치 |',
+      '|------|------|--------|------|',
+      ...rows.map((r) => renderMarkdownTableRow([r.signal, r.label, r.severity, r.location])),
+    );
+  }
+  if (translationeseRows.length > 0) {
+    lines.push(
+      '',
+      '### Korean translationese editing hints',
+      '',
+      '| signal | matched sample | editing hint |',
+      '|--------|----------------|--------------|',
+      ...translationeseRows.map((r) => renderMarkdownTableRow([r.signal, r.location, r.hint])),
+    );
+  }
+  if (koPostEditeseRows.length > 0) {
+    lines.push(
+      '',
+      '### koPostEditese.v1 편집 참고 원시 지표',
+      '',
+      '| metric | value | editing hint |',
+      '|--------|-------|--------------|',
+      ...koPostEditeseRows.map((r) => renderMarkdownTableRow([r.metric, formatAdvisoryValue(r.value), r.hint])),
+    );
+  }
+
   return `\n\n${lines.join('\n')}`;
+}
+
+function buildKoPostEditeseAdvisoryRows(payload) {
+  if (!payload?.analyzed || payload.schema !== 'koPostEditese.v1') return [];
+  const metrics = payload.metrics ?? {};
+  return [
+    { metric: 'lexical.tokenCount', value: metrics.lexical?.tokenCount, hint: '표본 크기를 확인하고 짧은 글에서는 다른 지표를 과해석하지 않는다.' },
+    { metric: 'lexical.ttr', value: metrics.lexical?.ttr, hint: '반복 어휘가 많으면 같은 뜻의 한국어 표현으로 압축한다.' },
+    { metric: 'lexical.endingDiversity', value: metrics.lexical?.endingDiversity, hint: '문장 끝맺음이 단조로우면 종결형을 섞어 읽는 리듬을 다듬는다.' },
+    { metric: 'endings.declarativeDaRatio', value: metrics.endings?.declarativeDaRatio, hint: "'다/한다/된다/이다' 종결이 몰리면 일부 문장을 자연스러운 구어·서술형으로 바꾼다." },
+    { metric: 'endings.endingStreakMax', value: metrics.endings?.endingStreakMax, hint: '같은 종결형이 연속되면 문장 순서나 연결 방식을 손본다.' },
+    { metric: 'interference.pronounLiteralCount', value: metrics.interference?.pronounLiteralCount, hint: "'당신/그것/이것' 직역 대명사는 생략하거나 구체 명사로 바꾼다." },
+    { metric: 'interference.byPassiveCount', value: metrics.interference?.byPassiveCount, hint: "'~에 의해' 피동은 가능한 한 행위자 주어 능동문으로 고친다." },
+    { metric: 'interference.lightVerbCount', value: metrics.interference?.lightVerbCount, hint: "'~을 하다/가지다' 류는 더 직접적인 동사나 형용사로 줄인다." },
+    { metric: 'interference.progressiveAspectCount', value: metrics.interference?.progressiveAspectCount, hint: "'~하고 있다' 진행상은 실제 진행이 아니면 단순 현재로 줄인다." },
+    { metric: 'rhythm.meanSentenceEojeols', value: metrics.rhythm?.meanSentenceEojeols, hint: '문장이 길게 늘어지면 한 생각 단위로 끊는다.' },
+    { metric: 'rhythm.commaPerSentence', value: metrics.rhythm?.commaPerSentence, hint: '쉼표가 많으면 접속 구조를 문장 분리나 조사로 정리한다.' },
+    { metric: 'rhythm.suffixDiversity', value: metrics.rhythm?.suffixDiversity, hint: '연결 어미 선택이 좁으면 문장 연결 방식을 다양화한다.' },
+  ].filter((row) => row.value !== undefined && row.value !== null);
+}
+
+function formatAdvisoryValue(value) {
+  if (typeof value === 'number') return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(4)));
+  return String(value);
+}
+function renderMarkdownTableRow(cells) {
+  return `| ${cells.map(escapeMarkdownTableCell).join(' | ')} |`;
+}
+
+function escapeMarkdownTableCell(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, ' ')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .trim();
 }

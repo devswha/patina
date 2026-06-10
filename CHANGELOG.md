@@ -12,11 +12,16 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
-## Unreleased
+## 4.1.0 — 2026-06-11
 
-**Detector calibration fixes and runtime hardening.**
+**Browser diff page, Korean post-editese advisory analyzer, and detector calibration fixes.**
 
-Semver rationale: patch — bug fixes to Korean detection rules and local-CLI backends; no schema or flag changes (one new mutual-exclusivity guard rejects already-invalid flag combinations).
+Semver rationale: minor — adds the `--browser` rewrite diff page, the Korean post-editese advisory analyzer surfaced through `analyzeText`, and an optional structural-classifier scoring hook; the rest is bug fixes to Korean detection rules, local-CLI backends, score-prompt reliability, and npm packaging. Note: 4.0.1 was tagged in this file but never published, so npm consumers upgrade straight from 4.0.0 and pick up its `patina-cli` bin alias here.
+
+### Added
+- `--browser` rewrite add-on: rewrites one local file (stdout stays byte-for-byte identical for the selected `--format`), then writes a self-contained local HTML before/after diff page — side-by-side text, changed-block highlights, deterministic score summaries, and a best-effort diff-explanation backend call (one extra model call; explanation failure never fails the rewrite). Rejects stdin/`--batch`/URLs/non-rewrite modes; if the browser cannot be opened, the saved HTML path is printed on stderr.
+- Korean post-editese advisory analyzer (`koPostEditese.v1`): deterministic descriptive metrics (lexical, endings, interference, rhythm) surfaced through `analyzeText` as advisory-only metadata — never folded into the hot verdict or the score.
+- Optional structural-classifier scoring hook: config `stylometry.structural_model.path` (or the `PATINA_STRUCTURAL_MODEL` env var) can point at a local structural model; when a loaded model marks text hot, the deterministic score gets a 70-point floor and a `structuralClassifier` band (`available`/`hot`/`score`/`floor`) appears in the deterministic-score JSON. Without a model, behavior is unchanged.
 
 ### Fixed
 - Korean `koPostEditese` no longer misclassifies regular formal `-ㅂ니다 / -ㅂ니까` endings (됩니다, 표시됩니다, 합니까…) as declarative `-다` style, so clean 합쇼체 prose is no longer pushed toward register-changing rewrites.
@@ -28,10 +33,15 @@ Semver rationale: patch — bug fixes to Korean detection rules and local-CLI ba
 - Rewrite tone-footer removal anchors to the final `---` block, so a markdown thematic break in the body no longer truncates everything after it.
 - `--config <file>` now wins over an ambient `./.patina.yaml` / `~/.patina.yaml` (reproducible runs); config merge is guarded against prototype pollution.
 - Mutually exclusive output modes (`--diff` / `--audit` / `--score` / `--ouroboros`) are now rejected up front instead of silently resolving to one mode (which could make a `--score` CI gate always exit 0).
-- Discourse tells (fake-candor openers / thematic breaks) are now attributed to the paragraphs that carry them (#391), so flagged paragraphs enter rewrite scope and reach the deterministic score through the hot ratio — matching the playground. The interim document-level 35-point score floor is removed; the ≥2/≥3 density gates are unchanged. Discourse-hot paragraphs also carry signal strength (tell count normalized by the density gate), keeping the signal-score ranking leg consistent with the hot verdict (no hot-with-zero-signal rows). Prose gates (`precommit-score`/`dogfood`) keep their hot-prose-ratio semantics: bare `---` divider pseudo-paragraphs are excluded from the gate ratio, while divider spam still reaches the mdx ranking through `flooredScore`.
+- Discourse tells (fake-candor openers / thematic breaks) are now attributed to the paragraphs that carry them (#391), so flagged paragraphs enter rewrite scope and reach the deterministic score through the hot ratio — matching the playground. The interim document-level 35-point score floor (added and removed within this release; never published) is gone; the ≥2/≥3 density gates are unchanged. Discourse-hot paragraphs also carry signal strength (tell count normalized by the density gate), keeping the signal-score ranking leg consistent with the hot verdict (no hot-with-zero-signal rows). Prose gates (`precommit-score`/`dogfood`) keep their hot-prose-ratio semantics: bare `---` divider pseudo-paragraphs are excluded from the gate ratio, while divider spam still reaches the mdx ranking through `flooredScore`.
+
+- npm package now ships the scripts behind the `benchmark:rebaseline:generate-modern`, `benchmark:rebaseline:claim-manifest`, `benchmark:rebaseline:fp-fixtures`, and `qa:mdx` npm scripts (`rebaseline-generate-modern.mjs`, `rebaseline-build-claim-manifest.mjs`, `fp-fixture-export.mjs`, `qa/mdx-score.mjs`), which previously failed with MODULE_NOT_FOUND for npm consumers (#411).
 
 ### Changed
+- `--format text` output no longer appends the `Tone: <tone> (<source>)` trailer line.
+- `--score`/`scoreText` prompts now embed per-pack pattern counts and a full catalog digest, and `scoreText` follows a single strict-JSON output contract (with strip options and a `flooredScore` field); the `patina-score` prose gate strips paired emphasis markers only (so URL-leakage signals like `utm_source=chatgpt.com` survive) and scores through `scoreText` with the lexicon channel and canonical floors — gate scores can shift slightly vs 4.0.0.
 - `kimi-cli` backend runs with `--max-steps-per-turn 20` (up from 1). It stays in non-interactive `--print` mode with no `--yolo`, so the agent cannot auto-approve shell/file tools — the extra steps only cover reasoning/formatting within a turn (verified that injected tool-use instructions in user text do not execute).
+- Internal: `src/cli.js` decomposed into per-concern modules (`src/cli/args.js`, `batch.js`, `input.js`, `score-gate.js`, `run.js` — #409, #413, #414), and the generated `docs/API.md` no longer claims boilerplate `@throws` on functions that cannot throw.
 
 ## 4.0.1 — 2026-06-07
 

@@ -35,7 +35,9 @@ const openaiHttp = {
     images,
   }) => {
     if (Array.isArray(images) && images.length > 0) {
-      throw new Error('openai-http backend: image input is not supported yet — use codex-cli, claude-cli, or gemini-cli for OCR');
+      // By design, not a gap: OCR stays on local CLI backends so image bytes
+      // never ride an HTTP API call.
+      throw new Error('openai-http backend: image input is not supported — use codex-cli, claude-cli, or gemini-cli for OCR');
     }
     return callLLM({ prompt, apiKey, baseURL, model, signal, timeout, maxRetries, temperature, seed, onResponse });
   },

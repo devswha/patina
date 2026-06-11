@@ -18,7 +18,7 @@ import {
   openBrowserDiffPage,
   serveBrowserDiffPage,
 } from '../browser-diff.js';
-import { fetchPreviewPage, extractProseBlocks, alignRewrites, buildPreviewHtml } from '../preview.js';
+import { fetchPreviewPage, prepareSnapshotHtml, extractProseBlocks, alignRewrites, buildPreviewHtml } from '../preview.js';
 import { runOuroboros } from '../ouroboros.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
 import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput } from './batch.js';
@@ -621,7 +621,8 @@ async function runPreviewJob({
     }
     cancellation.throwIfCanceled();
 
-    const { blocks, truncated } = extractProseBlocks(page.html);
+    const pageHtml = prepareSnapshotHtml(page.html);
+    const { blocks, truncated } = extractProseBlocks(pageHtml);
     if (blocks.length === 0) {
       throw runtimeError(
         'no prose found on the page',
@@ -678,7 +679,7 @@ async function runPreviewJob({
     }
 
     const { html: previewHtml, changedCount } = buildPreviewHtml({
-      html: page.html,
+      html: pageHtml,
       blocks,
       rewrites,
       sourceUrl: page.finalUrl,

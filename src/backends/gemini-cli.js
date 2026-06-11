@@ -2,10 +2,11 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand } from './contract.js';
+import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand, stageCliImages } from './contract.js';
 import { resolveLocalCliModel } from '../model-defaults.js';
 
 export const name = 'gemini-cli';
+export const supportsImages = true;
 export const loginCommand = 'gemini';
 export const installHint = 'Install Gemini CLI first, then run `patina auth login gemini-cli` again.';
 
@@ -44,7 +45,7 @@ export function login(options = {}) {
   });
 }
 
-export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
+export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS, images } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('gemini-cli backend: prompt must be a non-empty string');
   }
@@ -58,6 +59,14 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   const dir = mkdtempSync(join(tmpdir(), 'patina-gemini-'));
   const cliModel = resolveLocalCliModel({ backendName: name, model, modelSource });
   const args = ['-p', '', '--output-format', 'text', '--skip-trust', '-m', cliModel];
+
+  // Vision input: gemini's @-includes are confined to the workspace root, so
+  // images are staged into the temp cwd and referenced as @<filename>.
+  let effectivePrompt = prompt;
+  if (Array.isArray(images) && images.length > 0) {
+    const staged = stageCliImages(dir, images);
+    effectivePrompt = `${staged.map((f) => `@${f}`).join(' ')}\n${prompt}`;
+  }
 
   return new Promise((resolve, reject) => {
     const proc = spawn('gemini', args, { stdio: ['pipe', 'pipe', 'pipe'], cwd: dir });
@@ -108,7 +117,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
         finishReject(new Error(`gemini-cli backend: stdin error (${err.message})`));
       }
     });
-    proc.stdin.write(prompt);
+    proc.stdin.write(effectivePrompt);
     proc.stdin.end();
 
     function cleanup() {

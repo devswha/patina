@@ -113,6 +113,19 @@ File contract:
 - The whole file is rewritten (same scope as a plain rewrite) and rendered as a single reading document. Hunks are paired by LCS, so the model does not need to preserve paragraph counts.
 - stdout carries the rewritten prose (pipe-safe) in both forms; the page path and serve URL go to stderr, same as `--browser`.
 
+### Image text: `--ocr`
+
+Marketing pages often carry their most AI-sounding copy inside images (card-news, banners). `--ocr` extends detection to them:
+
+```bash
+patina --preview --ocr https://example.com/product
+```
+
+- Image candidates come from `<img>` sources (including `srcset` and Next.js `/_next/image` wrappers, unwrapped to the original asset) plus document-wide base64 data URIs (card-news content frequently ships as CSS `background-image` data URIs). SVG is skipped; caps: 8 images per page by priority, 2MB per image, 10MB total.
+- Text extraction runs through an image-capable local CLI backend — `claude-cli`, `gemini-cli`, or `codex-cli` (your selected backend when capable, otherwise the first capable one available). One extra backend call per image; images are staged into the backend's isolated temp dir, preserving the empty-cwd prompt-injection containment. `kimi-cli` and `openai-http` cannot read images.
+- Extracted text joins the same rewrite call as extra blocks. Since pixels cannot be rewritten, a changed finding renders as an annotation: dashed bronze outline + `I`-numbered badge on the image, and a notes card showing the extracted text next to the suggested rewrite.
+- stdout never includes OCR text (pipe-safe); the flagged-image count is reported on stderr.
+
 
 ## Backend fallback chains
 

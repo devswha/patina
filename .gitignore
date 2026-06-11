@@ -54,3 +54,6 @@ artifacts/rebaseline-*/generations.private.jsonl
 artifacts/rebaseline-*/*.private.jsonl
 artifacts/rebaseline-*/private/
 .vercel
+
+# local test samples / shareable bundles (user-owned, not repo fixtures)
+sample/

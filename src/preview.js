@@ -1,4 +1,5 @@
 import { htmlEscape, diffBlockPairs } from './browser-diff.js';
+import { describeImage } from './ocr.js';
 
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 const DEFAULT_FETCH_TIMEOUT_MS = 30000;
@@ -351,7 +352,7 @@ function bigramCounts(text) {
   return counts;
 }
 
-export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanationHtml = '', scoreChip = null }) {
+export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanationHtml = '', scoreChip = null, imageFindings = [] }) {
   let changedCount = 0;
   const planned = blocks.map((block, index) => {
     const rewritten = rewrites[index];
@@ -369,10 +370,55 @@ export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanatio
     out = out.slice(0, block.start) + replacement + out.slice(block.end);
   }
 
+  const image = annotateImageFindings(out, imageFindings);
+  out = image.html;
+
   out = stripActiveContent(out);
   out = injectHead(out, sourceUrl);
-  out = injectChrome(out, { changedCount, totalCount: blocks.length, explanationHtml, scoreChip });
-  return { html: out, changedCount, totalCount: blocks.length };
+  out = injectChrome(out, {
+    changedCount,
+    totalCount: blocks.length,
+    explanationHtml,
+    scoreChip,
+    imageCardsHtml: image.cardsHtml,
+    imageChangedCount: image.changedCount,
+  });
+  return { html: out, changedCount, totalCount: blocks.length, imageChangedCount: image.changedCount };
+}
+
+// OCR findings cannot be swapped into pixels, so changed image text is
+// surfaced as an annotation: the <img> gets a dashed bronze outline with an
+// I-numbered badge, and a notes card shows the extracted text next to the
+// suggested rewrite. Findings with no DOM anchor (CSS-background data URIs)
+// get a card only.
+function annotateImageFindings(html, imageFindings) {
+  let out = html;
+  let changedCount = 0;
+  const cards = [];
+  for (const finding of imageFindings) {
+    if (!finding.changed) continue;
+    changedCount += 1;
+    const n = changedCount;
+    if (finding.anchor) {
+      const tagRe = new RegExp(`<img\\b[^>]*src="${escapeRegExp(finding.anchor)}"[^>]*>`, 'i');
+      let wrapped = false;
+      out = out.replace(tagRe, (tag) => {
+        wrapped = true;
+        return `<span class="ptna-img" id="ptna-img-${n}" data-n="I${n}">${tag}</span>`;
+      });
+      finding.anchored = wrapped;
+    }
+    cards.push(
+      `<article class="explain-card ptna-img-card"><strong>I${n}</strong> · ${htmlEscape(describeImage(finding))}`
+      + `<br>Image text: ${htmlEscape(finding.text)}`
+      + `<br>Suggested: <span class="ptna-img-suggest">${htmlEscape(finding.rewritten)}</span></article>`,
+    );
+  }
+  return { html: out, cardsHtml: cards.join(''), changedCount };
+}
+
+function escapeRegExp(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // File input has no host page to overlay, so render the text as a reading
@@ -440,7 +486,7 @@ function injectHead(html, sourceUrl) {
   return `<head>${injection}</head>${html}`;
 }
 
-function injectChrome(html, { changedCount, totalCount, explanationHtml = '', scoreChip = null }) {
+function injectChrome(html, { changedCount, totalCount, explanationHtml = '', scoreChip = null, imageCardsHtml = '', imageChangedCount = 0 }) {
   const inputs = changedCount > 0
     ? '<input type="radio" name="ptna-view" id="ptna-v-rew" class="ptna-toggle-input" checked>'
       + '<input type="radio" name="ptna-view" id="ptna-v-orig" class="ptna-toggle-input">'
@@ -451,6 +497,8 @@ function injectChrome(html, { changedCount, totalCount, explanationHtml = '', sc
   const overflow = changedCount > MAX_JUMP_CHIPS
     ? `<span class="ptna-chip ptna-chip-more">+${changedCount - MAX_JUMP_CHIPS}</span>`
     : '';
+  const imageChips = Array.from({ length: Math.min(imageChangedCount, MAX_JUMP_CHIPS) }, (_, i) =>
+    `<a class="ptna-chip ptna-chip-img" href="#ptna-img-${i + 1}">I${i + 1}</a>`).join('');
   const views = changedCount > 0
     ? '<div class="ptna-views">'
       + '<label class="ptna-view" for="ptna-v-rew">rewritten</label>'
@@ -458,13 +506,15 @@ function injectChrome(html, { changedCount, totalCount, explanationHtml = '', sc
       + '<label class="ptna-view" for="ptna-v-both">both</label>'
       + '</div>'
     : '';
-  const notes = explanationHtml
-    ? `<details class="ptna-notes"><summary>patina notes</summary><div class="ptna-notes-body">${explanationHtml}</div></details>`
+  const notesBody = `${explanationHtml}${imageCardsHtml}`;
+  const notes = notesBody
+    ? `<details class="ptna-notes"><summary>patina notes</summary><div class="ptna-notes-body">${notesBody}</div></details>`
     : '';
   const bar = `<div class="ptna-bar"><span class="ptna-brand">patina</span>`
     + `<span class="ptna-count">${changedCount} of ${totalCount} blocks rewritten</span>`
+    + (imageChangedCount > 0 ? `<span class="ptna-count ptna-count-img">${imageChangedCount} image(s)</span>` : '')
     + (scoreChip ? `<span class="ptna-score">${htmlEscape(scoreChip)}</span>` : '')
-    + (chips ? `<nav class="ptna-jump" aria-label="Jump to rewrite">${chips}${overflow}</nav>` : '')
+    + (chips || imageChips ? `<nav class="ptna-jump" aria-label="Jump to rewrite">${chips}${overflow}${imageChips}</nav>` : '')
     + views
     + '</div>';
 
@@ -529,6 +579,14 @@ const PREVIEW_CSS = `
 .ptna-chip{min-width:22px;text-align:center;padding:3px 0;border:1px solid rgba(95,196,168,0.35);border-radius:999px;color:#5fc4a8 !important;text-decoration:none !important;font:inherit !important;}
 .ptna-chip:hover{background:rgba(95,196,168,0.15);}
 .ptna-chip-more{border-color:rgba(141,165,154,0.3);color:#8da59a !important;}
+.ptna-chip-img{color:#c8956c !important;border-color:rgba(200,149,108,0.4);}
+.ptna-chip-img:hover{background:rgba(200,149,108,0.15);}
+.ptna-count-img{color:#c8956c !important;}
+.ptna-img{display:inline-block;position:relative;outline:2px dashed #c8956c !important;outline-offset:3px;border-radius:4px;scroll-margin-top:90px;}
+.ptna-img::after{content:attr(data-n);position:absolute;top:6px;left:6px;padding:1px 7px;border-radius:999px;background:#c8956c;color:#20150c;font:700 10.5px/16px ui-monospace,Menlo,Consolas,monospace !important;}
+.ptna-img:target{outline-style:solid !important;outline-width:3px !important;}
+.ptna-img-card{border-left-color:#c8956c !important;background:rgba(200,149,108,0.05) !important;}
+.ptna-img-suggest{color:#5fc4a8;}
 .ptna-views{display:inline-flex;border:1px solid rgba(141,165,154,0.4);border-radius:999px;overflow:hidden;}
 .ptna-view{padding:4px 11px;cursor:pointer;user-select:none;color:#8da59a;font:inherit;}
 .ptna-view:hover{color:#cfe2d8;}

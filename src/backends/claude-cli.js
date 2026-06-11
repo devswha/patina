@@ -2,10 +2,11 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand } from './contract.js';
+import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand, stageCliImages } from './contract.js';
 import { resolveLocalCliModel } from '../model-defaults.js';
 
 export const name = 'claude-cli';
+export const supportsImages = true;
 export const loginCommand = 'claude auth login';
 export const installHint = 'Install Claude Code first, then run `patina auth login claude-cli` again.';
 
@@ -39,7 +40,7 @@ export function login(options = {}) {
   });
 }
 
-export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
+export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS, images } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('claude-cli backend: prompt must be a non-empty string');
   }
@@ -51,6 +52,15 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   // cannot read or write inside the caller's repo. claude -p prints to
   // stdout, so no output file plumbing is needed (unlike codex-cli).
   const dir = mkdtempSync(join(tmpdir(), 'patina-claude-'));
+
+  // Vision input: images are staged INTO the temp cwd — claude's in-cwd Read
+  // tool is auto-allowed in print mode, while paths outside cwd would be
+  // permission-denied (and granting them would weaken the containment above).
+  let effectivePrompt = prompt;
+  if (Array.isArray(images) && images.length > 0) {
+    const staged = stageCliImages(dir, images);
+    effectivePrompt = `${prompt}\n\nAttached image file(s) in the working directory: ${staged.map((f) => `./${f}`).join(', ')} — read them before answering.`;
+  }
 
   return new Promise((resolve, reject) => {
     const proc = spawn('claude', ['-p', '--model', cliModel], { stdio: ['pipe', 'pipe', 'pipe'], cwd: dir });
@@ -101,7 +111,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
         finishReject(new Error(`claude-cli backend: stdin error (${err.message})`));
       }
     });
-    proc.stdin.write(prompt);
+    proc.stdin.write(effectivePrompt);
     proc.stdin.end();
 
     function cleanup() {

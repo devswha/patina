@@ -349,7 +349,9 @@ describe('CLI End-to-End with Mock API', () => {
       ]));
 
       assert.strictEqual(browserRun.logs.join('\n'), baseline.logs.join('\n'));
-      assert.deepStrictEqual(browserRun.errors, []);
+      assert.deepStrictEqual(browserRun.errors, [
+        '[patina] Browser diff page saved at /tmp/patina-browser-diff-123/browser-diff-123.html',
+      ]);
       assert.strictEqual(mock.callCount, 2);
       assert.strictEqual(mock.requestBodies.length, 2);
       assert.strictEqual(spawns[0].command, 'xdg-open');

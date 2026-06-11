@@ -445,8 +445,9 @@ export function writeBrowserDiffPage(html, options = {}) {
   const chmod = getRuntimeValue(options, 'chmod', chmodSync);
   const now = getRuntimeValue(options, 'now', Date.now);
   const platform = getRuntimeValue(options, 'platform', process.platform);
+  const prefix = options.prefix ?? 'patina-browser-diff-';
   const baseTmpDir = typeof tmpdir === 'function' ? tmpdir() : tmpdir;
-  const dirPath = mkdtemp(join(baseTmpDir, 'patina-browser-diff-'));
+  const dirPath = mkdtemp(join(baseTmpDir, prefix));
   enforcePermissions(chmod, dirPath, 0o700, { required: platform !== 'win32' });
   const filePath = join(dirPath, `browser-diff-${now()}.html`);
   writeFile(filePath, html, 'utf8');

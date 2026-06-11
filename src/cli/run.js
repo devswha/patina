@@ -18,6 +18,7 @@ import {
   openBrowserDiffPage,
   serveBrowserDiffPage,
 } from '../browser-diff.js';
+import { fetchPreviewPage, prepareSnapshotHtml, extractProseBlocks, alignRewrites, buildPreviewHtml } from '../preview.js';
 import { runOuroboros } from '../ouroboros.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
 import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput } from './batch.js';
@@ -110,7 +111,7 @@ export async function runDefault(parsed, logger) {
     });
   }
 
-  const inputTexts = await loadInputs(parsed, logger);
+  const inputTexts = parsed.preview ? [] : await loadInputs(parsed, logger);
   const timeoutMs = parsed.timeoutMs ?? DEFAULT_BACKEND_TIMEOUT_MS;
   const backendSelection = parsed.ouroboros
     ? null
@@ -157,6 +158,26 @@ export async function runDefault(parsed, logger) {
   const promptMode = backendSelection
     ? resolvePromptMode({ backend: backend.name, model: resolved.model })
     : 'strict';
+
+  if (parsed.preview) {
+    await runPreviewJob({
+      parsed,
+      config,
+      patterns,
+      profile,
+      voice,
+      voiceSample,
+      scoring,
+      toneResolution,
+      promptMode,
+      backends,
+      resolved,
+      timeoutMs,
+      logger,
+    });
+    return;
+  }
+
   const jobs = inputTexts.map(({ path, text }) => ({
     path,
     text,
@@ -566,6 +587,124 @@ async function buildBrowserDiffArtifact({
     rewrittenBody,
     html,
   };
+}
+
+async function runPreviewJob({
+  parsed,
+  config,
+  patterns,
+  profile,
+  voice,
+  voiceSample,
+  scoring,
+  toneResolution,
+  promptMode,
+  backends,
+  resolved,
+  timeoutMs,
+  logger,
+}) {
+  const url = parsed.files[0];
+  const cancellation = createCancellationController({ logger });
+  cancellation.install();
+  try {
+    logger.info('preview.fetch', { message: `[patina] Fetching ${url}` });
+    let page;
+    try {
+      page = await fetchPreviewPage(url, { signal: cancellation.signal, timeoutMs });
+    } catch (err) {
+      throw runtimeError(
+        'could not fetch the preview page',
+        `${url}: ${err?.message || 'fetch failed'}`,
+        'Check the URL is reachable from this machine, or save the page text to a file and run `patina --browser file.md`.'
+      );
+    }
+    cancellation.throwIfCanceled();
+
+    const pageHtml = prepareSnapshotHtml(page.html);
+    const { blocks, truncated } = extractProseBlocks(pageHtml);
+    if (blocks.length === 0) {
+      throw runtimeError(
+        'no prose found on the page',
+        'The page has no plain-text prose blocks patina can rewrite in place (often a client-rendered SPA, or text split by inline markup).',
+        'Try a server-rendered page, or save the article text to a file and run `patina --browser file.md`.'
+      );
+    }
+    if (truncated) {
+      logger.warn('preview.truncated', {
+        message: '[patina] Page has more prose blocks than the preview limit; extra blocks are left unchanged.',
+      });
+    }
+    logger.info('preview.blocks', {
+      message: `[patina] Rewriting ${blocks.length} prose block(s) from ${page.finalUrl}`,
+    });
+
+    const prompt = buildPrompt({
+      config,
+      patterns,
+      profile: profile.body ? profile : null,
+      voice: voice.body ? voice : null,
+      voiceSample,
+      scoring: scoring.body ? scoring : null,
+      text: blocks.map((block) => block.text).join('\n\n'),
+      mode: 'rewrite',
+      tone: toneResolution,
+      promptMode,
+    });
+    const rawResult = await invokeBackendChain({
+      backends,
+      prompt,
+      apiKey: resolved.apiKey,
+      baseURL: resolved.baseURL,
+      model: resolved.model,
+      modelSource: resolved.modelSource,
+      signal: cancellation.signal,
+      timeout: timeoutMs,
+      maxConcurrency: parsed.maxConcurrency,
+      maxRetries: parsed.maxRetries,
+      logger,
+    });
+    cancellation.throwIfCanceled();
+    const rewrittenBody = formatRewriteBodyForBrowser(rawResult, { logger });
+
+    let rewrites;
+    try {
+      rewrites = alignRewrites(blocks, rewrittenBody);
+    } catch (err) {
+      throw runtimeError(
+        'preview rewrite could not be aligned',
+        `${err.message}, so the rewrites cannot be swapped back into the page safely.`,
+        'Re-run the command (model output varies), or use `patina --browser` on the saved page text instead.'
+      );
+    }
+
+    const { html: previewHtml, changedCount } = buildPreviewHtml({
+      html: pageHtml,
+      blocks,
+      rewrites,
+      sourceUrl: page.finalUrl,
+    });
+    console.log(rewrittenBody);
+
+    const pagePath = writeBrowserDiffPage(previewHtml, { prefix: 'patina-preview-' });
+    console.error(`[patina] Preview page saved at ${pagePath} (${changedCount} of ${blocks.length} blocks rewritten)`);
+    if (parsed.serve) {
+      const { url: servedUrl, done } = await serveBrowserDiffPage(previewHtml, {
+        signal: cancellation.signal,
+      });
+      console.error(`[patina] Serving preview at ${servedUrl}`);
+      console.error('[patina] Stops after 10 idle minutes; press Ctrl+C to stop now.');
+      await done;
+    } else {
+      try {
+        await openBrowserDiffPage(pagePath);
+      } catch (err) {
+        console.error(`[patina] Browser open failed: ${err.message}`);
+      }
+    }
+  } finally {
+    cancellation.cleanup();
+  }
 }
 
 function withDeterministicScore(rawResult, { text, config, repoRoot, logger }) {

@@ -105,7 +105,7 @@ patina --preview --serve https://example.com/article   # headless: serve at a to
 
 URL contract:
 - Rewrites only plain-text prose blocks (`p`, headings, `li`, `blockquote`, …) with no nested markup; navigation, prices, tables, and mixed-markup paragraphs are left untouched. One rewrite call plus one best-effort explanation call.
-- The snapshot is inert: scripts are removed (hydration would revert the swapped text), inline event handlers and `javascript:` URLs are neutralized, and a `<base href>` keeps the page's own CSS and images loading. React 18 streaming pages are resolved statically (`$RC`/`$RS` swaps applied at snapshot time) so Suspense content renders instead of loading spinners.
+- The snapshot is inert: scripts are removed (hydration would revert the swapped text), inline event handlers and `javascript:` URLs are neutralized, and a `<base href>` keeps the page's own CSS and images loading. React 18 streaming pages are resolved statically (`$RC`/`$RS` swaps applied at snapshot time) so Suspense content renders instead of loading spinners. `<iframe srcdoc="…">` detail content (sites embed long below-the-fold pages this way) is decoded and inlined so its copy and images are extracted and rewritten too.
 - Works on server-rendered pages. Client-rendered SPAs ship an empty HTML shell, so there is nothing to extract — patina fails with a clear message instead of showing a blank snapshot.
 - If the model returns a different paragraph count than the extracted blocks, patina falls back to LCS anchoring plus order-monotonic bigram-similarity pairing; blocks with no confident partner keep their original text (reported on stderr) instead of failing the run.
 

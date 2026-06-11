@@ -1,4 +1,4 @@
-import { htmlEscape } from './browser-diff.js';
+import { htmlEscape, diffBlockPairs } from './browser-diff.js';
 
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 const DEFAULT_FETCH_TIMEOUT_MS = 30000;
@@ -188,6 +188,16 @@ function findBoundaryEnd(html, fromIndex) {
   return -1;
 }
 
+// Formatting-only tags whose presence inside a prose block is acceptable:
+// the block is extracted with its text flattened. The rewritten view loses
+// the inline formatting; the original view (toggle) keeps it. Anything not
+// in this set (nested lists, divs, images, buttons…) keeps the block out.
+const INLINE_TAGS = new Set([
+  'a', 'abbr', 'b', 'bdi', 'bdo', 'br', 'cite', 'code', 'del', 'em', 'i',
+  'ins', 'kbd', 'mark', 'q', 'ruby', 'rt', 'rp', 's', 'small', 'span',
+  'strong', 'sub', 'sup', 'time', 'u', 'var', 'wbr',
+]);
+
 export function extractProseBlocks(html, options = {}) {
   const minLength = options.minLength ?? DEFAULT_MIN_BLOCK_LENGTH;
   const maxBlocks = options.maxBlocks ?? DEFAULT_MAX_BLOCKS;
@@ -196,13 +206,16 @@ export function extractProseBlocks(html, options = {}) {
 
   const blocks = [];
   let truncated = false;
-  const blockRe = new RegExp(`<(${PROSE_TAGS})\\b[^>]*>([^<]+)</\\1\\s*>`, 'gi');
+  const blockRe = new RegExp(`<(${PROSE_TAGS})\\b[^>]*>([\\s\\S]*?)</\\1\\s*>`, 'gi');
   let match;
   while ((match = blockRe.exec(source)) !== null) {
     if (isInsideRanges(excluded, match.index)) continue;
     const openEnd = match.index + match[0].indexOf('>') + 1;
     const raw = match[2];
-    const text = decodeEntities(raw).replace(/\s+/g, ' ').trim();
+    if (raw.includes('<') && !hasOnlyInlineMarkup(raw)) continue;
+    // A block that is just one link is navigation/CTA chrome, not prose.
+    if (/^\s*<a\b[^>]*>[\s\S]*<\/a\s*>\s*$/i.test(raw) && (raw.match(/<a\b/gi) || []).length === 1) continue;
+    const text = decodeEntities(raw.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
     if (text.length < minLength) continue;
     if (!/[A-Za-z가-힣぀-ヿ㐀-鿿]/.test(text)) continue;
     if (blocks.length >= maxBlocks) {
@@ -220,18 +233,125 @@ export function extractProseBlocks(html, options = {}) {
   return { blocks, truncated };
 }
 
+function hasOnlyInlineMarkup(raw) {
+  const tagRe = /<\/?([a-z][a-z0-9-]*)/gi;
+  let match;
+  while ((match = tagRe.exec(raw)) !== null) {
+    if (!INLINE_TAGS.has(match[1].toLowerCase())) return false;
+  }
+  return !raw.includes('<!--');
+}
+
 export function alignRewrites(blocks, rewrittenBody) {
   const paragraphs = String(rewrittenBody ?? '')
     .split(/\n{2,}/)
     .map((paragraph) => paragraph.replace(/\s+/g, ' ').trim())
     .filter(Boolean);
-  if (paragraphs.length !== blocks.length) {
+  if (paragraphs.length === blocks.length) {
+    return { rewrites: paragraphs, unalignedCount: 0 };
+  }
+
+  // The model merged or split paragraphs. Fall back to LCS hunk pairing:
+  // unchanged blocks keep their slot, equal-sized changed hunks pair 1:1,
+  // and anything else keeps the original text instead of failing the run.
+  const pairs = diffBlockPairs(
+    blocks.map((block) => block.text).join('\n\n'),
+    paragraphs.join('\n\n'),
+  );
+  const rewrites = [];
+  let unalignedCount = 0;
+  for (const pair of pairs) {
+    if (pair.type === 'same') {
+      rewrites.push(pair.text);
+      continue;
+    }
+    const before = pair.before ? pair.before.split('\n\n') : [];
+    const after = pair.after ? pair.after.split('\n\n') : [];
+    if (before.length === after.length) {
+      rewrites.push(...after);
+      continue;
+    }
+    // Counts differ inside the hunk (the model merged or split): pair by
+    // order-monotonic character-bigram similarity; blocks with no confident
+    // partner keep their original text, surplus model paragraphs are dropped.
+    const mapping = pairHunkBySimilarity(before, after);
+    before.forEach((text, index) => {
+      if (mapping[index] !== null) {
+        rewrites.push(mapping[index]);
+      } else {
+        rewrites.push(text);
+        unalignedCount += 1;
+      }
+    });
+  }
+  if (rewrites.length !== blocks.length) {
     throw new Error(`the rewrite returned ${paragraphs.length} paragraphs for ${blocks.length} prose blocks`);
   }
-  return paragraphs;
+  return { rewrites, unalignedCount };
 }
 
-export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl }) {
+const MIN_PAIR_SIMILARITY = 0.25;
+
+// Monotonic alignment maximizing total bigram similarity (tiny
+// Needleman-Wunsch); pairs below the similarity floor are not made at all.
+function pairHunkBySimilarity(before, after) {
+  const k = before.length;
+  const m = after.length;
+  const sim = before.map((b) => after.map((a) => diceSimilarity(b, a)));
+  const best = Array.from({ length: k + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = 1; i <= k; i++) {
+    for (let j = 1; j <= m; j++) {
+      const pairScore = sim[i - 1][j - 1] >= MIN_PAIR_SIMILARITY
+        ? best[i - 1][j - 1] + sim[i - 1][j - 1]
+        : -Infinity;
+      best[i][j] = Math.max(best[i - 1][j], best[i][j - 1], pairScore);
+    }
+  }
+  const mapping = new Array(k).fill(null);
+  let i = k;
+  let j = m;
+  while (i > 0 && j > 0) {
+    if (sim[i - 1][j - 1] >= MIN_PAIR_SIMILARITY
+      && best[i][j] === best[i - 1][j - 1] + sim[i - 1][j - 1]) {
+      mapping[i - 1] = after[j - 1];
+      i -= 1;
+      j -= 1;
+    } else if (best[i][j] === best[i - 1][j]) {
+      i -= 1;
+    } else {
+      j -= 1;
+    }
+  }
+  return mapping;
+}
+
+function diceSimilarity(a, b) {
+  const left = bigramCounts(a);
+  const right = bigramCounts(b);
+  let leftTotal = 0;
+  let rightTotal = 0;
+  let overlap = 0;
+  for (const count of left.values()) leftTotal += count;
+  for (const count of right.values()) rightTotal += count;
+  if (leftTotal === 0 || rightTotal === 0) return 0;
+  for (const [gram, count] of left) {
+    const other = right.get(gram);
+    if (other) overlap += Math.min(count, other);
+  }
+  return (2 * overlap) / (leftTotal + rightTotal);
+}
+
+function bigramCounts(text) {
+  const compact = String(text).replace(/\s+/g, '');
+  const counts = new Map();
+  for (let i = 0; i < compact.length - 1; i++) {
+    const gram = compact.slice(i, i + 2);
+    counts.set(gram, (counts.get(gram) || 0) + 1);
+  }
+  return counts;
+}
+
+export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanationHtml = '', scoreChip = null }) {
   let changedCount = 0;
   const planned = blocks.map((block, index) => {
     const rewritten = rewrites[index];
@@ -251,8 +371,48 @@ export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl }) {
 
   out = stripActiveContent(out);
   out = injectHead(out, sourceUrl);
-  out = injectChrome(out, { changedCount, totalCount: blocks.length });
-  return { html: out, changedCount };
+  out = injectChrome(out, { changedCount, totalCount: blocks.length, explanationHtml, scoreChip });
+  return { html: out, changedCount, totalCount: blocks.length };
+}
+
+// File input has no host page to overlay, so render the text as a reading
+// document of our own and reuse the same in-place chrome. LCS hunk pairing
+// (diffBlockPairs) means the model does not have to preserve paragraph
+// counts for file previews.
+export function buildFilePreviewHtml({ originalText, rewrittenText, sourcePath, explanationHtml = '', scoreChip = null }) {
+  const pairs = diffBlockPairs(originalText, rewrittenText);
+  let changedCount = 0;
+  const doc = pairs.map((pair) => {
+    if (pair.type === 'same') return htmlEscape(pair.text);
+    changedCount += 1;
+    return `<span class="ptna-blk" id="ptna-${changedCount}" data-n="${changedCount}">`
+      + `<span class="ptna-after">${htmlEscape(pair.after)}</span>`
+      + `<span class="ptna-before">${htmlEscape(pair.before)}</span>`
+      + '</span>';
+  }).join('\n\n');
+  const totalCount = pairs.length;
+
+  const shell = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>patina preview</title>
+<style>${FILE_PAGE_CSS}</style>
+</head>
+<body>
+<main class="ptna-page">
+  <header class="ptna-mast">
+    <p class="ptna-eyebrow">patina · preview</p>
+    <p class="ptna-src">Source: ${htmlEscape(sourcePath)}</p>
+  </header>
+  <div class="ptna-doc">${doc}</div>
+</main>
+</body>
+</html>`;
+  const out = injectChrome(shell, { changedCount, totalCount, explanationHtml, scoreChip });
+  return { html: out, changedCount, totalCount };
 }
 
 // The snapshot must stay inert: scripts are removed entirely (hydration
@@ -280,29 +440,39 @@ function injectHead(html, sourceUrl) {
   return `<head>${injection}</head>${html}`;
 }
 
-function injectChrome(html, { changedCount, totalCount }) {
-  const toggle = changedCount > 0
-    ? '<input type="checkbox" id="ptna-orig" class="ptna-toggle-input">'
+function injectChrome(html, { changedCount, totalCount, explanationHtml = '', scoreChip = null }) {
+  const inputs = changedCount > 0
+    ? '<input type="radio" name="ptna-view" id="ptna-v-rew" class="ptna-toggle-input" checked>'
+      + '<input type="radio" name="ptna-view" id="ptna-v-orig" class="ptna-toggle-input">'
+      + '<input type="radio" name="ptna-view" id="ptna-v-both" class="ptna-toggle-input">'
     : '';
   const chips = Array.from({ length: Math.min(changedCount, MAX_JUMP_CHIPS) }, (_, i) =>
     `<a class="ptna-chip" href="#ptna-${i + 1}">${i + 1}</a>`).join('');
   const overflow = changedCount > MAX_JUMP_CHIPS
     ? `<span class="ptna-chip ptna-chip-more">+${changedCount - MAX_JUMP_CHIPS}</span>`
     : '';
-  const switchHtml = changedCount > 0
-    ? `<label class="ptna-switch" for="ptna-orig"><span class="ptna-knob"></span><span class="ptna-state ptna-state-rew">rewritten</span><span class="ptna-state ptna-state-orig">original</span></label>`
+  const views = changedCount > 0
+    ? '<div class="ptna-views">'
+      + '<label class="ptna-view" for="ptna-v-rew">rewritten</label>'
+      + '<label class="ptna-view" for="ptna-v-orig">original</label>'
+      + '<label class="ptna-view" for="ptna-v-both">both</label>'
+      + '</div>'
+    : '';
+  const notes = explanationHtml
+    ? `<details class="ptna-notes"><summary>patina notes</summary><div class="ptna-notes-body">${explanationHtml}</div></details>`
     : '';
   const bar = `<div class="ptna-bar"><span class="ptna-brand">patina</span>`
     + `<span class="ptna-count">${changedCount} of ${totalCount} blocks rewritten</span>`
+    + (scoreChip ? `<span class="ptna-score">${htmlEscape(scoreChip)}</span>` : '')
     + (chips ? `<nav class="ptna-jump" aria-label="Jump to rewrite">${chips}${overflow}</nav>` : '')
-    + switchHtml
+    + views
     + '</div>';
 
   let out = html;
-  if (/<body\b[^>]*>/i.test(out)) out = out.replace(/<body\b[^>]*>/i, `$&${toggle}`);
-  else out = `${toggle}${out}`;
-  if (/<\/body\s*>/i.test(out)) return out.replace(/<\/body\s*>/i, `${bar}$&`);
-  return `${out}${bar}`;
+  if (/<body\b[^>]*>/i.test(out)) out = out.replace(/<body\b[^>]*>/i, `$&${inputs}`);
+  else out = `${inputs}${out}`;
+  if (/<\/body\s*>/i.test(out)) return out.replace(/<\/body\s*>/i, `${notes}${bar}$&`);
+  return `${out}${notes}${bar}`;
 }
 
 function collectExcludedRanges(html) {
@@ -337,31 +507,54 @@ function decodeEntities(text) {
 }
 
 // All selectors are ptna-prefixed and critical properties carry !important
-// so the host page's stylesheet cannot hide the overlay.
+// so the host page's stylesheet cannot hide the overlay. Three view states
+// (radio hack, no JS): rewritten (default), original, both — "both" keeps
+// the rewrite and shows the struck-through original beside it.
 const PREVIEW_CSS = `
 .ptna-toggle-input{position:absolute !important;width:1px;height:1px;opacity:0;}
 .ptna-blk{scroll-margin-top:90px;}
 .ptna-blk .ptna-before{display:none !important;}
 .ptna-blk .ptna-after{background:rgba(95,196,168,0.20) !important;box-shadow:inset 0 -2px 0 #5fc4a8 !important;border-radius:3px;padding:0 2px;color:inherit;}
-#ptna-orig:checked ~ * .ptna-blk .ptna-after{display:none !important;}
-#ptna-orig:checked ~ * .ptna-blk .ptna-before{display:inline !important;background:rgba(200,149,108,0.20) !important;box-shadow:inset 0 -2px 0 #c8956c !important;border-radius:3px;padding:0 2px;color:inherit;}
+#ptna-v-orig:checked ~ * .ptna-blk .ptna-after{display:none !important;}
+#ptna-v-orig:checked ~ * .ptna-blk .ptna-before{display:inline !important;background:rgba(200,149,108,0.20) !important;box-shadow:inset 0 -2px 0 #c8956c !important;border-radius:3px;padding:0 2px;color:inherit;}
+#ptna-v-both:checked ~ * .ptna-blk .ptna-before{display:inline !important;background:rgba(200,149,108,0.16) !important;box-shadow:inset 0 -2px 0 #c8956c !important;border-radius:3px;padding:0 2px;color:inherit;text-decoration:line-through;opacity:0.75;margin-left:7px;}
 .ptna-blk::before{content:attr(data-n);display:inline-block !important;min-width:16px;margin-right:6px;text-align:center;border-radius:999px;background:#5fc4a8;color:#0b201a;font:700 10px/16px ui-monospace,Menlo,Consolas,monospace !important;vertical-align:2px;}
-#ptna-orig:checked ~ * .ptna-blk::before{background:#c8956c;color:#20150c;}
-.ptna-blk:target .ptna-after,#ptna-orig:checked ~ * .ptna-blk:target .ptna-before{outline:2px solid #5fc4a8 !important;outline-offset:2px;}
-.ptna-bar{position:fixed !important;left:50% !important;bottom:18px !important;transform:translateX(-50%);z-index:2147483647 !important;display:flex !important;gap:12px;align-items:center;padding:9px 16px;border-radius:999px;border:1px solid rgba(95,196,168,0.4);background:rgba(11,14,13,0.93) !important;color:#cfe2d8 !important;font:600 11px/1.2 ui-monospace,Menlo,Consolas,monospace !important;letter-spacing:0.06em;text-transform:uppercase;box-shadow:0 6px 28px rgba(0,0,0,0.45);}
+#ptna-v-orig:checked ~ * .ptna-blk::before{background:#c8956c;color:#20150c;}
+.ptna-blk:target .ptna-after,#ptna-v-orig:checked ~ * .ptna-blk:target .ptna-before{outline:2px solid #5fc4a8 !important;outline-offset:2px;}
+.ptna-bar{position:fixed !important;left:50% !important;bottom:18px !important;transform:translateX(-50%);z-index:2147483647 !important;display:flex !important;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center;max-width:94vw;padding:9px 16px;border-radius:999px;border:1px solid rgba(95,196,168,0.4);background:rgba(11,14,13,0.93) !important;color:#cfe2d8 !important;font:600 11px/1.2 ui-monospace,Menlo,Consolas,monospace !important;letter-spacing:0.06em;text-transform:uppercase;box-shadow:0 6px 28px rgba(0,0,0,0.45);}
 .ptna-brand{color:#5fc4a8 !important;letter-spacing:0.16em;}
 .ptna-count{color:#8da59a !important;}
-.ptna-jump{display:flex;gap:5px;}
+.ptna-score{color:#d8b66a !important;}
+.ptna-jump{display:flex;gap:5px;flex-wrap:wrap;}
 .ptna-chip{min-width:22px;text-align:center;padding:3px 0;border:1px solid rgba(95,196,168,0.35);border-radius:999px;color:#5fc4a8 !important;text-decoration:none !important;font:inherit !important;}
 .ptna-chip:hover{background:rgba(95,196,168,0.15);}
 .ptna-chip-more{border-color:rgba(141,165,154,0.3);color:#8da59a !important;}
-.ptna-switch{display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;color:#5fc4a8 !important;}
-.ptna-knob{width:22px;height:12px;border-radius:999px;border:1px solid rgba(141,165,154,0.5);position:relative;}
-.ptna-knob::after{content:"";position:absolute;left:1px;top:1px;width:8px;height:8px;border-radius:999px;background:#5fc4a8;transition:transform 0.18s ease,background 0.18s ease;}
-#ptna-orig:checked ~ .ptna-bar .ptna-knob::after{transform:translateX(10px);background:#c8956c;}
-.ptna-state-orig{display:none;}
-#ptna-orig:checked ~ .ptna-bar .ptna-state-rew{display:none;}
-#ptna-orig:checked ~ .ptna-bar .ptna-state-orig{display:inline;color:#c8956c !important;}
-#ptna-orig:checked ~ .ptna-bar .ptna-switch{color:#c8956c !important;}
-@media (prefers-reduced-motion:reduce){.ptna-knob::after{transition:none !important;}}
+.ptna-views{display:inline-flex;border:1px solid rgba(141,165,154,0.4);border-radius:999px;overflow:hidden;}
+.ptna-view{padding:4px 11px;cursor:pointer;user-select:none;color:#8da59a;font:inherit;}
+.ptna-view:hover{color:#cfe2d8;}
+#ptna-v-rew:checked ~ .ptna-bar label[for="ptna-v-rew"]{background:rgba(95,196,168,0.22);color:#5fc4a8;}
+#ptna-v-orig:checked ~ .ptna-bar label[for="ptna-v-orig"]{background:rgba(200,149,108,0.22);color:#c8956c;}
+#ptna-v-both:checked ~ .ptna-bar label[for="ptna-v-both"]{background:rgba(216,182,106,0.20);color:#d8b66a;}
+.ptna-notes{position:fixed !important;right:18px;bottom:74px;z-index:2147483646 !important;max-width:min(440px,92vw);font:13px/1.7 "Apple SD Gothic Neo",Pretendard,"Noto Sans KR","Segoe UI",sans-serif !important;color:#dde7e0 !important;}
+.ptna-notes summary{cursor:pointer;list-style:none;display:inline-block;padding:6px 13px;border-radius:999px;border:1px solid rgba(216,182,106,0.45);background:rgba(11,14,13,0.93);color:#d8b66a;font:600 11px/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:0.08em;text-transform:uppercase;float:right;}
+.ptna-notes summary::-webkit-details-marker{display:none;}
+.ptna-notes[open] summary{border-bottom-left-radius:0;border-bottom-right-radius:0;}
+.ptna-notes-body{clear:both;max-height:46vh;overflow:auto;margin-top:2px;padding:12px 14px;border:1px solid rgba(216,182,106,0.35);border-radius:12px;background:rgba(11,14,13,0.96);}
+.ptna-notes-body .explain-card{border:1px solid rgba(132,168,152,0.2);border-left:3px solid #5fc4a8;border-radius:8px;padding:9px 12px;margin:0 0 10px;background:rgba(95,196,168,0.05);}
+.ptna-notes-body .explain-card:last-child{margin-bottom:0;}
+.ptna-notes-body .explain-card strong{color:#d8b66a;}
+.ptna-notes-body .explain-card code{font:12px ui-monospace,Menlo,Consolas,monospace;background:rgba(200,149,108,0.14);border-radius:4px;padding:1px 4px;color:#e8c9a8;}
+@media (prefers-reduced-motion:reduce){.ptna-view{transition:none !important;}}
+`.replace(/\n/g, '');
+
+// Standalone shell styling for file previews — same galley identity as the
+// browser diff page, single reading column.
+const FILE_PAGE_CSS = `${PREVIEW_CSS}
+:root{color-scheme:dark;}
+body{margin:0;background:radial-gradient(1100px 540px at 8% -10%,rgba(95,196,168,0.11),transparent 62%),radial-gradient(900px 520px at 100% 104%,rgba(200,149,108,0.09),transparent 60%),#0b0e0d;color:#e9efe9;}
+.ptna-page{max-width:760px;margin:0 auto;padding:40px 22px 120px;}
+.ptna-mast{border-bottom:1px solid rgba(132,168,152,0.16);padding-bottom:14px;margin-bottom:26px;}
+.ptna-eyebrow{margin:0 0 8px;font:600 11px/1 ui-monospace,Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:0.16em;color:#5fc4a8;}
+.ptna-src{margin:0;font:11.5px/1.5 ui-monospace,Menlo,Consolas,monospace;color:#8da59a;word-break:break-all;}
+.ptna-doc{white-space:pre-wrap;word-break:break-word;font:15.5px/1.9 "Apple SD Gothic Neo",Pretendard,"Noto Sans KR","Segoe UI",sans-serif;color:#dde7e0;}
 `.replace(/\n/g, '');

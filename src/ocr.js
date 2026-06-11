@@ -2,6 +2,7 @@ import { mkdtempSync, writeFileSync, copyFileSync, readFileSync, statSync, chmod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isSubresourceFetchAllowed } from './security.js';
 
 const DEFAULT_MAX_IMAGES = 8;
 const DEFAULT_MAX_IMAGE_BYTES = 6 * 1024 * 1024; // tall detail images can be a few MB
@@ -40,9 +41,11 @@ function getRuntimeValue(options, key, fallback) {
 
 // Collect OCR candidates from a prepared snapshot: <img> sources (src,
 // srcset, common lazy-load attributes; Next.js /_next/image wrappers are
-// unwrapped to the original asset) plus document-wide base64 data URIs —
-// card-news content frequently ships as CSS background-image data URIs, not
-// <img> tags. SVG is skipped (vector text belongs to the DOM extractor).
+// unwrapped to the original asset), CSS url(…) backgrounds (style attributes
+// and <style> blocks — card-news frequently ships as background images), and
+// document-wide base64 data URIs. Extension-less CDN URLs are kept and
+// magic-byte sniffed after download. SVG is skipped (vector text belongs to
+// the DOM extractor).
 export function collectImageCandidates(html, baseUrl, options = {}) {
   const maxImages = options.maxImages ?? DEFAULT_MAX_IMAGES;
   const source = String(html ?? '');
@@ -55,6 +58,25 @@ export function collectImageCandidates(html, baseUrl, options = {}) {
   // exfiltrate local image content to the OCR backend (SSRF / local-file
   // disclosure). This mirrors the empty-cwd CLI containment.
   const allowFileImages = String(baseUrl || '').startsWith('file:');
+  const allowedProtocols = allowFileImages ? /^(https?|file):$/ : /^https?:$/;
+
+  const pushUrlCandidate = (url, { anchor, alt, priority }) => {
+    const ext = extensionOf(url);
+    // A known non-image extension (svg, ico, css, woff2…) is skipped; an
+    // extension-less URL is kept and sniffed from its bytes at staging time.
+    if (ext && !ACCEPTED_EXTENSIONS.has(ext)) return;
+    if (!ext && url.startsWith('file:')) return;
+    if (seen.has(url)) return;
+    seen.add(url);
+    candidates.push({
+      kind: url.startsWith('file:') ? 'file' : 'url',
+      url,
+      ext,
+      anchor,
+      alt,
+      priority,
+    });
+  };
 
   const imgRe = /<img\b[^>]*>/gi;
   let match;
@@ -66,18 +88,41 @@ export function collectImageCandidates(html, baseUrl, options = {}) {
       addDataUri(candidates, seen, url, tag);
       continue;
     }
-    const ext = extensionOf(url);
-    if (!ACCEPTED_EXTENSIONS.has(ext)) continue;
-    if (seen.has(url)) continue;
-    seen.add(url);
-    candidates.push({
-      kind: url.startsWith('file:') ? 'file' : 'url',
-      url,
-      ext,
-      anchor: extractSrcAttr(tag),
-      alt: /\balt="([^"]*)"/i.exec(tag)?.[1] ?? '',
+    pushUrlCandidate(url, {
+      anchor: rawAttr(tag, 'src'),
+      alt: attrValue(tag, 'alt') ?? '',
       priority: scorePriority(url, tag),
     });
+  }
+
+  // CSS background images, scanned ONLY inside CSS contexts — style="…"
+  // attributes and <style> blocks. A document-wide url() scan would also
+  // collect SVG paint references (fill="url(#grad)"), var(--x) tokens, and
+  // other non-image url() occurrences, which resolve to junk candidates that
+  // crowd real images out of the per-page cap. data: URIs are picked up by
+  // the document-wide scan below.
+  const cssUrlRe = /\burl\(\s*(?:"([^"]+)"|'([^']+)'|([^)"'\s]+))\s*\)/gi;
+  for (const css of collectCssText(source)) {
+    cssUrlRe.lastIndex = 0;
+    while ((match = cssUrlRe.exec(css)) !== null) {
+      const rawUrl = decodeHtmlAttr((match[1] ?? match[2] ?? match[3] ?? '').trim());
+      // Fragment refs (#gradient) and CSS functions (var(--x)) are not images.
+      if (!rawUrl || rawUrl.startsWith('data:') || rawUrl.startsWith('#') || /^[a-z-]+\(/i.test(rawUrl)) continue;
+      let resolved;
+      try {
+        resolved = new URL(rawUrl, baseUrl || undefined);
+      } catch {
+        continue;
+      }
+      if (!allowedProtocols.test(resolved.protocol)) continue;
+      // No surrounding tag to score, so background images rank below
+      // same-score <img> candidates.
+      pushUrlCandidate(resolved.href, {
+        anchor: null,
+        alt: '',
+        priority: scorePriority(resolved.href, '') - 1,
+      });
+    }
   }
 
   // Document-wide data URIs (CSS backgrounds, payload remnants).
@@ -89,6 +134,19 @@ export function collectImageCandidates(html, baseUrl, options = {}) {
   candidates.sort((a, b) => b.priority - a.priority);
   const kept = candidates.slice(0, maxImages);
   return { candidates: kept, truncated: candidates.length > kept.length };
+}
+
+// The only places url() means a CSS image: <style> block contents and the
+// value of a style="…" attribute. Returns those text spans so the url()
+// scan never sees SVG paint refs or other non-CSS url() tokens.
+function collectCssText(source) {
+  const spans = [];
+  const styleBlockRe = /<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi;
+  let m;
+  while ((m = styleBlockRe.exec(source)) !== null) spans.push(m[1]);
+  const styleAttrRe = /\bstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
+  while ((m = styleAttrRe.exec(source)) !== null) spans.push(m[1] ?? m[2] ?? '');
+  return spans;
 }
 
 function addDataUri(candidates, seen, dataUri, tag) {
@@ -103,20 +161,29 @@ function addDataUri(candidates, seen, dataUri, tag) {
     kind: 'data',
     dataUri,
     ext: ext === 'jpg' ? 'jpg' : ext,
-    anchor: tag ? extractSrcAttr(tag) : null,
-    alt: tag ? (/\balt="([^"]*)"/i.exec(tag)?.[1] ?? '') : '',
+    anchor: tag ? rawAttr(tag, 'src') : null,
+    alt: tag ? (attrValue(tag, 'alt') ?? '') : '',
     priority: 1 + (tag ? scorePriority('', tag) : 0),
   });
 }
 
+// Attribute readers accepting double-quoted, single-quoted, and unquoted
+// values. rawAttr returns the value exactly as written (used as a DOM anchor
+// for re-finding the tag); attrValue entity-decodes it.
+function rawAttr(tag, name) {
+  const m = new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'>]+))`, 'i').exec(tag);
+  return m ? (m[1] ?? m[2] ?? m[3]) : null;
+}
+
+function attrValue(tag, name) {
+  const raw = rawAttr(tag, name);
+  return raw === null ? null : decodeHtmlAttr(raw);
+}
+
 function pickImageUrl(tag, baseUrl, allowFileImages) {
-  const fromAttr = (name) => {
-    const m = new RegExp(`\\b${name}="([^"]*)"`, 'i').exec(tag);
-    return m ? decodeHtmlAttr(m[1]) : null;
-  };
-  let raw = fromAttr('src') || fromAttr('data-src') || fromAttr('data-lazy') || fromAttr('data-original');
+  let raw = attrValue(tag, 'src') || attrValue(tag, 'data-src') || attrValue(tag, 'data-lazy') || attrValue(tag, 'data-original');
   if (!raw) {
-    const srcset = fromAttr('srcset');
+    const srcset = attrValue(tag, 'srcset');
     if (srcset) raw = pickFromSrcset(srcset);
   }
   if (!raw) return null;
@@ -150,10 +217,6 @@ function pickFromSrcset(srcset) {
   return (preferred ?? sorted[Math.floor(sorted.length / 2)]).url;
 }
 
-function extractSrcAttr(tag) {
-  return /\bsrc="([^"]*)"/i.exec(tag)?.[1] ?? null;
-}
-
 function decodeHtmlAttr(value) {
   return String(value)
     .replace(/&amp;/gi, '&')
@@ -175,7 +238,7 @@ function extensionOf(url) {
 function scorePriority(url, tag) {
   let score = 0;
   if (PRIORITY_URL_RE.test(url)) score += 4;
-  const alt = /\balt="([^"]*)"/i.exec(tag)?.[1] ?? '';
+  const alt = (tag && attrValue(tag, 'alt')) ?? '';
   if (/[가-힣぀-ヿ㐀-鿿]/.test(alt)) score += 3;
   else if (alt.trim().length > 8) score += 1;
   return score;
@@ -190,6 +253,8 @@ export async function stageOcrImages(candidates, options = {}) {
   const fetchTimeoutMs = options.fetchTimeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
   const fetchImpl = getRuntimeValue(options, 'fetchImpl', fetch);
   const signal = options.signal;
+  const baseUrl = options.baseUrl;
+  const lookupImpl = options.lookupImpl;
   const tooBig = `larger than ${Math.round(maxBytes / 1024)}KB`;
 
   const dir = mkdtempSync(join(tmpdir(), 'patina-ocr-'));
@@ -207,6 +272,7 @@ export async function stageOcrImages(candidates, options = {}) {
     }
     try {
       let bytes;
+      let ext = candidate.ext;
       if (candidate.kind === 'data') {
         bytes = Buffer.from(candidate.dataUri.slice(candidate.dataUri.indexOf(',') + 1), 'base64');
       } else if (candidate.kind === 'file') {
@@ -225,10 +291,28 @@ export async function stageOcrImages(candidates, options = {}) {
         staged.push({ ...candidate, path: target, bytes: size });
         continue;
       } else {
+        // Image URLs come from page content, so a hostile page must not be
+        // able to use --ocr to probe cloud metadata or internal services.
+        if (!(await isSubresourceFetchAllowed(candidate.url, { baseUrl, lookupImpl }))) {
+          skipped.push({ candidate, reason: 'private/internal address blocked' });
+          continue;
+        }
         // Cap by streaming at the per-image limit: never trust Content-Length
         // presence/value, and bound an unbounded chunked stream before it
-        // exhausts memory. The total budget is enforced below.
-        bytes = await fetchImageBytes(fetchImpl, candidate.url, { signal, maxBytes, fetchTimeoutMs, tooBig });
+        // exhausts memory. The total budget is enforced below. Redirect hops
+        // are re-guarded so a public image URL cannot 30x into private space.
+        bytes = await fetchImageBytes(fetchImpl, candidate.url, {
+          signal,
+          maxBytes,
+          fetchTimeoutMs,
+          tooBig,
+          guardHop: (next) => isSubresourceFetchAllowed(next, { baseUrl, lookupImpl }),
+        });
+        if (!ext) {
+          // Extension-less CDN URL: identify the format from the bytes.
+          ext = sniffImageType(bytes);
+          if (!ext) throw new Error('not a recognizable image (jpg/png/webp/gif)');
+        }
       }
       if (bytes.length > maxBytes) throw new Error(tooBig);
       if (spent + bytes.length > totalBudget) {
@@ -236,11 +320,11 @@ export async function stageOcrImages(candidates, options = {}) {
         budgetExhausted = true;
         continue;
       }
-      const target = join(dir, `img-${index}.${candidate.ext}`);
+      const target = join(dir, `img-${index}.${ext}`);
       writeFileSync(target, bytes);
       try { chmodSync(target, 0o600); } catch {}
       spent += bytes.length;
-      staged.push({ ...candidate, path: target, bytes: bytes.length });
+      staged.push({ ...candidate, ext, path: target, bytes: bytes.length });
     } catch (err) {
       if (signal?.aborted) break;
       skipped.push({ candidate, reason: err?.message || 'fetch failed' });
@@ -249,10 +333,21 @@ export async function stageOcrImages(candidates, options = {}) {
   return { dir, staged, skipped };
 }
 
+// Magic-byte sniffing for extension-less candidates: the format comes from
+// the downloaded bytes, never from the server's claims. Unknown bytes (HTML
+// error pages, fonts, video) are rejected.
+function sniffImageType(bytes) {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpg';
+  if (bytes.length >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'png';
+  if (bytes.length >= 6 && bytes.toString('latin1', 0, 4) === 'GIF8') return 'gif';
+  if (bytes.length >= 12 && bytes.toString('latin1', 0, 4) === 'RIFF' && bytes.toString('latin1', 8, 12) === 'WEBP') return 'webp';
+  return null;
+}
+
 // Fetch with a hard timeout and a streaming byte cap. The body is read
 // chunk by chunk so a chunked/Content-Length-less response cannot buffer
 // unbounded data into memory before the size check.
-async function fetchImageBytes(fetchImpl, url, { signal, maxBytes, fetchTimeoutMs, tooBig }) {
+async function fetchImageBytes(fetchImpl, url, { signal, maxBytes, fetchTimeoutMs, tooBig, guardHop }) {
   const controller = new AbortController();
   const onOuterAbort = () => controller.abort(signal.reason);
   if (signal) {
@@ -261,7 +356,25 @@ async function fetchImageBytes(fetchImpl, url, { signal, maxBytes, fetchTimeoutM
   }
   const timer = setTimeout(() => controller.abort(new Error('image fetch timed out')), fetchTimeoutMs);
   try {
-    const response = await fetchImpl(url, { signal: controller.signal, redirect: 'follow' });
+    let response;
+    if (guardHop) {
+      // Manually follow redirects so each hop is SSRF-guarded; a public image
+      // URL must not be able to bounce into private space mid-redirect.
+      let current = url;
+      for (let hop = 0; ; hop++) {
+        response = await fetchImpl(current, { signal: controller.signal, redirect: 'manual' });
+        const location = response.status >= 300 && response.status < 400
+          ? response.headers.get('location')
+          : null;
+        if (!location) break;
+        if (hop >= 5) throw new Error('too many redirects');
+        const next = new URL(location, current).href;
+        if (!(await guardHop(next))) throw new Error('redirect to a private/internal address blocked');
+        current = next;
+      }
+    } else {
+      response = await fetchImpl(url, { signal: controller.signal, redirect: 'follow' });
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const declared = Number(response.headers.get('content-length'));
     if (Number.isFinite(declared) && declared > maxBytes) throw new Error(tooBig);

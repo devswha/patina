@@ -874,7 +874,7 @@ async function runOcrStage({ pageHtml, sourceUrl, parsed, backends, resolved, ti
   logger.info('ocr.start', {
     message: `[patina] OCR: scanning ${candidates.length} image(s)${ocrBackends.length ? ` via ${ocrBackends.map((b) => b.name).join(' → ')}` : ''}…`,
   });
-  const { dir, staged, skipped } = await stageOcrImages(candidates, { signal: cancellation.signal });
+  const { dir, staged, skipped } = await stageOcrImages(candidates, { signal: cancellation.signal, baseUrl: sourceUrl });
   try {
     for (const skip of skipped) {
       logger.warn('ocr.skip', {

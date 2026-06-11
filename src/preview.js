@@ -7,15 +7,18 @@ const DEFAULT_MIN_BLOCK_LENGTH = 20;
 const DEFAULT_MAX_BLOCKS = 200;
 const MAX_JUMP_CHIPS = 12;
 
-// Block-level tags whose plain-text content patina may rewrite. Tables,
-// buttons, navs, and anything with nested markup are intentionally absent:
-// the v1 walker only touches blocks it can swap back losslessly.
-const PROSE_TAGS = 'p|h1|h2|h3|h4|h5|h6|li|blockquote|figcaption|dt|dd|summary';
+// Block-level tags whose plain-text content patina may rewrite. div/section/
+// article are scanned leaf-first: a container with nested block markup is
+// rejected and the scan descends into it, so only containers that directly
+// hold copy become blocks. Tables stay out (data cells must not be
+// rewritten); the walker only touches blocks it can swap back losslessly.
+const PROSE_TAGS = 'p|h1|h2|h3|h4|h5|h6|li|blockquote|figcaption|dt|dd|summary|div|section|article';
 
 // Containers whose content must never be treated as prose, even when it
 // happens to contain things that look like prose tags (e.g. serialized HTML
-// inside a Next.js data script).
-const EXCLUDED_CONTAINERS = 'head|script|style|noscript|template|textarea|svg|iframe|select|option|code|pre';
+// inside a Next.js data script). nav and button hold navigation chrome and
+// control labels — never body copy.
+const EXCLUDED_CONTAINERS = 'head|script|style|noscript|template|textarea|svg|iframe|select|option|code|pre|nav|button';
 
 export async function fetchPreviewPage(url, options = {}) {
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -72,11 +75,12 @@ export function prepareSnapshotHtml(html) {
 // content, and inline it as a <div> so the detail copy and images are
 // rewritten and annotated like the rest of the page.
 export function inlineSrcdocIframes(html) {
-  // Internal quotes inside srcdoc are entity-escaped (&quot;), so the value
-  // never contains a raw double quote — [^"]* is a safe attribute capture.
-  const iframeRe = /<iframe\b[^>]*\bsrcdoc="([^"]*)"[^>]*>(?:[\s\S]*?<\/iframe\s*>)?/gi;
-  return String(html ?? '').replace(iframeRe, (_, srcdoc) => {
-    const decoded = stripActiveContent(decodeHtmlEntities(srcdoc));
+  // A double-quoted srcdoc holds its internal quotes entity-escaped, so
+  // [^"]* is a safe capture; a single-quoted srcdoc may carry raw markup but
+  // never a raw single quote.
+  const iframeRe = /<iframe\b[^>]*\bsrcdoc=(?:"([^"]*)"|'([^']*)')[^>]*>(?:[\s\S]*?<\/iframe\s*>)?/gi;
+  return String(html ?? '').replace(iframeRe, (_, dq, sq) => {
+    const decoded = stripActiveContent(decodeHtmlEntities(dq ?? sq ?? ''));
     return `<div class="ptna-srcdoc">${decoded}</div>`;
   });
 }
@@ -225,48 +229,182 @@ const INLINE_TAGS = new Set([
   'strong', 'sub', 'sup', 'time', 'u', 'var', 'wbr',
 ]);
 
+// Whole-card anchors (an entire teaser wrapped in one link) are real prose;
+// shorter single-link blocks are navigation/CTA chrome.
+const SINGLE_ANCHOR_MIN_LENGTH = 80;
+
+// A '<' or '>' is legal inside a quoted HTML attribute value (data-* JSON,
+// serialized template markup, aria-label="Next >"…). A naive regex that
+// matches tag boundaries by `<`/`>` therefore computes the wrong element
+// boundaries on real-world markup. scanTagAt walks from a '<' through the
+// tag's attributes — skipping quoted spans — to the '>' that actually closes
+// the tag, returning the tag name, whether it is an end tag, and the offset
+// just past '>'. Everything downstream sees only real tag tokens, so a swap
+// position can never land inside an attribute value.
+function scanTagAt(source, ltIndex) {
+  const after = source[ltIndex + 1];
+  if (after === undefined) return null;
+  const isClose = after === '/';
+  let i = ltIndex + (isClose ? 2 : 1);
+  // A real tag name starts with an ASCII letter (the HTML tokenizer rule), so
+  // text like "<3" or "a < b" is never mistaken for a tag.
+  if (!/[a-zA-Z]/.test(source[i] || '')) return null;
+  const nameStart = i;
+  while (i < source.length && /[a-zA-Z0-9-]/.test(source[i])) i++;
+  if (i === nameStart) return null;
+  const name = source.slice(nameStart, i).toLowerCase();
+  let quote = null;
+  while (i < source.length) {
+    const ch = source[i];
+    if (quote) {
+      if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === '>') {
+      const selfClose = source[i - 1] === '/';
+      return { name, isClose, selfClose, end: i + 1 };
+    }
+    i++;
+  }
+  return null;
+}
+
+// Where a block's content ends. For tags with no implicit close (headings,
+// blockquote, div, section, article, figcaption, summary) it is the matching
+// end tag. For HTML5 optional-end-tag elements (li, dt, dd, p) the browser
+// also closes them on certain sibling start/close tags, so the end is the
+// FIRST such tag at the same level. The set mirrors the parser's
+// implied-close rules, so the computed end matches the rendered DOM and the
+// in-place swap stays lossless. Matching runs over real tag tokens only
+// (scanTagAt), never over attribute text.
+const P_CLOSERS = new Set(['address', 'article', 'aside', 'blockquote', 'details', 'div', 'dl', 'fieldset', 'figcaption', 'figure', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hgroup', 'hr', 'main', 'menu', 'nav', 'ol', 'p', 'pre', 'section', 'table', 'ul', 'li', 'dt', 'dd', 'dialog']);
+const IMPLICIT_TERMINATORS = {
+  li: (t) => (t.isClose && ['li', 'ul', 'ol', 'menu'].includes(t.name)) || (!t.isClose && t.name === 'li'),
+  dt: (t) => (t.isClose && ['dt', 'dd', 'dl'].includes(t.name)) || (!t.isClose && (t.name === 'dt' || t.name === 'dd')),
+  dd: (t) => (t.isClose && ['dt', 'dd', 'dl'].includes(t.name)) || (!t.isClose && (t.name === 'dt' || t.name === 'dd')),
+  p: (t) => (t.isClose && (P_CLOSERS.has(t.name) || ['td', 'th', 'body', 'html'].includes(t.name))) || (!t.isClose && P_CLOSERS.has(t.name)),
+};
+
+// A prose block spanning more tag tokens than this is never real prose; the
+// cap bounds findBlockEnd's forward scan so a page full of unclosed openers
+// stays linear instead of O(n^2).
+const FORWARD_SCAN_CAP = 4096;
+
+// Walk forward through the pre-tokenized tag stream from the opener at
+// `startIdx` and return the source offset where the block closes: the
+// explicit end tag, or (for optional-end-tag elements) the first implicit
+// terminator. Comments and inert-container content are already absent from
+// the token stream, so a terminator-looking name inside a comment or script
+// can never truncate a block. Returns -1 if no close is found within the cap.
+function findBlockEndToken(tokens, startIdx, tag) {
+  const isTerminator = IMPLICIT_TERMINATORS[tag];
+  const limit = Math.min(tokens.length, startIdx + 1 + FORWARD_SCAN_CAP);
+  for (let j = startIdx + 1; j < limit; j++) {
+    const token = tokens[j];
+    if (isTerminator ? isTerminator(token) : (token.isClose && token.name === tag)) {
+      return token.start;
+    }
+  }
+  return -1;
+}
+
+// Tokenize the document into structural tag tokens in ONE pass, skipping
+// comment spans and the content of inert/never-prose containers (script,
+// style, noscript, svg, …). Doing this once — instead of re-scanning the raw
+// string per opener — keeps extraction linear, and dropping comment/inert
+// content means their tag-like text can neither become a false candidate nor
+// truncate a real block.
+function tokenizeTags(source, excluded) {
+  const ranges = [...excluded].sort((a, b) => a[0] - b[0]);
+  const tokens = [];
+  let i = 0;
+  let ri = 0;
+  while (i < source.length) {
+    const lt = source.indexOf('<', i);
+    if (lt === -1) break;
+    while (ri < ranges.length && ranges[ri][1] <= lt) ri++;
+    if (ri < ranges.length && lt >= ranges[ri][0] && lt < ranges[ri][1]) {
+      i = ranges[ri][1];
+      continue;
+    }
+    const token = scanTagAt(source, lt);
+    if (!token) { i = lt + 1; continue; }
+    tokens.push({ name: token.name, isClose: token.isClose, start: lt, contentStart: token.end });
+    i = token.end;
+  }
+  return tokens;
+}
+
+// Tag-priority for the truncation budget: genuine prose tags outrank
+// container divs so a card grid of leaf divs cannot crowd real article
+// paragraphs out of the cap.
+const TAG_PRIORITY = { p: 3, h1: 3, h2: 3, h3: 3, h4: 3, h5: 3, h6: 3, blockquote: 3, li: 2, dt: 2, dd: 2, figcaption: 2, summary: 2, div: 1, section: 1, article: 1 };
+const PROSE_TAG_SET = new Set(PROSE_TAGS.split('|'));
+
 export function extractProseBlocks(html, options = {}) {
   const minLength = options.minLength ?? DEFAULT_MIN_BLOCK_LENGTH;
   const maxBlocks = options.maxBlocks ?? DEFAULT_MAX_BLOCKS;
   const source = String(html ?? '');
   const excluded = collectExcludedRanges(source);
+  const tokens = tokenizeTags(source, excluded);
 
-  const blocks = [];
-  let truncated = false;
-  const blockRe = new RegExp(`<(${PROSE_TAGS})\\b[^>]*>([\\s\\S]*?)</\\1\\s*>`, 'gi');
-  let match;
-  while ((match = blockRe.exec(source)) !== null) {
-    if (isInsideRanges(excluded, match.index)) continue;
-    const openEnd = match.index + match[0].indexOf('>') + 1;
-    const raw = match[2];
-    if (raw.includes('<') && !hasOnlyInlineMarkup(raw)) continue;
-    // A block that is just one link is navigation/CTA chrome, not prose.
-    if (/^\s*<a\b[^>]*>[\s\S]*<\/a\s*>\s*$/i.test(raw) && (raw.match(/<a\b/gi) || []).length === 1) continue;
-    const text = decodeEntities(raw.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+  const candidates = [];
+  // Process open tags, not whole elements: when a candidate is rejected for
+  // nested block markup, processing continues at the next opener INSIDE it, so
+  // prose nested in rejected containers (li > p, blockquote > p, wrapper
+  // divs) is still found. An accepted block is inline-only, so it can never
+  // contain another candidate — accepted blocks cannot overlap.
+  for (let idx = 0; idx < tokens.length; idx++) {
+    const token = tokens[idx];
+    if (token.isClose || !PROSE_TAG_SET.has(token.name)) continue;
+    const tag = token.name;
+    const openEnd = token.contentStart;
+    const end = findBlockEndToken(tokens, idx, tag);
+    if (end === -1) continue;
+    const raw = source.slice(openEnd, end);
+    // Comments are invisible: remove them (no space — a comment between two
+    // text nodes does not render as a word break) before judging
+    // inline-only-ness and deriving text, so a comment that carries tag-like
+    // text (`<!-- </p> -->`) neither disqualifies the block nor leaks into its
+    // copy. block.raw keeps the exact source slice so the swap stays lossless.
+    const inner = raw.replace(/<!--[\s\S]*?-->/g, '');
+    if (inner.includes('<') && !hasOnlyInlineMarkup(inner)) continue;
+    const text = decodeEntities(inner.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+    // A short block that is just one link is navigation/CTA chrome, not prose.
+    if (text.length < SINGLE_ANCHOR_MIN_LENGTH
+      && /^\s*<a\b[^>]*>[\s\S]*<\/a\s*>\s*$/i.test(inner)
+      && (inner.match(/<a\b/gi) || []).length === 1) continue;
     if (text.length < minLength) continue;
     if (!/[A-Za-z가-힣぀-ヿ㐀-鿿]/.test(text)) continue;
-    if (blocks.length >= maxBlocks) {
-      truncated = true;
-      break;
-    }
-    blocks.push({
-      tag: match[1].toLowerCase(),
-      start: openEnd,
-      end: openEnd + raw.length,
-      raw,
-      text,
-    });
+    candidates.push({ tag, start: openEnd, end, raw, text });
+  }
+
+  // Over budget: keep the highest-priority blocks (prose tags before container
+  // divs), then restore document order so alignment and the reverse-order swap
+  // stay correct.
+  let truncated = false;
+  let blocks = candidates;
+  if (candidates.length > maxBlocks) {
+    truncated = true;
+    blocks = candidates
+      .map((block, index) => ({ block, index }))
+      .sort((a, b) => (TAG_PRIORITY[b.block.tag] - TAG_PRIORITY[a.block.tag]) || (a.index - b.index))
+      .slice(0, maxBlocks)
+      .sort((a, b) => a.index - b.index)
+      .map((entry) => entry.block);
   }
   return { blocks, truncated };
 }
 
+// Receives comment-free input (the caller strips comments first), so a block
+// qualifies only when every remaining tag is inline formatting.
 function hasOnlyInlineMarkup(raw) {
   const tagRe = /<\/?([a-z][a-z0-9-]*)/gi;
   let match;
   while ((match = tagRe.exec(raw)) !== null) {
     if (!INLINE_TAGS.has(match[1].toLowerCase())) return false;
   }
-  return !raw.includes('<!--');
+  return true;
 }
 
 export function alignRewrites(blocks, rewrittenBody) {
@@ -432,7 +570,8 @@ function annotateImageFindings(html, imageFindings) {
     changedCount += 1;
     const n = changedCount;
     if (finding.anchor) {
-      const tagRe = new RegExp(`<img\\b[^>]*src="${escapeRegExp(finding.anchor)}"[^>]*>`, 'i');
+      const esc = escapeRegExp(finding.anchor);
+      const tagRe = new RegExp(`<img\\b[^>]*\\bsrc\\s*=\\s*(?:"${esc}"|'${esc}'|${esc}(?=[\\s>]))[^>]*>`, 'i');
       out = out.replace(tagRe, (tag) => `<span class="ptna-img" data-n="I${n}">${tag}</span>`);
     }
     const thumb = finding.previewDataUri
@@ -498,22 +637,122 @@ export function buildFilePreviewHtml({ originalText, rewrittenText, sourcePath, 
 // would revert the swapped text), inline handlers and javascript: URLs are
 // neutralized, and meta CSP/refresh tags are dropped because they could
 // block the injected overlay styles or navigate away from the snapshot.
+//
+// This is a tag-aware walk, not a set of independent regexes, because the
+// snapshot now carries attacker-controlled markup from inlined frames and
+// srcdoc. Walking real tag tokens (scanTagAt skips quoted attribute values)
+// means: a '>' inside a quoted attribute can no longer hide a later on*
+// handler from the stripper, an unclosed <script> is neutralized instead of
+// surviving, and a literal "<script>" inside another tag's attribute value is
+// not mistaken for a real script element.
 function stripActiveContent(html) {
-  let out = html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
-    .replace(/<script\b[^>]*\/\s*>/gi, '')
-    .replace(/<meta\b[^>]*http-equiv\s*=\s*["']?(?:content-security-policy|refresh)[^>]*>/gi, '');
-  for (let pass = 0; pass < 10; pass++) {
-    const next = out.replace(/(<[a-zA-Z][^>]*?)\s+on[a-zA-Z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/g, '$1');
-    if (next === out) break;
-    out = next;
+  const s = String(html ?? '');
+  let out = '';
+  let i = 0;
+  while (i < s.length) {
+    const lt = s.indexOf('<', i);
+    if (lt === -1) { out += s.slice(i); break; }
+    out += s.slice(i, lt);
+    if (s.startsWith('<!--', lt)) {
+      const close = s.indexOf('-->', lt + 4);
+      const end = close === -1 ? s.length : close + 3;
+      out += s.slice(lt, end);
+      i = end;
+      continue;
+    }
+    const token = scanTagAt(s, lt);
+    if (!token) { out += '<'; i = lt + 1; continue; }
+    if (token.name === 'script' && !token.isClose) {
+      // Drop the whole element when it has a close tag; for an unclosed
+      // <script> drop only the open tag, leaving its trailing source as inert
+      // text rather than executable script (and without nuking the rest of
+      // the document).
+      const closeRe = /<\/script\s*>/gi;
+      closeRe.lastIndex = token.end;
+      const m = closeRe.exec(s);
+      i = m ? m.index + m[0].length : token.end;
+      continue;
+    }
+    if (token.name === 'meta') {
+      const tag = s.slice(lt, token.end);
+      if (/http-equiv\s*=\s*["']?\s*(?:content-security-policy|refresh)/i.test(tag)) {
+        i = token.end;
+        continue;
+      }
+    }
+    let tag = s.slice(lt, token.end);
+    // The regexes run on a SINGLE complete tag (quoted spans included), so the
+    // first-'>' truncation problem cannot occur. The separator before an on*
+    // handler may be whitespace, '/' (HTML allows <a/onclick=…>), or the
+    // closing quote of the previous attribute value (<a href="x"onclick=…>);
+    // the captured separator is preserved so neighbouring attributes survive.
+    // Run to a fixed point: when two handlers are adjacent the first match
+    // consumes the quote that would separate the second, so a single pass
+    // leaves the second behind — keep stripping until nothing changes.
+    const handlerRe = /(^|[\s/"'])on[a-zA-Z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;
+    let prevTag;
+    do {
+      prevTag = tag;
+      tag = tag.replace(handlerRe, '$1');
+    } while (tag !== prevTag);
+    tag = neutralizeJavascriptUrls(tag);
+    out += tag;
+    i = token.end;
   }
-  return out.replace(/(\s(?:href|src|action|formaction)\s*=\s*["']?\s*)javascript:/gi, '$1blocked:');
+  return out;
 }
+
+// Neutralize javascript: in href/src/action/formaction, including
+// entity-encoded forms (&#106;avascript:, &#x6a;…) that decode to
+// "javascript:" only in the browser. The value is entity-decoded for the
+// scheme test; if it resolves to a javascript: URL the literal value is
+// blanked.
+function neutralizeJavascriptUrls(tag) {
+  return tag.replace(
+    /(\b(?:href|src|action|formaction)\s*=\s*)("([^"]*)"|'([^']*)'|([^\s>]+))/gi,
+    (full, prefix, _quoted, dq, sq, uq) => {
+      const value = dq ?? sq ?? uq ?? '';
+      // Browsers strip ASCII whitespace AND C0 control characters from a URL
+      // before matching its scheme, so `java\tscript:`, `\x01javascript:`, and
+      // entity-encoded forms all resolve to javascript:. Negating the
+      // printable range \x21–￿ removes everything <= 0x20 without putting
+      // a control-character literal in the pattern (which the linter forbids).
+      const decoded = decodeEntities(value).replace(/[^\x21-\uffff]/g, '');
+      if (/^javascript:/i.test(decoded)) return `${prefix}"blocked:"`;
+      return full;
+    },
+  );
+}
+
+// Active content the snapshot strips can still re-enter through markup the
+// sanitizer cannot make safe — a data:/javascript: <iframe> renders its own
+// document, an <object>/<embed> loads a plugin. Rather than rely on the
+// stripper alone, the page-preview document also carries a CSP that forbids
+// all script execution and sub-frames while leaving passive resources (the
+// page's own images, CSS, fonts) loading for fidelity.
+// No base-uri directive: the preview is served from a file:// temp path or
+// localhost, so the page's own relative URLs (images, CSS, links) resolve
+// only through the injected <base href>. base-uri 'none' would nullify that
+// <base> and break every relative resource — and inertness comes from the
+// 'none' source directives + stripActiveContent, not from base-uri.
+const PREVIEW_CSP = [
+  "default-src 'none'",
+  'img-src * data: blob:',
+  "style-src * 'unsafe-inline'",
+  'font-src * data:',
+  'media-src * data: blob:',
+  "frame-src 'none'",
+  "child-src 'none'",
+  "object-src 'none'",
+  "form-action 'none'",
+].join('; ');
 
 function injectHead(html, sourceUrl) {
   const baseTag = /<base\b/i.test(html) ? '' : `<base href="${htmlEscape(sourceUrl)}">`;
-  const injection = `${baseTag}<style id="ptna-style">${PREVIEW_CSS}</style>`;
+  // CSP first so it governs everything that follows (and the page's own,
+  // permissive CSP was already stripped by stripActiveContent).
+  const csp = `<meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}">`;
+  const injection = `${csp}${baseTag}<style id="ptna-style">${PREVIEW_CSS}</style>`;
   if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b[^>]*>/i, `$&${injection}`);
   if (/<html\b[^>]*>/i.test(html)) return html.replace(/<html\b[^>]*>/i, `$&<head>${injection}</head>`);
   return `<head>${injection}</head>${html}`;
@@ -562,23 +801,53 @@ function injectChrome(html, { changedCount, totalCount, explanationHtml = '', sc
   return `${out}${notes}${bar}`;
 }
 
+// Find the inert/never-prose regions of the document in a SINGLE linear walk.
+// Walking (rather than running a `<tag>…</tag>` regex over the whole string)
+// is what makes this correct AND safe: a container open tag that only appears
+// inside a comment (`<!-- <nav> -->`) or inside another inert container's text
+// (`<script>"<style>"</script>`) is never seen as a real open tag, so it can't
+// pair with a later real close tag and swallow the prose between them. It also
+// avoids the backtracking a non-greedy regex with a backreference can hit on
+// many unclosed containers.
 function collectExcludedRanges(html) {
+  const containerSet = new Set(EXCLUDED_CONTAINERS.split('|'));
   const ranges = [];
-  const containerRe = new RegExp(`<(${EXCLUDED_CONTAINERS})\\b[^>]*>[\\s\\S]*?</\\1\\s*>`, 'gi');
-  let match;
-  while ((match = containerRe.exec(html)) !== null) {
-    ranges.push([match.index, match.index + match[0].length]);
-  }
-  const commentRe = /<!--[\s\S]*?-->/g;
-  while ((match = commentRe.exec(html)) !== null) {
-    ranges.push([match.index, match.index + match[0].length]);
+  const source = String(html ?? '');
+  let i = 0;
+  while (i < source.length) {
+    const lt = source.indexOf('<', i);
+    if (lt === -1) break;
+    if (source.startsWith('<!--', lt)) {
+      const close = source.indexOf('-->', lt + 4);
+      const end = close === -1 ? source.length : close + 3;
+      ranges.push([lt, end]);
+      i = end;
+      continue;
+    }
+    const token = scanTagAt(source, lt);
+    if (!token) { i = lt + 1; continue; }
+    if (!token.isClose && !token.selfClose && containerSet.has(token.name)) {
+      const closeRe = new RegExp(`</${token.name}\\s*>`, 'gi');
+      closeRe.lastIndex = token.end;
+      const closeMatch = closeRe.exec(source);
+      // Only a container with its OWN real close tag defines an excluded
+      // range. A self-closed (<svg .../>) container is skipped above so it
+      // can't borrow a later element's close; an unclosed container finds no
+      // close and is left in place. Excluding either to EOF would swallow all
+      // following prose (inline self-closed SVG icons are everywhere) — the
+      // pre-rewrite regex likewise required a real close tag.
+      if (closeMatch) {
+        const end = closeMatch.index + closeMatch[0].length;
+        ranges.push([lt, end]);
+        i = end;
+        continue;
+      }
+    }
+    i = token.end;
   }
   return ranges;
 }
 
-function isInsideRanges(ranges, index) {
-  return ranges.some(([start, end]) => index >= start && index < end);
-}
 
 function decodeEntities(text) {
   return text

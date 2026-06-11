@@ -5,6 +5,8 @@
 // fs.readFileSync or fetch() with the API key attached, so they need to be
 // validated before use.
 import { inputError } from './errors.js';
+import { isIP } from 'node:net';
+import { lookup } from 'node:dns/promises';
 
 const PROFILE_NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_-]*$/;
 
@@ -81,11 +83,36 @@ export function isPrivateOrSpecialIP(hostname) {
     if (/^f[cd][0-9a-f]{2}:/.test(lower)) return true;         // fc00::/7
     if (/^fe[89ab][0-9a-f]:/.test(lower)) return true;         // fe80::/10
     if (lower.startsWith('ff')) return true;                   // multicast
-    const v4mapped = lower.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-    if (v4mapped) return isPrivateOrSpecialIP(v4mapped[1]);
+    // IPv4-mapped / -compatible / -translated IPv6, in BOTH the dotted form
+    // an attacker writes (::ffff:169.254.169.254) and the hex form the URL
+    // parser normalizes it to (::ffff:a9fe:a9fe). On Linux these route to the
+    // embedded IPv4 target, so the v4 ranges above must apply. Match
+    // ::ffff:/96 (mapped), ::/96 (deprecated compat), and 64:ff9b::/96 (NAT64).
+    const embeddedV4 = extractEmbeddedV4(lower);
+    if (embeddedV4) return isPrivateOrSpecialIP(embeddedV4);
     return false;
   }
   return false;
+}
+
+// Pull the embedded IPv4 out of an IPv4-mapped/compatible/translated IPv6
+// literal, in either dotted (::ffff:1.2.3.4) or hex (::ffff:0102:0304) form.
+// Returns a dotted IPv4 string, or null when the address embeds no IPv4.
+function extractEmbeddedV4(lower) {
+  const prefixes = ['::ffff:', '::', '64:ff9b::'];
+  const matched = prefixes.find((p) => lower.startsWith(p));
+  if (matched === undefined) return null;
+  const tail = lower.slice(matched.length);
+  // ::1, ::, plain hex words without an embedded v4 → not a mapped address.
+  const dotted = /^(\d{1,3}(?:\.\d{1,3}){3})$/.exec(tail);
+  if (dotted) return dotted[1];
+  const hex = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(tail);
+  if (hex) {
+    const hi = parseInt(hex[1], 16);
+    const lo = parseInt(hex[2], 16);
+    return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+  }
+  return null;
 }
 
 /**
@@ -199,4 +226,61 @@ export function applyPrivateBaseURLOptIn(parsed) {
   if (parsed && parsed.allowPrivateBaseURL) {
     process.env.PATINA_ALLOW_PRIVATE_BASE_URL = '1';
   }
+}
+
+/**
+ * Decide whether a page-derived sub-resource (an <iframe src>, a CSS/<img>
+ * image URL) may be fetched. Unlike the user-typed preview URL — which is
+ * trusted and may point at localhost dev servers — these URLs come from page
+ * CONTENT, so a hostile page could aim them at cloud metadata (169.254.169.254)
+ * or internal RFC 1918 / loopback services (SSRF). The hostname is resolved
+ * (DNS rebinding aside, this catches names that map to private space) and any
+ * private/loopback/link-local result is refused UNLESS it shares the previewed
+ * page's host — a page may load its own internal assets, but an arbitrary
+ * public page may not reach into the local network.
+ *
+ * @param {string} rawUrl Absolute http(s) sub-resource URL.
+ * @param {object} [options]
+ * @param {string} [options.baseUrl] The previewed page's URL.
+ * @param {Function} [options.lookupImpl] DNS resolver (injectable for tests);
+ *   defaults to node:dns/promises lookup with {all:true}.
+ * @returns {Promise<boolean>} True when the fetch is allowed.
+ */
+export async function isSubresourceFetchAllowed(rawUrl, { baseUrl, lookupImpl = lookup } = {}) {
+  let url;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+
+  const sameHostAsPage = (() => {
+    if (!baseUrl) return false;
+    try {
+      return new URL(baseUrl).host === url.host;
+    } catch {
+      return false;
+    }
+  })();
+
+  const host = url.hostname.startsWith('[') && url.hostname.endsWith(']')
+    ? url.hostname.slice(1, -1)
+    : url.hostname;
+
+  if (isIP(host)) {
+    const priv = isLoopbackHost(url.hostname) || isPrivateOrSpecialIP(url.hostname);
+    return priv ? sameHostAsPage : true;
+  }
+
+  let addresses;
+  try {
+    addresses = await lookupImpl(host, { all: true });
+  } catch {
+    return false;
+  }
+  const resolvesPrivate = addresses.some(
+    (a) => isLoopbackHost(a.address) || isPrivateOrSpecialIP(a.address),
+  );
+  return resolvesPrivate ? sameHostAsPage : true;
 }

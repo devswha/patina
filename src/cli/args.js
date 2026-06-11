@@ -224,13 +224,6 @@ export function validatePreviewRequest(parsed) {
     );
   }
   if (!parsed.preview) return;
-  if (parsed.browser) {
-    throw inputError(
-      '--preview and --browser cannot be combined',
-      '--preview renders rewrites in place on a page snapshot; --browser renders a side-by-side diff of a local file.',
-      'Pick one: `patina --preview <url>` or `patina --browser <file>`.'
-    );
-  }
   if (parsed.batch) {
     throw inputError(
       '--preview does not support --batch',
@@ -262,41 +255,14 @@ export function validatePreviewRequest(parsed) {
   }
 }
 
-export function validateBrowserRequest(parsed) {
-  if (parsed.serve && !parsed.browser && !parsed.preview) {
+// --browser is mapped onto --preview before validation (deprecated alias),
+// so --serve is the only flag left that needs its own guard.
+export function validateServeRequest(parsed) {
+  if (parsed.serve && !parsed.preview) {
     throw inputError(
-      '--serve requires --browser or --preview',
+      '--serve requires --preview',
       '--serve replaces the local window opener for the generated page.',
-      'Run `patina --browser --serve path/to/file.md` or `patina --preview --serve <url>`.'
-    );
-  }
-  if (!parsed.browser) return;
-  if (parsed.batch) {
-    throw inputError(
-      '--browser does not support --batch',
-      'The browser diff page is limited to one local file in this first release.',
-      'Run `patina --browser path/to/file.md`, or omit --browser for batch rewrites.'
-    );
-  }
-  if (parsed.diff || parsed.audit || parsed.score || parsed.ouroboros) {
-    throw inputError(
-      '--browser only works in rewrite mode',
-      'Browser diff pages are an additive rewrite surface, not a diff/audit/score/ouroboros mode.',
-      'Use `patina --browser path/to/file.md` by itself, without --diff, --audit, --score, or --ouroboros.'
-    );
-  }
-  if (parsed.files.length !== 1) {
-    throw inputError(
-      '--browser requires exactly one local file',
-      'No file, stdin, or multiple files were provided.',
-      'Pass one local file path such as `patina --browser draft.md`.'
-    );
-  }
-  if (/^https?:\/\//i.test(String(parsed.files[0] || ''))) {
-    throw inputError(
-      '--browser does not support URL input',
-      'The browser diff page works on a single local file.',
-      'Use `patina --preview <url>` to rewrite a live page in place, or download the page to a local file first.'
+      'Run `patina --preview --serve <url-or-file>`.'
     );
   }
 }
@@ -377,13 +343,13 @@ MODES
   --score                 Output AI-likeness score (0-100)
   --exit-on <n>           With --score, exit 3 when overall score > n
   --ouroboros             Iterative self-improvement loop
-  --browser               Rewrite one local file, then open a local before/after diff page (adds one diff explanation call)
   --preview               Rewrite one http(s) URL in place on a snapshot of the page, or one
                           local file as an in-place reading document (adds one explanation call)
+  --browser               Deprecated alias for --preview (removed in 5.0)
   --ocr                   With --preview (URL/.html): extract text inside page images via an
                           image-capable local CLI (claude/gemini/codex) and include it in
                           detection — one extra backend call per image
-  --serve                 With --browser or --preview: serve the page at a token URL on 127.0.0.1
+  --serve                 With --preview: serve the page at a token URL on 127.0.0.1
                           instead of opening a window (headless/SSH; stops after 10 idle minutes)
 
 OUTPUT & BATCH

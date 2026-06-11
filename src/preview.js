@@ -57,12 +57,38 @@ export async function fetchPreviewPage(url, options = {}) {
 
 // Prepare fetched HTML for extraction and overlay: harvest the React
 // streaming swap operations while the inline scripts still exist, drop
-// active content, then statically resolve the stream so Suspense content
-// is visible without JS.
+// active content, statically resolve the stream so Suspense content is
+// visible without JS, then inline srcdoc iframes so their content becomes
+// first-class DOM (prose extraction + OCR + the overlay all reach it).
 export function prepareSnapshotHtml(html) {
   const raw = String(html ?? '');
   const ops = harvestStreamOps(raw);
-  return resolveStreamedHtml(stripActiveContent(raw), ops);
+  return inlineSrcdocIframes(resolveStreamedHtml(stripActiveContent(raw), ops));
+}
+
+// Sites embed long detail pages (the scrollable below-the-fold content) in
+// <iframe srcdoc="...">. The detail HTML lives escaped inside an attribute,
+// so prose extraction never sees it. Decode each srcdoc, strip its active
+// content, and inline it as a <div> so the detail copy and images are
+// rewritten and annotated like the rest of the page.
+export function inlineSrcdocIframes(html) {
+  // Internal quotes inside srcdoc are entity-escaped (&quot;), so the value
+  // never contains a raw double quote — [^"]* is a safe attribute capture.
+  const iframeRe = /<iframe\b[^>]*\bsrcdoc="([^"]*)"[^>]*>(?:[\s\S]*?<\/iframe\s*>)?/gi;
+  return String(html ?? '').replace(iframeRe, (_, srcdoc) => {
+    const decoded = stripActiveContent(decodeHtmlEntities(srcdoc));
+    return `<div class="ptna-srcdoc">${decoded}</div>`;
+  });
+}
+
+function decodeHtmlEntities(value) {
+  return String(value)
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/gi, "'")
+    .replace(/&amp;/gi, '&');
 }
 
 // React 18 streaming SSR ships late content as hidden segments

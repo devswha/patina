@@ -189,8 +189,9 @@ function formatDoctorText(report) {
   lines.push('', 'Backends:');
   for (const backend of report.backends) {
     const ok = backend.available && backend.authenticated;
+    const images = backend.supportsImages ? ', images=yes' : '';
     lines.push(
-      `  ${ok ? '✓' : '!'} ${backend.name}: available=${yesNo(backend.available)}, authenticated=${yesNo(backend.authenticated)}`
+      `  ${ok ? '✓' : '!'} ${backend.name}: available=${yesNo(backend.available)}, authenticated=${yesNo(backend.authenticated)}${images}`
     );
     if (!ok && backend.authHint) lines.push(`    → ${backend.authHint}`);
   }

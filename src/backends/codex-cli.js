@@ -2,10 +2,11 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand } from './contract.js';
+import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand, stageCliImages } from './contract.js';
 import { resolveLocalCliModel } from '../model-defaults.js';
 
 export const name = 'codex-cli';
+export const supportsImages = true;
 export const loginCommand = 'codex login';
 export const installHint = 'Install it from https://github.com/openai/codex, then run `patina auth login codex-cli` again.';
 
@@ -36,7 +37,7 @@ export function login(options = {}) {
   });
 }
 
-export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
+export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS, images } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('codex-cli backend: prompt must be a non-empty string');
   }
@@ -51,6 +52,15 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   const dir = mkdtempSync(join(tmpdir(), 'patina-codex-'));
   const outFile = join(dir, 'last-message.txt');
 
+  // Vision input: codex exec attaches images natively via -i; staging them
+  // into the temp cwd keeps the read-only sandbox + empty-cwd containment.
+  const imageArgs = [];
+  if (Array.isArray(images) && images.length > 0) {
+    for (const staged of stageCliImages(dir, images)) {
+      imageArgs.push('-i', join(dir, staged));
+    }
+  }
+
   return new Promise((resolve, reject) => {
     const proc = spawn('codex', [
       'exec',
@@ -59,6 +69,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       '-C', dir,
       '--model', cliModel,
       '--output-last-message', outFile,
+      ...imageArgs,
     ], { stdio: ['pipe', 'pipe', 'pipe'], cwd: dir });
 
     let stderr = '';

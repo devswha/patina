@@ -10,6 +10,7 @@ import {
   harvestStreamOps,
   resolveStreamedHtml,
   prepareSnapshotHtml,
+  inlineSrcdocIframes,
 } from '../../src/preview.js';
 
 const LONG_KO = '이 문장은 미리보기 추출 테스트를 위한 충분히 긴 한국어 단락입니다.';
@@ -216,6 +217,23 @@ test('resolveStreamedHtml keeps fallbacks whose segment never streamed', () => {
   const html = '<body><!--$?--><template id="B:0"></template><p>still loading fallback text here</p><!--/$--></body>';
   const out = resolveStreamedHtml(html, [{ kind: 'boundary', targetId: 'B:0', contentId: 'S:0' }]);
   assert.ok(out.includes('still loading fallback text here'));
+});
+
+test('inlineSrcdocIframes decodes srcdoc detail content into first-class DOM', () => {
+  const inner = '<section class="page"><h1>상세 페이지의 충분히 긴 제목 텍스트입니다 여기</h1>'
+    + '<p>이 문단은 충분히 긴 상세 설명 본문이라 추출 대상이 됩니다.</p>'
+    + '<script>track()</script><img src="data:image/png;base64,AAAA"></section>';
+  const escaped = inner.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const html = `<body><h2>위 본문</h2><iframe title="상세" sandbox="allow-same-origin" srcdoc="${escaped}"></iframe></body>`;
+
+  const out = inlineSrcdocIframes(html);
+  assert.ok(!/<iframe/i.test(out));
+  assert.ok(out.includes('<div class="ptna-srcdoc">'));
+  assert.ok(out.includes('<section class="page">'));
+  assert.ok(!out.includes('track()')); // active content stripped inside srcdoc
+  const { blocks } = extractProseBlocks(out);
+  assert.ok(blocks.some((b) => b.text.includes('상세 설명 본문')));
+  assert.ok(blocks.some((b) => b.text.includes('충분히 긴 제목')));
 });
 
 test('prepareSnapshotHtml resolves a streamed page end to end', () => {

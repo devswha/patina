@@ -1,7 +1,7 @@
 import { getRepoRoot } from './config.js';
 import { runDoctor } from './commands/doctor.js';
 import { handleAuth, printBackendStatus } from './commands/auth.js';
-import { parseArgs, validateModeExclusivity, validateBrowserRequest, printHelp } from './cli/args.js';
+import { parseArgs, validateModeExclusivity, validateBrowserRequest, validatePreviewRequest, printHelp } from './cli/args.js';
 import { runDefault } from './cli/run.js';
 import { inputError, renderCliError, getExitCode } from './errors.js';
 import { createLogger } from './logger.js';
@@ -73,6 +73,7 @@ export async function main(args) {
   }
 
   validateModeExclusivity(parsed);
+  validatePreviewRequest(parsed);
   validateBrowserRequest(parsed);
 
   return runDefault(parsed, logger);

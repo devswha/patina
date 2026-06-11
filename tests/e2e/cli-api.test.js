@@ -1,6 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import { EventEmitter } from 'node:events';
+import { createServer } from 'node:http';
 import { main, resolvePromptMode } from '../../src/cli.js';
 import { setBrowserDiffRuntimeForTests, resetBrowserDiffRuntimeForTests } from '../../src/browser-diff.js';
 import { startMockServer } from './helpers/mock-server.js';
@@ -563,6 +564,85 @@ describe('CLI End-to-End with Mock API', () => {
     }
   });
 
+  it('rewrites a fetched page in place with --preview', async () => {
+    const pageHtml = [
+      '<html><head><title>page</title></head><body>',
+      '<script>window.__DATA__ = {"p": "<p>serialized markup that must never be rewritten</p>"}</script>',
+      '<nav><li><a href="/about">a navigation item with nested markup stays untouched</a></li></nav>',
+      '<p>The first paragraph is long enough to be rewritten by the preview flow.</p>',
+      '<p>The second paragraph also clears the minimum length threshold easily.</p>',
+      '</body></html>',
+    ].join('\n');
+    const pageServer = createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(pageHtml);
+    });
+    await new Promise((resolveListen) => pageServer.listen(0, '127.0.0.1', resolveListen));
+    const pageUrl = `http://127.0.0.1:${pageServer.address().port}/article`;
+
+    const rewriteResponse = [
+      '[BODY]',
+      'First paragraph rewritten by the mock backend for the preview test.',
+      '',
+      'Second paragraph rewritten as well, still two paragraphs total.',
+      '[/BODY]',
+    ].join('\n');
+
+    const writes = [];
+    const spawns = [];
+    setBrowserDiffRuntimeForTests({
+      tmpdir: () => '/tmp',
+      mkdtemp: (prefix) => {
+        assert.match(prefix, /patina-preview-/);
+        return '/tmp/patina-preview-77';
+      },
+      writeFile: (path, data) => {
+        writes.push({ path, data });
+      },
+      chmod: () => {},
+      now: () => 77,
+      platform: 'linux',
+      spawn: makeFakeSpawn(({ command, args, child }) => {
+        spawns.push({ command, args });
+        process.nextTick(() => child.emit('close', 0));
+      }),
+    });
+
+    mock.callCount = 0;
+    mock.requestBodies = [];
+    try {
+      await mock.stop();
+      mock = await startMockServer(rewriteResponse);
+
+      const previewRun = await captureConsole(() => main([
+        '--preview',
+        '--lang', 'en',
+        '--api-key-file', mockApiKeyPath,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
+        pageUrl,
+      ]));
+
+      assert.strictEqual(mock.callCount, 1);
+      assert.ok(previewRun.logs.join('\n').includes('First paragraph rewritten by the mock backend'));
+      assert.ok(previewRun.errors.some((line) => line.includes('Preview page saved at /tmp/patina-preview-77/browser-diff-77.html (2 of 2 blocks rewritten)')));
+      assert.deepStrictEqual(spawns, [{ command: 'xdg-open', args: ['/tmp/patina-preview-77/browser-diff-77.html'] }]);
+
+      const page = writes[0].data;
+      assert.ok(page.includes('<span class="ptna-after">First paragraph rewritten by the mock backend for the preview test.</span>'));
+      assert.ok(page.includes('<span class="ptna-before">The first paragraph is long enough to be rewritten by the preview flow.</span>'));
+      assert.ok(page.includes(`<base href="${pageUrl}">`));
+      assert.ok(page.includes('2 of 2 blocks rewritten'));
+      assert.ok(page.includes('a navigation item with nested markup stays untouched'));
+      assert.ok(!page.includes('<script'));
+      assert.ok(!page.includes('serialized markup'));
+    } finally {
+      resetBrowserDiffRuntimeForTests();
+      await new Promise((resolveClose) => pageServer.close(resolveClose));
+      await mock.stop();
+      mock = await startMockServer('This is the humanized result.');
+    }
+  });
+
   it('rejects unsupported --browser inputs before any backend call', async () => {
     const first = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
     const second = first;
@@ -571,8 +651,11 @@ describe('CLI End-to-End with Mock API', () => {
       { args: ['--browser', first, second], pattern: /requires exactly one local file/ },
       { args: ['--browser', '--batch', first], pattern: /does not support --batch/ },
       { args: ['--browser', '--diff', first], pattern: /only works in rewrite mode/ },
-      { args: ['--browser', 'https://example.test'], pattern: /does not support URL input yet/ },
-      { args: ['--serve', first], pattern: /--serve requires --browser/ },
+      { args: ['--browser', 'https://example.test'], pattern: /does not support URL input/ },
+      { args: ['--serve', first], pattern: /--serve requires --browser or --preview/ },
+      { args: ['--preview', first], pattern: /--preview requires exactly one http\(s\) URL/ },
+      { args: ['--preview', '--batch', 'https://example.test'], pattern: /does not support --batch/ },
+      { args: ['--preview', '--browser', 'https://example.test'], pattern: /cannot be combined/ },
     ];
 
     for (const testCase of cases) {

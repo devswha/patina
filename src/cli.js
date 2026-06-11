@@ -1,7 +1,7 @@
 import { getRepoRoot } from './config.js';
 import { runDoctor } from './commands/doctor.js';
 import { handleAuth, printBackendStatus } from './commands/auth.js';
-import { parseArgs, validateModeExclusivity, validateBrowserRequest, validatePreviewRequest, printHelp } from './cli/args.js';
+import { parseArgs, validateModeExclusivity, validateServeRequest, validatePreviewRequest, printHelp } from './cli/args.js';
 import { runDefault } from './cli/run.js';
 import { inputError, renderCliError, getExitCode } from './errors.js';
 import { createLogger } from './logger.js';
@@ -72,9 +72,21 @@ export async function main(args) {
     return;
   }
 
+  // --browser is a deprecated alias for the preview flow (the in-place page
+  // is a superset of the old side-by-side diff page). The flag maps to
+  // --preview here, BEFORE validation, so one set of preview rules applies.
+  // Flag removal lands in 5.0 (breaking).
+  if (parsed.browser) {
+    logger.warn('browser.deprecated', {
+      message: '[patina] --browser is deprecated and now opens the in-place preview (same as --preview). The flag will be removed in patina 5.0.',
+    });
+    parsed.browser = false;
+    parsed.preview = true;
+  }
+
   validateModeExclusivity(parsed);
   validatePreviewRequest(parsed);
-  validateBrowserRequest(parsed);
+  validateServeRequest(parsed);
 
   return runDefault(parsed, logger);
 }

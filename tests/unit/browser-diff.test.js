@@ -5,9 +5,6 @@ import { EventEmitter } from 'node:events';
 import {
   buildBrowserDiffPromptInput,
   htmlEscape,
-  renderChangedBlocks,
-  buildScoreSummary,
-  renderBrowserDiffHtml,
   writeBrowserDiffPage,
   openBrowserDiffPage,
   serveBrowserDiffPage,
@@ -48,105 +45,6 @@ test('formatRewriteBodyForBrowser strips self-audit blocks and tone footer', () 
     '---',
   ].join('\n');
   assert.strictEqual(formatRewriteBodyForBrowser(raw), 'Human result.');
-});
-
-test('renderChangedBlocks preserves shared blocks and highlights changed ones', () => {
-  const { beforeHtml, afterHtml, beforeChangeCount, afterChangeCount } = renderChangedBlocks('same\n\nold', 'same\n\nnew');
-  assert.ok(beforeHtml.includes('<span class="ctx">same'));
-  assert.ok(afterHtml.includes('<span class="ctx">same'));
-  assert.ok(beforeHtml.includes('<mark class="changed-block" id="before-change-1" data-n="1">old</mark>'));
-  assert.ok(afterHtml.includes('<mark class="changed-block" id="after-change-1" data-n="1">new</mark>'));
-  assert.strictEqual(beforeChangeCount, 1);
-  assert.strictEqual(afterChangeCount, 1);
-});
-
-test('renderChangedBlocks groups consecutive changed blocks into one numbered hunk', () => {
-  const { afterHtml, afterChangeCount } = renderChangedBlocks(
-    'same\n\nold-a\n\nold-b\n\nmiddle\n\nold-c',
-    'same\n\nnew-a\n\nnew-b\n\nmiddle\n\nnew-c',
-  );
-  assert.ok(afterHtml.includes('<mark class="changed-block" id="after-change-1" data-n="1">new-a\n\nnew-b</mark>'));
-  assert.ok(afterHtml.includes('<mark class="changed-block" id="after-change-2" data-n="2">new-c</mark>'));
-  assert.strictEqual(afterChangeCount, 2);
-});
-
-test('renderChangedBlocks falls back to index matching for large inputs', () => {
-  const before = Array.from({ length: 220 }, (_, index) => `line-${index}`).join('\n');
-  const after = Array.from({ length: 220 }, (_, index) => (index === 219 ? 'line-changed' : `line-${index}`)).join('\n');
-  const { beforeHtml, afterHtml } = renderChangedBlocks(before, after);
-  assert.ok(!beforeHtml.includes('data-n="1">line-0'));
-  assert.ok(afterHtml.includes('<mark class="changed-block" id="after-change-1" data-n="1">line-changed</mark>'));
-});
-
-test('buildScoreSummary keeps skipped and error rows', () => {
-  const summary = buildScoreSummary(
-    { overall: 12, interpretation: 'mostly human', paragraphCount: 2, hotParagraphs: 0, signalScore: 8 },
-    { overall: null, skipped: true, skipReason: 'language-disabled', error: 'disabled' },
-  );
-  assert.deepStrictEqual(summary.before[0], { label: 'Overall', value: '12' });
-  assert.ok(summary.after.some((row) => row.label === 'Skipped' && row.value === 'true'));
-  assert.ok(summary.after.some((row) => row.label === 'Skip reason' && row.value === 'language-disabled'));
-  assert.ok(summary.after.some((row) => row.label === 'Error' && row.value === 'disabled'));
-});
-
-test('renderBrowserDiffHtml escapes untrusted content and keeps the page self-contained', () => {
-  const html = renderBrowserDiffHtml({
-    original: '<script>alert(1)</script>',
-    rewrittenBody: '<img src=x onerror="alert(2)">',
-    diffExplanation: 'Pattern: <b>Unsafe</b>',
-    diffError: 'boom <script>',
-    beforeScore: { overall: 30, interpretation: 'mixed', paragraphCount: 1, hotParagraphs: 1, signalScore: 20 },
-    afterScore: { overall: 10, interpretation: 'mostly human', paragraphCount: 1, hotParagraphs: 0, signalScore: 5 },
-    sourcePath: '/tmp/draft.md',
-  });
-
-  assert.ok(html.includes('Content-Security-Policy'));
-  assert.ok(html.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
-  assert.ok(html.includes('&lt;img src=x onerror=&quot;alert(2)&quot;&gt;'));
-  assert.ok(html.includes('Pattern: &lt;b&gt;Unsafe&lt;/b&gt;'));
-  assert.ok(html.includes('Pattern explanation unavailable: boom &lt;script&gt;'));
-  assert.ok(!html.includes('http://'));
-  assert.ok(!html.includes('https://'));
-});
-
-test('renderBrowserDiffHtml exposes change navigation and the changes-only toggle', () => {
-  const html = renderBrowserDiffHtml({
-    original: 'same\n\nold-a\n\nmiddle\n\nold-b',
-    rewrittenBody: 'same\n\nnew-a\n\nmiddle\n\nnew-b',
-    diffExplanation: '**Pattern: 1. Test**\nRemoved: `old`\nAdded: `new`\n\n---\n\n**Pattern: 2. Other**\nWhy: because',
-    diffError: null,
-    beforeScore: { overall: 40, interpretation: 'mixed', paragraphCount: 4, hotParagraphs: 1, signalScore: 25 },
-    afterScore: { overall: null, skipped: true, skipReason: 'paragraphs<=2' },
-    sourcePath: '/tmp/draft.md',
-  });
-
-  assert.ok(html.includes('2 changes'));
-  assert.ok(html.includes('<input type="checkbox" id="changes-only"'));
-  assert.ok(html.includes('href="#after-change-1"'));
-  assert.ok(html.includes('href="#after-change-2"'));
-  assert.ok(html.includes('<strong>Pattern: 1. Test</strong>'));
-  assert.ok(html.includes('<code>old</code>'));
-  assert.strictEqual((html.match(/<article class="explain-card">/g) || []).length, 2);
-  assert.ok(html.includes('Not scored'));
-  assert.ok(html.includes('Deterministic scoring needs more than two paragraphs.'));
-  assert.ok(html.includes('40<span class="score-scale">/100</span>'));
-});
-
-test('renderBrowserDiffHtml omits the toggle and jump nav when nothing changed', () => {
-  const html = renderBrowserDiffHtml({
-    original: 'same\n\ntext',
-    rewrittenBody: 'same\n\ntext',
-    diffExplanation: '',
-    diffError: null,
-    beforeScore: null,
-    afterScore: null,
-    sourcePath: '/tmp/draft.md',
-  });
-
-  assert.ok(html.includes('No changes'));
-  assert.ok(!html.includes('id="changes-only"'));
-  assert.ok(!html.includes('href="#after-change-1"'));
-  assert.ok(html.includes('No pattern explanation available.'));
 });
 
 test('writeBrowserDiffPage uses a patina-scoped temp dir and restrictive permissions', () => {

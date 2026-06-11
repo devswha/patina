@@ -12,6 +12,13 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## Unreleased
+
+### Deprecated
+- `--browser` is now an alias for `--preview` and prints a deprecation notice on stderr; the flag will be removed in 5.0. The in-place preview covers the old side-by-side diff page (the "both" view shows the rewrite next to the struck-through original) plus URL input, the score chip, and the notes panel. Behavior changes under the alias: stdout carries the rewritten prose only (the old byte-for-byte `--format` passthrough on stdout is gone), and input must match the preview contract (`.html`/`.md`/`.markdown`/`.txt`). The separate diff-page renderer was removed; `--serve` now documents against `--preview`.
+
+Semver rationale (for the next release): minor — the flag keeps working via the alias and warns; the stdout/extension contract change under a deprecated flag is called out here rather than treated as breaking.
+
 ## 4.1.0 — 2026-06-11
 
 **Browser diff page, Korean post-editese advisory analyzer, and detector calibration fixes.**

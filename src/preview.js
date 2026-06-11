@@ -550,11 +550,6 @@ export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanatio
   return { html: out, changedCount, totalCount: blocks.length, imageChangedCount: image.changedCount };
 }
 
-// OCR findings cannot be swapped into pixels, so changed image text is
-// surfaced as an annotation: the <img> gets a dashed bronze outline with an
-// I-numbered badge, and a notes card shows the extracted text next to the
-// suggested rewrite. Findings with no DOM anchor (CSS-background data URIs)
-// get a card only.
 // OCR findings cannot be swapped into pixels and the host image is often a
 // CSS background, a carousel slide, or lazy-loaded — none reliably visible on
 // the frozen snapshot. So each finding's card embeds the exact image patina

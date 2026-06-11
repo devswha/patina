@@ -612,7 +612,10 @@ describe('CLI End-to-End with Mock API', () => {
     mock.requestBodies = [];
     try {
       await mock.stop();
-      mock = await startMockServer(rewriteResponse);
+      mock = await startMockServer([
+        { responseText: rewriteResponse },
+        { responseText: 'Pattern: 1. Generic polish\nRemoved: `old`\nAdded: `new`\nWhy: reason' },
+      ]);
 
       const previewRun = await captureConsole(() => main([
         '--preview',
@@ -622,7 +625,7 @@ describe('CLI End-to-End with Mock API', () => {
         pageUrl,
       ]));
 
-      assert.strictEqual(mock.callCount, 1);
+      assert.strictEqual(mock.callCount, 2);
       assert.ok(previewRun.logs.join('\n').includes('First paragraph rewritten by the mock backend'));
       assert.ok(previewRun.errors.some((line) => line.includes('Preview page saved at /tmp/patina-preview-77/browser-diff-77.html (2 of 2 blocks rewritten)')));
       assert.deepStrictEqual(spawns, [{ command: 'xdg-open', args: ['/tmp/patina-preview-77/browser-diff-77.html'] }]);
@@ -632,12 +635,77 @@ describe('CLI End-to-End with Mock API', () => {
       assert.ok(page.includes('<span class="ptna-before">The first paragraph is long enough to be rewritten by the preview flow.</span>'));
       assert.ok(page.includes(`<base href="${pageUrl}">`));
       assert.ok(page.includes('2 of 2 blocks rewritten'));
+      assert.ok(page.includes('id="ptna-v-both"'));
+      assert.ok(page.includes('<details class="ptna-notes">'));
+      assert.ok(page.includes('Pattern: 1. Generic polish'));
       assert.ok(page.includes('a navigation item with nested markup stays untouched'));
       assert.ok(!page.includes('<script'));
       assert.ok(!page.includes('serialized markup'));
     } finally {
       resetBrowserDiffRuntimeForTests();
       await new Promise((resolveClose) => pageServer.close(resolveClose));
+      await mock.stop();
+      mock = await startMockServer('This is the humanized result.');
+    }
+  });
+
+  it('renders a local file as an in-place preview document with --preview', async () => {
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    const rewriteResponse = '[BODY]\nThis is the humanized result.\n[/BODY]';
+    const diffResponse = '**Pattern: 1. Generic polish**\nRemoved: `old`\nAdded: `new`\nWhy: reason';
+
+    const writes = [];
+    const spawns = [];
+    setBrowserDiffRuntimeForTests({
+      tmpdir: () => '/tmp',
+      mkdtemp: (prefix) => {
+        assert.match(prefix, /patina-preview-/);
+        return '/tmp/patina-preview-88';
+      },
+      writeFile: (path, data) => {
+        writes.push({ path, data });
+      },
+      chmod: () => {},
+      now: () => 88,
+      platform: 'linux',
+      spawn: makeFakeSpawn(({ command, args, child }) => {
+        spawns.push({ command, args });
+        process.nextTick(() => child.emit('close', 0));
+      }),
+    });
+
+    mock.callCount = 0;
+    mock.requestBodies = [];
+    try {
+      await mock.stop();
+      mock = await startMockServer([
+        { responseText: rewriteResponse },
+        { responseText: diffResponse },
+      ]);
+
+      const previewRun = await captureConsole(() => main([
+        '--preview',
+        '--lang', 'en',
+        '--api-key-file', mockApiKeyPath,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
+        testFile,
+      ]));
+
+      assert.strictEqual(mock.callCount, 2);
+      assert.ok(previewRun.logs.join('\n').includes('This is the humanized result.'));
+      assert.ok(previewRun.errors.some((line) => line.includes('Preview page saved at /tmp/patina-preview-88/browser-diff-88.html (1 of 1 blocks rewritten)')));
+      assert.deepStrictEqual(spawns, [{ command: 'xdg-open', args: ['/tmp/patina-preview-88/browser-diff-88.html'] }]);
+
+      const page = writes[0].data;
+      assert.ok(page.includes('Content-Security-Policy'));
+      assert.ok(page.includes(`Source: ${testFile}`));
+      assert.ok(page.includes('<span class="ptna-after">This is the humanized result.</span>'));
+      assert.ok(page.includes('<span class="ptna-before">Coffee has emerged as a pivotal cultural phenomenon'));
+      assert.ok(page.includes('id="ptna-v-both"'));
+      assert.ok(page.includes('<details class="ptna-notes">'));
+      assert.ok(page.includes('<strong>Pattern: 1. Generic polish</strong>'));
+    } finally {
+      resetBrowserDiffRuntimeForTests();
       await mock.stop();
       mock = await startMockServer('This is the humanized result.');
     }
@@ -653,7 +721,8 @@ describe('CLI End-to-End with Mock API', () => {
       { args: ['--browser', '--diff', first], pattern: /only works in rewrite mode/ },
       { args: ['--browser', 'https://example.test'], pattern: /does not support URL input/ },
       { args: ['--serve', first], pattern: /--serve requires --browser or --preview/ },
-      { args: ['--preview', first], pattern: /--preview requires exactly one http\(s\) URL/ },
+      { args: ['--preview'], pattern: /--preview requires exactly one input/ },
+      { args: ['--preview', first, second], pattern: /--preview requires exactly one input/ },
       { args: ['--preview', '--batch', 'https://example.test'], pattern: /does not support --batch/ },
       { args: ['--preview', '--browser', 'https://example.test'], pattern: /cannot be combined/ },
     ];

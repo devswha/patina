@@ -32,8 +32,13 @@ const openaiHttp = {
     temperature,
     seed,
     onResponse,
-  }) =>
-    callLLM({ prompt, apiKey, baseURL, model, signal, timeout, maxRetries, temperature, seed, onResponse }),
+    images,
+  }) => {
+    if (Array.isArray(images) && images.length > 0) {
+      throw new Error('openai-http backend: image input is not supported yet — use codex-cli, claude-cli, or gemini-cli for OCR');
+    }
+    return callLLM({ prompt, apiKey, baseURL, model, signal, timeout, maxRetries, temperature, seed, onResponse });
+  },
 };
 
 const REGISTRY = {
@@ -89,6 +94,7 @@ export function listBackends() {
       agentRuntime: safety.agentRuntime,
       available: b.isAvailable(),
       authenticated: b.isAuthenticated(),
+      supportsImages: Boolean(b.supportsImages),
       authHint: b.authHint(),
       loginCommand: b.loginCommand || null,
       installHint: b.installHint || null,
@@ -156,6 +162,31 @@ export function selectBackendChain({ name, model, modelSource } = {}) {
   };
 }
 
+// Image-capable backends in default OCR preference order: claude verbatim
+// Korean fidelity (measured), gemini near-verbatim and slightly faster,
+// codex native -i attachment. kimi-cli and openai-http reject images.
+const OCR_BACKEND_ORDER = ['claude-cli', 'gemini-cli', 'codex-cli'];
+
+// Resolve the backend chain for OCR calls: keep the user's selected
+// image-capable backends (their order), otherwise fall back to the available
+// + authenticated capable CLIs.
+export function selectOcrBackends(selectedBackends = [], { logger } = {}) {
+  const capable = selectedBackends.filter((backend) => REGISTRY[backend.name]?.supportsImages);
+  if (capable.length > 0) return capable;
+  const fallback = OCR_BACKEND_ORDER
+    .map((name) => REGISTRY[name])
+    .filter((backend) => backend.isAvailable() && backend.isAuthenticated());
+  if (fallback.length > 0) {
+    // The selected backend cannot read images, so OCR falls back to an
+    // image-capable CLI the user did not name. Surface it at warn level
+    // (issue #88: agent-CLI use should be visible) — only --quiet hides it.
+    logger?.warn?.('ocr.backend_fallback', {
+      message: `[patina] --ocr is using ${fallback[0].name} for image text (the selected backend cannot read images).`,
+    });
+  }
+  return fallback;
+}
+
 export async function invokeBackendChain({
   backends,
   prompt,
@@ -171,6 +202,7 @@ export async function invokeBackendChain({
   seed,
   onResponse,
   logger,
+  images,
 }) {
   if (!Array.isArray(backends) || backends.length === 0) {
     throw inputError(
@@ -204,6 +236,7 @@ export async function invokeBackendChain({
           seed,
           onResponse,
           logger,
+          images,
         }),
       });
     } catch (err) {

@@ -50,6 +50,9 @@ export function parseArgs(args) {
       case '--preview':
         parsed.preview = true;
         break;
+      case '--ocr':
+        parsed.ocr = true;
+        break;
       case '--serve':
         parsed.serve = true;
         break;
@@ -213,6 +216,13 @@ export function validateModeExclusivity(parsed) {
 }
 
 export function validatePreviewRequest(parsed) {
+  if (parsed.ocr && !parsed.preview) {
+    throw inputError(
+      '--ocr requires --preview',
+      'OCR scans the images of a preview page for text.',
+      'Run `patina --preview --ocr <url>`.'
+    );
+  }
   if (!parsed.preview) return;
   if (parsed.browser) {
     throw inputError(
@@ -370,6 +380,9 @@ MODES
   --browser               Rewrite one local file, then open a local before/after diff page (adds one diff explanation call)
   --preview               Rewrite one http(s) URL in place on a snapshot of the page, or one
                           local file as an in-place reading document (adds one explanation call)
+  --ocr                   With --preview (URL/.html): extract text inside page images via an
+                          image-capable local CLI (claude/gemini/codex) and include it in
+                          detection — one extra backend call per image
   --serve                 With --browser or --preview: serve the page at a token URL on 127.0.0.1
                           instead of opening a window (headless/SSH; stops after 10 idle minutes)
 

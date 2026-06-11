@@ -1,4 +1,5 @@
 import { htmlEscape, diffBlockPairs } from './browser-diff.js';
+import { describeImage } from './ocr.js';
 
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 const DEFAULT_FETCH_TIMEOUT_MS = 30000;
@@ -56,12 +57,38 @@ export async function fetchPreviewPage(url, options = {}) {
 
 // Prepare fetched HTML for extraction and overlay: harvest the React
 // streaming swap operations while the inline scripts still exist, drop
-// active content, then statically resolve the stream so Suspense content
-// is visible without JS.
+// active content, statically resolve the stream so Suspense content is
+// visible without JS, then inline srcdoc iframes so their content becomes
+// first-class DOM (prose extraction + OCR + the overlay all reach it).
 export function prepareSnapshotHtml(html) {
   const raw = String(html ?? '');
   const ops = harvestStreamOps(raw);
-  return resolveStreamedHtml(stripActiveContent(raw), ops);
+  return inlineSrcdocIframes(resolveStreamedHtml(stripActiveContent(raw), ops));
+}
+
+// Sites embed long detail pages (the scrollable below-the-fold content) in
+// <iframe srcdoc="...">. The detail HTML lives escaped inside an attribute,
+// so prose extraction never sees it. Decode each srcdoc, strip its active
+// content, and inline it as a <div> so the detail copy and images are
+// rewritten and annotated like the rest of the page.
+export function inlineSrcdocIframes(html) {
+  // Internal quotes inside srcdoc are entity-escaped (&quot;), so the value
+  // never contains a raw double quote — [^"]* is a safe attribute capture.
+  const iframeRe = /<iframe\b[^>]*\bsrcdoc="([^"]*)"[^>]*>(?:[\s\S]*?<\/iframe\s*>)?/gi;
+  return String(html ?? '').replace(iframeRe, (_, srcdoc) => {
+    const decoded = stripActiveContent(decodeHtmlEntities(srcdoc));
+    return `<div class="ptna-srcdoc">${decoded}</div>`;
+  });
+}
+
+function decodeHtmlEntities(value) {
+  return String(value)
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/gi, "'")
+    .replace(/&amp;/gi, '&');
 }
 
 // React 18 streaming SSR ships late content as hidden segments
@@ -351,7 +378,7 @@ function bigramCounts(text) {
   return counts;
 }
 
-export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanationHtml = '', scoreChip = null }) {
+export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanationHtml = '', scoreChip = null, imageFindings = [] }) {
   let changedCount = 0;
   const planned = blocks.map((block, index) => {
     const rewritten = rewrites[index];
@@ -369,10 +396,62 @@ export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanatio
     out = out.slice(0, block.start) + replacement + out.slice(block.end);
   }
 
+  const image = annotateImageFindings(out, imageFindings);
+  out = image.html;
+
   out = stripActiveContent(out);
   out = injectHead(out, sourceUrl);
-  out = injectChrome(out, { changedCount, totalCount: blocks.length, explanationHtml, scoreChip });
-  return { html: out, changedCount, totalCount: blocks.length };
+  out = injectChrome(out, {
+    changedCount,
+    totalCount: blocks.length,
+    explanationHtml,
+    scoreChip,
+    imageCardsHtml: image.cardsHtml,
+    imageChangedCount: image.changedCount,
+  });
+  return { html: out, changedCount, totalCount: blocks.length, imageChangedCount: image.changedCount };
+}
+
+// OCR findings cannot be swapped into pixels, so changed image text is
+// surfaced as an annotation: the <img> gets a dashed bronze outline with an
+// I-numbered badge, and a notes card shows the extracted text next to the
+// suggested rewrite. Findings with no DOM anchor (CSS-background data URIs)
+// get a card only.
+// OCR findings cannot be swapped into pixels and the host image is often a
+// CSS background, a carousel slide, or lazy-loaded — none reliably visible on
+// the frozen snapshot. So each finding's card embeds the exact image patina
+// OCR'd (capped thumbnail) alongside the extracted text and suggested rewrite;
+// the card itself is the jump target, so a finding is always reachable. When
+// the image IS a plain <img> in the DOM it also gets an on-page badge.
+function annotateImageFindings(html, imageFindings) {
+  let out = html;
+  let changedCount = 0;
+  const cards = [];
+  for (const finding of imageFindings) {
+    if (!finding.changed) continue;
+    changedCount += 1;
+    const n = changedCount;
+    if (finding.anchor) {
+      const tagRe = new RegExp(`<img\\b[^>]*src="${escapeRegExp(finding.anchor)}"[^>]*>`, 'i');
+      out = out.replace(tagRe, (tag) => `<span class="ptna-img" data-n="I${n}">${tag}</span>`);
+    }
+    const thumb = finding.previewDataUri
+      ? `<img class="ptna-img-thumb" alt="" src="${htmlEscape(finding.previewDataUri)}">`
+      : '';
+    cards.push(
+      `<article class="explain-card ptna-img-card" id="ptna-img-${n}">`
+      + `<div class="ptna-img-head"><strong>I${n}</strong> · ${htmlEscape(describeImage(finding))}</div>`
+      + thumb
+      + `<div class="ptna-img-text"><span class="ptna-img-label">image text</span>${htmlEscape(finding.text)}</div>`
+      + `<div class="ptna-img-text"><span class="ptna-img-label">suggested</span><span class="ptna-img-suggest">${htmlEscape(finding.rewritten)}</span></div>`
+      + '</article>',
+    );
+  }
+  return { html: out, cardsHtml: cards.join(''), changedCount };
+}
+
+function escapeRegExp(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // File input has no host page to overlay, so render the text as a reading
@@ -440,7 +519,7 @@ function injectHead(html, sourceUrl) {
   return `<head>${injection}</head>${html}`;
 }
 
-function injectChrome(html, { changedCount, totalCount, explanationHtml = '', scoreChip = null }) {
+function injectChrome(html, { changedCount, totalCount, explanationHtml = '', scoreChip = null, imageCardsHtml = '', imageChangedCount = 0 }) {
   const inputs = changedCount > 0
     ? '<input type="radio" name="ptna-view" id="ptna-v-rew" class="ptna-toggle-input" checked>'
       + '<input type="radio" name="ptna-view" id="ptna-v-orig" class="ptna-toggle-input">'
@@ -451,6 +530,8 @@ function injectChrome(html, { changedCount, totalCount, explanationHtml = '', sc
   const overflow = changedCount > MAX_JUMP_CHIPS
     ? `<span class="ptna-chip ptna-chip-more">+${changedCount - MAX_JUMP_CHIPS}</span>`
     : '';
+  const imageChips = Array.from({ length: Math.min(imageChangedCount, MAX_JUMP_CHIPS) }, (_, i) =>
+    `<a class="ptna-chip ptna-chip-img" href="#ptna-img-${i + 1}">I${i + 1}</a>`).join('');
   const views = changedCount > 0
     ? '<div class="ptna-views">'
       + '<label class="ptna-view" for="ptna-v-rew">rewritten</label>'
@@ -458,13 +539,19 @@ function injectChrome(html, { changedCount, totalCount, explanationHtml = '', sc
       + '<label class="ptna-view" for="ptna-v-both">both</label>'
       + '</div>'
     : '';
-  const notes = explanationHtml
-    ? `<details class="ptna-notes"><summary>patina notes</summary><div class="ptna-notes-body">${explanationHtml}</div></details>`
+  const notesBody = `${explanationHtml}${imageCardsHtml}`;
+  // Auto-open when there are image findings — they have no in-page diff, so a
+  // collapsed panel would hide the only place they appear.
+  const open = imageChangedCount > 0 ? ' open' : '';
+  const summaryLabel = imageChangedCount > 0 ? `patina notes · ${imageChangedCount} image text` : 'patina notes';
+  const notes = notesBody
+    ? `<details class="ptna-notes"${open}><summary>${summaryLabel}</summary><div class="ptna-notes-body">${notesBody}</div></details>`
     : '';
   const bar = `<div class="ptna-bar"><span class="ptna-brand">patina</span>`
     + `<span class="ptna-count">${changedCount} of ${totalCount} blocks rewritten</span>`
+    + (imageChangedCount > 0 ? `<span class="ptna-count ptna-count-img">${imageChangedCount} image(s)</span>` : '')
     + (scoreChip ? `<span class="ptna-score">${htmlEscape(scoreChip)}</span>` : '')
-    + (chips ? `<nav class="ptna-jump" aria-label="Jump to rewrite">${chips}${overflow}</nav>` : '')
+    + (chips || imageChips ? `<nav class="ptna-jump" aria-label="Jump to rewrite">${chips}${overflow}${imageChips}</nav>` : '')
     + views
     + '</div>';
 
@@ -529,6 +616,20 @@ const PREVIEW_CSS = `
 .ptna-chip{min-width:22px;text-align:center;padding:3px 0;border:1px solid rgba(95,196,168,0.35);border-radius:999px;color:#5fc4a8 !important;text-decoration:none !important;font:inherit !important;}
 .ptna-chip:hover{background:rgba(95,196,168,0.15);}
 .ptna-chip-more{border-color:rgba(141,165,154,0.3);color:#8da59a !important;}
+.ptna-chip-img{color:#c8956c !important;border-color:rgba(200,149,108,0.4);}
+.ptna-chip-img:hover{background:rgba(200,149,108,0.15);}
+.ptna-count-img{color:#c8956c !important;}
+.ptna-img{display:inline-block;position:relative;outline:2px dashed #c8956c !important;outline-offset:3px;border-radius:4px;scroll-margin-top:90px;}
+.ptna-img::after{content:attr(data-n);position:absolute;top:6px;left:6px;padding:1px 7px;border-radius:999px;background:#c8956c;color:#20150c;font:700 10.5px/16px ui-monospace,Menlo,Consolas,monospace !important;}
+.ptna-img:target{outline-style:solid !important;outline-width:3px !important;}
+.ptna-img-card{border-left-color:#c8956c !important;background:rgba(200,149,108,0.05) !important;scroll-margin-top:16px;}
+.ptna-img-card:target{outline:2px solid #c8956c !important;outline-offset:2px;}
+.ptna-img-head{font-size:11px;color:#8da59a;margin-bottom:7px;}
+.ptna-img-head strong{color:#c8956c;}
+.ptna-img-thumb{display:block;max-width:100%;max-height:220px;width:auto;border-radius:6px;border:1px solid rgba(132,168,152,0.25);margin:0 0 8px;}
+.ptna-img-text{margin:5px 0;line-height:1.6;}
+.ptna-img-label{display:inline-block;min-width:62px;font:600 9.5px/1.6 ui-monospace,Menlo,Consolas,monospace !important;text-transform:uppercase;letter-spacing:0.08em;color:#8da59a;vertical-align:top;}
+.ptna-img-suggest{color:#5fc4a8;}
 .ptna-views{display:inline-flex;border:1px solid rgba(141,165,154,0.4);border-radius:999px;overflow:hidden;}
 .ptna-view{padding:4px 11px;cursor:pointer;user-select:none;color:#8da59a;font:inherit;}
 .ptna-view:hover{color:#cfe2d8;}

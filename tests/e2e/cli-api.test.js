@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 import { createServer } from 'node:http';
 import { main, resolvePromptMode } from '../../src/cli.js';
 import { setBrowserDiffRuntimeForTests, resetBrowserDiffRuntimeForTests } from '../../src/browser-diff.js';
+import { setOcrRuntimeForTests, resetOcrRuntimeForTests } from '../../src/ocr.js';
 import { startMockServer } from './helpers/mock-server.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -770,6 +771,89 @@ describe('CLI End-to-End with Mock API', () => {
     }
   });
 
+  it('annotates image text findings with --preview --ocr', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'patina-ocr-e2e-'));
+    const htmlPath = join(dir, 'page.html');
+    writeFileSync(join(dir, 'banner.png'), Buffer.from('fake-png-bytes'));
+    writeFileSync(htmlPath, [
+      '<html><head><title>ocr</title></head><body>',
+      '<p>The first paragraph is long enough to be rewritten by the preview flow.</p>',
+      '<img src="banner.png" alt="배너">',
+      '</body></html>',
+    ].join('\n'));
+
+    // Rewrite returns 2 paragraphs: the DOM block + the OCR block, both changed.
+    const rewriteResponse = [
+      '[BODY]',
+      'First paragraph rewritten by the mock backend for the preview test.',
+      '',
+      '이미지 문구를 사람답게 고쳐 쓴 결과입니다',
+      '[/BODY]',
+    ].join('\n');
+
+    const writes = [];
+    setBrowserDiffRuntimeForTests({
+      tmpdir: () => '/tmp',
+      mkdtemp: () => '/tmp/patina-preview-ocr',
+      writeFile: (path, data) => {
+        writes.push({ path, data });
+      },
+      chmod: () => {},
+      now: () => 11,
+      platform: 'linux',
+      spawn: makeFakeSpawn(({ child }) => {
+        process.nextTick(() => child.emit('close', 0));
+      }),
+    });
+    setOcrRuntimeForTests({
+      runOcr: async () => '혁신적인 솔루션으로 생산성을 극대화하세요',
+    });
+
+    mock.callCount = 0;
+    try {
+      await mock.stop();
+      mock = await startMockServer([
+        { responseText: rewriteResponse },
+        { responseText: 'Pattern: 1. Marketing puffery\nRemoved: old\nAdded: new\nWhy: reason' },
+      ]);
+
+      const previewRun = await captureConsole(() => main([
+        '--preview',
+        '--ocr',
+        '--lang', 'ko',
+        '--api-key-file', mockApiKeyPath,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
+        htmlPath,
+      ]));
+
+      assert.strictEqual(mock.callCount, 2);
+      assert.ok(previewRun.errors.some((line) => line.includes('1 image(s) flagged')));
+      // stdout stays pipe-safe: the page's own text only, no OCR block.
+      const stdout = previewRun.logs.join('\n');
+      assert.ok(stdout.includes('First paragraph rewritten by the mock backend'));
+      assert.ok(!stdout.includes('이미지 문구를 사람답게'));
+
+      const page = writes[0].data;
+      // The <img> gets an on-page badge, and the finding card embeds the
+      // extracted text + suggestion (+ a thumbnail of the OCR'd image).
+      assert.ok(page.includes('<span class="ptna-img" data-n="I1">'));
+      assert.ok(page.includes('id="ptna-img-1"'));
+      assert.ok(page.includes('혁신적인 솔루션으로 생산성을 극대화하세요'));
+      assert.ok(page.includes('이미지 문구를 사람답게 고쳐 쓴 결과입니다'));
+      assert.ok(page.includes('ptna-img-thumb'));
+      assert.ok(page.includes('href="#ptna-img-1"'));
+      assert.ok(page.includes('1 image(s)'));
+      // The notes panel auto-opens so image findings aren't hidden.
+      assert.ok(/<details class="ptna-notes" open>/.test(page));
+    } finally {
+      resetBrowserDiffRuntimeForTests();
+      resetOcrRuntimeForTests();
+      rmSync(dir, { recursive: true, force: true });
+      await mock.stop();
+      mock = await startMockServer('This is the humanized result.');
+    }
+  });
+
   it('rejects unsupported --browser inputs before any backend call', async () => {
     const first = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
     const second = first;
@@ -783,6 +867,7 @@ describe('CLI End-to-End with Mock API', () => {
       { args: ['--preview'], pattern: /--preview requires exactly one input/ },
       { args: ['--preview', first, second], pattern: /--preview requires exactly one input/ },
       { args: ['--preview', 'draft.pdf'], pattern: /--preview supports http\(s\) URLs, \.html, \.md, and \.txt input/ },
+      { args: ['--ocr', first], pattern: /--ocr requires --preview/ },
       { args: ['--preview', '--batch', 'https://example.test'], pattern: /does not support --batch/ },
       { args: ['--preview', '--browser', 'https://example.test'], pattern: /cannot be combined/ },
     ];

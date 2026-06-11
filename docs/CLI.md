@@ -105,13 +105,26 @@ patina --preview --serve https://example.com/article   # headless: serve at a to
 
 URL contract:
 - Rewrites only plain-text prose blocks (`p`, headings, `li`, `blockquote`, …) with no nested markup; navigation, prices, tables, and mixed-markup paragraphs are left untouched. One rewrite call plus one best-effort explanation call.
-- The snapshot is inert: scripts are removed (hydration would revert the swapped text), inline event handlers and `javascript:` URLs are neutralized, and a `<base href>` keeps the page's own CSS and images loading. React 18 streaming pages are resolved statically (`$RC`/`$RS` swaps applied at snapshot time) so Suspense content renders instead of loading spinners.
+- The snapshot is inert: scripts are removed (hydration would revert the swapped text), inline event handlers and `javascript:` URLs are neutralized, and a `<base href>` keeps the page's own CSS and images loading. React 18 streaming pages are resolved statically (`$RC`/`$RS` swaps applied at snapshot time) so Suspense content renders instead of loading spinners. `<iframe srcdoc="…">` detail content (sites embed long below-the-fold pages this way) is decoded and inlined so its copy and images are extracted and rewritten too.
 - Works on server-rendered pages. Client-rendered SPAs ship an empty HTML shell, so there is nothing to extract — patina fails with a clear message instead of showing a blank snapshot.
 - If the model returns a different paragraph count than the extracted blocks, patina falls back to LCS anchoring plus order-monotonic bigram-similarity pairing; blocks with no confident partner keep their original text (reported on stderr) instead of failing the run.
 
 File contract:
 - The whole file is rewritten (same scope as a plain rewrite) and rendered as a single reading document. Hunks are paired by LCS, so the model does not need to preserve paragraph counts.
 - stdout carries the rewritten prose (pipe-safe) in both forms; the page path and serve URL go to stderr, same as `--browser`.
+
+### Image text: `--ocr`
+
+Marketing pages often carry their most AI-sounding copy inside images (card-news, banners). `--ocr` extends detection to them:
+
+```bash
+patina --preview --ocr https://example.com/product
+```
+
+- Image candidates come from `<img>` sources (including `srcset` and Next.js `/_next/image` wrappers, unwrapped to the original asset) plus document-wide base64 data URIs (card-news content frequently ships as CSS `background-image` data URIs). SVG is skipped; caps: 8 images per page by priority, 6MB per image, 16MB total.
+- Text extraction runs through an image-capable local CLI backend — `claude-cli`, `gemini-cli`, or `codex-cli` (your selected backend when capable, otherwise the first capable one available). One extra backend call per image; images are staged into the backend's isolated temp dir, preserving the empty-cwd prompt-injection containment. `kimi-cli` and `openai-http` cannot read images. Remote pages can only reference remote (http/https) images — `file:` images are accepted only for local `.html` previews.
+- Extracted text joins the same rewrite call as extra blocks. Since pixels cannot be rewritten, each changed finding appears in the auto-opened "patina notes" panel as a card embedding **the exact image patina OCR'd** (a thumbnail) next to the extracted text and the suggested rewrite — so findings on carousel slides, lazy-loaded images, or CSS background images are visible regardless of how the snapshot froze. A plain `<img>` in the DOM additionally gets a dashed-bronze `I`-badge in place.
+- stdout never includes OCR text (pipe-safe); the flagged-image count is reported on stderr.
 
 
 ## Backend fallback chains

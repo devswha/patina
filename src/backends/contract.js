@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -67,6 +67,19 @@ export function resolveBackendMaxRetries(backendName, override) {
 
 export function formatLimit(value) {
   return Number.isFinite(value) ? String(value) : 'unbounded';
+}
+
+// Copy image attachments into a CLI backend's per-invocation temp dir so a
+// vision-capable CLI can read them from its own (otherwise empty) cwd. This
+// preserves the prompt-injection containment of the empty-cwd spawn: the CLI
+// never needs access to the caller's paths. Returns the staged filenames.
+export function stageCliImages(dir, images = []) {
+  return images.map((imagePath, index) => {
+    const ext = (/\.([a-z0-9]{1,5})$/i.exec(String(imagePath))?.[1] || 'png').toLowerCase();
+    const staged = `ocr-image-${index}.${ext}`;
+    copyFileSync(imagePath, join(dir, staged));
+    return staged;
+  });
 }
 
 export function isRetryableBackendError(err, { attemptIndex = 0, signal } = {}) {

@@ -44,9 +44,14 @@ export function login(options = {}) {
   });
 }
 
-export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
+export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS, images } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('kimi-cli backend: prompt must be a non-empty string');
+  }
+  if (Array.isArray(images) && images.length > 0) {
+    // kimi --print runs with tools hard-disabled by design (see the security
+    // comment below) — there is no safe way for it to open an image file.
+    throw new Error('kimi-cli backend: image input is not supported');
   }
   throwIfAborted(signal);
 

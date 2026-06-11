@@ -16,6 +16,7 @@ import {
   renderBrowserDiffHtml,
   writeBrowserDiffPage,
   openBrowserDiffPage,
+  serveBrowserDiffPage,
 } from '../browser-diff.js';
 import { runOuroboros } from '../ouroboros.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
@@ -236,6 +237,7 @@ export async function runDefault(parsed, logger) {
           });
         }
         let browserPagePath = null;
+        let browserPageHtml = null;
 
         const auditBackstop =
           mode === 'audit' && (parsed.format ?? 'markdown') !== 'json' && !parsed.batch
@@ -255,7 +257,7 @@ export async function runDefault(parsed, logger) {
         }
 
         if (parsed.browser && mode === 'rewrite') {
-          ({ pagePath: browserPagePath } = await buildBrowserDiffArtifact({
+          ({ pagePath: browserPagePath, html: browserPageHtml } = await buildBrowserDiffArtifact({
             originalText: text,
             rawRewriteResult: result,
             sourcePath: path,
@@ -303,10 +305,19 @@ export async function runDefault(parsed, logger) {
             // Always surface the path: a headless opener can exit 0 without
             // showing anything, leaving the user with no way to find the page.
             console.error(`[patina] Browser diff page saved at ${browserPagePath}`);
-            try {
-              await openBrowserDiffPage(browserPagePath);
-            } catch (err) {
-              console.error(`[patina] Browser open failed: ${err.message}`);
+            if (parsed.serve) {
+              const { url, done } = await serveBrowserDiffPage(browserPageHtml, {
+                signal: cancellation.signal,
+              });
+              console.error(`[patina] Serving diff page at ${url}`);
+              console.error('[patina] Stops after 10 idle minutes; press Ctrl+C to stop now.');
+              await done;
+            } else {
+              try {
+                await openBrowserDiffPage(browserPagePath);
+              } catch (err) {
+                console.error(`[patina] Browser open failed: ${err.message}`);
+              }
             }
           }
         }
@@ -553,6 +564,7 @@ async function buildBrowserDiffArtifact({
   return {
     pagePath: writeBrowserDiffPage(html),
     rewrittenBody,
+    html,
   };
 }
 

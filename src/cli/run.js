@@ -300,10 +300,12 @@ export async function runDefault(parsed, logger) {
         } else {
           console.log(output);
           if (browserPagePath) {
+            // Always surface the path: a headless opener can exit 0 without
+            // showing anything, leaving the user with no way to find the page.
+            console.error(`[patina] Browser diff page saved at ${browserPagePath}`);
             try {
               await openBrowserDiffPage(browserPagePath);
             } catch (err) {
-              console.error(`[patina] Browser diff page saved at ${browserPagePath}`);
               console.error(`[patina] Browser open failed: ${err.message}`);
             }
           }

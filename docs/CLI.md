@@ -94,11 +94,12 @@ Contract:
 
 `--preview` rewrites prose and renders the rewrites **in place** — each rewritten block highlighted and numbered, a floating bar with the change count, deterministic before/after score, jump chips, a three-state view toggle (rewritten / original / both), and a "patina notes" panel with the Pattern/Removed/Added/Why explanation.
 
-It accepts either input form:
+It accepts one input: an http(s) URL, a `.html`/`.htm` file (snapshot pipeline, same as a fetched page), or a `.md`/`.markdown`/`.txt` file (reading document). Other extensions are rejected up front.
 
 ```bash
 patina --preview https://example.com/article           # live page, snapshot overlay
-patina --preview draft.md                              # local file, reading document
+patina --preview export.html                           # local HTML, snapshot overlay
+patina --preview draft.md                              # local text, reading document
 patina --preview --serve https://example.com/article   # headless: serve at a token URL
 ```
 
@@ -106,7 +107,7 @@ URL contract:
 - Rewrites only plain-text prose blocks (`p`, headings, `li`, `blockquote`, …) with no nested markup; navigation, prices, tables, and mixed-markup paragraphs are left untouched. One rewrite call plus one best-effort explanation call.
 - The snapshot is inert: scripts are removed (hydration would revert the swapped text), inline event handlers and `javascript:` URLs are neutralized, and a `<base href>` keeps the page's own CSS and images loading. React 18 streaming pages are resolved statically (`$RC`/`$RS` swaps applied at snapshot time) so Suspense content renders instead of loading spinners.
 - Works on server-rendered pages. Client-rendered SPAs ship an empty HTML shell, so there is nothing to extract — patina fails with a clear message instead of showing a blank snapshot.
-- If the model returns a different paragraph count than the extracted blocks, the run fails rather than guessing the mapping; re-run or use the file form.
+- If the model returns a different paragraph count than the extracted blocks, patina falls back to LCS anchoring plus order-monotonic bigram-similarity pairing; blocks with no confident partner keep their original text (reported on stderr) instead of failing the run.
 
 File contract:
 - The whole file is rewritten (same scope as a plain rewrite) and rendered as a single reading document. Hunks are paired by LCS, so the model does not need to preserve paragraph counts.

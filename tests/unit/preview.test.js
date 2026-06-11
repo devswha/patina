@@ -47,10 +47,32 @@ test('extractProseBlocks reports truncation at the block cap', () => {
   assert.strictEqual(truncated, true);
 });
 
-test('alignRewrites maps paragraphs 1:1 and rejects mismatches', () => {
+test('alignRewrites maps paragraphs 1:1 and falls back to LCS hunks on mismatch', () => {
   const blocks = [{ text: 'one' }, { text: 'two' }];
-  assert.deepStrictEqual(alignRewrites(blocks, 'ONE\n\nTWO'), ['ONE', 'TWO']);
-  assert.throws(() => alignRewrites(blocks, 'merged into a single paragraph'), /1 paragraphs for 2 prose blocks/);
+  assert.deepStrictEqual(alignRewrites(blocks, 'ONE\n\nTWO'), { rewrites: ['ONE', 'TWO'], unalignedCount: 0 });
+
+  // Model merged both paragraphs: unpairable hunk keeps the original text.
+  assert.deepStrictEqual(
+    alignRewrites(blocks, 'merged into a single paragraph'),
+    { rewrites: ['one', 'two'], unalignedCount: 2 },
+  );
+
+  // Mixed: an unchanged block anchors the LCS; inside the unequal hunk the
+  // changed block pairs by bigram similarity and the surplus paragraph drops.
+  const mixed = [{ text: 'same anchor paragraph' }, { text: 'the old text body' }, { text: 'tail anchor' }];
+  assert.deepStrictEqual(
+    alignRewrites(mixed, 'same anchor paragraph\n\nthe new text body\n\ncompletely unrelated insertion 12345\n\ntail anchor'),
+    { rewrites: ['same anchor paragraph', 'the new text body', 'tail anchor'], unalignedCount: 0 },
+  );
+
+  // Whole-page rewrite with merged paragraphs: similarity pairing still maps
+  // most blocks, dissimilar ones keep the original.
+  const wide = [{ text: '프롬프트를 어떻게 써야 할지 막막합니다' }, { text: '크레딧만 날리고 결과물이 없어요' }, { text: 'HYPERREAL' }];
+  const out = alignRewrites(wide, '프롬프트를 뭐라고 입력해야 할지 모르겠어요\n\n크레딧을 다 써도 마음에 드는 게 없어요');
+  assert.strictEqual(out.rewrites[0], '프롬프트를 뭐라고 입력해야 할지 모르겠어요');
+  assert.strictEqual(out.rewrites[1], '크레딧을 다 써도 마음에 드는 게 없어요');
+  assert.strictEqual(out.rewrites[2], 'HYPERREAL');
+  assert.strictEqual(out.unalignedCount, 1);
 });
 
 test('buildPreviewHtml swaps rewrites in place and hardens the snapshot', () => {

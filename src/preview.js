@@ -225,10 +225,108 @@ export function alignRewrites(blocks, rewrittenBody) {
     .split(/\n{2,}/)
     .map((paragraph) => paragraph.replace(/\s+/g, ' ').trim())
     .filter(Boolean);
-  if (paragraphs.length !== blocks.length) {
+  if (paragraphs.length === blocks.length) {
+    return { rewrites: paragraphs, unalignedCount: 0 };
+  }
+
+  // The model merged or split paragraphs. Fall back to LCS hunk pairing:
+  // unchanged blocks keep their slot, equal-sized changed hunks pair 1:1,
+  // and anything else keeps the original text instead of failing the run.
+  const pairs = diffBlockPairs(
+    blocks.map((block) => block.text).join('\n\n'),
+    paragraphs.join('\n\n'),
+  );
+  const rewrites = [];
+  let unalignedCount = 0;
+  for (const pair of pairs) {
+    if (pair.type === 'same') {
+      rewrites.push(pair.text);
+      continue;
+    }
+    const before = pair.before ? pair.before.split('\n\n') : [];
+    const after = pair.after ? pair.after.split('\n\n') : [];
+    if (before.length === after.length) {
+      rewrites.push(...after);
+      continue;
+    }
+    // Counts differ inside the hunk (the model merged or split): pair by
+    // order-monotonic character-bigram similarity; blocks with no confident
+    // partner keep their original text, surplus model paragraphs are dropped.
+    const mapping = pairHunkBySimilarity(before, after);
+    before.forEach((text, index) => {
+      if (mapping[index] !== null) {
+        rewrites.push(mapping[index]);
+      } else {
+        rewrites.push(text);
+        unalignedCount += 1;
+      }
+    });
+  }
+  if (rewrites.length !== blocks.length) {
     throw new Error(`the rewrite returned ${paragraphs.length} paragraphs for ${blocks.length} prose blocks`);
   }
-  return paragraphs;
+  return { rewrites, unalignedCount };
+}
+
+const MIN_PAIR_SIMILARITY = 0.25;
+
+// Monotonic alignment maximizing total bigram similarity (tiny
+// Needleman-Wunsch); pairs below the similarity floor are not made at all.
+function pairHunkBySimilarity(before, after) {
+  const k = before.length;
+  const m = after.length;
+  const sim = before.map((b) => after.map((a) => diceSimilarity(b, a)));
+  const best = Array.from({ length: k + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = 1; i <= k; i++) {
+    for (let j = 1; j <= m; j++) {
+      const pairScore = sim[i - 1][j - 1] >= MIN_PAIR_SIMILARITY
+        ? best[i - 1][j - 1] + sim[i - 1][j - 1]
+        : -Infinity;
+      best[i][j] = Math.max(best[i - 1][j], best[i][j - 1], pairScore);
+    }
+  }
+  const mapping = new Array(k).fill(null);
+  let i = k;
+  let j = m;
+  while (i > 0 && j > 0) {
+    if (sim[i - 1][j - 1] >= MIN_PAIR_SIMILARITY
+      && best[i][j] === best[i - 1][j - 1] + sim[i - 1][j - 1]) {
+      mapping[i - 1] = after[j - 1];
+      i -= 1;
+      j -= 1;
+    } else if (best[i][j] === best[i - 1][j]) {
+      i -= 1;
+    } else {
+      j -= 1;
+    }
+  }
+  return mapping;
+}
+
+function diceSimilarity(a, b) {
+  const left = bigramCounts(a);
+  const right = bigramCounts(b);
+  let leftTotal = 0;
+  let rightTotal = 0;
+  let overlap = 0;
+  for (const count of left.values()) leftTotal += count;
+  for (const count of right.values()) rightTotal += count;
+  if (leftTotal === 0 || rightTotal === 0) return 0;
+  for (const [gram, count] of left) {
+    const other = right.get(gram);
+    if (other) overlap += Math.min(count, other);
+  }
+  return (2 * overlap) / (leftTotal + rightTotal);
+}
+
+function bigramCounts(text) {
+  const compact = String(text).replace(/\s+/g, '');
+  const counts = new Map();
+  for (let i = 0; i < compact.length - 1; i++) {
+    const gram = compact.slice(i, i + 2);
+    counts.set(gram, (counts.get(gram) || 0) + 1);
+  }
+  return counts;
 }
 
 export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanationHtml = '', scoreChip = null }) {

@@ -29,6 +29,7 @@ import { PatinaCliError, runtimeError } from '../errors.js';
 import { providerHttpKeyEnvVars, resolveHttpApiKey } from '../auth.js';
 import { DEFAULT_BACKEND_TIMEOUT_MS, getBackendSafety } from '../backends/contract.js';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 /**
  * Run the default patina pipeline for an already-parsed CLI invocation:
@@ -617,6 +618,7 @@ async function runPreviewJob({
     let sourceUrl = null;
     let sourcePath = input;
     let originalText;
+    let snapshotSource = null;
 
     if (isUrl) {
       logger.info('preview.fetch', { message: `[patina] Fetching ${input}` });
@@ -631,9 +633,23 @@ async function runPreviewJob({
         );
       }
       cancellation.throwIfCanceled();
-
-      pageHtml = prepareSnapshotHtml(page.html);
+      snapshotSource = page.html;
       sourceUrl = page.finalUrl;
+    } else {
+      const [loaded] = await loadInputs(parsed, logger);
+      sourcePath = loaded.path;
+      // Local HTML goes through the same snapshot pipeline as a fetched
+      // page; markdown/plain text renders as a reading document.
+      if (/\.html?$/i.test(sourcePath)) {
+        snapshotSource = loaded.text;
+        sourceUrl = pathToFileURL(resolve(process.cwd(), sourcePath)).href;
+      } else {
+        originalText = loaded.text;
+      }
+    }
+
+    if (snapshotSource !== null) {
+      pageHtml = prepareSnapshotHtml(snapshotSource);
       const extracted = extractProseBlocks(pageHtml);
       blocks = extracted.blocks;
       if (blocks.length === 0) {
@@ -652,10 +668,6 @@ async function runPreviewJob({
       logger.info('preview.blocks', {
         message: `[patina] Rewriting ${blocks.length} prose block(s) from ${sourceUrl}`,
       });
-    } else {
-      const [loaded] = await loadInputs(parsed, logger);
-      originalText = loaded.text;
-      sourcePath = loaded.path;
     }
 
     const basePromptInputs = {
@@ -723,10 +735,16 @@ async function runPreviewJob({
       : null;
 
     let built;
-    if (isUrl) {
+    if (pageHtml !== null) {
       let rewrites;
       try {
-        rewrites = alignRewrites(blocks, rewrittenBody);
+        const aligned = alignRewrites(blocks, rewrittenBody);
+        rewrites = aligned.rewrites;
+        if (aligned.unalignedCount > 0) {
+          logger.warn('preview.partial_alignment', {
+            message: `[patina] ${aligned.unalignedCount} block(s) could not be aligned with the rewrite and keep their original text.`,
+          });
+        }
       } catch (err) {
         throw runtimeError(
           'preview rewrite could not be aligned',

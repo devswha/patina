@@ -242,6 +242,14 @@ export function validatePreviewRequest(parsed) {
       'Run `patina --preview https://example.com/article` or `patina --preview draft.md`.'
     );
   }
+  const input = String(parsed.files[0] || '');
+  if (!/^https?:\/\//i.test(input) && !/\.(html?|md|markdown|txt)$/i.test(input)) {
+    throw inputError(
+      '--preview supports http(s) URLs, .html, .md, and .txt input',
+      `"${input}" has an unsupported extension for in-place preview.`,
+      'Convert the file to HTML/markdown/plain text, or run plain `patina <file>` for a rewrite without the preview page.'
+    );
+  }
 }
 
 export function validateBrowserRequest(parsed) {

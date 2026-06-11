@@ -5,7 +5,7 @@ import { createServer } from 'node:http';
 import { main, resolvePromptMode } from '../../src/cli.js';
 import { setBrowserDiffRuntimeForTests, resetBrowserDiffRuntimeForTests } from '../../src/browser-diff.js';
 import { startMockServer } from './helpers/mock-server.js';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -711,6 +711,65 @@ describe('CLI End-to-End with Mock API', () => {
     }
   });
 
+  it('previews a local .html file through the snapshot pipeline', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'patina-html-preview-'));
+    const htmlPath = join(dir, 'page.html');
+    writeFileSync(htmlPath, [
+      '<html><head><title>local</title></head><body>',
+      '<div class="hero">',
+      '<p>The first paragraph is long enough to be rewritten by the preview flow.</p>',
+      '</div>',
+      '</body></html>',
+    ].join('\n'));
+
+    const rewriteResponse = '[BODY]\nFirst paragraph rewritten by the mock backend for the preview test.\n[/BODY]';
+    const writes = [];
+    setBrowserDiffRuntimeForTests({
+      tmpdir: () => '/tmp',
+      mkdtemp: () => '/tmp/patina-preview-99',
+      writeFile: (path, data) => {
+        writes.push({ path, data });
+      },
+      chmod: () => {},
+      now: () => 99,
+      platform: 'linux',
+      spawn: makeFakeSpawn(({ child }) => {
+        process.nextTick(() => child.emit('close', 0));
+      }),
+    });
+
+    mock.callCount = 0;
+    try {
+      await mock.stop();
+      mock = await startMockServer([
+        { responseText: rewriteResponse },
+        { responseText: 'Pattern: 1. Generic polish\nRemoved: old\nAdded: new\nWhy: reason' },
+      ]);
+
+      const previewRun = await captureConsole(() => main([
+        '--preview',
+        '--lang', 'en',
+        '--api-key-file', mockApiKeyPath,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
+        htmlPath,
+      ]));
+
+      assert.strictEqual(mock.callCount, 2);
+      assert.ok(previewRun.errors.some((line) => line.includes('(1 of 1 blocks rewritten)')));
+      const page = writes[0].data;
+      // Snapshot pipeline, not the reading-document shell: host markup kept.
+      assert.ok(page.includes('<div class="hero">'));
+      assert.ok(!page.includes('ptna-doc'));
+      assert.ok(page.includes('<span class="ptna-after">First paragraph rewritten by the mock backend for the preview test.</span>'));
+      assert.ok(page.includes(`<base href="${pathToFileURL(htmlPath).href}">`));
+    } finally {
+      resetBrowserDiffRuntimeForTests();
+      rmSync(dir, { recursive: true, force: true });
+      await mock.stop();
+      mock = await startMockServer('This is the humanized result.');
+    }
+  });
+
   it('rejects unsupported --browser inputs before any backend call', async () => {
     const first = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
     const second = first;
@@ -723,6 +782,7 @@ describe('CLI End-to-End with Mock API', () => {
       { args: ['--serve', first], pattern: /--serve requires --browser or --preview/ },
       { args: ['--preview'], pattern: /--preview requires exactly one input/ },
       { args: ['--preview', first, second], pattern: /--preview requires exactly one input/ },
+      { args: ['--preview', 'draft.pdf'], pattern: /--preview supports http\(s\) URLs, \.html, \.md, and \.txt input/ },
       { args: ['--preview', '--batch', 'https://example.test'], pattern: /does not support --batch/ },
       { args: ['--preview', '--browser', 'https://example.test'], pattern: /cannot be combined/ },
     ];

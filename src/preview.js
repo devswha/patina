@@ -54,6 +54,140 @@ export async function fetchPreviewPage(url, options = {}) {
   }
 }
 
+// Prepare fetched HTML for extraction and overlay: harvest the React
+// streaming swap operations while the inline scripts still exist, drop
+// active content, then statically resolve the stream so Suspense content
+// is visible without JS.
+export function prepareSnapshotHtml(html) {
+  const raw = String(html ?? '');
+  const ops = harvestStreamOps(raw);
+  return resolveStreamedHtml(stripActiveContent(raw), ops);
+}
+
+// React 18 streaming SSR ships late content as hidden segments
+// (<div hidden id="S:n">…</div>) appended near the end of <body>, plus
+// inline runtime calls that swap them into place:
+//   $RC("B:n","S:m") — replace a Suspense boundary's fallback (the markup
+//     after <template id="B:n"></template> up to the boundary-closing
+//     <!--/$--> comment) with segment S:m;
+//   $RS("S:m","P:n") — replace the placeholder <template id="P:n"></template>
+//     itself with segment S:m.
+// The B/P↔S pairing exists only in those calls, so it must be harvested
+// before scripts are stripped.
+export function harvestStreamOps(html) {
+  const ops = [];
+  const source = String(html ?? '');
+  const rcRe = /\$RC\(\s*"(B:[^"]+)"\s*,\s*"(S:[^"]+)"/g;
+  let match;
+  while ((match = rcRe.exec(source)) !== null) {
+    ops.push({ kind: 'boundary', targetId: match[1], contentId: match[2] });
+  }
+  const rsRe = /\$RS\(\s*"(S:[^"]+)"\s*,\s*"(P:[^"]+)"/g;
+  while ((match = rsRe.exec(source)) !== null) {
+    ops.push({ kind: 'placeholder', contentId: match[1], targetId: match[2] });
+  }
+  return ops;
+}
+
+// The preview snapshot strips scripts, so without static resolution these
+// pages would show their loading spinners forever. Ops are applied until a
+// full pass makes no progress (segments and their targets can be nested in
+// either order); targets whose segment never streamed keep their fallback.
+// Leftover hidden segments are removed afterwards so the extractor cannot
+// rewrite invisible text.
+export function resolveStreamedHtml(html, ops = harvestStreamOps(html)) {
+  let out = String(html ?? '');
+  const pending = [...ops];
+  let progressed = true;
+  while (progressed && pending.length > 0) {
+    progressed = false;
+    for (let i = 0; i < pending.length; i++) {
+      const applied = applyStreamOp(out, pending[i]);
+      if (applied !== null) {
+        out = applied;
+        pending.splice(i, 1);
+        i -= 1;
+        progressed = true;
+      }
+    }
+  }
+  for (let guard = 0; guard < 200; guard++) {
+    const leftover = findStreamSegment(out, null);
+    if (!leftover) break;
+    out = out.slice(0, leftover.start) + out.slice(leftover.end);
+  }
+  return out;
+}
+
+function applyStreamOp(html, op) {
+  const templateTag = `<template id="${op.targetId}"></template>`;
+  if (!html.includes(templateTag)) return null;
+  const segment = findStreamSegment(html, op.contentId);
+  if (!segment) return null;
+
+  const withoutSegment = html.slice(0, segment.start) + html.slice(segment.end);
+  const templateStart = withoutSegment.indexOf(templateTag);
+  if (templateStart === -1) return null;
+
+  if (op.kind === 'placeholder') {
+    return withoutSegment.slice(0, templateStart)
+      + segment.content
+      + withoutSegment.slice(templateStart + templateTag.length);
+  }
+  const fallbackStart = templateStart + templateTag.length;
+  const fallbackEnd = findBoundaryEnd(withoutSegment, fallbackStart);
+  if (fallbackEnd === -1) return null;
+  return withoutSegment.slice(0, templateStart)
+    + segment.content
+    + withoutSegment.slice(fallbackEnd);
+}
+
+// React writes streamed segments literally as <div hidden id="S:n">…</div>,
+// one after another. Tag-balance counting is unreliable on real-world
+// markup, so each segment is bounded by the next streamed div (or </body>),
+// and the wrapper's own closing tag is the last </div> before that boundary.
+const STREAM_DIV_PREFIX = '<div hidden id="S:';
+
+function findStreamSegment(html, id) {
+  const opener = id === null ? STREAM_DIV_PREFIX : `<div hidden id="${id}"`;
+  const start = html.indexOf(opener);
+  if (start === -1) return null;
+  const tagEnd = html.indexOf('>', start);
+  if (tagEnd === -1) return null;
+
+  const nextDiv = html.indexOf(STREAM_DIV_PREFIX, tagEnd + 1);
+  const bodyClose = html.indexOf('</body>', tagEnd + 1);
+  const boundary = Math.min(
+    nextDiv === -1 ? html.length : nextDiv,
+    bodyClose === -1 ? html.length : bodyClose,
+  );
+  const lastClose = html.lastIndexOf('</div>', boundary);
+  if (lastClose <= tagEnd) return null;
+  return {
+    start,
+    end: lastClose + '</div>'.length,
+    content: html.slice(tagEnd + 1, lastClose),
+  };
+}
+
+// A fallback segment ends at its boundary-closing comment <!--/$-->;
+// nested suspense boundaries open with <!--$?-->, <!--$-->, or <!--$!-->.
+function findBoundaryEnd(html, fromIndex) {
+  const markerRe = /<!--\$[?!]?-->|<!--\/\$-->/g;
+  markerRe.lastIndex = fromIndex;
+  let depth = 1;
+  let match;
+  while ((match = markerRe.exec(html)) !== null) {
+    if (match[0] === '<!--/$-->') {
+      depth -= 1;
+      if (depth === 0) return match.index;
+    } else {
+      depth += 1;
+    }
+  }
+  return -1;
+}
+
 export function extractProseBlocks(html, options = {}) {
   const minLength = options.minLength ?? DEFAULT_MIN_BLOCK_LENGTH;
   const maxBlocks = options.maxBlocks ?? DEFAULT_MAX_BLOCKS;

@@ -6,6 +6,9 @@ import {
   extractProseBlocks,
   alignRewrites,
   buildPreviewHtml,
+  harvestStreamOps,
+  resolveStreamedHtml,
+  prepareSnapshotHtml,
 } from '../../src/preview.js';
 
 const LONG_KO = '이 문장은 미리보기 추출 테스트를 위한 충분히 긴 한국어 단락입니다.';
@@ -103,6 +106,59 @@ test('buildPreviewHtml keeps an existing base tag and omits the toggle when noth
   assert.ok(!out.includes('href="https://other.test/"'));
   assert.ok(!out.includes('id="ptna-orig"'));
   assert.ok(out.includes('0 of 1 blocks rewritten'));
+});
+
+test('harvestStreamOps reads $RC and $RS pairs from inline scripts', () => {
+  const html = '<script>$RC("B:0","S:0")</script><script>$RS("S:7","P:2")</script>';
+  assert.deepStrictEqual(harvestStreamOps(html), [
+    { kind: 'boundary', targetId: 'B:0', contentId: 'S:0' },
+    { kind: 'placeholder', contentId: 'S:7', targetId: 'P:2' },
+  ]);
+});
+
+test('resolveStreamedHtml swaps boundary fallbacks and placeholders into place', () => {
+  const html = [
+    '<body>',
+    '<main><!--$?--><template id="B:0"></template><div class="spinner">loading…</div><!--/$--></main>',
+    '<aside><template id="P:2"></template></aside>',
+    `<div hidden id="S:0"><p>${LONG_KO}</p></div>`,
+    '<div hidden id="S:7"><span>sidebar content arrived</span></div>',
+    '<div hidden id="S:9"><p>orphaned segment with no swap call</p></div>',
+    '</body>',
+  ].join('');
+  const ops = [
+    { kind: 'boundary', targetId: 'B:0', contentId: 'S:0' },
+    { kind: 'placeholder', contentId: 'S:7', targetId: 'P:2' },
+  ];
+
+  const out = resolveStreamedHtml(html, ops);
+  assert.ok(out.includes(`<main><!--$?--><p>${LONG_KO}</p><!--/$--></main>`));
+  assert.ok(out.includes('<aside><span>sidebar content arrived</span></aside>'));
+  assert.ok(!out.includes('spinner'));
+  assert.ok(!out.includes('hidden id="S:'));
+  assert.ok(!out.includes('orphaned segment'));
+});
+
+test('resolveStreamedHtml keeps fallbacks whose segment never streamed', () => {
+  const html = '<body><!--$?--><template id="B:0"></template><p>still loading fallback text here</p><!--/$--></body>';
+  const out = resolveStreamedHtml(html, [{ kind: 'boundary', targetId: 'B:0', contentId: 'S:0' }]);
+  assert.ok(out.includes('still loading fallback text here'));
+});
+
+test('prepareSnapshotHtml resolves a streamed page end to end', () => {
+  const html = [
+    '<html><head></head><body>',
+    '<main><!--$?--><template id="B:1"></template><div role="status">spinner</div><!--/$--></main>',
+    `<div hidden id="S:1"><p>${LONG_EN}</p></div>`,
+    '<script>$RC("B:1","S:1")</script>',
+    '</body></html>',
+  ].join('');
+  const out = prepareSnapshotHtml(html);
+  assert.ok(out.includes(`<p>${LONG_EN}</p>`));
+  assert.ok(!out.includes('spinner'));
+  assert.ok(!out.includes('<script'));
+  const { blocks } = extractProseBlocks(out);
+  assert.strictEqual(blocks.length, 1);
 });
 
 test('fetchPreviewPage validates status, content type, and size', async () => {

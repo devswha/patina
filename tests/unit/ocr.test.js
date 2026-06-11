@@ -16,6 +16,9 @@ import {
 import { stageCliImages } from '../../src/backends/contract.js';
 
 const BIG_DATA_URI = `data:image/jpeg;base64,${'A'.repeat(4000)}`;
+// Inject a resolver so url candidates do not hit real DNS; tests use fake
+// hosts that resolve to a public address (the SSRF guard only blocks private).
+const PUBLIC_LOOKUP = async () => [{ address: '93.184.216.34', family: 4 }];
 
 test('collectImageCandidates resolves sources, unwraps Next.js proxies, and dedupes', () => {
   const html = [
@@ -41,8 +44,96 @@ test('collectImageCandidates resolves sources, unwraps Next.js proxies, and dedu
   assert.strictEqual(candidates.filter((c) => c.kind === 'data').length, 1);
 });
 
+test('collectImageCandidates reads single-quoted and unquoted attributes', () => {
+  const html = [
+    "<img src='/img/single-quoted-banner.webp' alt='싱글쿼트 한국어 배너'>",
+    '<img src=/img/unquoted-card.png alt=card>',
+  ].join('');
+  const { candidates } = collectImageCandidates(html, 'https://example.test/');
+  assert.deepStrictEqual(candidates.map((c) => c.url), [
+    'https://example.test/img/single-quoted-banner.webp',
+    'https://example.test/img/unquoted-card.png',
+  ]);
+  // Korean alt text still boosts priority through single quotes.
+  assert.ok(candidates[0].priority > candidates[1].priority);
+});
+
+test('collectImageCandidates keeps extension-less URLs and CSS background images', () => {
+  const html = [
+    '<img src="https://cdn.test/v2/assets/abc123" alt="확장자 없는 CDN 이미지">',
+    '<div style="background-image:url(https://cdn.test/bg/card-news-detail.jpg)"></div>',
+    "<style>.hero{background:url('/bg/hero-banner.png')}.f{src:url(/fonts/main.woff2)}</style>",
+    '<img src="/icons/logo.svg">',
+  ].join('');
+  const { candidates } = collectImageCandidates(html, 'https://example.test/');
+  const urls = candidates.map((c) => c.url);
+  assert.ok(urls.includes('https://cdn.test/v2/assets/abc123'));
+  assert.ok(urls.includes('https://cdn.test/bg/card-news-detail.jpg'));
+  assert.ok(urls.includes('https://example.test/bg/hero-banner.png'));
+  // Known non-image extensions stay out — fonts and vector icons.
+  assert.ok(!urls.some((u) => u.endsWith('.woff2') || u.endsWith('.svg')));
+  // The extension-less candidate is sniffed later, at staging time.
+  assert.strictEqual(candidates.find((c) => c.url.endsWith('abc123')).ext, '');
+});
+
+test('collectImageCandidates only scans url() inside CSS contexts, not SVG paint refs', () => {
+  // On a */detail/* page, a document-wide url() scan would turn SVG paint
+  // references and the page URL fragment into junk candidates that crowd real
+  // images out of the cap. Only style attrs and <style> blocks are scanned.
+  const html = [
+    '<svg><rect fill="url(#logoGradient)"/><stop stop-color="url(#g2)"/></svg>',
+    '<div style="background:var(--card-bg) url(https://cdn.test/bg/real-card.jpg)"></div>',
+    '<img src="https://cdn.test/product/photo.jpg">',
+  ].join('');
+  const { candidates } = collectImageCandidates(html, 'https://shop.test/product/detail/123');
+  const urls = candidates.map((c) => c.url);
+  assert.ok(!urls.some((u) => u.includes('logoGradient') || u.includes('detail/123') || u.includes('#g2')));
+  assert.ok(urls.includes('https://cdn.test/bg/real-card.jpg'));
+  assert.ok(urls.includes('https://cdn.test/product/photo.jpg'));
+});
+
+test('stageOcrImages refuses image URLs that resolve to private space (SSRF)', async () => {
+  const fetched = [];
+  const fetchImpl = async (url) => { fetched.push(url); return { ok: true, headers: { get: () => null }, body: bodyFor('bytes') }; };
+  const result = await stageOcrImages(
+    [{ kind: 'url', url: 'http://metadata.internal/latest.png', ext: 'png' }],
+    { fetchImpl, baseUrl: 'https://blog.example/post', lookupImpl: async () => [{ address: '169.254.169.254', family: 4 }] },
+  );
+  try {
+    assert.strictEqual(fetched.length, 0);
+    assert.strictEqual(result.staged.length, 0);
+    assert.match(result.skipped[0].reason, /private|internal/);
+  } finally {
+    rmSync(result.dir, { recursive: true, force: true });
+  }
+});
+
+test('stageOcrImages sniffs extension-less downloads and rejects non-images', async () => {
+  const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from('rest')]);
+  const fetchImpl = async (url) => ({
+    ok: true,
+    headers: { get: () => null },
+    body: bodyFor(url.includes('good') ? png : '<html>not an image</html>'),
+  });
+  const result = await stageOcrImages([
+    { kind: 'url', url: 'https://cdn.test/good-noext', ext: '' },
+    { kind: 'url', url: 'https://cdn.test/bad-noext', ext: '' },
+  ], { fetchImpl, lookupImpl: PUBLIC_LOOKUP });
+  try {
+    assert.strictEqual(result.staged.length, 1);
+    assert.strictEqual(result.staged[0].ext, 'png');
+    assert.ok(result.staged[0].path.endsWith('.png'));
+    assert.strictEqual(result.skipped.length, 1);
+    assert.match(result.skipped[0].reason, /not a recognizable image/);
+  } finally {
+    rmSync(result.dir, { recursive: true, force: true });
+  }
+});
+
 test('collectImageCandidates rejects file:// images from a remote page', () => {
-  const html = '<img src="file:///home/user/private.png" alt="x"><p>hi</p><img src="/_next/image?url=file%3A%2F%2F%2Fetc%2Fsecret.png&amp;w=640">';
+  const html = '<img src="file:///home/user/private.png" alt="x"><p>hi</p>'
+    + '<img src="/_next/image?url=file%3A%2F%2F%2Fetc%2Fsecret.png&amp;w=640">'
+    + '<div style="background-image:url(file:///home/user/wallpaper.png)"></div>';
   const { candidates } = collectImageCandidates(html, 'https://attacker.test/page');
   assert.strictEqual(candidates.filter((c) => c.kind === 'file').length, 0);
 });
@@ -97,7 +188,7 @@ test('stageOcrImages enforces size caps and stages files, urls, and data URIs', 
     { kind: 'data', dataUri: `data:image/png;base64,${Buffer.from('data-bytes').toString('base64')}`, ext: 'png' },
   ];
 
-  const result = await stageOcrImages(candidates, { fetchImpl });
+  const result = await stageOcrImages(candidates, { fetchImpl, lookupImpl: PUBLIC_LOOKUP });
   try {
     assert.strictEqual(result.staged.length, 3);
     assert.strictEqual(result.skipped.length, 1);
@@ -118,7 +209,7 @@ test('stageOcrImages caps a stream that lies about (omits) Content-Length', asyn
   });
   const result = await stageOcrImages(
     [{ kind: 'url', url: 'https://evil.test/stream.png', ext: 'png' }],
-    { fetchImpl, maxBytes: 1024 },
+    { fetchImpl, maxBytes: 1024, lookupImpl: PUBLIC_LOOKUP },
   );
   try {
     assert.strictEqual(result.staged.length, 0);
@@ -132,7 +223,7 @@ test('stageOcrImages caps a stream that lies about (omits) Content-Length', asyn
 test('stageOcrImages records skips for every candidate past the total budget', async () => {
   const fetchImpl = async () => ({ ok: true, headers: { get: () => null }, body: bodyFor('z'.repeat(800)) });
   const candidates = Array.from({ length: 4 }, (_, i) => ({ kind: 'url', url: `https://cdn.test/${i}.png`, ext: 'png' }));
-  const result = await stageOcrImages(candidates, { fetchImpl, totalBudget: 1000 });
+  const result = await stageOcrImages(candidates, { fetchImpl, totalBudget: 1000, lookupImpl: PUBLIC_LOOKUP });
   try {
     assert.strictEqual(result.staged.length, 1);
     assert.strictEqual(result.skipped.length, 3);

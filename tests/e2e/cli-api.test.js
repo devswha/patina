@@ -360,7 +360,10 @@ describe('CLI End-to-End with Mock API', () => {
       assert.strictEqual(writes[0].encoding, 'utf8');
       assert.ok(writes[0].data.includes('This is the humanized result.'));
       assert.ok(writes[0].data.includes('Pattern: 1. Generic polish'));
-      assert.ok(writes[0].data.includes('Signal score'));
+      // The single-paragraph fixture is below the deterministic-score floor,
+      // so the page shows the skip-aware card instead of raw score rows.
+      assert.ok(writes[0].data.includes('Not scored'));
+      assert.ok(writes[0].data.includes('Deterministic scoring needs more than two paragraphs.'));
       assert.ok(!writes[0].data.includes('[SELF_AUDIT]'));
       assert.ok(!writes[0].data.includes('"mode": "rewrite"'));
       assert.deepStrictEqual(chmods, [

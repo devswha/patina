@@ -391,6 +391,12 @@ export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanatio
 // I-numbered badge, and a notes card shows the extracted text next to the
 // suggested rewrite. Findings with no DOM anchor (CSS-background data URIs)
 // get a card only.
+// OCR findings cannot be swapped into pixels and the host image is often a
+// CSS background, a carousel slide, or lazy-loaded — none reliably visible on
+// the frozen snapshot. So each finding's card embeds the exact image patina
+// OCR'd (capped thumbnail) alongside the extracted text and suggested rewrite;
+// the card itself is the jump target, so a finding is always reachable. When
+// the image IS a plain <img> in the DOM it also gets an on-page badge.
 function annotateImageFindings(html, imageFindings) {
   let out = html;
   let changedCount = 0;
@@ -401,17 +407,18 @@ function annotateImageFindings(html, imageFindings) {
     const n = changedCount;
     if (finding.anchor) {
       const tagRe = new RegExp(`<img\\b[^>]*src="${escapeRegExp(finding.anchor)}"[^>]*>`, 'i');
-      let wrapped = false;
-      out = out.replace(tagRe, (tag) => {
-        wrapped = true;
-        return `<span class="ptna-img" id="ptna-img-${n}" data-n="I${n}">${tag}</span>`;
-      });
-      finding.anchored = wrapped;
+      out = out.replace(tagRe, (tag) => `<span class="ptna-img" data-n="I${n}">${tag}</span>`);
     }
+    const thumb = finding.previewDataUri
+      ? `<img class="ptna-img-thumb" alt="" src="${htmlEscape(finding.previewDataUri)}">`
+      : '';
     cards.push(
-      `<article class="explain-card ptna-img-card"><strong>I${n}</strong> · ${htmlEscape(describeImage(finding))}`
-      + `<br>Image text: ${htmlEscape(finding.text)}`
-      + `<br>Suggested: <span class="ptna-img-suggest">${htmlEscape(finding.rewritten)}</span></article>`,
+      `<article class="explain-card ptna-img-card" id="ptna-img-${n}">`
+      + `<div class="ptna-img-head"><strong>I${n}</strong> · ${htmlEscape(describeImage(finding))}</div>`
+      + thumb
+      + `<div class="ptna-img-text"><span class="ptna-img-label">image text</span>${htmlEscape(finding.text)}</div>`
+      + `<div class="ptna-img-text"><span class="ptna-img-label">suggested</span><span class="ptna-img-suggest">${htmlEscape(finding.rewritten)}</span></div>`
+      + '</article>',
     );
   }
   return { html: out, cardsHtml: cards.join(''), changedCount };
@@ -507,8 +514,12 @@ function injectChrome(html, { changedCount, totalCount, explanationHtml = '', sc
       + '</div>'
     : '';
   const notesBody = `${explanationHtml}${imageCardsHtml}`;
+  // Auto-open when there are image findings — they have no in-page diff, so a
+  // collapsed panel would hide the only place they appear.
+  const open = imageChangedCount > 0 ? ' open' : '';
+  const summaryLabel = imageChangedCount > 0 ? `patina notes · ${imageChangedCount} image text` : 'patina notes';
   const notes = notesBody
-    ? `<details class="ptna-notes"><summary>patina notes</summary><div class="ptna-notes-body">${notesBody}</div></details>`
+    ? `<details class="ptna-notes"${open}><summary>${summaryLabel}</summary><div class="ptna-notes-body">${notesBody}</div></details>`
     : '';
   const bar = `<div class="ptna-bar"><span class="ptna-brand">patina</span>`
     + `<span class="ptna-count">${changedCount} of ${totalCount} blocks rewritten</span>`
@@ -585,7 +596,13 @@ const PREVIEW_CSS = `
 .ptna-img{display:inline-block;position:relative;outline:2px dashed #c8956c !important;outline-offset:3px;border-radius:4px;scroll-margin-top:90px;}
 .ptna-img::after{content:attr(data-n);position:absolute;top:6px;left:6px;padding:1px 7px;border-radius:999px;background:#c8956c;color:#20150c;font:700 10.5px/16px ui-monospace,Menlo,Consolas,monospace !important;}
 .ptna-img:target{outline-style:solid !important;outline-width:3px !important;}
-.ptna-img-card{border-left-color:#c8956c !important;background:rgba(200,149,108,0.05) !important;}
+.ptna-img-card{border-left-color:#c8956c !important;background:rgba(200,149,108,0.05) !important;scroll-margin-top:16px;}
+.ptna-img-card:target{outline:2px solid #c8956c !important;outline-offset:2px;}
+.ptna-img-head{font-size:11px;color:#8da59a;margin-bottom:7px;}
+.ptna-img-head strong{color:#c8956c;}
+.ptna-img-thumb{display:block;max-width:100%;max-height:220px;width:auto;border-radius:6px;border:1px solid rgba(132,168,152,0.25);margin:0 0 8px;}
+.ptna-img-text{margin:5px 0;line-height:1.6;}
+.ptna-img-label{display:inline-block;min-width:62px;font:600 9.5px/1.6 ui-monospace,Menlo,Consolas,monospace !important;text-transform:uppercase;letter-spacing:0.08em;color:#8da59a;vertical-align:top;}
 .ptna-img-suggest{color:#5fc4a8;}
 .ptna-views{display:inline-flex;border:1px solid rgba(141,165,154,0.4);border-radius:999px;overflow:hidden;}
 .ptna-view{padding:4px 11px;cursor:pointer;user-select:none;color:#8da59a;font:inherit;}

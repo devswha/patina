@@ -834,11 +834,17 @@ describe('CLI End-to-End with Mock API', () => {
       assert.ok(!stdout.includes('이미지 문구를 사람답게'));
 
       const page = writes[0].data;
-      assert.ok(page.includes('<span class="ptna-img" id="ptna-img-1" data-n="I1">'));
-      assert.ok(page.includes('Image text: 혁신적인 솔루션으로 생산성을 극대화하세요'));
+      // The <img> gets an on-page badge, and the finding card embeds the
+      // extracted text + suggestion (+ a thumbnail of the OCR'd image).
+      assert.ok(page.includes('<span class="ptna-img" data-n="I1">'));
+      assert.ok(page.includes('id="ptna-img-1"'));
+      assert.ok(page.includes('혁신적인 솔루션으로 생산성을 극대화하세요'));
       assert.ok(page.includes('이미지 문구를 사람답게 고쳐 쓴 결과입니다'));
+      assert.ok(page.includes('ptna-img-thumb'));
       assert.ok(page.includes('href="#ptna-img-1"'));
       assert.ok(page.includes('1 image(s)'));
+      // The notes panel auto-opens so image findings aren't hidden.
+      assert.ok(/<details class="ptna-notes" open>/.test(page));
     } finally {
       resetBrowserDiffRuntimeForTests();
       resetOcrRuntimeForTests();

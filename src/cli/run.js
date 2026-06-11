@@ -20,7 +20,7 @@ import {
   serveBrowserDiffPage,
 } from '../browser-diff.js';
 import { fetchPreviewPage, prepareSnapshotHtml, extractProseBlocks, alignRewrites, buildPreviewHtml, buildFilePreviewHtml } from '../preview.js';
-import { collectImageCandidates, stageOcrImages, ocrStagedImages, describeImage } from '../ocr.js';
+import { collectImageCandidates, stageOcrImages, ocrStagedImages, describeImage, hasOcrRunnerOverride } from '../ocr.js';
 import { rmSync } from 'node:fs';
 import { runOuroboros } from '../ouroboros.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
@@ -654,11 +654,14 @@ async function runPreviewJob({
       pageHtml = prepareSnapshotHtml(snapshotSource);
       const extracted = extractProseBlocks(pageHtml);
       blocks = extracted.blocks;
-      if (blocks.length === 0) {
+      // With --ocr, a page whose copy lives entirely in images has no DOM
+      // prose but is exactly the case OCR exists for — defer the no-prose
+      // error until after OCR has had a chance to find image text.
+      if (blocks.length === 0 && !parsed.ocr) {
         throw runtimeError(
           'no prose found on the page',
           'The page has no plain-text prose blocks patina can rewrite in place (often a client-rendered SPA, or text split by inline markup).',
-          'Try a server-rendered page, or save the article text to a file and run `patina --preview file.md`.'
+          'Try a server-rendered page, save the article text to a file, or add --ocr to scan image text.'
         );
       }
       if (extracted.truncated) {
@@ -667,9 +670,11 @@ async function runPreviewJob({
         });
       }
       originalText = blocks.map((block) => block.text).join('\n\n');
-      logger.info('preview.blocks', {
-        message: `[patina] Rewriting ${blocks.length} prose block(s) from ${sourceUrl}`,
-      });
+      if (blocks.length > 0) {
+        logger.info('preview.blocks', {
+          message: `[patina] Rewriting ${blocks.length} prose block(s) from ${sourceUrl}`,
+        });
+      }
     }
 
     const basePromptInputs = {
@@ -718,7 +723,18 @@ async function runPreviewJob({
       }
     }
 
-    const rewriteText = [originalText, ...ocrImages.map((image) => image.text)].join('\n\n');
+    // A page with no DOM prose AND no image text has nothing to rewrite.
+    if (blocks !== null && blocks.length === 0 && ocrImages.length === 0) {
+      throw runtimeError(
+        'no prose found on the page',
+        'The page has no plain-text prose blocks, and --ocr found no text in its images.',
+        'Try a server-rendered page, or save the article text to a file and run `patina --preview file.md`.'
+      );
+    }
+
+    const rewriteText = [originalText, ...ocrImages.map((image) => image.text)]
+      .filter(Boolean)
+      .join('\n\n');
     const rawResult = await invokeBackendChain({
       ...invokeInputs,
       prompt: buildPrompt({ ...basePromptInputs, text: rewriteText, mode: 'rewrite' }),
@@ -752,7 +768,10 @@ async function runPreviewJob({
     }
     cancellation.throwIfCanceled();
 
-    const beforeScore = scoreDeterministicSignals({ text: originalText, config, repoRoot, logger });
+    // Score symmetric scopes: with --ocr the rewrite covers DOM text + image
+    // text, so the "before" must too (rewriteText), or the chip would compare
+    // unequal scopes and misreport the change.
+    const beforeScore = scoreDeterministicSignals({ text: rewriteText, config, repoRoot, logger });
     const afterScore = scoreDeterministicSignals({ text: rewrittenBody, config, repoRoot, logger });
     const scoreChip = !beforeScore?.skipped && !afterScore?.skipped
       && beforeScore?.overall !== null && beforeScore?.overall !== undefined
@@ -830,8 +849,10 @@ async function runPreviewJob({
 }
 
 async function runOcrStage({ pageHtml, sourceUrl, parsed, backends, resolved, timeoutMs, cancellation, logger }) {
-  const ocrBackends = selectOcrBackends(backends);
-  if (ocrBackends.length === 0) {
+  // A test-injected OCR runner replaces backend selection entirely (CI has no
+  // installed vision CLI). In production we require a real image-capable CLI.
+  const ocrBackends = hasOcrRunnerOverride() ? [] : selectOcrBackends(backends, { logger });
+  if (!hasOcrRunnerOverride() && ocrBackends.length === 0) {
     throw runtimeError(
       'no image-capable backend for --ocr',
       'OCR needs an available, authenticated claude-cli, gemini-cli, or codex-cli (kimi-cli and openai-http cannot read images).',
@@ -851,7 +872,7 @@ async function runOcrStage({ pageHtml, sourceUrl, parsed, backends, resolved, ti
   }
 
   logger.info('ocr.start', {
-    message: `[patina] OCR: scanning ${candidates.length} image(s) via ${ocrBackends.map((b) => b.name).join(' → ')}…`,
+    message: `[patina] OCR: scanning ${candidates.length} image(s)${ocrBackends.length ? ` via ${ocrBackends.map((b) => b.name).join(' → ')}` : ''}…`,
   });
   const { dir, staged, skipped } = await stageOcrImages(candidates, { signal: cancellation.signal });
   try {
@@ -877,6 +898,10 @@ async function runOcrStage({ pageHtml, sourceUrl, parsed, backends, resolved, ti
       logger,
     });
     const images = await ocrStagedImages(staged, { invokeChain, signal: cancellation.signal, logger });
+    // A swallowed abort inside the OCR fan-out resolves to fewer results; make
+    // Ctrl-C surface as the standard cancellation error, not a later
+    // backend-flavored AbortError from the rewrite call.
+    cancellation.throwIfCanceled();
     logger.info('ocr.done', {
       message: `[patina] OCR: text found in ${images.length} of ${staged.length} image(s)`,
     });

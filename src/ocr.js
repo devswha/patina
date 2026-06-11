@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const DEFAULT_MAX_IMAGES = 8;
 const DEFAULT_MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const DEFAULT_TOTAL_BUDGET_BYTES = 10 * 1024 * 1024;
+const DEFAULT_FETCH_TIMEOUT_MS = 20000;
 const MIN_DATA_URI_BYTES = 2 * 1024; // below this: blur placeholders, icons
 const MAX_DATA_URI_BYTES = 512 * 1024;
 const ACCEPTED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
@@ -19,6 +20,12 @@ export function setOcrRuntimeForTests(overrides = {}) {
 
 export function resetOcrRuntimeForTests() {
   testRuntimeOverrides = {};
+}
+
+// True when a test has injected an OCR runner, so the CLI flow can skip the
+// real backend-availability check (no installed vision CLI on CI).
+export function hasOcrRunnerOverride() {
+  return typeof testRuntimeOverrides.runOcr === 'function';
 }
 
 function getRuntimeValue(options, key, fallback) {
@@ -38,11 +45,18 @@ export function collectImageCandidates(html, baseUrl, options = {}) {
   const seen = new Set();
   const candidates = [];
 
+  // Only a local (.html) preview may reference local file: images. A fetched
+  // remote page must never make patina read local files — otherwise an
+  // attacker page with <img src="file:///home/you/private.png"> could
+  // exfiltrate local image content to the OCR backend (SSRF / local-file
+  // disclosure). This mirrors the empty-cwd CLI containment.
+  const allowFileImages = String(baseUrl || '').startsWith('file:');
+
   const imgRe = /<img\b[^>]*>/gi;
   let match;
   while ((match = imgRe.exec(source)) !== null) {
     const tag = match[0];
-    const url = pickImageUrl(tag, baseUrl);
+    const url = pickImageUrl(tag, baseUrl, allowFileImages);
     if (!url) continue;
     if (url.startsWith('data:')) {
       addDataUri(candidates, seen, url, tag);
@@ -91,7 +105,7 @@ function addDataUri(candidates, seen, dataUri, tag) {
   });
 }
 
-function pickImageUrl(tag, baseUrl) {
+function pickImageUrl(tag, baseUrl, allowFileImages) {
   const fromAttr = (name) => {
     const m = new RegExp(`\\b${name}="([^"]*)"`, 'i').exec(tag);
     return m ? decodeHtmlAttr(m[1]) : null;
@@ -110,7 +124,8 @@ function pickImageUrl(tag, baseUrl) {
       const inner = resolved.searchParams.get('url');
       if (inner) resolved = new URL(inner, resolved);
     }
-    if (!/^(https?|file):$/.test(resolved.protocol)) return null;
+    const allowedProtocols = allowFileImages ? /^(https?|file):$/ : /^https?:$/;
+    if (!allowedProtocols.test(resolved.protocol)) return null;
     return resolved.href;
   } catch {
     return null;
@@ -168,8 +183,10 @@ function scorePriority(url, tag) {
 export async function stageOcrImages(candidates, options = {}) {
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_IMAGE_BYTES;
   const totalBudget = options.totalBudget ?? DEFAULT_TOTAL_BUDGET_BYTES;
+  const fetchTimeoutMs = options.fetchTimeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
   const fetchImpl = getRuntimeValue(options, 'fetchImpl', fetch);
   const signal = options.signal;
+  const tooBig = `larger than ${Math.round(maxBytes / 1024)}KB`;
 
   const dir = mkdtempSync(join(tmpdir(), 'patina-ocr-'));
   try { chmodSync(dir, 0o700); } catch {}
@@ -177,8 +194,13 @@ export async function stageOcrImages(candidates, options = {}) {
   const staged = [];
   const skipped = [];
   let spent = 0;
+  let budgetExhausted = false;
   for (const [index, candidate] of candidates.entries()) {
     if (signal?.aborted) break;
+    if (budgetExhausted) {
+      skipped.push({ candidate, reason: 'total image budget reached' });
+      continue;
+    }
     try {
       let bytes;
       if (candidate.kind === 'data') {
@@ -186,24 +208,29 @@ export async function stageOcrImages(candidates, options = {}) {
       } else if (candidate.kind === 'file') {
         const filePath = fileURLToPath(candidate.url);
         const size = statSync(filePath).size;
-        if (size > maxBytes) throw new Error(`larger than ${Math.round(maxBytes / 1024)}KB`);
+        if (size > maxBytes) throw new Error(tooBig);
+        if (spent + size > totalBudget) {
+          skipped.push({ candidate, reason: 'total image budget reached' });
+          budgetExhausted = true;
+          continue;
+        }
         const target = join(dir, `img-${index}.${candidate.ext}`);
         copyFileSync(filePath, target);
-        staged.push({ ...candidate, path: target, bytes: size });
+        try { chmodSync(target, 0o600); } catch {}
         spent += size;
-        if (spent > totalBudget) break;
+        staged.push({ ...candidate, path: target, bytes: size });
         continue;
       } else {
-        const response = await fetchImpl(candidate.url, { signal, redirect: 'follow' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const declared = Number(response.headers.get('content-length'));
-        if (Number.isFinite(declared) && declared > maxBytes) throw new Error(`larger than ${Math.round(maxBytes / 1024)}KB`);
-        bytes = Buffer.from(await response.arrayBuffer());
+        // Cap by streaming at the per-image limit: never trust Content-Length
+        // presence/value, and bound an unbounded chunked stream before it
+        // exhausts memory. The total budget is enforced below.
+        bytes = await fetchImageBytes(fetchImpl, candidate.url, { signal, maxBytes, fetchTimeoutMs, tooBig });
       }
-      if (bytes.length > maxBytes) throw new Error(`larger than ${Math.round(maxBytes / 1024)}KB`);
+      if (bytes.length > maxBytes) throw new Error(tooBig);
       if (spent + bytes.length > totalBudget) {
         skipped.push({ candidate, reason: 'total image budget reached' });
-        break;
+        budgetExhausted = true;
+        continue;
       }
       const target = join(dir, `img-${index}.${candidate.ext}`);
       writeFileSync(target, bytes);
@@ -216,6 +243,47 @@ export async function stageOcrImages(candidates, options = {}) {
     }
   }
   return { dir, staged, skipped };
+}
+
+// Fetch with a hard timeout and a streaming byte cap. The body is read
+// chunk by chunk so a chunked/Content-Length-less response cannot buffer
+// unbounded data into memory before the size check.
+async function fetchImageBytes(fetchImpl, url, { signal, maxBytes, fetchTimeoutMs, tooBig }) {
+  const controller = new AbortController();
+  const onOuterAbort = () => controller.abort(signal.reason);
+  if (signal) {
+    if (signal.aborted) controller.abort(signal.reason);
+    else signal.addEventListener('abort', onOuterAbort, { once: true });
+  }
+  const timer = setTimeout(() => controller.abort(new Error('image fetch timed out')), fetchTimeoutMs);
+  try {
+    const response = await fetchImpl(url, { signal: controller.signal, redirect: 'follow' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const declared = Number(response.headers.get('content-length'));
+    if (Number.isFinite(declared) && declared > maxBytes) throw new Error(tooBig);
+    if (!response.body || typeof response.body.getReader !== 'function') {
+      const buf = Buffer.from(await response.arrayBuffer());
+      if (buf.length > maxBytes) throw new Error(tooBig);
+      return buf;
+    }
+    const reader = response.body.getReader();
+    const chunks = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.length;
+      if (total > maxBytes) {
+        controller.abort(new Error(tooBig));
+        throw new Error(tooBig);
+      }
+      chunks.push(value);
+    }
+    return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener?.('abort', onOuterAbort);
+  }
 }
 
 export const OCR_PROMPT = [

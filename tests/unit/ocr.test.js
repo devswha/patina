@@ -41,6 +41,20 @@ test('collectImageCandidates resolves sources, unwraps Next.js proxies, and dedu
   assert.strictEqual(candidates.filter((c) => c.kind === 'data').length, 1);
 });
 
+test('collectImageCandidates rejects file:// images from a remote page', () => {
+  const html = '<img src="file:///home/user/private.png" alt="x"><p>hi</p><img src="/_next/image?url=file%3A%2F%2F%2Fetc%2Fsecret.png&amp;w=640">';
+  const { candidates } = collectImageCandidates(html, 'https://attacker.test/page');
+  assert.strictEqual(candidates.filter((c) => c.kind === 'file').length, 0);
+});
+
+test('collectImageCandidates allows file:// images for a local .html preview', () => {
+  const html = '<img src="banner.png" alt="배너 이미지입니다">';
+  const { candidates } = collectImageCandidates(html, 'file:///home/user/page.html');
+  assert.strictEqual(candidates.length, 1);
+  assert.strictEqual(candidates[0].kind, 'file');
+  assert.strictEqual(candidates[0].url, 'file:///home/user/banner.png');
+});
+
 test('collectImageCandidates caps by priority', () => {
   const html = [
     '<img src="/a/photo-1.jpg">',
@@ -53,6 +67,18 @@ test('collectImageCandidates caps by priority', () => {
   assert.ok(candidates[0].url.includes('thumbnail-koreatext'));
 });
 
+function bodyFor(text) {
+  const data = Buffer.from(text);
+  let sent = false;
+  return {
+    getReader() {
+      return {
+        read: async () => (sent ? { done: true } : (sent = true, { done: false, value: new Uint8Array(data) })),
+      };
+    },
+  };
+}
+
 test('stageOcrImages enforces size caps and stages files, urls, and data URIs', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'patina-ocr-test-'));
   const localImage = join(dir, 'local.png');
@@ -61,7 +87,7 @@ test('stageOcrImages enforces size caps and stages files, urls, and data URIs', 
   const fetchImpl = async (url) => ({
     ok: true,
     headers: { get: (name) => (name === 'content-length' && url.includes('huge') ? String(10 * 1024 * 1024) : null) },
-    arrayBuffer: async () => Buffer.from(url.includes('fail') ? '' : 'remote-bytes'),
+    body: bodyFor(url.includes('huge') ? 'x'.repeat(5 * 1024 * 1024) : 'remote-bytes'),
   });
 
   const candidates = [
@@ -81,6 +107,38 @@ test('stageOcrImages enforces size caps and stages files, urls, and data URIs', 
   } finally {
     rmSync(result.dir, { recursive: true, force: true });
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('stageOcrImages caps a stream that lies about (omits) Content-Length', async () => {
+  const fetchImpl = async () => ({
+    ok: true,
+    headers: { get: () => null }, // no content-length
+    body: bodyFor('y'.repeat(5 * 1024 * 1024)),
+  });
+  const result = await stageOcrImages(
+    [{ kind: 'url', url: 'https://evil.test/stream.png', ext: 'png' }],
+    { fetchImpl, maxBytes: 1024 },
+  );
+  try {
+    assert.strictEqual(result.staged.length, 0);
+    assert.strictEqual(result.skipped.length, 1);
+    assert.match(result.skipped[0].reason, /larger than/);
+  } finally {
+    rmSync(result.dir, { recursive: true, force: true });
+  }
+});
+
+test('stageOcrImages records skips for every candidate past the total budget', async () => {
+  const fetchImpl = async () => ({ ok: true, headers: { get: () => null }, body: bodyFor('z'.repeat(800)) });
+  const candidates = Array.from({ length: 4 }, (_, i) => ({ kind: 'url', url: `https://cdn.test/${i}.png`, ext: 'png' }));
+  const result = await stageOcrImages(candidates, { fetchImpl, totalBudget: 1000 });
+  try {
+    assert.strictEqual(result.staged.length, 1);
+    assert.strictEqual(result.skipped.length, 3);
+    assert.ok(result.skipped.every((s) => /budget/.test(s.reason)));
+  } finally {
+    rmSync(result.dir, { recursive: true, force: true });
   }
 });
 

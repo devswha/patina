@@ -485,6 +485,81 @@ describe('CLI End-to-End with Mock API', () => {
     }
   });
 
+  it('serves the diff page at a token URL with --browser --serve and stops when idle', async () => {
+    const rewriteResponse = '[BODY]\nThis is the humanized result.\n[/BODY]';
+    const diffResponse = 'Pattern: 1. Generic polish\nRemoved: old\nAdded: new\nWhy: reason';
+    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+
+    const spawns = [];
+    setBrowserDiffRuntimeForTests({
+      tmpdir: () => '/tmp',
+      mkdtemp: () => '/tmp/patina-browser-diff-serve',
+      writeFile: () => {},
+      chmod: () => {},
+      now: () => 999,
+      platform: 'linux',
+      spawn: makeFakeSpawn(({ command, args }) => {
+        spawns.push({ command, args });
+      }),
+      randomToken: () => 'e2etoken',
+      idleTimeoutMs: 750,
+    });
+
+    mock.callCount = 0;
+    mock.requestBodies = [];
+    const logs = [];
+    const errors = [];
+    const originalLog = console.log;
+    const originalError = console.error;
+    console.log = (...args) => logs.push(args.join(' '));
+    console.error = (...args) => errors.push(args.join(' '));
+    try {
+      await mock.stop();
+      mock = await startMockServer([
+        { responseText: rewriteResponse },
+        { responseText: diffResponse },
+      ]);
+
+      const mainPromise = main([
+        '--browser',
+        '--serve',
+        '--lang', 'en',
+        '--api-key-file', mockApiKeyPath,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
+        testFile,
+      ]);
+
+      const deadline = Date.now() + 5000;
+      let serveLine;
+      while (!(serveLine = errors.find((line) => line.includes('Serving diff page at')))) {
+        if (Date.now() > deadline) throw new Error('serve URL never appeared on stderr');
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      const url = serveLine.match(/http:\/\/127\.0\.0\.1:\d+\/e2etoken\//)?.[0];
+      assert.ok(url, `expected token URL in: ${serveLine}`);
+
+      const page = await fetch(url);
+      assert.strictEqual(page.status, 200);
+      const body = await page.text();
+      assert.ok(body.includes('This is the humanized result.'));
+      assert.ok(body.includes('Pattern: 1. Generic polish'));
+
+      await mainPromise;
+
+      assert.deepStrictEqual(spawns, [], 'serve mode must not spawn a window opener');
+      assert.ok(errors.some((line) => line.includes('Browser diff page saved at /tmp/patina-browser-diff-serve/browser-diff-999.html')));
+      assert.ok(errors.some((line) => line.includes('Stops after 10 idle minutes')));
+      assert.ok(logs.join('\n').includes('This is the humanized result.'));
+      assert.strictEqual(mock.callCount, 2);
+    } finally {
+      console.log = originalLog;
+      console.error = originalError;
+      resetBrowserDiffRuntimeForTests();
+      await mock.stop();
+      mock = await startMockServer('This is the humanized result.');
+    }
+  });
+
   it('rejects unsupported --browser inputs before any backend call', async () => {
     const first = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
     const second = first;
@@ -494,6 +569,7 @@ describe('CLI End-to-End with Mock API', () => {
       { args: ['--browser', '--batch', first], pattern: /does not support --batch/ },
       { args: ['--browser', '--diff', first], pattern: /only works in rewrite mode/ },
       { args: ['--browser', 'https://example.test'], pattern: /does not support URL input yet/ },
+      { args: ['--serve', first], pattern: /--serve requires --browser/ },
     ];
 
     for (const testCase of cases) {

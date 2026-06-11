@@ -2,10 +2,13 @@ import { mkdtempSync, writeFileSync, chmodSync } from 'node:fs';
 import { tmpdir as osTmpdir } from 'node:os';
 import { join, resolve as resolvePath } from 'node:path';
 import { spawn as spawnChild } from 'node:child_process';
+import { createServer as createHttpServer } from 'node:http';
+import { randomBytes } from 'node:crypto';
 
 const DEFAULT_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'";
 let testRuntimeOverrides = {};
 const MAX_LCS_MATRIX_CELLS = 20000;
+export const DEFAULT_SERVE_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
 export function buildBrowserDiffPromptInput(original, rewritten) {
   return [
@@ -224,6 +227,82 @@ export function openBrowserDiffPage(path, options = {}) {
       reject(new Error(`browser opener exited with code ${code}`));
     });
   });
+}
+
+export function serveBrowserDiffPage(html, options = {}) {
+  const createServer = getRuntimeValue(options, 'createServer', createHttpServer);
+  const randomToken = getRuntimeValue(options, 'randomToken', defaultRandomToken);
+  const idleTimeoutMs = getRuntimeValue(options, 'idleTimeoutMs', DEFAULT_SERVE_IDLE_TIMEOUT_MS);
+  const signal = options.signal;
+  const token = randomToken();
+  const pagePath = `/${token}/`;
+
+  return new Promise((resolveServer, rejectServer) => {
+    let idleTimer = null;
+    let closed = false;
+    let resolveDone;
+    const done = new Promise((resolve) => {
+      resolveDone = resolve;
+    });
+
+    const server = createServer((req, res) => {
+      resetIdleTimer();
+      // Connection: close keeps shutdown deterministic on every Node 18.x —
+      // server.close() never has to wait out a browser keep-alive socket.
+      if ((req.method !== 'GET' && req.method !== 'HEAD') || req.url !== pagePath) {
+        res.writeHead(404, {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Connection': 'close',
+        });
+        res.end(req.method === 'HEAD' ? undefined : 'not found');
+        return;
+      }
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'no-referrer',
+        'Cache-Control': 'no-store',
+        'Connection': 'close',
+      });
+      res.end(req.method === 'HEAD' ? undefined : html);
+    });
+
+    function close() {
+      if (closed) return;
+      closed = true;
+      if (idleTimer) clearTimeout(idleTimer);
+      signal?.removeEventListener?.('abort', close);
+      server.close(() => resolveDone());
+    }
+
+    function resetIdleTimer() {
+      if (closed) return;
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(close, idleTimeoutMs);
+    }
+
+    server.on('error', rejectServer);
+    server.listen(0, '127.0.0.1', () => {
+      // Read the address before close() — a pre-aborted signal closes the
+      // listening socket, after which server.address() returns null.
+      const { port } = server.address();
+      if (signal?.aborted) {
+        close();
+      } else {
+        signal?.addEventListener?.('abort', close, { once: true });
+        resetIdleTimer();
+      }
+      resolveServer({
+        url: `http://127.0.0.1:${port}${pagePath}`,
+        close,
+        done,
+      });
+    });
+  });
+}
+
+function defaultRandomToken() {
+  return randomBytes(16).toString('hex');
 }
 
 export function setBrowserDiffRuntimeForTests(overrides = {}) {

@@ -188,6 +188,16 @@ function findBoundaryEnd(html, fromIndex) {
   return -1;
 }
 
+// Formatting-only tags whose presence inside a prose block is acceptable:
+// the block is extracted with its text flattened. The rewritten view loses
+// the inline formatting; the original view (toggle) keeps it. Anything not
+// in this set (nested lists, divs, images, buttons…) keeps the block out.
+const INLINE_TAGS = new Set([
+  'a', 'abbr', 'b', 'bdi', 'bdo', 'br', 'cite', 'code', 'del', 'em', 'i',
+  'ins', 'kbd', 'mark', 'q', 'ruby', 'rt', 'rp', 's', 'small', 'span',
+  'strong', 'sub', 'sup', 'time', 'u', 'var', 'wbr',
+]);
+
 export function extractProseBlocks(html, options = {}) {
   const minLength = options.minLength ?? DEFAULT_MIN_BLOCK_LENGTH;
   const maxBlocks = options.maxBlocks ?? DEFAULT_MAX_BLOCKS;
@@ -196,13 +206,16 @@ export function extractProseBlocks(html, options = {}) {
 
   const blocks = [];
   let truncated = false;
-  const blockRe = new RegExp(`<(${PROSE_TAGS})\\b[^>]*>([^<]+)</\\1\\s*>`, 'gi');
+  const blockRe = new RegExp(`<(${PROSE_TAGS})\\b[^>]*>([\\s\\S]*?)</\\1\\s*>`, 'gi');
   let match;
   while ((match = blockRe.exec(source)) !== null) {
     if (isInsideRanges(excluded, match.index)) continue;
     const openEnd = match.index + match[0].indexOf('>') + 1;
     const raw = match[2];
-    const text = decodeEntities(raw).replace(/\s+/g, ' ').trim();
+    if (raw.includes('<') && !hasOnlyInlineMarkup(raw)) continue;
+    // A block that is just one link is navigation/CTA chrome, not prose.
+    if (/^\s*<a\b[^>]*>[\s\S]*<\/a\s*>\s*$/i.test(raw) && (raw.match(/<a\b/gi) || []).length === 1) continue;
+    const text = decodeEntities(raw.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
     if (text.length < minLength) continue;
     if (!/[A-Za-z가-힣぀-ヿ㐀-鿿]/.test(text)) continue;
     if (blocks.length >= maxBlocks) {
@@ -218,6 +231,15 @@ export function extractProseBlocks(html, options = {}) {
     });
   }
   return { blocks, truncated };
+}
+
+function hasOnlyInlineMarkup(raw) {
+  const tagRe = /<\/?([a-z][a-z0-9-]*)/gi;
+  let match;
+  while ((match = tagRe.exec(raw)) !== null) {
+    if (!INLINE_TAGS.has(match[1].toLowerCase())) return false;
+  }
+  return !raw.includes('<!--');
 }
 
 export function alignRewrites(blocks, rewrittenBody) {

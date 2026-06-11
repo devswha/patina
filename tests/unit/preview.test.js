@@ -32,12 +32,29 @@ test('extractProseBlocks picks plain-text prose blocks and skips unsafe regions'
 
   const { blocks, truncated } = extractProseBlocks(html);
   assert.strictEqual(truncated, false);
-  assert.deepStrictEqual(blocks.map((b) => b.tag), ['p', 'h2', 'p']);
+  assert.deepStrictEqual(blocks.map((b) => b.tag), ['p', 'h2', 'p', 'p']);
   assert.strictEqual(blocks[0].text, LONG_KO);
   assert.strictEqual(blocks[1].text, LONG_EN);
-  assert.strictEqual(blocks[2].text, 'Entity & spacing test paragraph that is long enough to qualify.');
+  // Inline-formatting blocks are extracted with their text flattened.
+  assert.strictEqual(blocks[2].text, 'Has inline markup so the v1 walker must leave it alone entirely.');
+  assert.ok(blocks[2].raw.includes('<strong>'));
+  assert.strictEqual(blocks[3].text, 'Entity & spacing test paragraph that is long enough to qualify.');
   // Offsets point at the raw inner content.
   assert.strictEqual(html.slice(blocks[0].start, blocks[0].end), LONG_KO);
+});
+
+test('extractProseBlocks keeps block-level nesting and pure link blocks out', () => {
+  const html = [
+    `<li><a href="/x">a navigation item that is long enough to look like prose</a></li>`,
+    `<p>Real prose with an inline <a href="/y">link</a> embedded inside it stays extractable.</p>`,
+    `<li>outer text with nested list <ul><li>${LONG_EN}</li></ul></li>`,
+  ].join('\n');
+  const { blocks } = extractProseBlocks(html);
+  // The nested-list item is consumed by the skipped outer match — kept out
+  // entirely rather than risking a wrong swap position.
+  assert.deepStrictEqual(blocks.map((b) => b.text), [
+    'Real prose with an inline link embedded inside it stays extractable.',
+  ]);
 });
 
 test('extractProseBlocks reports truncation at the block cap', () => {

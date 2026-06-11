@@ -47,6 +47,9 @@ export function parseArgs(args) {
       case '--browser':
         parsed.browser = true;
         break;
+      case '--serve':
+        parsed.serve = true;
+        break;
       case '--diff':
         parsed.diff = true;
         break;
@@ -207,6 +210,13 @@ export function validateModeExclusivity(parsed) {
 }
 
 export function validateBrowserRequest(parsed) {
+  if (parsed.serve && !parsed.browser) {
+    throw inputError(
+      '--serve requires --browser',
+      '--serve replaces the local window opener for the browser diff page.',
+      'Run `patina --browser --serve path/to/file.md`.'
+    );
+  }
   if (!parsed.browser) return;
   if (parsed.batch) {
     throw inputError(
@@ -315,6 +325,8 @@ MODES
   --exit-on <n>           With --score, exit 3 when overall score > n
   --ouroboros             Iterative self-improvement loop
   --browser               Rewrite one local file, then open a local before/after diff page (adds one diff explanation call)
+  --serve                 With --browser: serve the diff page at a token URL on 127.0.0.1
+                          instead of opening a window (headless/SSH; stops after 10 idle minutes)
 
 OUTPUT & BATCH
   --format <fmt>          Stdout format: markdown (default), text, json

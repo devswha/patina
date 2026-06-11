@@ -13,7 +13,6 @@ import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } 
 import { formatOutput, formatRewriteBodyForBrowser, validateScoreWeights, buildDeterministicAuditBackstop } from '../output.js';
 import {
   buildBrowserDiffPromptInput,
-  renderBrowserDiffHtml,
   renderExplanationHtml,
   writeBrowserDiffPage,
   openBrowserDiffPage,
@@ -36,7 +35,7 @@ import { pathToFileURL } from 'node:url';
 /**
  * Run the default patina pipeline for an already-parsed CLI invocation:
  * resolve config, provider, and backends, build prompts, then process each
- * input job (rewrite/diff/audit/score/ouroboros, plus the browser-diff page).
+ * input job (rewrite/diff/audit/score/ouroboros, plus the preview page).
  *
  * @param {object} parsed Parsed CLI arguments from parseArgs.
  * @param {object} logger Patina logger for this invocation.
@@ -262,9 +261,6 @@ export async function runDefault(parsed, logger) {
             logger,
           });
         }
-        let browserPagePath = null;
-        let browserPageHtml = null;
-
         const auditBackstop =
           mode === 'audit' && (parsed.format ?? 'markdown') !== 'json' && !parsed.batch
             ? buildDeterministicAuditBackstop(text, { lang, repoRoot, config })
@@ -280,33 +276,6 @@ export async function runDefault(parsed, logger) {
           if (mode === 'score') {
             scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' }, { logger });
           }
-        }
-
-        if (parsed.browser && mode === 'rewrite') {
-          ({ pagePath: browserPagePath, html: browserPageHtml } = await buildBrowserDiffArtifact({
-            originalText: text,
-            rawRewriteResult: result,
-            sourcePath: path,
-            parsed,
-            config,
-            repoRoot,
-            patterns,
-            profile: profile.body ? profile : null,
-            voice: voice.body ? voice : null,
-            voiceSample,
-            scoring: scoring.body ? scoring : null,
-            promptMode,
-            backends,
-            apiKey: resolved.apiKey,
-            baseURL: resolved.baseURL,
-            model: resolved.model,
-            modelSource: resolved.modelSource,
-            signal: cancellation.signal,
-            timeout: timeoutMs,
-            maxConcurrency: parsed.maxConcurrency,
-            maxRetries: parsed.maxRetries,
-            logger,
-          }));
         }
 
         // v3.11 Phase 1.3: surface weight drift between config and the score
@@ -327,25 +296,6 @@ export async function runDefault(parsed, logger) {
           await writeBatchOutput(parsed, path, output);
         } else {
           console.log(output);
-          if (browserPagePath) {
-            // Always surface the path: a headless opener can exit 0 without
-            // showing anything, leaving the user with no way to find the page.
-            console.error(`[patina] Browser diff page saved at ${browserPagePath}`);
-            if (parsed.serve) {
-              const { url, done } = await serveBrowserDiffPage(browserPageHtml, {
-                signal: cancellation.signal,
-              });
-              console.error(`[patina] Serving diff page at ${url}`);
-              console.error('[patina] Stops after 10 idle minutes; press Ctrl+C to stop now.');
-              await done;
-            } else {
-              try {
-                await openBrowserDiffPage(browserPagePath);
-              } catch (err) {
-                console.error(`[patina] Browser open failed: ${err.message}`);
-              }
-            }
-          }
         }
         batchState.recordSuccess();
       } catch (err) {
@@ -507,91 +457,6 @@ function formatOuroborosOutput(result) {
   output += '\n';
 
   return output;
-}
-
-async function buildBrowserDiffArtifact({
-  originalText,
-  rawRewriteResult,
-  sourcePath,
-  parsed,
-  config,
-  repoRoot,
-  patterns,
-  profile,
-  voice,
-  voiceSample,
-  scoring,
-  promptMode,
-  backends,
-  apiKey,
-  baseURL,
-  model,
-  modelSource,
-  signal,
-  timeout,
-  maxConcurrency,
-  maxRetries,
-  logger,
-}) {
-  const rewrittenBody = formatRewriteBodyForBrowser(rawRewriteResult, { logger });
-  const beforeScore = scoreDeterministicSignals({ text: originalText, config, repoRoot, logger });
-  const afterScore = scoreDeterministicSignals({ text: rewrittenBody, config, repoRoot, logger });
-
-  let diffExplanation = '';
-  let diffError = null;
-  try {
-    const diffPrompt = buildPrompt({
-      config,
-      patterns,
-      profile,
-      voice,
-      voiceSample,
-      scoring,
-      text: buildBrowserDiffPromptInput(originalText, rewrittenBody),
-      mode: 'diff',
-      promptMode,
-    });
-    const diffResult = await invokeBackendChain({
-      backends,
-      prompt: diffPrompt,
-      apiKey,
-      baseURL,
-      model,
-      modelSource,
-      signal,
-      timeout,
-      maxConcurrency,
-      maxRetries,
-      logger,
-    });
-    diffExplanation = formatOutput(
-      diffResult,
-      'diff',
-      { ...parsed, format: 'markdown', noColor: true },
-      { logger, stdout: { isTTY: false } },
-    );
-  } catch (err) {
-    diffError = err?.message || 'browser diff explanation failed';
-    logger.warn('browser.diff_failed', {
-      message: `[patina] browser diff explanation failed: ${diffError}`,
-    });
-  }
-
-  const html = renderBrowserDiffHtml({
-    original: originalText,
-    rewrittenBody,
-    diffExplanation,
-    diffError,
-    beforeScore,
-    afterScore,
-    sourcePath,
-  });
-
-  return {
-    pagePath: writeBrowserDiffPage(html),
-    rewrittenBody,
-    html,
-  };
 }
 
 async function runPreviewJob({

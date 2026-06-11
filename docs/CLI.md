@@ -56,38 +56,17 @@ stays reserved for the transformed text or JSON envelope.
 - Ouroboros reports per-iteration score movement and latency.
 
 
-## Browser diff page
+## Deprecated: `--browser`
 
-`--browser` is a rewrite-mode add-on for reviewing one local file in the browser without changing stdout semantics.
-
-```bash
-patina --browser draft.md
-patina --browser --format json draft.md
-```
-
-Contract:
-- Supports exactly one local file path.
-- Rejects stdin, multiple files, `--batch`, URL-like input, and non-rewrite modes such as `--diff`, `--audit`, `--score`, and `--ouroboros`.
-- Preserves the normal rewrite stdout output byte-for-byte for the selected `--format`.
-- Generates a self-contained local HTML page under an OS temp directory and attempts to open it in the default browser.
-- The saved HTML path is always reported on stderr (a headless opener can exit 0 without showing anything); it never appends the path to stdout.
-- The page shows side-by-side before/after text, conservative changed-block highlights, deterministic before/after score summaries, and Pattern/Removed/Added/Why explanation from a best-effort secondary diff call.
-- `--browser` makes one additional diff-explanation model/backend call after the primary rewrite, so it can add latency and consume extra backend quota.
-- If the secondary diff explanation call fails, the rewrite still succeeds and the page shows a failure notice in the explanation area.
-
-### Headless servers: `--serve`
-
-On a machine with no display (SSH, containers), add `--serve` to serve the diff page over HTTP instead of opening a window:
+`--browser` is a deprecated alias for `--preview` and will be removed in patina 5.0. It used to render a separate side-by-side diff page; the in-place preview now covers that use case (the "both" view shows the rewrite next to the struck-through original) plus URL input, the score chip, and the notes panel.
 
 ```bash
-patina --browser --serve draft.md
+patina --browser draft.md    # same as: patina --preview draft.md (prints a deprecation notice)
 ```
 
-Contract:
-- Requires `--browser`; replaces the window opener (nothing is spawned).
-- Binds `127.0.0.1` on a random port and serves only `GET`/`HEAD` of one unguessable token URL (`http://127.0.0.1:<port>/<token>/`); everything else is 404. Responses send `nosniff`, `no-referrer`, and `no-store` headers, and the page keeps its restrictive CSP.
-- Prints the URL on stderr. From a remote shell, forward it with `ssh -L <port>:127.0.0.1:<port> <host>`; VS Code/Cursor remote terminals forward localhost URLs automatically.
-- Keeps running until 10 minutes pass with no request, then stops on its own; Ctrl-C stops it immediately. The saved HTML file remains either way.
+Differences from the old diff page to be aware of:
+- stdout carries the rewritten prose only; the old byte-for-byte `--format` passthrough is gone.
+- Input must be `.html`/`.md`/`.markdown`/`.txt` (the preview contract); other extensions are rejected.
 
 
 ## In-place preview: `--preview`
@@ -112,7 +91,22 @@ URL contract:
 
 File contract:
 - The whole file is rewritten (same scope as a plain rewrite) and rendered as a single reading document. Hunks are paired by LCS, so the model does not need to preserve paragraph counts.
-- stdout carries the rewritten prose (pipe-safe) in both forms; the page path and serve URL go to stderr, same as `--browser`.
+- stdout carries the rewritten prose (pipe-safe) in both forms; the page path and serve URL go to stderr.
+
+### Headless servers: `--serve`
+
+On a machine with no display (SSH, containers), add `--serve` to serve the preview page over HTTP instead of opening a window:
+
+```bash
+patina --preview --serve https://example.com/article
+patina --preview --serve draft.md
+```
+
+Contract:
+- Requires `--preview`; replaces the window opener (nothing is spawned).
+- Binds `127.0.0.1` on a random port and serves only `GET`/`HEAD` of one unguessable token URL (`http://127.0.0.1:<port>/<token>/`); everything else is 404. Responses send `nosniff`, `no-referrer`, and `no-store` headers, and the page keeps its restrictive CSP.
+- Prints the URL on stderr. From a remote shell, forward it with `ssh -L <port>:127.0.0.1:<port> <host>`; VS Code/Cursor remote terminals forward localhost URLs automatically.
+- Keeps running until 10 minutes pass with no request, then stops on its own; Ctrl-C stops it immediately. The saved HTML file remains either way.
 
 ### Image text: `--ocr`
 

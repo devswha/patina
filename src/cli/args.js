@@ -235,11 +235,19 @@ export function validatePreviewRequest(parsed) {
       'Use `patina --preview <url>` by itself, without --diff, --audit, --score, or --ouroboros.'
     );
   }
-  if (parsed.files.length !== 1 || !/^https?:\/\//i.test(String(parsed.files[0] || ''))) {
+  if (parsed.files.length !== 1) {
     throw inputError(
-      '--preview requires exactly one http(s) URL',
-      'No URL, a local file, or multiple inputs were provided.',
-      'Run `patina --preview https://example.com/article`.'
+      '--preview requires exactly one input',
+      'Pass one http(s) URL or one local file; stdin and multiple inputs are not supported.',
+      'Run `patina --preview https://example.com/article` or `patina --preview draft.md`.'
+    );
+  }
+  const input = String(parsed.files[0] || '');
+  if (!/^https?:\/\//i.test(input) && !/\.(html?|md|markdown|txt)$/i.test(input)) {
+    throw inputError(
+      '--preview supports http(s) URLs, .html, .md, and .txt input',
+      `"${input}" has an unsupported extension for in-place preview.`,
+      'Convert the file to HTML/markdown/plain text, or run plain `patina <file>` for a rewrite without the preview page.'
     );
   }
 }
@@ -360,8 +368,8 @@ MODES
   --exit-on <n>           With --score, exit 3 when overall score > n
   --ouroboros             Iterative self-improvement loop
   --browser               Rewrite one local file, then open a local before/after diff page (adds one diff explanation call)
-  --preview               Fetch one http(s) URL, rewrite its prose, and open an in-place
-                          preview on a snapshot of the page (scripts stripped; SSR pages only)
+  --preview               Rewrite one http(s) URL in place on a snapshot of the page, or one
+                          local file as an in-place reading document (adds one explanation call)
   --serve                 With --browser or --preview: serve the page at a token URL on 127.0.0.1
                           instead of opening a window (headless/SSH; stops after 10 idle minutes)
 

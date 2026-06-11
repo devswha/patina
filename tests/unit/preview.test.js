@@ -6,6 +6,7 @@ import {
   extractProseBlocks,
   alignRewrites,
   buildPreviewHtml,
+  buildFilePreviewHtml,
   harvestStreamOps,
   resolveStreamedHtml,
   prepareSnapshotHtml,
@@ -31,12 +32,29 @@ test('extractProseBlocks picks plain-text prose blocks and skips unsafe regions'
 
   const { blocks, truncated } = extractProseBlocks(html);
   assert.strictEqual(truncated, false);
-  assert.deepStrictEqual(blocks.map((b) => b.tag), ['p', 'h2', 'p']);
+  assert.deepStrictEqual(blocks.map((b) => b.tag), ['p', 'h2', 'p', 'p']);
   assert.strictEqual(blocks[0].text, LONG_KO);
   assert.strictEqual(blocks[1].text, LONG_EN);
-  assert.strictEqual(blocks[2].text, 'Entity & spacing test paragraph that is long enough to qualify.');
+  // Inline-formatting blocks are extracted with their text flattened.
+  assert.strictEqual(blocks[2].text, 'Has inline markup so the v1 walker must leave it alone entirely.');
+  assert.ok(blocks[2].raw.includes('<strong>'));
+  assert.strictEqual(blocks[3].text, 'Entity & spacing test paragraph that is long enough to qualify.');
   // Offsets point at the raw inner content.
   assert.strictEqual(html.slice(blocks[0].start, blocks[0].end), LONG_KO);
+});
+
+test('extractProseBlocks keeps block-level nesting and pure link blocks out', () => {
+  const html = [
+    `<li><a href="/x">a navigation item that is long enough to look like prose</a></li>`,
+    `<p>Real prose with an inline <a href="/y">link</a> embedded inside it stays extractable.</p>`,
+    `<li>outer text with nested list <ul><li>${LONG_EN}</li></ul></li>`,
+  ].join('\n');
+  const { blocks } = extractProseBlocks(html);
+  // The nested-list item is consumed by the skipped outer match — kept out
+  // entirely rather than risking a wrong swap position.
+  assert.deepStrictEqual(blocks.map((b) => b.text), [
+    'Real prose with an inline link embedded inside it stays extractable.',
+  ]);
 });
 
 test('extractProseBlocks reports truncation at the block cap', () => {
@@ -46,10 +64,32 @@ test('extractProseBlocks reports truncation at the block cap', () => {
   assert.strictEqual(truncated, true);
 });
 
-test('alignRewrites maps paragraphs 1:1 and rejects mismatches', () => {
+test('alignRewrites maps paragraphs 1:1 and falls back to LCS hunks on mismatch', () => {
   const blocks = [{ text: 'one' }, { text: 'two' }];
-  assert.deepStrictEqual(alignRewrites(blocks, 'ONE\n\nTWO'), ['ONE', 'TWO']);
-  assert.throws(() => alignRewrites(blocks, 'merged into a single paragraph'), /1 paragraphs for 2 prose blocks/);
+  assert.deepStrictEqual(alignRewrites(blocks, 'ONE\n\nTWO'), { rewrites: ['ONE', 'TWO'], unalignedCount: 0 });
+
+  // Model merged both paragraphs: unpairable hunk keeps the original text.
+  assert.deepStrictEqual(
+    alignRewrites(blocks, 'merged into a single paragraph'),
+    { rewrites: ['one', 'two'], unalignedCount: 2 },
+  );
+
+  // Mixed: an unchanged block anchors the LCS; inside the unequal hunk the
+  // changed block pairs by bigram similarity and the surplus paragraph drops.
+  const mixed = [{ text: 'same anchor paragraph' }, { text: 'the old text body' }, { text: 'tail anchor' }];
+  assert.deepStrictEqual(
+    alignRewrites(mixed, 'same anchor paragraph\n\nthe new text body\n\ncompletely unrelated insertion 12345\n\ntail anchor'),
+    { rewrites: ['same anchor paragraph', 'the new text body', 'tail anchor'], unalignedCount: 0 },
+  );
+
+  // Whole-page rewrite with merged paragraphs: similarity pairing still maps
+  // most blocks, dissimilar ones keep the original.
+  const wide = [{ text: '프롬프트를 어떻게 써야 할지 막막합니다' }, { text: '크레딧만 날리고 결과물이 없어요' }, { text: 'HYPERREAL' }];
+  const out = alignRewrites(wide, '프롬프트를 뭐라고 입력해야 할지 모르겠어요\n\n크레딧을 다 써도 마음에 드는 게 없어요');
+  assert.strictEqual(out.rewrites[0], '프롬프트를 뭐라고 입력해야 할지 모르겠어요');
+  assert.strictEqual(out.rewrites[1], '크레딧을 다 써도 마음에 드는 게 없어요');
+  assert.strictEqual(out.rewrites[2], 'HYPERREAL');
+  assert.strictEqual(out.unalignedCount, 1);
 });
 
 test('buildPreviewHtml swaps rewrites in place and hardens the snapshot', () => {
@@ -70,6 +110,8 @@ test('buildPreviewHtml swaps rewrites in place and hardens the snapshot', () => 
     blocks,
     rewrites: ['고쳐 쓴 <문장> 입니다', LONG_EN],
     sourceUrl: 'https://example.test/page',
+    explanationHtml: '<article class="explain-card">note body</article>',
+    scoreChip: 'score 42 → 17',
   });
 
   assert.strictEqual(changedCount, 1);
@@ -84,12 +126,42 @@ test('buildPreviewHtml swaps rewrites in place and hardens the snapshot', () => 
   assert.ok(!out.includes('onload='));
   assert.ok(!out.includes('javascript:alert'));
   assert.ok(!/http-equiv/i.test(out));
-  // Overlay chrome.
+  // Overlay chrome: three view states, notes panel, score chip.
   assert.ok(out.includes('<base href="https://example.test/page">'));
   assert.ok(out.includes('id="ptna-style"'));
-  assert.ok(out.includes('id="ptna-orig"'));
+  assert.ok(out.includes('id="ptna-v-rew"'));
+  assert.ok(out.includes('id="ptna-v-orig"'));
+  assert.ok(out.includes('id="ptna-v-both"'));
   assert.ok(out.includes('1 of 2 blocks rewritten'));
   assert.ok(out.includes('href="#ptna-1"'));
+  assert.ok(out.includes('<details class="ptna-notes">'));
+  assert.ok(out.includes('note body'));
+  assert.ok(out.includes('score 42 → 17'));
+});
+
+test('buildFilePreviewHtml renders LCS hunks in one document without count alignment', () => {
+  const original = `intro stays exactly the same here\n\n${LONG_KO}\n\nclosing line also stays the same`;
+  // Model merged two thoughts into one paragraph — counts differ, still fine.
+  const rewritten = `intro stays exactly the same here\n\n고쳐 쓴 문장입니다\n\n덧붙인 문장입니다\n\nclosing line also stays the same`;
+
+  const { html: out, changedCount } = buildFilePreviewHtml({
+    originalText: original,
+    rewrittenText: rewritten,
+    sourcePath: '/tmp/draft.md',
+    explanationHtml: '<article class="explain-card">why card</article>',
+    scoreChip: 'score 60 → 12',
+  });
+
+  assert.strictEqual(changedCount, 1);
+  assert.ok(out.includes('Content-Security-Policy'));
+  assert.ok(out.includes('Source: /tmp/draft.md'));
+  assert.ok(out.includes('intro stays exactly the same here'));
+  assert.ok(out.includes('<span class="ptna-after">고쳐 쓴 문장입니다\n\n덧붙인 문장입니다</span>'));
+  assert.ok(out.includes(`<span class="ptna-before">${LONG_KO}</span>`));
+  assert.ok(out.includes('id="ptna-v-both"'));
+  assert.ok(out.includes('1 change(s)') || out.includes('1 of'));
+  assert.ok(out.includes('why card'));
+  assert.ok(out.includes('score 60 → 12'));
 });
 
 test('buildPreviewHtml keeps an existing base tag and omits the toggle when nothing changed', () => {
@@ -104,7 +176,8 @@ test('buildPreviewHtml keeps an existing base tag and omits the toggle when noth
   assert.strictEqual(changedCount, 0);
   assert.ok(out.includes('href="https://keep.test/"'));
   assert.ok(!out.includes('href="https://other.test/"'));
-  assert.ok(!out.includes('id="ptna-orig"'));
+  assert.ok(!out.includes('id="ptna-v-rew"'));
+  assert.ok(!out.includes('class="ptna-views"'));
   assert.ok(out.includes('0 of 1 blocks rewritten'));
 });
 

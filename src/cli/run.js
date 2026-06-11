@@ -14,11 +14,12 @@ import { formatOutput, formatRewriteBodyForBrowser, validateScoreWeights, buildD
 import {
   buildBrowserDiffPromptInput,
   renderBrowserDiffHtml,
+  renderExplanationHtml,
   writeBrowserDiffPage,
   openBrowserDiffPage,
   serveBrowserDiffPage,
 } from '../browser-diff.js';
-import { fetchPreviewPage, prepareSnapshotHtml, extractProseBlocks, alignRewrites, buildPreviewHtml } from '../preview.js';
+import { fetchPreviewPage, prepareSnapshotHtml, extractProseBlocks, alignRewrites, buildPreviewHtml, buildFilePreviewHtml } from '../preview.js';
 import { runOuroboros } from '../ouroboros.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
 import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput } from './batch.js';
@@ -28,6 +29,7 @@ import { PatinaCliError, runtimeError } from '../errors.js';
 import { providerHttpKeyEnvVars, resolveHttpApiKey } from '../auth.js';
 import { DEFAULT_BACKEND_TIMEOUT_MS, getBackendSafety } from '../backends/contract.js';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 /**
  * Run the default patina pipeline for an already-parsed CLI invocation:
@@ -172,6 +174,7 @@ export async function runDefault(parsed, logger) {
       promptMode,
       backends,
       resolved,
+      repoRoot,
       timeoutMs,
       logger,
     });
@@ -601,59 +604,84 @@ async function runPreviewJob({
   promptMode,
   backends,
   resolved,
+  repoRoot,
   timeoutMs,
   logger,
 }) {
-  const url = parsed.files[0];
+  const input = parsed.files[0];
+  const isUrl = /^https?:\/\//i.test(String(input));
   const cancellation = createCancellationController({ logger });
   cancellation.install();
   try {
-    logger.info('preview.fetch', { message: `[patina] Fetching ${url}` });
-    let page;
-    try {
-      page = await fetchPreviewPage(url, { signal: cancellation.signal, timeoutMs });
-    } catch (err) {
-      throw runtimeError(
-        'could not fetch the preview page',
-        `${url}: ${err?.message || 'fetch failed'}`,
-        'Check the URL is reachable from this machine, or save the page text to a file and run `patina --browser file.md`.'
-      );
-    }
-    cancellation.throwIfCanceled();
+    let pageHtml = null;
+    let blocks = null;
+    let sourceUrl = null;
+    let sourcePath = input;
+    let originalText;
+    let snapshotSource = null;
 
-    const pageHtml = prepareSnapshotHtml(page.html);
-    const { blocks, truncated } = extractProseBlocks(pageHtml);
-    if (blocks.length === 0) {
-      throw runtimeError(
-        'no prose found on the page',
-        'The page has no plain-text prose blocks patina can rewrite in place (often a client-rendered SPA, or text split by inline markup).',
-        'Try a server-rendered page, or save the article text to a file and run `patina --browser file.md`.'
-      );
+    if (isUrl) {
+      logger.info('preview.fetch', { message: `[patina] Fetching ${input}` });
+      let page;
+      try {
+        page = await fetchPreviewPage(input, { signal: cancellation.signal, timeoutMs });
+      } catch (err) {
+        throw runtimeError(
+          'could not fetch the preview page',
+          `${input}: ${err?.message || 'fetch failed'}`,
+          'Check the URL is reachable from this machine, or save the page text to a file and run `patina --preview file.md`.'
+        );
+      }
+      cancellation.throwIfCanceled();
+      snapshotSource = page.html;
+      sourceUrl = page.finalUrl;
+    } else {
+      const [loaded] = await loadInputs(parsed, logger);
+      sourcePath = loaded.path;
+      // Local HTML goes through the same snapshot pipeline as a fetched
+      // page; markdown/plain text renders as a reading document.
+      if (/\.html?$/i.test(sourcePath)) {
+        snapshotSource = loaded.text;
+        sourceUrl = pathToFileURL(resolve(process.cwd(), sourcePath)).href;
+      } else {
+        originalText = loaded.text;
+      }
     }
-    if (truncated) {
-      logger.warn('preview.truncated', {
-        message: '[patina] Page has more prose blocks than the preview limit; extra blocks are left unchanged.',
+
+    if (snapshotSource !== null) {
+      pageHtml = prepareSnapshotHtml(snapshotSource);
+      const extracted = extractProseBlocks(pageHtml);
+      blocks = extracted.blocks;
+      if (blocks.length === 0) {
+        throw runtimeError(
+          'no prose found on the page',
+          'The page has no plain-text prose blocks patina can rewrite in place (often a client-rendered SPA, or text split by inline markup).',
+          'Try a server-rendered page, or save the article text to a file and run `patina --preview file.md`.'
+        );
+      }
+      if (extracted.truncated) {
+        logger.warn('preview.truncated', {
+          message: '[patina] Page has more prose blocks than the preview limit; extra blocks are left unchanged.',
+        });
+      }
+      originalText = blocks.map((block) => block.text).join('\n\n');
+      logger.info('preview.blocks', {
+        message: `[patina] Rewriting ${blocks.length} prose block(s) from ${sourceUrl}`,
       });
     }
-    logger.info('preview.blocks', {
-      message: `[patina] Rewriting ${blocks.length} prose block(s) from ${page.finalUrl}`,
-    });
 
-    const prompt = buildPrompt({
+    const basePromptInputs = {
       config,
       patterns,
       profile: profile.body ? profile : null,
       voice: voice.body ? voice : null,
       voiceSample,
       scoring: scoring.body ? scoring : null,
-      text: blocks.map((block) => block.text).join('\n\n'),
-      mode: 'rewrite',
       tone: toneResolution,
       promptMode,
-    });
-    const rawResult = await invokeBackendChain({
+    };
+    const invokeInputs = {
       backends,
-      prompt,
       apiKey: resolved.apiKey,
       baseURL: resolved.baseURL,
       model: resolved.model,
@@ -663,33 +691,90 @@ async function runPreviewJob({
       maxConcurrency: parsed.maxConcurrency,
       maxRetries: parsed.maxRetries,
       logger,
+    };
+
+    const rawResult = await invokeBackendChain({
+      ...invokeInputs,
+      prompt: buildPrompt({ ...basePromptInputs, text: originalText, mode: 'rewrite' }),
     });
     cancellation.throwIfCanceled();
     const rewrittenBody = formatRewriteBodyForBrowser(rawResult, { logger });
 
-    let rewrites;
+    // Best-effort pattern explanation, same contract as the browser diff
+    // page: one extra call, and a failure never fails the preview.
+    let explanationHtml = '';
     try {
-      rewrites = alignRewrites(blocks, rewrittenBody);
-    } catch (err) {
-      throw runtimeError(
-        'preview rewrite could not be aligned',
-        `${err.message}, so the rewrites cannot be swapped back into the page safely.`,
-        'Re-run the command (model output varies), or use `patina --browser` on the saved page text instead.'
+      const diffResult = await invokeBackendChain({
+        ...invokeInputs,
+        prompt: buildPrompt({
+          ...basePromptInputs,
+          text: buildBrowserDiffPromptInput(originalText, rewrittenBody),
+          mode: 'diff',
+        }),
+      });
+      const explanation = formatOutput(
+        diffResult,
+        'diff',
+        { ...parsed, format: 'markdown', noColor: true },
+        { logger, stdout: { isTTY: false } },
       );
+      explanationHtml = renderExplanationHtml(explanation);
+    } catch (err) {
+      logger.warn('preview.diff_failed', {
+        message: `[patina] preview explanation failed: ${err?.message || 'diff call failed'}`,
+      });
     }
+    cancellation.throwIfCanceled();
 
-    const { html: previewHtml, changedCount } = buildPreviewHtml({
-      html: pageHtml,
-      blocks,
-      rewrites,
-      sourceUrl: page.finalUrl,
-    });
+    const beforeScore = scoreDeterministicSignals({ text: originalText, config, repoRoot, logger });
+    const afterScore = scoreDeterministicSignals({ text: rewrittenBody, config, repoRoot, logger });
+    const scoreChip = !beforeScore?.skipped && !afterScore?.skipped
+      && beforeScore?.overall !== null && beforeScore?.overall !== undefined
+      && afterScore?.overall !== null && afterScore?.overall !== undefined
+      ? `score ${beforeScore.overall} → ${afterScore.overall}`
+      : null;
+
+    let built;
+    if (pageHtml !== null) {
+      let rewrites;
+      try {
+        const aligned = alignRewrites(blocks, rewrittenBody);
+        rewrites = aligned.rewrites;
+        if (aligned.unalignedCount > 0) {
+          logger.warn('preview.partial_alignment', {
+            message: `[patina] ${aligned.unalignedCount} block(s) could not be aligned with the rewrite and keep their original text.`,
+          });
+        }
+      } catch (err) {
+        throw runtimeError(
+          'preview rewrite could not be aligned',
+          `${err.message}, so the rewrites cannot be swapped back into the page safely.`,
+          'Re-run the command (model output varies), or save the page text to a file and run `patina --preview file.md`.'
+        );
+      }
+      built = buildPreviewHtml({
+        html: pageHtml,
+        blocks,
+        rewrites,
+        sourceUrl,
+        explanationHtml,
+        scoreChip,
+      });
+    } else {
+      built = buildFilePreviewHtml({
+        originalText,
+        rewrittenText: rewrittenBody,
+        sourcePath,
+        explanationHtml,
+        scoreChip,
+      });
+    }
     console.log(rewrittenBody);
 
-    const pagePath = writeBrowserDiffPage(previewHtml, { prefix: 'patina-preview-' });
-    console.error(`[patina] Preview page saved at ${pagePath} (${changedCount} of ${blocks.length} blocks rewritten)`);
+    const pagePath = writeBrowserDiffPage(built.html, { prefix: 'patina-preview-' });
+    console.error(`[patina] Preview page saved at ${pagePath} (${built.changedCount} of ${built.totalCount} blocks rewritten)`);
     if (parsed.serve) {
-      const { url: servedUrl, done } = await serveBrowserDiffPage(previewHtml, {
+      const { url: servedUrl, done } = await serveBrowserDiffPage(built.html, {
         signal: cancellation.signal,
       });
       console.error(`[patina] Serving preview at ${servedUrl}`);

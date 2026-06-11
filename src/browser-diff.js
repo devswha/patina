@@ -603,10 +603,54 @@ function describeSkipReason(score) {
   return 'Scoring unavailable.';
 }
 
+// Walk both block sequences against the LCS alignment and pair them up:
+// matched blocks come through as {type:'same'}, and the unmatched runs
+// between two matches pair as one {type:'change'} hunk (either side may be
+// empty for pure insertions/deletions). This is what lets the file preview
+// render original and rewritten text in one document without requiring the
+// model to preserve paragraph counts.
+export function diffBlockPairs(original, rewritten) {
+  const beforeBlocks = splitTextIntoBlocks(original);
+  const afterBlocks = splitTextIntoBlocks(rewritten);
+  const matcher = beforeBlocks.length * afterBlocks.length > MAX_LCS_MATRIX_CELLS
+    ? matchBlocksByIndex
+    : matchCommonBlocks;
+  const { leftMatched, rightMatched } = matcher(
+    beforeBlocks.map((block) => block.text),
+    afterBlocks.map((block) => block.text),
+  );
+
+  const pairs = [];
+  let i = 0;
+  let j = 0;
+  while (i < beforeBlocks.length || j < afterBlocks.length) {
+    const before = [];
+    const after = [];
+    while (i < beforeBlocks.length && !leftMatched.has(i)) before.push(beforeBlocks[i++].text);
+    while (j < afterBlocks.length && !rightMatched.has(j)) after.push(afterBlocks[j++].text);
+    if (before.length || after.length) {
+      pairs.push({ type: 'change', before: before.join('\n\n'), after: after.join('\n\n') });
+      continue;
+    }
+    if (i < beforeBlocks.length && j < afterBlocks.length) {
+      pairs.push({ type: 'same', text: afterBlocks[j].text });
+      i += 1;
+      j += 1;
+      continue;
+    }
+    // One side exhausted with only matched blocks left on the other — cannot
+    // happen with a consistent alignment, but never hang on bad input.
+    if (j < afterBlocks.length) pairs.push({ type: 'same', text: afterBlocks[j].text });
+    i += 1;
+    j += 1;
+  }
+  return pairs;
+}
+
 // Minimal markdown rendering for the diff-explanation text: bold, inline
 // code, and --- section breaks. Everything is HTML-escaped first; anything
 // beyond these three forms stays visible as plain text.
-function renderExplanationHtml(text) {
+export function renderExplanationHtml(text) {
   return String(text)
     .split(/\n\s*---\s*\n/)
     .map((section) => section.trim())

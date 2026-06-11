@@ -6,6 +6,7 @@ import {
   extractProseBlocks,
   alignRewrites,
   buildPreviewHtml,
+  buildFilePreviewHtml,
   harvestStreamOps,
   resolveStreamedHtml,
   prepareSnapshotHtml,
@@ -70,6 +71,8 @@ test('buildPreviewHtml swaps rewrites in place and hardens the snapshot', () => 
     blocks,
     rewrites: ['고쳐 쓴 <문장> 입니다', LONG_EN],
     sourceUrl: 'https://example.test/page',
+    explanationHtml: '<article class="explain-card">note body</article>',
+    scoreChip: 'score 42 → 17',
   });
 
   assert.strictEqual(changedCount, 1);
@@ -84,12 +87,42 @@ test('buildPreviewHtml swaps rewrites in place and hardens the snapshot', () => 
   assert.ok(!out.includes('onload='));
   assert.ok(!out.includes('javascript:alert'));
   assert.ok(!/http-equiv/i.test(out));
-  // Overlay chrome.
+  // Overlay chrome: three view states, notes panel, score chip.
   assert.ok(out.includes('<base href="https://example.test/page">'));
   assert.ok(out.includes('id="ptna-style"'));
-  assert.ok(out.includes('id="ptna-orig"'));
+  assert.ok(out.includes('id="ptna-v-rew"'));
+  assert.ok(out.includes('id="ptna-v-orig"'));
+  assert.ok(out.includes('id="ptna-v-both"'));
   assert.ok(out.includes('1 of 2 blocks rewritten'));
   assert.ok(out.includes('href="#ptna-1"'));
+  assert.ok(out.includes('<details class="ptna-notes">'));
+  assert.ok(out.includes('note body'));
+  assert.ok(out.includes('score 42 → 17'));
+});
+
+test('buildFilePreviewHtml renders LCS hunks in one document without count alignment', () => {
+  const original = `intro stays exactly the same here\n\n${LONG_KO}\n\nclosing line also stays the same`;
+  // Model merged two thoughts into one paragraph — counts differ, still fine.
+  const rewritten = `intro stays exactly the same here\n\n고쳐 쓴 문장입니다\n\n덧붙인 문장입니다\n\nclosing line also stays the same`;
+
+  const { html: out, changedCount } = buildFilePreviewHtml({
+    originalText: original,
+    rewrittenText: rewritten,
+    sourcePath: '/tmp/draft.md',
+    explanationHtml: '<article class="explain-card">why card</article>',
+    scoreChip: 'score 60 → 12',
+  });
+
+  assert.strictEqual(changedCount, 1);
+  assert.ok(out.includes('Content-Security-Policy'));
+  assert.ok(out.includes('Source: /tmp/draft.md'));
+  assert.ok(out.includes('intro stays exactly the same here'));
+  assert.ok(out.includes('<span class="ptna-after">고쳐 쓴 문장입니다\n\n덧붙인 문장입니다</span>'));
+  assert.ok(out.includes(`<span class="ptna-before">${LONG_KO}</span>`));
+  assert.ok(out.includes('id="ptna-v-both"'));
+  assert.ok(out.includes('1 change(s)') || out.includes('1 of'));
+  assert.ok(out.includes('why card'));
+  assert.ok(out.includes('score 60 → 12'));
 });
 
 test('buildPreviewHtml keeps an existing base tag and omits the toggle when nothing changed', () => {
@@ -104,7 +137,8 @@ test('buildPreviewHtml keeps an existing base tag and omits the toggle when noth
   assert.strictEqual(changedCount, 0);
   assert.ok(out.includes('href="https://keep.test/"'));
   assert.ok(!out.includes('href="https://other.test/"'));
-  assert.ok(!out.includes('id="ptna-orig"'));
+  assert.ok(!out.includes('id="ptna-v-rew"'));
+  assert.ok(!out.includes('class="ptna-views"'));
   assert.ok(out.includes('0 of 1 blocks rewritten'));
 });
 

@@ -121,9 +121,9 @@ Marketing pages often carry their most AI-sounding copy inside images (card-news
 patina --preview --ocr https://example.com/product
 ```
 
-- Image candidates come from `<img>` sources (including `srcset` and Next.js `/_next/image` wrappers, unwrapped to the original asset) plus document-wide base64 data URIs (card-news content frequently ships as CSS `background-image` data URIs). SVG is skipped; caps: 8 images per page by priority, 2MB per image, 10MB total.
-- Text extraction runs through an image-capable local CLI backend — `claude-cli`, `gemini-cli`, or `codex-cli` (your selected backend when capable, otherwise the first capable one available). One extra backend call per image; images are staged into the backend's isolated temp dir, preserving the empty-cwd prompt-injection containment. `kimi-cli` and `openai-http` cannot read images.
-- Extracted text joins the same rewrite call as extra blocks. Since pixels cannot be rewritten, a changed finding renders as an annotation: dashed bronze outline + `I`-numbered badge on the image, and a notes card showing the extracted text next to the suggested rewrite.
+- Image candidates come from `<img>` sources (including `srcset` and Next.js `/_next/image` wrappers, unwrapped to the original asset) plus document-wide base64 data URIs (card-news content frequently ships as CSS `background-image` data URIs). SVG is skipped; caps: 8 images per page by priority, 6MB per image, 16MB total.
+- Text extraction runs through an image-capable local CLI backend — `claude-cli`, `gemini-cli`, or `codex-cli` (your selected backend when capable, otherwise the first capable one available). One extra backend call per image; images are staged into the backend's isolated temp dir, preserving the empty-cwd prompt-injection containment. `kimi-cli` and `openai-http` cannot read images. Remote pages can only reference remote (http/https) images — `file:` images are accepted only for local `.html` previews.
+- Extracted text joins the same rewrite call as extra blocks. Since pixels cannot be rewritten, each changed finding appears in the auto-opened "patina notes" panel as a card embedding **the exact image patina OCR'd** (a thumbnail) next to the extracted text and the suggested rewrite — so findings on carousel slides, lazy-loaded images, or CSS background images are visible regardless of how the snapshot froze. A plain `<img>` in the DOM additionally gets a dashed-bronze `I`-badge in place.
 - stdout never includes OCR text (pipe-safe); the flagged-image count is reported on stderr.
 
 

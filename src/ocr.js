@@ -1,12 +1,16 @@
-import { mkdtempSync, writeFileSync, copyFileSync, statSync, chmodSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, copyFileSync, readFileSync, statSync, chmodSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const DEFAULT_MAX_IMAGES = 8;
-const DEFAULT_MAX_IMAGE_BYTES = 2 * 1024 * 1024;
-const DEFAULT_TOTAL_BUDGET_BYTES = 10 * 1024 * 1024;
+const DEFAULT_MAX_IMAGE_BYTES = 6 * 1024 * 1024; // tall detail images can be a few MB
+const DEFAULT_TOTAL_BUDGET_BYTES = 16 * 1024 * 1024;
 const DEFAULT_FETCH_TIMEOUT_MS = 20000;
+// Inline thumbnail embedded in a finding card so the user sees the exact
+// image patina read, regardless of carousel/lazy/background-image rendering.
+const MAX_THUMBNAIL_BYTES = 240 * 1024;
+const MIME_BY_EXT = { jpg: 'jpeg', jpeg: 'jpeg', png: 'png', webp: 'webp', gif: 'gif' };
 const MIN_DATA_URI_BYTES = 2 * 1024; // below this: blur placeholders, icons
 const MAX_DATA_URI_BYTES = 512 * 1024;
 const ACCEPTED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
@@ -304,7 +308,7 @@ export async function ocrStagedImages(staged, { invokeChain, signal, logger, min
         : await invokeChain({ prompt: OCR_PROMPT, images: [image.path] });
       const text = normalizeOcrText(rawText);
       if (!text || text.length < minTextLength) return null;
-      return { ...image, text };
+      return { ...image, text, previewDataUri: buildThumbnail(image) };
     } catch (err) {
       if (signal?.aborted) return null;
       logger?.warn?.('ocr.image_failed', {
@@ -314,6 +318,25 @@ export async function ocrStagedImages(staged, { invokeChain, signal, logger, min
     }
   }));
   return results.filter(Boolean);
+}
+
+// Build a capped inline data URI for a finding card so the user sees the
+// exact OCR'd image. Returns null when no bytes are readable (e.g. test
+// runner) or the image exceeds the embed cap.
+function buildThumbnail(image) {
+  try {
+    if (image.kind === 'data') {
+      const payload = image.dataUri.slice(image.dataUri.indexOf(',') + 1);
+      return Math.floor(payload.length * 3 / 4) <= MAX_THUMBNAIL_BYTES ? image.dataUri : null;
+    }
+    if (!image.path || !existsSync(image.path)) return null;
+    const bytes = readFileSync(image.path);
+    if (bytes.length > MAX_THUMBNAIL_BYTES) return null;
+    const mime = MIME_BY_EXT[image.ext] || 'png';
+    return `data:image/${mime};base64,${bytes.toString('base64')}`;
+  } catch {
+    return null;
+  }
 }
 
 export function normalizeOcrText(rawText) {

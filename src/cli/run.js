@@ -18,7 +18,7 @@ import {
   openBrowserDiffPage,
   serveBrowserDiffPage,
 } from '../browser-diff.js';
-import { fetchPreviewPage, prepareSnapshotHtml, extractProseBlocks, alignRewrites, buildPreviewHtml, buildFilePreviewHtml } from '../preview.js';
+import { fetchPreviewPage, prepareSnapshotHtml, freezeSnapshotAssets, extractProseBlocks, alignRewrites, buildPreviewHtml, buildFilePreviewHtml } from '../preview.js';
 import { collectImageCandidates, stageOcrImages, ocrStagedImages, describeImage, hasOcrRunnerOverride } from '../ocr.js';
 import { rmSync } from 'node:fs';
 import { runOuroboros } from '../ouroboros.js';
@@ -517,6 +517,16 @@ async function runPreviewJob({
 
     if (snapshotSource !== null) {
       pageHtml = prepareSnapshotHtml(snapshotSource);
+      if (isUrl) {
+        // Must happen before extraction: inlining changes offsets, and the
+        // in-place swap later relies on the block offsets captured here.
+        pageHtml = await freezeSnapshotAssets(pageHtml, {
+          baseUrl: sourceUrl,
+          signal: cancellation.signal,
+          logger,
+        });
+        cancellation.throwIfCanceled();
+      }
       const extracted = extractProseBlocks(pageHtml);
       blocks = extracted.blocks;
       // With --ocr, a page whose copy lives entirely in images has no DOM

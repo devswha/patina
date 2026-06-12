@@ -507,14 +507,28 @@ describe('CLI End-to-End with Mock API', () => {
 
   it('rewrites a fetched page in place with --preview', async () => {
     const pageHtml = [
-      '<html><head><title>page</title></head><body>',
+      '<html><head><title>page</title>',
+      '<link rel="stylesheet" href="/site.css">',
+      '</head><body>',
       '<script>window.__DATA__ = {"p": "<p>serialized markup that must never be rewritten</p>"}</script>',
       '<nav><li><a href="/about">a navigation item with nested markup stays untouched</a></li></nav>',
       '<p>The first paragraph is long enough to be rewritten by the preview flow.</p>',
       '<p>The second paragraph also clears the minimum length threshold easily.</p>',
       '</body></html>',
     ].join('\n');
-    const pageServer = createServer((_req, res) => {
+    const pageCss = '@font-face{font-family:t;src:url(./media/t.woff2)format("woff2")}body{color:#111}';
+    const pageFont = Buffer.from('E2EFONT');
+    const pageServer = createServer((req, res) => {
+      if (req.url === '/site.css') {
+        res.writeHead(200, { 'content-type': 'text/css' });
+        res.end(pageCss);
+        return;
+      }
+      if (req.url === '/media/t.woff2') {
+        res.writeHead(200, { 'content-type': 'font/woff2' });
+        res.end(pageFont);
+        return;
+      }
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(pageHtml);
     });
@@ -575,6 +589,11 @@ describe('CLI End-to-End with Mock API', () => {
       assert.ok(page.includes('<span class="ptna-after">First paragraph rewritten by the mock backend for the preview test.</span>'));
       assert.ok(page.includes('<span class="ptna-before">The first paragraph is long enough to be rewritten by the preview flow.</span>'));
       assert.ok(page.includes(`<base href="${pageUrl}">`));
+      // Asset freezing (#428): the same-origin stylesheet is inlined, its
+      // relative font url() embedded as a data URI.
+      assert.ok(page.includes('data-ptna-frozen='));
+      assert.ok(!page.includes('<link rel="stylesheet" href="/site.css">'));
+      assert.ok(page.includes(`url(data:font/woff2;base64,${pageFont.toString('base64')})`));
       assert.ok(page.includes('2 of 2 blocks rewritten'));
       assert.ok(page.includes('id="ptna-v-both"'));
       assert.ok(page.includes('<details class="ptna-notes">'));

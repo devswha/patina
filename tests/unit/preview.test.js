@@ -11,6 +11,7 @@ import {
   resolveStreamedHtml,
   prepareSnapshotHtml,
   inlineSrcdocIframes,
+  freezeSnapshotAssets,
 } from '../../src/preview.js';
 
 const LONG_KO = '이 문장은 미리보기 추출 테스트를 위한 충분히 긴 한국어 단락입니다.';
@@ -363,6 +364,77 @@ test('inlineSrcdocIframes decodes srcdoc detail content into first-class DOM', (
   const { blocks } = extractProseBlocks(out);
   assert.ok(blocks.some((b) => b.text.includes('상세 설명 본문')));
   assert.ok(blocks.some((b) => b.text.includes('충분히 긴 제목')));
+});
+
+test('inlineSrcdocIframes neutralizes fixed-height overflow-hidden wrappers around the inlined detail (#427)', () => {
+  const html = '<div style="width:100%;height:800px;overflow:hidden"><iframe srcdoc="&lt;p&gt;detail&lt;/p&gt;"></iframe></div>'
+    + '<div style="height:300px;overflow:hidden"><div style="max-height:200px;overflow-y:hidden"><iframe srcdoc="&lt;p&gt;two&lt;/p&gt;"></iframe></div></div>'
+    + '<div style="color:red"><iframe srcdoc="&lt;p&gt;keep&lt;/p&gt;"></iframe></div>';
+  const out = inlineSrcdocIframes(html);
+  // The skills.ag pattern: sizing wrapper directly around the iframe.
+  assert.ok(out.includes('<div style="width:100%"><div class="ptna-srcdoc">'));
+  // Two levels of adjacent sizing wrappers are both unclipped.
+  assert.strictEqual((out.match(/overflow(?:-y)?\s*:\s*hidden/g) || []).length, 0);
+  // A wrapper with no clipping declarations keeps its style untouched.
+  assert.ok(out.includes('<div style="color:red"><div class="ptna-srcdoc">'));
+});
+
+test('freezeSnapshotAssets inlines same-origin stylesheets, absolutizes url(), and embeds same-origin fonts (#428)', async () => {
+  const css = '@font-face{font-family:x;src:url(../media/f.woff2?v=1)format("woff2")}body{background:url(/bg.png)}';
+  const fontBytes = Buffer.from('FONTBYTES');
+  const fetched = [];
+  const fetchImpl = async (url) => {
+    fetched.push(String(url));
+    if (String(url).endsWith('.css')) return new Response(css, { status: 200 });
+    if (String(url).includes('.woff2')) return new Response(fontBytes, { status: 200 });
+    throw new Error(`unexpected fetch ${url}`);
+  };
+  const html = '<head><link rel="stylesheet" href="/_next/static/chunks/a.css">'
+    + '<link rel="stylesheet" href="https://cdn.other.example/x.css"></head><body><p>hi</p></body>';
+  const out = await freezeSnapshotAssets(html, {
+    baseUrl: 'https://site.example/page/1',
+    fetchImpl,
+    lookupImpl: async () => [{ address: '93.184.216.34' }],
+  });
+
+  assert.ok(out.includes('<style data-ptna-frozen="https://site.example/_next/static/chunks/a.css">'));
+  assert.ok(out.includes(`url(data:font/woff2;base64,${fontBytes.toString('base64')})`));
+  // Relative url() resolved against the STYLESHEET location, not the page.
+  assert.ok(out.includes('url(https://site.example/bg.png)'));
+  // Cross-origin sheets are built for cross-site loading: keep the <link>.
+  assert.ok(out.includes('<link rel="stylesheet" href="https://cdn.other.example/x.css">'));
+  assert.ok(!fetched.some((url) => url.includes('cdn.other.example')));
+});
+
+test('freezeSnapshotAssets keeps the <link> when the fetch fails, a redirect hop is SSRF-blocked, or the CSS could escape <style>', async () => {
+  const html = '<head>'
+    + '<link rel="stylesheet" href="/fails.css">'
+    + '<link rel="stylesheet" href="/redirects.css">'
+    + '<link rel="stylesheet" href="/escape.css">'
+    + '</head>';
+  const out = await freezeSnapshotAssets(html, {
+    baseUrl: 'https://site.example/page',
+    fetchImpl: async (url) => {
+      if (String(url).includes('fails')) throw new Error('boom');
+      if (String(url).includes('redirects')) {
+        // 30x toward private space: the per-hop guard must refuse it.
+        return new Response(null, { status: 302, headers: { location: 'http://10.0.0.5/internal.css' } });
+      }
+      return new Response('body{}</style><img src=x onerror=alert(1)>', { status: 200 });
+    },
+    lookupImpl: async () => [{ address: '93.184.216.34' }],
+  });
+  assert.ok(out.includes('<link rel="stylesheet" href="/fails.css">'));
+  assert.ok(out.includes('<link rel="stylesheet" href="/redirects.css">'));
+  assert.ok(out.includes('<link rel="stylesheet" href="/escape.css">'));
+  assert.ok(!out.includes('data-ptna-frozen'));
+});
+
+test('freezeSnapshotAssets is a no-op for file: bases and pages without same-origin sheets', async () => {
+  const html = '<head><link rel="stylesheet" href="./style.css"></head>';
+  assert.strictEqual(await freezeSnapshotAssets(html, { baseUrl: 'file:///tmp/page.html' }), html);
+  const crossOnly = '<head><link rel="stylesheet" href="https://cdn.other.example/x.css"></head>';
+  assert.strictEqual(await freezeSnapshotAssets(crossOnly, { baseUrl: 'https://site.example/' }), crossOnly);
 });
 
 test('inlineSrcdocIframes also accepts single-quoted srcdoc', () => {

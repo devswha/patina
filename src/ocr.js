@@ -301,7 +301,7 @@ export async function stageOcrImages(candidates, options = {}) {
         // presence/value, and bound an unbounded chunked stream before it
         // exhausts memory. The total budget is enforced below. Redirect hops
         // are re-guarded so a public image URL cannot 30x into private space.
-        bytes = await fetchImageBytes(fetchImpl, candidate.url, {
+        bytes = await fetchCappedBytes(fetchImpl, candidate.url, {
           signal,
           maxBytes,
           fetchTimeoutMs,
@@ -346,8 +346,10 @@ function sniffImageType(bytes) {
 
 // Fetch with a hard timeout and a streaming byte cap. The body is read
 // chunk by chunk so a chunked/Content-Length-less response cannot buffer
-// unbounded data into memory before the size check.
-async function fetchImageBytes(fetchImpl, url, { signal, maxBytes, fetchTimeoutMs, tooBig, guardHop }) {
+// unbounded data into memory before the size check. Shared with the
+// snapshot asset freezer (preview.js), which fetches page-derived CSS and
+// font URLs under the same containment rules.
+export async function fetchCappedBytes(fetchImpl, url, { signal, maxBytes, fetchTimeoutMs, tooBig = 'response too large', guardHop } = {}) {
   const controller = new AbortController();
   const onOuterAbort = () => controller.abort(signal.reason);
   if (signal) {

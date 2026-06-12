@@ -86,10 +86,34 @@ export function inlineSrcdocIframes(html) {
   // never a raw single quote.
   const iframeRe = /<iframe\b[^>]*\bsrcdoc=(?:"([^"]*)"|'([^']*)')[^>]*>(?:[\s\S]*?<\/iframe\s*>)?/gi;
   const out = String(html ?? '').replace(iframeRe, (_, dq, sq) => {
-    const decoded = stripActiveContent(decodeHtmlEntities(dq ?? sq ?? ''));
+    const decoded = adaptSrcdocViewportCss(stripActiveContent(decodeHtmlEntities(dq ?? sq ?? '')));
     return `<div class="ptna-srcdoc">${decoded}</div>`;
   });
   return unclipSrcdocWrappers(out);
+}
+
+// Inside the original iframe, vw and width-based @media resolve against the
+// IFRAME box; after inlining they resolve against the top window, inflating
+// every viewport-relative size and flipping the narrow-viewport breakpoints
+// the live page actually renders with (#430). The .ptna-srcdoc wrapper is a
+// size container (container-type:inline-size in PREVIEW_CSS) whose width
+// equals the old iframe's, so rewriting the srcdoc's CSS to container units
+// reproduces the iframe-viewport semantics exactly. Only CSS contexts are
+// touched — <style> blocks and style="" attributes — never text content or
+// base64 data-URI payloads, which can contain "vw" by coincidence. vh stays:
+// the live site resizes the iframe via JS, so it has no faithful static
+// reference either way.
+function adaptSrcdocViewportCss(srcdocHtml) {
+  const transform = (css) => css
+    .replace(/(\d*\.?\d+)vw\b/g, '$1cqw')
+    .replace(/@media\s*\(\s*((?:min|max)-width\s*:[^)]+)\)\s*\{/gi, '@container ($1){');
+  return String(srcdocHtml)
+    .replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style\s*>)/gi, (_, open, css, close) => `${open}${transform(css)}${close}`)
+    .replace(/(\bstyle\s*=\s*)("([^"]*)"|'([^']*)')/gi, (_full, prefix, _quoted, dq, sq) => {
+      const value = dq ?? sq ?? '';
+      const quote = dq !== undefined ? '"' : "'";
+      return `${prefix}${quote}${transform(value)}${quote}`;
+    });
 }
 
 // Hosts size the original iframe with fixed-height overflow-hidden wrappers
@@ -1086,6 +1110,7 @@ function decodeEntities(text) {
 const PREVIEW_CSS = `
 .ptna-toggle-input{position:absolute !important;width:1px;height:1px;opacity:0;}
 .ptna-blk{scroll-margin-top:90px;}
+.ptna-srcdoc{display:block;container-type:inline-size;}
 .ptna-blk .ptna-before{display:none !important;}
 .ptna-blk .ptna-after{background:rgba(95,196,168,0.20) !important;box-shadow:inset 0 -2px 0 #5fc4a8 !important;border-radius:3px;padding:0 2px;color:inherit;}
 #ptna-v-orig:checked ~ * .ptna-blk .ptna-after{display:none !important;}

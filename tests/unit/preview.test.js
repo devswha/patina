@@ -437,6 +437,22 @@ test('freezeSnapshotAssets is a no-op for file: bases and pages without same-ori
   assert.strictEqual(await freezeSnapshotAssets(crossOnly, { baseUrl: 'https://site.example/' }), crossOnly);
 });
 
+test('inlineSrcdocIframes rewrites srcdoc viewport CSS to container units (#430)', () => {
+  const srcdoc = '&lt;style&gt;.h2{font-size:clamp(29px,4.3vw,50px)}@media(max-width:760px){.ba{grid-template-columns:1fr}}&lt;/style&gt;'
+    + '&lt;h2 class=&quot;h2&quot; style=&quot;margin:0 2vw&quot;&gt;vw in visible text stays: 4.3vw&lt;/h2&gt;';
+  const html = `<body><p>host clamp stays: 4.4vw</p><iframe srcdoc="${srcdoc}"></iframe></body>`;
+  const out = inlineSrcdocIframes(html);
+
+  // srcdoc <style> and style="" attrs use container units; @media width
+  // queries become @container so the old iframe-viewport breakpoints apply.
+  assert.ok(out.includes('font-size:clamp(29px,4.3cqw,50px)'));
+  assert.ok(out.includes('@container (max-width:760px){'));
+  assert.ok(out.includes('style="margin:0 2cqw"'));
+  // Text content inside the srcdoc and the HOST page keep their vw verbatim.
+  assert.ok(out.includes('vw in visible text stays: 4.3vw'));
+  assert.ok(out.includes('host clamp stays: 4.4vw'));
+});
+
 test('inlineSrcdocIframes also accepts single-quoted srcdoc', () => {
   const html = `<body><iframe srcdoc='<p>${LONG_KO}</p><script>track()</script>'></iframe></body>`;
   const out = inlineSrcdocIframes(html);

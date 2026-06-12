@@ -16,6 +16,7 @@ Semver rationale: patch | minor | major — explain whether this changes pattern
 
 ### Fixed
 - `--preview`: inlined `<iframe srcdoc>` detail content is no longer clipped by the host page's fixed-height `overflow:hidden` iframe wrapper — the adjacent sizing wrappers' inline height/overflow declarations are neutralized when the detail is inlined (#427).
+- `--preview`: inlined `<iframe srcdoc>` content now renders its viewport-relative CSS against the old iframe box instead of the window — the wrapper is a CSS container (`container-type:inline-size`) and the srcdoc's `vw` units and width-based `@media` queries are rewritten to container units/queries at inline time, so typography sizes and breakpoint layouts match the live page exactly (#430).
 - `--preview`: snapshots now freeze same-origin assets — stylesheets are inlined (relative `url()` absolutized against the stylesheet URL) and their same-origin fonts embedded as `data:` URIs — so pages render with their real CSS and web fonts even when the site blocks cross-site asset loads via Fetch Metadata, as Vercel-hosted sites do (#428).
 
 ### Deprecated

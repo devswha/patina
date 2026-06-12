@@ -163,7 +163,7 @@ and the model verdict is hot; absent model means baseline behavior.</p>
 <dt><a href="#runDefault">runDefault(parsed, logger)</a> ⇒ <code>Promise.&lt;void&gt;</code></dt>
 <dd><p>Run the default patina pipeline for an already-parsed CLI invocation:
 resolve config, provider, and backends, build prompts, then process each
-input job (rewrite/diff/audit/score/ouroboros, plus the browser-diff page).</p>
+input job (rewrite/diff/audit/score/ouroboros, plus the preview page).</p>
 </dd>
 <dt><a href="#createCancellationController">createCancellationController([options])</a> ⇒ <code>Object</code></dt>
 <dd><p>Create a SIGINT-aware cancellation controller for long-running CLI operations.</p>
@@ -334,6 +334,17 @@ single prompt can never carry two contradictory contracts (issue #397).</p>
 </dd>
 <dt><a href="#applyPrivateBaseURLOptIn">applyPrivateBaseURLOptIn([parsed])</a> ⇒ <code>void</code></dt>
 <dd><p>Persist CLI private-base-url opt-in into process.env for downstream calls.</p>
+</dd>
+<dt><a href="#isSubresourceFetchAllowed">isSubresourceFetchAllowed(rawUrl, [options])</a> ⇒ <code>Promise.&lt;boolean&gt;</code></dt>
+<dd><p>Decide whether a page-derived sub-resource (an <iframe src>, a CSS/<img>
+image URL) may be fetched. Unlike the user-typed preview URL — which is
+trusted and may point at localhost dev servers — these URLs come from page
+CONTENT, so a hostile page could aim them at cloud metadata (169.254.169.254)
+or internal RFC 1918 / loopback services (SSRF). The hostname is resolved
+(DNS rebinding aside, this catches names that map to private space) and any
+private/loopback/link-local result is refused UNLESS it shares the previewed
+page&#39;s host — a page may load its own internal assets, but an arbitrary
+public page may not reach into the local network.</p>
 </dd>
 </dl>
 
@@ -590,7 +601,7 @@ await main(['--help']);
 ## runDefault(parsed, logger) ⇒ <code>Promise.&lt;void&gt;</code>
 Run the default patina pipeline for an already-parsed CLI invocation:
 resolve config, provider, and backends, build prompts, then process each
-input job (rewrite/diff/audit/score/ouroboros, plus the browser-diff page).
+input job (rewrite/diff/audit/score/ouroboros, plus the preview page).
 
 **Kind**: global function
 **Returns**: <code>Promise.&lt;void&gt;</code> - Resolves after all job output is written.
@@ -1177,6 +1188,7 @@ Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.
 | options.text | <code>string</code> |  | Input text. |
 | [options.mode] | <code>string</code> | <code>&quot;rewrite&quot;</code> | Output mode. |
 | [options.tone] | <code>object</code> \| <code>null</code> | <code></code> | Tone resolution metadata. |
+| [options.documentSignals] | <code>Array.&lt;string&gt;</code> \| <code>null</code> | <code></code> | Deterministic document   measurements (e.g. dominant Korean register) injected into rewrite prompts   as ground truth for the Phase 0 document brief. |
 
 **Example**
 ```js
@@ -1627,3 +1639,25 @@ Persist CLI private-base-url opt-in into process.env for downstream calls.
 ```js
 applyPrivateBaseURLOptIn({ allowPrivateBaseURL: true });
 ```
+<a name="isSubresourceFetchAllowed"></a>
+
+## isSubresourceFetchAllowed(rawUrl, [options]) ⇒ <code>Promise.&lt;boolean&gt;</code>
+Decide whether a page-derived sub-resource (an <iframe src>, a CSS/<img>
+image URL) may be fetched. Unlike the user-typed preview URL — which is
+trusted and may point at localhost dev servers — these URLs come from page
+CONTENT, so a hostile page could aim them at cloud metadata (169.254.169.254)
+or internal RFC 1918 / loopback services (SSRF). The hostname is resolved
+(DNS rebinding aside, this catches names that map to private space) and any
+private/loopback/link-local result is refused UNLESS it shares the previewed
+page's host — a page may load its own internal assets, but an arbitrary
+public page may not reach into the local network.
+
+**Kind**: global function
+**Returns**: <code>Promise.&lt;boolean&gt;</code> - True when the fetch is allowed.
+
+| Param | Type | Description |
+| --- | --- | --- |
+| rawUrl | <code>string</code> | Absolute http(s) sub-resource URL. |
+| [options] | <code>object</code> |  |
+| [options.baseUrl] | <code>string</code> | The previewed page's URL. |
+| [options.lookupImpl] | <code>function</code> | DNS resolver (injectable for tests);   defaults to node:dns/promises lookup with {all:true}. |

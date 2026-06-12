@@ -102,3 +102,34 @@ test('analyzeText attaches Korean diagnostics and only hot-classifies the calibr
   assert.equal(en.paragraphs[0].comma, undefined);
   assert.equal(en.paragraphs[0].posDiversity, undefined);
 });
+
+// --- detectKoreanRegister (document-brief stage) ---
+
+test('detectKoreanRegister identifies the dominant register per ending class', async () => {
+  const { detectKoreanRegister } = await import('../../src/features/stylometry.js');
+
+  const formal = detectKoreanRegister('주제만 주면 한 세트가 나옵니다. 직접 디자인할 필요가 없습니다. 캐러셀을 완성합니다. 바로 시작합니까?');
+  assert.equal(formal.register, 'formal');
+  assert.equal(formal.label, '합쇼체(-습니다)');
+
+  // High-recall polite endings: -세요/-나요/-죠 count, not just -어요/-네요.
+  const polite = detectKoreanRegister('막막하게 느껴지셨나요? 주제만 알려주세요. 한 세트가 뚝딱 나와요. 비용도 필요 없죠.');
+  assert.equal(polite.register, 'polite');
+  assert.equal(polite.shares.polite, 1);
+
+  const plain = detectKoreanRegister('이 글은 평서체로 쓴다. 어미가 다로 끝난다. 그래서 평서체이다. 자연스럽게 이어진다.');
+  assert.equal(plain.register, 'plain');
+});
+
+test('detectKoreanRegister reports mixed registers and refuses thin samples', async () => {
+  const { detectKoreanRegister } = await import('../../src/features/stylometry.js');
+
+  const mixed = detectKoreanRegister('어떤 글은 해요체예요. 다른 문장은 평서체다. 또 어떤 건 합니다. 이렇게 섞이면 어색해요. 그렇지만 다양하다. 혼합이다.');
+  assert.equal(mixed.register, 'mixed');
+  assert.equal(mixed.label, '혼합');
+  assert.equal(mixed.classified, 6);
+
+  // Fewer than three classified endings is noise, not a register.
+  assert.equal(detectKoreanRegister('짧다.'), null);
+  assert.equal(detectKoreanRegister('Hello world. This is English text only.'), null);
+});

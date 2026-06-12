@@ -357,6 +357,60 @@ function roundMetric(value) {
   return typeof value === 'number' && Number.isFinite(value) ? Number(value.toFixed(3)) : null;
 }
 
+// Deterministic dominant-register detection for Korean prose. Maps sentence
+// endings onto the three broad registers (formal -습니다, polite -요, plain
+// -다) and reports the dominant one, or 'mixed' when nothing clears the
+// threshold — register mixing across sentences is itself an AI tell that the
+// rewrite prompt calls out. Used by the document-brief pipeline stage; this
+// is an analysis-layer function and stays LLM-free.
+const REGISTER_DOMINANCE_THRESHOLD = 0.6;
+const REGISTER_LABELS = {
+  formal: '합쇼체(-습니다)',
+  polite: '해요체',
+  plain: '평서체(-다)',
+  mixed: '혼합',
+};
+
+export function detectKoreanRegister(text) {
+  const paragraphs = splitParagraphs(String(text ?? ''));
+  const sentences = paragraphs.flatMap((paragraph) => splitProseSentences(paragraph));
+  // Register classification needs higher recall than the postEditese ending
+  // sets (which are calibrated metrics inputs — widening them would shift the
+  // analyzer benchmark). Suffix rules on the final eojeol: -니다/-니까 formal,
+  // any -요/-죠 polite (covers 세요/나요/어요/까요…), remaining -다 plain.
+  const finals = sentences
+    .map((sentence) => koreanEojeols(sentence).at(-1) ?? '')
+    .map((eojeol) => eojeol.replace(/[.!?…"'」』)\]]+$/g, ''))
+    .filter(Boolean);
+  const counts = { formal: 0, polite: 0, plain: 0 };
+  for (const eojeol of finals) {
+    if (/(?:니다|니까)$/.test(eojeol)) counts.formal += 1;
+    else if (/[요죠]$/.test(eojeol)) counts.polite += 1;
+    else if (/다$/.test(eojeol)) counts.plain += 1;
+  }
+  const classified = counts.formal + counts.polite + counts.plain;
+  // Below three classified endings the distribution is noise, not a register.
+  if (classified < 3) return null;
+  const shares = {
+    formal: counts.formal / classified,
+    polite: counts.polite / classified,
+    plain: counts.plain / classified,
+  };
+  const dominant = Object.keys(shares).reduce((a, b) => (shares[b] > shares[a] ? b : a));
+  const register = shares[dominant] >= REGISTER_DOMINANCE_THRESHOLD ? dominant : 'mixed';
+  return {
+    register,
+    label: REGISTER_LABELS[register],
+    shares: {
+      formal: Math.round(shares.formal * 100) / 100,
+      polite: Math.round(shares.polite * 100) / 100,
+      plain: Math.round(shares.plain * 100) / 100,
+    },
+    classified,
+    sentenceCount: sentences.length,
+  };
+}
+
 export function koreanSpacingFeatures(paragraph) {
   const eojeols = koreanEojeols(paragraph);
   const lengths = eojeols.map(koreanLength).filter((length) => length > 0);

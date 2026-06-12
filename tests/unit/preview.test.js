@@ -11,6 +11,7 @@ import {
   resolveStreamedHtml,
   prepareSnapshotHtml,
   inlineSrcdocIframes,
+  buildContextCardHtml,
   freezeSnapshotAssets,
 } from '../../src/preview.js';
 
@@ -347,6 +348,38 @@ test('resolveStreamedHtml keeps fallbacks whose segment never streamed', () => {
   const html = '<body><!--$?--><template id="B:0"></template><p>still loading fallback text here</p><!--/$--></body>';
   const out = resolveStreamedHtml(html, [{ kind: 'boundary', targetId: 'B:0', contentId: 'S:0' }]);
   assert.ok(out.includes('still loading fallback text here'));
+});
+
+test('buildContextCardHtml renders register and tone rows, empty without either', () => {
+  const card = buildContextCardHtml({
+    register: { register: 'polite', label: '해요체', shares: { formal: 0.1, polite: 0.8, plain: 0.1 }, classified: 20, sentenceCount: 22 },
+    tone: { tone: 'marketing', tone_source: 'user' },
+  });
+  assert.ok(card.includes('ptna-ctx-card'));
+  assert.ok(card.includes('document context'));
+  assert.ok(card.includes('해요체'));
+  assert.ok(card.includes('합쇼체 10% · 해요체 80% · -다체 10%'));
+  assert.ok(card.includes('marketing'));
+
+  assert.strictEqual(buildContextCardHtml({}), '');
+  assert.strictEqual(buildContextCardHtml({ tone: { tone: null, tone_source: 'profile_only' } }), '');
+});
+
+test('buildFilePreviewHtml places the context card in the notes panel', () => {
+  const { html } = buildFilePreviewHtml({
+    originalText: 'original paragraph that is long enough to be a block.',
+    rewrittenText: 'rewritten paragraph that is long enough to be a block.',
+    sourcePath: '/tmp/x.md',
+    explanationHtml: '<article class="explain-card">why</article>',
+    contextCardHtml: buildContextCardHtml({
+      register: { register: 'formal', label: '합쇼체(-습니다)', shares: { formal: 0.9, polite: 0.05, plain: 0.05 }, classified: 10, sentenceCount: 10 },
+    }),
+  });
+  assert.ok(html.includes('<details class="ptna-notes">'));
+  const notes = html.slice(html.indexOf('<details class="ptna-notes">'));
+  // Context card comes first in the notes body, before the explanation.
+  assert.ok(notes.indexOf('ptna-ctx-card') < notes.indexOf('why'));
+  assert.ok(html.includes('합쇼체(-습니다)'));
 });
 
 test('inlineSrcdocIframes decodes srcdoc detail content into first-class DOM', () => {

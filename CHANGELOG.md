@@ -14,6 +14,9 @@ Semver rationale: patch | minor | major — explain whether this changes pattern
 
 ## Unreleased
 
+### Added
+- Document-brief rewrite stage: rewrite prompts (minimal and strict, plus the SKILL.md pipeline as step 4.8) now derive a whole-document frame — document type, speaker/audience, dominant register, domain terms — before editing, and unify all rewritten sentences to the document's dominant register. For Korean input the dominant register is measured deterministically (`detectKoreanRegister`, sentence-ending distribution) and injected as a "document signals" section; `--preview` shows the measurement in a *document context* notes card. Addresses rewrites that stayed AI-flavored because blocks were paraphrased without global context.
+
 ### Fixed
 - `--preview`: inlined `<iframe srcdoc>` detail content is no longer clipped by the host page's fixed-height `overflow:hidden` iframe wrapper — the adjacent sizing wrappers' inline height/overflow declarations are neutralized when the detail is inlined (#427).
 - `--preview`: inlined `<iframe srcdoc>` content now renders its viewport-relative CSS against the old iframe box instead of the window — the wrapper is a CSS container (`container-type:inline-size`) and the srcdoc's `vw` units and width-based `@media` queries are rewritten to container units/queries at inline time, so typography sizes and breakpoint layouts match the live page exactly (#430).

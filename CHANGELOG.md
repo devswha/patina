@@ -12,20 +12,26 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
-## Unreleased
+## 4.2.0 — 2026-06-12
+
+**In-place preview as the single review surface: file input, image-text OCR, full-page extraction coverage, live-design fidelity, and context-aware rewriting.**
+
+Semver rationale: minor — adds `--preview` file input, `--ocr`, the document-brief rewrite stage, and the extractor coverage rewrite; deprecates `--browser` behind a working alias (its stdout `--format` passthrough and any-extension input change under the deprecated flag, documented below rather than treated as breaking); the rest is preview-fidelity and sanitizer bug fixes. No API or schema removals.
 
 ### Added
+- `--preview` accepts local files, not just URLs (#423): `.html`/`.htm` runs through the same snapshot pipeline as a fetched page; `.md`/`.markdown`/`.txt` renders as a reading document. Both flows gain the diff page's remaining advantages — a collapsible "patina notes" explanation panel, a deterministic before/after score chip, and a three-state view toggle (rewritten / original / both, CSS-only). When the model merges or splits paragraphs, alignment falls back to LCS anchoring plus order-monotonic bigram-similarity pairing; unmatched blocks keep their original text instead of failing the run.
+- `--ocr` (#424): with `--preview` on URL/`.html` input, text baked into page images (card-news, banners, thumbnails) joins detection. Image-capable local CLI backends (`claude-cli`/`gemini-cli`/`codex-cli`) act as the vision layer — zero new dependencies, images staged into the backends' isolated temp dirs, the whole timeout/abort/fallback stack applies. Pixels can't be edited, so changed findings render as annotation cards embedding the exact OCR'd image, its text, and the suggested rewrite. Caps: 8 images/page by priority, 6MB/image (streamed), 16MB total; `file:` images only for local previews (SSRF guard).
+- URL extractor rewrite (#425): `extractProseBlocks` is now an attribute-aware single-pass tokenizer that recovers prose nested in rejected containers (`li>p`, wrapper divs), handles HTML5 optional end tags and React SSR empty-comment separators, and extracts leaf `div`/`section`/`article` copy. Measured visible-text coverage on real pages went from 16–55% to 73–84%.
 - Document-brief rewrite stage: rewrite prompts (minimal and strict, plus the SKILL.md pipeline as step 4.8) now derive a whole-document frame — document type, speaker/audience, dominant register, domain terms — before editing, and unify all rewritten sentences to the document's dominant register. For Korean input the dominant register is measured deterministically (`detectKoreanRegister`, sentence-ending distribution) and injected as a "document signals" section; `--preview` shows the measurement in a *document context* notes card. Addresses rewrites that stayed AI-flavored because blocks were paraphrased without global context.
 
 ### Fixed
+- `--preview` snapshot sanitizer is now a tag-aware walk (#425): neutralizes unclosed `<script>`, handlers hidden behind a `>` inside a quoted attribute, `/`- and quote-separated handler chains, and entity/control-encoded `javascript:` URLs; the page also carries a restrictive CSP (scripts/frames/objects blocked, passive assets allowed). `--ocr` image fetches from page content are SSRF-guarded — private/loopback/metadata addresses (including IPv4-mapped IPv6) refused unless same-host as the page, re-checked per redirect hop.
 - `--preview`: inlined `<iframe srcdoc>` detail content is no longer clipped by the host page's fixed-height `overflow:hidden` iframe wrapper — the adjacent sizing wrappers' inline height/overflow declarations are neutralized when the detail is inlined (#427).
 - `--preview`: inlined `<iframe srcdoc>` content now renders its viewport-relative CSS against the old iframe box instead of the window — the wrapper is a CSS container (`container-type:inline-size`) and the srcdoc's `vw` units and width-based `@media` queries are rewritten to container units/queries at inline time, so typography sizes and breakpoint layouts match the live page exactly (#430).
 - `--preview`: snapshots now freeze same-origin assets — stylesheets are inlined (relative `url()` absolutized against the stylesheet URL) and their same-origin fonts embedded as `data:` URIs — so pages render with their real CSS and web fonts even when the site blocks cross-site asset loads via Fetch Metadata, as Vercel-hosted sites do (#428).
 
 ### Deprecated
-- `--browser` is now an alias for `--preview` and prints a deprecation notice on stderr; the flag will be removed in 5.0. The in-place preview covers the old side-by-side diff page (the "both" view shows the rewrite next to the struck-through original) plus URL input, the score chip, and the notes panel. Behavior changes under the alias: stdout carries the rewritten prose only (the old byte-for-byte `--format` passthrough on stdout is gone), and input must match the preview contract (`.html`/`.md`/`.markdown`/`.txt`). The separate diff-page renderer was removed; `--serve` now documents against `--preview`.
-
-Semver rationale (for the next release): minor — the flag keeps working via the alias and warns; the stdout/extension contract change under a deprecated flag is called out here rather than treated as breaking.
+- `--browser` is now an alias for `--preview` and prints a deprecation notice on stderr; the flag will be removed in 5.0. The in-place preview covers the old side-by-side diff page (the "both" view shows the rewrite next to the struck-through original) plus URL input, the score chip, and the notes panel. Behavior changes under the alias: stdout carries the rewritten prose only (the old byte-for-byte `--format` passthrough on stdout is gone), and input must match the preview contract (`.html`/`.md`/`.markdown`/`.txt`). The separate diff-page renderer was removed; `--serve` now documents against `--preview` (#426).
 
 ## 4.1.0 — 2026-06-11
 

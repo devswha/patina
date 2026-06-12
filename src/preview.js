@@ -1,5 +1,6 @@
 import { htmlEscape, diffBlockPairs } from './browser-diff.js';
-import { describeImage } from './ocr.js';
+import { describeImage, fetchCappedBytes } from './ocr.js';
+import { isSubresourceFetchAllowed } from './security.js';
 
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 const DEFAULT_FETCH_TIMEOUT_MS = 30000;
@@ -74,15 +75,236 @@ export function prepareSnapshotHtml(html) {
 // so prose extraction never sees it. Decode each srcdoc, strip its active
 // content, and inline it as a <div> so the detail copy and images are
 // rewritten and annotated like the rest of the page.
+//
+// Inlining (rather than keeping the iframe and rewriting its srcdoc) is a
+// deliberate choice: an iframe is a separate document, so the scriptless
+// radio-hack toggle and the #ptna-N jump anchors could never reach content
+// kept inside one (issue #427 discussion).
 export function inlineSrcdocIframes(html) {
   // A double-quoted srcdoc holds its internal quotes entity-escaped, so
   // [^"]* is a safe capture; a single-quoted srcdoc may carry raw markup but
   // never a raw single quote.
   const iframeRe = /<iframe\b[^>]*\bsrcdoc=(?:"([^"]*)"|'([^']*)')[^>]*>(?:[\s\S]*?<\/iframe\s*>)?/gi;
-  return String(html ?? '').replace(iframeRe, (_, dq, sq) => {
+  const out = String(html ?? '').replace(iframeRe, (_, dq, sq) => {
     const decoded = stripActiveContent(decodeHtmlEntities(dq ?? sq ?? ''));
     return `<div class="ptna-srcdoc">${decoded}</div>`;
   });
+  return unclipSrcdocWrappers(out);
+}
+
+// Hosts size the original iframe with fixed-height overflow-hidden wrappers
+// (the live site resizes the iframe via JS, which the snapshot strips). The
+// inlined document is much taller than that box, so without this the whole
+// detail clips to the wrapper height (#427). Walk up the wrappers whose open
+// tag sits directly against the inlined div and neutralize their inline
+// height/overflow declarations. Class-based sizing can't be fixed from here;
+// the common Next.js pattern uses inline styles.
+const MAX_UNCLIP_DEPTH = 2;
+
+function unclipSrcdocWrappers(html) {
+  const MARKER = '<div class="ptna-srcdoc">';
+  let out = String(html);
+  let cursor = 0;
+  for (;;) {
+    const at = out.indexOf(MARKER, cursor);
+    if (at === -1) break;
+    let boundary = at;
+    let delta = 0;
+    for (let depth = 0; depth < MAX_UNCLIP_DEPTH; depth++) {
+      const prefix = out.slice(0, boundary);
+      const wrapper = /<(?:div|section|article)\b[^>]*\bstyle\s*=\s*("([^"]*)"|'([^']*)')[^>]*>\s*$/i.exec(prefix);
+      if (!wrapper) break;
+      const style = wrapper[2] ?? wrapper[3] ?? '';
+      if (!/overflow(?:-y)?\s*:\s*hidden/i.test(style) || !/(?:max-)?height\s*:/i.test(style)) break;
+      const fixed = style
+        .split(';')
+        .filter((decl) => !/^\s*(?:overflow(?:-y)?|height|max-height)\s*:/i.test(decl))
+        .join(';');
+      const quote = wrapper[1][0];
+      const replacement = wrapper[0].replace(wrapper[1], `${quote}${fixed}${quote}`);
+      out = prefix.slice(0, wrapper.index) + replacement + out.slice(boundary);
+      delta += replacement.length - wrapper[0].length;
+      boundary = wrapper.index;
+    }
+    cursor = at + delta + MARKER.length;
+  }
+  return out;
+}
+
+// Snapshot asset freezing (#428). Sites increasingly refuse cross-site
+// subresource loads via Fetch Metadata (Vercel returns 404 to any request
+// carrying Sec-Fetch-Site: cross-site) — and a saved snapshot opened from
+// file:// or a patina --serve origin is ALWAYS cross-site to the host page.
+// The <base href> strategy then silently loses every same-origin stylesheet
+// and web font, so the page renders unstyled / in fallback fonts. patina's
+// own fetch sends no fetch metadata and is not blocked, so at snapshot time:
+//
+//   1. same-origin <link rel="stylesheet"> targets are downloaded and inlined
+//      as <style> blocks, with relative url() references absolutized against
+//      the STYLESHEET's URL (they would otherwise re-resolve against the
+//      page-level <base href> and break);
+//   2. same-origin font files referenced by the inlined CSS are embedded as
+//      data: URIs (the preview CSP already allows font-src data:).
+//
+// Cross-origin sheets (e.g. font CDNs) are built for cross-site loading and
+// keep their <link>. Every fetch is SSRF-guarded (the URLs come from page
+// content) and capped; any failure keeps the original markup.
+const MAX_FROZEN_SHEETS = 8;
+const MAX_SHEET_BYTES = 1.5 * 1024 * 1024;
+const MAX_FONT_BYTES = 3 * 1024 * 1024; // Korean variable fonts run ~2MB
+const FREEZE_TOTAL_BUDGET = 12 * 1024 * 1024;
+const FONT_MIME_BY_EXT = { woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf' };
+
+export async function freezeSnapshotAssets(html, { baseUrl, signal, logger, fetchImpl = fetch, lookupImpl } = {}) {
+  let origin;
+  try {
+    origin = new URL(baseUrl).origin;
+  } catch {
+    return html;
+  }
+  if (!/^https?:$/.test(new URL(baseUrl).protocol)) return html;
+
+  const source = String(html ?? '');
+  const linkRe = /<link\b[^>]*>/gi;
+  const sheets = [];
+  let match;
+  while ((match = linkRe.exec(source)) !== null && sheets.length < MAX_FROZEN_SHEETS) {
+    const tag = match[0];
+    if (!/\brel\s*=\s*["']?stylesheet["']?/i.test(tag)) continue;
+    const href = /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i.exec(tag);
+    if (!href) continue;
+    let resolved;
+    try {
+      resolved = new URL(decodeHtmlEntities(href[1] ?? href[2] ?? href[3]), baseUrl);
+    } catch {
+      continue;
+    }
+    if (resolved.origin !== origin) continue;
+    sheets.push({ tag, url: resolved.href });
+  }
+  if (sheets.length === 0) return html;
+
+  let spent = 0;
+  let out = source;
+  const fontCache = new Map();
+  let sheetCount = 0;
+  let fontCount = 0;
+
+  for (const sheet of sheets) {
+    if (signal?.aborted) break;
+    try {
+      if (!(await isSubresourceFetchAllowed(sheet.url, { baseUrl, lookupImpl }))) {
+        throw new Error('private/internal address blocked');
+      }
+      if (spent >= FREEZE_TOTAL_BUDGET) throw new Error('freeze budget reached');
+      const bytes = await fetchCappedBytes(fetchImpl, sheet.url, {
+        signal,
+        maxBytes: MAX_SHEET_BYTES,
+        fetchTimeoutMs: 20000,
+        tooBig: 'stylesheet too large',
+        guardHop: (next) => isSubresourceFetchAllowed(next, { baseUrl, lookupImpl }),
+      });
+      spent += bytes.length;
+      let css = bytes.toString('utf8');
+      // A stylesheet that could close our <style> block must stay external —
+      // the page-level sanitizer and CSP still apply either way.
+      if (/<\/style/i.test(css)) throw new Error('stylesheet contains </style>');
+      css = absolutizeCssUrls(css, sheet.url);
+      const embedded = await embedFontsAsDataUris(css, {
+        sheetUrl: sheet.url,
+        origin,
+        baseUrl,
+        signal,
+        fetchImpl,
+        lookupImpl,
+        fontCache,
+        budget: () => FREEZE_TOTAL_BUDGET - spent,
+        onSpend: (n) => { spent += n; },
+      });
+      css = embedded.css;
+      fontCount += embedded.fontCount;
+      out = out.replace(sheet.tag, `<style data-ptna-frozen="${htmlEscape(sheet.url)}">${css}</style>`);
+      sheetCount += 1;
+    } catch (err) {
+      if (signal?.aborted) break;
+      logger?.warn?.('preview.freeze_skip', {
+        message: `[patina] Could not inline stylesheet ${sheet.url}: ${err?.message || 'fetch failed'}`,
+      });
+    }
+  }
+  if (sheetCount > 0) {
+    logger?.info?.('preview.freeze', {
+      message: `[patina] Snapshot assets frozen: ${sheetCount} stylesheet(s), ${fontCount} font(s) inlined.`,
+    });
+  }
+  return out;
+}
+
+const CSS_URL_RE = /\burl\(\s*(?:"([^"]+)"|'([^']+)'|([^)"'\s]+))\s*\)/gi;
+
+// Rewrite every relative url() in a fetched stylesheet to an absolute URL
+// resolved against the stylesheet's own location. Without this, inlining
+// moves the CSS into the page document and ../-style references re-resolve
+// against the page <base href> into garbage paths.
+function absolutizeCssUrls(css, sheetUrl) {
+  return css.replace(CSS_URL_RE, (full, dq, sq, bare) => {
+    const raw = (dq ?? sq ?? bare ?? '').trim();
+    if (!raw || raw.startsWith('data:') || raw.startsWith('#') || /^[a-z-]+\(/i.test(raw)) return full;
+    try {
+      return `url(${new URL(raw, sheetUrl).href})`;
+    } catch {
+      return full;
+    }
+  });
+}
+
+async function embedFontsAsDataUris(css, { origin, baseUrl, signal, fetchImpl, lookupImpl, fontCache, budget, onSpend }) {
+  const refs = [];
+  let m;
+  CSS_URL_RE.lastIndex = 0;
+  while ((m = CSS_URL_RE.exec(css)) !== null) {
+    const raw = (m[1] ?? m[2] ?? m[3] ?? '').trim();
+    const ext = /\.(woff2?|ttf|otf)(?:[?#]|$)/i.exec(raw)?.[1]?.toLowerCase();
+    if (!ext) continue;
+    try {
+      const url = new URL(raw);
+      if (url.origin !== origin) continue;
+      refs.push({ raw, url: url.href, ext });
+    } catch {
+      continue;
+    }
+  }
+
+  let fontCount = 0;
+  for (const ref of refs) {
+    if (signal?.aborted) break;
+    if (!fontCache.has(ref.url)) {
+      try {
+        if (budget() <= 0) throw new Error('freeze budget reached');
+        if (!(await isSubresourceFetchAllowed(ref.url, { baseUrl, lookupImpl }))) {
+          throw new Error('private/internal address blocked');
+        }
+        const bytes = await fetchCappedBytes(fetchImpl, ref.url, {
+          signal,
+          maxBytes: Math.min(MAX_FONT_BYTES, budget()),
+          fetchTimeoutMs: 20000,
+          tooBig: 'font too large',
+          guardHop: (next) => isSubresourceFetchAllowed(next, { baseUrl, lookupImpl }),
+        });
+        onSpend(bytes.length);
+        const mime = FONT_MIME_BY_EXT[ref.ext] || 'font/woff2';
+        fontCache.set(ref.url, `data:${mime};base64,${bytes.toString('base64')}`);
+      } catch {
+        fontCache.set(ref.url, null); // failed: keep the absolute URL
+      }
+    }
+    const dataUri = fontCache.get(ref.url);
+    if (dataUri && css.includes(`url(${ref.raw})`)) {
+      css = css.split(`url(${ref.raw})`).join(`url(${dataUri})`);
+      fontCount += 1;
+    }
+  }
+  return { css, fontCount };
 }
 
 function decodeHtmlEntities(value) {

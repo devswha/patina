@@ -14,6 +14,10 @@ Semver rationale: patch | minor | major — explain whether this changes pattern
 
 ## Unreleased
 
+### Fixed
+- `--preview`: inlined `<iframe srcdoc>` detail content is no longer clipped by the host page's fixed-height `overflow:hidden` iframe wrapper — the adjacent sizing wrappers' inline height/overflow declarations are neutralized when the detail is inlined (#427).
+- `--preview`: snapshots now freeze same-origin assets — stylesheets are inlined (relative `url()` absolutized against the stylesheet URL) and their same-origin fonts embedded as `data:` URIs — so pages render with their real CSS and web fonts even when the site blocks cross-site asset loads via Fetch Metadata, as Vercel-hosted sites do (#428).
+
 ### Deprecated
 - `--browser` is now an alias for `--preview` and prints a deprecation notice on stderr; the flag will be removed in 5.0. The in-place preview covers the old side-by-side diff page (the "both" view shows the rewrite next to the struck-through original) plus URL input, the score chip, and the notes panel. Behavior changes under the alias: stdout carries the rewritten prose only (the old byte-for-byte `--format` passthrough on stdout is gone), and input must match the preview contract (`.html`/`.md`/`.markdown`/`.txt`). The separate diff-page renderer was removed; `--serve` now documents against `--preview`.
 

@@ -7,6 +7,7 @@ const nodeGlobals = {
   console: 'readonly',
   clearTimeout: 'readonly',
   fetch: 'readonly',
+  Response: 'readonly',
   globalThis: 'readonly',
   Intl: 'readonly',
   process: 'readonly',

@@ -74,6 +74,9 @@ function buildSeverityOverrideNote(config) {
  * @param {string} options.text Input text.
  * @param {string} [options.mode=rewrite] Output mode.
  * @param {object|null} [options.tone=null] Tone resolution metadata.
+ * @param {string[]|null} [options.documentSignals=null] Deterministic document
+ *   measurements (e.g. dominant Korean register) injected into rewrite prompts
+ *   as ground truth for the Phase 0 document brief.
  * @returns {string} Complete prompt text.
  * @throws {TypeError} When `options.tone.tone_evidence` contains values JSON.stringify cannot serialize (circular references, BigInt).
  * @example
@@ -90,6 +93,7 @@ export function buildPrompt(options) {
     text,
     mode = 'rewrite',
     tone = null,
+    documentSignals = null,
   } = options;
   const promptMode = /** @type {any} */ (options).promptMode || 'strict';
   // v3.11+ internal backend prompt-style dispatch. The compact prompt strips
@@ -97,7 +101,7 @@ export function buildPrompt(options) {
   // to rewrite mode where voice prior matters most. Profile body is still passed
   // through (Round 2 found Gemini ignored casual-conversation when omitted).
   if (promptMode === 'minimal' && mode === 'rewrite') {
-    return buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone });
+    return buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, documentSignals });
   }
 
   const lang = config.language || 'ko';
@@ -180,6 +184,12 @@ export function buildPrompt(options) {
     }
   }
 
+  if (mode === 'rewrite' && Array.isArray(documentSignals) && documentSignals.length > 0) {
+    prompt += `## Document Signals (deterministic measurements)\n\n`;
+    prompt += documentSignals.map((signal) => `- ${signal}`).join('\n');
+    prompt += `\n\nTreat these as ground truth when forming the Phase 0 document brief.\n\n`;
+  }
+
   prompt += `## Instructions\n\n`;
   prompt += `Process the following text according to the output mode "${mode}".\n\n`;
 
@@ -208,6 +218,12 @@ function buildRewriteInstructions(
 ) {
   const phaseCount = includeSelfAudit ? 3 : 2;
   let inst = `Follow the ${phaseCount}-Phase pipeline:\n\n`;
+
+  // Document brief (Phase 0): rewrites that ignore what the document IS drift
+  // into the model's own default voice — the output stays AI-flavored even
+  // after every named pattern is fixed. Frame first, then edit.
+  inst += `### Phase 0: Document Brief (internal — never output)\n\n`;
+  inst += `Before any edit, read the whole input and fix in your head: what this document is (landing page / blog post / notice / documentation), who is speaking to whom, the document's dominant register and tone, and its recurring domain terms. Keep that frame for every edit below. Unify all rewritten sentences to the document's dominant register — register mixing across sentences is itself an AI tell. Reuse the document's own domain terms instead of generic synonyms.\n\n`;
 
   if (structurePacks.length > 0) {
     inst += `### Phase 1: Structure Scan\n\n`;
@@ -497,7 +513,7 @@ export function isShortText(text) {
 // model's natural voice prior isn't overridden by analytical framing. Only
 // invoked for rewrite mode; score/audit/diff/ouroboros stay on the strict
 // path because they need precise pattern references.
-function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone }) {
+function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, documentSignals = null }) {
   const lang = config.language || 'ko';
   const activePatterns = patterns.filter((p) => !p.isScoreOnly);
 
@@ -514,7 +530,20 @@ function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone
     ? `이 글이 AI가 쓴 것 같아 보여서 사람이 쓴 것처럼 자연스럽게 다듬어줘. 아래 어휘들이 보이면 자연스러운 한국어로 풀어줘. 무리하게 의역하지 말고 의미·숫자·인과관계는 그대로 보존해.`
     : `This text reads like AI. Rewrite it so it sounds like a real person wrote it. If you spot any of the phrases below, swap them out for something natural. Don't over-paraphrase — keep the meaning, numbers, and causation intact.`;
 
-  let prompt = `${instruction}\n\n`;
+  // Document brief: without a global frame the model paraphrases block by
+  // block in its own default voice and the result still reads AI. Same
+  // contract as the strict prompt's Phase 0.
+  const brief = lang === 'ko'
+    ? `고치기 전에 글 전체를 먼저 읽고 속으로 파악해 둬 — 이 글이 무엇인지(랜딩페이지/블로그/공지/문서), 누가 누구에게 말하는지, 지배 어투가 무엇인지(해요체/합니다체/-다체), 반복되는 핵심 용어가 무엇인지. 재작성 내내 그 틀을 유지하고, 어투는 글의 지배 어투 하나로 통일해 — 어투가 문장마다 오락가락하는 것 자체가 AI 신호야. 핵심 용어는 일반 동의어로 바꾸지 말고 글이 쓰는 표현 그대로 재사용해. 파악한 내용은 출력하지 말고 본문에만 반영해.`
+    : `Before editing, read the whole text and fix in your head: what this document is (landing page / blog post / notice / docs), who is speaking to whom, the dominant register and tone, and the recurring domain terms. Keep that frame throughout, unify every rewritten sentence to the document's dominant register — register drift between sentences is itself an AI tell — and reuse the document's own terms instead of generic synonyms. Never output this analysis; apply it to the body only.`;
+
+  let prompt = `${instruction}\n\n${brief}\n\n`;
+
+  if (Array.isArray(documentSignals) && documentSignals.length > 0) {
+    prompt += lang === 'ko' ? `## 문서 신호 (결정론 측정값)\n\n` : `## Document signals (measured)\n\n`;
+    prompt += documentSignals.map((signal) => `- ${signal}`).join('\n');
+    prompt += '\n\n';
+  }
   prompt += buildKoreanAdvisoryRewriteGuidance(lang);
   const cjkGuard = buildCjkClauseRewriteGuard(lang);
   if (cjkGuard) {

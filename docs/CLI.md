@@ -90,6 +90,11 @@ URL contract:
 - Works on server-rendered pages. Client-rendered SPAs ship an empty HTML shell, so there is nothing to extract — patina fails with a clear message instead of showing a blank snapshot.
 - If the model returns a different paragraph count than the extracted blocks, patina falls back to LCS anchoring plus order-monotonic bigram-similarity pairing; blocks with no confident partner keep their original text (reported on stderr) instead of failing the run.
 
+Document context (both URL and file input):
+- Rewrites run under a **document brief**: the prompt instructs the model to first identify what the document is, who is speaking to whom, the dominant register, and the recurring domain terms — and to keep that frame for every edit. All rewritten sentences are unified to the document's dominant register (register mixing is itself an AI tell).
+- For Korean text the dominant register is **measured deterministically** (sentence-ending distribution: 합쇼체/해요체/-다체) and injected into the prompt as ground truth; the "patina notes" panel shows the measurement in a *document context* card.
+- `--tone <casual|professional|academic|narrative|marketing|instructional|auto>` works with `--preview` and overrides the target tone; the register-unification rule still applies.
+
 File contract:
 - The whole file is rewritten (same scope as a plain rewrite) and rendered as a single reading document. Hunks are paired by LCS, so the model does not need to preserve paragraph counts.
 - stdout carries the rewritten prose (pipe-safe) in both forms; the page path and serve URL go to stderr.

@@ -71,6 +71,10 @@ Iterative self-improvement loop:
 
 Follow the 2-Phase pipeline:
 
+### Phase 0: Document Brief (internal — never output)
+
+Before any edit, read the whole input and fix in your head: what this document is (landing page / blog post / notice / documentation), who is speaking to whom, the document's dominant register and tone, and its recurring domain terms. Keep that frame for every edit below. Unify all rewritten sentences to the document's dominant register — register mixing across sentences is itself an AI tell. Reuse the document's own domain terms instead of generic synonyms.
+
 ### Phase 1: Structure Scan
 
 Apply the structure patterns to fix document-level issues:

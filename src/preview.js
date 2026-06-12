@@ -762,7 +762,27 @@ function bigramCounts(text) {
   return counts;
 }
 
-export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanationHtml = '', scoreChip = null, imageFindings = [] }) {
+// "Document context" card for the notes panel: shows the deterministic
+// register measurement (and resolved tone) that the rewrite was pinned to,
+// so the user can see — and contest — the frame patina applied.
+export function buildContextCardHtml({ register = null, tone = null } = {}) {
+  const rows = [];
+  if (register) {
+    const pct = (value) => `${Math.round(value * 100)}%`;
+    const distribution = `합쇼체 ${pct(register.shares.formal)} · 해요체 ${pct(register.shares.polite)} · -다체 ${pct(register.shares.plain)}`;
+    rows.push(`<div class="ptna-img-text"><span class="ptna-img-label">register</span>${htmlEscape(register.label)} — ${htmlEscape(distribution)}</div>`);
+    rows.push(`<div class="ptna-img-text"><span class="ptna-img-label">applied</span>${register.register === 'mixed'
+      ? '지배 어투 없음 — 한 어투로 통일하도록 지시됨'
+      : '재작성 전체를 이 어투로 통일하도록 지시됨'}</div>`);
+  }
+  if (tone?.tone && tone.tone !== 'auto') {
+    rows.push(`<div class="ptna-img-text"><span class="ptna-img-label">tone</span>${htmlEscape(tone.tone)} (${htmlEscape(tone.tone_source ?? 'user')})</div>`);
+  }
+  if (rows.length === 0) return '';
+  return `<article class="explain-card ptna-ctx-card"><div class="ptna-img-head"><strong>document context</strong></div>${rows.join('')}</article>`;
+}
+
+export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanationHtml = '', scoreChip = null, imageFindings = [], contextCardHtml = '' }) {
   let changedCount = 0;
   const planned = blocks.map((block, index) => {
     const rewritten = rewrites[index];
@@ -792,6 +812,7 @@ export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanatio
     scoreChip,
     imageCardsHtml: image.cardsHtml,
     imageChangedCount: image.changedCount,
+    contextCardHtml,
   });
   return { html: out, changedCount, totalCount: blocks.length, imageChangedCount: image.changedCount };
 }
@@ -838,7 +859,7 @@ function escapeRegExp(text) {
 // document of our own and reuse the same in-place chrome. LCS hunk pairing
 // (diffBlockPairs) means the model does not have to preserve paragraph
 // counts for file previews.
-export function buildFilePreviewHtml({ originalText, rewrittenText, sourcePath, explanationHtml = '', scoreChip = null }) {
+export function buildFilePreviewHtml({ originalText, rewrittenText, sourcePath, explanationHtml = '', scoreChip = null, contextCardHtml = '' }) {
   const pairs = diffBlockPairs(originalText, rewrittenText);
   let changedCount = 0;
   const doc = pairs.map((pair) => {
@@ -870,7 +891,7 @@ export function buildFilePreviewHtml({ originalText, rewrittenText, sourcePath, 
 </main>
 </body>
 </html>`;
-  const out = injectChrome(shell, { changedCount, totalCount, explanationHtml, scoreChip });
+  const out = injectChrome(shell, { changedCount, totalCount, explanationHtml, scoreChip, contextCardHtml });
   return { html: out, changedCount, totalCount };
 }
 
@@ -999,7 +1020,7 @@ function injectHead(html, sourceUrl) {
   return `<head>${injection}</head>${html}`;
 }
 
-function injectChrome(html, { changedCount, totalCount, explanationHtml = '', scoreChip = null, imageCardsHtml = '', imageChangedCount = 0 }) {
+function injectChrome(html, { changedCount, totalCount, explanationHtml = '', scoreChip = null, imageCardsHtml = '', imageChangedCount = 0, contextCardHtml = '' }) {
   const inputs = changedCount > 0
     ? '<input type="radio" name="ptna-view" id="ptna-v-rew" class="ptna-toggle-input" checked>'
       + '<input type="radio" name="ptna-view" id="ptna-v-orig" class="ptna-toggle-input">'
@@ -1019,7 +1040,7 @@ function injectChrome(html, { changedCount, totalCount, explanationHtml = '', sc
       + '<label class="ptna-view" for="ptna-v-both">both</label>'
       + '</div>'
     : '';
-  const notesBody = `${explanationHtml}${imageCardsHtml}`;
+  const notesBody = `${contextCardHtml}${explanationHtml}${imageCardsHtml}`;
   // Auto-open when there are image findings — they have no in-page diff, so a
   // collapsed panel would hide the only place they appear.
   const open = imageChangedCount > 0 ? ' open' : '';
@@ -1141,6 +1162,7 @@ const PREVIEW_CSS = `
 .ptna-img-text{margin:5px 0;line-height:1.6;}
 .ptna-img-label{display:inline-block;min-width:62px;font:600 9.5px/1.6 ui-monospace,Menlo,Consolas,monospace !important;text-transform:uppercase;letter-spacing:0.08em;color:#8da59a;vertical-align:top;}
 .ptna-img-suggest{color:#5fc4a8;}
+.ptna-ctx-card{border-left-color:#d8b66a !important;background:rgba(216,182,106,0.05) !important;}
 .ptna-views{display:inline-flex;border:1px solid rgba(141,165,154,0.4);border-radius:999px;overflow:hidden;}
 .ptna-view{padding:4px 11px;cursor:pointer;user-select:none;color:#8da59a;font:inherit;}
 .ptna-view:hover{color:#cfe2d8;}

@@ -581,6 +581,8 @@ describe('CLI End-to-End with Mock API', () => {
       ]));
 
       assert.strictEqual(mock.callCount, 2);
+      // Document-brief stage: the rewrite request primes a global frame.
+      assert.ok(mock.requestBodies[0].messages[0].content.includes('Phase 0: Document Brief'));
       assert.ok(previewRun.logs.join('\n').includes('First paragraph rewritten by the mock backend'));
       assert.ok(previewRun.errors.some((line) => line.includes('Preview page saved at /tmp/patina-preview-77/browser-diff-77.html (2 of 2 blocks rewritten)')));
       assert.deepStrictEqual(spawns, [{ command: 'xdg-open', args: ['/tmp/patina-preview-77/browser-diff-77.html'] }]);

@@ -18,11 +18,12 @@ import {
   openBrowserDiffPage,
   serveBrowserDiffPage,
 } from '../browser-diff.js';
-import { fetchPreviewPage, prepareSnapshotHtml, freezeSnapshotAssets, extractProseBlocks, alignRewrites, buildPreviewHtml, buildFilePreviewHtml } from '../preview.js';
+import { fetchPreviewPage, prepareSnapshotHtml, freezeSnapshotAssets, extractProseBlocks, alignRewrites, buildPreviewHtml, buildFilePreviewHtml, buildContextCardHtml } from '../preview.js';
 import { collectImageCandidates, stageOcrImages, ocrStagedImages, describeImage, hasOcrRunnerOverride } from '../ocr.js';
 import { rmSync } from 'node:fs';
 import { runOuroboros } from '../ouroboros.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
+import { detectKoreanRegister } from '../features/stylometry.js';
 import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput } from './batch.js';
 import { applyScoreGate, extractScoreOverall } from './score-gate.js';
 import { loadInputs } from './input.js';
@@ -196,6 +197,7 @@ export async function runDefault(parsed, logger) {
       mode,
       tone: toneResolution,
       promptMode,
+      documentSignals: mode === 'rewrite' ? buildDocumentSignals({ text, lang }).signals : null,
     }),
   }));
 
@@ -610,9 +612,15 @@ async function runPreviewJob({
     const rewriteText = [originalText, ...ocrImages.map((image) => image.text)]
       .filter(Boolean)
       .join('\n\n');
+    const documentContext = buildDocumentSignals({ text: rewriteText, lang: config.language || 'ko' });
     const rawResult = await invokeBackendChain({
       ...invokeInputs,
-      prompt: buildPrompt({ ...basePromptInputs, text: rewriteText, mode: 'rewrite' }),
+      prompt: buildPrompt({
+        ...basePromptInputs,
+        text: rewriteText,
+        mode: 'rewrite',
+        documentSignals: documentContext.signals,
+      }),
     });
     cancellation.throwIfCanceled();
     const rewrittenBody = formatRewriteBodyForBrowser(rawResult, { logger });
@@ -689,6 +697,7 @@ async function runPreviewJob({
         explanationHtml,
         scoreChip,
         imageFindings,
+        contextCardHtml: buildContextCardHtml({ register: documentContext.register, tone: toneResolution }),
       });
     } else {
       built = buildFilePreviewHtml({
@@ -697,6 +706,7 @@ async function runPreviewJob({
         sourcePath,
         explanationHtml,
         scoreChip,
+        contextCardHtml: buildContextCardHtml({ register: documentContext.register, tone: toneResolution }),
       });
     }
     console.log(stdoutBody);
@@ -784,6 +794,21 @@ async function runOcrStage({ pageHtml, sourceUrl, parsed, backends, resolved, ti
   } finally {
     try { rmSync(dir, { recursive: true, force: true }); } catch {}
   }
+}
+
+// Deterministic document signals for the rewrite prompt (document-brief
+// stage). Korean only for now: the dominant register is measured, not
+// guessed, so the model gets it as ground truth instead of re-deriving it.
+function buildDocumentSignals({ text, lang }) {
+  if (lang !== 'ko') return { signals: [], register: null };
+  const register = detectKoreanRegister(text);
+  if (!register) return { signals: [], register: null };
+  const pct = (value) => `${Math.round(value * 100)}%`;
+  const distribution = `합쇼체 ${pct(register.shares.formal)} · 해요체 ${pct(register.shares.polite)} · -다체 ${pct(register.shares.plain)} (문장 ${register.classified}개 기준)`;
+  const signals = register.register === 'mixed'
+    ? [`어미 분포: ${distribution} — 지배 어투 없음(혼합). 문서 성격에 맞는 어투 하나를 골라 전체를 통일할 것`]
+    : [`지배 어투: ${register.label} — ${distribution}. 재작성 문장 전체를 이 어투로 통일할 것`];
+  return { signals, register };
 }
 
 function withDeterministicScore(rawResult, { text, config, repoRoot, logger }) {

@@ -678,3 +678,95 @@ test('fetchPreviewPage aborts on timeout', async () => {
     /timed out/,
   );
 });
+
+test('fetchPreviewPage guards every redirect hop against private/internal targets (#439)', async () => {
+  const respond = (init = {}) => ({
+    ok: (init.status ?? 200) >= 200 && (init.status ?? 200) < 300,
+    status: init.status ?? 200,
+    url: init.url ?? '',
+    headers: { get: (name) => ({ 'content-type': 'text/html; charset=utf-8', ...init.headers })[name.toLowerCase()] ?? null },
+    text: async () => init.body ?? '',
+  });
+  const routed = (routes) => {
+    const seen = [];
+    const fetchImpl = async (url, opts) => {
+      seen.push({ url, redirect: opts.redirect });
+      const route = routes[url];
+      assert.ok(route, `unexpected fetch: ${url}`);
+      return respond(route);
+    };
+    return { fetchImpl, seen };
+  };
+
+  // A hostile public page must not 30x the preview into private space:
+  // the final hop becomes baseUrl, which would wave through every
+  // same-host subresource fetch afterwards.
+  for (const target of ['http://192.168.1.10/', 'http://169.254.169.254/latest/meta-data/', 'http://127.0.0.1:8080/']) {
+    const { fetchImpl, seen } = routed({
+      'https://evil.test/': { status: 302, headers: { location: target } },
+    });
+    await assert.rejects(
+      () => fetchPreviewPage('https://evil.test/', { fetchImpl }),
+      /private\/internal address/,
+    );
+    // The private target itself is never fetched.
+    assert.deepStrictEqual(seen.map((s) => s.url), ['https://evil.test/']);
+  }
+
+  // Hostnames that RESOLVE private are blocked too (lookupImpl injectable).
+  {
+    const { fetchImpl } = routed({
+      'https://evil.test/': { status: 301, headers: { location: 'https://rebind.test/' } },
+    });
+    await assert.rejects(
+      () => fetchPreviewPage('https://evil.test/', {
+        fetchImpl,
+        lookupImpl: async () => [{ address: '10.0.0.5', family: 4 }],
+      }),
+      /private\/internal address/,
+    );
+  }
+
+  // Public-to-public redirects still work; finalUrl is the last hop and
+  // every hop uses redirect: 'manual'.
+  {
+    const { fetchImpl, seen } = routed({
+      'https://example.test/': { status: 302, headers: { location: '/moved' } },
+      'https://example.test/moved': { status: 301, headers: { location: 'https://other.test/page' } },
+      'https://other.test/page': { body: '<p>final</p>' },
+    });
+    const result = await fetchPreviewPage('https://example.test/', {
+      fetchImpl,
+      lookupImpl: async () => [{ address: '93.184.216.34', family: 4 }],
+    });
+    assert.strictEqual(result.html, '<p>final</p>');
+    assert.strictEqual(result.finalUrl, 'https://other.test/page');
+    assert.ok(seen.every((s) => s.redirect === 'manual'));
+  }
+
+  // A user-typed private URL may redirect within its own host (localhost
+  // dev servers stay usable), mirroring the subresource same-host rule.
+  {
+    const { fetchImpl } = routed({
+      'http://127.0.0.1:3000/': { status: 302, headers: { location: '/app' } },
+      'http://127.0.0.1:3000/app': { body: '<p>dev</p>' },
+    });
+    const result = await fetchPreviewPage('http://127.0.0.1:3000/', { fetchImpl });
+    assert.strictEqual(result.html, '<p>dev</p>');
+    assert.strictEqual(result.finalUrl, 'http://127.0.0.1:3000/app');
+  }
+
+  // Redirect loops are cut off instead of spinning forever.
+  {
+    const { fetchImpl } = routed({
+      'https://loop.test/': { status: 302, headers: { location: 'https://loop.test/' } },
+    });
+    await assert.rejects(
+      () => fetchPreviewPage('https://loop.test/', {
+        fetchImpl,
+        lookupImpl: async () => [{ address: '93.184.216.34', family: 4 }],
+      }),
+      /redirected too many times/,
+    );
+  }
+});

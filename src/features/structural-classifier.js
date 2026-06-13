@@ -84,7 +84,13 @@ export function trainLogReg(X, y, { lr = 0.1, epochs = 2000, l2 = 0.01 } = {}) {
     b -= lr * (gradientB / Z.length);
   }
 
-  return { weights: w, bias: b, scaler, featureNames: STRUCTURAL_FEATURE_NAMES };
+  // Only stamp this patina version's feature names onto models actually
+  // trained at that width; a toy/experimental model must not masquerade as a
+  // STRUCTURAL_FEATURE_NAMES-compatible model (normalizeStructuralModel
+  // rejects non-matching widths at load time, issue #436).
+  return width === STRUCTURAL_FEATURE_NAMES.length
+    ? { weights: w, bias: b, scaler, featureNames: STRUCTURAL_FEATURE_NAMES }
+    : { weights: w, bias: b, scaler };
 }
 
 export function normalizeStructuralModel(model) {
@@ -102,6 +108,18 @@ export function normalizeStructuralModel(model) {
   }
   if (weights.length !== scaler.mu.length || weights.length !== scaler.sigma.length) {
     throw new TypeError('structural model dimensions must match scaler dimensions');
+  }
+  // Dimension must match THIS patina version's feature extractor, even when
+  // the optional featureNames field is absent (issue #436). Otherwise a
+  // self-consistent model trained against an older feature set loads cleanly
+  // and only explodes at predict time, deep inside analyzeText — past the
+  // call sites that handle load errors (audit aborts untyped; scoring.js
+  // silently zeroes the whole deterministic shadow score, including the
+  // markup-leakage floor).
+  if (weights.length !== STRUCTURAL_FEATURE_NAMES.length) {
+    throw new TypeError(
+      `structural model expects ${weights.length} features but this patina version extracts ${STRUCTURAL_FEATURE_NAMES.length} (${STRUCTURAL_FEATURE_NAMES.join(', ')}); retrain the model against the current feature set`,
+    );
   }
   if (weights.some((value) => !Number.isFinite(value)) || scaler.mu.some((value) => !Number.isFinite(value)) || scaler.sigma.some((value) => !Number.isFinite(value))) {
     throw new TypeError('structural model values must be finite numbers');

@@ -7,6 +7,7 @@ import {
   extractStructuralFeatures,
   structuralFeatureRecord,
   structuralModelVerdict,
+  normalizeStructuralModel,
   trainLogReg,
   predictStructuralScore,
 } from '../../src/features/index.js';
@@ -71,10 +72,41 @@ test('structural model refuses the wrong language instead of scoring silently', 
 });
 
 test('logistic helper trains and scores a simple separable toy model', () => {
-  const X = [[0], [0.1], [1], [1.1]];
+  // Rows use the real feature width: predictStructuralScore normalizes the
+  // model, and normalizeStructuralModel rejects any other dimension (#436).
+  const row = (v) => [v, ...new Array(STRUCTURAL_FEATURE_NAMES.length - 1).fill(0)];
+  const X = [row(0), row(0.1), row(1), row(1.1)];
   const y = [0, 0, 1, 1];
   const model = trainLogReg(X, y, { lr: 0.2, epochs: 400, l2: 0 });
 
-  assert.ok(predictStructuralScore(model, [0]) < 0.5);
-  assert.ok(predictStructuralScore(model, [1.1]) > 0.5);
+  assert.deepEqual(model.featureNames, STRUCTURAL_FEATURE_NAMES);
+  assert.ok(predictStructuralScore(model, row(0)) < 0.5);
+  assert.ok(predictStructuralScore(model, row(1.1)) > 0.5);
+});
+
+test('trainLogReg does not stamp featureNames onto models of another width (#436)', () => {
+  const model = trainLogReg([[0], [1]], [0, 1], { lr: 0.2, epochs: 50, l2: 0 });
+  assert.equal('featureNames' in model, false);
+});
+
+test('normalizeStructuralModel rejects models not trained at this feature width (#436)', () => {
+  // Self-consistent (weights match scaler) but 8-wide and without the
+  // optional featureNames field — the exact shape of a stale model trained
+  // against an older feature set. Must fail at load time, not at predict
+  // time inside analyzeText.
+  const stale = {
+    lang: 'ko',
+    weights: new Array(8).fill(0.5),
+    bias: 0,
+    threshold: 0.5,
+    scaler: { mu: new Array(8).fill(0), sigma: new Array(8).fill(1) },
+  };
+  assert.throws(
+    () => normalizeStructuralModel(stale),
+    /expects 8 features but this patina version extracts 12/,
+  );
+  assert.throws(
+    () => structuralModelVerdict('오늘은 날씨가 좋았다. 점심을 먹었다.', { lang: 'ko', model: stale }),
+    /expects 8 features/,
+  );
 });

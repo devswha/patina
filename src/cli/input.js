@@ -1,8 +1,10 @@
 import { loadInputText } from '../loader.js';
 import { inputError } from '../errors.js';
-import { createLogger } from '../logger.js';
 
-export async function loadInputs(parsed, logger = createLogger()) {
+// The second parameter used to be a logger for the stdin prompt; the prompt
+// now writes straight to stderr (#440). Kept as `_logger` so existing callers
+// passing a logger stay source-compatible.
+export async function loadInputs(parsed, _logger) {
   if (parsed.files.length === 0) {
     if (process.stdin.isTTY) {
       if (parsed.noInteractive) {
@@ -12,7 +14,10 @@ export async function loadInputs(parsed, logger = createLogger()) {
           'Pass a file path, pipe text via stdin, or omit --no-interactive to paste text and press Ctrl-D.'
         );
       }
-      logger.info('stdin.prompt', { message: '[patina] Paste text, then press Ctrl-D to run (Ctrl-C to cancel).' });
+      // Interaction-critical UI, not a status log: --quiet silences the
+      // logger, which would leave a TTY user blocked on Ctrl-D with zero
+      // indication (#440). Write straight to stderr.
+      process.stderr.write('[patina] Paste text, then press Ctrl-D to run (Ctrl-C to cancel).\n');
     }
     const stdin = await readStdin({ interactive: Boolean(process.stdin.isTTY) });
     if (!stdin.trim()) {

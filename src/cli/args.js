@@ -1,14 +1,74 @@
 import { listBackendNames } from '../backends/index.js';
 import { inputError } from '../errors.js';
+import { basename } from 'node:path';
 
-export function parseArgs(args) {
+// Options that consume the next token as their value. Drives --name=value
+// expansion and the --suffix flag-collision backstop (#440).
+const VALUE_OPTIONS = new Set([
+  '--lang', '--profile', '--tone', '--voice-sample', '--format', '--exit-on',
+  '--suffix', '--outdir', '--model', '--api-key-file', '--base-url',
+  '--backend', '--timeout-ms', '--max-concurrency', '--max-retries',
+  '--max-failures', '--max-failure-rate', '--provider', '--config',
+]);
+
+// Boolean switches. Used to reject `--quiet=1`-style values explicitly and to
+// catch a flag name swallowed as another option's value.
+const FLAG_OPTIONS = new Set([
+  '--help', '-h', '--version', '-v', '--browser', '--preview', '--ocr',
+  '--serve', '--diff', '--no-color', '--audit', '--score', '--quiet',
+  '--ouroboros', '--batch', '--in-place', '--allow-private-base-url',
+  '--stop-on-retryable-storm', '--no-stop-on-retryable-storm',
+  '--list-backends', '--allow-insecure-base-url', '--no-interactive',
+]);
+
+// Expand `--name=value` into two tokens for known value-taking options and
+// reject `=value` on boolean switches. Tokens after a `--` end-of-options
+// separator pass through untouched so dash-prefixed file names stay usable.
+function expandArgs(args) {
+  const expanded = [];
+  let afterSeparator = false;
+  for (const token of args) {
+    if (afterSeparator || token === '--') {
+      if (token === '--') afterSeparator = true;
+      expanded.push(token);
+      continue;
+    }
+    const eq = token.startsWith('--') ? token.indexOf('=') : -1;
+    if (eq > 2) {
+      const name = token.slice(0, eq);
+      if (VALUE_OPTIONS.has(name)) {
+        expanded.push(name, token.slice(eq + 1));
+        continue;
+      }
+      if (FLAG_OPTIONS.has(name)) {
+        throw inputError(
+          `${name} does not take a value`,
+          `Received "${token}", but ${name} is an on/off switch.`,
+          `Pass ${name} by itself.`
+        );
+      }
+      // Unknown --x=y falls through to the unknown-option error below.
+    }
+    expanded.push(token);
+  }
+  return expanded;
+}
+
+export function parseArgs(rawArgs) {
   const parsed = {
     files: [],
     format: 'markdown',
   };
+  const args = expandArgs(rawArgs);
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
+    if (arg === '--') {
+      // End-of-options separator: everything after it is a file path, even
+      // when it starts with '-' (#440).
+      parsed.files.push(...args.slice(i + 1));
+      break;
+    }
     switch (arg) {
       case '--help':
       case '-h':
@@ -87,7 +147,7 @@ export function parseArgs(args) {
       case '--exit-on': {
         const value = readOptionValue(args, i, arg, { allowFlagLike: true });
         i++;
-        const n = Number(value);
+        const n = numericOptionValue(value);
         if (!Number.isFinite(n) || n < 0 || n > 100) {
           throw inputError(
             '--exit-on expects a number from 0 to 100',
@@ -107,10 +167,22 @@ export function parseArgs(args) {
       case '--in-place':
         parsed.inPlace = true;
         break;
-      case '--suffix':
-        parsed.suffix = readOptionValue(args, i, arg, { allowFlagLike: true });
+      case '--suffix': {
+        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
         i++;
+        // allowFlagLike keeps `-humanized` usable, but a KNOWN flag name here
+        // means the value was omitted and the next option got swallowed
+        // (`--suffix --batch` would silently disable batch mode, #440).
+        if (VALUE_OPTIONS.has(value) || FLAG_OPTIONS.has(value) || value === '--') {
+          throw inputError(
+            '--suffix requires a value',
+            `"${value}" is a patina flag, so the suffix value was probably omitted.`,
+            'Use `patina --batch --suffix -humanized <files>` (the suffix may start with "-").'
+          );
+        }
+        parsed.suffix = value;
         break;
+      }
       case '--outdir':
         parsed.outdir = readOptionValue(args, i, arg);
         i++;
@@ -166,6 +238,12 @@ export function parseArgs(args) {
       }
       case '--stop-on-retryable-storm':
         parsed.stopOnRetryableStorm = true;
+        break;
+      case '--no-stop-on-retryable-storm':
+        // Storm stopping is ON by default in batch mode; this is the only
+        // way to turn it off (#440 — the positive flag alone was a no-op
+        // presented as opt-in).
+        parsed.stopOnRetryableStorm = false;
         break;
       case '--list-backends':
         parsed.listBackends = true;
@@ -267,6 +345,48 @@ export function validateServeRequest(parsed) {
   }
 }
 
+// Output routing flags are batch-only and mutually exclusive. Without this,
+// `patina --in-place draft.md` silently prints to stdout (never overwriting),
+// combined destinations apply hidden precedence, and --outdir can collapse
+// distinct inputs onto one output file (#440).
+export function validateOutputRouting(parsed) {
+  const destinations = [
+    parsed.inPlace ? '--in-place' : null,
+    parsed.suffix !== undefined ? '--suffix' : null,
+    parsed.outdir !== undefined ? '--outdir' : null,
+  ].filter(Boolean);
+  if (destinations.length === 0) return;
+  if (!parsed.batch) {
+    throw inputError(
+      `${destinations[0]} requires --batch`,
+      'Output routing flags only apply to batch mode; without --batch the result goes to stdout.',
+      `Run \`patina --batch ${destinations[0]}${destinations[0] === '--in-place' ? '' : ' <value>'} <files>\`.`
+    );
+  }
+  if (destinations.length > 1) {
+    throw inputError(
+      `${destinations[0]} and ${destinations[1]} cannot be combined`,
+      'Each batch run writes to exactly one destination; combining them would silently pick one.',
+      'Pick one of --in-place, --suffix, or --outdir.'
+    );
+  }
+  if (parsed.outdir !== undefined) {
+    const seen = new Map();
+    for (const file of parsed.files) {
+      const base = basename(file);
+      const prior = seen.get(base);
+      if (prior !== undefined && prior !== file) {
+        throw inputError(
+          `--outdir would overwrite ${base}`,
+          `Both "${prior}" and "${file}" map to the same output file in ${parsed.outdir}.`,
+          'Rename the inputs, or use --suffix / --in-place to keep outputs beside their sources.'
+        );
+      }
+      seen.set(base, file);
+    }
+  }
+}
+
 function readOptionValue(args, index, option, { allowFlagLike = false } = {}) {
   const value = args[index + 1];
   if (value === undefined || (!allowFlagLike && value.startsWith('-'))) {
@@ -279,8 +399,15 @@ function readOptionValue(args, index, option, { allowFlagLike = false } = {}) {
   return value;
 }
 
+// Number('') === 0 and Number('  ') === 0, so a shell-quoting mistake like
+// `--max-retries ""` would silently become 0 (#440). Blank values are NaN.
+function numericOptionValue(value) {
+  if (value === undefined || String(value).trim() === '') return NaN;
+  return Number(value);
+}
+
 function parsePositiveIntegerOption(value, option) {
-  const n = Number(value);
+  const n = numericOptionValue(value);
   if (!Number.isInteger(n) || n <= 0) {
     throw inputError(
       `${option} expects a positive integer`,
@@ -292,7 +419,7 @@ function parsePositiveIntegerOption(value, option) {
 }
 
 function parseNonNegativeIntegerOption(value, option) {
-  const n = Number(value);
+  const n = numericOptionValue(value);
   if (!Number.isInteger(n) || n < 0) {
     throw inputError(
       `${option} expects a non-negative integer`,
@@ -304,7 +431,7 @@ function parseNonNegativeIntegerOption(value, option) {
 }
 
 function parseFailureRateOption(value, option) {
-  const n = Number(value);
+  const n = numericOptionValue(value);
   if (!Number.isFinite(n) || n < 0) {
     throw inputError(
       `${option} expects a ratio or percent`,
@@ -356,13 +483,14 @@ OUTPUT & BATCH
   --format <fmt>          Stdout format: markdown (default), text, json
   --quiet                 Suppress patina status/warning logs on stderr
   --batch                 Process multiple files
-  --in-place              Overwrite original files (with --batch)
-  --suffix <ext>          Save as {name}{ext}{extname}
-  --outdir <dir>          Save results to directory
+  --in-place              Overwrite original files (requires --batch)
+  --suffix <ext>          Save as {name}{ext}{extname} (requires --batch)
+  --outdir <dir>          Save results to directory (requires --batch)
   --max-failures <n>      Stop batch after n failed files
   --max-failure-rate <r>  Stop batch when failure ratio exceeds r (0.25 or 25)
-  --stop-on-retryable-storm
-                          Stop batch after repeated 429/timeouts/empty local-CLI exits
+  --no-stop-on-retryable-storm
+                          Keep going through repeated 429/timeout/temporary-exit
+                          storms (storm stopping is on by default in batch mode)
   --no-interactive        Do not wait for TTY stdin; exit 2 when no input is given
 
 LANGUAGE & PROFILE

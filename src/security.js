@@ -40,7 +40,11 @@ export function validateProfileName(name) {
 export function isLoopbackHost(hostname) {
   if (!hostname) return false;
   if (hostname === 'localhost') return true;
-  if (hostname === '127.0.0.1' || hostname.startsWith('127.')) return true;
+  // 127/8 is loopback, but only for real IPv4 literals — a DNS name like
+  // '127.attacker.example' starts with '127.' yet must NOT be exempted from
+  // the plaintext-HTTP guard (it would leak the Bearer token in cleartext to a
+  // non-loopback host, #448).
+  if (isIP(hostname) === 4 && hostname.startsWith('127.')) return true;
   if (hostname === '::1' || hostname === '[::1]') return true;
   return false;
 }

@@ -1,3 +1,24 @@
+// Backend resilience contract — single owner per concern (C3).
+//
+// To avoid duplicated or compounding retries, each resilience concern has
+// exactly ONE owner:
+//
+//   * Transport retry (same provider, same request) — src/api.js `callLLM`.
+//     Retries up to `maxRetries` times on retryable HTTP/network errors with
+//     exponential backoff + jitter, bounded by the deadline. CLI backends pass
+//     maxRetries=0 (see BACKEND_SAFETY_DEFAULTS) so they never transport-retry.
+//   * Backend fallback (different backend) — src/backends/index.js
+//     `invokeBackendChain`. On a retryable error it advances to the NEXT backend
+//     in the chain; it NEVER re-invokes the same backend (that is transport
+//     retry's job). `isRetryableBackendError` (here) is the shared predicate.
+//   * Schema retry (re-ask for valid JSON) — src/scoring.js `callAndParseJson`.
+//     Exactly one extra attempt at temperature 0 on a JSON-parse/schema failure.
+//   * Timeout & concurrency — this module: `DEFAULT_BACKEND_TIMEOUT_MS`,
+//     `resolveBackendMaxConcurrency`, `withBackendConcurrencySlot`,
+//     `resolveBackendMaxRetries`.
+//
+// Defaults are intentionally stable; changing a retry path means changing its
+// single owner here or in the file named above, never adding a parallel one.
 import { spawn } from 'node:child_process';
 import { copyFileSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';

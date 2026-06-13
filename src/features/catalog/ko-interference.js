@@ -68,7 +68,11 @@ export const KO_INTERFERENCE_TRANSLATIONESE_RULES = [
     label: '연결어미 뒤 쉼표 (-고,/-며,/-지만,)',
     strong: false,
     minCount: 2,
-    re: () => /(?:고|며|지만|면서|아서|어서)\s*,/g,
+    // The 고 arm excludes common 고-final nouns (참고/광고/사고/경고/공고/원고/최고/
+    // 중고/창고/재고…) so plain noun lists do not feed the evidence gate (#442);
+    // 보다(보고) and similar verb stems stay matchable. 며/지만/면서/아서/어서 are
+    // unambiguous connective endings and need no guard.
+    re: () => /(?:며|지만|면서|아서|어서)\s*,|(?<![참광사신경충권예공원최중창재])고\s*,/g,
     example: { before: '그는 자료를 검토하고, 결과를 정리하며, 보고서를 작성했다.', after: '그는 자료를 검토하고 결과를 정리한 뒤 보고서를 작성했다.' },
   },
 ];

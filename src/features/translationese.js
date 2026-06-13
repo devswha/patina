@@ -39,7 +39,9 @@ const RULES = [
     id: 'direct-address-you',
     label: '"당신" 직접 호칭 (English "you")',
     strong: true,
-    re: () => /당신(?:은|이|의|에게|을|를|께서|께)?/g,
+    // Hangul boundary guards (matching a16-pronoun-literal) keep 당신 out of
+    // unspaced compounds like 해당신청 / 사당신축 (#442).
+    re: () => /(?<![가-힣])당신(?:은|이|의|에게|을|를|께서|께)?(?![가-힣])/g,
     example: { before: '당신은 이것을 설정할 수 있습니다.', after: '이건 설정할 수 있다.' },
   },
   getKoInterferenceRule('a16-pronoun-literal'),

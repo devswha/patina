@@ -50,6 +50,21 @@ test('thematic break does not fire on normal markdown with one rule', () => {
   assert.equal(detectThematicBreaks(md).hot, false);
 });
 
+test('setext H2 underlines and YAML frontmatter are not counted as dividers (#442)', () => {
+  // Three setext H2 underlines (--- directly under a prose line) must NOT trip
+  // the divider gate.
+  const setext = 'Intro line\n---\n\nbody\n\nSection one\n---\n\nmore\n\nSection two\n---\n';
+  assert.equal(detectThematicBreaks(setext).count, 0);
+  assert.equal(detectThematicBreaks(setext).hot, false);
+  // Real YAML frontmatter plus a single genuine divider stays below the gate.
+  const fm = '---\ntitle: Post\ntags: [a, b]\n---\n\n# Heading\n\nbody\n\n---\n\nfooter';
+  assert.equal(detectThematicBreaks(fm).count, 1);
+  assert.equal(detectThematicBreaks(fm).hot, false);
+  // A divider preceded by a blank line is still a real divider.
+  const real = 'A\n\n---\n\nB\n\n---\n\nC\n\n---\n\nD';
+  assert.equal(detectThematicBreaks(real).count, 3);
+});
+
 test('detectDiscourseTells aggregates both', () => {
   const r = detectDiscourseTells("Here's the thing. The truth is, this works.\n\n---\n\nmore");
   assert.equal(r.fakeCandor.hot, true);

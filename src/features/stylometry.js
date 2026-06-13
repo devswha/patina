@@ -119,17 +119,45 @@ export function burstinessCV(sentenceTokenCounts) {
 
 // Moving Average Type-Token Ratio (window default 50).
 // Falls back to simple TTR when token count < window.
+//
+// Rolling implementation: keeps a running unique-token count over a sliding
+// window (O(n)) instead of rebuilding a Set per window position (O(n*window)).
+// This is bit-identical to the slice+Set form because each window's unique
+// count equals `new Set(slice).size`, and the per-window terms `unique / window`
+// are accumulated in the same left-to-right order, so `sum / count` is exact.
 export function mattr(tokens, window = DEFAULT_MATTR_WINDOW) {
   if (!Array.isArray(tokens) || tokens.length === 0) return null;
   const lower = tokens.map((t) => t.toLowerCase());
-  if (lower.length < window) {
-    return new Set(lower).size / lower.length;
+  const n = lower.length;
+  if (n < window) {
+    return new Set(lower).size / n;
   }
-  let sum = 0;
-  let count = 0;
-  for (let i = 0; i + window <= lower.length; i++) {
-    const slice = lower.slice(i, i + window);
-    sum += new Set(slice).size / window;
+  // Initialize the first window [0, window).
+  const counts = new Map();
+  let unique = 0;
+  for (let i = 0; i < window; i++) {
+    const tok = lower[i];
+    const prev = counts.get(tok) || 0;
+    if (prev === 0) unique++;
+    counts.set(tok, prev + 1);
+  }
+  let sum = unique / window;
+  let count = 1;
+  // Slide one token at a time; window position i covers [i, i + window).
+  for (let i = 1; i + window <= n; i++) {
+    const out = lower[i - 1];
+    const outCount = counts.get(out);
+    if (outCount === 1) {
+      counts.delete(out);
+      unique--;
+    } else {
+      counts.set(out, outCount - 1);
+    }
+    const inc = lower[i + window - 1];
+    const inCount = counts.get(inc) || 0;
+    if (inCount === 0) unique++;
+    counts.set(inc, inCount + 1);
+    sum += unique / window;
     count++;
   }
   return sum / count;

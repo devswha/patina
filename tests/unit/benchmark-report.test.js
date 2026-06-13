@@ -67,6 +67,9 @@ function benchmarkResults(overrides = {}) {
       },
       perLanguage: {},
     },
+    slices: {
+      language: { minCount: 5, values: { en: { n: 1, tp: 1, fp: 0, fn: 0, tn: 0, accuracy: null, precision: null, recall: null, f1: null, supported: false, reason: 'insufficient_data' } } },
+    },
     fixtures: [
       {
         fixture_id: 'unit-ai-01',

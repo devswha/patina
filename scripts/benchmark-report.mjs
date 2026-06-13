@@ -53,6 +53,7 @@ function validateResultsSchema(results) {
   if (!isNumberOrNull(results?.ranking?.overall?.pr_auc)) missing.push('ranking.overall.pr_auc');
   if (!results?.ranking?.overall?.bestF1) missing.push('ranking.overall.bestF1');
   if (!Array.isArray(results?.ranking?.overall?.low_fpr)) missing.push('ranking.overall.low_fpr');
+  if (!results?.slices || typeof results.slices !== 'object') missing.push('slices');
   for (const [lang, summary] of Object.entries(results?.perLanguage || {})) {
     for (const detector of ['burstiness', 'koDiagnostics', 'mattr', 'lexicon']) {
       if (!summary.byDetector?.[detector]) missing.push(`perLanguage.${lang}.byDetector.${detector}`);
@@ -195,6 +196,31 @@ function misclassificationSection(fixtures = []) {
   ].join('\n');
 }
 
+// Render the report-only slice tables (B2). One sub-table per metadata
+// dimension; below-minimum slices show counts with an `insufficient data`
+// state; absent dimensions collapse to a single `unspecified` value.
+function sliceSection(slices = {}) {
+  const order = ['language', 'class', 'lengthBucket', 'domain', 'register', 'generator', 'edited'];
+  const dims = order.filter((d) => slices[d]);
+  for (const d of Object.keys(slices)) if (!dims.includes(d)) dims.push(d);
+  const blocks = [];
+  for (const dim of dims) {
+    const { minCount, values } = slices[dim];
+    const rows = Object.entries(values).map(([value, m]) => {
+      const state = m.supported ? 'ok' : (m.reason || 'unsupported');
+      return `| ${cell(value)} | ${m.n} | ${optionalPct(m.accuracy)} | ${optionalPct(m.precision)} | ${optionalPct(m.recall)} | ${optionalNum(m.f1)} | ${state} |`;
+    });
+    blocks.push([
+      `### ${cell(dim)} (min ${minCount})`,
+      '',
+      '| value | n | accuracy | precision | recall | f1 | state |',
+      '|---|---:|---:|---:|---:|---:|---|',
+      rows.join('\n') || '| _(none)_ | 0 | — | — | — | — | — |',
+    ].join('\n'));
+  }
+  return blocks.join('\n\n');
+}
+
 function renderMarkdown(results, benchmarkStatus) {
   const generatedAt = results.generatedAt || new Date().toISOString();
   const languages = Object.keys(results.perLanguage || {}).sort();
@@ -263,6 +289,16 @@ support the target; \`max FP\` of 0 is a strict zero-false-positive point.
 | scope | target FPR | negatives | max FP | actual FPR | TPR |
 |---|---:|---:|---:|---:|---:|
 ${lowFprRows(results.ranking).join('\n')}
+
+## Slice metrics
+
+Report-only confusion metrics grouped by metadata dimension. \`language\`,
+\`class\`, and \`lengthBucket\` are derived from current fixtures; \`domain\`,
+\`register\`, \`generator\`, and \`edited\` collapse to \`unspecified\` until the
+corpus carries that metadata. Slices below the per-dimension minimum count are
+reported as \`insufficient data\` (counts only). No detector thresholds change.
+
+${sliceSection(results.slices)}
 
 ## Sample sizes
 

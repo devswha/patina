@@ -92,6 +92,10 @@ async function callAndParseJson({
   logger = createLogger(),
   now,
   sleep,
+  // Opt-in OpenAI-compatible structured-output request field (e.g.
+  // { type: 'json_object' }). Forwarded to callLLM on every attempt; the strict
+  // JSON parse + temperature-0 retry below remains the fallback regardless.
+  responseFormat,
 }) {
   let lastError;
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -107,6 +111,7 @@ async function callAndParseJson({
       timeout,
       now,
       sleep,
+      responseFormat,
     });
     try {
       return { parsed: parseStrictJson(result), raw: result };
@@ -139,6 +144,7 @@ async function callAndParseJson({
  * @param {object} [options.logger] patina logger.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
+ * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
  * @returns {Promise<object>} Score payload with overall, interpretation, llmScore, and deterministicScore.
  * @throws {Error} When the operation is aborted.
  * @example
@@ -158,6 +164,8 @@ export async function scoreText({
   logger = createLogger(),
   now,
   sleep,
+  // Opt-in structured-output request field; defaults off (undefined).
+  responseFormat,
 }) {
   const lang = config.language || 'ko';
   const deterministicScore = scoreDeterministicSignals({ text, config, logger });
@@ -206,6 +214,7 @@ ${text}
       logger,
       now,
       sleep,
+      responseFormat,
     });
     return withShadowScore(parsed, { deterministicScore, config, logger });
   } catch (e) {
@@ -479,6 +488,7 @@ export function reconcileScoreOverall({
  * @param {object} [options.logger] patina logger.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
+ * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
  * @returns {Promise<Object>} MPS result.
  * @throws {Error} When the operation is aborted.
  * @example
@@ -497,6 +507,8 @@ export async function scoreMPS({
   logger = createLogger(),
   now,
   sleep,
+  // Opt-in structured-output request field; defaults off (undefined).
+  responseFormat,
 }) {
   const prompt = `You are a Meaning Preservation evaluator. Compare the ORIGINAL text with the REWRITTEN text.
 
@@ -542,6 +554,7 @@ ${rewritten}
       logger,
       now,
       sleep,
+      responseFormat,
     });
     return parsed;
   } catch (e) {
@@ -604,6 +617,7 @@ export function lengthRatioPoints(original, rewritten) {
  * @param {object} [options.logger] patina logger.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
+ * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
  * @returns {Promise<Object>} Fidelity result.
  * @throws {Error} When the operation is aborted.
  * @example
@@ -622,6 +636,8 @@ export async function scoreFidelity({
   logger = createLogger(),
   now,
   sleep,
+  // Opt-in structured-output request field; defaults off (undefined).
+  responseFormat,
 }) {
   // Length is deterministic; only ask LLM for the three judgment criteria.
   const lengthPoints = lengthRatioPoints(original, rewritten);
@@ -669,6 +685,7 @@ ${rewritten}
       logger,
       now,
       sleep,
+      responseFormat,
     });
     parsed = result.parsed;
   } catch (e) {

@@ -175,14 +175,16 @@ patina --batch --backend kimi-cli --max-concurrency 1 --max-retries 0 docs/*.md
 Circuit breakers stop batch mode after repeated failure instead of burning quota:
 
 ```bash
-patina --batch --max-failures 5 --max-failure-rate 0.25 --stop-on-retryable-storm docs/*.md
+patina --batch --max-failures 5 --max-failure-rate 0.25 docs/*.md
 patina --batch --timeout-ms 600000 docs/*.md
 ```
 
 `--max-failure-rate` accepts either a ratio (`0.25`) or a percent (`25`). By
 default, batch mode stops after a small failure budget, after a 25% failure rate
 once enough files have run, or after repeated retryable storms such as HTTP 429,
-timeouts, empty local-CLI responses, or repeated Kimi/Claude process exits.
+timeouts, empty local-CLI responses, or repeated temporary-failure exits
+(exit code 75). Storm stopping is on by default; pass
+`--no-stop-on-retryable-storm` to keep the batch running through storms.
 
 MDX/frontmatter note: patina does not parse MDX or rewrite YAML frontmatter
 schemas. For `.mdx` batches, run your site's MDX/build validator after patina

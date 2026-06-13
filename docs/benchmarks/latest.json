@@ -7,7 +7,7 @@
   "schemaVersion": 3,
   "fixtureSchemaVersion": 1,
   "nodeVersion": "v22.17.1",
-  "generatedAt": "2026-06-13T17:47:23.201Z",
+  "generatedAt": "2026-06-13T19:36:48.740Z",
   "fixtureCount": 49,
   "overallAccuracy": 1,
   "overall": {
@@ -1146,6 +1146,212 @@
       }
     }
   },
+  "slices": {
+    "language": {
+      "minCount": 5,
+      "values": {
+        "en": {
+          "n": 13,
+          "tp": 7,
+          "fp": 0,
+          "fn": 0,
+          "tn": 6,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "supported": true,
+          "reason": null
+        },
+        "ja": {
+          "n": 12,
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "tn": 6,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "supported": true,
+          "reason": null
+        },
+        "ko": {
+          "n": 12,
+          "tp": 7,
+          "fp": 0,
+          "fn": 0,
+          "tn": 5,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "supported": true,
+          "reason": null
+        },
+        "zh": {
+          "n": 12,
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "tn": 6,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "supported": true,
+          "reason": null
+        }
+      }
+    },
+    "class": {
+      "minCount": 5,
+      "values": {
+        "ai": {
+          "n": 26,
+          "tp": 26,
+          "fp": 0,
+          "fn": 0,
+          "tn": 0,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "supported": true,
+          "reason": null
+        },
+        "natural": {
+          "n": 23,
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "tn": 23,
+          "accuracy": 1,
+          "precision": null,
+          "recall": null,
+          "f1": null,
+          "supported": true,
+          "reason": null
+        }
+      }
+    },
+    "lengthBucket": {
+      "minCount": 5,
+      "values": {
+        "medium": {
+          "n": 12,
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "tn": 6,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "supported": true,
+          "reason": null
+        },
+        "short": {
+          "n": 37,
+          "tp": 20,
+          "fp": 0,
+          "fn": 0,
+          "tn": 17,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "supported": true,
+          "reason": null
+        }
+      }
+    },
+    "domain": {
+      "minCount": 5,
+      "values": {
+        "unspecified": {
+          "n": 49,
+          "tp": 26,
+          "fp": 0,
+          "fn": 0,
+          "tn": 23,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "supported": true,
+          "reason": null
+        }
+      }
+    },
+    "register": {
+      "minCount": 5,
+      "values": {
+        "unspecified": {
+          "n": 48,
+          "tp": 25,
+          "fp": 0,
+          "fn": 0,
+          "tn": 23,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "supported": true,
+          "reason": null
+        },
+        "workplace-summary": {
+          "n": 1,
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "tn": 0,
+          "accuracy": null,
+          "precision": null,
+          "recall": null,
+          "f1": null,
+          "supported": false,
+          "reason": "insufficient_data"
+        }
+      }
+    },
+    "generator": {
+      "minCount": 5,
+      "values": {
+        "unspecified": {
+          "n": 49,
+          "tp": 26,
+          "fp": 0,
+          "fn": 0,
+          "tn": 23,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "supported": true,
+          "reason": null
+        }
+      }
+    },
+    "edited": {
+      "minCount": 5,
+      "values": {
+        "unspecified": {
+          "n": 49,
+          "tp": 26,
+          "fp": 0,
+          "fn": 0,
+          "tn": 23,
+          "accuracy": 1,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "supported": true,
+          "reason": null
+        }
+      }
+    }
+  },
   "fixtures": [
     {
       "fixture_id": "en-ai-01",
@@ -1171,7 +1377,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 80.512,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "medium",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "en-ai-02",
@@ -1197,7 +1408,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 69.883,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "medium",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "en-ai-03",
@@ -1223,7 +1439,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 78.495,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "medium",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "en-ai-04",
@@ -1249,7 +1470,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 76.717,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "medium",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "en-ai-05",
@@ -1275,7 +1501,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 68.994,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "medium",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "en-ai-06-chat-register",
@@ -1306,7 +1537,12 @@
         "mattr_band": "high",
         "lexicon_density_min": 0,
         "lexicon_density_max": 80
-      }
+      },
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "en-ai-07-discourse-candor",
@@ -1341,7 +1577,12 @@
           "mattr": false,
           "lexicon": false
         }
-      }
+      },
+      "length_bucket": "medium",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "en-nat-01",
@@ -1367,7 +1608,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "medium",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "en-nat-02",
@@ -1393,7 +1639,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "medium",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "en-nat-03",
@@ -1419,7 +1670,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "medium",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "en-nat-04",
@@ -1445,7 +1701,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "medium",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "en-nat-05",
@@ -1471,7 +1732,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "medium",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "en-nat-06-single-opener",
@@ -1500,7 +1766,12 @@
       "expected_metrics": {
         "predicted_hot": false,
         "hot_paragraphs": 0
-      }
+      },
+      "length_bucket": "medium",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ja-ai-01",
@@ -1526,7 +1797,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 84.959,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ja-ai-02",
@@ -1552,7 +1828,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 23.167,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ja-ai-03",
@@ -1578,7 +1859,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 79.067,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ja-ai-04-lexicon",
@@ -1614,7 +1900,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ja-ai-05-formulaic-summary",
@@ -1651,7 +1942,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ja-ai-06-broad-tech",
@@ -1687,7 +1983,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ja-nat-01",
@@ -1713,7 +2014,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ja-nat-02",
@@ -1739,7 +2045,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ja-nat-03",
@@ -1765,7 +2076,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ja-nat-04-lexicon-cold",
@@ -1791,7 +2107,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ja-nat-05-station-note",
@@ -1817,7 +2138,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ja-nat-06-maintenance-log",
@@ -1843,7 +2169,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ko-ai-01",
@@ -1871,7 +2202,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 68.992,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ko-ai-02",
@@ -1897,7 +2233,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 75.545,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ko-ai-03",
@@ -1925,7 +2266,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 75.545,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ko-ai-04",
@@ -1951,7 +2297,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 67.314,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ko-ai-05",
@@ -1981,7 +2332,12 @@
       "ko_diagnostics_strength": 0.285,
       "signal_score": 67.314,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ko-ai-06-chat-register",
@@ -2012,7 +2368,12 @@
         "mattr_band": "high",
         "lexicon_density_min": 0,
         "lexicon_density_max": 80
-      }
+      },
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ko-ai-07-ko-diagnostic",
@@ -2042,7 +2403,12 @@
       "ko_diagnostics_strength": 3.846,
       "signal_score": 3.846,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "workplace-summary",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ko-nat-01",
@@ -2068,7 +2434,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ko-nat-02",
@@ -2094,7 +2465,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ko-nat-03",
@@ -2120,7 +2496,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ko-nat-04",
@@ -2146,7 +2527,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "ko-nat-05",
@@ -2172,7 +2558,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "zh-ai-01",
@@ -2198,7 +2589,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 79.272,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "zh-ai-02",
@@ -2224,7 +2620,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 6.772,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "zh-ai-03",
@@ -2250,7 +2651,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 72.43,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "zh-ai-04-lexicon",
@@ -2287,7 +2693,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "zh-ai-05-formulaic-summary",
@@ -2326,7 +2737,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "zh-ai-06-broad-tech",
@@ -2363,7 +2779,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "hot_paragraphs": 1,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "zh-nat-01",
@@ -2389,7 +2810,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "zh-nat-02",
@@ -2415,7 +2841,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "zh-nat-03",
@@ -2441,7 +2872,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "zh-nat-04-lexicon-cold",
@@ -2467,7 +2903,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "zh-nat-05-market-note",
@@ -2493,7 +2934,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     },
     {
       "fixture_id": "zh-nat-06-maintenance-log",
@@ -2519,7 +2965,12 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null
+      "expected_metrics": null,
+      "length_bucket": "short",
+      "domain": "unspecified",
+      "register": "unspecified",
+      "generator": "unspecified",
+      "edited": "unspecified"
     }
   ],
   "sampleSizes": {

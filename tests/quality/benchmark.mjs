@@ -18,6 +18,7 @@ import { analyzeText } from '../../src/features/index.js';
 import { loadLexicon } from '../../src/features/lexicon.js';
 import { summarizeSignalStrength } from '../../src/features/signal-strength.js';
 import { summarizeRanking } from './ranking-metrics.mjs';
+import { summarizeSlices, lengthBucket, UNSPECIFIED } from './slice-metrics.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -276,6 +277,14 @@ function main() {
       detectors,
       ...observed,
       expected_metrics: meta.expected_metrics ?? null,
+      // Slice dimensions (B2, report-only). language/class/length_bucket are
+      // always derivable; the rest default to `unspecified` until the corpus
+      // carries that metadata.
+      length_bucket: lengthBucket([...body].length),
+      domain: meta.domain ?? UNSPECIFIED,
+      register: meta.register ?? UNSPECIFIED,
+      generator: meta.generator ?? UNSPECIFIED,
+      edited: meta.edited ?? UNSPECIFIED,
     });
   }
 
@@ -314,6 +323,19 @@ function main() {
       overall: summarizeRanking(rankingRecords(fixtureLog)),
       perLanguage: summarizeRankingByLanguage(fixtureLog),
     },
+    slices: summarizeSlices(
+      fixtureLog.map((f) => ({
+        language: f.lang,
+        class: f.class,
+        lengthBucket: f.length_bucket,
+        domain: f.domain,
+        register: f.register,
+        generator: f.generator,
+        edited: f.edited,
+        predicted_hot: f.predicted_hot,
+        expected_hot: f.expected_hot,
+      }))
+    ),
     fixtures: fixtureLog,
   };
 

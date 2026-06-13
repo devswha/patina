@@ -91,6 +91,7 @@
     "scripts/lint.mjs",
     "tests/quality/benchmark.mjs",
     "tests/quality/ranking-metrics.mjs",
+    "tests/quality/slice-metrics.mjs",
     "tests/quality/README.md",
     "tests/fixtures/suspect-zones/",
     "README.md",

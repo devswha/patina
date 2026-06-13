@@ -7,7 +7,7 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 ## Current result
 
 - Status: **passing**
-- Generated at: 2026-06-13T17:47:23.201Z
+- Generated at: 2026-06-13T19:36:48.740Z
 - Node: v22.17.1
 - Fixture schema: v1
 - Fixtures: 49
@@ -83,6 +83,62 @@ support the target; `max FP` of 0 is a strict zero-false-positive point.
 | ko | 5.0% | 5 | 0 | 0.0% | 100.0% |
 | zh | 1.0% | 6 | 0 | 0.0% | 100.0% |
 | zh | 5.0% | 6 | 0 | 0.0% | 100.0% |
+
+## Slice metrics
+
+Report-only confusion metrics grouped by metadata dimension. `language`,
+`class`, and `lengthBucket` are derived from current fixtures; `domain`,
+`register`, `generator`, and `edited` collapse to `unspecified` until the
+corpus carries that metadata. Slices below the per-dimension minimum count are
+reported as `insufficient data` (counts only). No detector thresholds change.
+
+### language (min 5)
+
+| value | n | accuracy | precision | recall | f1 | state |
+|---|---:|---:|---:|---:|---:|---|
+| en | 13 | 100.0% | 100.0% | 100.0% | 1 | ok |
+| ja | 12 | 100.0% | 100.0% | 100.0% | 1 | ok |
+| ko | 12 | 100.0% | 100.0% | 100.0% | 1 | ok |
+| zh | 12 | 100.0% | 100.0% | 100.0% | 1 | ok |
+
+### class (min 5)
+
+| value | n | accuracy | precision | recall | f1 | state |
+|---|---:|---:|---:|---:|---:|---|
+| ai | 26 | 100.0% | 100.0% | 100.0% | 1 | ok |
+| natural | 23 | 100.0% | — | — | — | ok |
+
+### lengthBucket (min 5)
+
+| value | n | accuracy | precision | recall | f1 | state |
+|---|---:|---:|---:|---:|---:|---|
+| medium | 12 | 100.0% | 100.0% | 100.0% | 1 | ok |
+| short | 37 | 100.0% | 100.0% | 100.0% | 1 | ok |
+
+### domain (min 5)
+
+| value | n | accuracy | precision | recall | f1 | state |
+|---|---:|---:|---:|---:|---:|---|
+| unspecified | 49 | 100.0% | 100.0% | 100.0% | 1 | ok |
+
+### register (min 5)
+
+| value | n | accuracy | precision | recall | f1 | state |
+|---|---:|---:|---:|---:|---:|---|
+| unspecified | 48 | 100.0% | 100.0% | 100.0% | 1 | ok |
+| workplace-summary | 1 | — | — | — | — | insufficient_data |
+
+### generator (min 5)
+
+| value | n | accuracy | precision | recall | f1 | state |
+|---|---:|---:|---:|---:|---:|---|
+| unspecified | 49 | 100.0% | 100.0% | 100.0% | 1 | ok |
+
+### edited (min 5)
+
+| value | n | accuracy | precision | recall | f1 | state |
+|---|---:|---:|---:|---:|---:|---|
+| unspecified | 49 | 100.0% | 100.0% | 100.0% | 1 | ok |
 
 ## Sample sizes
 

@@ -86,7 +86,12 @@ export function createBatchCircuitBreaker({ parsed, total }) {
       }
       if (
         Number.isFinite(maxFailureRate) &&
-        processed >= (parsed.maxFailureRate === undefined ? Math.min(total, 4) : 1) &&
+        // Warm-up applies to explicit --max-failure-rate too (#434): a ratio
+        // over a sample of 1 makes the first failed file 100% and turns any
+        // rate < 1.0 into stop-on-first-failure, contradicting the documented
+        // "stop when failure ratio exceeds r" semantics. Users who want
+        // stop-on-first-failure have --max-failures 1.
+        processed >= Math.min(total, 4) &&
         failures.length / processed > maxFailureRate
       ) {
         stopReason = `failure rate ${(failures.length / processed * 100).toFixed(1)}% exceeded ${(maxFailureRate * 100).toFixed(1)}%`;

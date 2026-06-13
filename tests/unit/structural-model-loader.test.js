@@ -58,6 +58,23 @@ test('loadStructuralModel loads private weights from an explicit path', () => {
   assert.deepEqual(model.featureNames, STRUCTURAL_FEATURE_NAMES);
 });
 
+test('loadStructuralModel rejects a stale model trained at another feature width (#436)', () => {
+  const dir = mkdtempSync(resolve(tmpdir(), 'patina-model-'));
+  const stale = {
+    lang: 'ko',
+    weights: new Array(8).fill(0.5),
+    bias: 0,
+    threshold: 0.5,
+    scaler: { mu: new Array(8).fill(0), sigma: new Array(8).fill(1) },
+  };
+  const path = writeModel(dir, stale);
+
+  assert.throws(
+    () => loadStructuralModel({ stylometry: { structural_model: { path } } }, { env: {}, cwd: dir, lang: 'ko' }),
+    /Invalid structural model at .*expects 8 features but this patina version extracts 12/,
+  );
+});
+
 test('configured private model lifts deterministic scoring without hosted service', () => {
   const dir = mkdtempSync(resolve(tmpdir(), 'patina-model-'));
   const path = writeModel(dir);

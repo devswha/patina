@@ -269,3 +269,20 @@ test('stageCliImages copies attachments into the backend temp dir', () => {
     rmSync(dst, { recursive: true, force: true });
   }
 });
+
+test('file: image candidates are confined to the previewed file directory (#447)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'patina-ocr-confine-'));
+  try {
+    const baseUrl = pathToFileURL(join(dir, 'page.html')).href;
+    const insideUrl = pathToFileURL(join(dir, 'pic.png')).href;
+    const subdirUrl = pathToFileURL(join(dir, 'images', 'deep.png')).href;
+    const outsideUrl = pathToFileURL(join(tmpdir(), 'passport.png')).href; // parent dir, not under the source dir
+    const html = `<img src="${insideUrl}"><img src="${subdirUrl}"><img src="${outsideUrl}">`;
+    const urls = collectImageCandidates(html, baseUrl).candidates.map((c) => c.url);
+    assert.ok(urls.includes(insideUrl), 'same-dir image kept');
+    assert.ok(urls.includes(subdirUrl), 'subdirectory image kept');
+    assert.equal(urls.includes(outsideUrl), false, 'out-of-tree absolute path rejected');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

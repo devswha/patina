@@ -1,6 +1,6 @@
 import { mkdtempSync, writeFileSync, copyFileSync, readFileSync, statSync, chmodSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isSubresourceFetchAllowed } from './security.js';
 
@@ -46,6 +46,20 @@ function getRuntimeValue(options, key, fallback) {
 // document-wide base64 data URIs. Extension-less CDN URLs are kept and
 // magic-byte sniffed after download. SVG is skipped (vector text belongs to
 // the DOM extractor).
+// A file: image candidate is confined to the previewed file's own directory
+// subtree (#447): a malicious local .html must not reference absolute paths
+// like file:///home/user/passport.jpg and exfiltrate them to the OCR backend.
+function fileUrlWithinDir(fileUrl, dir) {
+  if (!dir) return false;
+  try {
+    const target = resolve(fileURLToPath(fileUrl));
+    const base = resolve(dir);
+    return target === base || target.startsWith(base + sep);
+  } catch {
+    return false;
+  }
+}
+
 export function collectImageCandidates(html, baseUrl, options = {}) {
   const maxImages = options.maxImages ?? DEFAULT_MAX_IMAGES;
   const source = String(html ?? '');
@@ -59,6 +73,11 @@ export function collectImageCandidates(html, baseUrl, options = {}) {
   // disclosure). This mirrors the empty-cwd CLI containment.
   const allowFileImages = String(baseUrl || '').startsWith('file:');
   const allowedProtocols = allowFileImages ? /^(https?|file):$/ : /^https?:$/;
+  // Confine local file: images to the previewed file's own directory subtree (#447).
+  let sourceDir = null;
+  if (allowFileImages) {
+    try { sourceDir = dirname(fileURLToPath(baseUrl)); } catch { sourceDir = null; }
+  }
 
   const pushUrlCandidate = (url, { anchor, alt, priority }) => {
     const ext = extensionOf(url);
@@ -66,6 +85,7 @@ export function collectImageCandidates(html, baseUrl, options = {}) {
     // extension-less URL is kept and sniffed from its bytes at staging time.
     if (ext && !ACCEPTED_EXTENSIONS.has(ext)) return;
     if (!ext && url.startsWith('file:')) return;
+    if (url.startsWith('file:') && !fileUrlWithinDir(url, sourceDir)) return;
     if (seen.has(url)) return;
     seen.add(url);
     candidates.push({
@@ -378,31 +398,43 @@ export async function fetchCappedBytes(fetchImpl, url, { signal, maxBytes, fetch
       response = await fetchImpl(url, { signal: controller.signal, redirect: 'follow' });
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const declared = Number(response.headers.get('content-length'));
-    if (Number.isFinite(declared) && declared > maxBytes) throw new Error(tooBig);
-    if (!response.body || typeof response.body.getReader !== 'function') {
-      const buf = Buffer.from(await response.arrayBuffer());
-      if (buf.length > maxBytes) throw new Error(tooBig);
-      return buf;
-    }
-    const reader = response.body.getReader();
-    const chunks = [];
-    let total = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.length;
-      if (total > maxBytes) {
-        controller.abort(new Error(tooBig));
-        throw new Error(tooBig);
-      }
-      chunks.push(value);
-    }
-    return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
+    return await readResponseBytesCapped(response, {
+      maxBytes,
+      tooBig,
+      onOverflow: () => controller.abort(new Error(tooBig)),
+    });
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener?.('abort', onOuterAbort);
   }
+}
+
+// Read a response body chunk by chunk under a hard byte cap, so a chunked /
+// Content-Length-less response cannot buffer unbounded data into memory before
+// the size check. Shared by fetchCappedBytes and the preview page fetch (#447).
+export async function readResponseBytesCapped(response, { maxBytes, tooBig = 'response too large', onOverflow } = {}) {
+  const declared = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > maxBytes) throw new Error(tooBig);
+  if (!response.body || typeof response.body.getReader !== 'function') {
+    const buf = Buffer.from(await response.arrayBuffer());
+    if (buf.length > maxBytes) throw new Error(tooBig);
+    return buf;
+  }
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > maxBytes) {
+      if (onOverflow) onOverflow();
+      else { try { await reader.cancel(); } catch {} }
+      throw new Error(tooBig);
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
 }
 
 export const OCR_PROMPT = [

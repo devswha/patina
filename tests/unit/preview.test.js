@@ -640,6 +640,19 @@ test('prepareSnapshotHtml resolves a streamed page end to end', () => {
   assert.strictEqual(blocks.length, 1);
 });
 
+// Minimal ReadableStream-ish body so fetchPreviewPage's streaming byte cap
+// (readResponseBytesCapped) exercises its real reader path (#447).
+function streamBody(body) {
+  const bytes = Buffer.from(String(body));
+  let sent = false;
+  return {
+    getReader: () => ({
+      read: async () => (sent ? { done: true } : ((sent = true), { done: false, value: new Uint8Array(bytes) })),
+      cancel: async () => {},
+    }),
+  };
+}
+
 test('fetchPreviewPage validates status, content type, and size', async () => {
   const page = (body, init = {}) => Promise.resolve({
     ok: (init.status ?? 200) >= 200 && (init.status ?? 200) < 300,
@@ -647,6 +660,7 @@ test('fetchPreviewPage validates status, content type, and size', async () => {
     url: init.url ?? '',
     headers: { get: (name) => ({ 'content-type': 'text/html; charset=utf-8', ...init.headers })[name.toLowerCase()] ?? null },
     text: async () => body,
+    body: streamBody(body),
   });
 
   const ok = await fetchPreviewPage('https://example.test/', { fetchImpl: () => page('<p>hi</p>') });
@@ -686,6 +700,7 @@ test('fetchPreviewPage guards every redirect hop against private/internal target
     url: init.url ?? '',
     headers: { get: (name) => ({ 'content-type': 'text/html; charset=utf-8', ...init.headers })[name.toLowerCase()] ?? null },
     text: async () => init.body ?? '',
+    body: streamBody(init.body ?? ''),
   });
   const routed = (routes) => {
     const seen = [];
@@ -769,4 +784,27 @@ test('fetchPreviewPage guards every redirect hop against private/internal target
       /redirected too many times/,
     );
   }
+});
+
+test('inlineSrcdocIframes decodes numeric character references in srcdoc (#447)', () => {
+  const html = '<iframe srcdoc="&#60;p&#62;Numeric entity prose long enough to extract here.&#60;/p&#62;"></iframe>';
+  const out = inlineSrcdocIframes(html);
+  assert.match(out, /<p>Numeric entity prose long enough to extract here\.<\/p>/);
+});
+
+test('tainted $-sequences in preview injections are treated literally (#447)', () => {
+  const html = '<html><head></head><body><p>ORIGINAL_BODY_MARKER paragraph long enough here.</p></body></html>';
+  const { blocks } = extractProseBlocks(html);
+  const rewrites = blocks.map(() => 'Rewritten paragraph text here.');
+  const { html: out } = buildPreviewHtml({
+    html,
+    blocks,
+    rewrites,
+    sourceUrl: 'https://example.test/?x=$`$&',
+    explanationHtml: "<div class=\"explain-card\">tricky $` $& $' marker</div>",
+  });
+  // A `$`-sequence interpreted as a replacement pattern would expand to the
+  // document prefix and duplicate the body; the unique marker must appear once.
+  assert.equal(out.split('ORIGINAL_BODY_MARKER').length - 1, 1);
+  assert.ok(out.includes("tricky $` $& $' marker"));
 });

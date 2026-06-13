@@ -56,7 +56,20 @@ const MARKUP_RULES = [
   {
     id: 'explicit-self-identification',
     label: 'Explicit AI self-identification',
-    build: () => /\bas an? (?:AI|artificial intelligence) language model\b|\bas a large language model\b|\bas a language model\b|\bas an AI assistant\b|\bI am an AI\b|\bI'?m an AI\b/gi,
+    // Near-proof-grade, so precision beats recall (issue #435): a single hit
+    // forces LEAKAGE_SCORE_FLOOR. Human bio/ML prose must not fire:
+    // - "I am an AI researcher" / "I'm an AI safety engineer": \b alone sits
+    //   between "AI" and the next noun, so the bare phrase needs a guard. The
+    //   "I am/I'm an AI" alternant (optionally with an AI-role noun:
+    //   assistant/chatbot/model) only matches when the phrase ends the clause
+    //   (punctuation/EOL) or continues with refusal-boilerplate provenance
+    //   ("created/trained/developed ... by"), and never before "-"/"/"
+    //   compounds like "AI-powered" or "AI/ML". Human job titles such as
+    //   "AI assistant manager" stay cold.
+    // - "BERT functions as a language model": the bare alternant now requires
+    //   the first-person continuation ("as a language model, I ...") that
+    //   real refusal boilerplate uses.
+    build: () => /\bas an? (?:AI|artificial intelligence) language model\b|\bas a large language model\b|\bas a language model,? I\b|\bas an AI assistant\b|\bI(?: am|'?m) an AI(?:\s+(?:assistant|chatbot|language model|model))?(?:\s+(?:created|developed|trained|designed|built|made)\s+by\b|(?![-/]|\s+\w))/gi,
   },
 ];
 

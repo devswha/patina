@@ -10,6 +10,7 @@ import {
   classifyBurstiness,
   classifyMattr,
   classifyKoreanDiagnostics,
+  koreanDiagnostics,
   commaDensity,
   koreanPosDiversityProxy,
   koreanSpacingFeatures,
@@ -118,7 +119,7 @@ export function analyzeText(text, opts = {}) {
     const mattrBand = classifyMattr(mattrValue, mattrBands);
     const lex = computeDensity(paragraph, allTokens, lexicon);
     const koSignals = lang === 'ko'
-      ? buildKoreanSignals(paragraph, sentences.length, {
+      ? koreanDiagnostics(paragraph, sentences.length, {
           enabled: koDiagnosticsEnabled,
           bands: koDiagnosticBands,
         })
@@ -189,6 +190,7 @@ export {
   classifyBurstiness,
   classifyMattr,
   classifyKoreanDiagnostics,
+  koreanDiagnostics,
   commaDensity,
   koreanPosDiversityProxy,
   koreanSpacingFeatures,
@@ -209,23 +211,4 @@ export {
   resolveStructuralModelPath,
 };
 
-function buildKoreanSignals(paragraph, sentenceCount, { enabled, bands }) {
-  const spacing = koreanSpacingFeatures(paragraph);
-  const comma = commaDensity(paragraph, sentenceCount);
-  const posDiversity = koreanPosDiversityProxy(paragraph);
-  const koDiagnostics = enabled
-    ? classifyKoreanDiagnostics({
-        sentenceCount,
-        spacing,
-        comma,
-        posDiversity,
-      }, bands)
-    : { hot: false, strength: 0, reasons: [], thresholds: bands };
 
-  return {
-    spacing,
-    comma,
-    posDiversity,
-    koDiagnostics,
-  };
-}

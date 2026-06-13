@@ -12,6 +12,35 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## 4.3.0 — 2026-06-13
+
+**Reliability, security, and false-positive hardening from the 2026-06-13 full-repo architect review.**
+
+Semver rationale: minor — adds the `--no-stop-on-retryable-storm` batch flag and `--name=value` / `--` argument syntax, and changes several user-observable CLI behaviors (config/voice-sample input errors now exit 2; retryable-storm stopping is restricted to EX_TEMPFAIL/timeout; per-attempt timeouts surface as `TimeoutError`; the ouroboros loop drops its per-iteration self-audit; document input is data-fenced in prompts). The rest is security, correctness, and false-positive bug fixes across the deterministic engine, the LLM/backend layers, preview, and the playground. No API or schema removals.
+
+### Security
+- Refuse token-leaking plaintext HTTP: `isLoopbackHost` exempts only real IPv4 loopback literals, so `http://127.attacker.example/` is no longer treated as loopback and the Bearer token is not sent in cleartext to a non-loopback host (#448).
+- `--preview --ocr` confines local `file:` image candidates to the previewed file's own directory subtree, so a malicious local `.html` can no longer reference an absolute path (e.g. `file:///home/you/passport.jpg`) and exfiltrate it to the OCR backend (#447).
+- Preview injection hardening: page/LLM/OCR-derived text placed in `String.replace` replacement positions is applied via function replacements, so a literal `$`-sequence can no longer expand to the document prefix and duplicate the page; the fetched page body is read under a true streaming byte cap instead of being fully buffered; document input is wrapped in a sentinel data-fence so adversarial third-party text under `--batch`/`--gate`/ouroboros cannot pose as the prompt's own `## Output`/`[BODY]`/`[SELF_AUDIT]` sections (#447, #444).
+- Every page-fetch redirect hop is SSRF-guarded against private/internal targets (#439).
+
+### Fixed — detection accuracy & false positives
+- CJK sentence splitting keeps terminators inside closing quotes attached and no longer strands zero-token "sentences"; `…` is no longer a hard terminator in en/ko; AI-lexicon strict entries match on whole-word boundaries and phrases match across soft line wraps (#441).
+- `navlist` only counts as model-output leakage with a corroborating tool token; CommonMark setext H2 underlines and YAML frontmatter no longer count as decorative dividers; the `당신` direct-address rule gains Hangul boundary guards; `c11-connective-comma` excludes common 고-final nouns (#442).
+- Self-identification leakage no longer false-positives on human bio/ML prose (#435).
+- Structural classifier: corrupt/non-object model files fail loud, zero/negative sigma is rejected, the max-FPR threshold uses `ceil`, the audit path degrades to a warning, and a model trained at the wrong feature width is rejected at load (#443, #436).
+
+### Fixed — reliability
+- LLM client / ouroboros: a per-attempt timeout that exhausts retries surfaces as `TimeoutError` (not `AbortError`), so `scoreMPS`/`scoreFidelity` take the fail-closed rollback instead of crashing the run; a throw from the `onResponse` callback no longer re-issues the already-paid request; the loop fails closed on a missing fidelity and stops paying for a self-audit block it immediately strips; fidelity/MPS floors are checked before declaring the target met (#444, #437).
+- Backends: an explicit `status: null` no longer skips retry detection; the concurrency cap fails closed on an invalid override; a crashed run's slot is reclaimed by pid-liveness instead of blocking a cap-1 backend for ~30 min, and slot roots are per-user; a flag-sourced foreign-family model is dropped per fallback leg; codex stdout is discarded to avoid a pipe-buffer deadlock (#445, #438).
+- CLI adapters: codex stderr decodes as UTF-8; image-staging failures clean up the temp dir and surface a typed error; a stdin error kills the child before its cwd is removed; signal death is reported instead of "exited with code null"; gemini/kimi banner stripping is tightened to avoid eating real response lines (#446).
+- CLI: output-routing flags (`--in-place`/`--suffix`/`--outdir`) are batch-only and mutually exclusive with `--outdir` collision detection; blank numeric option values are rejected instead of coercing to 0; the interactive stdin prompt writes to stderr so it shows under `--quiet`; Ctrl-C during batch is a run-level stop, not a per-file failure; explicit `--max-failure-rate` keeps its warm-up sample (#440, #434).
+- Infra: config/tone/voice-sample input validation throws typed errors (exit 2); `--diff --format json` no longer embeds ANSI escape codes; the logger honors an injected stream; `getExitCode` rejects exit 0 on a thrown error; hosted-response span offsets validate against the returned text length (#449, #445).
+- Playground: text-presentation symbols (™/©/®) no longer count as emoji; lexicon highlighting falls back to plain escaping when case folding changes string length; per-keystroke re-analysis is debounced (#450).
+
+### Added
+- `--no-stop-on-retryable-storm` to opt out of batch retryable-storm stopping (on by default in batch mode); `--name=value` argument syntax and a `--` end-of-options separator so dash-prefixed file names are usable (#440).
+
 ## 4.2.0 — 2026-06-12
 
 **In-place preview as the single review surface: file input, image-text OCR, full-page extraction coverage, live-design fidelity, and context-aware rewriting.**

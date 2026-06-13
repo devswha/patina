@@ -7,7 +7,7 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 ## Current result
 
 - Status: **passing**
-- Generated at: 2026-06-12T09:36:23.679Z
+- Generated at: 2026-06-13T17:47:23.201Z
 - Node: v22.17.1
 - Fixture schema: v1
 - Fixtures: 49
@@ -63,6 +63,26 @@ only on the checked-in fixture corpus and is not a broader model-era claim.
 | ja | 12 | 6 | 6 | 1 | 1 | 23.167 | 100.0% | 100.0% | 1 | 100.0% |
 | ko | 12 | 7 | 5 | 1 | 1 | 3.846 | 100.0% | 100.0% | 1 | 100.0% |
 | zh | 12 | 6 | 6 | 1 | 1 | 6.772 | 100.0% | 100.0% | 1 | 100.0% |
+
+## Low-FPR operating points
+
+TPR at a fixed false-positive budget. Aggregate AUROC/accuracy can hide
+deployment failure, so these report the strict operating point on the checked-in
+fixture corpus. `n/a` marks a slice without enough negatives (or positives) to
+support the target; `max FP` of 0 is a strict zero-false-positive point.
+
+| scope | target FPR | negatives | max FP | actual FPR | TPR |
+|---|---:|---:|---:|---:|---:|
+| overall | 1.0% | 23 | 0 | 0.0% | 100.0% |
+| overall | 5.0% | 23 | 1 | 0.0% | 100.0% |
+| en | 1.0% | 6 | 0 | 0.0% | 100.0% |
+| en | 5.0% | 6 | 0 | 0.0% | 100.0% |
+| ja | 1.0% | 6 | 0 | 0.0% | 100.0% |
+| ja | 5.0% | 6 | 0 | 0.0% | 100.0% |
+| ko | 1.0% | 5 | 0 | 0.0% | 100.0% |
+| ko | 5.0% | 5 | 0 | 0.0% | 100.0% |
+| zh | 1.0% | 6 | 0 | 0.0% | 100.0% |
+| zh | 5.0% | 6 | 0 | 0.0% | 100.0% |
 
 ## Sample sizes
 

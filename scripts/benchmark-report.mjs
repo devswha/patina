@@ -52,6 +52,7 @@ function validateResultsSchema(results) {
   if (!isNumberOrNull(results?.ranking?.overall?.roc_auc)) missing.push('ranking.overall.roc_auc');
   if (!isNumberOrNull(results?.ranking?.overall?.pr_auc)) missing.push('ranking.overall.pr_auc');
   if (!results?.ranking?.overall?.bestF1) missing.push('ranking.overall.bestF1');
+  if (!Array.isArray(results?.ranking?.overall?.low_fpr)) missing.push('ranking.overall.low_fpr');
   for (const [lang, summary] of Object.entries(results?.perLanguage || {})) {
     for (const detector of ['burstiness', 'koDiagnostics', 'mattr', 'lexicon']) {
       if (!summary.byDetector?.[detector]) missing.push(`perLanguage.${lang}.byDetector.${detector}`);
@@ -128,6 +129,23 @@ function rankingRows(ranking = {}) {
     const best = summary.bestF1 || {};
     return `| ${cell(scope)} | ${summary.n} | ${summary.positives} | ${summary.negatives} | ${optionalNum(summary.roc_auc)} | ${optionalNum(summary.pr_auc)} | ${optionalNum(best.threshold)} | ${optionalPct(best.precision)} | ${optionalPct(best.recall)} | ${optionalNum(best.f1, 2)} | ${optionalPct(best.accuracy)} |`;
   });
+}
+
+function lowFprRows(ranking = {}) {
+  const scopes = [];
+  if (ranking.overall) scopes.push(['overall', ranking.overall]);
+  for (const [lang, summary] of Object.entries(ranking.perLanguage || {}).sort(([a], [b]) => a.localeCompare(b))) {
+    scopes.push([lang, summary]);
+  }
+  const rows = [];
+  for (const [scope, summary] of scopes) {
+    for (const m of summary.low_fpr || []) {
+      const tpr = m.tpr == null ? `n/a (${m.reason || 'unsupported'})` : optionalPct(m.tpr);
+      const actual = m.actual_fpr == null ? 'n/a' : optionalPct(m.actual_fpr);
+      rows.push(`| ${cell(scope)} | ${optionalPct(m.target_fpr)} | ${m.negatives} | ${m.max_false_positives} | ${actual} | ${tpr} |`);
+    }
+  }
+  return rows;
 }
 
 function classRows(fixtures = []) {
@@ -234,6 +252,17 @@ only on the checked-in fixture corpus and is not a broader model-era claim.
 | scope | fixtures | positives | negatives | ROC-AUC | PR-AUC | best threshold | precision | recall | best F1 | accuracy |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 ${rankingRows(results.ranking).join('\n')}
+
+## Low-FPR operating points
+
+TPR at a fixed false-positive budget. Aggregate AUROC/accuracy can hide
+deployment failure, so these report the strict operating point on the checked-in
+fixture corpus. \`n/a\` marks a slice without enough negatives (or positives) to
+support the target; \`max FP\` of 0 is a strict zero-false-positive point.
+
+| scope | target FPR | negatives | max FP | actual FPR | TPR |
+|---|---:|---:|---:|---:|---:|
+${lowFprRows(results.ranking).join('\n')}
 
 ## Sample sizes
 

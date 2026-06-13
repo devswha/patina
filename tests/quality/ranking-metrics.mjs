@@ -18,8 +18,73 @@ export function summarizeRanking(records = []) {
     scoreRange: scoreRange(normalized),
     roc_auc: round(rocAuc(normalized)),
     pr_auc: round(averagePrecision(normalized)),
+    low_fpr: lowFprSummaries(normalized),
     bestF1: best,
     sweep,
+  };
+}
+
+// Default low-FPR operating points reported alongside AUROC/PR-AUC.
+export const DEFAULT_LOW_FPR_TARGETS = [0.01, 0.05];
+
+// Low-FPR operating-point metrics: at a target false-positive rate, what TPR can
+// the signal reach without exceeding the FP budget? Aggregate AUROC/accuracy can
+// hide deployment failure, so these surface the strict operating point.
+// Diagnostics: no negatives -> unsupported (no_negatives); no positives ->
+// tpr null (no_positives); floor(target*negatives)==0 keeps a strict zero-FP
+// operating point (max_false_positives: 0) rather than failing.
+export function lowFprSummaries(records = [], targets = DEFAULT_LOW_FPR_TARGETS) {
+  return targets.map((target) => lowFprMetric(records, target));
+}
+
+export function lowFprMetric(records = [], targetFpr = 0.01) {
+  const normalized = records
+    .map((record) => ({ score: Number(record.score), expected: Boolean(record.expected) }))
+    .filter((record) => Number.isFinite(record.score));
+  const positives = normalized.filter((record) => record.expected).length;
+  const negatives = normalized.length - positives;
+  const maxFalsePositives = Math.floor(targetFpr * negatives);
+  const base = { target_fpr: targetFpr, negatives, positives, max_false_positives: maxFalsePositives };
+
+  if (negatives === 0) {
+    return { ...base, actual_fpr: null, tpr: null, supported: false, reason: 'no_negatives' };
+  }
+
+  // Pick the threshold that maximizes true positives while keeping the false
+  // positive count within budget. Deterministic tie-break: fewer false
+  // positives, then the higher (more conservative) threshold.
+  let best = null;
+  for (const threshold of thresholdCandidates(normalized)) {
+    let tp = 0;
+    let fp = 0;
+    for (const record of normalized) {
+      if (record.score >= threshold) {
+        if (record.expected) tp += 1;
+        else fp += 1;
+      }
+    }
+    if (fp > maxFalsePositives) continue;
+    const candidate = { tp, fp, threshold, actualFpr: fp / negatives };
+    if (
+      !best ||
+      candidate.tp > best.tp ||
+      (candidate.tp === best.tp && candidate.actualFpr < best.actualFpr) ||
+      (candidate.tp === best.tp && candidate.actualFpr === best.actualFpr && candidate.threshold > best.threshold)
+    ) {
+      best = candidate;
+    }
+  }
+  // `best` always exists: the highest sentinel threshold predicts nothing, so
+  // fp = 0 <= maxFalsePositives.
+
+  if (positives === 0) {
+    return { ...base, actual_fpr: round(best.actualFpr), tpr: null, supported: false, reason: 'no_positives' };
+  }
+  return {
+    ...base,
+    actual_fpr: round(best.actualFpr),
+    tpr: round(best.tp / positives),
+    supported: true,
   };
 }
 

@@ -60,6 +60,10 @@ function benchmarkResults(overrides = {}) {
           f1: 1,
           accuracy: 1,
         },
+        low_fpr: [
+          { target_fpr: 0.01, negatives: 0, max_false_positives: 0, actual_fpr: null, tpr: null, supported: false, reason: 'no_negatives' },
+          { target_fpr: 0.05, negatives: 0, max_false_positives: 0, actual_fpr: null, tpr: null, supported: false, reason: 'no_negatives' },
+        ],
       },
       perLanguage: {},
     },

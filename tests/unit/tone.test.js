@@ -54,14 +54,14 @@ test('resolveTone: ja + auto → unsupported_language_fallback', () => {
 test('resolveTone: invalid cliTone throws', () => {
   assert.throws(
     () => resolveTone({ cliTone: 'bogus', lang: 'ko' }),
-    /Unknown tone 'bogus'/
+    /unknown tone 'bogus'/
   );
 });
 
 test('resolveTone: invalid configTone throws', () => {
   assert.throws(
     () => resolveTone({ cliTone: undefined, configTone: 'nope', lang: 'ko' }),
-    /Invalid tone 'nope' in config/
+    /invalid tone 'nope' in config/
   );
 });
 
@@ -116,6 +116,14 @@ test('formatOutput: colorizes labeled diff output on TTY', () => {
   assert.ok(out.includes('\x1b[1mPattern: 1. Generic polish\x1b[0m'));
   assert.ok(out.includes('\x1b[31mRemoved: old phrasing\x1b[0m'));
   assert.ok(out.includes('\x1b[32mAdded: sharper phrasing\x1b[0m'));
+});
+
+test('formatOutput: does not embed ANSI in --diff --format json on a TTY (#449)', () => {
+  const raw = 'Pattern: 1. Generic polish\nRemoved: old phrasing\nAdded: sharper phrasing';
+  const out = formatOutput(raw, 'diff', { format: 'json' }, { env: {}, stdout: { isTTY: true } });
+  // The JSON payload's `output` field must carry the plain diff, no escape codes.
+  assert.equal(out.includes('\x1b['), false);
+  assert.equal(JSON.parse(out).output, raw);
 });
 
 test('formatOutput: disables diff colors for NO_COLOR, --no-color, and non-TTY', () => {

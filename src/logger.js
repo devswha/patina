@@ -29,7 +29,13 @@ export function createLogger({
   const emit = (levelName, event, fields = {}) => {
     if (LEVELS[levelName] < threshold) return;
     closeProgress();
-    if (fields.message) console.error(fields.message);
+    if (!fields.message) return;
+    // Honor an injected custom stream (tests, child loggers) like progress/
+    // closeProgress already do, instead of always hardcoding stderr (#449). The
+    // default process.stderr stays on console.error so the common path keeps a
+    // single write API on that fd.
+    if (stream && stream !== process.stderr) stream.write(`${fields.message}\n`);
+    else console.error(fields.message);
   };
 
   const progress = (_event, fields = {}) => {

@@ -47,7 +47,9 @@ function renderFormattedBody(result, mode, parsed = {}, opts = {}) {
   if (mode === 'rewrite' || mode === 'ouroboros') {
     body = stripSelfAudit(body, { logger: opts.logger });
   }
-  if (mode === 'diff') {
+  if (mode === 'diff' && (parsed.format || 'markdown') !== 'json') {
+    // Skip ANSI colorization for JSON output, otherwise raw escape codes get
+    // embedded inside the JSON `output` string field on a TTY (#449).
     body = colorizeDiff(body, { parsed, env: opts.env, stdout: opts.stdout });
   }
   return body;

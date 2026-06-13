@@ -570,7 +570,7 @@ MPS = N/A (not applicable)
 
 When MPS = N/A:
 - `--score` mode displays: `의미 보존 (MPS): N/A (앵커 없음)`
-- Ouroboros loop: MPS floor check is bypassed (only fidelity floor applies)
+- Ouroboros loop: MPS floor는 우회되지 않는다. 결정론 루프의 `scoreMPS`는 숫자 mps를 반환하거나 스코어러 실패 시 `null`을 반환하며, `null`은 floor 위반으로 간주해 fail-closed로 직전 반복에 rollback한다 (아래 "Ouroboros Loop Gating" 및 `src/ouroboros.js` 참고). 앵커 N/A 표시는 SKILL 파이프라인 / `--score` 표시용이며 결정론 루프의 floor를 끄지 않는다.
 
 ### MPS Interpretation
 

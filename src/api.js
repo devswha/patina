@@ -195,6 +195,7 @@ export async function callLLM({
 
   let lastError;
   let attemptsMade = 0;
+  let success = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       throwIfAborted(signal);
@@ -256,9 +257,11 @@ export async function callLLM({
         rawResponse: data,
         content,
       };
-      onResponse?.(metadata);
-
-      return content;
+      // Success: stop retrying here. onResponse/return run OUTSIDE the retried
+      // block (below) so a throw from the consumer callback can't be misread as
+      // a retryable fetch failure (isRetryable treats TypeError as a network
+      // error) and re-issue the already-paid request (#444).
+      success = { content, metadata };
     } catch (err) {
       lastError = err;
       if (signal?.aborted) break;
@@ -281,10 +284,22 @@ export async function callLLM({
       clearTimeout(timer);
       signalCleanup();
     }
+    if (success) break;
+  }
+
+  if (success) {
+    onResponse?.(success.metadata);
+    return success.content;
   }
 
   const err = new Error(`LLM API failed after ${attemptsMade || 1} attempts: ${lastError?.message ?? 'unknown'}`);
-  if (lastError?.name === 'AbortError') err.name = 'AbortError';
+  if (lastError?.name === 'AbortError') {
+    // Distinguish a real external cancellation from a per-attempt timeout:
+    // only an aborted external signal stays AbortError (callers rethrow that as
+    // cancellation). A timer-driven abort is a transient timeout and must take
+    // the same fail-closed/fallback path as other transient failures (#444).
+    err.name = signal?.aborted ? 'AbortError' : 'TimeoutError';
+  }
   const lastStatus = lastError ? /** @type {any} */ (lastError).status : undefined;
   if (typeof lastStatus === 'number') /** @type {any} */ (err).status = lastStatus;
   throw err;

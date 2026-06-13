@@ -133,7 +133,7 @@ function classifyRetryableStorm(err) {
   if (/\bHTTP\s+429\b/i.test(message) || err?.status === 429) return 'HTTP 429';
   if (/\bHTTP\s+503\b/i.test(message) || err?.status === 503) return 'HTTP 503';
   if (/Provider stream timed out/i.test(message)) return 'provider stream timeout';
-  if (/timed out/i.test(message) || err?.name === 'AbortError') return 'timeout';
+  if (/timed out/i.test(message) || err?.name === 'AbortError' || err?.name === 'TimeoutError') return 'timeout';
   // Only EX_TEMPFAIL (75) counts as a retryable exit. Exit 1 is the generic
   // failure code for nearly every local-CLI error (auth, bad flags,
   // deterministic rejections) — three unrelated failures must not be labeled

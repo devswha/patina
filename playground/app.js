@@ -8,6 +8,7 @@ import {
   renderAuditDiff,
   renderKoreanAdvisory,
 } from './analyzer.js';
+import { createAnalysisController } from './analysis-dispatch.js';
 
 const doc = globalThis.document;
 const state = {
@@ -95,10 +96,29 @@ function render() {
   nodes.cliPreview.textContent = buildCliCommand(state.text, state.lang);
 }
 
+// Analysis runs in a Web Worker so a long paste never blocks rendering. The
+// worker is loaded by relative URL for static hosting; if Worker is missing or
+// the worker errors, the controller transparently falls back to same-thread
+// analysis. Only the latest request id is rendered, so stale worker responses
+// from earlier keystrokes can never overwrite newer input (#450 follow-up).
+function createAnalysisWorker() {
+  const WorkerCtor = globalThis.Worker;
+  if (typeof WorkerCtor !== 'function') return null;
+  return new WorkerCtor(new URL('./analyzer-worker.js', import.meta.url), { type: 'module' });
+}
+
+const analysisController = createAnalysisController({
+  analyze: analyzePlaygroundText,
+  createWorker: createAnalysisWorker,
+  onResult: (analysis) => {
+    state.analysis = analysis;
+    render();
+  },
+});
+
 function runAnalysis() {
   state.text = nodes.input.value;
-  state.analysis = analyzePlaygroundText(state.text, { lang: state.lang });
-  render();
+  analysisController.request(state.text, state.lang);
 }
 
 async function copyText(text) {

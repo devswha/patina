@@ -13,30 +13,37 @@ export const BACKEND_SAFETY_DEFAULTS = Object.freeze({
     maxRetries: DEFAULT_HTTP_MAX_RETRIES,
     promptMode: 'strict',
     agentRuntime: false,
+    // Only the OpenAI-compatible HTTP backend builds a chat-completions body,
+    // so structured-output request fields (response_format) apply here alone.
+    supportsStructuredOutput: true,
   },
   'codex-cli': {
     maxConcurrency: 2,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
+    supportsStructuredOutput: false,
   },
   'claude-cli': {
     maxConcurrency: 1,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
+    supportsStructuredOutput: false,
   },
   'gemini-cli': {
     maxConcurrency: 2,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
+    supportsStructuredOutput: false,
   },
   'kimi-cli': {
     maxConcurrency: 1,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
+    supportsStructuredOutput: false,
   },
 });
 
@@ -45,10 +52,18 @@ const UNKNOWN_BACKEND_SAFETY = Object.freeze({
   maxRetries: 0,
   promptMode: 'strict',
   agentRuntime: false,
+  supportsStructuredOutput: false,
 });
 
 export function getBackendSafety(backendName) {
   return BACKEND_SAFETY_DEFAULTS[backendName] || UNKNOWN_BACKEND_SAFETY;
+}
+
+// True only for backends whose request path can carry an OpenAI-compatible
+// structured-output field (response_format). CLI backends spawn an agent and
+// never receive it, so structured output is never sent to a local CLI.
+export function backendSupportsStructuredOutput(backendName) {
+  return getBackendSafety(backendName).supportsStructuredOutput === true;
 }
 
 export function resolveBackendMaxConcurrency(backendName, override) {

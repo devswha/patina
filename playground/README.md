@@ -11,15 +11,28 @@ Static, audit-only web playground for `patina.vibetip.help`.
 
 ## Local preview
 
-Serve the repository root so `vercel.json`-style root paths can resolve brand and social assets:
+The static entry (`index.html`) loads `/app.js`, `/styles.css`, and `/analytics.js`
+via root-absolute paths that resolve through the `vercel.json` rewrites
+(`/app.js` → `/playground/app.js`). A plain static server rooted at the repo
+serves the page at `/playground/` where those `/app.js` URLs 404, so use a
+rewrite-aware dev server:
 
 ```bash
-npx http-server .
-# or
-python3 -m http.server 8080
+npx vercel dev
 ```
 
-Then open `http://localhost:8080/playground/`.
+Then open the URL it prints (the root route rewrites to the playground entry). A
+plain `npx http-server .` will render the page shell but not its JS/CSS.
+
+## Parity with the CLI
+
+The playground hot-paragraph ratio is intentionally a *superset* of the CLI's
+deterministic `--score`: it adds playground-only formatting tells (em dash /
+bold / emoji overuse) and per-paragraph markup leakage that canonical
+`analyzeText` omits (the CLI adds the optional structural classifier instead).
+So the playground can mark more paragraphs hot than `npx patina-cli --score` for
+the same text; shared signals (stylometry, lexicon, the leakage floor) stay
+pinned in parity by `tests/unit/playground.test.js`.
 
 ## Data refresh
 

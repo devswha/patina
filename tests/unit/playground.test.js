@@ -16,6 +16,7 @@ import {
   SUPPORTED_LANGS,
   splitProseSentences,
   countFormatting,
+  highlightLexiconHits,
   TRANSLATIONESE_RULES as PLAYGROUND_TRANSLATIONESE_RULES,
   TRANSLATIONESE_ABS_MIN,
   TRANSLATIONESE_DENSITY_MIN,
@@ -842,4 +843,20 @@ test('generated playground lexicon bundle is in sync with markdown lexicons', ()
     encoding: 'utf8',
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
+});
+
+test('playground emoji tell ignores text-presentation symbols ™/©/® (#450)', () => {
+  assert.equal(countFormatting('Acme\u2122 \u00a9 2026 \u00ae', { segmenter: null }).emoji, 0);
+  // A default-emoji-presentation pictograph still counts.
+  assert.equal(countFormatting('Ship it \u{1F680}', { segmenter: null }).emoji, 1);
+  // A text-default pictograph forced to emoji presentation with U+FE0F counts.
+  assert.equal(countFormatting('mark \u2122\uFE0F', { segmenter: null }).emoji, 1);
+});
+
+test('highlightLexiconHits falls back to plain escaping when lowercasing changes length (#450)', () => {
+  // 'İ' (U+0130) lowercases to 2 UTF-16 units, so index math against the
+  // lowercased copy would drift and mark the wrong substring.
+  assert.equal(highlightLexiconHits('\u0130stanbul tool', ['tool']).includes('<mark>'), false);
+  // A same-length string still highlights the hit.
+  assert.ok(highlightLexiconHits('great tool here', ['tool']).includes('<mark>tool</mark>'));
 });

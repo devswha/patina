@@ -70,7 +70,11 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       '--model', cliModel,
       '--output-last-message', outFile,
       ...imageArgs,
-    ], { stdio: ['pipe', 'pipe', 'pipe'], cwd: dir });
+      // stdout is discarded, not piped: `codex exec` streams session/progress
+      // output there, and a piped-but-undrained stdout deadlocks the child
+      // once the ~64KB OS pipe buffer fills (#438). The final answer comes
+      // from --output-last-message, so nothing on stdout is needed.
+    ], { stdio: ['pipe', 'ignore', 'pipe'], cwd: dir });
 
     let stderr = '';
     proc.stderr.on('data', (chunk) => { stderr += chunk; });

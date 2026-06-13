@@ -10,10 +10,21 @@ test('detects OpenAI citation markup', () => {
   assert.ok(r.hits.some((h) => h.id === 'oai-citation-markup'));
 });
 
-test('detects model tool tokens (turn0search, navlist, grok_card)', () => {
-  for (const s of ['see turn0search1 for', 'rendered navlist here', 'a grok_card block']) {
+test('detects model tool tokens (turn0search, grok_card)', () => {
+  for (const s of ['see turn0search1 for', 'a grok_card block']) {
     assert.equal(detectMarkupLeakage(s).leaked, true, s);
   }
+});
+
+test('navlist only counts as leakage with corroborating tool-token context (#442)', () => {
+  // Standalone navlist (a plausible human CSS class / identifier) is NOT
+  // near-proof on its own.
+  assert.equal(detectMarkupLeakage('rendered navlist here').leaked, false);
+  assert.equal(detectMarkupLeakage('<ul class="navlist">').leaked, false);
+  // With an independent near-proof token present, it escalates to leakage.
+  const r = detectMarkupLeakage('turn0search1 then navlist follows');
+  assert.equal(r.leaked, true);
+  assert.ok(r.hits.some((h) => h.id === 'model-nav-token'));
 });
 
 test('detects object-replacement character', () => {

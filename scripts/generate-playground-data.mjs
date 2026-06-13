@@ -30,7 +30,9 @@ for (const lang of LANGS) {
   const source = `lexicon/ai-${lang}.md`;
   const raw = readFileSync(resolve(REPO_ROOT, source), 'utf8');
   const { meta, body } = parseFrontmatter(raw);
-  const parsed = parseLexiconBody(body, { skipUnderscore: true });
+  // Match the CLI loader (src/features/lexicon.js parseLexiconBody(body)) so an
+  // underscore-prefixed entry can't count in the CLI yet vanish from the bundle (#450).
+  const parsed = parseLexiconBody(body);
   lexicons[lang] = {
     lang,
     source,

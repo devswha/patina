@@ -120,7 +120,12 @@ function zeroKoPostEditeseMetrics() {
   return koreanPostEditeseFeatures('', { lang: 'ko' }).metrics;
 }
 
-const EMOJI_BASE_RE = '\\p{Extended_Pictographic}(?:\\uFE0F|\\uFE0E)?(?:\\p{Emoji_Modifier})?';
+// Require emoji presentation, not bare Extended_Pictographic: ©/®/™ are
+// Extended_Pictographic with default TEXT presentation and would otherwise count
+// as emoji at the any-occurrence threshold (#450). A pictograph counts only when
+// it has emoji presentation by default (Emoji_Presentation) or is forced to it
+// with U+FE0F.
+const EMOJI_BASE_RE = '(?:\\p{Emoji_Presentation}\\uFE0F?|\\p{Extended_Pictographic}\\uFE0F)(?:\\p{Emoji_Modifier})?';
 const EMOJI_CLUSTER_PATTERN = `(?:\\p{Regional_Indicator}{2}|[#*0-9]\\uFE0F?\\u20E3|${EMOJI_BASE_RE}(?:\\u200D${EMOJI_BASE_RE})*)`;
 const EMOJI_CLUSTER_RE = new RegExp(EMOJI_CLUSTER_PATTERN, 'u');
 const EMOJI_CLUSTER_RE_GLOBAL = new RegExp(EMOJI_CLUSTER_PATTERN, 'gu');
@@ -428,6 +433,10 @@ function collectHitRanges(text, hits) {
 }
 
 export function highlightLexiconHits(text, hits) {
+  // collectHitRanges indexes against text.toLowerCase(); if case folding changes
+  // length (e.g. 'İ' U+0130 → 2 UTF-16 units) every range would shift and mark
+  // the wrong substring. Fall back to plain escaped text in that case (#450).
+  if (text.toLowerCase().length !== text.length) return escapeHtml(text);
   const ranges = collectHitRanges(text, hits);
   if (ranges.length === 0) return escapeHtml(text);
   let html = '';

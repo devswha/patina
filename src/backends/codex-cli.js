@@ -56,8 +56,16 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   // into the temp cwd keeps the read-only sandbox + empty-cwd containment.
   const imageArgs = [];
   if (Array.isArray(images) && images.length > 0) {
-    for (const staged of stageCliImages(dir, images)) {
-      imageArgs.push('-i', join(dir, staged));
+    try {
+      for (const staged of stageCliImages(dir, images)) {
+        imageArgs.push('-i', join(dir, staged));
+      }
+    } catch (err) {
+      // stageCliImages runs before the Promise, so its own try/finally cleanup
+      // does not cover it — clean up the temp dir and surface a backend-shaped
+      // error instead of leaking the dir and escaping a raw fs error (#446).
+      try { rmSync(dir, { recursive: true, force: true }); } catch {}
+      throw new Error(`codex-cli backend: failed to stage image input (${err.message})`);
     }
   }
 
@@ -77,6 +85,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
     ], { stdio: ['pipe', 'ignore', 'pipe'], cwd: dir });
 
     let stderr = '';
+    proc.stderr.setEncoding('utf8'); // decode as streaming UTF-8 so multibyte CJK is not corrupted at chunk boundaries (#446)
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
 
     let settled = false;
@@ -98,10 +107,13 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       }
     });
 
-    proc.on('close', (code) => {
+    proc.on('close', (code, sig) => {
       if (settled) return;
       if (code !== 0) {
-        finishReject(new Error(`codex-cli backend: codex exited with code ${code}\n${stderr}`));
+        // Signal death (OOM kill, external SIGTERM) yields code===null; report
+        // the signal instead of "exited with code null" (#446).
+        const how = code === null && sig ? `terminated by ${sig}` : `exited with code ${code}`;
+        finishReject(new Error(`codex-cli backend: codex ${how}\n${stderr}`));
         return;
       }
 
@@ -119,7 +131,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
     // surfaces the real exit code + stderr); reject on anything else.
     proc.stdin.on('error', (err) => {
       if (err && err.code !== 'EPIPE') {
-        finishReject(new Error(`codex-cli backend: stdin error (${err.message})`));
+        finishReject(new Error(`codex-cli backend: stdin error (${err.message})`), { kill: true });
       }
     });
     proc.stdin.write(prompt);
@@ -134,6 +146,9 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       settled = true;
       clearTimeout(timer);
       cleanupSignal();
+      // SIGKILL reaches only the direct child; these agent CLIs are not spawned
+      // detached, so forked grandchildren (workers/ripgrep/MCP) can outlive the
+      // kill and briefly hold the now-removed temp cwd — an accepted leak (#446).
       if (kill) proc.kill('SIGKILL');
       cleanup();
       reject(err);

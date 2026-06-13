@@ -58,8 +58,15 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   // permission-denied (and granting them would weaken the containment above).
   let effectivePrompt = prompt;
   if (Array.isArray(images) && images.length > 0) {
-    const staged = stageCliImages(dir, images);
-    effectivePrompt = `${prompt}\n\nAttached image file(s) in the working directory: ${staged.map((f) => `./${f}`).join(', ')} — read them before answering.`;
+    try {
+      const staged = stageCliImages(dir, images);
+      effectivePrompt = `${prompt}\n\nAttached image file(s) in the working directory: ${staged.map((f) => `./${f}`).join(', ')} — read them before answering.`;
+    } catch (err) {
+      // Runs before the Promise's cleanup; remove the temp dir and surface a
+      // backend-shaped error instead of leaking it and escaping a raw fs error (#446).
+      try { rmSync(dir, { recursive: true, force: true }); } catch {}
+      throw new Error(`claude-cli backend: failed to stage image input (${err.message})`);
+    }
   }
 
   return new Promise((resolve, reject) => {
@@ -93,10 +100,12 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       }
     });
 
-    proc.on('close', (code) => {
+    proc.on('close', (code, sig) => {
       if (settled) return;
       if (code !== 0) {
-        finishReject(new Error(`claude-cli backend: claude exited with code ${code}\n${stderr}`));
+        // Signal death (OOM kill, external SIGTERM) yields code===null (#446).
+        const how = code === null && sig ? `terminated by ${sig}` : `exited with code ${code}`;
+        finishReject(new Error(`claude-cli backend: claude ${how}\n${stderr}`));
         return;
       }
       finishResolve(stdout);
@@ -108,7 +117,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
     // surfaces the real exit code + stderr); reject on anything else.
     proc.stdin.on('error', (err) => {
       if (err && err.code !== 'EPIPE') {
-        finishReject(new Error(`claude-cli backend: stdin error (${err.message})`));
+        finishReject(new Error(`claude-cli backend: stdin error (${err.message})`), { kill: true });
       }
     });
     proc.stdin.write(effectivePrompt);
@@ -123,6 +132,8 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       settled = true;
       clearTimeout(timer);
       cleanupSignal();
+      // SIGKILL reaches only the direct child; grandchildren (workers/ripgrep/MCP)
+      // are not in a killable group and may briefly outlive it — accepted leak (#446).
       if (kill) proc.kill('SIGKILL');
       cleanup();
       reject(err);

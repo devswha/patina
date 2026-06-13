@@ -25,8 +25,36 @@ test('detects AI tracking params in URLs', () => {
 });
 
 test('detects explicit AI self-identification', () => {
-  for (const s of ['As an AI language model, I cannot', "I'm an AI, so", 'as a large language model']) {
+  const positives = [
+    'As an AI language model, I cannot',
+    "I'm an AI, so",
+    'as a large language model',
+    'As a language model, I cannot help with that.',
+    'as a language model I am unable to',
+    'I am an AI.',
+    'I am an AI',
+    'I am an AI assistant created by',
+    "I'm an AI chatbot.",
+    'I am an AI trained by a large lab.',
+  ];
+  for (const s of positives) {
     assert.equal(detectMarkupLeakage(s).leaked, true, s);
+  }
+});
+
+test('self-identification rule does NOT fire on human bio/ML prose (issue #435)', () => {
+  const negatives = [
+    'I am an AI researcher at a mid-sized lab.',
+    "I'm an AI safety engineer working on evals.",
+    'I am an AI ethics consultant and writer.',
+    'BERT functions as a language model for downstream tasks.',
+    'We benchmark it as a language model baseline.',
+    'I am an AI-powered-tools skeptic, honestly.',
+    "I'm an AI/ML engineer by trade.",
+    'I am an AI assistant manager at the store.',
+  ];
+  for (const s of negatives) {
+    assert.equal(detectMarkupLeakage(s).leaked, false, s);
   }
 });
 

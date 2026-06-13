@@ -3,6 +3,8 @@ import { strict as assert } from 'node:assert';
 
 import { analyzeText } from '../../src/features/index.js';
 import {
+  koreanDiagnostics,
+  DEFAULT_KO_DIAGNOSTIC_BANDS,
   classifyKoreanDiagnostics,
   commaDensity,
   koreanPosDiversityProxy,
@@ -132,4 +134,90 @@ test('detectKoreanRegister reports mixed registers and refuses thin samples', as
   // Fewer than three classified endings is noise, not a register.
   assert.equal(detectKoreanRegister('짧다.'), null);
   assert.equal(detectKoreanRegister('Hello world. This is English text only.'), null);
+});
+// --- A5: KO single-pass diagnostics equivalence -----------------------------
+
+import { splitProseSentences } from '../../src/features/segment.js';
+
+// Reference assembly identical to the pre-A5 buildKoreanSignals: each proxy
+// recomputes its own eojeols. koreanDiagnostics must match it exactly while
+// tokenizing eojeols only once.
+function referenceKoreanSignals(paragraph, sentenceCount, { enabled = true, bands = DEFAULT_KO_DIAGNOSTIC_BANDS } = {}) {
+  const spacing = koreanSpacingFeatures(paragraph);
+  const comma = commaDensity(paragraph, sentenceCount);
+  const posDiversity = koreanPosDiversityProxy(paragraph);
+  const koDiagnostics = enabled
+    ? classifyKoreanDiagnostics({ sentenceCount, spacing, comma, posDiversity }, bands)
+    : { hot: false, strength: 0, reasons: [], thresholds: bands };
+  return { spacing, comma, posDiversity, koDiagnostics };
+}
+
+test('koreanDiagnostics single-pass output matches separate spacing/comma/posDiversity/classify calls', () => {
+  const cases = [
+    '이 도구는 혁신적이다. 이 도구는 효율적이고 신뢰할 수 있다. 팀은 확장성 때문에 빠르게 채택한다. 또한 측정 가능한 가치를 제공한다.',
+    '어제 친구랑 카페 갔는데, 거기 커피가 진짜 맛있더라. 너도 한번 가봐! 분위기도 좋고, 가격도 안 비싸.',
+    KO_COMPOSITE_TEXT,
+    '', // empty paragraph
+    '단문.', // single short sentence
+  ];
+  for (const paragraph of cases) {
+    const sentenceCount = splitProseSentences(paragraph).length;
+    for (const enabled of [true, false]) {
+      assert.deepEqual(
+        koreanDiagnostics(paragraph, sentenceCount, { enabled }),
+        referenceKoreanSignals(paragraph, sentenceCount, { enabled }),
+        `mismatch for "${paragraph.slice(0, 12)}" enabled=${enabled}`,
+      );
+    }
+  }
+});
+
+test('koreanDiagnostics disabled branch returns the inert composite', () => {
+  const bands = DEFAULT_KO_DIAGNOSTIC_BANDS;
+  const out = koreanDiagnostics('이 도구는 혁신적이다. 빠르게 채택한다.', 2, { enabled: false });
+  assert.deepEqual(out.koDiagnostics, { hot: false, strength: 0, reasons: [], thresholds: bands });
+});
+
+test('koreanSpacingFeatures/koreanPosDiversityProxy honor a pre-computed eojeols argument', () => {
+  // Passing an explicit eojeols array bypasses internal tokenization.
+  assert.equal(koreanSpacingFeatures('이 도구는 결과를 보여준다', []).eojeolCount, 0);
+  assert.equal(koreanPosDiversityProxy('이 도구는 결과를 보여준다', []).eojeolCount, 0);
+  // A custom three-token array is used verbatim.
+  const spacing = koreanSpacingFeatures('ignored', ['가나다', '라마', '바']);
+  assert.equal(spacing.eojeolCount, 3);
+});
+
+test('analyzeText KO per-paragraph diagnostics are unchanged after the single-pass refactor (parity)', () => {
+  const ai = analyzeText('이 도구는 혁신적이다. 이 도구는 효율적이고 신뢰할 수 있다. 팀은 확장성 때문에 빠르게 채택한다. 또한 측정 가능한 가치를 제공한다.', { lang: 'ko' }).paragraphs[0];
+  assert.deepEqual(ai.spacing, {
+    eojeolCount: 19,
+    meanEojeolLength: 2.789473684210526,
+    eojeolLengthCV: 0.41251341715236683,
+    singleSyllableRatio: 0.15789473684210525,
+    longEojeolRatio: 0,
+  });
+  assert.deepEqual(ai.posDiversity, {
+    proxy: 'suffix',
+    eojeolCount: 19,
+    matchedCount: 8,
+    coverage: 0.42105263157894735,
+    distinctClassCount: 4,
+    classDiversity: 0.5,
+    distinctSuffixCount: 6,
+    suffixDiversity: 0.75,
+    classes: ['declarative_ending', 'location', 'object', 'topic'],
+  });
+  assert.equal(ai.koDiagnostics.hot, false);
+  assert.equal(ai.hot, true);
+
+  const natural = analyzeText('어제 친구랑 카페 갔는데, 거기 커피가 진짜 맛있더라. 너도 한번 가봐! 분위기도 좋고, 가격도 안 비싸.', { lang: 'ko' }).paragraphs[0];
+  assert.deepEqual(natural.spacing, {
+    eojeolCount: 16,
+    meanEojeolLength: 2.4375,
+    eojeolLengthCV: 0.32332103110047417,
+    singleSyllableRatio: 0.0625,
+    longEojeolRatio: 0,
+  });
+  assert.equal(natural.posDiversity.matchedCount, 5);
+  assert.equal(natural.hot, false);
 });

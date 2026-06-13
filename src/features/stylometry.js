@@ -439,8 +439,7 @@ export function detectKoreanRegister(text) {
   };
 }
 
-export function koreanSpacingFeatures(paragraph) {
-  const eojeols = koreanEojeols(paragraph);
+export function koreanSpacingFeatures(paragraph, eojeols = koreanEojeols(paragraph)) {
   const lengths = eojeols.map(koreanLength).filter((length) => length > 0);
   const eojeolCount = lengths.length;
 
@@ -466,8 +465,7 @@ export function commaDensity(paragraph, sentenceCount = null) {
   };
 }
 
-export function koreanPosDiversityProxy(paragraph) {
-  const eojeols = koreanEojeols(paragraph);
+export function koreanPosDiversityProxy(paragraph, eojeols = koreanEojeols(paragraph)) {
   const matches = [];
 
   for (const token of eojeols) {
@@ -547,6 +545,26 @@ export function classifyKoreanDiagnostics({
     reasons: hot ? reasons : [],
     thresholds,
   };
+}
+
+// Single-pass Korean per-paragraph diagnostics: tokenize eojeols ONCE and reuse
+// them for the spacing and POS-diversity proxies (previously each recomputed
+// koreanEojeols), then derive comma density and the composite classification.
+// Output is identical to calling koreanSpacingFeatures/commaDensity/
+// koreanPosDiversityProxy/classifyKoreanDiagnostics separately.
+export function koreanDiagnostics(
+  paragraph,
+  sentenceCount,
+  { enabled = true, bands = DEFAULT_KO_DIAGNOSTIC_BANDS } = {}
+) {
+  const eojeols = koreanEojeols(paragraph);
+  const spacing = koreanSpacingFeatures(paragraph, eojeols);
+  const comma = commaDensity(paragraph, sentenceCount);
+  const posDiversity = koreanPosDiversityProxy(paragraph, eojeols);
+  const koDiagnostics = enabled
+    ? classifyKoreanDiagnostics({ sentenceCount, spacing, comma, posDiversity }, bands)
+    : { hot: false, strength: 0, reasons: [], thresholds: bands };
+  return { spacing, comma, posDiversity, koDiagnostics };
 }
 
 export function classifyBurstiness(cv, bands = DEFAULT_BURSTINESS_BANDS) {

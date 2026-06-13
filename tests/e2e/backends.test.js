@@ -199,6 +199,37 @@ describe('Backend Fallback Chain', () => {
     assert.match(events[0].message, /first failed with HTTP 429; falling back to second/);
   });
 
+  it('invokes each backend at most once and never transport-retries the same backend (#C3)', async () => {
+    const counts = { first: 0, second: 0 };
+    const result = await invokeBackendChain({
+      backends: [
+        {
+          name: 'first',
+          invoke: async () => {
+            counts.first += 1;
+            const err = new Error('rate limited');
+            err.status = 429;
+            throw err;
+          },
+        },
+        {
+          name: 'second',
+          invoke: async () => {
+            counts.second += 1;
+            return 'ok';
+          },
+        },
+      ],
+      prompt: 'rewrite this',
+      logger: { warn() {} },
+    });
+    assert.strictEqual(result, 'ok');
+    // Fallback advances to the next backend; it never re-invokes the same one
+    // (transport retry of a single backend is callLLM's job, not the chain's).
+    assert.strictEqual(counts.first, 1);
+    assert.strictEqual(counts.second, 1);
+  });
+
   it('does not fall through non-retryable backend errors', async () => {
     let secondCalled = false;
     await assert.rejects(

@@ -440,3 +440,21 @@ test('scoreText omits responseFormat when the opt-in is unset (#C2)', async () =
   assert.equal(calls.length, 1);
   assert.equal(calls[0].responseFormat, undefined);
 });
+
+test('scoreText runs exactly two LLM attempts then yields a schema-failure result on persistent bad JSON (#C3)', async () => {
+  let calls = 0;
+  const result = await scoreText({
+    text: 'draft to score',
+    config: loadConfig(),
+    patterns: [],
+    callLLM: async () => {
+      calls += 1;
+      return 'definitely not json';
+    },
+    logger: { warn() {} },
+  });
+  // Schema retry is owned by callAndParseJson: exactly 1 attempt + 1 temp-0 retry.
+  assert.equal(calls, 2);
+  assert.equal(result.overall, null);
+  assert.equal(result.error, 'schema-failure');
+});

@@ -106,7 +106,11 @@ export function parseHostedResponse(body) {
   assertText(body.text, 'text');
   if (!Array.isArray(body.spans)) fail('spans must be an array');
 
-  const textLength = body.text.normalize('NFC').length;
+  // Validate offsets against the exact string returned to the caller (#445):
+  // normalizing to NFC here while returning the raw text made valid end-spans
+  // on non-NFC (e.g. NFD Korean) text falsely fail and left accepted offsets
+  // ambiguous about which normalization they index.
+  const textLength = body.text.length;
   const spans = body.spans.map((span, index) => {
     assertPlainObject(span, `spans[${index}]`);
     for (const key of Object.keys(span)) {

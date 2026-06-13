@@ -74,6 +74,29 @@ test('local CLI model resolver uses best-known defaults and preserves explicit i
   );
 });
 
+test('drops a foreign-family flag model per fallback leg (#445)', () => {
+  // `--backend openai-http,claude-cli --model gpt-5.5`: the claude-cli leg must
+  // fall back to its own default instead of forwarding the foreign id.
+  assert.strictEqual(
+    resolveLocalCliModel({ backendName: 'claude-cli', model: 'gpt-5.5', modelSource: 'flag' }),
+    DEFAULT_BEST_MODELS.claudeCli
+  );
+  assert.strictEqual(
+    resolveLocalCliModel({ backendName: 'gemini-cli', model: 'gpt-5.5', modelSource: 'flag' }),
+    DEFAULT_BEST_MODELS.geminiCli
+  );
+  // A matching-family flag model is still honored.
+  assert.strictEqual(
+    resolveLocalCliModel({ backendName: 'claude-cli', model: 'claude-opus-custom', modelSource: 'flag' }),
+    'claude-opus-custom'
+  );
+  // openai-http is not a local CLI; it still receives the model verbatim.
+  assert.strictEqual(
+    resolveLocalCliModel({ backendName: 'openai-http', model: 'gpt-5.5', modelSource: 'flag' }),
+    'gpt-5.5'
+  );
+});
+
 test('local CLI backends pass default best-model flags to child processes', async () => {
   await withFakeCli(async () => {
     const codex = JSON.parse(await codexCli.invoke({ prompt: 'rewrite this', modelSource: 'default' }));

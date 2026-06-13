@@ -1,5 +1,5 @@
 import { htmlEscape, diffBlockPairs } from './browser-diff.js';
-import { describeImage, fetchCappedBytes } from './ocr.js';
+import { describeImage, fetchCappedBytes, readResponseBytesCapped } from './ocr.js';
 import { isSubresourceFetchAllowed } from './security.js';
 
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
@@ -74,10 +74,15 @@ export async function fetchPreviewPage(url, options = {}) {
     if (contentType && !/html/i.test(contentType)) {
       throw new Error(`the page is ${contentType.split(';')[0]}, not HTML`);
     }
-    const html = await response.text();
-    if (html.length > maxBytes) {
-      throw new Error(`the page is larger than the ${Math.round(maxBytes / 1024 / 1024)}MB preview limit`);
-    }
+    // Stream the body under a true byte cap instead of buffering the whole
+    // response and checking UTF-16 code-unit length: a hostile/misconfigured
+    // server could otherwise stream hundreds of MB within the timeout, and
+    // `.length` undercounts multi-byte (e.g. Korean) pages (#447).
+    const buf = await readResponseBytesCapped(response, {
+      maxBytes,
+      tooBig: `the page is larger than the ${Math.round(maxBytes / 1024 / 1024)}MB preview limit`,
+    });
+    const html = buf.toString('utf-8');
     return { html, finalUrl: current };
   } finally {
     clearTimeout(timer);
@@ -273,7 +278,9 @@ export async function freezeSnapshotAssets(html, { baseUrl, signal, logger, fetc
       });
       css = embedded.css;
       fontCount += embedded.fontCount;
-      out = out.replace(sheet.tag, `<style data-ptna-frozen="${htmlEscape(sheet.url)}">${css}</style>`);
+      // Function replacement: page-controlled css must not have its `$&`/$`/$'
+      // sequences interpreted as replacement patterns (#447).
+      out = out.replace(sheet.tag, () => `<style data-ptna-frozen="${htmlEscape(sheet.url)}">${css}</style>`);
       sheetCount += 1;
     } catch (err) {
       if (signal?.aborted) break;
@@ -359,6 +366,12 @@ async function embedFontsAsDataUris(css, { origin, baseUrl, signal, fetchImpl, l
 
 function decodeHtmlEntities(value) {
   return String(value)
+    // Numeric character references (&#60; / &#x3c;) — browsers decode all of
+    // these in attribute values, so srcdoc inlining must too or numeric-entity
+    // markup renders as inert escaped text and its prose never reaches the
+    // extractor (#447).
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
@@ -1041,8 +1054,9 @@ function injectHead(html, sourceUrl) {
   // permissive CSP was already stripped by stripActiveContent).
   const csp = `<meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}">`;
   const injection = `${csp}${baseTag}<style id="ptna-style">${PREVIEW_CSS}</style>`;
-  if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b[^>]*>/i, `$&${injection}`);
-  if (/<html\b[^>]*>/i.test(html)) return html.replace(/<html\b[^>]*>/i, `$&<head>${injection}</head>`);
+  // Function replacements so `$`-sequences in the injected sourceUrl are literal (#447).
+  if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b[^>]*>/i, (m) => `${m}${injection}`);
+  if (/<html\b[^>]*>/i.test(html)) return html.replace(/<html\b[^>]*>/i, (m) => `${m}<head>${injection}</head>`);
   return `<head>${injection}</head>${html}`;
 }
 
@@ -1083,9 +1097,11 @@ function injectChrome(html, { changedCount, totalCount, explanationHtml = '', sc
     + '</div>';
 
   let out = html;
-  if (/<body\b[^>]*>/i.test(out)) out = out.replace(/<body\b[^>]*>/i, `$&${inputs}`);
+  if (/<body\b[^>]*>/i.test(out)) out = out.replace(/<body\b[^>]*>/i, (m) => `${m}${inputs}`);
   else out = `${inputs}${out}`;
-  if (/<\/body\s*>/i.test(out)) return out.replace(/<\/body\s*>/i, `${notes}${bar}$&`);
+  // Function replacement so `$`-sequences in notes (LLM explanation + OCR'd image
+  // text) are not interpreted as replacement patterns (#447).
+  if (/<\/body\s*>/i.test(out)) return out.replace(/<\/body\s*>/i, (m) => `${notes}${bar}${m}`);
   return `${out}${notes}${bar}`;
 }
 

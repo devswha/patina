@@ -207,6 +207,8 @@ test('callLLM reports usage metadata without changing string return value', asyn
       cost_usd: 0.001,
     });
     assert.equal(seen[0].content, 'hello');
+    // No provider cache fields in this usage payload -> absent-safe null.
+    assert.equal(seen[0].cacheTokens, null);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -267,6 +269,36 @@ test('a throw from onResponse does not re-issue the paid request (#444)', async 
       /callback boom/,
     );
     assert.equal(calls, 1, 'fetch must run exactly once despite the onResponse throw');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('callLLM surfaces provider prompt-cache token counts when present', async () => {
+  const originalFetch = globalThis.fetch;
+  const cases = [
+    // OpenAI-compatible shape.
+    {
+      usage: { prompt_tokens: 100, completion_tokens: 5, prompt_tokens_details: { cached_tokens: 80 } },
+      expected: { cachedReadTokens: 80, cacheCreationTokens: null },
+    },
+    // Anthropic-style shape.
+    {
+      usage: { input_tokens: 100, cache_read_input_tokens: 64, cache_creation_input_tokens: 12 },
+      expected: { cachedReadTokens: 64, cacheCreationTokens: 12 },
+    },
+  ];
+  try {
+    for (const { usage, expected } of cases) {
+      const seen = [];
+      globalThis.fetch = async () => ({
+        ok: true,
+        json: async () => ({ model: 'm', choices: [{ message: { content: 'ok' } }], usage }),
+      });
+      const content = await callLLM({ prompt: 'x', apiKey: 'k', model: 'm', onResponse: (m) => seen.push(m) });
+      assert.equal(content, 'ok');
+      assert.deepEqual(seen[0].cacheTokens, expected);
+    }
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -207,12 +207,6 @@ export function buildPrompt(options) {
     }
   }
 
-  if (mode === 'rewrite' && Array.isArray(documentSignals) && documentSignals.length > 0) {
-    prompt += `## Document Signals (deterministic measurements)\n\n`;
-    prompt += documentSignals.map((signal) => `- ${signal}`).join('\n');
-    prompt += `\n\nTreat these as ground truth when forming the Phase 0 document brief.\n\n`;
-  }
-
   prompt += `## Instructions\n\n`;
   prompt += `Process the following text according to the output mode "${mode}".\n\n`;
 
@@ -226,6 +220,17 @@ export function buildPrompt(options) {
     prompt += buildScoreInstructions(config, lang, text, activePatterns);
   } else if (mode === 'ouroboros') {
     prompt += buildOuroborosInstructions(config, structurePacks, lexicalPacks);
+  }
+
+  // Per-document deterministic measurements sit adjacent to the input, after
+  // the stable instruction prefix, so the large pattern-pack/profile/voice/
+  // instruction prefix stays byte-identical across documents in a batch and
+  // maximizes provider prompt-cache hits. Only these signals and the fenced
+  // input below vary per document.
+  if (mode === 'rewrite' && Array.isArray(documentSignals) && documentSignals.length > 0) {
+    prompt += `## Document Signals (deterministic measurements)\n\n`;
+    prompt += documentSignals.map((signal) => `- ${signal}`).join('\n');
+    prompt += `\n\nTreat these as ground truth when forming the Phase 0 document brief.\n\n`;
   }
 
   prompt += `\n## Input Text\n\n`;

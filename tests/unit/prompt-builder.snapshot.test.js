@@ -13,6 +13,7 @@ const UPDATE_SNAPSHOTS = process.env.UPDATE_PROMPT_SNAPSHOTS === '1';
 const CASES = [
   { name: 'rewrite strict', file: 'rewrite-strict.md', mode: 'rewrite', promptMode: 'strict' },
   { name: 'rewrite minimal', file: 'rewrite-minimal.md', mode: 'rewrite', promptMode: 'minimal' },
+  { name: 'rewrite with signals', file: 'rewrite-signals.md', mode: 'rewrite', promptMode: 'strict', documentSignals: ['burstiness CV 0.18 (low)', 'MATTR 0.52 (low)', 'lexicon density 3.1/1k (high)'] },
   { name: 'diff', file: 'diff.md', mode: 'diff', promptMode: 'strict' },
   { name: 'audit', file: 'audit.md', mode: 'audit', promptMode: 'strict' },
   { name: 'score', file: 'score.md', mode: 'score', promptMode: 'strict' },
@@ -134,7 +135,7 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function buildSnapshot({ mode, promptMode }) {
+function buildSnapshot({ mode, promptMode, documentSignals = null }) {
   const prompt = buildPrompt({
     config,
     patterns,
@@ -145,6 +146,7 @@ function buildSnapshot({ mode, promptMode }) {
     mode,
     tone,
     promptMode,
+    documentSignals,
   });
   return `${redactInputSection(prompt).trim()}\n`;
 }

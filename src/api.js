@@ -45,6 +45,23 @@ function truncate(text, max = 256) {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
+// Surface provider prompt-cache token counts when present, normalized across
+// OpenAI-compatible (usage.prompt_tokens_details.cached_tokens) and Anthropic-
+// style (usage.cache_read_input_tokens / cache_creation_input_tokens) shapes.
+// Absent-safe: returns null when the provider exposes no cache usage, so the
+// cache-friendly prompt layout (C1) can be observed without breaking providers
+// that omit these fields.
+function extractCacheTokens(usage) {
+  if (!usage || typeof usage !== 'object') return null;
+  const cachedRead = usage.prompt_tokens_details?.cached_tokens ?? usage.cache_read_input_tokens ?? null;
+  const cacheCreation = usage.cache_creation_input_tokens ?? null;
+  if (cachedRead == null && cacheCreation == null) return null;
+  return {
+    cachedReadTokens: cachedRead ?? null,
+    cacheCreationTokens: cacheCreation ?? null,
+  };
+}
+
 function abortError(message = 'The operation was aborted') {
   const err = new Error(message);
   err.name = 'AbortError';
@@ -254,6 +271,7 @@ export async function callLLM({
         temperature,
         seed: seed ?? null,
         usage: data.usage ?? null,
+        cacheTokens: extractCacheTokens(data.usage),
         rawResponse: data,
         content,
       };

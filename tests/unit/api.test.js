@@ -211,3 +211,63 @@ test('callLLM reports usage metadata without changing string return value', asyn
     globalThis.fetch = originalFetch;
   }
 });
+
+test('a timeout that exhausts retries surfaces as TimeoutError, not AbortError (#444)', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    const e = new Error('aborted');
+    e.name = 'AbortError'; // a timer-driven abort with no external signal
+    throw e;
+  };
+  try {
+    await assert.rejects(
+      callLLM({ prompt: 'x', apiKey: 'test', maxRetries: 1, sleep: async () => {} }),
+      (err) => err.name === 'TimeoutError' && /LLM API failed/.test(err.message),
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('an externally aborted call still surfaces as AbortError (#444)', async () => {
+  const originalFetch = globalThis.fetch;
+  const controller = new AbortController();
+  globalThis.fetch = async () => {
+    controller.abort();
+    const e = new Error('aborted');
+    e.name = 'AbortError';
+    throw e;
+  };
+  try {
+    await assert.rejects(
+      callLLM({ prompt: 'x', apiKey: 'test', maxRetries: 1, signal: controller.signal, sleep: async () => {} }),
+      (err) => err.name === 'AbortError',
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('a throw from onResponse does not re-issue the paid request (#444)', async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return { ok: true, json: async () => ({ choices: [{ message: { content: 'hi' } }] }) };
+  };
+  try {
+    await assert.rejects(
+      callLLM({
+        prompt: 'x',
+        apiKey: 'test',
+        maxRetries: 3,
+        sleep: async () => {},
+        onResponse: () => { throw new TypeError('callback boom'); },
+      }),
+      /callback boom/,
+    );
+    assert.equal(calls, 1, 'fetch must run exactly once despite the onResponse throw');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

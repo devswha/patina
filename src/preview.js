@@ -21,10 +21,13 @@ const PROSE_TAGS = 'p|h1|h2|h3|h4|h5|h6|li|blockquote|figcaption|dt|dd|summary|d
 // control labels — never body copy.
 const EXCLUDED_CONTAINERS = 'head|script|style|noscript|template|textarea|svg|iframe|select|option|code|pre|nav|button';
 
+const MAX_PAGE_REDIRECTS = 5;
+
 export async function fetchPreviewPage(url, options = {}) {
   const fetchImpl = options.fetchImpl ?? fetch;
   const timeoutMs = options.timeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const lookupImpl = options.lookupImpl;
   const outerSignal = options.signal;
 
   const controller = new AbortController();
@@ -36,11 +39,34 @@ export async function fetchPreviewPage(url, options = {}) {
   }
 
   try {
-    const response = await fetchImpl(url, {
-      signal: controller.signal,
-      redirect: 'follow',
-      headers: { accept: 'text/html,application/xhtml+xml' },
-    });
+    // Follow redirects manually so every hop is SSRF-guarded. The user-typed
+    // URL is trusted (it may legitimately point at a localhost dev server),
+    // but redirect Location headers are server-controlled content: a hostile
+    // public page must not be able to 30x the preview into cloud metadata or
+    // an internal host — especially since the final hop becomes baseUrl,
+    // which the subresource guard then treats as "the page's own host"
+    // (same containment rule as fetchCappedBytes in ocr.js).
+    let current = url;
+    let response;
+    for (let hop = 0; ; hop++) {
+      response = await fetchImpl(current, {
+        signal: controller.signal,
+        redirect: 'manual',
+        headers: { accept: 'text/html,application/xhtml+xml' },
+      });
+      const location = response.status >= 300 && response.status < 400
+        ? response.headers.get('location')
+        : null;
+      if (!location) break;
+      if (hop >= MAX_PAGE_REDIRECTS) {
+        throw new Error('the page redirected too many times');
+      }
+      const next = new URL(location, current).href;
+      if (!(await isSubresourceFetchAllowed(next, { baseUrl: url, lookupImpl }))) {
+        throw new Error('the page redirected to a private/internal address');
+      }
+      current = next;
+    }
     if (!response.ok) {
       throw new Error(`the page returned HTTP ${response.status}`);
     }
@@ -52,7 +78,7 @@ export async function fetchPreviewPage(url, options = {}) {
     if (html.length > maxBytes) {
       throw new Error(`the page is larger than the ${Math.round(maxBytes / 1024 / 1024)}MB preview limit`);
     }
-    return { html, finalUrl: response.url || url };
+    return { html, finalUrl: current };
   } finally {
     clearTimeout(timer);
     outerSignal?.removeEventListener?.('abort', onOuterAbort);

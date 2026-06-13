@@ -83,3 +83,25 @@ test('every general category is accepted', () => {
     assert.equal(spans[0].category, category);
   }
 });
+
+test('offsets validate against the returned (raw) text, not an NFC copy (#445)', () => {
+  // 가 in NFD = U+1100 U+1161 (length 2 in JS) vs NFC U+AC00 (length 1). A span
+  // ending at the raw length must be accepted and the raw text returned.
+  const nfd = '\u1100\u1161';
+  const { spans, text } = parseHostedResponse({
+    schemaVersion: HOSTED_SCHEMA_VERSION,
+    text: nfd,
+    spans: [{ start: 0, end: 2, score: 0.5, category: 'other' }],
+  });
+  assert.equal(text, nfd);
+  assert.equal(spans[0].end, 2);
+  // An offset past the raw length still fails loud.
+  assert.throws(
+    () => parseHostedResponse({
+      schemaVersion: HOSTED_SCHEMA_VERSION,
+      text: nfd,
+      spans: [{ start: 0, end: 3, score: 0.5, category: 'other' }],
+    }),
+    HostedSchemaError,
+  );
+});

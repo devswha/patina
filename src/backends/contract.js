@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
-import { copyFileSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 
 export const DEFAULT_BACKEND_TIMEOUT_MS = 600_000;
@@ -52,10 +52,13 @@ export function getBackendSafety(backendName) {
 }
 
 export function resolveBackendMaxConcurrency(backendName, override) {
-  const n = override === undefined || override === null
-    ? getBackendSafety(backendName).maxConcurrency
-    : Number(override);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : Infinity;
+  const fallback = getBackendSafety(backendName).maxConcurrency;
+  if (override === undefined || override === null) return fallback;
+  const n = Number(override);
+  // Fail closed: an invalid override (0, negative, NaN) must not silently
+  // disable the cross-process cap. Fall back to the backend's own default
+  // rather than Infinity — the cap exists to bound agent-CLI fan-out (#445).
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 }
 
 export function resolveBackendMaxRetries(backendName, override) {
@@ -98,8 +101,12 @@ export function describeBackendError(err) {
 }
 
 function extractStatus(err) {
-  const direct = Number(err?.status);
-  if (Number.isFinite(direct)) return direct;
+  // `Number(null) === 0` is finite, so an explicit `status: null` would short
+  // out the HTTP 429/503 message fallback and look non-retryable (#445).
+  if (err?.status != null) {
+    const direct = Number(err.status);
+    if (Number.isFinite(direct)) return direct;
+  }
   const match = String(err?.message || '').match(/\bHTTP\s+(429|503)\b/);
   return match ? Number(match[1]) : null;
 }
@@ -153,7 +160,10 @@ async function acquireBackendSlot({
 }) {
   throwIfAborted(signal, `${backendName || 'backend'}: aborted while waiting for concurrency slot`);
   const startedAt = Date.now();
-  const root = join(tmpdir(), 'patina-backend-slots', safePathSegment(backendName || 'backend'));
+  // Per-user slot root: the slot dirs are real locks, and a world-shared
+  // tmpdir path means another user's slot dir cannot be removed (EACCES) and
+  // would permanently consume a cap slot on a multi-user host (#445).
+  const root = join(tmpdir(), `patina-backend-slots-${userSlotSegment()}`, safePathSegment(backendName || 'backend'));
   mkdirSync(root, { recursive: true });
 
   for (;;) {
@@ -183,9 +193,47 @@ async function acquireBackendSlot({
 
 function cleanupStaleSlot(slot, staleMs) {
   try {
+    // A crashed owner (its pid no longer alive) must release the slot
+    // immediately, not after staleMs — otherwise a cap-1 backend (claude/kimi)
+    // is blocked for up to 30 minutes by a dead run (#445).
+    if (!isSlotOwnerAlive(slot)) {
+      rmSync(slot, { recursive: true, force: true });
+      return;
+    }
     const ageMs = Date.now() - statSync(slot).mtimeMs;
     if (ageMs > staleMs) rmSync(slot, { recursive: true, force: true });
   } catch {}
+}
+
+// True unless the slot's recorded owner pid is provably dead. Unreadable/absent
+// owner records return true so mtime staleness still governs and a just-created
+// slot (owner.json not yet written) is never yanked from under its owner.
+function isSlotOwnerAlive(slot) {
+  let pid;
+  try {
+    pid = Number(JSON.parse(readFileSync(join(slot, 'owner.json'), 'utf8'))?.pid);
+  } catch {
+    return true;
+  }
+  if (!Number.isInteger(pid) || pid <= 0) return true;
+  try {
+    process.kill(pid, 0); // signal 0 is a liveness probe, not an actual signal
+    return true;
+  } catch (err) {
+    // ESRCH → no such process (dead); EPERM → exists but not ours (alive).
+    return err?.code === 'EPERM';
+  }
+}
+
+// A filesystem-safe per-user segment so slot roots are owned by, and removable
+// by, the current user. uid on POSIX; falls back to the username elsewhere.
+function userSlotSegment() {
+  try {
+    const { uid, username } = userInfo();
+    return Number.isInteger(uid) && uid >= 0 ? `uid-${uid}` : safePathSegment(username || 'user');
+  } catch {
+    return 'user';
+  }
 }
 
 function releaseBackendSlot(slot) {

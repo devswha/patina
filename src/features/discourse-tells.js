@@ -24,6 +24,42 @@ const THEMATIC_BREAK_MIN = 3;
 // A markdown thematic break: a line that is only ---, ***, or ___ (3+), optionally spaced.
 const THEMATIC_BREAK_LINE = /^[ \t]*(?:-[ \t]*){3,}$|^[ \t]*(?:\*[ \t]*){3,}$|^[ \t]*(?:_[ \t]*){3,}$/;
 const HEADING_LINE = /^[ \t]*#{1,6}[ \t]+\S/;
+// Only the dash variant of a thematic break can also be a CommonMark setext
+// H2 underline; *** / ___ are always thematic breaks.
+const SETEXT_UNDERLINE_CANDIDATE = /^[ \t]*(?:-[ \t]*){3,}$/;
+// A line that, when it sits directly above a dash-only line, makes that dash
+// line a setext underline rather than a divider: anything that is not blank,
+// not a heading, not itself a break, and not a list/blockquote marker.
+const NON_SETEXT_PARENT = /^[ \t]*(?:[-*+][ \t]|\d+[.)][ \t]|>)/;
+
+// A dash-only line is a setext H2 underline (not a decorative divider) when the
+// immediately preceding line is plain prose (#442).
+function isSetextUnderline(lines, i) {
+  if (!SETEXT_UNDERLINE_CANDIDATE.test(lines[i])) return false;
+  const prev = i > 0 ? lines[i - 1] : '';
+  if (prev.trim() === '') return false;
+  if (HEADING_LINE.test(prev)) return false;
+  if (THEMATIC_BREAK_LINE.test(prev)) return false;
+  if (NON_SETEXT_PARENT.test(prev)) return false;
+  return true;
+}
+
+// Index of the closing fence of a leading YAML frontmatter block, or -1. The two
+// `---` lines a real frontmatter block contributes at file start are not
+// dividers. To avoid mistaking a document that merely opens with a `---`
+// divider for frontmatter, the line right after the opening fence must look
+// like YAML (a `key:` line or a `- ` list item) — never a markdown heading or
+// prose (#442).
+function frontmatterEndIndex(lines) {
+  if (lines[0] === undefined || !/^---[ \t]*$/.test(lines[0])) return -1;
+  if (lines[1] === undefined || !/^[ \t]*(?:[\w.$-]+[ \t]*:(?:\s|$)|- )/.test(lines[1])) {
+    return -1;
+  }
+  for (let j = 2; j < lines.length; j++) {
+    if (/^(?:---|\.\.\.)[ \t]*$/.test(lines[j])) return j;
+  }
+  return -1;
+}
 
 export function detectFakeCandor(text) {
   const str = typeof text === 'string' ? text : '';
@@ -41,10 +77,13 @@ export function detectFakeCandor(text) {
 
 export function detectThematicBreaks(text) {
   const lines = (typeof text === 'string' ? text : '').split(/\r?\n/);
+  const frontmatterEnd = frontmatterEndIndex(lines);
   let count = 0;
   let adjacentToHeading = 0;
   for (let i = 0; i < lines.length; i++) {
+    if (i <= frontmatterEnd) continue;
     if (!THEMATIC_BREAK_LINE.test(lines[i])) continue;
+    if (isSetextUnderline(lines, i)) continue;
     count++;
     // "adjacent to a heading" = the next non-empty line is a heading.
     for (let j = i + 1; j < lines.length; j++) {

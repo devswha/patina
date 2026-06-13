@@ -201,6 +201,26 @@ test('ko translationese pronoun literal catches stacked-particle calques from sh
   }
 });
 
+test('direct-address-you respects Hangul boundaries (#442)', () => {
+  const rule = TRANSLATIONESE_RULES.find((r) => r.id === 'direct-address-you');
+  const countYou = (text) => (text.match(rule.re()) || []).length;
+  // 당신 inside unspaced compounds must not match.
+  assert.equal(countYou('해당신청을 처리했다.'), 0);
+  assert.equal(countYou('사당신축 공사가 끝났다.'), 0);
+  // Genuine second-person 당신 still matches.
+  assert.equal(countYou('당신은 이것을 설정할 수 있습니다.'), 1);
+  assert.equal(countYou('당신의 의견을 존중한다.'), 1);
+});
+
+test('c11-connective-comma skips common 고-final nouns (#442)', () => {
+  const count = (text) =>
+    (text.match(getKoInterferenceRule('c11-connective-comma').re()) || []).length;
+  // Plain noun lists ending in 고 are no longer counted as connective evidence.
+  assert.equal(count('참고, 광고, 경고, 공고, 원고, 최고, 중고, 창고, 재고, 충고, 권고,'), 0);
+  // Real connective endings before a comma still match (verb stem 하고, etc.).
+  assert.ok(count('검토하고, 정리하며, 마쳤다.') >= 2);
+});
+
 test('ko post-editese pronoun literal still excludes bound nouns and word-internal 그', () => {
   const pronounLiteralCount = (text) =>
     koreanPostEditeseFeatures(text, { lang: 'ko' }).metrics.interference.pronounLiteralCount;

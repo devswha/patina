@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-13T19:52:40.474Z",
+  "nodeVersion": "v22.17.1",
+  "note": "Report-only detection robustness under deterministic adversarial transforms. Adversarial variants inherit source labels. Not a CI gate and not a detector-threshold change.",
+  "transforms": [
+    {
+      "id": "zero_width",
+      "label": "zero-width insertion"
+    },
+    {
+      "id": "homoglyph",
+      "label": "homoglyph substitution"
+    },
+    {
+      "id": "case_fold",
+      "label": "uppercase fold"
+    },
+    {
+      "id": "punctuation",
+      "label": "punctuation stripping"
+    },
+    {
+      "id": "repetition",
+      "label": "sentence repetition"
+    }
+  ],
+  "fixtureCount": 49,
+  "overall": {
+    "zero_width": {
+      "n": 49,
+      "positives": 26,
+      "detectionRetained": 15,
+      "detectionRetainedRate": 0.577,
+      "negatives": 23,
+      "cleanRetained": 21,
+      "cleanRetainedRate": 0.913,
+      "decisionChanged": 13
+    },
+    "homoglyph": {
+      "n": 49,
+      "positives": 26,
+      "detectionRetained": 25,
+      "detectionRetainedRate": 0.962,
+      "negatives": 23,
+      "cleanRetained": 23,
+      "cleanRetainedRate": 1,
+      "decisionChanged": 1
+    },
+    "case_fold": {
+      "n": 49,
+      "positives": 26,
+      "detectionRetained": 26,
+      "detectionRetainedRate": 1,
+      "negatives": 23,
+      "cleanRetained": 23,
+      "cleanRetainedRate": 1,
+      "decisionChanged": 0
+    },
+    "punctuation": {
+      "n": 49,
+      "positives": 26,
+      "detectionRetained": 6,
+      "detectionRetainedRate": 0.231,
+      "negatives": 23,
+      "cleanRetained": 23,
+      "cleanRetainedRate": 1,
+      "decisionChanged": 20
+    },
+    "repetition": {
+      "n": 49,
+      "positives": 26,
+      "detectionRetained": 24,
+      "detectionRetainedRate": 0.923,
+      "negatives": 23,
+      "cleanRetained": 22,
+      "cleanRetainedRate": 0.957,
+      "decisionChanged": 3
+    }
+  },
+  "perLanguage": {
+    "en": {
+      "zero_width": {
+        "n": 13,
+        "positives": 7,
+        "detectionRetained": 5,
+        "detectionRetainedRate": 0.714,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 2
+      },
+      "homoglyph": {
+        "n": 13,
+        "positives": 7,
+        "detectionRetained": 6,
+        "detectionRetainedRate": 0.857,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 1
+      },
+      "case_fold": {
+        "n": 13,
+        "positives": 7,
+        "detectionRetained": 7,
+        "detectionRetainedRate": 1,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 0
+      },
+      "punctuation": {
+        "n": 13,
+        "positives": 7,
+        "detectionRetained": 0,
+        "detectionRetainedRate": 0,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 7
+      },
+      "repetition": {
+        "n": 13,
+        "positives": 7,
+        "detectionRetained": 6,
+        "detectionRetainedRate": 0.857,
+        "negatives": 6,
+        "cleanRetained": 5,
+        "cleanRetainedRate": 0.833,
+        "decisionChanged": 2
+      }
+    },
+    "ja": {
+      "zero_width": {
+        "n": 12,
+        "positives": 6,
+        "detectionRetained": 5,
+        "detectionRetainedRate": 0.833,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 1
+      },
+      "homoglyph": {
+        "n": 12,
+        "positives": 6,
+        "detectionRetained": 6,
+        "detectionRetainedRate": 1,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 0
+      },
+      "case_fold": {
+        "n": 12,
+        "positives": 6,
+        "detectionRetained": 6,
+        "detectionRetainedRate": 1,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 0
+      },
+      "punctuation": {
+        "n": 12,
+        "positives": 6,
+        "detectionRetained": 3,
+        "detectionRetainedRate": 0.5,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 3
+      },
+      "repetition": {
+        "n": 12,
+        "positives": 6,
+        "detectionRetained": 6,
+        "detectionRetainedRate": 1,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 0
+      }
+    },
+    "ko": {
+      "zero_width": {
+        "n": 12,
+        "positives": 7,
+        "detectionRetained": 1,
+        "detectionRetainedRate": 0.143,
+        "negatives": 5,
+        "cleanRetained": 3,
+        "cleanRetainedRate": 0.6,
+        "decisionChanged": 8
+      },
+      "homoglyph": {
+        "n": 12,
+        "positives": 7,
+        "detectionRetained": 7,
+        "detectionRetainedRate": 1,
+        "negatives": 5,
+        "cleanRetained": 5,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 0
+      },
+      "case_fold": {
+        "n": 12,
+        "positives": 7,
+        "detectionRetained": 7,
+        "detectionRetainedRate": 1,
+        "negatives": 5,
+        "cleanRetained": 5,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 0
+      },
+      "punctuation": {
+        "n": 12,
+        "positives": 7,
+        "detectionRetained": 0,
+        "detectionRetainedRate": 0,
+        "negatives": 5,
+        "cleanRetained": 5,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 7
+      },
+      "repetition": {
+        "n": 12,
+        "positives": 7,
+        "detectionRetained": 6,
+        "detectionRetainedRate": 0.857,
+        "negatives": 5,
+        "cleanRetained": 5,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 1
+      }
+    },
+    "zh": {
+      "zero_width": {
+        "n": 12,
+        "positives": 6,
+        "detectionRetained": 4,
+        "detectionRetainedRate": 0.667,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 2
+      },
+      "homoglyph": {
+        "n": 12,
+        "positives": 6,
+        "detectionRetained": 6,
+        "detectionRetainedRate": 1,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 0
+      },
+      "case_fold": {
+        "n": 12,
+        "positives": 6,
+        "detectionRetained": 6,
+        "detectionRetainedRate": 1,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 0
+      },
+      "punctuation": {
+        "n": 12,
+        "positives": 6,
+        "detectionRetained": 3,
+        "detectionRetainedRate": 0.5,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 3
+      },
+      "repetition": {
+        "n": 12,
+        "positives": 6,
+        "detectionRetained": 6,
+        "detectionRetainedRate": 1,
+        "negatives": 6,
+        "cleanRetained": 6,
+        "cleanRetainedRate": 1,
+        "decisionChanged": 0
+      }
+    }
+  }
+}

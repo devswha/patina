@@ -219,3 +219,71 @@ test('runOuroboros logs per-iteration score progress and latency', async () => {
   assert.equal(records[0].latency_ms, 500);
   assert.match(records[0].message, /\[ouroboros\] iter 1\/3 score 80 → 70 \(0\.5s\)/);
 });
+
+test('runOuroboros rolls back when target is met but fidelity floor is violated', async () => {
+  // Score 20 meets the default target (30), but fidelity grade 1 is below the
+  // 70 floor. Floors must win: the gutted rewrite is rejected, not returned.
+  const fixture = createLLMFixture({
+    scores: [80, 20],
+    rewrites: ['Gutted but target-meeting text.'],
+    mps: [100],
+    fidelityGrades: [1],
+  });
+
+  const result = await runWithFixture(fixture);
+
+  assert.equal(result.finalText, BASE_TEXT);
+  assert.equal(result.finalScore, 80);
+  assert.equal(result.iterations, 1);
+  assert.equal(result.reason, 'Fidelity floor violation');
+});
+
+test('runOuroboros rolls back when target is met but MPS floor is violated', async () => {
+  const fixture = createLLMFixture({
+    scores: [80, 20],
+    rewrites: ['Meaning-stripped target-meeting text.'],
+    mps: [50],
+    fidelityGrades: [3],
+  });
+
+  const result = await runWithFixture(fixture);
+
+  assert.equal(result.finalText, BASE_TEXT);
+  assert.equal(result.finalScore, 80);
+  assert.equal(result.iterations, 1);
+  assert.equal(result.reason, 'MPS floor violation');
+});
+
+test('runOuroboros rolls back when target is met but the MPS scorer fails', async () => {
+  // scoreMPS returns { mps: null } on schema failure; that must fail closed
+  // even when the AI-likeness target is met.
+  const fixture = createLLMFixture({
+    scores: [80, 20],
+    rewrites: ['Target-meeting text with unverifiable meaning.'],
+    mps: [null],
+    fidelityGrades: [3],
+  });
+
+  const result = await runWithFixture(fixture);
+
+  assert.equal(result.finalText, BASE_TEXT);
+  assert.equal(result.finalScore, 80);
+  assert.equal(result.iterations, 1);
+  assert.equal(result.reason, 'MPS scorer failure');
+});
+
+test('runOuroboros accepts a target-met iteration when both floors pass', async () => {
+  const fixture = createLLMFixture({
+    scores: [80, 20],
+    rewrites: ['Faithful target-meeting text.'],
+    mps: [95],
+    fidelityGrades: [3],
+  });
+
+  const result = await runWithFixture(fixture);
+
+  assert.equal(result.finalText, 'Faithful target-meeting text.');
+  assert.equal(result.finalScore, 20);
+  assert.equal(result.iterations, 1);
+  assert.equal(result.reason, 'Target met');
+});

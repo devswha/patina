@@ -205,19 +205,24 @@ export async function runOuroboros({
     let shouldStop = false;
     let shouldRollback = false;
 
-    if (currentScore <= targetScore) {
-      reason = 'Target met';
-      shouldStop = true;
-    } else if (combinedDelta < 0) {
-      reason = `Regression (combined ${previousCombined} → ${combined})`;
-      shouldStop = true;
-      shouldRollback = true;
-    } else if (fidelity < fidelityFloor) {
+    // Floor checks MUST precede the target-met check (core/scoring.md "Ouroboros
+    // Loop Gating": both floors must pass for an iteration to be accepted).
+    // Deleting content is the easiest way to drop AI-likeness, so the iteration
+    // most likely to violate the floors is exactly the one that meets the target;
+    // checking the target first would accept it and promote gutted text to bestText.
+    if (fidelity < fidelityFloor) {
       reason = 'Fidelity floor violation';
       shouldStop = true;
       shouldRollback = true;
     } else if (mps === null || mps < mpsFloor) {
       reason = mps === null ? 'MPS scorer failure' : 'MPS floor violation';
+      shouldStop = true;
+      shouldRollback = true;
+    } else if (currentScore <= targetScore) {
+      reason = 'Target met';
+      shouldStop = true;
+    } else if (combinedDelta < 0) {
+      reason = `Regression (combined ${previousCombined} → ${combined})`;
       shouldStop = true;
       shouldRollback = true;
     } else if (delta <= plateauThreshold) {

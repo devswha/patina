@@ -39,6 +39,10 @@ import {
   koreanPosDiversityProxy as nodeKoreanPosDiversityProxy,
   koreanSpacingFeatures as nodeKoreanSpacingFeatures,
 } from '../../src/features/stylometry.js';
+import {
+  createAnalysisController,
+  handleAnalysisRequest,
+} from '../../playground/analysis-dispatch.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -859,4 +863,144 @@ test('highlightLexiconHits falls back to plain escaping when lowercasing changes
   assert.equal(highlightLexiconHits('\u0130stanbul tool', ['tool']).includes('<mark>'), false);
   // A same-length string still highlights the hit.
   assert.ok(highlightLexiconHits('great tool here', ['tool']).includes('<mark>tool</mark>'));
+});
+// --- A4: playground analysis worker dispatch --------------------------------
+
+function makeFakeWorker() {
+  return {
+    posted: [],
+    onmessage: null,
+    onerror: null,
+    terminated: false,
+    postMessage(message) { this.posted.push(message); },
+    terminate() { this.terminated = true; },
+    respond(requestId, analysis) { this.onmessage?.({ data: { requestId, analysis } }); },
+    fail(error) { this.onerror?.(error ?? new Error('worker boom')); },
+  };
+}
+
+const fakeAnalyze = (text, { lang } = {}) => ({ text, lang, source: 'analyze' });
+
+test('handleAnalysisRequest echoes the request id and analyzes text+lang', () => {
+  const out = handleAnalysisRequest({ requestId: 7, text: 'hi', lang: 'en' }, fakeAnalyze);
+  assert.deepEqual(out, { requestId: 7, analysis: { text: 'hi', lang: 'en', source: 'analyze' } });
+  // Missing fields coerce safely (structured-clone-safe, no throw).
+  const empty = handleAnalysisRequest(undefined, fakeAnalyze);
+  assert.equal(empty.requestId, undefined);
+  assert.deepEqual(empty.analysis, { text: '', lang: undefined, source: 'analyze' });
+});
+
+test('controller falls back to same-thread analysis when no worker is available', () => {
+  const results = [];
+  const controller = createAnalysisController({
+    analyze: fakeAnalyze,
+    createWorker: () => null,
+    onResult: (analysis, id) => results.push([id, analysis]),
+  });
+  const r = controller.request('alpha', 'en');
+  assert.equal(r.mode, 'sync');
+  assert.equal(controller.usingWorker, false);
+  assert.deepEqual(results, [[1, { text: 'alpha', lang: 'en', source: 'analyze' }]]);
+});
+
+test('controller uses the worker and applies only the latest (non-stale) response', () => {
+  const worker = makeFakeWorker();
+  const results = [];
+  const controller = createAnalysisController({
+    analyze: fakeAnalyze,
+    createWorker: () => worker,
+    onResult: (analysis, id) => results.push([id, analysis]),
+  });
+  assert.equal(controller.request('first', 'en').mode, 'worker');
+  assert.equal(controller.request('second', 'ko').mode, 'worker');
+  assert.equal(controller.usingWorker, true);
+  assert.deepEqual(worker.posted, [
+    { requestId: 1, text: 'first', lang: 'en' },
+    { requestId: 2, text: 'second', lang: 'ko' },
+  ]);
+  // A stale response for the superseded request id is dropped.
+  worker.respond(1, { stale: true });
+  assert.deepEqual(results, []);
+  assert.equal(controller.isStale(1), true);
+  // The latest response renders.
+  worker.respond(2, { fresh: true });
+  assert.deepEqual(results, [[2, { fresh: true }]]);
+});
+
+test('controller falls back to same-thread when worker construction throws', () => {
+  const results = [];
+  const controller = createAnalysisController({
+    analyze: fakeAnalyze,
+    createWorker: () => { throw new Error('no worker'); },
+    onResult: (analysis) => results.push(analysis),
+  });
+  assert.equal(controller.request('x', 'en').mode, 'sync');
+  assert.deepEqual(results, [{ text: 'x', lang: 'en', source: 'analyze' }]);
+});
+
+test('controller falls back and terminates the worker when postMessage throws', () => {
+  const worker = makeFakeWorker();
+  worker.postMessage = () => { throw new Error('detached'); };
+  const results = [];
+  const controller = createAnalysisController({
+    analyze: fakeAnalyze,
+    createWorker: () => worker,
+    onResult: (analysis) => results.push(analysis),
+  });
+  assert.equal(controller.request('y', 'ko').mode, 'sync');
+  assert.equal(worker.terminated, true);
+  assert.deepEqual(results, [{ text: 'y', lang: 'ko', source: 'analyze' }]);
+});
+
+test('controller recovers the in-flight request and falls back after a worker runtime error', () => {
+  const worker = makeFakeWorker();
+  const errors = [];
+  const results = [];
+  const controller = createAnalysisController({
+    analyze: fakeAnalyze,
+    createWorker: () => worker,
+    onResult: (analysis, id) => results.push([id, analysis]),
+    onError: (e) => errors.push(e),
+  });
+  controller.request('one', 'en'); // worker path, id 1
+  worker.fail(new Error('crash')); // worker dies -> recover id 1 same-thread
+  assert.equal(errors.length, 1);
+  assert.equal(controller.usingWorker, false);
+  assert.deepEqual(results, [[1, { text: 'one', lang: 'en', source: 'analyze' }]]);
+  // Subsequent requests stay on the main thread.
+  assert.equal(controller.request('two', 'en').mode, 'sync');
+  assert.deepEqual(results, [
+    [1, { text: 'one', lang: 'en', source: 'analyze' }],
+    [2, { text: 'two', lang: 'en', source: 'analyze' }],
+  ]);
+});
+
+test('controller does not re-render after a worker error following a completed response', () => {
+  const worker = makeFakeWorker();
+  const results = [];
+  const controller = createAnalysisController({
+    analyze: fakeAnalyze,
+    createWorker: () => worker,
+    onResult: (analysis, id) => results.push([id, analysis]),
+  });
+  controller.request('one', 'en'); // id 1, worker path
+  worker.respond(1, { done: true }); // accepted -> rendered exactly once
+  assert.deepEqual(results, [[1, { done: true }]]);
+  // A late worker crash must NOT re-run the already-completed latest request.
+  worker.fail(new Error('late crash'));
+  assert.deepEqual(results, [[1, { done: true }]]);
+  assert.equal(controller.usingWorker, false);
+});
+
+test('playground worker module graph stays browser-pure and loads by relative URL', () => {
+  const { seen, violations } = collectStaticImports('playground/analyzer-worker.js');
+  assert.deepEqual(violations, []);
+  assert.ok([...seen].some((file) => file.endsWith('/playground/analysis-dispatch.js')));
+  const workerSrc = readFileSync(resolve(REPO_ROOT, 'playground/analyzer-worker.js'), 'utf8');
+  assert.match(workerSrc, /from '\.\/analyzer\.js'/);
+  assert.match(workerSrc, /globalThis\.onmessage/);
+  assert.match(workerSrc, /globalThis\.postMessage/);
+  // app.js must load the worker by relative URL so static hosting keeps working.
+  const appSrc = readFileSync(resolve(REPO_ROOT, 'playground/app.js'), 'utf8');
+  assert.match(appSrc, /new URL\('\.\/analyzer-worker\.js', import\.meta\.url\)/);
 });

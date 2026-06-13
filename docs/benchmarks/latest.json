@@ -7,7 +7,7 @@
   "schemaVersion": 3,
   "fixtureSchemaVersion": 1,
   "nodeVersion": "v22.17.1",
-  "generatedAt": "2026-06-12T09:36:23.679Z",
+  "generatedAt": "2026-06-13T17:47:23.201Z",
   "fixtureCount": 49,
   "overallAccuracy": 1,
   "overall": {
@@ -340,6 +340,26 @@
       },
       "roc_auc": 1,
       "pr_auc": 1,
+      "low_fpr": [
+        {
+          "target_fpr": 0.01,
+          "negatives": 23,
+          "positives": 26,
+          "max_false_positives": 0,
+          "actual_fpr": 0,
+          "tpr": 1,
+          "supported": true
+        },
+        {
+          "target_fpr": 0.05,
+          "negatives": 23,
+          "positives": 26,
+          "max_false_positives": 1,
+          "actual_fpr": 0,
+          "tpr": 1,
+          "supported": true
+        }
+      ],
       "bestF1": {
         "threshold": 3.846,
         "tp": 26,
@@ -618,6 +638,26 @@
         },
         "roc_auc": 1,
         "pr_auc": 1,
+        "low_fpr": [
+          {
+            "target_fpr": 0.01,
+            "negatives": 6,
+            "positives": 7,
+            "max_false_positives": 0,
+            "actual_fpr": 0,
+            "tpr": 1,
+            "supported": true
+          },
+          {
+            "target_fpr": 0.05,
+            "negatives": 6,
+            "positives": 7,
+            "max_false_positives": 0,
+            "actual_fpr": 0,
+            "tpr": 1,
+            "supported": true
+          }
+        ],
         "bestF1": {
           "threshold": 50,
           "tp": 7,
@@ -751,6 +791,26 @@
         },
         "roc_auc": 1,
         "pr_auc": 1,
+        "low_fpr": [
+          {
+            "target_fpr": 0.01,
+            "negatives": 6,
+            "positives": 6,
+            "max_false_positives": 0,
+            "actual_fpr": 0,
+            "tpr": 1,
+            "supported": true
+          },
+          {
+            "target_fpr": 0.05,
+            "negatives": 6,
+            "positives": 6,
+            "max_false_positives": 0,
+            "actual_fpr": 0,
+            "tpr": 1,
+            "supported": true
+          }
+        ],
         "bestF1": {
           "threshold": 23.167,
           "tp": 6,
@@ -848,6 +908,26 @@
         },
         "roc_auc": 1,
         "pr_auc": 1,
+        "low_fpr": [
+          {
+            "target_fpr": 0.01,
+            "negatives": 5,
+            "positives": 7,
+            "max_false_positives": 0,
+            "actual_fpr": 0,
+            "tpr": 1,
+            "supported": true
+          },
+          {
+            "target_fpr": 0.05,
+            "negatives": 5,
+            "positives": 7,
+            "max_false_positives": 0,
+            "actual_fpr": 0,
+            "tpr": 1,
+            "supported": true
+          }
+        ],
         "bestF1": {
           "threshold": 3.846,
           "tp": 7,
@@ -957,6 +1037,26 @@
         },
         "roc_auc": 1,
         "pr_auc": 1,
+        "low_fpr": [
+          {
+            "target_fpr": 0.01,
+            "negatives": 6,
+            "positives": 6,
+            "max_false_positives": 0,
+            "actual_fpr": 0,
+            "tpr": 1,
+            "supported": true
+          },
+          {
+            "target_fpr": 0.05,
+            "negatives": 6,
+            "positives": 6,
+            "max_false_positives": 0,
+            "actual_fpr": 0,
+            "tpr": 1,
+            "supported": true
+          }
+        ],
         "bestF1": {
           "threshold": 6.772,
           "tp": 6,

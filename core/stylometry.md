@@ -225,13 +225,17 @@ Calibration note (2026-05-22): `npm run benchmark:katfish-ko -- --write --basena
 ## 6. Hot Decision Rule
 
 단락 수준 SUSPECT 판정은 단순한 OR 규칙으로 결정한다. v3.7 이후 lexicon density가
-세 번째 hot 신호로 추가되었다(상세 calibration은 §16).
+세 번째 hot 신호로, ko diagnostic composite가 네 번째 축으로 추가되었고, #334/#391
+이후 discourse-tell 두 종류(fake-candor opener, decorative thematic break)가
+문서 수준 density gate를 통과했을 때 추가 disjunct로 합류했다(상세 calibration은 §16).
 
 ```
 paragraph is SUSPECT iff
   burstiness_band == "low"  OR  MATTR_band == "low"  OR
   (lexicon_density > threshold AND lexicon_min_hits is satisfied)  OR
-  koDiagnostics.hot == true
+  koDiagnostics.hot == true  OR
+  (fakeCandor.doc_count >= 2 AND paragraph_candor_count >= 1)  OR
+  (thematicBreaks.doc_count >= 3 AND paragraph_break_count >= 1)
 ```
 
 ### 근거
@@ -244,6 +248,10 @@ paragraph is SUSPECT iff
   막기 위해 CJK 기본 `lexicon_min_hits`는 2다.
 - ko diagnostic signal은 내부에서 AND composite를 사용하므로 쉼표/조사 같은 단일 특징만으로는
   OR-rule에 들어오지 않는다
+- discourse-tell disjunct(fake-candor / thematic-break)는 단독 단락 특징이 아니라
+  문서 수준 density gate(candor opener ≥2, thematic break ≥3)를 먼저 통과해야 켜진다.
+  gate 통과 후 해당 tell을 실제로 1회 이상 보유한 단락만 hot으로 합류하므로, 단일
+  opener나 단일 divider가 문단을 단독으로 hot 처리하지 않는다(#334/#391).
 
 ### 임계값 재조정
 
@@ -681,7 +689,7 @@ paragraph is SUSPECT iff
   (lexicon_density > threshold AND min_hot_matches is satisfied)
 ```
 
-v3.7에서는 §6의 2-signal OR 규칙을 3-signal OR로 확장했다. burstiness/MATTR는 분포적 신호, lexicon은 어휘적 신호 — 다른 축이라 OR 결합 시 둘 다 합산 효과를 냈다. 현재 전체 규칙은 §6의 4-signal OR이며, ko diagnostic composite가 네 번째 축이다.
+v3.7에서는 §6의 2-signal OR 규칙을 3-signal OR로 확장했다. burstiness/MATTR는 분포적 신호, lexicon은 어휘적 신호 — 다른 축이라 OR 결합 시 둘 다 합산 효과를 냈다. 이후 ko diagnostic composite가 네 번째 축으로, #334/#391의 discourse-tell 두 종류가 문서 수준 density gate를 전제로 한 disjunct로 합류했다. 따라서 현재 전체 규칙은 §6의 4-signal OR에 discourse-tell 두 disjunct를 더한 형태다(stylometry 분포 신호 + lexicon 어휘 신호 + ko composite + discourse tell).
 
 ### 사전 파일
 

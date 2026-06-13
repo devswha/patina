@@ -6,8 +6,20 @@
 // so sentence-length and lexical-diversity signals are not collapsed to
 // "one token per sentence." Sentence splitting is regex-only and accepts known
 // false splits on abbreviations / decimals (documented limit).
-
-const SENTENCE_SPLIT_RE = /[.!?]+\s+|(?<=[。！？…])|\n+/u;
+//
+// A CJK sentence terminator (。！？) is treated as a boundary only when it is
+// NOT immediately followed by a closing quote/bracket, so quote-internal
+// terminators (彼は「やめろ。」と言った。) do not split mid-quote and a trailing
+// closer (…と言った。」) is never stranded as its own zero-token "sentence".
+// U+2026 (…) is intentionally NOT a hard terminator: in en/ko it is usually
+// intra-sentence ("Well… maybe not."), so splitting on it would perturb token
+// counts on exactly the human prose the tool must not flag. It is still
+// stripped from sentence ends below.
+const SENTENCE_CLOSERS = '」』】〕）》〉｝"\'”’';
+const SENTENCE_SPLIT_RE = new RegExp(
+  `[.!?]+\\s+|(?<=[。！？])(?![${SENTENCE_CLOSERS}])|\\n+`,
+  'u'
+);
 const PARAGRAPH_SPLIT_RE = /\n\s*\n/;
 const LIST_LINE_RE = /^\s*(?:[-*+]\s+|\d+[.)]\s+)/u;
 // \W in Unicode-aware mode. Strips edge punctuation but keeps internal

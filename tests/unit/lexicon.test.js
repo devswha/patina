@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { computeDensity, loadLexicon } from '../../src/features/lexicon.js';
+import { computeDensity, phraseToRegex, loadLexicon } from '../../src/features/lexicon.js';
 import { tokenize } from '../../src/features/segment.js';
 import { analyzeText } from '../../src/features/index.js';
 import { scoreDeterministicSignals } from '../../src/scoring.js';
@@ -106,4 +106,26 @@ test('scoreDeterministicSignals respects lexicon.languages gating', () => {
     repoRoot: REPO_ROOT,
   });
   assert.strictEqual(disabled.bands.lexicon.hot, 0);
+});
+
+test('non-CJK strict entries match whole-word, not inside a larger token (#441)', () => {
+  const lexicon = { lang: 'en', strict: ['cutting-edge', 'game changer'], phrases: [] };
+  // Whole-word hits land via the token set and the boundary-anchored fallback.
+  const hyphen = computeDensity('our cutting-edge approach', tokenize('our cutting-edge approach'), lexicon);
+  assert.ok(hyphen.hits.includes('cutting-edge'));
+  const multi = computeDensity('a real game changer here', tokenize('a real game changer here'), lexicon);
+  assert.ok(multi.hits.includes('game changer'));
+  // Boundary-anchored: no longer a bare substring inside a bigger token.
+  const inside = computeDensity('precutting-edged thing', tokenize('precutting-edged thing'), lexicon);
+  assert.equal(inside.hits.includes('cutting-edge'), false);
+  assert.equal(inside.matches, 0);
+});
+
+test('phrase regex matches across a soft line wrap and through the wildcard (#441)', () => {
+  // Inter-word whitespace tolerates a single newline inside a paragraph.
+  assert.ok(phraseToRegex('in the digital age').test('seen in the\ndigital age today'));
+  // `~` wildcard spans newlines too.
+  assert.ok(phraseToRegex('not only~but also').test('not only fast\nbut also cheap'));
+  // Still does not match when the words are absent.
+  assert.equal(phraseToRegex('in the digital age').test('in the analog era'), false);
 });

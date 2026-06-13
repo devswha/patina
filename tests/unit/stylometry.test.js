@@ -23,6 +23,24 @@ test('splitSentences handles ., !, ?, 。, … and newlines', () => {
   assert.deepEqual(splitSentences('第一句。第二句！第三句？'), ['第一句', '第二句', '第三句']);
 });
 
+test('splitSentences keeps CJK terminators inside closing quotes attached (#441)', () => {
+  // Quote-internal 。 no longer splits mid-quote: this is one sentence.
+  assert.deepEqual(
+    splitSentences('彼は「やめろ。」と言った。'),
+    ['彼は「やめろ。」と言った']
+  );
+  // A trailing closing bracket after the terminator is never stranded as its
+  // own zero-token "sentence" (old behavior produced a lone 」).
+  assert.deepEqual(splitSentences('と言った。」'), ['と言った。」']);
+  // A real terminator followed by a non-closer still splits.
+  assert.deepEqual(splitSentences('そうだ。次の文。'), ['そうだ', '次の文']);
+});
+
+test('splitSentences does not split on intra-sentence ellipsis in en/ko (#441)', () => {
+  assert.deepEqual(splitSentences('Well… maybe not.'), ['Well… maybe not']);
+  assert.deepEqual(splitSentences('글쎄… 아닐지도.'), ['글쎄… 아닐지도']);
+});
+
 test('splitProseSentences excludes Markdown list blocks from prose rhythm samples', () => {
   const bulleted = `Here is what the tool does for you:
 - send hook events to external gateways

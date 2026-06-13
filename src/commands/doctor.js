@@ -156,7 +156,9 @@ function parseDoctorArgs(args) {
 
 function checkCommand(cmd, args) {
   try {
-    const result = spawnSync(cmd, args, { encoding: 'utf8' });
+    // timeout so a hung shim on PATH (e.g. a wedged `tmux`) can't block
+    // `patina doctor` indefinitely; fixed argv + no shell means no injection (#448).
+    const result = spawnSync(cmd, args, { encoding: 'utf8', timeout: 5000 });
     return {
       ok: result.status === 0,
       stdout: result.stdout || '',

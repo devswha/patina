@@ -10,6 +10,7 @@ import {
   normalizeStructuralModel,
   trainLogReg,
   predictStructuralScore,
+  thresholdForMaxFpr,
 } from '../../src/features/index.js';
 
 function constantModel({ bias = 10, threshold = 0.5, lang = 'ko' } = {}) {
@@ -109,4 +110,45 @@ test('normalizeStructuralModel rejects models not trained at this feature width 
     () => structuralModelVerdict('오늘은 날씨가 좋았다. 점심을 먹었다.', { lang: 'ko', model: stale }),
     /expects 8 features/,
   );
+});
+
+test('normalizeStructuralModel rejects non-positive sigma (#443)', () => {
+  const zero = constantModel();
+  zero.scaler.sigma = new Array(STRUCTURAL_FEATURE_NAMES.length).fill(1);
+  zero.scaler.sigma[0] = 0;
+  assert.throws(() => normalizeStructuralModel(zero), /sigma values must be positive/);
+  const negative = constantModel();
+  negative.scaler.sigma = new Array(STRUCTURAL_FEATURE_NAMES.length).fill(1);
+  negative.scaler.sigma[0] = -2;
+  assert.throws(() => normalizeStructuralModel(negative), /sigma values must be positive/);
+});
+
+test('structuralModelVerdict treats a truthy non-object model as unavailable (#443)', () => {
+  assert.deepEqual(
+    structuralModelVerdict('오늘은 날씨가 좋았다. 점심을 먹었다.', { lang: 'ko', model: 'not-a-model' }),
+    { available: false, hot: null, score: null },
+  );
+});
+
+test('thresholdForMaxFpr keeps the realized FPR within maxFpr (ceil, #443)', () => {
+  const feat0 = (v) => [v, ...new Array(STRUCTURAL_FEATURE_NAMES.length - 1).fill(0)];
+  const model = {
+    lang: 'ko',
+    weights: [1, ...new Array(STRUCTURAL_FEATURE_NAMES.length - 1).fill(0)],
+    bias: 0,
+    threshold: 0.5,
+    scaler: {
+      mu: new Array(STRUCTURAL_FEATURE_NAMES.length).fill(0),
+      sigma: new Array(STRUCTURAL_FEATURE_NAMES.length).fill(1),
+    },
+    featureNames: STRUCTURAL_FEATURE_NAMES,
+  };
+  // 15 negatives with strictly increasing scores (the finding's worked case
+  // where floor() let realized FPR reach 13.3% > 10%).
+  const X = [];
+  const y = [];
+  for (let v = -7; v <= 7; v++) { X.push(feat0(v)); y.push(0); }
+  const threshold = thresholdForMaxFpr(model, X, y, 0.1);
+  const flagged = X.filter((row) => predictStructuralScore(model, row) >= threshold).length;
+  assert.ok(flagged / X.length <= 0.1, `realized FPR ${flagged}/${X.length} exceeds 0.1`);
 });

@@ -1,10 +1,15 @@
 import { extractOverallScore } from '../output.js';
+import { runtimeError } from '../errors.js';
 import { createLogger } from '../logger.js';
 
 export function applyScoreGate(result, output, gate, logger = createLogger()) {
   const overall = extractScoreOverall(result, output);
   if (overall === null) {
-    throw new Error('score gate could not find a numeric `overall` value in --score output.');
+    throw runtimeError(
+      'score gate could not find a numeric overall value',
+      'The --score output carried no parseable `overall` number, so the --exit-on gate cannot be applied.',
+      'Rerun with `--format json` to inspect the score payload, or drop --exit-on if the backend cannot produce strict score output.'
+    );
   }
   if (overall > gate) {
     logger.warn('score.gate_failed', { message: `[patina] score gate failed: overall ${overall} > ${gate}` });

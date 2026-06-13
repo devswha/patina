@@ -64,8 +64,15 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   // images are staged into the temp cwd and referenced as @<filename>.
   let effectivePrompt = prompt;
   if (Array.isArray(images) && images.length > 0) {
-    const staged = stageCliImages(dir, images);
-    effectivePrompt = `${staged.map((f) => `@${f}`).join(' ')}\n${prompt}`;
+    try {
+      const staged = stageCliImages(dir, images);
+      effectivePrompt = `${staged.map((f) => `@${f}`).join(' ')}\n${prompt}`;
+    } catch (err) {
+      // Runs before the Promise's cleanup; remove the temp dir and surface a
+      // backend-shaped error instead of leaking it and escaping a raw fs error (#446).
+      try { rmSync(dir, { recursive: true, force: true }); } catch {}
+      throw new Error(`gemini-cli backend: failed to stage image input (${err.message})`);
+    }
   }
 
   return new Promise((resolve, reject) => {
@@ -99,10 +106,12 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       }
     });
 
-    proc.on('close', (code) => {
+    proc.on('close', (code, sig) => {
       if (settled) return;
       if (code !== 0) {
-        finishReject(new Error(`gemini-cli backend: gemini exited with code ${code}\n${stderr}`));
+        // Signal death (OOM kill, external SIGTERM) yields code===null (#446).
+        const how = code === null && sig ? `terminated by ${sig}` : `exited with code ${code}`;
+        finishReject(new Error(`gemini-cli backend: gemini ${how}\n${stderr}`));
         return;
       }
       finishResolve(stripGeminiNoise(stdout));
@@ -114,7 +123,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
     // surfaces the real exit code + stderr); reject on anything else.
     proc.stdin.on('error', (err) => {
       if (err && err.code !== 'EPIPE') {
-        finishReject(new Error(`gemini-cli backend: stdin error (${err.message})`));
+        finishReject(new Error(`gemini-cli backend: stdin error (${err.message})`), { kill: true });
       }
     });
     proc.stdin.write(effectivePrompt);
@@ -129,6 +138,8 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       settled = true;
       clearTimeout(timer);
       cleanupSignal();
+      // SIGKILL reaches only the direct child; grandchildren (workers/ripgrep/MCP)
+      // are not in a killable group and may briefly outlive it — accepted leak (#446).
       if (kill) proc.kill('SIGKILL');
       cleanup();
       reject(err);
@@ -159,9 +170,12 @@ function throwIfAborted(signal) {
 // available. Falling back to GrepTool.", "MCP issues detected..."). They
 // aren't part of the model's response, so strip leading lines that match
 // known noise patterns before returning.
-function stripGeminiNoise(text) {
+export function stripGeminiNoise(text) {
   const lines = text.split(/\r?\n/);
-  const noiseRe = /^(Warning:|Ripgrep is not available|MCP issues detected|Loaded cached credentials)/i;
+  // Anchor to the exact known gemini stdout banners, not a broad `Warning:`
+  // prefix — a model response that legitimately begins with "Warning: ..."
+  // must not be truncated (#446).
+  const noiseRe = /^(?:Ripgrep is not available\b|MCP issues detected\b|Loaded cached credentials\b)/i;
   let i = 0;
   while (i < lines.length && (noiseRe.test(lines[i]) || lines[i].trim() === '')) {
     i++;

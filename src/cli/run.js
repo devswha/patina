@@ -265,7 +265,7 @@ export async function runDefault(parsed, logger) {
         }
         const auditBackstop =
           mode === 'audit' && (parsed.format ?? 'markdown') !== 'json' && !parsed.batch
-            ? buildDeterministicAuditBackstop(text, { lang, repoRoot, config })
+            ? buildDeterministicAuditBackstop(text, { lang, repoRoot, config, logger })
             : '';
         let output;
         let scoreValidationOutput = null;
@@ -302,6 +302,11 @@ export async function runDefault(parsed, logger) {
         batchState.recordSuccess();
       } catch (err) {
         if (!shouldHandleBatchFailure(parsed, jobs.length)) throw err;
+        // Ctrl-C is a run-level stop, not a per-file failure: after the abort,
+        // every remaining iteration's throwIfCanceled() would otherwise be
+        // recorded and logged as a spurious 'batch.file_failed' for files that
+        // were never attempted (#440). The outer catch maps this to exit 130.
+        if (cancellation.signal.aborted || err?.exitCode === 130) throw err;
         batchState.recordFailure({ path, err });
         logger.warn('batch.file_failed', {
           message: `[patina] batch file failed: ${path} (${batchState.failures.length}/${batchState.maxFailures} failures): ${err.message}`,

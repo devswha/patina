@@ -41,7 +41,7 @@ const MARKUP_RULES = [
   {
     id: 'model-tool-token',
     label: 'Model tool token',
-    build: () => /\bturn\d+(?:search|view|news|image|forecast|finance|fetch)\d*\b|\bnavlist\b|\bgrok_card\b/gi,
+    build: () => /\bturn\d+(?:search|view|news|image|forecast|finance|fetch)\d*\b|\bgrok_card\b/gi,
   },
   {
     id: 'object-replacement-char',
@@ -71,6 +71,16 @@ const MARKUP_RULES = [
     //   real refusal boilerplate uses.
     build: () => /\bas an? (?:AI|artificial intelligence) language model\b|\bas a large language model\b|\bas a language model,? I\b|\bas an AI assistant\b|\bI(?: am|'?m) an AI(?:\s+(?:assistant|chatbot|language model|model))?(?:\s+(?:created|developed|trained|designed|built|made)\s+by\b|(?![-/]|\s+\w))/gi,
   },
+  {
+    // `navlist` alone is a plausible human identifier (CSS class/id, variable
+    // name) in frontend docs/code, so it is NOT near-proof on its own (#442).
+    // It only counts as leakage when an independent near-proof token in the
+    // same text corroborates that this is pasted model output.
+    id: 'model-nav-token',
+    label: 'Model navlist token',
+    corroborated: true,
+    build: () => /\bnavlist\b/gi,
+  },
 ];
 
 /**
@@ -83,17 +93,28 @@ export function detectMarkupLeakage(text) {
   const hits = [];
   if (!str) return { leaked: false, hits };
 
+  const corroborated = [];
+  let hasIndependentHit = false;
   for (const rule of MARKUP_RULES) {
     const matches = str.match(rule.build());
-    if (matches && matches.length > 0) {
-      hits.push({
-        id: rule.id,
-        label: rule.label,
-        count: matches.length,
-        samples: [...new Set(matches.map((m) => m.trim()).filter(Boolean))].slice(0, 3),
-      });
+    if (!matches || matches.length === 0) continue;
+    const hit = {
+      id: rule.id,
+      label: rule.label,
+      count: matches.length,
+      samples: [...new Set(matches.map((m) => m.trim()).filter(Boolean))].slice(0, 3),
+    };
+    if (rule.corroborated) {
+      corroborated.push(hit);
+    } else {
+      hits.push(hit);
+      hasIndependentHit = true;
     }
   }
+  // Corroboration-required tokens (navlist) only escalate to leakage when an
+  // independent near-proof token also fired; otherwise they are dropped so a
+  // human identifier cannot force the LEAKAGE_SCORE_FLOOR on its own (#442).
+  if (hasIndependentHit) hits.push(...corroborated);
   return { leaked: hits.length > 0, hits };
 }
 

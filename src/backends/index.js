@@ -183,7 +183,7 @@ export function selectOcrBackends(selectedBackends = [], { logger } = {}) {
     // image-capable CLI the user did not name. Surface it at warn level
     // (issue #88: agent-CLI use should be visible) — only --quiet hides it.
     logger?.warn?.('ocr.backend_fallback', {
-      message: `[patina] --ocr is using ${fallback[0].name} for image text (the selected backend cannot read images).`,
+      message: `[patina] --ocr will try ${fallback.map((b) => b.name).join(' → ')} for image text (the selected backend cannot read images).`,
     });
   }
   return fallback;

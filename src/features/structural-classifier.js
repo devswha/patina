@@ -124,6 +124,12 @@ export function normalizeStructuralModel(model) {
   if (weights.some((value) => !Number.isFinite(value)) || scaler.mu.some((value) => !Number.isFinite(value)) || scaler.sigma.some((value) => !Number.isFinite(value))) {
     throw new TypeError('structural model values must be finite numbers');
   }
+  // Sigma must be strictly positive: a hand-written or truncated model with a
+  // zero/negative sigma passes the finite check but makes applyScaler emit
+  // NaN/±Infinity, which sigmoid turns into a silent NaN verdict (#443).
+  if (scaler.sigma.some((value) => !(value > 0))) {
+    throw new TypeError('structural model scaler sigma values must be positive');
+  }
   if (Array.isArray(model.featureNames) && model.featureNames.join('\0') !== STRUCTURAL_FEATURE_NAMES.join('\0')) {
     throw new TypeError('structural model featureNames do not match this patina version');
   }
@@ -158,14 +164,20 @@ export function thresholdForMaxFpr(model, Xtrain, ytrain, maxFpr = 0.1) {
     .map((row) => predictStructuralScore(normalized, row))
     .sort((a, b) => a - b);
   if (negativeScores.length === 0) return DEFAULT_STRUCTURAL_THRESHOLD;
-  const index = Math.min(negativeScores.length - 1, Math.floor((1 - maxFpr) * negativeScores.length));
+  // ceil (not floor) so the realized FPR never exceeds maxFpr: floor would keep
+  // an extra negative above the threshold (#443).
+  const index = Math.min(negativeScores.length - 1, Math.ceil((1 - maxFpr) * negativeScores.length));
   return Math.max(DEFAULT_STRUCTURAL_THRESHOLD, negativeScores[index]);
 }
 
 export function structuralModelVerdict(text, { lang = 'ko', model = null } = {}) {
   if (!model) return { available: false, hot: null, score: null };
   const normalized = normalizeStructuralModel(model);
-  if (normalized.lang && normalized.lang !== lang) return { available: false, hot: null, score: null };
+  // A truthy non-object model normalizes to null; treat as unavailable rather
+  // than null-derefing normalized.lang (#443).
+  if (!normalized || (normalized.lang && normalized.lang !== lang)) {
+    return { available: false, hot: null, score: null };
+  }
   const row = extractStructuralFeatures(text, { lang });
   const score = predictStructuralScore(normalized, row);
   return {

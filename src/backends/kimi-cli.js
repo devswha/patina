@@ -108,10 +108,12 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       }
     });
 
-    proc.on('close', (code) => {
+    proc.on('close', (code, sig) => {
       if (settled) return;
       if (code !== 0) {
-        finishReject(new Error(`kimi-cli backend: kimi exited with code ${code}\n${stderr}`));
+        // Signal death (OOM kill, external SIGTERM) yields code===null (#446).
+        const how = code === null && sig ? `terminated by ${sig}` : `exited with code ${code}`;
+        finishReject(new Error(`kimi-cli backend: kimi ${how}\n${stderr}`));
         return;
       }
       finishResolve(stripKimiNoise(stdout));
@@ -123,7 +125,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
     // surfaces the real exit code + stderr); reject on anything else.
     proc.stdin.on('error', (err) => {
       if (err && err.code !== 'EPIPE') {
-        finishReject(new Error(`kimi-cli backend: stdin error (${err.message})`));
+        finishReject(new Error(`kimi-cli backend: stdin error (${err.message})`), { kill: true });
       }
     });
     proc.stdin.write(prompt);
@@ -138,6 +140,8 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       settled = true;
       clearTimeout(timer);
       cleanupSignal();
+      // SIGKILL reaches only the direct child; grandchildren (workers/MCP) are
+      // not in a killable group and may briefly outlive it — accepted leak (#446).
       if (kill) proc.kill('SIGKILL');
       cleanup();
       reject(err);
@@ -164,12 +168,19 @@ function throwIfAborted(signal) {
   if (signal?.aborted) throw abortError('kimi-cli backend: aborted');
 }
 
-function stripKimiNoise(text) {
-  return text
-    .split(/\r?\n/)
-    .filter((line) => !/^To resume this session:\s*kimi\s+-r\s+/i.test(line.trim()))
-    .join('\n')
-    .trimStart();
+export function stripKimiNoise(text) {
+  const lines = text.split(/\r?\n/);
+  const bannerRe = /^To resume this session:\s*kimi\s+-r\s+/i;
+  // The resume banner is a trailing footer; strip it only from the end so a
+  // mid-response line that legitimately quotes the same text survives (#446).
+  let last = lines.length - 1;
+  while (last >= 0 && lines[last].trim() === '') last--;
+  if (last >= 0 && bannerRe.test(lines[last].trim())) {
+    let end = last;
+    while (end > 0 && lines[end - 1].trim() === '') end--;
+    return lines.slice(0, end).join('\n').trimStart();
+  }
+  return lines.join('\n').trimStart();
 }
 
 function kimiDataDir() {

@@ -76,7 +76,9 @@ export function renderCliError(err) {
  */
 export function getExitCode(err, fallback = 1) {
   const n = Number(err ? /** @type {any} */ (err).exitCode : undefined);
-  return Number.isInteger(n) && n >= 0 ? n : fallback;
+  // Reject exitCode 0 on a thrown error: a fatal catch must never exit 0 after
+  // printing an error. Only a positive integer overrides the fallback (#449).
+  return Number.isInteger(n) && n >= 1 ? n : fallback;
 }
 
 function normalizeError(err) {

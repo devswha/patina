@@ -36,12 +36,26 @@ export function parseLexiconBody(body, { skipUnderscore = false } = {}) {
 }
 
 // Phrases may include `~` as a wildcard standing in for up to 40 chars.
+// Inter-word whitespace becomes `\s+` and the wildcard becomes `[\s\S]{0,40}`
+// so a phrase hard-wrapped across a single newline inside a paragraph (which
+// only blank lines split) still matches instead of silently undercounting.
 export function phraseToRegex(phrase) {
   const escaped = phrase
     .toLowerCase()
-    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const withWildcard = escaped.replace(/~/g, '.{0,40}');
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\s+/g, '\\s+');
+  const withWildcard = escaped.replace(/~/g, '[\\s\\S]{0,40}');
   return new RegExp(withWildcard);
+}
+
+// Whole-word match for a multi-token non-CJK strict entry (contains a space,
+// hyphen, or apostrophe). Anchored on Unicode letter/digit boundaries so it
+// cannot hit inside a larger token, and whitespace tolerates soft line wraps.
+function strictEntryRegex(lowerEntry) {
+  const escaped = lowerEntry
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\s+/g, '\\s+');
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'u');
 }
 
 // Counts paragraph-level lexicon hits. Strict entries match whole-word
@@ -54,9 +68,12 @@ export function computeDensity(paragraphText, tokens, lexicon) {
 
   // §16: English strict entries match whole-word; CJK strict entries are
   // approximated by substring. Korean inflection and zh/ja character fallback
-  // mean `자리매김`, `可以说`, or `まとめると` may not survive as whole tokens.
-  // Punctuated entries always need substring fallback because tokenization
-  // strips edge punct.
+  // mean `자리매김`, `可以说`, or `まとめると` may not survive as whole tokens, so
+  // CJK keeps bare substring matching. A non-CJK strict entry that is not a
+  // single whole token (it carries a space/hyphen/apostrophe, so tokenization
+  // split or edge-stripped it) falls back to a whole-word boundary-anchored
+  // match — never bare substring, which would hit inside a larger token and
+  // break the documented whole-word contract (lexicon/ai-en.md).
   const cjkSubstring = ['ko', 'zh', 'ja'].includes(lexicon.lang);
   for (const entry of lexicon.strict) {
     const lowerEntry = entry.toLowerCase();
@@ -64,8 +81,10 @@ export function computeDensity(paragraphText, tokens, lexicon) {
       hits.push(entry);
       continue;
     }
-    const hasInternalPunct = /[^\p{L}\p{N}]/u.test(lowerEntry);
-    if ((cjkSubstring || hasInternalPunct) && lowerText.includes(lowerEntry)) {
+    const isMultiToken = /[^\p{L}\p{N}]/u.test(lowerEntry);
+    if (cjkSubstring) {
+      if (lowerText.includes(lowerEntry)) hits.push(entry);
+    } else if (isMultiToken && strictEntryRegex(lowerEntry).test(lowerText)) {
       hits.push(entry);
     }
   }

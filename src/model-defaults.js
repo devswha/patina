@@ -27,6 +27,16 @@ const BACKEND_SELECTOR_ALIASES = Object.freeze({
   'kimi-cli': 'kimi',
 });
 
+// Family prefix per local backend, mirroring the selectBackend model heuristic
+// in backends/index.js. Used to drop a flag-sourced model that belongs to a
+// different leg of an explicit fallback chain (#445).
+const BACKEND_MODEL_FAMILY = Object.freeze({
+  'codex-cli': /^codex(-|$)/i,
+  'claude-cli': /^claude(-|$)/i,
+  'gemini-cli': /^gemini(-|$)/i,
+  'kimi-cli': /^kimi(-|$)/i,
+});
+
 /**
  * Resolve the model id a local CLI backend should receive.
  *
@@ -50,6 +60,16 @@ export function resolveLocalCliModel({ backendName, model, modelSource }) {
 
   const alias = BACKEND_SELECTOR_ALIASES[backendName];
   if (alias && String(model).toLowerCase() === alias) return defaultModel;
+
+  // A flag-sourced model whose family does not match this backend belongs to a
+  // different leg of an explicit fallback chain (e.g.
+  // `--backend openai-http,claude-cli --model gpt-5.5`). Forwarding the foreign
+  // id would fail this leg on an unknown model; use the backend's own default
+  // so the user-configured fallback actually works (#445).
+  const family = BACKEND_MODEL_FAMILY[backendName];
+  if (modelSource === 'flag' && family && !family.test(String(model))) {
+    return defaultModel;
+  }
 
   return model;
 }

@@ -114,3 +114,32 @@ test('audit backstop surfaces a hot private structural model verdict', () => {
   assert.match(md, /structural-classifier/);
   assert.match(md, /문서 단위 구조 분류기/);
 });
+
+test('loadStructuralModel rejects a configured model file that is valid JSON but not an object (#443)', () => {
+  const dir = mkdtempSync(resolve(tmpdir(), 'patina-model-'));
+  const path = resolve(dir, 'model-ko.json');
+  for (const raw of ['null', '42', 'true', '"x"']) {
+    writeFileSync(path, raw, 'utf8');
+    assert.throws(
+      () => loadStructuralModel({ stylometry: { structural_model: { path } } }, { env: {}, cwd: dir, lang: 'ko' }),
+      /Invalid structural model at[\s\S]*expected a model object but got/,
+      raw,
+    );
+  }
+});
+
+test('audit backstop degrades to a warning when the configured model is corrupt (#443)', () => {
+  const dir = mkdtempSync(resolve(tmpdir(), 'patina-model-'));
+  const path = resolve(dir, 'model-ko.json');
+  writeFileSync(path, '42', 'utf8');
+  const warnings = [];
+  const logger = { warn: (code) => warnings.push(code) };
+  // Must not throw — the advisory backstop continues without the classifier.
+  const md = buildDeterministicAuditBackstop('오늘은 날씨가 좋았다. 점심을 먹었다.', {
+    lang: 'ko',
+    config: { stylometry: { structural_model: { path } } },
+    logger,
+  });
+  assert.equal(typeof md, 'string');
+  assert.ok(warnings.includes('audit.structural_model_load_failure'));
+});

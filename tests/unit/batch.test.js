@@ -73,3 +73,30 @@ test('small batches engage the rate check only once fully sampled', () => {
   // 2/2 = 100% > 50%.
   assert.equal(b.shouldStop(), true);
 });
+
+test('generic exit-1 failures no longer count as a retryable storm (#440)', () => {
+  const b = breaker({ maxFailures: Infinity, maxFailureRate: 1 });
+  for (let i = 0; i < 3; i++) {
+    b.recordFailure({ path: `f${i}.md`, err: new Error('claude-cli backend: claude exited with code 1\nauth expired') });
+  }
+  // rate 3/3 = 100% is not > 1.0, budget is Infinity — only the storm rule
+  // could stop here, and exit 1 must not feed it.
+  assert.equal(b.shouldStop(), false);
+});
+
+test('EX_TEMPFAIL exits still trip the retryable-storm breaker', () => {
+  const b = breaker({ maxFailures: Infinity, maxFailureRate: 1 });
+  for (let i = 0; i < 3; i++) {
+    b.recordFailure({ path: `f${i}.md`, err: new Error('kimi-cli backend: kimi exited with code 75') });
+  }
+  assert.equal(b.shouldStop(), true);
+  assert.match(b.toError().message, /retryable storm detected \(3 × exit 75\)/);
+});
+
+test('--no-stop-on-retryable-storm disables the storm rule (#440)', () => {
+  const b = breaker({ maxFailures: Infinity, maxFailureRate: 1, stopOnRetryableStorm: false });
+  for (let i = 0; i < 5; i++) {
+    b.recordFailure({ path: `f${i}.md`, err: new Error('HTTP 429 too many requests') });
+  }
+  assert.equal(b.shouldStop(), false);
+});

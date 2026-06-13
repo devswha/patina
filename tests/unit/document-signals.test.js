@@ -21,8 +21,11 @@ test('strict rewrite prompt renders document signals as ground truth for the Pha
   assert.ok(prompt.includes('## Document Signals (deterministic measurements)'));
   assert.ok(prompt.includes(SIGNALS[0]));
   assert.ok(prompt.includes('Phase 0: Document Brief'));
-  // Signals section precedes the instructions that consume it.
-  assert.ok(prompt.indexOf('Document Signals') < prompt.indexOf('## Instructions'));
+  // C1 cache-friendly layout: the per-document signals sit AFTER the stable
+  // instruction prefix and immediately before the input, so the large
+  // pattern-pack/profile/voice/instruction prefix stays cacheable across a batch.
+  assert.ok(prompt.indexOf('Document Signals') > prompt.indexOf('## Instructions'));
+  assert.ok(prompt.indexOf('Document Signals') < prompt.indexOf('## Input Text'));
 });
 
 test('minimal rewrite prompt carries the brief and the signals section', () => {

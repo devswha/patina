@@ -86,7 +86,9 @@ export function isRetryableBackendError(err, { attemptIndex = 0, signal } = {}) 
   if (signal?.aborted) return false;
   const status = extractStatus(err);
   if (status === 429 || status === 503) return true;
-  return err?.name === 'AbortError' && attemptIndex === 0;
+  // A per-attempt timeout (api.js renames exhausted timer aborts to
+  // TimeoutError, #444) is as fallbackable as an AbortError on the first hop.
+  return (err?.name === 'AbortError' || err?.name === 'TimeoutError') && attemptIndex === 0;
 }
 
 export function describeBackendError(err) {

@@ -287,3 +287,18 @@ test('runOuroboros accepts a target-met iteration when both floors pass', async 
   assert.equal(result.iterations, 1);
   assert.equal(result.reason, 'Target met');
 });
+
+test('ouroboros iteration prompts skip the self-audit phase (#444)', async () => {
+  const fixture = createLLMFixture({
+    scores: [80, 75],
+    rewrites: ['Rewritten claim text.'],
+    mps: [100],
+    fidelityGrades: [3],
+  });
+  await runWithFixture(fixture);
+  assert.equal(fixture.calls.rewrite.length, 1);
+  const rewritePrompt = fixture.calls.rewrite[0];
+  assert.doesNotMatch(rewritePrompt, /Phase 3: Self-Audit/);
+  assert.doesNotMatch(rewritePrompt, /\[SELF_AUDIT\]/);
+  assert.match(rewritePrompt, /Output ONLY the final humanized text/);
+});

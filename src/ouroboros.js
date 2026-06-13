@@ -115,6 +115,10 @@ export async function runOuroboros({
       scoring,
       text: currentText,
       mode: 'rewrite',
+      // The loop strips [SELF_AUDIT] immediately and re-scores with external
+      // scorers, so paying for the model's per-iteration self-audit is pure
+      // token waste (#444).
+      includeSelfAudit: false,
     });
 
     const iterationStartedAt = now ? now() : Date.now();
@@ -191,7 +195,10 @@ export async function runOuroboros({
     // (fail closed) rather than defaulting to a passing 100 — scoreFidelity already
     // fails closed (missing criteria clamp to 0), so MPS must match.
     const mps = mpsResult?.mps ?? null;
-    const fidelity = fidelityResult?.fidelity ?? 100;
+    // Fail closed: a missing fidelity (injected/failed scorer) defaults to 0 so
+    // it trips the fidelity floor, matching scoreFidelity's own clamp-to-0 and
+    // the MPS fail-closed path below (#444).
+    const fidelity = fidelityResult?.fidelity ?? 0;
     const combined = combinedScore({
       aiLikeness: currentScore,
       fidelity,
@@ -245,10 +252,10 @@ export async function runOuroboros({
       reason: shouldStop ? reason : '',
     });
 
-    if (shouldRollback) {
-      currentText = bestText;
-      currentScore = bestScore;
-    } else {
+    // Rollback paths always stop and the function returns bestText/bestScore, so
+    // there is nothing to carry forward on rollback (#444). Only advance state
+    // when the iteration is accepted.
+    if (!shouldRollback) {
       currentText = humanized;
       previousScore = currentScore;
       previousCombined = combined;

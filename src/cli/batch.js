@@ -133,7 +133,7 @@ function classifyRetryableStorm(err) {
   if (/\bHTTP\s+429\b/i.test(message) || err?.status === 429) return 'HTTP 429';
   if (/\bHTTP\s+503\b/i.test(message) || err?.status === 503) return 'HTTP 503';
   if (/Provider stream timed out/i.test(message)) return 'provider stream timeout';
-  if (/timed out/i.test(message) || err?.name === 'AbortError') return 'timeout';
+  if (/timed out/i.test(message) || err?.name === 'AbortError' || err?.name === 'TimeoutError') return 'timeout';
   const exit = message.match(/\bexited with code\s+(75|1)\b/i);
   if (exit) return `exit ${exit[1]}`;
   if (/no final response body|empty response|final-message-only/i.test(message)) return 'empty response';

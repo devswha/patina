@@ -129,3 +129,86 @@ test('phrase regex matches across a soft line wrap and through the wildcard (#44
   // Still does not match when the words are absent.
   assert.equal(phraseToRegex('in the digital age').test('in the analog era'), false);
 });
+// --- A3: per-lexicon regex cache --------------------------------------------
+
+test('computeDensity is stable across repeated calls (cache consistency)', () => {
+  const lexicon = {
+    lang: 'en',
+    strict: ['cutting-edge', 'game changer', 'delve'],
+    phrases: ['in the digital age', 'not only~but also'],
+  };
+  const text = 'We delve into a cutting-edge, real game changer in the digital age; not only fast but also cheap.';
+  const tokens = tokenize(text);
+  const first = computeDensity(text, tokens, lexicon);
+  // Functional correctness on the first (cache-populating) call.
+  assert.deepEqual(
+    [...first.hits].sort(),
+    ['cutting-edge', 'delve', 'game changer', 'in the digital age', 'not only~but also'].sort(),
+  );
+  assert.equal(first.matches, 5);
+  // 50 further calls must return byte-identical results (no cache drift).
+  for (let i = 0; i < 50; i++) {
+    const again = computeDensity(text, tokens, lexicon);
+    assert.deepEqual(again, first);
+  }
+  // A non-matching paragraph through the same (now warm) lexicon stays correct.
+  const cold = computeDensity('nothing to see here', tokenize('nothing to see here'), lexicon);
+  assert.deepEqual(cold.hits, []);
+  assert.equal(cold.matches, 0);
+});
+
+test('cached phrase/strict regexes are non-global and non-sticky', () => {
+  // The cache reuses these regex objects, so /g or /y would corrupt lastIndex
+  // across repeated .test() calls.
+  const re = phraseToRegex('in the digital age');
+  assert.equal(re.global, false);
+  assert.equal(re.sticky, false);
+  // Behavioral proof: a matching phrase keeps matching on every repeat.
+  const lexicon = { lang: 'en', strict: [], phrases: ['delve into'] };
+  for (let i = 0; i < 10; i++) {
+    assert.equal(computeDensity('we delve into it', tokenize('we delve into it'), lexicon).matches, 1);
+  }
+});
+
+test('computeDensity does not mutate lexicon object shape (WeakMap cache)', () => {
+  const lexicon = { lang: 'en', strict: ['game changer'], phrases: ['in the digital age'] };
+  const keysBefore = Object.keys(lexicon);
+  const jsonBefore = JSON.stringify(lexicon);
+  for (let i = 0; i < 5; i++) {
+    computeDensity('a real game changer in the digital age', tokenize('a real game changer in the digital age'), lexicon);
+  }
+  assert.deepEqual(Object.keys(lexicon), keysBefore);
+  assert.equal(JSON.stringify(lexicon), jsonBefore);
+  // Cache internals are not enumerable on the lexicon.
+  assert.deepEqual(Object.keys(lexicon), ['lang', 'strict', 'phrases']);
+});
+
+test('regex cache is keyed per lexicon object (no cross-contamination)', () => {
+  const a = { lang: 'en', strict: [], phrases: ['alpha signal'] };
+  const b = { lang: 'en', strict: [], phrases: ['beta signal'] };
+  const text = 'this beta signal only';
+  const tokens = tokenize(text);
+  assert.deepEqual(computeDensity(text, tokens, a).hits, []);
+  assert.deepEqual(computeDensity(text, tokens, b).hits, ['beta signal']);
+  // Re-querying a must still see only its own phrase, not b's.
+  assert.deepEqual(computeDensity(text, tokens, a).hits, []);
+});
+
+test('cache preserves language-aware strict semantics (EN whole-word vs CJK substring)', () => {
+  // EN multi-token strict entry is boundary-anchored, never a bare substring.
+  const en = { lang: 'en', strict: ['cutting-edge'], phrases: [] };
+  assert.equal(computeDensity('precutting-edged thing', tokenize('precutting-edged thing'), en).matches, 0);
+  assert.ok(computeDensity('a cutting-edge idea', tokenize('a cutting-edge idea'), en).hits.includes('cutting-edge'));
+  // CJK strict entries keep substring matching (inflection/character fallback).
+  for (const [lang, entry, text] of [
+    ['ko', '자리매김', '시장에서 자리매김했다'],
+    ['zh', '可以说', '可以说这很重要'],
+    ['ja', 'まとめると', 'まとめるとこうなる'],
+  ]) {
+    const lex = { lang, strict: [entry], phrases: [] };
+    const hot = computeDensity(text, tokenize(text, { lang }), lex);
+    assert.ok(hot.hits.includes(entry), `${lang} substring entry should hit`);
+    // Repeated call identical through the warm cache.
+    assert.deepEqual(computeDensity(text, tokenize(text, { lang }), lex), hot);
+  }
+});

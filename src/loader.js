@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import yaml from 'js-yaml';
 import { validateProfileName } from './security.js';
+import { inputError, runtimeError } from './errors.js';
 
 /**
  * Read a UTF-8 text file.
@@ -52,7 +53,7 @@ export function loadPatterns(repoRoot, lang, skipPatterns = []) {
   const files = readdirSync(patternsDir)
     .filter((f) => f.startsWith(`${lang}-`) && f.endsWith('.md'))
     .filter((f) => {
-      const packName = f.replace('.md', '');
+      const packName = f.slice(0, -3);
       return !skipPatterns.includes(packName);
     })
     .sort();
@@ -87,7 +88,13 @@ export function loadProfile(repoRoot, profileName) {
   const profilesDir = resolve(repoRoot, 'profiles');
   const profilePath = resolve(profilesDir, `${profileName}.md`);
   if (!profilePath.startsWith(profilesDir + sep)) {
-    throw new Error(`Profile path escaped profiles/: ${profilePath}`);
+    // Defense-in-depth after validateProfileName; an escape here is an internal
+    // invariant breach, not user input — keep it a typed runtime error (#449).
+    throw runtimeError(
+      'profile path escaped the profiles directory',
+      `${profilePath} is outside ${profilesDir}.`,
+      'This is an internal guard; report it if you see it with a normal --profile value.'
+    );
   }
   const content = loadFile(profilePath);
   return splitFrontmatter(content);
@@ -139,7 +146,11 @@ export function loadVoiceSample(path) {
     .filter(Boolean);
 
   if (paragraphs.length === 0) {
-    throw new Error(`Voice sample is empty: ${path}`);
+    throw inputError(
+      'voice sample is empty',
+      `${path} has no non-empty paragraphs.`,
+      'Provide a --voice-sample file with at least one paragraph of the target writing style.'
+    );
   }
 
   const selected = paragraphs.slice(0, 3);

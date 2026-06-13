@@ -3,6 +3,7 @@ import { resolve, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
+import { inputError } from './errors.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -26,7 +27,11 @@ export function loadConfig(path = resolve(REPO_ROOT, '.patina.default.yaml'), { 
   const raw = readFileSync(path, 'utf8');
   const parsed = yaml.load(raw);
   if (!isPlainObject(parsed)) {
-    throw new Error(`Config at ${path} did not parse to a YAML mapping (got ${typeof parsed})`);
+    throw inputError(
+      'config did not parse to a YAML mapping',
+      `${path}: got ${Array.isArray(parsed) ? 'array' : typeof parsed}`,
+      'A patina config must be a YAML mapping (key: value pairs), not a list or scalar.'
+    );
   }
   const config = parsed;
 
@@ -45,11 +50,24 @@ export function loadConfig(path = resolve(REPO_ROOT, '.patina.default.yaml'), { 
 }
 
 function mergeYamlMapping(config, filePath, label) {
-  const raw = readFileSync(filePath, 'utf8');
+  let raw;
+  try {
+    raw = readFileSync(filePath, 'utf8');
+  } catch (err) {
+    throw inputError(
+      `${label.toLowerCase()} file could not be read`,
+      `${filePath}: ${err.message}`,
+      'Check the --config path (or the ~/.patina.yaml / ./.patina.yaml location).'
+    );
+  }
   const parsed = yaml.load(raw);
   if (parsed === null || parsed === undefined) return; // empty file
   if (!isPlainObject(parsed)) {
-    throw new Error(`${label} at ${filePath} must be a YAML mapping (got ${Array.isArray(parsed) ? 'array' : typeof parsed})`);
+    throw inputError(
+      `${label.toLowerCase()} is not a YAML mapping`,
+      `${filePath}: got ${Array.isArray(parsed) ? 'array' : typeof parsed}`,
+      'A patina config must be a YAML mapping (key: value pairs).'
+    );
   }
   deepMerge(config, parsed);
 }
@@ -112,15 +130,19 @@ const VALID_TONES = ['casual', 'professional', 'academic', 'narrative', 'marketi
 export function resolveTone({ cliTone, configTone, lang }) {
   if (cliTone !== undefined && cliTone !== null) {
     if (!VALID_TONES.includes(cliTone)) {
-      throw new Error(
-        `Unknown tone '${cliTone}'. Valid tones: ${VALID_TONES.join(', ')}`
+      throw inputError(
+        `unknown tone '${cliTone}'`,
+        `--tone must be one of: ${VALID_TONES.join(', ')}.`,
+        'Pass a supported tone, or omit --tone for profile-only mode.'
       );
     }
   }
   if (configTone !== undefined && configTone !== null && configTone !== '') {
     if (!VALID_TONES.includes(configTone)) {
-      throw new Error(
-        `Invalid tone '${configTone}' in config. Valid tones: ${VALID_TONES.join(', ')}`
+      throw inputError(
+        `invalid tone '${configTone}' in config`,
+        `The config 'tone' must be one of: ${VALID_TONES.join(', ')}.`,
+        'Fix the tone value in your .patina.yaml (or remove it).'
       );
     }
   }

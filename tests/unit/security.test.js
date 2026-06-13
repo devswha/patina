@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   applyPrivateBaseURLOptIn,
+  isLoopbackHost,
   isPrivateOrSpecialIP,
   isSubresourceFetchAllowed,
   shouldAllowPrivateBaseURL,
@@ -71,6 +72,26 @@ test('validateBaseURL rejects private literal IPs unless private URL opt-in is s
   });
 });
 
+
+test('isLoopbackHost only exempts real IPv4 loopback literals, not 127.* DNS names (#448)', () => {
+  assert.equal(isLoopbackHost('127.0.0.1'), true);
+  assert.equal(isLoopbackHost('127.5.6.7'), true);
+  assert.equal(isLoopbackHost('localhost'), true);
+  assert.equal(isLoopbackHost('::1'), true);
+  // A DNS name that merely starts with '127.' must NOT be treated as loopback.
+  assert.equal(isLoopbackHost('127.attacker.example'), false);
+  assert.equal(isLoopbackHost('127.0.0.1.evil.com'), false);
+});
+
+test('validateBaseURL refuses plaintext HTTP to a 127.* DNS name but allows real loopback (#448)', () => {
+  withEnv({ PATINA_ALLOW_INSECURE_BASE_URL: undefined, PATINA_ALLOW_PRIVATE_BASE_URL: undefined }, () => {
+    assert.throws(
+      () => validateBaseURL('http://127.attacker.example/v1'),
+      /refusing plaintext HTTP/,
+    );
+    assert.doesNotThrow(() => validateBaseURL('http://127.0.0.1/v1'));
+  });
+});
 test('shouldAllowPrivateBaseURL and applyPrivateBaseURLOptIn honor flag and env opt-in', () => {
   withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: undefined }, () => {
     assert.equal(shouldAllowPrivateBaseURL(), false);

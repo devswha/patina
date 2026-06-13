@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-13T17:32:45.884Z",
+  "nodeVersion": "v22.17.1",
+  "platform": "linux",
+  "arch": "x64",
+  "warmupPasses": 1,
+  "passes": 7,
+  "fixtureCount": 7,
+  "fixtures": [
+    {
+      "id": "perf-en-medium",
+      "lang": "en",
+      "sizeBucket": "medium",
+      "inputChars": 316,
+      "inputParagraphs": 3,
+      "passes": 7,
+      "warmupPasses": 1,
+      "p50Ms": 0.632,
+      "p95Ms": 1.217,
+      "p99Ms": 1.217,
+      "meanMs": 0.717,
+      "textsPerSec": 1394.951
+    },
+    {
+      "id": "perf-en-short",
+      "lang": "en",
+      "sizeBucket": "short",
+      "inputChars": 51,
+      "inputParagraphs": 1,
+      "passes": 7,
+      "warmupPasses": 1,
+      "p50Ms": 0.194,
+      "p95Ms": 0.289,
+      "p99Ms": 0.289,
+      "meanMs": 0.21,
+      "textsPerSec": 4757.031
+    },
+    {
+      "id": "perf-ko-medium",
+      "lang": "ko",
+      "sizeBucket": "medium",
+      "inputChars": 135,
+      "inputParagraphs": 3,
+      "passes": 7,
+      "warmupPasses": 1,
+      "p50Ms": 1.246,
+      "p95Ms": 1.606,
+      "p99Ms": 1.606,
+      "meanMs": 1.283,
+      "textsPerSec": 779.428
+    },
+    {
+      "id": "perf-ko-short",
+      "lang": "ko",
+      "sizeBucket": "short",
+      "inputChars": 31,
+      "inputParagraphs": 1,
+      "passes": 7,
+      "warmupPasses": 1,
+      "p50Ms": 0.455,
+      "p95Ms": 0.692,
+      "p99Ms": 0.692,
+      "meanMs": 0.486,
+      "textsPerSec": 2059.082
+    },
+    {
+      "id": "perf-mixed-long",
+      "lang": "en",
+      "sizeBucket": "long",
+      "inputChars": 727,
+      "inputParagraphs": 6,
+      "passes": 7,
+      "warmupPasses": 1,
+      "p50Ms": 0.602,
+      "p95Ms": 0.928,
+      "p99Ms": 0.928,
+      "meanMs": 0.651,
+      "textsPerSec": 1535.769
+    },
+    {
+      "id": "perf-synth-lexicon",
+      "lang": "en",
+      "sizeBucket": "synthetic-lexicon",
+      "inputChars": 10480,
+      "inputParagraphs": 1,
+      "passes": 7,
+      "warmupPasses": 1,
+      "p50Ms": 2.745,
+      "p95Ms": 2.906,
+      "p99Ms": 2.906,
+      "meanMs": 2.77,
+      "textsPerSec": 361.038
+    },
+    {
+      "id": "perf-synth-mattr",
+      "lang": "en",
+      "sizeBucket": "synthetic-mattr",
+      "inputChars": 27200,
+      "inputParagraphs": 1,
+      "passes": 7,
+      "warmupPasses": 1,
+      "p50Ms": 7.67,
+      "p95Ms": 9.929,
+      "p99Ms": 9.929,
+      "meanMs": 7.88,
+      "textsPerSec": 126.91
+    }
+  ],
+  "buckets": [
+    {
+      "sizeBucket": "long",
+      "fixtureCount": 1,
+      "p50Ms": 0.651,
+      "p95Ms": 0.651,
+      "p99Ms": 0.651,
+      "meanMs": 0.651,
+      "textsPerSec": 1536.098
+    },
+    {
+      "sizeBucket": "medium",
+      "fixtureCount": 2,
+      "p50Ms": 0.717,
+      "p95Ms": 1.283,
+      "p99Ms": 1.283,
+      "meanMs": 1,
+      "textsPerSec": 1000
+    },
+    {
+      "sizeBucket": "short",
+      "fixtureCount": 2,
+      "p50Ms": 0.21,
+      "p95Ms": 0.486,
+      "p99Ms": 0.486,
+      "meanMs": 0.348,
+      "textsPerSec": 2873.563
+    },
+    {
+      "sizeBucket": "synthetic-lexicon",
+      "fixtureCount": 1,
+      "p50Ms": 2.77,
+      "p95Ms": 2.77,
+      "p99Ms": 2.77,
+      "meanMs": 2.77,
+      "textsPerSec": 361.011
+    },
+    {
+      "sizeBucket": "synthetic-mattr",
+      "fixtureCount": 1,
+      "p50Ms": 7.88,
+      "p95Ms": 7.88,
+      "p99Ms": 7.88,
+      "meanMs": 7.88,
+      "textsPerSec": 126.904
+    }
+  ]
+}

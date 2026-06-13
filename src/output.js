@@ -512,6 +512,8 @@ function normalizeFooterTail(lines) {
  * @param {string} [opts.lang]
  * @param {string} [opts.repoRoot]
  * @param {object} [opts.config]
+ * @param {{ warn?: Function }} [opts.logger] Optional logger; the structural
+ *   model load degrades to a warning here instead of aborting the audit (#443).
  * @returns {string} Markdown section (empty string when nothing fired).
  */
 export function buildDeterministicAuditBackstop(text, opts = {}) {
@@ -541,7 +543,17 @@ export function buildDeterministicAuditBackstop(text, opts = {}) {
   }
 
   // markup leakage (near-proof) + density-gated discourse tells — language-agnostic.
-  const structuralModel = loadStructuralModel(opts.config ?? {}, { lang });
+  // The structural classifier is an advisory backstop: a configured-but-missing
+  // or corrupt model must degrade to a warning here, exactly as the --score path
+  // does (scoring.js), instead of aborting `patina --audit` (#443).
+  let structuralModel = null;
+  try {
+    structuralModel = loadStructuralModel(opts.config ?? {}, { lang });
+  } catch (err) {
+    opts.logger?.warn?.('audit.structural_model_load_failure', {
+      message: `[patina] structural model load failed; continuing without structural classifier: ${err?.message || err}`,
+    });
+  }
   const a = analyzeText(str, { lang, repoRoot: opts.repoRoot, structuralModel });
   for (const h of a.markupLeakage?.hits ?? []) {
     rows.push({ signal: 'markup-leakage', label: h.label, severity: 'HIGH', location: (h.samples ?? []).join(', ') });

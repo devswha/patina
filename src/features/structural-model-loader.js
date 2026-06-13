@@ -108,7 +108,17 @@ export function loadStructuralModel(config = {}, opts = {}) {
   }
 
   try {
-    return normalizeStructuralModel(parsed);
+    const model = normalizeStructuralModel(parsed);
+    // normalizeStructuralModel returns null (not throws) for non-object JSON
+    // (null/number/boolean/string) — reachable via truncation/corruption. The
+    // file exists, so this is an invalid model, not "no model installed";
+    // failing here keeps the loader's contract that a resolved file is a model
+    // (#443).
+    if (!model) {
+      const kind = parsed === null ? 'null' : Array.isArray(parsed) ? 'array' : typeof parsed;
+      throw new Error(`expected a model object but got ${kind}`);
+    }
+    return model;
   } catch (err) {
     throw new Error(`Invalid structural model at ${resolved.path}: ${err.message}`);
   }

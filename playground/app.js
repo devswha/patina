@@ -140,6 +140,17 @@ function reportFalsePositive() {
     : 'Pop-up blocked. Allow pop-ups, or open an issue from the GitHub link in the header.';
 }
 
+// Re-analysis runs detectTranslationese + per-paragraph stylometry + three
+// innerHTML re-renders; debounce keystrokes so a long paste does not block the
+// main thread on every character. The 'Run audit' button stays immediate (#450).
+function debounce(fn, ms) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
+}
+
 function bind() {
   nodes.lang.value = state.lang;
   nodes.input.value = state.text;
@@ -148,7 +159,7 @@ function bind() {
     updateQuery();
     runAnalysis();
   });
-  nodes.input.addEventListener('input', runAnalysis);
+  nodes.input.addEventListener('input', debounce(runAnalysis, 200));
   nodes.analyze.addEventListener('click', runAnalysis);
   nodes.sample.addEventListener('click', setSample);
   nodes.copyCli.addEventListener('click', copyCli);

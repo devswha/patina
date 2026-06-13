@@ -8,6 +8,7 @@ import {
   resolveBackendMaxConcurrency,
   isRetryableBackendError,
   withBackendConcurrencySlot,
+  backendSupportsStructuredOutput,
 } from '../../src/backends/contract.js';
 
 test('resolveBackendMaxConcurrency fails closed on an invalid override (#445)', () => {
@@ -20,6 +21,15 @@ test('resolveBackendMaxConcurrency fails closed on an invalid override (#445)', 
   // valid override applies; unset uses the backend default.
   assert.equal(resolveBackendMaxConcurrency('claude-cli', 2), 2);
   assert.equal(resolveBackendMaxConcurrency('claude-cli'), 1);
+});
+
+test('backendSupportsStructuredOutput is true only for openai-http (#C2)', () => {
+  assert.equal(backendSupportsStructuredOutput('openai-http'), true);
+  for (const cli of ['codex-cli', 'claude-cli', 'gemini-cli', 'kimi-cli']) {
+    assert.equal(backendSupportsStructuredOutput(cli), false);
+  }
+  // Unknown backends fail closed: structured output is never sent.
+  assert.equal(backendSupportsStructuredOutput('mystery-backend'), false);
 });
 
 test('isRetryableBackendError honors message status even when err.status is null (#445)', () => {

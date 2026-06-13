@@ -405,3 +405,38 @@ test('deterministic skipped and failure payloads pin signalScore to zero', () =>
   assert.strictEqual(failed.skipped, true);
   assert.strictEqual(failed.signalScore, 0);
 });
+// --- C2: opt-in structured output ------------------------------------------
+
+test('scoreText forwards responseFormat to callLLM on both attempts and keeps strict-JSON fallback (#C2)', async () => {
+  const calls = [];
+  const callLLM = async (args) => {
+    calls.push(args);
+    // First attempt returns non-JSON to force the temperature-0 retry.
+    return calls.length === 1
+      ? 'sorry, here is the answer'
+      : '{ "categories": {}, "overall": 20, "interpretation": "mostly human" }';
+  };
+  const result = await scoreText({
+    text: 'A sample draft to score.',
+    config: loadConfig(),
+    patterns: [],
+    responseFormat: { type: 'json_object' },
+    callLLM,
+  });
+  assert.equal(calls.length, 2); // garbage -> retry preserves the fallback
+  assert.deepEqual(calls[0].responseFormat, { type: 'json_object' });
+  assert.deepEqual(calls[1].responseFormat, { type: 'json_object' });
+  assert.equal(calls[1].temperature, 0); // retry runs at temperature 0
+  assert.ok(result.overall != null);
+});
+
+test('scoreText omits responseFormat when the opt-in is unset (#C2)', async () => {
+  const calls = [];
+  const callLLM = async (args) => {
+    calls.push(args);
+    return '{ "categories": {}, "overall": 10, "interpretation": "human" }';
+  };
+  await scoreText({ text: 'x', config: loadConfig(), patterns: [], callLLM });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].responseFormat, undefined);
+});

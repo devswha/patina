@@ -29,7 +29,7 @@ import { applyScoreGate, extractScoreOverall } from './score-gate.js';
 import { loadInputs } from './input.js';
 import { PatinaCliError, runtimeError } from '../errors.js';
 import { providerHttpKeyEnvVars, resolveHttpApiKey } from '../auth.js';
-import { DEFAULT_BACKEND_TIMEOUT_MS, getBackendSafety } from '../backends/contract.js';
+import { DEFAULT_BACKEND_TIMEOUT_MS, getBackendSafety, backendSupportsStructuredOutput } from '../backends/contract.js';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -237,6 +237,8 @@ export async function runDefault(parsed, logger) {
             timeout: timeoutMs,
             signal: cancellation.signal,
             logger,
+            // Opt-in structured output for the openai-http scorer; default off.
+            structuredOutput: config['structured-output'] === true && backendSupportsStructuredOutput('openai-http'),
           });
         } else {
           result = await invokeBackendChain({

@@ -303,3 +303,20 @@ test('callLLM surfaces provider prompt-cache token counts when present', async (
     globalThis.fetch = originalFetch;
   }
 });
+test('callLLM sends response_format only when responseFormat is provided (#C2)', async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    let body;
+    globalThis.fetch = async (_url, opts) => {
+      body = JSON.parse(opts.body);
+      return { ok: true, json: async () => ({ model: 'm', choices: [{ message: { content: 'ok' } }] }) };
+    };
+    await callLLM({ prompt: 'x', apiKey: 'k', model: 'm', responseFormat: { type: 'json_object' } });
+    assert.deepEqual(body.response_format, { type: 'json_object' });
+    // Omitted by default so endpoints that reject the field are unaffected.
+    await callLLM({ prompt: 'x', apiKey: 'k', model: 'm' });
+    assert.equal('response_format' in body, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

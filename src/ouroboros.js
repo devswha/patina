@@ -46,6 +46,10 @@ export async function runOuroboros({
   signal,
   timeout,
   logger = createLogger(),
+  // Opt-in: when true, ouroboros scoring/MPS/fidelity calls request OpenAI
+  // structured output (response_format json_object). Default false; only the
+  // openai-http scorer forwards it (callLLM here is always the HTTP client).
+  structuredOutput = false,
 }) {
   const ouroborosConfig = config.ouroboros || {};
   const targetScore = ouroborosConfig['target-score'] ?? 30;
@@ -53,6 +57,8 @@ export async function runOuroboros({
   const plateauThreshold = ouroborosConfig['plateau-threshold'] ?? 10;
   const fidelityFloor = ouroborosConfig['fidelity-floor'] ?? 70;
   const mpsFloor = ouroborosConfig['mps-floor'] ?? 70;
+
+  const scoringResponseFormat = structuredOutput ? { type: 'json_object' } : undefined;
 
   const iterationLog = [];
 
@@ -69,6 +75,7 @@ export async function runOuroboros({
     signal,
     timeout,
     logger,
+    responseFormat: scoringResponseFormat,
   });
 
   const initialScore = initialScoreResult?.overall ?? 100;
@@ -151,6 +158,7 @@ export async function runOuroboros({
       signal,
       timeout,
       logger,
+      responseFormat: scoringResponseFormat,
     });
 
     let currentScore = scoreResult?.overall ?? 100;
@@ -175,6 +183,7 @@ export async function runOuroboros({
         signal,
         timeout,
         logger,
+        responseFormat: scoringResponseFormat,
       }),
       scoreFidelity({
         original: text,
@@ -188,6 +197,7 @@ export async function runOuroboros({
         signal,
         timeout,
         logger,
+        responseFormat: scoringResponseFormat,
       }),
     ]);
 

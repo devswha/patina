@@ -7,6 +7,12 @@ language: ko              # Korean (default) -- auto-loads all ko-*.md patterns
 profile: default
 output: rewrite           # rewrite | diff | audit | score
 
+# Opt-in: request OpenAI-compatible structured output (response_format
+# json_object) for ouroboros LLM scoring. Default false; only the openai-http
+# backend forwards it (never sent to local CLI backends). Some OpenAI-compatible
+# endpoints reject response_format — leave false unless your endpoint supports it.
+structured-output: false
+
 # Tone categorization (v3.10): named voice axis. Six v1 tones for ko/en.
 # Resolution: explicit --tone > config tone > config profile.
 # auto = heuristic single-tone detection at SKILL.md Phase 4.5b.

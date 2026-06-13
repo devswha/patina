@@ -169,6 +169,7 @@ export function computeBackoffMs(attempt, retryAfter, opts = {}) {
  * @param {string} [options.model] Model id to request. Defaults to gpt-5.5.
  * @param {number} [options.temperature=DEFAULT_TEMPERATURE] Sampling temperature.
  * @param {number|string} [options.seed] Optional deterministic seed forwarded to the provider.
+ * @param {object} [options.responseFormat] Optional OpenAI-compatible structured-output request field (sent as response_format) when provided.
  * @param {number} [options.timeout=120000] Per-attempt timeout in milliseconds.
  * @param {number} [options.maxRetries=2] Retry count after the first attempt.
  * @param {number} [options.deadline] Absolute epoch-millisecond deadline for all attempts.
@@ -190,6 +191,10 @@ export async function callLLM({
   model = DEFAULT_BEST_MODELS.openai,
   temperature = DEFAULT_TEMPERATURE,
   seed,
+  // Optional OpenAI-compatible structured-output request field, e.g.
+  // { type: 'json_object' } or a json_schema spec. Opt-in: when omitted, no
+  // response_format is sent so endpoints that reject the field are unaffected.
+  responseFormat,
   timeout = DEFAULT_TIMEOUT,
   maxRetries = DEFAULT_MAX_RETRIES,
   deadline,
@@ -208,6 +213,7 @@ export async function callLLM({
     temperature,
   };
   if (seed !== undefined && seed !== null) body.seed = seed;
+  if (responseFormat) body.response_format = responseFormat;
 
 
   let lastError;

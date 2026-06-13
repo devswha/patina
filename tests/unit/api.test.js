@@ -320,3 +320,22 @@ test('callLLM sends response_format only when responseFormat is provided (#C2)',
     globalThis.fetch = originalFetch;
   }
 });
+
+test('callLLM makes exactly maxRetries+1 transport attempts on a persistent retryable error (#C3)', async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return { ok: false, status: 503, text: async () => 'unavailable', headers: { get: () => null } };
+  };
+  try {
+    await assert.rejects(
+      callLLM({ prompt: 'x', apiKey: 'k', maxRetries: 2, sleep: async () => {} }),
+      (err) => err.status === 503,
+    );
+    // Transport retry is owned by callLLM: 1 initial attempt + 2 retries.
+    assert.equal(calls, 3);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

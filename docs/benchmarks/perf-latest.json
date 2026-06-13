@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-13T18:08:30.447Z",
+  "generatedAt": "2026-06-13T18:19:14.885Z",
   "nodeVersion": "v22.17.1",
   "platform": "linux",
   "arch": "x64",
@@ -16,11 +16,11 @@
       "inputParagraphs": 3,
       "passes": 7,
       "warmupPasses": 1,
-      "p50Ms": 0.532,
-      "p95Ms": 0.939,
-      "p99Ms": 0.939,
-      "meanMs": 0.611,
-      "textsPerSec": 1636.965
+      "p50Ms": 0.398,
+      "p95Ms": 1.559,
+      "p99Ms": 1.559,
+      "meanMs": 0.622,
+      "textsPerSec": 1608.104
     },
     {
       "id": "perf-en-short",
@@ -30,11 +30,11 @@
       "inputParagraphs": 1,
       "passes": 7,
       "warmupPasses": 1,
-      "p50Ms": 0.208,
-      "p95Ms": 0.257,
-      "p99Ms": 0.257,
-      "meanMs": 0.214,
-      "textsPerSec": 4667.049
+      "p50Ms": 0.241,
+      "p95Ms": 0.302,
+      "p99Ms": 0.302,
+      "meanMs": 0.245,
+      "textsPerSec": 4073.498
     },
     {
       "id": "perf-ko-medium",
@@ -44,11 +44,11 @@
       "inputParagraphs": 3,
       "passes": 7,
       "warmupPasses": 1,
-      "p50Ms": 1.544,
-      "p95Ms": 1.846,
-      "p99Ms": 1.846,
-      "meanMs": 1.523,
-      "textsPerSec": 656.405
+      "p50Ms": 1.257,
+      "p95Ms": 1.438,
+      "p99Ms": 1.438,
+      "meanMs": 1.218,
+      "textsPerSec": 820.682
     },
     {
       "id": "perf-ko-short",
@@ -58,11 +58,11 @@
       "inputParagraphs": 1,
       "passes": 7,
       "warmupPasses": 1,
-      "p50Ms": 0.64,
-      "p95Ms": 0.687,
-      "p99Ms": 0.687,
-      "meanMs": 0.637,
-      "textsPerSec": 1570.875
+      "p50Ms": 0.489,
+      "p95Ms": 0.618,
+      "p99Ms": 0.618,
+      "meanMs": 0.49,
+      "textsPerSec": 2041.142
     },
     {
       "id": "perf-mixed-long",
@@ -72,11 +72,11 @@
       "inputParagraphs": 6,
       "passes": 7,
       "warmupPasses": 1,
-      "p50Ms": 0.859,
-      "p95Ms": 1.209,
-      "p99Ms": 1.209,
-      "meanMs": 0.931,
-      "textsPerSec": 1073.79
+      "p50Ms": 0.445,
+      "p95Ms": 0.886,
+      "p99Ms": 0.886,
+      "meanMs": 0.518,
+      "textsPerSec": 1928.951
     },
     {
       "id": "perf-synth-lexicon",
@@ -86,11 +86,11 @@
       "inputParagraphs": 1,
       "passes": 7,
       "warmupPasses": 1,
-      "p50Ms": 1.582,
-      "p95Ms": 1.869,
-      "p99Ms": 1.869,
-      "meanMs": 1.623,
-      "textsPerSec": 615.987
+      "p50Ms": 1.117,
+      "p95Ms": 1.478,
+      "p99Ms": 1.478,
+      "meanMs": 1.216,
+      "textsPerSec": 822.696
     },
     {
       "id": "perf-synth-mattr",
@@ -100,58 +100,58 @@
       "inputParagraphs": 1,
       "passes": 7,
       "warmupPasses": 1,
-      "p50Ms": 4.265,
-      "p95Ms": 5.468,
-      "p99Ms": 5.468,
-      "meanMs": 4.367,
-      "textsPerSec": 228.993
+      "p50Ms": 3.394,
+      "p95Ms": 4.341,
+      "p99Ms": 4.341,
+      "meanMs": 3.347,
+      "textsPerSec": 298.82
     }
   ],
   "buckets": [
     {
       "sizeBucket": "long",
       "fixtureCount": 1,
-      "p50Ms": 0.931,
-      "p95Ms": 0.931,
-      "p99Ms": 0.931,
-      "meanMs": 0.931,
-      "textsPerSec": 1074.114
+      "p50Ms": 0.518,
+      "p95Ms": 0.518,
+      "p99Ms": 0.518,
+      "meanMs": 0.518,
+      "textsPerSec": 1930.502
     },
     {
       "sizeBucket": "medium",
       "fixtureCount": 2,
-      "p50Ms": 0.611,
-      "p95Ms": 1.523,
-      "p99Ms": 1.523,
-      "meanMs": 1.067,
-      "textsPerSec": 937.207
+      "p50Ms": 0.622,
+      "p95Ms": 1.218,
+      "p99Ms": 1.218,
+      "meanMs": 0.92,
+      "textsPerSec": 1086.957
     },
     {
       "sizeBucket": "short",
       "fixtureCount": 2,
-      "p50Ms": 0.214,
-      "p95Ms": 0.637,
-      "p99Ms": 0.637,
-      "meanMs": 0.426,
-      "textsPerSec": 2350.176
+      "p50Ms": 0.245,
+      "p95Ms": 0.49,
+      "p99Ms": 0.49,
+      "meanMs": 0.368,
+      "textsPerSec": 2721.088
     },
     {
       "sizeBucket": "synthetic-lexicon",
       "fixtureCount": 1,
-      "p50Ms": 1.623,
-      "p95Ms": 1.623,
-      "p99Ms": 1.623,
-      "meanMs": 1.623,
-      "textsPerSec": 616.143
+      "p50Ms": 1.216,
+      "p95Ms": 1.216,
+      "p99Ms": 1.216,
+      "meanMs": 1.216,
+      "textsPerSec": 822.368
     },
     {
       "sizeBucket": "synthetic-mattr",
       "fixtureCount": 1,
-      "p50Ms": 4.367,
-      "p95Ms": 4.367,
-      "p99Ms": 4.367,
-      "meanMs": 4.367,
-      "textsPerSec": 228.99
+      "p50Ms": 3.347,
+      "p95Ms": 3.347,
+      "p99Ms": 3.347,
+      "meanMs": 3.347,
+      "textsPerSec": 298.775
     }
   ]
 }

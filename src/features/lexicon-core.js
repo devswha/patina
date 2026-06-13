@@ -58,6 +58,32 @@ function strictEntryRegex(lowerEntry) {
   return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'u');
 }
 
+// Per-lexicon regex caches keyed by the lexicon object identity. Phrase and
+// strict-entry regexes depend only on the lexicon's entry text, never on the
+// paragraph under test, so they are compiled once per (lexicon, entry) pair
+// and reused across every computeDensity() call. WeakMaps keep the cache OFF
+// the lexicon object — Object.keys(lexicon) and JSON.stringify(lexicon) are
+// unchanged, and a lexicon's cache is garbage-collected with it. The compiled
+// regexes are non-global and non-sticky (no /g or /y flags), so repeated
+// .test() calls carry no lastIndex state and are safe to share. Entries are
+// keyed by string, so any later-added phrase/entry is compiled lazily.
+const phraseRegexCache = new WeakMap();
+const strictEntryRegexCache = new WeakMap();
+
+function memoizedRegex(cache, lexicon, key, build) {
+  let byKey = cache.get(lexicon);
+  if (!byKey) {
+    byKey = new Map();
+    cache.set(lexicon, byKey);
+  }
+  let regex = byKey.get(key);
+  if (!regex) {
+    regex = build(key);
+    byKey.set(key, regex);
+  }
+  return regex;
+}
+
 // Counts paragraph-level lexicon hits. Strict entries match whole-word
 // (Unicode-aware boundaries via \p{L}\p{N}); phrases match as substrings
 // with `~` wildcard support. Each entry counts at most once per paragraph.
@@ -84,12 +110,12 @@ export function computeDensity(paragraphText, tokens, lexicon) {
     const isMultiToken = /[^\p{L}\p{N}]/u.test(lowerEntry);
     if (cjkSubstring) {
       if (lowerText.includes(lowerEntry)) hits.push(entry);
-    } else if (isMultiToken && strictEntryRegex(lowerEntry).test(lowerText)) {
+    } else if (isMultiToken && memoizedRegex(strictEntryRegexCache, lexicon, lowerEntry, strictEntryRegex).test(lowerText)) {
       hits.push(entry);
     }
   }
   for (const phrase of lexicon.phrases) {
-    if (phraseToRegex(phrase).test(lowerText)) hits.push(phrase);
+    if (memoizedRegex(phraseRegexCache, lexicon, phrase, phraseToRegex).test(lowerText)) hits.push(phrase);
   }
 
   const density = tokens.length > 0 ? (hits.length / tokens.length) * 1000 : 0;

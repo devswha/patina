@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   collectSources,
   extractTextCandidates,
+  isUsefulParagraph,
   loadSourceRows,
   parseArgs,
   renderSummary,
@@ -150,4 +151,114 @@ test('parseArgs and renderSummary expose operator-facing controls', () => {
   });
   assert.match(summary, /Private rows: 2/u);
   assert.match(summary, /unit warning/u);
+});
+
+// --- Wave 0.4: multilingual collector support ------------------------------
+
+const MULTILINGUAL_SAMPLES = {
+  ko: '이 문서는 공개 웹 문서에서 가져온 한국어 문단 후보를 검증하기 위한 예시이며 실제 벤치마크에는 원문을 공개하지 않고 해시만 남깁니다.',
+  en: 'This public web document is a sample English paragraph used to validate the multilingual collector path; only hashes and source metadata are kept, never the raw paragraph text itself.',
+  zh: '这是一段用于验证多语言采集器的公开网页中文示例段落，实际基准只保留哈希和来源元数据，绝不会公开原始文本内容，以便稳定地观察误报情况。',
+  ja: 'これは多言語コレクターを検証するための公開ウェブの日本語サンプル段落です。実際のベンチマークではハッシュと出典メタデータのみを保持し、原文は決して公開しません。',
+};
+
+test('isUsefulParagraph accepts each language script and rejects wrong-script / chrome', () => {
+  const opts = { minChars: 40, maxChars: 2000 };
+  for (const lang of ['ko', 'en', 'zh', 'ja']) {
+    assert.equal(isUsefulParagraph(MULTILINGUAL_SAMPLES[lang], { ...opts, language: lang }), true, `${lang} accepts its own script`);
+  }
+  assert.equal(isUsefulParagraph(MULTILINGUAL_SAMPLES.ko, { ...opts, language: 'en' }), false);
+  assert.equal(isUsefulParagraph(MULTILINGUAL_SAMPLES.ko, { ...opts, language: 'zh' }), false);
+  assert.equal(isUsefulParagraph(MULTILINGUAL_SAMPLES.en, { ...opts, language: 'ko' }), false);
+  assert.equal(isUsefulParagraph(MULTILINGUAL_SAMPLES.en, { ...opts, language: 'ja' }), false);
+  assert.equal(isUsefulParagraph('short text', { ...opts, language: 'en' }), false);
+  assert.equal(isUsefulParagraph(`Copyright ${MULTILINGUAL_SAMPLES.en}`, { ...opts, language: 'en' }), false);
+});
+
+test('parseArgs --language validates against supported languages', () => {
+  assert.equal(parseArgs(['--language', 'en']).language, 'en');
+  assert.equal(parseArgs(['--language', 'zh']).language, 'zh');
+  assert.equal(parseArgs([]).language, null);
+  assert.throws(() => parseArgs(['--language', 'xx']), /--language must be one of/u);
+});
+
+test('extractTextCandidates honors the language script filter', () => {
+  const html = `<p>${MULTILINGUAL_SAMPLES.en}</p><p>${MULTILINGUAL_SAMPLES.ko}</p>`;
+  const en = extractTextCandidates(html, { language: 'en', minChars: 40, maxChars: 2000 });
+  assert.ok(en.includes(MULTILINGUAL_SAMPLES.en));
+  assert.ok(!en.includes(MULTILINGUAL_SAMPLES.ko));
+  const ko = extractTextCandidates(html, { language: 'ko', minChars: 40, maxChars: 2000 });
+  assert.ok(ko.includes(MULTILINGUAL_SAMPLES.ko));
+  assert.ok(!ko.includes(MULTILINGUAL_SAMPLES.en));
+});
+
+test('collectSources stamps the source language onto private records', async () => {
+  const source = {
+    source_id: 'en-gov-1',
+    url: 'https://example.gov/article',
+    register: 'product-doc',
+    source_title: 'Example',
+    source_license: 'public-domain',
+    language: 'en',
+    max_rows: null,
+    sample_prefix: 'en-human-web-en-gov-1',
+    source_kind: 'public-web',
+  };
+  const fetchImpl = async () => ({
+    ok: true,
+    headers: { get: () => 'text/html' },
+    text: async () => `<p>${MULTILINGUAL_SAMPLES.en}</p>`,
+  });
+  const direct = await collectSources([source], { fetchImpl, minChars: 40, maxChars: 2000, delayMs: 0 });
+  assert.equal(direct.records.length, 1);
+  assert.equal(direct.records[0].language, 'en');
+  assert.ok(direct.records[0].sample_id.startsWith('en-human-web-'));
+});
+
+test('ja requires kana and zh forbids kana (CJK Han disambiguation)', () => {
+  const opts = { minChars: 40, maxChars: 2000 };
+  // Han-only Chinese text under ja -> rejected (no kana present).
+  assert.equal(isUsefulParagraph(MULTILINGUAL_SAMPLES.zh, { ...opts, language: 'ja' }), false);
+  // Kana-bearing Japanese text under zh -> rejected (kana forbidden).
+  assert.equal(isUsefulParagraph(MULTILINGUAL_SAMPLES.ja, { ...opts, language: 'zh' }), false);
+  // Each still accepts its own script.
+  assert.equal(isUsefulParagraph(MULTILINGUAL_SAMPLES.ja, { ...opts, language: 'ja' }), true);
+  assert.equal(isUsefulParagraph(MULTILINGUAL_SAMPLES.zh, { ...opts, language: 'zh' }), true);
+});
+
+test('collectSources derives sample_prefix from the effective language', async () => {
+  const fetchImpl = async () => ({
+    ok: true,
+    headers: { get: () => 'text/html' },
+    text: async () => `<p>${MULTILINGUAL_SAMPLES.en}</p>`,
+  });
+  const baseSource = {
+    url: 'https://example.gov/a',
+    register: 'product-doc',
+    source_title: 'X',
+    source_license: 'public-domain',
+    max_rows: null,
+    source_kind: 'public-web',
+  };
+  // (a) implicit prefix (null) is derived from the per-source language.
+  const implicit = await collectSources(
+    [{ ...baseSource, source_id: 'en-gov-2', language: 'en', sample_prefix: null }],
+    { fetchImpl, minChars: 40, maxChars: 2000, delayMs: 0 },
+  );
+  assert.ok(implicit.records[0].sample_id.startsWith('en-human-web-en-gov-2-'));
+
+  // (b) --language override regenerates an implicit ko prefix to the override language.
+  const overridden = await collectSources(
+    [{ ...baseSource, source_id: 'src-1', language: 'ko', sample_prefix: null }],
+    { fetchImpl, language: 'en', minChars: 40, maxChars: 2000, delayMs: 0 },
+  );
+  assert.equal(overridden.records[0].language, 'en');
+  assert.ok(overridden.records[0].sample_id.startsWith('en-human-web-'), 'override must regenerate the implicit prefix');
+
+  // (c) an EXPLICIT prefix is preserved even under override (user choice).
+  const explicit = await collectSources(
+    [{ ...baseSource, source_id: 'src-2', language: 'ko', sample_prefix: 'custom-control' }],
+    { fetchImpl, language: 'en', minChars: 40, maxChars: 2000, delayMs: 0 },
+  );
+  assert.ok(explicit.records[0].sample_id.startsWith('custom-control-'));
 });

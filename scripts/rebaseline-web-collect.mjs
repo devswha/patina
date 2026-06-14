@@ -23,7 +23,18 @@ export const DEFAULT_MAX_PER_SOURCE = 8;
 export const DEFAULT_TARGET_PER_REGISTER = 50;
 export const DEFAULT_DELAY_MS = 250;
 
-const HANGUL_RE = /[\u3131-\u318e\uac00-\ud7a3]/gu;
+// Per-language script + boilerplate config (Wave 0.4). Each language requires a
+// minimum count of its script characters and a minimum script/letter ratio so a
+// paragraph in the wrong script (or boilerplate) is rejected.
+export const LANGUAGE_SCRIPTS = {
+  ko: { scriptRe: /[\u3131-\u318e\uac00-\ud7a3]/gu, minScriptChars: 25, minRatio: 0.35 },
+  // ja and zh share Han ideographs, so disambiguate with kana: ja REQUIRES
+  // kana (Han-only text is Chinese), zh FORBIDS more than a stray kana.
+  ja: { scriptRe: /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff\u3400-\u4dbf]/gu, minScriptChars: 20, minRatio: 0.30, requireRe: /[\u3040-\u309f\u30a0-\u30ff]/gu, minRequired: 5 },
+  zh: { scriptRe: /[\u4e00-\u9fff\u3400-\u4dbf]/gu, minScriptChars: 25, minRatio: 0.30, forbidRe: /[\u3040-\u309f\u30a0-\u30ff]/gu, maxForbidden: 2 },
+  en: { scriptRe: /[A-Za-z]/gu, minScriptChars: 40, minRatio: 0.50 },
+};
+export const DEFAULT_LANGUAGE = 'ko';
 const BAD_BOILERPLATE_RE = /(본문듣기|말하기 속도|글자크기|인쇄하기|공유하기|목록|검색|닫기|저작권자|무단 전재|재배포 금지|자료출처|문의:|페이스북|트위터|카카오|Copyright|All rights reserved|View all|Apply now)/iu;
 
 export function parseArgs(argv = process.argv.slice(2)) {
@@ -36,6 +47,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
     targetPerRegister: DEFAULT_TARGET_PER_REGISTER,
     delayMs: DEFAULT_DELAY_MS,
     collectedAt: new Date().toISOString().slice(0, 10),
+    language: null,
     dryRun: false,
     json: false,
     help: false,
@@ -53,6 +65,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
     else if (arg === '--collected-at') args.collectedAt = argv[++i];
     else if (arg === '--dry-run') args.dryRun = true;
     else if (arg === '--json') args.json = true;
+    else if (arg === '--language') args.language = argv[++i];
     else if (arg === '--help' || arg === '-h') args.help = true;
     else throw new Error(`Unknown argument: ${arg}`);
   }
@@ -67,6 +80,9 @@ export function parseArgs(argv = process.argv.slice(2)) {
     if (!Number.isFinite(value) || value < 0) throw new Error(`${name} must be a non-negative number`);
   }
   if (args.minChars > args.maxChars) throw new Error('minChars cannot exceed maxChars');
+  if (args.language != null && !Object.prototype.hasOwnProperty.call(LANGUAGE_SCRIPTS, args.language)) {
+    throw new Error(`--language must be one of ${Object.keys(LANGUAGE_SCRIPTS).join(', ')}`);
+  }
   if (Number.isNaN(Date.parse(args.collectedAt))) throw new Error('collected-at must be an ISO-like date');
 
   return args;
@@ -129,9 +145,18 @@ function normalizeSource(input, lineNumber) {
     throw new Error('max_rows must be a non-negative number when present');
   }
   source.max_rows = source.max_rows === undefined ? null : Number(source.max_rows);
+  source.language = typeof source.language === 'string' && source.language.trim()
+    ? source.language.trim().toLowerCase()
+    : DEFAULT_LANGUAGE;
+  if (!Object.prototype.hasOwnProperty.call(LANGUAGE_SCRIPTS, source.language)) {
+    throw new Error(`language must be one of ${Object.keys(LANGUAGE_SCRIPTS).join(', ')}`);
+  }
+  // Keep only an EXPLICIT sample_prefix here; an implicit prefix is derived in
+  // collectSources from the effective language so a --language override never
+  // leaves a stale prefix.
   source.sample_prefix = typeof source.sample_prefix === 'string' && source.sample_prefix.trim()
     ? source.sample_prefix.trim()
-    : `ko-human-web-${slugify(source.source_id)}`;
+    : null;
   source.source_kind = typeof source.source_kind === 'string' && source.source_kind.trim()
     ? source.source_kind.trim()
     : 'public-web';
@@ -146,6 +171,7 @@ export async function collectSources(sources, options = {}) {
     targetPerRegister: options.targetPerRegister ?? DEFAULT_TARGET_PER_REGISTER,
     delayMs: options.delayMs ?? DEFAULT_DELAY_MS,
     collectedAt: options.collectedAt || new Date().toISOString().slice(0, 10),
+    language: options.language ?? null,
     fetchImpl: options.fetchImpl || globalThis.fetch,
   };
   if (typeof opts.fetchImpl !== 'function') throw new Error('fetch is not available in this runtime');
@@ -156,7 +182,15 @@ export async function collectSources(sources, options = {}) {
   const seenHashes = new Set();
   const registerCounts = Object.fromEntries(MATRIX.registers.map((register) => [register, 0]));
 
-  for (const source of sources) {
+  for (const rawSource of sources) {
+    // Resolve the effective language (--language overrides per-source) and
+    // derive the default sample_prefix from it so an override can't leave a
+    // stale prefix; an explicit prefix is preserved.
+    const language = opts.language || rawSource.language || DEFAULT_LANGUAGE;
+    const samplePrefix = typeof rawSource.sample_prefix === 'string' && rawSource.sample_prefix.trim()
+      ? rawSource.sample_prefix.trim()
+      : `${language}-human-web-${slugify(rawSource.source_id)}`;
+    const source = { ...rawSource, language, sample_prefix: samplePrefix };
     if (registerCounts[source.register] >= opts.targetPerRegister) continue;
     let html;
     try {
@@ -166,7 +200,7 @@ export async function collectSources(sources, options = {}) {
       continue;
     }
 
-    const candidates = extractTextCandidates(html, opts);
+    const candidates = extractTextCandidates(html, { ...opts, language: source.language });
     const sourceLimit = Math.min(
       source.max_rows ?? opts.maxPerSource,
       opts.maxPerSource,
@@ -224,6 +258,7 @@ async function fetchHtml(url, fetchImpl) {
 export function extractTextCandidates(html, options = {}) {
   const minChars = options.minChars ?? DEFAULT_MIN_CHARS;
   const maxChars = options.maxChars ?? DEFAULT_MAX_CHARS;
+  const language = options.language ?? DEFAULT_LANGUAGE;
   const plain = decodeHtmlEntities(String(html || ''))
     .replace(/<!--[\s\S]*?-->/gu, ' ')
     .replace(/<script\b[\s\S]*?<\/script>/giu, ' ')
@@ -237,7 +272,7 @@ export function extractTextCandidates(html, options = {}) {
   const candidates = [];
   for (const raw of plain.split(/\n+/u)) {
     const text = normalizeParagraph(raw);
-    if (!isUsefulKoreanParagraph(text, { minChars, maxChars })) continue;
+    if (!isUsefulParagraph(text, { language, minChars, maxChars })) continue;
     const key = text.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
@@ -246,14 +281,17 @@ export function extractTextCandidates(html, options = {}) {
   return candidates;
 }
 
-function isUsefulKoreanParagraph(text, { minChars, maxChars }) {
+export function isUsefulParagraph(text, { language = DEFAULT_LANGUAGE, minChars, maxChars }) {
+  const cfg = LANGUAGE_SCRIPTS[language] || LANGUAGE_SCRIPTS[DEFAULT_LANGUAGE];
   const chars = Array.from(text);
   if (chars.length < minChars || chars.length > maxChars) return false;
   if (BAD_BOILERPLATE_RE.test(text)) return false;
-  const hangulCount = (text.match(HANGUL_RE) || []).length;
-  if (hangulCount < 25) return false;
+  const scriptCount = (text.match(cfg.scriptRe) || []).length;
+  if (scriptCount < cfg.minScriptChars) return false;
   const letterish = chars.filter((char) => /[\p{L}\p{N}]/u.test(char)).length || 1;
-  if (hangulCount / letterish < 0.35) return false;
+  if (scriptCount / letterish < cfg.minRatio) return false;
+  if (cfg.requireRe && (text.match(cfg.requireRe) || []).length < cfg.minRequired) return false;
+  if (cfg.forbidRe && (text.match(cfg.forbidRe) || []).length > cfg.maxForbidden) return false;
   if ((text.match(/https?:\/\//giu) || []).length > 0) return false;
   if ((text.match(/[|{}[\]<>]/gu) || []).length > 5) return false;
   return true;
@@ -262,7 +300,7 @@ function isUsefulKoreanParagraph(text, { minChars, maxChars }) {
 function buildPrivateRecord({ source, text, textHash, ordinal, collectedAt }) {
   const suffix = String(ordinal).padStart(2, '0');
   return {
-    language: 'ko',
+    language: source.language ?? DEFAULT_LANGUAGE,
     class: 'natural-human',
     model_family: 'human-reference',
     provider: 'web-human-control',
@@ -280,7 +318,7 @@ function buildPrivateRecord({ source, text, textHash, ordinal, collectedAt }) {
       rationale: 'Raw text stays in gitignored private intake. Commit only URL, license note, metadata, score, and sha256 digest until redistribution review is complete.',
       license_basis: source.source_license,
     },
-    reviewer_notes: source.reviewer_notes || 'Human-control candidate from public Korean web source; not a public benchmark claim.',
+    reviewer_notes: source.reviewer_notes || `Human-control candidate from a public ${source.language ?? DEFAULT_LANGUAGE} web source; not a public benchmark claim.`,
     sample_id: `${source.sample_prefix}-${suffix}`,
     register: source.register,
     source_url: source.url,

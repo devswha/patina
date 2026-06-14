@@ -88,6 +88,7 @@ If a pattern is language-specific, document it clearly in the pack's intro text 
 - Examples must preserve original meaning — the "after" text should convey the same takeaway as the "before"
 - E2E examples in `examples/e2e/` show full pipeline outputs and should be updated when pipeline behavior changes
 - Before/after examples in `examples/` serve as the project's test suite
+- **Assume an LLM backend is available by default** when testing, benchmarking, or advancing patina (a logged-in local `claude`/`codex`/`gemini` CLI or an API key); exercise the LLM-backed `rewrite`/`audit`/`score` and `tests/quality/` live-quality paths too — do not limit verification to the no-key deterministic subset. The determinism rule still holds: `src/features/*` stays LLM-free. See `AGENTS.md`.
 
 ## Output Modes
 

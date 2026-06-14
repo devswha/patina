@@ -91,3 +91,13 @@ construction (revisions of known AI positives). **Verdict: genuine.**
   (overall TPR at 5% FPR is 0.0% — high-scoring human controls block low-FPR
   operation), which is the honest measure-only outcome motivating a future,
   separately-approved calibration delta.
+
+## Post-calibration update (lexicon density_threshold 2.0 → 3.0)
+
+After the calibration delta, this manifest is re-scored at the current analyzer
+with `density_threshold = 3.0`. KO human FP is **14.0% (35/250)**, recall
+unchanged at 59.2%. The earlier 16.8% figure reflected the 2026-05-22 analyzer;
+re-scoring corrects it. The lexicon threshold change does **not** move KO FP —
+KO false-positives are driven by the burstiness signal, which is intentionally
+out of scope here and deferred to a separate burstiness-calibration delta. All
+verdicts above stand (0 mislabeled, 0 too-easy).

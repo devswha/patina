@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-14T11:53:51.651Z",
+  "generatedAt": "2026-06-14T14:07:13.107Z",
   "input": "artifacts/rebaseline-2025/manifest.ko.scored.public.jsonl",
   "targets": {
     "protocolPerLanguageClassRegister": 25,
@@ -13,23 +13,23 @@
     "ko": 380
   },
   "byClass": {
-    "natural-human": 250,
     "ai-like": 120,
     "lightly-edited-ai": 5,
-    "heavily-edited-ai": 5
+    "heavily-edited-ai": 5,
+    "natural-human": 250
   },
   "byRegister": {
-    "chat-update": 76,
     "blog": 76,
-    "technical-how-to": 76,
     "academic-summary": 76,
-    "product-doc": 76
+    "product-doc": 76,
+    "chat-update": 76,
+    "technical-how-to": 76
   },
   "byModelFamily": {
-    "human-reference": 250,
     "gpt-family": 50,
     "claude-family": 40,
-    "gemini-family": 40
+    "gemini-family": 40,
+    "human-reference": 250
   },
   "protocolCoverage": {
     "totalCells": 80,
@@ -116,19 +116,19 @@
   },
   "metrics": {
     "tp": 77,
-    "fp": 42,
+    "fp": 35,
     "fn": 53,
-    "tn": 208,
+    "tn": 215,
     "total": 380,
-    "accuracy": 0.75,
-    "precision": 0.647,
+    "accuracy": 0.768,
+    "precision": 0.688,
     "recall": 0.592,
-    "f1": 0.618,
-    "falsePositiveRate": 0.168,
+    "f1": 0.636,
+    "falsePositiveRate": 0.14,
     "falseNegativeRate": 0.408,
     "accuracyCi": {
-      "low": 0.704,
-      "high": 0.791,
+      "low": 0.723,
+      "high": 0.808,
       "method": "Wilson score interval, 95%"
     },
     "recallCi": {
@@ -137,8 +137,8 @@
       "method": "Wilson score interval, 95%"
     },
     "falsePositiveRateCi": {
-      "low": 0.127,
-      "high": 0.219,
+      "low": 0.102,
+      "high": 0.188,
       "method": "Wilson score interval, 95%"
     }
   },
@@ -187,12 +187,12 @@
     "ko": {
       "language": "ko",
       "n": 250,
-      "falsePositives": 42,
-      "trueNegatives": 208,
-      "falsePositiveRate": 0.168,
+      "falsePositives": 35,
+      "trueNegatives": 215,
+      "falsePositiveRate": 0.14,
       "falsePositiveRateCi": {
-        "low": 0.127,
-        "high": 0.219,
+        "low": 0.102,
+        "high": 0.188,
         "method": "Wilson score interval, 95%"
       }
     }
@@ -200,19 +200,19 @@
   "metricsByRegister": {
     "academic-summary": {
       "tp": 18,
-      "fp": 7,
+      "fp": 4,
       "fn": 8,
-      "tn": 43,
+      "tn": 46,
       "total": 76,
-      "accuracy": 0.803,
-      "precision": 0.72,
+      "accuracy": 0.842,
+      "precision": 0.818,
       "recall": 0.692,
-      "f1": 0.706,
-      "falsePositiveRate": 0.14,
+      "f1": 0.75,
+      "falsePositiveRate": 0.08,
       "falseNegativeRate": 0.308,
       "accuracyCi": {
-        "low": 0.7,
-        "high": 0.877,
+        "low": 0.744,
+        "high": 0.907,
         "method": "Wilson score interval, 95%"
       },
       "recallCi": {
@@ -221,8 +221,8 @@
         "method": "Wilson score interval, 95%"
       },
       "falsePositiveRateCi": {
-        "low": 0.07,
-        "high": 0.262,
+        "low": 0.032,
+        "high": 0.188,
         "method": "Wilson score interval, 95%"
       }
     },
@@ -256,19 +256,19 @@
     },
     "chat-update": {
       "tp": 8,
-      "fp": 2,
+      "fp": 1,
       "fn": 18,
-      "tn": 48,
+      "tn": 49,
       "total": 76,
-      "accuracy": 0.737,
-      "precision": 0.8,
+      "accuracy": 0.75,
+      "precision": 0.889,
       "recall": 0.308,
-      "f1": 0.444,
-      "falsePositiveRate": 0.04,
+      "f1": 0.457,
+      "falsePositiveRate": 0.02,
       "falseNegativeRate": 0.692,
       "accuracyCi": {
-        "low": 0.628,
-        "high": 0.823,
+        "low": 0.642,
+        "high": 0.834,
         "method": "Wilson score interval, 95%"
       },
       "recallCi": {
@@ -277,8 +277,8 @@
         "method": "Wilson score interval, 95%"
       },
       "falsePositiveRateCi": {
-        "low": 0.011,
-        "high": 0.135,
+        "low": 0.004,
+        "high": 0.105,
         "method": "Wilson score interval, 95%"
       }
     },
@@ -312,19 +312,19 @@
     },
     "technical-how-to": {
       "tp": 19,
-      "fp": 17,
+      "fp": 14,
       "fn": 7,
-      "tn": 33,
+      "tn": 36,
       "total": 76,
-      "accuracy": 0.684,
-      "precision": 0.528,
+      "accuracy": 0.724,
+      "precision": 0.576,
       "recall": 0.731,
-      "f1": 0.613,
-      "falsePositiveRate": 0.34,
+      "f1": 0.644,
+      "falsePositiveRate": 0.28,
       "falseNegativeRate": 0.269,
       "accuracyCi": {
-        "low": 0.573,
-        "high": 0.778,
+        "low": 0.614,
+        "high": 0.812,
         "method": "Wilson score interval, 95%"
       },
       "recallCi": {
@@ -333,8 +333,8 @@
         "method": "Wilson score interval, 95%"
       },
       "falsePositiveRateCi": {
-        "low": 0.224,
-        "high": 0.478,
+        "low": 0.175,
+        "high": 0.417,
         "method": "Wilson score interval, 95%"
       }
     }

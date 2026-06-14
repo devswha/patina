@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { hashText, summarizeManifest } from '../../scripts/rebaseline-summary.mjs';
 import {
   buildClaimManifest,
+  parseArgs,
   selectHapeEnglishControls,
   selectKoControls,
   writeClaimManifest,
@@ -108,6 +109,42 @@ test('buildClaimManifest scores generated and English control rows without leaki
     const summary = summarizeManifest(rows);
     assert.equal(summary.catchByLanguageFamily['en|gpt-family'].n, 1);
     assert.equal(summary.falsePositiveByLanguage.en.n, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('control-total flags accept an explicit 0 and reject invalid tokens (#W0.6)', () => {
+  // Explicit 0 accepted for both flags.
+  assert.equal(parseArgs(['--ko-control-total', '0']).koControlTotal, 0);
+  assert.equal(parseArgs(['--en-control-total', '0']).enControlTotal, 0);
+  // Positive accepted for both flags.
+  assert.equal(parseArgs(['--ko-control-total', '25']).koControlTotal, 25);
+  assert.equal(parseArgs(['--en-control-total', '25']).enControlTotal, 25);
+  // Negatives rejected for both flags.
+  assert.throws(() => parseArgs(['--ko-control-total', '-1']), /non-negative integer/u);
+  assert.throws(() => parseArgs(['--en-control-total', '-3']), /non-negative integer/u);
+  // Fractional rejected for both flags.
+  assert.throws(() => parseArgs(['--ko-control-total', '1.5']), /non-negative integer/u);
+  assert.throws(() => parseArgs(['--en-control-total', '2.7']), /non-negative integer/u);
+  // Empty/whitespace token (e.g. empty env expansion) fails fast, not coerced to 0.
+  assert.throws(() => parseArgs(['--ko-control-total', '']), /non-negative integer/u);
+  assert.throws(() => parseArgs(['--en-control-total', '   ']), /non-negative integer/u);
+});
+
+test('selectKoControls and selectHapeEnglishControls honor an explicit 0 total (#W0.6)', () => {
+  // Explicit 0 -> zero controls, no fallback to the default total.
+  assert.deepEqual(selectKoControls('artifacts/rebaseline-2025/human-controls.public.jsonl', 0), []);
+
+  const dir = mkdtempSync(join(tmpdir(), 'patina-w06-unit-'));
+  try {
+    const input = join(dir, 'hape.jsonl');
+    writeJsonl(input, [
+      { sample_id: 'h1', language: 'en', class: 'natural-human', register: 'acad', generated_at: '2024', prompt_id: 'acad_1', text: 'Human academic paragraph.' },
+    ]);
+    assert.deepEqual(selectHapeEnglishControls(input, 0), []);
+    // Positive totals still work.
+    assert.equal(selectHapeEnglishControls(input, 1).length, 1);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

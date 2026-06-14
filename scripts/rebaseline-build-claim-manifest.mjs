@@ -44,8 +44,8 @@ export function parseArgs(argv = process.argv.slice(2)) {
     else if (arg === '--hape') args.hape = argv[++i];
     else if (arg === '--output') args.output = argv[++i];
     else if (arg === '--scored-at') args.scoredAt = argv[++i];
-    else if (arg === '--ko-control-total') args.koControlTotal = parsePositiveInt(argv[++i], '--ko-control-total');
-    else if (arg === '--en-control-total') args.enControlTotal = parsePositiveInt(argv[++i], '--en-control-total');
+    else if (arg === '--ko-control-total') args.koControlTotal = parseNonNegativeInt(argv[++i], '--ko-control-total');
+    else if (arg === '--en-control-total') args.enControlTotal = parseNonNegativeInt(argv[++i], '--en-control-total');
     else if (arg === '--json') args.json = true;
     else if (arg === '--help' || arg === '-h') args.help = true;
     else throw new Error(`Unknown argument: ${arg}`);
@@ -57,8 +57,10 @@ export function buildClaimManifest(options = {}) {
   const generatedRows = loadJsonl(options.generated || DEFAULT_GENERATED, { requireText: true });
   const generatedScored = scorePrivateRows(generatedRows, { scoredAt: options.scoredAt || localDate() });
 
-  const koControls = selectKoControls(options.koControls || DEFAULT_KO_CONTROLS, options.koControlTotal || DEFAULT_KO_CONTROL_TOTAL);
-  const enControlPrivateRows = selectHapeEnglishControls(options.hape || DEFAULT_HAPE, options.enControlTotal || DEFAULT_EN_CONTROL_TOTAL);
+  // Use ?? so an EXPLICIT 0 control total is honored (zero controls) instead of
+  // silently falling back to the default (Wave 0.6).
+  const koControls = selectKoControls(options.koControls || DEFAULT_KO_CONTROLS, options.koControlTotal ?? DEFAULT_KO_CONTROL_TOTAL);
+  const enControlPrivateRows = selectHapeEnglishControls(options.hape || DEFAULT_HAPE, options.enControlTotal ?? DEFAULT_EN_CONTROL_TOTAL);
   const enControlScored = scorePrivateRows(enControlPrivateRows, { scoredAt: options.scoredAt || localDate() });
 
   const records = [...generatedScored.publicRecords, ...koControls, ...enControlScored.publicRecords]
@@ -209,10 +211,17 @@ function normalizeDate(value) {
   return parsed.toISOString().slice(0, 10);
 }
 
-function parsePositiveInt(value, label) {
-  const n = Number(value);
-  if (!Number.isInteger(n) || n <= 0) throw new Error(`${label} must be a positive integer`);
-  return n;
+
+// Allows an explicit 0 (e.g. zero control rows for a generated-only claim
+// manifest). Rejects negatives and non-integers.
+function parseNonNegativeInt(value, label) {
+  // Validate the raw token with a decimal-integer grammar BEFORE Number() so an
+  // empty/whitespace token (e.g. an empty env expansion) fails fast instead of
+  // coercing to 0 via Number('').
+  if (typeof value !== 'string' || !/^(0|[1-9][0-9]*)$/u.test(value.trim())) {
+    throw new Error(`${label} must be a non-negative integer`);
+  }
+  return Number(value.trim());
 }
 
 function localDate() {

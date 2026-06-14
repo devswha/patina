@@ -5,7 +5,7 @@ Report-only TPR at fixed false-positive budgets, by language and language×regis
 status means the corpus is too easy to expose an FP/FN trade-off, which is a valid
 honest outcome.
 
-- Generated at: 2026-06-14T11:53:51.810Z
+- Generated at: 2026-06-14T14:07:13.283Z
 - Node: v22.17.1
 - Input manifest: artifacts/rebaseline-2025/manifest.ko.scored.public.jsonl
 - Score field: `patina_score`
@@ -40,7 +40,7 @@ honest outcome.
 | ko × blog | 1.0% | 76 | 26 | 50 | 0 | 0.0% | 0.0% | insufficient_negatives_for_1pct |
 | ko × blog | 5.0% | 76 | 26 | 50 | 2 | 0.0% | 0.0% | supported |
 | ko × chat-update | 1.0% | 76 | 26 | 50 | 0 | 0.0% | 0.0% | insufficient_negatives_for_1pct |
-| ko × chat-update | 5.0% | 76 | 26 | 50 | 2 | 4.0% | 30.8% | supported |
+| ko × chat-update | 5.0% | 76 | 26 | 50 | 2 | 2.0% | 30.8% | supported |
 | ko × product-doc | 1.0% | 76 | 26 | 50 | 0 | 0.0% | 0.0% | insufficient_negatives_for_1pct |
 | ko × product-doc | 5.0% | 76 | 26 | 50 | 2 | 0.0% | 0.0% | supported |
 | ko × technical-how-to | 1.0% | 76 | 26 | 50 | 0 | 0.0% | 0.0% | insufficient_negatives_for_1pct |

@@ -212,7 +212,7 @@ stylometry:
 lexicon:
   enabled: true
   languages: [en, ko, zh, ja]
-  density_threshold: 2.0     # matches per 1000 tokens; > threshold → SUSPECT
+  density_threshold: 3.0     # matches per 1000 tokens; > threshold → SUSPECT
   # Lexicon files auto-discovered via Glob lexicon/ai-{lang}.md.
   # en/ko use the calibrated baseline from HC3 + Wikipedia + NamuWiki:
   # AI catch 66% → 76% with Wikipedia FP staying at 25% boundary.

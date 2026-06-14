@@ -71,3 +71,13 @@ under the analyzer's tells. Correctly labeled by construction. **Verdict: genuin
   (accuracy 85.8% vs 75.0%, recall 86.9% vs 59.2%), but low-FPR operation still
   collapses to TPR 0% overall — high-scoring human controls block a clean low-FPR
   point, the honest measure-only outcome.
+
+## Post-calibration update (lexicon density_threshold 2.0 → 3.0)
+
+After the calibration delta, this manifest is re-scored with
+`density_threshold = 3.0`. EN human FP drops from **15.0% (30/200) to 5.0%
+(10/200)** with AI recall unchanged at **86.9%**, and the 49 checked-in fixtures
+stay 100% / ROC-AUC·PR-AUC 1.000. This is the lexicon calibration's clean win:
+the lexicon signal was largely a false-positive generator for English, so
+tightening its density gate cut FPs two-thirds with no recall cost. All verdicts
+above stand (0 mislabeled, 0 too-easy).

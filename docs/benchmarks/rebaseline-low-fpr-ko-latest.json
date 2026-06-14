@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-14T11:53:51.810Z",
+  "nodeVersion": "v22.17.1",
+  "note": "Report-only manifest TPR@FPR operating points. Not a detector-threshold change and not a CI gate.",
+  "input": "artifacts/rebaseline-2025/manifest.ko.scored.public.jsonl",
+  "scoreField": "patina_score",
+  "targets": [
+    0.01,
+    0.05
+  ],
+  "rowCount": 380,
+  "overall": [
+    {
+      "target_fpr": 0.01,
+      "negatives": 250,
+      "positives": 130,
+      "max_false_positives": 2,
+      "actual_fpr": 0,
+      "tpr": 0,
+      "supported": true,
+      "n": 380,
+      "status": "supported"
+    },
+    {
+      "target_fpr": 0.05,
+      "negatives": 250,
+      "positives": 130,
+      "max_false_positives": 12,
+      "actual_fpr": 0,
+      "tpr": 0,
+      "supported": true,
+      "n": 380,
+      "status": "supported"
+    }
+  ],
+  "perLanguage": {
+    "ko": [
+      {
+        "target_fpr": 0.01,
+        "negatives": 250,
+        "positives": 130,
+        "max_false_positives": 2,
+        "actual_fpr": 0,
+        "tpr": 0,
+        "supported": true,
+        "n": 380,
+        "status": "supported"
+      },
+      {
+        "target_fpr": 0.05,
+        "negatives": 250,
+        "positives": 130,
+        "max_false_positives": 12,
+        "actual_fpr": 0,
+        "tpr": 0,
+        "supported": true,
+        "n": 380,
+        "status": "supported"
+      }
+    ]
+  },
+  "perLanguageRegister": {
+    "ko × academic-summary": [
+      {
+        "target_fpr": 0.01,
+        "negatives": 50,
+        "positives": 26,
+        "max_false_positives": 0,
+        "actual_fpr": 0,
+        "tpr": 0,
+        "supported": true,
+        "n": 76,
+        "status": "insufficient_negatives_for_1pct"
+      },
+      {
+        "target_fpr": 0.05,
+        "negatives": 50,
+        "positives": 26,
+        "max_false_positives": 2,
+        "actual_fpr": 0,
+        "tpr": 0,
+        "supported": true,
+        "n": 76,
+        "status": "supported"
+      }
+    ],
+    "ko × blog": [
+      {
+        "target_fpr": 0.01,
+        "negatives": 50,
+        "positives": 26,
+        "max_false_positives": 0,
+        "actual_fpr": 0,
+        "tpr": 0,
+        "supported": true,
+        "n": 76,
+        "status": "insufficient_negatives_for_1pct"
+      },
+      {
+        "target_fpr": 0.05,
+        "negatives": 50,
+        "positives": 26,
+        "max_false_positives": 2,
+        "actual_fpr": 0,
+        "tpr": 0,
+        "supported": true,
+        "n": 76,
+        "status": "supported"
+      }
+    ],
+    "ko × chat-update": [
+      {
+        "target_fpr": 0.01,
+        "negatives": 50,
+        "positives": 26,
+        "max_false_positives": 0,
+        "actual_fpr": 0,
+        "tpr": 0,
+        "supported": true,
+        "n": 76,
+        "status": "insufficient_negatives_for_1pct"
+      },
+      {
+        "target_fpr": 0.05,
+        "negatives": 50,
+        "positives": 26,
+        "max_false_positives": 2,
+        "actual_fpr": 0.04,
+        "tpr": 0.308,
+        "supported": true,
+        "n": 76,
+        "status": "supported"
+      }
+    ],
+    "ko × product-doc": [
+      {
+        "target_fpr": 0.01,
+        "negatives": 50,
+        "positives": 26,
+        "max_false_positives": 0,
+        "actual_fpr": 0,
+        "tpr": 0,
+        "supported": true,
+        "n": 76,
+        "status": "insufficient_negatives_for_1pct"
+      },
+      {
+        "target_fpr": 0.05,
+        "negatives": 50,
+        "positives": 26,
+        "max_false_positives": 2,
+        "actual_fpr": 0,
+        "tpr": 0,
+        "supported": true,
+        "n": 76,
+        "status": "supported"
+      }
+    ],
+    "ko × technical-how-to": [
+      {
+        "target_fpr": 0.01,
+        "negatives": 50,
+        "positives": 26,
+        "max_false_positives": 0,
+        "actual_fpr": 0,
+        "tpr": 0,
+        "supported": true,
+        "n": 76,
+        "status": "insufficient_negatives_for_1pct"
+      },
+      {
+        "target_fpr": 0.05,
+        "negatives": 50,
+        "positives": 26,
+        "max_false_positives": 2,
+        "actual_fpr": 0,
+        "tpr": 0,
+        "supported": true,
+        "n": 76,
+        "status": "supported"
+      }
+    ]
+  }
+}

@@ -19,6 +19,15 @@ export const DEFAULT_PER_CELL = 100;
 export const DEFAULT_BATCH_SIZE = 50;
 export const DEFAULT_TIMEOUT_MS = 15 * 60 * 1000;
 export const REGISTERS = ['blog', 'academic-summary', 'product-doc', 'chat-update', 'technical-how-to'];
+// Wave 0.5: supported generation languages + per-language prompt name/length
+// rule. zh/ja added for the corpus-expansion plan; ko/en defaults unchanged.
+export const LANGUAGE_PROMPTS = {
+  ko: { name: 'Korean', lengthRule: '140-230 Korean characters, 2-4 complete sentences' },
+  en: { name: 'English', lengthRule: '55-85 English words, 2-4 complete sentences' },
+  zh: { name: 'Simplified Chinese', lengthRule: '130-220 Chinese characters, 2-4 complete sentences' },
+  ja: { name: 'Japanese', lengthRule: '150-250 Japanese characters, 2-4 complete sentences' },
+};
+export const SUPPORTED_LANGUAGES = Object.keys(LANGUAGE_PROMPTS);
 
 export const MODEL_CONFIGS = {
   'gpt-family': {
@@ -50,6 +59,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
     resume: true,
     dryRun: false,
     help: false,
+    json: false,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -63,12 +73,13 @@ export function parseArgs(argv = process.argv.slice(2)) {
     else if (arg === '--timeout-ms') args.timeoutMs = parsePositiveInt(argv[++i], '--timeout-ms');
     else if (arg === '--no-resume') args.resume = false;
     else if (arg === '--dry-run') args.dryRun = true;
+    else if (arg === '--json') args.json = true;
     else if (arg === '--help' || arg === '-h') args.help = true;
     else throw new Error(`Unknown argument: ${arg}`);
   }
 
   for (const lang of args.languages) {
-    if (!['ko', 'en'].includes(lang)) throw new Error(`Unsupported generation language for #155: ${lang}`);
+    if (!SUPPORTED_LANGUAGES.includes(lang)) throw new Error(`Unsupported generation language: ${lang} (supported: ${SUPPORTED_LANGUAGES.join(', ')})`);
   }
   for (const family of args.families) {
     if (!MODEL_CONFIGS[family]) throw new Error(`Unsupported generation family: ${family}`);
@@ -78,10 +89,9 @@ export function parseArgs(argv = process.argv.slice(2)) {
 
 export function buildPrompt({ language, family, start, count, generatedAt }) {
   const end = start + count - 1;
-  const langName = language === 'ko' ? 'Korean' : 'English';
-  const lengthRule = language === 'ko'
-    ? '140-230 Korean characters, 2-4 complete sentences'
-    : '55-85 English words, 2-4 complete sentences';
+  const languagePrompt = LANGUAGE_PROMPTS[language] || LANGUAGE_PROMPTS.ko;
+  const langName = languagePrompt.name;
+  const lengthRule = languagePrompt.lengthRule;
   const familyLabel = family.replace('-family', '');
   const rows = Array.from({ length: count }, (_, index) => {
     const n = start + index;

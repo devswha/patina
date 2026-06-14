@@ -67,6 +67,13 @@ test('accepted public row becomes a numbered natural fixture', () => {
       language: 'ko',
       class: 'natural',
       expected_hot: false,
+      // B2 slice metadata (Wave 0.2): register passes through; generator/edited
+      // resolved by the mapper (model_family alias -> generator, un-edited -> none);
+      // model_family retained as provenance.
+      register: 'blog',
+      generator: 'human-reference',
+      edited: 'none',
+      model_family: 'human-reference',
       why_designed_this_way: [
         'Accepted false-positive report promoted to a natural control fixture.',
         `Source: ${BASE_ROW.source_doc}`,
@@ -258,4 +265,39 @@ test('topic prefers the intake topic field and self-describes the register fallb
   const noRegister = { ...BASE_ROW, text: TEXT };
   delete noRegister.register;
   assert.match(buildFixtureFile(noRegister, 'ko-nat-01-fp-issue-412'), /topic: false-positive report\n/);
+});
+
+test('exported fixture retains B2 slice metadata: register/domain/generator/edited (#W0.2)', () => {
+  withTempDir((dir) => {
+    // Natural-human row with a domain and NO model_family -> generator defaults
+    // to the human-control value, edited to none; register/domain pass through.
+    const row = {
+      ...BASE_ROW,
+      model_family: undefined,
+      domain: 'encyclopedia',
+      sample_id: 'ko-fp-nat-002',
+      prompt_id: 'fp-issue-500',
+      source_doc: 'https://github.com/devswha/patina/issues/500',
+      text: TEXT,
+    };
+    const input = writeIntake(dir, [row]);
+    const outDir = join(dir, 'fixtures');
+    const result = runFixtureExport({ input, outDir });
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.written.length, 1);
+
+    const path = join(outDir, 'ko', 'natural', 'ko-nat-01-fp-issue-500.md');
+    const meta = yaml.load(readFileSync(path, 'utf8').match(/^---\n([\s\S]*?)\n---/u)[1]);
+    assert.equal(meta.register, 'blog');
+    assert.equal(meta.domain, 'encyclopedia');
+    assert.equal(meta.generator, 'human'); // no model_family -> human-control default
+    assert.equal(meta.edited, 'none'); // natural-human is un-edited
+    assert.equal('model_family' in meta, false); // absent provenance is not written
+    assert.equal('edit_depth' in meta, false);
+
+    // The exported fixture still parses through the benchmark ranges path.
+    const parsed = parseFixture(path);
+    assert.equal(parsed.meta.generator, 'human');
+    assert.equal(parsed.meta.edited, 'none');
+  });
 });

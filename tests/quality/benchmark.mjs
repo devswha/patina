@@ -18,7 +18,8 @@ import { analyzeText } from '../../src/features/index.js';
 import { loadLexicon } from '../../src/features/lexicon.js';
 import { summarizeSignalStrength } from '../../src/features/signal-strength.js';
 import { summarizeRanking } from './ranking-metrics.mjs';
-import { summarizeSlices, lengthBucket, UNSPECIFIED } from './slice-metrics.mjs';
+import { summarizeSlices, lengthBucket } from './slice-metrics.mjs';
+import { resolveSliceFields } from './slice-metadata.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -281,10 +282,10 @@ function main() {
       // always derivable; the rest default to `unspecified` until the corpus
       // carries that metadata.
       length_bucket: lengthBucket([...body].length),
-      domain: meta.domain ?? UNSPECIFIED,
-      register: meta.register ?? UNSPECIFIED,
-      generator: meta.generator ?? UNSPECIFIED,
-      edited: meta.edited ?? UNSPECIFIED,
+      // generator/edited resolved via the tested B2 reconciliation mapper
+      // (Wave 0.1): explicit B2-native fields win; model_family/edit_depth
+      // aliases and class defaults fill the rest. register/domain pass through.
+      ...resolveSliceFields(meta),
     });
   }
 

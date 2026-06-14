@@ -7,7 +7,7 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 ## Current result
 
 - Status: **passing**
-- Generated at: 2026-06-13T19:36:48.740Z
+- Generated at: 2026-06-14T09:51:18.214Z
 - Node: v22.17.1
 - Fixture schema: v1
 - Fixtures: 49
@@ -87,10 +87,12 @@ support the target; `max FP` of 0 is a strict zero-false-positive point.
 ## Slice metrics
 
 Report-only confusion metrics grouped by metadata dimension. `language`,
-`class`, and `lengthBucket` are derived from current fixtures; `domain`,
-`register`, `generator`, and `edited` collapse to `unspecified` until the
-corpus carries that metadata. Slices below the per-dimension minimum count are
-reported as `insufficient data` (counts only). No detector thresholds change.
+`class`, and `lengthBucket` are derived from current fixtures; `generator` and
+`edited` are resolved through the model_family/edit_depth mapper (human controls
+become `generator: human`, un-edited rows become `edited: none`); `domain` and
+`register` default to `unspecified` until the corpus carries that metadata.
+Slices below the per-dimension minimum count are reported as `insufficient data`
+(counts only). No detector thresholds change.
 
 ### language (min 5)
 
@@ -132,13 +134,15 @@ reported as `insufficient data` (counts only). No detector thresholds change.
 
 | value | n | accuracy | precision | recall | f1 | state |
 |---|---:|---:|---:|---:|---:|---|
-| unspecified | 49 | 100.0% | 100.0% | 100.0% | 1 | ok |
+| human | 23 | 100.0% | — | — | — | ok |
+| local-fixture | 1 | — | — | — | — | insufficient_data |
+| unspecified | 25 | 100.0% | 100.0% | 100.0% | 1 | ok |
 
 ### edited (min 5)
 
 | value | n | accuracy | precision | recall | f1 | state |
 |---|---:|---:|---:|---:|---:|---|
-| unspecified | 49 | 100.0% | 100.0% | 100.0% | 1 | ok |
+| none | 49 | 100.0% | 100.0% | 100.0% | 1 | ok |
 
 ## Sample sizes
 

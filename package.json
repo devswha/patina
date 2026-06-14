@@ -93,6 +93,7 @@
     "tests/quality/benchmark.mjs",
     "tests/quality/ranking-metrics.mjs",
     "tests/quality/slice-metrics.mjs",
+    "tests/quality/slice-metadata.mjs",
     "tests/quality/adversarial-transforms.mjs",
     "scripts/robustness-report.mjs",
     "tests/quality/README.md",

@@ -7,7 +7,7 @@
   "schemaVersion": 3,
   "fixtureSchemaVersion": 1,
   "nodeVersion": "v22.17.1",
-  "generatedAt": "2026-06-13T19:36:48.740Z",
+  "generatedAt": "2026-06-14T09:51:18.214Z",
   "fixtureCount": 49,
   "overallAccuracy": 1,
   "overall": {
@@ -1318,12 +1318,38 @@
     "generator": {
       "minCount": 5,
       "values": {
-        "unspecified": {
-          "n": 49,
-          "tp": 26,
+        "human": {
+          "n": 23,
+          "tp": 0,
           "fp": 0,
           "fn": 0,
           "tn": 23,
+          "accuracy": 1,
+          "precision": null,
+          "recall": null,
+          "f1": null,
+          "supported": true,
+          "reason": null
+        },
+        "local-fixture": {
+          "n": 1,
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "tn": 0,
+          "accuracy": null,
+          "precision": null,
+          "recall": null,
+          "f1": null,
+          "supported": false,
+          "reason": "insufficient_data"
+        },
+        "unspecified": {
+          "n": 25,
+          "tp": 25,
+          "fp": 0,
+          "fn": 0,
+          "tn": 0,
           "accuracy": 1,
           "precision": 1,
           "recall": 1,
@@ -1336,7 +1362,7 @@
     "edited": {
       "minCount": 5,
       "values": {
-        "unspecified": {
+        "none": {
           "n": 49,
           "tp": 26,
           "fp": 0,
@@ -1379,10 +1405,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "medium",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "en-ai-02",
@@ -1410,10 +1436,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "medium",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "en-ai-03",
@@ -1441,10 +1467,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "medium",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "en-ai-04",
@@ -1472,10 +1498,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "medium",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "en-ai-05",
@@ -1503,10 +1529,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "medium",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "en-ai-06-chat-register",
@@ -1539,10 +1565,10 @@
         "lexicon_density_max": 80
       },
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "en-ai-07-discourse-candor",
@@ -1579,10 +1605,10 @@
         }
       },
       "length_bucket": "medium",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "en-nat-01",
@@ -1610,10 +1636,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "medium",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "en-nat-02",
@@ -1641,10 +1667,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "medium",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "en-nat-03",
@@ -1672,10 +1698,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "medium",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "en-nat-04",
@@ -1703,10 +1729,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "medium",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "en-nat-05",
@@ -1734,10 +1760,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "medium",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "en-nat-06-single-opener",
@@ -1768,10 +1794,10 @@
         "hot_paragraphs": 0
       },
       "length_bucket": "medium",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "ja-ai-01",
@@ -1799,10 +1825,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "ja-ai-02",
@@ -1830,10 +1856,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "ja-ai-03",
@@ -1861,10 +1887,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "ja-ai-04-lexicon",
@@ -1902,10 +1928,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "ja-ai-05-formulaic-summary",
@@ -1944,10 +1970,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "ja-ai-06-broad-tech",
@@ -1985,10 +2011,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "ja-nat-01",
@@ -2016,10 +2042,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "ja-nat-02",
@@ -2047,10 +2073,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "ja-nat-03",
@@ -2078,10 +2104,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "ja-nat-04-lexicon-cold",
@@ -2109,10 +2135,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "ja-nat-05-station-note",
@@ -2140,10 +2166,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "ja-nat-06-maintenance-log",
@@ -2171,10 +2197,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "ko-ai-01",
@@ -2204,10 +2230,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "ko-ai-02",
@@ -2235,10 +2261,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "ko-ai-03",
@@ -2268,10 +2294,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "ko-ai-04",
@@ -2299,10 +2325,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "ko-ai-05",
@@ -2334,10 +2360,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "ko-ai-06-chat-register",
@@ -2370,10 +2396,10 @@
         "lexicon_density_max": 80
       },
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "ko-ai-07-ko-diagnostic",
@@ -2405,10 +2431,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "workplace-summary",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "local-fixture",
+      "edited": "none"
     },
     {
       "fixture_id": "ko-nat-01",
@@ -2436,10 +2462,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "ko-nat-02",
@@ -2467,10 +2493,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "ko-nat-03",
@@ -2498,10 +2524,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "ko-nat-04",
@@ -2529,10 +2555,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "ko-nat-05",
@@ -2560,10 +2586,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "zh-ai-01",
@@ -2591,10 +2617,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "zh-ai-02",
@@ -2622,10 +2648,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "zh-ai-03",
@@ -2653,10 +2679,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "zh-ai-04-lexicon",
@@ -2695,10 +2721,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "zh-ai-05-formulaic-summary",
@@ -2739,10 +2765,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "zh-ai-06-broad-tech",
@@ -2781,10 +2807,10 @@
       "hot_paragraphs": 1,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
+      "domain": "unspecified",
       "generator": "unspecified",
-      "edited": "unspecified"
+      "edited": "none"
     },
     {
       "fixture_id": "zh-nat-01",
@@ -2812,10 +2838,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "zh-nat-02",
@@ -2843,10 +2869,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "zh-nat-03",
@@ -2874,10 +2900,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "zh-nat-04-lexicon-cold",
@@ -2905,10 +2931,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "zh-nat-05-market-note",
@@ -2936,10 +2962,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     },
     {
       "fixture_id": "zh-nat-06-maintenance-log",
@@ -2967,10 +2993,10 @@
       "hot_paragraphs": 0,
       "expected_metrics": null,
       "length_bucket": "short",
-      "domain": "unspecified",
       "register": "unspecified",
-      "generator": "unspecified",
-      "edited": "unspecified"
+      "domain": "unspecified",
+      "generator": "human",
+      "edited": "none"
     }
   ],
   "sampleSizes": {

@@ -293,10 +293,12 @@ ${lowFprRows(results.ranking).join('\n')}
 ## Slice metrics
 
 Report-only confusion metrics grouped by metadata dimension. \`language\`,
-\`class\`, and \`lengthBucket\` are derived from current fixtures; \`domain\`,
-\`register\`, \`generator\`, and \`edited\` collapse to \`unspecified\` until the
-corpus carries that metadata. Slices below the per-dimension minimum count are
-reported as \`insufficient data\` (counts only). No detector thresholds change.
+\`class\`, and \`lengthBucket\` are derived from current fixtures; \`generator\` and
+\`edited\` are resolved through the model_family/edit_depth mapper (human controls
+become \`generator: human\`, un-edited rows become \`edited: none\`); \`domain\` and
+\`register\` default to \`unspecified\` until the corpus carries that metadata.
+Slices below the per-dimension minimum count are reported as \`insufficient data\`
+(counts only). No detector thresholds change.
 
 ${sliceSection(results.slices)}
 

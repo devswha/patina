@@ -17,9 +17,9 @@ const PROSE_TAGS = 'p|h1|h2|h3|h4|h5|h6|li|blockquote|figcaption|dt|dd|summary|d
 
 // Containers whose content must never be treated as prose, even when it
 // happens to contain things that look like prose tags (e.g. serialized HTML
-// inside a Next.js data script). nav and button hold navigation chrome and
-// control labels — never body copy.
-const EXCLUDED_CONTAINERS = 'head|script|style|noscript|template|textarea|svg|iframe|select|option|code|pre|nav|button';
+// inside a Next.js data script). nav/aside and button hold navigation chrome
+// and control labels — never body copy.
+const EXCLUDED_CONTAINERS = 'head|script|style|noscript|template|textarea|svg|iframe|select|option|code|pre|nav|aside|button';
 
 const MAX_PAGE_REDIRECTS = 5;
 
@@ -508,10 +508,14 @@ function findBoundaryEnd(html, fromIndex) {
 // the block is extracted with its text flattened. The rewritten view loses
 // the inline formatting; the original view (toggle) keeps it. Anything not
 // in this set (nested lists, divs, images, buttons…) keeps the block out.
+// code/kbd/var are deliberately NOT here: their content is a verbatim token
+// (package name, command, key cap), not prose — a model rewrite can corrupt
+// the token, and the flattened swap would render the markup as literal
+// backtick text. Blocks carrying them are left untouched.
 const INLINE_TAGS = new Set([
-  'a', 'abbr', 'b', 'bdi', 'bdo', 'br', 'cite', 'code', 'del', 'em', 'i',
-  'ins', 'kbd', 'mark', 'q', 'ruby', 'rt', 'rp', 's', 'small', 'span',
-  'strong', 'sub', 'sup', 'time', 'u', 'var', 'wbr',
+  'a', 'abbr', 'b', 'bdi', 'bdo', 'br', 'cite', 'del', 'em', 'i',
+  'ins', 'mark', 'q', 'ruby', 'rt', 'rp', 's', 'small', 'span',
+  'strong', 'sub', 'sup', 'time', 'u', 'wbr',
 ]);
 
 // Whole-card anchors (an entire teaser wrapped in one link) are real prose;
@@ -821,19 +825,98 @@ export function buildContextCardHtml({ register = null, tone = null } = {}) {
   return `<article class="explain-card ptna-ctx-card"><div class="ptna-img-head"><strong>document context</strong></div>${rows.join('')}</article>`;
 }
 
-export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanationHtml = '', scoreChip = null, imageFindings = [], contextCardHtml = '' }) {
+// Models habitually mark identifiers as markdown inline code (`token`) in
+// rewrites. The snapshot swap renders plain text, so the pair would show up
+// as literal backticks on a page that never had them — strip the pair, keep
+// the token. Applied only to the URL/snapshot path; file previews render
+// markdown sources where backticks are the author's own formatting.
+function stripMarkdownInlineCode(text) {
+  return String(text).replace(/`([^`\n]+)`/g, '$1');
+}
+
+// Word-level diff for the "diff" view. Whole-sentence strikethrough (the
+// "both" view) tells the reader THAT a block changed but not WHAT changed;
+// this renders one merged stream per block — common words plain, removed
+// words struck, added words highlighted. Tokens are whitespace-separated
+// words (Korean eojeol), aligned by LCS; the matrix is capped so a giant
+// block degrades to the old whole-text del+ins instead of going quadratic.
+const MAX_WORD_DIFF_CELLS = 40000;
+
+export function diffWordSegments(before, after) {
+  const a = String(before ?? '').split(/\s+/).filter(Boolean);
+  const b = String(after ?? '').split(/\s+/).filter(Boolean);
+  const segs = [];
+  const push = (type, word) => {
+    const last = segs[segs.length - 1];
+    if (last && last.type === type) last.text += ` ${word}`;
+    else segs.push({ type, text: word });
+  };
+  if (a.length * b.length > MAX_WORD_DIFF_CELLS) {
+    if (a.length > 0) push('del', a.join(' '));
+    if (b.length > 0) push('ins', b.join(' '));
+    return segs;
+  }
+  const m = a.length;
+  const n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => new Uint16Array(n + 1));
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  let i = 0;
+  let j = 0;
+  while (i < m && j < n) {
+    if (a[i] === b[j]) { push('same', a[i]); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) { push('del', a[i]); i++; }
+    else { push('ins', b[j]); j++; }
+  }
+  while (i < m) { push('del', a[i]); i++; }
+  while (j < n) { push('ins', b[j]); j++; }
+  return segs;
+}
+
+function renderWordDiffHtml(before, after) {
+  return diffWordSegments(before, after).map((seg) => {
+    const text = htmlEscape(seg.text);
+    if (seg.type === 'del') return `<del class="ptna-w-del">${text}</del>`;
+    if (seg.type === 'ins') return `<ins class="ptna-w-ins">${text}</ins>`;
+    return text;
+  }).join(' ');
+}
+
+export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanationHtml = '', scoreChip = null, imageFindings = [], contextCardHtml = '', variants = null }) {
+  // Variant comparison (--preview --restyle a,b / --jargon x,y): every
+  // variant's rewrite is baked into the same swap span and the bar gets a
+  // scriptless radio toggle per variant — the snapshot stays inert, so the
+  // switch must be CSS-only, exactly like the rewritten/original/both views.
+  const variantList = Array.isArray(variants) && variants.length > 1 ? variants : null;
+
   let changedCount = 0;
   const planned = blocks.map((block, index) => {
-    const rewritten = rewrites[index];
+    if (variantList) {
+      const texts = variantList.map((variant) => stripMarkdownInlineCode(variant.rewrites[index]));
+      if (texts.every((text) => text === block.text)) return null;
+      changedCount += 1;
+      return { block, texts, n: changedCount };
+    }
+    const rewritten = stripMarkdownInlineCode(rewrites[index]);
     if (rewritten === block.text) return null;
     changedCount += 1;
     return { block, rewritten, n: changedCount };
   }).filter(Boolean);
 
   let out = String(html);
-  for (const { block, rewritten, n } of [...planned].reverse()) {
+  for (const { block, rewritten, texts, n } of [...planned].reverse()) {
+    const afters = variantList
+      ? texts.map((text, vi) => `<span class="ptna-after ptna-v${vi + 1}">${htmlEscape(text)}</span>`).join('')
+      : `<span class="ptna-after">${htmlEscape(rewritten)}</span>`;
+    const diffs = variantList
+      ? texts.map((text, vi) => `<span class="ptna-diff ptna-v${vi + 1}">${renderWordDiffHtml(block.text, text)}</span>`).join('')
+      : `<span class="ptna-diff">${renderWordDiffHtml(block.text, rewritten)}</span>`;
     const replacement = `<span class="ptna-blk" id="ptna-${n}" data-n="${n}">`
-      + `<span class="ptna-after">${htmlEscape(rewritten)}</span>`
+      + afters
+      + diffs
       + `<span class="ptna-before">${block.raw}</span>`
       + '</span>';
     out = out.slice(0, block.start) + replacement + out.slice(block.end);
@@ -852,6 +935,7 @@ export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanatio
     imageCardsHtml: image.cardsHtml,
     imageChangedCount: image.changedCount,
     contextCardHtml,
+    variants: variantList ?? [],
   });
   return { html: out, changedCount, totalCount: blocks.length, imageChangedCount: image.changedCount };
 }
@@ -894,45 +978,6 @@ function escapeRegExp(text) {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// File input has no host page to overlay, so render the text as a reading
-// document of our own and reuse the same in-place chrome. LCS hunk pairing
-// (diffBlockPairs) means the model does not have to preserve paragraph
-// counts for file previews.
-export function buildFilePreviewHtml({ originalText, rewrittenText, sourcePath, explanationHtml = '', scoreChip = null, contextCardHtml = '' }) {
-  const pairs = diffBlockPairs(originalText, rewrittenText);
-  let changedCount = 0;
-  const doc = pairs.map((pair) => {
-    if (pair.type === 'same') return htmlEscape(pair.text);
-    changedCount += 1;
-    return `<span class="ptna-blk" id="ptna-${changedCount}" data-n="${changedCount}">`
-      + `<span class="ptna-after">${htmlEscape(pair.after)}</span>`
-      + `<span class="ptna-before">${htmlEscape(pair.before)}</span>`
-      + '</span>';
-  }).join('\n\n');
-  const totalCount = pairs.length;
-
-  const shell = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
-<title>patina preview</title>
-<style>${FILE_PAGE_CSS}</style>
-</head>
-<body>
-<main class="ptna-page">
-  <header class="ptna-mast">
-    <p class="ptna-eyebrow">patina · preview</p>
-    <p class="ptna-src">Source: ${htmlEscape(sourcePath)}</p>
-  </header>
-  <div class="ptna-doc">${doc}</div>
-</main>
-</body>
-</html>`;
-  const out = injectChrome(shell, { changedCount, totalCount, explanationHtml, scoreChip, contextCardHtml });
-  return { html: out, changedCount, totalCount };
-}
 
 // The snapshot must stay inert: scripts are removed entirely (hydration
 // would revert the swapped text), inline handlers and javascript: URLs are
@@ -1060,12 +1105,49 @@ function injectHead(html, sourceUrl) {
   return `<head>${injection}</head>${html}`;
 }
 
-function injectChrome(html, { changedCount, totalCount, explanationHtml = '', scoreChip = null, imageCardsHtml = '', imageChangedCount = 0, contextCardHtml = '' }) {
+// Group baked variants for the two-level bar UI: one primary button per
+// distinct restyle depth (cleanup/voice/content) and, when a depth carries
+// more than one option (jargon/tone), a secondary chip row that appears only
+// while its depth is selected. Selection is two chained radio groups —
+// depth + per-depth option — so the page stays scriptless.
+function groupTransformVariants(variants) {
+  const groups = [];
+  variants.forEach((variant, index) => {
+    const key = variant.restyle ?? variant.label ?? `v${index + 1}`;
+    let group = groups.find((g) => g.key === key);
+    if (!group) {
+      group = { key, label: key === 'sentence' ? 'cleanup' : key, options: [] };
+      groups.push(group);
+    }
+    const parts = [];
+    if (variant.jargon && variant.jargon !== 'keep') parts.push(variant.jargon);
+    if (variant.tone) parts.push(variant.tone);
+    group.options.push({ label: parts.join('·') || 'default', variantIndex: index + 1 });
+  });
+  return groups;
+}
+
+function injectChrome(html, { changedCount, totalCount, explanationHtml = '', scoreChip = null, imageCardsHtml = '', imageChangedCount = 0, contextCardHtml = '', variants = [] }) {
+  const hasVariants = variants.length > 1 && changedCount > 0;
+  const variantGroups = hasVariants ? groupTransformVariants(variants) : [];
   const inputs = changedCount > 0
     ? '<input type="radio" name="ptna-view" id="ptna-v-rew" class="ptna-toggle-input" checked>'
       + '<input type="radio" name="ptna-view" id="ptna-v-orig" class="ptna-toggle-input">'
       + '<input type="radio" name="ptna-view" id="ptna-v-both" class="ptna-toggle-input">'
+      + '<input type="radio" name="ptna-view" id="ptna-v-diff" class="ptna-toggle-input">'
     : '';
+  // Depth and option radios MUST come after the view radios in the DOM, and
+  // option radios after depth radios: the show rules chain all three groups
+  // with the general-sibling combinator (#ptna-v-rew:checked ~
+  // #ptna-d-D:checked ~ #ptna-do-D-O:checked ~ * …), which only matches when
+  // each later input is a later sibling. Every depth keeps its own option
+  // radio group (name="ptna-opt-D"), so switching depth remembers the option
+  // previously picked inside it.
+  const depthInputs = variantGroups.map((_, di) =>
+    `<input type="radio" name="ptna-depth" id="ptna-d-${di + 1}" class="ptna-toggle-input"${di === 0 ? ' checked' : ''}>`).join('');
+  const optionInputs = variantGroups.map((group, di) =>
+    group.options.map((_, oi) =>
+      `<input type="radio" name="ptna-opt-${di + 1}" id="ptna-do-${di + 1}-${oi + 1}" class="ptna-toggle-input"${oi === 0 ? ' checked' : ''}>`).join('')).join('');
   const chips = Array.from({ length: Math.min(changedCount, MAX_JUMP_CHIPS) }, (_, i) =>
     `<a class="ptna-chip" href="#ptna-${i + 1}">${i + 1}</a>`).join('');
   const overflow = changedCount > MAX_JUMP_CHIPS
@@ -1073,11 +1155,26 @@ function injectChrome(html, { changedCount, totalCount, explanationHtml = '', sc
     : '';
   const imageChips = Array.from({ length: Math.min(imageChangedCount, MAX_JUMP_CHIPS) }, (_, i) =>
     `<a class="ptna-chip ptna-chip-img" href="#ptna-img-${i + 1}">I${i + 1}</a>`).join('');
+  const depthButtons = hasVariants
+    ? `<div class="ptna-views ptna-variants">`
+      + variantGroups.map((group, di) =>
+        `<label class="ptna-view" for="ptna-d-${di + 1}">${htmlEscape(group.label)}</label>`).join('')
+      + '</div>'
+    : '';
+  const optionButtons = hasVariants
+    ? variantGroups.map((group, di) => group.options.length > 1
+      ? `<div class="ptna-views ptna-opts ptna-opts-${di + 1}">`
+        + group.options.map((option, oi) =>
+          `<label class="ptna-view" for="ptna-do-${di + 1}-${oi + 1}">${htmlEscape(option.label)}</label>`).join('')
+        + '</div>'
+      : '').join('')
+    : '';
   const views = changedCount > 0
     ? '<div class="ptna-views">'
       + '<label class="ptna-view" for="ptna-v-rew">rewritten</label>'
       + '<label class="ptna-view" for="ptna-v-orig">original</label>'
       + '<label class="ptna-view" for="ptna-v-both">both</label>'
+      + '<label class="ptna-view" for="ptna-v-diff">diff</label>'
       + '</div>'
     : '';
   const notesBody = `${contextCardHtml}${explanationHtml}${imageCardsHtml}`;
@@ -1093,16 +1190,137 @@ function injectChrome(html, { changedCount, totalCount, explanationHtml = '', sc
     + (imageChangedCount > 0 ? `<span class="ptna-count ptna-count-img">${imageChangedCount} image(s)</span>` : '')
     + (scoreChip ? `<span class="ptna-score">${htmlEscape(scoreChip)}</span>` : '')
     + (chips || imageChips ? `<nav class="ptna-jump" aria-label="Jump to rewrite">${chips}${overflow}${imageChips}</nav>` : '')
+    + depthButtons
+    + optionButtons
     + views
     + '</div>';
 
   let out = html;
-  if (/<body\b[^>]*>/i.test(out)) out = out.replace(/<body\b[^>]*>/i, (m) => `${m}${inputs}`);
-  else out = `${inputs}${out}`;
+  if (/<body\b[^>]*>/i.test(out)) out = out.replace(/<body\b[^>]*>/i, (m) => `${m}${inputs}${depthInputs}${optionInputs}`);
+  else out = `${inputs}${depthInputs}${optionInputs}${out}`;
+  const variantCss = hasVariants ? buildVariantCss(variantGroups) : '';
   // Function replacement so `$`-sequences in notes (LLM explanation + OCR'd image
   // text) are not interpreted as replacement patterns (#447).
-  if (/<\/body\s*>/i.test(out)) return out.replace(/<\/body\s*>/i, (m) => `${notes}${bar}${m}`);
-  return `${out}${notes}${bar}`;
+  if (/<\/body\s*>/i.test(out)) return out.replace(/<\/body\s*>/i, (m) => `${variantCss}${notes}${bar}${m}`);
+  return `${out}${variantCss}${notes}${bar}`;
+}
+
+// CSS for the scriptless two-level variant toggle. Base rules hide every
+// variant span and every option chip row; each show rule chains the view
+// radio, the depth radio, and that depth's option radio (three ids — wins
+// every specificity fight), so exactly one variant is visible in the
+// rewritten/both/diff views and the original view hides them all. The
+// selected depth reveals its own option row; highlights mirror the view
+// toggle.
+function buildVariantCss(groups) {
+  const rules = ['.ptna-blk .ptna-after{display:none !important;}'];
+  // Re-hide all diff spans: PREVIEW_CSS's single-variant show rule
+  // (#ptna-v-diff:checked ~ * .ptna-blk .ptna-diff) would otherwise show
+  // EVERY variant's diff at once. Equal specificity + later in the document
+  // wins, then the three-id per-variant rules below override this re-hide.
+  rules.push('#ptna-v-diff:checked ~ * .ptna-blk .ptna-diff{display:none !important;}');
+  rules.push('.ptna-opts{display:none !important;}');
+  groups.forEach((group, gi) => {
+    const d = gi + 1;
+    rules.push(`#ptna-d-${d}:checked ~ .ptna-bar label[for="ptna-d-${d}"]{background:rgba(216,182,106,0.22);color:#d8b66a;}`);
+    rules.push(`#ptna-d-${d}:checked ~ .ptna-bar .ptna-opts-${d}{display:inline-flex !important;}`);
+    group.options.forEach((option, oi) => {
+      const o = oi + 1;
+      const k = option.variantIndex;
+      rules.push(`#ptna-v-rew:checked ~ #ptna-d-${d}:checked ~ #ptna-do-${d}-${o}:checked ~ * .ptna-blk .ptna-after.ptna-v${k}{display:inline !important;}`);
+      rules.push(`#ptna-v-both:checked ~ #ptna-d-${d}:checked ~ #ptna-do-${d}-${o}:checked ~ * .ptna-blk .ptna-after.ptna-v${k}{display:inline !important;}`);
+      rules.push(`#ptna-v-diff:checked ~ #ptna-d-${d}:checked ~ #ptna-do-${d}-${o}:checked ~ * .ptna-blk .ptna-diff.ptna-v${k}{display:inline !important;}`);
+      rules.push(`#ptna-do-${d}-${o}:checked ~ .ptna-bar label[for="ptna-do-${d}-${o}"]{background:rgba(95,196,168,0.18);color:#5fc4a8;}`);
+    });
+  });
+  rules.push('.ptna-variants{border-color:rgba(216,182,106,0.45);}');
+  rules.push('.ptna-opts{border-color:rgba(95,196,168,0.4);}');
+  return `<style>${rules.join('')}</style>`;
+}
+
+// Attribute-level navigation chrome. Modern docs/app layouts build sidebars,
+// tables of contents, and breadcrumb rails out of generic elements (Fumadocs:
+// <aside id="nd-sidebar">, <div id="nd-toc">), so tag-name exclusion alone
+// misses them. A container is chrome when its role names a navigation
+// surface, or when its id or one of its class NAMES carries a chrome token
+// at a word boundary ("nd-toc" and "doc-sidebar" match; "protocol" and
+// "asidebar" do not).
+const NAV_CHROME_ROLES = new Set(['navigation', 'complementary', 'menu', 'menubar', 'toolbar', 'tablist']);
+const NAV_CHROME_TOKEN_RE = /(?:^|[^a-z0-9])(?:toc|table-of-contents|sidebar|side-bar|breadcrumbs?)(?![a-z0-9])/i;
+
+function getOpenTagAttr(tagRaw, name) {
+  const re = new RegExp(`(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i');
+  const match = tagRaw.match(re);
+  if (!match) return null;
+  return match[1] ?? match[2] ?? match[3] ?? '';
+}
+
+// The token test runs per class NAME, and class names carrying Tailwind
+// variant/arbitrary-value syntax ([…], (…), :) are skipped entirely: utility
+// classes like [--fd-sidebar-width:286px] or [grid-area:sidebar] describe
+// layout geometry on ordinary content wrappers — on a Fumadocs page the ROOT
+// layout div carries them, and matching it would swallow the whole page.
+function classNamesCarryChromeToken(classValue) {
+  for (const name of classValue.split(/\s+/)) {
+    if (!name || /[[\]():]/.test(name)) continue;
+    if (NAV_CHROME_TOKEN_RE.test(name)) return true;
+  }
+  return false;
+}
+
+function isNavChromeOpenTag(tagRaw) {
+  const role = getOpenTagAttr(tagRaw, 'role');
+  if (role && NAV_CHROME_ROLES.has(role.trim().toLowerCase())) return true;
+  const id = getOpenTagAttr(tagRaw, 'id');
+  if (id && NAV_CHROME_TOKEN_RE.test(id)) return true;
+  const cls = getOpenTagAttr(tagRaw, 'class');
+  if (cls && classNamesCarryChromeToken(cls)) return true;
+  return false;
+}
+
+// Close position for an attribute-matched chrome container. Unlike the
+// tag-name containers (nav, button, code… — which do not nest themselves in
+// practice), chrome is usually a generic div/section whose subtree nests the
+// same tag freely, so the first </div> is NOT the container's close: walk
+// real tag tokens depth-counting the container's own tag, skipping comment
+// spans and inert-container content (a "</div>" inside a script string must
+// not close the chrome early). Returns -1 when no balanced close is found
+// within the cap — the container is then left in place, same as an unclosed
+// tag-name container.
+const CHROME_SCAN_CAP = 50000;
+
+function findBalancedContainerEnd(source, name, fromIndex, inertSet) {
+  let depth = 1;
+  let i = fromIndex;
+  for (let steps = 0; steps < CHROME_SCAN_CAP && i < source.length; steps++) {
+    const lt = source.indexOf('<', i);
+    if (lt === -1) return -1;
+    if (source.startsWith('<!--', lt)) {
+      const close = source.indexOf('-->', lt + 4);
+      if (close === -1) return -1;
+      i = close + 3;
+      continue;
+    }
+    const token = scanTagAt(source, lt);
+    if (!token) { i = lt + 1; continue; }
+    if (!token.isClose && !token.selfClose && token.name !== name && inertSet.has(token.name)) {
+      const closeRe = new RegExp(`</${token.name}\\s*>`, 'gi');
+      closeRe.lastIndex = token.end;
+      const closeMatch = closeRe.exec(source);
+      i = closeMatch ? closeMatch.index + closeMatch[0].length : token.end;
+      continue;
+    }
+    if (token.name === name) {
+      if (token.isClose) {
+        depth--;
+        if (depth === 0) return token.end;
+      } else if (!token.selfClose) {
+        depth++;
+      }
+    }
+    i = token.end;
+  }
+  return -1;
 }
 
 // Find the inert/never-prose regions of the document in a SINGLE linear walk.
@@ -1146,6 +1364,14 @@ function collectExcludedRanges(html) {
         i = end;
         continue;
       }
+    } else if (!token.isClose && !token.selfClose
+      && isNavChromeOpenTag(source.slice(lt, token.end))) {
+      const end = findBalancedContainerEnd(source, token.name, token.end, containerSet);
+      if (end !== -1) {
+        ranges.push([lt, end]);
+        i = end;
+        continue;
+      }
     }
     i = token.end;
   }
@@ -1175,6 +1401,11 @@ const PREVIEW_CSS = `
 .ptna-blk{scroll-margin-top:90px;}
 .ptna-srcdoc{display:block;container-type:inline-size;}
 .ptna-blk .ptna-before{display:none !important;}
+.ptna-blk .ptna-diff{display:none !important;}
+#ptna-v-diff:checked ~ * .ptna-blk .ptna-diff{display:inline !important;border-radius:3px;padding:0 2px;color:inherit;}
+#ptna-v-diff:checked ~ * .ptna-blk .ptna-after{display:none !important;}
+.ptna-w-del{color:#e8a193 !important;background:rgba(200,100,90,0.16) !important;text-decoration:line-through !important;text-decoration-color:#c86c5c !important;border-radius:3px;padding:0 2px;}
+.ptna-w-ins{color:inherit !important;background:rgba(95,196,168,0.26) !important;box-shadow:inset 0 -2px 0 #5fc4a8 !important;border-radius:3px;padding:0 2px;text-decoration:none !important;}
 .ptna-blk .ptna-after{background:rgba(95,196,168,0.20) !important;box-shadow:inset 0 -2px 0 #5fc4a8 !important;border-radius:3px;padding:0 2px;color:inherit;}
 #ptna-v-orig:checked ~ * .ptna-blk .ptna-after{display:none !important;}
 #ptna-v-orig:checked ~ * .ptna-blk .ptna-before{display:inline !important;background:rgba(200,149,108,0.20) !important;box-shadow:inset 0 -2px 0 #c8956c !important;border-radius:3px;padding:0 2px;color:inherit;}
@@ -1211,6 +1442,7 @@ const PREVIEW_CSS = `
 #ptna-v-rew:checked ~ .ptna-bar label[for="ptna-v-rew"]{background:rgba(95,196,168,0.22);color:#5fc4a8;}
 #ptna-v-orig:checked ~ .ptna-bar label[for="ptna-v-orig"]{background:rgba(200,149,108,0.22);color:#c8956c;}
 #ptna-v-both:checked ~ .ptna-bar label[for="ptna-v-both"]{background:rgba(216,182,106,0.20);color:#d8b66a;}
+#ptna-v-diff:checked ~ .ptna-bar label[for="ptna-v-diff"]{background:rgba(95,196,168,0.22);color:#5fc4a8;}
 .ptna-notes{position:fixed !important;right:18px;bottom:74px;z-index:2147483646 !important;max-width:min(440px,92vw);font:13px/1.7 "Apple SD Gothic Neo",Pretendard,"Noto Sans KR","Segoe UI",sans-serif !important;color:#dde7e0 !important;}
 .ptna-notes summary{cursor:pointer;list-style:none;display:inline-block;padding:6px 13px;border-radius:999px;border:1px solid rgba(216,182,106,0.45);background:rgba(11,14,13,0.93);color:#d8b66a;font:600 11px/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:0.08em;text-transform:uppercase;float:right;}
 .ptna-notes summary::-webkit-details-marker{display:none;}
@@ -1221,16 +1453,4 @@ const PREVIEW_CSS = `
 .ptna-notes-body .explain-card strong{color:#d8b66a;}
 .ptna-notes-body .explain-card code{font:12px ui-monospace,Menlo,Consolas,monospace;background:rgba(200,149,108,0.14);border-radius:4px;padding:1px 4px;color:#e8c9a8;}
 @media (prefers-reduced-motion:reduce){.ptna-view{transition:none !important;}}
-`.replace(/\n/g, '');
-
-// Standalone shell styling for file previews — same galley identity as the
-// browser diff page, single reading column.
-const FILE_PAGE_CSS = `${PREVIEW_CSS}
-:root{color-scheme:dark;}
-body{margin:0;background:radial-gradient(1100px 540px at 8% -10%,rgba(95,196,168,0.11),transparent 62%),radial-gradient(900px 520px at 100% 104%,rgba(200,149,108,0.09),transparent 60%),#0b0e0d;color:#e9efe9;}
-.ptna-page{max-width:760px;margin:0 auto;padding:40px 22px 120px;}
-.ptna-mast{border-bottom:1px solid rgba(132,168,152,0.16);padding-bottom:14px;margin-bottom:26px;}
-.ptna-eyebrow{margin:0 0 8px;font:600 11px/1 ui-monospace,Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:0.16em;color:#5fc4a8;}
-.ptna-src{margin:0;font:11.5px/1.5 ui-monospace,Menlo,Consolas,monospace;color:#8da59a;word-break:break-all;}
-.ptna-doc{white-space:pre-wrap;word-break:break-word;font:15.5px/1.9 "Apple SD Gothic Neo",Pretendard,"Noto Sans KR","Segoe UI",sans-serif;color:#dde7e0;}
 `.replace(/\n/g, '');

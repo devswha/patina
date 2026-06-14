@@ -12,6 +12,22 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## 5.0.0 — 2026-06-14
+
+**Breaking: `--preview` is URL/`.html`-only and the deprecated `--browser` alias is removed; adds `--restyle`/`--jargon` transformations, `--preview` variant comparison, and a word-level diff view.**
+
+Semver rationale: major — removes two shipped CLI surfaces. `--browser` (deprecated since 4.x) no longer exists; use `--preview`. `--preview` no longer accepts `.md`/`.markdown`/`.txt` "reading document" input — it now takes only an http(s) URL or a local `.html`/`.htm` file, both of which run through the snapshot pipeline that renders the page and overlays rewrites in place. Markdown/text drafts rewrite with `patina <file>` or inspect with `patina --diff <file>`. The release also adds opt-in `--restyle`/`--jargon` transformations and `--tone` lists, `--preview` variant comparison, and a word-level diff view — all default-off, so prompts stay byte-identical without the flags.
+
+### Removed
+- `--browser` CLI flag (deprecated alias for `--preview`): the deprecation warning and alias mapping are gone, and the flag is rejected as unknown.
+- `--preview` markdown/plain-text reading-document mode (`.md`/`.markdown`/`.txt`), which rendered raw markup as escaped text and could corrupt inline markdown markers. `--preview` input is now restricted to http(s) URLs and local `.html`/`.htm` files. `buildFilePreviewHtml` and its standalone reading-document stylesheet (`FILE_PAGE_CSS`) were dropped from `src/preview.js`.
+
+### Added
+- `--restyle <sentence|voice|content>` and `--jargon <keep|explain|remove>`: opt-in transformations beyond AI-pattern cleanup, on the default rewrite and `--preview`. `voice` rewrites the whole text in the target voice/register; `content` re-plans at the content level (Meaning-Preservation Score reported as advisory); `explain`/`remove` control technical-term handling for non-technical audiences. Defaults change nothing, and combining an active transform with `--score`/`--audit`/`--diff`/`--ouroboros` is an input error.
+- `--preview` variant comparison: comma-separated `--restyle`/`--jargon`/`--tone` values run one rewrite call per combination (capped at 4) and bake every variant into the preview behind a scriptless two-level toggle — a primary button per restyle depth and a per-depth option chip row for tone/jargon — each variant carrying its own deterministic score. stdout carries the first variant; the explanation call is skipped in compare mode. Requires a URL/`.html` snapshot and is incompatible with `--ocr`.
+- `--preview` word-level **diff view**: a fourth view toggle (rewritten / original / both / diff) renders each changed block as one merged stream — common words plain, removed words struck, added words highlighted — computed deterministically at page-build time (LCS over whitespace tokens, capped with a whole-text fallback).
+- `--preview` URL extraction now skips navigation chrome (`aside`, `role`-marked navigation, and sidebar/TOC/breadcrumb id/class tokens — covers app-shell/Fumadocs layouts) and leaves blocks carrying inline `code`/`kbd`/`var` untouched; model-added markdown backticks are stripped before the in-place snapshot swap.
+
 ## 4.3.0 — 2026-06-13
 
 **Reliability, security, and false-positive hardening from the 2026-06-13 full-repo architect review.**

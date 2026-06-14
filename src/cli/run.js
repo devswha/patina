@@ -7,6 +7,7 @@ import {
   toneToBackboneProfile,
 } from '../loader.js';
 import { buildPrompt } from '../prompt-builder.js';
+import { buildTransformVariants } from './args.js';
 import { invokeBackendChain, selectBackendChain, selectOcrBackends, listBackends } from '../backends/index.js';
 import { selectProvider, resolveProviderConfig } from '../providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from '../security.js';
@@ -18,7 +19,7 @@ import {
   openBrowserDiffPage,
   serveBrowserDiffPage,
 } from '../browser-diff.js';
-import { fetchPreviewPage, prepareSnapshotHtml, freezeSnapshotAssets, extractProseBlocks, alignRewrites, buildPreviewHtml, buildFilePreviewHtml, buildContextCardHtml } from '../preview.js';
+import { fetchPreviewPage, prepareSnapshotHtml, freezeSnapshotAssets, extractProseBlocks, alignRewrites, buildPreviewHtml, buildContextCardHtml } from '../preview.js';
 import { collectImageCandidates, stageOcrImages, ocrStagedImages, describeImage, hasOcrRunnerOverride } from '../ocr.js';
 import { rmSync } from 'node:fs';
 import { runOuroboros } from '../ouroboros.js';
@@ -70,7 +71,11 @@ export async function runDefault(parsed, logger) {
   // Tone resolution (v3.10): CLI --tone > config tone > null.
   // null + config.profile → profile-only mode (regression-safe; v3.9 behavior).
   // zh/ja + explicit tone → unsupported_language_fallback (warn + profile-only path).
-  const toneResolution = resolveTone({ cliTone: parsed.tone, configTone: config.tone, lang });
+  // --tone may carry a comma list for --preview variant comparison; the global
+  // resolution (and the backbone-profile mapping below) follows the FIRST
+  // tone, and the preview compare loop re-resolves per variant.
+  const firstCliTone = typeof parsed.tone === 'string' ? parsed.tone.split(',')[0] : parsed.tone;
+  const toneResolution = resolveTone({ cliTone: firstCliTone, configTone: config.tone, lang });
   if (toneResolution.warning) {
     logger.warn('tone.warning', { message: `[patina] ${toneResolution.warning}` });
   }
@@ -198,6 +203,8 @@ export async function runDefault(parsed, logger) {
       tone: toneResolution,
       promptMode,
       documentSignals: mode === 'rewrite' ? buildDocumentSignals({ text, lang }).signals : null,
+      restyle: parsed.restyle,
+      jargon: parsed.jargon,
     }),
   }));
 
@@ -505,7 +512,7 @@ async function runPreviewJob({
         throw runtimeError(
           'could not fetch the preview page',
           `${input}: ${err?.message || 'fetch failed'}`,
-          'Check the URL is reachable from this machine, or save the page text to a file and run `patina --preview file.md`.'
+          'Check the URL is reachable from this machine, or save the page HTML to a file and run `patina --preview file.html`.'
         );
       }
       cancellation.throwIfCanceled();
@@ -514,14 +521,10 @@ async function runPreviewJob({
     } else {
       const [loaded] = await loadInputs(parsed, logger);
       sourcePath = loaded.path;
-      // Local HTML goes through the same snapshot pipeline as a fetched
-      // page; markdown/plain text renders as a reading document.
-      if (/\.html?$/i.test(sourcePath)) {
-        snapshotSource = loaded.text;
-        sourceUrl = pathToFileURL(resolve(process.cwd(), sourcePath)).href;
-      } else {
-        originalText = loaded.text;
-      }
+      // Local files are validated to .html upstream and use the same
+      // snapshot pipeline as a fetched page.
+      snapshotSource = loaded.text;
+      sourceUrl = pathToFileURL(resolve(process.cwd(), sourcePath)).href;
     }
 
     if (snapshotSource !== null) {
@@ -570,6 +573,8 @@ async function runPreviewJob({
       scoring: scoring.body ? scoring : null,
       tone: toneResolution,
       promptMode,
+      restyle: parsed.restyle,
+      jargon: parsed.jargon,
     };
     const invokeInputs = {
       backends,
@@ -612,7 +617,7 @@ async function runPreviewJob({
       throw runtimeError(
         'no prose found on the page',
         'The page has no plain-text prose blocks, and --ocr found no text in its images.',
-        'Try a server-rendered page, or save the article text to a file and run `patina --preview file.md`.'
+        'Try a server-rendered page, or save the page HTML to a file and run `patina --preview file.html`.'
       );
     }
 
@@ -620,22 +625,89 @@ async function runPreviewJob({
       .filter(Boolean)
       .join('\n\n');
     const documentContext = buildDocumentSignals({ text: rewriteText, lang: config.language || 'ko' });
-    const rawResult = await invokeBackendChain({
-      ...invokeInputs,
-      prompt: buildPrompt({
-        ...basePromptInputs,
-        text: rewriteText,
-        mode: 'rewrite',
-        documentSignals: documentContext.signals,
-      }),
-    });
-    cancellation.throwIfCanceled();
-    const rewrittenBody = formatRewriteBodyForBrowser(rawResult, { logger });
+
+    // Variant comparison (--restyle a,b / --jargon x,y): one rewrite call per
+    // variant, all baked into the preview page behind a scriptless toggle.
+    // Calls run sequentially — local CLI backends carry concurrency caps of
+    // 1-2, and a variant is a whole-document rewrite, not a cheap request.
+    const transformVariants = buildTransformVariants(parsed);
+    const compareMode = transformVariants.length > 1;
+    if (compareMode && pageHtml === null) {
+      throw runtimeError(
+        'transform-variant comparison needs a page snapshot',
+        'Plain-text file previews render as a single reading document, which cannot hold multiple toggleable variants.',
+        'Run the compare against a URL or .html input, or pick a single --restyle/--jargon value.'
+      );
+    }
+    const variantBodies = [];
+    let rewrittenBody;
+    if (compareMode) {
+      const previewLang = config.language || 'ko';
+      const firstCliTone = typeof parsed.tone === 'string' ? parsed.tone.split(',')[0] : parsed.tone;
+      for (const [index, variant] of transformVariants.entries()) {
+        logger.info('preview.variant', {
+          message: `[patina] Rewriting variant ${variant.label} (${index + 1}/${transformVariants.length})…`,
+        });
+        // Per-variant tone: a comma-listed --tone makes each variant carry its
+        // own tone, so the resolution (and the backbone-profile mapping, when
+        // the user did not pass an explicit --profile) is re-derived here —
+        // mirroring exactly what a single run with that --tone would do.
+        let variantTone = toneResolution;
+        let variantProfile = basePromptInputs.profile;
+        if (variant.tone && variant.tone !== firstCliTone) {
+          variantTone = resolveTone({ cliTone: variant.tone, configTone: config.tone, lang: previewLang });
+          if (variantTone.warning) {
+            logger.warn('tone.warning', { message: `[patina] ${variantTone.warning}` });
+          }
+          if (!parsed.profile && variantTone.tone_source === 'user' && variantTone.tone && variantTone.tone !== 'auto') {
+            const backbone = toneToBackboneProfile(variantTone.tone);
+            if (backbone) {
+              const loaded = loadProfile(repoRoot, resolveProfileForLanguage(backbone, previewLang, logger));
+              if (loaded.body) variantProfile = loaded;
+            }
+          }
+        }
+        const variantRaw = await invokeBackendChain({
+          ...invokeInputs,
+          prompt: buildPrompt({
+            ...basePromptInputs,
+            profile: variantProfile,
+            tone: variantTone,
+            restyle: variant.restyle,
+            jargon: variant.jargon,
+            text: rewriteText,
+            mode: 'rewrite',
+            documentSignals: documentContext.signals,
+          }),
+        });
+        cancellation.throwIfCanceled();
+        variantBodies.push(formatRewriteBodyForBrowser(variantRaw, { logger }));
+      }
+      rewrittenBody = variantBodies[0];
+    } else {
+      const rawResult = await invokeBackendChain({
+        ...invokeInputs,
+        prompt: buildPrompt({
+          ...basePromptInputs,
+          text: rewriteText,
+          mode: 'rewrite',
+          documentSignals: documentContext.signals,
+        }),
+      });
+      cancellation.throwIfCanceled();
+      rewrittenBody = formatRewriteBodyForBrowser(rawResult, { logger });
+    }
 
     // Best-effort pattern explanation, same contract as the browser diff
-    // page: one extra call, and a failure never fails the preview.
+    // page: one extra call, and a failure never fails the preview. Compare
+    // mode skips it: one explanation per variant would multiply the call
+    // budget, and the variant toggle itself is the comparison surface.
     let explanationHtml = '';
-    try {
+    if (compareMode) {
+      logger.info('preview.variant_explanation_skipped', {
+        message: '[patina] explanation call skipped in compare mode (one rewrite call per variant already).',
+      });
+    } else try {
       const diffResult = await invokeBackendChain({
         ...invokeInputs,
         prompt: buildPrompt({
@@ -660,34 +732,59 @@ async function runPreviewJob({
 
     // Score symmetric scopes: with --ocr the rewrite covers DOM text + image
     // text, so the "before" must too (rewriteText), or the chip would compare
-    // unequal scopes and misreport the change.
+    // unequal scopes and misreport the change. Compare mode scores every
+    // variant so the chip shows where each one lands.
     const beforeScore = scoreDeterministicSignals({ text: rewriteText, config, repoRoot, logger });
-    const afterScore = scoreDeterministicSignals({ text: rewrittenBody, config, repoRoot, logger });
-    const scoreChip = !beforeScore?.skipped && !afterScore?.skipped
-      && beforeScore?.overall !== null && beforeScore?.overall !== undefined
-      && afterScore?.overall !== null && afterScore?.overall !== undefined
-      ? `score ${beforeScore.overall} → ${afterScore.overall}`
-      : null;
+    let scoreChip = null;
+    if (!beforeScore?.skipped && beforeScore?.overall !== null && beforeScore?.overall !== undefined) {
+      if (compareMode) {
+        const parts = transformVariants.map((variant, index) => {
+          const variantScore = scoreDeterministicSignals({ text: variantBodies[index], config, repoRoot, logger });
+          return !variantScore?.skipped && variantScore?.overall !== null && variantScore?.overall !== undefined
+            ? `${variant.label} ${variantScore.overall}`
+            : null;
+        }).filter(Boolean);
+        scoreChip = parts.length > 0 ? `score ${beforeScore.overall} → ${parts.join(' · ')}` : null;
+      } else {
+        const afterScore = scoreDeterministicSignals({ text: rewrittenBody, config, repoRoot, logger });
+        scoreChip = !afterScore?.skipped && afterScore?.overall !== null && afterScore?.overall !== undefined
+          ? `score ${beforeScore.overall} → ${afterScore.overall}`
+          : null;
+      }
+    }
 
     let built;
     let stdoutBody = rewrittenBody;
     if (pageHtml !== null) {
-      let rewrites;
-      try {
-        const aligned = alignRewrites([...blocks, ...ocrImages], rewrittenBody);
-        rewrites = aligned.rewrites;
-        if (aligned.unalignedCount > 0) {
-          logger.warn('preview.partial_alignment', {
-            message: `[patina] ${aligned.unalignedCount} block(s) could not be aligned with the rewrite and keep their original text.`,
-          });
+      // Align each rewrite body against the extracted blocks independently —
+      // models merge/split paragraphs differently per variant.
+      const alignOne = (body, label) => {
+        try {
+          const aligned = alignRewrites([...blocks, ...ocrImages], body);
+          if (aligned.unalignedCount > 0) {
+            logger.warn('preview.partial_alignment', {
+              message: `[patina] ${aligned.unalignedCount} block(s)${label ? ` in variant ${label}` : ''} could not be aligned with the rewrite and keep their original text.`,
+            });
+          }
+          return aligned.rewrites;
+        } catch (err) {
+          throw runtimeError(
+            'preview rewrite could not be aligned',
+            `${err.message}, so the rewrites cannot be swapped back into the page safely.`,
+            'Re-run the command (model output varies), or save the page HTML to a file and run `patina --preview file.html`.'
+          );
         }
-      } catch (err) {
-        throw runtimeError(
-          'preview rewrite could not be aligned',
-          `${err.message}, so the rewrites cannot be swapped back into the page safely.`,
-          'Re-run the command (model output varies), or save the page text to a file and run `patina --preview file.md`.'
-        );
-      }
+      };
+      const rewrites = alignOne(rewrittenBody, compareMode ? transformVariants[0].label : '');
+      const previewVariants = compareMode
+        ? transformVariants.map((variant, index) => ({
+          label: variant.label,
+          restyle: variant.restyle,
+          jargon: variant.jargon,
+          tone: variant.tone,
+          rewrites: (index === 0 ? rewrites : alignOne(variantBodies[index], variant.label)).slice(0, blocks.length),
+        }))
+        : null;
       const imageFindings = ocrImages.map((image, index) => {
         const rewritten = rewrites[blocks.length + index];
         return { ...image, rewritten, changed: rewritten !== image.text };
@@ -700,21 +797,25 @@ async function runPreviewJob({
         html: pageHtml,
         blocks,
         rewrites: rewrites.slice(0, blocks.length),
+        variants: previewVariants,
         sourceUrl,
         explanationHtml,
         scoreChip,
         imageFindings,
-        contextCardHtml: buildContextCardHtml({ register: documentContext.register, tone: toneResolution }),
+        contextCardHtml: buildContextCardHtml({
+          register: documentContext.register,
+          // With per-variant tones one global tone row would be wrong for
+          // every variant but the first — show the register measurement only.
+          tone: compareMode && transformVariants.some((v) => v.tone !== transformVariants[0].tone)
+            ? null
+            : toneResolution,
+        }),
       });
-    } else {
-      built = buildFilePreviewHtml({
-        originalText,
-        rewrittenText: rewrittenBody,
-        sourcePath,
-        explanationHtml,
-        scoreChip,
-        contextCardHtml: buildContextCardHtml({ register: documentContext.register, tone: toneResolution }),
-      });
+      if (compareMode) {
+        logger.info('preview.variants_ready', {
+          message: `[patina] ${transformVariants.length} variants baked in (${transformVariants.map((v) => v.label).join(', ')}); stdout carries "${transformVariants[0].label}". Toggle variants from the preview bar.`,
+        });
+      }
     }
     console.log(stdoutBody);
 

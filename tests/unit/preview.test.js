@@ -6,7 +6,6 @@ import {
   extractProseBlocks,
   alignRewrites,
   buildPreviewHtml,
-  buildFilePreviewHtml,
   harvestStreamOps,
   resolveStreamedHtml,
   prepareSnapshotHtml,
@@ -184,6 +183,73 @@ test('extractProseBlocks extracts leaf div/section copy and skips chrome contain
   ]);
 });
 
+test('extractProseBlocks skips aside and attribute-identified navigation chrome', () => {
+  const html = [
+    `<aside id="nd-sidebar"><div><span>사이드바 카드에 들어있는 충분히 긴 설명 문장은 절대 추출하지 않습니다.</span></div></aside>`,
+    `<div id="nd-toc"><div><div>목차 패널의 충분히 긴 요약 문장도 추출 대상이 아닙니다 절대로.</div></div></div>`,
+    `<div role="navigation"><p>롤 속성으로 표시된 내비게이션의 충분히 긴 링크 설명 텍스트입니다.</p></div>`,
+    `<div class="docs-sidebar dark"><p>클래스 토큰으로 식별되는 사이드바의 충분히 긴 텍스트입니다 여기.</p></div>`,
+    `<ol class="breadcrumbs"><li>브레드크럼 트레일의 충분히 긴 항목 라벨 텍스트는 건너뜁니다.</li></ol>`,
+    `<p class="protocol-overview">단어 경계 밖의 toc 부분 문자열은 크롬이 아니므로 이 문단은 추출됩니다.</p>`,
+    `<div class="grid [--fd-sidebar-width:286px] [grid-area:sidebar] md:top-(--fd-sidebar-height)"><p>테일윈드 임의값 클래스의 sidebar 토큰은 레이아웃 지오메트리라 본문이 살아야 합니다.</p></div>`,
+    `<p>${LONG_KO}</p>`,
+  ].join('\n');
+  const { blocks } = extractProseBlocks(html);
+  assert.deepStrictEqual(blocks.map((b) => b.text), [
+    '단어 경계 밖의 toc 부분 문자열은 크롬이 아니므로 이 문단은 추출됩니다.',
+    '테일윈드 임의값 클래스의 sidebar 토큰은 레이아웃 지오메트리라 본문이 살아야 합니다.',
+    LONG_KO,
+  ]);
+});
+
+test('extractProseBlocks leaves blocks carrying inline code/kbd/var untouched', () => {
+  const html = [
+    `<p>Install the package with <code>npm i patina-cli</code> and keep this block out of rewrites.</p>`,
+    `<li>Press <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop the long-running preview server immediately.</li>`,
+    `<p>The variable <var>maxBlocks</var> bounds extraction and must never be reworded by a model.</p>`,
+    `<p>${LONG_EN}</p>`,
+  ].join('\n');
+  const { blocks } = extractProseBlocks(html);
+  assert.deepStrictEqual(blocks.map((b) => b.text), [LONG_EN]);
+});
+
+test('chrome exclusion keeps nested same-tag containers balanced and ignores script text', () => {
+  // The sidebar div nests more divs and a script whose string contains
+  // "</div>" — the excluded range must still end at the sidebar's own close,
+  // not inside it, and the paragraph after it must stay extractable.
+  const html = [
+    `<div class="sidebar"><div><div>중첩 디브 안의 충분히 긴 사이드바 텍스트입니다 여기요.</div></div>`,
+    `<script>var x = "</div>";</script><div>꼬리 카드의 충분히 긴 텍스트도 제외됩니다 그대로.</div></div>`,
+    `<p>${LONG_KO}</p>`,
+  ].join('\n');
+  const { blocks } = extractProseBlocks(html);
+  assert.deepStrictEqual(blocks.map((b) => b.text), [LONG_KO]);
+});
+
+test('buildPreviewHtml strips model-added markdown backticks and treats backtick-only edits as unchanged', () => {
+  const text = 'Run the gjc binary after installing it from the npm registry today.';
+  const html = `<html><body><p>${text}</p></body></html>`;
+  const start = html.indexOf(text);
+  const blocks = [{ tag: 'p', start, end: start + text.length, raw: text, text }];
+
+  // Backtick-only difference: no real edit, so no swap markup is injected.
+  const unchanged = buildPreviewHtml({
+    html, blocks, sourceUrl: 'https://example.com/',
+    rewrites: ['Run the `gjc` binary after installing it from the npm registry today.'],
+  });
+  assert.strictEqual(unchanged.changedCount, 0);
+  assert.ok(!unchanged.html.includes('class="ptna-blk"'));
+
+  // Real edit keeps the rewrite but the rendered text carries no backticks.
+  const changed = buildPreviewHtml({
+    html, blocks, sourceUrl: 'https://example.com/',
+    rewrites: ['Install it from npm, then run the `gjc` binary when you are ready.'],
+  });
+  assert.strictEqual(changed.changedCount, 1);
+  assert.ok(changed.html.includes('Install it from npm, then run the gjc binary when you are ready.'));
+  assert.ok(!/`gjc`/.test(changed.html));
+});
+
 test('extractProseBlocks reports truncation at the block cap', () => {
   const html = Array.from({ length: 5 }, (_, i) => `<p>${LONG_EN} number ${i}</p>`).join('');
   const { blocks, truncated } = extractProseBlocks(html, { maxBlocks: 3 });
@@ -271,31 +337,6 @@ test('buildPreviewHtml swaps rewrites in place and hardens the snapshot', () => 
   assert.ok(out.includes('score 42 → 17'));
 });
 
-test('buildFilePreviewHtml renders LCS hunks in one document without count alignment', () => {
-  const original = `intro stays exactly the same here\n\n${LONG_KO}\n\nclosing line also stays the same`;
-  // Model merged two thoughts into one paragraph — counts differ, still fine.
-  const rewritten = `intro stays exactly the same here\n\n고쳐 쓴 문장입니다\n\n덧붙인 문장입니다\n\nclosing line also stays the same`;
-
-  const { html: out, changedCount } = buildFilePreviewHtml({
-    originalText: original,
-    rewrittenText: rewritten,
-    sourcePath: '/tmp/draft.md',
-    explanationHtml: '<article class="explain-card">why card</article>',
-    scoreChip: 'score 60 → 12',
-  });
-
-  assert.strictEqual(changedCount, 1);
-  assert.ok(out.includes('Content-Security-Policy'));
-  assert.ok(out.includes('Source: /tmp/draft.md'));
-  assert.ok(out.includes('intro stays exactly the same here'));
-  assert.ok(out.includes('<span class="ptna-after">고쳐 쓴 문장입니다\n\n덧붙인 문장입니다</span>'));
-  assert.ok(out.includes(`<span class="ptna-before">${LONG_KO}</span>`));
-  assert.ok(out.includes('id="ptna-v-both"'));
-  assert.ok(out.includes('1 change(s)') || out.includes('1 of'));
-  assert.ok(out.includes('why card'));
-  assert.ok(out.includes('score 60 → 12'));
-});
-
 test('buildPreviewHtml keeps an existing base tag and omits the toggle when nothing changed', () => {
   const html = `<html><head><base href="https://keep.test/"></head><body><p>${LONG_EN}</p></body></html>`;
   const { blocks } = extractProseBlocks(html);
@@ -363,23 +404,6 @@ test('buildContextCardHtml renders register and tone rows, empty without either'
 
   assert.strictEqual(buildContextCardHtml({}), '');
   assert.strictEqual(buildContextCardHtml({ tone: { tone: null, tone_source: 'profile_only' } }), '');
-});
-
-test('buildFilePreviewHtml places the context card in the notes panel', () => {
-  const { html } = buildFilePreviewHtml({
-    originalText: 'original paragraph that is long enough to be a block.',
-    rewrittenText: 'rewritten paragraph that is long enough to be a block.',
-    sourcePath: '/tmp/x.md',
-    explanationHtml: '<article class="explain-card">why</article>',
-    contextCardHtml: buildContextCardHtml({
-      register: { register: 'formal', label: '합쇼체(-습니다)', shares: { formal: 0.9, polite: 0.05, plain: 0.05 }, classified: 10, sentenceCount: 10 },
-    }),
-  });
-  assert.ok(html.includes('<details class="ptna-notes">'));
-  const notes = html.slice(html.indexOf('<details class="ptna-notes">'));
-  // Context card comes first in the notes body, before the explanation.
-  assert.ok(notes.indexOf('ptna-ctx-card') < notes.indexOf('why'));
-  assert.ok(html.includes('합쇼체(-습니다)'));
 });
 
 test('inlineSrcdocIframes decodes srcdoc detail content into first-class DOM', () => {
@@ -804,7 +828,10 @@ test('tainted $-sequences in preview injections are treated literally (#447)', (
     explanationHtml: "<div class=\"explain-card\">tricky $` $& $' marker</div>",
   });
   // A `$`-sequence interpreted as a replacement pattern would expand to the
-  // document prefix and duplicate the body; the unique marker must appear once.
-  assert.equal(out.split('ORIGINAL_BODY_MARKER').length - 1, 1);
+  // document prefix and duplicate the whole body many times over. The diff
+  // view legitimately renders the original words once (struck) alongside the
+  // untouched "original" span, so the marker appears exactly twice — never the
+  // runaway count a `$\`` / `$&` expansion would produce.
+  assert.equal(out.split('ORIGINAL_BODY_MARKER').length - 1, 2);
   assert.ok(out.includes("tricky $` $& $' marker"));
 });

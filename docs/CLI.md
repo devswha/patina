@@ -47,6 +47,47 @@ patina --lang en --score --exit-on 30 draft.md
 - `--voice-sample <path>` or config `voice-sample: <path>` injects the first 1–3 user-written paragraphs into rewrite/Ouroboros prompts as style-only examples of how this person writes. `--profile` / `--tone` still define the outer register; samples refine cadence and texture without importing facts.
 - `patina doctor --json` emits setup diagnostics for CI without making an LLM call.
 
+## Transformations beyond cleanup: `--restyle` / `--jargon`
+
+By default patina is a conservative humanizer: it removes AI tells without changing a sentence's claim or framing. `--restyle` and `--jargon` are explicit opt-ins for when the goal is a different text, not the same text cleaned up. They apply to the default rewrite and `--preview` only; combining them with `--score`, `--audit`, `--diff`, or `--ouroboros` is an input error (those modes either do not rewrite, or enforce meaning-preservation floors a transformation would fight).
+
+```bash
+patina --restyle voice --tone casual draft.md          # full voice/register transformation
+patina --restyle content draft.md                      # content-level re-planning
+patina --preview --jargon remove https://example.com/  # de-jargonized in-place preview
+patina --restyle content --jargon remove draft.md      # both
+```
+
+- `--restyle sentence` (default) — current behavior: AI-pattern cleanup, minimal paraphrase.
+- `--restyle voice` — rewrite the entire text in the target voice/register (`--tone`/`--profile` define the target), not just suspect zones. Claims, numbers, and argument order are preserved.
+- `--restyle content` — content-level re-planning: restructure sections, merge/cut redundancy, reorder arguments, re-angle for the audience. Core facts stay truthful, but coverage and emphasis may change; the Meaning-Preservation Score is reported as advisory instead of enforced for the run.
+- `--jargon keep` (default) — technical terms untouched.
+- `--jargon explain` — keep terms, add a brief plain-language gloss at first use.
+- `--jargon remove` — replace developer/technical jargon with everyday language; product names and proper nouns stay.
+
+### Variant comparison in the preview
+
+With `--preview`, `--restyle`, `--jargon`, **and `--tone`** accept comma-separated lists; every combination becomes a **variant** — one rewrite call each, capped at 4 — and the preview bar gains a second toggle group to switch between them in place:
+
+```bash
+patina --preview --restyle sentence,voice,content <url>     # cleanup / voice / content side by side
+patina --preview --restyle voice --tone casual,professional <url>  # same depth, two voices
+patina --preview --tone casual,marketing <url>              # tone-only comparison
+```
+
+- The bar groups variants two-level: one primary button per restyle depth (cleanup/voice/content) and, when a depth carries multiple options (tone/jargon), a secondary chip row that appears only while that depth is selected — click **voice**, then pick **casual** or **professional**. Each depth remembers its own option selection. The switch is CSS-only (chained radio groups), so the snapshot stays scriptless and the page CSP keeps `script-src 'none'`.
+- The score chip shows each variant's deterministic score (`score 23 → cleanup 5 · voice 8 · content 11`).
+- A comma-listed `--tone` joins the cross product: each variant resolves its own tone (and its backbone profile, unless `--profile` is explicit), exactly as a single run with that `--tone` would. Labels carry the tone when it varies (`voice·casual`).
+- A block counts as changed when **any** variant changes it; a variant that left a block alone shows the original text under that button.
+- stdout carries the first variant's prose (pipe-safe); the explanation call is skipped in compare mode to keep the call budget at one per variant.
+- Compare mode needs a page snapshot (URL or `.html`) and is incompatible with `--ocr`; comma lists without `--preview` are an input error.
+
+### Word-level diff view
+
+The view toggle has four states: **rewritten** (default), **original**, **both**, and **diff**. The diff view renders each changed block as one merged stream — common words plain, removed words struck red, added words highlighted green — so the exact edit is visible instead of a whole-sentence strikethrough. It is computed deterministically when the page is built (LCS over whitespace tokens, matrix-capped with a whole-text del/ins fallback for huge blocks) and works per variant in compare mode.
+
+In every depth, facts, numbers, names, and causal claims must never be invented, dropped, or reversed — the directive relaxes style and structure, not truth.
+
 ## Stderr logs
 
 Human-facing status, warnings, and progress indicators go to stderr so stdout
@@ -56,48 +97,34 @@ stays reserved for the transformed text or JSON envelope.
 - Ouroboros reports per-iteration score movement and latency.
 
 
-## Deprecated: `--browser`
-
-`--browser` is a deprecated alias for `--preview` and will be removed in patina 5.0. It used to render a separate side-by-side diff page; the in-place preview now covers that use case (the "both" view shows the rewrite next to the struck-through original) plus URL input, the score chip, and the notes panel.
-
-```bash
-patina --browser draft.md    # same as: patina --preview draft.md (prints a deprecation notice)
-```
-
-Differences from the old diff page to be aware of:
-- stdout carries the rewritten prose only; the old byte-for-byte `--format` passthrough is gone.
-- Input must be `.html`/`.md`/`.markdown`/`.txt` (the preview contract); other extensions are rejected.
-
-
 ## In-place preview: `--preview`
 
 `--preview` rewrites prose and renders the rewrites **in place** — each rewritten block highlighted and numbered, a floating bar with the change count, deterministic before/after score, jump chips, a three-state view toggle (rewritten / original / both), and a "patina notes" panel with the Pattern/Removed/Added/Why explanation.
 
-It accepts one input: an http(s) URL, a `.html`/`.htm` file (snapshot pipeline, same as a fetched page), or a `.md`/`.markdown`/`.txt` file (reading document). Other extensions are rejected up front.
+It accepts one input: an http(s) URL or a `.html`/`.htm` file (snapshot pipeline, same as a fetched page). Other extensions are rejected up front — rewrite a markdown/text draft with `patina <file>` or inspect it with `patina --diff <file>`.
 
 ```bash
 patina --preview https://example.com/article           # live page, snapshot overlay
 patina --preview export.html                           # local HTML, snapshot overlay
-patina --preview draft.md                              # local text, reading document
 patina --preview --serve https://example.com/article   # headless: serve at a token URL
 ```
 
 URL contract:
-- Rewrites plain-text prose blocks: `p`, headings, `li`, `blockquote`, …, plus `div`/`section`/`article` containers that directly hold copy (modern pages put most body text in styled divs). The scan is leaf-first — a container with nested block markup is rejected and the scan descends into it, so prose inside list items, quotes, and wrapper divs is found; HTML5 optional end tags (`<li>`/`<p>` without a close) and React SSR's empty-comment text separators (`<!-- -->`) are handled. Navigation (`nav`), buttons, prices, tables, and mixed-markup blocks are left untouched. Single-link blocks are treated as navigation unless long enough to be a whole-card teaser. One rewrite call plus one best-effort explanation call.
+- Rewrites plain-text prose blocks: `p`, headings, `li`, `blockquote`, …, plus `div`/`section`/`article` containers that directly hold copy (modern pages put most body text in styled divs). The scan is leaf-first — a container with nested block markup is rejected and the scan descends into it, so prose inside list items, quotes, and wrapper divs is found; HTML5 optional end tags (`<li>`/`<p>` without a close) and React SSR's empty-comment text separators (`<!-- -->`) are handled. Navigation chrome is never rewritten: `nav`/`aside`/`button` content, containers with a navigation `role` (`navigation`, `complementary`, `menu`, `menubar`, `toolbar`, `tablist`), and containers whose id/class carries a sidebar/TOC/breadcrumb token (covers app-shell layouts like Fumadocs' `#nd-sidebar`/`#nd-toc`). Blocks carrying inline `code`/`kbd`/`var` are also left untouched — their content is a verbatim token (package name, command, key cap) a rewrite could corrupt, and the in-place swap would flatten the markup to literal backtick text. Prices, tables, and other mixed-markup blocks stay out as before. Single-link blocks are treated as navigation unless long enough to be a whole-card teaser. One rewrite call plus one best-effort explanation call.
 - The snapshot is inert: scripts are removed (hydration would revert the swapped text), inline event handlers and `javascript:` URLs (including entity-encoded and `/`-separated forms) are neutralized, and a `<base href>` keeps the page's own CSS and images loading. Sanitization is tag-aware (it walks real tag tokens, skipping quoted attribute values), so an unclosed `<script>` or a handler hidden behind a `>` inside an attribute can't survive. The generated page also carries a restrictive CSP (`script-src`/`frame-src`/`object-src 'none'`, passive `img`/`style`/`font` allowed) so any active vector the stripper missed — a `data:`/`javascript:` `<iframe>`, a plugin — stays inert without breaking image/CSS fidelity. React 18 streaming pages are resolved statically (`$RC`/`$RS` swaps applied at snapshot time) so Suspense content renders instead of loading spinners. `<iframe srcdoc="…">` detail content (sites embed long below-the-fold pages this way) is decoded and inlined so its copy and images are extracted and rewritten too; the inlined block is a CSS container and the detail's `vw`/width-`@media` styles are rewritten to container units, so its typography and breakpoints render exactly as they did inside the iframe.
 - **Snapshot asset freezing**: same-origin stylesheets are downloaded at snapshot time and inlined as `<style>` blocks (relative `url()` references absolutized against each stylesheet's own URL), and same-origin fonts they reference are embedded as `data:` URIs. This keeps the saved page rendering identically even when the site refuses cross-site asset loads via Fetch Metadata (e.g. Vercel returns 404 to `Sec-Fetch-Site: cross-site` requests — which a saved snapshot always sends). Cross-origin sheets keep their `<link>`; fetches are SSRF-guarded and capped; any failure falls back to the original `<link>`.
 - `--ocr` image URLs fetched from page **content** are SSRF-guarded: the host is resolved and a private/loopback/link-local/metadata result is refused unless it matches the previewed page's own host (so a localhost dev preview still loads its own assets, but an arbitrary public page can't make patina probe `169.254.169.254` or internal services). The check covers IPv4-mapped IPv6 and is re-applied on each redirect hop. The user-typed preview URL itself is trusted and not subject to this guard.
 - Works on server-rendered pages. Client-rendered SPAs ship an empty HTML shell, so there is nothing to extract — patina fails with a clear message instead of showing a blank snapshot.
 - If the model returns a different paragraph count than the extracted blocks, patina falls back to LCS anchoring plus order-monotonic bigram-similarity pairing; blocks with no confident partner keep their original text (reported on stderr) instead of failing the run.
 
-Document context (both URL and file input):
+Document context:
 - Rewrites run under a **document brief**: the prompt instructs the model to first identify what the document is, who is speaking to whom, the dominant register, and the recurring domain terms — and to keep that frame for every edit. All rewritten sentences are unified to the document's dominant register (register mixing is itself an AI tell).
 - For Korean text the dominant register is **measured deterministically** (sentence-ending distribution: 합쇼체/해요체/-다체) and injected into the prompt as ground truth; the "patina notes" panel shows the measurement in a *document context* card.
 - `--tone <casual|professional|academic|narrative|marketing|instructional|auto>` works with `--preview` and overrides the target tone; the register-unification rule still applies.
 
-File contract:
-- The whole file is rewritten (same scope as a plain rewrite) and rendered as a single reading document. Hunks are paired by LCS, so the model does not need to preserve paragraph counts.
-- stdout carries the rewritten prose (pipe-safe) in both forms; the page path and serve URL go to stderr.
+File contract (local `.html`):
+- A local `.html`/`.htm` file goes through the same snapshot pipeline as a fetched URL: prose blocks are extracted, rewritten, and swapped back in place. Markdown/text drafts are not accepted as preview input.
+- stdout carries the rewritten prose (pipe-safe); the page path and serve URL go to stderr.
 
 ### Headless servers: `--serve`
 
@@ -105,7 +132,7 @@ On a machine with no display (SSH, containers), add `--serve` to serve the previ
 
 ```bash
 patina --preview --serve https://example.com/article
-patina --preview --serve draft.md
+patina --preview --serve export.html
 ```
 
 Contract:

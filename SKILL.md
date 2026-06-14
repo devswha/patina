@@ -325,7 +325,7 @@ For paragraph P with tokens T:
   hot iff density > lexicon.density_threshold
 ```
 
-기본 threshold = `2.0`. `.patina.default.yaml`의 `lexicon.density_threshold`로 조정 가능.
+기본 threshold = `3.0`. `.patina.default.yaml`의 `lexicon.density_threshold`로 조정 가능.
 
 ### Hot 결정 규칙 확장 (3-signal OR)
 

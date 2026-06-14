@@ -1,6 +1,6 @@
 // Browser-pure AI-lexicon parsing and density helpers per core/stylometry.md §16.
 
-export const DEFAULT_LEXICON_DENSITY_THRESHOLD = 2.0;
+export const DEFAULT_LEXICON_DENSITY_THRESHOLD = 3.0;
 export const DEFAULT_LEXICON_MIN_HOT_MATCHES = {
   default: 1,
   ko: 2,

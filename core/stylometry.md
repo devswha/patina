@@ -677,7 +677,7 @@ For paragraph P with tokens T:
   hot iff density > threshold AND min_hot_matches is satisfied
 ```
 
-기본 threshold = `2.0` (1,000 토큰당 2회). `lexicon.density_threshold`로 설정 가능.
+기본 threshold = `3.0` (1,000 토큰당 3회). `lexicon.density_threshold`로 설정 가능.
 기본 `min_hot_matches`는 영어 1, 한국어/중국어/일본어 2다. CJK 단일 lexicon hit는
 audit hint로 표시하지만 단락을 hot으로 만들지는 않는다.
 
@@ -760,7 +760,7 @@ Pareto frontier (3-signal OR, threshold sweep):
 
 ### Threshold 선택 근거
 
-`density_threshold = 2.0` 채택. 0.5–5.0 plateau 구간 어디에서도 동일한 catch/FP 가 나오므로 사양 기본값(2.0) 을 사용한다. 운용 의미: "1,000 토큰당 AI lexicon entry 가 2개 초과로 나타나고, 언어별 최소 hit 수를 만족하면 단락 의심". 이는 사양 §3 Recommendation 과 일치한다. 2026-05 Korean 25-row register pilot 이후 CJK 단일 hit는 hot에서 audit hint로 낮췄다.
+`density_threshold = 3.0` 채택. v3.5.1 calibration 코퍼스(HC3/Wikipedia/NamuWiki)에서는 0.5–5.0 구간이 동일 catch/FP plateau였으나, 2026-06 modern-model 재기준(rb26 KO/EN measure-only 코퍼스)에서 영어 자연 대조군 오탐이 threshold 2.0에서 15%, 3.0에서 5%로 떨어지고 영어 AI 재현율(86.9%)·한국어 재현율은 불변이며 49-fixture 벤치마크가 100%/ROC·PR-AUC 1.000을 유지하므로 3.0을 채택한다. 운용 의미: "1,000 토큰당 AI lexicon entry 가 3개 초과로 나타나고, 언어별 최소 hit 수를 만족하면 단락 의심". 한국어 오탐은 burstiness 신호가 주도하므로 별도 보정 delta로 분리한다. 2026-05 Korean 25-row register pilot 이후 CJK 단일 hit는 hot에서 audit hint로 낮췄다.
 
 ### Calibration drop list
 

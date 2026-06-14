@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-14T11:53:51.810Z",
+  "generatedAt": "2026-06-14T14:07:13.283Z",
   "nodeVersion": "v22.17.1",
   "note": "Report-only manifest TPR@FPR operating points. Not a detector-threshold change and not a CI gate.",
   "input": "artifacts/rebaseline-2025/manifest.ko.scored.public.jsonl",
@@ -126,7 +126,7 @@
         "negatives": 50,
         "positives": 26,
         "max_false_positives": 2,
-        "actual_fpr": 0.04,
+        "actual_fpr": 0.02,
         "tpr": 0.308,
         "supported": true,
         "n": 76,

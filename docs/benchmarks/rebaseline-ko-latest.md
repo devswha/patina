@@ -1,6 +1,6 @@
 # Rebaseline Manifest Summary
 
-- Generated at: 2026-06-14T11:53:51.651Z
+- Generated at: 2026-06-14T14:07:13.107Z
 - Input: `artifacts/rebaseline-2025/manifest.ko.scored.public.jsonl`
 - Records: 380
 - Protocol target: 25 samples per language × class × register cell
@@ -94,16 +94,16 @@ Public performance claim: **BLOCKED**
 
 | metric | value |
 |---|---:|
-| accuracy | 75.0% |
-| accuracy CI | 70.4%–79.1% |
-| precision | 64.7% |
+| accuracy | 76.8% |
+| accuracy CI | 72.3%–80.8% |
+| precision | 68.8% |
 | recall | 59.2% |
 | recall CI | 50.6%–67.3% |
-| F1 | 0.618 |
-| false positive rate | 16.8% |
-| false positive rate CI | 12.7%–21.9% |
+| F1 | 0.636 |
+| false positive rate | 14.0% |
+| false positive rate CI | 10.2%–18.8% |
 | false negative rate | 40.8% |
-| TP/FP/FN/TN | 77/42/53/208 |
+| TP/FP/FN/TN | 77/35/53/215 |
 
 ### Catch rate by language × model family
 
@@ -117,14 +117,14 @@ Public performance claim: **BLOCKED**
 
 | language | n | false-positive rate | 95% CI | FP/TN |
 |---|---:|---:|---:|---:|
-| ko | 250 | 16.8% | 12.7%–21.9% | 42/208 |
+| ko | 250 | 14.0% | 10.2%–18.8% | 35/215 |
 
 ### By register
 
 | register | n | FP rate | FN rate | TP/FP/FN/TN |
 |---|---:|---:|---:|---:|
 | blog | 76 | 20.0% | 30.8% | 18/10/8/40 |
-| academic-summary | 76 | 14.0% | 30.8% | 18/7/8/43 |
+| academic-summary | 76 | 8.0% | 30.8% | 18/4/8/46 |
 | product-doc | 76 | 12.0% | 46.2% | 14/6/12/44 |
-| chat-update | 76 | 4.0% | 69.2% | 8/2/18/48 |
-| technical-how-to | 76 | 34.0% | 26.9% | 19/17/7/33 |
+| chat-update | 76 | 2.0% | 69.2% | 8/1/18/49 |
+| technical-how-to | 76 | 28.0% | 26.9% | 19/14/7/36 |

@@ -13,6 +13,7 @@ import yaml from 'js-yaml';
 import { DEFAULT_INTAKE_INPUT, loadIntakeRows } from './rebaseline-intake.mjs';
 import { MATRIX, canRedistributeText, canonicalizeClass, hashText } from './rebaseline-summary.mjs';
 import { parseFixture } from './update-benchmark-ranges.mjs';
+import { resolveSliceFields } from '../tests/quality/slice-metadata.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -125,18 +126,29 @@ function slugify(value) {
 }
 
 export function buildFixtureFile(record, fixtureId) {
+  // B2 slice metadata (Wave 0.2): retain register/domain when present and
+  // always record the mapper-resolved generator/edited so exported fixtures
+  // populate B2 slices instead of collapsing to `unspecified`. model_family /
+  // edit_depth are kept as provenance aliases when present.
+  const slice = resolveSliceFields(record);
   const meta = {
     fixture_id: fixtureId,
     language: record.language,
     class: 'natural',
     expected_hot: false,
-    why_designed_this_way: [
-      'Accepted false-positive report promoted to a natural control fixture.',
-      `Source: ${record.source_doc}`,
-      `Reviewer notes: ${String(record.reviewer_notes).trim()}`,
-    ].join('\n'),
-    topic: fixtureTopic(record),
   };
+  if (record.register) meta.register = record.register;
+  if (record.domain) meta.domain = record.domain;
+  meta.generator = slice.generator;
+  meta.edited = slice.edited;
+  if (record.model_family) meta.model_family = record.model_family;
+  if (record.edit_depth) meta.edit_depth = record.edit_depth;
+  meta.why_designed_this_way = [
+    'Accepted false-positive report promoted to a natural control fixture.',
+    `Source: ${record.source_doc}`,
+    `Reviewer notes: ${String(record.reviewer_notes).trim()}`,
+  ].join('\n');
+  meta.topic = fixtureTopic(record);
   return `---\n${yaml.dump(meta, { lineWidth: -1 })}---\n\n${record.text.trim()}\n`;
 }
 

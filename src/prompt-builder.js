@@ -96,6 +96,12 @@ function buildSeverityOverrideNote(config) {
  *   as ground truth for the Phase 0 document brief.
  * @param {boolean} [options.includeSelfAudit=true] Include the Phase 3 self-audit
  *   in rewrite instructions; ouroboros passes false to skip the token cost (#444).
+ * @param {string} [options.restyle=sentence] Transformation depth
+ *   (sentence|voice|content); non-default values add the opt-in
+ *   transformation directive to rewrite prompts.
+ * @param {string} [options.jargon=keep] Technical-term policy
+ *   (keep|explain|remove); non-default values add the opt-in
+ *   transformation directive to rewrite prompts.
  * @returns {string} Complete prompt text.
  * @throws {TypeError} When `options.tone.tone_evidence` contains values JSON.stringify cannot serialize (circular references, BigInt).
  * @example
@@ -117,6 +123,8 @@ export function buildPrompt(options) {
     // strips anyway; the loop's external scorers do the AI-tell/meaning checks
     // (#444). Default true keeps the standalone rewrite contract unchanged.
     includeSelfAudit = true,
+    restyle = 'sentence',
+    jargon = 'keep',
   } = options;
   const promptMode = /** @type {any} */ (options).promptMode || 'strict';
   // v3.11+ internal backend prompt-style dispatch. The compact prompt strips
@@ -124,7 +132,7 @@ export function buildPrompt(options) {
   // to rewrite mode where voice prior matters most. Profile body is still passed
   // through (Round 2 found Gemini ignored casual-conversation when omitted).
   if (promptMode === 'minimal' && mode === 'rewrite') {
-    return buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, documentSignals });
+    return buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, documentSignals, restyle, jargon });
   }
 
   const lang = config.language || 'ko';
@@ -212,6 +220,7 @@ export function buildPrompt(options) {
 
   if (mode === 'rewrite') {
     prompt += buildRewriteInstructions(structurePacks, lexicalPacks, { lang, includeSelfAudit });
+    prompt += buildTransformDirective({ restyle, jargon, korean: false });
   } else if (mode === 'diff') {
     prompt += buildDiffInstructions();
   } else if (mode === 'audit') {
@@ -238,6 +247,40 @@ export function buildPrompt(options) {
   prompt += `## Output\n\n`;
 
   return prompt;
+}
+
+// Opt-in transformation directive (--restyle / --jargon). Everything else in
+// the rewrite prompt is deliberately conservative — minimal paraphrase, keep
+// each sentence's claim and framing — so when the user explicitly asks for a
+// deeper transformation, the directive must state that it overrides those
+// rules where they conflict. Facts, numbers, names, and causal claims remain
+// non-negotiable in every depth. Returns '' for the defaults so existing
+// prompts (and their golden snapshots) are byte-identical.
+function buildTransformDirective({ restyle = 'sentence', jargon = 'keep', korean = false } = {}) {
+  const bullets = [];
+  if (restyle === 'voice') {
+    bullets.push(korean
+      ? `**전면 어투 전환 (--restyle voice)**: 의심 구간만 고치지 말고 글 전체를 목표 어투·화법(톤/프로필 섹션 기준)으로 다시 써. 문장 구조·리듬·어휘는 자유롭게 바꿔도 되지만, 모든 주장과 그 순서는 그대로 유지해.`
+      : `**Full voice transformation (--restyle voice)**: Rewrite the ENTIRE text in the target voice and register (per the tone/profile sections), not just AI-flagged zones. Sentence structure, rhythm, vocabulary, and phrasing may change freely; every claim and its ordering must survive.`);
+  } else if (restyle === 'content') {
+    bullets.push(korean
+      ? `**컨텐츠 재기획 (--restyle content)**: 컨텐츠 기획 수준에서 다시 짜. 섹션 재구성, 중복 통합·삭제, 논점 순서 변경, 독자에 맞춘 앵글 조정까지 허용. 핵심 사실은 지키되 다루는 범위와 강조점은 바뀌어도 돼. 의미 보존 점수(MPS)는 이번 실행에선 참고용이야 — 점수를 맞추려고 재작성을 제한하지 말고 정직하게 보고만 해.`
+      : `**Content-level re-planning (--restyle content)**: Re-plan the piece at the content level. You may restructure sections, merge or cut redundant passages, reorder arguments, and sharpen the angle for the document's audience. Coverage and emphasis may change; core claims must stay truthful. Treat the Meaning-Preservation Score as advisory for this run — report it honestly instead of constraining the rewrite to satisfy it.`);
+  }
+  if (jargon === 'explain') {
+    bullets.push(korean
+      ? `**용어 설명 병기 (--jargon explain)**: 기술 용어는 유지하되, 처음 나올 때 짧고 쉬운 설명을 괄호로 덧붙여.`
+      : `**Gloss technical terms (--jargon explain)**: Keep technical terms, but add a brief plain-language gloss in parentheses at each term's first use.`);
+  } else if (jargon === 'remove') {
+    bullets.push(korean
+      ? `**개발 용어 제거 (--jargon remove)**: 개발·기술 용어는 일반 독자가 이해할 일상 표현으로 바꿔. 마땅한 표현이 없으면 풀어서 설명하고, 제품명·고유명사는 그대로 둬.`
+      : `**Remove jargon (--jargon remove)**: Replace developer/technical jargon with everyday language a non-technical reader understands. Paraphrase concepts that have no simple equivalent; keep product names and proper nouns as-is.`);
+  }
+  if (bullets.length === 0) return '';
+  const header = korean
+    ? `## 변환 지시 (사용자 요청)\n\n사용자가 AI 패턴 교정을 넘어선 변환을 명시적으로 요청했어. 아래 지시가 위의 보수적인 편집 규칙(최소 의역, 문장 틀 유지)과 충돌하면 **아래 지시가 우선**이야. 단, 사실·숫자·이름·인과관계는 어떤 깊이에서도 만들거나 빼거나 뒤집으면 안 돼.\n\n`
+    : `## Transformation Directive (user-requested)\n\nThe user explicitly opted into a transformation beyond AI-pattern cleanup. Where this directive conflicts with the conservative editing rules above (minimal paraphrase, keep sentence framing), THIS DIRECTIVE WINS. Facts, numbers, names, and causal claims must still never be invented, dropped, or reversed.\n\n`;
+  return `${header}${bullets.map((b) => `- ${b}`).join('\n')}\n\n`;
 }
 
 function buildRewriteInstructions(
@@ -542,7 +585,7 @@ export function isShortText(text) {
 // model's natural voice prior isn't overridden by analytical framing. Only
 // invoked for rewrite mode; score/audit/diff/ouroboros stay on the strict
 // path because they need precise pattern references.
-function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, documentSignals = null }) {
+function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, documentSignals = null, restyle = 'sentence', jargon = 'keep' }) {
   const lang = config.language || 'ko';
   const activePatterns = patterns.filter((p) => !p.isScoreOnly);
 
@@ -567,6 +610,7 @@ function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone
     : `Before editing, read the whole text and fix in your head: what this document is (landing page / blog post / notice / docs), who is speaking to whom, the dominant register and tone, and the recurring domain terms. Keep that frame throughout, unify every rewritten sentence to the document's dominant register — register drift between sentences is itself an AI tell — and reuse the document's own terms instead of generic synonyms. Never output this analysis; apply it to the body only.`;
 
   let prompt = `${instruction}\n\n${brief}\n\n`;
+  prompt += buildTransformDirective({ restyle, jargon, korean: lang === 'ko' });
 
   if (Array.isArray(documentSignals) && documentSignals.length > 0) {
     prompt += lang === 'ko' ? `## 문서 신호 (결정론 측정값)\n\n` : `## Document signals (measured)\n\n`;

@@ -272,75 +272,20 @@ describe('CLI End-to-End with Mock API', () => {
     mock = await startMockServer('This is the humanized result.');
   });
 
-  it('maps --browser onto the file preview flow with a deprecation notice', async () => {
-    const rewriteResponse = '[BODY]\nThis is the humanized result.\n[/BODY]';
-    const diffResponse = '**Pattern: 1. Generic polish**\nRemoved: `old`\nAdded: `new`\nWhy: reason';
-    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
-
-    const writes = [];
-    const spawns = [];
-    setBrowserDiffRuntimeForTests({
-      tmpdir: () => '/tmp',
-      mkdtemp: (prefix) => {
-        // The alias must land on the preview flow, not the old diff page.
-        assert.match(prefix, /patina-preview-/);
-        return '/tmp/patina-preview-123';
-      },
-      writeFile: (path, data) => {
-        writes.push({ path, data });
-      },
-      chmod: () => {},
-      now: () => 123,
-      platform: 'linux',
-      spawn: makeFakeSpawn(({ command, args, child }) => {
-        spawns.push({ command, args });
-        process.nextTick(() => child.emit('close', 0));
-      }),
-    });
-
-    mock.callCount = 0;
-    mock.requestBodies = [];
-    try {
-      await mock.stop();
-      mock = await startMockServer([
-        { responseText: rewriteResponse },
-        { responseText: diffResponse },
-      ]);
-
-      const browserRun = await captureConsole(() => main([
-        '--browser',
-        '--lang', 'en',
-        '--api-key-file', mockApiKeyPath,
-        '--base-url', `http://127.0.0.1:${mock.port}`,
-        testFile,
-      ]));
-
-      assert.ok(browserRun.errors.some((line) => line.includes('--browser is deprecated')));
-      assert.ok(browserRun.errors.some((line) => line.includes('Preview page saved at /tmp/patina-preview-123/browser-diff-123.html (1 of 1 blocks rewritten)')));
-      assert.ok(browserRun.logs.join('\n').includes('This is the humanized result.'));
-      assert.strictEqual(mock.callCount, 2);
-      assert.deepStrictEqual(spawns, [{ command: 'xdg-open', args: ['/tmp/patina-preview-123/browser-diff-123.html'] }]);
-
-      const page = writes[0].data;
-      assert.ok(page.includes('ptna-doc'));
-      assert.ok(page.includes(`Source: ${testFile}`));
-      assert.ok(page.includes('<span class="ptna-after">This is the humanized result.</span>'));
-      assert.ok(page.includes('<strong>Pattern: 1. Generic polish</strong>'));
-    } finally {
-      resetBrowserDiffRuntimeForTests();
-      await mock.stop();
-      mock = await startMockServer('This is the humanized result.');
-    }
-  });
-
   it('keeps stdout pure and reports the temp path on stderr when browser open fails', async () => {
-    const rewriteResponse = '[BODY]\nThis is the humanized result.\n[/BODY]';
+    const rewriteResponse = '[BODY]\nFirst paragraph rewritten by the mock backend for the preview test.\n[/BODY]';
     const diffResponse = 'Pattern: 1. Generic polish\nRemoved: old\nAdded: new\nWhy: reason';
-    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    const dir = mkdtempSync(join(tmpdir(), 'patina-preview-openfail-'));
+    const htmlPath = join(dir, 'page.html');
+    writeFileSync(htmlPath, [
+      '<html><head><title>local</title></head><body>',
+      '<p>The first paragraph is long enough to be rewritten by the preview flow.</p>',
+      '</body></html>',
+    ].join('\n'));
 
     setBrowserDiffRuntimeForTests({
       tmpdir: () => '/tmp',
-      mkdtemp: () => '/tmp/patina-browser-diff-456',
+      mkdtemp: () => '/tmp/patina-preview-456',
       writeFile: () => {},
       chmod: () => {},
       now: () => 456,
@@ -359,33 +304,40 @@ describe('CLI End-to-End with Mock API', () => {
         { responseText: diffResponse },
       ]);
 
-      const browserRun = await captureConsole(() => main([
-        '--browser',
+      const previewRun = await captureConsole(() => main([
+        '--preview',
         '--lang', 'en',
         '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mock.port}`,
-        testFile,
+        htmlPath,
       ]));
 
-      assert.ok(browserRun.logs.join('\n').includes('This is the humanized result.'));
+      assert.ok(previewRun.logs.join('\n').includes('First paragraph rewritten by the mock backend'));
       assert.strictEqual(mock.callCount, 2);
-      assert.ok(browserRun.errors.some((line) => line.includes('Preview page saved at /tmp/patina-browser-diff-456/browser-diff-456.html')));
-      assert.ok(browserRun.errors.some((line) => line.includes('Browser open failed: browser opener exited with code 1')));
+      assert.ok(previewRun.errors.some((line) => line.includes('Preview page saved at /tmp/patina-preview-456/browser-diff-456.html')));
+      assert.ok(previewRun.errors.some((line) => line.includes('Browser open failed: browser opener exited with code 1')));
     } finally {
       resetBrowserDiffRuntimeForTests();
+      rmSync(dir, { recursive: true, force: true });
       await mock.stop();
       mock = await startMockServer('This is the humanized result.');
     }
   });
 
   it('keeps rewrite success and writes an HTML warning when the secondary diff call fails', async () => {
-    const rewriteResponse = '[BODY]\nThis is the humanized result.\n[/BODY]';
-    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    const rewriteResponse = '[BODY]\nFirst paragraph rewritten by the mock backend for the preview test.\n[/BODY]';
+    const dir = mkdtempSync(join(tmpdir(), 'patina-preview-difffail-'));
+    const htmlPath = join(dir, 'page.html');
+    writeFileSync(htmlPath, [
+      '<html><head><title>local</title></head><body>',
+      '<p>The first paragraph is long enough to be rewritten by the preview flow.</p>',
+      '</body></html>',
+    ].join('\n'));
     const writes = [];
 
     setBrowserDiffRuntimeForTests({
       tmpdir: () => '/tmp',
-      mkdtemp: () => '/tmp/patina-browser-diff-789',
+      mkdtemp: () => '/tmp/patina-preview-789',
       writeFile: (_path, data) => {
         writes.push(data);
       },
@@ -406,39 +358,46 @@ describe('CLI End-to-End with Mock API', () => {
         { responseText: 'backend failed', statusCode: 500 },
       ]);
 
-      const browserRun = await captureConsole(() => main([
-        '--browser',
+      const previewRun = await captureConsole(() => main([
+        '--preview',
         '--lang', 'en',
         '--max-retries',
         '0',
         '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mock.port}`,
-        testFile,
+        htmlPath,
       ]));
 
-      assert.match(browserRun.logs.join('\n'), /This is the humanized result\./);
+      assert.match(previewRun.logs.join('\n'), /First paragraph rewritten by the mock backend/);
       assert.strictEqual(mock.callCount, 2);
-      assert.ok(browserRun.errors.some((line) => line.includes('preview explanation failed')));
+      assert.ok(previewRun.errors.some((line) => line.includes('preview explanation failed')));
       // No explanation and no image findings: the notes panel is omitted
       // entirely rather than rendered empty.
       assert.ok(!writes[0].includes('<details class="ptna-notes">'));
-      assert.ok(writes[0].includes('<span class="ptna-after">This is the humanized result.</span>'));
+      assert.ok(writes[0].includes('<span class="ptna-after">First paragraph rewritten by the mock backend for the preview test.</span>'));
     } finally {
       resetBrowserDiffRuntimeForTests();
+      rmSync(dir, { recursive: true, force: true });
       await mock.stop();
       mock = await startMockServer('This is the humanized result.');
     }
   });
 
-  it('serves the preview page at a token URL with --browser --serve (alias) and stops when idle', async () => {
-    const rewriteResponse = '[BODY]\nThis is the humanized result.\n[/BODY]';
+  it('serves the preview page at a token URL with --preview --serve and stops when idle', async () => {
+    const rewriteResponse = '[BODY]\nFirst paragraph rewritten by the mock backend for the preview test.\n[/BODY]';
     const diffResponse = 'Pattern: 1. Generic polish\nRemoved: old\nAdded: new\nWhy: reason';
-    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
+    const dir = mkdtempSync(join(tmpdir(), 'patina-preview-serve-'));
+    const htmlPath = join(dir, 'page.html');
+    writeFileSync(htmlPath, [
+      '<html><head><title>local</title></head><body>',
+      '<p>The first paragraph is long enough to be rewritten by the preview flow.</p>',
+      '</body></html>',
+    ].join('\n'));
 
     const spawns = [];
     setBrowserDiffRuntimeForTests({
       tmpdir: () => '/tmp',
-      mkdtemp: () => '/tmp/patina-browser-diff-serve',
+      mkdtemp: () => '/tmp/patina-preview-serve',
       writeFile: () => {},
       chmod: () => {},
       now: () => 999,
@@ -466,12 +425,12 @@ describe('CLI End-to-End with Mock API', () => {
       ]);
 
       const mainPromise = main([
-        '--browser',
+        '--preview',
         '--serve',
         '--lang', 'en',
         '--api-key-file', mockApiKeyPath,
         '--base-url', `http://127.0.0.1:${mock.port}`,
-        testFile,
+        htmlPath,
       ]);
 
       const deadline = Date.now() + 5000;
@@ -486,20 +445,21 @@ describe('CLI End-to-End with Mock API', () => {
       const page = await fetch(url);
       assert.strictEqual(page.status, 200);
       const body = await page.text();
-      assert.ok(body.includes('This is the humanized result.'));
+      assert.ok(body.includes('First paragraph rewritten by the mock backend for the preview test.'));
       assert.ok(body.includes('Pattern: 1. Generic polish'));
 
       await mainPromise;
 
       assert.deepStrictEqual(spawns, [], 'serve mode must not spawn a window opener');
-      assert.ok(errors.some((line) => line.includes('Preview page saved at /tmp/patina-browser-diff-serve/browser-diff-999.html')));
+      assert.ok(errors.some((line) => line.includes('Preview page saved at /tmp/patina-preview-serve/browser-diff-999.html')));
       assert.ok(errors.some((line) => line.includes('Stops after 10 idle minutes')));
-      assert.ok(logs.join('\n').includes('This is the humanized result.'));
+      assert.ok(logs.join('\n').includes('First paragraph rewritten by the mock backend'));
       assert.strictEqual(mock.callCount, 2);
     } finally {
       console.log = originalLog;
       console.error = originalError;
       resetBrowserDiffRuntimeForTests();
+      rmSync(dir, { recursive: true, force: true });
       await mock.stop();
       mock = await startMockServer('This is the humanized result.');
     }
@@ -606,68 +566,6 @@ describe('CLI End-to-End with Mock API', () => {
     } finally {
       resetBrowserDiffRuntimeForTests();
       await new Promise((resolveClose) => pageServer.close(resolveClose));
-      await mock.stop();
-      mock = await startMockServer('This is the humanized result.');
-    }
-  });
-
-  it('renders a local file as an in-place preview document with --preview', async () => {
-    const testFile = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
-    const rewriteResponse = '[BODY]\nThis is the humanized result.\n[/BODY]';
-    const diffResponse = '**Pattern: 1. Generic polish**\nRemoved: `old`\nAdded: `new`\nWhy: reason';
-
-    const writes = [];
-    const spawns = [];
-    setBrowserDiffRuntimeForTests({
-      tmpdir: () => '/tmp',
-      mkdtemp: (prefix) => {
-        assert.match(prefix, /patina-preview-/);
-        return '/tmp/patina-preview-88';
-      },
-      writeFile: (path, data) => {
-        writes.push({ path, data });
-      },
-      chmod: () => {},
-      now: () => 88,
-      platform: 'linux',
-      spawn: makeFakeSpawn(({ command, args, child }) => {
-        spawns.push({ command, args });
-        process.nextTick(() => child.emit('close', 0));
-      }),
-    });
-
-    mock.callCount = 0;
-    mock.requestBodies = [];
-    try {
-      await mock.stop();
-      mock = await startMockServer([
-        { responseText: rewriteResponse },
-        { responseText: diffResponse },
-      ]);
-
-      const previewRun = await captureConsole(() => main([
-        '--preview',
-        '--lang', 'en',
-        '--api-key-file', mockApiKeyPath,
-        '--base-url', `http://127.0.0.1:${mock.port}`,
-        testFile,
-      ]));
-
-      assert.strictEqual(mock.callCount, 2);
-      assert.ok(previewRun.logs.join('\n').includes('This is the humanized result.'));
-      assert.ok(previewRun.errors.some((line) => line.includes('Preview page saved at /tmp/patina-preview-88/browser-diff-88.html (1 of 1 blocks rewritten)')));
-      assert.deepStrictEqual(spawns, [{ command: 'xdg-open', args: ['/tmp/patina-preview-88/browser-diff-88.html'] }]);
-
-      const page = writes[0].data;
-      assert.ok(page.includes('Content-Security-Policy'));
-      assert.ok(page.includes(`Source: ${testFile}`));
-      assert.ok(page.includes('<span class="ptna-after">This is the humanized result.</span>'));
-      assert.ok(page.includes('<span class="ptna-before">Coffee has emerged as a pivotal cultural phenomenon'));
-      assert.ok(page.includes('id="ptna-v-both"'));
-      assert.ok(page.includes('<details class="ptna-notes">'));
-      assert.ok(page.includes('<strong>Pattern: 1. Generic polish</strong>'));
-    } finally {
-      resetBrowserDiffRuntimeForTests();
       await mock.stop();
       mock = await startMockServer('This is the humanized result.');
     }
@@ -815,20 +713,17 @@ describe('CLI End-to-End with Mock API', () => {
     }
   });
 
-  it('rejects unsupported --preview inputs (including the deprecated --browser alias) before any backend call', async () => {
+  it('rejects unsupported --preview inputs before any backend call', async () => {
     const first = resolve(REPO_ROOT, 'tests/e2e/test-input-en.txt');
     const second = first;
     const cases = [
-      // --browser is a deprecated alias: preview validation applies to it.
-      { args: ['--browser'], pattern: /--preview requires exactly one input/ },
-      { args: ['--browser', first, second], pattern: /--preview requires exactly one input/ },
-      { args: ['--browser', '--batch', first], pattern: /does not support --batch/ },
-      { args: ['--browser', '--diff', first], pattern: /only works in rewrite mode/ },
-      { args: ['--browser', 'draft.pdf'], pattern: /--preview supports http\(s\) URLs, \.html, \.md, and \.txt input/ },
       { args: ['--serve', first], pattern: /--serve requires --preview/ },
       { args: ['--preview'], pattern: /--preview requires exactly one input/ },
       { args: ['--preview', first, second], pattern: /--preview requires exactly one input/ },
-      { args: ['--preview', 'draft.pdf'], pattern: /--preview supports http\(s\) URLs, \.html, \.md, and \.txt input/ },
+      { args: ['--preview', '--diff', 'https://example.test'], pattern: /only works in rewrite mode/ },
+      { args: ['--preview', 'draft.pdf'], pattern: /--preview supports http\(s\) URLs and local \.html files only/ },
+      { args: ['--preview', 'draft.md'], pattern: /--preview supports http\(s\) URLs and local \.html files only/ },
+      { args: ['--preview', first], pattern: /--preview supports http\(s\) URLs and local \.html files only/ },
       { args: ['--ocr', first], pattern: /--ocr requires --preview/ },
       { args: ['--preview', '--batch', 'https://example.test'], pattern: /does not support --batch/ },
     ];
@@ -860,7 +755,8 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(!help.includes('--list-providers'), 'help should not document removed provider listing');
     assert.ok(!/\n\s*--json\s+Alias for --format json/.test(help), 'help should not document removed json alias');
     assert.ok(help.includes('--no-color'), 'help should document diff color opt-out');
-    assert.ok(help.includes('--browser'), 'help should document browser diff mode');
+    assert.ok(help.includes('--preview'), 'help should document the preview mode');
+    assert.ok(!help.includes('--browser'), 'help should not document the removed browser alias');
     assert.ok(
       help.includes('openai-http, codex-cli, claude-cli, gemini-cli, kimi-cli'),
       'help should list every backend name'

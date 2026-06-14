@@ -14,7 +14,7 @@ const VALUE_OPTIONS = new Set([
 // Boolean switches. Used to reject `--quiet=1`-style values explicitly and to
 // catch a flag name swallowed as another option's value.
 const FLAG_OPTIONS = new Set([
-  '--help', '-h', '--version', '-v', '--browser', '--preview', '--ocr',
+  '--help', '-h', '--version', '-v', '--preview', '--ocr',
   '--serve', '--diff', '--no-color', '--audit', '--score', '--quiet',
   '--ouroboros', '--batch', '--in-place', '--allow-private-base-url',
   '--stop-on-retryable-storm', '--no-stop-on-retryable-storm',
@@ -89,24 +89,29 @@ export function parseArgs(rawArgs) {
       case '--tone': {
         const t = readOptionValue(args, i, arg);
         i++;
-        const valid = ['casual', 'professional', 'academic', 'narrative', 'marketing', 'instructional', 'auto'];
-        if (!valid.includes(t)) {
-          throw inputError(
-            `unknown tone ${t}`,
-            `Valid tones are: ${valid.join(', ')}.`,
-            'Use `--tone auto` to let patina infer tone from the text.'
-          );
-        }
-        parsed.tone = t;
+        parsed.tone = parseTransformList(t, arg,
+          ['casual', 'professional', 'academic', 'narrative', 'marketing', 'instructional', 'auto'],
+          'Use `--tone auto` to let patina infer tone from the text. Comma-separate tones with --preview to compare variants.');
         break;
       }
       case '--voice-sample':
         parsed.voiceSample = readOptionValue(args, i, arg);
         i++;
         break;
-      case '--browser':
-        parsed.browser = true;
+      case '--restyle': {
+        const value = readOptionValue(args, i, arg);
+        i++;
+        parsed.restyle = parseTransformList(value, arg, ['sentence', 'voice', 'content'],
+          'sentence = AI-pattern cleanup only (default), voice = full voice/register transformation, content = content-level re-planning. Comma-separate values with --preview to compare variants.');
         break;
+      }
+      case '--jargon': {
+        const value = readOptionValue(args, i, arg);
+        i++;
+        parsed.jargon = parseTransformList(value, arg, ['keep', 'explain', 'remove'],
+          'keep = leave technical terms (default), explain = add plain-language glosses, remove = replace jargon for a general audience. Comma-separate values with --preview to compare variants.');
+        break;
+      }
       case '--preview':
         parsed.preview = true;
         break;
@@ -293,6 +298,119 @@ export function validateModeExclusivity(parsed) {
   }
 }
 
+// Shared parser for --restyle/--jargon/--tone: a single value, or a
+// comma-separated list of values for --preview variant comparison. Tokens are
+// validated individually and deduped preserving order; the normalized joined
+// string is stored so downstream code has one canonical shape.
+const TRANSFORM_OPTION_NOUNS = { '--restyle': 'restyle depth', '--jargon': 'jargon policy', '--tone': 'tone' };
+
+function parseTransformList(value, option, valid, hint) {
+  const tokens = String(value ?? '').split(',').map((t) => t.trim()).filter(Boolean);
+  if (tokens.length === 0) {
+    throw inputError(`${option} expects a value`, `Valid values are: ${valid.join(', ')}.`, hint);
+  }
+  const seen = [];
+  for (const token of tokens) {
+    if (!valid.includes(token)) {
+      throw inputError(
+        `unknown ${TRANSFORM_OPTION_NOUNS[option] ?? 'value'} ${token}`,
+        `Valid values are: ${valid.join(', ')}.`,
+        hint
+      );
+    }
+    if (!seen.includes(token)) seen.push(token);
+  }
+  return seen.join(',');
+}
+
+function splitTransformValues(value, fallback) {
+  return String(value ?? fallback).split(',').map((t) => t.trim()).filter(Boolean);
+}
+
+// Expand --restyle/--jargon/--tone into the rewrite variants a run executes.
+// A single combination is the normal one-call path; multiple combinations
+// (comma lists) become --preview compare variants, one rewrite call each.
+// Tone joins the cross product so "voice in casual" and "voice in marketing"
+// are directly comparable; tone appears in the label only when it varies.
+// The cross product is capped: every variant is a full LLM call.
+export const MAX_TRANSFORM_VARIANTS = 4;
+
+export function buildTransformVariants(parsed) {
+  const restyles = splitTransformValues(parsed.restyle, 'sentence');
+  const jargons = splitTransformValues(parsed.jargon, 'keep');
+  const tones = splitTransformValues(parsed.tone, '');
+  const toneList = tones.length > 0 ? tones : [null];
+  const multiTone = toneList.length > 1;
+  const variants = [];
+  for (const restyle of restyles) {
+    for (const jargon of jargons) {
+      for (const tone of toneList) {
+        const parts = [];
+        if (restyle !== 'sentence') parts.push(restyle);
+        if (jargon !== 'keep') parts.push(jargon);
+        let label = parts.join('+');
+        if (multiTone) label = label ? `${label}·${tone}` : tone;
+        variants.push({ restyle, jargon, tone, label: label || 'cleanup' });
+      }
+    }
+  }
+  if (variants.length > MAX_TRANSFORM_VARIANTS) {
+    throw inputError(
+      `too many transform variants (${variants.length})`,
+      `--restyle × --jargon × --tone combinations are capped at ${MAX_TRANSFORM_VARIANTS}; each variant is a full rewrite call.`,
+      'Drop values from one of the lists, e.g. `--restyle voice --tone casual,professional` with a single --jargon.'
+    );
+  }
+  return variants;
+}
+
+// --restyle/--jargon opt into transformations beyond AI-pattern cleanup. They
+// only apply where patina rewrites prose it owns end to end: the default
+// rewrite and --preview. Score/audit/diff report on text as-is, and ouroboros
+// enforces meaning-preservation floors that a content-level transformation
+// would fight — reject the combination instead of silently ignoring the flag.
+// Comma-list (compare) requests additionally need the preview surface: a
+// plain rewrite has one stdout, and --ocr ties image findings to a single
+// rewrite call, so neither can carry multiple variants.
+export function validateTransformRequest(parsed) {
+  const variants = buildTransformVariants(parsed);
+  if (variants.length > 1) {
+    if (!parsed.preview) {
+      throw inputError(
+        'comparing transform variants requires --preview',
+        'Comma-separated --restyle/--jargon values render as toggleable variants on the preview page; a plain rewrite has a single stdout.',
+        'Run `patina --preview --restyle sentence,voice <url>` or pick one value.'
+      );
+    }
+    if (parsed.ocr) {
+      throw inputError(
+        '--ocr cannot be combined with transform-variant comparison',
+        'OCR findings ride a single rewrite call; per-variant image cards are not supported.',
+        'Drop --ocr, or compare variants without it.'
+      );
+    }
+  }
+  const restyleActive = variants.some((v) => v.restyle !== 'sentence');
+  const jargonActive = variants.some((v) => v.jargon !== 'keep');
+  if (!restyleActive && !jargonActive && variants.length === 1) return;
+  const flag = restyleActive ? '--restyle' : jargonActive ? '--jargon' : '--tone';
+  const blocked = [
+    ['score', '--score', 'does not rewrite text'],
+    ['audit', '--audit', 'does not rewrite text'],
+    ['diff', '--diff', 'documents pattern-based edits, not free transformations'],
+    ['ouroboros', '--ouroboros', 'enforces meaning-preservation floors that a transformation would fight'],
+  ];
+  for (const [key, name, why] of blocked) {
+    if (parsed[key]) {
+      throw inputError(
+        `${flag} cannot be combined with ${name}`,
+        `${flag} changes how text is rewritten; ${name} ${why}.`,
+        `Use a plain rewrite (\`patina ${flag} ... <file>\`) or \`patina --preview ${flag} ...\` instead.`
+      );
+    }
+  }
+}
+
 export function validatePreviewRequest(parsed) {
   if (parsed.ocr && !parsed.preview) {
     throw inputError(
@@ -320,21 +438,20 @@ export function validatePreviewRequest(parsed) {
     throw inputError(
       '--preview requires exactly one input',
       'Pass one http(s) URL or one local file; stdin and multiple inputs are not supported.',
-      'Run `patina --preview https://example.com/article` or `patina --preview draft.md`.'
+      'Run `patina --preview https://example.com/article` or `patina --preview export.html`.'
     );
   }
   const input = String(parsed.files[0] || '');
-  if (!/^https?:\/\//i.test(input) && !/\.(html?|md|markdown|txt)$/i.test(input)) {
+  if (!/^https?:\/\//i.test(input) && !/\.html?$/i.test(input)) {
     throw inputError(
-      '--preview supports http(s) URLs, .html, .md, and .txt input',
-      `"${input}" has an unsupported extension for in-place preview.`,
-      'Convert the file to HTML/markdown/plain text, or run plain `patina <file>` for a rewrite without the preview page.'
+      '--preview supports http(s) URLs and local .html files only',
+      `"${input}" is not an http(s) URL or a .html/.htm file.`,
+      'Pass a URL or an .html file, or run `patina <file>` / `patina --diff <file>` to rewrite a markdown/text draft.'
     );
   }
 }
 
-// --browser is mapped onto --preview before validation (deprecated alias),
-// so --serve is the only flag left that needs its own guard.
+// --serve only makes sense alongside --preview; guard it on its own.
 export function validateServeRequest(parsed) {
   if (parsed.serve && !parsed.preview) {
     throw inputError(
@@ -470,9 +587,8 @@ MODES
   --score                 Output AI-likeness score (0-100)
   --exit-on <n>           With --score, exit 3 when overall score > n
   --ouroboros             Iterative self-improvement loop
-  --preview               Rewrite one http(s) URL in place on a snapshot of the page, or one
-                          local file as an in-place reading document (adds one explanation call)
-  --browser               Deprecated alias for --preview (removed in 5.0)
+  --preview               Rewrite one http(s) URL or local .html file in place on a snapshot
+                          of the page (adds one explanation call)
   --ocr                   With --preview (URL/.html): extract text inside page images via an
                           image-capable local CLI (claude/gemini/codex) and include it in
                           detection — one extra backend call per image
@@ -499,10 +615,22 @@ LANGUAGE & PROFILE
                           social, email, legal, medical, marketing,
                           narrative, instructional, casual-conversation,
                           code-comment, commit-message, release-notes, namuwiki
-  --tone <name>           Tone: casual, professional, academic, narrative,
+  --tone <name[,name]>    Tone: casual, professional, academic, narrative,
                           marketing, instructional, auto. Resolution:
                           --tone > config tone > config profile.
+                          Comma list with --preview compares tones as variants
   --voice-sample <path>   Use 1-3 user paragraphs as style-only voice anchors
+  --restyle <depth[,depth]>
+                          Transformation depth (rewrite/--preview only):
+                          sentence (default) = AI-pattern cleanup,
+                          voice = rewrite everything in the target voice/register,
+                          content = content-level re-planning (MPS becomes advisory).
+                          Comma list with --preview compares variants in-page (max 4 combos)
+  --jargon <policy[,policy]>
+                          Technical-term policy (rewrite/--preview only):
+                          keep (default), explain = add plain-language glosses,
+                          remove = replace jargon for a general audience.
+                          Comma list with --preview compares variants in-page
 
 MODEL & AUTH
   --model <id>            Single model ID. Defaults use the strongest

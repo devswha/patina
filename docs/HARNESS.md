@@ -33,7 +33,7 @@ INPUT          ENGINE (deterministic, LLM-free)                 SURFACES
   │  (2) calibration (det.)  signal-impact · rebaseline:score/report ·         │
   │                          low-fpr · katfish-ko · lexicon:freshness          │
   │  (3) robustness/perf     robustness · perf                                 │
-  │  (4) LLM quality (opt-in) quality:live · adversarial-mps                   │
+  │  (4) LLM quality (opt-in) quality:live · quality:rewrite-ab · adversarial-mps │
   │  (5) comparison (det.)   detector-comparison                               │
   └──────────────────────────────────────────────────────────────────────────┘
                        │  enforced by
@@ -76,6 +76,7 @@ harness below ablates each one to report its marginal contribution.
 |---|---|---|---|
 | Live rewrite quality | `npm run quality:live` (`PATINA_LIVE=1` to call a model) | before/after AI score, MPS, fidelity on rewrites | [tests/quality/README.md](../tests/quality/README.md) |
 | Adversarial MPS | `npm run quality:adversarial-mps` | Guards against MPS hiding unchanged AI style | [tests/quality/README.md](../tests/quality/README.md) |
+| Rewrite A/B | `npm run quality:rewrite-ab` (`--live`) | Compares two rewrite configs (default `single` vs `ouroboros` multi-pass) on the same fixtures: after-AI/MPS/fidelity/edit-churn + per-fixture winner. Answers "does the multi-pass pipeline rewrite better?" | [tests/quality/README.md](../tests/quality/README.md) |
 
 ## Gates (deterministic, run in CI / pre-publish)
 

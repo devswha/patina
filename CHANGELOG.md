@@ -12,6 +12,16 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## 5.2.0 — 2026-06-15
+
+**Korean detection: a deterministic "uniform plain-다 register" hot signal that catches short, length-uniform AI Korean the burstiness gate skipped.**
+
+Semver rationale: minor — adds one KO-only deterministic stylometry signal to the per-paragraph hot rule. No removals; en/zh/ja behavior is byte-identical; false positives stay within the published tolerance.
+
+### Changed
+- New per-paragraph hot signal for Korean (`src/features/stylometry.js#koreanEndingMonotony`, wired in `src/features/index.js` and mirrored in `playground/analyzer.js`): a paragraph is hot when declarative `-다` endings dominate (ratio ≥ 0.6 and count ≥ 2) **and** sentence lengths are uniform (burstiness CV below the low band) **and** the paragraph has ≥ 20 tokens. Unlike the standard burstiness trigger it does not require 3 sentences, so it catches short AI Korean the band gate skipped, while the `-다` + low-CV conjuncts spare formal human Korean (same `-다`, varied sentence lengths → high CV) and conversational Korean (요/습니다), and the 20-token floor spares terse snippets.
+- Measured on the KO rebaseline manifest (n=380, deterministic analyzer): **KO×GPT catch 45.0% → 82.5%**, KO recall 59.2% → 70.8%, accuracy 77.6% → 80.8%, F1 0.644 → 0.716, precision 70.6% → 72.4%; human-control FPR 12.8% → 14.0% (within the published 11.6–21.7% CI). EN is unchanged. The frozen public claim manifests and the headline catch/FP claim are refreshed on the next dedicated rebaseline pass, not by this change.
+
 ## 5.1.0 — 2026-06-14
 
 **Adds Claude Code plugin-marketplace distribution, an optional multi-agent `--strict` skill mode, and Korean translationese academic grounding.**

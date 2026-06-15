@@ -20,6 +20,8 @@ import {
   DEFAULT_MATTR_WINDOW,
   DEFAULT_MIN_BURSTINESS_SENTENCES,
   koreanPostEditeseFeatures,
+  koreanEndingMonotony,
+  DEFAULT_KO_ENDING_MONOTONY,
 } from './stylometry.js';
 import {
   classifyLexiconHot,
@@ -58,6 +60,7 @@ export function analyzeText(text, opts = {}) {
     mattrWindow = DEFAULT_MATTR_WINDOW,
     koDiagnosticsEnabled = true,
     koDiagnosticBands = DEFAULT_KO_DIAGNOSTIC_BANDS,
+    koEndingMonotonyBands = DEFAULT_KO_ENDING_MONOTONY,
     lexiconDensityThreshold = DEFAULT_LEXICON_DENSITY_THRESHOLD,
     lexiconMinHotMatches = DEFAULT_LEXICON_MIN_HOT_MATCHES,
     lexicon: providedLexicon,
@@ -125,6 +128,21 @@ export function analyzeText(text, opts = {}) {
         })
       : {};
 
+    const endingMonotony = lang === 'ko' ? koreanEndingMonotony(sentences) : null;
+    // KO uniform plain-다 register: low burstiness AND -다 dominance. Unlike the
+    // standard burstiness trigger (cvBand) this does NOT require the 3-sentence
+    // minimum, so it catches short AI Korean the band gate skips, while the -다
+    // conjuncts keep formal/conversational human Korean out (DEFAULT_KO_ENDING_MONOTONY).
+    const endingMonotonyHot = Boolean(
+      endingMonotony &&
+      allTokens.length >= koEndingMonotonyBands.minTokens &&
+      cv != null &&
+      cv < burstinessBands.low &&
+      endingMonotony.daRatio != null &&
+      endingMonotony.daRatio >= koEndingMonotonyBands.minDaRatio &&
+      endingMonotony.daCount >= koEndingMonotonyBands.minDaCount
+    );
+
     const lexiconHot = classifyLexiconHot(lex, {
       lang,
       densityThreshold: lexiconDensityThreshold,
@@ -140,7 +158,8 @@ export function analyzeText(text, opts = {}) {
       lexiconHot ||
       Boolean(koSignals.koDiagnostics?.hot) ||
       candorHot ||
-      thematicBreakHot;
+      thematicBreakHot ||
+      endingMonotonyHot;
 
     return {
       id: `P${idx + 1}`,
@@ -154,6 +173,8 @@ export function analyzeText(text, opts = {}) {
       candorCount: paraCandorCounts[idx],
       thematicBreakHot,
       thematicBreakCount: paraThematicBreakCounts[idx],
+      endingMonotony,
+      endingMonotonyHot,
       // Divider-only pseudo-paragraph (a bare `---` line between blank lines).
       // Hot attribution still applies (the divider itself is rewrite scope),
       // but prose gates use this to keep their ratios on actual prose.
@@ -195,6 +216,7 @@ export {
   koreanPosDiversityProxy,
   koreanSpacingFeatures,
   koreanPostEditeseFeatures,
+  koreanEndingMonotony,
   loadLexicon,
   computeDensity,
   extractStructuralFeatures,

@@ -211,6 +211,7 @@ function triggerCounts(analysis) {
     mattr_low: 0,
     lexicon_hot: 0,
     ko_diagnostics_hot: 0,
+    ko_ending_monotony: 0,
   };
 
   for (const paragraph of analysis.paragraphs) {
@@ -218,6 +219,7 @@ function triggerCounts(analysis) {
     if (paragraph.mattr?.band === 'low') counts.mattr_low++;
     if (paragraph.lexicon?.hot) counts.lexicon_hot++;
     if (paragraph.koDiagnostics?.hot) counts.ko_diagnostics_hot++;
+    if (paragraph.endingMonotonyHot) counts.ko_ending_monotony++;
   }
 
   return counts;

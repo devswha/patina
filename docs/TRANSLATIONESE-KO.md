@@ -6,6 +6,13 @@ The stylometry + AI-lexicon signals catch *structure* and *AI vocabulary*; they
 do **not** catch lexical translationese (e.g. "커맨드 기둥" for "command pillars",
 "~에 의해" passives, "당신" for "you"). This catalog fills that gap.
 
+## Academic grounding
+
+The concepts these signals operationalize — translationese, Toury's law of
+interference, Baker's translation universals, and Toral's post-editese, plus the
+Korean 번역투 research tradition (이근희, 김순영) — are documented with verifiable
+citations in [`research/ko-translationese-scholarship.md`](research/ko-translationese-scholarship.md).
+
 ## Design notes
 
 - **Precision first.** Most of these constructions also appear in good native

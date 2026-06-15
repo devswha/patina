@@ -1,6 +1,6 @@
 ---
 name: patina
-version: 5.0.0
+version: 5.1.0
 description: Detect and rewrite AI writing patterns in Korean, English, Chinese, and Japanese text so it reads as if a human wrote it. Meaning-preservation (MPS) verified.
 allowed-tools:
   - Read
@@ -9,6 +9,7 @@ allowed-tools:
   - Grep
   - Glob
   - AskUserQuestion
+  - Task
 ---
 
 # patina: AI 글쓰기 패턴 제거 오케스트레이터
@@ -39,6 +40,7 @@ Glob .patina.default.yaml → Read
 - `--audit`: audit 출력 모드
 - `--score`: score 출력 모드
 - `--ouroboros`: ouroboros 모드 (반복 교정 + 점수 수렴)
+- `--strict`: 옵트인 다중 패스 엄격 모드. rewrite 출력 모드를 사용한다. `--lang`, `--tone`, `--profile`, `--ouroboros`와 함께 사용할 수 있다. `--audit`, `--diff`, `--score`와 함께 사용할 수 없다.
 - `--lang <code>`: 처리 언어 변경 (ko, en, zh, ja). 설정 파일의 `language` 값을 오버라이드한다.
 - `--tone <name>`: 톤 카테고리 지정. 유효값: `casual | professional | academic | narrative | marketing | instructional | auto`. 알 수 없는 값이면 즉시 오류: "Unknown tone '<name>'. Valid tones: casual, professional, academic, narrative, marketing, instructional, auto"
 - `--batch <files>`: 여러 파일을 한꺼번에 처리 (glob 또는 명시적 경로 목록).
@@ -81,6 +83,7 @@ if --lang in {zh, ja} and resolved_tone in 6-tone set:
 파일이 없으면 에러: "core/scoring.md not found. Please update patina."
 
 `--ouroboros`는 rewrite 출력 모드를 사용한다. `--audit`, `--diff`, `--score`와 함께 사용할 수 없다.
+`--strict`는 rewrite 출력 모드를 사용한다. `--audit`, `--diff`, `--score`와 함께 사용할 수 없다.
 
 ---
 
@@ -427,6 +430,110 @@ paragraph is SUSPECT iff
 > **주의:** `--ouroboros`는 rewrite 출력을 기본으로 한다. `--diff`, `--audit`, `--score`와 함께 사용할 수 없다.
 
 ---
+
+
+---
+
+## Strict 모드 (다중 패스) (`--strict`)
+
+`--strict` 플래그가 있으면 아래 5단계 패스를 순차적으로 수행한다. 1~4단계(설정, 패턴, 프로필, 목소리 로드)는 한 번만 실행한다.
+
+**실행 모드 (자동 선택):**
+
+- **위임 모드 (플러그인 환경):** patina 플러그인의 read-only 서브에이전트(`patina-detector`, `patina-fidelity-auditor`, `patina-naturalness-reviewer`)를 사용할 수 있으면, `Task` 도구로 분석 패스 P1/P3/P4를 각 서브에이전트에 위임한다(격리된 컨텍스트). 오케스트레이션, 재작성(P2), 게이트(P5)는 메인 스킬이 담당한다. 서브에이전트는 read-only라 절대 텍스트를 직접 쓰지 않는다.
+- **자체 완결 모드 (폴백):** 서브에이전트가 없으면(Codex/Cursor/OpenCode 또는 비플러그인 설치) 동일 스킬 에이전트가 P1~P5를 모두 인라인으로 수행한다.
+- 두 모드의 판정 기준, floor, 게이트 로직은 **동일하다**. 위임은 컨텍스트 격리를 위한 것일 뿐 결과의 의미를 바꾸지 않는다. 위임 호출이 실패하면 해당 패스를 인라인으로 폴백한다.
+
+> **어드바이저리 메타데이터 규칙:** 한국어 `translationese` 및 `koPostEditese.v1` 신호는 **어드바이저리 전용**이다. 이 신호는 Strict 모드 내의 어떠한 패스에서도 점수, `hot` 판정, 게이트, 심각도, 기준선/백분위수, 벤치마크 주장, 또는 저작권 판정에 반영되어서는 안 된다.
+
+### 패스 시퀀스
+
+#### P1: 전체 감지 패스 (Detection Pass)
+
+4.x단계(4.5 의미 앵커 추출, 4.5b 톤 감지, 4.6 통계 기반 의심 구간, 4.7 AI-lexicon 매칭, 4.8 문서 브리프)를 완전히 실행한다. 결과는 심각도가 부여된 발견 목록(`findings list`)으로 정리한다.
+
+**위임 모드:** 이 패스를 `patina-detector` 서브에이전트에 위임한다(반환: 심각도가 부여된 발견 목록). 폴백 모드에서는 메인 스킬이 위 4.x단계를 직접 실행한다.
+
+- 각 발견 항목: `{paragraph_index, span, signal_type, severity}` 형태 (내부 작업 메모리)
+- `signal_type`: `burstiness_low` | `MATTR_low` | `lexicon_hot` | `pattern_match`
+- 발견이 0건이면 즉시 종료 — 원문을 그대로 출력하고 Strict 모드 결과 footer를 붙인다
+
+#### P2: 근거 기반 재작성 (Evidence-Based Rewrite)
+
+P1 발견 목록을 입력으로, 5a단계(구조 분석) → 5b단계(문장/어휘 패턴) → 5c단계(자기검수) 파이프라인을 실행한다. 발견된 스팬/존에 한정해 교정한다 — 발견이 없는 구간은 건드리지 않는다.
+
+#### P3: 충실도/MPS 감사 패스 (Fidelity & MPS Audit)
+
+`core/scoring.md` §§9-14의 절차에 따라 P2 출력을 원문과 대조한다.
+
+**위임 모드:** 이 패스를 `patina-fidelity-auditor` 서브에이전트에 위임한다(입력: 원문 + P2 출력, 반환: PASS/NEEDS-ROLLBACK + 위반 스팬 + `{fidelity_score, mps_score}`). 폴백 모드에서는 메인 스킬이 직접 대조한다.
+
+검증 대상:
+- **주장(Claims):** 사실적 주장이 보존되었는가
+- **수치(Numbers):** 모든 숫자·비율·측정값이 그대로인가
+- **극성(Polarity):** 긍정/부정/중립 입장이 반전되지 않았는가
+- **인과(Causation):** 인과 관계가 상관 관계로 바뀌거나 삭제되지 않았는가
+- **고유명사(Named Entities):** 인명·지명·브랜드명·제품명이 그대로인가
+- **직접 인용(Quotes):** 큰따옴표 안의 내용이 변경되지 않았는가
+
+결과: `{fidelity_score, mps_score}` (내부 작업 메모리)
+
+#### P4: 자연스러움 재스캔 (Naturalness Re-Scan)
+
+P2 출력에 4.6/4.7단계의 통계 감지와 AI-lexicon 매칭을 재실행하여 잔류 hot 존과 과잉 편집 여부를 확인한다.
+
+**위임 모드:** 이 패스를 `patina-naturalness-reviewer` 서브에이전트에 위임한다(반환: 잔류 hot 존 + 과잉 편집 여부 + A–D 등급). 폴백 모드에서는 메인 스킬이 직접 재스캔한다.
+
+- **잔류 hot 존:** P1에서 감지된 스팬이 P2 이후에도 여전히 hot이면 잔류로 기록
+- **과잉 편집 감지:** 변경된 토큰 수 / 원문 토큰 수 > 0.50이면 과잉 편집 경고
+
+결과: `{residual_hot_zones: [...], over_edit: bool}` (내부 작업 메모리)
+
+#### P5: 수락/재시도/롤백 게이트 (Accept / Retry / Rollback Gate)
+
+```
+floors (ouroboros와 동일):
+  fidelity_floor = 70
+  mps_floor      = 70
+
+accept 조건 (모두 충족):
+  fidelity_score >= fidelity_floor
+  AND mps_score  >= mps_floor
+  AND residual_hot_zones == []
+  AND over_edit == false
+
+→ ACCEPT: P2 출력을 최종 결과로 확정한다
+
+retry 조건 (accept 실패 시, 재시도 횟수 < 3):
+  offending 스팬만 격리하여 P2→P3→P4를 재실행한다
+  재시도마다 retry_count += 1
+  retry_count 상한: 3회
+
+rollback 조건 (retry 상한 초과 또는 retry 후에도 accept 실패):
+  offending 스팬의 교정을 취소하고 해당 구간을 원문으로 복원한다
+  나머지 통과된 스팬의 교정은 유지한다
+  롤백 사유를 footer에 보고한다
+```
+
+### 출력 형식
+
+P5 게이트 결과 이후 최종 교정 텍스트와 함께 다음 footer를 출력한다 (6단계 공통 YAML footer에 추가):
+
+```
+---
+strict_mode: true
+passes: [P1, P2, P3, P4, P5]
+fidelity_score: <값>
+mps_score: <값>
+residual_hot_zones: <개수>
+over_edit: <true|false>
+retries: <횟수>
+rollback_spans: <롤백된 스팬 수 또는 0>
+gate_result: accept | rollback
+---
+```
+
+> **참고:** `--strict`는 `--ouroboros`와 함께 사용할 수 있다. 이 경우 P5 게이트를 통과한 최종 출력이 ouroboros 루프의 입력으로 사용된다.
 
 ## 배치 모드 (`--batch`)
 

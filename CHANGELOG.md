@@ -12,6 +12,21 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## 5.1.0 — 2026-06-14
+
+**Adds Claude Code plugin-marketplace distribution, an optional multi-agent `--strict` skill mode, and Korean translationese academic grounding.**
+
+Semver rationale: minor — additive only. No CLI or schema removals, the deterministic engine is unchanged, and all new behavior is opt-in (default-off), so existing runs are byte-identical without the new flags.
+
+### Added
+- Claude Code plugin marketplace: `/plugin marketplace add devswha/patina` then `/plugin install patina@patina`. The repo-root `SKILL.md` auto-loads as the `/patina` skill (no `skills/` directory or `skills` manifest field), so the pattern/core/lexicon data directories stay untouched. `uninstall.sh` mirrors the script install for clean removal.
+- Three read-only subagents auto-discovered from `agents/`: `patina-detector` (stylometry + AI-lexicon + pattern findings), `patina-fidelity-auditor` (MPS/fidelity audit), and `patina-naturalness-reviewer` (residual-tell + over-edit grade).
+- Opt-in `--strict` multi-pass skill mode in `SKILL.md`: detect → rewrite → fidelity/MPS audit → naturalness re-scan → accept/retry/rollback. In a plugin environment `--strict` delegates the read-only analysis passes to the subagents via the `Task` tool; otherwise it runs the same passes inline in a single agent, with identical floors and gate logic.
+- `docs/research/ko-translationese-scholarship.md` anchoring patina's Korean detectors to verifiable sources (Gellerstam 1986, Baker 1993, Toury 1995, Toral 2019; Korean 번역투 tradition: 이근희 2005/2008, 김순영 2012), with an honest scope note (concept/terminology grounding, advisory-only). `epoko77-ai/im-not-ai` added to `docs/COMPARISON.md`. Non-technical Korean onboarding added to `README_KR.md`.
+
+### Fixed
+- Synced previously-stale version surfaces that had drifted behind `package.json`: the `docs/ROADMAP.md` repo-metadata note and the `README_KR`/`README_ZH`/`README_JA` version badges.
+
 ## 5.0.0 — 2026-06-14
 
 **Breaking: `--preview` is URL/`.html`-only and the deprecated `--browser` alias is removed; adds `--restyle`/`--jargon` transformations, `--preview` variant comparison, and a word-level diff view.**

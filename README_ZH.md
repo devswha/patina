@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#快速开始)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-4.0.1-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.1.0-blue)](CHANGELOG.md)
 
 <p align="center">
   <img src="assets/demo/patina-demo-en.gif" alt="patina 将带有 AI 味的英文文案改写并显示评分的终端演示 GIF" width="780">
@@ -66,10 +66,18 @@ patina 会在中文、韩文、英文和日文中找出 AI 味较重的表达，
 
 ### 作为 Claude Code 或 Codex CLI 技能
 
+**Claude Code — 插件市场（无需克隆，推荐）：**
+
+```text
+/plugin marketplace add devswha/patina
+/plugin install patina@patina
+```
+
+**Claude Code · Codex CLI · Cursor · OpenCode — 安装脚本：**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
-
 安装脚本会把 patina 一次接入 Claude Code、[Codex CLI](https://github.com/openai/codex)、Cursor 和 OpenCode。安装时会先把远程 HEAD 固定到具体 commit；如果想固定到某个版本，请设置 `PATINA_REF=<tag-or-full-sha>`。然后：
 
 ```

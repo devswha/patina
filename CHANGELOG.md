@@ -12,6 +12,15 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## 5.4.0 — 2026-06-15
+
+**Rewrite-quality A/B harness: compare two rewrite configs (single vs ouroboros multi-pass) on the same fixtures so pipeline decisions are data-driven.**
+
+Semver rationale: minor — adds a contributor-facing, opt-in benchmark tool. No CLI, schema, pattern, or detection-behavior change; all four languages byte-identical.
+
+### Added
+- `scripts/rewrite-ab.mjs` (`npm run quality:rewrite-ab`): for each live-quality fixture it produces a rewrite per config, model-grades both (before/after AI score, MPS, fidelity via the existing `scoreText`/`scoreMPS`/`scoreFidelity`), measures word-level edit churn, and picks a per-fixture winner (lowest after-AI-score among configs meeting the MPS/fidelity floors, ties broken on churn) plus per-config aggregates and head-to-head wins. The default comparison is `single` (one-shot) vs `ouroboros` (the existing CLI multi-pass), so the "does a multi-pass/multi-agent pipeline rewrite better?" question can be answered with data before keeping such a pipeline. LLM-backed and opt-in (`--live` / `PATINA_LIVE`); the comparison/aggregation core is unit-tested with injected producers. Documented in `docs/HARNESS.md` and `tests/quality/README.md`.
+
 ## 5.3.0 — 2026-06-15
 
 **Harness & conventions: a reproducible per-signal impact (ablation) tool and a documented workflow for adding deterministic detection signals.**

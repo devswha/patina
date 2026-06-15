@@ -12,6 +12,17 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## 5.3.0 — 2026-06-15
+
+**Harness & conventions: a reproducible per-signal impact (ablation) tool and a documented workflow for adding deterministic detection signals.**
+
+Semver rationale: minor — adds a contributor-facing benchmark tool and workflow docs. No CLI, schema, pattern, or detection-behavior change; all four languages are byte-identical.
+
+### Added
+- `scripts/signal-impact.mjs` (`npm run benchmark:signal-impact`): joins a labeled manifest (`expected_hot`) to its local text, runs `analyzeText()` once per row, and recomputes the hot verdict with each signal ablated to report each signal's **marginal** catch/FP contribution (attributable TP/FP) plus Δrecall/Δfpr/ΔF1. Deterministic and gitignore-safe (reads local/private corpus, emits aggregate metrics only). Replaces the ad-hoc eval-kernel measurement used to calibrate the 5.2.0 KO signal.
+- `docs/HARNESS.md`: an index of every measurement, calibration, and gate tool (deterministic vs LLM, command, docs link), linked from `README*` and `tests/quality/README.md`.
+- `CONTRIBUTING.md` / `CONTRIBUTING_KR.md` "Adding a Deterministic Detection Signal": codifies the calibration loop (diagnose → FP-safe discriminator → first-class implementation → mirror every surface → measure with the harness → version), the advisory-vs-hot-signal rule, the FP tolerance bar, and the surfaces to keep in sync.
+
 ## 5.2.0 — 2026-06-15
 
 **Korean detection: a deterministic "uniform plain-다 register" hot signal that catches short, length-uniform AI Korean the burstiness gate skipped.**

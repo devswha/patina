@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#빠른-시작)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-5.2.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.3.0-blue)](CHANGELOG.md)
 
 <p align="center">
   <img src="assets/demo/patina-demo-ko.gif" alt="patina가 한국어 AI풍 문장을 다듬고 결과 점수를 보여주는 터미널 데모 GIF" width="780">
@@ -331,6 +331,7 @@ tone:                     # casual | professional | academic | narrative | marke
 - **[Korean Translationese](docs/TRANSLATIONESE-KO.md)** — 한국어 번역투/calque 탐지 catalog와 advisory 경계
 - **[Korean Translationese Scholarship](docs/research/ko-translationese-scholarship.md)** — 번역투·translation universals·post-editese 학술 근거(이근희·김순영·Baker·Toury·Toral)와 patina 신호 매핑
 - **[Subagents (strict flow)](docs/agents.md)** — 선택형 멀티 에이전트 strict 플로우(detector·fidelity-auditor·naturalness-reviewer)와 Claude Code 플러그인 자동발견
+- **[Measurement Harness](docs/HARNESS.md)** — 벤치마크·보정·게이트 도구 전체 인덱스 + 신호 임팩트(ablation) 하네스
 - **[Launch Copy](docs/social/patina-launch-copy.md)** — launch sequence, score gate, Show HN/Product Hunt/Reddit/X/Korean drafts
 - **[Signs of AI Writing](docs/social/signs-of-ai-writing_KR.md)** ([English](docs/social/signs-of-ai-writing.md)) — cited example이 붙은 공유용 편집 checklist
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 어휘 알고리즘

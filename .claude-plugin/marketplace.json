@@ -10,7 +10,7 @@
     {
       "name": "patina",
       "source": "./",
-      "version": "5.0.0",
+      "version": "5.1.0",
       "description": "Strip the AI packaging, keep the meaning. Detect and rewrite AI writing patterns across KO/EN/ZH/JA with MPS/fidelity checks. Runs the root SKILL.md as the /patina skill.",
       "homepage": "https://github.com/devswha/patina",
       "repository": "https://github.com/devswha/patina",

@@ -1,6 +1,6 @@
 ---
 name: patina
-version: 5.2.0
+version: 5.3.0
 description: Detect and rewrite AI writing patterns in Korean, English, Chinese, and Japanese text so it reads as if a human wrote it. Meaning-preservation (MPS) verified.
 allowed-tools:
   - Read

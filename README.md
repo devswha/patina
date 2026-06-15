@@ -20,7 +20,7 @@
   <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
   <a href="#quick-start"><img alt="Skill: Claude Code | Codex | Cursor | OpenCode" src="https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet"></a>
   <a href="https://github.com/devswha/patina"><img alt="Languages: KO | EN | ZH | JA" src="https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green"></a>
-  <a href="CHANGELOG.md"><img alt="Version 5.2.0" src="https://img.shields.io/badge/version-5.2.0-blue"></a>
+  <a href="CHANGELOG.md"><img alt="Version 5.3.0" src="https://img.shields.io/badge/version-5.3.0-blue"></a>
 </p>
 
 <p align="center">
@@ -187,7 +187,7 @@ If meaning drifts, the change is retried or rolled back. Deterministic analysis 
 
 ```yaml
 # .patina.default.yaml
-version: "5.2.0"
+version: "5.3.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
@@ -206,6 +206,7 @@ Start here:
 - [Patterns](docs/PATTERNS.md) — full pattern catalog
 - [Subagents & strict flow](docs/agents.md) — optional read-only detector/fidelity/naturalness subagents and the `--strict` multi-pass mode
 - [Benchmarks](docs/benchmarks/README.md) · [latest report](docs/benchmarks/latest.md) · [2026 rebaseline](docs/research/2026-rebaseline.md)
+- [Measurement harness](docs/HARNESS.md) — index of every benchmark, calibration, and gate tool (incl. the signal-impact ablation harness)
 - [FAQ](docs/FAQ.md) ([한국어](docs/FAQ_KR.md))
 - [Ethics](docs/ETHICS.md)
 - [Contributing](CONTRIBUTING.md) ([한국어](CONTRIBUTING_KR.md))

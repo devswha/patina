@@ -10,6 +10,19 @@
 
 ---
 
+## Path 0 — Claude Code plugin marketplace (interactive, no clone)
+
+If the user is in an **interactive Claude Code session**, the simplest install is the plugin marketplace — no git clone, and updates flow through `/plugin`:
+
+```text
+/plugin marketplace add devswha/patina
+/plugin install patina@patina
+```
+
+Uninstall with `/plugin uninstall patina@patina`. This path loads the repo-root `SKILL.md` as the `/patina` skill. The git/symlink paths below (A/B/C) are for non-interactive installs or multi-host setups; to remove a script install, run `uninstall.sh` (or `curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/uninstall.sh | bash`).
+
+---
+
 ## Decision Tree (run this first)
 
 Inspect the host before installing. Pick exactly one of the three paths.

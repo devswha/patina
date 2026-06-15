@@ -1,0 +1,25 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "patina",
+  "version": "5.0.0",
+  "description": "Detect and rewrite AI writing patterns in Korean, English, Chinese, and Japanese so text reads as if a human wrote it. Meaning-preservation (MPS) verified, audit-friendly. The root SKILL.md is loaded as the /patina skill.",
+  "author": {
+    "name": "devswha",
+    "url": "https://github.com/devswha"
+  },
+  "homepage": "https://github.com/devswha/patina",
+  "repository": "https://github.com/devswha/patina",
+  "license": "MIT",
+  "keywords": [
+    "humanize",
+    "ai-writing",
+    "ai-detector",
+    "translationese",
+    "korean",
+    "english",
+    "chinese",
+    "japanese",
+    "윤문",
+    "번역투"
+  ]
+}

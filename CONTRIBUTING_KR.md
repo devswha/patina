@@ -96,6 +96,21 @@ npm run benchmark:report
 
 이 명령은 `tests/quality/results.json`, `docs/benchmarks/latest.json`, `docs/benchmarks/latest.md`를 다시 생성합니다.
 
+## 결정론 검출 신호 추가
+
+위의 패턴은 LLM이 실행하는 카탈로그 항목입니다. **검출 신호(detection signal)**는 다릅니다 — `src/features/*`에서 계산되어 단락 단위 hot OR 규칙에 합류하는 결정론적 hot/cold 입력입니다(burstiness, MATTR, lexicon density, 한국어 진단 composite, ending-monotony 신호 등). 분석 레이어는 LLM-free를 유지하므로, 새 신호는 보정 기준을 갖춘 실제 엔지니어링입니다. 다음 루프를 따르세요:
+
+1. **근거로 누락을 진단합니다.** 직관이 아니라 라벨드 매니페스트에서 검출이 실패하는 지점을 찾습니다. scored 매니페스트의 `score_review.trigger_counts`가 어떤 신호가 어떤 행에서 발동하는지 보여주고, `npm run benchmark:signal-impact`가 각 기존 신호의 한계 catch/FP를 알려줘 공백을 드러냅니다.
+2. **오탐-안전한 판별자를 찾습니다.** AI 누락을 **길이/레지스터가 매칭된** 사람 대조군과 비교합니다(짧은 길이 교란은 AI tell이 아닙니다). 판별자는 *같은 표면 특징을 공유하는 사람 레지스터*와 AI를 갈라야 합니다 — 예: 평서형 `-다` AI vs 격식 사람 `-다`는 `-다` 단독이 아니라 burstiness 결합 조건이 필요했습니다.
+3. **advisory 페이로드를 끌어쓰지 말고 1급 신호로 구현합니다.** advisory 신호(`translationese`, `koPostEditese.v1`)는 hot 판정에 들어가면 안 됩니다([docs/TRANSLATIONESE-KO.md](docs/TRANSLATIONESE-KO.md)). `src/features/stylometry.js`에 전용 계산을 추가하고 `src/features/index.js`의 hot OR에 연결하며, 짧은/코너케이스 텍스트에 과발동하면 정밀도 게이트(길이/횟수 하한)를 둡니다.
+4. **모든 표면을 미러링합니다.** 다음이 일치해야 신호가 완성됩니다: `src/features/index.js`(Node), `playground/analyzer.js`(브라우저 패리티 — 패리티 테스트 있음), `scripts/rebaseline-score.mjs`의 `trigger_counts`, `core/stylometry.md`·`SKILL.md`의 hot 규칙 산문, 그리고 유닛 테스트(정밀도 가드 포함).
+5. **손이 아니라 하네스로 측정합니다.** `npm run benchmark:signal-impact`로 한계 before/after를, `npm run benchmark`로 49-fixture(자연 fixture가 hot으로 뒤집히면 안 됨 — 100% 유지)를 확인하고, 사람 대조군 오탐율이 `docs/benchmarks/rebaseline-latest.md`의 공개 CI 내에 머무는지 확인합니다. 측정값은 changelog에 기록합니다. 동결된 공개 claim 매니페스트는 신호 PR이 아니라 별도 rebaseline pass에서 갱신합니다.
+6. **버전을 올립니다.** 새 검출 신호는 hot 동작을 바꾸므로 **minor** 범프입니다(제거가 아닌 추가). 모든 버전 surface를 올리고, 측정한 catch/FP 델타와 가드한 실패 모드를 담은 changelog 항목을 추가합니다.
+
+수용 기준(로드맵의 deterministic-feature-expansion 기준과 동일): 라벨드 매니페스트에서 재현율 또는 정밀도가 개선되고, 사람 대조군 오탐율이 공개 허용치 내에 머물며, 신호가 문서화된 실패 모드와 before/after 예시를 함께 제공합니다.
+
+전체 측정 도구 지도는 [docs/HARNESS.md](docs/HARNESS.md)를 참고하세요.
+
 ## 예시 번역
 
 - 숫자, 엔티티, 부정, 인과, 양태 같은 원문의 semantic anchor를 보존합니다.

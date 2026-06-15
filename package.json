@@ -1,6 +1,6 @@
 {
   "name": "patina-cli",
-  "version": "5.2.0",
+  "version": "5.3.0",
   "description": "AI text humanizer CLI — detects and removes AI writing patterns",
   "type": "module",
   "main": "src/cli.js",
@@ -40,6 +40,7 @@
     "quality:live": "node tests/quality/live-quality.mjs",
     "benchmark:rebaseline:intake": "node scripts/rebaseline-intake.mjs",
     "benchmark:rebaseline:score": "node scripts/rebaseline-score.mjs",
+    "benchmark:signal-impact": "node scripts/signal-impact.mjs",
     "benchmark:rebaseline:web": "node scripts/rebaseline-web-collect.mjs",
     "benchmark:katfish-ko": "node scripts/katfish-calibration.mjs",
     "lexicon:freshness": "node scripts/lexicon-freshness.mjs --check",
@@ -126,6 +127,7 @@
     "scripts/adversarial-mps-report.mjs",
     "scripts/rebaseline-intake.mjs",
     "scripts/rebaseline-score.mjs",
+    "scripts/signal-impact.mjs",
     "tests/quality/adversarial-mps/",
     "tests/quality/rebaseline-manifest.example.jsonl",
     "artifacts/rebaseline-2025/README.md",

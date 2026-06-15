@@ -4,6 +4,10 @@ Deterministic measurement of patina's stylometry / lexicon signal layer
 against a labeled fixture set. Runs with no LLM calls, no API key, no
 network — fast enough to run on every CI build.
 
+> This is one layer of the repo's measurement harness. See
+> [docs/HARNESS.md](../../docs/HARNESS.md) for the full tool map (benchmark,
+> calibration, signal-impact, LLM-quality, and gates).
+
 ## Run it
 
 ```bash

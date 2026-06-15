@@ -1,6 +1,6 @@
 ---
 name: patina
-version: 5.1.0
+version: 5.2.0
 description: Detect and rewrite AI writing patterns in Korean, English, Chinese, and Japanese text so it reads as if a human wrote it. Meaning-preservation (MPS) verified.
 allowed-tools:
   - Read
@@ -337,9 +337,14 @@ paragraph is SUSPECT iff
   burstiness_band == "low"
   OR MATTR_band == "low"
   OR lexicon_density > lexicon.density_threshold
+  OR (ko 전용) ending_monotony
+     : 평서형 '-다' 비율 >= 0.6 AND '-다' 문장 수 >= 2
+       AND burstiness CV < low AND 단락 토큰 >= 20
 ```
 
 4.6단계 OR 규칙에 lexicon 신호를 한 절(clause) 추가한다.
+
+(ko 전용) `ending_monotony` 절을 추가한다: 평탄한 한다체(평서형 `-다`)를 균일한 문장 길이로 쓰는 짧은 AI 한국어를 잡되, 문장 길이 변동이 큰 격식 사람 한국어와 대화체(요/습니다)는 배제한다. 3문장 미만이라 burstiness band gate가 비활성인 단락도 포함하나 초단문 오탐 방지를 위해 단락 토큰 20개 이상을 요구한다. 상세는 `core/stylometry.md` 참조.
 
 ### LLM 전달 형식 확장
 

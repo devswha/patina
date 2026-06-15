@@ -19,6 +19,8 @@ import {
   koreanPosDiversityProxy,
   koreanSpacingFeatures,
   koreanPostEditeseFeatures,
+  koreanEndingMonotony,
+  DEFAULT_KO_ENDING_MONOTONY,
 } from '../src/features/stylometry.js';
 import {
   DEFAULT_LEXICON_DENSITY_THRESHOLD,
@@ -159,7 +161,7 @@ export function countFormatting(text, opts = {}) {
   return { emDash, bold, emoji };
 }
 
-function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, formatting, formattingThresholds, leakage, candor, thematicBreaks }) {
+function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, endingMonotonyHot, formatting, formattingThresholds, leakage, candor, thematicBreaks }) {
   const reasons = [];
   if (candor?.hot) {
     reasons.push({
@@ -241,6 +243,13 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, forma
       detail: `Regular spacing, low comma rhythm, and low suffix diversity matched together (strength ${fmt(koDiagnostics.strength, 1)}).`,
     });
   }
+  if (endingMonotonyHot) {
+    reasons.push({
+      code: 'ko-ending-monotony',
+      label: 'Uniform plain-다 register',
+      detail: 'Flat declarative -다 endings with little sentence-length variation, a short-form LLM Korean tell.',
+    });
+  }
   return reasons;
 }
 
@@ -283,6 +292,16 @@ export function analyzePlaygroundText(text, opts = {}) {
     const koSignals = lang === 'ko'
       ? buildKoreanSignals(paragraph, sentences.length)
       : {};
+    const endingMonotony = lang === 'ko' ? koreanEndingMonotony(sentences) : null;
+    const endingMonotonyHot = Boolean(
+      endingMonotony &&
+      tokens.length >= DEFAULT_KO_ENDING_MONOTONY.minTokens &&
+      cv != null &&
+      cv < DEFAULT_BURSTINESS_BANDS.low &&
+      endingMonotony.daRatio != null &&
+      endingMonotony.daRatio >= DEFAULT_KO_ENDING_MONOTONY.minDaRatio &&
+      endingMonotony.daCount >= DEFAULT_KO_ENDING_MONOTONY.minDaCount
+    );
     const lexiconHot = classifyLexiconHot(lex, {
       lang,
       densityThreshold: threshold,
@@ -310,7 +329,8 @@ export function analyzePlaygroundText(text, opts = {}) {
       emojiHot ||
       leakage.leaked ||
       candorHot ||
-      thematicBreakHot;
+      thematicBreakHot ||
+      endingMonotonyHot;
     const thematicBreaks = {
       ...paraThematicBreaks[idx],
       docCount: docThematicBreaks.count,
@@ -328,6 +348,7 @@ export function analyzePlaygroundText(text, opts = {}) {
       leakage,
       candor: { hot: candorHot, docCount: docCandor },
       thematicBreaks,
+      endingMonotonyHot,
     });
 
     return {
@@ -342,6 +363,8 @@ export function analyzePlaygroundText(text, opts = {}) {
       formatting,
       leakage,
       ...koSignals,
+      endingMonotony,
+      endingMonotonyHot,
       thematicBreaks,
       hot,
       reasons,

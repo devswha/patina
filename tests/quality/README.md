@@ -101,6 +101,29 @@ nonzero; AI-score target misses remain `warn` so the report is still usable.
 Keep this out of mandatory CI unless the live model path is deliberately
 allowed, because LLM output is non-deterministic and may incur provider cost.
 
+## Rewrite A/B (default vs ouroboros)
+
+`npm run quality:rewrite-ab` compares two rewrite configurations on the same
+fixtures so multi-pass / pipeline questions are answered with data. The default
+comparison is `single` (one-shot rewrite) vs `ouroboros` (the existing CLI
+multi-pass: detect → rewrite → score → rollback with MPS/fidelity floors).
+
+```bash
+PATINA_LIVE=1 PATINA_LIVE_PROVIDER=gemini PATINA_LIVE_API_KEY=... \
+  npm run quality:rewrite-ab -- --configs single,ouroboros --language ko --limit 3
+npm run quality:rewrite-ab -- --json
+```
+
+For each fixture it produces a rewrite per config, model-grades both
+(before/after AI score, MPS, fidelity via `scoreText`/`scoreMPS`/`scoreFidelity`),
+measures edit churn (word-level change ratio), and picks a per-fixture winner:
+the lowest after-AI-score among configs that meet the MPS/fidelity floors, ties
+broken on lower churn. The summary reports per-config means and head-to-head
+wins. Like `quality:live` it is LLM-backed and opt-in (non-deterministic, may
+incur cost); the comparison/aggregation core is unit-tested with injected
+producers. Use this to decide whether a multi-pass/multi-agent pipeline earns
+its cost before keeping it.
+
 ## Adversarial MPS fixtures
 
 `npm run quality:adversarial-mps` validates a small, repo-owned fixture set

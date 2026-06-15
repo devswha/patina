@@ -13,6 +13,40 @@ Two rules govern everything here:
   corpus rows (`artifacts/rebaseline-2025/{*.local.jsonl,private/*.jsonl}`,
   gitignored) but only ever emit aggregate metrics and hashes.
 
+## Architecture
+
+```text
+CONVENTIONS  (how to contribute — governs everything below)
+  CONTRIBUTING.md (patterns / signals / fixtures / versioning) · this file (map)
+  AGENTS.md (src/features = deterministic, LLM-free) · TRANSLATIONESE-KO (advisory rule)
+        │
+        ▼
+INPUT          ENGINE (deterministic, LLM-free)                 SURFACES
+ text ──► src/features/* → analyzeText() → per-paragraph    ──► Node CLI (src/)
+              stylometry · lexicon · ko-diagnostics ·            /patina skill (SKILL.md)
+              ending-monotony · discourse-tells                  playground (browser)
+                       │  HOT? = OR(signals)                          ▲ node↔playground
+                       ▼  measured by                                   parity test
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ HARNESS                                                                    │
+  │  (1) regression (det.)   benchmark · benchmark:ranges · benchmark:report   │
+  │  (2) calibration (det.)  signal-impact · rebaseline:score/report ·         │
+  │                          low-fpr · katfish-ko · lexicon:freshness          │
+  │  (3) robustness/perf     robustness · perf                                 │
+  │  (4) LLM quality (opt-in) quality:live · adversarial-mps                   │
+  │  (5) comparison (det.)   detector-comparison                               │
+  └──────────────────────────────────────────────────────────────────────────┘
+                       │  enforced by
+                       ▼
+  GATES (CI / pre-publish, deterministic)
+   lint · test · release:check · check:no-private-assets · prose-score
+```
+
+Hot decision = OR of the per-paragraph signals (`burstiness_low`, `mattr_low`,
+`lexicon_hot`, `ko_diagnostics`, `candor`, `thematic_break`, `ko_ending_monotony`)
+plus the document-level `markup_leakage` / `structural_model`. The signal-impact
+harness below ablates each one to report its marginal contribution.
+
 ## Quality & regression (deterministic, CI-safe)
 
 | Tool | Command | What it measures | Docs |

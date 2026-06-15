@@ -30,6 +30,15 @@ expect(aliasPkg.dependencies?.['patina-cli'] === version, 'patina-humanizer must
 expect(aliasPkg.bin?.['patina-humanizer'] === 'bin/patina-humanizer.js', 'patina-humanizer bin must point to bin/patina-humanizer.js');
 expect(existsSync(repoPath('packages/patina-humanizer/bin/patina-humanizer.js')), 'patina-humanizer bin file must exist');
 
+const pluginManifest = readJson('.claude-plugin/plugin.json');
+expect(pluginManifest.name === 'patina', '.claude-plugin/plugin.json name must be patina');
+expect(pluginManifest.version === version, '.claude-plugin/plugin.json version must match package.json');
+
+const marketplaceManifest = readJson('.claude-plugin/marketplace.json');
+const marketplacePlugin = marketplaceManifest.plugins?.find((entry) => entry.name === 'patina');
+expect(marketplacePlugin, '.claude-plugin/marketplace.json must list a patina plugin entry');
+expect(marketplacePlugin?.version === version, '.claude-plugin/marketplace.json patina plugin version must match package.json');
+
 if (checks.length) {
   console.error(checks.map((msg) => `- ${msg}`).join('\n'));
   process.exit(1);

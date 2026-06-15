@@ -20,7 +20,7 @@
   <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
   <a href="#quick-start"><img alt="Skill: Claude Code | Codex | Cursor | OpenCode" src="https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet"></a>
   <a href="https://github.com/devswha/patina"><img alt="Languages: KO | EN | ZH | JA" src="https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green"></a>
-  <a href="CHANGELOG.md"><img alt="Version 5.0.0" src="https://img.shields.io/badge/version-5.0.0-blue"></a>
+  <a href="CHANGELOG.md"><img alt="Version 5.1.0" src="https://img.shields.io/badge/version-5.1.0-blue"></a>
 </p>
 
 <p align="center">
@@ -54,6 +54,15 @@ More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPL
 Open **[patina.vibetip.help](https://patina.vibetip.help/)** to score KO / EN / ZH / JA text in your browser. The playground is audit-only: it does not rewrite text, call external LLMs, or send API keys to a server. For Korean, the browser and CLI may surface `translationese` / `koPostEditese.v1` metadata as editing hints; this metadata is advisory only, is not calibrated score input, and must not drive hot paragraphs, gates, severity, baselines, percentiles, benchmark claims, prompt/rewrite gates, or authorship verdicts.
 
 ### Agent skill
+
+**Claude Code — plugin marketplace (no clone, recommended):**
+
+```text
+/plugin marketplace add devswha/patina
+/plugin install patina@patina
+```
+
+**Claude Code · Codex CLI · Cursor · OpenCode — install script:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
@@ -178,7 +187,7 @@ If meaning drifts, the change is retried or rolled back. Deterministic analysis 
 
 ```yaml
 # .patina.default.yaml
-version: "5.0.0"
+version: "5.1.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
@@ -195,6 +204,7 @@ Start here:
 - [CLI Contract](docs/CLI.md) — flags, formats, score gates, exit behavior
 - [Authentication](docs/AUTHENTICATION.md) — local CLI backends and API providers
 - [Patterns](docs/PATTERNS.md) — full pattern catalog
+- [Subagents & strict flow](docs/agents.md) — optional read-only detector/fidelity/naturalness subagents and the `--strict` multi-pass mode
 - [Benchmarks](docs/benchmarks/README.md) · [latest report](docs/benchmarks/latest.md) · [2026 rebaseline](docs/research/2026-rebaseline.md)
 - [FAQ](docs/FAQ.md) ([한국어](docs/FAQ_KR.md))
 - [Ethics](docs/ETHICS.md)

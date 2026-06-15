@@ -9,6 +9,8 @@ import {
   commaDensity,
   koreanPosDiversityProxy,
   koreanSpacingFeatures,
+  koreanEndingMonotony,
+  DEFAULT_KO_ENDING_MONOTONY,
 } from '../../src/features/stylometry.js';
 
 const KO_COMPOSITE_TEXT =
@@ -220,4 +222,52 @@ test('analyzeText KO per-paragraph diagnostics are unchanged after the single-pa
   });
   assert.equal(natural.posDiversity.matchedCount, 5);
   assert.equal(natural.hot, false);
+});
+
+test('DEFAULT_KO_ENDING_MONOTONY pins the calibrated thresholds', () => {
+  assert.deepEqual(DEFAULT_KO_ENDING_MONOTONY, { minDaRatio: 0.6, minDaCount: 2, minTokens: 20 });
+});
+
+test('koreanEndingMonotony reports declarative -다 dominance', () => {
+  assert.deepEqual(koreanEndingMonotony(splitProseSentences('하늘이 맑다. 바람이 분다.')), { daCount: 2, daRatio: 1 });
+  assert.deepEqual(koreanEndingMonotony(splitProseSentences('하늘이 맑다. 바람이 부네요.')), { daCount: 1, daRatio: 0.5 });
+  assert.deepEqual(koreanEndingMonotony([]), { daCount: 0, daRatio: null });
+});
+
+test('analyzeText flags uniform plain-다 KO hot via ending-monotony even below the 3-sentence burstiness gate', () => {
+  const text =
+    '주말에 집안일을 한꺼번에 몰아서 처리하면 평일에 쉬는 시간이 크게 줄어든다. ' +
+    '작은 루틴을 미리 정해 두면 오후 시간이 한결 가벼워지고 일정도 정리된다.';
+  const ko = analyzeText(text, { lang: 'ko' });
+  const p = ko.paragraphs[0];
+  assert.equal(p.sentenceCount, 2);
+  // < 3 sentences: the standard burstiness band gate is inert, so this paragraph
+  // is hot only because of the ending-monotony signal.
+  assert.equal(p.burstiness.band, null);
+  assert.deepEqual(p.endingMonotony, { daCount: 2, daRatio: 1 });
+  assert.equal(p.endingMonotonyHot, true);
+  assert.equal(ko.hot, true);
+});
+
+test('ko ending-monotony spares formal-varied, short, and conversational human Korean (precision guards)', () => {
+  // Formal plain-다 but with varied sentence lengths (high burstiness CV): not the AI tell.
+  const varied = analyzeText(
+    '비가 내렸다. 우산도 없이 한참을 걷다가 결국 근처 카페로 들어가 따뜻한 커피를 한 잔 시켜 놓고 창밖을 멍하니 바라보며 비가 그치기를 기다렸다.',
+    { lang: 'ko' },
+  );
+  assert.equal(varied.paragraphs[0].endingMonotonyHot, false);
+
+  // Uniform plain-다 but below the min-token gate.
+  const short = analyzeText('오늘은 날씨가 좋았다. 점심을 먹었다.', { lang: 'ko' });
+  assert.equal(short.paragraphs[0].endingMonotonyHot, false);
+
+  // Conversational 요-register: low declarative -다 ratio.
+  const convo = analyzeText('어제 친구랑 카페 갔는데 커피가 진짜 맛있었어요. 너도 한번 가봐요!', { lang: 'ko' });
+  assert.equal(convo.paragraphs[0].endingMonotonyHot, false);
+});
+
+test('ending-monotony is ko-only', () => {
+  const en = analyzeText('This is a short test. It has two sentences here.', { lang: 'en' });
+  assert.equal(en.paragraphs[0].endingMonotony, null);
+  assert.equal(en.paragraphs[0].endingMonotonyHot, false);
 });

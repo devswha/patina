@@ -9,6 +9,13 @@ export const DEFAULT_BURSTINESS_BANDS = { low: 0.30, high: 0.50 };
 export const DEFAULT_MATTR_BANDS = { low: 0.55, high: 0.70 };
 export const DEFAULT_MATTR_WINDOW = 50;
 export const DEFAULT_MIN_BURSTINESS_SENTENCES = 3;
+// KO-only "uniform plain-다 register" hot signal. AI Korean often writes short,
+// length-uniform prose in the flat declarative -다 register; formal human Korean
+// uses -다 too but with varied sentence lengths (high burstiness CV), and
+// conversational human Korean uses 요/습니다 (low -다 ratio). The signal therefore
+// fires only when low burstiness AND -다 dominance co-occur, which separates
+// AI-다 from formal-human-다 and conversational-human at short lengths.
+export const DEFAULT_KO_ENDING_MONOTONY = Object.freeze({ minDaRatio: 0.6, minDaCount: 2, minTokens: 20 });
 export const DEFAULT_KO_DIAGNOSTIC_BANDS = {
   minSentences: 4,
   minEojeols: 20,
@@ -316,6 +323,16 @@ function buildKoPostEditeseEndings(endings) {
     politeEndingCount: endings.filter((ending) => POST_EDITESE_POLITE_ENDINGS.has(ending)).length,
     endingStreakMax: maxDeclarativeDaStreak(endings),
   };
+}
+
+// Per-paragraph declarative-다 ending monotony. This is a first-class hot-signal
+// input (NOT the advisory koPostEditese payload): it reuses the deterministic
+// ending classifier but is computed per paragraph and consumed by the hot
+// decision in analyzeText. Returns { daCount, daRatio } (daRatio null on no endings).
+export function koreanEndingMonotony(sentences = []) {
+  const endings = sentences.map(extractSentenceEnding).filter(Boolean);
+  const daCount = endings.filter((ending) => POST_EDITESE_DECLARATIVE_DA_ENDINGS.has(ending)).length;
+  return { daCount, daRatio: ratio(daCount, endings.length) };
 }
 
 function extractSentenceEnding(sentence) {

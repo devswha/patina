@@ -236,6 +236,8 @@ paragraph is SUSPECT iff
   koDiagnostics.hot == true  OR
   (fakeCandor.doc_count >= 2 AND paragraph_candor_count >= 1)  OR
   (thematicBreaks.doc_count >= 3 AND paragraph_break_count >= 1)
+  OR (ko: ending_monotony — declarative_da_ratio >= 0.6 AND declarative_da_count >= 2
+          AND burstiness_cv < burstiness_band.low AND paragraph_tokens >= 20)
 ```
 
 ### 근거
@@ -248,6 +250,13 @@ paragraph is SUSPECT iff
   막기 위해 CJK 기본 `lexicon_min_hits`는 2다.
 - ko diagnostic signal은 내부에서 AND composite를 사용하므로 쉼표/조사 같은 단일 특징만으로는
   OR-rule에 들어오지 않는다
+- ko ending-monotony signal(균일 평서형 -다)은 짧은 AI 한국어가 평탄한 한다체를 균일한
+  문장 길이로 쓰는 경향을 잡는다. burstiness가 낮고(`cv < low`) 평서형 `-다` 종결이
+  우세할 때(비율 ≥ 0.6, 2회 이상)만 켜지며, 같은 `-다`라도 문장 길이 변동이 큰 격식
+  사람 한국어(cv 높음)와 대화체(요/습니다)는 배제된다. 3문장 미만이라 burstiness band
+  gate가 비활성인 짧은 단락도 포괄하되, 초단문 오탐을 막으려 단락 토큰 ≥ 20을 요구한다.
+  KO×GPT rebaseline에서 catch 45.0%→82.5%, KO recall 59.2%→70.8%(F1 0.644→0.716)로
+  개선되고 사람 대조군 FP는 12.8%→14.0%(공개 CI 내)에 머문다. en/zh/ja에는 적용되지 않는다.
 - discourse-tell disjunct(fake-candor / thematic-break)는 단독 단락 특징이 아니라
   문서 수준 density gate(candor opener ≥2, thematic break ≥3)를 먼저 통과해야 켜진다.
   gate 통과 후 해당 tell을 실제로 1회 이상 보유한 단락만 hot으로 합류하므로, 단일

@@ -96,6 +96,53 @@ npm run benchmark:report
 
 This regenerates `tests/quality/results.json`, `docs/benchmarks/latest.json`, and `docs/benchmarks/latest.md`.
 
+## Adding a Deterministic Detection Signal
+
+Patterns (above) are LLM-executed catalog entries. A **detection signal** is
+different: a deterministic hot/cold input computed in `src/features/*` and
+folded into the per-paragraph hot OR rule (burstiness, MATTR, lexicon density,
+the Korean diagnostics composite, the ending-monotony signal, etc.). The
+analysis layer stays LLM-free, so a new signal is real engineering with a
+calibration bar. Follow this loop:
+
+1. **Diagnose the miss with evidence.** Find where detection fails on a labeled
+   manifest, not by intuition. `score_review.trigger_counts` in the scored
+   manifests shows which signals fire on which rows; `npm run benchmark:signal-impact`
+   reports each existing signal's marginal catch/FP so you can see the gap.
+2. **Find a false-positive-safe discriminator.** Compare AI misses against human
+   controls **at matched length/register** (a short-text confound is not an AI
+   tell). The discriminator must separate AI from *the human register that
+   shares the surface feature* — e.g. plain `-다` AI vs formal-human `-다` needed
+   a burstiness conjunct, not `-다` alone.
+3. **Implement it first-class, never by coupling an advisory payload.** Advisory
+   signals (`translationese`, `koPostEditese.v1`) must not feed the hot verdict
+   (see [docs/TRANSLATIONESE-KO.md](docs/TRANSLATIONESE-KO.md)). Add a dedicated
+   computation in `src/features/stylometry.js`, wire it into the hot OR in
+   `src/features/index.js`, and add a precision gate (length/count floors) if it
+   over-fires on short or corner-case text.
+4. **Mirror every surface.** A signal is not done until it is consistent across:
+   `src/features/index.js` (Node), `playground/analyzer.js` (browser parity —
+   there are parity tests), `scripts/rebaseline-score.mjs` `trigger_counts`, the
+   hot-rule prose in `core/stylometry.md` and `SKILL.md`, and unit tests
+   (including precision guards).
+5. **Measure with the harness, not by hand.** Run `npm run benchmark:signal-impact`
+   for the marginal before/after, `npm run benchmark` (the 49-fixture suite must
+   stay 100% — natural fixtures must not flip hot), and confirm the human-control
+   false-positive rate stays within the published CI in
+   `docs/benchmarks/rebaseline-latest.md`. Record the measured numbers in the
+   changelog. The frozen public claim manifests are refreshed in a separate
+   rebaseline pass, not in the signal PR.
+6. **Version it.** A new detection signal changes hot behavior → **minor** bump
+   (it is additive, not a removal). Bump all version surfaces and add a changelog
+   entry with the measured catch/FP deltas and the failure mode you guarded.
+
+Acceptance bar (mirrors the roadmap's deterministic-feature-expansion criteria):
+recall or precision improves on the labeled manifest, the human-control
+false-positive rate stays within the published tolerance, and the signal ships
+with a documented failure mode plus before/after examples.
+
+See [docs/HARNESS.md](docs/HARNESS.md) for the full measurement-tool map.
+
 ## Translating Examples
 
 - Preserve the original semantic anchors: numbers, entities, negation, causation, and modality.

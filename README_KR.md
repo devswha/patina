@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#빠른-시작)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-4.0.1-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.0.0-blue)](CHANGELOG.md)
 
 <p align="center">
   <img src="assets/demo/patina-demo-ko.gif" alt="patina가 한국어 AI풍 문장을 다듬고 결과 점수를 보여주는 터미널 데모 GIF" width="780">
@@ -64,13 +64,39 @@ patina는 한국어·영어·중국어·일본어 글에서 AI가 쓴 듯한 표
 
 ## 빠른 시작
 
+> **개발 환경이 없어도 괜찮습니다.** 먼저 위의 "브라우저에서 바로 보기"로 설치 없이 체험해 본 뒤, 실제로 글을 다듬을 땐 아래 **Claude Code 스킬**(방법 A는 평소 말투면 됩니다)을 쓰세요. Node.js를 직접 다루는 분만 "독립형 CLI"로 가면 됩니다.
+
 ### Claude Code 또는 Codex CLI 스킬로
+
+**Claude Code — 플러그인 마켓플레이스 (클론 불필요, 권장):**
+
+```text
+/plugin marketplace add devswha/patina
+/plugin install patina@patina
+```
+
+**Claude Code · Codex CLI · Cursor · OpenCode — 설치 스크립트:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
+설치 스크립트가 Claude Code, [Codex CLI](https://github.com/openai/codex), Cursor, OpenCode에 patina를 한 번에 연결합니다. 설치할 때 원격 HEAD를 실제 커밋으로 고정하므로, 특정 버전만 쓰고 싶다면 `PATINA_REF=<tag-or-full-sha>`를 지정하세요.
 
-설치 스크립트가 Claude Code, [Codex CLI](https://github.com/openai/codex), Cursor, OpenCode에 patina를 한 번에 연결합니다. 설치할 때 원격 HEAD를 실제 커밋으로 고정하므로, 특정 버전만 쓰고 싶다면 `PATINA_REF=<tag-or-full-sha>`를 지정하세요. 그런 다음:
+설치 후에는 두 가지 방법 중 편한 쪽으로 쓰면 됩니다.
+
+**방법 A — 평소 말투로 (개발 지식 필요 없음)**
+
+Claude Code에 평소 쓰던 말투로 부탁하면 patina 스킬이 켜집니다. 안 켜지면 `/patina`로 직접 부르면 됩니다.
+
+```
+이 한국어 AI 글 자연스럽게 다듬어줘:
+
+[ChatGPT·Claude·Gemini 초안을 여기에 붙여넣기]
+```
+
+"AI 티 없애줘", "번역투 고쳐줘", "사람이 쓴 것처럼 윤문해줘" 같은 표현이면 대부분 통합니다.
+
+**방법 B — 슬래시 커맨드 (정확한 제어)**
 
 ```
 /patina --lang ko
@@ -78,21 +104,30 @@ curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | ba
 [텍스트를 여기에 붙여넣기]
 ```
 
-특정 톤으로 재작성:
+특정 톤으로:
 
 ```
-/patina --tone narrative
-
-[에세이 초안을 여기에 붙여넣기]
+/patina --tone marketing --lang ko   # 홍보·마케팅 글
+/patina --tone narrative --lang ko   # 에세이·이야기체
+/patina --tone auto --lang ko        # 톤 자동 감지
 ```
 
-자동 톤 감지:
+#### 결과가 맘에 안 들면 — 말로 다시 요청하세요
 
-```
-/patina --tone auto --lang ko
+명령을 외울 필요 없이 Claude Code에 그대로 말하면 됩니다. 자주 쓰는 요청과 patina가 적용하는 옵션:
 
-[텍스트를 여기에 붙여넣기]
-```
+| 이렇게 말하면 | patina가 하는 일 |
+|---|---|
+| "더 부드럽게 / 캐주얼하게" | `--tone casual` |
+| "격식 있게 / 업무용으로" | `--tone professional` |
+| "마케팅 톤으로" | `--tone marketing` |
+| "학술 톤으로" | `--tone academic` |
+| "고치지 말고 AI 패턴만 찾아줘" | `--audit` |
+| "이 글 AI 점수 매겨줘" | `--score` |
+| "뭘 왜 바꿨는지 보여줘" | `--diff` |
+| "점수 안정될 때까지 반복해서 다듬어줘" | `--ouroboros` |
+| "엄격하게 다중 패스로 검수해줘" | `--strict` (감지→재작성→충실도/MPS 감사→자연스러움 재스캔→수락/롤백 게이트) |
+| "이 문단만 다시" / "원문을 더 살려줘" | 해당 부분만 다시 요청하면 됩니다 — 의미 보존(MPS)·충실도 검사가 원문의 주장·수치·인과를 지킵니다 |
 
 ### 독립형 CLI로
 
@@ -293,6 +328,9 @@ tone:                     # casual | professional | academic | narrative | marke
 - **[2026 Modern-model Rebaseline](docs/research/2026-rebaseline.md)** — 현재 날짜가 찍힌 KO+EN catch/FP claim
 - **[2025+ Re-baseline Plan](docs/research/2025-rebaseline-plan.md)** — 더 넓은 model-era claim 전 evidence gate
 - **[zh/ja Lexicon Calibration](docs/research/zh-ja-lexicon-calibration.md)** — starter lexicon gate와 남은 corpus risk
+- **[Korean Translationese](docs/TRANSLATIONESE-KO.md)** — 한국어 번역투/calque 탐지 catalog와 advisory 경계
+- **[Korean Translationese Scholarship](docs/research/ko-translationese-scholarship.md)** — 번역투·translation universals·post-editese 학술 근거(이근희·김순영·Baker·Toury·Toral)와 patina 신호 매핑
+- **[Subagents (strict flow)](docs/agents.md)** — 선택형 멀티 에이전트 strict 플로우(detector·fidelity-auditor·naturalness-reviewer)와 Claude Code 플러그인 자동발견
 - **[Launch Copy](docs/social/patina-launch-copy.md)** — launch sequence, score gate, Show HN/Product Hunt/Reddit/X/Korean drafts
 - **[Signs of AI Writing](docs/social/signs-of-ai-writing_KR.md)** ([English](docs/social/signs-of-ai-writing.md)) — cited example이 붙은 공유용 편집 checklist
 - **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 어휘 알고리즘

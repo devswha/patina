@@ -55,6 +55,15 @@ Open **[patina.vibetip.help](https://patina.vibetip.help/)** to score KO / EN / 
 
 ### Agent skill
 
+**Claude Code — plugin marketplace (no clone, recommended):**
+
+```text
+/plugin marketplace add devswha/patina
+/plugin install patina@patina
+```
+
+**Claude Code · Codex CLI · Cursor · OpenCode — install script:**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
@@ -195,6 +204,7 @@ Start here:
 - [CLI Contract](docs/CLI.md) — flags, formats, score gates, exit behavior
 - [Authentication](docs/AUTHENTICATION.md) — local CLI backends and API providers
 - [Patterns](docs/PATTERNS.md) — full pattern catalog
+- [Subagents & strict flow](docs/agents.md) — optional read-only detector/fidelity/naturalness subagents and the `--strict` multi-pass mode
 - [Benchmarks](docs/benchmarks/README.md) · [latest report](docs/benchmarks/latest.md) · [2026 rebaseline](docs/research/2026-rebaseline.md)
 - [FAQ](docs/FAQ.md) ([한국어](docs/FAQ_KR.md))
 - [Ethics](docs/ETHICS.md)

@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#빠른-시작)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-5.3.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.4.0-blue)](CHANGELOG.md)
 
 <p align="center">
   <img src="assets/demo/patina-demo-ko.gif" alt="patina가 한국어 AI풍 문장을 다듬고 결과 점수를 보여주는 터미널 데모 GIF" width="780">

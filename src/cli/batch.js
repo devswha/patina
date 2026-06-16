@@ -149,6 +149,9 @@ export async function writeBatchOutput(parsed, inputPath, output) {
     return;
   }
 
+  // suffix/outdir are gated on truthiness below. validateOutputRouting (#504)
+  // rejects empty-string suffix/outdir before we get here, so an empty value
+  // can never reach the silent stdout fallback — the two layers agree.
   let outPath;
   if (parsed.inPlace) {
     outPath = inputPath;

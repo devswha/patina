@@ -215,6 +215,11 @@ export async function invokeBackendChain({
   }
 
   let lastError = null;
+  // One shared deadline across both phases (slot-wait + run budget) so the
+  // combined wall-clock can never reach 2x `timeout` under cap saturation
+  // (#506 defect 1). withBackendConcurrencySlot hands the run phase whatever
+  // time remains after the slot wait.
+  const deadline = Number.isFinite(timeout) ? Date.now() + timeout : Infinity;
   for (let attemptIndex = 0; attemptIndex < backends.length; attemptIndex++) {
     const backend = backends[attemptIndex];
     const effectiveMaxConcurrency = resolveBackendMaxConcurrency(backend.name, maxConcurrency);
@@ -225,14 +230,15 @@ export async function invokeBackendChain({
         maxConcurrency: effectiveMaxConcurrency,
         signal,
         timeout,
-        fn: () => backend.invoke({
+        deadline,
+        fn: (remainingTimeout) => backend.invoke({
           prompt,
           apiKey,
           baseURL,
           model,
           modelSource,
           signal,
-          timeout,
+          timeout: remainingTimeout,
           maxRetries: effectiveMaxRetries,
           temperature,
           seed,

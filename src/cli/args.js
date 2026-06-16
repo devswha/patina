@@ -487,6 +487,24 @@ export function validateOutputRouting(parsed) {
       'Pick one of --in-place, --suffix, or --outdir.'
     );
   }
+  // An empty value (e.g. `--suffix=` or `--outdir=`) passes the
+  // `!== undefined` destination check above but is falsy, so writeBatchOutput
+  // would silently fall through to stdout (#504). Reject it here so the
+  // validator's "present" guarantee matches writeBatchOutput's truthiness gate.
+  if (parsed.suffix === '') {
+    throw inputError(
+      '--suffix requires a non-empty value',
+      'An empty --suffix= would leave the filename unchanged and silently print to stdout instead of writing files.',
+      'Pass a suffix like --suffix .patina (writes draft.patina.md).'
+    );
+  }
+  if (parsed.outdir === '') {
+    throw inputError(
+      '--outdir requires a non-empty value',
+      'An empty --outdir= would silently print to stdout instead of writing files.',
+      'Pass a directory like --outdir out/.'
+    );
+  }
   if (parsed.outdir !== undefined) {
     const seen = new Map();
     for (const file of parsed.files) {
@@ -563,6 +581,14 @@ function parseFailureRateOption(value, option) {
       `Received "${value}".`,
       `Use ${option} 0.25 for 25%, or ${option} 25.`
     );
+  }
+  // A value in the open (1, 2) interval is ambiguous: it is too big to be a
+  // ratio (>1) so it is read as a percent, but a tiny one (1.5 -> 1.5% -> 0.015)
+  // almost certainly is not what the user meant (#508 G4). Stay backward
+  // compatible (no throw) but surface the interpretation so the mistake is
+  // visible instead of silent.
+  if (n > 1 && n < 2) {
+    process.stderr.write(`[patina] --max-failure-rate ${value} read as ${n}% (ratio ${ratio}). Use a value <=1 for a ratio (0.015 = 1.5%) or >=2 for a clear percent.\n`);
   }
   return ratio;
 }

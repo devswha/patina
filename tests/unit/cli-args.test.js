@@ -104,3 +104,92 @@ test('applyScoreGate throws a typed runtime error when overall is missing (#440)
   assert.match(err.what, /score gate could not find a numeric overall value/);
   assert.match(err.action, /--format json/);
 });
+
+test('empty --suffix=/--outdir= is rejected instead of silently printing to stdout (#504)', () => {
+  // The bug: '' passes the `!== undefined` destination check but is falsy, so
+  // writeBatchOutput fell through to stdout (no files written, no error).
+  let suffixErr;
+  try {
+    validateOutputRouting(parseArgs(['--batch', '--suffix=', 'a.md', 'b.md']));
+  } catch (e) {
+    suffixErr = e;
+  }
+  assert.ok(suffixErr instanceof PatinaCliError);
+  assert.equal(suffixErr.exitCode, 2);
+  assert.match(suffixErr.what, /--suffix requires a non-empty value/);
+
+  let outdirErr;
+  try {
+    validateOutputRouting(parseArgs(['--batch', '--outdir=', 'a.md', 'b.md']));
+  } catch (e) {
+    outdirErr = e;
+  }
+  assert.ok(outdirErr instanceof PatinaCliError);
+  assert.equal(outdirErr.exitCode, 2);
+  assert.match(outdirErr.what, /--outdir requires a non-empty value/);
+
+  // The existing 'requires --batch' and 'cannot be combined' errors still take
+  // precedence over the empty-value check.
+  assert.throws(
+    () => validateOutputRouting(parseArgs(['--suffix=', 'a.md'])),
+    /--suffix requires --batch/,
+  );
+  assert.throws(
+    () => validateOutputRouting(parseArgs(['--batch', '--suffix=', '--outdir', 'out', 'a.md'])),
+    /--suffix and --outdir cannot be combined/,
+  );
+});
+
+test('valid non-empty --suffix/--outdir still pass routing validation (#504)', () => {
+  validateOutputRouting(parseArgs(['--batch', '--suffix=.patina', 'a.md', 'b.md']));
+  validateOutputRouting(parseArgs(['--batch', '--suffix', '-humanized', 'a.md', 'b.md']));
+  validateOutputRouting(parseArgs(['--batch', '--outdir=out', 'a.md', 'b.md']));
+  validateOutputRouting(parseArgs(['--batch', '--outdir', 'out/', 'a.md', 'b.md']));
+  // --in-place takes no value and is unaffected.
+  validateOutputRouting(parseArgs(['--batch', '--in-place', 'a.md', 'b.md']));
+});
+
+test('--max-failure-rate in the ambiguous (1,2) interval warns but still returns the percent ratio (#508 G4)', () => {
+  const original = process.stderr.write;
+  const lines = [];
+  process.stderr.write = (chunk) => {
+    lines.push(String(chunk));
+    return true;
+  };
+  let parsed;
+  try {
+    parsed = parseArgs(['--max-failure-rate', '1.5']);
+  } finally {
+    process.stderr.write = original;
+  }
+  // Backward compatible: 1.5 is still read as 1.5% -> ratio 0.015 (no throw).
+  assert.equal(parsed.maxFailureRate, 0.015);
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], /\[patina\] --max-failure-rate 1\.5 read as 1\.5% \(ratio 0\.015\)/);
+  assert.match(lines[0], /Use a value <=1 for a ratio/);
+});
+
+test('--max-failure-rate values outside (1,2) do not warn (#508 G4)', () => {
+  const original = process.stderr.write;
+  const lines = [];
+  process.stderr.write = (chunk) => {
+    lines.push(String(chunk));
+    return true;
+  };
+  let ratios;
+  try {
+    ratios = {
+      // ratio form (<=1): no percent reinterpretation, no warning.
+      quarter: parseArgs(['--max-failure-rate', '0.25']).maxFailureRate,
+      // clear percent (>=2): unambiguous, no warning.
+      twentyFive: parseArgs(['--max-failure-rate', '25']).maxFailureRate,
+      twoPointFive: parseArgs(['--max-failure-rate', '2.5']).maxFailureRate,
+    };
+  } finally {
+    process.stderr.write = original;
+  }
+  assert.equal(ratios.quarter, 0.25);
+  assert.equal(ratios.twentyFive, 0.25);
+  assert.equal(ratios.twoPointFive, 0.025);
+  assert.deepEqual(lines, []);
+});

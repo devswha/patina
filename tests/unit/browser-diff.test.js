@@ -183,3 +183,47 @@ test('serveBrowserDiffPage closes when the abort signal fires', async () => {
   await done;
   await assert.rejects(() => fetch(url));
 });
+
+test('serveBrowserDiffPage surfaces post-listen socket errors to the logger and shuts down (G9)', async () => {
+  let serverCloseCalls = 0;
+  class FakeServer extends EventEmitter {
+    listen(_port, _host, cb) {
+      // Mimic the async "listening" callback the real http.Server emits.
+      process.nextTick(cb);
+      return this;
+    }
+
+    address() {
+      return { port: 4321 };
+    }
+
+    close(cb) {
+      serverCloseCalls += 1;
+      if (cb) cb();
+      return this;
+    }
+  }
+
+  const fake = new FakeServer();
+  const warnings = [];
+  const logger = { warn: (event, fields) => warnings.push({ event, fields }) };
+
+  const { url, done } = await serveBrowserDiffPage('<html/>', {
+    createServer: () => fake,
+    randomToken: () => 'tok',
+    idleTimeoutMs: 60_000,
+    logger,
+  });
+  assert.match(url, /^http:\/\/127\.0\.0\.1:4321\/tok\/$/);
+
+  // After listening, the startup reject handler is gone and the post-listen
+  // handler turns a runtime socket error into a logged warning + shutdown,
+  // instead of swallowing it against the already-resolved outer promise.
+  fake.emit('error', new Error('boom'));
+  await done;
+
+  assert.strictEqual(warnings.length, 1);
+  assert.strictEqual(warnings[0].event, 'serve.socket_error');
+  assert.match(warnings[0].fields.message, /local preview server error: boom/);
+  assert.ok(serverCloseCalls >= 1, 'a socket error should shut the server down');
+});

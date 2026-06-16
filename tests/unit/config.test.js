@@ -79,3 +79,20 @@ test('loadConfig: non-additive arrays replace so exact list values remain contro
     assert.deepEqual(config['model-list'], ['codex']);
   });
 });
+
+test('loadConfig: when HOME equals cwd the shared .patina.yaml is applied once, not twice (G5)', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'patina-config-same-'));
+  const defaultPath = join(root, 'default.yaml');
+  writeFileSync(defaultPath, 'tone: auto\n');
+  // blocklist is an additive list key whose union dedupes primitives, so a
+  // double-merge of the same file is only observable with object entries:
+  // each YAML parse yields fresh object identities the Set cannot collapse.
+  // With HOME === cwd the two candidate paths resolve equal and must dedupe.
+  writeFileSync(join(root, '.patina.yaml'), 'blocklist:\n  - term: shared-entry\n');
+
+  await withEnv({ home: root, cwd: root }, async () => {
+    const config = loadConfig(defaultPath);
+    assert.strictEqual(config.blocklist.length, 1);
+    assert.deepStrictEqual(config.blocklist, [{ term: 'shared-entry' }]);
+  });
+});

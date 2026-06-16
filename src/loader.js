@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import yaml from 'js-yaml';
 import { validateProfileName } from './security.js';
@@ -117,16 +117,62 @@ export function loadCoreFile(repoRoot, filename) {
 }
 
 /**
+ * Maximum size (in bytes) of a single input file patina will read into memory.
+ * Guards against accidental memory exhaustion on huge or binary inputs (#508 G1).
+ */
+export const MAX_INPUT_BYTES = 25 * 1024 * 1024;
+
+/**
+ * Map a low-level fs error to a typed inputError that names the file path.
+ *
+ * @param {string} path File path that failed to read.
+ * @param {NodeJS.ErrnoException} err Underlying fs error.
+ * @returns {import('./errors.js').PatinaCliError} Typed input error (exit code 2).
+ */
+function mapInputReadError(path, err) {
+  const byCode = {
+    ENOENT: 'file not found',
+    EACCES: 'permission denied',
+    EISDIR: 'path is a directory',
+  };
+  const why = (err && byCode[err.code]) || (err && err.message) || 'unknown read error';
+  return inputError(
+    `cannot read input file: ${path}`,
+    `${path}: ${why}.`,
+    'Check the path, permissions, and that it points to a readable text file.'
+  );
+}
+
+/**
  * Read user input text from disk.
  *
  * @param {string} path Input file path.
+ * @param {number} [maxBytes=MAX_INPUT_BYTES] Reject files larger than this many bytes.
  * @returns {string} UTF-8 input text.
- * @throws {Error} When the file cannot be read.
+ * @throws {import('./errors.js').PatinaCliError} Typed inputError (exit 2) when the file is missing, unreadable, a directory, or over the size cap.
  * @example
  * const text = loadInputText('draft.md');
  */
-export function loadInputText(path) {
-  return readFileSync(path, 'utf8');
+export function loadInputText(path, maxBytes = MAX_INPUT_BYTES) {
+  let stats;
+  try {
+    stats = statSync(path);
+  } catch (err) {
+    throw mapInputReadError(path, err);
+  }
+  if (stats.size > maxBytes) {
+    const mb = (maxBytes / (1024 * 1024)).toFixed(0);
+    throw inputError(
+      `input file too large: ${path}`,
+      `The file is ${stats.size} bytes, over the ${maxBytes}-byte (~${mb} MB) limit.`,
+      'Split the document into smaller files or trim it before running patina.'
+    );
+  }
+  try {
+    return readFileSync(path, 'utf8');
+  } catch (err) {
+    throw mapInputReadError(path, err);
+  }
 }
 
 /**

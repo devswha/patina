@@ -123,11 +123,17 @@ export function stageCliImages(dir, images = []) {
 
 export function isRetryableBackendError(err, { attemptIndex = 0, signal } = {}) {
   if (signal?.aborted) return false;
+  // attemptIndex is retained for call-site compatibility but no longer gates
+  // the decision (#506 defect 2): a backend that timed out or aborted on its
+  // own (without the user aborting) is fallbackable at any hop.
+  void attemptIndex;
   const status = extractStatus(err);
   if (status === 429 || status === 503) return true;
   // A per-attempt timeout (api.js renames exhausted timer aborts to
-  // TimeoutError, #444) is as fallbackable as an AbortError on the first hop.
-  return (err?.name === 'AbortError' || err?.name === 'TimeoutError') && attemptIndex === 0;
+  // TimeoutError, #444) now falls through at ANY non-final hop, exactly like a
+  // 429/503. The chain caller already stops at the final hop via `!next`, so the
+  // predicate itself needs no index gate (#506 defect 2).
+  return err?.name === 'AbortError' || err?.name === 'TimeoutError';
 }
 
 export function describeBackendError(err) {
@@ -161,6 +167,7 @@ export async function withBackendConcurrencySlot({
   maxConcurrency,
   signal,
   timeout = DEFAULT_BACKEND_TIMEOUT_MS,
+  deadline = Number.isFinite(timeout) ? Date.now() + timeout : Infinity,
   pollMs = 250,
   staleMs = Math.max(timeout * 2, 30 * 60_000),
   fn,
@@ -168,21 +175,27 @@ export async function withBackendConcurrencySlot({
   if (typeof fn !== 'function') {
     throw new Error('backend concurrency slot requires fn');
   }
+  // The run phase gets whatever remains of the shared deadline after the slot
+  // wait, so slot-wait + run can never exceed the single budget (#506 defect 1).
+  // Callers that pass only `timeout` (no `deadline`) keep their full budget via
+  // the derived default above.
+  const remainingTimeout = () =>
+    (Number.isFinite(deadline) ? Math.max(0, deadline - Date.now()) : timeout);
   if (!Number.isFinite(maxConcurrency)) {
-    return fn();
+    return fn(remainingTimeout());
   }
 
   const slot = await acquireBackendSlot({
     backendName,
     maxConcurrency,
     signal,
-    timeout,
+    deadline,
     pollMs,
     staleMs,
   });
 
   try {
-    return await fn();
+    return await fn(remainingTimeout());
   } finally {
     releaseBackendSlot(slot);
   }
@@ -192,12 +205,11 @@ async function acquireBackendSlot({
   backendName,
   maxConcurrency,
   signal,
-  timeout,
+  deadline,
   pollMs,
   staleMs,
 }) {
   throwIfAborted(signal, `${backendName || 'backend'}: aborted while waiting for concurrency slot`);
-  const startedAt = Date.now();
   // Per-user slot root: the slot dirs are real locks, and a world-shared
   // tmpdir path means another user's slot dir cannot be removed (EACCES) and
   // would permanently consume a cap slot on a multi-user host (#445).
@@ -222,10 +234,10 @@ async function acquireBackendSlot({
     }
 
     throwIfAborted(signal, `${backendName || 'backend'}: aborted while waiting for concurrency slot`);
-    if (Date.now() - startedAt >= timeout) {
+    if (Date.now() >= deadline) {
       throw new Error(`${backendName || 'backend'}: timed out waiting for concurrency slot (cap ${maxConcurrency})`);
     }
-    await sleepWithAbort(Math.min(pollMs, timeout), signal, backendName);
+    await sleepWithAbort(Math.min(pollMs, Math.max(0, deadline - Date.now())), signal, backendName);
   }
 }
 

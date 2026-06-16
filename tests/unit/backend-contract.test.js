@@ -74,3 +74,81 @@ test('a concurrency slot held by a dead pid is reclaimed immediately (#445)', as
     rmSync(join(tmpdir(), `patina-backend-slots-${userSlotSegment()}`, backendName), { recursive: true, force: true });
   }
 });
+
+test('isRetryableBackendError falls through timeout/abort at any non-final hop (#506 defect 2)', () => {
+  // Previously gated to attemptIndex === 0; a per-attempt timeout/abort is now
+  // fallbackable at every hop, exactly like a 429/503. The chain caller stops
+  // at the final hop via `!next`, so the predicate itself carries no gate.
+  assert.equal(isRetryableBackendError({ name: 'TimeoutError' }, { attemptIndex: 1 }), true);
+  assert.equal(isRetryableBackendError({ name: 'TimeoutError' }, { attemptIndex: 2 }), true);
+  assert.equal(isRetryableBackendError({ name: 'AbortError' }, { attemptIndex: 3 }), true);
+  // Regression guard: the original first-hop case still works.
+  assert.equal(isRetryableBackendError({ name: 'AbortError' }, { attemptIndex: 0 }), true);
+  // A user-initiated abort (signal.aborted) must NEVER fall through, at any hop.
+  const aborted = { aborted: true }; // isRetryableBackendError only reads signal.aborted
+  assert.equal(isRetryableBackendError({ name: 'TimeoutError' }, { attemptIndex: 1, signal: aborted }), false);
+  assert.equal(isRetryableBackendError({ name: 'AbortError' }, { attemptIndex: 0, signal: aborted }), false);
+  // A plain, non-timeout/abort error stays non-retryable regardless of index.
+  assert.equal(isRetryableBackendError({ name: 'Error', message: 'boom' }, { attemptIndex: 1 }), false);
+});
+
+test('withBackendConcurrencySlot threads the remaining shared deadline into the run phase (#506 defect 1)', async () => {
+  const backendName = `test-deadline-${process.pid}-${Date.now()}`;
+  const slotRoot = join(tmpdir(), `patina-backend-slots-${userSlotSegment()}`, backendName);
+  mkdirSync(join(slotRoot, 'slot-0'), { recursive: true });
+  // A LIVE owner (this process) holds the only slot, so acquisition has to wait
+  // until we release it — simulating a saturated cap. A long staleMs ensures the
+  // age-based reclaim never fires; pid-liveness keeps the slot held until release.
+  writeFileSync(join(slotRoot, 'slot-0', 'owner.json'), JSON.stringify({ pid: process.pid, backendName }), 'utf8');
+
+  const budgetMs = 600;
+  const releaseAfterMs = 150;
+  const start = Date.now();
+  const releaser = setTimeout(() => {
+    rmSync(join(slotRoot, 'slot-0'), { recursive: true, force: true });
+  }, releaseAfterMs);
+
+  try {
+    let received = null;
+    const result = await withBackendConcurrencySlot({
+      backendName,
+      maxConcurrency: 1,
+      timeout: budgetMs,
+      deadline: start + budgetMs,
+      pollMs: 25,
+      staleMs: 60 * 60_000,
+      fn: async (remainingTimeout) => { received = remainingTimeout; return 'ran'; },
+    });
+    const waited = Date.now() - start;
+
+    assert.equal(result, 'ran');
+    // The run phase received a REDUCED budget — the slot wait was deducted from
+    // the single shared deadline, so it is strictly less than the full budget.
+    assert.ok(received > 0, `expected a positive remaining budget, got ${received}`);
+    assert.ok(received < budgetMs, `expected remaining < ${budgetMs}, got ${received}`);
+    // The defect: wait + run could each consume the full timeout (2x wall-clock).
+    // With one shared deadline, wait + remaining-run can never exceed the budget.
+    assert.ok(
+      waited + received <= budgetMs + 25,
+      `slot wait(${waited}) + run budget(${received}) exceeded shared budget ${budgetMs}`
+    );
+  } finally {
+    clearTimeout(releaser);
+    rmSync(join(tmpdir(), `patina-backend-slots-${userSlotSegment()}`, backendName), { recursive: true, force: true });
+  }
+});
+
+test('withBackendConcurrencySlot hands the full timeout to an uncapped backend when no deadline is given', async () => {
+  // Backward compatibility: callers that pass only `timeout` (no `deadline`)
+  // still drive the run phase with (essentially) the full budget. Infinite cap
+  // skips slot acquisition, so almost no time is deducted.
+  let received = null;
+  const result = await withBackendConcurrencySlot({
+    backendName: 'uncapped',
+    maxConcurrency: Infinity,
+    timeout: 5000,
+    fn: async (remainingTimeout) => { received = remainingTimeout; return 'ok'; },
+  });
+  assert.equal(result, 'ok');
+  assert.ok(received > 4000 && received <= 5000, `expected ~full budget, got ${received}`);
+});

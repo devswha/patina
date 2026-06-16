@@ -152,7 +152,6 @@ function collectRuleMatches(str, rule) {
 }
 
 function selectIndependentEvidence(matches) {
-  const selected = [];
   const ranked = [...matches].sort((a, b) => {
     if (a.strong !== b.strong) return a.strong ? -1 : 1;
     const lengthDelta = (b.end - b.start) - (a.end - a.start);
@@ -160,17 +159,27 @@ function selectIndependentEvidence(matches) {
     return a.start - b.start;
   });
 
+  // Greedy non-overlapping selection in priority order. A `selected.some(...)`
+  // overlap scan is O(n²) on attacker-influenceable input (~160ms at ~6000
+  // matches, #508 G6). Mark covered character positions in a bitmap instead so
+  // each overlap check/mark is O(span length) — linear in total text, not in
+  // match count — while preserving the exact half-open-interval semantics.
+  let maxEnd = 0;
+  for (const m of matches) if (m.end > maxEnd) maxEnd = m.end;
+  const covered = new Uint8Array(maxEnd);
+  const selected = [];
+
   for (const match of ranked) {
-    if (!selected.some((kept) => overlaps(kept, match))) {
-      selected.push(match);
+    let overlap = false;
+    for (let i = match.start; i < match.end; i++) {
+      if (covered[i]) { overlap = true; break; }
     }
+    if (overlap) continue;
+    for (let i = match.start; i < match.end; i++) covered[i] = 1;
+    selected.push(match);
   }
 
   return selected.sort((a, b) => a.start - b.start);
-}
-
-function overlaps(a, b) {
-  return a.start < b.end && b.start < a.end;
 }
 
 export { RULES as TRANSLATIONESE_RULES, ABS_MIN, DENSITY_MIN, STRONG_MIN };

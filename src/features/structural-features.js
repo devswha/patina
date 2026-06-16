@@ -100,7 +100,7 @@ export function extractStructuralFeatures(text, { lang = 'ko', mattrWindow = 40 
     mean(sentenceLengths),
     stddev(sentenceLengths),
     tokens.length ? types.size / tokens.length : 0,
-    mattr(tokens, mattrWindow),
+    mattr(tokens, mattrWindow) ?? 0,
     types.size ? hapaxCount / types.size : 0,
     tokens.length ? mean(tokens.map((token) => token.length)) : 0,
     sentences.length ? commaCount / sentences.length : 0,

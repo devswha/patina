@@ -36,7 +36,7 @@ export function loadConfig(path = resolve(REPO_ROOT, '.patina.default.yaml'), { 
   const config = parsed;
 
   // User config: ~/.patina.yaml (global), then ./.patina.yaml (project, takes precedence).
-  for (const userPath of [resolve(homedir(), '.patina.yaml'), resolve(process.cwd(), '.patina.yaml')]) {
+  for (const userPath of [...new Set([resolve(homedir(), '.patina.yaml'), resolve(process.cwd(), '.patina.yaml')])]) {
     if (!existsSync(userPath)) continue;
     mergeYamlMapping(config, userPath, 'User config');
   }

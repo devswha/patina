@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { mkdtempSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -284,5 +284,29 @@ test('file: image candidates are confined to the previewed file directory (#447)
     assert.equal(urls.includes(outsideUrl), false, 'out-of-tree absolute path rejected');
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('stageOcrImages removes the temp dir when the body throws before returning (G7)', async () => {
+  // Point os.tmpdir() at an isolated sandbox so we can prove the staging temp
+  // dir was created and then cleaned up. The dir leaks on the buggy path
+  // because the caller never receives `dir` when the function throws.
+  const sandbox = mkdtempSync(join(tmpdir(), 'patina-ocr-sandbox-'));
+  const prevTmp = process.env.TMPDIR;
+  process.env.TMPDIR = sandbox;
+  try {
+    // Forces a throw inside the outer try but before the per-candidate inner
+    // try, so the catch's rmSync(dir) is exercised.
+    const exploding = { entries() { throw new Error('forced staging failure'); } };
+    await assert.rejects(
+      () => stageOcrImages(exploding, { lookupImpl: PUBLIC_LOOKUP }),
+      /forced staging failure/,
+    );
+    const leftovers = readdirSync(sandbox).filter((name) => name.startsWith('patina-ocr-'));
+    assert.deepStrictEqual(leftovers, [], 'temp dir should be removed after a throw');
+  } finally {
+    if (prevTmp === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = prevTmp;
+    rmSync(sandbox, { recursive: true, force: true });
   }
 });

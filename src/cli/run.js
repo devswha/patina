@@ -188,10 +188,13 @@ export async function runDefault(parsed, logger) {
     return;
   }
 
-  const jobs = inputTexts.map(({ path, text }) => ({
+  const jobs = inputTexts.map(({ path, text, readError }) => ({
     path,
     text,
-    prompt: parsed.ouroboros ? null : buildPrompt({
+    readError,
+    // A read failure (#503) or ouroboros mode means there is no prompt to
+    // build; the read error is replayed inside the per-file batch loop below.
+    prompt: (readError || parsed.ouroboros) ? null : buildPrompt({
       config,
       patterns,
       profile: profile.body ? profile : null,
@@ -224,9 +227,12 @@ export async function runDefault(parsed, logger) {
 
   cancellation.install();
   try {
-    for (const { path, text, prompt } of jobs) {
+    for (const { path, text, prompt, readError } of jobs) {
       try {
         cancellation.throwIfCanceled();
+        // Route a deferred batch read failure (#503) into the per-file catch so
+        // it counts against the circuit breaker (batch) or rethrows (single).
+        if (readError) throw readError;
         let result;
 
         if (parsed.ouroboros) {

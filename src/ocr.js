@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync, copyFileSync, readFileSync, statSync, chmodSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, copyFileSync, readFileSync, statSync, chmodSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -284,73 +284,78 @@ export async function stageOcrImages(candidates, options = {}) {
   const skipped = [];
   let spent = 0;
   let budgetExhausted = false;
-  for (const [index, candidate] of candidates.entries()) {
-    if (signal?.aborted) break;
-    if (budgetExhausted) {
-      skipped.push({ candidate, reason: 'total image budget reached' });
-      continue;
-    }
-    try {
-      let bytes;
-      let ext = candidate.ext;
-      if (candidate.kind === 'data') {
-        bytes = Buffer.from(candidate.dataUri.slice(candidate.dataUri.indexOf(',') + 1), 'base64');
-      } else if (candidate.kind === 'file') {
-        const filePath = fileURLToPath(candidate.url);
-        const size = statSync(filePath).size;
-        if (size > maxBytes) throw new Error(tooBig);
-        if (spent + size > totalBudget) {
+  try {
+    for (const [index, candidate] of candidates.entries()) {
+      if (signal?.aborted) break;
+      if (budgetExhausted) {
+        skipped.push({ candidate, reason: 'total image budget reached' });
+        continue;
+      }
+      try {
+        let bytes;
+        let ext = candidate.ext;
+        if (candidate.kind === 'data') {
+          bytes = Buffer.from(candidate.dataUri.slice(candidate.dataUri.indexOf(',') + 1), 'base64');
+        } else if (candidate.kind === 'file') {
+          const filePath = fileURLToPath(candidate.url);
+          const size = statSync(filePath).size;
+          if (size > maxBytes) throw new Error(tooBig);
+          if (spent + size > totalBudget) {
+            skipped.push({ candidate, reason: 'total image budget reached' });
+            budgetExhausted = true;
+            continue;
+          }
+          const target = join(dir, `img-${index}.${candidate.ext}`);
+          copyFileSync(filePath, target);
+          try { chmodSync(target, 0o600); } catch {}
+          spent += size;
+          staged.push({ ...candidate, path: target, bytes: size });
+          continue;
+        } else {
+          // Image URLs come from page content, so a hostile page must not be
+          // able to use --ocr to probe cloud metadata or internal services.
+          if (!(await isSubresourceFetchAllowed(candidate.url, { baseUrl, lookupImpl }))) {
+            skipped.push({ candidate, reason: 'private/internal address blocked' });
+            continue;
+          }
+          // Cap by streaming at the per-image limit: never trust Content-Length
+          // presence/value, and bound an unbounded chunked stream before it
+          // exhausts memory. The total budget is enforced below. Redirect hops
+          // are re-guarded so a public image URL cannot 30x into private space.
+          bytes = await fetchCappedBytes(fetchImpl, candidate.url, {
+            signal,
+            maxBytes,
+            fetchTimeoutMs,
+            tooBig,
+            guardHop: (next) => isSubresourceFetchAllowed(next, { baseUrl, lookupImpl }),
+          });
+          if (!ext) {
+            // Extension-less CDN URL: identify the format from the bytes.
+            ext = sniffImageType(bytes);
+            if (!ext) throw new Error('not a recognizable image (jpg/png/webp/gif)');
+          }
+        }
+        if (bytes.length > maxBytes) throw new Error(tooBig);
+        if (spent + bytes.length > totalBudget) {
           skipped.push({ candidate, reason: 'total image budget reached' });
           budgetExhausted = true;
           continue;
         }
-        const target = join(dir, `img-${index}.${candidate.ext}`);
-        copyFileSync(filePath, target);
+        const target = join(dir, `img-${index}.${ext}`);
+        writeFileSync(target, bytes);
         try { chmodSync(target, 0o600); } catch {}
-        spent += size;
-        staged.push({ ...candidate, path: target, bytes: size });
-        continue;
-      } else {
-        // Image URLs come from page content, so a hostile page must not be
-        // able to use --ocr to probe cloud metadata or internal services.
-        if (!(await isSubresourceFetchAllowed(candidate.url, { baseUrl, lookupImpl }))) {
-          skipped.push({ candidate, reason: 'private/internal address blocked' });
-          continue;
-        }
-        // Cap by streaming at the per-image limit: never trust Content-Length
-        // presence/value, and bound an unbounded chunked stream before it
-        // exhausts memory. The total budget is enforced below. Redirect hops
-        // are re-guarded so a public image URL cannot 30x into private space.
-        bytes = await fetchCappedBytes(fetchImpl, candidate.url, {
-          signal,
-          maxBytes,
-          fetchTimeoutMs,
-          tooBig,
-          guardHop: (next) => isSubresourceFetchAllowed(next, { baseUrl, lookupImpl }),
-        });
-        if (!ext) {
-          // Extension-less CDN URL: identify the format from the bytes.
-          ext = sniffImageType(bytes);
-          if (!ext) throw new Error('not a recognizable image (jpg/png/webp/gif)');
-        }
+        spent += bytes.length;
+        staged.push({ ...candidate, ext, path: target, bytes: bytes.length });
+      } catch (err) {
+        if (signal?.aborted) break;
+        skipped.push({ candidate, reason: err?.message || 'fetch failed' });
       }
-      if (bytes.length > maxBytes) throw new Error(tooBig);
-      if (spent + bytes.length > totalBudget) {
-        skipped.push({ candidate, reason: 'total image budget reached' });
-        budgetExhausted = true;
-        continue;
-      }
-      const target = join(dir, `img-${index}.${ext}`);
-      writeFileSync(target, bytes);
-      try { chmodSync(target, 0o600); } catch {}
-      spent += bytes.length;
-      staged.push({ ...candidate, ext, path: target, bytes: bytes.length });
-    } catch (err) {
-      if (signal?.aborted) break;
-      skipped.push({ candidate, reason: err?.message || 'fetch failed' });
     }
+    return { dir, staged, skipped };
+  } catch (err) {
+    rmSync(dir, { recursive: true, force: true });
+    throw err;
   }
-  return { dir, staged, skipped };
 }
 
 // Magic-byte sniffing for extension-less candidates: the format comes from

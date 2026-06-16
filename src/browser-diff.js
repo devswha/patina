@@ -131,6 +131,17 @@ export function serveBrowserDiffPage(html, options = {}) {
         signal?.addEventListener?.('abort', close, { once: true });
         resetIdleTimer();
       }
+      // Startup errors (e.g. EADDRINUSE) already rejected via rejectServer.
+      // Once listening, the outer promise is resolved, so a later socket error
+      // would be swallowed — surface it through the logger and shut down.
+      server.removeListener('error', rejectServer);
+      server.on('error', (err) => {
+        const logger = options.logger;
+        const msg = `[patina] local preview server error: ${err?.message || err}`;
+        if (logger?.warn) logger.warn('serve.socket_error', { message: msg });
+        else process.stderr.write(msg + '\n');
+        close();
+      });
       resolveServer({
         url: `http://127.0.0.1:${port}${pagePath}`,
         close,

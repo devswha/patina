@@ -24,12 +24,12 @@ export function isAuthenticated() {
   // for `gemini -p` to run; checking both avoids false negatives.
   return (
     existsSync(join(homedir(), '.gemini', 'gemini-credentials.json')) ||
-    !!process.env.GEMINI_API_KEY
+    !!process.env.GEMINI_API_KEY?.trim()
   );
 }
 
 export function authHint() {
-  if (process.env.GEMINI_API_KEY) {
+  if (process.env.GEMINI_API_KEY?.trim()) {
     return 'Authenticated via GEMINI_API_KEY env var.';
   }
   return `Run \`${loginCommand}\` once interactively to log in via Google OAuth, or set GEMINI_API_KEY.`;

@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand } from './contract.js';
@@ -23,7 +23,7 @@ export function isAvailable() {
 export function isAuthenticated() {
   const root = kimiDataDir();
   return hasKimiCredential(root) ||
-    existsSync(join(root, 'config.toml')) ||
+    hasNonEmptyKimiConfig(root) ||
     KIMI_ENV_KEYS.some((key) => !!process.env[key]);
 }
 
@@ -191,6 +191,18 @@ function hasKimiCredential(root) {
   try {
     return readdirSync(join(root, 'credentials'), { withFileTypes: true })
       .some((entry) => entry.isFile() && entry.name.endsWith('.json'));
+  } catch {
+    return false;
+  }
+}
+
+// A logged-in Kimi CLI writes a populated config.toml. A bare/zero-byte file
+// is created by some workflows without an actual login, so requiring a
+// non-empty file avoids the false positive of "exists but empty" (#508 G8).
+// statSync throws on a missing path, so the catch also covers the absent case.
+function hasNonEmptyKimiConfig(root) {
+  try {
+    return statSync(join(root, 'config.toml')).size > 0;
   } catch {
     return false;
   }

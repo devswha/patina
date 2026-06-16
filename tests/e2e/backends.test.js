@@ -142,7 +142,14 @@ describe('Backend Fallback Chain', () => {
     });
 
     assert.strictEqual(result, 'ok');
-    assert.strictEqual(seenTimeout, DEFAULT_BACKEND_TIMEOUT_MS);
+    // The run phase now receives the time remaining on the single shared
+    // deadline (#506 defect 1), not a fresh full timeout. With an uncapped
+    // backend almost no time is deducted, so it is the full budget minus the
+    // sub-ms setup — never more than the budget.
+    assert.ok(
+      seenTimeout > DEFAULT_BACKEND_TIMEOUT_MS - 1000 && seenTimeout <= DEFAULT_BACKEND_TIMEOUT_MS,
+      `expected ~${DEFAULT_BACKEND_TIMEOUT_MS} remaining budget, got ${seenTimeout}`
+    );
   });
 
   it('passes backend retry defaults through the backend contract', async () => {
@@ -252,32 +259,69 @@ describe('Backend Fallback Chain', () => {
     assert.strictEqual(secondCalled, false);
   });
 
-  it('only treats AbortError as fallbackable for the first backend', async () => {
+  it('falls through timeout/abort errors at any non-final hop (#506 defect 2)', async () => {
+    const events = [];
+    const logger = { warn: (event, fields) => events.push({ event, ...fields }) };
+    const result = await invokeBackendChain({
+      backends: [
+        {
+          name: 'first',
+          invoke: async () => {
+            const err = new Error('timed out');
+            err.name = 'TimeoutError';
+            throw err;
+          },
+        },
+        {
+          name: 'second',
+          invoke: async () => {
+            const err = new Error('aborted internally');
+            err.name = 'AbortError';
+            throw err;
+          },
+        },
+        { name: 'third', invoke: async () => 'ok' },
+      ],
+      prompt: 'rewrite this',
+      logger,
+    });
+
+    // Previously the abort/timeout gate stopped fallback after the first hop;
+    // now it falls through at every non-final hop, just like 429/503 (#506).
+    assert.strictEqual(result, 'ok');
+    assert.deepStrictEqual(events.map((entry) => entry.event), ['backend.fallback', 'backend.fallback']);
+  });
+
+  it('surfaces the final-hop timeout instead of swallowing it (#506 defect 2)', async () => {
+    let thirdCalls = 0;
     await assert.rejects(
       invokeBackendChain({
         backends: [
           {
             name: 'first',
-            invoke: async () => {
-              const err = new Error('timeout');
-              err.name = 'AbortError';
-              throw err;
-            },
+            invoke: async () => { const e = new Error('t1'); e.name = 'TimeoutError'; throw e; },
           },
           {
             name: 'second',
+            invoke: async () => { const e = new Error('t2'); e.name = 'TimeoutError'; throw e; },
+          },
+          {
+            name: 'third',
             invoke: async () => {
-              const err = new Error('timeout again');
-              err.name = 'AbortError';
-              throw err;
+              thirdCalls += 1;
+              const e = new Error('final timeout');
+              e.name = 'TimeoutError';
+              throw e;
             },
           },
-          { name: 'third', invoke: async () => 'should not run' },
         ],
         prompt: 'rewrite this',
+        logger: { warn() {} },
       }),
-      /timeout again/
+      /final timeout/
     );
+    // The final hop runs (no `next` to fall through to) and its error surfaces.
+    assert.strictEqual(thirdCalls, 1);
   });
 });
 

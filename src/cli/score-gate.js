@@ -24,9 +24,9 @@ export function extractScoreOverall(result, output) {
   });
 }
 
-// Not the same as output.js toFiniteNumber: that helper strips non-numeric
-// characters before Number() (so "**12**" parses), while the score gate
-// rejects any value that is not already a plain number.
+// Strict numeric coercer for the score gate: accepts a value that is already a
+// plain number (Number()), and rejects anything else. output.js toFiniteNumber
+// now parses strictly too (#505), so the two agree on real inputs.
 function toFiniteScore(value) {
   if (value === null || value === undefined || value === '') return null;
   const n = Number(value);

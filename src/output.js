@@ -343,11 +343,11 @@ function extractOverall(result, body) {
 /**
  * Shared overall-score traversal: structured result field → embedded JSON →
  * markdown score table → inline "overall: N" text. Used by extractOverall
- * above and by the CLI score gate (src/cli/score-gate.js). The two call sites
- * intentionally keep different numeric coercers (toFiniteNumber here strips
- * non-numeric characters before Number(); the score gate's toFiniteScore
- * rejects anything that is not already a plain number), so the coercer is a
- * parameter rather than shared.
+ * above and by the CLI score gate (src/cli/score-gate.js). Both call sites now
+ * use strict numeric coercers (toFiniteNumber here, toFiniteScore in the score
+ * gate) that accept a plain numeric token and reject anything else (#505); the
+ * coercer stays a parameter so each site keeps its own small differences (e.g.
+ * the gate's empty-string handling).
  *
  * @param {string|object|null} result Structured result whose `overall` field is checked first.
  * @param {string} text Raw output text scanned for embedded JSON, a score table, or inline "overall: N".
@@ -431,8 +431,17 @@ function parseMarkdownCategories(body) {
 }
 
 function toFiniteNumber(value) {
-  if (value === null || value === undefined || value === '') return null;
-  const n = Number(String(value).replace(/[^\d.-]/g, ''));
+  // Strict parse: accept a plain numeric token (incl. exponent notation like
+  // "1e3") and reject anything else to null. Deleting non-numeric characters
+  // and re-parsing the residue silently salvaged junk ("1e3"→13, "12px"→12,
+  // "12abc34"→1234, "8%"→8), which could flip the --format json score gate via
+  // buildGateResult (#505). Markdown table cells are de-bolded before reaching
+  // here (parseMarkdownCategories strips ** first), so strictness is safe.
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (value === null || value === undefined) return null;
+  const str = String(value).trim();
+  if (str === '') return null;
+  const n = Number(str);
   return Number.isFinite(n) ? n : null;
 }
 

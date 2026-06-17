@@ -19,6 +19,7 @@ const FLAG_OPTIONS = new Set([
   '--ouroboros', '--batch', '--in-place', '--allow-private-base-url',
   '--stop-on-retryable-storm', '--no-stop-on-retryable-storm',
   '--list-backends', '--allow-insecure-base-url', '--no-interactive',
+  '--rewrite-headings',
 ]);
 
 // Expand `--name=value` into two tokens for known value-taking options and
@@ -171,6 +172,11 @@ export function parseArgs(rawArgs) {
         break;
       case '--in-place':
         parsed.inPlace = true;
+        break;
+      case '--rewrite-headings':
+        // #473: by default rewrite preserves Markdown ATX heading lines as
+        // structure; this opts back into rewording/adding/removing them.
+        parsed.rewriteHeadings = true;
         break;
       case '--suffix': {
         const value = readOptionValue(args, i, arg, { allowFlagLike: true });
@@ -657,6 +663,9 @@ LANGUAGE & PROFILE
                           keep (default), explain = add plain-language glosses,
                           remove = replace jargon for a general audience.
                           Comma list with --preview compares variants in-page
+  --rewrite-headings      Allow rewording/adding/removing Markdown headings.
+                          By default ATX heading lines (## ...) are preserved
+                          verbatim as structure so the TOC and #anchors survive
 
 MODEL & AUTH
   --model <id>            Single model ID. Defaults use the strongest

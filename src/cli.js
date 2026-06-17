@@ -3,7 +3,7 @@ import { runDoctor } from './commands/doctor.js';
 import { handleAuth, printBackendStatus } from './commands/auth.js';
 import { parseArgs, validateModeExclusivity, validateServeRequest, validatePreviewRequest, validateOutputRouting, validateTransformRequest, printHelp } from './cli/args.js';
 import { runDefault } from './cli/run.js';
-import { inputError, renderCliError, getExitCode } from './errors.js';
+import { inputError, renderCliError, getProcessExitCode } from './errors.js';
 import { createLogger } from './logger.js';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -87,6 +87,6 @@ export async function main(args) {
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   main(process.argv.slice(2)).catch((err) => {
     createLogger().error('cli.error', { message: renderCliError(err) });
-    process.exit(getExitCode(err));
+    process.exit(getProcessExitCode(err));
   });
 }

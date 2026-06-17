@@ -45,6 +45,21 @@ It is not a black-box paraphraser, authorship detector, or detector-bypass tool.
   <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-demo-en.gif" alt="Animated terminal demo showing patina rewriting English AI-sounding copy and scoring the cleaned result" width="780">
 </p>
 
+### See it on a real page
+
+`--preview` rewrites a live URL or a local `.html` **in place** on a snapshot of the page, then lets you toggle **Rewritten / Original / Both / Diff** and jump between every change — an audit trail, not a black box. The chip shows the deterministic score before → after.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-preview-en.png" alt="patina --preview rendering a web page rewritten in place with an inline diff — red strikethrough on AI phrasing, green insertions, a Rewritten/Original/Both/Diff toggle, jump-to-change dots, and a 'SCORE 60 → 0' chip" width="820">
+</p>
+
+```bash
+patina --preview --lang en page.html         # a local .html file
+patina --preview https://example.com/post     # or a live URL
+```
+
+Headings, code blocks, and layout stay put; only the prose is rewritten. Add `--serve` for a headless/SSH box (serves at a token URL on `127.0.0.1`).
+
 More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)) · [30-second terminal demo](docs/DEMO.md).
 
 ## Quick Start

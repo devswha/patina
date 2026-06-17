@@ -15,6 +15,14 @@ Current assets:
   - expected rewrite: `examples/short/marketing-launch-rewritten.md`
 - Future localized demos should use the same naming pattern:
   `patina-demo-zh.gif`, `patina-demo-ja.gif`.
+- `patina-preview-en.png` — README "See it on a real page" hero: a `--preview`
+  page rendered in the **Diff** view (inline strikethrough/insert audit trail,
+  the Rewritten/Original/Both/Diff toggle, jump-to-change dots, and the
+  `SCORE 60 → 0` chip).
+  - regenerate: run `patina --preview --lang en <sample>.html` (a styled local
+    page with AI-sounding prose), open the saved preview HTML, switch to the
+    Diff toggle, and screenshot at ~1120px wide / 2× scale.
+  - size target: keep the PNG well under 1 MB so GitHub renders it inline.
 
 Shared requirements:
 

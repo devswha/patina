@@ -5,7 +5,7 @@
 - Last refreshed: 2026-06-05
 - Primary product surfaces: README mark, app/repo icon, social preview image, launch posts.
 - Evidence reviewed:
-  - Local: `README.md`, `README_KR.md`, `README_ZH.md`, `README_JA.md`, `docs/ROADMAP.md`, `docs/BRANDING.md`, `assets/brand/patina-mark.svg`, `assets/brand/patina-icon.svg`, `assets/brand/patina-logo.svg`, `assets/social/patina-og.svg`, `assets/demo/patina-demo-en.gif`, `assets/demo/patina-demo-ko.gif`.
+  - Local: `README.md`, `README_KR.md`, `README_ZH.md`, `README_JA.md`, `docs/ROADMAP.md`, `docs/BRANDING.md`, `assets/brand/patina-mark.svg`, `assets/brand/patina-icon.svg`, `assets/brand/patina-logo.svg`, `assets/social/patina-og.svg`, `assets/demo/patina-preview-en.gif`.
   - External pattern references: Vite, Astro, Bun, Deno, Tailwind CSS, shadcn/ui README presentation patterns.
 
 ## Brand
@@ -46,14 +46,14 @@
 - Typography: system sans for README SVG lockup; no text inside app icon candidates.
 - Spacing/layout rhythm: centered hero, generous padding, compact badges/links below.
 - Shape/radius/elevation: rounded app tile, bold copper-to-teal pure mark, no shadows, no bevels, no pseudo-3D depth.
-- Motion: README demo GIFs can use `assets/demo/patina-demo-en.gif` / `assets/demo/patina-demo-ko.gif` to show AI packaging being removed from real fixtures; avoid animated SVG for GitHub README motion because sanitization can strip animation.
+- Motion: README demo GIF should use `assets/demo/patina-preview-en.gif` to show the actual `--preview` surface: stable page layout, inline diff, view toggles, jump chips, and score before → after. Avoid animated SVG for GitHub README motion because sanitization can strip animation.
 - Imagery/iconography: copper becoming patina teal around a warm preserved-meaning core. Avoid text-line clutter, document-card literalism, 3D realism, gradients, glow, texture, and bevel language in final SVG assets.
 
 ## Components
-- Existing components to reuse: `assets/brand/*.svg`, `assets/social/*.svg`, `assets/demo/patina-demo-*.gif`.
+- Existing components to reuse: `assets/brand/*.svg`, `assets/social/*.svg`, `assets/demo/patina-preview-en.gif`.
 - New/changed components: optional AI concept references under `.omx/artifacts/visual-ralph/` before SVG reconstruction; production assets remain hand-authored SVG.
-- Variants and states: square pure-mark icon, horizontal logo lockup, social preview.
-- Token/component ownership: brand assets stay under `assets/brand/`; social cards under `assets/social/`; README demo recordings stay under `assets/demo/`. Re-render demo GIFs with asciinema + `agg`, keep them under 10 MB, and verify the shown rewrites with `node scripts/precommit-score.mjs examples/short/marketing-launch-en-rewritten.md examples/short/marketing-launch-rewritten.md`.
+- Variants and states: square pure-mark icon, horizontal logo lockup, social preview, preview GIF states (Rewritten / Original / Both / Diff).
+- Token/component ownership: brand assets stay under `assets/brand/`; social cards under `assets/social/`; README preview animation stays under `assets/demo/`. Re-render the GIF from a real `patina --preview` page and keep it under 10 MB.
 
 ## Accessibility
 - Target standard: readable on GitHub light/dark backgrounds and package pages.

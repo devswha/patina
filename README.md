@@ -33,24 +33,10 @@ It is not a black-box paraphraser, authorship detector, or detector-bypass tool.
 
 ## Demo
 
-**Before** *(AI-sounding; same fixture used by the GIF)*:
-> The newly released Notion template pack is an **innovative solution** designed to **transform productivity** for modern teams. It offers 30 templates optimized for diverse workflows, with a user-friendly design that enables anyone to leverage them effortlessly. This product introduces a **new paradigm** for maximizing work efficiency.
-
-**After** *(`/patina --lang en --tone marketing` — same claims, AI packaging removed)*:
-> If Notion still starts as a blank page for your team, open this pack first. It includes 30 templates for common workflows. Duplicate one, adjust the fields you need, and use it for a team project or your own planning without starting from scratch.
-
-> **Score = 0.0%** · 30 templates ✓ · workflow fit ✓ · copy-and-edit use ✓
+`--preview` is the main sample: patina snapshots a live URL or local `.html`, rewrites only the prose blocks, and renders the result back onto the page. The floating bar switches between **Rewritten / Original / Both / Diff**, jumps between every changed block, and shows the deterministic score before → after.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-demo-en.gif" alt="Animated terminal demo showing patina rewriting English AI-sounding copy and scoring the cleaned result" width="780">
-</p>
-
-### See it on a real page
-
-`--preview` rewrites a live URL or a local `.html` **in place** on a snapshot of the page, then lets you toggle **Rewritten / Original / Both / Diff** and jump between every change — an audit trail, not a black box. The chip shows the deterministic score before → after.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-preview-en.png" alt="patina --preview rendering a web page rewritten in place with an inline diff — red strikethrough on AI phrasing, green insertions, a Rewritten/Original/Both/Diff toggle, jump-to-change dots, and a 'SCORE 60 → 0' chip" width="820">
+  <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-preview-en.gif" alt="Animated patina --preview demo toggling rewritten, original, both, and diff views on a Notion Template Pack page; the page layout stays fixed while AI-sounding phrasing is replaced and the score falls from 60 to 0" width="820">
 </p>
 
 ```bash
@@ -58,9 +44,9 @@ patina --preview --lang en page.html         # a local .html file
 patina --preview https://example.com/post     # or a live URL
 ```
 
-Headings, code blocks, and layout stay put; only the prose is rewritten. Add `--serve` for a headless/SSH box (serves at a token URL on `127.0.0.1`).
+The sample keeps the page structure, headings, CTA, and concrete facts (`30 templates`, planning docs, handoffs). It removes inflated phrasing like “innovative solution,” “transform productivity,” and “new paradigm” with an inline audit trail instead of a black-box paraphrase.
 
-More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)) · [30-second terminal demo](docs/DEMO.md).
+More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)) · [CLI transcript](docs/DEMO.md).
 
 ## Quick Start
 
@@ -131,7 +117,7 @@ prompts for them, and exposes `--timeout-ms`, `--max-concurrency`,
 |---|---|
 | **168 patterns** | 33 rewrite-capable + 9 score-only viral-hook per language (42 each across KO/EN/ZH/JA) — see the full 168-pattern catalog in [PATTERNS.md](docs/PATTERNS.md) |
 | **Modes** | rewrite · audit · score · diff · ouroboros |
-| **Surfaces** | agent skill · Node CLI · browser audit playground |
+| **Surfaces** | agent skill · Node CLI · in-place preview · browser audit playground |
 | **Free usage** | logged-in `codex`, `claude`, or `gemini` CLI can run rewrites without `PATINA_API_KEY` |
 | **Calibration** | 67.3% editing-hotspot catch [63.5–71.0%] across GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro (n=600, KO+EN); 16.0% false positives [11.6–21.7%] on KO+EN human controls (n=200) |
 | **License** | MIT |
@@ -151,6 +137,7 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `patina --score input.txt` | output a 0-100 AI-likeness score |
 | `patina --score --exit-on 30 input.txt` | CI gate with exit code `3` when `overall > 30` |
 | `patina --diff input.txt` | show pattern-by-pattern changes |
+| `patina --preview page.html` | render rewrites back onto a saved HTML page with toggles and inline diff |
 | `patina --ouroboros input.txt` | iterate with MPS/fidelity rollback |
 | `patina --tone auto --lang en input.txt` | infer and apply a KO/EN tone axis |
 | `patina --format json --quiet input.txt` | script-friendly output |

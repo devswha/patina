@@ -16,6 +16,7 @@ const REPO_ROOT = resolve(__dirname, '../..');
 
 let mock;
 let mockApiKeyPath;
+let keyDir;
 
 async function captureConsole(fn) {
   const logs = [];
@@ -62,13 +63,14 @@ async function withEnv(envOverrides, fn) {
 describe('CLI End-to-End with Mock API', () => {
   before(async () => {
     mock = await startMockServer('This is the humanized result.');
-    const keyDir = mkdtempSync(join(tmpdir(), 'patina-api-key-'));
+    keyDir = mkdtempSync(join(tmpdir(), 'patina-api-key-'));
     mockApiKeyPath = resolve(keyDir, 'key.txt');
     writeFileSync(mockApiKeyPath, 'test-key\n');
   });
 
   after(async () => {
     await mock.stop();
+    if (keyDir) rmSync(keyDir, { recursive: true, force: true });
   });
 
   it('should call LLM API with correct prompt structure', async () => {

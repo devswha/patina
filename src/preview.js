@@ -411,14 +411,24 @@ async function embedFontsAsDataUris(css, { origin, baseUrl, signal, fetchImpl, l
   return { css, fontCount };
 }
 
+// String.fromCodePoint throws a RangeError on a code point > U+10FFFF (or
+// negative), so a page with a numeric reference like &#xFFFFFFFF; would crash
+// prose extraction / srcdoc inlining. Out-of-range references aren't valid
+// characters — leave the original entity text in place rather than throw (#527 H1).
+function fromCodePointSafe(codePoint, original) {
+  return Number.isInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+    ? String.fromCodePoint(codePoint)
+    : original;
+}
+
 function decodeHtmlEntities(value) {
   return String(value)
     // Numeric character references (&#60; / &#x3c;) — browsers decode all of
     // these in attribute values, so srcdoc inlining must too or numeric-entity
     // markup renders as inert escaped text and its prose never reaches the
     // extractor (#447).
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
+    .replace(/&#x([0-9a-f]+);/gi, (m, hex) => fromCodePointSafe(parseInt(hex, 16), m))
+    .replace(/&#(\d+);/g, (m, dec) => fromCodePointSafe(Number(dec), m))
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
@@ -1141,7 +1151,12 @@ const PREVIEW_CSP = [
 ].join('; ');
 
 function injectHead(html, sourceUrl) {
-  const baseTag = /<base\b/i.test(html) ? '' : `<base href="${htmlEscape(sourceUrl)}">`;
+  // Drop any page-supplied <base>: an attacker <base href="//evil/"> would
+  // otherwise survive (it is not a javascript: URL) and govern every relative
+  // URL in the inert snapshot. Always resolve relatives against patina's own
+  // base for the previewed source instead (#527 H2).
+  html = html.replace(/<base\b[^>]*>/gi, '');
+  const baseTag = `<base href="${htmlEscape(sourceUrl || '')}">`;
   // CSP first so it governs everything that follows (and the page's own,
   // permissive CSP was already stripped by stripActiveContent).
   const csp = `<meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}">`;
@@ -1428,8 +1443,8 @@ function collectExcludedRanges(html) {
 
 function decodeEntities(text) {
   return text
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
+    .replace(/&#x([0-9a-f]+);/gi, (m, hex) => fromCodePointSafe(parseInt(hex, 16), m))
+    .replace(/&#(\d+);/g, (m, dec) => fromCodePointSafe(Number(dec), m))
     .replace(/&nbsp;/gi, ' ')
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/g, "'")

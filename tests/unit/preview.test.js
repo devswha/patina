@@ -338,7 +338,7 @@ test('buildPreviewHtml swaps rewrites in place and hardens the snapshot', () => 
   assert.ok(out.includes('score 42 → 17'));
 });
 
-test('buildPreviewHtml keeps an existing base tag and omits the toggle when nothing changed', () => {
+test('buildPreviewHtml drops a page-supplied base tag and injects its own (and omits the toggle when nothing changed)', () => {
   const html = `<html><head><base href="https://keep.test/"></head><body><p>${LONG_EN}</p></body></html>`;
   const { blocks } = extractProseBlocks(html);
   const { html: out, changedCount } = buildPreviewHtml({
@@ -348,8 +348,10 @@ test('buildPreviewHtml keeps an existing base tag and omits the toggle when noth
     sourceUrl: 'https://other.test/',
   });
   assert.strictEqual(changedCount, 0);
-  assert.ok(out.includes('href="https://keep.test/"'));
-  assert.ok(!out.includes('href="https://other.test/"'));
+  // #527 H2: a page-supplied <base> is not trusted — it is stripped and patina's
+  // own base for the previewed source is injected instead.
+  assert.ok(!out.includes('href="https://keep.test/"'));
+  assert.ok(out.includes('href="https://other.test/"'));
   assert.ok(!out.includes('id="ptna-v-rew"'));
   assert.ok(!out.includes('class="ptna-views"'));
   assert.ok(out.includes('0 of 1 blocks rewritten'));

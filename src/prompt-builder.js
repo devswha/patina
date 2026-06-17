@@ -670,7 +670,15 @@ function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone
   if (tone && tone.tone_source) {
     prompt += lang === 'ko' ? `## 톤 메타\n` : `## Tone metadata\n`;
     prompt += `- tone: ${tone.tone === null ? 'null' : tone.tone}\n`;
-    prompt += `- source: ${tone.tone_source}\n\n`;
+    prompt += `- source: ${tone.tone_source}\n`;
+    if (tone.tone_source === 'auto') {
+      // Minimal mode previously emitted `tone: auto` without telling the model
+      // to resolve it, so auto-tone quality diverged from the strict path (#527 H4).
+      prompt += lang === 'ko'
+        ? `- (auto: 본문에서 단일 톤을 추정해 적용하고, 아래 YAML 푸터의 tone/tone_evidence/tone_confidence를 그 값으로 채운다.)\n`
+        : `- (auto: infer a single tone from the text, apply it, and fill the YAML footer's tone/tone_evidence/tone_confidence with the resolved values.)\n`;
+    }
+    prompt += `\n`;
   }
 
   if (voiceSample) {

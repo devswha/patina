@@ -90,9 +90,13 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
 
     let settled = false;
     let cleanupSignal = () => {};
-    const timer = setTimeout(() => {
-      finishReject(new Error(`codex-cli backend: timed out after ${timeout}ms`), { kill: true });
-    }, timeout);
+    // A non-finite timeout means "no timeout" — without this guard Node clamps
+    // setTimeout(fn, Infinity) to 1ms and the child is SIGKILLed ~immediately (#527 H13).
+    const timer = Number.isFinite(timeout)
+      ? setTimeout(() => {
+        finishReject(new Error(`codex-cli backend: timed out after ${timeout}ms`), { kill: true });
+      }, timeout)
+      : null;
     if (signal) {
       const onAbort = () => finishReject(abortError('codex-cli backend: aborted'), { kill: true });
       signal.addEventListener('abort', onAbort, { once: true });

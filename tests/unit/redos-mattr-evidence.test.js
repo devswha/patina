@@ -69,6 +69,24 @@ test('#508 G6 detectTranslationese stays fast on a high-match-count input', () =
   assert.ok(elapsed < 1000, `expected sub-1s, got ${elapsed}ms`);
 });
 
+// #520 — the noun-calque "레이어로서" rule must not use an unbounded greedy
+// Hangul prefix; on a long unspaced Hangul run with no target phrase, that
+// backtracks quadratically.
+test('#520 detectTranslationese stays fast on a long unspaced Hangul noun-calque miss', () => {
+  const text = '가'.repeat(80000);
+  const start = Date.now();
+  const result = detectTranslationese(text, { lang: 'ko' });
+  const elapsed = Date.now() - start;
+  assert.ok(result);
+  assert.ok(elapsed < 1000, `expected sub-1s, got ${elapsed}ms`);
+});
+
+test('#520 noun-calque layer phrase detection is preserved on normal Korean prose', () => {
+  const result = detectTranslationese('보안 정책 레이어로서 요청을 검사합니다.', { lang: 'ko' });
+  assert.ok(result.byRule.some((rule) => rule.id === 'noun-calque'));
+  assert.ok(result.hits.includes('정책 레이어로서'));
+});
+
 // #508 G2 — parseStrictJson used a naive indexOf('{')..lastIndexOf('}') slice
 // that broke on prose containing stray braces, spuriously nulling a valid
 // score. scoreText should still recover the overall from chatty output.

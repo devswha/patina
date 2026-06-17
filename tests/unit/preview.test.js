@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
+import { performance } from 'node:perf_hooks';
 
 import {
   fetchPreviewPage,
@@ -434,6 +435,30 @@ test('inlineSrcdocIframes neutralizes fixed-height overflow-hidden wrappers arou
   assert.strictEqual((out.match(/overflow(?:-y)?\s*:\s*hidden/g) || []).length, 0);
   // A wrapper with no clipping declarations keeps its style untouched.
   assert.ok(out.includes('<div style="color:red"><div class="ptna-srcdoc">'));
+});
+test('prepareSnapshotHtml unclipping remains near-linear with many marker-like srcdoc wrappers (#521)', () => {
+  const makeHtml = (count) => Array.from({ length: count }, () =>
+    '<div style="height:10px;overflow:hidden"><div class="ptna-srcdoc">hello</div></div>').join('');
+
+  const sample = prepareSnapshotHtml(makeHtml(3));
+  assert.strictEqual((sample.match(/class="ptna-srcdoc"/g) || []).length, 3);
+  assert.strictEqual((sample.match(/overflow\s*:\s*hidden/g) || []).length, 0);
+  assert.ok(sample.includes('<div style=""><div class="ptna-srcdoc">hello</div></div>'));
+
+  const time = (count) => {
+    const input = makeHtml(count);
+    const started = performance.now();
+    const out = prepareSnapshotHtml(input);
+    const elapsed = performance.now() - started;
+    assert.strictEqual((out.match(/class="ptna-srcdoc"/g) || []).length, count);
+    assert.strictEqual((out.match(/overflow\s*:\s*hidden/g) || []).length, 0);
+    return elapsed;
+  };
+
+  time(200);
+  const small = time(1000);
+  const large = time(4000);
+  assert.ok(large < Math.max(100, small * 8), `expected near-linear unclipping, got ${small}ms vs ${large}ms`);
 });
 
 test('freezeSnapshotAssets inlines same-origin stylesheets, absolutizes url(), and embeds same-origin fonts (#428)', async () => {

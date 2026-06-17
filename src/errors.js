@@ -81,6 +81,25 @@ export function getExitCode(err, fallback = 1) {
   return Number.isInteger(n) && n >= 1 ? n : fallback;
 }
 
+/**
+ * Merge a thrown error's exit code with an already-recorded process exit code.
+ *
+ * Score gates set `process.exitCode = 3` without throwing so batch mode can keep
+ * processing files. If a later non-fatal batch summary error is thrown, the bin
+ * catch must preserve the stricter existing gate code instead of masking it with
+ * the runtime error's `1` (#526).
+ *
+ * @param {unknown} err Error-like value.
+ * @param {number|string|undefined} currentExitCode Current process exit code.
+ * @param {number} [fallback=1] Fallback for the thrown error.
+ * @returns {number} Positive integer process exit code.
+ */
+export function getProcessExitCode(err, currentExitCode = process.exitCode, fallback = 1) {
+  const errCode = getExitCode(err, fallback);
+  const current = Number(currentExitCode);
+  return Number.isInteger(current) && current >= 1 ? Math.max(current, errCode) : errCode;
+}
+
 function normalizeError(err) {
   if (err instanceof PatinaCliError) {
     return {

@@ -292,6 +292,28 @@ describe('Backend Fallback Chain', () => {
     assert.deepStrictEqual(events.map((entry) => entry.event), ['backend.fallback', 'backend.fallback']);
   });
 
+  it('falls through local CLI timeout-shaped errors at non-final hops (#525)', async () => {
+    const events = [];
+    const logger = { warn: (event, fields) => events.push({ event, ...fields }) };
+    const result = await invokeBackendChain({
+      backends: [
+        {
+          name: 'claude-cli',
+          invoke: async () => {
+            throw new Error('claude-cli backend: timed out after 50ms');
+          },
+        },
+        { name: 'openai-http', invoke: async () => 'ok' },
+      ],
+      prompt: 'rewrite this',
+      logger,
+    });
+
+    assert.strictEqual(result, 'ok');
+    assert.deepStrictEqual(events.map((entry) => entry.event), ['backend.fallback']);
+    assert.match(events[0].message, /claude-cli failed with Error; falling back to openai-http/);
+  });
+
   it('surfaces the final-hop timeout instead of swallowing it (#506 defect 2)', async () => {
     let thirdCalls = 0;
     await assert.rejects(

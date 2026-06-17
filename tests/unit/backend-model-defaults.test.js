@@ -69,14 +69,18 @@ test('local CLI model resolver uses best-known defaults and preserves explicit i
     'claude-opus-custom'
   );
   assert.strictEqual(
+    resolveLocalCliModel({ backendName: 'codex-cli', model: 'gpt-5.6-preview', modelSource: 'flag' }),
+    'gpt-5.6-preview'
+  );
+  assert.strictEqual(
     resolveLocalCliModel({ backendName: 'kimi-cli', model: 'kimi', modelSource: 'flag' }),
     DEFAULT_BEST_MODELS.kimiCli
   );
 });
 
-test('drops a foreign-family flag model per fallback leg (#445)', () => {
-  // `--backend openai-http,claude-cli --model gpt-5.5`: the claude-cli leg must
-  // fall back to its own default instead of forwarding the foreign id.
+test('drops foreign-family models from env/provider sources for local CLI backends (#524)', () => {
+  // PATINA_MODEL=gpt-5.5 or a provider default paired with --backend claude-cli
+  // must not forward an OpenAI/Gemini id into the Claude process.
   assert.strictEqual(
     resolveLocalCliModel({ backendName: 'claude-cli', model: 'gpt-5.5', modelSource: 'flag' }),
     DEFAULT_BEST_MODELS.claudeCli
@@ -84,6 +88,14 @@ test('drops a foreign-family flag model per fallback leg (#445)', () => {
   assert.strictEqual(
     resolveLocalCliModel({ backendName: 'gemini-cli', model: 'gpt-5.5', modelSource: 'flag' }),
     DEFAULT_BEST_MODELS.geminiCli
+  );
+  assert.strictEqual(
+    resolveLocalCliModel({ backendName: 'claude-cli', model: 'gpt-5.5', modelSource: 'env:PATINA_MODEL' }),
+    DEFAULT_BEST_MODELS.claudeCli
+  );
+  assert.strictEqual(
+    resolveLocalCliModel({ backendName: 'claude-cli', model: 'gemini-2.5-pro', modelSource: 'provider:gemini' }),
+    DEFAULT_BEST_MODELS.claudeCli
   );
   // A matching-family flag model is still honored.
   assert.strictEqual(

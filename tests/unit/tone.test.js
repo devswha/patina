@@ -140,6 +140,27 @@ test('formatOutput: does not colorize non-diff modes', () => {
   assert.equal(out, raw);
 });
 
+test('formatOutput: preserves synthetic ouroboros reports with literal body tags (#523)', () => {
+  const report = [
+    '## Ouroboros Iteration Log',
+    '',
+    '| Iter | Before | After |',
+    '|---|---|---|',
+    '| 1 | 45 | 18 |',
+    '',
+    'Final score: 18/100 (±10)',
+    '',
+    '## Final Text',
+    '',
+    'A tutorial: wrap output in [BODY] your prose [/BODY] tags so patina parses it.',
+  ].join('\n');
+
+  const out = formatOutput(report, 'ouroboros', {});
+  assert.ok(out.includes('## Ouroboros Iteration Log'));
+  assert.ok(out.includes('## Final Text'));
+  assert.ok(out.includes('A tutorial: wrap output in [BODY] your prose [/BODY] tags'));
+});
+
 test('formatOutput: does not duplicate complete footer', () => {
   const existing = 'Body text\n---\ntone: casual\ntone_source: user\ntone_evidence: []\ntone_confidence: high\n---';
   const tone = { tone: 'casual', tone_source: 'user', tone_evidence: [], tone_confidence: 'high' };
@@ -249,7 +270,7 @@ test('stripSelfAudit: missing [BODY] strips audit and warns', () => {
   assert.match(logs[0], /Try a different backend/);
 });
 
-test('stripSelfAudit: only applied to rewrite/ouroboros modes', () => {
+test('stripSelfAudit: only applied to raw rewrite output', () => {
   const raw = '[BODY]\nclean\n[/BODY]\n[SELF_AUDIT]\nleak\n[/SELF_AUDIT]';
   const audit = formatOutput(raw, 'audit', {});
   // Audit mode should not strip — tags should round-trip as-is.

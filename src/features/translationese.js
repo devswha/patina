@@ -25,7 +25,7 @@ const RULES = [
     id: 'noun-calque',
     label: '직역 명사구 (pillar/layer 류 calque)',
     strong: true,
-    re: () => /커맨드 기둥|명령(?:어)? 기둥|기둥 커맨드|[가-힣]+ 레이어로서/g,
+    re: () => /커맨드 기둥|명령(?:어)? 기둥|기둥 커맨드|[가-힣]{1,32} 레이어로서/g,
     example: { before: '세 가지 커맨드 기둥을 설치합니다.', after: '핵심 커맨드 세 가지를 설치합니다.' },
   },
   {

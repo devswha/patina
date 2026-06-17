@@ -157,33 +157,80 @@ function adaptSrcdocViewportCss(srcdocHtml) {
 const MAX_UNCLIP_DEPTH = 2;
 
 function unclipSrcdocWrappers(html) {
-  const MARKER = '<div class="ptna-srcdoc">';
-  let out = String(html);
+  const source = String(html);
+  const edits = [];
+  const seenEdits = new Set();
   let cursor = 0;
   for (;;) {
-    const at = out.indexOf(MARKER, cursor);
+    const at = source.indexOf('<div class="ptna-srcdoc">', cursor);
     if (at === -1) break;
+
     let boundary = at;
-    let delta = 0;
     for (let depth = 0; depth < MAX_UNCLIP_DEPTH; depth++) {
-      const prefix = out.slice(0, boundary);
-      const wrapper = /<(?:div|section|article)\b[^>]*\bstyle\s*=\s*("([^"]*)"|'([^']*)')[^>]*>\s*$/i.exec(prefix);
+      const wrapper = findAdjacentClippingWrapper(source, boundary);
       if (!wrapper) break;
-      const style = wrapper[2] ?? wrapper[3] ?? '';
-      if (!/overflow(?:-y)?\s*:\s*hidden/i.test(style) || !/(?:max-)?height\s*:/i.test(style)) break;
-      const fixed = style
-        .split(';')
-        .filter((decl) => !/^\s*(?:overflow(?:-y)?|height|max-height)\s*:/i.test(decl))
-        .join(';');
-      const quote = wrapper[1][0];
-      const replacement = wrapper[0].replace(wrapper[1], `${quote}${fixed}${quote}`);
-      out = prefix.slice(0, wrapper.index) + replacement + out.slice(boundary);
-      delta += replacement.length - wrapper[0].length;
-      boundary = wrapper.index;
+      const key = `${wrapper.styleStart}:${wrapper.styleEnd}`;
+      if (!seenEdits.has(key)) {
+        seenEdits.add(key);
+        edits.push({ start: wrapper.styleStart, end: wrapper.styleEnd, value: unclippedStyle(wrapper.style) });
+      }
+      boundary = wrapper.tagStart;
     }
-    cursor = at + delta + MARKER.length;
+    cursor = at + '<div class="ptna-srcdoc">'.length;
   }
-  return out;
+
+  if (edits.length === 0) return source;
+  let out = '';
+  let last = 0;
+  for (const edit of edits.sort((a, b) => a.start - b.start)) {
+    out += source.slice(last, edit.start) + edit.value;
+    last = edit.end;
+  }
+  return out + source.slice(last);
+}
+
+function findAdjacentClippingWrapper(source, boundary) {
+  let tagEnd = boundary;
+  while (tagEnd > 0 && /\s/.test(source[tagEnd - 1])) tagEnd--;
+  if (source[tagEnd - 1] !== '>') return null;
+
+  const tagStart = source.lastIndexOf('<', tagEnd - 1);
+  if (tagStart === -1) return null;
+  const tag = source.slice(tagStart, tagEnd);
+  if (!/^<(?:div|section|article)\b/i.test(tag)) return null;
+
+  const style = readStyleAttribute(tag);
+  if (!style) return null;
+  if (!/overflow(?:-y)?\s*:\s*hidden/i.test(style.value) || !/(?:max-)?height\s*:/i.test(style.value)) return null;
+
+  return {
+    tagStart,
+    style: style.value,
+    styleStart: tagStart + style.valueStart,
+    styleEnd: tagStart + style.valueEnd,
+  };
+}
+
+function readStyleAttribute(tag) {
+  const attrRe = /\bstyle\s*=\s*("([^"]*)"|'([^']*)')/gi;
+  let match;
+  while ((match = attrRe.exec(tag)) !== null) {
+    const value = match[2] ?? match[3] ?? '';
+    const quoteOffset = match[0].indexOf(match[1]);
+    return {
+      value,
+      valueStart: match.index + quoteOffset + 1,
+      valueEnd: match.index + quoteOffset + 1 + value.length,
+    };
+  }
+  return null;
+}
+
+function unclippedStyle(style) {
+  return style
+    .split(';')
+    .filter((decl) => !/^\s*(?:overflow(?:-y)?|height|max-height)\s*:/i.test(decl))
+    .join(';');
 }
 
 // Snapshot asset freezing (#428). Sites increasingly refuse cross-site

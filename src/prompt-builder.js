@@ -102,6 +102,9 @@ function buildSeverityOverrideNote(config) {
  * @param {string} [options.jargon=keep] Technical-term policy
  *   (keep|explain|remove); non-default values add the opt-in
  *   transformation directive to rewrite prompts.
+ * @param {boolean} [options.rewriteHeadings=false] When false (default),
+ *   instruct the model to preserve Markdown ATX heading lines verbatim as
+ *   structure (#473); true opts back into rewording/adding/removing them.
  * @returns {string} Complete prompt text.
  * @throws {TypeError} When `options.tone.tone_evidence` contains values JSON.stringify cannot serialize (circular references, BigInt).
  * @example
@@ -125,6 +128,8 @@ export function buildPrompt(options) {
     includeSelfAudit = true,
     restyle = 'sentence',
     jargon = 'keep',
+    // #473: preserve Markdown ATX headings by default; --rewrite-headings opts in.
+    rewriteHeadings = false,
   } = options;
   const promptMode = /** @type {any} */ (options).promptMode || 'strict';
   // v3.11+ internal backend prompt-style dispatch. The compact prompt strips
@@ -132,7 +137,7 @@ export function buildPrompt(options) {
   // to rewrite mode where voice prior matters most. Profile body is still passed
   // through (Round 2 found Gemini ignored casual-conversation when omitted).
   if (promptMode === 'minimal' && mode === 'rewrite') {
-    return buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, documentSignals, restyle, jargon });
+    return buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, documentSignals, restyle, jargon, rewriteHeadings });
   }
 
   const lang = config.language || 'ko';
@@ -219,7 +224,7 @@ export function buildPrompt(options) {
   prompt += `Process the following text according to the output mode "${mode}".\n\n`;
 
   if (mode === 'rewrite') {
-    prompt += buildRewriteInstructions(structurePacks, lexicalPacks, { lang, includeSelfAudit });
+    prompt += buildRewriteInstructions(structurePacks, lexicalPacks, { lang, includeSelfAudit, rewriteHeadings });
     prompt += buildTransformDirective({ restyle, jargon, korean: false });
   } else if (mode === 'diff') {
     prompt += buildDiffInstructions();
@@ -283,10 +288,23 @@ function buildTransformDirective({ restyle = 'sentence', jargon = 'keep', korean
   return `${header}${bullets.map((b) => `- ${b}`).join('\n')}\n\n`;
 }
 
+// Markdown ATX heading lines (`## ...`) are document structure — they drive the
+// table of contents and the `#anchor` slugs that in-page and cross-page links
+// resolve to. Rewording, adding, or removing a heading silently changes the TOC
+// and 404s those links. By default we tell the model to treat heading lines as
+// fixed structure, exactly like a fenced code block; --rewrite-headings opts
+// back into rewording them (#473). Bilingual because the minimal prompt is too.
+function buildHeadingPreservationRule(lang, rewriteHeadings = false) {
+  if (rewriteHeadings) return '';
+  return lang === 'ko'
+    ? `**마크다운 구조 — 제목 보존(필수).** 맨 앞이 \`#\` 하나 이상 + 공백으로 시작하는 마크다운 ATX 제목 줄은 펜스 코드블록과 똑같이 고정 구조로 취급해. 각 제목 줄은 글자 그대로 복사하고 리워딩·번역·서식 변경·재배열·병합·분할하지 마. 제목을 새로 추가하거나 기존 제목을 삭제하지도 마. 다듬는 건 제목 아래 본문뿐이며, 출력의 제목 집합과 텍스트는 입력과 완전히 동일해야 한다.`
+    : `**Markdown structure — preserve headings (required).** Treat every Markdown ATX heading line (a line starting with one or more \`#\` followed by a space) as fixed structure, exactly like a fenced code block. Copy each heading line through verbatim — never reword, translate, reformat, reorder, merge, or split it — and never add a heading that was not in the input or remove one that was. Rewrite only the body prose beneath the headings. The set and text of headings in your output must be identical to the input.`;
+}
+
 function buildRewriteInstructions(
   structurePacks,
   lexicalPacks,
-  { includeSelfAudit = true, lang = 'ko', includeKoreanAdvisory = true } = {}
+  { includeSelfAudit = true, lang = 'ko', includeKoreanAdvisory = true, rewriteHeadings = false } = {}
 ) {
   const phaseCount = includeSelfAudit ? 3 : 2;
   let inst = `Follow the ${phaseCount}-Phase pipeline:\n\n`;
@@ -296,6 +314,9 @@ function buildRewriteInstructions(
   // after every named pattern is fixed. Frame first, then edit.
   inst += `### Phase 0: Document Brief (internal — never output)\n\n`;
   inst += `Before any edit, read the whole input and fix in your head: what this document is (landing page / blog post / notice / documentation), who is speaking to whom, the document's dominant register and tone, and its recurring domain terms. Keep that frame for every edit below. Unify all rewritten sentences to the document's dominant register — register mixing across sentences is itself an AI tell. Reuse the document's own domain terms instead of generic synonyms.\n\n`;
+
+  const headingRule = buildHeadingPreservationRule(lang, rewriteHeadings);
+  if (headingRule) inst += `${headingRule}\n\n`;
 
   if (structurePacks.length > 0) {
     inst += `### Phase 1: Structure Scan\n\n`;
@@ -585,7 +606,7 @@ export function isShortText(text) {
 // model's natural voice prior isn't overridden by analytical framing. Only
 // invoked for rewrite mode; score/audit/diff/ouroboros stay on the strict
 // path because they need precise pattern references.
-function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, documentSignals = null, restyle = 'sentence', jargon = 'keep' }) {
+function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, documentSignals = null, restyle = 'sentence', jargon = 'keep', rewriteHeadings = false }) {
   const lang = config.language || 'ko';
   const activePatterns = patterns.filter((p) => !p.isScoreOnly);
 
@@ -610,6 +631,8 @@ function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone
     : `Before editing, read the whole text and fix in your head: what this document is (landing page / blog post / notice / docs), who is speaking to whom, the dominant register and tone, and the recurring domain terms. Keep that frame throughout, unify every rewritten sentence to the document's dominant register — register drift between sentences is itself an AI tell — and reuse the document's own terms instead of generic synonyms. Never output this analysis; apply it to the body only.`;
 
   let prompt = `${instruction}\n\n${brief}\n\n`;
+  const headingRule = buildHeadingPreservationRule(lang, rewriteHeadings);
+  if (headingRule) prompt += `${headingRule}\n\n`;
   prompt += buildTransformDirective({ restyle, jargon, korean: lang === 'ko' });
 
   if (Array.isArray(documentSignals) && documentSignals.length > 0) {

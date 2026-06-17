@@ -208,6 +208,7 @@ export async function runDefault(parsed, logger) {
       documentSignals: mode === 'rewrite' ? buildDocumentSignals({ text, lang }).signals : null,
       restyle: parsed.restyle,
       jargon: parsed.jargon,
+      rewriteHeadings: parsed.rewriteHeadings,
     }),
   }));
 
@@ -581,6 +582,7 @@ async function runPreviewJob({
       promptMode,
       restyle: parsed.restyle,
       jargon: parsed.jargon,
+      rewriteHeadings: parsed.rewriteHeadings,
     };
     const invokeInputs = {
       backends,

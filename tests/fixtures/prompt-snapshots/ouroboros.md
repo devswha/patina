@@ -75,6 +75,8 @@ Follow the 2-Phase pipeline:
 
 Before any edit, read the whole input and fix in your head: what this document is (landing page / blog post / notice / documentation), who is speaking to whom, the document's dominant register and tone, and its recurring domain terms. Keep that frame for every edit below. Unify all rewritten sentences to the document's dominant register — register mixing across sentences is itself an AI tell. Reuse the document's own domain terms instead of generic synonyms.
 
+**Markdown structure — preserve headings (required).** Treat every Markdown ATX heading line (a line starting with one or more `#` followed by a space) as fixed structure, exactly like a fenced code block. Copy each heading line through verbatim — never reword, translate, reformat, reorder, merge, or split it — and never add a heading that was not in the input or remove one that was. Rewrite only the body prose beneath the headings. The set and text of headings in your output must be identical to the input.
+
 ### Phase 1: Structure Scan
 
 Apply the structure patterns to fix document-level issues:

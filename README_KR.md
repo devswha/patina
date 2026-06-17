@@ -9,7 +9,7 @@
 [![Version](https://img.shields.io/badge/version-5.4.0-blue)](CHANGELOG.md)
 
 <p align="center">
-  <img src="assets/demo/patina-demo-ko.gif" alt="patina가 한국어 AI풍 문장을 다듬고 결과 점수를 보여주는 터미널 데모 GIF" width="780">
+  <img src="assets/demo/patina-preview-en.gif" alt="patina --preview가 실제 웹페이지에서 Rewritten, Original, Both, Diff 보기를 전환하며 AI스러운 표현을 줄이고 점수를 60에서 0으로 낮추는 애니메이션" width="820">
 </p>
 
 <p align="center">
@@ -22,15 +22,16 @@ patina는 한국어·영어·중국어·일본어 글에서 AI가 쓴 듯한 표
 
 막연히 말을 바꾸는 블랙박스형 도구도, AI 탐지기를 우회하기 위한 도구도 아닙니다. patina는 **명확한 패턴 기반**으로 작동하며, 무엇을 왜 바꿨는지와 원문의 주장이 보존됐는지를 보여줍니다. `codex`, `claude`, `gemini` CLI 중 하나에 로그인되어 있으면 API 키 없이도 쓸 수 있습니다.
 
-## 데모
+## 데모: 실제 페이지에서 바로 보기
 
-**수정 전** *(AI스러운 글; GIF와 같은 예시)*:
-> 새롭게 출시된 노션 템플릿 팩은 생산성 향상을 위한 **혁신적인 솔루션**입니다. 다양한 워크플로우에 최적화된 30개의 템플릿을 제공하며, 사용자 친화적인 디자인으로 누구나 손쉽게 활용 가능합니다. 본 제품은 업무 효율성을 극대화하는 **새로운 패러다임**을 제시합니다.
+`--preview`는 URL이나 로컬 `.html`을 스냅샷으로 만든 뒤, 글 문단만 다시 쓰고 원래 페이지 위에 그대로 렌더링합니다. 떠 있는 바에서 **Rewritten / Original / Both / Diff**를 전환하고, 바뀐 문단으로 바로 이동하며, 결정적 점수의 전후 변화를 확인할 수 있습니다.
 
-**수정 후** *(`/patina --lang ko --tone marketing` — 같은 내용, AI 포장만 제거)*:
-> 노션을 자주 쓰지만 매번 빈 페이지에서 막힌다면 이 팩부터 열어 보세요. 업무별 템플릿 30개를 담았습니다. 복잡한 설정 없이 복제해서 바로 고치고, 팀 프로젝트든 개인 정리든 필요한 형태로 손보면 됩니다.
+```bash
+patina --preview --lang ko page.html
+patina --preview https://example.com/post
+```
 
-> **Score = 0.0%** · 템플릿 30개 ✓ · 워크플로우 적합성 ✓ · 복제 후 수정 사용 ✓
+샘플은 페이지 구조, 제목, CTA, 구체 정보(`30개 템플릿`, 기획 문서, 핸드오프)를 그대로 둡니다. “혁신적인 솔루션”, “생산성을 혁신적으로 전환”, “새로운 패러다임” 같은 포장만 걷어내고, 바뀐 부분은 인라인 diff로 남깁니다.
 
 **다른 예시**
 
@@ -40,13 +41,14 @@ patina는 한국어·영어·중국어·일본어 글에서 AI가 쓴 듯한 표
 | 학술 문체 | “획기적인 성과”, 넓은 의의 주장 | GitHub 프로젝트 60개, 72h→10m 설정 시간, p<0.01, 한계 명시 |
 | 기술 문서 | “핵심적인 역할”, 미래 표준식 과장 | GPU 관리, 명령 한 번으로 준비, 5× 결과의 주의점 |
 
-## 브라우저에서 바로 보기 — 설치 없음
+CLI transcript는 [Demo](docs/DEMO.md)에서 볼 수 있습니다. 더 많은 예시는 [Before/After Gallery](docs/EXAMPLES_KR.md) ([English](docs/EXAMPLES.md))에 있습니다.
+
+## 브라우저 감사 — 설치 없음
 
 **[patina.vibetip.help](https://patina.vibetip.help/)** 에서 KO / EN / ZH / JA 문단의 AI스러운 글쓰기 패턴을 브라우저 안에서 바로 점검할 수 있습니다.
 
-> **탐지 전용입니다.** playground는 정해진 문체 통계 분석만 사용자 브라우저에서 실행합니다. 텍스트를 다시 쓰지 않고, 외부 LLM을 호출하지 않으며, API 키를 서버로 보내지 않습니다. 실제 재작성이 필요하면 아래 CLI나 스킬을 사용하세요.
+> **탐지 전용입니다.** playground는 정해진 문체 통계 분석만 사용자 브라우저에서 실행합니다. 텍스트를 다시 쓰지 않고, 외부 LLM을 호출하지 않으며, API 키를 서버로 보내지 않습니다. 실제 재작성이 필요하면 위의 `--preview`, 아래 CLI, 또는 스킬을 사용하세요.
 
-전체 재작성 흐름은 [30초 터미널 데모](docs/DEMO.md)에서 볼 수 있습니다. 더 많은 예시는 [Before/After Gallery](docs/EXAMPLES_KR.md) ([English](docs/EXAMPLES.md))에 있습니다.
 브랜드 리소스: [로고](assets/brand/patina-logo.svg), [마크](assets/brand/patina-mark.svg), [아이콘](assets/brand/patina-icon.svg), [소셜 프리뷰](assets/social/patina-og.svg), [before/after 카드](assets/social/patina-before-after.svg). 사용 가이드라인은 [BRANDING.md](docs/BRANDING.md)를 참고하세요.
 
 ## 한눈에 보기
@@ -58,13 +60,14 @@ patina는 한국어·영어·중국어·일본어 글에서 AI가 쓴 듯한 표
 | **벤치마크 리포트** | 재현 가능한 ko/en/zh/ja 의심 구간 벤치마크: [overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [2026 rebaseline](docs/benchmarks/rebaseline-latest.md) · [detector comparison](docs/benchmarks/detector-comparison.md) |
 | **오탐율** | 2026-05-22 KO+EN 사람 글 컨트롤에서 16.0% [11.6–21.7%] (n=200). 문체별 경계는 [stylometry.md](core/stylometry.md)에 문서화되어 있습니다 — [오탐 제보](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
 | **모드** | 재작성 · 탐지 · 점수 · diff · ouroboros |
+| **사용 채널** | 에이전트 스킬 · Node CLI · 페이지 내 preview · 브라우저 감사 playground |
 | **무료 사용** | 로그인된 `codex`, `claude`, `gemini` CLI 중 하나로 API 키 없이 실행 |
 | **결정성** | 스코어링 공식은 결정적이지만 LLM severity 판정 단계에는 ±8–10pt 변동이 있습니다 ([scoring.md §8](core/scoring.md)) |
 | **라이선스** | MIT |
 
 ## 빠른 시작
 
-> **개발 환경이 없어도 괜찮습니다.** 먼저 위의 "브라우저에서 바로 보기"로 설치 없이 체험해 본 뒤, 실제로 글을 다듬을 땐 아래 **Claude Code 스킬**(방법 A는 평소 말투면 됩니다)을 쓰세요. Node.js를 직접 다루는 분만 "독립형 CLI"로 가면 됩니다.
+> **개발 환경이 없어도 괜찮습니다.** 먼저 위의 "브라우저 감사"로 설치 없이 문체 신호를 확인한 뒤, 실제로 글을 다듬을 땐 아래 **Claude Code 스킬**(방법 A는 평소 말투면 됩니다)을 쓰세요. Node.js를 직접 다루는 분만 "독립형 CLI"로 가면 됩니다.
 
 ### Claude Code 또는 Codex CLI 스킬로
 

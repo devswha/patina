@@ -58,23 +58,17 @@ function localizeDemoSrc(src) {
   return match[0];
 }
 
-test('localized READMEs point at language-suffixed demo GIFs that exist', () => {
-  const expected = {
-    'README.md': 'assets/demo/patina-demo-en.gif',
-    'README_KR.md': 'assets/demo/patina-demo-ko.gif',
-    'README_ZH.md': 'assets/demo/patina-demo-en.gif',
-    'README_JA.md': 'assets/demo/patina-demo-en.gif',
-  };
+test('localized READMEs point at the preview demo GIF that exists', () => {
+  const expected = 'assets/demo/patina-preview-en.gif';
 
   for (const file of README_FILES) {
     const { src, localSrc } = extractDemoHero(file);
     if (file === 'README.md') {
-      assert.equal(src, `https://raw.githubusercontent.com/devswha/patina/main/${expected[file]}`);
+      assert.equal(src, `https://raw.githubusercontent.com/devswha/patina/main/${expected}`);
     } else {
-      assert.equal(src, expected[file], `${file}: unexpected demo hero`);
+      assert.equal(src, expected, `${file}: unexpected demo hero`);
     }
-    assert.equal(localSrc, expected[file], `${file}: unexpected demo hero`);
-    assert.match(localSrc, /assets\/demo\/patina-demo-(?:en|ko|zh|ja)\.gif$/);
+    assert.equal(localSrc, expected, `${file}: unexpected demo hero`);
     assert.ok(existsSync(resolve(REPO_ROOT, localSrc)), `${file}: missing ${localSrc}`);
   }
 });
@@ -87,8 +81,8 @@ test('English demo hero copy does not describe a Korean recording', () => {
 
   for (const file of ['README_ZH.md', 'README_JA.md']) {
     const { localSrc, alt } = extractDemoHero(file);
-    assert.equal(localSrc, 'assets/demo/patina-demo-en.gif');
-    assert.doesNotMatch(alt, koreanTerms, `${file}: fallback alt should say English, not Korean`);
+    assert.equal(localSrc, 'assets/demo/patina-preview-en.gif');
+    assert.doesNotMatch(alt, koreanTerms, `${file}: preview alt should not describe a Korean recording`);
   }
 });
 
@@ -102,10 +96,9 @@ test('localized READMEs have no broken local image references', () => {
   }
 });
 
-test('README demo GIFs stay small enough for GitHub rendering', () => {
-  for (const file of ['assets/demo/patina-demo-en.gif', 'assets/demo/patina-demo-ko.gif']) {
-    const size = statSync(resolve(REPO_ROOT, file)).size;
-    assert.ok(size > 0, `${file}: empty asset`);
-    assert.ok(size < 10 * 1024 * 1024, `${file}: keep README GIF under 10 MB`);
-  }
+test('README preview GIF stays small enough for GitHub rendering', () => {
+  const file = 'assets/demo/patina-preview-en.gif';
+  const size = statSync(resolve(REPO_ROOT, file)).size;
+  assert.ok(size > 0, `${file}: empty asset`);
+  assert.ok(size < 10 * 1024 * 1024, `${file}: keep README GIF under 10 MB`);
 });

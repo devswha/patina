@@ -9,7 +9,7 @@
 [![Version](https://img.shields.io/badge/version-5.4.0-blue)](CHANGELOG.md)
 
 <p align="center">
-  <img src="assets/demo/patina-demo-en.gif" alt="patina が英語のAIっぽい文を整え、スコアを表示するターミナルデモGIF" width="780">
+  <img src="assets/demo/patina-preview-en.gif" alt="patina --preview が実際のページで Rewritten、Original、Both、Diff 表示を切り替え、レイアウトを保ったままAIっぽい表現を置き換え、スコアを60から0へ下げるアニメーション" width="820">
 </p>
 
 <p align="center">
@@ -22,15 +22,16 @@ patina は、日本語・韓国語・英語・中国語の文章から AI っぽ
 
 中身の見えない言い換えツールでも、AI 検出器を避けるためのツールでもありません。patina は **明確なパターンベースで監査可能**です。何をなぜ変更したか、原文の主張が保たれているかを示します。`codex`、`claude`、`gemini` CLI のいずれかにログイン済みなら、API キーなしでも使えます。
 
-## デモ
+## デモ：実ページ上でプレビュー
 
-**修正前** *(AI 風の文章；現在の GIF はこの英語サンプルを使用)*：
-> The newly released Notion template pack is an **innovative solution** designed to **transform productivity** for modern teams. It offers 30 templates optimized for diverse workflows, with a user-friendly design that enables anyone to leverage them effortlessly. This product introduces a **new paradigm** for maximizing work efficiency.
+`--preview` は URL またはローカル `.html` をスナップショット化し、本文ブロックだけを書き換えて元のページ上に戻します。浮動バーで **Rewritten / Original / Both / Diff** を切り替え、各変更ブロックへジャンプし、決定的スコアの before → after を確認できます。
 
-**修正後** *(`/patina --lang en --tone marketing` — 事実はそのまま、AIっぽさだけを除去)*：
-> If Notion still starts as a blank page for your team, open this pack first. It includes 30 templates for common workflows. Duplicate one, adjust the fields you need, and use it for a team project or your own planning without starting from scratch.
+```bash
+patina --preview --lang ja page.html
+patina --preview https://example.com/post
+```
 
-> **Score = 0.0%** · 30 個のテンプレート ✓ · ワークフローに合う ✓ · コピー後に調整して使える ✓
+サンプルでは、ページ構造、見出し、CTA、具体的な事実（`30 個のテンプレート`、計画ドキュメント、引き継ぎ）を保ちます。“innovative solution”“transform productivity”“new paradigm” のような包装だけを落とし、ブラックボックスな言い換えではなくインライン diff として残します。
 
 **ほかの例**
 
@@ -40,13 +41,14 @@ patina は、日本語・韓国語・英語・中国語の文章から AI っぽ
 | 学術文体 | “획기적인 성과”, 広すぎる意義づけ | GitHub プロジェクト 60 個、72h→10m のセットアップ時間、p<0.01、限界の明記 |
 | 技術文書 | “핵심적인 역할”, 未来標準のような誇張 | GPU 管理、1 コマンドでの準備、5× 結果の注意点 |
 
-## ブラウザで試す — インストール不要
+CLI transcript は [Demo](docs/DEMO.md) にあります。その他の例は [Before/After Gallery](docs/EXAMPLES.md)（[한국어](docs/EXAMPLES_KR.md)）にあります。
+
+## ブラウザ監査 — インストール不要
 
 **[patina.vibetip.help](https://patina.vibetip.help/)** で、KO / EN / ZH / JA 段落の AI っぽい書き方のサインをブラウザ内で確認できます。
 
-> **検出専用です。** playground は、決定的な文体統計分析だけをユーザーのブラウザ内で実行します。テキストを書き換えず、外部 LLM を呼び出さず、API キーをサーバーへ送りません。実際に書き換えたい場合は、下の CLI または skill を使ってください。
+> **検出専用です。** playground は、決定的な文体統計分析だけをユーザーのブラウザ内で実行します。テキストを書き換えず、外部 LLM を呼び出さず、API キーをサーバーへ送りません。実際に書き換えたい場合は、上の `--preview`、下の CLI、または skill を使ってください。
 
-書き換えの流れは [30 秒ターミナルデモ](docs/DEMO.md) で確認できます。その他の例は [Before/After Gallery](docs/EXAMPLES.md)（[한국어](docs/EXAMPLES_KR.md)）にあります。
 ブランドリソース: [logo](assets/brand/patina-logo.svg)、[mark](assets/brand/patina-mark.svg)、[icon](assets/brand/patina-icon.svg)、[social preview](assets/social/patina-og.svg)、[before/after card](assets/social/patina-before-after.svg)。利用ガイドラインは [BRANDING.md](docs/BRANDING.md) を参照してください。
 
 ## 概要
@@ -58,6 +60,7 @@ patina は、日本語・韓国語・英語・中国語の文章から AI っぽ
 | **ベンチマークレポート** | 再現可能な ko/en/zh/ja suspect-zone benchmark: [overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [2026 rebaseline](docs/benchmarks/rebaseline-latest.md) · [detector comparison](docs/benchmarks/detector-comparison.md) |
 | **誤検出率** | 2026-05-22 KO+EN の人間文章コントロールで 16.0% [11.6–21.7%]（n=200）。レジスター別の境界は [stylometry.md](core/stylometry.md) に記録 — [誤検出を報告](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
 | **モード** | rewrite · audit · score · diff · ouroboros |
+| **利用形態** | agent skill · Node CLI · ページ内 preview · ブラウザ監査 playground |
 | **無料利用** | ログイン済みの `codex`、`claude`、`gemini` CLI 経由で利用可能 (API キー不要) |
 | **決定性** | スコアリング式は決定的。LLM の severity 判定段階には ±8–10pt の変動があります ([scoring.md §8](core/scoring.md)) |
 | **ライセンス** | MIT |

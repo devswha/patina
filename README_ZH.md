@@ -9,7 +9,7 @@
 [![Version](https://img.shields.io/badge/version-5.4.0-blue)](CHANGELOG.md)
 
 <p align="center">
-  <img src="assets/demo/patina-demo-en.gif" alt="patina 将带有 AI 味的英文文案改写并显示评分的终端演示 GIF" width="780">
+  <img src="assets/demo/patina-preview-en.gif" alt="patina --preview 在真实网页上切换 Rewritten、Original、Both、Diff 视图，页面布局保持不变，AI 味表达被替换，分数从 60 降到 0 的动画" width="820">
 </p>
 
 <p align="center">
@@ -22,15 +22,16 @@ patina 会在中文、韩文、英文和日文中找出 AI 味较重的表达，
 
 它不是黑盒式改写器，也不是用来绕过 AI 检测器的工具。patina **基于清晰的模式规则，并且可审计**：会说明改了什么、为什么改，以及原文的主张是否保留下来。只要 `codex`、`claude`、`gemini` 任一 CLI 已登录，就可以不填 API 密钥使用。
 
-## 效果展示
+## 效果展示：在真实页面上预览
 
-**修改前** *(AI 风格；当前 GIF 使用的是英文示例)*：
-> The newly released Notion template pack is an **innovative solution** designed to **transform productivity** for modern teams. It offers 30 templates optimized for diverse workflows, with a user-friendly design that enables anyone to leverage them effortlessly. This product introduces a **new paradigm** for maximizing work efficiency.
+`--preview` 会把 URL 或本地 `.html` 做成快照，只改写正文段落，然后把结果渲染回原页面。浮动工具条可以切换 **Rewritten / Original / Both / Diff**，跳到每个改动块，并显示确定性分数的前后变化。
 
-**修改后** *(`/patina --lang en --tone marketing` — 事实不变，只去掉 AI 味)*：
-> If Notion still starts as a blank page for your team, open this pack first. It includes 30 templates for common workflows. Duplicate one, adjust the fields you need, and use it for a team project or your own planning without starting from scratch.
+```bash
+patina --preview --lang zh page.html
+patina --preview https://example.com/post
+```
 
-> **Score = 0.0%** · 30 个模板 ✓ · 适配工作流 ✓ · 复制后可调整使用 ✓
+示例保留页面结构、标题、CTA 和具体事实（`30 个模板`、规划文档、交接文档）。它去掉 “innovative solution”“transform productivity”“new paradigm” 这类包装，并用内联 diff 留下审计轨迹，而不是黑盒改写。
 
 **更多例子**
 
@@ -40,13 +41,14 @@ patina 会在中文、韩文、英文和日文中找出 AI 味较重的表达，
 | 学术文本 | “획기적인 성과”, 宽泛的意义宣称 | 60 个 GitHub 项目、72h→10m 设置时间、p<0.01、限制说明 |
 | 技术文档 | “핵심적인 역할”, 未来标准式夸张 | GPU 管理、一条命令完成配置、5× 结果的注意事项 |
 
-## 浏览器直接体验 — 无需安装
+CLI transcript 见 [Demo](docs/DEMO.md)。更多例子见 [Before/After Gallery](docs/EXAMPLES.md)（[한국어](docs/EXAMPLES_KR.md)）。
+
+## 浏览器审计 — 无需安装
 
 **[patina.vibetip.help](https://patina.vibetip.help/)** 可以在浏览器里直接检查 KO / EN / ZH / JA 段落中的 AI 写作信号。
 
-> **仅检测。** playground 只在你的浏览器内运行确定性的文体统计分析。它不会改写文本，不会调用外部 LLM，也不会把 API key 发到服务器。需要实际改写时，请使用下面的 CLI 或 skill。
+> **仅检测。** playground 只在你的浏览器内运行确定性的文体统计分析。它不会改写文本，不会调用外部 LLM，也不会把 API key 发到服务器。需要实际改写时，请使用上面的 `--preview`、下面的 CLI 或 skill。
 
-完整改写流程见 [30 秒终端演示](docs/DEMO.md)。更多例子见 [Before/After Gallery](docs/EXAMPLES.md)（[한국어](docs/EXAMPLES_KR.md)）。
 品牌资源：[logo](assets/brand/patina-logo.svg)、[mark](assets/brand/patina-mark.svg)、[icon](assets/brand/patina-icon.svg)、[social preview](assets/social/patina-og.svg)、[before/after card](assets/social/patina-before-after.svg)。使用指南见 [BRANDING.md](docs/BRANDING.md)。
 
 ## 一览
@@ -58,6 +60,7 @@ patina 会在中文、韩文、英文和日文中找出 AI 味较重的表达，
 | **基准报告** | 可复现的 ko/en/zh/ja 可疑区间基准：[overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [2026 rebaseline](docs/benchmarks/rebaseline-latest.md) · [detector comparison](docs/benchmarks/detector-comparison.md) |
 | **误检率** | 2026-05-22 KO+EN 人类对照为 16.0% [11.6–21.7%]（n=200）；不同文体的边界见 [stylometry.md](core/stylometry.md) — [报告误检](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
 | **模式** | rewrite · audit · score · diff · ouroboros |
+| **使用入口** | agent skill · Node CLI · 页面内 preview · 浏览器审计 playground |
 | **免费使用** | 已登录的 `codex`、`claude` 或 `gemini` CLI 可直接运行，无需 API 密钥 |
 | **确定性** | 评分公式是确定性的；LLM 严重度判定阶段会有 ±8–10pt 波动（[scoring.md §8](core/scoring.md)） |
 | **许可证** | MIT |

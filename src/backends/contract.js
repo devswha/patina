@@ -27,6 +27,13 @@ import { join } from 'node:path';
 export const DEFAULT_BACKEND_TIMEOUT_MS = 600_000;
 export const DEFAULT_HTTP_MAX_RETRIES = 2;
 export const PROMPT_SIZE_WARNING_CHARS = 20_000;
+export class TimeoutError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'TimeoutError';
+  }
+}
+
 
 export const BACKEND_SAFETY_DEFAULTS = Object.freeze({
   'openai-http': {
@@ -129,11 +136,17 @@ export function isRetryableBackendError(err, { attemptIndex = 0, signal } = {}) 
   void attemptIndex;
   const status = extractStatus(err);
   if (status === 429 || status === 503) return true;
-  // A per-attempt timeout (api.js renames exhausted timer aborts to
-  // TimeoutError, #444) now falls through at ANY non-final hop, exactly like a
-  // 429/503. The chain caller already stops at the final hop via `!next`, so the
-  // predicate itself needs no index gate (#506 defect 2).
-  return err?.name === 'AbortError' || err?.name === 'TimeoutError';
+  // A per-attempt timeout falls through at ANY non-final hop, exactly like a
+  // 429/503. This includes api.js TimeoutError, central contract TimeoutError,
+  // local CLI timeout-shaped messages, and concurrency slot wait timeouts
+  // (#525). The chain caller already stops at the final hop via `!next`.
+  return err?.name === 'AbortError' || isTimeoutError(err);
+}
+
+export function isTimeoutError(err) {
+  if (err?.name === 'TimeoutError') return true;
+  const message = String(err?.message || '');
+  return /\btimed out\b/i.test(message);
 }
 
 export function describeBackendError(err) {
@@ -235,7 +248,7 @@ async function acquireBackendSlot({
 
     throwIfAborted(signal, `${backendName || 'backend'}: aborted while waiting for concurrency slot`);
     if (Date.now() >= deadline) {
-      throw new Error(`${backendName || 'backend'}: timed out waiting for concurrency slot (cap ${maxConcurrency})`);
+      throw new TimeoutError(`${backendName || 'backend'}: timed out waiting for concurrency slot (cap ${maxConcurrency})`);
     }
     await sleepWithAbort(Math.min(pollMs, Math.max(0, deadline - Date.now())), signal, backendName);
   }

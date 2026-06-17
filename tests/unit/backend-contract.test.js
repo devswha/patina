@@ -9,6 +9,8 @@ import {
   isRetryableBackendError,
   withBackendConcurrencySlot,
   backendSupportsStructuredOutput,
+  TimeoutError,
+  isTimeoutError,
 } from '../../src/backends/contract.js';
 
 test('resolveBackendMaxConcurrency fails closed on an invalid override (#445)', () => {
@@ -37,6 +39,18 @@ test('isRetryableBackendError honors message status even when err.status is null
   assert.equal(isRetryableBackendError({ status: null, message: 'HTTP 503 unavailable' }, { attemptIndex: 5 }), true);
   // a generic error with no rate-limit signal stays non-retryable.
   assert.equal(isRetryableBackendError({ status: null, message: 'bad request' }, { attemptIndex: 0 }), false);
+});
+
+test('local CLI timeout-shaped errors are retryable/fallbackable (#525)', () => {
+  const cliTimeout = new Error('claude-cli backend: timed out after 50ms');
+  assert.equal(isTimeoutError(cliTimeout), true);
+  assert.equal(isRetryableBackendError(cliTimeout, { attemptIndex: 0 }), true);
+
+  const slotTimeout = new TimeoutError('claude-cli: timed out waiting for concurrency slot (cap 1)');
+  assert.equal(isTimeoutError(slotTimeout), true);
+  assert.equal(isRetryableBackendError(slotTimeout, { attemptIndex: 2 }), true);
+
+  assert.equal(isTimeoutError(new Error('unauthorized')), false);
 });
 
 function userSlotSegment() {

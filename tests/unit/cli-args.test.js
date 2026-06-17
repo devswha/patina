@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 
 import { parseArgs, validateOutputRouting } from '../../src/cli/args.js';
 import { applyScoreGate } from '../../src/cli/score-gate.js';
-import { PatinaCliError } from '../../src/errors.js';
+import { PatinaCliError, getProcessExitCode } from '../../src/errors.js';
 
 test('output routing flags require --batch (#440)', () => {
   assert.throws(
@@ -103,6 +103,18 @@ test('applyScoreGate throws a typed runtime error when overall is missing (#440)
   assert.equal(err.exitCode, 1);
   assert.match(err.what, /score gate could not find a numeric overall value/);
   assert.match(err.action, /--format json/);
+});
+
+test('bin exit code preserves score-gate code over later batch summary error (#526)', () => {
+  const err = new PatinaCliError({
+    what: 'batch completed with failures',
+    why: 'One file failed after another file exceeded the score gate.',
+    action: 'Review the failed batch entries.',
+    exitCode: 1,
+  });
+
+  assert.equal(getProcessExitCode(err, 3), 3);
+  assert.equal(getProcessExitCode(err, undefined), 1);
 });
 
 test('empty --suffix=/--outdir= is rejected instead of silently printing to stdout (#504)', () => {

@@ -42,9 +42,11 @@ export function formatOutput(result, mode, parsed = {}, opts = {}) {
 
 function renderFormattedBody(result, mode, parsed = {}, opts = {}) {
   let body = renderBody(result);
-  // Only rewrite and ouroboros emit [BODY] tags; diff/audit/score
-  // emit tables and don't need the extraction step.
-  if (mode === 'rewrite' || mode === 'ouroboros') {
+  // Only raw rewrite model results emit [BODY] tags at this formatter layer.
+  // Ouroboros strips each iteration's model output before building its synthetic
+  // report; stripping that report again would treat literal [BODY] text in the
+  // final prose as control tags and corrupt the report (#523).
+  if (mode === 'rewrite') {
     body = stripSelfAudit(body, { logger: opts.logger });
   }
   if (mode === 'diff' && (parsed.format || 'markdown') !== 'json') {

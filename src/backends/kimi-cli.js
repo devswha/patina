@@ -24,11 +24,11 @@ export function isAuthenticated() {
   const root = kimiDataDir();
   return hasKimiCredential(root) ||
     hasNonEmptyKimiConfig(root) ||
-    KIMI_ENV_KEYS.some((key) => !!process.env[key]);
+    KIMI_ENV_KEYS.some((key) => Boolean(process.env[key]?.trim()));
 }
 
 export function authHint() {
-  if (KIMI_ENV_KEYS.some((key) => !!process.env[key])) {
+  if (KIMI_ENV_KEYS.some((key) => Boolean(process.env[key]?.trim()))) {
     return 'Authenticated via KIMI_API_KEY/MOONSHOT_API_KEY env var.';
   }
   return `Run \`${loginCommand}\` once interactively to log in with Kimi Code OAuth.`;
@@ -91,9 +91,13 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
 
     let settled = false;
     let cleanupSignal = () => {};
-    const timer = setTimeout(() => {
-      finishReject(new Error(`kimi-cli backend: timed out after ${timeout}ms`), { kill: true });
-    }, timeout);
+    // A non-finite timeout means "no timeout" — without this guard Node clamps
+    // setTimeout(fn, Infinity) to 1ms and the child is SIGKILLed ~immediately (#527 H13).
+    const timer = Number.isFinite(timeout)
+      ? setTimeout(() => {
+        finishReject(new Error(`kimi-cli backend: timed out after ${timeout}ms`), { kill: true });
+      }, timeout)
+      : null;
     if (signal) {
       const onAbort = () => finishReject(abortError('kimi-cli backend: aborted'), { kill: true });
       signal.addEventListener('abort', onAbort, { once: true });

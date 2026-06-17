@@ -825,18 +825,22 @@ async function runPreviewJob({
         });
       }
     }
-    console.log(stdoutBody);
-
+    // Do the throwing/binding work (temp-file write, serve port bind) BEFORE the
+    // large stdout write: process.exit() does not drain a piped stdout, so a
+    // throw after console.log(stdoutBody) truncates piped output (#527 H7).
     const pagePath = writeBrowserDiffPage(built.html, { prefix: 'patina-preview-' });
     const imageSummary = built.imageChangedCount > 0 ? `, ${built.imageChangedCount} image(s) flagged` : '';
-    console.error(`[patina] Preview page saved at ${pagePath} (${built.changedCount} of ${built.totalCount} blocks rewritten${imageSummary})`);
+    let serveHandle = null;
     if (parsed.serve) {
-      const { url: servedUrl, done } = await serveBrowserDiffPage(built.html, {
-        signal: cancellation.signal,
-      });
-      console.error(`[patina] Serving preview at ${servedUrl}`);
+      serveHandle = await serveBrowserDiffPage(built.html, { signal: cancellation.signal });
+    }
+
+    console.log(stdoutBody);
+    console.error(`[patina] Preview page saved at ${pagePath} (${built.changedCount} of ${built.totalCount} blocks rewritten${imageSummary})`);
+    if (serveHandle) {
+      console.error(`[patina] Serving preview at ${serveHandle.url}`);
       console.error('[patina] Stops after 10 idle minutes; press Ctrl+C to stop now.');
-      await done;
+      await serveHandle.done;
     } else {
       try {
         await openBrowserDiffPage(pagePath);
@@ -844,6 +848,11 @@ async function runPreviewJob({
         console.error(`[patina] Browser open failed: ${err.message}`);
       }
     }
+  } catch (err) {
+    // Match runDefault: a Ctrl-C abort during a preview backend call surfaces as
+    // a clean exit-130 cancellation, not a generic exit-1 runtime failure (#527 H3).
+    if (cancellation.signal.aborted) throw cancellationError();
+    throw err;
   } finally {
     cancellation.cleanup();
   }

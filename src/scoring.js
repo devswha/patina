@@ -102,19 +102,32 @@ function parseStrictJson(text) {
   const whole = tryParseJson(body);
   if (whole.ok && isJsonObject(whole.value)) return whole.value;
 
-  // Otherwise scan for the first balanced {...} span that parses. A naive
-  // indexOf('{')..lastIndexOf('}') slice breaks when prose carries stray
-  // braces, e.g. "result for {A}: {\"overall\":20}" slices from `{A}`, and
-  // "{...} note: use {x}" slices to the trailing `{x}` — both then throw and
-  // spuriously null an otherwise-valid score (#508 G2).
+  // Otherwise scan every balanced {...} span and keep the RICHEST object. A
+  // naive indexOf('{')..lastIndexOf('}') slice breaks when prose carries stray
+  // braces, e.g. "result for {A}: {\"overall\":20}" slices from `{A}` (#508 G2).
+  // Returning the FIRST parseable object is also wrong when a chatty model
+  // emits a stray/echoed object (or an empty `{}`) before the real score —
+  // that nulls a valid score without a retry (#527 H8). And a lone unbalanced
+  // '{' must skip, not abandon the scan, or a later valid object is missed
+  // (#527 H9). Picking the object with the most keys favors the score object
+  // (many keys) over a small echo while leaving the single-object case exact.
+  let best = null;
+  let bestKeys = -1;
   for (let i = 0; i < body.length; i++) {
     if (body[i] !== '{') continue;
     const end = matchingBraceEnd(body, i);
-    if (end === -1) break;
+    if (end === -1) continue; // this '{' never balances; a later one might
     const candidate = tryParseJson(body.slice(i, end + 1));
-    if (candidate.ok && isJsonObject(candidate.value)) return candidate.value;
-    i = end; // skip past this unparseable span
+    if (candidate.ok && isJsonObject(candidate.value)) {
+      const keys = Object.keys(candidate.value).length;
+      if (keys >= 1 && keys > bestKeys) {
+        best = candidate.value;
+        bestKeys = keys;
+      }
+    }
+    i = end; // skip past this span
   }
+  if (best !== null) return best;
 
   throw new SchemaError('No JSON object found', text);
 }
@@ -367,9 +380,16 @@ export function scoreDeterministicSignals({
       structuralClassifier.hot === true && typeof structuralClassifier.score === 'number'
         ? Math.max(STRUCTURAL_CLASSIFIER_MIN_FLOOR, roundScore(structuralClassifier.score * 100))
         : 0;
-    const overall = leaked
-      ? Math.max(hotRatioOverall, LEAKAGE_SCORE_FLOOR)
-      : Math.max(hotRatioOverall, structuralFloor);
+    // All floors apply together. Previously leakage and the structural-classifier
+    // floor were mutually exclusive, so a document that BOTH leaked and scored a
+    // high structural floor was capped at the (lower) leakage floor — a near-proof
+    // leakage token could LOWER the overall score. Take the max of every signal so
+    // a floor can only ever raise the score (#527 H5).
+    const overall = Math.max(
+      hotRatioOverall,
+      leaked ? LEAKAGE_SCORE_FLOOR : 0,
+      structuralFloor,
+    );
     const signalScore = roundScore(summarizeSignalStrength(paragraphs, {
       burstinessBands: config.stylometry?.burstiness?.bands,
       mattrBands: config.stylometry?.ttr?.bands,

@@ -28,6 +28,7 @@ const openaiHttp = {
     model,
     signal,
     timeout = DEFAULT_BACKEND_TIMEOUT_MS,
+    deadline,
     maxRetries,
     temperature,
     seed,
@@ -39,7 +40,7 @@ const openaiHttp = {
       // never ride an HTTP API call.
       throw new Error('openai-http backend: image input is not supported — use codex-cli, claude-cli, or gemini-cli for OCR');
     }
-    return callLLM({ prompt, apiKey, baseURL, model, signal, timeout, maxRetries, temperature, seed, onResponse });
+    return callLLM({ prompt, apiKey, baseURL, model, signal, timeout, deadline, maxRetries, temperature, seed, onResponse });
   },
 };
 
@@ -239,6 +240,10 @@ export async function invokeBackendChain({
           modelSource,
           signal,
           timeout: remainingTimeout,
+          // Thread the shared chain deadline so a multi-retry HTTP backend's
+          // total wall-clock stays bounded by the one budget, not per-attempt
+          // (#527 H6). CLI backends ignore it.
+          deadline,
           maxRetries: effectiveMaxRetries,
           temperature,
           seed,

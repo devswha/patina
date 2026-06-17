@@ -460,7 +460,9 @@ export function parseFirstJson(text) {
   const rawCandidates = [
     text.trim(),
     text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1],
-    text.match(/\{[\s\S]*\}/)?.[0],
+    // Each balanced {...} span in order, not a greedy first-{..last-} slice
+    // (which grabs stray braces like "result {A}: {\"overall\":7}") (#527 H10).
+    ...balancedBraceSpans(text),
   ];
   const candidates = /** @type {string[]} */ (
     rawCandidates.filter((candidate) => typeof candidate === 'string' && candidate.length > 0)
@@ -471,6 +473,38 @@ export function parseFirstJson(text) {
     } catch {}
   }
   return null;
+}
+
+// Collect each balanced {...} substring in order, ignoring braces inside JSON
+// string literals. Bounded by text length; runs only on model output.
+function balancedBraceSpans(text) {
+  const spans = [];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== '{') continue;
+    let depth = 0;
+    let inStr = false;
+    let esc = false;
+    let end = -1;
+    for (let j = i; j < text.length; j++) {
+      const ch = text[j];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (ch === '\\') esc = true;
+        else if (ch === '"') inStr = false;
+        continue;
+      }
+      if (ch === '"') inStr = true;
+      else if (ch === '{') depth++;
+      else if (ch === '}') {
+        depth--;
+        if (depth === 0) { end = j; break; }
+      }
+    }
+    if (end === -1) continue;
+    spans.push(text.slice(i, end + 1));
+    i = end;
+  }
+  return spans;
 }
 
 // Append the v3.10 YAML footer to every output mode (rewrite/diff/audit/score).

@@ -40,7 +40,12 @@ export function parseLexiconBody(body, { skipUnderscore = false } = {}) {
 // so a phrase hard-wrapped across a single newline inside a paragraph (which
 // only blank lines split) still matches instead of silently undercounting.
 export function phraseToRegex(phrase) {
-  const escaped = phrase
+  // Collapse runs of consecutive wildcards (optionally whitespace-separated)
+  // into a single `~`. Adjacent `[\s\S]{0,40}` / `\s+` quantifiers overlap and
+  // backtrack exponentially on long inputs — a ReDoS reachable only via a
+  // hand-authored custom lexicon, but cheap to neutralize here (#527 H12).
+  const collapsed = String(phrase).replace(/~(?:\s*~)+/g, '~');
+  const escaped = collapsed
     .toLowerCase()
     .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     .replace(/\s+/g, '\\s+');

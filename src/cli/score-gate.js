@@ -26,7 +26,10 @@ export function extractScoreOverall(result, output) {
 
 // Strict numeric coercer for the score gate: accepts a value that is already a
 // plain number (Number()), and rejects anything else. output.js toFiniteNumber
-// now parses strictly too (#505), so the two agree on real inputs.
+// (#505) parses strictly too; the two agree on every value the scoring pipeline
+// actually emits (a number, or null). They can still differ on non-string,
+// non-number junk (e.g. [] -> 0 here vs null there) that the pipeline never
+// produces, so the divergence is unreachable end-to-end (#527 H14).
 function toFiniteScore(value) {
   if (value === null || value === undefined || value === '') return null;
   const n = Number(value);

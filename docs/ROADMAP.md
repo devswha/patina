@@ -278,10 +278,7 @@ Campaign state:
 - KO KatFish calibration: `npm run benchmark:katfish-ko -- --write --basename katfish-ko-latest` reports aggregate-only private KatFish metrics; current KO diagnostics improve catch rate from 58.9% to 74.8% versus Patina without KO diagnostics while public-web human-control FP stays 42/250.
 - Launch feedback prep: the false-positive issue form now captures text origin, redistribution, fired paragraph, score output, and expected behavior.
 - Growth nudge prep: the one-time CLI star reminder from #305 has since been removed to keep stderr operational-only.
-- README demo prep: #306 adds the first-screen terminal GIF, try-it-now
-  playground link, translated README references, and re-recording notes; #308
-  localizes README hero GIF references so English uses `patina-demo-en.gif`,
-  Korean uses `patina-demo-ko.gif`, and ZH/JA intentionally fall back to EN.
+- README demo prep: #306/#308 terminal GIF work has been superseded by the preview-first README hero. The current viral-facing README sample uses `assets/demo/patina-preview-en.gif` across English, Korean, Chinese, and Japanese docs to show the real `--preview` page, inline diff, toggles, and score before → after.
 - Closed or verified during the campaign: #99, #104, #155, #156, #157, #160, #303, #165, #186, #191, #199, #209, #210, #286, #304, #305, #306, #308.
 - Kept open with explicit blocker comments or pending external action: #158, #159, #206, #207, #211, #212, #284, #307, #324.
 - Legacy bot/harness notes were removed from the public repo; restart autonomous bot work only from a fresh, tracked design if it becomes necessary.

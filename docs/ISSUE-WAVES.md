@@ -19,8 +19,8 @@ Latest local result: launch copy 6.3%, Korean-first copy 0.0%, EN guide 0.0%, KR
 ## Wave B — implementable product/profile work
 
 Closed in the latest waves: #304 NamuWiki profile, via `83675bc`; #305
-one-time install/CLI star nudge; #306 first-screen README terminal demo GIF;
-#308 language-suffixed README demo GIFs via `e8ba041`; #156 adversarial
+one-time install/CLI star nudge; #306/#308 README terminal demo work (now
+superseded by the preview-first README hero);
 MPS repo-owned 10-fixture gate; #157 KO register FP coverage gate via
 `987995f`; #303 KO diagnostics calibration via the KatFish aggregate report;
 #155 sanitized 2025+ rebaseline claim report; #160 lexicon freshness audit.

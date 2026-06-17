@@ -2,18 +2,9 @@
 
 A copy/paste demo for showing what patina does: remove AI packaging while keeping the claims intact.
 
-The animated README heroes are language-suffixed:
+The README hero uses the `--preview` surface now: [`assets/demo/patina-preview-en.gif`](../assets/demo/patina-preview-en.gif). It shows a saved page snapshot with Rewritten / Original / Both / Diff toggles, jump chips, inline diff, and the score moving from 60 → 0.
 
-- English README: [`assets/demo/patina-demo-en.gif`](../assets/demo/patina-demo-en.gif), using
-  [`examples/short/marketing-launch-en.md`](../examples/short/marketing-launch-en.md) →
-  [`examples/short/marketing-launch-en-rewritten.md`](../examples/short/marketing-launch-en-rewritten.md)
-- Korean README: [`assets/demo/patina-demo-ko.gif`](../assets/demo/patina-demo-ko.gif), using
-  [`examples/short/marketing-launch.md`](../examples/short/marketing-launch.md) →
-  [`examples/short/marketing-launch-rewritten.md`](../examples/short/marketing-launch-rewritten.md)
-- Chinese and Japanese READMEs currently fall back to the English GIF until
-  localized recordings are useful enough to maintain.
-
-Re-recording notes live in [`assets/demo/README.md`](../assets/demo/README.md).
+Regeneration notes live in [`assets/demo/README.md`](../assets/demo/README.md).
 
 ## 30-second terminal transcript
 

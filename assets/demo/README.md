@@ -10,6 +10,7 @@ Current assets:
   - captured views: Rewritten → Diff → Original → Both → Diff.
   - expected visual contract: page layout stays fixed; prose blocks are numbered; the bar shows `4 OF 5 BLOCKS REWRITTEN` and `SCORE 60 → 0`; Diff view uses red strikethrough removals and green insertions.
   - size target: keep the GIF under 10 MB so GitHub renders it reliably; current target is under 1 MB.
+- `patina-preview-en.png` — first-frame still used for directory submission previews that require PNG.
 
 Shared requirements:
 

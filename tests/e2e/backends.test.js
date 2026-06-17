@@ -345,6 +345,41 @@ describe('Backend Fallback Chain', () => {
     // The final hop runs (no `next` to fall through to) and its error surfaces.
     assert.strictEqual(thirdCalls, 1);
   });
+
+  it('a fall-through hop receives the REMAINING shared deadline, not a fresh full timeout (#506 defect 1, #528 I4)', async () => {
+    let secondTimeout = null;
+    const result = await invokeBackendChain({
+      backends: [
+        {
+          name: 'first',
+          invoke: async () => {
+            // Consume a measurable slice of the shared budget, then fail over.
+            await new Promise((resolve) => setTimeout(resolve, 80));
+            const err = new Error('slow then rate-limited');
+            err.status = 429;
+            throw err;
+          },
+        },
+        {
+          name: 'second',
+          invoke: async ({ timeout }) => {
+            secondTimeout = timeout;
+            return 'ok';
+          },
+        },
+      ],
+      prompt: 'rewrite this',
+      timeout: 5000,
+      logger: { warn() {} },
+    });
+
+    assert.strictEqual(result, 'ok');
+    // One shared deadline spans the whole chain: the ~80ms the first hop spent
+    // must be deducted from the second hop's budget. A regression that handed
+    // the fallback backend a fresh full 5000ms would be caught here.
+    assert.ok(secondTimeout <= 5000, `fall-through hop budget ${secondTimeout} exceeded the shared deadline`);
+    assert.ok(secondTimeout < 5000 - 40, `fall-through hop saw ${secondTimeout}ms — the first hop's elapsed time was not deducted`);
+  });
 });
 
 describe('Codex auto-fallback removed (issue #88)', () => {

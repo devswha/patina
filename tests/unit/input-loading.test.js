@@ -8,6 +8,9 @@ import { loadInputText, MAX_INPUT_BYTES } from '../../src/loader.js';
 import { loadInputs } from '../../src/cli/input.js';
 import { createBatchCircuitBreaker } from '../../src/cli/batch.js';
 import { PatinaCliError } from '../../src/errors.js';
+import { runDefault } from '../../src/cli/run.js';
+import { parseArgs } from '../../src/cli/args.js';
+import { createLogger } from '../../src/logger.js';
 
 function withTmpDir(run) {
   const dir = mkdtempSync(join(tmpdir(), 'patina-input-'));
@@ -180,5 +183,38 @@ test('a batch read failure trips --max-failures 1 like any other per-file failur
     // instead of crashing the run with a raw exit 1 (#503).
     assert.equal(breaker.shouldStop(), true);
     assert.match(breaker.toError().message, /max failures reached \(1\/1\)/);
+  });
+});
+
+// #528 I1: the prior tests hand-roll run.js's per-file loop. Drive the REAL
+// runDefault so the readError wiring (jobs.map sets it; the loop replays it
+// through the circuit breaker) is exercised end-to-end. All inputs are missing
+// so openai-http is selected but never invoked (the read errors throw first),
+// keeping the test network-free.
+test('runDefault routes batch read failures through the circuit breaker, not a raw fs crash (#503, #528 I1)', async () => {
+  await withTmpDir(async (dir) => {
+    const missingA = join(dir, 'missing-a.md');
+    const missingB = join(dir, 'missing-b.md');
+    const savedKey = process.env.PATINA_API_KEY;
+    process.env.PATINA_API_KEY = 'test-key-never-used';
+    const logger = createLogger({ quiet: true });
+    try {
+      const parsed = parseArgs(['--batch', '--backend', 'openai-http', missingA, missingB]);
+      await assert.rejects(
+        runDefault(parsed, logger),
+        (err) => {
+          // #503 contract: read failures are recorded by the breaker and surface
+          // as a typed batch summary (PatinaCliError, exit 1) — NOT a raw ENOENT.
+          assert.ok(err instanceof PatinaCliError, `expected PatinaCliError, got ${err?.name}: ${err?.message}`);
+          assert.equal(err.exitCode, 1);
+          assert.doesNotMatch(String(err.message), /ENOENT/, 'raw fs error leaked to the user');
+          assert.match(String(err.message), /fail/i);
+          return true;
+        }
+      );
+    } finally {
+      if (savedKey === undefined) delete process.env.PATINA_API_KEY;
+      else process.env.PATINA_API_KEY = savedKey;
+    }
   });
 });

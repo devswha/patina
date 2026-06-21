@@ -24,6 +24,7 @@
     "quality:adversarial-mps": "node scripts/adversarial-mps-report.mjs --check",
     "dogfood": "node tests/quality/dogfood.mjs",
     "badge": "node scripts/badge-json.mjs",
+    "card": "node scripts/share-card.mjs",
     "lint": "npm run lint:syntax && npm run lint:eslint && npm run typecheck && npm run spellcheck",
     "release:check": "node scripts/check-release-metadata.mjs",
     "check:no-private-assets": "node scripts/check-no-private-assets.mjs",

@@ -9,7 +9,7 @@
 [![Version](https://img.shields.io/badge/version-5.4.0-blue)](CHANGELOG.md)
 
 <p align="center">
-  <img src="assets/demo/patina-preview-en.gif" alt="patina --preview가 실제 웹페이지에서 Rewritten, Original, Both, Diff 보기를 전환하며 AI스러운 표현을 줄이고 점수를 60에서 0으로 낮추는 애니메이션" width="820">
+  <img src="assets/demo/patina-preview-ko.gif" alt="patina --preview가 한국어 웹페이지(노션 템플릿 팩)에서 Rewritten, Original, Both, Diff 보기를 전환하며 AI스러운 표현을 줄이고 점수를 80에서 0으로 낮추는 애니메이션" width="820">
 </p>
 
 <p align="center">

@@ -18,6 +18,7 @@ REPO_URL="https://github.com/devswha/patina.git"
 # Pin the installed checkout to a concrete ref. If unset, resolve the current
 # remote HEAD once and check out that commit instead of tracking main.
 PATINA_REF="${PATINA_REF:-}"
+PATINA_REPO_READY=""
 
 # Colors (only when outputting to a terminal)
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
@@ -86,6 +87,28 @@ checkout_install_ref() {
   fi
 }
 
+# Ensure the patina repo checkout exists at PATINA_DIR (clone or update once).
+# Idempotent and tool-neutral so any single agent can be installed on its own,
+# without requiring Claude Code to be installed first.
+ensure_patina_repo() {
+  if [ -n "${PATINA_REPO_READY}" ]; then
+    return 0
+  fi
+  if [ -d "${PATINA_DIR}/.git" ]; then
+    info "Updating existing patina installation..."
+    checkout_install_ref "${PATINA_DIR}" "${INSTALL_REF}"
+  else
+    if [ -d "${PATINA_DIR}" ]; then
+      error "${PATINA_DIR} exists but is not a git repo. Remove it and try again."
+    fi
+    mkdir -p "$(dirname "${PATINA_DIR}")"
+    info "Cloning patina at ${INSTALL_REF}..."
+    git clone --depth=1 "${REPO_URL}" "${PATINA_DIR}" || error "Failed to clone patina. Check your network connection."
+    checkout_install_ref "${PATINA_DIR}" "${INSTALL_REF}"
+  fi
+  PATINA_REPO_READY=1
+}
+
 INSTALL_REF="$(resolve_install_ref)"
 if [ -z "${INSTALL_REF}" ]; then
   error "Failed to resolve patina install ref. Set PATINA_REF=<tag-or-full-sha> and retry."
@@ -95,22 +118,7 @@ fi
 if [ "${INSTALL_CLAUDE}" = "true" ]; then
   info "Installing for Claude Code..."
 
-  if [ ! -d "${CLAUDE_SKILLS_DIR}" ]; then
-    info "Creating ${CLAUDE_SKILLS_DIR}..."
-    mkdir -p "${CLAUDE_SKILLS_DIR}"
-  fi
-
-  if [ -d "${PATINA_DIR}/.git" ]; then
-    info "Updating existing patina installation..."
-    checkout_install_ref "${PATINA_DIR}" "${INSTALL_REF}"
-  else
-    if [ -d "${PATINA_DIR}" ]; then
-      error "${PATINA_DIR} exists but is not a git repo. Remove it and try again."
-    fi
-    info "Cloning patina at ${INSTALL_REF}..."
-    git clone --depth=1 "${REPO_URL}" "${PATINA_DIR}" || error "Failed to clone patina. Check your network connection."
-    checkout_install_ref "${PATINA_DIR}" "${INSTALL_REF}"
-  fi
+  ensure_patina_repo
 
   success "Claude Code: /patina ready"
 else
@@ -126,12 +134,9 @@ if [ "${INSTALL_CODEX}" = "true" ]; then
     mkdir -p "${CODEX_SKILLS_DIR}"
   fi
 
-  if [ -d "${PATINA_DIR}" ]; then
-    ln -snf "${PATINA_DIR}" "${CODEX_SKILLS_DIR}/patina"
-    success "Codex: /patina linked to ${CODEX_SKILLS_DIR}"
-  else
-    warn "Patina repo not found. Claude Code installation must succeed first."
-  fi
+  ensure_patina_repo
+  ln -snf "${PATINA_DIR}" "${CODEX_SKILLS_DIR}/patina"
+  success "Codex: /patina linked to ${CODEX_SKILLS_DIR}"
 else
   warn "Skipping Codex installation (INSTALL_CODEX=false)"
 fi
@@ -146,15 +151,12 @@ if [ "${INSTALL_CURSOR}" = "true" ]; then
   fi
 
   # Cursor rules are inside the repo; symlink or copy depending on install method
-  if [ -d "${PATINA_DIR}" ]; then
-    if [ -f "${PATINA_DIR}/.cursor/rules/patina.md" ]; then
-      ln -snf "${PATINA_DIR}/.cursor/rules/patina.md" "${CURSOR_RULES_DIR}/patina.md"
-      success "Cursor: rules linked to ${CURSOR_RULES_DIR}/patina.md"
-    else
-      warn "Cursor rules not found in repo. Run 'git pull' or check repo integrity."
-    fi
+  ensure_patina_repo
+  if [ -f "${PATINA_DIR}/.cursor/rules/patina.md" ]; then
+    ln -snf "${PATINA_DIR}/.cursor/rules/patina.md" "${CURSOR_RULES_DIR}/patina.md"
+    success "Cursor: rules linked to ${CURSOR_RULES_DIR}/patina.md"
   else
-    warn "Patina repo not found. Claude Code installation must succeed first."
+    warn "Cursor rules not found in repo. Run 'git pull' or check repo integrity."
   fi
 else
   warn "Skipping Cursor installation (INSTALL_CURSOR=false)"
@@ -169,13 +171,10 @@ if [ "${INSTALL_OPCODE}" = "true" ]; then
     mkdir -p "${OPCODE_SKILLS_DIR}"
   fi
 
-  if [ -d "${PATINA_DIR}" ]; then
-    # OpenCode uses AGENTS.md + standalone-prompt.md as the skill interface
-    ln -snf "${PATINA_DIR}" "${OPCODE_SKILLS_DIR}/patina"
-    success "OpenCode: skill linked to ${OPCODE_SKILLS_DIR}/patina"
-  else
-    warn "Patina repo not found. Claude Code installation must succeed first."
-  fi
+  ensure_patina_repo
+  # OpenCode uses AGENTS.md + standalone-prompt.md as the skill interface
+  ln -snf "${PATINA_DIR}" "${OPCODE_SKILLS_DIR}/patina"
+  success "OpenCode: skill linked to ${OPCODE_SKILLS_DIR}/patina"
 else
   warn "Skipping OpenCode installation (INSTALL_OPCODE=false)"
 fi

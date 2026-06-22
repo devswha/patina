@@ -46,7 +46,7 @@ patina --preview https://example.com/post     # or a live URL
 
 The sample keeps the page structure, headings, CTA, and concrete facts (`30 templates`, planning docs, handoffs). It removes inflated phrasing like “innovative solution,” “transform productivity,” and “new paradigm” with an inline audit trail instead of a black-box paraphrase.
 
-More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)) · [CLI transcript](docs/DEMO.md).
+More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)) · [CLI transcript](docs/DEMO.md) · [Viral launch kit](docs/social/viral-launch-kit.md).
 
 ## Quick Start
 

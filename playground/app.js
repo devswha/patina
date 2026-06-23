@@ -9,16 +9,27 @@ import {
   renderKoreanAdvisory,
 } from './analyzer.js';
 import { createAnalysisController } from './analysis-dispatch.js';
+import {
+  UI_LANGS,
+  DEFAULT_UI_LANG,
+  normalizeUiLang,
+  t,
+  bandLabel,
+  reasonLabel,
+} from './i18n.js';
 
 const doc = globalThis.document;
+const UI_LANG_STORAGE_KEY = 'patina-ui-lang';
 const state = {
   lang: 'ko',
+  uiLang: DEFAULT_UI_LANG,
   text: '',
   analysis: analyzePlaygroundText('', { lang: 'ko' }),
 };
 
 const nodes = {
   lang: doc.querySelector('#lang'),
+  uiLang: doc.querySelector('#ui-lang'),
   sample: doc.querySelector('#sample'),
   input: doc.querySelector('#input'),
   analyze: doc.querySelector('#analyze'),
@@ -35,17 +46,68 @@ const nodes = {
   cliPreview: doc.querySelector('#cli-preview'),
 };
 
+// Interface language resolution order: explicit ?ui= query > saved preference >
+// browser language (Korean → ko) > English default. Independent from #lang,
+// which selects the language of the text being audited.
+function readStoredUiLang() {
+  try {
+    return globalThis.localStorage?.getItem(UI_LANG_STORAGE_KEY) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function persistUiLang(value) {
+  try {
+    globalThis.localStorage?.setItem(UI_LANG_STORAGE_KEY, value);
+  } catch {
+    // Storage can throw in private mode; the URL query still carries the choice.
+  }
+}
+
+function resolveInitialUiLang(url) {
+  const fromQuery = url.searchParams.get('ui');
+  if (UI_LANGS.includes(fromQuery)) return fromQuery;
+  const stored = readStoredUiLang();
+  if (UI_LANGS.includes(stored)) return stored;
+  const navLang = (globalThis.navigator?.language ?? '').toLowerCase();
+  if (navLang.startsWith('ko')) return 'ko';
+  return DEFAULT_UI_LANG;
+}
+
 function readQueryState() {
   const url = new URL(globalThis.location?.href ?? 'https://patina.vibetip.help/');
   const lang = url.searchParams.get('lang');
   if (SUPPORTED_LANGS.includes(lang)) state.lang = lang;
+  state.uiLang = normalizeUiLang(resolveInitialUiLang(url));
 }
 
 function updateQuery() {
   if (!globalThis.history || !globalThis.location) return;
   const url = new URL(globalThis.location.href);
   url.searchParams.set('lang', state.lang);
+  url.searchParams.set('ui', state.uiLang);
   globalThis.history.replaceState(null, '', url);
+}
+
+// Translate every static element tagged with data-i18n (text content) or
+// data-i18n-attr="attr:key;attr2:key2" (attributes). Re-run on language switch.
+function applyStaticI18n() {
+  const ui = state.uiLang;
+  if (doc.documentElement) doc.documentElement.lang = ui;
+  for (const el of doc.querySelectorAll('[data-i18n]')) {
+    el.textContent = t(ui, el.dataset.i18n);
+  }
+  for (const el of doc.querySelectorAll('[data-i18n-attr]')) {
+    for (const pair of el.dataset.i18nAttr.split(';')) {
+      const [attr, key] = pair.split(':').map((part) => part.trim());
+      if (attr && key) el.setAttribute(attr, t(ui, key));
+    }
+  }
+}
+
+function localizeReasonLabel(uiLang, reason) {
+  return normalizeUiLang(uiLang) === 'ko' ? reasonLabel('ko', reason.code) : reason.label;
 }
 
 function setSample() {
@@ -55,15 +117,17 @@ function setSample() {
 }
 
 function metricsTable(analysis) {
-  if (analysis.paragraphCount === 0) return '<p class="empty-state">No audit rows yet.</p>';
+  const ui = state.uiLang;
+  if (analysis.paragraphCount === 0) return `<p class="empty-state">${t(ui, 'audit.empty')}</p>`;
+  const na = t(ui, 'value.na');
   const rows = analysis.paragraphs.map((p) => {
-    const reasons = p.reasons.map((r) => r.label).join(', ') || '—';
-    const cv = p.burstiness.cv == null ? 'n/a' : p.burstiness.cv.toFixed(2);
-    const mattr = p.mattr.value == null ? 'n/a' : p.mattr.value.toFixed(2);
+    const reasons = p.reasons.map((r) => localizeReasonLabel(ui, r)).join(', ') || t(ui, 'value.none');
+    const cv = p.burstiness.cv == null ? na : p.burstiness.cv.toFixed(2);
+    const mattr = p.mattr.value == null ? na : p.mattr.value.toFixed(2);
     const density = p.lexicon.density.toFixed(1);
     return `<tr>
       <td>${escapeHtml(p.id)}</td>
-      <td><span class="pill ${p.hot ? 'hot' : 'clean'}">${p.hot ? 'review' : 'ok'}</span></td>
+      <td><span class="pill ${p.hot ? 'hot' : 'clean'}">${p.hot ? t(ui, 'pill.review') : t(ui, 'pill.ok')}</span></td>
       <td>${p.sentenceCount}</td>
       <td>${p.tokenCount}</td>
       <td>${cv} <span class="muted">${escapeHtml(p.burstiness.band ?? '')}</span></td>
@@ -73,26 +137,27 @@ function metricsTable(analysis) {
     </tr>`;
   }).join('');
   return `<div class="table-wrap"><table>
-    <thead><tr><th>Para</th><th>Status</th><th>Sent</th><th>Tokens</th><th>Burst</th><th>MATTR</th><th>Lexicon</th><th>Signals</th></tr></thead>
+    <thead><tr><th>${t(ui, 'audit.th.para')}</th><th>${t(ui, 'audit.th.status')}</th><th>${t(ui, 'audit.th.sent')}</th><th>${t(ui, 'audit.th.tokens')}</th><th>${t(ui, 'audit.th.burst')}</th><th>${t(ui, 'audit.th.mattr')}</th><th>${t(ui, 'audit.th.lexicon')}</th><th>${t(ui, 'audit.th.signals')}</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
 }
 
 function render() {
+  const ui = state.uiLang;
   const analysis = state.analysis;
   const band = analysis.band;
   nodes.scoreValue.textContent = String(analysis.overall);
-  nodes.scoreBand.textContent = band.label;
+  nodes.scoreBand.textContent = bandLabel(ui, band.key);
   nodes.scoreBand.dataset.tone = band.tone;
   nodes.scoreBar.style.setProperty('--score', `${analysis.overall}%`);
   nodes.summary.innerHTML = `
-    <li><strong>${analysis.hotCount}</strong> / ${analysis.paragraphCount} paragraphs marked for review</li>
-    <li><strong>${analysis.totalTokens}</strong> deterministic tokens checked</li>
-    <li>Score is an editing signal, not an authorship verdict.</li>
+    <li>${t(ui, 'summary.review', { hot: analysis.hotCount, total: analysis.paragraphCount })}</li>
+    <li>${t(ui, 'summary.tokens', { tokens: analysis.totalTokens })}</li>
+    <li>${t(ui, 'summary.disclaimer')}</li>
   `;
   nodes.audit.innerHTML = metricsTable(analysis);
-  nodes.koreanAdvisory.innerHTML = renderKoreanAdvisory(analysis);
-  nodes.diff.innerHTML = renderAuditDiff(analysis);
+  nodes.koreanAdvisory.innerHTML = renderKoreanAdvisory(analysis, ui);
+  nodes.diff.innerHTML = renderAuditDiff(analysis, ui);
   nodes.cliPreview.textContent = buildCliCommand(state.text, state.lang);
 }
 
@@ -142,22 +207,31 @@ async function copyCli() {
   const command = buildCliCommand(state.text, state.lang);
   try {
     const ok = await copyText(command);
-    nodes.copyStatus.textContent = ok ? 'Copied CLI command.' : 'Copy failed; select the command below.';
+    nodes.copyStatus.textContent = ok ? t(state.uiLang, 'status.copied') : t(state.uiLang, 'status.copyFailed');
   } catch (_err) {
-    nodes.copyStatus.textContent = 'Copy failed; select the command below.';
+    nodes.copyStatus.textContent = t(state.uiLang, 'status.copyFailed');
   }
 }
 
 function reportFalsePositive() {
   if (!state.text.trim()) {
-    nodes.copyStatus.textContent = 'Paste text and run the audit first, then report the false positive.';
+    nodes.copyStatus.textContent = t(state.uiLang, 'status.reportFirst');
     return;
   }
   const url = buildFalsePositiveReportUrl(state.text, state.lang, state.analysis);
   const opened = globalThis.open?.(url, '_blank', 'noopener');
   nodes.copyStatus.textContent = opened
-    ? 'Opened a pre-filled GitHub report — review it, then submit. Your text only leaves the browser if you submit.'
-    : 'Pop-up blocked. Allow pop-ups, or open an issue from the GitHub link in the header.';
+    ? t(state.uiLang, 'status.reportOpened')
+    : t(state.uiLang, 'status.reportBlocked');
+}
+
+function setUiLang(value) {
+  state.uiLang = normalizeUiLang(value);
+  if (nodes.uiLang) nodes.uiLang.value = state.uiLang;
+  persistUiLang(state.uiLang);
+  updateQuery();
+  applyStaticI18n();
+  render();
 }
 
 // Re-analysis runs detectTranslationese + per-paragraph stylometry + three
@@ -174,6 +248,10 @@ function debounce(fn, ms) {
 function bind() {
   nodes.lang.value = state.lang;
   nodes.input.value = state.text;
+  if (nodes.uiLang) {
+    nodes.uiLang.value = state.uiLang;
+    nodes.uiLang.addEventListener('change', () => setUiLang(nodes.uiLang.value));
+  }
   nodes.lang.addEventListener('change', () => {
     state.lang = nodes.lang.value;
     updateQuery();
@@ -188,4 +266,5 @@ function bind() {
 
 readQueryState();
 bind();
+applyStaticI18n();
 setSample();

@@ -58,3 +58,6 @@ artifacts/rebaseline-*/private/
 
 # local test samples / shareable bundles (user-owned, not repo fixtures)
 sample/
+
+# Demo render scratch outputs (only the curated patina-preview-<lang>.gif/png are tracked)
+assets/demo/*real-tistory*

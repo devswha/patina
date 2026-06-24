@@ -14,6 +14,18 @@
       "destination": "/playground/app.js"
     },
     {
+      "source": "/i18n.js",
+      "destination": "/playground/i18n.js"
+    },
+    {
+      "source": "/analysis-dispatch.js",
+      "destination": "/playground/analysis-dispatch.js"
+    },
+    {
+      "source": "/analyzer-worker.js",
+      "destination": "/playground/analyzer-worker.js"
+    },
+    {
       "source": "/analytics.js",
       "destination": "/playground/analytics.js"
     },

@@ -55,7 +55,20 @@ a:hover { text-decoration: underline; }
 }
 .brand img { display: block; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35)); }
 
-.nav__links { display: flex; gap: 18px; font-size: 0.95rem; }
+.nav__links { display: flex; align-items: center; gap: 18px; font-size: 0.95rem; }
+.ui-lang { display: inline-flex; align-items: center; }
+.ui-lang select { padding: 6px 28px 6px 10px; border-radius: 10px; font-size: 0.9rem; }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 .hero__copy {
   padding: 78px 0 46px;

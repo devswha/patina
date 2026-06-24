@@ -1,9 +1,21 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  UI_LANGS,
+  DEFAULT_UI_LANG,
+  normalizeUiLang,
+  t as uiT,
+  bandLabel,
+  reasonLabel,
+  reasonDetail,
+  koPeGroupLabel,
+  koPeMetricLabel,
+  localeKeys,
+} from '../../playground/i18n.js';
 
 import { PLAYGROUND_LEXICONS } from '../../playground/data/lexicons.js';
 import {
@@ -735,6 +747,50 @@ test('Vercel config exposes the playground at the domain root', () => {
   assert.match(csp, /connect-src 'self'(?:;|$)/);
 });
 
+// Regression guard for #477: app.js is served at the domain root (`/app.js` via
+// rewrite), so every sibling module it pulls — static `./x.js` imports plus the
+// `new URL('./analyzer-worker.js', import.meta.url)` worker — is fetched by the
+// browser as a root path (`/x.js`). Each such path must resolve: either a real
+// file at the repo root, or a rewrite into `/playground/`. The Web Worker commit
+// added analysis-dispatch.js + analyzer-worker.js without the rewrites, so the
+// static `import './analysis-dispatch.js'` 404'd and killed the whole module.
+test('every root-served playground entry module has a rewrite or real file', () => {
+  const config = JSON.parse(readFileSync(resolve(REPO_ROOT, 'vercel.json'), 'utf8'));
+  const hasRewrite = (source, destination) =>
+    config.rewrites.some((rule) => rule.source === source && rule.destination === destination);
+
+  const { withStrings: appSource } = scanJsSource(
+    readFileSync(resolve(REPO_ROOT, 'playground/app.js'), 'utf8'),
+  );
+
+  // Sibling specifiers app.js requests relative to its own URL: static imports
+  // (`from './x.js'`) and the worker `new URL('./x.js', import.meta.url)`.
+  const specifiers = new Set();
+  const importPattern = /\b(?:import|export)\s+(?:[^'"()]*?\s+from\s+)?['"](\.\/[^'"]+)['"]/g;
+  for (const match of appSource.matchAll(importPattern)) specifiers.add(match[1]);
+  const urlPattern = /new\s+URL\(\s*['"](\.\/[^'"]+)['"]/g;
+  for (const match of appSource.matchAll(urlPattern)) specifiers.add(match[1]);
+
+  // app.js itself reaches at least one sibling; otherwise the scan silently
+  // passed and would never catch a missing rewrite again.
+  assert.ok(specifiers.size > 0, 'expected app.js to reference sibling modules');
+
+  const unresolved = [];
+  for (const specifier of specifiers) {
+    const name = specifier.replace(/^\.\//, ''); // e.g. analysis-dispatch.js
+    const rootPath = `/${name}`; // browser fetches this against /app.js
+    const realAtRoot = existsSync(resolve(REPO_ROOT, name));
+    if (!realAtRoot && !hasRewrite(rootPath, `/playground/${name}`)) {
+      unresolved.push(rootPath);
+    }
+  }
+  assert.deepEqual(
+    unresolved,
+    [],
+    `playground modules requested at the domain root with no rewrite (404 in prod): ${unresolved.join(', ')}`,
+  );
+});
+
 // Single-pass scanner producing two views of a JS source: comments removed with
 // string contents kept (for reading import specifiers), and comments removed with
 // string/template contents blanked (for detecting dynamic import()/require()
@@ -1003,4 +1059,95 @@ test('playground worker module graph stays browser-pure and loads by relative UR
   // app.js must load the worker by relative URL so static hosting keeps working.
   const appSrc = readFileSync(resolve(REPO_ROOT, 'playground/app.js'), 'utf8');
   assert.match(appSrc, /new URL\('\.\/analyzer-worker\.js', import\.meta\.url\)/);
+});
+// --- UI internationalization (en/ko interface) ------------------------------
+
+test('every English UI string key has a Korean translation', () => {
+  assert.deepEqual(localeKeys('en').sort(), localeKeys('ko').sort());
+  // Both locales actually carry strings (guards an empty-catalog regression).
+  assert.ok(localeKeys('en').length > 30);
+});
+
+test('t() interpolates vars and falls back safely', () => {
+  assert.equal(uiT('en', 'btn.run'), 'Run audit');
+  assert.equal(uiT('ko', 'btn.run'), '감사 실행');
+  assert.equal(uiT('en', 'summary.tokens', { tokens: 42 }), '<strong>42</strong> deterministic tokens checked');
+  assert.equal(uiT('ko', 'summary.review', { hot: 1, total: 3 }), '<strong>1</strong> / 3 문단이 검토 대상으로 표시됨');
+  // Unknown UI language falls back to English; unknown key returns the key itself.
+  assert.equal(uiT('fr', 'btn.run'), 'Run audit');
+  assert.equal(uiT('ko', 'totally.missing.key'), 'totally.missing.key');
+  assert.equal(normalizeUiLang('zz'), DEFAULT_UI_LANG);
+  assert.deepEqual([...UI_LANGS].sort(), ['en', 'ko']);
+});
+
+test('band labels localize by stable key, not English text', () => {
+  for (const key of ['low', 'mixed', 'high']) {
+    assert.ok(bandLabel('en', key));
+    assert.ok(bandLabel('ko', key));
+    assert.notEqual(bandLabel('en', key), bandLabel('ko', key));
+  }
+  assert.equal(bandLabel('en', 'mixed'), 'Mixed signals');
+  assert.equal(bandLabel('ko', 'mixed'), '혼재된 신호');
+});
+
+test('reason label + detail localize from stable code and structured vars', () => {
+  assert.equal(reasonLabel('en', 'lexicon-density'), 'AI-favored phrasing density');
+  assert.equal(reasonLabel('ko', 'lexicon-density'), 'AI 선호 표현 밀도');
+  // Korean detail re-templates from the same numbers the English string used.
+  assert.equal(
+    reasonDetail('en', 'em-dash-overuse', { docEmDash: 4, threshold: 3, emDash: 2 }),
+    '4 em dashes in the document (threshold 3); this paragraph carries 2.',
+  );
+  assert.equal(
+    reasonDetail('ko', 'em-dash-overuse', { docEmDash: 4, threshold: 3, emDash: 2 }),
+    '문서에 엠대시 4개 (임계값 3); 이 문단에는 2개.',
+  );
+  // Unknown code yields an empty detail rather than throwing.
+  assert.equal(reasonDetail('ko', 'no-such-code', {}), '');
+});
+
+test('koPostEditese row labels are identity in English, translated in Korean', () => {
+  assert.equal(koPeGroupLabel('en', 'endings'), 'endings');
+  assert.equal(koPeGroupLabel('ko', 'endings'), '어미');
+  assert.equal(koPeMetricLabel('en', 'pronoun literal count'), 'pronoun literal count');
+  assert.equal(koPeMetricLabel('ko', 'pronoun literal count'), '대명사 직역 개수');
+});
+
+test('render layer stays English by default and switches to Korean on demand', () => {
+  const analysis = analyzePlaygroundText(SAMPLES.ko, { lang: 'ko' });
+
+  // Default (no uiLang) is byte-identical English — guards existing callers.
+  const diffEn = renderAuditDiff(analysis);
+  assert.equal(diffEn, renderAuditDiff(analysis, 'en'));
+  const advEn = renderKoreanAdvisory(analysis);
+  assert.match(advEn, /Translationese hints/);
+  assert.match(advEn, /Korean post-editese metadata/);
+
+  // Korean opt-in localizes chrome without touching the data layer.
+  const advKo = renderKoreanAdvisory(analysis, 'ko');
+  assert.match(advKo, /번역투 힌트/);
+  assert.match(advKo, /한국어 포스트에디팅 메타데이터/);
+  assert.doesNotMatch(advKo, /Translationese hints/);
+
+  // The analysis object itself never changes language (report/parity stay English).
+  assert.ok(['Low AI-likeness', 'Mixed signals', 'Review suggested'].includes(analysis.band.label));
+  assert.ok(analysis.paragraphs.every((p) => p.reasons.every((r) => typeof r.code === 'string')));
+});
+
+test('Korean advisory render still escapes injected schema/skip reason', () => {
+  const malicious = analyzePlaygroundText('', { lang: 'ko' });
+  malicious.koPostEditese = { analyzed: false, skipReason: '<img src=x onerror=alert(1)>', schema: '<script>' };
+  const html = renderKoreanAdvisory(malicious, 'ko');
+  assert.doesNotMatch(html, /<img src=x/);
+  assert.doesNotMatch(html, /<script>/);
+  assert.match(html, /&lt;img src=x/);
+});
+
+test('playground HTML exposes the interface-language selector and i18n hooks', () => {
+  const html = readFileSync(resolve(REPO_ROOT, 'playground/index.html'), 'utf8');
+  assert.match(html, /id="ui-lang"/);
+  assert.match(html, /<option value="ko">한국어<\/option>/);
+  assert.match(html, /data-i18n="hero.title"/);
+  assert.match(html, /data-i18n="btn.run"/);
+  assert.match(html, /data-i18n-attr="aria-label:input.textareaLabel"/);
 });

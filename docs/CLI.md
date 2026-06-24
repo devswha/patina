@@ -47,6 +47,53 @@ patina --lang en --score --exit-on 30 draft.md
 - `--voice-sample <path>` or config `voice-sample: <path>` injects the first 1–3 user-written paragraphs into rewrite/Ouroboros prompts as style-only examples of how this person writes. `--profile` / `--tone` still define the outer register; samples refine cadence and texture without importing facts.
 - `patina doctor --json` emits setup diagnostics for CI without making an LLM call.
 
+
+## Korean persona rewrite: `--persona`
+
+`--persona <name>` selects a validated Korean persona from `personas/ko` (or a same-id custom persona) for the rewrite harness. With no explicit persona, Korean rewrite mode uses the conservative `preserve` persona: style-only, minimal change, and MPS/fidelity hard floors still enforced.
+
+```bash
+patina --persona preserve draft.md
+patina --lang ko --persona pragmatic-founder draft.md
+```
+
+Contract:
+
+| Combination | v1 behavior | Reason |
+|---|---|---|
+| `patina file` | allowed; equivalent to `persona=preserve` in Korean rewrite | safe default |
+| `--persona p file` | allowed | core v1 surface |
+| `--lang ko --persona p` | allowed | KO library only |
+| `--lang en|zh|ja --persona p` | input error | no non-KO persona library |
+| `--score/--audit/--diff/--ouroboros --persona p` | input error | persona v1 is rewrite-only |
+| `--preview --persona p` | input error | preview migration is later |
+| `--persona p --restyle sentence` | allowed | same as default cleanup depth |
+| `--persona p --restyle voice|content` | input error | conflicting legacy depth; content makes MPS advisory |
+| `--persona p --restyle a,b`, `--jargon x,y`, `--tone a,b` | input error | comma-list variants are preview-only |
+| `--persona p --tone casual` | allowed as compatibility hint | persona remains outer contract |
+| `--persona p --profile blog` | allowed as compatibility hint | legacy profile remains non-authoritative |
+| `--persona p --voice-sample sample.md` | allowed | style-only anchor; sample facts are not imported |
+| `--persona p --jargon explain|remove` | input error | terminology rewrite is not gated in v1 |
+
+Persona files are frontmatter-only at runtime. Markdown bodies are documentation and never enter prompts. The `worldview` block is reserved but inactive in v1. Even `depth: content` personas may adjust emphasis and coverage only; they cannot invent claims or make MPS/fidelity advisory.
+
+For `--format json`, rewrite output includes a `persona` field when a persona gate ran:
+
+```json
+{
+  "persona": {
+    "id": "preserve",
+    "depth": "style-only",
+    "thresholds_source": "placeholder",
+    "match": 82.4,
+    "mps": 91,
+    "fidelity": 88,
+    "over_edit_churn": 0.18,
+    "gate_result": { "pass": true, "hardFailures": [] }
+  }
+}
+```
+
 ## Transformations beyond cleanup: `--restyle` / `--jargon`
 
 By default patina is a conservative humanizer: it removes AI tells without changing a sentence's claim or framing. `--restyle` and `--jargon` are explicit opt-ins for when the goal is a different text, not the same text cleaned up. They apply to the default rewrite and `--preview` only; combining them with `--score`, `--audit`, `--diff`, or `--ouroboros` is an input error (those modes either do not rewrite, or enforce meaning-preservation floors a transformation would fight).

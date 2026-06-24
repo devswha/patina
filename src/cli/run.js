@@ -28,10 +28,13 @@ import { detectKoreanRegister } from '../features/stylometry.js';
 import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput } from './batch.js';
 import { applyScoreGate, extractScoreOverall } from './score-gate.js';
 import { loadInputs } from './input.js';
-import { PatinaCliError, runtimeError } from '../errors.js';
+import { PatinaCliError, runtimeError, inputError } from '../errors.js';
 import { providerHttpKeyEnvVars, resolveHttpApiKey } from '../auth.js';
 import { DEFAULT_BACKEND_TIMEOUT_MS, getBackendSafety, backendSupportsStructuredOutput } from '../backends/contract.js';
 import { resolve } from 'node:path';
+import { loadPersona } from '../personas/loader.js';
+import { evaluatePersonaGate } from '../personas/gates.js';
+import { personaMatchScore } from '../features/persona-match.js';
 import { pathToFileURL } from 'node:url';
 
 /**
@@ -108,6 +111,8 @@ export async function runDefault(parsed, logger) {
     : parsed.score ? 'score'
     : parsed.ouroboros ? 'ouroboros'
     : 'rewrite';
+  const persona = resolvePersonaForRun({ parsed, config, mode, lang, repoRoot });
+
   const voiceSamplePath = (mode === 'rewrite' || mode === 'ouroboros')
     ? (parsed.voiceSample ?? config['voice-sample'])
     : null;
@@ -209,6 +214,7 @@ export async function runDefault(parsed, logger) {
       restyle: parsed.restyle,
       jargon: parsed.jargon,
       rewriteHeadings: parsed.rewriteHeadings,
+      persona,
     }),
   }));
 
@@ -253,6 +259,7 @@ export async function runDefault(parsed, logger) {
             logger,
             // Opt-in structured output for the openai-http scorer; default off.
             structuredOutput: config['structured-output'] === true && backendSupportsStructuredOutput('openai-http'),
+            persona,
           });
         } else {
           result = await invokeBackendChain({
@@ -283,14 +290,35 @@ export async function runDefault(parsed, logger) {
           mode === 'audit' && (parsed.format ?? 'markdown') !== 'json' && !parsed.batch
             ? buildDeterministicAuditBackstop(text, { lang, repoRoot, config, logger })
             : '';
+        let personaReport = null;
+        if (persona && mode === 'rewrite') {
+          const rewrittenForPersona = formatOutput(result, mode, { ...parsed, format: 'text' }, { tone: toneResolution, logger });
+          personaReport = buildPersonaReport({
+            rewritten: rewrittenForPersona,
+            original: text,
+            persona,
+            lang,
+            repoRoot,
+            thresholds: config.personas?.thresholds || {},
+            mps: extractNumericMetric(result, rewrittenForPersona, 'mps'),
+            fidelity: extractNumericMetric(result, rewrittenForPersona, 'fidelity'),
+          });
+          if (!personaReport.gate_result.pass) {
+            logger.warn('persona.gate_failed', {
+              message: `[patina] persona gate failed: ${personaReport.gate_result.hardFailures.join(', ') || 'unknown'}`,
+              persona: personaReport,
+            });
+          }
+        }
+
         let output;
         let scoreValidationOutput = null;
         if (parsed.ouroboros) {
           const ouroborosBody = formatOuroborosOutput(result);
-          output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution, logger, auditBackstop });
+          output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution, logger, auditBackstop, persona: null });
           scoreValidationOutput = ouroborosBody;
         } else {
-          output = formatOutput(result, mode, parsed, { tone: toneResolution, logger, auditBackstop });
+          output = formatOutput(result, mode, parsed, { tone: toneResolution, logger, auditBackstop, persona: personaReport });
           if (mode === 'score') {
             scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' }, { logger });
           }
@@ -344,6 +372,55 @@ export async function runDefault(parsed, logger) {
 
 }
 
+
+function buildPersonaReport({ rewritten, original, persona, lang, repoRoot, thresholds, mps, fidelity }) {
+  const match = personaMatchScore({ text: rewritten, persona, lang, repoRoot, original });
+  const overEditChurn = match.overEditChurn ?? match.deltas?.overEditChurn ?? match.featureVector?.over_edit_churn ?? 0;
+  const mpsValue = mps ?? null;
+  const fidelityValue = fidelity ?? null;
+  const gate = evaluatePersonaGate({
+    personaMatch: match.score,
+    mps: mpsValue,
+    fidelity: fidelityValue,
+    churn: overEditChurn,
+    thresholds,
+    persona,
+  });
+  return {
+    id: persona.id,
+    depth: persona.depth,
+    thresholds_source: thresholds?.source ?? gate.thresholdSource ?? null,
+    match: match.score,
+    mps: mpsValue,
+    fidelity: fidelityValue,
+    over_edit_churn: overEditChurn,
+    gate_result: gate,
+  };
+}
+
+function extractNumericMetric(result, body, key) {
+  const direct = toFiniteNumberLocal(result?.[key] ?? result?.best?.[key]);
+  if (direct !== null) return direct;
+  const parsed = parseFirstJsonLocal(body);
+  return toFiniteNumberLocal(parsed?.[key]);
+}
+
+function toFiniteNumberLocal(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseFirstJsonLocal(text) {
+  const raw = String(text || '');
+  const start = raw.indexOf('{');
+  if (start === -1) return null;
+  for (let end = raw.lastIndexOf('}'); end > start; end = raw.lastIndexOf('}', end - 1)) {
+    try { return JSON.parse(raw.slice(start, end + 1)); } catch {}
+  }
+  return null;
+}
+
 function cancellationError() {
   return new PatinaCliError({
     what: 'interrupted',
@@ -365,6 +442,23 @@ function cancellationError() {
  * const cancellation = createCancellationController();
  * cancellation.install();
  */
+
+export function resolvePersonaForRun({ parsed = {}, config = {}, mode = 'rewrite', lang = 'ko', repoRoot = process.cwd() } = {}) {
+  const defaultPreserve = parsed.persona === undefined && config.persona === 'preserve';
+  const explicitPersona = parsed.persona !== undefined || (config.persona !== undefined && !defaultPreserve);
+  const personaId = parsed.persona ?? config.persona ?? null;
+  const effective = mode === 'rewrite' && !parsed.preview && lang === 'ko';
+  if (explicitPersona && !effective) {
+    throw inputError(
+      'persona is only supported for Korean rewrite mode',
+      'Persona v1 runs only when the effective mode is rewrite, preview is off, and language is ko.',
+      'Use `patina --lang ko --persona <name> <file>`, or remove the persona setting for this mode/language.'
+    );
+  }
+  if (!effective) return null;
+  return loadPersona(repoRoot, lang, personaId ?? 'preserve');
+}
+
 export function createCancellationController({
   processObj = process,
   stderr = process.stderr,

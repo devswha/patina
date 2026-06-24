@@ -26,23 +26,30 @@
         <span>patina</span>
       </a>
       <div class="nav__links">
-        <a href="https://github.com/devswha/patina">GitHub</a>
-        <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md">Ethics</a>
-        <a href="https://github.com/devswha/patina/blob/main/docs/benchmarks/latest.md">Benchmark</a>
+        <a href="https://github.com/devswha/patina" data-i18n="nav.github">GitHub</a>
+        <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md" data-i18n="nav.ethics">Ethics</a>
+        <a href="https://github.com/devswha/patina/blob/main/docs/benchmarks/latest.md" data-i18n="nav.benchmark">Benchmark</a>
+        <label class="ui-lang">
+          <span class="visually-hidden" data-i18n="ui.interfaceLanguage">Interface language</span>
+          <select id="ui-lang" name="ui-lang">
+            <option value="en">English</option>
+            <option value="ko">한국어</option>
+          </select>
+        </label>
       </div>
     </nav>
 
     <section class="hero__copy">
-      <p class="eyebrow">audit-only playground</p>
-      <h1>Paste text. See where it sounds packaged.</h1>
-      <p>
+      <p class="eyebrow" data-i18n="hero.eyebrow">audit-only playground</p>
+      <h1 data-i18n="hero.title">Paste text. See where it sounds packaged.</h1>
+      <p data-i18n="hero.body">
         patina checks deterministic stylometry and lexicon signals for Korean,
         English, Chinese, and Japanese. v1 does not rewrite, call an LLM, or send
         your pasted text anywhere.
       </p>
       <div class="hero__actions" aria-label="Primary actions">
-        <a class="button" href="https://github.com/devswha/patina">Star on GitHub</a>
-        <a class="button ghost" href="https://github.com/devswha/patina#quick-start">Install CLI</a>
+        <a class="button" href="https://github.com/devswha/patina" data-i18n="hero.star">Star on GitHub</a>
+        <a class="button ghost" href="https://github.com/devswha/patina#quick-start" data-i18n="hero.install">Install CLI</a>
       </div>
     </section>
   </header>
@@ -51,26 +58,26 @@
     <section class="panel input-panel" aria-labelledby="input-title">
       <div class="panel__head">
         <div>
-          <p class="eyebrow">input</p>
-          <h2 id="input-title">Text to audit</h2>
+          <p class="eyebrow" data-i18n="input.eyebrow">input</p>
+          <h2 id="input-title" data-i18n="input.title">Text to audit</h2>
         </div>
         <label class="field">
-          <span>Language</span>
+          <span data-i18n="input.language">Language</span>
           <select id="lang" name="lang">
-            <option value="ko">Korean</option>
-            <option value="en">English</option>
-            <option value="zh">Chinese</option>
-            <option value="ja">Japanese</option>
+            <option value="ko" data-i18n="lang.ko">Korean</option>
+            <option value="en" data-i18n="lang.en">English</option>
+            <option value="zh" data-i18n="lang.zh">Chinese</option>
+            <option value="ja" data-i18n="lang.ja">Japanese</option>
           </select>
         </label>
       </div>
 
-      <textarea id="input" spellcheck="true" aria-label="Text to audit"></textarea>
+      <textarea id="input" spellcheck="true" aria-label="Text to audit" data-i18n-attr="aria-label:input.textareaLabel"></textarea>
 
       <div class="button-row">
-        <button class="button" id="analyze" type="button">Run audit</button>
-        <button class="button secondary" id="sample" type="button">Load sample</button>
-        <button class="button secondary" id="copy-cli" type="button">Open in CLI</button>
+        <button class="button" id="analyze" type="button" data-i18n="btn.run">Run audit</button>
+        <button class="button secondary" id="sample" type="button" data-i18n="btn.sample">Load sample</button>
+        <button class="button secondary" id="copy-cli" type="button" data-i18n="btn.openCli">Open in CLI</button>
       </div>
       <p class="status" id="copy-status" role="status" aria-live="polite"></p>
     </section>
@@ -78,28 +85,28 @@
     <section class="panel score-panel" aria-labelledby="score-title">
       <div class="panel__head">
         <div>
-          <p class="eyebrow">score</p>
-          <h2 id="score-title">AI-likeness signal</h2>
+          <p class="eyebrow" data-i18n="score.eyebrow">score</p>
+          <h2 id="score-title" data-i18n="score.title">AI-likeness signal</h2>
         </div>
         <span class="score-band" id="score-band" data-tone="good">Low AI-likeness</span>
       </div>
 
-      <div class="score-meter" aria-label="AI-likeness score out of 100">
+      <div class="score-meter" aria-label="AI-likeness score out of 100" data-i18n-attr="aria-label:score.meterLabel">
         <div class="score-meter__number"><span id="score-value">0</span><small>/100</small></div>
         <div class="score-meter__bar"><span id="score-bar"></span></div>
       </div>
 
       <ul class="summary" id="summary"></ul>
       <div class="star-cta" aria-label="GitHub repository callout">
-        <strong>Useful signal?</strong>
-        <span>Star patina on GitHub so more writers find the audit.</span>
-        <a class="button secondary" href="https://github.com/devswha/patina">Star / view source</a>
+        <strong data-i18n="cta.useful">Useful signal?</strong>
+        <span data-i18n="cta.body">Star patina on GitHub so more writers find the audit.</span>
+        <a class="button secondary" href="https://github.com/devswha/patina" data-i18n="cta.star">Star / view source</a>
       </div>
 
       <div class="cli-box" aria-labelledby="cli-title">
         <div class="cli-box__head">
-          <h3 id="cli-title">Copied by “Open in CLI”</h3>
-          <span>local audit</span>
+          <h3 id="cli-title" data-i18n="cli.title">Copied by “Open in CLI”</h3>
+          <span data-i18n="cli.tag">local audit</span>
         </div>
         <pre id="cli-preview"></pre>
       </div>
@@ -108,10 +115,10 @@
     <section class="panel full" aria-labelledby="audit-title">
       <div class="panel__head">
         <div>
-          <p class="eyebrow">audit</p>
-          <h2 id="audit-title">Deterministic signals</h2>
+          <p class="eyebrow" data-i18n="audit.eyebrow">audit</p>
+          <h2 id="audit-title" data-i18n="audit.title">Deterministic signals</h2>
         </div>
-        <p class="quiet">Burstiness, MATTR, AI-favored lexicon density, and Korean rhythm diagnostics.</p>
+        <p class="quiet" data-i18n="audit.quiet">Burstiness, MATTR, AI-favored lexicon density, and Korean rhythm diagnostics.</p>
       </div>
       <div id="audit"></div>
     </section>
@@ -119,10 +126,10 @@
     <section class="panel full" aria-labelledby="korean-advisory-title">
       <div class="panel__head">
         <div>
-          <p class="eyebrow">advisory</p>
-          <h2 id="korean-advisory-title">Korean editing hints</h2>
+          <p class="eyebrow" data-i18n="advisory.eyebrow">advisory</p>
+          <h2 id="korean-advisory-title" data-i18n="advisory.title">Korean editing hints</h2>
         </div>
-        <p class="quiet">Translationese and koPostEditese metadata are advisory-only revision hints; they never change score, hotspots, or audit rows.</p>
+        <p class="quiet" data-i18n="advisory.quiet">Translationese and koPostEditese metadata are advisory-only revision hints; they never change score, hotspots, or audit rows.</p>
       </div>
       <div id="korean-advisory"></div>
     </section>
@@ -130,20 +137,20 @@
     <section class="panel full" aria-labelledby="diff-title">
       <div class="panel__head">
         <div>
-          <p class="eyebrow">diff</p>
-          <h2 id="diff-title">Suspect-zone diff</h2>
+          <p class="eyebrow" data-i18n="diff.eyebrow">diff</p>
+          <h2 id="diff-title" data-i18n="diff.title">Suspect-zone diff</h2>
         </div>
-        <button class="button secondary" id="report-fp" type="button">Report false positive</button>
+        <button class="button secondary" id="report-fp" type="button" data-i18n="diff.report">Report false positive</button>
       </div>
-      <p class="quiet">v1 highlights review zones and lexicon hits only. No rewrite. Human text wrongly flagged? The report button pre-fills a GitHub issue with the flagged text and signals — nothing is sent unless you submit it.</p>
+      <p class="quiet" data-i18n="diff.quiet">v1 highlights review zones and lexicon hits only. No rewrite. Human text wrongly flagged? The report button pre-fills a GitHub issue with the flagged text and signals — nothing is sent unless you submit it.</p>
       <div id="diff" class="diff-list"></div>
     </section>
   </main>
 
   <footer class="footer">
     <p>
-      Scores measure editing hotspots, not authorship. Pasted text stays in your browser; Vercel Web Analytics records page-view metadata only.
-      <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md">Read the ethics note.</a>
+      <span data-i18n="footer.text">Scores measure editing hotspots, not authorship. Pasted text stays in your browser; Vercel Web Analytics records page-view metadata only.</span>
+      <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md" data-i18n="footer.ethics">Read the ethics note.</a>
     </p>
   </footer>
 

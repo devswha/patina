@@ -43,6 +43,15 @@ import {
   STRONG_MIN as TRANSLATIONESE_STRONG_MIN,
 } from '../src/features/translationese.js';
 
+import {
+  normalizeUiLang,
+  t as tUi,
+  reasonLabel as uiReasonLabel,
+  reasonDetail as uiReasonDetail,
+  koPeGroupLabel,
+  koPeMetricLabel,
+} from './i18n.js';
+
 export {
   splitSentences,
   splitProseSentences,
@@ -168,6 +177,7 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, endin
       code: 'fake-candor',
       label: 'Fake-candor opener',
       detail: `Manufactured-intimacy opener ("here's the thing", "the truth is", …); ${candor.docCount} in the document (threshold ${DEFAULT_FAKE_CANDOR_MIN}).`,
+      vars: { docCount: candor.docCount, threshold: DEFAULT_FAKE_CANDOR_MIN },
     });
   }
   if (thematicBreaks?.hot) {
@@ -175,6 +185,7 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, endin
       code: 'thematic-break',
       label: 'Decorative thematic break',
       detail: `${thematicBreaks.docCount} markdown dividers in the document (threshold ${DEFAULT_THEMATIC_BREAK_MIN}); this paragraph carries ${thematicBreaks.count}.`,
+      vars: { docCount: thematicBreaks.docCount, threshold: DEFAULT_THEMATIC_BREAK_MIN, count: thematicBreaks.count },
     });
   }
   if (leakage?.leaked) {
@@ -183,6 +194,7 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, endin
       code: 'model-output-leakage',
       label: 'Model-output leakage',
       detail: `Pasted-LLM artifact present (${labels}). A single hit is near-proof-grade.`,
+      vars: { labels },
     });
   }
   if (formatting?.emDashHot) {
@@ -190,6 +202,7 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, endin
       code: 'em-dash-overuse',
       label: 'Em dash overuse',
       detail: `${formatting.docEmDash} em dashes in the document (threshold ${formattingThresholds.emDashDoc}); this paragraph carries ${formatting.emDash}.`,
+      vars: { docEmDash: formatting.docEmDash, threshold: formattingThresholds.emDashDoc, emDash: formatting.emDash },
     });
   }
   if (formatting?.boldHot) {
@@ -200,6 +213,7 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, endin
       detail: paragraphOnly
         ? `${formatting.bold} bold spans in this paragraph (threshold ${formattingThresholds.boldParagraph}).`
         : `${formatting.docBold} bold spans in the document (threshold ${formattingThresholds.boldDoc}); this paragraph carries ${formatting.bold}.`,
+      vars: { paragraphOnly, bold: formatting.bold, boldParagraph: formattingThresholds.boldParagraph, docBold: formatting.docBold, boldDoc: formattingThresholds.boldDoc },
     });
   }
   if (formatting?.emojiHot) {
@@ -207,6 +221,7 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, endin
       code: 'emoji-overuse',
       label: 'Emoji overuse',
       detail: `${formatting.docEmoji} emoji in the document (catalog threshold: any occurrence); this paragraph carries ${formatting.emoji}.`,
+      vars: { docEmoji: formatting.docEmoji, emoji: formatting.emoji },
     });
   }
   if (cvBand === 'low') {
@@ -214,6 +229,7 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, endin
       code: 'low-burstiness',
       label: 'Low burstiness',
       detail: 'Sentence lengths are unusually even, a common polished-LLM tell.',
+      vars: {},
     });
   }
   if (mattrBand === 'low') {
@@ -221,6 +237,7 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, endin
       code: 'low-mattr',
       label: 'Low lexical variety',
       detail: 'The moving type-token ratio is below the editing threshold.',
+      vars: {},
     });
   }
   if (lexiconHot) {
@@ -228,12 +245,14 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, endin
       code: 'lexicon-density',
       label: 'AI-favored phrasing density',
       detail: `${lex.matches} lexicon hit${lex.matches === 1 ? '' : 's'} / ${fmt(lex.density, 1)} per 1k tokens.`,
+      vars: { matches: lex.matches, density: fmt(lex.density, 1) },
     });
   } else if (lex.matches > 0) {
     reasons.push({
       code: 'lexicon-hit',
       label: 'AI-favored phrase present',
       detail: `${lex.matches} lexicon hit${lex.matches === 1 ? '' : 's'}, below the hot-zone threshold.`,
+      vars: { matches: lex.matches },
     });
   }
   if (koDiagnostics?.hot) {
@@ -241,6 +260,7 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, endin
       code: 'ko-diagnostics',
       label: 'Korean rhythm composite',
       detail: `Regular spacing, low comma rhythm, and low suffix diversity matched together (strength ${fmt(koDiagnostics.strength, 1)}).`,
+      vars: { strength: fmt(koDiagnostics.strength, 1) },
     });
   }
   if (endingMonotonyHot) {
@@ -248,6 +268,7 @@ function buildReasons({ cvBand, mattrBand, lexiconHot, lex, koDiagnostics, endin
       code: 'ko-ending-monotony',
       label: 'Uniform plain-다 register',
       detail: 'Flat declarative -다 endings with little sentence-length variation, a short-form LLM Korean tell.',
+      vars: {},
     });
   }
   return reasons;
@@ -473,18 +494,35 @@ export function highlightLexiconHits(text, hits) {
   return html;
 }
 
-export function renderAuditDiff(analysis) {
+// Localize a reason for display. English keeps the analyzer's own data-layer
+// label/detail verbatim (so the GitHub report and tests stay byte-identical);
+// Korean re-templates from the structured `vars` captured on the reason.
+function localizeReason(uiLang, reason) {
+  if (normalizeUiLang(uiLang) === 'ko') {
+    return {
+      label: uiReasonLabel('ko', reason.code),
+      detail: uiReasonDetail('ko', reason.code, reason.vars ?? {}),
+    };
+  }
+  return { label: reason.label, detail: reason.detail };
+}
+
+export function renderAuditDiff(analysis, uiLang) {
+  const ui = normalizeUiLang(uiLang);
   if (analysis.paragraphCount === 0) {
-    return '<p class="empty-state">Paste text to see suspect zones. v1 does not rewrite.</p>';
+    return `<p class="empty-state">${tUi(ui, 'diff.empty')}</p>`;
   }
   return analysis.paragraphs.map((paragraph) => {
     const state = paragraph.hot ? 'hot' : 'clean';
-    const badge = paragraph.hot ? 'review' : 'ok';
+    const badge = paragraph.hot ? tUi(ui, 'pill.review') : tUi(ui, 'pill.ok');
     const reasons = paragraph.reasons.length > 0
-      ? `<ul>${paragraph.reasons.map((r) => `<li><strong>${escapeHtml(r.label)}</strong>: ${escapeHtml(r.detail)}</li>`).join('')}</ul>`
-      : '<p class="quiet">No deterministic hotspot in this paragraph.</p>';
+      ? `<ul>${paragraph.reasons.map((r) => {
+        const rl = localizeReason(ui, r);
+        return `<li><strong>${escapeHtml(rl.label)}</strong>: ${escapeHtml(rl.detail)}</li>`;
+      }).join('')}</ul>`
+      : `<p class="quiet">${tUi(ui, 'diff.noHotspot')}</p>`;
     const hits = paragraph.lexicon.hits.length > 0
-      ? `<p class="hits">Lexicon hits: ${paragraph.lexicon.hits.map((hit) => `<code>${escapeHtml(hit)}</code>`).join(' ')}</p>`
+      ? `<p class="hits">${tUi(ui, 'diff.lexiconHits')} ${paragraph.lexicon.hits.map((hit) => `<code>${escapeHtml(hit)}</code>`).join(' ')}</p>`
       : '';
     return `<section class="diff-card ${state}">
       <div class="diff-card__head"><span>${escapeHtml(paragraph.id)}</span><span class="pill ${state}">${badge}</span></div>
@@ -502,51 +540,54 @@ function formatAdvisoryMetric(value, digits = 3) {
   return String(value);
 }
 
-function renderAdvisoryMetricRows(rows) {
+function renderAdvisoryMetricRows(rows, uiLang) {
+  const ui = normalizeUiLang(uiLang);
   return rows.map(([group, label, value]) => `<tr>
-      <th scope="row">${escapeHtml(group)}</th>
-      <td>${escapeHtml(label)}</td>
+      <th scope="row">${escapeHtml(koPeGroupLabel(ui, group))}</th>
+      <td>${escapeHtml(koPeMetricLabel(ui, label))}</td>
       <td>${escapeHtml(formatAdvisoryMetric(value))}</td>
     </tr>`).join('');
 }
 
-function renderTranslationeseAdvisory(translationese = {}) {
+function renderTranslationeseAdvisory(translationese = {}, uiLang) {
+  const ui = normalizeUiLang(uiLang);
   const rules = Array.isArray(translationese.byRule) ? translationese.byRule : [];
   const samples = Array.isArray(translationese.hits) ? translationese.hits : [];
   const ruleItems = rules.length > 0
     ? `<ul class="advisory-list">${rules.map((rule) => {
       const example = rule.example
-        ? `<span class="advisory-example">Example: <code>${escapeHtml(rule.example.before ?? '')}</code> → <code>${escapeHtml(rule.example.after ?? '')}</code></span>`
+        ? `<span class="advisory-example">${tUi(ui, 'advisory.example')} <code>${escapeHtml(rule.example.before ?? '')}</code> → <code>${escapeHtml(rule.example.after ?? '')}</code></span>`
         : '';
       return `<li>
-          <strong>${escapeHtml(rule.label ?? rule.id ?? 'Translationese rule')}</strong>
-          <span class="muted">count ${escapeHtml(formatAdvisoryMetric(rule.count, 0))}${rule.strong ? ' · strong' : ''}</span>
+          <strong>${escapeHtml(rule.label ?? rule.id ?? tUi(ui, 'advisory.translationeseRule'))}</strong>
+          <span class="muted">${tUi(ui, 'advisory.ruleCount', { count: escapeHtml(formatAdvisoryMetric(rule.count, 0)) })}${rule.strong ? ` · ${tUi(ui, 'advisory.strong')}` : ''}</span>
           ${example}
         </li>`;
     }).join('')}</ul>`
-    : '<p class="quiet">No Korean translationese rules surfaced. Treat this as an editing hint, not a score input.</p>';
+    : `<p class="quiet">${tUi(ui, 'advisory.noRules')}</p>`;
   const sampleHtml = samples.length > 0
-    ? `<p class="hits">Samples: ${samples.map((sample) => `<code>${escapeHtml(sample)}</code>`).join(' ')}</p>`
+    ? `<p class="hits">${tUi(ui, 'advisory.samples')} ${samples.map((sample) => `<code>${escapeHtml(sample)}</code>`).join(' ')}</p>`
     : '';
   return `<section class="advisory-card" aria-labelledby="translationese-advisory-title">
-    <h3 id="translationese-advisory-title">Translationese hints</h3>
-    <p class="quiet">Advisory-only Korean calque metadata for revision. It does not affect score, hot paragraphs, or audit rows.</p>
+    <h3 id="translationese-advisory-title">${tUi(ui, 'advisory.translationeseTitle')}</h3>
+    <p class="quiet">${tUi(ui, 'advisory.translationeseQuiet')}</p>
     <dl class="advisory-stats">
-      <div><dt>Count</dt><dd>${escapeHtml(formatAdvisoryMetric(translationese.count, 0))}</dd></div>
-      <div><dt>Density</dt><dd>${escapeHtml(formatAdvisoryMetric(translationese.density))}</dd></div>
-      <div><dt>Sentences</dt><dd>${escapeHtml(formatAdvisoryMetric(translationese.sentences, 0))}</dd></div>
+      <div><dt>${tUi(ui, 'advisory.count')}</dt><dd>${escapeHtml(formatAdvisoryMetric(translationese.count, 0))}</dd></div>
+      <div><dt>${tUi(ui, 'advisory.density')}</dt><dd>${escapeHtml(formatAdvisoryMetric(translationese.density))}</dd></div>
+      <div><dt>${tUi(ui, 'advisory.sentences')}</dt><dd>${escapeHtml(formatAdvisoryMetric(translationese.sentences, 0))}</dd></div>
     </dl>
     ${ruleItems}
     ${sampleHtml}
   </section>`;
 }
 
-function renderKoPostEditeseAdvisory(koPostEditese = {}) {
+function renderKoPostEditeseAdvisory(koPostEditese = {}, uiLang) {
+  const ui = normalizeUiLang(uiLang);
   if (!koPostEditese.analyzed) {
     const reason = koPostEditese.skipReason ?? 'unavailable';
     return `<section class="advisory-card" aria-labelledby="ko-post-editese-advisory-title">
-      <h3 id="ko-post-editese-advisory-title">Korean post-editese metadata</h3>
-      <p class="quiet">Schema <code>${escapeHtml(koPostEditese.schema ?? KO_POST_EDITESE_SCHEMA)}</code> skipped: ${escapeHtml(reason)}. Advisory metadata is unavailable for this input.</p>
+      <h3 id="ko-post-editese-advisory-title">${tUi(ui, 'advisory.koPeTitle')}</h3>
+      <p class="quiet">${tUi(ui, 'advisory.koPeSkipped', { schema: escapeHtml(koPostEditese.schema ?? KO_POST_EDITESE_SCHEMA), reason: escapeHtml(reason) })}</p>
     </section>`;
   }
 
@@ -572,27 +613,28 @@ function renderKoPostEditeseAdvisory(koPostEditese = {}) {
     ['suffix diversity', 'suffix diversity', metrics.rhythm?.suffixDiversity],
   ];
   return `<section class="advisory-card" aria-labelledby="ko-post-editese-advisory-title">
-    <h3 id="ko-post-editese-advisory-title">Korean post-editese metadata</h3>
-    <p class="quiet">Schema <code>${escapeHtml(koPostEditese.schema ?? KO_POST_EDITESE_SCHEMA)}</code> analyzed as editing guidance only.</p>
+    <h3 id="ko-post-editese-advisory-title">${tUi(ui, 'advisory.koPeTitle')}</h3>
+    <p class="quiet">${tUi(ui, 'advisory.koPeAnalyzed', { schema: escapeHtml(koPostEditese.schema ?? KO_POST_EDITESE_SCHEMA) })}</p>
     <dl class="advisory-stats">
-      <div><dt>Paragraphs</dt><dd>${escapeHtml(formatAdvisoryMetric(koPostEditese.paragraphCount, 0))}</dd></div>
-      <div><dt>Sentences</dt><dd>${escapeHtml(formatAdvisoryMetric(koPostEditese.sentenceCount, 0))}</dd></div>
-      <div><dt>Eojeols</dt><dd>${escapeHtml(formatAdvisoryMetric(koPostEditese.eojeolCount, 0))}</dd></div>
+      <div><dt>${tUi(ui, 'advisory.paragraphs')}</dt><dd>${escapeHtml(formatAdvisoryMetric(koPostEditese.paragraphCount, 0))}</dd></div>
+      <div><dt>${tUi(ui, 'advisory.sentences')}</dt><dd>${escapeHtml(formatAdvisoryMetric(koPostEditese.sentenceCount, 0))}</dd></div>
+      <div><dt>${tUi(ui, 'advisory.eojeols')}</dt><dd>${escapeHtml(formatAdvisoryMetric(koPostEditese.eojeolCount, 0))}</dd></div>
     </dl>
     <div class="table-wrap advisory-metrics"><table>
-      <thead><tr><th>Group</th><th>Metric</th><th>Value</th></tr></thead>
-      <tbody>${renderAdvisoryMetricRows(rows)}</tbody>
+      <thead><tr><th>${tUi(ui, 'advisory.th.group')}</th><th>${tUi(ui, 'advisory.th.metric')}</th><th>${tUi(ui, 'advisory.th.value')}</th></tr></thead>
+      <tbody>${renderAdvisoryMetricRows(rows, ui)}</tbody>
     </table></div>
   </section>`;
 }
 
-export function renderKoreanAdvisory(analysis) {
+export function renderKoreanAdvisory(analysis, uiLang) {
+  const ui = normalizeUiLang(uiLang);
   if (!analysis || analysis.lang !== 'ko') {
-    return `<p class="empty-state">Korean advisory metadata is unavailable for this language. This panel is separate from scoring, hotspots, and audit diff rendering.</p>`;
+    return `<p class="empty-state">${tUi(ui, 'advisory.unavailable')}</p>`;
   }
   return `<div class="advisory-grid">
-    ${renderTranslationeseAdvisory(analysis.translationese)}
-    ${renderKoPostEditeseAdvisory(analysis.koPostEditese)}
+    ${renderTranslationeseAdvisory(analysis.translationese, ui)}
+    ${renderKoPostEditeseAdvisory(analysis.koPostEditese, ui)}
   </div>`;
 }
 

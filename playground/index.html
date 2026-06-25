@@ -17,42 +17,88 @@
   <meta name="twitter:image" content="https://patina.vibetip.help/assets/social/patina-og.svg">
   <link rel="icon" href="/assets/brand/patina-icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/rewrite.css">
 </head>
 <body>
   <header class="hero">
-    <nav class="nav" aria-label="Main">
-      <a class="brand" href="https://github.com/devswha/patina" aria-label="patina GitHub repository">
-        <img src="/assets/brand/patina-mark.svg" alt="" width="44" height="44">
-        <span>patina</span>
-      </a>
-      <div class="nav__links">
-        <a href="https://github.com/devswha/patina" data-i18n="nav.github">GitHub</a>
-        <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md" data-i18n="nav.ethics">Ethics</a>
-        <a href="https://github.com/devswha/patina/blob/main/docs/benchmarks/latest.md" data-i18n="nav.benchmark">Benchmark</a>
-        <label class="ui-lang">
-          <span class="visually-hidden" data-i18n="ui.interfaceLanguage">Interface language</span>
-          <select id="ui-lang" name="ui-lang">
-            <option value="en">English</option>
-            <option value="ko">한국어</option>
-          </select>
-        </label>
-      </div>
-    </nav>
+    <div class="hero__sky" aria-hidden="true"></div>
+    <div class="shell">
+      <nav class="nav" aria-label="Main">
+        <a class="brand" href="https://github.com/devswha/patina" aria-label="patina GitHub repository">
+          <img src="/assets/brand/patina-mark.svg" alt="" width="40" height="40">
+          <span>patina</span>
+        </a>
+        <div class="nav__links">
+          <a href="https://github.com/devswha/patina" data-i18n="nav.github">GitHub</a>
+          <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md" data-i18n="nav.ethics">Ethics</a>
+          <a href="https://github.com/devswha/patina/blob/main/docs/benchmarks/latest.md" data-i18n="nav.benchmark">Benchmark</a>
+        </div>
+        <div class="nav__end">
+          <div id="ui-lang" class="lang-switch" role="radiogroup" aria-label="Interface language" data-i18n-attr="aria-label:ui.interfaceLanguage">
+            <input type="radio" id="ui-lang-en" name="ui-lang" value="en">
+            <label for="ui-lang-en" lang="en">EN</label>
+            <input type="radio" id="ui-lang-ko" name="ui-lang" value="ko">
+            <label for="ui-lang-ko" lang="ko">한국어</label>
+          </div>
+        </div>
+      </nav>
 
-    <section class="hero__copy">
-      <p class="eyebrow" data-i18n="hero.eyebrow">audit-only playground</p>
-      <h1 data-i18n="hero.title">Paste text. See where it sounds packaged.</h1>
-      <p data-i18n="hero.body">
-        patina checks deterministic stylometry and lexicon signals for Korean,
-        English, Chinese, and Japanese. v1 does not rewrite, call an LLM, or send
-        your pasted text anywhere.
-      </p>
-      <div class="hero__actions" aria-label="Primary actions">
-        <a class="button" href="https://github.com/devswha/patina" data-i18n="hero.star">Star on GitHub</a>
-        <a class="button ghost" href="https://github.com/devswha/patina#quick-start" data-i18n="hero.install">Install CLI</a>
-      </div>
-    </section>
+      <section class="hero__copy">
+        <h1 data-i18n="hero.title">Paste text. See where it sounds packaged.</h1>
+
+        <div class="cmd-pill" aria-label="Install command">
+          <button id="copy-install" type="button" data-i18n="cmd.copy">Copy</button>
+          <code>npx patina-cli</code>
+        </div>
+
+        <div class="hero__actions" aria-label="Primary actions">
+          <a class="button" href="https://github.com/devswha/patina" data-i18n="hero.star">Star on GitHub</a>
+          <a class="button ghost" href="https://github.com/devswha/patina#quick-start" data-i18n="hero.install">Install CLI</a>
+        </div>
+      </section>
+
+    </div>
   </header>
+
+  <dl class="stat-strip" aria-label="patina at a glance">
+    <div class="stat-card">
+      <dt data-i18n="stat.langs.label">Languages</dt>
+      <dd data-i18n="stat.langs.value">KO · EN · ZH · JA</dd>
+    </div>
+    <div class="stat-card">
+      <dt data-i18n="stat.patterns.label">Patterns</dt>
+      <dd data-i18n="stat.patterns.value">~160 catalogued</dd>
+    </div>
+    <div class="stat-card">
+      <dt data-i18n="stat.signals.label">Signals</dt>
+      <dd data-i18n="stat.signals.value">4 deterministic</dd>
+    </div>
+    <div class="stat-card accent">
+      <dt data-i18n="stat.local.label">Privacy</dt>
+      <dd data-i18n="stat.local.value">100% local</dd>
+    </div>
+  </dl>
+
+  <section class="gallery" aria-labelledby="gallery-title">
+    <div class="gallery__head">
+      <p class="eyebrow" data-i18n="gallery.eyebrow">samples</p>
+      <h2 id="gallery-title" data-i18n="gallery.title">Before / after, side by side</h2>
+      <p class="quiet" data-i18n="gallery.quiet">Curated AI drafts and the cleaner versions beside them. The playground audits signals; it does not rewrite — these edits are illustrative.</p>
+    </div>
+    <div id="sample-gallery" class="gallery__grid"></div>
+  </section>
+
+  <div class="tool-intro">
+    <p class="eyebrow" data-i18n="tool.eyebrow">try it</p>
+    <h2 data-i18n="tool.title">Audit your own text</h2>
+  </div>
+
+  <div class="mode-switch">
+    <div id="mode-toggle" role="group" aria-label="Playground mode">
+      <button type="button" data-mode="audit" aria-pressed="true">Audit</button>
+      <button type="button" data-mode="rewrite" aria-pressed="false">Rewrite</button>
+    </div>
+  </div>
 
   <main class="workspace">
     <section class="panel input-panel" aria-labelledby="input-title">
@@ -147,6 +193,10 @@
     </section>
   </main>
 
+  <section id="rewrite-mode" class="rewrite-section" aria-label="Rewrite mode" hidden>
+    <div class="rw-host"></div>
+  </section>
+
   <footer class="footer">
     <p>
       <span data-i18n="footer.text">Scores measure editing hotspots, not authorship. Pasted text stays in your browser; Vercel Web Analytics records page-view metadata only.</span>
@@ -155,6 +205,7 @@
   </footer>
 
   <script type="module" src="/app.js"></script>
+  <script type="module" src="/rewrite-mode.js"></script>
   <script defer src="/analytics.js"></script>
   <script defer src="/_vercel/insights/script.js"></script>
 </body>

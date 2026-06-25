@@ -1,0 +1,100 @@
+/* Rewrite-mode (chat UI) styles. Separate stylesheet so the audit page's
+   styles.css is never modified. Scoped under .rw / #mode-toggle / #rewrite-mode. */
+
+#mode-toggle {
+  display: inline-flex;
+  gap: 0;
+  margin: 0 auto 1rem;
+  border: 1px solid rgba(120, 120, 120, 0.35);
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+#mode-toggle button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0.45rem 1.1rem;
+  cursor: pointer;
+}
+#mode-toggle button[aria-pressed="true"] {
+  background: #0f766e; /* teal */
+  color: #fff;
+}
+
+.mode-switch {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem auto 0;
+}
+
+/* The audit page's author CSS sets `display` on these, which overrides the UA
+   [hidden] rule, so force the hide with a scoped !important when toggled. */
+main.workspace[hidden],
+#rewrite-mode[hidden] { display: none !important; }
+
+.rw {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.rw__head h2 { margin: 0 0 0.25rem; }
+.rw__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+.rw__controls .field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; }
+.rw__controls select,
+.rw__controls input,
+.rw-input {
+  border: 1px solid rgba(120, 120, 120, 0.4);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+}
+.rw__transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 120px;
+}
+.rw-msg {
+  border: 1px solid rgba(120, 120, 120, 0.25);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+}
+.rw-msg--user { background: rgba(15, 118, 110, 0.08); }
+.rw-msg--patina { background: rgba(180, 120, 60, 0.08); } /* copper */
+.rw-msg__who {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+  margin-bottom: 0.3rem;
+}
+.rw-msg__body { white-space: pre-wrap; word-break: break-word; }
+.rw__composer { display: flex; gap: 0.6rem; align-items: stretch; }
+.rw-input { flex: 1; resize: vertical; }
+.rewrite-metrics { margin-top: 0.6rem; font-size: 0.85rem; }
+.rewrite-metrics dl { display: flex; gap: 1rem; flex-wrap: wrap; margin: 0.4rem 0 0; }
+.rewrite-metrics dt { font-weight: 600; opacity: 0.7; }
+.rewrite-metrics__warning, .rw-warn { color: #b45309; font-weight: 600; }
+.rewrite-signals { margin-top: 0.6rem; font-size: 0.85rem; }
+.rewrite-signals dl { display: flex; gap: 1rem; flex-wrap: wrap; margin: 0.4rem 0 0; }
+.rewrite-signals dt { font-weight: 600; opacity: 0.7; }
+.rewrite-diff { margin-top: 0.6rem; font-size: 0.85rem; opacity: 0.85; }
+.rewrite-diff__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+@media (max-width: 640px) {
+  .rw__composer { flex-direction: column; }
+}

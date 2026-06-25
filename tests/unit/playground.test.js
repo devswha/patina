@@ -722,7 +722,6 @@ test('playground HTML points canonical and OG metadata at patina.vibetip.help', 
   const html = readFileSync(resolve(REPO_ROOT, 'playground/index.html'), 'utf8');
   assert.match(html, /https:\/\/patina\.vibetip\.help\//);
   assert.match(html, /assets\/social\/patina-og\.svg/);
-  assert.match(html, /audit-only playground/);
 });
 
 test('playground HTML wires Vercel analytics without inline script', () => {
@@ -1145,8 +1144,9 @@ test('Korean advisory render still escapes injected schema/skip reason', () => {
 
 test('playground HTML exposes the interface-language selector and i18n hooks', () => {
   const html = readFileSync(resolve(REPO_ROOT, 'playground/index.html'), 'utf8');
-  assert.match(html, /id="ui-lang"/);
-  assert.match(html, /<option value="ko">한국어<\/option>/);
+  assert.match(html, /id="ui-lang"[^>]*role="radiogroup"/);
+  assert.match(html, /<input type="radio"[^>]*name="ui-lang"[^>]*value="ko">/);
+  assert.match(html, /<label for="ui-lang-ko" lang="ko">한국어<\/label>/);
   assert.match(html, /data-i18n="hero.title"/);
   assert.match(html, /data-i18n="btn.run"/);
   assert.match(html, /data-i18n-attr="aria-label:input.textareaLabel"/);

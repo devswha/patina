@@ -1,5 +1,6 @@
 import {
   SAMPLE_TEXT,
+  SAMPLE_PAIRS,
   SUPPORTED_LANGS,
   analyzePlaygroundText,
   buildCliCommand,
@@ -34,6 +35,7 @@ const nodes = {
   input: doc.querySelector('#input'),
   analyze: doc.querySelector('#analyze'),
   copyCli: doc.querySelector('#copy-cli'),
+  copyInstall: doc.querySelector('#copy-install'),
   reportFp: doc.querySelector('#report-fp'),
   copyStatus: doc.querySelector('#copy-status'),
   scoreValue: doc.querySelector('#score-value'),
@@ -44,6 +46,7 @@ const nodes = {
   koreanAdvisory: doc.querySelector('#korean-advisory'),
   diff: doc.querySelector('#diff'),
   cliPreview: doc.querySelector('#cli-preview'),
+  gallery: doc.querySelector('#sample-gallery'),
 };
 
 // Interface language resolution order: explicit ?ui= query > saved preference >
@@ -161,6 +164,60 @@ function render() {
   nodes.cliPreview.textContent = buildCliCommand(state.text, state.lang);
 }
 
+// Sample gallery: curated before/after pairs shown as the primary surface. Each
+// side carries the deterministic AI-signal score computed in-browser; "Audit
+// this" loads the AI draft into the tool below. No rewrite happens here — the
+// "after" texts are illustrative edits drawn from the example corpus.
+function sampleScoreBadge(text, lang, ui) {
+  const a = analyzePlaygroundText(text, { lang });
+  return `<span class="score-band" data-tone="${a.band.tone}">${t(ui, 'gallery.signal')} ${a.overall}</span>`;
+}
+
+function galleryCard(pair, idx, ui) {
+  return `<article class="sample-card">
+    <header class="sample-card__head">
+      <span class="sample-card__lang">${escapeHtml(pair.lang.toUpperCase())}</span>
+      <span class="sample-card__title">${escapeHtml(pair.title)}</span>
+    </header>
+    <div class="sample-card__cols">
+      <div class="sample-col before">
+        <div class="sample-col__label"><span>${t(ui, 'gallery.before')}</span>${sampleScoreBadge(pair.before, pair.lang, ui)}</div>
+        <p>${escapeHtml(pair.before)}</p>
+      </div>
+      <div class="sample-col after">
+        <div class="sample-col__label"><span>${t(ui, 'gallery.after')}</span>${sampleScoreBadge(pair.after, pair.lang, ui)}</div>
+        <p>${escapeHtml(pair.after)}</p>
+      </div>
+    </div>
+    <div class="sample-card__foot">
+      <button class="button secondary" type="button" data-audit-index="${idx}">${t(ui, 'gallery.audit')}</button>
+    </div>
+  </article>`;
+}
+
+function renderGallery() {
+  if (!nodes.gallery) return;
+  const ui = state.uiLang;
+  nodes.gallery.innerHTML = SAMPLE_PAIRS.map((pair, idx) => galleryCard(pair, idx, ui)).join('');
+}
+
+function auditSample(idx) {
+  const pair = SAMPLE_PAIRS[idx];
+  if (!pair) return;
+  state.lang = pair.lang;
+  nodes.lang.value = pair.lang;
+  nodes.input.value = pair.before;
+  updateQuery();
+  runAnalysis();
+  if (nodes.input.scrollIntoView) nodes.input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function onGalleryClick(event) {
+  const btn = event.target.closest?.('[data-audit-index]');
+  if (!btn) return;
+  auditSample(Number(btn.dataset.auditIndex));
+}
+
 // Analysis runs in a Web Worker so a long paste never blocks rendering. The
 // worker is loaded by relative URL for static hosting; if Worker is missing or
 // the worker errors, the controller transparently falls back to same-thread
@@ -213,6 +270,23 @@ async function copyCli() {
   }
 }
 
+const INSTALL_COMMAND = 'npx patina-cli';
+let installCopyTimer = null;
+
+async function copyInstall() {
+  if (!nodes.copyInstall) return;
+  try {
+    const ok = await copyText(INSTALL_COMMAND);
+    nodes.copyInstall.textContent = t(state.uiLang, ok ? 'cmd.copied' : 'cmd.copy');
+  } catch (_err) {
+    nodes.copyInstall.textContent = t(state.uiLang, 'cmd.copy');
+  }
+  clearTimeout(installCopyTimer);
+  installCopyTimer = setTimeout(() => {
+    if (nodes.copyInstall) nodes.copyInstall.textContent = t(state.uiLang, 'cmd.copy');
+  }, 1200);
+}
+
 function reportFalsePositive() {
   if (!state.text.trim()) {
     nodes.copyStatus.textContent = t(state.uiLang, 'status.reportFirst');
@@ -225,13 +299,22 @@ function reportFalsePositive() {
     : t(state.uiLang, 'status.reportBlocked');
 }
 
+// Reflect the active interface language on the segmented switch radios.
+function syncUiLangControl() {
+  if (!nodes.uiLang) return;
+  for (const radio of nodes.uiLang.querySelectorAll('input[name="ui-lang"]')) {
+    radio.checked = radio.value === state.uiLang;
+  }
+}
+
 function setUiLang(value) {
   state.uiLang = normalizeUiLang(value);
-  if (nodes.uiLang) nodes.uiLang.value = state.uiLang;
+  syncUiLangControl();
   persistUiLang(state.uiLang);
   updateQuery();
   applyStaticI18n();
   render();
+  renderGallery();
 }
 
 // Re-analysis runs detectTranslationese + per-paragraph stylometry + three
@@ -249,8 +332,10 @@ function bind() {
   nodes.lang.value = state.lang;
   nodes.input.value = state.text;
   if (nodes.uiLang) {
-    nodes.uiLang.value = state.uiLang;
-    nodes.uiLang.addEventListener('change', () => setUiLang(nodes.uiLang.value));
+    syncUiLangControl();
+    nodes.uiLang.addEventListener('change', (event) => {
+      if (event.target?.name === 'ui-lang') setUiLang(event.target.value);
+    });
   }
   nodes.lang.addEventListener('change', () => {
     state.lang = nodes.lang.value;
@@ -261,10 +346,13 @@ function bind() {
   nodes.analyze.addEventListener('click', runAnalysis);
   nodes.sample.addEventListener('click', setSample);
   nodes.copyCli.addEventListener('click', copyCli);
+  if (nodes.copyInstall) nodes.copyInstall.addEventListener('click', copyInstall);
   nodes.reportFp.addEventListener('click', reportFalsePositive);
+  if (nodes.gallery) nodes.gallery.addEventListener('click', onGalleryClick);
 }
 
 readQueryState();
 bind();
 applyStaticI18n();
 setSample();
+renderGallery();

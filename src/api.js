@@ -32,10 +32,10 @@ const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
  */
 export class HttpError extends Error {
   constructor(status, body, retryAfter) {
-    super(`HTTP ${status}: ${truncate(body)}`);
+    super(`HTTP ${status}: ${truncate(redactErrorText(body))}`);
     this.name = 'HttpError';
     this.status = status;
-    this.body = body;
+    this.body = redactErrorText(typeof body === 'string' ? body : '');
     this.retryAfter = retryAfter;
   }
 }
@@ -43,6 +43,23 @@ export class HttpError extends Error {
 function truncate(text, max = 256) {
   if (typeof text !== 'string') return '';
   return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+/**
+ * Redact secret-bearing substrings (Bearer tokens, sk- API keys, key= query
+ * params) from provider error text BEFORE it enters an error message, error
+ * body, or a log line. The single source of truth for LLM-transport error
+ * redaction, reused by the streaming helper and the scoring logger so a BYOK
+ * key echoed in a provider error response is never persisted (AC11).
+ *
+ * @param {unknown} text
+ * @returns {string}
+ */
+export function redactErrorText(text) {
+  return String(text ?? '')
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [REDACTED]')
+    .replace(/\bsk-[A-Za-z0-9._-]{8,}/g, '[REDACTED]')
+    .replace(/([?&](?:api[_-]?key|key|token|access[_-]?token)=)[^&\s"']+/gi, '$1[REDACTED]');
 }
 
 // Surface provider prompt-cache token counts when present, normalized across
@@ -316,7 +333,7 @@ export async function callLLM({
     return success.content;
   }
 
-  const err = new Error(`LLM API failed after ${attemptsMade || 1} attempts: ${lastError?.message ?? 'unknown'}`);
+  const err = new Error(`LLM API failed after ${attemptsMade || 1} attempts: ${redactErrorText(lastError?.message ?? 'unknown')}`);
   if (lastError?.name === 'AbortError') {
     // Distinguish a real external cancellation from a per-attempt timeout:
     // only an aborted external signal stays AbortError (callers rethrow that as

@@ -4,6 +4,11 @@
   "github": {
     "silent": true
   },
+  "functions": {
+    "api/rewrite.js": {
+      "includeFiles": "{patterns/**,profiles/**,core/**,lexicon/**,.patina.default.yaml}"
+    }
+  },
   "rewrites": [
     {
       "source": "/",
@@ -32,6 +37,22 @@
     {
       "source": "/analyzer.js",
       "destination": "/playground/analyzer.js"
+    },
+    {
+      "source": "/rewrite-client.js",
+      "destination": "/playground/rewrite-client.js"
+    },
+    {
+      "source": "/chat-ui.js",
+      "destination": "/playground/chat-ui.js"
+    },
+    {
+      "source": "/rewrite-mode.js",
+      "destination": "/playground/rewrite-mode.js"
+    },
+    {
+      "source": "/rewrite.css",
+      "destination": "/playground/rewrite.css"
     },
     {
       "source": "/styles.css",

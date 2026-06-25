@@ -3,6 +3,7 @@
 // is benign — both bindings are only dereferenced at call time, never during
 // module evaluation.
 import { SCORE_INTERPRETATION_BANDS } from './scoring.js';
+import { formatPersonaDirective } from './personas/compose.js';
 
 /**
  * Default per-detection severity points.
@@ -113,6 +114,7 @@ function buildSeverityOverrideNote(config) {
  * @param {object|null} options.profile Parsed profile document.
  * @param {object|null} options.voice Parsed voice guide.
  * @param {object|null} [options.voiceSample] Optional voice sample payload.
+ * @param {object|null} [options.persona] Optional validated persona payload.
  * @param {object|null} options.scoring Parsed scoring guide.
  * @param {string} options.text Input text.
  * @param {string} [options.mode=rewrite] Output mode.
@@ -143,6 +145,7 @@ export function buildPrompt(options) {
     profile,
     voice,
     voiceSample,
+    persona = null,
     scoring,
     text,
     mode = 'rewrite',
@@ -163,7 +166,7 @@ export function buildPrompt(options) {
   // to rewrite mode where voice prior matters most. Profile body is still passed
   // through (Round 2 found Gemini ignored casual-conversation when omitted).
   if (promptMode === 'minimal' && mode === 'rewrite') {
-    return buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, documentSignals, restyle, jargon, rewriteHeadings });
+    return buildMinimalPrompt({ config, patterns, profile, voiceSample, persona, text, tone, documentSignals, restyle, jargon, rewriteHeadings });
   }
 
   const lang = config.language || 'ko';
@@ -233,6 +236,11 @@ export function buildPrompt(options) {
 
   if ((mode === 'rewrite' || mode === 'ouroboros') && voiceSample) {
     prompt += formatVoiceSampleSection(voiceSample);
+  }
+
+  if ((mode === 'rewrite' || mode === 'ouroboros') && persona) {
+    prompt += formatPersonaDirective(persona, { korean: lang === 'ko' });
+    prompt += '\n';
   }
 
   if (mode === 'score' || mode === 'ouroboros') {
@@ -632,7 +640,7 @@ export function isShortText(text) {
 // model's natural voice prior isn't overridden by analytical framing. Only
 // invoked for rewrite mode; score/audit/diff/ouroboros stay on the strict
 // path because they need precise pattern references.
-function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone, documentSignals = null, restyle = 'sentence', jargon = 'keep', rewriteHeadings = false }) {
+function buildMinimalPrompt({ config, patterns, profile, voiceSample, persona = null, text, tone, documentSignals = null, restyle = 'sentence', jargon = 'keep', rewriteHeadings = false }) {
   const lang = config.language || 'ko';
   const activePatterns = patterns.filter((p) => !p.isScoreOnly);
 
@@ -702,6 +710,11 @@ function buildMinimalPrompt({ config, patterns, profile, voiceSample, text, tone
 
   if (voiceSample) {
     prompt += formatVoiceSampleSection(voiceSample);
+  }
+
+  if (persona) {
+    prompt += formatPersonaDirective(persona, { korean: lang === 'ko' });
+    prompt += '\n';
   }
 
   prompt += lang === 'ko' ? `## 출력 형식\n\n` : `## Output format\n\n`;

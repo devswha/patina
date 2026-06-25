@@ -15,6 +15,7 @@ import { TRANSLATIONESE_RULES } from './features/translationese.js';
  * @param {object} [opts.env] Environment map for color decisions.
  * @param {object} [opts.stdout] Stdout-like stream for color decisions.
  * @param {string} [opts.auditBackstop] Deterministic audit-mode section to append before the tone footer.
+ * @param {object|null} [opts.persona] Persona metadata to append.
  * @returns {string} User-facing formatted output.
  * @throws {TypeError} When `result` or `opts.tone` carries values JSON.stringify cannot serialize (circular references, BigInt) — the json format serializes the result payload, and the tone footer serializes `opts.tone.tone_evidence`.
  * @example
@@ -22,6 +23,7 @@ import { TRANSLATIONESE_RULES } from './features/translationese.js';
  */
 export function formatOutput(result, mode, parsed = {}, opts = {}) {
   const tone = opts.tone || null;
+  const persona = opts.persona || null;
   const format = parsed.format || 'markdown';
   let body = renderFormattedBody(result, mode, parsed, opts);
 
@@ -30,7 +32,7 @@ export function formatOutput(result, mode, parsed = {}, opts = {}) {
   }
 
   if (format === 'json') {
-    return formatJsonOutput({ result, mode, body, tone, gate: parsed.gate });
+    return formatJsonOutput({ result, mode, body, tone, gate: parsed.gate, persona });
   }
 
   if (format === 'text') {
@@ -301,7 +303,7 @@ function formatTextOutput(body) {
   return body.trim();
 }
 
-function formatJsonOutput({ result, mode, body, tone, gate }) {
+function formatJsonOutput({ result, mode, body, tone, gate, persona }) {
   const overall = extractOverall(result, body);
   const payload = {
     mode,
@@ -316,6 +318,7 @@ function formatJsonOutput({ result, mode, body, tone, gate }) {
     } : null,
     mps: extractMps(result, body),
     gateResult: buildGateResult(overall, gate),
+    persona: persona || null,
     output: body,
   };
 

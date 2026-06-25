@@ -22,6 +22,7 @@ import {
   koreanPostEditeseFeatures,
   koreanEndingMonotony,
   DEFAULT_KO_ENDING_MONOTONY,
+  detectKoreanRegister,
 } from './stylometry.js';
 import {
   classifyLexiconHot,
@@ -217,6 +218,7 @@ export {
   koreanSpacingFeatures,
   koreanPostEditeseFeatures,
   koreanEndingMonotony,
+  detectKoreanRegister,
   loadLexicon,
   computeDensity,
   extractStructuralFeatures,

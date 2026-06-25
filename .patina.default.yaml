@@ -25,6 +25,20 @@ tone:                       # one of: casual, professional, academic, narrative,
 # Used as a style/register anchor only; facts stay sourced from the input text.
 voice-sample:
 
+# Persona harness (v1): Korean rewrite defaults to the conservative preserve
+# persona. Non-rewrite and non-Korean surfaces do not apply persona implicitly.
+persona: preserve
+personas:
+  library: personas/ko
+  thresholds:
+    schema: patina.persona.thresholds.v1
+    source: placeholder
+    calibration_rounds_required: 2
+    persona_match_min: 70
+    mps_floor: 70
+    fidelity_floor: 70
+    churn_max: 0.45
+
 # Supported languages: ko, en, zh, ja
 
 # patterns 목록은 기본 언어(ko)의 팩을 문서화합니다.

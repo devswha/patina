@@ -5,7 +5,7 @@ import { basename } from 'node:path';
 // Options that consume the next token as their value. Drives --name=value
 // expansion and the --suffix flag-collision backstop (#440).
 const VALUE_OPTIONS = new Set([
-  '--lang', '--profile', '--tone', '--voice-sample', '--format', '--exit-on',
+  '--lang', '--profile', '--tone', '--voice-sample', '--persona', '--format', '--exit-on',
   '--suffix', '--outdir', '--model', '--api-key-file', '--base-url',
   '--backend', '--timeout-ms', '--max-concurrency', '--max-retries',
   '--max-failures', '--max-failure-rate', '--provider', '--config',
@@ -97,6 +97,10 @@ export function parseArgs(rawArgs) {
       }
       case '--voice-sample':
         parsed.voiceSample = readOptionValue(args, i, arg);
+        i++;
+        break;
+      case '--persona':
+        parsed.persona = readOptionValue(args, i, arg);
         i++;
         break;
       case '--restyle': {
@@ -417,6 +421,59 @@ export function validateTransformRequest(parsed) {
   }
 }
 
+export function validatePersonaRequest(parsed) {
+  if (!parsed.persona) return;
+  const persona = '--persona';
+  const blockedModes = [
+    ['score', '--score', 'score reads text as-is and does not run the rewrite persona harness'],
+    ['audit', '--audit', 'audit reports detections on the original text'],
+    ['diff', '--diff', 'diff is a pattern-report surface, not the persona rewrite harness'],
+    ['ouroboros', '--ouroboros', 'ouroboros persona integration is not part of v1'],
+    ['preview', '--preview', 'preview persona migration is reserved for a later surface'],
+  ];
+  for (const [key, flag, why] of blockedModes) {
+    if (parsed[key]) {
+      throw inputError(
+        `${persona} cannot be combined with ${flag}`,
+        `${flag} ${why}. Persona v1 is Korean rewrite-only.`,
+        'Run a plain Korean rewrite, e.g. `patina --lang ko --persona preserve draft.md`, or drop --persona.'
+      );
+    }
+  }
+  if (parsed.lang && parsed.lang !== 'ko') {
+    throw inputError(
+      '--persona is Korean-only in v1',
+      `Received --lang ${parsed.lang}, but the persona library ships only for Korean rewrite mode.`,
+      'Use `--lang ko --persona <name>` or remove --persona for non-Korean text.'
+    );
+  }
+  for (const [flag, value] of [['--restyle', parsed.restyle], ['--jargon', parsed.jargon], ['--tone', parsed.tone]]) {
+    if (typeof value === 'string' && value.includes(',')) {
+      throw inputError(
+        `${persona} cannot be combined with comma-list ${flag}`,
+        'Comma-list transform variants are a preview comparison feature, and persona preview is not supported in v1.',
+        `Pick one ${flag} value or remove --persona.`
+      );
+    }
+  }
+  if (parsed.restyle === 'voice' || parsed.restyle === 'content') {
+    throw inputError(
+      `--persona cannot be combined with --restyle ${parsed.restyle}`,
+      parsed.restyle === 'content'
+        ? 'Legacy --restyle content makes MPS advisory, but persona mode must keep MPS/fidelity hard floors enforced.'
+        : 'Legacy --restyle voice is a second depth/voice source that conflicts with persona frontmatter.',
+      'Use --persona with default --restyle sentence, or remove --persona for legacy restyle mode.'
+    );
+  }
+  if (parsed.jargon === 'explain' || parsed.jargon === 'remove') {
+    throw inputError(
+      `--persona cannot be combined with --jargon ${parsed.jargon}`,
+      'Jargon rewriting changes terminology scope in a way persona v1 does not gate.',
+      'Use --jargon without --persona, or keep jargon policy at the default.'
+    );
+  }
+}
+
 export function validatePreviewRequest(parsed) {
   if (parsed.ocr && !parsed.preview) {
     throw inputError(
@@ -652,6 +709,9 @@ LANGUAGE & PROFILE
                           --tone > config tone > config profile.
                           Comma list with --preview compares tones as variants
   --voice-sample <path>   Use 1-3 user paragraphs as style-only voice anchors
+  --persona <name>         Korean rewrite persona (default preserve); incompatible
+                          with score/audit/diff/ouroboros/preview and legacy
+                          voice/content transform depths
   --restyle <depth[,depth]>
                           Transformation depth (rewrite/--preview only):
                           sentence (default) = AI-pattern cleanup,

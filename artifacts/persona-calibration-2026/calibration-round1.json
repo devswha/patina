@@ -1,0 +1,61 @@
+{
+  "schema": "patina.persona.calibration.round.v1-directional",
+  "round": 1,
+  "generated_at": "2026-06-24T22:47:32.714Z",
+  "backend": "codex-cli",
+  "lang": "ko",
+  "threshold_source_before": "placeholder",
+  "inputs": "artifacts/persona-calibration-2026 (ai-suspect KO blog samples)",
+  "rows": [
+    {
+      "fixture_id": "ai-it-policy-extreme",
+      "persona_id": "pragmatic-founder",
+      "treatment_match": 39.1,
+      "baseline_match": 33.3,
+      "match_delta": 5.8,
+      "treatment_churn": 0.457,
+      "baseline_churn": 0.562,
+      "winner": "treatment"
+    },
+    {
+      "fixture_id": "ai-haeyo-conversational",
+      "persona_id": "blog-essay",
+      "treatment_match": 55.8,
+      "baseline_match": 53,
+      "match_delta": 2.8,
+      "treatment_churn": 0.419,
+      "baseline_churn": 0.297,
+      "winner": "treatment"
+    },
+    {
+      "fixture_id": "ai-health-seo",
+      "persona_id": "soft-professional",
+      "treatment_match": 35.2,
+      "baseline_match": 29.1,
+      "match_delta": 6.1,
+      "treatment_churn": 0.321,
+      "baseline_churn": 0.525,
+      "winner": "treatment"
+    }
+  ],
+  "aggregate": {
+    "n": 3,
+    "mean_treatment_match": 43.4,
+    "mean_baseline_match": 38.5,
+    "mean_match_delta": 4.9,
+    "treatment_match_min": 35.2,
+    "treatment_match_max": 55.8,
+    "win_rate": 1,
+    "mean_treatment_churn": 0.399,
+    "treatment_churn_min": 0.321,
+    "treatment_churn_max": 0.457
+  },
+  "recommended": {
+    "persona_match_min_placeholder": 70,
+    "persona_match_min_observed_floor": 32,
+    "churn_max_placeholder": 0.45,
+    "churn_max_observed_ceiling": 0.51,
+    "note": "mps/fidelity NOT LLM-scored this round (directional persona_match + churn only). Round 2 needed before promotion."
+  },
+  "decision": "keep-placeholder (single directional round; promotion requires 2 rounds + mps/fidelity scoring)"
+}

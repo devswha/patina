@@ -26,9 +26,7 @@ export { LEAKAGE_SCORE_FLOOR };
  * Single source for `interpretScore`, the score-prompt interpretation line
  * (src/prompt-builder.js buildScoreMathCore), the `scoreText` strict-JSON
  * contract's interpretation enum, and the core/scoring.md §7 table (gated by
- * tests/unit/threshold-parity.test.js). The playground's `scoreBand`
- * (playground/analyzer.js) intentionally uses coarser UI bands (<=20/<=50) and
- * is NOT derived from this constant.
+ * tests/unit/threshold-parity.test.js).
  *
  * @type {ReadonlyArray<{max: number, label: string}>}
  */

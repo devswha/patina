@@ -1,5 +1,5 @@
 // @ts-check
-import { callLLM as defaultCallLLM } from './api.js';
+import { callLLM as defaultCallLLM, redactErrorText } from './api.js';
 import { getRepoRoot } from './config.js';
 import { analyzeText, loadStructuralModel } from './features/index.js';
 import { LEAKAGE_SCORE_FLOOR } from './features/markup-leakage.js';
@@ -26,9 +26,7 @@ export { LEAKAGE_SCORE_FLOOR };
  * Single source for `interpretScore`, the score-prompt interpretation line
  * (src/prompt-builder.js buildScoreMathCore), the `scoreText` strict-JSON
  * contract's interpretation enum, and the core/scoring.md §7 table (gated by
- * tests/unit/threshold-parity.test.js). The playground's `scoreBand`
- * (playground/analyzer.js) intentionally uses coarser UI bands (<=20/<=50) and
- * is NOT derived from this constant.
+ * tests/unit/threshold-parity.test.js).
  *
  * @type {ReadonlyArray<{max: number, label: string}>}
  */
@@ -621,7 +619,7 @@ ${rewritten}
   } catch (e) {
     rethrowIfAborted(e, signal);
     logger.warn('score.mps_schema_failure', {
-      message: `[patina] scoreMPS schema failure after retry: ${e.message}`,
+      message: `[patina] scoreMPS schema failure after retry: ${redactErrorText(e.message)}`,
     });
     return { mps: null, error: 'schema-failure', raw: e.raw };
   }
@@ -752,7 +750,7 @@ ${rewritten}
   } catch (e) {
     rethrowIfAborted(e, signal);
     logger.warn('score.fidelity_schema_failure', {
-      message: `[patina] scoreFidelity schema failure after retry: ${e.message}`,
+      message: `[patina] scoreFidelity schema failure after retry: ${redactErrorText(e.message)}`,
     });
     schemaError = e;
   }

@@ -1,0 +1,320 @@
+// @ts-check
+// Shared, dependency-free contract for the patina web rewrite surface.
+//
+// Imported by the serverless handler (api/rewrite.js), the web runner
+// (src/web-rewrite.js), the browser client (playground/rewrite-client.js), and
+// the test suite. This module MUST stay isomorphic: no `node:` imports, no fs,
+// no network, no LLM. The same request validation, provider allowlist,
+// redaction, stream-frame, and floor logic then runs identically on the server,
+// in the browser, and under `node --test`, so there is one source of truth for
+// the contract rather than parallel conventions.
+//
+// It is deliberately separate from src/features/* (which stays the deterministic
+// detector layer): this file carries no detector logic and never scores text.
+
+/** Languages the rewrite pipeline supports. */
+export const SUPPORTED_LANGS = Object.freeze(['ko', 'en', 'zh', 'ja']);
+
+/** Service tiers. `free` is the abuse-bounded shared proxy; `byok` uses the user's own key. */
+export const WEB_TIERS = Object.freeze({ FREE: 'free', BYOK: 'byok' });
+
+/** Turn kinds. `first` is the one-shot rewrite; `refine` is a conversational follow-up. */
+export const REWRITE_MODES = Object.freeze({ FIRST: 'first', REFINE: 'refine' });
+
+/**
+ * Meaning-preservation and fidelity floors. Mirrors the ouroboros floors in
+ * `.patina.default.yaml` (mps-floor / fidelity-floor). A rewrite that scores
+ * below either floor — or whose score is missing/unparseable — is rejected
+ * fail-closed (see evaluateFloors).
+ */
+export const MPS_FLOOR = 70;
+export const FIDELITY_FLOOR = 70;
+
+/**
+ * Per-tier request caps. `free` is abuse-bounded; `byok` reflects the user's own
+ * provider quota. These are recommended defaults; the server is the enforcer.
+ */
+export const TIER_LIMITS = Object.freeze({
+  free: Object.freeze({ maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }),
+  byok: Object.freeze({ maxChars: 20000, maxConcurrent: 2 }),
+});
+
+/**
+ * Conversation context caps. The client holds the thread (no-store server); the
+ * server re-caps every request to `maxTurns` recent turns and `maxBytes` total.
+ */
+export const CONTEXT_LIMITS = Object.freeze({ maxTurns: 6, maxBytes: 12 * 1024 });
+
+/**
+ * Stream frame protocol. The handler streams newline-delimited JSON ("NDJSON")
+ * frames over a POST fetch ReadableStream. Every line is exactly one JSON frame
+ * with a `type` field. A successful stream is `start` → `delta`* → `done`; any
+ * failure (including a corrupted/truncated stream) is a terminal `error` frame.
+ * `done` is never emitted on failure, so a consumer can treat "no done" as error.
+ */
+export const STREAM_FRAME_TYPES = Object.freeze({
+  START: 'start',
+  DELTA: 'delta',
+  DONE: 'done',
+  ERROR: 'error',
+});
+
+/** The closed set of valid stream frame type values (for fail-closed parsing). */
+export const STREAM_FRAME_VALUES = new Set(Object.values(STREAM_FRAME_TYPES));
+
+/**
+ * OpenAI-compatible provider presets. The base URL is fixed per provider here so
+ * the UI can never inject an arbitrary base URL (which would let a Bearer token
+ * be exfiltrated to an attacker-chosen host). BYOK requests may only select a
+ * provider+model from this allowlist; free requests are pinned by env.
+ */
+export const PROVIDER_PRESETS = Object.freeze({
+  openai: Object.freeze({
+    baseURL: 'https://api.openai.com/v1',
+    models: Object.freeze(['gpt-5.5', 'gpt-5.1', 'gpt-4.1', 'gpt-4.1-mini']),
+  }),
+});
+
+/**
+ * Keys whose values are secrets and must be redacted before logging. Matched by
+ * normalized substring (lowercased, separators stripped) so families like
+ * apiKey/openaiApiKey/x-api-key, access_token/refreshToken, client_secret, and
+ * password/credential/authorization/bearer are all caught — over-redacting is
+ * the safe failure for a key-handling boundary.
+ */
+const SECRET_KEY_MARKERS = Object.freeze([
+  'apikey', 'token', 'secret', 'password', 'passwd', 'credential', 'authorization', 'bearer',
+]);
+function isSecretKey(key) {
+  const norm = String(key).toLowerCase().replace(/[_-]/g, '');
+  return SECRET_KEY_MARKERS.some((marker) => norm.includes(marker));
+}
+/** Inline secret shapes inside free-form strings (Bearer tokens, OpenAI keys). */
+const SECRET_VALUE_RES = [
+  /Bearer\s+[A-Za-z0-9._-]+/gi,
+  /\bsk-[A-Za-z0-9._-]{8,}/g,
+];
+const REDACTED = '[REDACTED]';
+
+/** Count UTF-8 bytes isomorphically (TextEncoder exists in Node >=18 and browsers). */
+export function byteLength(str) {
+  return new globalThis.TextEncoder().encode(String(str ?? '')).length;
+}
+
+/**
+ * Redact secrets from a value before it reaches a log line or an error body.
+ * Recurses objects/arrays (cloning, never mutating the input), drops values of
+ * secret-named keys, and masks inline Bearer/sk- token shapes inside strings.
+ *
+ * @param {unknown} value
+ * @returns {unknown}
+ */
+export function redactSecrets(value) {
+  if (typeof value === 'string') {
+    let out = value;
+    for (const re of SECRET_VALUE_RES) out = out.replace(re, REDACTED);
+    return out;
+  }
+  if (Array.isArray(value)) return value.map((v) => redactSecrets(v));
+  if (value && typeof value === 'object') {
+    /** @type {Record<string, unknown>} */
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (isSecretKey(k)) out[k] = REDACTED;
+      else out[k] = redactSecrets(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Resolve and allowlist the provider/model/baseURL for a request.
+ * - free: provider/model come from env (PATINA_FREE_PROVIDER/PATINA_FREE_MODEL),
+ *   defaulting to the first preset; the request body cannot choose them.
+ * - byok: provider+model must both be on the PROVIDER_PRESETS allowlist.
+ * The base URL is ALWAYS taken from the preset, never from the request body.
+ *
+ * @param {{tier?:string, provider?:string, model?:string}} req
+ * @param {Record<string,string|undefined>} [env]
+ * @returns {{ok:true, tier:string, provider:string, model:string, baseURL:string}|{ok:false, error:string}}
+ */
+export function resolveProviderModel({ tier, provider, model } = {}, env = {}) {
+  // Look up presets by own-property only, so request- or env-controlled provider
+  // names like "__proto__", "constructor", or "toString" resolve to undefined
+  // (a clean allowlist rejection) instead of reaching Object.prototype and
+  // throwing on the subsequent `.models.includes(...)`.
+  const presetFor = (name) =>
+    (typeof name === 'string' && Object.hasOwn(PROVIDER_PRESETS, name)) ? PROVIDER_PRESETS[name] : undefined;
+
+  if (tier === WEB_TIERS.FREE) {
+    const p = env.PATINA_FREE_PROVIDER || 'openai';
+    const preset = presetFor(p);
+    if (!preset) return { ok: false, error: 'free provider not configured' };
+    const m = env.PATINA_FREE_MODEL || preset.models[0];
+    if (!preset.models.includes(m)) return { ok: false, error: 'free model not allowlisted' };
+    return { ok: true, tier, provider: p, model: m, baseURL: preset.baseURL };
+  }
+  if (tier === WEB_TIERS.BYOK) {
+    const preset = presetFor(provider);
+    if (!preset) return { ok: false, error: 'provider not allowlisted' };
+    if (!preset.models.includes(model)) return { ok: false, error: 'model not allowlisted' };
+    return { ok: true, tier, provider, model, baseURL: preset.baseURL };
+  }
+  return { ok: false, error: 'unknown tier' };
+}
+
+/**
+ * Normalize and validate one conversation history array, capped to the most
+ * recent CONTEXT_LIMITS.maxTurns turns and CONTEXT_LIMITS.maxBytes total bytes.
+ * Returns a trimmed copy; invalid shapes are rejected.
+ *
+ * @param {unknown} history
+ * @returns {{ok:true, value:Array<{role:string,content:string}>}|{ok:false, error:string}}
+ */
+export function normalizeHistory(history) {
+  if (history == null) return { ok: true, value: [] };
+  if (!Array.isArray(history)) return { ok: false, error: 'history must be an array' };
+  /** @type {Array<{role:string,content:string}>} */
+  const turns = [];
+  for (const turn of history) {
+    if (!turn || typeof turn !== 'object') return { ok: false, error: 'history turn must be an object' };
+    const role = turn.role;
+    const content = turn.content;
+    if (role !== 'user' && role !== 'assistant') return { ok: false, error: 'history role must be user or assistant' };
+    if (typeof content !== 'string') return { ok: false, error: 'history content must be a string' };
+    turns.push({ role, content });
+  }
+  // Keep the most recent maxTurns, then trim oldest until under the byte cap.
+  let capped = turns.slice(-CONTEXT_LIMITS.maxTurns);
+  while (capped.length > 0 && capped.reduce((sum, t) => sum + byteLength(t.content), 0) > CONTEXT_LIMITS.maxBytes) {
+    capped = capped.slice(1);
+  }
+  return { ok: true, value: capped };
+}
+
+/**
+ * Validate an inbound /api/rewrite request body against the contract.
+ * Returns a normalized value on success, or an error plus the HTTP status the
+ * handler should reply with (400 bad request, 413 payload too large).
+ *
+ * @param {unknown} body
+ * @param {Record<string,string|undefined>} [env]
+ * @returns {{ok:true, value:object}|{ok:false, status:number, error:string}}
+ */
+export function validateRewriteRequest(body, env = {}) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { ok: false, status: 400, error: 'request body must be a JSON object' };
+  }
+  const { mode, lang, tier, text, original, history } = /** @type {any} */ (body);
+
+  if (mode !== REWRITE_MODES.FIRST && mode !== REWRITE_MODES.REFINE) {
+    return { ok: false, status: 400, error: 'mode must be "first" or "refine"' };
+  }
+  if (!SUPPORTED_LANGS.includes(lang)) {
+    return { ok: false, status: 400, error: `lang must be one of ${SUPPORTED_LANGS.join(', ')}` };
+  }
+  if (tier !== WEB_TIERS.FREE && tier !== WEB_TIERS.BYOK) {
+    return { ok: false, status: 400, error: 'tier must be "free" or "byok"' };
+  }
+  if (typeof text !== 'string' || text.trim().length === 0) {
+    return { ok: false, status: 400, error: 'text must be a non-empty string' };
+  }
+
+  const limits = TIER_LIMITS[tier];
+  if (text.length > limits.maxChars) {
+    return { ok: false, status: 413, error: `text exceeds ${limits.maxChars} characters for tier ${tier}` };
+  }
+
+  // refine turns must carry the original anchor so meaning preservation is
+  // measured against the source, not the latest draft.
+  if (mode === REWRITE_MODES.REFINE) {
+    if (typeof original !== 'string' || original.trim().length === 0) {
+      return { ok: false, status: 400, error: 'refine mode requires the original text' };
+    }
+    if (original.length > limits.maxChars) {
+      return { ok: false, status: 413, error: `original exceeds ${limits.maxChars} characters for tier ${tier}` };
+    }
+  }
+
+  const provider = /** @type {any} */ (body).provider;
+  const model = /** @type {any} */ (body).model;
+  const resolved = resolveProviderModel({ tier, provider, model }, env);
+  if (!resolved.ok) return { ok: false, status: 400, error: 'error' in resolved ? resolved.error : 'provider not allowed' };
+
+  const apiKey = /** @type {any} */ (body).apiKey;
+  if (tier === WEB_TIERS.BYOK) {
+    if (typeof apiKey !== 'string' || apiKey.length === 0) {
+      return { ok: false, status: 400, error: 'byok tier requires an apiKey' };
+    }
+  } else if (apiKey != null) {
+    // Free tier must never carry a caller key; reject rather than silently drop.
+    return { ok: false, status: 400, error: 'free tier must not include an apiKey' };
+  }
+
+  const normHistory = normalizeHistory(history);
+  if (!normHistory.ok) return { ok: false, status: 400, error: 'error' in normHistory ? normHistory.error : 'invalid history' };
+
+  return {
+    ok: true,
+    value: {
+      mode,
+      lang,
+      tier,
+      text,
+      original: mode === REWRITE_MODES.REFINE ? original : text,
+      history: normHistory.value,
+      provider: resolved.provider,
+      model: resolved.model,
+      baseURL: resolved.baseURL,
+      apiKey: tier === WEB_TIERS.BYOK ? apiKey : undefined,
+    },
+  };
+}
+
+/** Serialize one stream frame as an NDJSON line (object + trailing newline). */
+export function encodeStreamFrame(frame) {
+  return JSON.stringify(frame) + '\n';
+}
+
+/**
+ * Parse one NDJSON stream line into a frame. Blank lines return null (skip).
+ * A non-JSON, non-object, or type-less line is reported as a terminal error
+ * frame so a corrupted/truncated stream can never be mistaken for success.
+ *
+ * @param {string} line
+ * @returns {null|{type:string,[k:string]:unknown}}
+ */
+export function parseStreamFrame(line) {
+  const trimmed = String(line ?? '').trim();
+  if (!trimmed) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return { type: STREAM_FRAME_TYPES.ERROR, error: 'malformed stream frame' };
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || typeof parsed.type !== 'string') {
+    return { type: STREAM_FRAME_TYPES.ERROR, error: 'malformed stream frame' };
+  }
+  // The frame type set is closed: an unrecognized type (e.g. {"type":"bogus"})
+  // is treated as a corrupt stream, never silently accepted as a valid frame.
+  if (!STREAM_FRAME_VALUES.has(parsed.type)) {
+    return { type: STREAM_FRAME_TYPES.ERROR, error: 'unknown stream frame type' };
+  }
+  return parsed;
+}
+
+/**
+ * Fail-closed floor check for a completed rewrite. A score that is missing,
+ * non-finite, or below its floor fails — there is no "assume pass on missing".
+ *
+ * @param {{mps?:unknown, fidelity?:unknown}} scores
+ * @returns {{ok:boolean, failed:string[]}}
+ */
+export function evaluateFloors({ mps, fidelity } = {}) {
+  const failed = [];
+  if (!Number.isFinite(mps) || /** @type {number} */ (mps) < MPS_FLOOR) failed.push('mps');
+  if (!Number.isFinite(fidelity) || /** @type {number} */ (fidelity) < FIDELITY_FLOOR) failed.push('fidelity');
+  return { ok: failed.length === 0, failed };
+}

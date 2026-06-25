@@ -6,53 +6,43 @@ The hosted playground is the lowest-friction way to try patina before installing
 https://patina.vibetip.help/
 ```
 
-It is intentionally audit-only. The page runs deterministic string operations in the browser and shows:
+It is a full-page, ChatGPT-style chat that **rewrites** AI-sounding text into
+something more natural for `ko`, `en`, `zh`, and `ja`. The browser posts to a
+same-origin `/api/rewrite` serverless function that runs the real patina pipeline
+and streams the humanized rewrite back; the first turn is a one-shot rewrite and
+follow-up messages are conversational refines that re-edit the previous draft.
 
-- a 0-100 editing-hotspot score;
-- paragraph-level burstiness, MATTR, lexicon, and Korean rhythm diagnostic signals;
-- a suspect-zone diff that highlights review zones and lexicon hits;
-- an **Open in CLI** command that copies the pasted input plus `npx patina-cli --score` / `--audit` commands.
-
-It does not rewrite text, call an LLM, proxy user API keys, or send pasted text off the page. The hosted Vercel deployment records page-view metadata with Web Analytics so maintainers can watch traffic.
+The rewrite preserves the underlying claim, numbers, polarity, and causation —
+it is auditable, not a black-box rewriter. The server is **no-store** (it never
+logs or persists request text, prompts, output, or keys), the free tier is
+**fail-closed** rate limited, and BYOK keys are same-origin only (the browser
+never talks directly to a provider in v1).
 
 ## Source files
 
 - App shell: [`playground/index.html`](../../playground/index.html)
-- Browser analyzer: [`playground/analyzer.js`](../../playground/analyzer.js)
-- DOM wiring: [`playground/app.js`](../../playground/app.js)
-- Generated lexicons: [`playground/data/lexicons.js`](../../playground/data/lexicons.js)
+- Styles: [`playground/chatgpt.css`](../../playground/chatgpt.css)
+- Controller: [`playground/chatgpt.js`](../../playground/chatgpt.js)
+- Streaming client: [`playground/rewrite-client.js`](../../playground/rewrite-client.js)
+- Contract (single source of truth): [`src/web-rewrite-contract.js`](../../src/web-rewrite-contract.js)
+- Serverless handler: [`api/rewrite.js`](../../api/rewrite.js)
 - Vercel routes: [`vercel.json`](../../vercel.json)
-- Analytics shim: [`playground/analytics.js`](../../playground/analytics.js)
 - OG image: [`assets/social/patina-og.svg`](../../assets/social/patina-og.svg)
-
-## Refreshing lexicon data
-
-When `lexicon/ai-*.md` changes, regenerate and check the browser bundle:
-
-```bash
-npm run playground:data
-node scripts/generate-playground-data.mjs --check
-```
 
 ## Deploy notes
 
-Deploy the repository root on Vercel so the root `vercel.json` can rewrite `/` to the playground while keeping brand and social assets under `/assets/`.
+Deploy the repository root on Vercel so the root `vercel.json` can rewrite `/` to
+the chat entry while keeping the chat module graph and brand/social assets
+reachable. The rewrite function bundle must include `patterns/**`, `profiles/**`,
+`core/**`, `lexicon/**`, and `.patina.default.yaml`, and the free tier needs
+`PATINA_FREE_API_KEY` plus `KV_REST_API_URL` / `KV_REST_API_TOKEN` for the
+fail-closed quota.
 
-After a production deploy, verify that the custom domain points at the latest
+After a production deploy, verify the custom domain points at the latest
 deployment and not an older manual alias:
 
 ```bash
 vercel --prod --yes --scope team_66lsrwOyA36bLnIH2eoEXqry
 vercel alias set <latest-patina-*.vercel.app> patina.vibetip.help --scope team_66lsrwOyA36bLnIH2eoEXqry
 vercel inspect https://patina.vibetip.help --scope team_66lsrwOyA36bLnIH2eoEXqry
-```
-
-Smoke the live deterministic payloads:
-
-```bash
-curl -fsSL https://patina.vibetip.help/docs/benchmarks/latest.json \
-  | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d); console.log(j.fixtureCount, !!j.perLanguage?.ko?.byDetector?.koDiagnostics)})"
-
-curl -fsSL https://patina.vibetip.help/analyzer.js \
-  | grep -E "DEFAULT_KO_DIAGNOSTIC_BANDS|Korean rhythm composite"
 ```

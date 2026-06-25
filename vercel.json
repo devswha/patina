@@ -4,42 +4,31 @@
   "github": {
     "silent": true
   },
+  "functions": {
+    "api/rewrite.js": {
+      "includeFiles": "{patterns/**,profiles/**,core/**,lexicon/**,.patina.default.yaml}"
+    }
+  },
   "rewrites": [
     {
       "source": "/",
       "destination": "/playground"
     },
     {
-      "source": "/app.js",
-      "destination": "/playground/app.js"
+      "source": "/chatgpt.js",
+      "destination": "/playground/chatgpt.js"
     },
     {
-      "source": "/i18n.js",
-      "destination": "/playground/i18n.js"
+      "source": "/chatgpt.css",
+      "destination": "/playground/chatgpt.css"
     },
     {
-      "source": "/analysis-dispatch.js",
-      "destination": "/playground/analysis-dispatch.js"
-    },
-    {
-      "source": "/analyzer-worker.js",
-      "destination": "/playground/analyzer-worker.js"
+      "source": "/rewrite-client.js",
+      "destination": "/playground/rewrite-client.js"
     },
     {
       "source": "/analytics.js",
       "destination": "/playground/analytics.js"
-    },
-    {
-      "source": "/analyzer.js",
-      "destination": "/playground/analyzer.js"
-    },
-    {
-      "source": "/styles.css",
-      "destination": "/playground/styles.css"
-    },
-    {
-      "source": "/data/:path*",
-      "destination": "/playground/data/:path*"
     }
   ],
   "headers": [

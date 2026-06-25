@@ -323,3 +323,21 @@ Korean additionally emits dependency-free spacing/comma/suffix-diversity
 diagnostics and a conservative ko-only composite detector.
 zh/ja now include high-precision AI-lexicon fixtures as well as
 burstiness/MATTR regression coverage.
+
+## AI-tells corpus baseline (Phase A, deterministic, measurement-only)
+
+`node scripts/ai-tells-corpus-baseline.mjs [--json] [--no-timestamp] [--strict]`
+
+Measures the in-tree `analyzeText()` detector against the persona-calibration
+evidence corpus (`artifacts/persona-calibration-2026/`): sycophancy (298),
+lexical+structural tells (85), and human-controls (7). Emits per-category
+confusion (`tp/fp/fn/tn`, recall, precision, fpr), Wilson 95% intervals, a
+detector-signal-fire breakdown, and `term_family_coverage` (measurement only,
+NOT a detector signal). `--strict` asserts exact counts 298/85/7 as a drift
+guard and fails on any drift. `--json --no-timestamp` is byte-stable across runs.
+Output carries only row hashes/ids and aggregates — never raw corpus text.
+
+Human-control bodies live under `human-controls/raw/` (gitignored); when absent
+(e.g. CI) their FP is reported as not-evaluated **smoke only**. n=7 cannot bound
+FPR (0/7 still ~35% Wilson upper), so it is never a hard FP gate or public claim.
+Test: `node --test tests/unit/ai-tells-corpus-baseline.test.js`.

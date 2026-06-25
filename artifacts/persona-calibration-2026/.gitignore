@@ -1,0 +1,4 @@
+# Raw third-party blog text/HTML (copyright) — never commit
+raw/
+*.private.*
+fixtures*.jsonl

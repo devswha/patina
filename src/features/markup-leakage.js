@@ -20,8 +20,8 @@
  * hot ratio. It is a floor, not a hard 100, because the surrounding prose may
  * still be genuinely human and we avoid claiming absolute proof.
  *
- * Lives here — the browser-pure module that owns leakage detection — so both
- * src/scoring.js and playground/analyzer.js consume the same constant
+ * Lives here — the browser-pure module that owns leakage detection — so
+ * src/scoring.js re-exports the same constant
  * (threshold parity gate: tests/unit/threshold-parity.test.js).
  *
  * @type {number}

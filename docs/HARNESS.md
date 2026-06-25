@@ -116,3 +116,63 @@ signal ablated. For each signal it reports:
 `recomputeHot()` mirrors the OR rule in `analyzeText`, so `PARAGRAPH_SIGNALS` /
 `DOCUMENT_SIGNALS` in the script must be kept in sync when a hot disjunct is
 added or removed (a unit test pins the signal list).
+
+## AI-tells corpus baseline (deterministic)
+
+- **Tool:** `scripts/ai-tells-corpus-baseline.mjs`
+- **Kind:** deterministic, measurement-only (no LLM, no analyzer mutation).
+- **Command:** `node scripts/ai-tells-corpus-baseline.mjs --json --no-timestamp --strict`
+- **What:** runs `analyzeText()` over the persona-calibration corpus
+  (sycophancy 298 / tells 85 / human-controls 7) and reports confusion metrics,
+  Wilson intervals, detector-signal fires, and `term_family_coverage`.
+- **Drift guard:** `--strict` asserts exact counts (298/85/7); any drift fails.
+- **Privacy:** output is hash/id/aggregate only; raw corpus + human-control
+  bodies (`human-controls/raw/`, gitignored) are never emitted. n=7 FP is
+  smoke-only, never a hard gate or public FPR claim.
+- **Test:** `tests/unit/ai-tells-corpus-baseline.test.js`
+
+## Negative controls (human FP) expansion policy
+
+- The human-controls set (`artifacts/persona-calibration-2026/human-controls/`) is
+  **smoke-only**: n=7 cannot bound FPR (0/7 still ~35% Wilson upper). See its
+  `README.md` for the expansion procedure.
+- The harness discovers every `human-controls/*.jsonl` and language-tags rows
+  from the filename (`ko.jsonl`->ko, `en.jsonl`->en). In smoke/non-strict mode it
+  reports human-control FP with a Wilson interval and absorbs added rows/files
+  automatically. `--strict` is an exact-count drift guard locked at the committed
+  298/85/7; promoting an expanded negative set into strict requires updating
+  `EXPECTED_COUNTS` via a separate consensus (see human-controls/README.md).
+- Raw bodies stay in `human-controls/raw/` (gitignored); CI reports them as
+  `not_evaluated`. A hard FP threshold / public FPR claim requires a separately
+  reviewed, expanded negative set — not this smoke set.
+
+## Detector candidate evaluation (Phase B, deterministic)
+
+- **Tool:** `scripts/detector-candidate-eval.mjs` (+ `tests/unit/detector-candidate-eval.test.js`).
+- **Kind:** deterministic, measurement-only. Evaluates CANDIDATE structural/density
+  hot signals against pre-registered denominators (corpus slices + suspect-zone
+  fixtures) WITHOUT wiring them into `analyzeText`.
+- **Promotion rule:** a candidate becomes a real hot disjunct only if
+  `attributable_TP > attributable_FP` AND it adds 0 new benchmark-natural FP AND
+  0 new human-control FP.
+- **Current outcome (evidence):** ruleOfThree / decorativeStructure / emojiPerItem
+  all score attributable_TP=0 (the recall hole is short chat-style phrases that
+  carry no document structure), so **none is promoted and the deterministic
+  detector is left unchanged**. The suspect-zone benchmark already classifies
+  AI fixtures at recall 1.0 with 0 FP, so there is no committed recall headroom
+  there either. The human-control FP (5/7) is the pre-existing burstiness signal
+  (a precision matter), not something new hot signals should chase.
+- **Advisory boundary:** `translationese`/`koPostEditese` remain advisory and are
+  not folded into `hot`; a regression test pins this.
+- **Command:** `node scripts/detector-candidate-eval.mjs --json --no-timestamp`
+
+## Phase D: packaging + report-only corpus scripts
+
+- **Packaging fix:** `personas/` is now in package `files`, so built-in personas
+  (incl. `personas/ko/natural-ko.md`) ship in the npm artifact. `npm pack`
+  includes all six KO personas; `tests/unit/persona-packaging.test.js` guards it.
+- **Report-only scripts:** `npm run benchmark:ai-tells-baseline` and
+  `npm run benchmark:detector-candidates` expose the Phase A/B harnesses. They
+  are measurement-only and read the (unpublished, git-tracked) calibration
+  corpus; they are not wired into any blocking CI gate. A hard detector/FP
+  threshold stays deferred until the negative controls are expanded (Phase A2).

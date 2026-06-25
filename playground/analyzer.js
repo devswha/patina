@@ -111,6 +111,47 @@ export const SAMPLE_TEXT = {
   ja: 'まとめると、この仕組みはユーザー体験を向上させ、より良い未来につながります。重要なのは、さまざまな場面で効果的に活用できる点です。\n\nまずは、毎朝の確認作業が一つ減るかどうかを見ます。',
 };
 
+// Curated before/after sample pairs for the playground gallery. The playground
+// AUDITS text deterministically; it does NOT rewrite. These "after" texts are
+// illustrative human/patina-style edits drawn from the repository's own example
+// corpus (examples/short, examples/{zh,ja}-04-success). `lang` selects the audit
+// language profile when a visitor loads the "before" text via "Audit this";
+// `title` is in the sample's own language so it reads naturally beside it.
+export const SAMPLE_PAIRS = [
+  {
+    lang: 'en',
+    title: 'Marketing copy',
+    before:
+      'The newly released Notion template pack is an innovative solution designed to transform productivity for modern teams. It offers 30 templates optimized for diverse workflows, with a user-friendly design that enables anyone to leverage them effortlessly. This product introduces a new paradigm for maximizing work efficiency.',
+    after:
+      'If Notion still starts as a blank page for your team, open this pack first. It includes 30 templates for common workflows. Duplicate one, adjust the fields you need, and use it for a team project or your own planning without starting from scratch.',
+  },
+  {
+    lang: 'ko',
+    title: '마케팅 카피',
+    before:
+      '새롭게 출시된 노션 템플릿 팩은 생산성 향상을 위한 혁신적인 솔루션입니다. 다양한 워크플로우에 최적화된 30개의 템플릿을 제공하며, 사용자 친화적인 디자인으로 누구나 손쉽게 활용 가능합니다. 본 제품은 업무 효율성을 극대화하는 새로운 패러다임을 제시합니다.',
+    after:
+      '노션을 자주 쓰지만 매번 빈 페이지에서 막힌다면 이 팩부터 열어 보세요. 업무별 템플릿 30개를 담았습니다. 복잡한 설정 없이 복제해서 바로 고치고, 팀 프로젝트든 개인 정리든 필요한 형태로 손보면 됩니다.',
+  },
+  {
+    lang: 'zh',
+    title: '宣传文案',
+    before:
+      '张家界以其壮丽秀美的自然风光闻名遐迩，是令人叹为观止的人间仙境。这里独具特色的砂岩地貌如诗如画，让无数游客流连忘返。可以说，这片土地是大自然慷慨馈赠给世人的珍贵瑰宝。',
+    after:
+      '张家界的砂岩柱地貌在全球范围内罕见。核心景区有3000多根石柱，最高的近400米，登顶需要换乘好几趟观光电梯。游客很多。2023年这里接待游客超过3500万人次，门票收入约28亿元。',
+  },
+  {
+    lang: 'ja',
+    title: '広告コピー',
+    before:
+      '京都は素晴らしい歴史的建造物と魅力あふれる文化遺産が見事に調和する世界クラスの観光都市である。古都ならではの趣ある町並みは訪れる人々に感動的な体験を与えてくれる。まさに日本文化の奥深さを象徴する珠玉の存在と言えるだろう。',
+    after:
+      '京都市内には世界遺産が17件ある。2023年の観光客数は約5300万人で、コロナ前の水準にほぼ戻った。混雑が深刻だ。一部の寺社は拝観料を値上げし、市バスの一日券も廃止した。',
+  },
+];
+
 export function normalizeLang(lang) {
   return SUPPORTED_LANGS.includes(lang) ? lang : DEFAULT_LANG;
 }

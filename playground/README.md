@@ -1,6 +1,8 @@
 # patina playground
 
-Static, audit-only web playground for `patina.vibetip.help`.
+Web playground for `patina.vibetip.help`. Two modes share one page:
+
+## Audit-only mode (default, offline, deterministic)
 
 - No build step.
 - No runtime server.
@@ -8,6 +10,36 @@ Static, audit-only web playground for `patina.vibetip.help`.
 - Deterministic browser-side scoring for `ko`, `en`, `zh`, and `ja`.
 - Vercel Web Analytics page-view telemetry for traffic counts; pasted text is not sent.
 - Shared deterministic detectors are imported directly from browser-pure `src/features/*.js` modules; serve/deploy the repository root so `/src/features/…` paths are available.
+
+This mode never reaches the network for analysis and is preserved as a regression
+guard (`tests/unit/playground.test.js` pins the browser-pure module graph).
+
+## Rewrite mode (contract)
+
+Rewrite mode runs the real patina pipeline server-side and streams a humanized
+rewrite back to the browser. Its contract is the single source of truth in
+`src/web-rewrite-contract.js` (shared by the serverless handler, the web runner,
+the browser client, and the tests) and is enforced by
+`tests/unit/web-rewrite-contract.test.js` and
+`tests/unit/web-deploy-invariants.test.js`.
+
+Deployment + security invariants (pinned before the handler ships):
+
+- **Runtime**: Vercel Node Function at `/api/rewrite`. The function bundle MUST
+  include `patterns/**`, `profiles/**`, `core/**`, `lexicon/**`, and
+  `.patina.default.yaml` (`functions["api/rewrite.js"].includeFiles` in
+  `vercel.json`) because the patina loader reads them from the filesystem.
+- **No-store / no-persistence**: the server never logs or persists request text,
+  prompts, model output, BYOK keys, or transcripts. Responses are `no-store`.
+- **Fail-closed rate limiting**: the free tier is bounded by a KV + HMAC quota;
+  when quota storage is missing or unavailable, requests are rejected before any
+  prompt is built or provider is called (in-memory fallback is test/local only).
+- **Same-origin BYOK**: BYOK keys are browser-held but transmitted per active
+  request over HTTPS to the same-origin `/api/rewrite`; they are redacted from
+  logs/errors and never persisted. The CSP stays `script-src 'self'` /
+  `connect-src 'self'` — the browser never talks directly to a provider in v1.
+- **Floors**: a rewrite below the MPS or fidelity floor (or with a missing
+  score) fails closed with a warning and rollback/retry.
 
 ## Local preview
 

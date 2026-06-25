@@ -1,5 +1,5 @@
 // @ts-check
-import { callLLM as defaultCallLLM } from './api.js';
+import { callLLM as defaultCallLLM, redactErrorText } from './api.js';
 import { getRepoRoot } from './config.js';
 import { analyzeText, loadStructuralModel } from './features/index.js';
 import { LEAKAGE_SCORE_FLOOR } from './features/markup-leakage.js';
@@ -621,7 +621,7 @@ ${rewritten}
   } catch (e) {
     rethrowIfAborted(e, signal);
     logger.warn('score.mps_schema_failure', {
-      message: `[patina] scoreMPS schema failure after retry: ${e.message}`,
+      message: `[patina] scoreMPS schema failure after retry: ${redactErrorText(e.message)}`,
     });
     return { mps: null, error: 'schema-failure', raw: e.raw };
   }
@@ -752,7 +752,7 @@ ${rewritten}
   } catch (e) {
     rethrowIfAborted(e, signal);
     logger.warn('score.fidelity_schema_failure', {
-      message: `[patina] scoreFidelity schema failure after retry: ${e.message}`,
+      message: `[patina] scoreFidelity schema failure after retry: ${redactErrorText(e.message)}`,
     });
     schemaError = e;
   }

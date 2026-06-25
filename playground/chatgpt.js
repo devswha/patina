@@ -52,7 +52,7 @@ const LANG_NAME = { ko: '한국어', en: 'English', zh: '中文', ja: '日本語
 const I18N = {
   en: {
     title: 'Make it sound <span class="grad">human</span>',
-    sub: 'Paste AI-sounding text in KO, EN, ZH, or JA. patina rewrites it naturally.',
+    sub: 'Paste AI-sounding text — patina rewrites it naturally. KO·EN·ZH·JA.',
     promptPh: 'Paste the text you want to clean up…',
     howTitle: 'Three steps',
     steps: [['1 · Paste', 'Drop in your AI-sounding draft. No code, no key.'], ['2 · Rewrite', 'patina clears ~160 patterns and rewrites it naturally.'], ['3 · Verify', 'Check MPS, fidelity, and the AI signal (before → after).']],

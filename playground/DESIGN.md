@@ -110,6 +110,11 @@ shades, so each rewrite still replays the icon's copper → teal → gold story:
   on `.msg--user` (copper edge), `.msg--patina`/`.composer__send`/avatars (teal),
   `.badge b` (gold mono), `.signal-bar .sig-before|.sig-after` (copper→teal).
 - `playground/chatgpt.js` — emits `.sig-before` / `.sig-after` spans.
+- Landing (VDL-inspired editorial layer, from vibedesignlab.net): Pretendard
+  Variable as primary `--font`; `.sec__head` left-aligned with a chip-on-hairline
+  `.eyebrow` device (`<span>` chip + `::after` rule); larger clamped `.hero__title`
+  / `.sec__title` scale; gallery section padding. Accent stays patina teal —
+  VDL's single-hot-accent principle, not its red.
 
 > Note: a dark patina×voltagent variant is preserved in git history (commit
 > `style(playground): dark patina×voltagent chat theme (checkpoint)`).

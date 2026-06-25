@@ -47,24 +47,24 @@ test('vercel.json keeps a self-only CSP (no provider origins, no inline script)'
   assert.doesNotMatch(csp, /api\.openai\.com/);
 });
 
-// The audit-only playground must remain reachable and documented as a preserved
-// mode after the rewrite surface is added (regression guard for AC9/AC13).
-test('audit-only mode stays documented and the rewrite contract is published', () => {
+// The rewrite chat is the sole playground surface. The contract module must be
+// published and the README must document the privacy/abuse posture.
+test('rewrite chat is documented and the rewrite contract is published', () => {
   assert.ok(existsSync(resolve(REPO_ROOT, 'src/web-rewrite-contract.js')), 'contract module must exist');
   const readme = readFileSync(resolve(REPO_ROOT, 'playground/README.md'), 'utf8');
-  assert.match(readme, /audit-only/i, 'README must keep documenting the audit-only mode');
-  assert.match(readme, /rewrite mode/i, 'README must document the rewrite mode contract');
+  assert.match(readme, /rewrite/i, 'README must document the rewrite chat');
   assert.match(readme, /no-store/i, 'README must document the no-store / no-persistence posture');
   assert.match(readme, /fail-closed/i, 'README must document fail-closed rate limiting');
 });
 
-// The root '/' route and the static audit entry rewrites must survive so the
-// existing audit playground keeps working alongside the new rewrite mode.
-test('vercel.json preserves the static playground rewrites', () => {
+// The root '/' route and the chat entry rewrites must resolve so the static
+// chat page and its module graph load on Vercel.
+test('vercel.json resolves the chat playground rewrites', () => {
   const config = vercelConfig();
   const has = (source, destination) =>
     config.rewrites.some((r) => r.source === source && r.destination === destination);
   assert.ok(has('/', '/playground'));
-  assert.ok(has('/app.js', '/playground/app.js'));
-  assert.ok(has('/styles.css', '/playground/styles.css'));
+  assert.ok(has('/chatgpt.js', '/playground/chatgpt.js'));
+  assert.ok(has('/chatgpt.css', '/playground/chatgpt.css'));
+  assert.ok(has('/rewrite-client.js', '/playground/rewrite-client.js'));
 });

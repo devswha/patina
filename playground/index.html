@@ -1,212 +1,85 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko" data-theme="dark">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>patina playground — audit AI-writing signals</title>
-  <meta name="description" content="Paste Korean, English, Chinese, or Japanese text and see patina's deterministic audit-only AI-writing signal score.">
-  <link rel="canonical" href="https://patina.vibetip.help/">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="patina playground">
-  <meta property="og:description" content="Audit AI-writing signals without uploading keys or asking for a rewrite.">
-  <meta property="og:url" content="https://patina.vibetip.help/">
-  <meta property="og:image" content="https://patina.vibetip.help/assets/social/patina-og.svg">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="patina playground">
-  <meta name="twitter:description" content="Audit Korean, English, Chinese, and Japanese AI-writing signals in the browser.">
-  <meta name="twitter:image" content="https://patina.vibetip.help/assets/social/patina-og.svg">
-  <link rel="icon" href="/assets/brand/patina-icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css">
-  <link rel="stylesheet" href="/rewrite.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>patina — AI 글 자연스럽게 다듬기</title>
+  <meta name="description" content="patina humanizer chat — AI 티 나는 문장을 의미·숫자·톤 그대로 자연스럽게 다듬습니다." />
+  <link rel="stylesheet" href="/chatgpt.css" />
 </head>
 <body>
-  <header class="hero">
-    <div class="hero__sky" aria-hidden="true"></div>
-    <div class="shell">
-      <nav class="nav" aria-label="Main">
-        <a class="brand" href="https://github.com/devswha/patina" aria-label="patina GitHub repository">
-          <img src="/assets/brand/patina-mark.svg" alt="" width="40" height="40">
-          <span>patina</span>
-        </a>
-        <div class="nav__links">
-          <a href="https://github.com/devswha/patina" data-i18n="nav.github">GitHub</a>
-          <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md" data-i18n="nav.ethics">Ethics</a>
-          <a href="https://github.com/devswha/patina/blob/main/docs/benchmarks/latest.md" data-i18n="nav.benchmark">Benchmark</a>
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__top">
+        <button class="newchat" id="new-chat" type="button">
+          <span class="newchat__icon" aria-hidden="true">+</span>
+          <span>새 대화</span>
+        </button>
+      </div>
+      <nav class="sidebar__history" id="history" aria-label="대화 목록"></nav>
+      <div class="sidebar__foot">
+        <div class="brandmark"><span class="brandmark__dot">p</span> patina</div>
+        <div class="sidebar__note">의미·숫자·톤을 바꾸지 않는<br />결정론적 휴머나이저</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="iconbtn topbar__menu" id="toggle-sidebar" type="button" aria-label="사이드바 토글">☰</button>
+        <div class="topbar__title">patina</div>
+        <div class="topbar__controls">
+          <label class="ctl">
+            <span class="ctl__label">언어</span>
+            <select id="lang" class="ctl__select">
+              <option value="ko">한국어</option>
+              <option value="en">English</option>
+              <option value="zh">中文</option>
+              <option value="ja">日本語</option>
+            </select>
+          </label>
+          <label class="ctl">
+            <span class="ctl__label">모드</span>
+            <select id="tier" class="ctl__select">
+              <option value="free">Free</option>
+              <option value="byok">BYOK</option>
+            </select>
+          </label>
+          <label class="ctl ctl--byok" id="provider-ctl" hidden>
+            <span class="ctl__label">Provider</span>
+            <select id="provider" class="ctl__select"></select>
+          </label>
+          <label class="ctl ctl--byok" id="model-ctl" hidden>
+            <span class="ctl__label">Model</span>
+            <select id="model" class="ctl__select"></select>
+          </label>
+          <label class="ctl ctl--byok ctl--key" id="key-ctl" hidden>
+            <span class="ctl__label">API key</span>
+            <input id="api-key" class="ctl__input" type="password" autocomplete="off" placeholder="sk-… (브라우저에만 보관)" />
+          </label>
         </div>
-        <div class="nav__end">
-          <div id="ui-lang" class="lang-switch" role="radiogroup" aria-label="Interface language" data-i18n-attr="aria-label:ui.interfaceLanguage">
-            <input type="radio" id="ui-lang-en" name="ui-lang" value="en">
-            <label for="ui-lang-en" lang="en">EN</label>
-            <input type="radio" id="ui-lang-ko" name="ui-lang" value="ko">
-            <label for="ui-lang-ko" lang="ko">한국어</label>
-          </div>
-        </div>
-      </nav>
+      </header>
 
-      <section class="hero__copy">
-        <h1 data-i18n="hero.title">Paste text. See where it sounds packaged.</h1>
+      <div class="thread" id="thread">
+        <section class="empty" id="empty">
+          <div class="empty__logo">p</div>
+          <h1 class="empty__title">무엇을 다듬어 드릴까요?</h1>
+          <p class="empty__sub">AI 티 나는 문장을 붙여넣으면 patina가 의미·숫자·톤은 그대로 두고 자연스럽게 고쳐드려요.</p>
+          <div class="chips" id="chips"></div>
+        </section>
+      </div>
 
-        <div class="cmd-pill" aria-label="Install command">
-          <button id="copy-install" type="button" data-i18n="cmd.copy">Copy</button>
-          <code>npx patina-cli</code>
-        </div>
-
-        <div class="hero__actions" aria-label="Primary actions">
-          <a class="button" href="https://github.com/devswha/patina" data-i18n="hero.star">Star on GitHub</a>
-          <a class="button ghost" href="https://github.com/devswha/patina#quick-start" data-i18n="hero.install">Install CLI</a>
-        </div>
-      </section>
-
-    </div>
-  </header>
-
-  <dl class="stat-strip" aria-label="patina at a glance">
-    <div class="stat-card">
-      <dt data-i18n="stat.langs.label">Languages</dt>
-      <dd data-i18n="stat.langs.value">KO · EN · ZH · JA</dd>
-    </div>
-    <div class="stat-card">
-      <dt data-i18n="stat.patterns.label">Patterns</dt>
-      <dd data-i18n="stat.patterns.value">~160 catalogued</dd>
-    </div>
-    <div class="stat-card">
-      <dt data-i18n="stat.signals.label">Signals</dt>
-      <dd data-i18n="stat.signals.value">4 deterministic</dd>
-    </div>
-    <div class="stat-card accent">
-      <dt data-i18n="stat.local.label">Privacy</dt>
-      <dd data-i18n="stat.local.value">100% local</dd>
-    </div>
-  </dl>
-
-  <section class="gallery" aria-labelledby="gallery-title">
-    <div class="gallery__head">
-      <p class="eyebrow" data-i18n="gallery.eyebrow">samples</p>
-      <h2 id="gallery-title" data-i18n="gallery.title">Before / after, side by side</h2>
-      <p class="quiet" data-i18n="gallery.quiet">Curated AI drafts and the cleaner versions beside them. The playground audits signals; it does not rewrite — these edits are illustrative.</p>
-    </div>
-    <div id="sample-gallery" class="gallery__grid"></div>
-  </section>
-
-  <div class="tool-intro">
-    <p class="eyebrow" data-i18n="tool.eyebrow">try it</p>
-    <h2 data-i18n="tool.title">Audit your own text</h2>
+      <div class="composer-wrap">
+        <form class="composer" id="composer">
+          <textarea id="input" class="composer__input" rows="1" placeholder="다듬고 싶은 문장을 붙여넣기… (Enter 전송 · Shift+Enter 줄바꿈)" autofocus></textarea>
+          <button class="composer__send" id="send" type="submit" aria-label="전송" disabled>
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 4l-7 7h4v7h6v-7h4z"/></svg>
+          </button>
+        </form>
+        <p class="composer__hint" id="hint">patina는 주장·수치·인과를 바꾸지 않고 표현만 다듬습니다. 데모 환경에서는 로컬 CLI로 실제 리라이트하며 MPS/fidelity는 프리뷰 값입니다.</p>
+      </div>
+    </main>
   </div>
 
-  <div class="mode-switch">
-    <div id="mode-toggle" role="group" aria-label="Playground mode">
-      <button type="button" data-mode="audit" aria-pressed="true">Audit</button>
-      <button type="button" data-mode="rewrite" aria-pressed="false">Rewrite</button>
-    </div>
-  </div>
-
-  <main class="workspace">
-    <section class="panel input-panel" aria-labelledby="input-title">
-      <div class="panel__head">
-        <div>
-          <p class="eyebrow" data-i18n="input.eyebrow">input</p>
-          <h2 id="input-title" data-i18n="input.title">Text to audit</h2>
-        </div>
-        <label class="field">
-          <span data-i18n="input.language">Language</span>
-          <select id="lang" name="lang">
-            <option value="ko" data-i18n="lang.ko">Korean</option>
-            <option value="en" data-i18n="lang.en">English</option>
-            <option value="zh" data-i18n="lang.zh">Chinese</option>
-            <option value="ja" data-i18n="lang.ja">Japanese</option>
-          </select>
-        </label>
-      </div>
-
-      <textarea id="input" spellcheck="true" aria-label="Text to audit" data-i18n-attr="aria-label:input.textareaLabel"></textarea>
-
-      <div class="button-row">
-        <button class="button" id="analyze" type="button" data-i18n="btn.run">Run audit</button>
-        <button class="button secondary" id="sample" type="button" data-i18n="btn.sample">Load sample</button>
-        <button class="button secondary" id="copy-cli" type="button" data-i18n="btn.openCli">Open in CLI</button>
-      </div>
-      <p class="status" id="copy-status" role="status" aria-live="polite"></p>
-    </section>
-
-    <section class="panel score-panel" aria-labelledby="score-title">
-      <div class="panel__head">
-        <div>
-          <p class="eyebrow" data-i18n="score.eyebrow">score</p>
-          <h2 id="score-title" data-i18n="score.title">AI-likeness signal</h2>
-        </div>
-        <span class="score-band" id="score-band" data-tone="good">Low AI-likeness</span>
-      </div>
-
-      <div class="score-meter" aria-label="AI-likeness score out of 100" data-i18n-attr="aria-label:score.meterLabel">
-        <div class="score-meter__number"><span id="score-value">0</span><small>/100</small></div>
-        <div class="score-meter__bar"><span id="score-bar"></span></div>
-      </div>
-
-      <ul class="summary" id="summary"></ul>
-      <div class="star-cta" aria-label="GitHub repository callout">
-        <strong data-i18n="cta.useful">Useful signal?</strong>
-        <span data-i18n="cta.body">Star patina on GitHub so more writers find the audit.</span>
-        <a class="button secondary" href="https://github.com/devswha/patina" data-i18n="cta.star">Star / view source</a>
-      </div>
-
-      <div class="cli-box" aria-labelledby="cli-title">
-        <div class="cli-box__head">
-          <h3 id="cli-title" data-i18n="cli.title">Copied by “Open in CLI”</h3>
-          <span data-i18n="cli.tag">local audit</span>
-        </div>
-        <pre id="cli-preview"></pre>
-      </div>
-    </section>
-
-    <section class="panel full" aria-labelledby="audit-title">
-      <div class="panel__head">
-        <div>
-          <p class="eyebrow" data-i18n="audit.eyebrow">audit</p>
-          <h2 id="audit-title" data-i18n="audit.title">Deterministic signals</h2>
-        </div>
-        <p class="quiet" data-i18n="audit.quiet">Burstiness, MATTR, AI-favored lexicon density, and Korean rhythm diagnostics.</p>
-      </div>
-      <div id="audit"></div>
-    </section>
-
-    <section class="panel full" aria-labelledby="korean-advisory-title">
-      <div class="panel__head">
-        <div>
-          <p class="eyebrow" data-i18n="advisory.eyebrow">advisory</p>
-          <h2 id="korean-advisory-title" data-i18n="advisory.title">Korean editing hints</h2>
-        </div>
-        <p class="quiet" data-i18n="advisory.quiet">Translationese and koPostEditese metadata are advisory-only revision hints; they never change score, hotspots, or audit rows.</p>
-      </div>
-      <div id="korean-advisory"></div>
-    </section>
-
-    <section class="panel full" aria-labelledby="diff-title">
-      <div class="panel__head">
-        <div>
-          <p class="eyebrow" data-i18n="diff.eyebrow">diff</p>
-          <h2 id="diff-title" data-i18n="diff.title">Suspect-zone diff</h2>
-        </div>
-        <button class="button secondary" id="report-fp" type="button" data-i18n="diff.report">Report false positive</button>
-      </div>
-      <p class="quiet" data-i18n="diff.quiet">v1 highlights review zones and lexicon hits only. No rewrite. Human text wrongly flagged? The report button pre-fills a GitHub issue with the flagged text and signals — nothing is sent unless you submit it.</p>
-      <div id="diff" class="diff-list"></div>
-    </section>
-  </main>
-
-  <section id="rewrite-mode" class="rewrite-section" aria-label="Rewrite mode" hidden>
-    <div class="rw-host"></div>
-  </section>
-
-  <footer class="footer">
-    <p>
-      <span data-i18n="footer.text">Scores measure editing hotspots, not authorship. Pasted text stays in your browser; Vercel Web Analytics records page-view metadata only.</span>
-      <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md" data-i18n="footer.ethics">Read the ethics note.</a>
-    </p>
-  </footer>
-
-  <script type="module" src="/app.js"></script>
-  <script type="module" src="/rewrite-mode.js"></script>
-  <script defer src="/analytics.js"></script>
-  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="module" src="/chatgpt.js"></script>
 </body>
 </html>

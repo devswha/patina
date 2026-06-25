@@ -37,7 +37,7 @@ import {
   scoreText,
 } from '../../src/scoring.js';
 import { DEFAULT_SEVERITY_POINTS, buildPrompt, buildScoreMathCore } from '../../src/prompt-builder.js';
-import { LEAKAGE_SCORE_FLOOR as PLAYGROUND_LEAKAGE_SCORE_FLOOR } from '../../playground/analyzer.js';
+
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -464,9 +464,8 @@ test('SKILL.md interpretation band line matches SCORE_INTERPRETATION_BANDS', () 
 // if one is added, extend this gate with a doc extraction.)
 // ---------------------------------------------------------------------------
 
-test('leakage score floor is the same constant across src and playground', () => {
+test('leakage score floor is single-sourced from the feature constant', () => {
   assert.equal(LEAKAGE_SCORE_FLOOR, FEATURE_LEAKAGE_SCORE_FLOOR, 'scoring.js re-export drifted');
-  assert.equal(PLAYGROUND_LEAKAGE_SCORE_FLOOR, FEATURE_LEAKAGE_SCORE_FLOOR, 'playground floor drifted');
   // Documented semantic: a leakage hit short-circuits into the 'heavily AI' band.
   assert.equal(interpretScore(LEAKAGE_SCORE_FLOOR), 'heavily AI');
 });

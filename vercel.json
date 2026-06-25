@@ -15,52 +15,20 @@
       "destination": "/playground"
     },
     {
-      "source": "/app.js",
-      "destination": "/playground/app.js"
+      "source": "/chatgpt.js",
+      "destination": "/playground/chatgpt.js"
     },
     {
-      "source": "/i18n.js",
-      "destination": "/playground/i18n.js"
-    },
-    {
-      "source": "/analysis-dispatch.js",
-      "destination": "/playground/analysis-dispatch.js"
-    },
-    {
-      "source": "/analyzer-worker.js",
-      "destination": "/playground/analyzer-worker.js"
-    },
-    {
-      "source": "/analytics.js",
-      "destination": "/playground/analytics.js"
-    },
-    {
-      "source": "/analyzer.js",
-      "destination": "/playground/analyzer.js"
+      "source": "/chatgpt.css",
+      "destination": "/playground/chatgpt.css"
     },
     {
       "source": "/rewrite-client.js",
       "destination": "/playground/rewrite-client.js"
     },
     {
-      "source": "/chat-ui.js",
-      "destination": "/playground/chat-ui.js"
-    },
-    {
-      "source": "/rewrite-mode.js",
-      "destination": "/playground/rewrite-mode.js"
-    },
-    {
-      "source": "/rewrite.css",
-      "destination": "/playground/rewrite.css"
-    },
-    {
-      "source": "/styles.css",
-      "destination": "/playground/styles.css"
-    },
-    {
-      "source": "/data/:path*",
-      "destination": "/playground/data/:path*"
+      "source": "/analytics.js",
+      "destination": "/playground/analytics.js"
     }
   ],
   "headers": [

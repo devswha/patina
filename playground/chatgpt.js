@@ -9,6 +9,9 @@ import {
   FIDELITY_FLOOR,
 } from '../src/web-rewrite-contract.js';
 
+// Browser globals (the eslint config declares only Node globals; sibling
+// modules use the same globalThis convention — e.g. rewrite-client.js).
+const { document, Option } = globalThis;
 const $ = (sel) => /** @type {HTMLElement} */ (document.querySelector(sel));
 
 const els = {

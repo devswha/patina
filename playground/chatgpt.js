@@ -214,9 +214,10 @@ function buildMeta(meta) {
     det.appendChild(el('summary', null, 'AI 신호 (전 → 후)'));
     const b = el('div', 'foldout__body');
     const bar = el('div', 'signal-bar');
-    bar.appendChild(el('span', null, `핫 문단 비율 ${before == null ? '—' : before} `));
+    bar.appendChild(el('span', null, '핫 문단 비율 '));
+    bar.appendChild(el('span', 'sig-before', before == null ? '—' : String(before)));
     bar.appendChild(el('span', 'arrow', '→'));
-    bar.appendChild(el('span', null, ` ${after == null ? '—' : after}`));
+    bar.appendChild(el('span', 'sig-after', after == null ? '—' : String(after)));
     b.appendChild(bar);
     det.appendChild(b);
     wrap.appendChild(det);

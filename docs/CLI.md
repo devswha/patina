@@ -52,6 +52,8 @@ patina --lang en --score --exit-on 30 draft.md
 
 `--persona <name>` selects a validated Korean persona from `personas/ko` (or a same-id custom persona) for the rewrite harness. With no explicit persona, Korean rewrite mode uses the conservative `preserve` persona: style-only, minimal change, and MPS/fidelity hard floors still enforced.
 
+v1 KO seed library (`personas/ko`): `preserve` (default), `blog-essay`, `pragmatic-founder`, `technical-explainer`, `soft-professional`, and `natural-ko` — a cleanup persona that strips AI-tell register (wellness-translationese, flattery, hype vocabulary) into plain Korean while preserving claims.
+
 ```bash
 patina --persona preserve draft.md
 patina --lang ko --persona pragmatic-founder draft.md

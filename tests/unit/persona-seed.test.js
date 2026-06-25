@@ -13,14 +13,16 @@ const SEED_PERSONAS = [
   'pragmatic-founder',
   'technical-explainer',
   'soft-professional',
+  'natural-ko',
 ];
 
-test('ko persona library includes preserve plus four v1 seeds', () => {
+test('ko persona library includes preserve plus five v1 seeds', () => {
   const personas = listPersonas(REPO_ROOT, 'ko');
 
-  assert.equal(personas.length, 5);
+  assert.equal(personas.length, 6);
   assert.deepEqual(personas, [
     'blog-essay',
+    'natural-ko',
     'pragmatic-founder',
     'preserve',
     'soft-professional',

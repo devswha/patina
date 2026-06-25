@@ -10,7 +10,7 @@
 
   /* Text */
   --text: #e8eef7;
-  --text-dim: #94a3b8;      /* patina slate */
+  --text-dim: #aab6c6;      /* patina slate — raised for AA on navy */
   --text-faint: #5f6b80;
 
   /* Borders */
@@ -111,7 +111,7 @@ a { color: inherit; }
   background: var(--aurora); filter: saturate(1.05);
   pointer-events: none;
 }
-.hero__inner { position: relative; z-index: 1; max-width: 760px; margin: 0 auto; text-align: center; }
+.hero__inner { position: relative; z-index: 1; width: 100%; max-width: 800px; margin: 0 auto; text-align: center; }
 .hero__title { font-size: 56px; font-weight: 600; line-height: 1.05; letter-spacing: -1.6px; margin: 0 0 14px; }
 .hero__title .grad {
   background: linear-gradient(92deg, var(--copper), var(--accent) 55%, #7aa0ff);
@@ -121,17 +121,17 @@ a { color: inherit; }
 
 /* prompt card (the Lovable hero input) */
 .prompt {
-  max-width: 680px; margin: 0 auto;
+  max-width: 768px; margin: 0 auto;
   background: var(--bg-elev); border: 1px solid var(--border);
-  border-radius: 22px; padding: 16px 16px 12px;
+  border-radius: 28px; padding: 18px 20px 14px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
   text-align: left;
 }
 .prompt:focus-within { border-color: var(--border-strong); box-shadow: var(--focus-shadow); }
 .prompt__input {
   width: 100%; resize: none; border: 0; outline: 0; background: transparent;
-  color: var(--text); font-family: inherit; font-size: 17px; line-height: 1.5;
-  max-height: 220px; padding: 4px 6px;
+  color: var(--text); font-family: inherit; font-size: 18px; line-height: 1.5;
+  max-height: 240px; min-height: 70px; padding: 4px 6px;
 }
 .prompt__input::placeholder { color: var(--text-faint); }
 .prompt__bar { display: flex; align-items: center; margin-top: 10px; }
@@ -144,7 +144,7 @@ a { color: inherit; }
 .prompt__send:hover:not(:disabled) { background: var(--accent-press); }
 .prompt__send:disabled { background: var(--bg-cream); color: var(--text-faint); cursor: not-allowed; box-shadow: none; }
 
-.suggest { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 20px auto 0; max-width: 680px; }
+.suggest { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 20px auto 0; max-width: 768px; }
 .suggest__pill {
   font-size: 13px; padding: 8px 14px; border-radius: 9999px;
   background: var(--bg-elev); border: 1px solid var(--border); color: var(--text-dim);
@@ -239,7 +239,7 @@ a { color: inherit; }
 .msg--user { justify-content: flex-end; }
 .msg--user .msg__avatar { display: none; }
 .msg--user .msg__body {
-  background: var(--bg-cream); border: 1px solid var(--border); border-left: 2px solid var(--copper);
+  background: var(--bg-cream); border: 1px solid var(--border);
   border-radius: 18px; padding: 10px 16px; max-width: 75%; white-space: pre-wrap; word-break: break-word;
 }
 .msg--patina .msg__avatar { background: var(--accent); color: var(--on-accent); }

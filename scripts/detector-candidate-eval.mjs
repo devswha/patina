@@ -136,7 +136,14 @@ export function evaluateCandidates() {
     currentHot: analyzeText(it.text, { lang: it.lang, repoRoot: REPO_ROOT }).hot === true,
   }));
 
+  // Pre-seed the pre-registered denominators so they always appear with a stable
+  // schema even when a slice has 0 evaluated rows (e.g. human-controls raw bodies
+  // are gitignored and absent in CI).
+  const PRE_REGISTERED = { sycophancy: true, lexical_tells: true, structural_tells: true, human_controls: false, benchmark_ai: true, benchmark_natural: false };
   const slices = {};
+  for (const [name, expectedHot] of Object.entries(PRE_REGISTERED)) {
+    slices[name] = { total: 0, expectedHot, currentTP: 0, currentFN: 0, currentFP: 0, currentTN: 0 };
+  }
   for (const it of items) {
     const s = (slices[it.slice] ??= { total: 0, expectedHot: it.expectedHot, currentTP: 0, currentFN: 0, currentFP: 0, currentTN: 0 });
     s.total += 1;

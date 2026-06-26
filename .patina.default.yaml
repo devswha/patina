@@ -132,8 +132,8 @@ ouroboros:
       filler: 0.08
       structure: 0.15
       viral-hook: 0.10  # score-only pack (excluded from rewrite)
-  fidelity-floor: 70             # stop ouroboros if fidelity drops below this
-  mps-floor: 70                  # stop ouroboros if MPS (meaning preservation) drops below this
+  fidelity-floor: 70             # stop ouroboros if fidelity drops below this; also the --verify fidelity floor
+  mps-floor: 70                  # stop ouroboros if MPS (meaning preservation) drops below this; also the --verify MPS floor
   combined-weights:
     default:
       ai-likeness: 0.60

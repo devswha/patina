@@ -19,7 +19,7 @@ const FLAG_OPTIONS = new Set([
   '--ouroboros', '--batch', '--in-place', '--allow-private-base-url',
   '--stop-on-retryable-storm', '--no-stop-on-retryable-storm',
   '--list-backends', '--allow-insecure-base-url', '--no-interactive',
-  '--rewrite-headings',
+  '--rewrite-headings', '--verify',
 ]);
 
 // Expand `--name=value` into two tokens for known value-taking options and
@@ -170,6 +170,10 @@ export function parseArgs(rawArgs) {
       }
       case '--ouroboros':
         parsed.ouroboros = true;
+        break;
+
+      case '--verify':
+        parsed.verify = true;
         break;
       case '--batch':
         parsed.batch = true;
@@ -474,6 +478,36 @@ export function validatePersonaRequest(parsed) {
   }
 }
 
+// --verify folds the meaning-floor check into rewrite mode (score MPS/fidelity,
+// one conservative retry, fail-closed). It is a rewrite modifier, not a mode, so
+// it is rejected alongside non-rewrite modes and the meaning-loosening depths.
+export function validateVerifyRequest(parsed) {
+  if (!parsed.verify) return;
+  const blocked = [
+    ['score', '--score'],
+    ['audit', '--audit'],
+    ['diff', '--diff'],
+    ['ouroboros', '--ouroboros'],
+    ['preview', '--preview'],
+  ];
+  for (const [key, flag] of blocked) {
+    if (parsed[key]) {
+      throw inputError(
+        `--verify cannot be combined with ${flag}`,
+        '--verify is a rewrite-mode meaning check; it does not apply to non-rewrite or preview surfaces.',
+        'Run `patina --verify <file>` for a verified rewrite, or drop --verify.'
+      );
+    }
+  }
+  if (parsed.restyle === 'voice' || parsed.restyle === 'content') {
+    throw inputError(
+      `--verify cannot be combined with --restyle ${parsed.restyle}`,
+      'Voice/content transformations intentionally change wording or structure, which fights the meaning-preservation floors --verify enforces.',
+      'Use --verify with the default --restyle sentence, or drop --verify for a free transformation.'
+    );
+  }
+}
+
 export function validatePreviewRequest(parsed) {
   if (parsed.ocr && !parsed.preview) {
     throw inputError(
@@ -675,7 +709,9 @@ MODES
   --audit                 Detect patterns only (no rewrite)
   --score                 Output AI-likeness score (0-100)
   --exit-on <n>           With --score, exit 3 when overall score > n
-  --ouroboros             Iterative self-improvement loop
+  --verify                Rewrite, then verify meaning (MPS/fidelity floors) with
+                          one conservative retry; fail-closed to the best candidate
+  --ouroboros             [deprecated] Iterative self-improvement loop (use --verify)
   --preview               Rewrite one http(s) URL or local .html file in place on a snapshot
                           of the page (adds one explanation call)
   --ocr                   With --preview (URL/.html): extract text inside page images via an

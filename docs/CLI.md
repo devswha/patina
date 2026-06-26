@@ -48,6 +48,23 @@ patina --lang en --score --exit-on 30 draft.md
 - `patina doctor --json` emits setup diagnostics for CI without making an LLM call.
 
 
+## Meaning verification: `--verify`
+
+`--verify` folds a meaning-preservation check into the normal rewrite. After the rewrite it scores MPS and fidelity; if either is below the floor (`ouroboros.mps-floor` / `ouroboros.fidelity-floor`, default 70) it runs **one** conservative retry that re-rewrites from the original with a strict meaning-preservation directive. If the retry still misses, patina emits the closest (highest-fidelity) candidate and warns on stderr — fail-closed but non-destructive, so stdout always carries usable text.
+
+```bash
+patina --verify draft.md
+patina --verify --lang ko --backend codex-cli draft.md
+```
+
+- It is a rewrite modifier, not a separate mode: combining it with `--score`, `--audit`, `--diff`, `--ouroboros`, `--preview`, or `--restyle voice|content` is an input error (those either do not rewrite or loosen the meaning floors `--verify` enforces).
+- The MPS/fidelity scorers run through the **selected backend**, so `--verify` works with HTTP and local CLI backends alike. It adds up to four extra model calls (two scorers, plus a retry that re-scores), so the plain rewrite stays the fast/cheap default.
+- `--ouroboros` is **deprecated** in favor of `--verify`; the iterative loop will be removed in a future release.
+
+### Deterministic meaning guard (always on, no LLM)
+
+Every rewrite (with or without `--verify`) runs a cheap deterministic guard that warns on stderr when numbers present in the source go missing from the rewrite. It never blocks output and makes no model calls (length is intentionally not checked — a humanizer legitimately changes length).
+
 ## Korean persona rewrite: `--persona`
 
 `--persona <name>` selects a validated Korean persona from `personas/ko` (or a same-id custom persona) for the rewrite harness. With no explicit persona, Korean rewrite mode uses the conservative `preserve` persona: style-only, minimal change, and MPS/fidelity hard floors still enforced.

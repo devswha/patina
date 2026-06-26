@@ -134,6 +134,8 @@ patina --lang en --profile my-newsletter post.md
 
 Voice-override values are `amplify` / `allow` / `reduce` / `suppress`; pattern IDs and their meanings are in [`PATTERNS.md`](PATTERNS.md).
 
+> **What actually runs:** a `pattern-overrides` entry set to **`suppress`** is applied deterministically — patina drops that pattern from the rewrite / audit / score prompt for the profile's language, so the model never flags it (e.g. `legal` suppresses Korean passive-voice #27). `reduce` / `amplify` are **advisory** for now: they document intent and are reinforced by the profile's prose body, but the engine does not yet adjust their weight.
+
 ---
 
 ## 6. Pre-commit hook wrapper *(optional)*

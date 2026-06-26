@@ -22,7 +22,7 @@ import {
 import { fetchPreviewPage, prepareSnapshotHtml, freezeSnapshotAssets, extractProseBlocks, alignRewrites, buildPreviewHtml, buildContextCardHtml } from '../preview.js';
 import { collectImageCandidates, stageOcrImages, ocrStagedImages, describeImage, hasOcrRunnerOverride } from '../ocr.js';
 import { rmSync } from 'node:fs';
-import { runOuroboros } from '../ouroboros.js';
+
 import { verifyRewrite, deterministicMeaningGuard } from '../verify.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
 import { detectKoreanRegister } from '../features/stylometry.js';
@@ -31,7 +31,7 @@ import { applyScoreGate, extractScoreOverall } from './score-gate.js';
 import { loadInputs } from './input.js';
 import { PatinaCliError, runtimeError, inputError } from '../errors.js';
 import { providerHttpKeyEnvVars, resolveHttpApiKey } from '../auth.js';
-import { DEFAULT_BACKEND_TIMEOUT_MS, getBackendSafety, backendSupportsStructuredOutput } from '../backends/contract.js';
+import { DEFAULT_BACKEND_TIMEOUT_MS, getBackendSafety } from '../backends/contract.js';
 import { resolve } from 'node:path';
 import { loadPersona } from '../personas/loader.js';
 import { evaluatePersonaGate } from '../personas/gates.js';
@@ -110,16 +110,15 @@ export async function runDefault(parsed, logger) {
   const mode = parsed.diff ? 'diff'
     : parsed.audit ? 'audit'
     : parsed.score ? 'score'
-    : parsed.ouroboros ? 'ouroboros'
     : 'rewrite';
   if (parsed.ouroboros) {
     logger.warn('ouroboros.deprecated', {
-      message: '[patina] --ouroboros is deprecated; use --verify (rewrite + meaning-floor retry). The loop will be removed in a future release.',
+      message: '[patina] --ouroboros is deprecated and now runs --verify (rewrite + meaning-floor retry); the iterative loop has been removed.',
     });
   }
   const persona = resolvePersonaForRun({ parsed, config, mode, lang, repoRoot });
 
-  const voiceSamplePath = (mode === 'rewrite' || mode === 'ouroboros')
+  const voiceSamplePath = mode === 'rewrite'
     ? (parsed.voiceSample ?? config['voice-sample'])
     : null;
   const voiceSample = voiceSamplePath
@@ -133,9 +132,7 @@ export async function runDefault(parsed, logger) {
 
   const inputTexts = parsed.preview ? [] : await loadInputs(parsed, logger);
   const timeoutMs = parsed.timeoutMs ?? DEFAULT_BACKEND_TIMEOUT_MS;
-  const backendSelection = parsed.ouroboros
-    ? null
-    : selectBackendChain({
+  const backendSelection = selectBackendChain({
       name: parsed.backend ?? config.backend ?? (resolved.baseURLSource !== 'default' ? 'openai-http' : undefined),
       model: resolved.model,
       modelSource: resolved.modelSource,
@@ -203,9 +200,9 @@ export async function runDefault(parsed, logger) {
     path,
     text,
     readError,
-    // A read failure (#503) or ouroboros mode means there is no prompt to
-    // build; the read error is replayed inside the per-file batch loop below.
-    prompt: (readError || parsed.ouroboros) ? null : buildPrompt({
+    // A read failure (#503) means there is no prompt to build; the read error is
+    // replayed inside the per-file batch loop below.
+    prompt: readError ? null : buildPrompt({
       config,
       patterns,
       profile: profile.body ? profile : null,
@@ -248,40 +245,19 @@ export async function runDefault(parsed, logger) {
         if (readError) throw readError;
         let result;
 
-        if (parsed.ouroboros) {
-          result = await runOuroboros({
-            config,
-            patterns,
-            profile: profile.body ? profile : null,
-            voice: voice.body ? voice : null,
-            voiceSample,
-            scoring: scoring.body ? scoring : null,
-            text,
-            apiKey: resolved.apiKey,
-            baseURL: resolved.baseURL,
-            model: resolved.model,
-            timeout: timeoutMs,
-            signal: cancellation.signal,
-            logger,
-            // Opt-in structured output for the openai-http scorer; default off.
-            structuredOutput: config['structured-output'] === true && backendSupportsStructuredOutput('openai-http'),
-            persona,
-          });
-        } else {
-          result = await invokeBackendChain({
-            backends,
-            prompt,
-            apiKey: resolved.apiKey,
-            baseURL: resolved.baseURL,
-            model: resolved.model,
-            modelSource: resolved.modelSource,
-            signal: cancellation.signal,
-            timeout: timeoutMs,
-            maxConcurrency: parsed.maxConcurrency,
-            maxRetries: parsed.maxRetries,
-            logger,
-          });
-        }
+        result = await invokeBackendChain({
+          backends,
+          prompt,
+          apiKey: resolved.apiKey,
+          baseURL: resolved.baseURL,
+          model: resolved.model,
+          modelSource: resolved.modelSource,
+          signal: cancellation.signal,
+          timeout: timeoutMs,
+          maxConcurrency: parsed.maxConcurrency,
+          maxRetries: parsed.maxRetries,
+          logger,
+        });
         cancellation.throwIfCanceled();
 
         if (mode === 'rewrite') {
@@ -333,7 +309,7 @@ export async function runDefault(parsed, logger) {
           }
         }
 
-        if (mode === 'score' && !parsed.ouroboros) {
+        if (mode === 'score') {
           result = withDeterministicScore(result, {
             text,
             config,
@@ -368,15 +344,9 @@ export async function runDefault(parsed, logger) {
 
         let output;
         let scoreValidationOutput = null;
-        if (parsed.ouroboros) {
-          const ouroborosBody = formatOuroborosOutput(result);
-          output = formatOutput(ouroborosBody, mode, parsed, { tone: toneResolution, logger, auditBackstop, persona: null });
-          scoreValidationOutput = ouroborosBody;
-        } else {
-          output = formatOutput(result, mode, parsed, { tone: toneResolution, logger, auditBackstop, persona: personaReport });
-          if (mode === 'score') {
-            scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' }, { logger });
-          }
+        output = formatOutput(result, mode, parsed, { tone: toneResolution, logger, auditBackstop, persona: personaReport });
+        if (mode === 'score') {
+          scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' }, { logger });
         }
 
         // v3.11 Phase 1.3: surface weight drift between config and the score
@@ -610,25 +580,6 @@ function resolveApiKey(parsed, provider) {
     apiKeyFile: parsed.apiKeyFile,
     envVars: providerHttpKeyEnvVars(provider?.apiKeyEnv),
   });
-}
-
-function formatOuroborosOutput(result) {
-  let output = '## Ouroboros Iteration Log\n\n';
-  output += '| Iter | Before | After | Improvement | Reason |\n';
-  output += '|------|--------|-------|-------------|--------|\n';
-
-  for (const entry of result.log) {
-    output += `| ${entry.iteration} | ${entry.before ?? '—'} | ${entry.after} | ${entry.improvement ?? '—'} | ${entry.reason} |\n`;
-  }
-
-  output += `\nFinal score: ${result.finalScore}/100 (±10)\n`;
-  output += `Iterations: ${result.iterations}/${result.log.length > 0 ? result.log[result.log.length - 1].iteration : 0}\n`;
-  output += `Reason: ${result.reason}\n\n`;
-  output += '## Final Text\n\n';
-  output += result.finalText.trim();
-  output += '\n';
-
-  return output;
 }
 
 async function runPreviewJob({

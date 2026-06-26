@@ -57,9 +57,9 @@ patina --verify draft.md
 patina --verify --lang ko --backend codex-cli draft.md
 ```
 
-- It is a rewrite modifier, not a separate mode: combining it with `--score`, `--audit`, `--diff`, `--ouroboros`, `--preview`, or `--restyle voice|content` is an input error (those either do not rewrite or loosen the meaning floors `--verify` enforces).
+- It is a rewrite modifier, not a separate mode: combining it with `--score`, `--audit`, `--diff`, `--preview`, or `--restyle voice|content` is an input error (those either do not rewrite or loosen the meaning floors `--verify` enforces).
 - The MPS/fidelity scorers run through the **selected backend**, so `--verify` works with HTTP and local CLI backends alike. It adds up to four extra model calls (two scorers, plus a retry that re-scores), so the plain rewrite stays the fast/cheap default.
-- `--ouroboros` is **deprecated** in favor of `--verify`; the iterative loop will be removed in a future release.
+- `--ouroboros` is **deprecated** and now runs `--verify`; the iterative loop has been removed from the CLI (it survives only as a research baseline in `npm run quality:rewrite-ab`).
 
 ### Deterministic meaning guard (always on, no LLM)
 

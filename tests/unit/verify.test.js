@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { deterministicMeaningGuard, verifyRewrite } from '../../src/verify.js';
-import { validateVerifyRequest } from '../../src/cli/args.js';
+import { validateVerifyRequest, parseArgs } from '../../src/cli/args.js';
 
 // ---------- deterministicMeaningGuard (no LLM) ----------
 
@@ -136,7 +136,7 @@ test('verifyRewrite honors configured floors', async () => {
 // ---------- validateVerifyRequest ----------
 
 test('validateVerifyRequest rejects non-rewrite and preview surfaces', () => {
-  for (const flag of ['score', 'audit', 'diff', 'ouroboros', 'preview']) {
+  for (const flag of ['score', 'audit', 'diff', 'preview']) {
     assert.throws(
       () => validateVerifyRequest({ verify: true, [flag]: true }),
       /--verify cannot be combined/,
@@ -153,4 +153,12 @@ test('validateVerifyRequest rejects voice/content restyle depths', () => {
 test('validateVerifyRequest allows a plain verified rewrite and is a no-op without --verify', () => {
   assert.doesNotThrow(() => validateVerifyRequest({ verify: true, restyle: 'sentence' }));
   assert.doesNotThrow(() => validateVerifyRequest({}));
+});
+
+test('--ouroboros is a deprecated alias that turns on --verify', () => {
+  const parsed = parseArgs(['--ouroboros', 'draft.md']);
+  assert.equal(parsed.verify, true);
+  assert.equal(parsed.ouroboros, true);
+  // The alias must not self-conflict in the verify validator.
+  assert.doesNotThrow(() => validateVerifyRequest(parsed));
 });

@@ -12,6 +12,22 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## 5.4.1 — 2026-06-26
+
+**Web playground and install reliability fixes: rewrites no longer hang, language is auto-detected, the mobile Korean hero wraps cleanly, and fresh installs get their runtime dependency.**
+
+Semver rationale: patch — bug fixes only. No pattern, scoring, schema, or CLI-behavior changes; all four languages byte-identical.
+
+### Fixed
+
+- **web:** auto-detect the language from pasted text so EN/ZH/JA input is no longer rewritten under the default Korean pipeline (#543).
+- **web:** add a client-side idle timeout so a stalled rewrite stream no longer leaves the UI spinning; reset busy state and surface an error (#541).
+- **web:** keep the Korean hero and subtitle from orphaning a final syllable on mobile via `word-break: keep-all` (#542).
+- **web:** render the rewrite length (character/word) stats in the result foldout instead of a never-populated field (#544).
+- **web:** allow the Pretendard web font through the production CSP via `style-src`/`font-src` without loosening `script-src`/`connect-src` (#545).
+- **install:** install runtime dependencies (`js-yaml`) during `install.sh` so the local CLI runs from a fresh clone (#536).
+- **backends:** settle the interactive-command promise exactly once so a failed spawn cannot resolve-then-reject (#533).
+
 ## 5.4.0 — 2026-06-15
 
 **Rewrite-quality A/B harness: compare two rewrite configs (single vs ouroboros multi-pass) on the same fixtures so pipeline decisions are data-driven.**

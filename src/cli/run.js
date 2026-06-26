@@ -111,11 +111,6 @@ export async function runDefault(parsed, logger) {
     : parsed.audit ? 'audit'
     : parsed.score ? 'score'
     : 'rewrite';
-  if (parsed.ouroboros) {
-    logger.warn('ouroboros.deprecated', {
-      message: '[patina] --ouroboros is deprecated and now runs --verify (rewrite + meaning-floor retry); the iterative loop has been removed.',
-    });
-  }
   const persona = resolvePersonaForRun({ parsed, config, mode, lang, repoRoot });
 
   const voiceSamplePath = mode === 'rewrite'
@@ -214,7 +209,6 @@ export async function runDefault(parsed, logger) {
       tone: toneResolution,
       promptMode,
       documentSignals: mode === 'rewrite' ? buildDocumentSignals({ text, lang }).signals : null,
-      restyle: parsed.restyle,
       jargon: parsed.jargon,
       rewriteHeadings: parsed.rewriteHeadings,
       persona,
@@ -680,7 +674,6 @@ async function runPreviewJob({
       scoring: scoring.body ? scoring : null,
       tone: toneResolution,
       promptMode,
-      restyle: parsed.restyle,
       jargon: parsed.jargon,
       rewriteHeadings: parsed.rewriteHeadings,
     };
@@ -734,7 +727,7 @@ async function runPreviewJob({
       .join('\n\n');
     const documentContext = buildDocumentSignals({ text: rewriteText, lang: config.language || 'ko' });
 
-    // Variant comparison (--restyle a,b / --jargon x,y): one rewrite call per
+    // Variant comparison (--jargon x,y / --tone a,b): one rewrite call per
     // variant, all baked into the preview page behind a scriptless toggle.
     // Calls run sequentially — local CLI backends carry concurrency caps of
     // 1-2, and a variant is a whole-document rewrite, not a cheap request.
@@ -744,7 +737,7 @@ async function runPreviewJob({
       throw runtimeError(
         'transform-variant comparison needs a page snapshot',
         'Plain-text file previews render as a single reading document, which cannot hold multiple toggleable variants.',
-        'Run the compare against a URL or .html input, or pick a single --restyle/--jargon value.'
+        'Run the compare against a URL or .html input, or pick a single --jargon/--tone value.'
       );
     }
     const variantBodies = [];
@@ -781,7 +774,6 @@ async function runPreviewJob({
             ...basePromptInputs,
             profile: variantProfile,
             tone: variantTone,
-            restyle: variant.restyle,
             jargon: variant.jargon,
             text: rewriteText,
             mode: 'rewrite',
@@ -887,7 +879,6 @@ async function runPreviewJob({
       const previewVariants = compareMode
         ? transformVariants.map((variant, index) => ({
           label: variant.label,
-          restyle: variant.restyle,
           jargon: variant.jargon,
           tone: variant.tone,
           rewrites: (index === 0 ? rewrites : alignOne(variantBodies[index], variant.label)).slice(0, blocks.length),

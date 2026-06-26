@@ -44,7 +44,7 @@ patina --lang en --score --exit-on 30 draft.md
 - Score JSON may include `scores.llm`, `scores.deterministic`, and `scores.preference` when deterministic shadow scoring is available.
 - `mps` is populated when the underlying mode emits it.
 - `gateResult` is `null` unless `--exit-on` is used.
-- `--voice-sample <path>` or config `voice-sample: <path>` injects the first 1–3 user-written paragraphs into rewrite/Ouroboros prompts as style-only examples of how this person writes. `--profile` / `--tone` still define the outer register; samples refine cadence and texture without importing facts.
+- `--voice-sample <path>` or config `voice-sample: <path>` injects the first 1–3 user-written paragraphs into rewrite prompts as style-only examples of how this person writes. `--profile` / `--tone` still define the outer register; samples refine cadence and texture without importing facts.
 - `patina doctor --json` emits setup diagnostics for CI without making an LLM call.
 
 
@@ -57,9 +57,9 @@ patina --verify draft.md
 patina --verify --lang ko --backend codex-cli draft.md
 ```
 
-- It is a rewrite modifier, not a separate mode: combining it with `--score`, `--audit`, `--diff`, `--preview`, or `--restyle voice|content` is an input error (those either do not rewrite or loosen the meaning floors `--verify` enforces).
+- It is a rewrite modifier, not a separate mode: combining it with `--score`, `--audit`, `--diff`, or `--preview` is an input error (those do not rewrite).
 - The MPS/fidelity scorers run through the **selected backend**, so `--verify` works with HTTP and local CLI backends alike. It adds up to four extra model calls (two scorers, plus a retry that re-scores), so the plain rewrite stays the fast/cheap default.
-- `--ouroboros` is **deprecated** and now runs `--verify`; the iterative loop has been removed from the CLI (it survives only as a research baseline in `npm run quality:rewrite-ab`).
+- `--ouroboros` was **removed**. The iterative loop is gone; `--verify` is its meaning-floor replacement. (The multi-pass loop survives only as a research baseline in `npm run quality:rewrite-ab`.)
 
 ### Deterministic meaning guard (always on, no LLM)
 
@@ -84,11 +84,9 @@ Contract:
 | `--persona p file` | allowed | core v1 surface |
 | `--lang ko --persona p` | allowed | KO library only |
 | `--lang en|zh|ja --persona p` | input error | no non-KO persona library |
-| `--score/--audit/--diff/--ouroboros --persona p` | input error | persona v1 is rewrite-only |
+| `--score/--audit/--diff --persona p` | input error | persona v1 is rewrite-only |
 | `--preview --persona p` | input error | preview migration is later |
-| `--persona p --restyle sentence` | allowed | same as default cleanup depth |
-| `--persona p --restyle voice|content` | input error | conflicting legacy depth; content makes MPS advisory |
-| `--persona p --restyle a,b`, `--jargon x,y`, `--tone a,b` | input error | comma-list variants are preview-only |
+| `--persona p --jargon x,y`, `--tone a,b` | input error | comma-list variants are preview-only |
 | `--persona p --tone casual` | allowed as compatibility hint | persona remains outer contract |
 | `--persona p --profile blog` | allowed as compatibility hint | legacy profile remains non-authoritative |
 | `--persona p --voice-sample sample.md` | allowed | style-only anchor; sample facts are not imported |
@@ -113,37 +111,33 @@ For `--format json`, rewrite output includes a `persona` field when a persona ga
 }
 ```
 
-## Transformations beyond cleanup: `--restyle` / `--jargon`
+## Transformations beyond cleanup: `--jargon`
 
-By default patina is a conservative humanizer: it removes AI tells without changing a sentence's claim or framing. `--restyle` and `--jargon` are explicit opt-ins for when the goal is a different text, not the same text cleaned up. They apply to the default rewrite and `--preview` only; combining them with `--score`, `--audit`, `--diff`, or `--ouroboros` is an input error (those modes either do not rewrite, or enforce meaning-preservation floors a transformation would fight).
+By default patina is a conservative humanizer: it removes AI tells without changing a sentence's claim or framing. `--jargon` is an explicit opt-in for adjusting terminology for a different audience. It applies to the default rewrite and `--preview` only; combining it with `--score`, `--audit`, or `--diff` is an input error (those modes do not rewrite). A full voice/register change is `--persona` / `--tone` / `--voice-sample`, not a rewrite depth.
 
 ```bash
-patina --restyle voice --tone casual draft.md          # full voice/register transformation
-patina --restyle content draft.md                      # content-level re-planning
+patina --jargon remove draft.md                        # de-jargonized rewrite
 patina --preview --jargon remove https://example.com/  # de-jargonized in-place preview
-patina --restyle content --jargon remove draft.md      # both
+patina --jargon explain --tone casual draft.md         # gloss terms, casual register
 ```
 
-- `--restyle sentence` (default) — current behavior: AI-pattern cleanup, minimal paraphrase.
-- `--restyle voice` — rewrite the entire text in the target voice/register (`--tone`/`--profile` define the target), not just suspect zones. Claims, numbers, and argument order are preserved.
-- `--restyle content` — content-level re-planning: restructure sections, merge/cut redundancy, reorder arguments, re-angle for the audience. Core facts stay truthful, but coverage and emphasis may change; the Meaning-Preservation Score is reported as advisory instead of enforced for the run.
 - `--jargon keep` (default) — technical terms untouched.
 - `--jargon explain` — keep terms, add a brief plain-language gloss at first use.
 - `--jargon remove` — replace developer/technical jargon with everyday language; product names and proper nouns stay.
 
 ### Variant comparison in the preview
 
-With `--preview`, `--restyle`, `--jargon`, **and `--tone`** accept comma-separated lists; every combination becomes a **variant** — one rewrite call each, capped at 4 — and the preview bar gains a second toggle group to switch between them in place:
+With `--preview`, `--jargon` **and `--tone`** accept comma-separated lists; every combination becomes a **variant** — one rewrite call each, capped at 4 — and the preview bar gains a second toggle group to switch between them in place:
 
 ```bash
-patina --preview --restyle sentence,voice,content <url>     # cleanup / voice / content side by side
-patina --preview --restyle voice --tone casual,professional <url>  # same depth, two voices
-patina --preview --tone casual,marketing <url>              # tone-only comparison
+patina --preview --jargon keep,remove <url>                  # cleanup / de-jargoned side by side
+patina --preview --jargon remove --tone casual,professional <url>  # same policy, two voices
+patina --preview --tone casual,marketing <url>               # tone-only comparison
 ```
 
-- The bar groups variants two-level: one primary button per restyle depth (cleanup/voice/content) and, when a depth carries multiple options (tone/jargon), a secondary chip row that appears only while that depth is selected — click **voice**, then pick **casual** or **professional**. Each depth remembers its own option selection. The switch is CSS-only (chained radio groups), so the snapshot stays scriptless and the page CSP keeps `script-src 'none'`.
-- The score chip shows each variant's deterministic score (`score 23 → cleanup 5 · voice 8 · content 11`).
-- A comma-listed `--tone` joins the cross product: each variant resolves its own tone (and its backbone profile, unless `--profile` is explicit), exactly as a single run with that `--tone` would. Labels carry the tone when it varies (`voice·casual`).
+- The bar groups variants two-level: one primary button per jargon policy (cleanup/explain/remove) and, when a policy carries multiple options (tone), a secondary chip row that appears only while that policy is selected — click **remove**, then pick **casual** or **professional**. Each policy remembers its own option selection. The switch is CSS-only (chained radio groups), so the snapshot stays scriptless and the page CSP keeps `script-src 'none'`.
+- The score chip shows each variant's deterministic score (`score 23 → cleanup 5 · remove 8`).
+- A comma-listed `--tone` joins the cross product: each variant resolves its own tone (and its backbone profile, unless `--profile` is explicit), exactly as a single run with that `--tone` would. Labels carry the tone when it varies (`remove·casual`).
 - A block counts as changed when **any** variant changes it; a variant that left a block alone shows the original text under that button.
 - stdout carries the first variant's prose (pipe-safe); the explanation call is skipped in compare mode to keep the call budget at one per variant.
 - Compare mode needs a page snapshot (URL or `.html`) and is incompatible with `--ocr`; comma lists without `--preview` are an input error.

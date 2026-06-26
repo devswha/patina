@@ -116,7 +116,7 @@ prompts for them, and exposes `--timeout-ms`, `--max-concurrency`,
 |  |  |
 |---|---|
 | **168 patterns** | 33 rewrite-capable + 9 score-only viral-hook per language (42 each across KO/EN/ZH/JA) — see the full 168-pattern catalog in [PATTERNS.md](docs/PATTERNS.md) |
-| **Modes** | rewrite · audit · score · diff · ouroboros |
+| **Modes** | rewrite · verify · audit · score · diff |
 | **Surfaces** | agent skill · Node CLI · in-place preview · browser audit playground |
 | **Free usage** | logged-in `codex`, `claude`, or `gemini` CLI can run rewrites without `PATINA_API_KEY` |
 | **Calibration** | 67.3% editing-hotspot catch [63.5–71.0%] across GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro (n=600, KO+EN); 16.0% false positives [11.6–21.7%] on KO+EN human controls (n=200) |
@@ -138,7 +138,7 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `patina --score --exit-on 30 input.txt` | CI gate with exit code `3` when `overall > 30` |
 | `patina --diff input.txt` | show pattern-by-pattern changes |
 | `patina --preview page.html` | render rewrites back onto a saved HTML page with toggles and inline diff |
-| `patina --ouroboros input.txt` | iterate with MPS/fidelity rollback |
+| `patina --verify input.txt` | rewrite, then check MPS/fidelity floors with one retry |
 | `patina --tone auto --lang en input.txt` | infer and apply a KO/EN tone axis |
 | `patina --format json --quiet input.txt` | script-friendly output |
 | `patina --batch docs/*.md --outdir cleaned/` | batch file processing |

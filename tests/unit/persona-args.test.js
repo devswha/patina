@@ -16,18 +16,17 @@ function assertPersonaAllowed(args) {
 }
 
 test('--persona rejects non-rewrite and preview surfaces', () => {
-  for (const flag of ['--score', '--audit', '--diff', '--ouroboros', '--preview']) {
+  for (const flag of ['--score', '--audit', '--diff', '--preview']) {
     assertPersonaInputError([flag, '--persona', 'preserve', 'draft.md']);
   }
 });
 
-test('--persona rejects legacy voice/content restyle depths', () => {
+test('removed --restyle / --ouroboros flags are rejected at parse time', () => {
   assertPersonaInputError(['--persona', 'preserve', '--restyle', 'voice', 'draft.md']);
-  assertPersonaInputError(['--persona', 'preserve', '--restyle', 'content', 'draft.md']);
+  assertPersonaInputError(['--persona', 'preserve', '--ouroboros', 'draft.md']);
 });
 
 test('--persona rejects comma-list transform variants', () => {
-  assertPersonaInputError(['--persona', 'preserve', '--restyle', 'sentence,voice', 'draft.md']);
   assertPersonaInputError(['--persona', 'preserve', '--jargon', 'keep,remove', 'draft.md']);
   assertPersonaInputError(['--persona', 'preserve', '--tone', 'casual,professional', 'draft.md']);
 });
@@ -43,8 +42,7 @@ test('--persona rejects non-Korean languages at parsed flag level', () => {
   }
 });
 
-test('--persona allows sentence restyle, single tone, profile, and voice sample', () => {
-  assertPersonaAllowed(['--persona', 'preserve', '--restyle', 'sentence', 'draft.md']);
+test('--persona allows single tone, profile, and voice sample', () => {
   assertPersonaAllowed(['--persona', 'preserve', '--tone', 'casual', 'draft.md']);
   assertPersonaAllowed(['--persona', 'preserve', '--profile', 'blog', 'draft.md']);
   assertPersonaAllowed(['--persona', 'preserve', '--voice-sample', 'sample.md', 'draft.md']);

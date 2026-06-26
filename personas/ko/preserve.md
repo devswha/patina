@@ -39,7 +39,6 @@ blocks:
 target_features: {}
 legacy_profile_bridge:
   profiles: []
-  restyle_default: sentence
 ---
 
 # 원문 의미 보존

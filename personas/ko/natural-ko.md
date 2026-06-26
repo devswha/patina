@@ -86,7 +86,6 @@ target_features:
   over_edit_churn: { max: 0.6, weight: 0.08 }
 legacy_profile_bridge:
   profiles: [default]
-  restyle_default: voice
 ---
 
 # 담백한 한국어 (AI 티 제거)

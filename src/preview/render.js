@@ -85,7 +85,7 @@ function renderWordDiffHtml(before, after) {
 }
 
 export function buildPreviewHtml({ html, blocks, rewrites, sourceUrl, explanationHtml = '', scoreChip = null, imageFindings = [], contextCardHtml = '', variants = null }) {
-  // Variant comparison (--preview --restyle a,b / --jargon x,y): every
+  // Variant comparison (--preview --jargon x,y / --tone a,b): every
   // variant's rewrite is baked into the same swap span and the bar gets a
   // scriptless radio toggle per variant — the snapshot stays inert, so the
   // switch must be CSS-only, exactly like the rewritten/original/both views.
@@ -219,21 +219,20 @@ function injectHead(html, sourceUrl) {
 }
 
 // Group baked variants for the two-level bar UI: one primary button per
-// distinct restyle depth (cleanup/voice/content) and, when a depth carries
-// more than one option (jargon/tone), a secondary chip row that appears only
-// while its depth is selected. Selection is two chained radio groups —
-// depth + per-depth option — so the page stays scriptless.
+// distinct jargon policy (cleanup/explain/remove) and, when a policy carries
+// more than one option (tone), a secondary chip row that appears only while
+// that policy is selected. Selection is two chained radio groups —
+// policy + per-policy option — so the page stays scriptless.
 function groupTransformVariants(variants) {
   const groups = [];
   variants.forEach((variant, index) => {
-    const key = variant.restyle ?? variant.label ?? `v${index + 1}`;
+    const key = variant.jargon ?? variant.label ?? `v${index + 1}`;
     let group = groups.find((g) => g.key === key);
     if (!group) {
-      group = { key, label: key === 'sentence' ? 'cleanup' : key, options: [] };
+      group = { key, label: key === 'keep' ? 'cleanup' : key, options: [] };
       groups.push(group);
     }
     const parts = [];
-    if (variant.jargon && variant.jargon !== 'keep') parts.push(variant.jargon);
     if (variant.tone) parts.push(variant.tone);
     group.options.push({ label: parts.join('·') || 'default', variantIndex: index + 1 });
   });

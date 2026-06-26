@@ -55,7 +55,6 @@ target_features:
   over_edit_churn: { max: 0.45, weight: 0.06 }
 legacy_profile_bridge:
   profiles: [blog, technical]
-  restyle_default: voice
 ---
 
 # 실전형 창업자

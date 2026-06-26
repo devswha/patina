@@ -346,11 +346,26 @@ async function submit(text) {
   let started = false;
   const start = () => { if (started) return; started = true; if (typing.parentElement) typing.remove(); textEl.style.display = ''; textEl.classList.add('streaming'); };
 
+  // Fail-safe: if no stream frame arrives for IDLE_MS, abort so the UI never
+  // hangs on a stalled backend (issue #541). The timer re-arms on every frame.
+  const controller = new AbortController();
+  const IDLE_MS = 60000;
+  let timedOut = false;
+  let idleTimer;
+  const armIdle = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => { timedOut = true; controller.abort(); }, IDLE_MS);
+  };
+  armIdle();
+
   try {
     const { ok, finalFrame } = await streamRewrite({
       body: reqBody,
-      onDelta: (_t, acc) => { start(); textEl.textContent = acc; scrollDown(); },
+      signal: controller.signal,
+      onStart: () => armIdle(),
+      onDelta: (_t, acc) => { armIdle(); start(); textEl.textContent = acc; scrollDown(); },
       onDone: (frame) => {
+        armIdle();
         start();
         const rewrite = typeof frame.rewrite === 'string' ? frame.rewrite : textEl.textContent;
         textEl.textContent = rewrite; textEl.classList.remove('streaming');
@@ -369,9 +384,13 @@ async function submit(text) {
     }
   } catch (e) {
     if (typing.parentElement) typing.remove();
-    textEl.style.display = '';
-    body.appendChild(el('div', 'error-note', `Network error: ${String(e?.message || e)}`));
+    textEl.style.display = ''; textEl.classList.remove('streaming');
+    const msg = timedOut
+      ? 'Rewrite timed out — no response from the server. Please try again.'
+      : `Network error: ${String(e?.message || e)}`;
+    body.appendChild(el('div', 'error-note', msg));
   } finally {
+    clearTimeout(idleTimer);
     state.busy = false;
     updateHeroSend(); updateChatSend();
     els.input.focus();

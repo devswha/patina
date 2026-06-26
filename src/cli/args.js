@@ -169,7 +169,10 @@ export function parseArgs(rawArgs) {
         break;
       }
       case '--ouroboros':
+        // Deprecated alias: the iterative loop was removed; --ouroboros now runs
+        // --verify. parsed.ouroboros is kept as the deprecation/conflict marker.
         parsed.ouroboros = true;
+        parsed.verify = true;
         break;
 
       case '--verify':
@@ -487,7 +490,6 @@ export function validateVerifyRequest(parsed) {
     ['score', '--score'],
     ['audit', '--audit'],
     ['diff', '--diff'],
-    ['ouroboros', '--ouroboros'],
     ['preview', '--preview'],
   ];
   for (const [key, flag] of blocked) {
@@ -711,7 +713,7 @@ MODES
   --exit-on <n>           With --score, exit 3 when overall score > n
   --verify                Rewrite, then verify meaning (MPS/fidelity floors) with
                           one conservative retry; fail-closed to the best candidate
-  --ouroboros             [deprecated] Iterative self-improvement loop (use --verify)
+  --ouroboros             [deprecated] alias for --verify (the iterative loop was removed)
   --preview               Rewrite one http(s) URL or local .html file in place on a snapshot
                           of the page (adds one explanation call)
   --ocr                   With --preview (URL/.html): extract text inside page images via an

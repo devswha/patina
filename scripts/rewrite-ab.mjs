@@ -5,11 +5,11 @@
 // both (before/after AI score, MPS, fidelity) and measures edit churn, then
 // reports per-fixture winners + aggregate deltas.
 //
-// The CLI multi-pass already exists as `--ouroboros` (detect -> rewrite -> score
-// -> rollback with MPS/fidelity floors), so the default comparison is
-// `single` (one-shot rewrite) vs `ouroboros` (multi-pass). This is the
-// deterministic-question-with-an-LLM answer to "does the multi-pass pipeline
-// produce better rewrites than a single pass?"
+// The multi-pass `runOuroboros` loop (detect -> rewrite -> score -> rollback with
+// MPS/fidelity floors) is retained as a research baseline here, even though the
+// CLI's `--ouroboros` now aliases the lighter `--verify`. The default comparison
+// is `single` (one-shot rewrite) vs `ouroboros` (multi-pass) — the
+// deterministic-question-with-an-LLM answer to "does multi-pass beat one pass?"
 //
 // LLM-backed and opt-in (like quality:live): non-deterministic, may incur
 // provider cost. The core comparison/aggregation is pure and unit-tested with

@@ -53,8 +53,6 @@ target_features:
   comma_per_sentence: { target: 0.8, tolerance: 0.5, weight: 0.06 }
   suffix_class_diversity: { target: 0.48, tolerance: 0.18, weight: 0.08 }
   over_edit_churn: { max: 0.45, weight: 0.06 }
-legacy_profile_bridge:
-  profiles: [blog]
 ---
 
 # 개인 블로그 에세이

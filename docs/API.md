@@ -163,7 +163,7 @@ and the model verdict is hot; absent model means baseline behavior.</p>
 <dt><a href="#runDefault">runDefault(parsed, logger)</a> ⇒ <code>Promise.&lt;void&gt;</code></dt>
 <dd><p>Run the default patina pipeline for an already-parsed CLI invocation:
 resolve config, provider, and backends, build prompts, then process each
-input job (rewrite/diff/audit/score/ouroboros, plus the preview page).</p>
+input job (rewrite/diff/audit/score, plus the preview page).</p>
 </dd>
 <dt><a href="#createCancellationController">createCancellationController([options])</a> ⇒ <code>Object</code></dt>
 <dd><p>Create a SIGINT-aware cancellation controller for long-running CLI operations.</p>
@@ -261,7 +261,7 @@ is a hint surface, not a verdict.</p>
 <code>ouroboros.severity-points</code> overrides the documented defaults key-by-key.</p>
 </dd>
 <dt><a href="#buildPrompt">buildPrompt(options)</a> ⇒ <code>string</code></dt>
-<dd><p>Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.</p>
+<dd><p>Build the LLM prompt for rewrite, diff, audit, or score mode.</p>
 </dd>
 <dt><a href="#buildScoreMathCore">buildScoreMathCore(config, lang, [text], [patterns])</a> ⇒ <code>string</code></dt>
 <dd><p>Build the shared scoring-math core used by every score surface.</p>
@@ -601,7 +601,7 @@ await main(['--help']);
 ## runDefault(parsed, logger) ⇒ <code>Promise.&lt;void&gt;</code>
 Run the default patina pipeline for an already-parsed CLI invocation:
 resolve config, provider, and backends, build prompts, then process each
-input job (rewrite/diff/audit/score/ouroboros, plus the preview page).
+input job (rewrite/diff/audit/score, plus the preview page).
 
 **Kind**: global function
 **Returns**: <code>Promise.&lt;void&gt;</code> - Resolves after all job output is written.
@@ -1013,7 +1013,7 @@ Format a raw backend result for CLI output mode and requested format.
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
 | result | <code>string</code> \| <code>object</code> |  | Backend result or structured mode result. |
-| mode | <code>string</code> |  | Output mode: rewrite, diff, audit, score, or ouroboros. |
+| mode | <code>string</code> |  | Output mode: rewrite, diff, audit, or score. |
 | [parsed] | <code>object</code> | <code>{}</code> | Parsed CLI options. |
 | [opts] | <code>object</code> | <code>{}</code> | Formatting options. |
 | [opts.tone] | <code>object</code> \| <code>null</code> |  | Tone metadata to append. |
@@ -1167,7 +1167,7 @@ const points = resolveSeverityPoints(config);
 <a name="buildPrompt"></a>
 
 ## buildPrompt(options) ⇒ <code>string</code>
-Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.
+Build the LLM prompt for rewrite, diff, audit, or score mode.
 
 **Kind**: global function
 **Returns**: <code>string</code> - Complete prompt text.

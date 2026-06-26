@@ -26,7 +26,7 @@ export const DEFAULT_SEVERITY_POINTS = Object.freeze({ high: 3, medium: 2, low: 
 // random) so prompts stay deterministic and cacheable; the accompanying
 // treat-as-data instruction tells the model to ignore any instructions,
 // headings, or [BODY]/[SELF_AUDIT] tags that appear inside the fence. This
-// matters for `--batch`/`--gate`/ouroboros over third-party documents, where
+// matters for `--batch` and score modes over third-party documents, where
 // the LLM-judged score is otherwise subvertible by adversarial input.
 const INPUT_DATA_FENCE = '⟦⟦⟦PATINA_INPUT_DATA⟧⟧⟧';
 function neutralizeInputFenceCollisions(text) {
@@ -106,7 +106,7 @@ function buildSeverityOverrideNote(config) {
 }
 
 /**
- * Build the LLM prompt for rewrite, diff, audit, score, or ouroboros mode.
+ * Build the LLM prompt for rewrite, diff, audit, or score mode.
  *
  * @param {object} options Prompt inputs.
  * @param {object} options.config Effective patina config.
@@ -123,7 +123,7 @@ function buildSeverityOverrideNote(config) {
  *   measurements (e.g. dominant Korean register) injected into rewrite prompts
  *   as ground truth for the Phase 0 document brief.
  * @param {boolean} [options.includeSelfAudit=true] Include the Phase 3 self-audit
- *   in rewrite instructions; ouroboros passes false to skip the token cost (#444).
+ *   in rewrite instructions; the rewrite loop passes false to skip the token cost (#444).
  * @param {string} [options.jargon=keep] Technical-term policy
  *   (keep|explain|remove); non-default values add the opt-in
  *   transformation directive to rewrite prompts.
@@ -148,9 +148,9 @@ export function buildPrompt(options) {
     mode = 'rewrite',
     tone = null,
     documentSignals = null,
-    // Ouroboros passes false so its loop does not pay self-audit tokens it
-    // strips anyway; the loop's external scorers do the AI-tell/meaning checks
-    // (#444). Default true keeps the standalone rewrite contract unchanged.
+    // The rewrite loop (runOuroboros) passes false so it does not pay self-audit
+    // tokens it strips anyway; the loop's external scorers do the AI-tell/meaning
+    // checks (#444). Default true keeps the standalone rewrite contract unchanged.
     includeSelfAudit = true,
     jargon = 'keep',
     // #473: preserve Markdown ATX headings by default; --rewrite-headings opts in.
@@ -169,7 +169,7 @@ export function buildPrompt(options) {
   const profileName = config.profile || 'default';
 
   // score_only packs (e.g., viral-hook) are detection-only: included in score
-  // and audit modes but excluded from rewrite/diff/ouroboros so we don't force
+  // and audit modes but excluded from rewrite/diff so we don't force
   // edits to viral-hook patterns that may be intentional rhetoric.
   const includeScoreOnly = mode === 'score' || mode === 'audit';
   const activePatterns = includeScoreOnly
@@ -230,16 +230,16 @@ export function buildPrompt(options) {
     prompt += `${voice.body}\n\n`;
   }
 
-  if ((mode === 'rewrite' || mode === 'ouroboros') && voiceSample) {
+  if (mode === 'rewrite' && voiceSample) {
     prompt += formatVoiceSampleSection(voiceSample);
   }
 
-  if ((mode === 'rewrite' || mode === 'ouroboros') && persona) {
+  if (mode === 'rewrite' && persona) {
     prompt += formatPersonaDirective(persona, { korean: lang === 'ko' });
     prompt += '\n';
   }
 
-  if (mode === 'score' || mode === 'ouroboros') {
+  if (mode === 'score') {
     prompt += `## Scoring Algorithm\n\n`;
     // Must precede the embedded reference: core/scoring.md hardcodes the
     // default severity scale, so an active override needs an explicit
@@ -262,8 +262,6 @@ export function buildPrompt(options) {
     prompt += buildAuditInstructions();
   } else if (mode === 'score') {
     prompt += buildScoreInstructions(config, lang, text, activePatterns);
-  } else if (mode === 'ouroboros') {
-    prompt += buildOuroborosInstructions(config, structurePacks, lexicalPacks);
   }
 
   // Per-document deterministic measurements sit adjacent to the input, after
@@ -625,7 +623,7 @@ export function isShortText(text) {
 // v3.11 minimal prompt — case-04 hypothesis test.
 // Strips pattern definitions/examples and uses a casual instruction so the
 // model's natural voice prior isn't overridden by analytical framing. Only
-// invoked for rewrite mode; score/audit/diff/ouroboros stay on the strict
+// invoked for rewrite mode; score/audit/diff stay on the strict
 // path because they need precise pattern references.
 function buildMinimalPrompt({ config, patterns, profile, voiceSample, persona = null, text, tone, documentSignals = null, jargon = 'keep', rewriteHeadings = false }) {
   const lang = config.language || 'ko';
@@ -746,40 +744,4 @@ function extractWatchWords(body) {
     out.push(m[1].trim());
   }
   return out;
-}
-
-function buildOuroborosInstructions(config, structurePacks, lexicalPacks) {
-  const ouroboros = config.ouroboros || {};
-  const targetScore = ouroboros['target-score'] ?? 30;
-  const maxIterations = ouroboros['max-iterations'] ?? 3;
-  const plateauThreshold = ouroboros['plateau-threshold'] ?? 10;
-  const fidelityFloor = ouroboros['fidelity-floor'] ?? 70;
-  const mpsFloor = ouroboros['mps-floor'] ?? 70;
-
-  const lang = config.language || 'ko';
-  let inst = `Iterative self-improvement loop:\n\n`;
-  inst += `1. Measure initial AI-likeness score\n`;
-  inst += `2. If score ≤ ${targetScore}, stop immediately\n`;
-  inst += `3. Repeat (max ${maxIterations} iterations):\n`;
-  inst += `   a. Run Phase 1 → Phase 2 → Phase 3 pipeline\n`;
-  inst += `   b. Score the result\n`;
-  inst += `   c. delta = previous - current (positive = improvement)\n`;
-  inst += `   d. Terminate if:\n`;
-  inst += `      - Score ≤ ${targetScore} → target met\n`;
-  inst += `      - delta < 0 → regression → rollback to previous\n`;
-  inst += `      - 0 ≤ delta ≤ ${plateauThreshold} → plateau\n`;
-  inst += `      - iteration ≥ ${maxIterations} → max iterations\n`;
-  inst += `      - fidelity < ${fidelityFloor} → fidelity violation → rollback\n`;
-  inst += `      - MPS < ${mpsFloor} → MPS violation → rollback\n`;
-  inst += `4. Output iteration log and final text\n\n`;
-  // Skip Phase 3 self-audit: each iteration runs through external evaluators
-  // (scoreText, scoreMPS, scoreFidelity) in src/ouroboros.js, so an in-prompt
-  // self-audit duplicates work and inflates token cost.
-  inst += buildRewriteInstructions(structurePacks, lexicalPacks, {
-    includeSelfAudit: false,
-    lang,
-    includeKoreanAdvisory: false,
-  });
-
-  return inst;
 }

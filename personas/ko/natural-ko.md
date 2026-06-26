@@ -84,8 +84,6 @@ target_features:
   comma_per_sentence: { target: 0.7, tolerance: 0.5, weight: 0.08 }
   suffix_class_diversity: { target: 0.42, tolerance: 0.18, weight: 0.08 }
   over_edit_churn: { max: 0.6, weight: 0.08 }
-legacy_profile_bridge:
-  profiles: [default]
 ---
 
 # 담백한 한국어 (AI 티 제거)

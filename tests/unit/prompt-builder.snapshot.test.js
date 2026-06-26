@@ -17,7 +17,6 @@ const CASES = [
   { name: 'diff', file: 'diff.md', mode: 'diff', promptMode: 'strict' },
   { name: 'audit', file: 'audit.md', mode: 'audit', promptMode: 'strict' },
   { name: 'score', file: 'score.md', mode: 'score', promptMode: 'strict' },
-  { name: 'ouroboros', file: 'ouroboros.md', mode: 'ouroboros', promptMode: 'strict' },
 ];
 
 const config = {
@@ -358,21 +357,11 @@ describe('Korean advisory rewrite metadata wording', () => {
   });
 
   it('does not include Korean advisory wording in Korean non-rewrite prompts', () => {
-    for (const mode of ['diff', 'audit', 'score', 'ouroboros']) {
+    for (const mode of ['diff', 'audit', 'score']) {
       const prompt = buildTestPrompt({ language: 'ko', mode, promptMode: 'strict' });
       assert.doesNotMatch(prompt, /koPostEditese\.v1/, mode);
       assert.doesNotMatch(prompt, /advisory editing context only/, mode);
     }
-  });
-
-  it('preserves ouroboros formula and termination language', () => {
-    const prompt = buildTestPrompt({ language: 'en', mode: 'ouroboros', promptMode: 'strict' });
-
-    assert.match(prompt, /If score ≤ 30, stop immediately/);
-    assert.match(prompt, /delta = previous - current \(positive = improvement\)/);
-    assert.match(prompt, /0 ≤ delta ≤ 10 → plateau/);
-    assert.match(prompt, /fidelity < 70 → fidelity violation → rollback/);
-    assert.match(prompt, /MPS < 70 → MPS violation → rollback/);
   });
 });
 

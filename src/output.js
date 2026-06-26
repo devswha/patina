@@ -7,7 +7,7 @@ import { TRANSLATIONESE_RULES } from './features/translationese.js';
  * Format a raw backend result for CLI output mode and requested format.
  *
  * @param {string|object} result Backend result or structured mode result.
- * @param {string} mode Output mode: rewrite, diff, audit, score, or ouroboros.
+ * @param {string} mode Output mode: rewrite, diff, audit, or score.
  * @param {object} [parsed={}] Parsed CLI options.
  * @param {object} [opts={}] Formatting options.
  * @param {object|null} [opts.tone] Tone metadata to append.
@@ -44,10 +44,9 @@ export function formatOutput(result, mode, parsed = {}, opts = {}) {
 
 function renderFormattedBody(result, mode, parsed = {}, opts = {}) {
   let body = renderBody(result);
-  // Only raw rewrite model results emit [BODY] tags at this formatter layer.
-  // Ouroboros strips each iteration's model output before building its synthetic
-  // report; stripping that report again would treat literal [BODY] text in the
-  // final prose as control tags and corrupt the report (#523).
+  // Only raw rewrite model results emit [BODY] tags at this formatter layer, so
+  // only rewrite mode strips them. Other modes pass through untouched, so literal
+  // [BODY] text in their output is never mistaken for a control tag.
   if (mode === 'rewrite') {
     body = stripSelfAudit(body, { logger: opts.logger });
   }
@@ -213,7 +212,7 @@ function normalizeCategoryName(raw) {
   return CATEGORY_ALIASES.get(cleaned) || CATEGORY_ALIASES.get(compact) || compact;
 }
 
-// v3.11: rewrite/diff/ouroboros prompts ask the model to wrap user-facing
+// v3.11: rewrite/diff prompts ask the model to wrap user-facing
 // text in [BODY]...[/BODY] and put audit notes in [SELF_AUDIT]...[/SELF_AUDIT].
 // We extract the body block and drop the audit so callers get clean text.
 // If the model didn't honor the tags (older runs, mocked tests, etc.), we

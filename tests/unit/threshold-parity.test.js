@@ -538,14 +538,6 @@ test('score prompt embedding core/scoring.md states precedence under a severity 
       < overriddenPrompt.indexOf('## 1. Severity Scale'),
     'override note must precede the embedded core/scoring.md reference'
   );
-
-  // ouroboros mode embeds the same reference and needs the same precedence note.
-  const ouroborosPrompt = buildPrompt({
-    ...baseArgs,
-    mode: 'ouroboros',
-    config: { language: 'ko', ouroboros: { 'severity-points': { high: 5, medium: 3, low: 1 } } },
-  });
-  assert.match(ouroborosPrompt, /Severity-scale override active/);
 });
 
 test('scoreText strict-JSON contract derives example max and interpretation enum', async () => {

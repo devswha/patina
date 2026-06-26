@@ -41,7 +41,7 @@ import { pathToFileURL } from 'node:url';
 /**
  * Run the default patina pipeline for an already-parsed CLI invocation:
  * resolve config, provider, and backends, build prompts, then process each
- * input job (rewrite/diff/audit/score/ouroboros, plus the preview page).
+ * input job (rewrite/diff/audit/score, plus the preview page).
  *
  * @param {object} parsed Parsed CLI arguments from parseArgs.
  * @param {object} logger Patina logger for this invocation.

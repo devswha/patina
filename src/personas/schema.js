@@ -269,11 +269,6 @@ export function validatePersona(frontmatter, ctx = {}) {
   const blocks = normalizeBlocks(frontmatter.blocks, id);
   const targetFeatures = normalizeTargetFeatures(frontmatter.target_features, id);
 
-  const bridge = frontmatter.legacy_profile_bridge ?? {};
-  const legacyProfileBridge = {
-    profiles: asStringArray(bridge.profiles),
-  };
-
   return {
     schema: PERSONA_SCHEMA_ID,
     id,
@@ -290,7 +285,6 @@ export function validatePersona(frontmatter, ctx = {}) {
     fidelity,
     blocks,
     targetFeatures,
-    legacyProfileBridge,
   };
 }
 

@@ -298,12 +298,17 @@ function buildMeta(meta) {
     bar.appendChild(el('span', 'sig-after', after == null ? '—' : String(after)));
     b.appendChild(bar); det.appendChild(b); wrap.appendChild(det);
   }
-  if (meta?.diff?.before != null) {
+  if (meta?.diff && (meta.diff.charDelta != null || meta.diff.wordDelta != null)) {
     const det = el('details', 'foldout');
-    det.appendChild(el('summary', null, 'Original / result'));
+    det.appendChild(el('summary', null, 'Length (before → after)'));
     const b = el('div', 'foldout__body');
-    const r1 = el('div', 'diffrow'); r1.appendChild(el('span', 'k', 'Original')); r1.appendChild(el('span', null, String(meta.diff.before)));
-    const r2 = el('div', 'diffrow'); r2.appendChild(el('span', 'k', 'Result')); r2.appendChild(el('span', null, String(meta.diff.after ?? '')));
+    const sign = (d) => (Number(d) > 0 ? `+${d}` : String(d));
+    const r1 = el('div', 'diffrow');
+    r1.appendChild(el('span', 'k', 'Characters'));
+    r1.appendChild(el('span', null, `${meta.diff.beforeChars} → ${meta.diff.afterChars} (${sign(meta.diff.charDelta)})`));
+    const r2 = el('div', 'diffrow');
+    r2.appendChild(el('span', 'k', 'Words'));
+    r2.appendChild(el('span', null, `${meta.diff.beforeWords} → ${meta.diff.afterWords} (${sign(meta.diff.wordDelta)})`));
     b.appendChild(r1); b.appendChild(r2); det.appendChild(b); wrap.appendChild(det);
   }
   return wrap;

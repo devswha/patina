@@ -53,8 +53,6 @@ target_features:
   comma_per_sentence: { target: 0.6, tolerance: 0.4, weight: 0.08 }
   suffix_class_diversity: { target: 0.40, tolerance: 0.16, weight: 0.08 }
   over_edit_churn: { max: 0.40, weight: 0.06 }
-legacy_profile_bridge:
-  profiles: [technical]
 ---
 
 # 기술 설명형

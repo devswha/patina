@@ -140,24 +140,15 @@ test('formatOutput: does not colorize non-diff modes', () => {
   assert.equal(out, raw);
 });
 
-test('formatOutput: preserves synthetic ouroboros reports with literal body tags (#523)', () => {
+test('formatOutput: only rewrite mode strips [BODY]; other modes pass text through (#523)', () => {
   const report = [
-    '## Ouroboros Iteration Log',
-    '',
-    '| Iter | Before | After |',
-    '|---|---|---|',
-    '| 1 | 45 | 18 |',
-    '',
-    'Final score: 18/100 (±10)',
-    '',
-    '## Final Text',
+    '## Report',
     '',
     'A tutorial: wrap output in [BODY] your prose [/BODY] tags so patina parses it.',
   ].join('\n');
 
-  const out = formatOutput(report, 'ouroboros', {});
-  assert.ok(out.includes('## Ouroboros Iteration Log'));
-  assert.ok(out.includes('## Final Text'));
+  const out = formatOutput(report, 'audit', {});
+  assert.ok(out.includes('## Report'));
   assert.ok(out.includes('A tutorial: wrap output in [BODY] your prose [/BODY] tags'));
 });
 

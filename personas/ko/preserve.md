@@ -37,8 +37,6 @@ blocks:
   worldview:
     active: false
 target_features: {}
-legacy_profile_bridge:
-  profiles: []
 ---
 
 # 원문 의미 보존

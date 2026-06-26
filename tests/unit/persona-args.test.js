@@ -42,8 +42,7 @@ test('--persona rejects non-Korean languages at parsed flag level', () => {
   }
 });
 
-test('--persona allows single tone, profile, and voice sample', () => {
+test('--persona allows single tone and profile', () => {
   assertPersonaAllowed(['--persona', 'preserve', '--tone', 'casual', 'draft.md']);
   assertPersonaAllowed(['--persona', 'preserve', '--profile', 'blog', 'draft.md']);
-  assertPersonaAllowed(['--persona', 'preserve', '--voice-sample', 'sample.md', 'draft.md']);
 });

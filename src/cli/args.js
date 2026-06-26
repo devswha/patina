@@ -5,7 +5,7 @@ import { basename } from 'node:path';
 // Options that consume the next token as their value. Drives --name=value
 // expansion and the --suffix flag-collision backstop (#440).
 const VALUE_OPTIONS = new Set([
-  '--lang', '--profile', '--tone', '--voice-sample', '--persona', '--format', '--exit-on',
+  '--lang', '--profile', '--tone', '--persona', '--format', '--exit-on',
   '--suffix', '--outdir', '--model', '--api-key-file', '--base-url',
   '--backend', '--timeout-ms', '--max-concurrency', '--max-retries',
   '--max-failures', '--max-failure-rate', '--provider', '--config',
@@ -95,10 +95,6 @@ export function parseArgs(rawArgs) {
           'Use `--tone auto` to infer register from the text. academic/marketing/narrative/instructional are document genres now — use `--profile <name>`. Comma-separate tones with --preview to compare variants.');
         break;
       }
-      case '--voice-sample':
-        parsed.voiceSample = readOptionValue(args, i, arg);
-        i++;
-        break;
       case '--persona':
         parsed.persona = readOptionValue(args, i, arg);
         i++;
@@ -106,11 +102,11 @@ export function parseArgs(rawArgs) {
       case '--restyle':
         // Removed: patina's default (and only) rewrite depth is the conservative
         // AI-tell cleanup the old `--restyle sentence` did. Voice/register
-        // rewriting moved to --persona/--tone/--voice-sample; content re-planning
+        // rewriting moved to --persona/--tone; content re-planning
         // is out of scope for a meaning-preserving humanizer.
         throw inputError(
           '--restyle was removed',
-          'patina cleans AI tells without changing claims (the old --restyle sentence default). Voice/register changes are --persona / --tone / --voice-sample now; content re-planning is out of scope.',
+          'patina cleans AI tells without changing claims (the old --restyle sentence default). Voice/register changes are --persona / --tone now; content re-planning is out of scope.',
           'Drop --restyle, or use --persona/--tone for a voice change.'
         );
       case '--jargon': {
@@ -726,7 +722,6 @@ LANGUAGE & PROFILE
                           narrative / instructional are genres now — use --profile.)
                           Resolution: --tone > config tone > config profile.
                           Comma list with --preview compares tones as variants
-  --voice-sample <path>   Use 1-3 user paragraphs as style-only voice anchors
   --persona <name>         Korean rewrite persona (default preserve); incompatible
                           with score/audit/diff/preview
   --jargon <policy[,policy]>

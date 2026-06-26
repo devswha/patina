@@ -2,12 +2,12 @@
 import { resolve } from 'node:path';
 import { callLLM as defaultCallLLM } from './api.js';
 import { inputError } from './errors.js';
-import { loadCoreFile, loadPatterns, loadProfile, loadVoiceSample } from './loader.js';
+import { loadCoreFile, loadPatterns, loadProfile } from './loader.js';
 import { formatRewriteBodyForBrowser } from './output.js';
 import { buildPrompt, fenceReferenceText } from './prompt-builder.js';
 import { loadWebConfig, resolveBundleRoot } from './web-config.js';
 
-/** @type {Map<string, { config: object, patterns: object[], profile: object, core: object|null, voiceSample: object|null }>} */
+/** @type {Map<string, { config: object, patterns: object[], profile: object, core: object|null }>} */
 const ASSET_CACHE = new Map();
 
 /** @param {unknown} value */
@@ -23,7 +23,7 @@ function cloneConfig(value) {
  * @param {string} options.lang Language code.
  * @param {string} options.profile Profile name.
  * @param {object} options.config Web-safe baseline config.
- * @returns {{ config: object, patterns: object[], profile: object, core: object|null, voiceSample: object|null }} Loaded assets.
+ * @returns {{ config: object, patterns: object[], profile: object, core: object|null }} Loaded assets.
  * @throws {import('./errors.js').PatinaCliError} When required bundled assets are missing or empty.
  */
 export function loadWebAssets({ repoRoot = resolveBundleRoot(), lang, profile, config }) {
@@ -51,11 +51,7 @@ export function loadWebAssets({ repoRoot = resolveBundleRoot(), lang, profile, c
     }
 
     const core = loadCoreFile(repoRoot, 'voice.md');
-    const voiceSamplePath = typeof config?.['voice-sample'] === 'string' && config['voice-sample'].trim()
-      ? resolve(repoRoot, config['voice-sample'])
-      : null;
-    const voiceSample = voiceSamplePath ? loadVoiceSample(voiceSamplePath) : null;
-    const assets = { config, patterns, profile: loadedProfile, core: core.body ? core : null, voiceSample };
+    const assets = { config, patterns, profile: loadedProfile, core: core.body ? core : null };
     ASSET_CACHE.set(cacheKey, assets);
     return assets;
   } catch (err) {
@@ -87,7 +83,7 @@ function renderHistory(history = []) {
  * @param {object} options
  * @param {object} options.request Validated web rewrite request.
  * @param {object} options.config Web-safe config.
- * @param {{ patterns: object[], profile: object, core: object|null, voiceSample?: object|null }} options.assets Loaded web assets.
+ * @param {{ patterns: object[], profile: object, core: object|null }} options.assets Loaded web assets.
  * @returns {string} Prompt text.
  */
 export function buildWebRewritePrompt({ request, config, assets }) {
@@ -96,7 +92,6 @@ export function buildWebRewritePrompt({ request, config, assets }) {
     patterns: assets.patterns,
     profile: assets.profile,
     voice: assets.core,
-    voiceSample: assets.voiceSample || null,
     scoring: null,
     mode: 'rewrite',
     text: request.text,

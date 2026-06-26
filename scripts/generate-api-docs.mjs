@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { mkdir, writeFile, mkdtemp, rm } from 'node:fs/promises';
+import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
 import jsdoc2md from 'jsdoc-to-markdown';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -67,9 +68,22 @@ console.log(result.interpretation); // mostly human
 \`\`\`
 `;
 
-const data = await jsdoc2md.getTemplateData({
-  files: SOURCES.map((source) => resolve(REPO_ROOT, source)),
-});
+// jsdoc (catharsis) can't parse the TS-flavored JSDoc tsc relies on, so route
+// parsing through a comment-only compat plugin (see lib/jsdoc-ts-compat.cjs).
+const jsdocConfDir = await mkdtemp(join(tmpdir(), 'patina-jsdoc-'));
+const jsdocConfPath = join(jsdocConfDir, 'conf.json');
+await writeFile(jsdocConfPath, JSON.stringify({
+  plugins: [resolve(__dirname, 'lib/jsdoc-ts-compat.cjs')],
+}));
+let data;
+try {
+  data = await jsdoc2md.getTemplateData({
+    files: SOURCES.map((source) => resolve(REPO_ROOT, source)),
+    configure: jsdocConfPath,
+  });
+} finally {
+  await rm(jsdocConfDir, { recursive: true, force: true });
+}
 const generated = await jsdoc2md.render({
   data: data.filter((doclet) => doclet.kind !== 'class' && doclet.kind !== 'constructor'),
 });

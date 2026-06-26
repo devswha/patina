@@ -1,12 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { loadConfig } from '../../src/config.js';
-import { loadPatterns, loadProfile, loadCoreFile, loadVoiceSample, splitFrontmatter } from '../../src/loader.js';
+import { loadPatterns, loadProfile, loadCoreFile, splitFrontmatter } from '../../src/loader.js';
 import { buildPrompt } from '../../src/prompt-builder.js';
 import { fileURLToPath } from 'node:url';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -173,19 +171,6 @@ describe('Core File Loading', () => {
     assert.ok(scoring.body.length > 0);
   });
 
-  it('should load the first 1-3 voice sample paragraphs', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'patina-voice-sample-'));
-    try {
-      const samplePath = resolve(dir, 'sample.md');
-      writeFileSync(samplePath, ['one', 'two', 'three', 'four'].join('\n\n'), 'utf8');
-
-      const sample = loadVoiceSample(samplePath);
-      assert.deepStrictEqual(sample.paragraphs, ['one', 'two', 'three']);
-      assert.strictEqual(sample.truncated, true);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
 });
 
 describe('Frontmatter Splitting', () => {
@@ -247,28 +232,6 @@ describe('Prompt Building', () => {
 
     assert.ok(prompt.includes('Scoring Algorithm'), 'Score prompt should include scoring reference');
     assert.ok(prompt.includes('AI-likeness score'), 'Score prompt should ask for scoring');
-  });
-
-  it('should inject voice samples into rewrite prompts as style-only anchors', () => {
-    const config = loadConfig(resolve(REPO_ROOT, '.patina.default.yaml'));
-    const patterns = loadPatterns(REPO_ROOT, 'en');
-    const prompt = buildPrompt({
-      config,
-      patterns,
-      text: 'This is a test sentence.',
-      mode: 'rewrite',
-      voiceSample: {
-        paragraphs: [
-          'I usually explain the messy part first, then the result.',
-          'Short aside: if the timing feels off, I say that plainly.',
-        ],
-      },
-    });
-
-    assert.ok(prompt.includes('Voice Anchor Examples'));
-    assert.ok(prompt.includes('examples of how this person writes'));
-    assert.ok(prompt.includes('do not import facts'));
-    assert.ok(prompt.includes('I usually explain the messy part first'));
   });
 
   it('should build an audit prompt', () => {

@@ -257,29 +257,3 @@ export function loadVoiceSample(path) {
     truncated: paragraphs.length > selected.length,
   };
 }
-
-// Tone → backbone profile mapping (v3.10, mirrors SKILL.md Phase 1).
-// Returns the *primary* backbone profile name for a resolved tone.
-// Multi-profile tones (e.g. professional → email + formal + legal + medical)
-// expose only the primary here; secondary profiles are documented in SKILL.md
-// and respected via legal/medical fidelity-floor enforcement at Phase 5b.
-const TONE_BACKBONE = {
-  casual: 'blog',                 // primary; social is a secondary backbone
-  professional: 'email',          // primary; formal/legal/medical secondary
-  academic: 'academic',           // primary; technical secondary
-  narrative: 'narrative',
-  marketing: 'marketing',
-  instructional: 'instructional',
-};
-
-/**
- * Map a resolved named tone to its primary backbone profile.
- *
- * @param {string} tone Tone name.
- * @returns {string|null} Profile name, or null when no mapping exists.
- * @example
- * const profile = toneToBackboneProfile('casual'); // blog
- */
-export function toneToBackboneProfile(tone) {
-  return TONE_BACKBONE[tone] || null;
-}

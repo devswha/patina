@@ -91,8 +91,8 @@ export function parseArgs(rawArgs) {
         const t = readOptionValue(args, i, arg);
         i++;
         parsed.tone = parseTransformList(t, arg,
-          ['casual', 'professional', 'academic', 'narrative', 'marketing', 'instructional', 'auto'],
-          'Use `--tone auto` to let patina infer tone from the text. Comma-separate tones with --preview to compare variants.');
+          ['casual', 'professional', 'auto'],
+          'Use `--tone auto` to infer register from the text. academic/marketing/narrative/instructional are document genres now — use `--profile <name>`. Comma-separate tones with --preview to compare variants.');
         break;
       }
       case '--voice-sample':
@@ -722,9 +722,9 @@ LANGUAGE & PROFILE
                           social, email, legal, medical, marketing,
                           narrative, instructional, casual-conversation,
                           code-comment, commit-message, release-notes, namuwiki
-  --tone <name[,name]>    Tone: casual, professional, academic, narrative,
-                          marketing, instructional, auto. Resolution:
-                          --tone > config tone > config profile.
+  --tone <name[,name]>    Register: casual, professional, auto. (academic / marketing /
+                          narrative / instructional are genres now — use --profile.)
+                          Resolution: --tone > config tone > config profile.
                           Comma list with --preview compares tones as variants
   --voice-sample <path>   Use 1-3 user paragraphs as style-only voice anchors
   --persona <name>         Korean rewrite persona (default preserve); incompatible

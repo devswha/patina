@@ -93,7 +93,7 @@ test('minimal rewrite prompt carries a localized directive', () => {
 test('parseArgs accepts comma lists for compare mode and dedupes them', () => {
   assert.equal(parseArgs(['--jargon', 'keep,explain,remove']).jargon, 'keep,explain,remove');
   assert.equal(parseArgs(['--jargon', 'remove, remove ,explain']).jargon, 'remove,explain');
-  assert.equal(parseArgs(['--tone', 'casual,marketing']).tone, 'casual,marketing');
+  assert.equal(parseArgs(['--tone', 'casual,professional']).tone, 'casual,professional');
   assert.throws(() => parseArgs(['--jargon', 'remove,everything']), /unknown jargon policy everything/);
   assert.throws(() => parseArgs(['--jargon', ',,']), /--jargon expects a value/);
 });
@@ -113,7 +113,7 @@ test('buildTransformVariants expands the cross product with labels and a cap', (
 });
 
 test('tone joins the variant cross product with per-tone labels', () => {
-  assert.equal(parseArgs(['--tone', 'casual,marketing']).tone, 'casual,marketing');
+  assert.equal(parseArgs(['--tone', 'casual,professional']).tone, 'casual,professional');
   assert.throws(() => parseArgs(['--tone', 'casual,shouty']), /unknown tone shouty/);
 
   // Single tone: carried on the variant, absent from the label.
@@ -127,24 +127,24 @@ test('tone joins the variant cross product with per-tone labels', () => {
   ]);
   // Tone-only comparison: the tone IS the label.
   assert.deepStrictEqual(
-    buildTransformVariants({ tone: 'casual,marketing' }).map((v) => v.label),
-    ['casual', 'marketing']
+    buildTransformVariants({ tone: 'casual,professional' }).map((v) => v.label),
+    ['casual', 'professional']
   );
   // Tone multiplies into the cap: 2 jargons × 3 tones = 6 > 4.
   assert.throws(
-    () => buildTransformVariants({ jargon: 'keep,remove', tone: 'casual,professional,marketing' }),
+    () => buildTransformVariants({ jargon: 'keep,remove', tone: 'casual,professional,auto' }),
     /too many transform variants/
   );
   // Tone-only list still needs --preview, and the error names --tone.
   assert.throws(
-    () => validateTransformRequest({ tone: 'casual,marketing' }),
+    () => validateTransformRequest({ tone: 'casual,professional' }),
     /comparing transform variants requires --preview/
   );
   assert.throws(
-    () => validateTransformRequest({ tone: 'casual,marketing', preview: true, score: true }),
+    () => validateTransformRequest({ tone: 'casual,professional', preview: true, score: true }),
     /--tone cannot be combined with --score/
   );
-  validateTransformRequest({ tone: 'casual,marketing', preview: true });
+  validateTransformRequest({ tone: 'casual,professional', preview: true });
 });
 
 test('validateTransformRequest gates compare mode on --preview and rejects --ocr', () => {

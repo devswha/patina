@@ -1,13 +1,13 @@
 {
   "name": "patina-humanizer",
-  "version": "5.4.1",
+  "version": "6.0.0",
   "description": "SEO-friendly alias for patina-cli",
   "type": "module",
   "bin": {
     "patina-humanizer": "bin/patina-humanizer.js"
   },
   "dependencies": {
-    "patina-cli": "5.4.1"
+    "patina-cli": "6.0.0"
   },
   "license": "MIT",
   "repository": {

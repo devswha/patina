@@ -154,7 +154,7 @@ See [docs/HARNESS.md](docs/HARNESS.md) for the full measurement-tool map.
 
 Profiles live in `profiles/{name}.md`. Copy an existing one (e.g. `blog.md`) and adjust:
 - `voice-overrides`: which voice dimensions to amplify/suppress
-- `pattern-overrides`: per-language pattern severity adjustments
+- `pattern-overrides`: per-language, per-pattern-id actions. `suppress` is applied deterministically (the pattern is dropped from the prompt for that language); `reduce`/`amplify` are advisory and reinforced only by the prose body.
 
 ## Pattern Staleness
 

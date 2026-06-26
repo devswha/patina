@@ -1,6 +1,7 @@
 import { loadConfig, getRepoRoot, resolveTone } from '../config.js';
 import {
   loadPatterns,
+  applyProfilePatternOverrides,
   loadProfile,
   loadCoreFile,
   loadVoiceSample,
@@ -103,8 +104,12 @@ export async function runDefault(parsed, logger) {
     config.profile = 'default';
   }
 
-  const patterns = loadPatterns(repoRoot, lang, config['skip-patterns'] || []);
   const profile = loadProfile(repoRoot, profileName);
+  const patterns = applyProfilePatternOverrides(
+    loadPatterns(repoRoot, lang, config['skip-patterns'] || []),
+    profile,
+    lang,
+  );
   const voice = loadCoreFile(repoRoot, 'voice.md');
   const scoring = loadCoreFile(repoRoot, 'scoring.md');
   const mode = parsed.diff ? 'diff'

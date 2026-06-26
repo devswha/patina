@@ -101,6 +101,56 @@ export function loadProfile(repoRoot, profileName) {
 }
 
 /**
+ * Strip the individual pattern sections a profile marks `suppress` from loaded
+ * pattern packs, so the rewrite/audit/score prompt never carries those rules.
+ *
+ * `pattern-overrides` in a profile's frontmatter is keyed by language then
+ * numeric pattern id, with action `suppress` or `reduce`. v1 honors `suppress`
+ * deterministically (the LLM cannot flag a rule it was never given); `reduce`
+ * has no weight knob yet and is intentionally left in place. Packs without a
+ * matching override are returned unchanged (same object identity).
+ *
+ * @param {Array<{body: string}>} packs Loaded pattern packs from loadPatterns.
+ * @param {{frontmatter: object|null}|null} profile Loaded profile (loadProfile).
+ * @param {string} lang Active language code.
+ * @returns {Array<{body: string}>} Packs with suppressed sections removed.
+ * @example
+ * const packs = applyProfilePatternOverrides(loadPatterns(root, 'ko'), loadProfile(root, 'legal'), 'ko');
+ */
+export function applyProfilePatternOverrides(packs, profile, lang) {
+  const overrides = profile?.frontmatter?.['pattern-overrides']?.[lang];
+  if (!overrides || typeof overrides !== 'object') return packs;
+  const suppressIds = Object.entries(overrides)
+    .filter(([, action]) => action === 'suppress')
+    .map(([id]) => String(id).trim())
+    .filter(Boolean);
+  if (suppressIds.length === 0) return packs;
+  return packs.map((pack) => {
+    const body = stripPatternSections(pack.body, suppressIds);
+    return body === pack.body ? pack : { ...pack, body };
+  });
+}
+
+// Remove each "### <id>. …" section — heading through the body up to the next
+// "### " heading or end of pack — including the blank/`---` separator that
+// trails a removed section, then normalize the seams left behind.
+function stripPatternSections(body, ids) {
+  const idSet = new Set(ids.map((id) => String(id)));
+  const kept = [];
+  let skipping = false;
+  for (const line of body.split('\n')) {
+    const heading = line.match(/^###\s+(\d+)\./);
+    if (heading) skipping = idSet.has(heading[1]);
+    if (!skipping) kept.push(line);
+  }
+  return kept
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n+---\s*$/g, '')
+    .trim();
+}
+
+/**
  * Load a Markdown file from the core/ directory.
  *
  * @param {string} repoRoot Repository root path.

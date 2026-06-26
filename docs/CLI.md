@@ -132,12 +132,12 @@ With `--preview`, `--jargon` **and `--tone`** accept comma-separated lists; ever
 ```bash
 patina --preview --jargon keep,remove <url>                  # cleanup / de-jargoned side by side
 patina --preview --jargon remove --tone casual,professional <url>  # same policy, two voices
-patina --preview --tone casual,marketing <url>               # tone-only comparison
+patina --preview --tone casual,professional <url>           # register comparison
 ```
 
 - The bar groups variants two-level: one primary button per jargon policy (cleanup/explain/remove) and, when a policy carries multiple options (tone), a secondary chip row that appears only while that policy is selected — click **remove**, then pick **casual** or **professional**. Each policy remembers its own option selection. The switch is CSS-only (chained radio groups), so the snapshot stays scriptless and the page CSP keeps `script-src 'none'`.
 - The score chip shows each variant's deterministic score (`score 23 → cleanup 5 · remove 8`).
-- A comma-listed `--tone` joins the cross product: each variant resolves its own tone (and its backbone profile, unless `--profile` is explicit), exactly as a single run with that `--tone` would. Labels carry the tone when it varies (`remove·casual`).
+- A comma-listed `--tone` joins the cross product: each variant resolves its own register (genre profile is fixed by `--profile`), exactly as a single run with that `--tone` would. Labels carry the tone when it varies (`remove·casual`).
 - A block counts as changed when **any** variant changes it; a variant that left a block alone shows the original text under that button.
 - stdout carries the first variant's prose (pipe-safe); the explanation call is skipped in compare mode to keep the call budget at one per variant.
 - Compare mode needs a page snapshot (URL or `.html`) and is incompatible with `--ocr`; comma lists without `--preview` are an input error.
@@ -180,7 +180,7 @@ URL contract:
 Document context:
 - Rewrites run under a **document brief**: the prompt instructs the model to first identify what the document is, who is speaking to whom, the dominant register, and the recurring domain terms — and to keep that frame for every edit. All rewritten sentences are unified to the document's dominant register (register mixing is itself an AI tell).
 - For Korean text the dominant register is **measured deterministically** (sentence-ending distribution: 합쇼체/해요체/-다체) and injected into the prompt as ground truth; the "patina notes" panel shows the measurement in a *document context* card.
-- `--tone <casual|professional|academic|narrative|marketing|instructional|auto>` works with `--preview` and overrides the target tone; the register-unification rule still applies.
+- `--tone <casual|professional|auto>` works with `--preview` and overrides the target register; the register-unification rule still applies. (academic/marketing/narrative/instructional are genres — use `--profile`.)
 
 File contract (local `.html`):
 - A local `.html`/`.htm` file goes through the same snapshot pipeline as a fetched URL: prose blocks are extracted, rewritten, and swapped back in place. Markdown/text drafts are not accepted as preview input.

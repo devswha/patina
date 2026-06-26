@@ -2,13 +2,12 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
 import { resolveTone } from '../../src/config.js';
-import { toneToBackboneProfile } from '../../src/loader.js';
 import { formatOutput } from '../../src/output.js';
 
 // --- resolveTone ---
 
 test('resolveTone: CLI tone wins over config tone', () => {
-  const r = resolveTone({ cliTone: 'casual', configTone: 'academic', lang: 'ko' });
+  const r = resolveTone({ cliTone: 'casual', configTone: 'professional', lang: 'ko' });
   assert.equal(r.tone, 'casual');
   assert.equal(r.tone_source, 'user');
 });
@@ -65,8 +64,8 @@ test('resolveTone: invalid configTone throws', () => {
   );
 });
 
-test('resolveTone: all 6 named tones accepted', () => {
-  for (const t of ['casual', 'professional', 'academic', 'narrative', 'marketing', 'instructional']) {
+test('resolveTone: register tones accepted', () => {
+  for (const t of ['casual', 'professional']) {
     const r = resolveTone({ cliTone: t, lang: 'en' });
     assert.equal(r.tone, t);
     assert.equal(r.tone_source, 'user');
@@ -74,20 +73,10 @@ test('resolveTone: all 6 named tones accepted', () => {
   }
 });
 
-// --- toneToBackboneProfile ---
-
-test('toneToBackboneProfile: maps known tones to backbone profiles', () => {
-  assert.equal(toneToBackboneProfile('casual'), 'blog');
-  assert.equal(toneToBackboneProfile('professional'), 'email');
-  assert.equal(toneToBackboneProfile('academic'), 'academic');
-  assert.equal(toneToBackboneProfile('narrative'), 'narrative');
-  assert.equal(toneToBackboneProfile('marketing'), 'marketing');
-  assert.equal(toneToBackboneProfile('instructional'), 'instructional');
-});
-
-test('toneToBackboneProfile: unknown tone returns null', () => {
-  assert.equal(toneToBackboneProfile('auto'), null);
-  assert.equal(toneToBackboneProfile('unknown'), null);
+test('resolveTone: removed genre tones are rejected with a --profile hint', () => {
+  for (const t of ['academic', 'narrative', 'marketing', 'instructional']) {
+    assert.throws(() => resolveTone({ cliTone: t, lang: 'en' }), new RegExp(`'${t}' is no longer a tone`));
+  }
 });
 
 // --- formatOutput tone footer ---

@@ -12,6 +12,32 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## 6.0.0 — 2026-06-26
+
+**Voice-control consolidation: `--verify` replaces the ouroboros loop, `--tone` becomes register-only, `--profile` gains real deterministic pattern suppression.**
+
+Semver rationale: major — removes the `--ouroboros` and `--restyle` CLI flags, drops four `--tone` values, and changes `--tone`/`--profile` semantics (tone no longer selects a profile). Existing commands that used the removed flags/tones now error with a migration hint.
+
+### Added
+
+- **`--verify`** — folds a meaning check into the rewrite: scores MPS and fidelity, runs one conservative retry from the original when either is below the floor, and fails closed to the highest-fidelity candidate. Works through any selected backend (HTTP or local CLI) (#552).
+- **Deterministic meaning guard** — every rewrite warns on stderr when source numbers go missing, with no model call (#552).
+- **Profile `pattern-overrides … suppress` is now enforced deterministically** — a profile (e.g. `legal`) that suppresses a genre-appropriate pattern (passive voice, formal vocabulary) drops it from the rewrite/audit/score prompt instead of documenting intent the model may ignore. `reduce`/`amplify` remain advisory (#556).
+
+### Changed (breaking)
+
+- **`--tone` is register-only** (`casual`, `professional`, `auto`). `academic`, `marketing`, `narrative`, and `instructional` were document genres, not register — they move to `--profile <name>` and now error with that hint (#557).
+- **Tone no longer maps to a profile backbone.** `--tone` sets register and `--profile` sets genre as independent axes; picking a tone no longer switches the profile (#557).
+
+### Removed (breaking)
+
+- **`--ouroboros`** — the iterative loop is replaced by `--verify`. The flag errors with a migration hint. (`runOuroboros` survives only as the `quality:rewrite-ab` research baseline; the `/patina` skill keeps its own loop) (#553, #554).
+- **`--restyle`** — voice/register changes are `--persona` / `--tone` / `--voice-sample`; content-level re-planning is out of scope for a meaning-preserving humanizer. `--restyle content` had made the meaning-preservation score advisory, which contradicted patina's core contract (#554).
+
+### Internal
+
+- Removed dead `legacy_profile_bridge` persona metadata and the orphaned `ouroboros` prompt/output mode (no runtime path produced it after #553) (#555).
+
 ## 5.4.1 — 2026-06-26
 
 **Web playground and install reliability fixes: rewrites no longer hang, language is auto-detected, the mobile Korean hero wraps cleanly, and fresh installs get their runtime dependency.**

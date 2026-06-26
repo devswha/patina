@@ -55,7 +55,6 @@ target_features:
   over_edit_churn: { max: 0.40, weight: 0.06 }
 legacy_profile_bridge:
   profiles: [technical]
-  restyle_default: voice
 ---
 
 # 기술 설명형

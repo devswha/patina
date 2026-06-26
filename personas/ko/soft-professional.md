@@ -55,7 +55,6 @@ target_features:
   over_edit_churn: { max: 0.40, weight: 0.06 }
 legacy_profile_bridge:
   profiles: [email, formal]
-  restyle_default: voice
 ---
 
 # 부드러운 업무 문체

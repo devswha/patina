@@ -253,7 +253,7 @@ export function validatePersona(frontmatter, ctx = {}) {
   }
 
   // Depth directive: content depth may relax emphasis/coverage only; it can
-  // NEVER make MPS/fidelity advisory (unlike legacy --restyle content).
+  // NEVER make MPS/fidelity advisory.
   const pdd = frontmatter.persona_depth_directive ?? {};
   if (asBool(pdd.mps_advisory, false) || asBool(pdd.fidelity_advisory, false)) {
     throw fail(
@@ -272,7 +272,6 @@ export function validatePersona(frontmatter, ctx = {}) {
   const bridge = frontmatter.legacy_profile_bridge ?? {};
   const legacyProfileBridge = {
     profiles: asStringArray(bridge.profiles),
-    restyleDefault: typeof bridge.restyle_default === 'string' ? bridge.restyle_default : null,
   };
 
   return {

@@ -14,52 +14,44 @@ const BASE = {
   text: 'Sample body text for prompt construction.',
 };
 
-test('parseArgs accepts --restyle and --jargon values and rejects unknown ones', () => {
-  const parsed = parseArgs(['--restyle', 'content', '--jargon', 'remove', 'draft.md']);
-  assert.equal(parsed.restyle, 'content');
-  assert.equal(parsed.jargon, 'remove');
+test('parseArgs rejects the removed --restyle flag and still parses --jargon', () => {
+  assert.throws(() => parseArgs(['--restyle', 'voice', 'draft.md']), /--restyle was removed/);
+  assert.throws(() => parseArgs(['--restyle', 'sentence']), /--restyle was removed/);
 
-  assert.equal(parseArgs(['--restyle', 'voice']).restyle, 'voice');
-  assert.equal(parseArgs(['--restyle', 'sentence']).restyle, 'sentence');
+  assert.equal(parseArgs(['--jargon', 'remove', 'draft.md']).jargon, 'remove');
   assert.equal(parseArgs(['--jargon', 'explain']).jargon, 'explain');
+  assert.equal(parseArgs(['--jargon', 'keep']).jargon, 'keep');
 
-  assert.throws(() => parseArgs(['--restyle', 'rewrite-everything']), /unknown restyle depth/);
   assert.throws(() => parseArgs(['--jargon', 'simplify']), /unknown jargon policy/);
-  assert.throws(() => parseArgs(['--restyle']), /restyle/i);
+  assert.throws(() => parseArgs(['--jargon']), /jargon/i);
 });
 
 test('validateTransformRequest rejects non-rewrite modes only when a transform is active', () => {
   // Defaults (or explicit defaults) pass with every mode.
   validateTransformRequest({ score: true });
-  validateTransformRequest({ ouroboros: true, restyle: 'sentence', jargon: 'keep' });
+  validateTransformRequest({ jargon: 'keep' });
 
   // Active transform + non-rewrite mode is an input error.
-  assert.throws(() => validateTransformRequest({ restyle: 'voice', score: true }), /--restyle cannot be combined with --score/);
-  assert.throws(() => validateTransformRequest({ restyle: 'content', audit: true }), /--restyle cannot be combined with --audit/);
+  assert.throws(() => validateTransformRequest({ jargon: 'remove', score: true }), /--jargon cannot be combined with --score/);
+  assert.throws(() => validateTransformRequest({ jargon: 'explain', audit: true }), /--jargon cannot be combined with --audit/);
   assert.throws(() => validateTransformRequest({ jargon: 'remove', diff: true }), /--jargon cannot be combined with --diff/);
-  assert.throws(() => validateTransformRequest({ restyle: 'content', ouroboros: true }), /--restyle cannot be combined with --ouroboros/);
 
   // Plain rewrite and preview are the supported surfaces.
-  validateTransformRequest({ restyle: 'content', jargon: 'remove' });
-  validateTransformRequest({ restyle: 'voice', preview: true });
+  validateTransformRequest({ jargon: 'remove' });
+  validateTransformRequest({ jargon: 'explain', preview: true });
 });
 
 test('strict rewrite prompt carries the transformation directive only when opted in', () => {
   const base = buildPrompt({ ...BASE, mode: 'rewrite' });
   assert.ok(!base.includes('Transformation Directive'));
 
-  const explicitDefaults = buildPrompt({ ...BASE, mode: 'rewrite', restyle: 'sentence', jargon: 'keep' });
+  const explicitDefaults = buildPrompt({ ...BASE, mode: 'rewrite', jargon: 'keep' });
   assert.strictEqual(explicitDefaults, base);
 
-  const voice = buildPrompt({ ...BASE, mode: 'rewrite', restyle: 'voice' });
-  assert.ok(voice.includes('Transformation Directive'));
-  assert.ok(voice.includes('Full voice transformation (--restyle voice)'));
-  assert.ok(!voice.includes('Content-level re-planning'));
-
-  const content = buildPrompt({ ...BASE, mode: 'rewrite', restyle: 'content', jargon: 'remove' });
-  assert.ok(content.includes('Content-level re-planning (--restyle content)'));
-  assert.ok(content.includes('Meaning-Preservation Score as advisory'));
-  assert.ok(content.includes('Remove jargon (--jargon remove)'));
+  const remove = buildPrompt({ ...BASE, mode: 'rewrite', jargon: 'remove' });
+  assert.ok(remove.includes('Transformation Directive'));
+  assert.ok(remove.includes('Remove jargon (--jargon remove)'));
+  assert.ok(!remove.includes('Gloss technical terms'));
 
   const explain = buildPrompt({ ...BASE, mode: 'rewrite', jargon: 'explain' });
   assert.ok(explain.includes('Gloss technical terms (--jargon explain)'));
@@ -67,14 +59,14 @@ test('strict rewrite prompt carries the transformation directive only when opted
 
   // The directive must come after the conservative rewrite instructions it
   // overrides, and before the input text.
-  const directiveAt = content.indexOf('Transformation Directive');
-  assert.ok(directiveAt > content.indexOf('## Instructions'));
-  assert.ok(directiveAt < content.indexOf('## Input Text'));
+  const directiveAt = remove.indexOf('Transformation Directive');
+  assert.ok(directiveAt > remove.indexOf('## Instructions'));
+  assert.ok(directiveAt < remove.indexOf('## Input Text'));
 });
 
 test('non-rewrite strict prompts never carry the directive even if options leak through', () => {
   for (const mode of ['score', 'audit', 'diff']) {
-    const prompt = buildPrompt({ ...BASE, mode, restyle: 'content', jargon: 'remove' });
+    const prompt = buildPrompt({ ...BASE, mode, jargon: 'remove' });
     assert.ok(!prompt.includes('Transformation Directive'), `${mode} prompt must not carry the directive`);
   }
 });
@@ -85,39 +77,37 @@ test('minimal rewrite prompt carries a localized directive', () => {
     config: { language: 'ko', profile: 'default' },
     mode: 'rewrite',
     promptMode: 'minimal',
-    restyle: 'content',
     jargon: 'remove',
   });
   assert.ok(ko.includes('변환 지시 (사용자 요청)'));
-  assert.ok(ko.includes('컨텐츠 재기획 (--restyle content)'));
   assert.ok(ko.includes('개발 용어 제거 (--jargon remove)'));
 
-  const en = buildPrompt({ ...BASE, mode: 'rewrite', promptMode: 'minimal', restyle: 'voice' });
+  const en = buildPrompt({ ...BASE, mode: 'rewrite', promptMode: 'minimal', jargon: 'explain' });
   assert.ok(en.includes('Transformation Directive (user-requested)'));
-  assert.ok(en.includes('Full voice transformation (--restyle voice)'));
+  assert.ok(en.includes('Gloss technical terms (--jargon explain)'));
 
   const minimalDefault = buildPrompt({ ...BASE, mode: 'rewrite', promptMode: 'minimal' });
   assert.ok(!minimalDefault.includes('Transformation Directive'));
 });
 
 test('parseArgs accepts comma lists for compare mode and dedupes them', () => {
-  assert.equal(parseArgs(['--restyle', 'sentence,voice,content']).restyle, 'sentence,voice,content');
-  assert.equal(parseArgs(['--restyle', 'voice, voice ,content']).restyle, 'voice,content');
-  assert.equal(parseArgs(['--jargon', 'keep,remove']).jargon, 'keep,remove');
-  assert.throws(() => parseArgs(['--restyle', 'voice,everything']), /unknown restyle depth everything/);
-  assert.throws(() => parseArgs(['--restyle', ',,']), /--restyle expects a value/);
+  assert.equal(parseArgs(['--jargon', 'keep,explain,remove']).jargon, 'keep,explain,remove');
+  assert.equal(parseArgs(['--jargon', 'remove, remove ,explain']).jargon, 'remove,explain');
+  assert.equal(parseArgs(['--tone', 'casual,marketing']).tone, 'casual,marketing');
+  assert.throws(() => parseArgs(['--jargon', 'remove,everything']), /unknown jargon policy everything/);
+  assert.throws(() => parseArgs(['--jargon', ',,']), /--jargon expects a value/);
 });
 
 test('buildTransformVariants expands the cross product with labels and a cap', () => {
-  assert.deepStrictEqual(buildTransformVariants({}), [{ restyle: 'sentence', jargon: 'keep', tone: null, label: 'cleanup' }]);
-  assert.deepStrictEqual(buildTransformVariants({ restyle: 'sentence,voice', jargon: 'remove' }), [
-    { restyle: 'sentence', jargon: 'remove', tone: null, label: 'remove' },
-    { restyle: 'voice', jargon: 'remove', tone: null, label: 'voice+remove' },
+  assert.deepStrictEqual(buildTransformVariants({}), [{ jargon: 'keep', tone: null, label: 'cleanup' }]);
+  assert.deepStrictEqual(buildTransformVariants({ jargon: 'keep,remove' }), [
+    { jargon: 'keep', tone: null, label: 'cleanup' },
+    { jargon: 'remove', tone: null, label: 'remove' },
   ]);
-  assert.equal(buildTransformVariants({ restyle: 'sentence,voice,content' }).length, 3);
-  // 3 restyles × 2 jargons = 6 > cap of 4.
+  assert.equal(buildTransformVariants({ jargon: 'keep,explain,remove' }).length, 3);
+  // 3 jargons × 2 tones = 6 > cap of 4.
   assert.throws(
-    () => buildTransformVariants({ restyle: 'sentence,voice,content', jargon: 'keep,remove' }),
+    () => buildTransformVariants({ jargon: 'keep,explain,remove', tone: 'casual,professional' }),
     /too many transform variants/
   );
 });
@@ -127,22 +117,22 @@ test('tone joins the variant cross product with per-tone labels', () => {
   assert.throws(() => parseArgs(['--tone', 'casual,shouty']), /unknown tone shouty/);
 
   // Single tone: carried on the variant, absent from the label.
-  assert.deepStrictEqual(buildTransformVariants({ restyle: 'voice', tone: 'casual' }), [
-    { restyle: 'voice', jargon: 'keep', tone: 'casual', label: 'voice' },
+  assert.deepStrictEqual(buildTransformVariants({ jargon: 'remove', tone: 'casual' }), [
+    { jargon: 'remove', tone: 'casual', label: 'remove' },
   ]);
   // Multiple tones: tone appears in every label.
-  assert.deepStrictEqual(buildTransformVariants({ restyle: 'voice', tone: 'casual,professional' }), [
-    { restyle: 'voice', jargon: 'keep', tone: 'casual', label: 'voice·casual' },
-    { restyle: 'voice', jargon: 'keep', tone: 'professional', label: 'voice·professional' },
+  assert.deepStrictEqual(buildTransformVariants({ jargon: 'remove', tone: 'casual,professional' }), [
+    { jargon: 'remove', tone: 'casual', label: 'remove·casual' },
+    { jargon: 'remove', tone: 'professional', label: 'remove·professional' },
   ]);
   // Tone-only comparison: the tone IS the label.
   assert.deepStrictEqual(
     buildTransformVariants({ tone: 'casual,marketing' }).map((v) => v.label),
     ['casual', 'marketing']
   );
-  // Tone multiplies into the cap: 2 restyles × 1 jargon × 3 tones = 6 > 4.
+  // Tone multiplies into the cap: 2 jargons × 3 tones = 6 > 4.
   assert.throws(
-    () => buildTransformVariants({ restyle: 'sentence,voice', tone: 'casual,professional,marketing' }),
+    () => buildTransformVariants({ jargon: 'keep,remove', tone: 'casual,professional,marketing' }),
     /too many transform variants/
   );
   // Tone-only list still needs --preview, and the error names --tone.
@@ -159,15 +149,15 @@ test('tone joins the variant cross product with per-tone labels', () => {
 
 test('validateTransformRequest gates compare mode on --preview and rejects --ocr', () => {
   assert.throws(
-    () => validateTransformRequest({ restyle: 'sentence,voice' }),
+    () => validateTransformRequest({ jargon: 'keep,remove' }),
     /comparing transform variants requires --preview/
   );
   assert.throws(
-    () => validateTransformRequest({ restyle: 'sentence,voice', preview: true, ocr: true }),
+    () => validateTransformRequest({ jargon: 'keep,remove', preview: true, ocr: true }),
     /--ocr cannot be combined/
   );
-  validateTransformRequest({ restyle: 'sentence,voice,content', preview: true });
-  validateTransformRequest({ jargon: 'keep,remove', preview: true });
+  validateTransformRequest({ jargon: 'keep,explain,remove', preview: true });
+  validateTransformRequest({ tone: 'casual,marketing', preview: true });
 });
 
 test('buildPreviewHtml bakes variants behind a scriptless two-level radio toggle', () => {
@@ -176,8 +166,8 @@ test('buildPreviewHtml bakes variants behind a scriptless two-level radio toggle
   const start = html.indexOf(text);
   const blocks = [{ tag: 'p', start, end: start + text.length, raw: text, text }];
   const variants = [
-    { label: 'cleanup', restyle: 'sentence', jargon: 'keep', tone: null, rewrites: ['Cleaned up paragraph text, still recognizably the same claim.'] },
-    { label: 'voice+remove', restyle: 'voice', jargon: 'remove', tone: null, rewrites: ['Totally re-voiced paragraph for regular readers, same claim.'] },
+    { label: 'cleanup', jargon: 'keep', tone: null, rewrites: ['Cleaned up paragraph text, still recognizably the same claim.'] },
+    { label: 'remove', jargon: 'remove', tone: null, rewrites: ['De-jargoned paragraph for regular readers, same claim.'] },
   ];
   const { html: out, changedCount } = buildPreviewHtml({
     html, blocks, rewrites: variants[0].rewrites, variants, sourceUrl: 'https://example.com/',
@@ -188,17 +178,17 @@ test('buildPreviewHtml bakes variants behind a scriptless two-level radio toggle
   assert.ok(out.includes('class="ptna-after ptna-v1"'));
   assert.ok(out.includes('class="ptna-after ptna-v2"'));
   assert.ok(out.includes('Cleaned up paragraph text'));
-  assert.ok(out.includes('Totally re-voiced paragraph'));
+  assert.ok(out.includes('De-jargoned paragraph'));
   // Depth radios exist, come after the view radios, first one checked; each
   // depth carries its own (checked) option radio.
   assert.ok(out.includes('id="ptna-d-1" class="ptna-toggle-input" checked'));
   assert.ok(out.includes('id="ptna-d-2"'));
   assert.ok(out.indexOf('id="ptna-d-1"') > out.indexOf('id="ptna-v-both"'));
   assert.ok(out.includes('name="ptna-opt-2" id="ptna-do-2-1" class="ptna-toggle-input" checked'));
-  // Bar depth buttons carry the depth names; single-option depths render no
+  // Bar depth buttons carry the policy names; single-option depths render no
   // option chip row.
   assert.ok(out.includes('for="ptna-d-1">cleanup</label>'));
-  assert.ok(out.includes('for="ptna-d-2">voice</label>'));
+  assert.ok(out.includes('for="ptna-d-2">remove</label>'));
   assert.ok(!out.includes('ptna-opts-1"'));
   // Scriptless show rules chain view radio, depth radio, and option radio.
   assert.ok(out.includes('#ptna-v-rew:checked ~ #ptna-d-2:checked ~ #ptna-do-2-1:checked ~ * .ptna-blk .ptna-after.ptna-v2{display:inline !important;}'));
@@ -207,24 +197,24 @@ test('buildPreviewHtml bakes variants behind a scriptless two-level radio toggle
   assert.ok(!/<script\b/i.test(out));
 });
 
-test('depth buttons reveal per-depth option chips for tone/jargon variants', () => {
+test('depth buttons reveal per-depth option chips for tone variants', () => {
   const text = 'A paragraph long enough that four baked variants can rewrite it differently.';
   const html = `<html><body><p>${text}</p></body></html>`;
   const start = html.indexOf(text);
   const blocks = [{ tag: 'p', start, end: start + text.length, raw: text, text }];
   const variants = [
-    { label: 'voice·casual', restyle: 'voice', jargon: 'keep', tone: 'casual', rewrites: ['Casual voiced paragraph rewritten in a relaxed register for everyone.'] },
-    { label: 'voice·professional', restyle: 'voice', jargon: 'keep', tone: 'professional', rewrites: ['Professionally voiced paragraph rewritten in a formal register.'] },
-    { label: 'content·casual', restyle: 'content', jargon: 'keep', tone: 'casual', rewrites: ['Re-planned casual paragraph with a different structure entirely.'] },
-    { label: 'content·professional', restyle: 'content', jargon: 'keep', tone: 'professional', rewrites: ['Re-planned formal paragraph with a different structure entirely.'] },
+    { label: 'casual', jargon: 'keep', tone: 'casual', rewrites: ['Casual cleaned paragraph rewritten in a relaxed register for everyone.'] },
+    { label: 'professional', jargon: 'keep', tone: 'professional', rewrites: ['Professional cleaned paragraph rewritten in a formal register.'] },
+    { label: 'remove·casual', jargon: 'remove', tone: 'casual', rewrites: ['De-jargoned casual paragraph for a general audience entirely.'] },
+    { label: 'remove·professional', jargon: 'remove', tone: 'professional', rewrites: ['De-jargoned formal paragraph for a general audience entirely.'] },
   ];
   const { html: out } = buildPreviewHtml({
     html, blocks, rewrites: variants[0].rewrites, variants, sourceUrl: 'https://example.com/',
   });
 
   // Two depth buttons, each with a two-chip option row (tone names only).
-  assert.ok(out.includes('for="ptna-d-1">voice</label>'));
-  assert.ok(out.includes('for="ptna-d-2">content</label>'));
+  assert.ok(out.includes('for="ptna-d-1">cleanup</label>'));
+  assert.ok(out.includes('for="ptna-d-2">remove</label>'));
   assert.ok(out.includes('class="ptna-views ptna-opts ptna-opts-1"'));
   assert.ok(out.includes('class="ptna-views ptna-opts ptna-opts-2"'));
   assert.ok(out.includes('for="ptna-do-1-2">professional</label>'));
@@ -232,7 +222,7 @@ test('depth buttons reveal per-depth option chips for tone/jargon variants', () 
   // Option rows are hidden unless their depth is selected.
   assert.ok(out.includes('.ptna-opts{display:none !important;}'));
   assert.ok(out.includes('#ptna-d-2:checked ~ .ptna-bar .ptna-opts-2{display:inline-flex !important;}'));
-  // content·professional is variant 4 under depth 2, option 2.
+  // remove·professional is variant 4 under depth 2, option 2.
   assert.ok(out.includes('#ptna-v-rew:checked ~ #ptna-d-2:checked ~ #ptna-do-2-2:checked ~ * .ptna-blk .ptna-after.ptna-v4{display:inline !important;}'));
   // The diff view maps through the same three-radio chain.
   assert.ok(out.includes('#ptna-v-diff:checked ~ #ptna-d-1:checked ~ #ptna-do-1-2:checked ~ * .ptna-blk .ptna-diff.ptna-v2{display:inline !important;}'));
@@ -248,7 +238,7 @@ test('buildPreviewHtml counts a block as changed when ANY variant changes it', (
     html, blocks, rewrites: [text], sourceUrl: 'https://example.com/',
     variants: [
       { label: 'cleanup', rewrites: [text] },
-      { label: 'voice', rewrites: [text] },
+      { label: 'remove', rewrites: [text] },
     ],
   });
   assert.strictEqual(untouched.changedCount, 0);
@@ -258,7 +248,7 @@ test('buildPreviewHtml counts a block as changed when ANY variant changes it', (
     html, blocks, rewrites: [text], sourceUrl: 'https://example.com/',
     variants: [
       { label: 'cleanup', rewrites: [text] },
-      { label: 'voice', rewrites: ['A fully re-voiced second paragraph from the braver variant.'] },
+      { label: 'remove', rewrites: ['A fully de-jargoned second paragraph from the braver variant.'] },
     ],
   });
   assert.strictEqual(oneTouched.changedCount, 1);
@@ -331,7 +321,7 @@ test('variant compare pages carry one word-diff per variant', () => {
     html, blocks, rewrites: [text], sourceUrl: 'https://example.com/',
     variants: [
       { label: 'cleanup', rewrites: ['A paragraph that two variants will rewrite slightly differently today.'] },
-      { label: 'voice', rewrites: ['Completely re-voiced paragraph, rewritten beyond recognition today.'] },
+      { label: 'remove', rewrites: ['A de-jargoned paragraph, rewritten for a general audience today.'] },
     ],
   });
   assert.ok(out.includes('class="ptna-diff ptna-v1"'));

@@ -145,20 +145,11 @@ test('validateVerifyRequest rejects non-rewrite and preview surfaces', () => {
   }
 });
 
-test('validateVerifyRequest rejects voice/content restyle depths', () => {
-  assert.throws(() => validateVerifyRequest({ verify: true, restyle: 'voice' }), /--verify cannot be combined with --restyle/);
-  assert.throws(() => validateVerifyRequest({ verify: true, restyle: 'content' }), /--verify cannot be combined with --restyle/);
-});
-
 test('validateVerifyRequest allows a plain verified rewrite and is a no-op without --verify', () => {
-  assert.doesNotThrow(() => validateVerifyRequest({ verify: true, restyle: 'sentence' }));
+  assert.doesNotThrow(() => validateVerifyRequest({ verify: true, jargon: 'remove' }));
   assert.doesNotThrow(() => validateVerifyRequest({}));
 });
 
-test('--ouroboros is a deprecated alias that turns on --verify', () => {
-  const parsed = parseArgs(['--ouroboros', 'draft.md']);
-  assert.equal(parsed.verify, true);
-  assert.equal(parsed.ouroboros, true);
-  // The alias must not self-conflict in the verify validator.
-  assert.doesNotThrow(() => validateVerifyRequest(parsed));
+test('the removed --ouroboros flag is rejected at parse time', () => {
+  assert.throws(() => parseArgs(['--ouroboros', 'draft.md']), /--ouroboros was removed/);
 });

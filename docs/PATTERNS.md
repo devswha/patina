@@ -11,7 +11,7 @@ Patina ships 168 pattern entries across four languages. The language-specific re
 
 ## Notes
 
-- Rewrite-capable patterns are applied by `--rewrite`, `--diff`, and `--ouroboros` according to their pack metadata and runtime mode.
+- Rewrite-capable patterns are applied by the rewrite modes (default rewrite, `--verify`, and the skill's `--ouroboros` loop) and `--diff`, according to their pack metadata and runtime mode.
 - Viral-hook patterns are score/audit-only SNS-marketing signals. They affect `--score` and `--audit`, but rewrite modes skip them because the rhetoric may be intentional.
 - Pattern packs are auto-discovered from `patterns/{lang}-*.md`. To add a language or custom pack, follow [CONTRIBUTING.md](../CONTRIBUTING.md) and the frontmatter format used in the existing packs.
 

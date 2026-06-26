@@ -110,7 +110,27 @@ export function getRepoRoot() {
   return REPO_ROOT;
 }
 
-const VALID_TONES = ['casual', 'professional', 'academic', 'narrative', 'marketing', 'instructional', 'auto'];
+const VALID_TONES = ['casual', 'professional', 'auto'];
+// Removed in 6.0: these named document genres, not register. --tone is register
+// only now (casual / professional / auto); the genre lives in --profile.
+const GENRE_TONES_MOVED_TO_PROFILE = ['academic', 'narrative', 'marketing', 'instructional'];
+
+function rejectTone(value, where) {
+  if (GENRE_TONES_MOVED_TO_PROFILE.includes(value)) {
+    throw inputError(
+      `'${value}' is no longer a tone`,
+      `${value} is a document genre, not register. --tone now only sets register: ${VALID_TONES.join(', ')}.`,
+      `Use \`--profile ${value}\` for the genre (optionally with \`--tone casual|professional\`).`
+    );
+  }
+  throw inputError(
+    where === 'config' ? `invalid tone '${value}' in config` : `unknown tone '${value}'`,
+    `${where === 'config' ? "The config 'tone'" : '--tone'} must be one of: ${VALID_TONES.join(', ')}.`,
+    where === 'config'
+      ? "Fix the tone value in your .patina.yaml (or remove it)."
+      : 'Pass a supported tone, or omit --tone for profile-only mode.'
+  );
+}
 
 // Resolve the effective tone from CLI flag and config (v3.10).
 // Priority: cliTone > configTone > unset. zh/ja + explicit tone → fallback path.
@@ -128,23 +148,11 @@ const VALID_TONES = ['casual', 'professional', 'academic', 'narrative', 'marketi
  * const tone = resolveTone({ cliTone: 'casual', lang: 'ko' });
  */
 export function resolveTone({ cliTone, configTone, lang }) {
-  if (cliTone !== undefined && cliTone !== null) {
-    if (!VALID_TONES.includes(cliTone)) {
-      throw inputError(
-        `unknown tone '${cliTone}'`,
-        `--tone must be one of: ${VALID_TONES.join(', ')}.`,
-        'Pass a supported tone, or omit --tone for profile-only mode.'
-      );
-    }
+  if (cliTone !== undefined && cliTone !== null && !VALID_TONES.includes(cliTone)) {
+    rejectTone(cliTone, 'cli');
   }
-  if (configTone !== undefined && configTone !== null && configTone !== '') {
-    if (!VALID_TONES.includes(configTone)) {
-      throw inputError(
-        `invalid tone '${configTone}' in config`,
-        `The config 'tone' must be one of: ${VALID_TONES.join(', ')}.`,
-        'Fix the tone value in your .patina.yaml (or remove it).'
-      );
-    }
+  if (configTone !== undefined && configTone !== null && configTone !== '' && !VALID_TONES.includes(configTone)) {
+    rejectTone(configTone, 'config');
   }
 
   const effective = cliTone || (configTone === '' ? null : configTone) || null;

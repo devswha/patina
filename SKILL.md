@@ -42,7 +42,7 @@ Glob .patina.default.yaml → Read
 - `--ouroboros`: ouroboros 모드 (반복 교정 + 점수 수렴)
 - `--strict`: 옵트인 다중 패스 엄격 모드. rewrite 출력 모드를 사용한다. `--lang`, `--tone`, `--profile`, `--ouroboros`와 함께 사용할 수 있다. `--audit`, `--diff`, `--score`와 함께 사용할 수 없다.
 - `--lang <code>`: 처리 언어 변경 (ko, en, zh, ja). 설정 파일의 `language` 값을 오버라이드한다.
-- `--tone <name>`: 톤 카테고리 지정. 유효값: `casual | professional | academic | narrative | marketing | instructional | auto`. 알 수 없는 값이면 즉시 오류: "Unknown tone '<name>'. Valid tones: casual, professional, academic, narrative, marketing, instructional, auto"
+- `--tone <name>`: 어투(레지스터) 지정. 유효값: `casual | professional | auto`. academic/marketing/narrative/instructional 은 장르이므로 `--profile <name>` 을 쓴다. 알 수 없는 값이면 즉시 오류: "Unknown tone '<name>'. Valid tones: casual, professional, auto"
 - `--batch <files>`: 여러 파일을 한꺼번에 처리 (glob 또는 명시적 경로 목록).
   - `--in-place`: 원본 파일을 교정된 텍스트로 덮어쓴다.
   - `--suffix <ext>`: 결과를 `{원본명}{ext}` 파일로 저장한다 (예: `--suffix .humanized`).
@@ -57,21 +57,14 @@ if resolved_tone == null and config.profile present:
   → "profile-only mode" (4.5b 단계 건너뜀; footer: tone=null, tone_source=profile_only)
 
 if resolved_tone == "auto":
-  → 4.5b 단계에서 휴리스틱 자동 감지 수행
+  → 4.5b 단계에서 휴리스틱 자동 감지 수행 (casual 또는 professional 로 확정)
 
-if resolved_tone in {casual, professional, academic, narrative, marketing, instructional}:
+if resolved_tone in {casual, professional}:
   → tone_source=user, tone_evidence=["user-specified"], tone_confidence=high
-  → 백본 프로필 매핑 (plan §1):
-      casual        → profiles/blog.md (primary) + profiles/social.md (secondary)
-      professional  → profiles/email.md (primary) + profiles/formal.md + profiles/legal.md + profiles/medical.md
-                      (legal/medical 는 fidelity 0.65 강제 — R2)
-      academic      → profiles/academic.md (primary) + profiles/technical.md
-      narrative     → profiles/narrative.md
-      marketing     → profiles/marketing.md
-      instructional → profiles/instructional.md
-  → 매핑된 프로필을 3단계에서 우선 로드한다 (--profile 오버라이드 이후 적용)
+  → 톤은 어투(레지스터)만 정한다. 장르 프로필은 `--profile` 로만 결정되며 톤은 프로필을 고르지 않는다 (백본 매핑 제거, 6.0).
+  → academic / narrative / marketing / instructional 은 더 이상 톤이 아니다 — 그건 장르이므로 `--profile <name>` 을 쓴다.
 
-if --lang in {zh, ja} and resolved_tone in 6-tone set:
+if --lang in {zh, ja} and resolved_tone != null:
   → footer에 경고 추가: tone "<name>" is en/ko-only in v1; falling back to default profile
   → tone_source=unsupported_language_fallback
   → profile-only 경로로 fallback
@@ -165,7 +158,7 @@ Read core/voice.md
 
 ## 4.5b단계: 톤 자동 감지 (Tone Auto-Detection)
 
-**실행 조건:** `resolved_tone == "auto"` 일 때만 실행한다. `resolved_tone`이 null이거나 6개 명시 톤 중 하나이면 이 단계를 건너뛴다.
+**실행 조건:** `resolved_tone == "auto"` 일 때만 실행한다. `resolved_tone`이 null이거나 명시 톤(`casual`/`professional`)이면 이 단계를 건너뛴다.
 
 **짧은 입력 예외:** 텍스트가 단락 < 2 OR 전체 문장 < 2이면 감지를 실행하지 않는다 → `professional` 톤으로 기록, `tone_source: skipped_short_input`, `tone_confidence: low`, `tone_evidence: ["input too short"]`. 이것은 폴백이 아니라 감지 시작 안 함이다 (A5 위배 아님). `skipped_short_input` 은 감지를 **건너뛴** 경우 전용 라벨이며, 감지가 실행되었으나 잔류 규칙으로 떨어진 경우(아래 잔류 규칙 항목)와 명확히 구분된다.
 
@@ -175,18 +168,6 @@ Read core/voice.md
 |------|------------|---------|
 | **어휘: casual-ko** | `진짜`, `솔직히`, `근데`, `뭐`, `어`, `걍`, `좀`, `그냥`, `ㅋ`, `ㅎ` 중 3개 이상 | casual |
 | **어휘: casual-en** | 축약형(`don't`, `I'm`, `it's`, `can't`, `won't`) 2개 이상 OR `honestly`, `actually`, `kinda`, `tbh` 등장 | casual |
-| **어휘: academic-ko** | `따라서`, `즉`, `결론적으로`, `분석`, `연구`, `검토`, `고찰`, `제안한다` 중 2개 이상 | academic |
-| **어휘: academic-en** | `therefore`, `thus`, `furthermore`, `analysis`, `evidence`, `research`, `suggests`, `findings` 중 2개 이상 | academic |
-| **어휘: instructional-ko** | 문장 첫머리 명령형 동사 (`하세요`, `하라`, `입력`, `실행`, `확인`, `설치`) 2개 이상 | instructional |
-| **어휘: instructional-en** | 문장 첫머리 명령형 동사(`Install`, `Run`, `Open`, `Click`, `Enter`, `Check`, `Go to`) 2개 이상 | instructional |
-| **어휘: marketing-ko** | `지금`, `바로`, `놓치지`, `단 하나`, `최고의`, `혜택`, `지금 바로`, `특별한` 중 2개 이상 | marketing |
-| **어휘: marketing-en** | `now`, `today`, `best`, `exclusive`, `limited`, `discover`, `unlock`, `transform` 중 2개 이상 OR CTA 동사(`Buy`, `Sign up`, `Try`) | marketing |
-| **어휘: narrative-ko** | 과거 시제 1인칭(`내가 ~했다`, `나는 ~했다`) 2개 이상 OR `그때`, `기억`, `느꼈다`, `눈물`, `웃음` 등장 | narrative |
-| **어휘: narrative-en** | 과거 시제 1인칭(`I was`, `I had`, `I felt`, `I remember`, `I noticed`) 2개 이상 | narrative |
-| **구조: numbered-list** | 번호 목록 행(`1.`, `2.`, `①` 등) 비율이 전체 줄의 30% 이상 | instructional |
-| **구조: short-impact** | 전체 문장 중 토큰 5개 이하 문장 비율 40% 이상 | marketing |
-| **구조: first-person-ratio** | 1인칭 대명사(`나`, `내`, `I`, `my`, `me`) 포함 문장 비율 50% 이상 | narrative |
-| **구조: no-first-person** | 1인칭 대명사 포함 문장 비율 5% 이하이고 긴 문장(토큰 15개 이상) 비율 40% 이상 | academic |
 
 **잔류(residual) 규칙:** 위 신호 중 어느 버킷도 임계값(1점)을 넘기지 못하면 → `professional` (중립 기본값).
 - `tone_source: auto` (감지는 실행되었음 — short-input 의 `skipped_short_input` 과 구분)
@@ -211,7 +192,7 @@ tone_confidence: high
 </detected-tone>
 ```
 
-감지 완료 후 해당 톤의 백본 프로필(1단계 매핑 표 참조)을 3단계 프로필 로드에 반영한다.
+감지 완료 후 결과 톤(`casual`/`professional`)은 어투(레지스터)에만 반영한다. 톤은 프로필을 고르지 않으며, 장르 프로필은 `--profile` 로만 결정된다 (백본 매핑 제거, 6.0).
 
 ---
 
@@ -656,10 +637,6 @@ FOR each anchor IN anchor_list:
    |------|-------------|-------------|
    | `casual` | 14:suppress, 15:reduce, 17:reduce, 18:amplify, 8:amplify | 14:suppress, 15:reduce, 17:reduce, 7:amplify, 8:amplify |
    | `professional` | 17:suppress, 25:reduce, 28:amplify | 17:suppress, 25:reduce, 28:amplify |
-   | `academic` | 17:suppress, 14:reduce, 8:reduce | 17:suppress, 14:reduce, 8:reduce |
-   | `narrative` | 14:suppress, 15:suppress, 25:suppress, 26:reduce, 27:reduce | 14:suppress, 15:suppress, 25:suppress, 26:reduce, 27:reduce |
-   | `marketing` | 17:allow, 14:reduce, 28:suppress | 17:allow, 14:reduce, 28:suppress |
-   | `instructional` | 25:allow, 15:allow, 22:reduce, 28:suppress, 14:reduce | 25:allow, 15:allow, 22:reduce, 28:suppress, 14:reduce |
 
    **legal/medical fidelity 강제 (R2):** resolved_tone=professional이고 config.profile이 `legal` 또는 `medical`이면, `ouroboros.combined-weights.legal` / `ouroboros.combined-weights.medical` (fidelity 0.65)을 강제 적용한다. 톤 오버라이드가 fidelity 하한을 낮추지 않도록 한다.
 

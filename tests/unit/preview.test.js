@@ -397,13 +397,13 @@ test('resolveStreamedHtml keeps fallbacks whose segment never streamed', () => {
 test('buildContextCardHtml renders register and tone rows, empty without either', () => {
   const card = buildContextCardHtml({
     register: { register: 'polite', label: '해요체', shares: { formal: 0.1, polite: 0.8, plain: 0.1 }, classified: 20, sentenceCount: 22 },
-    tone: { tone: 'marketing', tone_source: 'user' },
+    tone: { tone: 'professional', tone_source: 'user' },
   });
   assert.ok(card.includes('ptna-ctx-card'));
   assert.ok(card.includes('document context'));
   assert.ok(card.includes('해요체'));
   assert.ok(card.includes('합쇼체 10% · 해요체 80% · -다체 10%'));
-  assert.ok(card.includes('marketing'));
+  assert.ok(card.includes('professional'));
 
   assert.strictEqual(buildContextCardHtml({}), '');
   assert.strictEqual(buildContextCardHtml({ tone: { tone: null, tone_source: 'profile_only' } }), '');

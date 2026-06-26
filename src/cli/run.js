@@ -5,7 +5,6 @@ import {
   loadProfile,
   loadCoreFile,
   loadVoiceSample,
-  toneToBackboneProfile,
 } from '../loader.js';
 import { buildPrompt } from '../prompt-builder.js';
 import { buildTransformVariants } from './args.js';
@@ -85,19 +84,7 @@ export async function runDefault(parsed, logger) {
     logger.warn('tone.warning', { message: `[patina] ${toneResolution.warning}` });
   }
 
-  // Backbone profile mapping: explicit user tone (not auto, not fallback) maps to a
-  // backbone profile. CLI --profile still wins on conflict (per Phase 1 spec — backbone
-  // is applied "after --profile override"). Only auto-map when user didn't specify --profile.
   let profileName = config.profile || 'default';
-  if (
-    !parsed.profile &&
-    toneResolution.tone_source === 'user' &&
-    toneResolution.tone &&
-    toneResolution.tone !== 'auto'
-  ) {
-    const backbone = toneToBackboneProfile(toneResolution.tone);
-    if (backbone) profileName = backbone;
-  }
   const resolvedProfileName = resolveProfileForLanguage(profileName, lang, logger);
   if (resolvedProfileName !== profileName) {
     profileName = resolvedProfileName;
@@ -755,24 +742,16 @@ async function runPreviewJob({
           message: `[patina] Rewriting variant ${variant.label} (${index + 1}/${transformVariants.length})…`,
         });
         // Per-variant tone: a comma-listed --tone makes each variant carry its
-        // own tone, so the resolution (and the backbone-profile mapping, when
-        // the user did not pass an explicit --profile) is re-derived here —
-        // mirroring exactly what a single run with that --tone would do.
+        // own register, re-resolved here to mirror a single run with that --tone.
+        // Profile (genre) is fixed across variants — tone no longer remaps it.
         let variantTone = toneResolution;
-        let variantProfile = basePromptInputs.profile;
         if (variant.tone && variant.tone !== firstCliTone) {
           variantTone = resolveTone({ cliTone: variant.tone, configTone: config.tone, lang: previewLang });
           if (variantTone.warning) {
             logger.warn('tone.warning', { message: `[patina] ${variantTone.warning}` });
           }
-          if (!parsed.profile && variantTone.tone_source === 'user' && variantTone.tone && variantTone.tone !== 'auto') {
-            const backbone = toneToBackboneProfile(variantTone.tone);
-            if (backbone) {
-              const loaded = loadProfile(repoRoot, resolveProfileForLanguage(backbone, previewLang, logger));
-              if (loaded.body) variantProfile = loaded;
-            }
-          }
         }
+        const variantProfile = basePromptInputs.profile;
         const variantRaw = await invokeBackendChain({
           ...invokeInputs,
           prompt: buildPrompt({

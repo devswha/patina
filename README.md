@@ -80,7 +80,7 @@ Then run the skill from Claude Code, Codex CLI, Cursor, or OpenCode:
 Useful skill calls:
 
 ```text
-/patina --tone narrative
+/patina --tone professional
 /patina --tone auto --lang en
 ```
 
@@ -193,7 +193,7 @@ version: "5.4.1"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
-tone:                     # casual | professional | academic | narrative | marketing | instructional | auto
+tone:                     # casual | professional | auto  (register; genre = profile)
 ```
 
 Project `.patina.yaml` overrides defaults. Pattern packs are auto-discovered by language prefix. Additive list keys (`blocklist`, `allowlist`, `skip-patterns`) merge; other arrays replace.

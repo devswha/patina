@@ -15,7 +15,6 @@ const base = {
   patterns: [],
   profile: null,
   voice: null,
-  voiceSample: null,
   scoring: null,
   text: '테스트 문장입니다.',
   mode: 'rewrite',

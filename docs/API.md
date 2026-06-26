@@ -100,6 +100,10 @@ throw new PatinaCliError({ what: 'missing input', why: 'No file was provided', a
 <dt><a href="#DEFAULT_HTTP_KEY_ENV_VARS">DEFAULT_HTTP_KEY_ENV_VARS</a> : <code>Array.&lt;string&gt;</code></dt>
 <dd><p>Default key lookup order for the OpenAI-compatible HTTP provider.</p>
 </dd>
+<dt><a href="#MAX_INPUT_BYTES">MAX_INPUT_BYTES</a></dt>
+<dd><p>Maximum size (in bytes) of a single input file patina will read into memory.
+Guards against accidental memory exhaustion on huge or binary inputs (#508 G1).</p>
+</dd>
 <dt><a href="#defaultLogger">defaultLogger</a> : <code>Object</code></dt>
 <dd><p>Default stderr logger used by simple callers.</p>
 </dd>
@@ -125,9 +129,7 @@ contradict, the emitted prompt.</p>
 <p>Single source for <code>interpretScore</code>, the score-prompt interpretation line
 (src/prompt-builder.js buildScoreMathCore), the <code>scoreText</code> strict-JSON
 contract&#39;s interpretation enum, and the core/scoring.md §7 table (gated by
-tests/unit/threshold-parity.test.js). The playground&#39;s <code>scoreBand</code>
-(playground/analyzer.js) intentionally uses coarser UI bands (&lt;=20/&lt;=50) and
-is NOT derived from this constant.</p>
+tests/unit/threshold-parity.test.js).</p>
 </dd>
 <dt><a href="#STRUCTURAL_CLASSIFIER_MIN_FLOOR">STRUCTURAL_CLASSIFIER_MIN_FLOOR</a> : <code>number</code></dt>
 <dd><p>Structural classifier score is a calibrated probability-like document signal.
@@ -139,6 +141,13 @@ and the model verdict is hot; absent model means baseline behavior.</p>
 ## Functions
 
 <dl>
+<dt><a href="#redactErrorText">redactErrorText(text)</a> ⇒ <code>string</code></dt>
+<dd><p>Redact secret-bearing substrings (Bearer tokens, sk- API keys, key= query
+params) from provider error text BEFORE it enters an error message, error
+body, or a log line. The single source of truth for LLM-transport error
+redaction, reused by the streaming helper and the scoring logger so a BYOK
+key echoed in a provider error response is never persisted (AC11).</p>
+</dd>
 <dt><a href="#isRetryable">isRetryable(err)</a> ⇒ <code>boolean</code></dt>
 <dd><p>Decide whether an LLM call failure should be retried.</p>
 </dd>
@@ -165,7 +174,7 @@ and the model verdict is hot; absent model means baseline behavior.</p>
 resolve config, provider, and backends, build prompts, then process each
 input job (rewrite/diff/audit/score, plus the preview page).</p>
 </dd>
-<dt><a href="#createCancellationController">createCancellationController([options])</a> ⇒ <code>Object</code></dt>
+<dt><a href="#resolvePersonaForRun">resolvePersonaForRun([options])</a> ⇒ <code>Object</code></dt>
 <dd><p>Create a SIGINT-aware cancellation controller for long-running CLI operations.</p>
 </dd>
 <dt><a href="#resolveProfileForLanguage">resolveProfileForLanguage(profileName, lang, [logger])</a> ⇒ <code>string</code></dt>
@@ -195,6 +204,13 @@ cannot silently override a pinned config (reproducible CI runs).</p>
 <dt><a href="#getExitCode">getExitCode(err, [fallback])</a> ⇒ <code>number</code></dt>
 <dd><p>Extract a safe process exit code from an error-like value.</p>
 </dd>
+<dt><a href="#getProcessExitCode">getProcessExitCode(err, currentExitCode, [fallback])</a> ⇒ <code>number</code></dt>
+<dd><p>Merge a thrown error&#39;s exit code with an already-recorded process exit code.</p>
+<p>Score gates set <code>process.exitCode = 3</code> without throwing so batch mode can keep
+processing files. If a later non-fatal batch summary error is thrown, the bin
+catch must preserve the stricter existing gate code instead of masking it with
+the runtime error&#39;s <code>1</code> (#526).</p>
+</dd>
 <dt><a href="#loadFile">loadFile(path)</a> ⇒ <code>string</code></dt>
 <dd><p>Read a UTF-8 text file.</p>
 </dd>
@@ -207,17 +223,23 @@ cannot silently override a pinned config (reproducible CI runs).</p>
 <dt><a href="#loadProfile">loadProfile(repoRoot, profileName)</a> ⇒ <code>Object</code></dt>
 <dd><p>Load a named profile from profiles/{profileName}.md after path validation.</p>
 </dd>
+<dt><a href="#applyProfilePatternOverrides">applyProfilePatternOverrides(packs, profile, lang)</a> ⇒ <code>Array.&lt;{body: string}&gt;</code></dt>
+<dd><p>Strip the individual pattern sections a profile marks <code>suppress</code> from loaded
+pattern packs, so the rewrite/audit/score prompt never carries those rules.</p>
+<p><code>pattern-overrides</code> in a profile&#39;s frontmatter is keyed by language then
+numeric pattern id, with action <code>suppress</code> or <code>reduce</code>. v1 honors <code>suppress</code>
+deterministically (the LLM cannot flag a rule it was never given); <code>reduce</code>
+has no weight knob yet and is intentionally left in place. Packs without a
+matching override are returned unchanged (same object identity).</p>
+</dd>
 <dt><a href="#loadCoreFile">loadCoreFile(repoRoot, filename)</a> ⇒ <code>Object</code></dt>
 <dd><p>Load a Markdown file from the core/ directory.</p>
 </dd>
-<dt><a href="#loadInputText">loadInputText(path)</a> ⇒ <code>string</code></dt>
+<dt><a href="#mapInputReadError">mapInputReadError(path, err)</a> ⇒ <code>PatinaCliError</code></dt>
+<dd><p>Map a low-level fs error to a typed inputError that names the file path.</p>
+</dd>
+<dt><a href="#loadInputText">loadInputText(path, [maxBytes])</a> ⇒ <code>string</code></dt>
 <dd><p>Read user input text from disk.</p>
-</dd>
-<dt><a href="#loadVoiceSample">loadVoiceSample(path)</a> ⇒ <code>Object</code></dt>
-<dd><p>Load up to three non-empty paragraphs from a voice sample file.</p>
-</dd>
-<dt><a href="#toneToBackboneProfile">toneToBackboneProfile(tone)</a> ⇒ <code>string</code> | <code>null</code></dt>
-<dd><p>Map a resolved named tone to its primary backbone profile.</p>
 </dd>
 <dt><a href="#createLogger">createLogger([options])</a> ⇒ <code>Object</code></dt>
 <dd><p>Create a small stderr logger with text and progress modes.</p>
@@ -239,11 +261,11 @@ cannot silently override a pinned config (reproducible CI runs).</p>
 <dt><a href="#extractOverallScore">extractOverallScore(result, text, options)</a> ⇒ <code>number</code> | <code>null</code></dt>
 <dd><p>Shared overall-score traversal: structured result field → embedded JSON →
 markdown score table → inline &quot;overall: N&quot; text. Used by extractOverall
-above and by the CLI score gate (src/cli/score-gate.js). The two call sites
-intentionally keep different numeric coercers (toFiniteNumber here strips
-non-numeric characters before Number(); the score gate&#39;s toFiniteScore
-rejects anything that is not already a plain number), so the coercer is a
-parameter rather than shared.</p>
+above and by the CLI score gate (src/cli/score-gate.js). Both call sites now
+use strict numeric coercers (toFiniteNumber here, toFiniteScore in the score
+gate) that accept a plain numeric token and reject anything else (#505); the
+coercer stays a parameter so each site keeps its own small differences (e.g.
+the gate&#39;s empty-string handling).</p>
 </dd>
 <dt><a href="#parseFirstJson">parseFirstJson(text)</a> ⇒ <code>object</code> | <code>null</code></dt>
 <dd><p>Parse the first JSON value found in raw text, a fenced code block, or a brace span.</p>
@@ -254,6 +276,13 @@ model-dependent (a weak model silently drops 번역투/calques); these signals a
 computed deterministically so they appear regardless of which model ran. ko
 translationese rules are listed even below the hot-density gate, because audit
 is a hint surface, not a verdict.</p>
+</dd>
+<dt><a href="#fenceReferenceText">fenceReferenceText(text, [options])</a> ⇒ <code>string</code></dt>
+<dd><p>Fence an untrusted REFERENCE block (not the rewrite target) as treat-as-data,
+with a trusted label describing its role. Used by the web refine path so the
+original anchor and conversation history are carried as data the trusted
+directive can refer to, never as instructions. Additive helper: buildPrompt&#39;s
+own output is unchanged.</p>
 </dd>
 <dt><a href="#resolveSeverityPoints">resolveSeverityPoints([config])</a> ⇒ <code>Object</code></dt>
 <dd><p>Resolve the effective per-detection severity points for a config.</p>
@@ -378,6 +407,13 @@ Default key lookup order for the OpenAI-compatible HTTP provider.
 ```js
 const first = DEFAULT_HTTP_KEY_ENV_VARS[0]; // PATINA_API_KEY
 ```
+<a name="MAX_INPUT_BYTES"></a>
+
+## MAX\_INPUT\_BYTES
+Maximum size (in bytes) of a single input file patina will read into memory.
+Guards against accidental memory exhaustion on huge or binary inputs (#508 G1).
+
+**Kind**: global constant
 <a name="defaultLogger"></a>
 
 ## defaultLogger : <code>Object</code>
@@ -431,9 +467,7 @@ AI-likeness interpretation bands (upper bound inclusive, ascending).
 Single source for `interpretScore`, the score-prompt interpretation line
 (src/prompt-builder.js buildScoreMathCore), the `scoreText` strict-JSON
 contract's interpretation enum, and the core/scoring.md §7 table (gated by
-tests/unit/threshold-parity.test.js). The playground's `scoreBand`
-(playground/analyzer.js) intentionally uses coarser UI bands (<=20/<=50) and
-is NOT derived from this constant.
+tests/unit/threshold-parity.test.js).
 
 **Kind**: global constant
 <a name="STRUCTURAL_CLASSIFIER_MIN_FLOOR"></a>
@@ -444,6 +478,21 @@ It only affects the deterministic score when a private local model is loaded
 and the model verdict is hot; absent model means baseline behavior.
 
 **Kind**: global constant
+<a name="redactErrorText"></a>
+
+## redactErrorText(text) ⇒ <code>string</code>
+Redact secret-bearing substrings (Bearer tokens, sk- API keys, key= query
+params) from provider error text BEFORE it enters an error message, error
+body, or a log line. The single source of truth for LLM-transport error
+redaction, reused by the streaming helper and the scoring logger so a BYOK
+key echoed in a provider error response is never persisted (AC11).
+
+**Kind**: global function
+
+| Param | Type |
+| --- | --- |
+| text | <code>unknown</code> |
+
 <a name="isRetryable"></a>
 
 ## isRetryable(err) ⇒ <code>boolean</code>
@@ -504,6 +553,7 @@ Call an OpenAI-compatible chat completions endpoint with retries, timeout, and a
 | [options.model] | <code>string</code> |  | Model id to request. Defaults to gpt-5.5. |
 | [options.temperature] | <code>number</code> | <code>DEFAULT_TEMPERATURE</code> | Sampling temperature. |
 | [options.seed] | <code>number</code> \| <code>string</code> |  | Optional deterministic seed forwarded to the provider. |
+| [options.responseFormat] | <code>object</code> |  | Optional OpenAI-compatible structured-output request field (sent as response_format) when provided. |
 | [options.timeout] | <code>number</code> | <code>120000</code> | Per-attempt timeout in milliseconds. |
 | [options.maxRetries] | <code>number</code> | <code>2</code> | Retry count after the first attempt. |
 | [options.deadline] | <code>number</code> |  | Absolute epoch-millisecond deadline for all attempts. |
@@ -615,9 +665,9 @@ input job (rewrite/diff/audit/score, plus the preview page).
 | parsed | <code>object</code> | Parsed CLI arguments from parseArgs. |
 | logger | <code>object</code> | Patina logger for this invocation. |
 
-<a name="createCancellationController"></a>
+<a name="resolvePersonaForRun"></a>
 
-## createCancellationController([options]) ⇒ <code>Object</code>
+## resolvePersonaForRun([options]) ⇒ <code>Object</code>
 Create a SIGINT-aware cancellation controller for long-running CLI operations.
 
 **Kind**: global function
@@ -782,6 +832,25 @@ Extract a safe process exit code from an error-like value.
 ```js
 const code = getExitCode(inputError('bad', 'why', 'fix')); // 2
 ```
+<a name="getProcessExitCode"></a>
+
+## getProcessExitCode(err, currentExitCode, [fallback]) ⇒ <code>number</code>
+Merge a thrown error's exit code with an already-recorded process exit code.
+
+Score gates set `process.exitCode = 3` without throwing so batch mode can keep
+processing files. If a later non-fatal batch summary error is thrown, the bin
+catch must preserve the stricter existing gate code instead of masking it with
+the runtime error's `1` (#526).
+
+**Kind**: global function
+**Returns**: <code>number</code> - Positive integer process exit code.
+
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| err | <code>unknown</code> |  | Error-like value. |
+| currentExitCode | <code>number</code> \| <code>string</code> \| <code>undefined</code> |  | Current process exit code. |
+| [fallback] | <code>number</code> | <code>1</code> | Fallback for the thrown error. |
+
 <a name="loadFile"></a>
 
 ## loadFile(path) ⇒ <code>string</code>
@@ -865,6 +934,31 @@ Load a named profile from profiles/{profileName}.md after path validation.
 ```js
 const profile = loadProfile(getRepoRoot(), 'default');
 ```
+<a name="applyProfilePatternOverrides"></a>
+
+## applyProfilePatternOverrides(packs, profile, lang) ⇒ <code>Array.&lt;{body: string}&gt;</code>
+Strip the individual pattern sections a profile marks `suppress` from loaded
+pattern packs, so the rewrite/audit/score prompt never carries those rules.
+
+`pattern-overrides` in a profile's frontmatter is keyed by language then
+numeric pattern id, with action `suppress` or `reduce`. v1 honors `suppress`
+deterministically (the LLM cannot flag a rule it was never given); `reduce`
+has no weight knob yet and is intentionally left in place. Packs without a
+matching override are returned unchanged (same object identity).
+
+**Kind**: global function
+**Returns**: <code>Array.&lt;{body: string}&gt;</code> - Packs with suppressed sections removed.
+
+| Param | Type | Description |
+| --- | --- | --- |
+| packs | <code>Array.&lt;{body: string}&gt;</code> | Loaded pattern packs from loadPatterns. |
+| profile | <code>Object</code> \| <code>null</code> | Loaded profile (loadProfile). |
+| lang | <code>string</code> | Active language code. |
+
+**Example**
+```js
+const packs = applyProfilePatternOverrides(loadPatterns(root, 'ko'), loadProfile(root, 'legal'), 'ko');
+```
 <a name="loadCoreFile"></a>
 
 ## loadCoreFile(repoRoot, filename) ⇒ <code>Object</code>
@@ -886,61 +980,39 @@ Load a Markdown file from the core/ directory.
 ```js
 const scoring = loadCoreFile(getRepoRoot(), 'scoring.md');
 ```
+<a name="mapInputReadError"></a>
+
+## mapInputReadError(path, err) ⇒ <code>PatinaCliError</code>
+Map a low-level fs error to a typed inputError that names the file path.
+
+**Kind**: global function
+**Returns**: <code>PatinaCliError</code> - Typed input error (exit code 2).
+
+| Param | Type | Description |
+| --- | --- | --- |
+| path | <code>string</code> | File path that failed to read. |
+| err | <code>NodeJS.ErrnoException</code> | Underlying fs error. |
+
 <a name="loadInputText"></a>
 
-## loadInputText(path) ⇒ <code>string</code>
+## loadInputText(path, [maxBytes]) ⇒ <code>string</code>
 Read user input text from disk.
 
 **Kind**: global function
 **Returns**: <code>string</code> - UTF-8 input text.
 **Throws**:
 
-- <code>Error</code> When the file cannot be read.
+- <code>PatinaCliError</code> Typed inputError (exit 2) when the file is missing, unreadable, a directory, or over the size cap.
 
 
-| Param | Type | Description |
-| --- | --- | --- |
-| path | <code>string</code> | Input file path. |
+| Param | Type | Default | Description |
+| --- | --- | --- | --- |
+| path | <code>string</code> |  | Input file path. |
+| [maxBytes] | <code>number</code> | <code>MAX_INPUT_BYTES</code> | Reject files larger than this many bytes. |
 
 **Example**
 ```js
 const text = loadInputText('draft.md');
-```
-<a name="loadVoiceSample"></a>
-
-## loadVoiceSample(path) ⇒ <code>Object</code>
-Load up to three non-empty paragraphs from a voice sample file.
-
-**Kind**: global function
-**Returns**: <code>Object</code> - Voice sample payload.
-**Throws**:
-
-- <code>Error</code> When the file is unreadable or has no non-empty paragraphs.
-
-
-| Param | Type | Description |
-| --- | --- | --- |
-| path | <code>string</code> | Voice sample file path. |
-
-**Example**
-```js
-const sample = loadVoiceSample('voice.md');
-```
-<a name="toneToBackboneProfile"></a>
-
-## toneToBackboneProfile(tone) ⇒ <code>string</code> \| <code>null</code>
-Map a resolved named tone to its primary backbone profile.
-
-**Kind**: global function
-**Returns**: <code>string</code> \| <code>null</code> - Profile name, or null when no mapping exists.
-
-| Param | Type | Description |
-| --- | --- | --- |
-| tone | <code>string</code> | Tone name. |
-
-**Example**
-```js
-const profile = toneToBackboneProfile('casual'); // blog
 ```
 <a name="createLogger"></a>
 
@@ -981,7 +1053,6 @@ Run the iterative Ouroboros rewrite-and-score loop.
 | options.patterns | <code>Array.&lt;object&gt;</code> | Loaded pattern packs. |
 | options.profile | <code>object</code> \| <code>null</code> | Parsed profile. |
 | options.voice | <code>object</code> \| <code>null</code> | Parsed voice guide. |
-| [options.voiceSample] | <code>object</code> \| <code>null</code> | Optional voice sample payload. |
 | options.scoring | <code>object</code> \| <code>null</code> | Parsed scoring guide. |
 | options.text | <code>string</code> | Source text to improve. |
 | [options.apiKey] | <code>string</code> | Provider API key. |
@@ -1021,6 +1092,7 @@ Format a raw backend result for CLI output mode and requested format.
 | [opts.env] | <code>object</code> |  | Environment map for color decisions. |
 | [opts.stdout] | <code>object</code> |  | Stdout-like stream for color decisions. |
 | [opts.auditBackstop] | <code>string</code> |  | Deterministic audit-mode section to append before the tone footer. |
+| [opts.persona] | <code>object</code> \| <code>null</code> |  | Persona metadata to append. |
 
 **Example**
 ```js
@@ -1080,11 +1152,11 @@ const clean = stripSelfAudit('[BODY]Hello[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]');
 ## extractOverallScore(result, text, options) ⇒ <code>number</code> \| <code>null</code>
 Shared overall-score traversal: structured result field → embedded JSON →
 markdown score table → inline "overall: N" text. Used by extractOverall
-above and by the CLI score gate (src/cli/score-gate.js). The two call sites
-intentionally keep different numeric coercers (toFiniteNumber here strips
-non-numeric characters before Number(); the score gate's toFiniteScore
-rejects anything that is not already a plain number), so the coercer is a
-parameter rather than shared.
+above and by the CLI score gate (src/cli/score-gate.js). Both call sites now
+use strict numeric coercers (toFiniteNumber here, toFiniteScore in the score
+gate) that accept a plain numeric token and reject anything else (#505); the
+coercer stays a parameter so each site keeps its own small differences (e.g.
+the gate's empty-string handling).
 
 **Kind**: global function
 **Returns**: <code>number</code> \| <code>null</code> - Extracted overall score, or null when none is found.
@@ -1131,6 +1203,7 @@ is a hint surface, not a verdict.
 | [opts.lang] | <code>string</code> |  |
 | [opts.repoRoot] | <code>string</code> |  |
 | [opts.config] | <code>object</code> |  |
+| [opts.logger] | <code>Object</code> | Optional logger; the structural   model load degrades to a warning here instead of aborting the audit (#443). |
 
 
 * [buildDeterministicAuditBackstop(text, [opts])](#buildDeterministicAuditBackstop) ⇒ <code>string</code>
@@ -1145,6 +1218,22 @@ is a hint surface, not a verdict.
 
 ### buildDeterministicAuditBackstop~translationeseRows : <code>Array.&lt;{signal:string, location:string, hint:string}&gt;</code>
 **Kind**: inner constant of [<code>buildDeterministicAuditBackstop</code>](#buildDeterministicAuditBackstop)
+<a name="fenceReferenceText"></a>
+
+## fenceReferenceText(text, [options]) ⇒ <code>string</code>
+Fence an untrusted REFERENCE block (not the rewrite target) as treat-as-data,
+with a trusted label describing its role. Used by the web refine path so the
+original anchor and conversation history are carried as data the trusted
+directive can refer to, never as instructions. Additive helper: buildPrompt's
+own output is unchanged.
+
+**Kind**: global function
+
+| Param | Type | Description |
+| --- | --- | --- |
+| text | <code>string</code> | Reference content (untrusted). |
+| [options] | <code>Object</code> |  |
+
 <a name="resolveSeverityPoints"></a>
 
 ## resolveSeverityPoints([config]) ⇒ <code>Object</code>
@@ -1183,12 +1272,15 @@ Build the LLM prompt for rewrite, diff, audit, or score mode.
 | options.patterns | <code>Array.&lt;object&gt;</code> |  | Loaded pattern packs. |
 | options.profile | <code>object</code> \| <code>null</code> |  | Parsed profile document. |
 | options.voice | <code>object</code> \| <code>null</code> |  | Parsed voice guide. |
-| [options.voiceSample] | <code>object</code> \| <code>null</code> |  | Optional voice sample payload. |
+| [options.persona] | <code>object</code> \| <code>null</code> |  | Optional validated persona payload. |
 | options.scoring | <code>object</code> \| <code>null</code> |  | Parsed scoring guide. |
 | options.text | <code>string</code> |  | Input text. |
 | [options.mode] | <code>string</code> | <code>&quot;rewrite&quot;</code> | Output mode. |
 | [options.tone] | <code>object</code> \| <code>null</code> | <code></code> | Tone resolution metadata. |
 | [options.documentSignals] | <code>Array.&lt;string&gt;</code> \| <code>null</code> | <code></code> | Deterministic document   measurements (e.g. dominant Korean register) injected into rewrite prompts   as ground truth for the Phase 0 document brief. |
+| [options.includeSelfAudit] | <code>boolean</code> | <code>true</code> | Include the Phase 3 self-audit   in rewrite instructions; the rewrite loop passes false to skip the token cost (#444). |
+| [options.jargon] | <code>string</code> | <code>&quot;keep&quot;</code> | Technical-term policy   (keep|explain|remove); non-default values add the opt-in   transformation directive to rewrite prompts. |
+| [options.rewriteHeadings] | <code>boolean</code> | <code>false</code> | When false (default),   instruct the model to preserve Markdown ATX heading lines verbatim as   structure (#473); true opts back into rewording/adding/removing them. |
 
 **Example**
 ```js
@@ -1304,6 +1396,7 @@ Score text for AI-likeness using an LLM JSON scorer plus deterministic shadow si
 | [options.logger] | <code>object</code> | patina logger. |
 | [options.now] | <code>function</code> | Clock returning epoch milliseconds. |
 | [options.sleep] | <code>function</code> | Sleep helper for tests. |
+| [options.responseFormat] | <code>object</code> | Opt-in OpenAI-compatible structured-output request field forwarded to callLLM. |
 
 **Example**
 ```js
@@ -1397,6 +1490,7 @@ Score meaning preservation between original and rewritten text.
 | [options.logger] | <code>object</code> | patina logger. |
 | [options.now] | <code>function</code> | Clock returning epoch milliseconds. |
 | [options.sleep] | <code>function</code> | Sleep helper for tests. |
+| [options.responseFormat] | <code>object</code> | Opt-in OpenAI-compatible structured-output request field forwarded to callLLM. |
 
 **Example**
 ```js
@@ -1462,6 +1556,7 @@ Score fidelity between original and rewritten text using length plus LLM criteri
 | [options.logger] | <code>object</code> | patina logger. |
 | [options.now] | <code>function</code> | Clock returning epoch milliseconds. |
 | [options.sleep] | <code>function</code> | Sleep helper for tests. |
+| [options.responseFormat] | <code>object</code> | Opt-in OpenAI-compatible structured-output request field forwarded to callLLM. |
 
 **Example**
 ```js

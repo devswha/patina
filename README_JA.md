@@ -225,8 +225,6 @@ rewrite モードでは、モデルは `[BODY]`/`[/BODY]` ブロックを囲む 
 
 `--score` 実行時は、モデルが出力した Weight 列を設定の `category-weights` と照合します。モデルが存在しないカテゴリ（例: `discord`）を作ったり、別の数値に置き換えたりした場合、stderr に `[patina]` 警告が出ます。これは観測用であり、weight check 自体はスコアを変更しません。`src/features/*` からの deterministic shadow score も記録され、LLM スコアと 20 点以上ずれた場合は警告し、gate には保守的な方の値を使います。
 
-`--voice-sample <path>` または config の `voice-sample: <path>` を使うと、自分が書いた 1〜3 段落を rewrite のアンカーにできます。Profile と tone は引き続き目標 register を決め、sample はリズム、具体性、視点、文の質感だけを参照します。prompt は sample facts の取り込みを明示的に禁止します。
-
 ## トーン
 
 `--tone` はパターン書き換えの上に重ねる、名前付きの声色軸です。優先順位：`--tone` CLI > `tone:` 設定 > `profile:` 設定。

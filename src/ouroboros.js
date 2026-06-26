@@ -12,7 +12,6 @@ import { createLogger } from './logger.js';
  * @param {object[]} options.patterns Loaded pattern packs.
  * @param {object|null} options.profile Parsed profile.
  * @param {object|null} options.voice Parsed voice guide.
- * @param {object|null} [options.voiceSample] Optional voice sample payload.
  * @param {object|null} options.scoring Parsed scoring guide.
  * @param {string} options.text Source text to improve.
  * @param {string} [options.apiKey] Provider API key.
@@ -34,7 +33,6 @@ export async function runOuroboros({
   patterns,
   profile,
   voice,
-  voiceSample,
   scoring,
   text,
   apiKey,
@@ -118,7 +116,6 @@ export async function runOuroboros({
       patterns,
       profile,
       voice,
-      voiceSample,
       scoring,
       text: currentText,
       mode: 'rewrite',

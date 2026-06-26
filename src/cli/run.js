@@ -4,7 +4,6 @@ import {
   applyProfilePatternOverrides,
   loadProfile,
   loadCoreFile,
-  loadVoiceSample,
 } from '../loader.js';
 import { buildPrompt } from '../prompt-builder.js';
 import { buildTransformVariants } from './args.js';
@@ -105,18 +104,6 @@ export async function runDefault(parsed, logger) {
     : 'rewrite';
   const persona = resolvePersonaForRun({ parsed, config, mode, lang, repoRoot });
 
-  const voiceSamplePath = mode === 'rewrite'
-    ? (parsed.voiceSample ?? config['voice-sample'])
-    : null;
-  const voiceSample = voiceSamplePath
-    ? loadVoiceSample(resolve(process.cwd(), voiceSamplePath))
-    : null;
-  if (voiceSample?.truncated) {
-    logger.warn('voice_sample.truncated', {
-      message: '[patina] voice sample has more than 3 paragraphs; using the first 3 as anchors',
-    });
-  }
-
   const inputTexts = parsed.preview ? [] : await loadInputs(parsed, logger);
   const timeoutMs = parsed.timeoutMs ?? DEFAULT_BACKEND_TIMEOUT_MS;
   const backendSelection = selectBackendChain({
@@ -170,7 +157,6 @@ export async function runDefault(parsed, logger) {
       patterns,
       profile,
       voice,
-      voiceSample,
       scoring,
       toneResolution,
       promptMode,
@@ -194,7 +180,6 @@ export async function runDefault(parsed, logger) {
       patterns,
       profile: profile.body ? profile : null,
       voice: voice.body ? voice : null,
-      voiceSample,
       scoring: scoring.body ? scoring : null,
       text,
       mode,
@@ -274,7 +259,6 @@ export async function runDefault(parsed, logger) {
               patterns,
               profile: profile.body ? profile : null,
               voice: voice.body ? voice : null,
-              voiceSample,
               scoring: scoring.body ? scoring : null,
               apiKey: resolved.apiKey,
               baseURL: resolved.baseURL,
@@ -574,7 +558,6 @@ async function runPreviewJob({
   patterns,
   profile,
   voice,
-  voiceSample,
   scoring,
   toneResolution,
   promptMode,
@@ -662,7 +645,6 @@ async function runPreviewJob({
       patterns,
       profile: profile.body ? profile : null,
       voice: voice.body ? voice : null,
-      voiceSample,
       scoring: scoring.body ? scoring : null,
       tone: toneResolution,
       promptMode,

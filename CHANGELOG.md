@@ -32,7 +32,8 @@ Semver rationale: major — removes the `--ouroboros` and `--restyle` CLI flags,
 ### Removed (breaking)
 
 - **`--ouroboros`** — the iterative loop is replaced by `--verify`. The flag errors with a migration hint. (`runOuroboros` survives only as the `quality:rewrite-ab` research baseline; the `/patina` skill keeps its own loop) (#553, #554).
-- **`--restyle`** — voice/register changes are `--persona` / `--tone` / `--voice-sample`; content-level re-planning is out of scope for a meaning-preserving humanizer. `--restyle content` had made the meaning-preservation score advisory, which contradicted patina's core contract (#554).
+- **`--restyle`** — voice/register changes are `--persona` / `--tone`; content-level re-planning is out of scope for a meaning-preserving humanizer. `--restyle content` had made the meaning-preservation score advisory, which contradicted patina's core contract (#554).
+- **`--voice-sample` / config `voice-sample:`** — the per-run style anchor is removed. Voice and register are controlled by `--persona`, `--tone`, and `--profile`; a dedicated custom persona/genre/tone authoring surface will replace it.
 
 ### Internal
 

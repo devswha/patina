@@ -8,7 +8,6 @@ const BASE = {
   patterns: [],
   profile: null,
   voice: null,
-  voiceSample: null,
   scoring: null,
   text: '본문 텍스트입니다.',
   mode: 'rewrite',

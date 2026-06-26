@@ -44,7 +44,6 @@ patina --lang en --score --exit-on 30 draft.md
 - Score JSON may include `scores.llm`, `scores.deterministic`, and `scores.preference` when deterministic shadow scoring is available.
 - `mps` is populated when the underlying mode emits it.
 - `gateResult` is `null` unless `--exit-on` is used.
-- `--voice-sample <path>` or config `voice-sample: <path>` injects the first 1–3 user-written paragraphs into rewrite prompts as style-only examples of how this person writes. `--profile` / `--tone` still define the outer register; samples refine cadence and texture without importing facts.
 - `patina doctor --json` emits setup diagnostics for CI without making an LLM call.
 
 
@@ -89,7 +88,6 @@ Contract:
 | `--persona p --jargon x,y`, `--tone a,b` | input error | comma-list variants are preview-only |
 | `--persona p --tone casual` | allowed as compatibility hint | persona remains outer contract |
 | `--persona p --profile blog` | allowed as compatibility hint | legacy profile remains non-authoritative |
-| `--persona p --voice-sample sample.md` | allowed | style-only anchor; sample facts are not imported |
 | `--persona p --jargon explain|remove` | input error | terminology rewrite is not gated in v1 |
 
 Persona files are frontmatter-only at runtime. Markdown bodies are documentation and never enter prompts. The `worldview` block is reserved but inactive in v1. Even `depth: content` personas may adjust emphasis and coverage only; they cannot invent claims or make MPS/fidelity advisory.
@@ -113,7 +111,7 @@ For `--format json`, rewrite output includes a `persona` field when a persona ga
 
 ## Transformations beyond cleanup: `--jargon`
 
-By default patina is a conservative humanizer: it removes AI tells without changing a sentence's claim or framing. `--jargon` is an explicit opt-in for adjusting terminology for a different audience. It applies to the default rewrite and `--preview` only; combining it with `--score`, `--audit`, or `--diff` is an input error (those modes do not rewrite). A full voice/register change is `--persona` / `--tone` / `--voice-sample`, not a rewrite depth.
+By default patina is a conservative humanizer: it removes AI tells without changing a sentence's claim or framing. `--jargon` is an explicit opt-in for adjusting terminology for a different audience. It applies to the default rewrite and `--preview` only; combining it with `--score`, `--audit`, or `--diff` is an input error (those modes do not rewrite). A full voice/register change is `--persona` / `--tone`, not a rewrite depth.
 
 ```bash
 patina --jargon remove draft.md                        # de-jargonized rewrite

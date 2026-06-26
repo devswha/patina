@@ -251,8 +251,6 @@ rewrite 모드에서 모델은 `[BODY]`/`[/BODY]` 블록을 감싸는 `[SELF_AUD
 
 `--score` 실행은 모델이 출력한 Weight 열을 설정의 `category-weights`와 대조합니다. 모델이 존재하지 않는 카테고리(예: `discord`)를 만들거나 다른 숫자로 바꾸면 stderr에 `[patina]` 경고가 나옵니다. 관측용 검사라서 weight check 자체가 점수를 바꾸지는 않습니다. `src/features/*`의 결정론적 shadow score도 함께 기록되며, LLM 점수와 20점 넘게 벌어지면 patina가 경고를 내고 gate에는 더 보수적인 값을 사용합니다.
 
-`--voice-sample <path>` 또는 설정의 `voice-sample: <path>`로 본인이 쓴 1~3문단을 rewrite 기준으로 줄 수 있습니다. profile과 tone은 여전히 register를 정하고, sample은 문장 리듬, 구체성, 시점, 문장 질감만 참고합니다. prompt는 sample의 사실을 가져오지 말라고 명시합니다.
-
 ## 톤
 
 `--tone`은 패턴 기반 재작성과 함께 적용할 수 있는 톤(어조) 프리셋입니다. 우선순위: `--tone` CLI > `tone:` 설정 > `profile:` 설정.

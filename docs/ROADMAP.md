@@ -184,6 +184,20 @@ Acceptance criteria:
 - Integration docs are tested manually before public launch posts.
 - Each integration has one minimal example and one realistic example.
 
+### Phase 4 — custom voice authoring
+
+Goal: let users define their own persona / genre / tone instead of supplying raw style samples.
+
+- Build on the existing persona harness (`src/personas/`, `personas/ko/`) and the `--persona` / `--tone` / `--profile` axes rather than a separate sample-injection path.
+- Provide an authoring entry point so a user can create and reuse a named custom persona (voice + register + genre) with the same MPS/fidelity floors enforced.
+- This replaces the removed `--voice-sample` style anchor (dropped in 6.0.0): the "sound like me" use case becomes a saved custom persona, not a per-run sample file.
+
+Acceptance criteria:
+
+- A user can author, save, and select a custom persona without editing source.
+- Custom personas honor the same meaning-preservation/fidelity hard floors as bundled personas.
+- No regression to the conservative `preserve` default for users who do not author one.
+
 ## 3. Community roadmap
 
 ### Phase 1 — community health basics

@@ -113,7 +113,6 @@ function buildSeverityOverrideNote(config) {
  * @param {object[]} options.patterns Loaded pattern packs.
  * @param {object|null} options.profile Parsed profile document.
  * @param {object|null} options.voice Parsed voice guide.
- * @param {object|null} [options.voiceSample] Optional voice sample payload.
  * @param {object|null} [options.persona] Optional validated persona payload.
  * @param {object|null} options.scoring Parsed scoring guide.
  * @param {string} options.text Input text.
@@ -141,7 +140,6 @@ export function buildPrompt(options) {
     patterns,
     profile,
     voice,
-    voiceSample,
     persona = null,
     scoring,
     text,
@@ -162,7 +160,7 @@ export function buildPrompt(options) {
   // to rewrite mode where voice prior matters most. Profile body is still passed
   // through (Round 2 found Gemini ignored casual-conversation when omitted).
   if (promptMode === 'minimal' && mode === 'rewrite') {
-    return buildMinimalPrompt({ config, patterns, profile, voiceSample, persona, text, tone, documentSignals, jargon, rewriteHeadings });
+    return buildMinimalPrompt({ config, patterns, profile, persona, text, tone, documentSignals, jargon, rewriteHeadings });
   }
 
   const lang = config.language || 'ko';
@@ -228,10 +226,6 @@ export function buildPrompt(options) {
   prompt += `## Voice Guidelines\n\n`;
   if (voice) {
     prompt += `${voice.body}\n\n`;
-  }
-
-  if (mode === 'rewrite' && voiceSample) {
-    prompt += formatVoiceSampleSection(voiceSample);
   }
 
   if (mode === 'rewrite' && persona) {
@@ -625,7 +619,7 @@ export function isShortText(text) {
 // model's natural voice prior isn't overridden by analytical framing. Only
 // invoked for rewrite mode; score/audit/diff stay on the strict
 // path because they need precise pattern references.
-function buildMinimalPrompt({ config, patterns, profile, voiceSample, persona = null, text, tone, documentSignals = null, jargon = 'keep', rewriteHeadings = false }) {
+function buildMinimalPrompt({ config, patterns, profile, persona = null, text, tone, documentSignals = null, jargon = 'keep', rewriteHeadings = false }) {
   const lang = config.language || 'ko';
   const activePatterns = patterns.filter((p) => !p.isScoreOnly);
 
@@ -693,10 +687,6 @@ function buildMinimalPrompt({ config, patterns, profile, voiceSample, persona = 
     prompt += `\n`;
   }
 
-  if (voiceSample) {
-    prompt += formatVoiceSampleSection(voiceSample);
-  }
-
   if (persona) {
     prompt += formatPersonaDirective(persona, { korean: lang === 'ko' });
     prompt += '\n';
@@ -712,25 +702,6 @@ function buildMinimalPrompt({ config, patterns, profile, voiceSample, persona = 
   prompt += lang === 'ko' ? `## 출력\n\n` : `## Output\n\n`;
 
   return prompt;
-}
-
-function formatVoiceSampleSection(voiceSample) {
-  const paragraphs = Array.isArray(voiceSample?.paragraphs)
-    ? voiceSample.paragraphs
-    : String(voiceSample?.body || '')
-      .split(/\n\s*\n/)
-      .map((paragraph) => paragraph.trim())
-      .filter(Boolean)
-      .slice(0, 3);
-  if (paragraphs.length === 0) return '';
-
-  let section = `## Voice Anchor Examples\n\n`;
-  section += `These are examples of how this person writes. Use them as a style/register anchor only: match cadence, specificity, point of view, and sentence texture, but do not import facts, names, claims, or events from the samples. If profile or tone settings conflict, keep the requested profile/tone as the outer boundary and use the samples to make that boundary sound like the user.\n\n`;
-  paragraphs.forEach((paragraph, index) => {
-    section += `### Example ${index + 1}\n\n`;
-    section += `${paragraph}\n\n`;
-  });
-  return section;
 }
 
 // Extract the comma-separated values that follow a "주의 어휘:" or "Watch words:"

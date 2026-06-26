@@ -11,7 +11,7 @@ import { buildTransformVariants } from './args.js';
 import { invokeBackendChain, selectBackendChain, selectOcrBackends, listBackends } from '../backends/index.js';
 import { selectProvider, resolveProviderConfig } from '../providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from '../security.js';
-import { formatOutput, formatRewriteBodyForBrowser, validateScoreWeights, buildDeterministicAuditBackstop } from '../output.js';
+import { formatOutput, formatRewriteBodyForBrowser, validateScoreWeights, buildDeterministicAuditBackstop, stripSelfAudit } from '../output.js';
 import {
   buildBrowserDiffPromptInput,
   renderExplanationHtml,
@@ -23,6 +23,7 @@ import { fetchPreviewPage, prepareSnapshotHtml, freezeSnapshotAssets, extractPro
 import { collectImageCandidates, stageOcrImages, ocrStagedImages, describeImage, hasOcrRunnerOverride } from '../ocr.js';
 import { rmSync } from 'node:fs';
 import { runOuroboros } from '../ouroboros.js';
+import { verifyRewrite, deterministicMeaningGuard } from '../verify.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
 import { detectKoreanRegister } from '../features/stylometry.js';
 import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput } from './batch.js';
@@ -111,6 +112,11 @@ export async function runDefault(parsed, logger) {
     : parsed.score ? 'score'
     : parsed.ouroboros ? 'ouroboros'
     : 'rewrite';
+  if (parsed.ouroboros) {
+    logger.warn('ouroboros.deprecated', {
+      message: '[patina] --ouroboros is deprecated; use --verify (rewrite + meaning-floor retry). The loop will be removed in a future release.',
+    });
+  }
   const persona = resolvePersonaForRun({ parsed, config, mode, lang, repoRoot });
 
   const voiceSamplePath = (mode === 'rewrite' || mode === 'ouroboros')
@@ -277,6 +283,55 @@ export async function runDefault(parsed, logger) {
           });
         }
         cancellation.throwIfCanceled();
+
+        if (mode === 'rewrite') {
+          // The backend result still carries the [BODY]/[SELF_AUDIT] tags that
+          // formatOutput strips for display; verify scoring and the meaning guard
+          // must measure the clean prose, not the tags.
+          const stripQuiet = { warn() {} };
+          if (parsed.verify) {
+            const cleanRewrite = stripSelfAudit(result, { logger: stripQuiet });
+            const verifyCallLLM = ({ prompt: verifyPrompt, signal: verifySignal, timeout: verifyTimeout }) =>
+              invokeBackendChain({
+                backends,
+                prompt: verifyPrompt,
+                apiKey: resolved.apiKey,
+                baseURL: resolved.baseURL,
+                model: resolved.model,
+                modelSource: resolved.modelSource,
+                signal: verifySignal ?? cancellation.signal,
+                timeout: verifyTimeout ?? timeoutMs,
+                maxConcurrency: 1,
+                maxRetries: 0,
+                logger,
+              });
+            const verification = await verifyRewrite({
+              original: text,
+              rewrite: cleanRewrite,
+              config,
+              patterns,
+              profile: profile.body ? profile : null,
+              voice: voice.body ? voice : null,
+              voiceSample,
+              scoring: scoring.body ? scoring : null,
+              apiKey: resolved.apiKey,
+              baseURL: resolved.baseURL,
+              model: resolved.model,
+              callLLM: verifyCallLLM,
+              signal: cancellation.signal,
+              timeout: timeoutMs,
+              logger,
+            });
+            result = verification.text;
+            logger.info('verify.result', {
+              message: `[patina] verify: MPS ${verification.mps ?? 'n/a'}, fidelity ${verification.fidelity}${verification.verified ? ' (passed)' : ' (below floor)'}${verification.retried ? ' [retried]' : ''}`,
+            });
+          }
+          const finalText = parsed.verify ? result : stripSelfAudit(result, { logger: stripQuiet });
+          for (const w of deterministicMeaningGuard(text, finalText)) {
+            logger.warn('rewrite.meaning_guard', { message: `[patina] ${w}` });
+          }
+        }
 
         if (mode === 'score' && !parsed.ouroboros) {
           result = withDeterministicScore(result, {

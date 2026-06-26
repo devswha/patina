@@ -225,8 +225,6 @@ Markdown 较多的工程流程可以使用开发者 profile：`code-comment` 会
 
 `--score` 运行会把模型输出的 Weight 列与配置中的 `category-weights` 对照。如果模型凭空创造类别（例如 `discord`）或替换成不同数字，stderr 会出现 `[patina]` 警告。这只用于可观测性，权重检查本身不会改变分数。确定性 shadow score 也会从 `src/features/*` 记录；当它与 LLM 分数相差超过 20 分时，patina 会警告并使用更保守的分数作为 gate。
 
-使用 `--voice-sample <path>` 或配置中的 `voice-sample: <path>`，可以让 rewrite 参考你写过的 1–3 个段落。Profile 和 tone 仍然决定目标 register；sample 只学习节奏、具体度、视角和句子质感，prompt 会明确禁止引入 sample facts。
-
 ## 语调
 
 `--tone` 是叠加在模式改写之上的具名语气轴。优先级：`--tone` CLI > `tone:` 配置 > `profile:` 配置。

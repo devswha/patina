@@ -32,7 +32,6 @@ const baseArgs = {
   patterns: [],
   profile: null,
   voice: null,
-  voiceSample: null,
   scoring: null,
   apiKey: 'k',
   baseURL: 'b',

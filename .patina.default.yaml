@@ -21,10 +21,6 @@ tone:                       # one of: casual, professional, auto (register only)
                             # Override with CLI: --tone <name>
                             # zh/ja with explicit tone: warns and falls back to profile.
 
-# Optional path to 1-3 user-written paragraphs. CLI --voice-sample wins.
-# Used as a style/register anchor only; facts stay sourced from the input text.
-voice-sample:
-
 # Persona harness (v1): Korean rewrite defaults to the conservative preserve
 # persona. Non-rewrite and non-Korean surfaces do not apply persona implicitly.
 persona: preserve

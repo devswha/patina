@@ -224,36 +224,3 @@ export function loadInputText(path, maxBytes = MAX_INPUT_BYTES) {
     throw mapInputReadError(path, err);
   }
 }
-
-/**
- * Load up to three non-empty paragraphs from a voice sample file.
- *
- * @param {string} path Voice sample file path.
- * @returns {{path: string, paragraphs: string[], body: string, truncated: boolean}} Voice sample payload.
- * @throws {Error} When the file is unreadable or has no non-empty paragraphs.
- * @example
- * const sample = loadVoiceSample('voice.md');
- */
-export function loadVoiceSample(path) {
-  const content = loadFile(path);
-  const paragraphs = content
-    .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
-
-  if (paragraphs.length === 0) {
-    throw inputError(
-      'voice sample is empty',
-      `${path} has no non-empty paragraphs.`,
-      'Provide a --voice-sample file with at least one paragraph of the target writing style.'
-    );
-  }
-
-  const selected = paragraphs.slice(0, 3);
-  return {
-    path,
-    paragraphs: selected,
-    body: selected.join('\n\n'),
-    truncated: paragraphs.length > selected.length,
-  };
-}

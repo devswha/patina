@@ -353,26 +353,31 @@ export function runInteractiveCommand({
   }
 
   return new Promise((resolve, reject) => {
+    // A failed spawn can emit both 'error' and 'close'; settle once so we never
+    // resolve-then-reject (or build a second Error) on the same invocation (#533).
+    let settled = false;
+    const settle = (fn) => { if (settled) return; settled = true; fn(); };
+
     const proc = spawn(command, args, { cwd, env, stdio });
 
     proc.on('error', (err) => {
       if (err.code === 'ENOENT') {
-        reject(new Error(`${backendName}: \`${command}\` CLI not found. ${notFoundHint || 'Install the CLI and try again.'}`));
+        settle(() => reject(new Error(`${backendName}: \`${command}\` CLI not found. ${notFoundHint || 'Install the CLI and try again.'}`)));
         return;
       }
-      reject(new Error(`${backendName}: failed to spawn ${command} (${err.message})`));
+      settle(() => reject(new Error(`${backendName}: failed to spawn ${command} (${err.message})`)));
     });
 
     proc.on('close', (code, signal) => {
       if (code === 0) {
-        resolve();
+        settle(() => resolve());
         return;
       }
       if (signal) {
-        reject(new Error(`${backendName}: ${command} was terminated by ${signal}`));
+        settle(() => reject(new Error(`${backendName}: ${command} was terminated by ${signal}`)));
         return;
       }
-      reject(new Error(`${backendName}: ${command} exited with code ${code}`));
+      settle(() => reject(new Error(`${backendName}: ${command} exited with code ${code}`)));
     });
   });
 }

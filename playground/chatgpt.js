@@ -298,15 +298,32 @@ function buildMeta(meta) {
     bar.appendChild(el('span', 'sig-after', after == null ? '—' : String(after)));
     b.appendChild(bar); det.appendChild(b); wrap.appendChild(det);
   }
-  if (meta?.diff?.before != null) {
+  if (meta?.diff && (meta.diff.charDelta != null || meta.diff.wordDelta != null)) {
     const det = el('details', 'foldout');
-    det.appendChild(el('summary', null, 'Original / result'));
+    det.appendChild(el('summary', null, 'Length (before → after)'));
     const b = el('div', 'foldout__body');
-    const r1 = el('div', 'diffrow'); r1.appendChild(el('span', 'k', 'Original')); r1.appendChild(el('span', null, String(meta.diff.before)));
-    const r2 = el('div', 'diffrow'); r2.appendChild(el('span', 'k', 'Result')); r2.appendChild(el('span', null, String(meta.diff.after ?? '')));
+    const sign = (d) => (Number(d) > 0 ? `+${d}` : String(d));
+    const r1 = el('div', 'diffrow');
+    r1.appendChild(el('span', 'k', 'Characters'));
+    r1.appendChild(el('span', null, `${meta.diff.beforeChars} → ${meta.diff.afterChars} (${sign(meta.diff.charDelta)})`));
+    const r2 = el('div', 'diffrow');
+    r2.appendChild(el('span', 'k', 'Words'));
+    r2.appendChild(el('span', null, `${meta.diff.beforeWords} → ${meta.diff.afterWords} (${sign(meta.diff.wordDelta)})`));
     b.appendChild(r1); b.appendChild(r2); det.appendChild(b); wrap.appendChild(det);
   }
   return wrap;
+}
+
+// Auto-detect the dominant script so pasted EN/ZH/JA text is not silently
+// rewritten under the default (ko) language. Kana => ja; Hangul => ko; Han
+// without kana => zh; Latin => en. Returns null when undecidable.
+function detectLang(text) {
+  const s = String(text || '');
+  if (/[\u3040-\u30ff]/.test(s)) return 'ja';
+  if (/[\uac00-\ud7a3]/.test(s)) return 'ko';
+  if (/[\u4e00-\u9fff]/.test(s)) return 'zh';
+  if (/[A-Za-z]/.test(s)) return 'en';
+  return null;
 }
 
 // ---------- unified submit ----------
@@ -318,6 +335,17 @@ async function submit(text) {
   let convo = activeConvo();
   if (!convo) { newConvo(); convo = activeConvo(); }
   if (!convo) return;
+
+  // Match the language to the pasted text's script on the first turn (the
+  // selector defaults to ko; without this, EN/ZH/JA input is silently rewritten
+  // under the wrong language). Refine turns keep the conversation's language.
+  const detected = convo.thread.original == null ? detectLang(clean) : null;
+  if (detected && detected !== els.lang.value) {
+    els.lang.value = detected;
+    applyI18n(detected);
+    renderSuggest();
+    convo.thread = createRewriteThread({ lang: detected });
+  }
 
   showChat();
   state.busy = true;
@@ -346,11 +374,26 @@ async function submit(text) {
   let started = false;
   const start = () => { if (started) return; started = true; if (typing.parentElement) typing.remove(); textEl.style.display = ''; textEl.classList.add('streaming'); };
 
+  // Fail-safe: if no stream frame arrives for IDLE_MS, abort so the UI never
+  // hangs on a stalled backend (issue #541). The timer re-arms on every frame.
+  const controller = new AbortController();
+  const IDLE_MS = 60000;
+  let timedOut = false;
+  let idleTimer;
+  const armIdle = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => { timedOut = true; controller.abort(); }, IDLE_MS);
+  };
+  armIdle();
+
   try {
     const { ok, finalFrame } = await streamRewrite({
       body: reqBody,
-      onDelta: (_t, acc) => { start(); textEl.textContent = acc; scrollDown(); },
+      signal: controller.signal,
+      onStart: () => armIdle(),
+      onDelta: (_t, acc) => { armIdle(); start(); textEl.textContent = acc; scrollDown(); },
       onDone: (frame) => {
+        armIdle();
         start();
         const rewrite = typeof frame.rewrite === 'string' ? frame.rewrite : textEl.textContent;
         textEl.textContent = rewrite; textEl.classList.remove('streaming');
@@ -369,9 +412,13 @@ async function submit(text) {
     }
   } catch (e) {
     if (typing.parentElement) typing.remove();
-    textEl.style.display = '';
-    body.appendChild(el('div', 'error-note', `Network error: ${String(e?.message || e)}`));
+    textEl.style.display = ''; textEl.classList.remove('streaming');
+    const msg = timedOut
+      ? 'Rewrite timed out — no response from the server. Please try again.'
+      : `Network error: ${String(e?.message || e)}`;
+    body.appendChild(el('div', 'error-note', msg));
   } finally {
+    clearTimeout(idleTimer);
     state.busy = false;
     updateHeroSend(); updateChatSend();
     els.input.focus();

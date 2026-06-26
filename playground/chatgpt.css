@@ -121,12 +121,13 @@ a { color: inherit; }
   mask-image: radial-gradient(120% 90% at 50% 16%, #000 32%, transparent 78%);
 }
 .hero__inner { position: relative; z-index: 1; width: 100%; max-width: 800px; margin: 0 auto; text-align: center; }
-.hero__title { font-size: clamp(40px, 6.4vw, 64px); font-weight: 600; line-height: 1.05; letter-spacing: -1.6px; margin: 0 0 14px; }
+.hero__title { font-size: clamp(40px, 6.4vw, 64px); font-weight: 600; line-height: 1.05; letter-spacing: -1.6px; margin: 0 0 14px; word-break: keep-all; text-wrap: balance; }
 .hero__title .grad {
   background: linear-gradient(92deg, var(--copper), var(--accent) 55%, #7aa0ff);
   -webkit-background-clip: text; background-clip: text; color: transparent;
+  white-space: nowrap;
 }
-.hero__sub { font-size: 18px; color: var(--text-dim); margin: 0 auto 44px; max-width: 720px; text-wrap: balance; }
+.hero__sub { font-size: 18px; color: var(--text-dim); margin: 0 auto 44px; max-width: 720px; text-wrap: balance; word-break: keep-all; }
 
 /* prompt card (the Lovable hero input) */
 .prompt {

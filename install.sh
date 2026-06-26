@@ -87,6 +87,24 @@ checkout_install_ref() {
   fi
 }
 
+# Install runtime Node dependencies (currently just js-yaml) so the local CLI
+# entry points (bin/patina.js) work from the installed checkout. Best-effort:
+# the skill install itself does not need Node, so a missing npm or failed install
+# only warns rather than aborting. See issue #536.
+install_runtime_deps() {
+  if [ -f "${PATINA_DIR}/node_modules/js-yaml/package.json" ]; then
+    return 0
+  fi
+  if ! command -v npm >/dev/null 2>&1; then
+    warn "  npm not found — skipping runtime deps. The local CLI needs 'js-yaml'; run 'npm install --omit=dev' in ${PATINA_DIR} to enable it."
+    return 0
+  fi
+  info "Installing patina runtime dependencies..."
+  if ! ( cd "${PATINA_DIR}" && npm install --omit=dev --no-audit --no-fund >/dev/null 2>&1 ); then
+    warn "  Runtime dependency install failed. Run 'npm install --omit=dev' in ${PATINA_DIR} to enable the local CLI."
+  fi
+}
+
 # Ensure the patina repo checkout exists at PATINA_DIR (clone or update once).
 # Idempotent and tool-neutral so any single agent can be installed on its own,
 # without requiring Claude Code to be installed first.
@@ -106,6 +124,7 @@ ensure_patina_repo() {
     git clone --depth=1 "${REPO_URL}" "${PATINA_DIR}" || error "Failed to clone patina. Check your network connection."
     checkout_install_ref "${PATINA_DIR}" "${INSTALL_REF}"
   fi
+  install_runtime_deps
   PATINA_REPO_READY=1
 }
 

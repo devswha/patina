@@ -309,6 +309,18 @@ function buildMeta(meta) {
   return wrap;
 }
 
+// Auto-detect the dominant script so pasted EN/ZH/JA text is not silently
+// rewritten under the default (ko) language. Kana => ja; Hangul => ko; Han
+// without kana => zh; Latin => en. Returns null when undecidable.
+function detectLang(text) {
+  const s = String(text || '');
+  if (/[\u3040-\u30ff]/.test(s)) return 'ja';
+  if (/[\uac00-\ud7a3]/.test(s)) return 'ko';
+  if (/[\u4e00-\u9fff]/.test(s)) return 'zh';
+  if (/[A-Za-z]/.test(s)) return 'en';
+  return null;
+}
+
 // ---------- unified submit ----------
 async function submit(text) {
   if (state.busy) return;
@@ -318,6 +330,17 @@ async function submit(text) {
   let convo = activeConvo();
   if (!convo) { newConvo(); convo = activeConvo(); }
   if (!convo) return;
+
+  // Match the language to the pasted text's script on the first turn (the
+  // selector defaults to ko; without this, EN/ZH/JA input is silently rewritten
+  // under the wrong language). Refine turns keep the conversation's language.
+  const detected = convo.thread.original == null ? detectLang(clean) : null;
+  if (detected && detected !== els.lang.value) {
+    els.lang.value = detected;
+    applyI18n(detected);
+    renderSuggest();
+    convo.thread = createRewriteThread({ lang: detected });
+  }
 
   showChat();
   state.busy = true;

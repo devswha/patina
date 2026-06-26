@@ -16,7 +16,7 @@ const VALUE_OPTIONS = new Set([
 const FLAG_OPTIONS = new Set([
   '--help', '-h', '--version', '-v', '--preview', '--ocr',
   '--serve', '--diff', '--no-color', '--audit', '--score', '--quiet',
-  '--ouroboros', '--batch', '--in-place', '--allow-private-base-url',
+  '--batch', '--in-place', '--allow-private-base-url',
   '--stop-on-retryable-storm', '--no-stop-on-retryable-storm',
   '--list-backends', '--allow-insecure-base-url', '--no-interactive',
   '--rewrite-headings', '--verify',
@@ -103,13 +103,16 @@ export function parseArgs(rawArgs) {
         parsed.persona = readOptionValue(args, i, arg);
         i++;
         break;
-      case '--restyle': {
-        const value = readOptionValue(args, i, arg);
-        i++;
-        parsed.restyle = parseTransformList(value, arg, ['sentence', 'voice', 'content'],
-          'sentence = AI-pattern cleanup only (default), voice = full voice/register transformation, content = content-level re-planning. Comma-separate values with --preview to compare variants.');
-        break;
-      }
+      case '--restyle':
+        // Removed: patina's default (and only) rewrite depth is the conservative
+        // AI-tell cleanup the old `--restyle sentence` did. Voice/register
+        // rewriting moved to --persona/--tone/--voice-sample; content re-planning
+        // is out of scope for a meaning-preserving humanizer.
+        throw inputError(
+          '--restyle was removed',
+          'patina cleans AI tells without changing claims (the old --restyle sentence default). Voice/register changes are --persona / --tone / --voice-sample now; content re-planning is out of scope.',
+          'Drop --restyle, or use --persona/--tone for a voice change.'
+        );
       case '--jargon': {
         const value = readOptionValue(args, i, arg);
         i++;
@@ -169,11 +172,13 @@ export function parseArgs(rawArgs) {
         break;
       }
       case '--ouroboros':
-        // Deprecated alias: the iterative loop was removed; --ouroboros now runs
-        // --verify. parsed.ouroboros is kept as the deprecation/conflict marker.
-        parsed.ouroboros = true;
-        parsed.verify = true;
-        break;
+        // Removed: the iterative loop was replaced by --verify (rewrite +
+        // meaning-floor retry) in the v5.5 line.
+        throw inputError(
+          '--ouroboros was removed',
+          'The iterative loop was replaced by --verify (rewrite, then verify MPS/fidelity with one conservative retry).',
+          'Use --verify instead.'
+        );
 
       case '--verify':
         parsed.verify = true;
@@ -303,23 +308,23 @@ export function parseArgs(rawArgs) {
 
 // The output modes are mutually exclusive (SKILL.md). Without this guard, a
 // combination like `--audit --score` resolves to 'audit' and silently skips the
-// score gate (exit 0 always), and `--score --ouroboros` throws deep in the gate.
+// score gate (exit 0 always).
 export function validateModeExclusivity(parsed) {
-  const active = ['diff', 'audit', 'score', 'ouroboros'].filter((m) => parsed[m]);
+  const active = ['diff', 'audit', 'score'].filter((m) => parsed[m]);
   if (active.length > 1) {
     throw inputError(
       `--${active[0]} and --${active[1]} cannot be combined`,
-      'The diff / audit / score / ouroboros output modes are mutually exclusive.',
-      `Pick one of --diff, --audit, --score, or --ouroboros.`
+      'The diff / audit / score output modes are mutually exclusive.',
+      `Pick one of --diff, --audit, or --score.`
     );
   }
 }
 
-// Shared parser for --restyle/--jargon/--tone: a single value, or a
+// Shared parser for --jargon/--tone: a single value, or a
 // comma-separated list of values for --preview variant comparison. Tokens are
 // validated individually and deduped preserving order; the normalized joined
 // string is stored so downstream code has one canonical shape.
-const TRANSFORM_OPTION_NOUNS = { '--restyle': 'restyle depth', '--jargon': 'jargon policy', '--tone': 'tone' };
+const TRANSFORM_OPTION_NOUNS = { '--jargon': 'jargon policy', '--tone': 'tone' };
 
 function parseTransformList(value, option, valid, hint) {
   const tokens = String(value ?? '').split(',').map((t) => t.trim()).filter(Boolean);
@@ -344,59 +349,54 @@ function splitTransformValues(value, fallback) {
   return String(value ?? fallback).split(',').map((t) => t.trim()).filter(Boolean);
 }
 
-// Expand --restyle/--jargon/--tone into the rewrite variants a run executes.
+// Expand --jargon/--tone into the rewrite variants a run executes.
 // A single combination is the normal one-call path; multiple combinations
 // (comma lists) become --preview compare variants, one rewrite call each.
-// Tone joins the cross product so "voice in casual" and "voice in marketing"
+// Tone joins the cross product so "remove in casual" and "remove in marketing"
 // are directly comparable; tone appears in the label only when it varies.
 // The cross product is capped: every variant is a full LLM call.
 export const MAX_TRANSFORM_VARIANTS = 4;
 
 export function buildTransformVariants(parsed) {
-  const restyles = splitTransformValues(parsed.restyle, 'sentence');
   const jargons = splitTransformValues(parsed.jargon, 'keep');
   const tones = splitTransformValues(parsed.tone, '');
   const toneList = tones.length > 0 ? tones : [null];
   const multiTone = toneList.length > 1;
   const variants = [];
-  for (const restyle of restyles) {
-    for (const jargon of jargons) {
-      for (const tone of toneList) {
-        const parts = [];
-        if (restyle !== 'sentence') parts.push(restyle);
-        if (jargon !== 'keep') parts.push(jargon);
-        let label = parts.join('+');
-        if (multiTone) label = label ? `${label}·${tone}` : tone;
-        variants.push({ restyle, jargon, tone, label: label || 'cleanup' });
-      }
+  for (const jargon of jargons) {
+    for (const tone of toneList) {
+      const parts = [];
+      if (jargon !== 'keep') parts.push(jargon);
+      let label = parts.join('+');
+      if (multiTone) label = label ? `${label}·${tone}` : tone;
+      variants.push({ jargon, tone, label: label || 'cleanup' });
     }
   }
   if (variants.length > MAX_TRANSFORM_VARIANTS) {
     throw inputError(
       `too many transform variants (${variants.length})`,
-      `--restyle × --jargon × --tone combinations are capped at ${MAX_TRANSFORM_VARIANTS}; each variant is a full rewrite call.`,
-      'Drop values from one of the lists, e.g. `--restyle voice --tone casual,professional` with a single --jargon.'
+      `--jargon × --tone combinations are capped at ${MAX_TRANSFORM_VARIANTS}; each variant is a full rewrite call.`,
+      'Drop values from one of the lists, e.g. `--jargon keep,remove` with a single --tone.'
     );
   }
   return variants;
 }
 
-// --restyle/--jargon opt into transformations beyond AI-pattern cleanup. They
-// only apply where patina rewrites prose it owns end to end: the default
-// rewrite and --preview. Score/audit/diff report on text as-is, and ouroboros
-// enforces meaning-preservation floors that a content-level transformation
-// would fight — reject the combination instead of silently ignoring the flag.
-// Comma-list (compare) requests additionally need the preview surface: a
-// plain rewrite has one stdout, and --ocr ties image findings to a single
-// rewrite call, so neither can carry multiple variants.
+// --jargon opts into transformations beyond AI-pattern cleanup. It only applies
+// where patina rewrites prose it owns end to end: the default rewrite and
+// --preview. Score/audit/diff report on text as-is — reject the combination
+// instead of silently ignoring the flag. Comma-list (compare) requests
+// additionally need the preview surface: a plain rewrite has one stdout, and
+// --ocr ties image findings to a single rewrite call, so neither can carry
+// multiple variants.
 export function validateTransformRequest(parsed) {
   const variants = buildTransformVariants(parsed);
   if (variants.length > 1) {
     if (!parsed.preview) {
       throw inputError(
         'comparing transform variants requires --preview',
-        'Comma-separated --restyle/--jargon values render as toggleable variants on the preview page; a plain rewrite has a single stdout.',
-        'Run `patina --preview --restyle sentence,voice <url>` or pick one value.'
+        'Comma-separated --jargon/--tone values render as toggleable variants on the preview page; a plain rewrite has a single stdout.',
+        'Run `patina --preview --jargon keep,remove <url>` or pick one value.'
       );
     }
     if (parsed.ocr) {
@@ -407,15 +407,13 @@ export function validateTransformRequest(parsed) {
       );
     }
   }
-  const restyleActive = variants.some((v) => v.restyle !== 'sentence');
   const jargonActive = variants.some((v) => v.jargon !== 'keep');
-  if (!restyleActive && !jargonActive && variants.length === 1) return;
-  const flag = restyleActive ? '--restyle' : jargonActive ? '--jargon' : '--tone';
+  if (!jargonActive && variants.length === 1) return;
+  const flag = jargonActive ? '--jargon' : '--tone';
   const blocked = [
     ['score', '--score', 'does not rewrite text'],
     ['audit', '--audit', 'does not rewrite text'],
     ['diff', '--diff', 'documents pattern-based edits, not free transformations'],
-    ['ouroboros', '--ouroboros', 'enforces meaning-preservation floors that a transformation would fight'],
   ];
   for (const [key, name, why] of blocked) {
     if (parsed[key]) {
@@ -435,7 +433,6 @@ export function validatePersonaRequest(parsed) {
     ['score', '--score', 'score reads text as-is and does not run the rewrite persona harness'],
     ['audit', '--audit', 'audit reports detections on the original text'],
     ['diff', '--diff', 'diff is a pattern-report surface, not the persona rewrite harness'],
-    ['ouroboros', '--ouroboros', 'ouroboros persona integration is not part of v1'],
     ['preview', '--preview', 'preview persona migration is reserved for a later surface'],
   ];
   for (const [key, flag, why] of blockedModes) {
@@ -454,7 +451,7 @@ export function validatePersonaRequest(parsed) {
       'Use `--lang ko --persona <name>` or remove --persona for non-Korean text.'
     );
   }
-  for (const [flag, value] of [['--restyle', parsed.restyle], ['--jargon', parsed.jargon], ['--tone', parsed.tone]]) {
+  for (const [flag, value] of [['--jargon', parsed.jargon], ['--tone', parsed.tone]]) {
     if (typeof value === 'string' && value.includes(',')) {
       throw inputError(
         `${persona} cannot be combined with comma-list ${flag}`,
@@ -462,15 +459,6 @@ export function validatePersonaRequest(parsed) {
         `Pick one ${flag} value or remove --persona.`
       );
     }
-  }
-  if (parsed.restyle === 'voice' || parsed.restyle === 'content') {
-    throw inputError(
-      `--persona cannot be combined with --restyle ${parsed.restyle}`,
-      parsed.restyle === 'content'
-        ? 'Legacy --restyle content makes MPS advisory, but persona mode must keep MPS/fidelity hard floors enforced.'
-        : 'Legacy --restyle voice is a second depth/voice source that conflicts with persona frontmatter.',
-      'Use --persona with default --restyle sentence, or remove --persona for legacy restyle mode.'
-    );
   }
   if (parsed.jargon === 'explain' || parsed.jargon === 'remove') {
     throw inputError(
@@ -501,13 +489,6 @@ export function validateVerifyRequest(parsed) {
       );
     }
   }
-  if (parsed.restyle === 'voice' || parsed.restyle === 'content') {
-    throw inputError(
-      `--verify cannot be combined with --restyle ${parsed.restyle}`,
-      'Voice/content transformations intentionally change wording or structure, which fights the meaning-preservation floors --verify enforces.',
-      'Use --verify with the default --restyle sentence, or drop --verify for a free transformation.'
-    );
-  }
 }
 
 export function validatePreviewRequest(parsed) {
@@ -526,11 +507,11 @@ export function validatePreviewRequest(parsed) {
       'Run `patina --preview <url>` with a single URL.'
     );
   }
-  if (parsed.diff || parsed.audit || parsed.score || parsed.ouroboros) {
+  if (parsed.diff || parsed.audit || parsed.score) {
     throw inputError(
       '--preview only works in rewrite mode',
-      'The preview page is an additive rewrite surface, not a diff/audit/score/ouroboros mode.',
-      'Use `patina --preview <url>` by itself, without --diff, --audit, --score, or --ouroboros.'
+      'The preview page is an additive rewrite surface, not a diff/audit/score mode.',
+      'Use `patina --preview <url>` by itself, without --diff, --audit, or --score.'
     );
   }
   if (parsed.files.length !== 1) {
@@ -713,7 +694,6 @@ MODES
   --exit-on <n>           With --score, exit 3 when overall score > n
   --verify                Rewrite, then verify meaning (MPS/fidelity floors) with
                           one conservative retry; fail-closed to the best candidate
-  --ouroboros             [deprecated] alias for --verify (the iterative loop was removed)
   --preview               Rewrite one http(s) URL or local .html file in place on a snapshot
                           of the page (adds one explanation call)
   --ocr                   With --preview (URL/.html): extract text inside page images via an
@@ -748,14 +728,7 @@ LANGUAGE & PROFILE
                           Comma list with --preview compares tones as variants
   --voice-sample <path>   Use 1-3 user paragraphs as style-only voice anchors
   --persona <name>         Korean rewrite persona (default preserve); incompatible
-                          with score/audit/diff/ouroboros/preview and legacy
-                          voice/content transform depths
-  --restyle <depth[,depth]>
-                          Transformation depth (rewrite/--preview only):
-                          sentence (default) = AI-pattern cleanup,
-                          voice = rewrite everything in the target voice/register,
-                          content = content-level re-planning (MPS becomes advisory).
-                          Comma list with --preview compares variants in-page (max 4 combos)
+                          with score/audit/diff/preview
   --jargon <policy[,policy]>
                           Technical-term policy (rewrite/--preview only):
                           keep (default), explain = add plain-language glosses,

@@ -49,9 +49,9 @@ language limitations. See [Stylometry](../core/stylometry.md#5-ttr-via-mattr).
 
 ## Mode
 
-A CLI output path such as rewrite, audit, score, diff, or ouroboros. Modes
-control whether patina edits text, reports findings, scores text, or loops
-until quality gates are met. See the [mode table](../README.md#modes).
+A CLI output path such as rewrite, verify, audit, score, or diff. Modes
+control whether patina edits text, verifies meaning preservation, reports
+findings, or scores text. See the [mode table](../README.md#modes).
 
 ## MPS
 
@@ -60,11 +60,12 @@ survive the rewrite pipeline and whether polarity is preserved. See
 [the FAQ](FAQ.md#what-is-mps) and
 [MPS scoring](../core/scoring.md#16-mps-scoring-formula).
 
-## Ouroboros mode
+## Ouroboros loop
 
 An iterative rewrite loop that keeps trying to lower AI-likeness while obeying
-meaning-preservation gates. It stops when the combined score is acceptable or
-when fidelity or MPS drops too far. See
+meaning-preservation gates. The standalone CLI replaced it with `--verify`
+(rewrite + meaning-floor retry); the loop still lives in the `/patina` skill
+and the `quality:rewrite-ab` research baseline. See
 [Ouroboros Termination](../core/scoring.md#ouroboros-termination).
 
 ## Pattern

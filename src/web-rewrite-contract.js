@@ -73,6 +73,22 @@ export const PROVIDER_PRESETS = Object.freeze({
     baseURL: 'https://api.openai.com/v1',
     models: Object.freeze(['gpt-5.5', 'gpt-5.1', 'gpt-4.1', 'gpt-4.1-mini']),
   }),
+  claude: Object.freeze({
+    baseURL: 'https://api.anthropic.com/v1',
+    models: Object.freeze(['claude-sonnet-4-5', 'claude-opus-4-1', 'claude-haiku-4-5']),
+  }),
+  deepseek: Object.freeze({
+    baseURL: 'https://api.deepseek.com/v1',
+    models: Object.freeze(['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-chat', 'deepseek-reasoner']),
+  }),
+  kimi: Object.freeze({
+    baseURL: 'https://api.moonshot.ai/v1',
+    models: Object.freeze(['kimi-latest', 'moonshot-v1-128k', 'moonshot-v1-32k']),
+  }),
+  glm: Object.freeze({
+    baseURL: 'https://open.bigmodel.cn/api/paas/v4',
+    models: Object.freeze(['glm-4.6', 'glm-4.5', 'glm-4.5-air']),
+  }),
 });
 
 /**

@@ -12,6 +12,28 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## 6.0.1 — 2026-06-28
+
+**Playground overhaul: editorial restyle, interactive before/after examples, a real benchmark section, and more BYOK providers.**
+
+Semver rationale: patch — changes are scoped to the web playground (patina.vibetip.help) plus additive, OpenAI-compatible BYOK provider presets. No CLI flags, patterns, scoring, or schemas changed.
+
+### Added
+
+- **Playground benchmark section** with real fixture metrics (49 fixtures, 4 languages, Wilson CI) and a per-language table, framed as a regression gate rather than an authorship test (#560).
+- **Interactive examples panel** — language tabs (KO·EN·ZH·JA), a line-number gutter, and a persistent before→after word-level diff (in-tree LCS, CJK-aware) with copy/replay/try (#560).
+- **More BYOK providers** in the shared rewrite contract: Claude (Anthropic OpenAI-compat), DeepSeek, Kimi (Moonshot), and GLM (Zhipu), each with model presets. `openai` stays the free-tier default (#560).
+
+### Changed
+
+- **Editorial dark restyle** of the playground — neutral near-black canvas, a single restrained teal accent, and removal of the rainbow aurora / gradient text / heavy glow. The landing is restructured into a usage → samples → benchmark → wrap-up flow (#560).
+- **"New chat"** now starts a fresh conversation in place (with an empty state) instead of returning to the landing (#560).
+- BYOK mode is labelled **"API"**, with provider/model/key moved to a dedicated nav row so the header no longer wraps (#560).
+
+### Fixed
+
+- Chat output no longer leaks the `[BODY]`/`[SELF_AUDIT]` rewrite scaffolding; a floor-failed rewrite now renders the flagged text with MPS/fidelity scores and a clear, localized warning instead of a generic failure (#560).
+
 ## 6.0.0 — 2026-06-26
 
 **Voice-control consolidation: `--verify` replaces the ouroboros loop, `--tone` becomes register-only, `--profile` gains real deterministic pattern suppression.**

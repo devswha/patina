@@ -39,25 +39,27 @@
           <span class="ctl__label">Mode</span>
           <select id="tier" class="ctl__select">
             <option value="free">Free</option>
-            <option value="byok">BYOK</option>
+            <option value="byok">API</option>
           </select>
-        </label>
-        <label class="ctl ctl--byok" id="provider-ctl" hidden>
-          <span class="ctl__label">Provider</span>
-          <select id="provider" class="ctl__select"></select>
-        </label>
-        <label class="ctl ctl--byok" id="model-ctl" hidden>
-          <span class="ctl__label">Model</span>
-          <select id="model" class="ctl__select"></select>
-        </label>
-        <label class="ctl ctl--byok ctl--key" id="key-ctl" hidden>
-          <span class="ctl__label">API key</span>
-          <input id="api-key" class="ctl__input" type="password" autocomplete="off" placeholder="sk-… (kept in your browser)" />
         </label>
         <a class="btn btn--gh" href="https://github.com/devswha/patina" aria-label="patina on GitHub">
           <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
           <span>GitHub</span>
         </a>
+      </div>
+      <div class="nav__byok" id="byok-row" hidden>
+        <label class="ctl ctl--byok" id="provider-ctl">
+          <span class="ctl__label">Provider</span>
+          <select id="provider" class="ctl__select"></select>
+        </label>
+        <label class="ctl ctl--byok" id="model-ctl">
+          <span class="ctl__label">Model</span>
+          <select id="model" class="ctl__select"></select>
+        </label>
+        <label class="ctl ctl--byok ctl--key" id="key-ctl">
+          <span class="ctl__label">API key</span>
+          <input id="api-key" class="ctl__input" type="password" autocomplete="off" placeholder="sk-… (kept in your browser)" />
+        </label>
       </div>
     </header>
 
@@ -84,7 +86,7 @@
 
       <section class="how">
         <div class="sec__head">
-          <p class="eyebrow"><span>how it works</span></p>
+          <p class="eyebrow"><span>how to use</span></p>
           <h2 class="sec__title">Three steps</h2>
         </div>
         <div class="how__grid">
@@ -104,27 +106,57 @@
 
       <section class="examples" id="examples">
         <div class="sec__head">
-          <p class="eyebrow"><span>examples</span></p>
+          <p class="eyebrow"><span>samples</span></p>
           <h2 class="sec__title">Before and after</h2>
         </div>
-        <div class="cards" id="example-cards"></div>
+        <div id="example-cards"></div>
       </section>
 
-      <section class="stats">
+      <section class="bench" id="benchmark">
         <div class="sec__head">
-          <p class="eyebrow"><span>patina in numbers</span></p>
-          <h2 class="sec__title">By the numbers</h2>
+          <p class="eyebrow"><span>benchmark</span></p>
+          <h2 class="sec__title">Numbers, in the open</h2>
+          <p class="sec__lede">A deterministic suspect-zone benchmark on a checked-in fixture corpus — auditable, not an authorship test.</p>
         </div>
-        <dl class="stats__grid">
-          <div class="stat"><dt>~160</dt><dd>catalogued patterns</dd></div>
-          <div class="stat"><dt>4</dt><dd>languages · KO·EN·ZH·JA</dd></div>
-          <div class="stat"><dt>4</dt><dd>deterministic signals</dd></div>
-          <div class="stat"><dt>100%</dt><dd>in-browser audit</dd></div>
+        <dl class="bench__cards">
+          <div class="bstat"><dt>100%</dt><dd>overall accuracy</dd><small>95% CI 92.7–100%</small></div>
+          <div class="bstat"><dt>49</dt><dd>fixtures</dd><small>AI vs. natural, labeled</small></div>
+          <div class="bstat"><dt>4</dt><dd>languages</dd><small>KO · EN · ZH · JA</small></div>
+          <div class="bstat"><dt>0</dt><dd>false positives</dd><small>at the 1% FPR budget</small></div>
         </dl>
+        <div class="bench__signals">
+          <span class="sigchip">burstiness</span>
+          <span class="sigchip">MATTR</span>
+          <span class="sigchip">AI-lexicon</span>
+          <span class="sigchip">KO diagnostics</span>
+        </div>
+        <div class="bench__tablewrap">
+          <table class="bench__table">
+            <thead>
+              <tr><th>lang</th><th>fixtures</th><th>accuracy</th><th>95% CI</th><th>F1</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>EN</td><td>13</td><td>100%</td><td>77.2–100%</td><td>1.00</td></tr>
+              <tr><td>JA</td><td>12</td><td>100%</td><td>75.8–100%</td><td>1.00</td></tr>
+              <tr><td>KO</td><td>12</td><td>100%</td><td>75.8–100%</td><td>1.00</td></tr>
+              <tr><td>ZH</td><td>12</td><td>100%</td><td>75.8–100%</td><td>1.00</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="bench__note">Measured on 49 deterministic fixtures as a regression gate — not a claim of generalization to new models, genres, or edited AI text, and not an authorship verdict.</p>
+        <a class="bench__link" href="https://github.com/devswha/patina/blob/main/docs/benchmarks/latest.md">Read the full report →</a>
+      </section>
+
+      <section class="cta">
+        <div class="cta__inner">
+          <h2 class="cta__title">Paste your own and see</h2>
+          <p class="cta__sub">Drop an AI-sounding draft into the box above. No code, no key.</p>
+          <button class="cta__btn" id="cta-start" type="button">Start at the top ↑</button>
+        </div>
       </section>
 
       <footer class="foot">
-        <div class="foot__brand"><span class="nav__dot">p</span> patina</div>
+        <div class="foot__brand"><img class="foot__icon" src="/assets/brand/patina-mark.svg" alt="" width="20" height="20" /> patina</div>
         <nav class="foot__links" aria-label="Footer">
           <a href="https://github.com/devswha/patina">GitHub</a>
           <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md">Ethics</a>
@@ -146,7 +178,7 @@
         </div>
         <nav class="sidebar__history" id="history" aria-label="Conversations"></nav>
         <div class="sidebar__foot">
-          <div class="brandmark"><span class="brandmark__dot">p</span> patina</div>
+          <div class="brandmark"><img class="brandmark__icon" src="/assets/brand/patina-mark.svg" alt="" width="22" height="22" /> patina</div>
           <div class="sidebar__note">Deterministic humanizer —<br />same claim, numbers, tone.</div>
         </div>
       </aside>

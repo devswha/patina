@@ -23,14 +23,13 @@ const els = {
   provider: /** @type {HTMLSelectElement} */ ($('#provider')),
   model: /** @type {HTMLSelectElement} */ ($('#model')),
   apiKey: /** @type {HTMLInputElement} */ ($('#api-key')),
-  providerCtl: $('#provider-ctl'),
-  modelCtl: $('#model-ctl'),
-  keyCtl: $('#key-ctl'),
+  byokRow: $('#byok-row'),
   homeLink: $('#home-link'),
   // landing hero
   heroForm: /** @type {HTMLFormElement} */ ($('#hero-form')),
   heroInput: /** @type {HTMLTextAreaElement} */ ($('#hero-input')),
   heroSend: /** @type {HTMLButtonElement} */ ($('#hero-send')),
+  ctaStart: /** @type {HTMLButtonElement} */ ($('#cta-start')),
 
   suggest: $('#suggest'),
   exampleCards: $('#example-cards'),
@@ -57,11 +56,25 @@ const I18N = {
     howTitle: 'Three steps',
     steps: [['1 · Paste', 'Drop in your AI-sounding draft. No code, no key.'], ['2 · Rewrite', 'patina clears ~160 patterns and rewrites it naturally.'], ['3 · Verify', 'Check MPS, fidelity, and the AI signal (before → after).']],
     examplesTitle: 'Before and after',
-    stats: ['catalogued patterns', 'languages · KO·EN·ZH·JA', 'deterministic signals', 'in-browser audit'],
+    xCaption: 'AI packaging, stripped',
+    xReplay: 'Replay',
+    xTry: 'Try this',
+    benchTitle: 'Numbers, in the open',
+    benchLede: 'A deterministic suspect-zone benchmark on a checked-in fixture corpus — auditable, not an authorship test.',
+    benchCards: [['overall accuracy', '95% CI 92.7–100%'], ['fixtures', 'AI vs. natural, labeled'], ['languages', 'KO · EN · ZH · JA'], ['false positives', 'at the 1% FPR budget']],
+    benchCols: ['lang', 'fixtures', 'accuracy', '95% CI', 'F1'],
+    benchNote: 'Measured on 49 deterministic fixtures as a regression gate — not a claim of generalization to new models, genres, or edited AI text, and not an authorship verdict.',
+    benchLink: 'Read the full report →',
+    ctaTitle: 'Paste your own and see',
+    ctaSub: 'Drop an AI-sounding draft into the box above. No code, no key.',
+    ctaBtn: 'Start at the top ↑',
     note: 'Deterministic humanizer —<br />same claim, numbers, tone.',
     hint: 'patina changes only the wording — never the claim, numbers, or causation. This demo rewrites via a local CLI; MPS/fidelity are preview values.',
     chatPh: 'Keep refining…  (Enter to send · Shift+Enter for newline)',
     newchat: 'New chat',
+    emptyChat: 'New chat — paste AI-sounding text below and patina cleans it up.',
+    floorWarn: 'This rewrite didn’t pass patina’s meaning-preservation floor (MPS / fidelity), so it’s flagged. Try again or pick a stronger model.',
+    failNote: 'Rewrite failed. Try again, or check the mode/key.',
   },
   ko: {
     title: 'AI 티 없이, <span class="grad">자연스럽게</span>',
@@ -70,11 +83,25 @@ const I18N = {
     howTitle: '세 단계면 끝',
     steps: [['1 · 붙여넣기', 'AI 티 나는 초안을 그대로 붙여넣어요. 코드도 키도 필요 없어요.'], ['2 · 다듬기', 'patina가 ~160개 패턴을 걷어내고 자연스럽게 고쳐요.'], ['3 · 검증', 'MPS·fidelity·AI 신호(전→후)로 의미 보존을 확인해요.']],
     examplesTitle: '이런 문장을, 이렇게',
-    stats: ['카탈로그 패턴', '지원 언어 · KO·EN·ZH·JA', '결정론 신호', '브라우저 audit'],
+    xCaption: 'AI 포장을 걷어내요',
+    xReplay: '다시 보기',
+    xTry: '이 문장으로 시작',
+    benchTitle: '숨김없는 벤치마크',
+    benchLede: '저장소에 포함된 fixture 코퍼스로 측정한 결정론적 의심구간 벤치마크 — 작성자 판별이 아니라, 감사 가능한 회귀 지표예요.',
+    benchCards: [['전체 정확도', '95% CI 92.7–100%'], ['fixtures', 'AI·자연 라벨 코퍼스'], ['지원 언어', 'KO · EN · ZH · JA'], ['오탐(FP)', '1% FPR 기준']],
+    benchCols: ['언어', 'fixtures', '정확도', '95% CI', 'F1'],
+    benchNote: '결정론 fixture 49개로 측정한 회귀 게이트 결과입니다. 새 모델·장르·편집된 AI 글로의 일반화나 작성자 판별을 뜻하지 않아요.',
+    benchLink: '전체 리포트 보기 →',
+    ctaTitle: '직접 붙여넣어 확인해 보세요',
+    ctaSub: 'AI 티 나는 초안을 위 입력칸에 붙여넣으면 끝. 코드도 키도 필요 없어요.',
+    ctaBtn: '맨 위로 가서 시작하기 ↑',
     note: '의미·숫자·톤을 바꾸지 않는<br />결정론적 휴머나이저.',
     hint: 'patina는 주장·수치·인과를 바꾸지 않고 표현만 다듬습니다. 데모는 로컬 CLI로 리라이트하며 MPS/fidelity는 프리뷰 값입니다.',
     chatPh: '이어서 다듬기…  (Enter 전송 · Shift+Enter 줄바꿈)',
     newchat: '새 대화',
+    emptyChat: '새 대화 — 아래에 AI 티 나는 문장을 붙여넣으면 patina가 다듬어요.',
+    floorWarn: '이 리라이트는 patina의 의미 보존 기준(MPS·fidelity)을 통과하지 못해 경고로 표시했어요. 다시 시도하거나 더 강한 모델을 골라보세요.',
+    failNote: '리라이트 실패. 다시 시도하거나 모드·키를 확인해 주세요.',
   },
   zh: {
     title: '让文字更<span class="grad">像人写的</span>',
@@ -83,11 +110,25 @@ const I18N = {
     howTitle: '三步搞定',
     steps: [['1 · 粘贴', '贴入有 AI 味的草稿，无需代码或密钥。'], ['2 · 改写', 'patina 清除约 160 种模式并自然地改写。'], ['3 · 校验', '查看 MPS、fidelity 和 AI 信号（前 → 后）。']],
     examplesTitle: '改写前后',
-    stats: ['收录模式', '支持语言 · KO·EN·ZH·JA', '确定性信号', '浏览器内审计'],
+    xCaption: '去掉 AI 包装',
+    xReplay: '重播',
+    xTry: '用这句试试',
+    benchTitle: '公开的基准',
+    benchLede: '基于仓库内 fixture 语料的确定性可疑区间基准 — 可审计，而非作者判定。',
+    benchCards: [['总体准确率', '95% CI 92.7–100%'], ['fixtures', 'AI 与自然，已标注'], ['支持语言', 'KO · EN · ZH · JA'], ['误报', '1% FPR 预算下']],
+    benchCols: ['语言', 'fixtures', '准确率', '95% CI', 'F1'],
+    benchNote: '在 49 个确定性 fixture 上作为回归门测得 — 不代表对新模型、体裁或经过编辑的 AI 文本的泛化，也不是作者判定。',
+    benchLink: '查看完整报告 →',
+    ctaTitle: '粘贴你的文字试试',
+    ctaSub: '把有 AI 味的草稿粘到上面的输入框，无需代码或密钥。',
+    ctaBtn: '回到顶部开始 ↑',
     note: '不改变主张·数字·语气的<br />确定性人性化工具。',
     hint: 'patina 只调整措辞，绝不改变主张、数字或因果。本演示通过本地 CLI 改写，MPS/fidelity 为预览值。',
     chatPh: '继续润色…  (Enter 发送 · Shift+Enter 换行)',
     newchat: '新对话',
+    emptyChat: '新对话 — 在下方粘贴有 AI 味的文字，patina 帮你润色。',
+    floorWarn: '该改写未通过 patina 的语义保留阈值（MPS·fidelity），已标记。请重试或选择更强的模型。',
+    failNote: '改写失败。请重试，或检查模式 / 密钥。',
   },
   ja: {
     title: 'AIっぽさを消して、<span class="grad">自然に</span>',
@@ -96,11 +137,25 @@ const I18N = {
     howTitle: '3ステップで完了',
     steps: [['1 · 貼り付け', 'AIっぽい下書きを貼るだけ。コードも鍵も不要。'], ['2 · 書き換え', 'patinaが約160のパターンを取り除き自然に書き換えます。'], ['3 · 検証', 'MPS・fidelity・AIシグナル（前 → 後）で意味の保持を確認。']],
     examplesTitle: 'ビフォー・アフター',
-    stats: ['収録パターン', '対応言語 · KO·EN·ZH·JA', '決定論シグナル', 'ブラウザ内監査'],
+    xCaption: 'AIの包装を外す',
+    xReplay: 'もう一度',
+    xTry: 'この文で試す',
+    benchTitle: '隠さないベンチマーク',
+    benchLede: 'リポジトリ同梱の fixture コーパスで測る決定論的サスペクトゾーンのベンチマーク — 監査可能で、作者判定ではありません。',
+    benchCards: [['全体精度', '95% CI 92.7–100%'], ['fixtures', 'AI・自然のラベル付き'], ['対応言語', 'KO · EN · ZH · JA'], ['誤検知', '1% FPR 基準']],
+    benchCols: ['言語', 'fixtures', '精度', '95% CI', 'F1'],
+    benchNote: '49 件の決定論 fixture で回帰ゲートとして測定 — 新しいモデルやジャンル、編集済み AI 文章への一般化や作者判定を意味しません。',
+    benchLink: '詳細レポートを見る →',
+    ctaTitle: '自分の文章で試す',
+    ctaSub: 'AIっぽい下書きを上の入力欄に貼るだけ。コードも鍵も不要。',
+    ctaBtn: '上に戻って始める ↑',
     note: '主張・数字・トーンを変えない<br />決定論的ヒューマナイザー。',
     hint: 'patinaは表現だけを整え、主張・数値・因果は変えません。デモはローカルCLIで書き換え、MPS/fidelityはプレビュー値です。',
     chatPh: 'さらに整える…  (Enter送信 · Shift+Enter改行)',
     newchat: '新しいチャット',
+    emptyChat: '新しいチャット — 下にAIっぽい文章を貼ると patina が整えます。',
+    floorWarn: 'この書き換えは patina の意味保持しきい値（MPS・fidelity）を満たさず、警告表示しています。再試行するか、より強力なモデルを選んでください。',
+    failNote: '書き換えに失敗しました。再試行するか、モード・キーを確認してください。',
   },
 };
 
@@ -128,10 +183,26 @@ const SAMPLES = {
 
 // Example cards (illustrative before → after, one per language).
 const EXAMPLES = [
-  { lang: 'ko', before: '본 솔루션은 혁신적인 시너지를 활용하여 전례 없는 가치를 원활하게 제공합니다.', after: '이 솔루션은 고객에게 실질적인 가치를 제공합니다.' },
-  { lang: 'en', before: 'Our cutting-edge solution leverages synergies to seamlessly deliver world-class value.', after: 'Our solution gives teams something that actually works.' },
-  { lang: 'zh', before: '本方案充分利用前沿协同效应，无缝赋能客户，释放前所未有的价值。', after: '这个方案帮客户真正解决问题。' },
-  { lang: 'ja', before: '本ソリューションは革新的なシナジーを活用し、かつてない価値を提供します。', after: 'このソリューションは、顧客に実際の価値を届けます。' },
+  {
+    lang: 'ko',
+    before: '오늘날 빠르게 변화하는 디지털 환경 속에서, 본 솔루션은 혁신적인 시너지를 활용하여 고객에게 전례 없는 가치를 원활하게 제공합니다. 이는 단순한 도구가 아니라, 팀의 잠재력을 극대화하는 패러다임의 전환입니다.',
+    after: '이 솔루션은 팀이 이미 쓰는 도구와 함께 작동해, 반복 작업을 줄이고 일을 더 빨리 끝내도록 돕습니다. 거창한 도구가 아니라 실제로 쓸 만한 도구예요.',
+  },
+  {
+    lang: 'en',
+    before: 'In today\'s fast-paced, ever-evolving digital landscape, our cutting-edge platform leverages synergies to seamlessly deliver world-class value at scale. It\'s not just a tool — it\'s a transformative solution that empowers teams to unlock their full potential.',
+    after: 'Our platform helps teams get more done with the tools they already use, and it cuts the busywork so you can ship faster.',
+  },
+  {
+    lang: 'zh',
+    before: '在当今瞬息万变的数字时代，本解决方案充分利用前沿协同效应，无缝赋能客户，释放前所未有的价值。这不仅仅是一个工具，更是一场彻底改变团队潜能的范式革命。',
+    after: '这个方案帮团队用现有的工具把活干得更快，省去重复劳动，真正解决问题。',
+  },
+  {
+    lang: 'ja',
+    before: '目まぐるしく変化する今日のデジタル時代において、本ソリューションは革新的なシナジーを活用し、お客様にかつてない価値をシームレスに提供します。これは単なるツールではなく、チームの潜在能力を最大限に引き出す変革的なソリューションです。',
+    after: 'このソリューションは、チームが今使っているツールのまま、無駄な作業を減らして仕事を速く終わらせるのを助けます。',
+  },
 ];
 
 /** @typedef {{id:string,title:string,messages:Array<{role:string,text:string,meta?:object}>,thread:ReturnType<typeof createRewriteThread>}} Convo */
@@ -165,7 +236,7 @@ function populateModels() {
 }
 function syncTier() {
   const byok = els.tier.value === WEB_TIERS.BYOK;
-  for (const c of [els.providerCtl, els.modelCtl, els.keyCtl]) c.hidden = !byok;
+  els.byokRow.hidden = !byok;
 }
 
 // ---------- landing: suggestions + examples ----------
@@ -179,23 +250,156 @@ function renderSuggest() {
     els.suggest.appendChild(pill);
   }
 }
+// Mixed-script tokenizer: CJK ideographs/kana/CJK-punct become single-char
+// tokens (char-level diff), while Latin/Hangul runs stay word-level. Whitespace
+// is its own token so spacing diffs cleanly.
+function isCJKChar(ch) {
+  const c = ch.codePointAt(0);
+  return (c >= 0x3040 && c <= 0x30ff)   // hiragana + katakana
+    || (c >= 0x3400 && c <= 0x4dbf)     // CJK ext A
+    || (c >= 0x4e00 && c <= 0x9fff)     // CJK unified
+    || (c >= 0xf900 && c <= 0xfaff)     // CJK compat
+    || (c >= 0x3001 && c <= 0x303f)     // CJK punctuation (U+3000 is whitespace)
+    || (c >= 0xff00 && c <= 0xffef);    // fullwidth forms
+}
+function tokenizeText(s) {
+  const toks = [];
+  let buf = '';
+  const flush = () => { if (buf) { toks.push(buf); buf = ''; } };
+  for (const ch of s) {
+    if (/\s/.test(ch)) { flush(); toks.push(ch); }
+    else if (isCJKChar(ch)) { flush(); toks.push(ch); }
+    else buf += ch;
+  }
+  flush();
+  return toks;
+}
+// LCS diff → ordered tokens tagged same | rm (before-only) | add (after-only).
+// before text = same+rm in order; after text = same+add in order.
+function diffSeq(a, b) {
+  const n = a.length, m = b.length;
+  const dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const out = [];
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (a[i] === b[j]) { out.push({ t: a[i], s: 'same' }); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) { out.push({ t: a[i], s: 'rm' }); i++; }
+    else { out.push({ t: b[j], s: 'add' }); j++; }
+  }
+  while (i < n) out.push({ t: a[i++], s: 'rm' });
+  while (j < m) out.push({ t: b[j++], s: 'add' });
+  return out;
+}
+// Render one side of the diff into a line node, skipping the opposite-side status.
+function fillLine(node, seq, skip) {
+  node.textContent = '';
+  for (const tok of seq) {
+    if (tok.s === skip) continue;
+    const cls = tok.s === 'rm' ? 'dtok dtok--rm' : tok.s === 'add' ? 'dtok dtok--add' : 'dtok';
+    node.appendChild(el('span', cls, tok.t));
+  }
+}
+
 function renderExamples() {
   els.exampleCards.innerHTML = '';
-  for (const ex of EXAMPLES) {
-    const card = el('div', 'xcard');
-    card.appendChild(el('div', 'xcard__lang', LANG_NAME[ex.lang] || ex.lang));
-    const b = el('div', 'xcard__row xcard__row--b');
-    b.appendChild(el('span', 'xcard__k', 'before')); b.appendChild(el('span', null, ex.before));
-    const a = el('div', 'xcard__row xcard__row--a');
-    a.appendChild(el('span', 'xcard__k', 'after')); a.appendChild(el('span', null, ex.after));
-    card.appendChild(b); card.appendChild(a);
-    card.addEventListener('click', () => {
-      els.lang.value = ex.lang; onLangChange();
-      loadIntoPrompt(ex.before);
+  const reduce = globalThis.matchMedia && globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-      globalThis.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-    els.exampleCards.appendChild(card);
+  // editor chrome: window dots + language tabs + state label + copy
+  const editor = el('div', 'editor');
+  const bar = el('div', 'editor__bar');
+  const dots = el('span', 'editor__dots'); dots.setAttribute('aria-hidden', 'true');
+  dots.append(el('i'), el('i'), el('i'));
+  const tabs = el('div', 'editor__tabs'); tabs.setAttribute('role', 'tablist');
+  const actbar = el('div', 'editor__act');
+  const state = el('span', 'editor__state', 'before → after');
+  const copy = el('button', 'editor__btn', 'Copy'); copy.type = 'button'; copy.setAttribute('aria-label', 'Copy the rewritten text');
+  actbar.append(state, copy);
+  bar.append(dots, tabs, actbar);
+
+  // body: line-number gutter + persistent before/after diff (both stay visible)
+  const bodyEl = el('div', 'editor__body');
+  const gutter = el('div', 'editor__gutter'); gutter.setAttribute('aria-hidden', 'true');
+  const code = el('div', 'editor__code');
+  const before = el('div', 'editor__seg editor__seg--before');
+  const arrow = el('div', 'editor__arrow', '↓ patina');
+  const after = el('div', 'editor__seg editor__seg--after');
+  code.append(before, arrow, after);
+  bodyEl.append(gutter, code);
+
+  const foot = el('div', 'editor__foot');
+  const cap = el('span', 'editor__cap');
+  const footact = el('div', 'editor__footact');
+  const replay = el('button', 'xcard__replay'); replay.type = 'button';
+  const tryIt = el('button', 'xcard__try'); tryIt.type = 'button';
+  footact.append(replay, tryIt);
+  foot.append(cap, footact);
+
+  editor.append(bar, bodyEl, foot);
+
+  let active = EXAMPLES.find((e) => e.lang === els.lang.value) || EXAMPLES[0];
+
+  // line numbers run continuously: before block, a divider row, then after block.
+  const syncGutter = () => {
+    let lh = parseFloat(globalThis.getComputedStyle(before).lineHeight);
+    if (!Number.isFinite(lh)) lh = 26;
+    const b = Math.max(1, Math.round(before.scrollHeight / lh));
+    const a = Math.max(1, Math.round(after.scrollHeight / lh));
+    gutter.textContent = '';
+    for (let i = 1; i <= b; i++) gutter.appendChild(el('span', null, String(i)));
+    gutter.appendChild(el('span', 'editor__gx', '↓'));
+    for (let i = 1; i <= a; i++) gutter.appendChild(el('span', null, String(b + i)));
+  };
+  // one-shot flourish: the after block fades up; the before block never moves.
+  const reveal = () => {
+    if (reduce) return;
+    editor.classList.remove('is-reveal');
+    void editor.offsetWidth;
+    editor.classList.add('is-reveal');
+    globalThis.setTimeout(() => editor.classList.remove('is-reveal'), 800);
+  };
+  const setActive = (ex, doReveal) => {
+    active = ex;
+    const seq = diffSeq(tokenizeText(ex.before), tokenizeText(ex.after));
+    fillLine(before, seq, 'add');
+    fillLine(after, seq, 'rm');
+    for (const tab of tabs.children) tab.classList.toggle('is-active', tab.dataset.lang === ex.lang);
+    globalThis.requestAnimationFrame(syncGutter);
+    if (doReveal) reveal();
+  };
+
+  for (const ex of EXAMPLES) {
+    const tab = el('button', 'editor__tab', LANG_NAME[ex.lang] || ex.lang);
+    tab.type = 'button'; tab.dataset.lang = ex.lang; tab.setAttribute('role', 'tab');
+    tab.addEventListener('click', () => setActive(ex, true));
+    tabs.appendChild(tab);
+  }
+  replay.addEventListener('click', reveal);
+  tryIt.addEventListener('click', () => {
+    els.lang.value = active.lang; onLangChange();
+    loadIntoPrompt(active.before);
+    globalThis.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  copy.addEventListener('click', async () => {
+    try {
+      await globalThis.navigator.clipboard.writeText(active.after);
+      copy.textContent = 'Copied'; copy.classList.add('is-ok');
+      globalThis.setTimeout(() => { copy.textContent = 'Copy'; copy.classList.remove('is-ok'); }, 1400);
+    } catch { /* clipboard unavailable */ }
+  });
+
+  els.exampleCards.appendChild(editor);
+  setActive(active, false);
+  globalThis.addEventListener('resize', syncGutter);
+  if (!reduce && ('IntersectionObserver' in globalThis)) {
+    const io = new globalThis.IntersectionObserver((entries, obs) => {
+      for (const en of entries) { if (en.isIntersecting) { reveal(); obs.unobserve(en.target); } }
+    }, { threshold: 0.4 });
+    io.observe(editor);
   }
 }
 function loadIntoPrompt(text) {
@@ -231,7 +435,7 @@ function renderThread() {
   const convo = activeConvo();
   els.thread.innerHTML = '';
   const inner = el('div', 'thread__inner');
-  if (convo) {
+  if (convo && convo.messages.length) {
     for (const m of convo.messages) {
       if (m.role === 'user') inner.appendChild(buildUserMsg(m.text));
       else {
@@ -241,9 +445,20 @@ function renderThread() {
         inner.appendChild(node);
       }
     }
+  } else {
+    inner.appendChild(buildThreadEmpty());
   }
   els.thread.appendChild(inner);
   scrollDown();
+}
+function buildThreadEmpty() {
+  const t = I18N[els.lang.value] || I18N.en;
+  const wrap = el('div', 'thread__empty');
+  const mark = document.createElement('img');
+  mark.src = '/assets/brand/patina-mark.svg'; mark.alt = ''; mark.width = 40; mark.height = 40;
+  wrap.appendChild(mark);
+  wrap.appendChild(el('p', 'thread__empty-text', t.emptyChat));
+  return wrap;
 }
 function threadInner() { return els.thread.querySelector('.thread__inner') || (() => { const i = el('div', 'thread__inner'); els.thread.appendChild(i); return i; })(); }
 
@@ -255,7 +470,11 @@ function buildUserMsg(text) {
 }
 function buildPatinaMsg() {
   const msg = el('div', 'msg msg--patina');
-  msg.appendChild(el('div', 'msg__avatar', 'p'));
+  const avatar = el('div', 'msg__avatar');
+  const mark = document.createElement('img');
+  mark.src = '/assets/brand/patina-mark.svg'; mark.alt = 'patina'; mark.width = 20; mark.height = 20;
+  avatar.appendChild(mark);
+  msg.appendChild(avatar);
   const body = el('div', 'msg__body');
   const textEl = el('div', 'msg__text');
   body.appendChild(textEl);
@@ -268,6 +487,17 @@ function buildTyping() {
   return t;
 }
 function fmt(v) { return Number.isFinite(v) ? String(Math.round(Number(v))) : '—'; }
+// Strip the rewrite prompt scaffolding ([BODY]…[/BODY] + [SELF_AUDIT]) so the
+// chat bubble only ever shows the rewritten body, never the internal format.
+function cleanStream(s) {
+  let out = String(s ?? '');
+  const sa = out.search(/\[SELF[_\s-]?AUDIT\]/i);
+  if (sa >= 0) out = out.slice(0, sa);
+  const bm = out.match(/\[BODY\]([\s\S]*?)(?:\[\/BODY\]|$)/i);
+  if (bm) out = bm[1];
+  out = out.replace(/\[\/?BODY\]/gi, '').replace(/\[\/?SELF[_\s-]?AUDIT\]/gi, '');
+  return out.trim();
+}
 function badge(label, value, ok) {
   const b = el('span', 'badge' + (ok ? ' badge--ok' : ''));
   b.appendChild(document.createTextNode(label + ' '));
@@ -354,6 +584,8 @@ async function submit(text) {
   convo.messages.push({ role: 'user', text: clean });
   if (convo.title === 'New chat') { convo.title = clean.slice(0, 40); renderSidebar(); }
   const inner = threadInner();
+  const emptyState = inner.querySelector('.thread__empty');
+  if (emptyState) emptyState.remove();
   inner.appendChild(buildUserMsg(clean));
 
   const { node, body, textEl } = buildPatinaMsg();
@@ -391,7 +623,7 @@ async function submit(text) {
       body: reqBody,
       signal: controller.signal,
       onStart: () => armIdle(),
-      onDelta: (_t, acc) => { armIdle(); start(); textEl.textContent = acc; scrollDown(); },
+      onDelta: (_t, acc) => { armIdle(); start(); textEl.textContent = cleanStream(acc); scrollDown(); },
       onDone: (frame) => {
         armIdle();
         start();
@@ -406,9 +638,23 @@ async function submit(text) {
     });
     if (!ok) {
       if (typing.parentElement) typing.remove();
-      textEl.style.display = ''; textEl.classList.remove('streaming');
-      const status = finalFrame?.status ? ` (HTTP ${finalFrame.status})` : '';
-      body.appendChild(el('div', 'error-note', `Rewrite failed${status}. Try again, or check the mode/key.`));
+      textEl.classList.remove('streaming');
+      const t = I18N[els.lang.value] || I18N.en;
+      const ff = finalFrame || {};
+      const attempt = typeof ff.rewrite === 'string' ? ff.rewrite.trim() : '';
+      const hasScores = ff.mps != null || ff.fidelity != null;
+      if (attempt || hasScores) {
+        // meaning floor not met: show the flagged attempt + scores + a clear warning (auditable, not silently shipped)
+        textEl.style.display = '';
+        textEl.textContent = attempt || cleanStream(textEl.textContent);
+        textEl.classList.add('msg__text--flagged');
+        body.appendChild(buildMeta({ mps: ff.mps, fidelity: ff.fidelity, signals: ff.signals, diff: ff.diff, floorFailed: true }));
+        body.appendChild(el('div', 'error-note', t.floorWarn));
+      } else {
+        textEl.style.display = 'none';
+        const status = ff.status ? ` (HTTP ${ff.status})` : '';
+        body.appendChild(el('div', 'error-note', t.failNote + status));
+      }
     }
   } catch (e) {
     if (typing.parentElement) typing.remove();
@@ -443,8 +689,20 @@ function applyI18n(lang) {
   const stepEls = document.querySelectorAll('.how__steps li');
   t.steps.forEach((s, i) => { const li = stepEls[i]; if (!li) return; const h = li.querySelector('h3'); const p = li.querySelector('p'); if (h) h.textContent = s[0]; if (p) p.textContent = s[1]; });
   set('.examples .sec__title', t.examplesTitle);
-  const dds = document.querySelectorAll('.stats .stat dd');
-  t.stats.forEach((s, i) => { if (dds[i]) dds[i].textContent = s; });
+  set('.editor__cap', t.xCaption);
+  set('.xcard__replay', t.xReplay);
+  set('.xcard__try', t.xTry);
+  set('.bench .sec__title', t.benchTitle);
+  set('.bench .sec__lede', t.benchLede);
+  const bcards = document.querySelectorAll('.bench__cards .bstat');
+  t.benchCards.forEach((c, i) => { const card = bcards[i]; if (!card) return; const dd = card.querySelector('dd'); const sm = card.querySelector('small'); if (dd) dd.textContent = c[0]; if (sm) sm.textContent = c[1]; });
+  const bcols = document.querySelectorAll('.bench__table thead th');
+  t.benchCols.forEach((c, i) => { if (bcols[i]) bcols[i].textContent = c; });
+  set('.bench__note', t.benchNote);
+  set('.bench__link', t.benchLink);
+  set('.cta__title', t.ctaTitle);
+  set('.cta__sub', t.ctaSub);
+  set('#cta-start', t.ctaBtn);
   setHtml('.sidebar__note', t.note);
   set('.composer__hint', t.hint);
   els.input.setAttribute('placeholder', t.chatPh);
@@ -471,9 +729,10 @@ els.composer.addEventListener('submit', (e) => { e.preventDefault(); submit(els.
 els.input.addEventListener('input', () => { autoGrow(els.input); updateChatSend(); });
 els.input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(els.input.value); } });
 
-els.newChat.addEventListener('click', () => { newConvo(); showLanding(); els.heroInput.value = ''; autoGrow(els.heroInput); updateHeroSend(); closeMobileSidebar(); els.heroInput.focus(); });
+els.newChat.addEventListener('click', () => { newConvo(); showChat(); els.input.value = ''; autoGrow(els.input); updateChatSend(); closeMobileSidebar(); els.input.focus(); });
 els.toggleSidebar.addEventListener('click', () => { els.chat.classList.toggle('sidebar-open'); });
 els.homeLink.addEventListener('click', (e) => { e.preventDefault(); showLanding(); globalThis.scrollTo({ top: 0, behavior: 'smooth' }); });
+els.ctaStart && els.ctaStart.addEventListener('click', () => { globalThis.scrollTo({ top: 0, behavior: 'smooth' }); els.heroInput.focus(); });
 
 els.lang.addEventListener('change', onLangChange);
 els.tier.addEventListener('change', syncTier);

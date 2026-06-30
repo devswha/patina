@@ -143,7 +143,12 @@ export async function streamRewrite({
   });
 
   if (!response.ok) {
-    const frame = { type: STREAM_FRAME_TYPES.ERROR, status: response.status, error: 'rewrite request failed' };
+    let reason;
+    try {
+      const errBody = await response.json();
+      if (errBody && typeof errBody.error === 'string') reason = errBody.error;
+    } catch { /* non-JSON error body */ }
+    const frame = { type: STREAM_FRAME_TYPES.ERROR, status: response.status, error: reason || 'rewrite request failed' };
     onError?.(frame);
     return { ok: false, finalFrame: frame };
   }

@@ -110,7 +110,10 @@ export function isProductionPosture(env = {}) {
 export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.now(), limits = TIER_LIMITS }) {
   return {
     async check({ tier, ip }) {
-      if (tier === WEB_TIERS.BYOK) return { allowed: true, tier };
+      // BYOK uses the caller's own provider quota; Pro is bounded separately by
+      // src/pro-metering.js (per-entitlement caps), so both bypass the free
+      // shared-proxy IP quota here.
+      if (tier === WEB_TIERS.BYOK || tier === WEB_TIERS.PRO) return { allowed: true, tier };
 
       const production = isProductionPosture(env);
       if (production && (!kv || kv.__memory)) return { allowed: false, status: 503, reason: 'quota storage unavailable' };

@@ -299,5 +299,5 @@ test('evaluateFloors fails closed on missing or non-numeric scores', () => {
 
 test('REWRITE_MODES and WEB_TIERS expose the documented values', () => {
   assert.deepEqual(REWRITE_MODES, { FIRST: 'first', REFINE: 'refine' });
-  assert.deepEqual(WEB_TIERS, { FREE: 'free', BYOK: 'byok' });
+  assert.deepEqual(WEB_TIERS, { FREE: 'free', BYOK: 'byok', PRO: 'pro' });
 });

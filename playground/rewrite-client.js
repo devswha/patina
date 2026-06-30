@@ -49,10 +49,10 @@ export function createRewriteThread({ lang }) {
      * Build a request body WITHOUT mutating thread state. State is only
      * committed on an accepted rewrite (see commit), so a failed/floor-rejected
      * turn never poisons the next request's original/history (fail-closed UX).
-     * @param {{text:string, tier:string, provider?:string, model?:string, apiKey?:string}} input
+     * @param {{text:string, tier:string, provider?:string, model?:string, apiKey?:string, proSessionToken?:string}} input
      * @returns {Record<string, unknown>}
      */
-    buildRequest({ text, tier, provider, model, apiKey }) {
+    buildRequest({ text, tier, provider, model, apiKey, proSessionToken }) {
       const cleanText = String(text ?? '');
       const isRefine = original != null;
       const body = {
@@ -70,6 +70,11 @@ export function createRewriteThread({ lang }) {
         if (provider != null) body.provider = provider;
         if (model != null) body.model = model;
         if (apiKey != null) body.apiKey = apiKey;
+      } else if (tier === WEB_TIERS.PRO) {
+        // Pro sends ONLY the opaque session token (never the raw license key,
+        // and never a caller-chosen provider/model/apiKey — the server picks
+        // the enhanced route). Mirrors the G001 contract.
+        if (proSessionToken != null) body.proSessionToken = proSessionToken;
       }
 
       return body;
@@ -198,4 +203,46 @@ export async function streamRewrite({
   const frame = { type: STREAM_FRAME_TYPES.ERROR, error: 'stream ended before done' };
   onError?.(frame);
   return { ok: false, finalFrame: frame };
+}
+
+/**
+ * Exchange a raw Lemon Squeezy license key for an opaque, short-lived Pro
+ * session token (POST /api/pro-session). The raw key is sent ONCE, in the body,
+ * and is never retained by this helper — the caller stores only the returned
+ * opaque token (recommended: in-memory/session, not persistent). On any
+ * non-2xx the returned error carries the server message but never the raw key.
+ *
+ * @param {{licenseKey:string, fetchImpl?:typeof fetch, url?:string, signal?:AbortSignal}} input
+ * @returns {Promise<{ok:true, proSessionToken:string, expiresAt:number, status:string}|{ok:false, status:number, error:string}>}
+ */
+export async function exchangeProLicense({ licenseKey, fetchImpl = globalThis.fetch, url = '/api/pro-session', signal }) {
+  if (typeof licenseKey !== 'string' || licenseKey.trim().length === 0) {
+    return { ok: false, status: 400, error: 'licenseKey required' };
+  }
+  let response;
+  try {
+    response = await fetchImpl(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ licenseKey }),
+      signal,
+    });
+  } catch {
+    return { ok: false, status: 0, error: 'network error' };
+  }
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+  if (!response.ok || !data || typeof data.proSessionToken !== 'string') {
+    // Scrub the submitted raw key from any server-provided error text before
+    // returning it: a buggy/hostile server that echoes the key back must never
+    // cause this helper to retain the raw license key in its result.
+    const raw = (data && typeof data.error === 'string') ? data.error : 'pro exchange failed';
+    const error = raw.split(licenseKey).join('[REDACTED]');
+    return { ok: false, status: response.status || 502, error };
+  }
+  return { ok: true, proSessionToken: data.proSessionToken, expiresAt: data.expiresAt, status: data.status };
 }

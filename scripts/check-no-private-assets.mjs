@@ -29,7 +29,7 @@ export const FORBIDDEN_GLOBS = Object.freeze([
   '**/enhanced/**', // any `enhanced/` directory (reinforced assets)
   '**/reinforced/**', // any `reinforced/` directory (reinforced assets)
   '**/corpus/**', // private corpus directories
-  'server/**', // private service/server implementation
+  '**/server/**', // private service/server implementation (any depth, incl. nested packages)
 ]);
 
 /**
@@ -62,7 +62,10 @@ export function globToRegExp(glob) {
       re += c;
     }
   }
-  return new RegExp(`${re}$`);
+  // Case-insensitive: a private marker must be caught regardless of case
+  // (e.g. `.PRIVATE.` must match `**/*.private.*`), since case-only renames
+  // must not bypass the leak boundary.
+  return new RegExp(`${re}$`, 'i');
 }
 
 const FORBIDDEN_MATCHERS = FORBIDDEN_GLOBS.map((glob) => ({ glob, re: globToRegExp(glob) }));

@@ -15,8 +15,8 @@
 /** Languages the rewrite pipeline supports. */
 export const SUPPORTED_LANGS = Object.freeze(['ko', 'en', 'zh', 'ja']);
 
-/** Service tiers. `free` is the abuse-bounded shared proxy; `byok` uses the user's own key. */
-export const WEB_TIERS = Object.freeze({ FREE: 'free', BYOK: 'byok' });
+/** Service tiers. `free` is the abuse-bounded shared proxy; `byok` uses the user's own key; `pro` is the hosted paid tier, gated by PATINA_PRO_ENABLED (disabled by default). */
+export const WEB_TIERS = Object.freeze({ FREE: 'free', BYOK: 'byok', PRO: 'pro' });
 
 /** Turn kinds. `first` is the one-shot rewrite; `refine` is a conversational follow-up. */
 export const REWRITE_MODES = Object.freeze({ FIRST: 'first', REFINE: 'refine' });
@@ -37,13 +37,36 @@ export const FIDELITY_FLOOR = 70;
 export const TIER_LIMITS = Object.freeze({
   free: Object.freeze({ maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }),
   byok: Object.freeze({ maxChars: 20000, maxConcurrent: 2 }),
+  pro: Object.freeze({ maxChars: 12000, maxConcurrent: 2, reqPerDay: 100, burstPerHour: 20, requestsPerMinute: 6 }),
 });
+
+/**
+ * Whether the hosted Pro tier is enabled in this environment. Pro is DISABLED
+ * BY DEFAULT: only an explicit `PATINA_PRO_ENABLED === 'true'` opens the gate.
+ * Every Pro entitlement/routing/metering path is closed together behind this
+ * single flag, so a partially-wired Pro tier can never alter the free/BYOK
+ * request path. checkout/payment-open is a SEPARATE flag, not implied by this.
+ *
+ * @param {Record<string,string|undefined>} [env]
+ * @returns {boolean}
+ */
+export function isProEnabled(env = {}) {
+  return env.PATINA_PRO_ENABLED === 'true';
+}
 
 /**
  * Conversation context caps. The client holds the thread (no-store server); the
  * server re-caps every request to `maxTurns` recent turns and `maxBytes` total.
  */
 export const CONTEXT_LIMITS = Object.freeze({ maxTurns: 6, maxBytes: 12 * 1024 });
+
+/**
+ * Max length of an opaque Pro session token. Tokens are server-issued opaque
+ * random identifiers, so a legitimate token is short; a longer value is
+ * rejected to bound the abuse/DoS surface (a Pro request must not carry a
+ * giant blob in the token field).
+ */
+export const MAX_PRO_SESSION_TOKEN_CHARS = 512;
 
 /**
  * Stream frame protocol. The handler streams newline-delimited JSON ("NDJSON")
@@ -99,7 +122,7 @@ export const PROVIDER_PRESETS = Object.freeze({
  * the safe failure for a key-handling boundary.
  */
 const SECRET_KEY_MARKERS = Object.freeze([
-  'apikey', 'token', 'secret', 'password', 'passwd', 'credential', 'authorization', 'bearer',
+  'apikey', 'token', 'secret', 'password', 'passwd', 'credential', 'authorization', 'bearer', 'license', 'signature',
 ]);
 function isSecretKey(key) {
   const norm = String(key).toLowerCase().replace(/[_-]/g, '');
@@ -177,6 +200,21 @@ export function resolveProviderModel({ tier, provider, model } = {}, env = {}) {
     if (!preset.models.includes(model)) return { ok: false, error: 'model not allowlisted' };
     return { ok: true, tier, provider, model, baseURL: preset.baseURL };
   }
+  if (tier === WEB_TIERS.PRO) {
+    // Pro is gated: when disabled, Pro never resolves a route (fail-closed).
+    if (!isProEnabled(env)) return { ok: false, error: 'pro tier unavailable' };
+    // Pro provider/model/baseURL come ONLY from server env (the enhanced
+    // route), never from the request body. Callers cannot choose them.
+    const p = env.PATINA_PRO_PROVIDER;
+    const preset = presetFor(p);
+    if (!preset) return { ok: false, error: 'pro provider not configured' };
+    // PATINA_PRO_MODEL must be set explicitly: no preset fallback, so a
+    // provider-only (model-missing) misconfiguration fails closed instead of
+    // silently routing to an arbitrary preset model.
+    const m = env.PATINA_PRO_MODEL;
+    if (!m || !preset.models.includes(m)) return { ok: false, error: 'pro model not configured' };
+    return { ok: true, tier, provider: p, model: m, baseURL: preset.baseURL };
+  }
   return { ok: false, error: 'unknown tier' };
 }
 
@@ -230,8 +268,13 @@ export function validateRewriteRequest(body, env = {}) {
   if (!SUPPORTED_LANGS.includes(lang)) {
     return { ok: false, status: 400, error: `lang must be one of ${SUPPORTED_LANGS.join(', ')}` };
   }
-  if (tier !== WEB_TIERS.FREE && tier !== WEB_TIERS.BYOK) {
-    return { ok: false, status: 400, error: 'tier must be "free" or "byok"' };
+  if (tier !== WEB_TIERS.FREE && tier !== WEB_TIERS.BYOK && tier !== WEB_TIERS.PRO) {
+    return { ok: false, status: 400, error: 'tier must be "free", "byok", or "pro"' };
+  }
+  if (tier === WEB_TIERS.PRO && !isProEnabled(env)) {
+    // Pro disabled by default: reject explicitly (fail-closed), never silently
+    // downgrade to free/BYOK. The free/BYOK validation below is unchanged.
+    return { ok: false, status: 403, error: 'pro tier unavailable' };
   }
   if (typeof text !== 'string' || text.trim().length === 0) {
     return { ok: false, status: 400, error: 'text must be a non-empty string' };
@@ -253,6 +296,26 @@ export function validateRewriteRequest(body, env = {}) {
     }
   }
 
+  // Pro requests carry an opaque short-lived session token, never the raw Lemon
+  // license key (that is exchanged once at the session endpoint). Pro also
+  // cannot choose provider/model/apiKey — the server picks the enhanced route.
+  let proSessionToken;
+  if (tier === WEB_TIERS.PRO) {
+    if (/** @type {any} */ (body).licenseKey != null) {
+      return { ok: false, status: 400, error: 'rewrite requests must use proSessionToken, not a raw licenseKey' };
+    }
+    if (/** @type {any} */ (body).provider != null || /** @type {any} */ (body).model != null) {
+      return { ok: false, status: 400, error: 'pro tier must not include provider/model' };
+    }
+    proSessionToken = /** @type {any} */ (body).proSessionToken;
+    if (typeof proSessionToken !== 'string' || proSessionToken.trim().length === 0) {
+      return { ok: false, status: 400, error: 'pro tier requires a proSessionToken' };
+    }
+    if (proSessionToken.length > MAX_PRO_SESSION_TOKEN_CHARS) {
+      return { ok: false, status: 400, error: 'proSessionToken is too long' };
+    }
+  }
+
   const provider = /** @type {any} */ (body).provider;
   const model = /** @type {any} */ (body).model;
   const resolved = resolveProviderModel({ tier, provider, model }, env);
@@ -264,8 +327,8 @@ export function validateRewriteRequest(body, env = {}) {
       return { ok: false, status: 400, error: 'byok tier requires an apiKey' };
     }
   } else if (apiKey != null) {
-    // Free tier must never carry a caller key; reject rather than silently drop.
-    return { ok: false, status: 400, error: 'free tier must not include an apiKey' };
+    // Only BYOK carries a caller key; free/pro must not. Reject, don't drop.
+    return { ok: false, status: 400, error: `${tier} tier must not include an apiKey` };
   }
 
   const normHistory = normalizeHistory(history);
@@ -284,6 +347,7 @@ export function validateRewriteRequest(body, env = {}) {
       model: resolved.model,
       baseURL: resolved.baseURL,
       apiKey: tier === WEB_TIERS.BYOK ? apiKey : undefined,
+      proSessionToken: tier === WEB_TIERS.PRO ? proSessionToken : undefined,
     },
   };
 }

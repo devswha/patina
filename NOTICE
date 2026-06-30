@@ -15,6 +15,22 @@ Private assets (NOT included)
 No private corpora, reinforced lexicons/patterns, prompts, or hosted-server
 assets are included in this repository or its npm packages.
 
+Trademark & brand
+-----------------
+The MIT License covers the code; it does NOT grant any right to the "patina"
+name or brand. "patina" is a trademark of devswha (Korean trademark filing in
+progress with KIPO). You may use, fork, modify, and redistribute the code under
+the MIT License, but you may not use the "patina" name, logo, or branding in a
+way that implies affiliation with or endorsement by the patina project, nor to
+market a competing hosted service as "patina". Rebrand forks under your own name.
+
+Hosted Pro (separate from this open baseline)
+---------------------------------------------
+The hosted Pro tier (the enhanced Korean engine and related server assets) is a
+private, non-distributed offering. This repository ships only the open baseline
+plus the public Pro client contract, gating, and a non-enhancing stub engine;
+the enhanced engine itself is never included here.
+
 Acknowledgements
 ----------------
 Inspired by oh-my-zsh's plugin architecture, Wikipedia's "Signs of AI writing"

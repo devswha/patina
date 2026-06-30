@@ -75,6 +75,8 @@ const I18N = {
     emptyChat: 'New chat — paste AI-sounding text below and patina cleans it up.',
     floorWarn: 'This rewrite didn’t pass patina’s meaning-preservation floor (MPS / fidelity), so it’s flagged. Try again or pick a stronger model.',
     failNote: 'Rewrite failed. Try again, or check the mode/key.',
+    quotaDaily: 'You’ve used today’s free quota. Try again tomorrow, or switch to BYOK mode with your own API key for unlimited use.',
+    quotaHourly: 'Free quota is full for now. Try again shortly, or use BYOK mode with your own API key.',
   },
   ko: {
     title: 'AI 티 없이, <span class="grad">자연스럽게</span>',
@@ -102,6 +104,8 @@ const I18N = {
     emptyChat: '새 대화 — 아래에 AI 티 나는 문장을 붙여넣으면 patina가 다듬어요.',
     floorWarn: '이 리라이트는 patina의 의미 보존 기준(MPS·fidelity)을 통과하지 못해 경고로 표시했어요. 다시 시도하거나 더 강한 모델을 골라보세요.',
     failNote: '리라이트 실패. 다시 시도하거나 모드·키를 확인해 주세요.',
+    quotaDaily: '오늘 무료 사용량을 다 쓰셨어요. 내일 다시 시도하거나, 본인 API 키로 BYOK 모드를 쓰면 제한 없이 이용할 수 있어요.',
+    quotaHourly: '무료 사용량이 잠시 가득 찼어요. 잠시 후 다시 시도하거나, 본인 API 키로 BYOK 모드를 쓰면 바로 이용할 수 있어요.',
   },
   zh: {
     title: '让文字更<span class="grad">像人写的</span>',
@@ -129,6 +133,8 @@ const I18N = {
     emptyChat: '新对话 — 在下方粘贴有 AI 味的文字，patina 帮你润色。',
     floorWarn: '该改写未通过 patina 的语义保留阈值（MPS·fidelity），已标记。请重试或选择更强的模型。',
     failNote: '改写失败。请重试，或检查模式 / 密钥。',
+    quotaDaily: '今天的免费额度已用完。请明天再试，或切换到 BYOK 模式使用自己的 API 密钥，即可无限制使用。',
+    quotaHourly: '免费额度暂时已满。请稍后再试，或使用 BYOK 模式和自己的 API 密钥。',
   },
   ja: {
     title: 'AIっぽさを消して、<span class="grad">自然に</span>',
@@ -156,6 +162,8 @@ const I18N = {
     emptyChat: '新しいチャット — 下にAIっぽい文章を貼ると patina が整えます。',
     floorWarn: 'この書き換えは patina の意味保持しきい値（MPS・fidelity）を満たさず、警告表示しています。再試行するか、より強力なモデルを選んでください。',
     failNote: '書き換えに失敗しました。再試行するか、モード・キーを確認してください。',
+    quotaDaily: '本日の無料利用枠を使い切りました。明日また試すか、ご自身のAPIキーでBYOKモードに切り替えると無制限で使えます。',
+    quotaHourly: '無料利用枠が一時的にいっぱいです。しばらくして再試行するか、ご自身のAPIキーでBYOKモードをお使いください。',
   },
 };
 
@@ -652,8 +660,13 @@ async function submit(text) {
         body.appendChild(el('div', 'error-note', t.floorWarn));
       } else {
         textEl.style.display = 'none';
-        const status = ff.status ? ` (HTTP ${ff.status})` : '';
-        body.appendChild(el('div', 'error-note', t.failNote + status));
+        if (ff.status === 429) {
+          const hourly = typeof ff.error === 'string' && /hour/i.test(ff.error);
+          body.appendChild(el('div', 'error-note', hourly ? t.quotaHourly : t.quotaDaily));
+        } else {
+          const status = ff.status ? ` (HTTP ${ff.status})` : '';
+          body.appendChild(el('div', 'error-note', t.failNote + status));
+        }
       }
     }
   } catch (e) {

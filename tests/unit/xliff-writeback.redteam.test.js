@@ -2,6 +2,7 @@ import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -22,7 +23,7 @@ import { resolveBatchOutputPath, writeAtomicUtf8 } from '../../src/cli/batch.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = readFileSync(resolve(HERE, '../fixtures/xliff/sample.xliff'), 'utf8');
-const REPORT_DIR = '/tmp/patina-qa/g002';
+const REPORT_DIR = join(tmpdir(), 'patina-qa', 'xliff-writeback');
 const REPORT_PATH = join(REPORT_DIR, 'adversarial-report.txt');
 const rows = [];
 const tempDirs = [];
@@ -52,7 +53,12 @@ function identityReplacementsForSelected(xml) {
 }
 
 after(() => {
-  writeFileSync(REPORT_PATH, `${rows.join('\n\n')}\n`, 'utf8');
+  // Best-effort debug artifact; never fail the suite on a report-write issue
+  // (e.g. a CI runner without the local artifact dir).
+  try {
+    mkdirSync(REPORT_DIR, { recursive: true });
+    writeFileSync(REPORT_PATH, `${rows.join('\n\n')}\n`, 'utf8');
+  } catch { /* ignore */ }
   for (const dir of tempDirs) rmSync(dir, { recursive: true, force: true });
 });
 

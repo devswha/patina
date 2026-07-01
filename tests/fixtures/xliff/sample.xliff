@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file id="1" original="app.json" source-language="zh-CN" target-language="ko" datatype="plaintext">
+    <body>
+      <trans-unit id="u1" resname="notice.delete">
+        <source>由于账户未登录，我们将在一段时间后永久删除文件。</source>
+        <target state="final">계정이 로그인되어 있지 않아, 일정 기간 후 파일을 영구적으로 삭제할 예정입니다.</target>
+      </trans-unit>
+      <trans-unit id="u2" resname="locked.msg" translate="no">
+        <source>此项目已锁定，请勿编辑当前字符串内容。</source>
+        <target state="final">이 항목은 잠겨 있으니 현재 문자열을 편집하지 마세요.</target>
+      </trans-unit>
+      <trans-unit id="u3" resname="untranslated.msg">
+        <source>Please back up your data before initializing the device.</source>
+        <target state="needs-translation">Please back up your data before initializing the device.</target>
+      </trans-unit>
+      <trans-unit id="u4" resname="inline.markup">
+        <source>点击 <g id="1">这里</g> 查看更多详情信息内容。</source>
+        <target state="final">자세한 내용을 보려면 <g id="1">여기</g>를 눌러 주세요.</target>
+      </trans-unit>
+      <trans-unit id="u5" resname="short.label">
+        <source>确定</source>
+        <target state="final">확인</target>
+      </trans-unit>
+      <trans-unit id="u6" resname="notice.delete.dup">
+        <source>另一处相同文案的重复条目内容示例。</source>
+        <target state="final">계정이 로그인되어 있지 않아, 일정 기간 후 파일을 영구적으로 삭제할 예정입니다.</target>
+      </trans-unit>
+      <!-- tricky: a comment containing a fake </target> and <target> should not confuse the scanner -->
+      <trans-unit id="u7" resname="after.comment">
+        <source>服务器迁移完成后请重新登录您的账户以继续使用。</source>
+        <target state="translated">서버 이전이 완료된 후 계정에 다시 로그인하여 계속 이용해 주세요.</target>
+      </trans-unit>
+      <trans-unit id="u8" resname="cdata.target">
+        <source>CDATA content should be skipped by the humanizer entirely.</source>
+        <target state="final"><![CDATA[원시 데이터 <b>굵게</b> 유지되어야 하는 긴 안내 문장입니다.]]></target>
+      </trans-unit>
+      <trans-unit id="u9" resname="ambiguous.multi">
+        <source>Ambiguous unit with two target children in one unit here.</source>
+        <target state="final">첫 번째 대상 문장으로 충분히 긴 안내 문구입니다.</target>
+        <target state="final">두 번째 대상 문장이라 모호하므로 건너뜁니다.</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -12,6 +12,12 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## Unreleased
+
+### Added
+
+- **XLIFF localization humanize mode** (`patina --xliff <file.xliff>`): humanizes translated `<target>` segments in XLIFF 1.2 files through the existing rewrite pipeline with mandatory per-segment MPS/fidelity floors (≥70), without changing meaning, numbers, or placeholders. Dependency-free quote-aware scanner (no XML library); byte-preserving write-back (only the humanizable target core changes — whitespace, entities, attributes, and all other bytes preserved); atomic writes; default writes a new `*.humanized.xliff` and never clobbers the original; fail-closed (a verify floor miss keeps the original bytes). `--dry-run` reports selection/dedup/cap/cost with **0 LLM calls and 0 writes**; `--max-segments` overrides the default 50 unique-segment cap; `--batch` handles multiple files. Target-state allowlist plus inline-markup/CDATA/ambiguous targets are skipped fail-closed, and identical targets are deduplicated (rewritten once, applied to every duplicate). No `src/features/*` changes and no new runtime dependencies (#569).
+
 ## 6.0.1 — 2026-06-28
 
 **Playground overhaul: editorial restyle, interactive before/after examples, a real benchmark section, and more BYOK providers.**

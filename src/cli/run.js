@@ -10,7 +10,7 @@ import { buildTransformVariants } from './args.js';
 import { invokeBackendChain, selectBackendChain, selectOcrBackends, listBackends } from '../backends/index.js';
 import { selectProvider, resolveProviderConfig } from '../providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from '../security.js';
-import { formatOutput, formatRewriteBodyForBrowser, validateScoreWeights, buildDeterministicAuditBackstop, stripSelfAudit } from '../output.js';
+import { formatOutput, formatRewriteBodyForBrowser, validateScoreWeights, buildDeterministicAuditBackstop, stripSelfAudit, cleanRewriteOutput } from '../output.js';
 import {
   buildBrowserDiffPromptInput,
   renderExplanationHtml,
@@ -20,22 +20,23 @@ import {
 } from '../browser-diff.js';
 import { fetchPreviewPage, prepareSnapshotHtml, freezeSnapshotAssets, extractProseBlocks, alignRewrites, buildPreviewHtml, buildContextCardHtml } from '../preview.js';
 import { collectImageCandidates, stageOcrImages, ocrStagedImages, describeImage, hasOcrRunnerOverride } from '../ocr.js';
-import { rmSync } from 'node:fs';
+import { rmSync, readFileSync, mkdirSync } from 'node:fs';
 
 import { verifyRewrite, deterministicMeaningGuard } from '../verify.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
 import { detectKoreanRegister } from '../features/stylometry.js';
-import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput } from './batch.js';
+import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput, writeAtomicUtf8, resolveBatchOutputPath } from './batch.js';
 import { applyScoreGate, extractScoreOverall } from './score-gate.js';
 import { loadInputs } from './input.js';
 import { PatinaCliError, runtimeError, inputError } from '../errors.js';
 import { providerHttpKeyEnvVars, resolveHttpApiKey } from '../auth.js';
-import { DEFAULT_BACKEND_TIMEOUT_MS, getBackendSafety } from '../backends/contract.js';
+import { DEFAULT_BACKEND_TIMEOUT_MS, getBackendSafety, resolveBackendMaxRetries } from '../backends/contract.js';
 import { resolve } from 'node:path';
 import { loadPersona } from '../personas/loader.js';
 import { evaluatePersonaGate } from '../personas/gates.js';
 import { personaMatchScore } from '../features/persona-match.js';
 import { pathToFileURL } from 'node:url';
+import { humanizeXliffDocument, resolveUniqueCap } from './xliff.js';
 
 /**
  * Run the default patina pipeline for an already-parsed CLI invocation:
@@ -125,7 +126,7 @@ export async function runDefault(parsed, logger) {
         message: `[patina] Backend fallback chain: ${backends.map((b) => b.name).join(' → ')}`,
       });
     }
-    if (backend.name === 'openai-http' && !resolved.apiKey) {
+    if (backend.name === 'openai-http' && !resolved.apiKey && !(parsed.xliff && parsed.dryRun)) {
       const msg = ['No API key found. Set PATINA_API_KEY, PATINA_API_KEY_FILE, OPENAI_API_KEY, or use --api-key-file.'];
       if (provider) {
         msg.push(`(--provider ${provider.name} expects ${provider.apiKeyEnv} or PATINA_API_KEY.)`);
@@ -166,6 +167,11 @@ export async function runDefault(parsed, logger) {
       timeoutMs,
       logger,
     });
+    return;
+  }
+
+  if (parsed.xliff) {
+    await runXliffMode(parsed, { config, repoRoot, voice, scoring, backends, resolved, promptMode, timeoutMs, providerName: provider?.name }, logger);
     return;
   }
 
@@ -365,6 +371,121 @@ export async function runDefault(parsed, logger) {
     logger.closeProgress();
   }
 
+}
+
+/**
+ * XLIFF localization humanize mode. Reads each XLIFF file, humanizes its safe
+ * translated <target> segments through the normal rewrite+verify pipeline, and
+ * writes a byte-preserving output atomically. --dry-run reports the plan with
+ * zero LLM calls and no writes. Language/patterns are resolved per file from the
+ * XLIFF target-language (cached), not the global config language.
+ */
+export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
+  const { config, repoRoot, voice, scoring, backends, resolved, promptMode, timeoutMs, providerName } = ctx;
+  const cancellation = createCancellationController({ logger });
+  const assetCache = new Map();
+  const getAssets = (lang) => {
+    if (assetCache.has(lang)) return assetCache.get(lang);
+    const profileName = resolveProfileForLanguage(config.profile || 'default', lang, logger);
+    const profile = loadProfile(repoRoot, profileName);
+    const patterns = applyProfilePatternOverrides(loadPatterns(repoRoot, lang, config['skip-patterns'] || []), profile, lang);
+    const assets = { patterns, profile };
+    assetCache.set(lang, assets);
+    return assets;
+  };
+  const rewriteSegment = overrides.rewriteSegment || (async ({ core, lang }) => {
+    const { patterns, profile } = getAssets(lang);
+    const prompt = buildPrompt({
+      config: { ...config, language: lang }, patterns,
+      profile: profile.body ? profile : null,
+      voice: voice.body ? voice : null,
+      scoring: scoring.body ? scoring : null,
+      text: core, mode: 'rewrite',
+      tone: { tone: null, source: 'profile_only' },
+      promptMode, documentSignals: null,
+    });
+    const raw = await invokeBackendChain({
+      backends, prompt, apiKey: resolved.apiKey, baseURL: resolved.baseURL,
+      model: resolved.model, modelSource: resolved.modelSource,
+      signal: cancellation.signal, timeout: timeoutMs,
+      maxConcurrency: parsed.maxConcurrency, maxRetries: parsed.maxRetries, logger,
+    });
+    return cleanRewriteOutput(raw, { logger: { warn() {} } });
+  });
+  const verifySegment = overrides.verifySegment || (async ({ core, candidate, lang }) => {
+    const { patterns, profile } = getAssets(lang);
+    const callLLM = ({ prompt, signal, timeout }) => invokeBackendChain({
+      backends, prompt, apiKey: resolved.apiKey, baseURL: resolved.baseURL,
+      model: resolved.model, modelSource: resolved.modelSource,
+      signal: signal ?? cancellation.signal, timeout: timeout ?? timeoutMs,
+      maxConcurrency: 1, maxRetries: 0, logger,
+    });
+    const v = await verifyRewrite({
+      original: core, rewrite: candidate, config: { ...config, language: lang }, patterns,
+      profile: profile.body ? profile : null,
+      voice: voice.body ? voice : null,
+      scoring: scoring.body ? scoring : null,
+      apiKey: resolved.apiKey, baseURL: resolved.baseURL, model: resolved.model,
+      callLLM, signal: cancellation.signal, timeout: timeoutMs, logger,
+    });
+    return { verified: v.verified, text: v.text, mps: v.mps, fidelity: v.fidelity };
+  });
+  // Worst-case backend attempts per LLM call = sum over the fallback chain of
+  // (that backend's max retries + 1). Used only for the dry-run estimate.
+  const backendAttemptsPerCall = backends.reduce((sum, b) => sum + resolveBackendMaxRetries(b.name, parsed.maxRetries) + 1, 0) || 1;
+
+  cancellation.install();
+  try {
+    for (const file of parsed.files) {
+      cancellation.throwIfCanceled();
+      const xml = readFileSync(file, 'utf8');
+      const outputPath = resolveBatchOutputPath(parsed, file, { defaultSuffix: '.humanized' });
+      const breaker = createBatchCircuitBreaker({ parsed: { ...parsed, batch: true }, total: Math.max(2, resolveUniqueCap(parsed)) });
+      const result = await humanizeXliffDocument({
+        xml,
+        cap: resolveUniqueCap(parsed),
+        dryRun: !!parsed.dryRun,
+        rewriteSegment,
+        verifySegment,
+        backendAttemptsPerCall,
+        provider: providerName,
+        model: resolved.model,
+        outputPath,
+        breaker,
+        signal: cancellation.signal,
+      });
+      if (result.dryRun) {
+        const r = result.report;
+        if ((parsed.format ?? 'markdown') === 'json') {
+          console.log(JSON.stringify({ file, targetLang: result.targetLang, ...r }, null, 2));
+        } else {
+          console.log(
+            `[dry-run] ${file} (target=${result.targetLang})\n`
+            + `  units=${r.totalUnits} selected=${r.selectedCount} unique=${r.uniqueCount} (dedup saves ${r.duplicateSavings})\n`
+            + `  cap=${r.cap} (${r.capStatus}) | worst-case LLM calls=${r.worstCaseLlmCalls} (~${r.callsPerUnique}/segment), backend attempts<=${r.worstCaseBackendAttempts}\n`
+            + `  est input tokens ~${r.inputTokensEstimate.toLocaleString()} | cost: ${r.cost ?? r.costNote}\n`
+            + `  output would be: ${outputPath}\n`
+            + `  skipped: ${Object.entries(r.skippedByReason).map(([k, v]) => `${k}=${v}`).join(', ') || 'none'}\n`
+            + `  (dry-run: 0 LLM calls, 0 writes)`
+          );
+        }
+        continue;
+      }
+      if (parsed.outdir) mkdirSync(parsed.outdir, { recursive: true });
+      if (!parsed.inPlace && resolve(outputPath) === resolve(file)) {
+        throw runtimeError(
+          'xliff: refusing to overwrite the original file',
+          `The computed output path equals the input (${file}).`,
+          'Use --in-place to overwrite intentionally, or --suffix/--outdir for a separate output.'
+        );
+      }
+      writeAtomicUtf8(outputPath, result.outputXml);
+      console.log(`Written: ${outputPath} — ${result.report.changedSegments} segment(s) humanized, ${result.report.uniqueCount - result.report.changedUniqueKeys} kept`);
+    }
+  } finally {
+    cancellation.cleanup();
+    logger.closeProgress();
+  }
 }
 
 

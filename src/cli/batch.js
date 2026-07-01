@@ -6,8 +6,8 @@ import {
   resolveBackendMaxRetries,
 } from '../backends/contract.js';
 import { runtimeError } from '../errors.js';
-import { writeFileSync, mkdirSync } from 'node:fs';
-import { resolve, basename, extname } from 'node:path';
+import { writeFileSync, mkdirSync, renameSync, unlinkSync } from 'node:fs';
+import { resolve, basename, extname, dirname, join } from 'node:path';
 
 export function logBatchSafetyPlan({ jobs, backends, parsed, promptMode, timeoutMs, logger }) {
   if (!parsed.batch || jobs.length <= 1) return;
@@ -170,4 +170,57 @@ export async function writeBatchOutput(parsed, inputPath, output) {
 
   writeFileSync(outPath, output, 'utf8');
   console.log(`Written: ${outPath}`);
+}
+
+/**
+ * Atomically write UTF-8 text: write a unique temp file in the destination
+ * directory, then rename onto the final path (rename is atomic on the same
+ * filesystem). On any failure the temp file is removed and the original/final
+ * path is left untouched — a mid-run failure never yields a partial output.
+ * @param {string} destPath
+ * @param {string} contents
+ * @returns {string} the destination path
+ */
+export function writeAtomicUtf8(destPath, contents) {
+  const dir = dirname(destPath);
+  let lastErr;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const tmp = join(dir, `.patina-xliff-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`);
+    try {
+      // Exclusive create ('wx'): never clobber a preexisting temp path or symlink.
+      writeFileSync(tmp, contents, { encoding: 'utf8', flag: 'wx' });
+    } catch (err) {
+      if (err && err.code === 'EEXIST') { lastErr = err; continue; } // name collision → retry
+      throw err; // e.g. missing directory → propagate; no temp was created
+    }
+    try {
+      renameSync(tmp, destPath);
+    } catch (err) {
+      try { unlinkSync(tmp); } catch { /* best-effort cleanup; original/dest untouched */ }
+      throw err;
+    }
+    return destPath;
+  }
+  throw lastErr || new Error('xliff: could not create a unique temp file');
+}
+
+/**
+ * Resolve a batch/XLIFF output path from the routing flags. Precedence:
+ * --in-place (overwrite original) > --outdir (basename into dir) > --suffix
+ * (inserted before the extension) > defaultSuffix. With none set and no
+ * default, returns the input path unchanged (caller decides).
+ * @param {{inPlace?:boolean, outdir?:string, suffix?:string}} parsed
+ * @param {string} inputPath
+ * @param {{defaultSuffix?:string}} [options]
+ * @returns {string}
+ */
+export function resolveBatchOutputPath(parsed, inputPath, { defaultSuffix = '' } = {}) {
+  if (parsed.inPlace) return inputPath;
+  if (parsed.outdir) return join(parsed.outdir, basename(inputPath));
+  const suffix = parsed.suffix ?? defaultSuffix;
+  if (suffix) {
+    const ext = extname(inputPath);
+    return `${inputPath.slice(0, inputPath.length - ext.length)}${suffix}${ext}`;
+  }
+  return inputPath;
 }

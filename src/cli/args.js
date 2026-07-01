@@ -8,7 +8,7 @@ const VALUE_OPTIONS = new Set([
   '--lang', '--profile', '--tone', '--persona', '--format', '--exit-on',
   '--suffix', '--outdir', '--model', '--api-key-file', '--base-url',
   '--backend', '--timeout-ms', '--max-concurrency', '--max-retries',
-  '--max-failures', '--max-failure-rate', '--provider', '--config',
+  '--max-failures', '--max-failure-rate', '--provider', '--config', '--max-segments',
 ]);
 
 // Boolean switches. Used to reject `--quiet=1`-style values explicitly and to
@@ -19,7 +19,7 @@ const FLAG_OPTIONS = new Set([
   '--batch', '--in-place', '--allow-private-base-url',
   '--stop-on-retryable-storm', '--no-stop-on-retryable-storm',
   '--list-backends', '--allow-insecure-base-url', '--no-interactive',
-  '--rewrite-headings', '--verify',
+  '--rewrite-headings', '--verify', '--xliff', '--dry-run',
 ]);
 
 // Expand `--name=value` into two tokens for known value-taking options and
@@ -285,6 +285,18 @@ export function parseArgs(rawArgs) {
       case '--no-interactive':
         parsed.noInteractive = true;
         break;
+      case '--xliff':
+        parsed.xliff = true;
+        break;
+      case '--dry-run':
+        parsed.dryRun = true;
+        break;
+      case '--max-segments': {
+        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
+        i++;
+        parsed.maxSegments = parsePositiveIntegerOption(value, arg);
+        break;
+      }
       default:
         if (!arg.startsWith('-')) {
           parsed.files.push(arg);
@@ -549,7 +561,7 @@ export function validateOutputRouting(parsed) {
     parsed.outdir !== undefined ? '--outdir' : null,
   ].filter(Boolean);
   if (destinations.length === 0) return;
-  if (!parsed.batch) {
+  if (!parsed.batch && !parsed.xliff) {
     throw inputError(
       `${destinations[0]} requires --batch`,
       'Output routing flags only apply to batch mode; without --batch the result goes to stdout.',
@@ -595,6 +607,58 @@ export function validateOutputRouting(parsed) {
       }
       seen.set(base, file);
     }
+  }
+}
+
+// XLIFF mode is an explicit, file-to-file localization pass: it humanizes
+// already-translated <target> segments through the normal rewrite+verify path,
+// so it rejects non-rewrite modes, meaning/register-changing flags, and stdin —
+// anything that would make byte-preserving localization unsafe. Run this BEFORE
+// the generic validators so the errors are XLIFF-specific.
+export function validateXliffRequest(parsed) {
+  if (!parsed.xliff) {
+    // --dry-run and --max-segments are XLIFF-only in this MVP.
+    if (parsed.dryRun) {
+      throw inputError('--dry-run requires --xliff',
+        '--dry-run only reports an XLIFF humanize plan; it has no meaning for the normal rewrite modes.',
+        'Run `patina --xliff --dry-run <file.xliff>`.');
+    }
+    if (parsed.maxSegments !== undefined) {
+      throw inputError('--max-segments requires --xliff',
+        '--max-segments only caps the XLIFF humanize segment count.',
+        'Run `patina --xliff --max-segments <n> <file.xliff>`.');
+    }
+    return;
+  }
+
+  /** @type {[string, string][]} incompatible mode/flag pairs (parsed key, flag). */
+  const incompatible = [
+    ['audit', '--audit'], ['score', '--score'], ['diff', '--diff'],
+    ['preview', '--preview'], ['ocr', '--ocr'], ['serve', '--serve'],
+    ['gate', '--exit-on'], ['persona', '--persona'], ['jargon', '--jargon'],
+    ['tone', '--tone'], ['profile', '--profile'], ['rewriteHeadings', '--rewrite-headings'],
+  ];
+  for (const [key, flag] of incompatible) {
+    if (parsed[key] !== undefined && parsed[key] !== false) {
+      throw inputError(`${flag} cannot be combined with --xliff`,
+        `--xliff is a meaning-preserving localization pass over translated <target> segments; ${flag} is not part of that surface in this MVP.`,
+        `Drop ${flag}, or run it separately without --xliff.`);
+    }
+  }
+  if (parsed.verify) {
+    throw inputError('--verify cannot be combined with --xliff',
+      'XLIFF mode always verifies each rewritten segment against the MPS/fidelity floors; verification cannot be disabled or toggled.',
+      'Drop --verify — it is implied by --xliff.');
+  }
+  if (!parsed.files || parsed.files.length === 0) {
+    throw inputError('--xliff requires file paths, not stdin',
+      'XLIFF humanize reads and rewrites structured files in place, so it needs at least one .xliff file argument.',
+      'Run `patina --xliff <file.xliff>`.');
+  }
+  if (parsed.files.length > 1 && !parsed.batch) {
+    throw inputError('--xliff with multiple files requires --batch',
+      'Each XLIFF run writes one output file; processing several inputs at once is batch mode.',
+      'Run `patina --batch --xliff <file1.xliff> <file2.xliff>`.');
   }
 }
 
@@ -711,6 +775,12 @@ OUTPUT & BATCH
                           Keep going through repeated 429/timeout/temporary-exit
                           storms (storm stopping is on by default in batch mode)
   --no-interactive        Do not wait for TTY stdin; exit 2 when no input is given
+
+LOCALIZATION (XLIFF)
+  --xliff                 Humanize translated <target> segments in an XLIFF 1.2 file
+                          (writes {name}.humanized.xliff by default; never clobbers the original)
+  --dry-run               With --xliff: report the plan + cost estimate; make no LLM calls or writes
+  --max-segments <n>      With --xliff: cap unique segments processed per run (default 50)
 
 LANGUAGE & PROFILE
   --lang <code>           Language: ko, en, zh, ja (default: ko)

@@ -7,6 +7,7 @@ import { validateXliffRequest, parseArgs } from '../../src/cli/args.js';
 import { humanizeXliffDocument, parseXliffDocument, selectXliffSegments } from '../../src/cli/xliff.js';
 import { tmpdir } from 'node:os';
 import { runXliffMode } from '../../src/cli/run.js';
+import { cleanRewriteOutput } from '../../src/output.js';
 import { execFileSync } from 'node:child_process';
 
 const EN_FIXTURE = '<?xml version="1.0"?>\n<xliff version="1.2"><file target-language="en-US"><body>'
@@ -21,6 +22,31 @@ const fakeVerify = async ({ candidate }) => ({ verified: true, text: candidate }
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = readFileSync(resolve(HERE, '../fixtures/xliff/sample.xliff'), 'utf8');
+// Regression: the production rewriteSegment cleaner must strip leaked model
+// scaffolding so XLIFF <target> write-back never persists patina's own output
+// chrome (a leaked YAML tone footer / [SELF_AUDIT]) as translated content.
+// Observed live with deepseek-chat on sample/Supernote_en.xliff.
+test('cleanRewriteOutput strips leaked tone footer and self-audit from a segment rewrite', () => {
+  const leaked = [
+    'File name cannot be a system reserved name: %s',
+    '',
+    '---',
+    'tone: instructional',
+    'tone_source: inferred from input type (system error message)',
+    'tone_evidence: ["imperative/declarative structure"]',
+    'tone_confidence: 1.0',
+    '---',
+  ].join('\n');
+  assert.strictEqual(cleanRewriteOutput(leaked), 'File name cannot be a system reserved name: %s');
+
+  const audited = '[BODY]\nHumanized sentence here.\n[/BODY]\n[SELF_AUDIT]\nnotes\n[/SELF_AUDIT]';
+  assert.strictEqual(cleanRewriteOutput(audited), 'Humanized sentence here.');
+
+  // Real translated prose containing an em-dash / triple-dash-like text but no
+  // full tone-footer schema must pass through untouched (no over-stripping).
+  const clean = 'Please read and understand the full content of this document before using the product.';
+  assert.strictEqual(cleanRewriteOutput(clean), clean);
+});
 
 // ---------- validateXliffRequest ----------
 const base = (over = {}) => ({ files: ['a.xliff'], xliff: true, ...over });

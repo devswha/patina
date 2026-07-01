@@ -10,7 +10,7 @@ import { buildTransformVariants } from './args.js';
 import { invokeBackendChain, selectBackendChain, selectOcrBackends, listBackends } from '../backends/index.js';
 import { selectProvider, resolveProviderConfig } from '../providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from '../security.js';
-import { formatOutput, formatRewriteBodyForBrowser, validateScoreWeights, buildDeterministicAuditBackstop, stripSelfAudit } from '../output.js';
+import { formatOutput, formatRewriteBodyForBrowser, validateScoreWeights, buildDeterministicAuditBackstop, stripSelfAudit, cleanRewriteOutput } from '../output.js';
 import {
   buildBrowserDiffPromptInput,
   renderExplanationHtml,
@@ -410,7 +410,7 @@ export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
       signal: cancellation.signal, timeout: timeoutMs,
       maxConcurrency: parsed.maxConcurrency, maxRetries: parsed.maxRetries, logger,
     });
-    return stripSelfAudit(raw, { logger: { warn() {} } });
+    return cleanRewriteOutput(raw, { logger: { warn() {} } });
   });
   const verifySegment = overrides.verifySegment || (async ({ core, candidate, lang }) => {
     const { patterns, profile } = getAssets(lang);

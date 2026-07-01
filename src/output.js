@@ -245,9 +245,14 @@ export function stripSelfAudit(body, { logger = createLogger() } = {}) {
   const tail = removeSelfAuditBlocks(body.slice(bodyClose + '[/BODY]'.length)).trim();
   return tail ? `${inner}\n\n${tail}` : inner;
 }
+export function cleanRewriteOutput(result, { logger = createLogger() } = {}) {
+  // Strip model scaffolding ([BODY]/[SELF_AUDIT]) and any leaked YAML tone
+  // footer so downstream consumers (browser rewrite pane, XLIFF <target>
+  // write-back) never persist patina's own output chrome as segment content.
+  return removeToneFooter(stripSelfAudit(renderBody(result), { logger }).trim());
+}
 export function formatRewriteBodyForBrowser(result, { logger = createLogger() } = {}) {
-  const body = stripSelfAudit(renderBody(result), { logger }).trim();
-  return removeToneFooter(body);
+  return cleanRewriteOutput(result, { logger });
 }
 
 

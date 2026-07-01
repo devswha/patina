@@ -436,6 +436,9 @@ export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
 
   cancellation.install();
   try {
+    // Shared across the whole batch so a segment repeated across files is
+    // humanized once and reused (cross-file dedup), keyed by target-language.
+    const dedupCache = new Map();
     for (const file of parsed.files) {
       cancellation.throwIfCanceled();
       const xml = readFileSync(file, 'utf8');
@@ -453,6 +456,7 @@ export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
         outputPath,
         breaker,
         signal: cancellation.signal,
+        cache: dedupCache,
       });
       if (result.dryRun) {
         const r = result.report;
@@ -461,7 +465,7 @@ export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
         } else {
           console.log(
             `[dry-run] ${file} (target=${result.targetLang})\n`
-            + `  units=${r.totalUnits} selected=${r.selectedCount} unique=${r.uniqueCount} (dedup saves ${r.duplicateSavings})\n`
+            + `  units=${r.totalUnits} selected=${r.selectedCount} unique=${r.uniqueCount} (dedup saves ${r.duplicateSavings}${r.crossFileDuplicateSavings ? `, cross-file reuse ${r.crossFileDuplicateSavings}` : ''})\n`
             + `  cap=${r.cap} (${r.capStatus}) | worst-case LLM calls=${r.worstCaseLlmCalls} (~${r.callsPerUnique}/segment), backend attempts<=${r.worstCaseBackendAttempts}\n`
             + `  est input tokens ~${r.inputTokensEstimate.toLocaleString()} | cost: ${r.cost ?? r.costNote}\n`
             + `  output would be: ${outputPath}\n`
@@ -480,7 +484,7 @@ export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
         );
       }
       writeAtomicUtf8(outputPath, result.outputXml);
-      console.log(`Written: ${outputPath} — ${result.report.changedSegments} segment(s) humanized, ${result.report.uniqueCount - result.report.changedUniqueKeys} kept`);
+      console.log(`Written: ${outputPath} — ${result.report.changedSegments} segment(s) humanized, ${result.report.uniqueCount - result.report.changedUniqueKeys} kept${result.report.reusedFromCache ? ` (${result.report.reusedFromCache} of ${result.report.uniqueCount} unique reused from cache)` : ''}`);
     }
   } finally {
     cancellation.cleanup();

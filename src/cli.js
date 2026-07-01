@@ -1,7 +1,7 @@
 import { getRepoRoot } from './config.js';
 import { runDoctor } from './commands/doctor.js';
 import { handleAuth, printBackendStatus } from './commands/auth.js';
-import { parseArgs, validateModeExclusivity, validateServeRequest, validatePreviewRequest, validateOutputRouting, validateTransformRequest, validatePersonaRequest, validateVerifyRequest, printHelp } from './cli/args.js';
+import { parseArgs, validateModeExclusivity, validateServeRequest, validatePreviewRequest, validateOutputRouting, validateTransformRequest, validatePersonaRequest, validateVerifyRequest, validateXliffRequest, printHelp } from './cli/args.js';
 import { runDefault } from './cli/run.js';
 import { inputError, renderCliError, getProcessExitCode } from './errors.js';
 import { createLogger } from './logger.js';
@@ -58,6 +58,11 @@ export async function main(args) {
     return;
   }
 
+
+  // XLIFF-specific validation runs before the generic mode guards so combos
+  // like `--xliff --exit-on` get the XLIFF-specific rejection, not a misleading
+  // score-mode error.
+  validateXliffRequest(parsed);
 
   if (parsed.gate !== undefined && !parsed.score) {
     throw inputError(

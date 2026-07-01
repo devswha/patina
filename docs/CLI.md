@@ -277,3 +277,27 @@ and keep project-specific guards for frontmatter quoting, trailing model footers
 and JSX hazards such as malformed `<digit` fragments.
 
 See [EXIT-CODES.md](EXIT-CODES.md) for the full process contract.
+
+## XLIFF localization humanize: `--xliff`
+
+`--xliff <file.xliff>` humanizes the translated `<target>` segments of an XLIFF 1.2 file (Crowdin/CAT exports) through the normal rewrite pipeline, then writes the file back **byte-for-byte identical except for the humanizable target text**. It is a humanizer, not a translator: it never changes the claim, numbers, polarity, or placeholders (`%s`, `%1$d`, …), and every segment must clear the same MPS/fidelity floors as `--verify` (default 70) or the original target bytes are kept.
+
+```bash
+patina --xliff app.xliff                 # -> app.humanized.xliff (never clobbers the original)
+patina --xliff app.xliff --dry-run        # plan only: 0 LLM calls, 0 writes
+patina --xliff app.xliff --outdir out/    # write into a directory
+patina --xliff app.xliff --in-place       # overwrite the original (explicit + atomic)
+patina --batch --xliff locales/*.xliff    # multiple files
+```
+
+What it does, in order: detect and normalize the file's `target-language` (`ko-KR`→`ko`, `en-US`→`en`, `zh-CN`/`zh-TW`→`zh`, `ja-JP`→`ja`; unsupported languages are rejected) → select humanizable prose targets → deduplicate identical targets → rewrite each unique target once and reuse it for every duplicate → verify each candidate and apply only the ones that pass → write atomically.
+
+**Safety and scope:**
+
+- **Selection is conservative.** A target is processed only when its state is allowlisted (`translated` / `final` / `signed-off` / `needs-review-translation`, or absent) and it reads as prose (≥5 space-delimited words, or ≥12 CJK characters). Locked (`translate="no"`), untranslated, short-UI, inline-markup (`<g>`/`<x>`/`<bpt>`/…), CDATA, and structurally ambiguous targets are **skipped untouched**.
+- **Byte-preserving.** Only the inner target text changes; leading/trailing whitespace, XML entities, attributes, and every other byte are preserved. A no-op rewrite yields a byte-identical file.
+- **Fail-closed.** Malformed input errors out before any write; a verify floor miss keeps the exact original bytes and is reported; the output is written atomically (temp + rename) so a crash never leaves a partial file, and the default output path never overwrites the input.
+- **`--dry-run`** makes **0 LLM calls and 0 writes** and prints total units, selected/unique counts, dedup savings, cap status, skip reasons, the worst-case call/token estimate, and the output path.
+- **`--max-segments <n>`** overrides the default cap of 50 unique segments per file (the cap is enforced after dedup, before any LLM call; over the cap fails closed in execution mode and is flagged in `--dry-run`).
+
+`--xliff` accepts backend/model/provider/base-url/auth/timeout/concurrency/retry/failure-budget flags and `--suffix`/`--outdir`/`--in-place`/`--batch`/`--format`. It rejects rewrite-shaping and other-mode flags (`--audit`/`--score`/`--diff`/`--preview`/`--ocr`/`--serve`/`--exit-on`/`--persona`/`--jargon`/`--tone`/`--profile`/`--rewrite-headings`/`--verify`) with a clear input error. `--dry-run` and `--max-segments` are valid only with `--xliff`.

@@ -504,13 +504,15 @@ export function applyXliffReplacements(xmlText, replacements) {
  * writes nothing. Worst-case per unique segment is 6 LLM calls (1 rewrite + 2
  * verification scoring calls + 1 conservative retry rewrite + 2 retry scoring).
  *
- * @param {{totalUnits?:number, selectedCount?:number, uniqueCount?:number, skippedByReason?:Record<string,number>, cap?:number, backendAttemptsPerCall?:number, outputPath?:string|null, provider?:string, model?:string}} [input]
+ * @param {{totalUnits?:number, selectedCount?:number, uniqueCount?:number, billableUniqueCount?:number, crossFileDuplicateSavings?:number, skippedByReason?:Record<string,number>, cap?:number, backendAttemptsPerCall?:number, outputPath?:string|null, provider?:string, model?:string}} [input]
  * @returns {object}
  */
 export function estimateXliffRun({
   totalUnits = 0,
   selectedCount = 0,
   uniqueCount = 0,
+  billableUniqueCount = uniqueCount,
+  crossFileDuplicateSavings = 0,
   skippedByReason = {},
   cap = DEFAULT_UNIQUE_CAP,
   backendAttemptsPerCall = 1,
@@ -521,13 +523,19 @@ export function estimateXliffRun({
   const CALLS_PER_UNIQUE = 6; // rewrite + 2 verify + retry rewrite + 2 retry verify
   const REWRITE_CALLS_PER_UNIQUE = 2; // initial + conservative retry
   const REWRITE_PROMPT_INPUT_TOKENS = 12000; // measured patina rewrite prompt base
-  const worstCaseLlmCalls = uniqueCount * CALLS_PER_UNIQUE;
+  // Billable = unique segments that will actually incur LLM calls in THIS file.
+  // With a cross-file cache it excludes segments already humanized by an earlier
+  // file in the batch; without a cache it equals uniqueCount (unchanged behavior).
+  const billable = Math.max(0, Number.isFinite(billableUniqueCount) ? billableUniqueCount : uniqueCount);
+  const worstCaseLlmCalls = billable * CALLS_PER_UNIQUE;
   const attemptsPerCall = Math.max(1, Number(backendAttemptsPerCall) || 1);
   return {
     totalUnits,
     outputPath,
     selectedCount,
     uniqueCount,
+    billableUniqueCount: billable,
+    crossFileDuplicateSavings: Math.max(0, crossFileDuplicateSavings),
     duplicateSavings: Math.max(0, selectedCount - uniqueCount),
     skippedByReason,
     cap,
@@ -535,7 +543,7 @@ export function estimateXliffRun({
     callsPerUnique: CALLS_PER_UNIQUE,
     worstCaseLlmCalls,
     worstCaseBackendAttempts: worstCaseLlmCalls * attemptsPerCall,
-    inputTokensEstimate: uniqueCount * REWRITE_CALLS_PER_UNIQUE * REWRITE_PROMPT_INPUT_TOKENS,
+    inputTokensEstimate: billable * REWRITE_CALLS_PER_UNIQUE * REWRITE_PROMPT_INPUT_TOKENS,
     tokenEstimateBasis: 'estimated: ~12000 input tokens per rewrite-style call; verifier scoring prompts add more',
     cost: null,
     costNote: provider || model ? `pricing unavailable for ${provider ?? '?'}/${model ?? '?'}` : 'pricing unavailable',
@@ -566,6 +574,7 @@ export function estimateXliffRun({
  *   outputPath?: string|null,
  *   breaker?: {recordSuccess?: Function, recordFailure?: Function, shouldStop?: Function, toError?: Function}|null,
  *   signal?: {aborted?: boolean}|null,
+ *   cache?: (Map<string,{status:string, newCore?:string}>)|null,
  * }} input
  * @returns {Promise<{dryRun:boolean, outputXml:string, report:object, targetLang:string}>}
  */
@@ -582,13 +591,27 @@ export async function humanizeXliffDocument({
   outputPath = null,
   breaker = null,
   signal = null,
+  cache = null,
 }) {
   const doc = parseXliffDocument(xml, { langOverride });
   const sel = selectXliffSegments(doc);
+
+  // Cross-file dedup: an optional shared cache lets a --batch run humanize each
+  // segment once and reuse the verified result across every file. Keyed by
+  // target-language so identical text in two ko files is shared, but a ko/ja
+  // collision never is.
+  const cacheKeyOf = (dedupKey) => `${doc.targetLang}\u0000${dedupKey}`;
+  let crossFileDuplicateSavings = 0;
+  if (cache) {
+    for (const k of sel.uniqueKeys) if (cache.has(cacheKeyOf(k))) crossFileDuplicateSavings += 1;
+  }
+
   const report = estimateXliffRun({
     totalUnits: doc.units.length,
     selectedCount: sel.selectedCount,
     uniqueCount: sel.uniqueCount,
+    billableUniqueCount: sel.uniqueCount - crossFileDuplicateSavings,
+    crossFileDuplicateSavings,
     skippedByReason: sel.skippedByReason,
     cap,
     backendAttemptsPerCall,
@@ -597,7 +620,11 @@ export async function humanizeXliffDocument({
     model,
   });
 
-  if (dryRun) return { dryRun: true, outputXml: xml, report, targetLang: doc.targetLang };
+  if (dryRun) {
+    // Record this file's unique keys so later files in the batch dedup against them.
+    if (cache) for (const k of sel.uniqueKeys) if (!cache.has(cacheKeyOf(k))) cache.set(cacheKeyOf(k), { status: 'estimated' });
+    return { dryRun: true, outputXml: xml, report, targetLang: doc.targetLang };
+  }
 
   if (sel.uniqueCount > cap) {
     const err = new Error(`xliff: ${sel.uniqueCount} unique segments exceeds the cap of ${cap}; pass --max-segments to raise it or use --dry-run`);
@@ -616,14 +643,23 @@ export async function humanizeXliffDocument({
 
   /** @type {Map<string,string>} verified NEW core keyed by dedup key */
   const changedByKey = new Map();
-  /** @type {Record<string,{status:string}>} */
+  /** @type {Record<string,{status:string, cached?:boolean}>} */
   const perKey = {};
+  let reusedFromCache = 0;
 
   for (const [key, seg] of firstByKey) {
     if (signal && signal.aborted) {
       const e = new Error('xliff: canceled');
       /** @type {any} */ (e).code = 'canceled';
       throw e;
+    }
+    const cacheKey = cacheKeyOf(key);
+    if (cache && cache.has(cacheKey)) {
+      const cached = cache.get(cacheKey);
+      if (cached.status === 'rewritten' && typeof cached.newCore === 'string') changedByKey.set(key, cached.newCore);
+      perKey[key] = { status: cached.status, cached: true };
+      reusedFromCache += 1;
+      continue;
     }
     let candidate;
     let verification;
@@ -635,19 +671,22 @@ export async function humanizeXliffDocument({
       perKey[key] = { status: 'error' };
       breaker?.recordFailure?.({ path: seg.id ?? key, err });
       if (breaker?.shouldStop?.()) throw (breaker.toError ? breaker.toError() : err);
-      continue; // fail-closed: keep original bytes
+      continue; // fail-closed: keep original bytes (errors are NOT cached — the next file retries)
     }
+    let outcome;
     if (verification && verification.verified && typeof verification.text === 'string') {
       const newCore = verification.text.trim();
       if (newCore && newCore !== seg.targetCore.trim()) {
         changedByKey.set(key, newCore);
-        perKey[key] = { status: 'rewritten' };
+        outcome = { status: 'rewritten', newCore };
       } else {
-        perKey[key] = { status: 'unchanged' };
+        outcome = { status: 'unchanged' };
       }
     } else {
-      perKey[key] = { status: 'floor_failed' };
+      outcome = { status: 'floor_failed' };
     }
+    perKey[key] = { status: outcome.status };
+    if (cache) cache.set(cacheKey, outcome);
   }
 
   // Build replacements for EVERY selected segment whose key was verified-changed.
@@ -666,7 +705,7 @@ export async function humanizeXliffDocument({
   return {
     dryRun: false,
     outputXml,
-    report: { ...report, changedSegments: replacements.length, changedUniqueKeys: changedByKey.size, perKey },
+    report: { ...report, changedSegments: replacements.length, changedUniqueKeys: changedByKey.size, reusedFromCache, perKey },
     targetLang: doc.targetLang,
   };
 }

@@ -7,7 +7,7 @@
   "schemaVersion": 3,
   "fixtureSchemaVersion": 1,
   "nodeVersion": "v22.17.1",
-  "generatedAt": "2026-06-14T09:51:18.214Z",
+  "generatedAt": "2026-07-02T05:52:07.467Z",
   "fixtureCount": 49,
   "overallAccuracy": 1,
   "overall": {
@@ -2219,10 +2219,8 @@
       "cv_band": "low",
       "mattr": 0.977,
       "mattr_band": "high",
-      "lexicon_density": 23.256,
-      "lexicon_hits": [
-        "추세"
-      ],
+      "lexicon_density": 0,
+      "lexicon_hits": [],
       "ko_diagnostics_hot": false,
       "ko_diagnostics_reasons": [],
       "ko_diagnostics_strength": 0,
@@ -2283,10 +2281,8 @@
       "cv_band": "low",
       "mattr": 0.79,
       "mattr_band": "high",
-      "lexicon_density": 19.608,
-      "lexicon_hits": [
-        "추세"
-      ],
+      "lexicon_density": 0,
+      "lexicon_hits": [],
       "ko_diagnostics_hot": false,
       "ko_diagnostics_reasons": [],
       "ko_diagnostics_strength": 0,

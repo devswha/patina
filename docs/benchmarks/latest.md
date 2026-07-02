@@ -7,7 +7,7 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 ## Current result
 
 - Status: **passing**
-- Generated at: 2026-06-14T09:51:18.214Z
+- Generated at: 2026-07-02T05:52:07.467Z
 - Node: v22.17.1
 - Fixture schema: v1
 - Fixtures: 49
@@ -190,9 +190,9 @@ All fixtures classified correctly.
 | ja-nat-04-lexicon-cold | ja | natural | cold | cold | ✓ | 0 | 0.396 mid | 0.752 high | 0 | cold | — |
 | ja-nat-05-station-note | ja | natural | cold | cold | ✓ | 0 | 0.564 high | 0.822 high | 0 | cold | — |
 | ja-nat-06-maintenance-log | ja | natural | cold | cold | ✓ | 0 | 0.519 high | 0.88 high | 0 | cold | — |
-| ko-ai-01 | ko | ai | hot | hot | ✓ | 68.992 | 0.093 low | 0.977 high | 23.256 | cold | 추세 |
+| ko-ai-01 | ko | ai | hot | hot | ✓ | 68.992 | 0.093 low | 0.977 high | 0 | cold | — |
 | ko-ai-02 | ko | ai | hot | hot | ✓ | 75.545 | 0.073 low | 0.82 high | 0 | cold | — |
-| ko-ai-03 | ko | ai | hot | hot | ✓ | 75.545 | 0.073 low | 0.79 high | 19.608 | cold | 추세 |
+| ko-ai-03 | ko | ai | hot | hot | ✓ | 75.545 | 0.073 low | 0.79 high | 0 | cold | — |
 | ko-ai-04 | ko | ai | hot | hot | ✓ | 67.314 | 0.098 low | 0.853 high | 0 | cold | — |
 | ko-ai-05 | ko | ai | hot | hot | ✓ | 67.314 | 0.098 low | 0.853 high | 0 | hot: regular-eojeol-length, low-comma-density, low-suffix-class-diversity | — |
 | ko-ai-06-chat-register | ko | ai | hot | hot | ✓ | 72.887 | 0.081 low | 1 high | 0 | cold | — |

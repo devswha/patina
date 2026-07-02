@@ -3,13 +3,21 @@ fixture_id: en-ai-02
 language: en
 class: ai
 expected_hot: true
+expected_metrics:
+  detectors:
+    burstiness: true
+    koDiagnostics: false
+    mattr: false
+    lexicon: false
+    endingMonotony: false
+    candor: false
+    thematicBreak: false
 why_designed_this_way: |
-  MATTR only. Heavy lexical cycling on a tight cluster: cycling/bike/bicycle,
-  city/urban/cities, lane/infrastructure/path, rider/commuter — four semantic pairs
-  reused across all five sentences with minimal lexical variation. Estimated MATTR ~0.47
-  (low band, under 0.55). Sentence lengths: 15, 12, 16, 11, 14 → CV ≈ 0.14 (mid-low,
-  not flagged by burstiness). Only MATTR fires. No catalogued patterns: no "robust",
-  no "leverage", no connector overload, no chatbot closings, no 3-of-3 list structures.
+  Burstiness-only fixture. The current analyzer measures the sentence-length
+  pattern as low-CV while MATTR stays high, so the expected detector attribution
+  is burstiness=true and MATTR/lexicon/diagnostic discourse signals stay cold.
+  No catalogued patterns: no "robust", no "leverage", no connector overload, no
+  chatbot closings, no 3-of-3 list structures.
 topic: urban cycling
 ---
 

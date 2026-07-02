@@ -3,13 +3,21 @@ fixture_id: ko-ai-05
 language: ko
 class: ai
 expected_hot: true
+expected_metrics:
+  detectors:
+    burstiness: true
+    koDiagnostics: true
+    mattr: false
+    lexicon: false
+    endingMonotony: true
+    candor: false
+    thematicBreak: false
 why_designed_this_way: |
-  MATTR only. Heavy lexical cycling on a small content-word set: 등산/산행, 사람들/등산객,
-  산/산길, 인기/관심 — each sentence restates the same conceptual ground with minor wording
-  variation. Estimated MATTR ~0.44 (low band, well under 0.55). Sentence lengths show mild
-  variation: 13, 15, 12, 14, 16 → CV ≈ 0.11 (not flagged by burstiness). Only MATTR fires.
-  No catalogued patterns: no chatbot phrases, no excessive connectors, no 다양한 stacking,
-  no hype vocabulary, no structural repetition markers.
+  Korean diagnostic/burstiness fixture. The current analyzer attributes this
+  paragraph to low-CV sentence rhythm plus the conservative Korean diagnostic
+  composite, with ending monotony also hot; MATTR and lexicon remain cold.
+  No catalogued chatbot phrases, excessive connector stacking, hype vocabulary,
+  or thematic-break markers are required for the expected hot decision.
 topic: 등산 문화
 ---
 

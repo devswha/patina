@@ -3,6 +3,15 @@ fixture_id: ja-nat-04-lexicon-cold
 language: ja
 class: natural
 expected_hot: false
+expected_metrics:
+  detectors:
+    burstiness: false
+    koDiagnostics: false
+    mattr: false
+    lexicon: false
+    endingMonotony: false
+    candor: false
+    thematicBreak: false
 why_designed_this_way: |
   Japanese natural counterexample for the new lexicon. It keeps concrete sensory detail and avoids the guidance-summary phrases in ai-ja.md.
 topic: 朝の駅

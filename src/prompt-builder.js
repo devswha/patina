@@ -340,7 +340,7 @@ function buildRewriteInstructions(
     inst += `\n1. Scan paragraph layout, repetition, translationese, passive patterns\n`;
     inst += `2. Correct structural issues — diversify paragraph structure\n`;
     inst += `3. Verify core claims and logical flow survive structural changes\n`;
-    inst += `4. Intentionally vary paragraph length and sentence count (burstiness)\n\n`;
+    inst += `4. Burstiness — vary sentence LENGTH inside each paragraph, not just paragraph length and sentence count. A paragraph flagged low-burstiness means its sentences are near-identical in token count (CV < 0.30); swapping vocabulary alone never fixes it. In every flagged paragraph mix at least one short sentence (5–8 tokens) with at least one long one (20+ tokens), targeting CV ≥ 0.35: split one long sentence into a blunt declaration plus a longer elaboration, merge two same-length sentences, or drop in a clipped two-word follow-up. After rewriting, eyeball the sentence lengths — a row of 12±2-token sentences means this step was NOT done.\n\n`;
     inst += `**Skip if**: text is ≤2 paragraphs OR no structure packs loaded.\n\n`;
   }
 
@@ -643,7 +643,16 @@ function buildMinimalPrompt({ config, patterns, profile, persona = null, text, t
     ? `고치기 전에 글 전체를 먼저 읽고 속으로 파악해 둬 — 이 글이 무엇인지(랜딩페이지/블로그/공지/문서), 누가 누구에게 말하는지, 지배 어투가 무엇인지(해요체/합니다체/-다체), 반복되는 핵심 용어가 무엇인지. 재작성 내내 그 틀을 유지하고, 어투는 글의 지배 어투 하나로 통일해 — 어투가 문장마다 오락가락하는 것 자체가 AI 신호야. 핵심 용어는 일반 동의어로 바꾸지 말고 글이 쓰는 표현 그대로 재사용해. 파악한 내용은 출력하지 말고 본문에만 반영해.`
     : `Before editing, read the whole text and fix in your head: what this document is (landing page / blog post / notice / docs), who is speaking to whom, the dominant register and tone, and the recurring domain terms. Keep that frame throughout, unify every rewritten sentence to the document's dominant register — register drift between sentences is itself an AI tell — and reuse the document's own terms instead of generic synonyms. Never output this analysis; apply it to the body only.`;
 
-  let prompt = `${instruction}\n\n${brief}\n\n`;
+  // Sentence-length rhythm: the single strongest deterministic AI signal is
+  // uniform sentence length (low burstiness CV). Vocabulary swaps alone never
+  // move it, so minimal mode must carry the instruction too — the strict
+  // prompt's Phase 1 step 4 equivalent (inspection 2026-07).
+  const rhythm = lang === 'ko'
+    ? `문장 리듬도 반드시 다듬어. AI 글은 문장 길이가 자로 잰 듯 비슷한데, 균질한 문장 길이는 어휘를 아무리 바꿔도 사라지지 않는 가장 강한 AI 신호야. 문단마다 짧은 문장(5~8어절)과 긴 문장(20어절 이상)을 최소 하나씩 섞어서 길이 편차를 크게 벌려 — 긴 문장 하나를 "짧은 선언 + 긴 부연"으로 쪼개거나, 비슷한 길이 문장 두 개를 하나로 합치거나, 핵심 주장 뒤에 두어 어절짜리 토막 문장을 붙이는 식으로. 다 쓰고 나서 문장 길이를 훑어봤을 때 여전히 고만고만하면 그 문단은 다시 손봐.`
+    : `Also fix the sentence rhythm. AI text keeps every sentence nearly the same length, and uniform sentence length is the strongest AI signal there is — no amount of vocabulary swapping removes it. In each paragraph mix at least one short sentence (5–8 words) with at least one long one (20+ words): split a long sentence into a blunt statement plus a longer follow-up, merge two same-length sentences, or tack a clipped two-word fragment after a key claim. When you finish, scan the sentence lengths — if they still look uniform, rework that paragraph.`;
+
+
+  let prompt = `${instruction}\n\n${brief}\n\n${rhythm}\n\n`;
   const headingRule = buildHeadingPreservationRule(lang, rewriteHeadings);
   if (headingRule) prompt += `${headingRule}\n\n`;
   prompt += buildTransformDirective({ jargon, korean: lang === 'ko' });

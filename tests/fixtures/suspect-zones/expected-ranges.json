@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedBy": "node scripts/update-benchmark-ranges.mjs",
-  "generatedAt": "2026-07-02T05:41:25.560Z",
+  "generatedAt": "2026-07-02T06:02:27.984Z",
   "fixtureCount": 49,
   "tolerances": {
     "cv": 0.025,
@@ -19,7 +19,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -47,7 +50,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -75,7 +81,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -103,7 +112,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -131,7 +143,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -159,7 +174,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -187,7 +205,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": true,
+        "thematicBreak": false
       },
       "cv_band": "mid",
       "cv_range": [
@@ -215,7 +236,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -243,7 +267,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -271,7 +298,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -299,7 +329,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "mid",
       "cv_range": [
@@ -327,7 +360,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -355,7 +391,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -383,7 +422,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -411,7 +453,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -439,7 +484,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -467,7 +515,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": true,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -505,7 +556,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": true,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -544,7 +598,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": true,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -582,7 +639,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "mid",
       "cv_range": [
@@ -610,7 +670,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -638,7 +701,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "mid",
       "cv_range": [
@@ -666,7 +732,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "mid",
       "cv_range": [
@@ -694,7 +763,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -722,7 +794,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -750,7 +825,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": true,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -778,7 +856,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": true,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -806,7 +887,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": true,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -834,7 +918,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": true,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -862,7 +949,10 @@
         "burstiness": true,
         "koDiagnostics": true,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": true,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -890,7 +980,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -918,7 +1011,10 @@
         "burstiness": false,
         "koDiagnostics": true,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "mid",
       "cv_range": [
@@ -946,7 +1042,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -974,7 +1073,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -1002,7 +1104,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -1030,7 +1135,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -1058,7 +1166,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -1086,7 +1197,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -1114,7 +1228,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -1142,7 +1259,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "low",
       "cv_range": [
@@ -1170,7 +1290,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": true,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -1209,7 +1332,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": true,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "mid",
       "cv_range": [
@@ -1250,7 +1376,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": true,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "mid",
       "cv_range": [
@@ -1289,7 +1418,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -1317,7 +1449,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -1345,7 +1480,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -1373,7 +1511,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "mid",
       "cv_range": [
@@ -1401,7 +1542,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [
@@ -1429,7 +1573,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv_band": "high",
       "cv_range": [

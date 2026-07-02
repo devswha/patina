@@ -138,16 +138,16 @@ function detectorHot(result) {
     koDiagnostics: result.paragraphs.some((p) => p.koDiagnostics?.hot),
     mattr: result.paragraphs.some((p) => p.mattr?.band === 'low'),
     lexicon: result.paragraphs.some((p) => p.lexicon?.hot),
+    endingMonotony: result.paragraphs.some((p) => p.endingMonotonyHot),
+    candor: result.paragraphs.some((p) => p.candorHot),
+    thematicBreak: result.paragraphs.some((p) => p.thematicBreakHot),
   };
 }
 
 function emptyDetectorMetrics() {
-  return {
-    burstiness: emptyMetrics(),
-    koDiagnostics: emptyMetrics(),
-    mattr: emptyMetrics(),
-    lexicon: emptyMetrics(),
-  };
+  return Object.fromEntries(
+    Object.keys(detectorHot({ paragraphs: [] })).map((name) => [name, emptyMetrics()])
+  );
 }
 
 function validateExpectedMetrics(path, expected = {}, observed = {}) {
@@ -355,6 +355,16 @@ function main() {
       console.log(
         `| ${lang} | ${s.total} | ${(s.accuracy * 100).toFixed(1)}% | ${(s.precision * 100).toFixed(1)}% | ${(s.recall * 100).toFixed(1)}% | ${s.f1.toFixed(2)} | ${s.tp} | ${s.fp} | ${s.fn} | ${s.tn} |`
       );
+    }
+    console.log();
+    console.log('| lang | detector | n | accuracy | precision | recall | f1 | TP | FP | FN | TN |');
+    console.log('|------|----------|---|----------|-----------|--------|----|----|----|----|----|');
+    for (const [lang, s] of Object.entries(summary)) {
+      for (const [detector, d] of Object.entries(s.byDetector)) {
+        console.log(
+          `| ${lang} | ${detector} | ${d.total} | ${(d.accuracy * 100).toFixed(1)}% | ${(d.precision * 100).toFixed(1)}% | ${(d.recall * 100).toFixed(1)}% | ${d.f1.toFixed(2)} | ${d.tp} | ${d.fp} | ${d.fn} | ${d.tn} |`
+        );
+      }
     }
     console.log();
     if (wrong.length > 0) {

@@ -15,21 +15,29 @@ corpus-snapshot:
 
 ### 13. Em Dash Overuse
 
-**Fire condition:** 3+ em dashes appear in a single text.
+**Fire condition:** 1+ em dash appears in each of 2+ consecutive paragraphs, or the document-level em-dash count is high relative to sentence count.
 
-**Exclusion:** A single em dash for a sharp parenthetical or abrupt sentence break is stylistically valid in informal or literary writing. Only trigger on clusters.
+**Exclusion:** Do not trigger on interrupted speech in quoted dialogue, glossary or dictionary-style separators, or deliberate literary style where one or two parenthetical em dashes are clearly intentional.
 
-**Burstiness note:** When rewriting em-dash-heavy sentences, vary the alternatives — use commas for some, parentheses for others, or break into separate sentences. Uniform substitution (replacing every em dash with a comma) produces a new kind of rhythm problem.
+**Burstiness note:** When rewriting em-dash-heavy passages, distribute the repairs across commas, sentence breaks, parentheses, and colons. Uniform substitution (replacing every em dash with a comma) produces a new rhythm problem.
 
-**Problem:** AI uses em dashes for emphasis, parenthetical asides, and clause breaks far more frequently than human writers. A text peppered with em dashes reads as distinctly AI-generated.
+**Problem:** AI overuses em dashes in place of commas, parentheses, or subordinate clauses to create a polished effect. Human writers use them sparingly across a document; one em dash per paragraph over several paragraphs is a tell.
 
 **Semantic Risk:** LOW
 
 **Before:**
-> The new policy — which was announced last Tuesday — aims to address a long-standing issue — affordable housing. Critics — including several council members — argue that the plan lacks specifics — a concern that the mayor dismissed as premature.
+> The pilot launched in March — a date chosen to align with the grant cycle.
+>
+> The first cohort included twelve clinics — each one serving a different rural county.
+>
+> Early feedback was positive — though the team still needs retention data before expanding.
 
 **After:**
-> The new policy, announced last Tuesday, aims to address affordable housing. Several council members say the plan lacks specifics. The mayor called the criticism premature.
+> The pilot launched in March, a date chosen to align with the grant cycle.
+>
+> The first cohort included twelve clinics, each serving a different rural county.
+>
+> Early feedback was positive. The team still needs retention data before expanding.
 
 ---
 

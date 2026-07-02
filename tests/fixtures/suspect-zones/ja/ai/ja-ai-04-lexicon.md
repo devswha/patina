@@ -3,6 +3,15 @@ fixture_id: ja-ai-04-lexicon
 language: ja
 class: ai
 expected_hot: true
+expected_metrics:
+  detectors:
+    burstiness: false
+    koDiagnostics: false
+    mattr: false
+    lexicon: true
+    endingMonotony: false
+    candor: false
+    thematicBreak: false
 why_designed_this_way: |
   Lexicon-only Japanese fixture. It clusters high-precision AI guidance phrases while varying rhythm so lexicon, not burstiness, is the intended hot signal.
 topic: 学習アプリ

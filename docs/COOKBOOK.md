@@ -187,9 +187,11 @@ Three pitfalls, all observed in practice:
    against the server before blaming the pipeline.
 
 Set `--timeout-ms` generously: a 12B model on an 8 GB GPU takes minutes per rewrite
-at full prompt length, not seconds. Judge candidates with the deterministic score
-(`patina --score` on the rewrite output), not vibes — and prefer comparing against
-a cloud backend baseline on the same input.
+at full prompt length, not seconds. When the per-attempt budget exceeds 300s, the
+HTTP backend automatically switches to SSE streaming so Node's undici
+`headersTimeout` cannot kill a slow local generation mid-flight (#576). Judge
+candidates with the deterministic score (`patina --score` on the rewrite output),
+not vibes — and prefer comparing against a cloud backend baseline on the same input.
 
 ---
 

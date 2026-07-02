@@ -154,6 +154,12 @@ key echoed in a provider error response is never persisted (AC11).</p>
 <dt><a href="#computeBackoffMs">computeBackoffMs(attempt, retryAfter, [opts])</a> ⇒ <code>number</code></dt>
 <dd><p>Compute retry delay from Retry-After or exponential backoff with jitter.</p>
 </dd>
+<dt><a href="#readStreamedCompletion">readStreamedCompletion(response)</a> ⇒ <code>Promise.&lt;{choices: Array.&lt;{message: {content: string}, finish_reason: string}&gt;, model: string, usage: object}&gt;</code></dt>
+<dd><p>Read a streamed (SSE) chat-completions response and assemble it into the
+non-streaming response shape (<code>choices[0].message.content</code> plus <code>model</code> /
+<code>usage</code> / <code>finish_reason</code> when the provider sends them), so the rest of
+callLLM stays transport-agnostic (#576).</p>
+</dd>
 <dt><a href="#callLLM">callLLM(options)</a> ⇒ <code>Promise.&lt;string&gt;</code></dt>
 <dd><p>Call an OpenAI-compatible chat completions endpoint with retries, timeout, and abort support.</p>
 </dd>
@@ -173,6 +179,13 @@ key echoed in a provider error response is never persisted (AC11).</p>
 <dd><p>Run the default patina pipeline for an already-parsed CLI invocation:
 resolve config, provider, and backends, build prompts, then process each
 input job (rewrite/diff/audit/score, plus the preview page).</p>
+</dd>
+<dt><a href="#runXliffMode">runXliffMode()</a></dt>
+<dd><p>XLIFF localization humanize mode. Reads each XLIFF file, humanizes its safe
+translated <target> segments through the normal rewrite+verify pipeline, and
+writes a byte-preserving output atomically. --dry-run reports the plan with
+zero LLM calls and no writes. Language/patterns are resolved per file from the
+XLIFF target-language (cached), not the global config language.</p>
 </dd>
 <dt><a href="#resolvePersonaForRun">resolvePersonaForRun([options])</a> ⇒ <code>Object</code></dt>
 <dd><p>Create a SIGINT-aware cancellation controller for long-running CLI operations.</p>
@@ -531,6 +544,29 @@ Compute retry delay from Retry-After or exponential backoff with jitter.
 ```js
 const delay = computeBackoffMs(1, '2'); // 2000
 ```
+<a name="readStreamedCompletion"></a>
+
+## readStreamedCompletion(response) ⇒ <code>Promise.&lt;{choices: Array.&lt;{message: {content: string}, finish\_reason: string}&gt;, model: string, usage: object}&gt;</code>
+Read a streamed (SSE) chat-completions response and assemble it into the
+non-streaming response shape (`choices[0].message.content` plus `model` /
+`usage` / `finish_reason` when the provider sends them), so the rest of
+callLLM stays transport-agnostic (#576).
+
+**Kind**: global function
+
+| Param | Type | Description |
+| --- | --- | --- |
+| response | <code>Object</code> | Fetch response with an SSE body. |
+
+<a name="readStreamedCompletion..processLine"></a>
+
+### readStreamedCompletion~processLine(line)
+**Kind**: inner method of [<code>readStreamedCompletion</code>](#readStreamedCompletion)
+
+| Param | Type |
+| --- | --- |
+| line | <code>string</code> |
+
 <a name="callLLM"></a>
 
 ## callLLM(options) ⇒ <code>Promise.&lt;string&gt;</code>
@@ -554,7 +590,7 @@ Call an OpenAI-compatible chat completions endpoint with retries, timeout, and a
 | [options.temperature] | <code>number</code> | <code>DEFAULT_TEMPERATURE</code> | Sampling temperature. |
 | [options.seed] | <code>number</code> \| <code>string</code> |  | Optional deterministic seed forwarded to the provider. |
 | [options.responseFormat] | <code>object</code> |  | Optional OpenAI-compatible structured-output request field (sent as response_format) when provided. |
-| [options.timeout] | <code>number</code> | <code>120000</code> | Per-attempt timeout in milliseconds. |
+| [options.timeout] | <code>number</code> | <code>120000</code> | Per-attempt timeout in milliseconds. Budgets above 300s automatically switch the request to SSE streaming so undici's headersTimeout cannot kill long-running local backends (#576). |
 | [options.maxRetries] | <code>number</code> | <code>2</code> | Retry count after the first attempt. |
 | [options.deadline] | <code>number</code> |  | Absolute epoch-millisecond deadline for all attempts. |
 | [options.signal] | <code>AbortSignal</code> |  | External cancellation signal. |
@@ -665,6 +701,16 @@ input job (rewrite/diff/audit/score, plus the preview page).
 | parsed | <code>object</code> | Parsed CLI arguments from parseArgs. |
 | logger | <code>object</code> | Patina logger for this invocation. |
 
+<a name="runXliffMode"></a>
+
+## runXliffMode()
+XLIFF localization humanize mode. Reads each XLIFF file, humanizes its safe
+translated <target> segments through the normal rewrite+verify pipeline, and
+writes a byte-preserving output atomically. --dry-run reports the plan with
+zero LLM calls and no writes. Language/patterns are resolved per file from the
+XLIFF target-language (cached), not the global config language.
+
+**Kind**: global function
 <a name="resolvePersonaForRun"></a>
 
 ## resolvePersonaForRun([options]) ⇒ <code>Object</code>

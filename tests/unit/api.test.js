@@ -339,3 +339,114 @@ test('callLLM makes exactly maxRetries+1 transport attempts on a persistent retr
     globalThis.fetch = originalFetch;
   }
 });
+
+function sseBody(lines) {
+  const encoder = new globalThis.TextEncoder();
+  return {
+    async *[Symbol.asyncIterator]() {
+      for (const line of lines) yield encoder.encode(`${line}\n`);
+    },
+  };
+}
+
+test('callLLM switches to SSE streaming when the attempt budget exceeds undici headersTimeout (#576)', async () => {
+  const originalFetch = globalThis.fetch;
+  let requestBody;
+  globalThis.fetch = async (_url, opts) => {
+    requestBody = JSON.parse(opts.body);
+    return {
+      ok: true,
+      body: sseBody([
+        'data: {"model":"gemma-4-31b","choices":[{"delta":{"role":"assistant","content":""}}]}',
+        '',
+        'data: {"choices":[{"delta":{"content":"hel"}}]}',
+        'data: {"choices":[{"delta":{"content":"lo"}}]}',
+        'data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":2,"total_tokens":12}}',
+        'data: [DONE]',
+      ]),
+      json: async () => { throw new Error('json() must not be used on a streamed response'); },
+    };
+  };
+  try {
+    const seen = [];
+    const content = await callLLM({
+      prompt: 'x',
+      apiKey: 'k',
+      model: 'm',
+      timeout: 1_500_000, // 25min budget, past undici's 300s headersTimeout
+      maxRetries: 0,
+      onResponse: (meta) => seen.push(meta),
+    });
+    assert.equal(requestBody.stream, true, 'request must opt into SSE streaming');
+    assert.equal(content, 'hello');
+    assert.equal(seen[0].model, 'gemma-4-31b');
+    assert.deepEqual(seen[0].usage, { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('callLLM keeps buffered (non-streaming) requests for budgets within headersTimeout (#576)', async () => {
+  const originalFetch = globalThis.fetch;
+  let requestBody;
+  globalThis.fetch = async (_url, opts) => {
+    requestBody = JSON.parse(opts.body);
+    return { ok: true, json: async () => ({ choices: [{ message: { content: 'ok' } }] }) };
+  };
+  try {
+    const content = await callLLM({ prompt: 'x', apiKey: 'k', model: 'm', timeout: 300_000 });
+    assert.equal('stream' in requestBody, false, 'a 300s budget must stay non-streaming');
+    assert.equal(content, 'ok');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('callLLM streaming clamps to the remaining deadline budget, not just timeout (#576)', async () => {
+  const originalFetch = globalThis.fetch;
+  let requestBody;
+  globalThis.fetch = async (_url, opts) => {
+    requestBody = JSON.parse(opts.body);
+    return { ok: true, json: async () => ({ choices: [{ message: { content: 'ok' } }] }) };
+  };
+  try {
+    // timeout asks for 25min but only 60s of deadline budget remains: the
+    // effective attempt budget is under 300s, so streaming is not needed.
+    const now = () => 1_000;
+    await callLLM({ prompt: 'x', apiKey: 'k', model: 'm', timeout: 1_500_000, deadline: 61_000, now });
+    assert.equal('stream' in requestBody, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('callLLM surfaces an empty streamed response as an error (#576)', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    body: sseBody(['data: {"choices":[{"delta":{},"finish_reason":"stop"}]}', 'data: [DONE]']),
+  });
+  try {
+    await assert.rejects(
+      callLLM({ prompt: 'x', apiKey: 'k', model: 'm', timeout: 400_000, maxRetries: 0 }),
+      /Empty response/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('callLLM falls back to buffered JSON when a server ignores stream:true (#576)', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    headers: { get: (name) => (name === 'content-type' ? 'application/json' : null) },
+    json: async () => ({ choices: [{ message: { content: 'buffered ok' } }] }),
+  });
+  try {
+    const content = await callLLM({ prompt: 'x', apiKey: 'k', model: 'm', timeout: 600_000, maxRetries: 0 });
+    assert.equal(content, 'buffered ok');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

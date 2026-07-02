@@ -210,9 +210,9 @@ POS proxy 결정:
 
 운영 규칙:
 - 세 조건을 모두 만족할 때만 `koDiagnostics.hot=true`가 된다.
-- 기본값: `minSentences=4`, `minEojeols=20`, `spacing.eojeolLengthCV <= 0.38`,
+- 기본값: `minSentences=4`, `minEojeols=20`, `spacing.eojeolLengthCV < 0.38`,
   `comma.perSentence < 1`, `posProxy.matchedCount >= 10`,
-  `posProxy.classDiversity <= 0.26`.
+  `posProxy.classDiversity < 0.26`.
 - 쉼표가 적다는 사실만으로 hot 처리하지 않는다. spacing과 suffix diversity가 동시에
   맞아야 한다.
 - `.patina.default.yaml`의 `stylometry.ko_diagnostics.enabled=false`로 이 composite만 끌 수
@@ -703,7 +703,7 @@ v3.7에서는 §6의 2-signal OR 규칙을 3-signal OR로 확장했다. burstine
 ### 사전 파일
 
 - `lexicon/ai-en.md` — 영어 43개 strict + 45개 phrase = 88 entries
-- `lexicon/ai-ko.md` — 한국어 43개 strict + 53개 phrase = 96 entries
+- `lexicon/ai-ko.md` — 한국어 v2.0.0, 16개 strict + 17개 phrase = 33 entries
 - `lexicon/ai-zh.md` — 중국어 60개 phrase = 60 entries
 - `lexicon/ai-ja.md` — 일본어 60개 phrase = 60 entries
 

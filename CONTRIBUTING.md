@@ -120,11 +120,13 @@ calibration bar. Follow this loop:
    computation in `src/features/stylometry.js`, wire it into the hot OR in
    `src/features/index.js`, and add a precision gate (length/count floors) if it
    over-fires on short or corner-case text.
-4. **Mirror every surface.** A signal is not done until it is consistent across:
-   `src/features/index.js` (Node), `playground/analyzer.js` (browser parity —
-   there are parity tests), `scripts/rebaseline-score.mjs` `trigger_counts`, the
-   hot-rule prose in `core/stylometry.md` and `SKILL.md`, and unit tests
-   (including precision guards).
+4. **Keep runtime surfaces aligned.** A signal is not done until it is consistent across:
+   `src/features/index.js` / server-side feature callers such as
+   `src/web-rewrite-stream.js`, `scripts/rebaseline-score.mjs`
+   `trigger_counts`, the hot-rule prose in `core/stylometry.md` and `SKILL.md`,
+   and unit tests (including precision guards). The browser playground is a
+   `playground/chatgpt.js` UI over server-side detection/scoring, not a separate
+   deterministic-analysis mirror.
 5. **Measure with the harness, not by hand.** Run `npm run benchmark:signal-impact`
    for the marginal before/after, `npm run benchmark` (the 49-fixture suite must
    stay 100% — natural fixtures must not flip hot), and confirm the human-control

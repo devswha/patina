@@ -3,6 +3,15 @@ fixture_id: zh-nat-04-lexicon-cold
 language: zh
 class: natural
 expected_hot: false
+expected_metrics:
+  detectors:
+    burstiness: false
+    koDiagnostics: false
+    mattr: false
+    lexicon: false
+    endingMonotony: false
+    candor: false
+    thematicBreak: false
 why_designed_this_way: |
   Chinese natural counterexample for the new lexicon. It uses concrete timing, sensory detail, and uneven sentence length without AI scaffold phrases.
 topic: 夜市

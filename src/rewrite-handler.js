@@ -6,7 +6,7 @@ import { extractClientIp } from './rate-limit.js';
 /**
  * @typedef {{method?: string, headers?: Record<string, string|string[]|undefined>, body?: unknown, [Symbol.asyncIterator]?: () => AsyncIterator<Buffer|string|Uint8Array>}} RewriteReq
  * @typedef {{statusCode?: number, setHeader?: (name: string, value: string) => void, end?: (body?: string) => void}} RewriteRes
- * @typedef {{check(input: {tier: string, ip: string|null}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string}>}} RateLimiter
+ * @typedef {{check(input: {tier: string, ip: string|null}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string}>, acquireConcurrency?(input: {tier: string, ip: string|null}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string}>, releaseConcurrency?(input: {tier: string, ip: string|null}): Promise<void>}} RateLimiter
  */
 
 /**
@@ -49,8 +49,23 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
         return send(res, denied.status, { error: denied.reason });
       }
 
-      // await so a runner rejection is caught by the redacted 500 handler below.
-      return await runRewrite({ req, res, request, now });
+      if (typeof rateLimiter.acquireConcurrency !== 'function') {
+        // await so a runner rejection is caught by the redacted 500 handler below.
+        return await runRewrite({ req, res, request, now });
+      }
+
+      const concurrency = await rateLimiter.acquireConcurrency({ tier, ip });
+      if (!concurrency.allowed) {
+        const denied = /** @type {{status: number, reason: string}} */ (concurrency);
+        return send(res, denied.status, { error: denied.reason });
+      }
+
+      try {
+        // await so a runner rejection is caught by the redacted 500 handler below.
+        return await runRewrite({ req, res, request, now });
+      } finally {
+        await rateLimiter.releaseConcurrency?.({ tier, ip });
+      }
     } catch (err) {
       logger.error?.(redactSecrets({ message: String(/** @type {any} */ (err)?.message ?? err) }));
       return send(res, 500, { error: 'internal error' });

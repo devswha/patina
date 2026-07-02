@@ -112,6 +112,15 @@ export function computeDensity(paragraphText, tokens, lexicon) {
       hits.push(entry);
       continue;
     }
+    // lexicon/ai-en.md documents "A trailing `s` or `ing` form counts as the
+    // same entry" for English strict entries, but only the exact token was
+    // ever matched (#566). Accept the two documented inflections for non-CJK
+    // single-token entries; CJK strict matching is substring-based below and
+    // Korean inflections are absorbed by phrase matching per the same doc.
+    if (!cjkSubstring && (tokenSet.has(`${lowerEntry}s`) || tokenSet.has(`${lowerEntry}ing`))) {
+      hits.push(entry);
+      continue;
+    }
     const isMultiToken = /[^\p{L}\p{N}]/u.test(lowerEntry);
     if (cjkSubstring) {
       if (lowerText.includes(lowerEntry)) hits.push(entry);

@@ -212,3 +212,20 @@ test('cache preserves language-aware strict semantics (EN whole-word vs CJK subs
     assert.deepEqual(computeDensity(text, tokenize(text, { lang }), lex), hot);
   }
 });
+
+test('EN strict entries accept documented trailing s/ing inflections (#566)', () => {
+  const lexicon = { lang: 'en', strict: ['unlock'], phrases: [] };
+  for (const text of [
+    'This update unlocks a smaller workflow.',
+    'This update is unlocking a smaller workflow.',
+    'This update will unlock a smaller workflow.',
+  ]) {
+    assert.deepEqual(computeDensity(text, tokenize(text), lexicon).hits, ['unlock'], text);
+  }
+  // Entry-level dedup still holds when base and inflected forms co-occur.
+  const both = computeDensity('unlock unlocks unlocking', tokenize('unlock unlocks unlocking'), lexicon);
+  assert.equal(both.matches, 1);
+  // Only the two documented suffixes count — other derivations stay cold.
+  const align = { lang: 'en', strict: ['align'], phrases: [] };
+  assert.equal(computeDensity('the alignment shifted', tokenize('the alignment shifted'), align).matches, 0);
+});

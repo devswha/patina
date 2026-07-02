@@ -1,7 +1,7 @@
 // @ts-check
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import handler, { createRewriteApiHandler } from '../../api/rewrite.js';
+import handler, { createRestKv, createRewriteApiHandler } from '../../api/rewrite.js';
 
 function makeReq({ body = undefined, method = 'POST' } = {}) {
   return {
@@ -134,4 +134,24 @@ test('byok tier forwards the caller key (not the server free key) to the stream 
   await api(byokReq, res);
   assert.equal(res.statusCode, 200);
   assert.equal(seenKey, 'sk-caller-byok-key', 'byok must use the caller key, not the server free key');
+});
+
+test('REST KV adapter calls Upstash decr and parses the numeric result', async () => {
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = /** @type {any} */ (async (url) => {
+    calls.push(String(url));
+    if (String(url).includes('/decr/')) {
+      return { ok: true, async json() { return { result: 4 }; } };
+    }
+    return { ok: true, async json() { return { result: 1 }; } };
+  });
+  try {
+    const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test/', KV_REST_API_TOKEN: 'token' });
+    assert.ok(kv);
+    assert.equal(await kv.decr('slot key'), 4);
+    assert.equal(calls[0], 'https://kv.example.test/decr/slot%20key');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

@@ -154,6 +154,45 @@ patina --lang en --score --exit-on 30 --batch $changed
 
 ---
 
+## 7. Run patina against a local model (Ollama)
+
+patina's `openai-http` backend works with any OpenAI-compatible server, so a local
+Ollama instance plugs in without code changes:
+
+```bash
+PATINA_API_KEY=ollama patina --lang ko \
+  --backend openai-http --base-url http://localhost:11434/v1 \
+  --model gemma3:12b-it-qat --verify --timeout-ms 900000 draft.md
+```
+
+`PATINA_API_KEY` can be any non-empty string — Ollama ignores it, but the HTTP
+backend requires one.
+
+Three pitfalls, all observed in practice:
+
+1. **Context size.** patina's rewrite prompt (pattern digests + profile + advisory
+   guidance) runs 15–20k tokens, and Ollama's default context is 4096. Newer Ollama
+   fails loudly (`exceed_context_size_error`); older versions **silently truncate
+   the prompt**, which quietly degrades rewrite quality. Start the server with
+   `OLLAMA_CONTEXT_LENGTH=24576` (or higher) before testing anything.
+2. **`--verify` is not optional for small local models.** A 12B model will happily
+   round `38%` to "nearly 40%" and drop the survey year while producing an
+   otherwise fluent rewrite. `--verify` runs the MPS/fidelity floors plus the
+   deterministic numbers-preserved guard and fails closed to the original when the
+   rewrite mangles facts. Cloud-scale models rarely trip these floors; local
+   12B-class models do.
+3. **Broken GGUFs exist.** If the output is a stream of `<unused12><unused7>…`
+   tokens, the model artifact itself is corrupt (bad quant/merge or tokenizer
+   mismatch) — no patina flag will fix it. Verify with a bare one-line prompt
+   against the server before blaming the pipeline.
+
+Set `--timeout-ms` generously: a 12B model on an 8 GB GPU takes minutes per rewrite
+at full prompt length, not seconds. Judge candidates with the deterministic score
+(`patina --score` on the rewrite output), not vibes — and prefer comparing against
+a cloud backend baseline on the same input.
+
+---
+
 ## Where to go next
 
 - Tone reference: [`README.md`](../README.md#tones)

@@ -1,866 +1,299 @@
 [
   {
-    "kind": "strict",
-    "entry": "살펴보다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "살펴보면",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "알아보다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "알아보자",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "짚어보다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "들여다보면",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "풀어내다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "풀어내며",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "일컫다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "자리매김",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "자리잡다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "자리잡은",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "부각되다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "부각하다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "모색하다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "가속화",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "고도화",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "본격화",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "활성화",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "정교화",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "차별화",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "다변화",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "가시화",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "일환",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "행보",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "양상",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "면모",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "양립",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "추세",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "한편으로는",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "더 나아가",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "한걸음 더",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "핵심",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "본질",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "생태계",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "패러다임",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "strict",
-    "entry": "평가된다",
-    "added": "2026-05-04",
-    "source": "ko-v1.1-2026-05-04-claude-namu-wiki",
-    "last_validated": "2026-05-04",
-    "lift": ">=4x",
-    "status": "partial"
-  },
-  {
-    "kind": "strict",
-    "entry": "꼽힌다",
-    "added": "2026-05-04",
-    "source": "ko-v1.1-2026-05-04-claude-namu-wiki",
-    "last_validated": "2026-05-04",
-    "lift": ">=4x",
-    "status": "partial"
-  },
-  {
-    "kind": "strict",
-    "entry": "사례로",
-    "added": "2026-05-04",
-    "source": "ko-v1.1-2026-05-04-claude-namu-wiki",
-    "last_validated": "2026-05-04",
-    "lift": ">=4x",
-    "status": "partial"
-  },
-  {
-    "kind": "strict",
-    "entry": "다수의",
-    "added": "2026-05-04",
-    "source": "ko-v1.1-2026-05-04-claude-namu-wiki",
-    "last_validated": "2026-05-04",
-    "lift": ">=4x",
-    "status": "partial"
-  },
-  {
-    "kind": "strict",
-    "entry": "알려져",
-    "added": "2026-05-04",
-    "source": "ko-v1.1-2026-05-04-claude-namu-wiki",
-    "last_validated": "2026-05-04",
-    "lift": ">=4x",
-    "status": "partial"
-  },
-  {
-    "kind": "strict",
-    "entry": "일컬어진다",
-    "added": "2026-05-04",
-    "source": "ko-v1.1-2026-05-04-claude-namu-wiki",
-    "last_validated": "2026-05-04",
-    "lift": ">=4x",
-    "status": "partial"
-  },
-  {
-    "kind": "strict",
-    "entry": "평가받다",
-    "added": "2026-05-04",
-    "source": "ko-v1.1-2026-05-04-claude-namu-wiki",
-    "last_validated": "2026-05-04",
-    "lift": ">=4x",
-    "status": "partial"
-  },
-  {
-    "kind": "phrase",
-    "entry": "~의 가능성을 열다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "~의 지평을 넓히다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "~의 길을 열다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "~의 토대를 다지다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "~의 발판을 마련하다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "~의 새로운 장",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "~의 새 지평",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
     "kind": "phrase",
     "entry": "새로운 가능성을",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "무한한 가능성",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "다채로운 매력",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "매력적인 요소",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "깊이 있는 통찰",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "통찰을 제공",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "통찰을 얻다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
     "kind": "phrase",
     "entry": "시사점을 제공",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "시사하는 바",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "~을(를) 시사한다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "의미를 지닌다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
     "kind": "phrase",
     "entry": "의미가 있다",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
     "kind": "phrase",
-    "entry": "큰 의미를",
+    "entry": "자리 잡았다",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "중요한 의미",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "큰 영향을 미치다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "깊은 영감을",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "영감을 주다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "영감을 받다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "새로운 영감",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "화두로 떠오르다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "주목받고 있다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
-  },
-  {
-    "kind": "phrase",
-    "entry": "떠오르고 있다",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
     "kind": "phrase",
     "entry": "자리잡고 있다",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
     "kind": "phrase",
-    "entry": "진화하고 있다",
+    "entry": "중요한 의미",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
     "kind": "phrase",
-    "entry": "변모하고 있다",
+    "entry": "큰 의미를",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "부상하고 있다",
+    "kind": "strict",
+    "entry": "가시화",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "가속화되고 있다",
+    "kind": "strict",
+    "entry": "꼽힌다",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "본격화되고 있다",
+    "kind": "strict",
+    "entry": "더 나아가",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": 5.548,
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "시너지를",
+    "kind": "strict",
+    "entry": "면모",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "시너지 효과",
+    "kind": "strict",
+    "entry": "본질",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": 6.102,
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "인사이트를",
+    "kind": "strict",
+    "entry": "양상",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": 6.102,
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "패러다임의",
+    "kind": "strict",
+    "entry": "일환",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "한 단계 도약",
+    "kind": "strict",
+    "entry": "자리매김",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": 5.548,
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "한 차원 높은",
+    "kind": "strict",
+    "entry": "자리잡은",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "보다 한층",
+    "kind": "strict",
+    "entry": "차별화",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "새로운 국면",
+    "kind": "strict",
+    "entry": "평가된다",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "깊이를 더하다",
+    "kind": "strict",
+    "entry": "한걸음 더",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "풍성하게 하다",
+    "kind": "strict",
+    "entry": "한편으로는",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "remine-2026-07-validated"
   },
   {
-    "kind": "phrase",
-    "entry": "풍성한 경험",
+    "kind": "strict",
+    "entry": "활성화",
     "added": null,
     "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
+    "last_validated": "2026-07-02",
+    "lift": 4.253,
+    "status": "remine-2026-07-validated"
+  },
+  {
+    "kind": "strict",
+    "entry": "결론적으로",
+    "added": "2026-07-02",
+    "source": "ko-remine-2026-07",
+    "last_validated": "2026-07-02",
+    "lift": 83.492,
+    "status": "mined-2026-07"
+  },
+  {
+    "kind": "strict",
+    "entry": "궁극적으로",
+    "added": "2026-07-02",
+    "source": "ko-remine-2026-07",
+    "last_validated": "2026-07-02",
+    "lift": 6.102,
+    "status": "mined-2026-07"
+  },
+  {
+    "kind": "phrase",
+    "entry": "이를 통해",
+    "added": "2026-07-02",
+    "source": "ko-remine-2026-07",
+    "last_validated": "2026-07-02",
+    "lift": 51.315,
+    "status": "mined-2026-07"
+  },
+  {
+    "kind": "phrase",
+    "entry": "중요합니다.",
+    "added": "2026-07-02",
+    "source": "ko-remine-2026-07",
+    "last_validated": "2026-07-02",
     "lift": null,
-    "status": "legacy-needs-remine"
+    "status": "mined-2026-07"
   },
   {
     "kind": "phrase",
-    "entry": "차원을 넘어",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
+    "entry": "있습니다. 또한,",
+    "added": "2026-07-02",
+    "source": "ko-remine-2026-07",
+    "last_validated": "2026-07-02",
+    "lift": 61.024,
+    "status": "mined-2026-07"
+  },
+  {
+    "kind": "phrase",
+    "entry": "중요한 역할을",
+    "added": "2026-07-02",
+    "source": "ko-remine-2026-07",
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "mined-2026-07"
+  },
+  {
+    "kind": "phrase",
+    "entry": "필요가 있습니다",
+    "added": "2026-07-02",
+    "source": "ko-remine-2026-07",
+    "last_validated": "2026-07-02",
+    "lift": 16.088,
+    "status": "mined-2026-07"
+  },
+  {
+    "kind": "phrase",
+    "entry": "있으며, 이는",
+    "added": "2026-07-02",
+    "source": "ko-remine-2026-07",
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "mined-2026-07"
+  },
+  {
+    "kind": "phrase",
+    "entry": "하나입니다.",
+    "added": "2026-07-02",
+    "source": "ko-remine-2026-07",
+    "last_validated": "2026-07-02",
     "lift": null,
-    "status": "legacy-needs-remine"
+    "status": "mined-2026-07"
   },
   {
     "kind": "phrase",
-    "entry": "단순한 ~을 넘어",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "entry": "영향을 미칩니다.",
+    "added": "2026-07-02",
+    "source": "ko-remine-2026-07",
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "mined-2026-07"
   },
   {
     "kind": "phrase",
-    "entry": "단순한 ~이 아닌",
-    "added": null,
-    "source": "ko-legacy-pre-provenance",
-    "last_validated": null,
-    "lift": null,
-    "status": "legacy-needs-remine"
+    "entry": "가능성이 큽니다.",
+    "added": "2026-07-02",
+    "source": "ko-remine-2026-07",
+    "last_validated": "2026-07-02",
+    "lift": "Infinity",
+    "status": "mined-2026-07"
   },
   {
     "kind": "phrase",
-    "entry": "가운데 하나로",
-    "added": "2026-05-04",
-    "source": "ko-v1.1-2026-05-04-claude-namu-wiki",
-    "last_validated": "2026-05-04",
-    "lift": ">=4x",
-    "status": "partial"
-  },
-  {
-    "kind": "phrase",
-    "entry": "자리 잡았다",
-    "added": "2026-05-04",
-    "source": "ko-v1.1-2026-05-04-claude-namu-wiki",
-    "last_validated": "2026-05-04",
-    "lift": ">=4x",
-    "status": "partial"
-  },
-  {
-    "kind": "phrase",
-    "entry": "알려져 있다",
-    "added": "2026-05-04",
-    "source": "ko-v1.1-2026-05-04-claude-namu-wiki",
-    "last_validated": "2026-05-04",
-    "lift": ">=4x",
-    "status": "partial"
-  },
-  {
-    "kind": "phrase",
-    "entry": "~의 사례로",
-    "added": "2026-05-04",
-    "source": "ko-v1.1-2026-05-04-claude-namu-wiki",
-    "last_validated": "2026-05-04",
-    "lift": ">=4x",
-    "status": "partial"
+    "entry": "라고 할 수 있습니다",
+    "added": "2026-07-02",
+    "source": "ko-remine-2026-07",
+    "last_validated": "2026-07-02",
+    "lift": 8.876,
+    "status": "mined-2026-07"
   }
 ]

@@ -4,6 +4,7 @@ import {
   FORBIDDEN_GLOBS,
   globToRegExp,
   matchForbidden,
+  collectPackedFiles,
   runGate,
 } from '../../scripts/check-no-private-assets.mjs';
 
@@ -125,5 +126,45 @@ describe('leak gate: runGate over collected file lists', () => {
     });
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.violations.map((v) => v.source).sort(), ['git', 'package']);
+  });
+});
+
+describe('leak gate: npm pack collection', () => {
+  it('throws an actionable diagnostic when npm cannot be spawned', () => {
+    assert.throws(
+      () =>
+        collectPackedFiles('/repo', '', {
+          spawn: () => ({ error: { code: 'ENOENT' } }),
+        }),
+      /npm executable not found on PATH — mixed WSL\/Windows environments must put Linux npm ahead of \/mnt\/c\/\.\.\. Windows npm/,
+    );
+  });
+
+  it('parses npm pack JSON from an injected spawn without changing paths', () => {
+    const calls = [];
+    const files = collectPackedFiles('/repo/pkg', 'packages/pkg/', {
+      spawn: (command, args, options) => {
+        calls.push({ command, args, options });
+        return {
+          status: 0,
+          stdout: JSON.stringify([
+            {
+              files: [{ path: 'package.json' }, { path: 'src/index.js' }, 'README.md'],
+            },
+          ]),
+          stderr: '',
+        };
+      },
+    });
+
+    assert.deepStrictEqual(files, [
+      'packages/pkg/package.json',
+      'packages/pkg/src/index.js',
+      'packages/pkg/README.md',
+    ]);
+    assert.strictEqual(calls[0].command, process.platform === 'win32' ? 'npm.cmd' : 'npm');
+    assert.deepStrictEqual(calls[0].args, ['pack', '--dry-run', '--json', '--ignore-scripts']);
+    assert.strictEqual(calls[0].options.cwd, '/repo/pkg');
+    assert.strictEqual(calls[0].options.encoding, 'utf8');
   });
 });

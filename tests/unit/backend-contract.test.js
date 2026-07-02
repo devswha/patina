@@ -166,3 +166,31 @@ test('withBackendConcurrencySlot hands the full timeout to an uncapped backend w
   assert.equal(result, 'ok');
   assert.ok(received > 4000 && received <= 5000, `expected ~full budget, got ${received}`);
 });
+
+test('withBackendConcurrencySlot refuses to start fn after the shared deadline expired (#567)', async () => {
+  let invoked = false;
+  await assert.rejects(
+    withBackendConcurrencySlot({
+      backendName: `test-expired-${process.pid}-${Date.now()}`,
+      maxConcurrency: 1,
+      deadline: Date.now() - 1000,
+      fn: () => { invoked = true; },
+    }),
+    (err) => isTimeoutError(err)
+  );
+  assert.equal(invoked, false, 'fn must not run on a spent budget');
+});
+
+test('uncapped backends also refuse an expired shared deadline (#567)', async () => {
+  let invoked = false;
+  await assert.rejects(
+    withBackendConcurrencySlot({
+      backendName: 'test-expired-uncapped',
+      maxConcurrency: Infinity,
+      deadline: Date.now() - 1000,
+      fn: () => { invoked = true; },
+    }),
+    (err) => isTimeoutError(err)
+  );
+  assert.equal(invoked, false, 'uncapped path must not run fn with remainingTimeout 0');
+});

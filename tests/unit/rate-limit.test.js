@@ -28,7 +28,7 @@ test('extractClientIp honors trusted-header precedence and comma splitting', () 
   assert.equal(extractClientIp({}), null);
 });
 
-test('createMemoryKv supports get, set, incr, and TTL expiry', async () => {
+test('createMemoryKv supports get, set, incr, decr, and TTL expiry', async () => {
   const originalNow = Date.now;
   let clock = 1_000;
   Date.now = () => clock;
@@ -38,6 +38,8 @@ test('createMemoryKv supports get, set, incr, and TTL expiry', async () => {
     assert.equal(await kv.get('a'), 'value');
     assert.equal(await kv.incr('n', { ttlMs: 50 }), 1);
     assert.equal(await kv.incr('n', { ttlMs: 50 }), 2);
+    assert.equal(await kv.decr('n'), 1);
+    assert.equal(await kv.get('n'), 1);
     clock += 51;
     assert.equal(await kv.get('a'), undefined);
     assert.equal(await kv.get('n'), undefined);
@@ -139,4 +141,36 @@ test('missing client IP returns 400', async () => {
     status: 400,
     reason: 'client ip unavailable',
   });
+});
+
+test('free concurrency limit rejects a second active slot and releases after completion', async () => {
+  const limiter = createRateLimiter({
+    kv: createMemoryKv(),
+    hmacSecret: 'secret',
+    now: () => 0,
+    limits: { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 99, burstPerHour: 99 }, byok: { maxChars: 20000, maxConcurrent: 2 } },
+  });
+
+  assert.deepEqual(await limiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.30' }), {
+    allowed: true,
+    tier: WEB_TIERS.FREE,
+  });
+  assert.deepEqual(await limiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.30' }), {
+    allowed: false,
+    status: 429,
+    reason: 'concurrent limit exceeded',
+  });
+  await limiter.releaseConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.30' });
+  assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.30' })).allowed, true);
+});
+
+test('BYOK concurrency bypasses shared free slot limit', async () => {
+  const limiter = createRateLimiter({
+    kv: createMemoryKv(),
+    hmacSecret: 'secret',
+    limits: { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 99, burstPerHour: 99 }, byok: { maxChars: 20000, maxConcurrent: 2 } },
+  });
+
+  assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.BYOK, ip: null })).allowed, true);
+  assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.BYOK, ip: null })).allowed, true);
 });

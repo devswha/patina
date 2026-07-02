@@ -26,7 +26,7 @@ function parseKvNumber(value) {
  * Create a dependency-free Upstash/Vercel KV REST adapter.
  *
  * @param {Record<string,string|undefined>} env
- * @returns {null|{get(key: string): Promise<unknown>, incr(key: string, options?: {ttlMs?: number}): Promise<number>}}
+ * @returns {null|{get(key: string): Promise<unknown>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>}}
  */
 export function createRestKv(env = {}) {
   const base = env.KV_REST_API_URL;
@@ -57,6 +57,12 @@ export function createRestKv(env = {}) {
       }
       return value;
     },
+    async decr(key) {
+      const data = await read(`/decr/${encodeURIComponent(key)}`);
+      const value = parseKvNumber(data);
+      if (value == null) throw new Error('kv decr returned invalid counter');
+      return value;
+    },
   };
 }
 
@@ -71,6 +77,7 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
       kv,
       hmacSecret: env.PATINA_QUOTA_HMAC_SECRET,
       env,
+      logger: /** @type {any} */ (logger),
     }),
     runRewrite: async ({ res, request }) => {
       // Resolve the effective LLM key server-side: BYOK uses the caller's key;

@@ -105,10 +105,21 @@ function isSecretKey(key) {
   const norm = String(key).toLowerCase().replace(/[_-]/g, '');
   return SECRET_KEY_MARKERS.some((marker) => norm.includes(marker));
 }
-/** Inline secret shapes inside free-form strings (Bearer tokens, OpenAI keys). */
+/**
+ * Inline secret shapes inside free-form strings (Bearer tokens, OpenAI keys),
+ * plus labelled secrets (`apiKey=...`, `x-api-key: ...`, `token=...`) that
+ * upstream provider error messages embed regardless of key format (#565).
+ * The value part is bounded (no nested quantifiers) so a hostile error string
+ * cannot trigger catastrophic backtracking; over-redacting is the safe
+ * failure for a log boundary.
+ */
 const SECRET_VALUE_RES = [
   /Bearer\s+[A-Za-z0-9._-]+/gi,
   /\bsk-[A-Za-z0-9._-]{8,}/g,
+  /\b(?:x-)?api[-_]?key\s*[:=]\s*[^\s"'`&,;]{6,}/gi,
+  /\b(?:access|refresh)[-_]?token\s*[:=]\s*[^\s"'`&,;]{6,}/gi,
+  /\bclient[-_]?secret\s*[:=]\s*[^\s"'`&,;]{6,}/gi,
+  /\b(?:token|secret|password|passwd|credential|authorization)\s*[:=]\s*[^\s"'`&,;]{6,}/gi,
 ];
 const REDACTED = '[REDACTED]';
 

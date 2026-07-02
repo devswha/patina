@@ -52,7 +52,7 @@ function getHeader(headers, name) {
 /**
  * Create an in-memory KV store for tests and local development only.
  *
- * @returns {{__memory: true, get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>}}
+ * @returns {{__memory: true, get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>}}
  */
 export function createMemoryKv() {
   /** @type {Map<string, {value: unknown, expiresAt: number}>} */
@@ -85,6 +85,13 @@ export function createMemoryKv() {
       entries.set(key, { value: next, expiresAt: expiresAt(ttlMs) });
       return next;
     },
+    async decr(key) {
+      expire();
+      const current = Number(entries.get(key)?.value ?? 0);
+      const next = current - 1;
+      entries.set(key, { value: next, expiresAt: entries.get(key)?.expiresAt ?? Number.POSITIVE_INFINITY });
+      return next;
+    },
   };
 }
 
@@ -97,17 +104,41 @@ export function isProductionPosture(env = {}) {
 }
 
 /**
- * @typedef {{get?(key: string): Promise<unknown>, set?(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, __memory?: boolean}} QuotaKv
+ * @typedef {{get?(key: string): Promise<unknown>, set?(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, decr?(key: string): Promise<number>, __memory?: boolean}} QuotaKv
  * @typedef {{allowed: true, tier: string, remainingDay?: number}|{allowed: false, status: number, reason: string}} RateLimitResult
+ * @typedef {{warn?: (...args: unknown[]) => void}} RateLimitLogger
  */
 
 /**
  * Create a fail-closed rate limiter for the shared free proxy.
  *
- * @param {{kv?: QuotaKv|null, hmacSecret?: string, env?: Record<string, string|undefined>, now?: () => number, limits?: typeof TIER_LIMITS}} options
- * @returns {{check(input: {tier: string, ip?: string|null}): Promise<RateLimitResult>}}
+ * @param {{kv?: QuotaKv|null, hmacSecret?: string, env?: Record<string, string|undefined>, now?: () => number, limits?: typeof TIER_LIMITS, logger?: RateLimitLogger}} options
+ * @returns {{check(input: {tier: string, ip?: string|null}): Promise<RateLimitResult>, acquireConcurrency(input: {tier: string, ip?: string|null}): Promise<RateLimitResult>, releaseConcurrency(input: {tier: string, ip?: string|null}): Promise<void>}}
  */
-export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.now(), limits = TIER_LIMITS }) {
+export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.now(), limits = TIER_LIMITS, logger = console }) {
+  const getConcurrencyKey = (tier, ip) => {
+    if (tier === WEB_TIERS.BYOK) return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: true, tier }) };
+    const production = isProductionPosture(env);
+    if (production && (!kv || kv.__memory)) return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: 'quota storage unavailable' }) };
+    if (production && !hmacSecret) return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: 'quota secret unavailable' }) };
+    if (!kv) return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: 'quota storage unavailable' }) };
+    if (!ip) return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 400, reason: 'client ip unavailable' }) };
+    const secret = hmacSecret || 'patina-local-quota-secret';
+    return { ok: true, key: quotaKeyHmac(secret, 'free', 'concurrent', ip) };
+  };
+
+  const releaseKey = async (key) => {
+    if (!kv || typeof kv.decr !== 'function') {
+      logger.warn?.('quota concurrency release skipped: kv decr unavailable');
+      return;
+    }
+    try {
+      await kv.decr(key);
+    } catch {
+      logger.warn?.('quota concurrency release failed');
+    }
+  };
+
   return {
     async check({ tier, ip }) {
       if (tier === WEB_TIERS.BYOK) return { allowed: true, tier };
@@ -151,6 +182,29 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
       } catch {
         return { allowed: false, status: 503, reason: 'quota storage unavailable' };
       }
+    },
+    async acquireConcurrency({ tier, ip }) {
+      const resolved = getConcurrencyKey(tier, ip);
+      if (!resolved.ok) return resolved.result;
+      const freeLimits = limits.free;
+      try {
+        const activeCount = await kv.incr(resolved.key, { ttlMs: 5 * 60 * 1000 });
+        if (!Number.isSafeInteger(activeCount) || activeCount < 1) {
+          return { allowed: false, status: 503, reason: 'quota storage unavailable' };
+        }
+        if (activeCount > freeLimits.maxConcurrent) {
+          await releaseKey(resolved.key);
+          return { allowed: false, status: 429, reason: 'concurrent limit exceeded' };
+        }
+        return { allowed: true, tier };
+      } catch {
+        return { allowed: false, status: 503, reason: 'quota storage unavailable' };
+      }
+    },
+    async releaseConcurrency({ tier, ip }) {
+      const resolved = getConcurrencyKey(tier, ip);
+      if (!resolved.ok || !resolved.key) return;
+      await releaseKey(resolved.key);
     },
   };
 }

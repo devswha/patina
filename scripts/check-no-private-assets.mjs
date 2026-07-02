@@ -112,16 +112,24 @@ export function runGate({ packedFiles = [], trackedFiles = [] } = {}) {
  *
  * @param {string} cwd Package directory containing a package.json.
  * @param {string} [prefix=''] Repo-relative prefix to prepend to each file path.
+ * @param {{spawn?: typeof spawnSync}} [options] Test seam for process spawning.
  * @returns {string[]} Repo-relative file paths.
  * @throws {Error} When `npm pack` fails or emits unparseable JSON.
  */
-export function collectPackedFiles(cwd, prefix = '') {
-  const result = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+export function collectPackedFiles(cwd, prefix = '', { spawn = spawnSync } = {}) {
+  const result = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
     cwd,
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
   });
-  if (result.error) throw result.error;
+  if (result.error) {
+    const code = result.error.code ? ` (${result.error.code})` : '';
+    const hint =
+      result.error.code === 'ENOENT'
+        ? ' npm executable not found on PATH — mixed WSL/Windows environments must put Linux npm ahead of /mnt/c/... Windows npm.'
+        : '';
+    throw new Error(`npm pack --dry-run could not start in ${cwd}${code}.${hint}`, { cause: result.error });
+  }
   if ((result.status ?? 1) !== 0) {
     throw new Error(`npm pack --dry-run failed in ${cwd}:\n${result.stderr || result.stdout}`);
   }

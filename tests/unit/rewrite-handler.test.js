@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { setImmediate } from 'node:timers';
 
 import { createRewriteHandler } from '../../src/rewrite-handler.js';
+import { createMemoryKv, createRateLimiter } from '../../src/rate-limit.js';
 import { WEB_TIERS } from '../../src/web-rewrite-contract.js';
 
 function makeRes() {
@@ -34,6 +36,19 @@ function validBody(overrides = {}) {
 function allowedLimiter() {
   return { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } };
 }
+
+function deferred() {
+  /** @type {(value?: unknown) => void} */
+  let resolve;
+  /** @type {(reason?: unknown) => void} */
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 
 test('factory throws without runRewrite or rateLimiter.check', () => {
   assert.throws(() => createRewriteHandler({ rateLimiter: allowedLimiter() }), TypeError);
@@ -147,4 +162,111 @@ test('thrown handler error returns generic 500 and logs a redacted message', asy
   assert.equal(res.ended.includes('sk-secret'), false);
   assert.equal(JSON.stringify(logs).includes('sk-secret'), false);
   assert.match(JSON.stringify(logs), /\[REDACTED\]/);
+});
+
+test('free concurrent requests allow one runner and reject the second before runRewrite', async () => {
+  const gate = deferred();
+  let calls = 0;
+  const limiter = createRateLimiter({
+    kv: createMemoryKv(),
+    hmacSecret: 'secret',
+    now: () => 0,
+    limits: { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 99, burstPerHour: 99 }, byok: { maxChars: 20000, maxConcurrent: 2 } },
+  });
+  const handler = createRewriteHandler({
+    rateLimiter: limiter,
+    async runRewrite({ res }) {
+      calls += 1;
+      res.statusCode = 200;
+      await gate.promise;
+      res.end(JSON.stringify({ ok: true }));
+    },
+  });
+
+  const firstRes = makeRes();
+  const first = handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.31' }, body: validBody() }, firstRes);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const secondRes = makeRes();
+  await handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.31' }, body: validBody() }, secondRes);
+
+  assert.equal(calls, 1);
+  assert.equal(secondRes.statusCode, 429);
+  assert.deepEqual(secondRes.json(), { error: 'concurrent limit exceeded' });
+
+  gate.resolve();
+  await first;
+  assert.equal(firstRes.statusCode, 200);
+  assert.deepEqual(firstRes.json(), { ok: true });
+
+  const thirdRes = makeRes();
+  await handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.31' }, body: validBody() }, thirdRes);
+  assert.equal(thirdRes.statusCode, 200);
+  assert.equal(calls, 2);
+});
+
+test('free concurrency slot is released when runRewrite throws', async () => {
+  let calls = 0;
+  const limiter = createRateLimiter({
+    kv: createMemoryKv(),
+    hmacSecret: 'secret',
+    now: () => 0,
+    limits: { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 99, burstPerHour: 99 }, byok: { maxChars: 20000, maxConcurrent: 2 } },
+  });
+  const handler = createRewriteHandler({
+    rateLimiter: limiter,
+    runRewrite() {
+      calls += 1;
+      if (calls === 1) throw new Error('boom');
+      return 'ok';
+    },
+    logger: { error() {} },
+  });
+
+  const firstRes = makeRes();
+  await handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.32' }, body: validBody() }, firstRes);
+  assert.equal(firstRes.statusCode, 500);
+
+  const secondRes = makeRes();
+  const result = await handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.32' }, body: validBody() }, secondRes);
+  assert.equal(result, 'ok');
+  assert.equal(calls, 2);
+});
+
+test('BYOK concurrent requests bypass free concurrency limit', async () => {
+  const gate = deferred();
+  let calls = 0;
+  const limiter = createRateLimiter({
+    kv: createMemoryKv(),
+    hmacSecret: 'secret',
+    now: () => 0,
+    limits: { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 99, burstPerHour: 99 }, byok: { maxChars: 20000, maxConcurrent: 2 } },
+  });
+  const handler = createRewriteHandler({
+    rateLimiter: limiter,
+    async runRewrite({ res }) {
+      calls += 1;
+      res.statusCode = 200;
+      await gate.promise;
+      res.end(JSON.stringify({ ok: true }));
+    },
+  });
+  const body = validBody({
+    tier: WEB_TIERS.BYOK,
+    provider: 'openai',
+    model: 'gpt-5.5',
+    apiKey: 'sk-test-byok-key',
+  });
+
+  const firstRes = makeRes();
+  const secondRes = makeRes();
+  const first = handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.33' }, body }, firstRes);
+  const second = handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.33' }, body }, secondRes);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(calls, 2);
+  gate.resolve();
+  await Promise.all([first, second]);
+  assert.equal(firstRes.statusCode, 200);
+  assert.equal(secondRes.statusCode, 200);
 });

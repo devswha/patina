@@ -194,7 +194,16 @@ export async function withBackendConcurrencySlot({
   // the derived default above.
   const remainingTimeout = () =>
     (Number.isFinite(deadline) ? Math.max(0, deadline - Date.now()) : timeout);
+  // Never start backend work on an already-spent budget: an expired shared
+  // deadline used to reach `fn(0)` on both the unbounded path and via the
+  // slot-acquired-after-expiry race below (#567).
+  const assertBudget = () => {
+    if (Number.isFinite(deadline) && Date.now() >= deadline) {
+      throw new TimeoutError(`${backendName || 'backend'}: shared deadline expired before backend start`);
+    }
+  };
   if (!Number.isFinite(maxConcurrency)) {
+    assertBudget();
     return fn(remainingTimeout());
   }
 
@@ -208,6 +217,9 @@ export async function withBackendConcurrencySlot({
   });
 
   try {
+    // The slot can be won in the instant the deadline expires (mkdir succeeds
+    // between the loop's deadline check and now). Re-check before invoking.
+    assertBudget();
     return await fn(remainingTimeout());
   } finally {
     releaseBackendSlot(slot);
@@ -230,6 +242,12 @@ async function acquireBackendSlot({
   mkdirSync(root, { recursive: true });
 
   for (;;) {
+    // Deadline gates the ROUND, not just the sleep: checking only after a
+    // failed acquisition round let a slot freed during the sleep be acquired
+    // after the deadline had already expired (#567).
+    if (Date.now() >= deadline) {
+      throw new TimeoutError(`${backendName || 'backend'}: timed out waiting for concurrency slot (cap ${maxConcurrency})`);
+    }
     for (let index = 0; index < maxConcurrency; index++) {
       const slot = join(root, `slot-${index}`);
       cleanupStaleSlot(slot, staleMs);

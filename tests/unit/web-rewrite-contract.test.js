@@ -301,3 +301,20 @@ test('REWRITE_MODES and WEB_TIERS expose the documented values', () => {
   assert.deepEqual(REWRITE_MODES, { FIRST: 'first', REFINE: 'refine' });
   assert.deepEqual(WEB_TIERS, { FREE: 'free', BYOK: 'byok' });
 });
+
+test('redactSecrets masks labelled provider secrets in free-form strings (#565)', () => {
+  const cases = [
+    'call failed: apiKey=FAKE_PROVIDER_KEY_1234567890',
+    'upstream said x-api-key: FAKE_ANTHROPIC_KEY_abcdef123456 rejected',
+    'token=ghp_FAKEFAKE1234567890 expired',
+    'client_secret: FAKESECRET99 invalid',
+    'authorization: FAKEAUTH999999 denied',
+  ];
+  for (const message of cases) {
+    const out = /** @type {{message: string}} */ (redactSecrets({ message }));
+    assert.ok(!/FAKE|ghp_/.test(out.message), `leaked: ${out.message}`);
+    assert.ok(out.message.includes('[REDACTED]'), `not redacted: ${out.message}`);
+  }
+  // Benign prose without labelled values survives untouched.
+  assert.equal(redactSecrets('no secrets here, just text'), 'no secrets here, just text');
+});

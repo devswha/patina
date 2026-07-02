@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "generatedBy": "node scripts/update-benchmark-ranges.mjs",
-  "generatedAt": "2026-06-10T11:18:51.992Z",
+  "generatedAt": "2026-07-02T05:41:25.560Z",
   "fixtureCount": 49,
   "tolerances": {
     "cv": 0.025,
@@ -763,12 +763,10 @@
         1.007
       ],
       "lexicon_density_range": [
-        18.256,
-        28.256
+        0,
+        5
       ],
-      "lexicon_hits": [
-        "추세"
-      ]
+      "lexicon_hits": []
     },
     "ko-ai-02": {
       "path": "tests/fixtures/suspect-zones/ko/ai/ko-ai-02.md",
@@ -821,12 +819,10 @@
         0.82
       ],
       "lexicon_density_range": [
-        14.608,
-        24.608
+        0,
+        5
       ],
-      "lexicon_hits": [
-        "추세"
-      ]
+      "lexicon_hits": []
     },
     "ko-ai-04": {
       "path": "tests/fixtures/suspect-zones/ko/ai/ko-ai-04.md",

@@ -6,6 +6,17 @@ const DEFAULT_TIMEOUT = 120000;
 const DEFAULT_MAX_RETRIES = 2;
 const DEFAULT_BASE_BACKOFF_MS = 1000;
 const DEFAULT_MAX_BACKOFF_MS = 30000;
+
+// undici (Node's global fetch) kills a request whose response *headers* have
+// not arrived within 300s (`headersTimeout`), regardless of any caller-side
+// AbortSignal budget. A non-streaming chat completion only sends headers after
+// generation finishes, so any per-attempt budget above this ceiling must
+// switch to SSE streaming, where headers arrive immediately and each token
+// chunk keeps undici's idle `bodyTimeout` alive (#576).
+const UNDICI_HEADERS_TIMEOUT_MS = 300_000;
+// Cap a single un-terminated SSE line so a malformed provider cannot grow the
+// pending buffer without bound (mirrors src/streaming-api.js).
+const MAX_SSE_BUFFER_BYTES = 1024 * 1024;
 /**
  * Default sampling temperature for OpenAI-compatible chat completion calls.
  *
@@ -177,6 +188,92 @@ export function computeBackoffMs(attempt, retryAfter, opts = {}) {
 
 
 /**
+ * Read a streamed (SSE) chat-completions response and assemble it into the
+ * non-streaming response shape (`choices[0].message.content` plus `model` /
+ * `usage` / `finish_reason` when the provider sends them), so the rest of
+ * callLLM stays transport-agnostic (#576).
+ *
+ * @param {{ body: unknown }} response Fetch response with an SSE body.
+ * @returns {Promise<{ choices: Array<{ message: { content: string }, finish_reason?: string }>, model?: string, usage?: object }>}
+ */
+async function readStreamedCompletion(response) {
+  const body = /** @type {any} */ (response).body;
+  if (!body) throw new Error('Streaming response body is empty');
+  let chunks;
+  if (typeof body.getReader === 'function') {
+    chunks = {
+      async *[Symbol.asyncIterator]() {
+        const reader = body.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value !== undefined) yield value;
+          }
+        } finally {
+          reader.releaseLock?.();
+        }
+      },
+    };
+  } else if (typeof body[Symbol.asyncIterator] === 'function') {
+    chunks = body;
+  } else {
+    throw new Error('Streaming response body is not readable');
+  }
+
+  const decoder = new globalThis.TextDecoder();
+  let buffer = '';
+  let content = '';
+  let finishReason;
+  let model;
+  let usage = null;
+  let streamDone = false;
+  /** @param {string} line */
+  const processLine = (line) => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('data:')) return;
+    const data = trimmed.slice(5).trim();
+    if (!data) return;
+    if (data === '[DONE]') { streamDone = true; return; }
+    let parsed;
+    try {
+      parsed = JSON.parse(data);
+    } catch {
+      return;
+    }
+    if (typeof parsed?.model === 'string' && !model) model = parsed.model;
+    // Providers that report usage on a stream do so on the final chunk.
+    if (parsed?.usage) usage = parsed.usage;
+    const choice = parsed?.choices?.[0];
+    if (typeof choice?.finish_reason === 'string') finishReason = choice.finish_reason;
+    const delta = choice?.delta?.content;
+    if (typeof delta === 'string') content += delta;
+  };
+  for await (const chunk of chunks) {
+    buffer += typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() ?? '';
+    if (buffer.length > MAX_SSE_BUFFER_BYTES) throw new Error('SSE response line exceeded the maximum buffer size');
+    for (const line of lines) {
+      processLine(line);
+      if (streamDone) break;
+    }
+    if (streamDone) break; // stop reading after the [DONE] terminal sentinel
+  }
+  if (!streamDone) {
+    buffer += decoder.decode();
+    if (buffer.trim()) processLine(buffer);
+  }
+
+  const choice = /** @type {{ message: { content: string }, finish_reason?: string }} */ ({ message: { content } });
+  if (finishReason) choice.finish_reason = finishReason;
+  const out = /** @type {{ choices: Array<{ message: { content: string }, finish_reason?: string }>, model?: string, usage?: object }} */ ({ choices: [choice] });
+  if (model) out.model = model;
+  if (usage) out.usage = usage;
+  return out;
+}
+
+/**
  * Call an OpenAI-compatible chat completions endpoint with retries, timeout, and abort support.
  *
  * @param {object} options LLM request options.
@@ -187,7 +284,7 @@ export function computeBackoffMs(attempt, retryAfter, opts = {}) {
  * @param {number} [options.temperature=DEFAULT_TEMPERATURE] Sampling temperature.
  * @param {number|string} [options.seed] Optional deterministic seed forwarded to the provider.
  * @param {object} [options.responseFormat] Optional OpenAI-compatible structured-output request field (sent as response_format) when provided.
- * @param {number} [options.timeout=120000] Per-attempt timeout in milliseconds.
+ * @param {number} [options.timeout=120000] Per-attempt timeout in milliseconds. Budgets above 300s automatically switch the request to SSE streaming so undici's headersTimeout cannot kill long-running local backends (#576).
  * @param {number} [options.maxRetries=2] Retry count after the first attempt.
  * @param {number} [options.deadline] Absolute epoch-millisecond deadline for all attempts.
  * @param {AbortSignal} [options.signal] External cancellation signal.
@@ -254,6 +351,10 @@ export async function callLLM({
     let signalCleanup = () => {};
     try {
       const attemptTimeout = Math.min(timeout, remainingBeforeAttempt);
+      // Past undici's headersTimeout a non-streaming request cannot survive:
+      // headers for a buffered completion only arrive after generation ends.
+      // Stream instead and assemble the response client-side (#576).
+      const useStream = attemptTimeout > UNDICI_HEADERS_TIMEOUT_MS;
       timer = setTimeout(() => controller.abort(), attemptTimeout);
       if (signal) {
         const onAbort = () => controller.abort();
@@ -268,7 +369,7 @@ export async function callLLM({
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(useStream ? { ...body, stream: true } : body),
         signal: controller.signal,
       });
 
@@ -281,7 +382,12 @@ export async function callLLM({
         );
       }
 
-      const data = await response.json();
+      // A minimal OpenAI-compatible server may ignore `stream: true` and reply
+      // with a buffered JSON completion — detect that via Content-Type and
+      // parse whichever shape actually arrived (#576).
+      const streamedReply = useStream &&
+        !(response.headers?.get?.('content-type') ?? '').includes('application/json');
+      const data = streamedReply ? await readStreamedCompletion(response) : await response.json();
       const content = data.choices?.[0]?.message?.content;
       if (!content) {
         throw new Error('Empty response from LLM API');

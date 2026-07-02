@@ -459,6 +459,7 @@ Where:
 | Legal profile | 0.35 | 0.65 | Legal precision must be preserved |
 | Medical profile | 0.35 | 0.65 | Clinical accuracy is critical |
 | Marketing profile | 0.65 | 0.35 | Tone transformation tolerated, creative rewriting expected |
+| Namuwiki profile | 0.65 | 0.35 | Tone transformation tolerated for wiki-style cleanup |
 
 Configurable via `ouroboros.combined-weights.{profile}` in `.patina.yaml`:
 

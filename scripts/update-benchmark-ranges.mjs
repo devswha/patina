@@ -65,6 +65,9 @@ function detectorHot(result) {
     koDiagnostics: result.paragraphs.some((p) => p.koDiagnostics?.hot),
     mattr: result.paragraphs.some((p) => p.mattr?.band === 'low'),
     lexicon: result.paragraphs.some((p) => p.lexicon?.hot),
+    endingMonotony: result.paragraphs.some((p) => p.endingMonotonyHot),
+    candor: result.paragraphs.some((p) => p.candorHot),
+    thematicBreak: result.paragraphs.some((p) => p.thematicBreakHot),
   };
 }
 

@@ -9,8 +9,12 @@ expected_metrics:
   signal_score_min: 1
   detectors:
     burstiness: false
+    koDiagnostics: false
     mattr: false
     lexicon: false
+    endingMonotony: false
+    candor: true
+    thematicBreak: false
 why_designed_this_way: |
   Discourse-tell regression net for issue #391 (the corpus previously had zero
   fake-candor coverage). Blog-register AI prose with three manufactured-intimacy

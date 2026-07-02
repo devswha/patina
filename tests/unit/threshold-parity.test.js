@@ -321,7 +321,7 @@ test('core/stylometry.md ko-diagnostic defaults match DEFAULT_KO_DIAGNOSTIC_BAND
     [/`minSentences=(\d+)`/, DEFAULT_KO_DIAGNOSTIC_BANDS.minSentences, 'minSentences'],
     [/`minEojeols=(\d+)`/, DEFAULT_KO_DIAGNOSTIC_BANDS.minEojeols, 'minEojeols'],
     [
-      /`spacing\.eojeolLengthCV <= ([0-9.]+)`/,
+      /`spacing\.eojeolLengthCV < ([0-9.]+)`/,
       DEFAULT_KO_DIAGNOSTIC_BANDS.spacing.maxEojeolLengthCV,
       'spacing.maxEojeolLengthCV',
     ],
@@ -332,7 +332,7 @@ test('core/stylometry.md ko-diagnostic defaults match DEFAULT_KO_DIAGNOSTIC_BAND
       'posProxy.minMatchedCount',
     ],
     [
-      /`posProxy\.classDiversity <= ([0-9.]+)`/,
+      /`posProxy\.classDiversity < ([0-9.]+)`/,
       DEFAULT_KO_DIAGNOSTIC_BANDS.posProxy.maxClassDiversity,
       'posProxy.maxClassDiversity',
     ],
@@ -407,13 +407,27 @@ test('SKILL.md MATTR lines match DEFAULT_MATTR_BANDS and window', () => {
 });
 
 test('SKILL.md lexicon threshold line matches lexicon-core constant', () => {
-  assert.equal(
-    extractNumber(
-      skillDoc,
-      /기본 threshold = `([0-9.]+)`\. `\.patina\.default\.yaml`의 `lexicon\.density_threshold`로 조정 가능/,
-      'SKILL.md lexicon threshold line'
-    ),
-    DEFAULT_LEXICON_DENSITY_THRESHOLD
+  const m = extract(
+    skillDoc,
+    /기본 threshold = `([0-9.]+)`, `min_hot_matches` 기본값 = \*\*en (\d+), ko\/zh\/ja (\d+)\*\*/,
+    'SKILL.md lexicon threshold line'
+  );
+  assert.equal(Number(m[1]), DEFAULT_LEXICON_DENSITY_THRESHOLD, 'density threshold drifted');
+  assert.equal(Number(m[2]), DEFAULT_LEXICON_MIN_HOT_MATCHES.default, 'en/default min-hot drifted');
+  for (const lang of ['ko', 'zh', 'ja']) {
+    assert.equal(Number(m[3]), DEFAULT_LEXICON_MIN_HOT_MATCHES[lang], `${lang} min-hot drifted`);
+  }
+  // The integrated hot-OR block must carry the min-hot clause so SKILL readers
+  // never fall back to the density-only rule (inspection 2026-07, HIGH).
+  assert.match(
+    skillDoc,
+    /AND matches >= lexicon\.min_hot_matches/,
+    'SKILL.md lexicon hot rule lost the min_hot_matches clause'
+  );
+  assert.match(
+    skillDoc,
+    /AND lexicon_matches >= lexicon\.min_hot_matches/,
+    'SKILL.md integrated hot OR lost the min_hot_matches clause'
   );
 });
 

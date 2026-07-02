@@ -3,6 +3,15 @@ fixture_id: zh-ai-04-lexicon
 language: zh
 class: ai
 expected_hot: true
+expected_metrics:
+  detectors:
+    burstiness: false
+    koDiagnostics: false
+    mattr: false
+    lexicon: true
+    endingMonotony: false
+    candor: false
+    thematicBreak: false
 why_designed_this_way: |
   Lexicon-only Chinese fixture. The paragraph uses multiple high-precision AI scaffold phrases while varying sentence lengths so lexicon, not burstiness, is the intended hot signal.
 topic: 写作工具

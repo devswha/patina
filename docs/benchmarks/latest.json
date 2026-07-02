@@ -7,7 +7,7 @@
   "schemaVersion": 3,
   "fixtureSchemaVersion": 1,
   "nodeVersion": "v22.17.1",
-  "generatedAt": "2026-07-02T05:52:07.467Z",
+  "generatedAt": "2026-07-02T06:03:59.188Z",
   "fixtureCount": 49,
   "overallAccuracy": 1,
   "overall": {
@@ -79,6 +79,51 @@
           "confidence_method": "Wilson score interval, 95%"
         },
         "lexicon": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 7,
+          "tn": 6,
+          "total": 13,
+          "accuracy": 0.462,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 13,
+          "ci_low": 0.232,
+          "ci_high": 0.709,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "endingMonotony": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 7,
+          "tn": 6,
+          "total": 13,
+          "accuracy": 0.462,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 13,
+          "ci_low": 0.232,
+          "ci_high": 0.709,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "candor": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 6,
+          "tn": 6,
+          "total": 13,
+          "accuracy": 0.538,
+          "precision": 1,
+          "recall": 0.143,
+          "f1": 0.25,
+          "n": 13,
+          "ci_low": 0.291,
+          "ci_high": 0.768,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "thematicBreak": {
           "tp": 0,
           "fp": 0,
           "fn": 7,
@@ -169,6 +214,51 @@
           "ci_low": 0.468,
           "ci_high": 0.911,
           "confidence_method": "Wilson score interval, 95%"
+        },
+        "endingMonotony": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 6,
+          "tn": 6,
+          "total": 12,
+          "accuracy": 0.5,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 12,
+          "ci_low": 0.254,
+          "ci_high": 0.746,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "candor": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 6,
+          "tn": 6,
+          "total": 12,
+          "accuracy": 0.5,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 12,
+          "ci_low": 0.254,
+          "ci_high": 0.746,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "thematicBreak": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 6,
+          "tn": 6,
+          "total": 12,
+          "accuracy": 0.5,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 12,
+          "ci_low": 0.254,
+          "ci_high": 0.746,
+          "confidence_method": "Wilson score interval, 95%"
         }
       }
     },
@@ -233,6 +323,51 @@
           "confidence_method": "Wilson score interval, 95%"
         },
         "lexicon": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 7,
+          "tn": 5,
+          "total": 12,
+          "accuracy": 0.417,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 12,
+          "ci_low": 0.193,
+          "ci_high": 0.68,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "endingMonotony": {
+          "tp": 5,
+          "fp": 0,
+          "fn": 2,
+          "tn": 5,
+          "total": 12,
+          "accuracy": 0.833,
+          "precision": 1,
+          "recall": 0.714,
+          "f1": 0.833,
+          "n": 12,
+          "ci_low": 0.552,
+          "ci_high": 0.953,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "candor": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 7,
+          "tn": 5,
+          "total": 12,
+          "accuracy": 0.417,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 12,
+          "ci_low": 0.193,
+          "ci_high": 0.68,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "thematicBreak": {
           "tp": 0,
           "fp": 0,
           "fn": 7,
@@ -322,6 +457,51 @@
           "n": 12,
           "ci_low": 0.468,
           "ci_high": 0.911,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "endingMonotony": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 6,
+          "tn": 6,
+          "total": 12,
+          "accuracy": 0.5,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 12,
+          "ci_low": 0.254,
+          "ci_high": 0.746,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "candor": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 6,
+          "tn": 6,
+          "total": 12,
+          "accuracy": 0.5,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 12,
+          "ci_low": 0.254,
+          "ci_high": 0.746,
+          "confidence_method": "Wilson score interval, 95%"
+        },
+        "thematicBreak": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 6,
+          "tn": 6,
+          "total": 12,
+          "accuracy": 0.5,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "n": 12,
+          "ci_low": 0.254,
+          "ci_high": 0.746,
           "confidence_method": "Wilson score interval, 95%"
         }
       }
@@ -1390,7 +1570,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.058,
       "cv_band": "low",
@@ -1421,7 +1604,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.09,
       "cv_band": "low",
@@ -1434,7 +1620,17 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 69.883,
       "hot_paragraphs": 1,
-      "expected_metrics": null,
+      "expected_metrics": {
+        "detectors": {
+          "burstiness": true,
+          "koDiagnostics": false,
+          "mattr": false,
+          "lexicon": false,
+          "endingMonotony": false,
+          "candor": false,
+          "thematicBreak": false
+        }
+      },
       "length_bucket": "medium",
       "register": "unspecified",
       "domain": "unspecified",
@@ -1452,7 +1648,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.065,
       "cv_band": "low",
@@ -1483,7 +1682,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.07,
       "cv_band": "low",
@@ -1514,7 +1716,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.093,
       "cv_band": "low",
@@ -1545,7 +1750,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.034,
       "cv_band": "low",
@@ -1581,7 +1789,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": true,
+        "thematicBreak": false
       },
       "cv": 0.358,
       "cv_band": "mid",
@@ -1600,8 +1811,12 @@
         "signal_score_min": 1,
         "detectors": {
           "burstiness": false,
+          "koDiagnostics": false,
           "mattr": false,
-          "lexicon": false
+          "lexicon": false,
+          "endingMonotony": false,
+          "candor": true,
+          "thematicBreak": false
         }
       },
       "length_bucket": "medium",
@@ -1621,7 +1836,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.881,
       "cv_band": "high",
@@ -1652,7 +1870,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.886,
       "cv_band": "high",
@@ -1683,7 +1904,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.914,
       "cv_band": "high",
@@ -1714,7 +1938,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.494,
       "cv_band": "mid",
@@ -1745,7 +1972,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.853,
       "cv_band": "high",
@@ -1776,7 +2006,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.552,
       "cv_band": "high",
@@ -1810,7 +2043,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.045,
       "cv_band": "low",
@@ -1841,7 +2077,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.23,
       "cv_band": "low",
@@ -1872,7 +2111,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.063,
       "cv_band": "low",
@@ -1903,7 +2145,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": true,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.56,
       "cv_band": "high",
@@ -1926,7 +2171,17 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "hot_paragraphs": 1,
-      "expected_metrics": null,
+      "expected_metrics": {
+        "detectors": {
+          "burstiness": false,
+          "koDiagnostics": false,
+          "mattr": false,
+          "lexicon": true,
+          "endingMonotony": false,
+          "candor": false,
+          "thematicBreak": false
+        }
+      },
       "length_bucket": "short",
       "register": "unspecified",
       "domain": "unspecified",
@@ -1944,7 +2199,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": true,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.155,
       "cv_band": "low",
@@ -1968,7 +2226,17 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "hot_paragraphs": 1,
-      "expected_metrics": null,
+      "expected_metrics": {
+        "detectors": {
+          "burstiness": true,
+          "koDiagnostics": false,
+          "mattr": false,
+          "lexicon": true,
+          "endingMonotony": false,
+          "candor": false,
+          "thematicBreak": false
+        }
+      },
       "length_bucket": "short",
       "register": "unspecified",
       "domain": "unspecified",
@@ -1986,7 +2254,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": true,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.243,
       "cv_band": "low",
@@ -2027,7 +2298,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.487,
       "cv_band": "mid",
@@ -2058,7 +2332,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.65,
       "cv_band": "high",
@@ -2089,7 +2366,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.395,
       "cv_band": "mid",
@@ -2120,7 +2400,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.396,
       "cv_band": "mid",
@@ -2133,7 +2416,17 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null,
+      "expected_metrics": {
+        "detectors": {
+          "burstiness": false,
+          "koDiagnostics": false,
+          "mattr": false,
+          "lexicon": false,
+          "endingMonotony": false,
+          "candor": false,
+          "thematicBreak": false
+        }
+      },
       "length_bucket": "short",
       "register": "unspecified",
       "domain": "unspecified",
@@ -2151,7 +2444,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.564,
       "cv_band": "high",
@@ -2182,7 +2478,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.519,
       "cv_band": "high",
@@ -2213,7 +2512,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": true,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.093,
       "cv_band": "low",
@@ -2244,7 +2546,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": true,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.073,
       "cv_band": "low",
@@ -2275,7 +2580,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": true,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.073,
       "cv_band": "low",
@@ -2306,7 +2614,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": true,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.098,
       "cv_band": "low",
@@ -2337,7 +2648,10 @@
         "burstiness": true,
         "koDiagnostics": true,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": true,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.098,
       "cv_band": "low",
@@ -2354,7 +2668,17 @@
       "ko_diagnostics_strength": 0.285,
       "signal_score": 67.314,
       "hot_paragraphs": 1,
-      "expected_metrics": null,
+      "expected_metrics": {
+        "detectors": {
+          "burstiness": true,
+          "koDiagnostics": true,
+          "mattr": false,
+          "lexicon": false,
+          "endingMonotony": true,
+          "candor": false,
+          "thematicBreak": false
+        }
+      },
       "length_bucket": "short",
       "register": "unspecified",
       "domain": "unspecified",
@@ -2372,7 +2696,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.081,
       "cv_band": "low",
@@ -2408,7 +2735,10 @@
         "burstiness": false,
         "koDiagnostics": true,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.417,
       "cv_band": "mid",
@@ -2425,7 +2755,17 @@
       "ko_diagnostics_strength": 3.846,
       "signal_score": 3.846,
       "hot_paragraphs": 1,
-      "expected_metrics": null,
+      "expected_metrics": {
+        "detectors": {
+          "burstiness": false,
+          "koDiagnostics": true,
+          "mattr": false,
+          "lexicon": false,
+          "endingMonotony": false,
+          "candor": false,
+          "thematicBreak": false
+        }
+      },
       "length_bucket": "short",
       "register": "workplace-summary",
       "domain": "unspecified",
@@ -2443,7 +2783,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.717,
       "cv_band": "high",
@@ -2474,7 +2817,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.552,
       "cv_band": "high",
@@ -2505,7 +2851,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.68,
       "cv_band": "high",
@@ -2536,7 +2885,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.771,
       "cv_band": "high",
@@ -2567,7 +2919,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.996,
       "cv_band": "high",
@@ -2598,7 +2953,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.062,
       "cv_band": "low",
@@ -2629,7 +2987,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.28,
       "cv_band": "low",
@@ -2660,7 +3021,10 @@
         "burstiness": true,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.083,
       "cv_band": "low",
@@ -2691,7 +3055,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": true,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.748,
       "cv_band": "high",
@@ -2715,7 +3082,17 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "hot_paragraphs": 1,
-      "expected_metrics": null,
+      "expected_metrics": {
+        "detectors": {
+          "burstiness": false,
+          "koDiagnostics": false,
+          "mattr": false,
+          "lexicon": true,
+          "endingMonotony": false,
+          "candor": false,
+          "thematicBreak": false
+        }
+      },
       "length_bucket": "short",
       "register": "unspecified",
       "domain": "unspecified",
@@ -2733,7 +3110,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": true,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.41,
       "cv_band": "mid",
@@ -2759,7 +3139,17 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 100,
       "hot_paragraphs": 1,
-      "expected_metrics": null,
+      "expected_metrics": {
+        "detectors": {
+          "burstiness": false,
+          "koDiagnostics": false,
+          "mattr": false,
+          "lexicon": true,
+          "endingMonotony": false,
+          "candor": false,
+          "thematicBreak": false
+        }
+      },
       "length_bucket": "short",
       "register": "unspecified",
       "domain": "unspecified",
@@ -2777,7 +3167,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": true
+        "lexicon": true,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.443,
       "cv_band": "mid",
@@ -2819,7 +3212,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.506,
       "cv_band": "high",
@@ -2850,7 +3246,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.528,
       "cv_band": "high",
@@ -2881,7 +3280,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.58,
       "cv_band": "high",
@@ -2912,7 +3314,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.387,
       "cv_band": "mid",
@@ -2925,7 +3330,17 @@
       "ko_diagnostics_strength": 0,
       "signal_score": 0,
       "hot_paragraphs": 0,
-      "expected_metrics": null,
+      "expected_metrics": {
+        "detectors": {
+          "burstiness": false,
+          "koDiagnostics": false,
+          "mattr": false,
+          "lexicon": false,
+          "endingMonotony": false,
+          "candor": false,
+          "thematicBreak": false
+        }
+      },
       "length_bucket": "short",
       "register": "unspecified",
       "domain": "unspecified",
@@ -2943,7 +3358,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.598,
       "cv_band": "high",
@@ -2974,7 +3392,10 @@
         "burstiness": false,
         "koDiagnostics": false,
         "mattr": false,
-        "lexicon": false
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
       },
       "cv": 0.549,
       "cv_band": "high",

@@ -62,7 +62,7 @@ Apply the structure patterns to fix document-level issues:
 1. Scan paragraph layout, repetition, translationese, passive patterns
 2. Correct structural issues — diversify paragraph structure
 3. Verify core claims and logical flow survive structural changes
-4. Intentionally vary paragraph length and sentence count (burstiness)
+4. Burstiness — vary sentence LENGTH inside each paragraph, not just paragraph length and sentence count. A paragraph flagged low-burstiness means its sentences are near-identical in token count (CV < 0.30); swapping vocabulary alone never fixes it. In every flagged paragraph mix at least one short sentence (5–8 tokens) with at least one long one (20+ tokens), targeting CV ≥ 0.35: split one long sentence into a blunt declaration plus a longer elaboration, merge two same-length sentences, or drop in a clipped two-word follow-up. After rewriting, eyeball the sentence lengths — a row of 12±2-token sentences means this step was NOT done.
 
 **Skip if**: text is ≤2 paragraphs OR no structure packs loaded.
 

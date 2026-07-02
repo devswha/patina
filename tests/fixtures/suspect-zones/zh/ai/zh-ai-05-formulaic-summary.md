@@ -3,6 +3,15 @@ fixture_id: zh-ai-05-formulaic-summary
 language: zh
 class: ai
 expected_hot: true
+expected_metrics:
+  detectors:
+    burstiness: false
+    koDiagnostics: false
+    mattr: false
+    lexicon: true
+    endingMonotony: false
+    candor: false
+    thematicBreak: false
 why_designed_this_way: |
   Chinese formulaic summary fixture with dense AI-favored lexicon phrases and varied sentence length. It is intended to fire through lexicon density, not through a short-sentence burstiness artifact.
 topic: 远程协作

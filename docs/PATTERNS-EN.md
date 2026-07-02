@@ -299,16 +299,24 @@ Example after:
 - Source: [en-style.md](../patterns/en-style.md)
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
-- Fire condition: 3+ em dashes appear in a single text.
+- Fire condition: 1+ em dash appears in each of 2+ consecutive paragraphs, or the document-level em-dash count is high relative to sentence count.
 - Example files: [failure](../examples/en-13-failure-01.md) · [success](../examples/en-13-success-01.md)
 
 Example before:
 
-> The new policy — which was announced last Tuesday — aims to address a long-standing issue — affordable housing. Critics — including several council members — argue that the plan lacks specifics — a concern that the mayor dismissed as premature.
+> The pilot launched in March — a date chosen to align with the grant cycle.
+>
+> The first cohort included twelve clinics — each one serving a different rural county.
+>
+> Early feedback was positive — though the team still needs retention data before expanding.
 
 Example after:
 
-> The new policy, announced last Tuesday, aims to address affordable housing. Several council members say the plan lacks specifics. The mayor called the criticism premature.
+> The pilot launched in March, a date chosen to align with the grant cycle.
+>
+> The first cohort included twelve clinics, each serving a different rural county.
+>
+> Early feedback was positive. The team still needs retention data before expanding.
 
 ### 14. Boldface Overuse
 

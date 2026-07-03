@@ -1,4 +1,5 @@
 // @ts-check
+// patina-lane: B (persona / LLM rewrite) — post-rewrite meaning verification. See docs/ARCHITECTURE.md.
 import { scoreMPS as defaultScoreMPS, scoreFidelity as defaultScoreFidelity } from './scoring.js';
 import { buildPrompt } from './prompt-builder.js';
 import { stripSelfAudit } from './output.js';

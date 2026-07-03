@@ -1,3 +1,5 @@
+// patina-lane: A asset for Lane B — deterministic persona-match scorer; LLM-free
+// by construction, consumed by the Lane B persona gate. See docs/ARCHITECTURE.md.
 import {
   analyzeText,
   splitProseSentences,

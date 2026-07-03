@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import yaml from 'js-yaml';
@@ -6,8 +6,9 @@ import yaml from 'js-yaml';
 import { getRepoRoot } from '../config.js';
 import { inputError } from '../errors.js';
 import { createLogger } from '../logger.js';
+import { loadFile, splitFrontmatter } from '../loader.js';
 import { validatePersona, PERSONA_SCHEMA_ID, MIN_MPS_FLOOR, MIN_FIDELITY_FLOOR, PERSONA_DEPTHS } from '../personas/schema.js';
-import { listPersonas } from '../personas/loader.js';
+import { listPersonas, loadPersona, resolvePersonaPath, safePersonaPath } from '../personas/loader.js';
 import { extractPersonaFeatureVector } from '../features/persona-match.js';
 import { selectBackendChain, invokeBackendChain } from '../backends/index.js';
 
@@ -357,6 +358,201 @@ export function runPersonaList(args, deps = {}) {
   return result;
 }
 
+/**
+ * `patina persona show <id>` — print a normalized persona (never the body).
+ *
+ * @param {string[]} args CLI args after `persona show`.
+ * @param {object} [deps] Injected dependencies (repoRoot).
+ * @returns {object} Normalized persona object.
+ */
+export function runPersonaShow(args, deps = {}) {
+  const repoRoot = deps.repoRoot ?? getRepoRoot();
+  let id = null;
+  let lang = 'ko';
+  let json = false;
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === '--lang' || arg === '--language') lang = args[++i];
+    else if (arg === '--json') json = true;
+    else if (arg === '--format' && args[i + 1] === 'json') { json = true; i += 1; }
+    else if (!arg.startsWith('-') && id === null) id = arg;
+    else throw inputError(`unknown persona show argument: ${arg}`, 'Unrecognized flag or extra positional.', 'See `patina persona --help`.');
+  }
+  if (!id) throw inputError('persona show requires an id', 'Usage: patina persona show <id> [--lang ..] [--json]', 'e.g. `patina persona show natural-ko`.');
+  assertLang(lang);
+  assertPersonaId(id);
+  // loadPersona returns the normalized, frontmatter-derived object only — the
+  // Markdown body is docs-only and is never included, so it cannot leak here.
+  const persona = loadPersona(repoRoot, lang, id);
+  if (json) {
+    console.log(JSON.stringify(persona, null, 2));
+    return persona;
+  }
+  const path = resolvePersonaPath(repoRoot, lang, id);
+  const source = path.startsWith(resolve(repoRoot, 'custom', 'personas') + '/') ? 'custom' : 'library';
+  const activeBlocks = Object.entries(persona.blocks || {})
+    .filter(([, block]) => block && block.active)
+    .map(([name]) => name);
+  const targetKeys = Object.keys(persona.targetFeatures || {});
+  const lines = [
+    `id:              ${persona.id}`,
+    `name:            ${persona.name}`,
+    `lang:            ${persona.lang}`,
+    `depth:           ${persona.depth}`,
+    `mps:             floor ${persona.mps.floor} (enforce: ${persona.mps.enforce})`,
+    `fidelity:        floor ${persona.fidelity.floor} (enforce: ${persona.fidelity.enforce})`,
+    `active blocks:   ${activeBlocks.join(', ') || '(none)'}`,
+    `target_features: ${targetKeys.join(', ') || '(none)'}`,
+    `path:            ${path}`,
+    `source:          ${source}`,
+  ];
+  console.log(lines.join('\n'));
+  return persona;
+}
+
+/**
+ * `patina persona rm <id>` — remove a custom persona. Built-in library seeds
+ * and the meaning-preserving `preserve` default can never be removed.
+ *
+ * @param {string[]} args CLI args after `persona rm`.
+ * @param {object} [deps] Injected dependencies (repoRoot, ask, logger).
+ * @returns {Promise<string|null>} Removed path, or null if aborted.
+ */
+export async function runPersonaRm(args, deps = {}) {
+  const repoRoot = deps.repoRoot ?? getRepoRoot();
+  const logger = deps.logger ?? createLogger();
+  let id = null;
+  let lang = 'ko';
+  let force = false;
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === '--lang' || arg === '--language') lang = args[++i];
+    else if (arg === '--force') force = true;
+    else if (!arg.startsWith('-') && id === null) id = arg;
+    else throw inputError(`unknown persona rm argument: ${arg}`, 'Unrecognized flag or extra positional.', 'See `patina persona --help`.');
+  }
+  if (!id) throw inputError('persona rm requires an id', 'Usage: patina persona rm <id> [--lang ..] [--force]', 'e.g. `patina persona rm my-voice`.');
+  assertLang(lang);
+  assertPersonaId(id);
+  if (id === 'preserve') {
+    throw inputError(
+      'the preserve persona cannot be removed',
+      'preserve is the meaning-preserving default and must always be available.',
+      'Leave preserve in place; author a different custom persona instead.'
+    );
+  }
+  // Reuse the loader's path-containment guard for both candidate paths.
+  const customPath = safePersonaPath(resolve(repoRoot, 'custom', 'personas', lang), id);
+  const libraryPath = safePersonaPath(resolve(repoRoot, 'personas', lang), id);
+  const customExists = existsSync(customPath);
+  const libraryExists = existsSync(libraryPath);
+  if (!customExists && libraryExists) {
+    throw inputError(
+      'built-in personas cannot be removed',
+      `${libraryPath} is a built-in library persona.`,
+      `Shadow it with a custom persona (patina persona edit ${id}) or edit the library file directly.`
+    );
+  }
+  if (!customExists) {
+    throw inputError(
+      `persona not found: ${id}`,
+      `No custom persona at ${customPath}.`,
+      `Run \`patina persona list --lang ${lang}\` to see available personas.`
+    );
+  }
+  if (!force) {
+    const ask = deps.ask ?? defaultAsk;
+    const answer = String(await ask(`Remove custom persona '${id}' (${lang}) at ${customPath}? [y/N] `) ?? '').trim().toLowerCase();
+    if (answer !== 'y' && answer !== 'yes') {
+      logger.info?.('persona.rm.aborted', { message: `[patina] aborted: custom persona '${id}' was not removed` });
+      return null;
+    }
+  }
+  unlinkSync(customPath);
+  logger.info?.('persona.removed', { message: `[patina] removed custom persona '${id}' (${lang}) → ${customPath}` });
+  return customPath;
+}
+
+function parsePersonaEditArgs(args) {
+  const opts = { id: null, lang: 'ko', mode: null, sampleFile: null, describe: null, name: null, backend: process.env.PATINA_BACKEND || null };
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === '--lang' || arg === '--language') opts.lang = args[++i];
+    else if (arg === '--from-sample') { opts.mode = 'sample'; opts.sampleFile = args[++i]; }
+    else if (arg === '--describe') { opts.mode = 'describe'; opts.describe = args[++i]; }
+    else if (arg === '--name') { opts.mode = 'name'; opts.name = args[++i]; }
+    else if (arg === '--backend') opts.backend = args[++i];
+    else if (!arg.startsWith('-') && opts.id === null) opts.id = arg;
+    else throw inputError(`unknown persona edit argument: ${arg}`, 'Unrecognized flag or extra positional.', 'See `patina persona --help`.');
+  }
+  return opts;
+}
+
+/**
+ * `patina persona edit <id>` — copy-on-edit a persona into custom/personas.
+ * Editing a built-in persona COPIES it into custom (a shadow), leaving the
+ * library file intact. Every write passes the persona safety gate.
+ *
+ * @param {string[]} args CLI args after `persona edit`.
+ * @param {object} [deps] Injected dependencies (repoRoot, callLLM, logger).
+ * @returns {Promise<string>} Written persona file path (under custom/personas).
+ */
+export async function runPersonaEdit(args, deps = {}) {
+  const repoRoot = deps.repoRoot ?? getRepoRoot();
+  const logger = deps.logger ?? createLogger();
+  const opts = parsePersonaEditArgs(args);
+  if (!opts.id) throw inputError('persona edit requires an id', 'Usage: patina persona edit <id> [--lang ..] [--from-sample f | --describe t | --name "<new name>"]', 'e.g. `patina persona edit natural-ko --name "My natural KO"`.');
+  assertLang(opts.lang);
+  assertPersonaId(opts.id);
+  if (!opts.mode) {
+    throw inputError(
+      'persona edit needs an edit input',
+      'No edit flag given.',
+      'Pass one of --from-sample <file>, --describe "<text>", or --name "<new name>".'
+    );
+  }
+  // Existence guard (custom-first); throws a clear not-found error if missing.
+  loadPersona(repoRoot, opts.lang, opts.id);
+
+  // --name is a lossless rename: preserve the full original frontmatter and
+  // override only the name, so non-whitelisted blocks (preferred_metaphors,
+  // extended sentence_structure targets) are NOT dropped. Re-derivation modes
+  // (--from-sample/--describe) intentionally rebuild the voice like `new`.
+  if (opts.mode === 'name') {
+    const sourcePath = resolvePersonaPath(repoRoot, opts.lang, opts.id);
+    const { frontmatter: raw } = splitFrontmatter(loadFile(sourcePath));
+    raw.name = opts.name;
+    // Shadow copy is now an authored custom persona; mark provenance accordingly
+    // while preserving every voice block losslessly.
+    raw.source = 'learned';
+    validatePersona(raw, { id: opts.id, lang: opts.lang });
+    const path = writePersonaFile({ repoRoot, lang: opts.lang, id: opts.id, frontmatter: raw, force: true });
+    logger.info?.('persona.edited', { message: `[patina] edited persona '${opts.id}' (${opts.lang}) → ${path}` });
+    return path;
+  }
+
+  let fields;
+  if (opts.mode === 'sample') {
+    const callLLM = deps.callLLM ?? makeCallLLM({ backends: opts.backend ? selectBackendChain({ name: opts.backend }) : undefined });
+    const text = readFileSync(resolve(process.cwd(), opts.sampleFile), 'utf8');
+    fields = await deriveVoiceViaLLM({ kind: 'sample', text, lang: opts.lang, callLLM });
+    fields.targetFeatures = deterministicTargetsFromSample(text, { lang: opts.lang, repoRoot });
+  } else {
+    const callLLM = deps.callLLM ?? makeCallLLM({ backends: opts.backend ? selectBackendChain({ name: opts.backend }) : undefined });
+    fields = await deriveVoiceViaLLM({ kind: 'describe', text: opts.describe, lang: opts.lang, callLLM });
+  }
+
+  const frontmatter = buildFrontmatter({ id: opts.id, lang: opts.lang, ...fields });
+  // Safety gate: the rebuilt frontmatter must pass the persona schema (floors
+  // clamped, FORBIDDEN_KEYS rejected) before it is ever written.
+  validatePersona(frontmatter, { id: opts.id, lang: opts.lang });
+  // Always writes into custom/personas/<lang>/, so editing a library persona
+  // copies it into custom (shadow) and preserves the library file.
+  const path = writePersonaFile({ repoRoot, lang: opts.lang, id: opts.id, frontmatter, force: true });
+  logger.info?.('persona.edited', { message: `[patina] edited persona '${opts.id}' (${opts.lang}) → ${path}` });
+  return path;
+}
+
 export function printPersonaHelp() {
   console.log([
     'Usage: patina persona <command>',
@@ -364,6 +560,9 @@ export function printPersonaHelp() {
     'COMMANDS',
     '  new <id>     Author a reusable custom persona (saved to custom/personas/<lang>/<id>.md)',
     '  list         List built-in and custom personas',
+    '  show <id>    Print a persona\'s normalized config (never the docs body)',
+    '  rm <id>      Remove a custom persona (built-ins and preserve are protected)',
+    '  edit <id>    Copy-on-edit a persona into custom/personas/<lang>/',
     '',
     'persona new options',
     '  --lang <code>        ko | en | zh | ja (default: ko)',
@@ -378,6 +577,21 @@ export function printPersonaHelp() {
     'persona list options',
     '  --lang <code>        Restrict to one language',
     '  --format json        Machine-readable output',
+    '',
+    'persona show options',
+    '  --lang <code>        Persona language (default: ko)',
+    '  --json               Emit the normalized persona as JSON',
+    '',
+    'persona rm options',
+    '  --lang <code>        Persona language (default: ko)',
+    '  --force              Skip the interactive confirm',
+    '',
+    'persona edit options',
+    '  --lang <code>        Persona language (default: ko)',
+    '  --from-sample <file> Re-derive the voice from a writing sample (LLM + deterministic analysis)',
+    '  --describe "<text>"  Re-derive the voice from a natural-language description (LLM)',
+    '  --name "<new name>"  Keep the derived voice but rename the persona',
+    '  --backend <name>     Backend for sample/describe re-derivation',
   ].join('\n'));
 }
 
@@ -393,9 +607,12 @@ export async function runPersona(args, deps = {}) {
   if (!sub || sub === 'help' || sub === '-h' || sub === '--help') { printPersonaHelp(); return null; }
   if (sub === 'new') return runPersonaNew(args.slice(1), deps);
   if (sub === 'list') return runPersonaList(args.slice(1), deps);
+  if (sub === 'show') return runPersonaShow(args.slice(1), deps);
+  if (sub === 'rm') return runPersonaRm(args.slice(1), deps);
+  if (sub === 'edit') return runPersonaEdit(args.slice(1), deps);
   throw inputError(
     `unknown persona subcommand: ${sub}`,
-    'Supported subcommands: new, list.',
+    'Supported subcommands: new, list, show, rm, edit.',
     'Run `patina persona --help`.'
   );
 }

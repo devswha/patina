@@ -59,15 +59,14 @@ function localizeDemoSrc(src) {
 }
 
 test('localized READMEs point at a demo hero GIF that exists', () => {
-  const enGif = 'assets/demo/patina-preview-en.gif';
-  // README.md ships the English web-playground recording; README_KR ships a
-  // fully Korean recording of the --preview surface; ZH/JA reuse the English
-  // preview recording.
+  // After the translation resync, every README (English + KR/ZH/JA) leads with
+  // the same playground-led demo hero GIF served from the main-branch raw URL.
+  const playgroundGif = 'https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-playground-en.gif';
   const expected = {
-    'README.md': 'https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-playground-en.gif',
-    'README_KR.md': 'assets/demo/patina-preview-ko.gif',
-    'README_ZH.md': enGif,
-    'README_JA.md': enGif,
+    'README.md': playgroundGif,
+    'README_KR.md': playgroundGif,
+    'README_ZH.md': playgroundGif,
+    'README_JA.md': playgroundGif,
   };
 
   for (const file of README_FILES) {
@@ -85,7 +84,7 @@ test('English demo hero copy does not describe a Korean recording', () => {
 
   for (const file of ['README_ZH.md', 'README_JA.md']) {
     const { localSrc, alt } = extractDemoHero(file);
-    assert.equal(localSrc, 'assets/demo/patina-preview-en.gif');
+    assert.equal(localSrc, 'assets/demo/patina-playground-en.gif');
     assert.doesNotMatch(alt, koreanTerms, `${file}: preview alt should not describe a Korean recording`);
   }
 });

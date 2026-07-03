@@ -185,8 +185,14 @@ of them; what remains is named here as the surface for later work.
    legitimate KO humanizing rewrites churn ~0.5–0.85 while preserving meaning, so
    surface churn is not a meaning signal; it warns only. `mps_floor`/`fidelity_floor`
    stay core (70, enforcing); `churn_max`/`persona_match_min` are observation-
-   informed advisory thresholds. (`source` stays `placeholder` — advisory tuning,
-   not a formal 2-round promotion.)
+   informed advisory thresholds. `source` stays `placeholder` **deliberately** —
+   these are advisory-only signals, so a formal 2-round promotion is not required
+   to ship them. Promotion trigger: only if `churn_max` or `persona_match_min`
+   (or the meaning-proxy) is ever made **enforcing**. Promotion procedure: the
+   2-round ablation (`aggregateAblation`/`ablationDecision` in `src/personas/gates.js`,
+   driven by `scripts/persona-ablation.mjs`) proving ~0 false positives on
+   legitimate rewrites, after which `source` records `calibrated`. Until then the
+   placeholder value is the honest provenance for an advisory threshold.
 5. **Personas are multilingual and are the sole voice owner.** `--persona` runs on
    ko/en/zh/ja. As of v6.2 the persona owns ALL voice: whenever a persona is
    active (including the `preserve` default), the profile contributes only its

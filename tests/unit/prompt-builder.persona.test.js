@@ -45,3 +45,19 @@ test('omitting persona leaves prompt unchanged', () => {
   const explicitNull = buildPrompt({ ...base, persona: null, promptMode: 'strict' });
   assert.equal(explicitNull, withoutPersona);
 });
+
+test('an explicit tone overrides the persona register; the persona keeps its other structure targets', () => {
+  const persona = loadPersona(REPO_ROOT, 'ko', 'soft-professional');
+  const noTone = formatPersonaDirective(persona, { lang: 'ko', tone: { tone: null, tone_source: 'profile_only' } });
+  const withTone = formatPersonaDirective(persona, { lang: 'ko', tone: { tone: 'casual', tone_source: 'user' } });
+  const withAuto = formatPersonaDirective(persona, { lang: 'ko', tone: { tone: 'auto', tone_source: 'auto' } });
+
+  // No explicit tone → the persona's own register stands.
+  assert.match(noTone, /polite_professional/);
+  // Explicit tone (user or auto) owns register → the persona register is suppressed
+  // so the directive never contradicts the Tone Resolution block.
+  assert.doesNotMatch(withTone, /polite_professional/);
+  assert.doesNotMatch(withAuto, /polite_professional/);
+  // Non-register structure targets survive the override in every case.
+  for (const d of [noTone, withTone, withAuto]) assert.match(d, /CV/);
+});

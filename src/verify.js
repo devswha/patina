@@ -30,14 +30,24 @@ function numbersIn(text) {
  * @param {string} rewrite
  * @returns {string[]}
  */
+/**
+ * Source numbers that vanish from the rewrite. Deterministic, LLM-free — the raw
+ * signal behind {@link deterministicMeaningGuard} and the persona safety gate's
+ * dropped-numbers check.
+ *
+ * @param {string} original
+ * @param {string} rewrite
+ * @returns {string[]}
+ */
+export function droppedNumbers(original, rewrite) {
+  const oNums = numbersIn(String(original ?? ''));
+  const rNums = numbersIn(String(rewrite ?? ''));
+  return [...oNums].filter((n) => !rNums.has(n));
+}
+
 export function deterministicMeaningGuard(original, rewrite) {
   const warnings = [];
-  const orig = String(original ?? '');
-  const out = String(rewrite ?? '');
-
-  const oNums = numbersIn(orig);
-  const rNums = numbersIn(out);
-  const dropped = [...oNums].filter((n) => !rNums.has(n));
+  const dropped = droppedNumbers(original, rewrite);
   if (dropped.length > 0) {
     warnings.push(
       `numbers in the source are missing from the rewrite: ${dropped.slice(0, 6).join(', ')}${dropped.length > 6 ? '…' : ''}`,

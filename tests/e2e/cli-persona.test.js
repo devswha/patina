@@ -22,15 +22,23 @@ async function captureConsole(fn) {
   const errors = [];
   const originalLog = console.log;
   const originalError = console.error;
+  // main() runs in-process here, so any process.exitCode it sets (e.g. the
+  // persona safety gate on a churny rewrite) would leak into the test runner's
+  // own exit code. Snapshot and restore it, and hand the observed code back.
+  const originalExitCode = process.exitCode;
+  process.exitCode = 0;
   console.log = (...args) => logs.push(args.join(' '));
   console.error = (...args) => errors.push(args.join(' '));
+  let exitCode = 0;
   try {
     await fn();
+    exitCode = Number(process.exitCode) || 0;
   } finally {
     console.log = originalLog;
     console.error = originalError;
+    process.exitCode = originalExitCode;
   }
-  return { logs, errors };
+  return { logs, errors, exitCode };
 }
 
 describe('CLI persona harness', () => {
@@ -49,7 +57,7 @@ describe('CLI persona harness', () => {
   });
 
   it('runs --persona preserve with mocked backend and emits JSON persona field', async () => {
-    const { logs } = await captureConsole(() => main([
+    const { logs, exitCode } = await captureConsole(() => main([
       '--persona', 'preserve',
       '--format', 'json',
       '--api-key-file', mockApiKeyPath,
@@ -63,12 +71,17 @@ describe('CLI persona harness', () => {
     assert.equal(payload.persona.id, 'preserve');
     assert.equal(payload.persona.depth, 'style-only');
     assert.equal(payload.persona.thresholds_source, 'placeholder');
+    // The mock rewrites the whole sentence, so deterministic churn exceeds the
+    // ceiling: the safety gate must ENFORCE (exit 4) while still emitting output.
+    assert.equal(exitCode, 4);
+    assert.ok(payload.persona.gate_result.safetyFailures.includes('churn'));
+    assert.equal(payload.persona.gate_result.pass, false);
   });
 
   it('keeps non-Korean no-persona rewrite path without persona gate', async () => {
     const enPath = resolve(keyDir, 'en.txt');
     writeFileSync(enPath, 'This is a test sentence.');
-    const { logs } = await captureConsole(() => main([
+    const { logs, exitCode } = await captureConsole(() => main([
       '--lang', 'en',
       '--format', 'json',
       '--api-key-file', mockApiKeyPath,
@@ -80,5 +93,7 @@ describe('CLI persona harness', () => {
     const payload = JSON.parse(logs.join('\n'));
     assert.equal(payload.mode, 'rewrite');
     assert.equal(payload.persona, null);
+    // No persona gate on the non-Korean path: nothing enforces an exit code.
+    assert.equal(exitCode, 0);
   });
 });

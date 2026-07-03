@@ -12,7 +12,11 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
-## Unreleased
+## 6.1.0 — 2026-07-03
+
+**Personas grow up: enforcing safety gate, multilingual voices, register/profile precedence, and custom voice authoring.**
+
+Semver rationale: minor — additive persona features (multilingual `--persona` for ko/en/zh/ja, `patina persona new|list` custom authoring, register/profile precedence, profile voice/pattern split) plus a live calibration harness and architecture docs. The persona safety gate now enforces meaning floors (MPS/fidelity/dropped-numbers) with a non-zero exit, but persona is opt-in and no stable public CLI/API is removed.
 
 ### Added
 

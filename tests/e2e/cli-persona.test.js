@@ -48,7 +48,7 @@ describe('CLI persona harness', () => {
     mockApiKeyPath = resolve(keyDir, 'key.txt');
     inputPath = resolve(keyDir, 'ko.txt');
     writeFileSync(mockApiKeyPath, 'test-key\n');
-    writeFileSync(inputPath, '이것은 테스트 문장입니다.');
+    writeFileSync(inputPath, '이것은 2026년에 시작한 테스트 문장입니다.');
   });
 
   after(async () => {
@@ -71,11 +71,13 @@ describe('CLI persona harness', () => {
     assert.equal(payload.persona.id, 'preserve');
     assert.equal(payload.persona.depth, 'style-only');
     assert.equal(payload.persona.thresholds_source, 'placeholder');
-    // The mock rewrites the whole sentence, so deterministic churn exceeds the
-    // ceiling: the safety gate must ENFORCE (exit 4) while still emitting output.
+    // The mock output drops the source number "2026", so the deterministic
+    // dropped-numbers safety signal fires: the gate ENFORCES (exit 4) while
+    // still emitting output. High surface churn stays advisory (never blocks).
     assert.equal(exitCode, 4);
-    assert.ok(payload.persona.gate_result.safetyFailures.includes('churn'));
+    assert.ok(payload.persona.gate_result.safetyFailures.includes('numbers'));
     assert.equal(payload.persona.gate_result.pass, false);
+    assert.ok(payload.persona.gate_result.advisory.includes('churn'));
   });
 
   it('keeps non-Korean no-persona rewrite path without persona gate', async () => {

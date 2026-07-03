@@ -82,17 +82,19 @@ test('persona gate hard-fails fidelity below floor', () => {
   assert.ok(result.hardFailures.includes('fidelity'));
 });
 
-test('persona gate hard-fails churn above max', () => {
+test('persona gate keeps high churn ADVISORY (surface change is not a meaning signal)', () => {
   const result = evaluatePersonaGate({
     persona: contentPersona,
     personaMatch: 90,
     mps: 90,
     fidelity: 90,
-    churn: 0.5,
+    churn: 0.85,
     thresholds: { personaMatchMin: 70, mpsFloor: 70, fidelityFloor: 70, churnMax: 0.45 },
   });
-  assert.equal(result.pass, false);
-  assert.ok(result.hardFailures.includes('churn'));
+  assert.equal(result.pass, true, 'high surface churn must not block a meaning-preserving rewrite');
+  assert.deepEqual(result.safetyFailures, []);
+  assert.equal(result.churnPass, false);
+  assert.ok(result.advisory.includes('churn'));
 });
 
 test('persona gate treats null mps and fidelity as not evaluated', () => {
@@ -126,7 +128,7 @@ test('persona gate hard-fails numeric mps below floor', () => {
   assert.ok(result.hardFailures.includes('mps'));
 });
 
-test('persona gate ignores null mps when churn hard-fails', () => {
+test('persona gate with null mps/fidelity and high churn still passes safety (churn advisory)', () => {
   const result = evaluatePersonaGate({
     persona: contentPersona,
     personaMatch: 80,
@@ -135,9 +137,10 @@ test('persona gate ignores null mps when churn hard-fails', () => {
     churn: 0.9,
     thresholds: { personaMatchMin: 70, mpsFloor: 70, fidelityFloor: 70, churnMax: 0.45 },
   });
-  assert.equal(result.pass, false);
+  assert.equal(result.pass, true, 'no evaluated meaning signal + no dropped numbers = safety pass');
   assert.equal(result.mpsEvaluated, false);
-  assert.deepEqual(result.hardFailures, ['churn']);
+  assert.deepEqual(result.safetyFailures, []);
+  assert.deepEqual(result.advisory, ['churn']);
 });
 
 test('ablation decision falls back on two consecutive failed rounds', () => {

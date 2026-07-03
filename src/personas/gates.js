@@ -39,15 +39,18 @@ export function editChurn(original, rewritten) {
  * Evaluate the persona gate.
  *
  * Splits into two decisions (see docs/ARCHITECTURE.md, seam #1):
- *   - SAFETY (enforcing): mps, fidelity, churn, and dropped source numbers. A
- *     safety failure means meaning may not be preserved; the caller enforces it
- *     (non-zero exit, non-destructive). MPS/fidelity are only enforced when
- *     evaluated (a real score is present); the deterministic churn ceiling and
- *     dropped-numbers guard always enforce.
- *   - ADVISORY (never blocks): personaMatch. This is a voice-quality signal, not
- *     a meaning-safety signal, so a low match warns but never fails the gate.
+ *   - SAFETY (enforcing): mps, fidelity, and dropped source numbers — the
+ *     meaning-and-facts signals. A safety failure means meaning may not be
+ *     preserved; the caller enforces it (non-zero exit, non-destructive).
+ *     MPS/fidelity are only enforced when evaluated (a real score is present);
+ *     the deterministic dropped-numbers guard always enforces.
+ *   - ADVISORY (never blocks): personaMatch (voice quality) and churn (surface
+ *     change). Surface churn is NOT a meaning signal — legitimate humanizing
+ *     rewrites churn heavily while preserving meaning — so it warns but never
+ *     fails the gate. Likewise a low voice match warns only.
  *
- * `hardFailures` / `pass` reflect SAFETY only. `advisory` carries voice signals.
+ * `hardFailures` / `pass` reflect SAFETY only. `advisory` carries the non-
+ * blocking signals (personaMatch, churn).
  *
  * @param {object} input Gate inputs.
  * @param {number} [input.personaMatch] Deterministic persona-match score (advisory).
@@ -69,23 +72,32 @@ export function evaluatePersonaGate({ personaMatch, mps, fidelity, churn, droppe
   const mpsEvaluated = typeof mps === 'number' && Number.isFinite(mps);
   const fidelityEvaluated = typeof fidelity === 'number' && Number.isFinite(fidelity);
 
-  // SAFETY (enforcing).
+  // SAFETY (enforcing): meaning + facts only. Surface churn is NOT a meaning
+  // signal — live KO humanizing rewrites routinely churn 0.5–0.85 while fully
+  // preserving meaning — so it is advisory, not a hard gate (see churn below).
   const safetyFailures = [];
   if (mpsEvaluated && mps < mpsFloor) safetyFailures.push('mps');
   if (fidelityEvaluated && fidelity < fidelityFloor) safetyFailures.push('fidelity');
-  if (typeof churn === 'number' && churn > churnMax) safetyFailures.push('churn');
   if (dropped.length > 0) safetyFailures.push('numbers');
 
-  // ADVISORY (never blocks): voice-match quality only.
+  // ADVISORY (never blocks): voice-match quality and surface churn. These warn
+  // but do not fail the gate or change the exit code.
   const personaMatchEvaluated = typeof personaMatch === 'number' && Number.isFinite(personaMatch);
   const personaMatchPass = !personaMatchEvaluated || personaMatch >= personaMatchMin;
-  const advisory = personaMatchPass ? [] : ['personaMatch'];
+  const churnEvaluated = typeof churn === 'number' && Number.isFinite(churn);
+  const churnPass = !churnEvaluated || churn <= churnMax;
+  const advisory = [];
+  if (!personaMatchPass) advisory.push('personaMatch');
+  if (!churnPass) advisory.push('churn');
 
   return {
     pass: safetyFailures.length === 0,
     hardFailures: safetyFailures,
     safetyFailures,
     advisory,
+    churnMax,
+    churnEvaluated,
+    churnPass,
     personaMatch,
     personaMatchMin,
     personaMatchEvaluated,

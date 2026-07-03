@@ -328,9 +328,13 @@ export async function runDefault(parsed, logger) {
             process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
           }
           if (gate.advisory.length > 0) {
-            // ADVISORY: voice-match quality only — never blocks or changes exit.
-            logger.warn('persona.match_low', {
-              message: `[patina] persona match ${gate.personaMatch} below advisory target ${gate.personaMatchMin} (voice quality only; output not blocked).`,
+            // ADVISORY: voice-match quality and surface churn — never block or
+            // change the exit code. Surface churn is not a meaning signal.
+            const bits = [];
+            if (!gate.personaMatchPass) bits.push(`voice match ${gate.personaMatch} < ${gate.personaMatchMin}`);
+            if (!gate.churnPass) bits.push(`surface churn ${gate.churn} > ${gate.churnMax}`);
+            logger.warn('persona.advisory', {
+              message: `[patina] persona advisory: ${bits.join('; ')} (quality signals only; output not blocked).`,
             });
           }
         }

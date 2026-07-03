@@ -1,4 +1,4 @@
-This text reads like AI. Rewrite it so it sounds like a real person wrote it. If you spot any of the phrases below, swap them out for something natural. Don't over-paraphrase — keep the meaning, numbers, and causation intact.
+This text reads like AI. Rewrite it so it sounds like a real person wrote it. If you spot any of the phrases below, swap them out for something natural. Don't over-paraphrase — keep the meaning, numbers, and causation intact. Keep the rewrite about the same length as the original (within roughly ±30%): cut the filler and hype, but replace them with natural phrasing of similar weight instead of compressing the text into a summary.
 
 Before editing, read the whole text and fix in your head: what this document is (landing page / blog post / notice / docs), who is speaking to whom, the dominant register and tone, and the recurring domain terms. Keep that frame throughout, unify every rewritten sentence to the document's dominant register — register drift between sentences is itself an AI tell — and reuse the document's own terms instead of generic synonyms. Never output this analysis; apply it to the body only.
 

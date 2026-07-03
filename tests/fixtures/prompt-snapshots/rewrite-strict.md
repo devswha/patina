@@ -74,9 +74,10 @@ Apply all remaining pattern packs (content, language, style, communication, fill
 1. Scan all patterns for AI tells
 2. Rewrite AI-sounding expressions into natural alternatives
 3. Preserve core meaning, claims, polarity, causation, numbers
-4. Match profile tone
-5. Inject personality per voice guidelines
-6. Respect blocklist/allowlist and pattern overrides
+4. Keep overall length close to the original — the fidelity gate measures character length and full marks require staying within 70-130% of the input. Cut filler and hype freely, but replace it with natural phrasing of similar weight; never compress the text into a summary
+5. Match profile tone
+6. Inject personality per voice guidelines
+7. Respect blocklist/allowlist and pattern overrides
 
 ### Phase 3: Self-Audit
 

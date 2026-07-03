@@ -1,10 +1,16 @@
 # Demo assets
 
-The README hero now uses the preview surface, not terminal recordings. Keep the main asset visually product-first: an actual page, stable layout, inline diff, jump chips, view toggles, and the score chip.
+The English README hero now uses the web playground surface; the CLI `--preview` animation stays as the secondary demo and the non-English README hero. Keep every asset product-first: a real UI, stable layout, readable scores, no hand-drawn mocks.
 
 Current assets:
 
-- `patina-preview-en.gif` — README hero animation used by English, Korean, Chinese, and Japanese READMEs.
+- `patina-playground-en.gif` — README (English) hero animation showing the web playground flow.
+  - source: the real playground UI (English) served by `node scripts/dev-server.mjs` with a real LLM backend (`PATINA_DEV_LLM_*`, `PATINA_DEV_LLM_SCORE=real`) — real rewrite, real MPS/fidelity scoring, real deterministic AI-signal drop.
+  - captured frames: typed sample on the landing → streaming rewrite (×2) → result with MPS/Fidelity badges → result with the AI-signal (hot-paragraph ratio 100 → 0) and length disclosures expanded.
+  - expected visual contract: English UI ("Make it sound human"), Free mode nav, the 30-templates fact preserved in the rewrite, MPS 100 / Fidelity 75 badges, hot-paragraph ratio 100 → 0.
+  - rendered at 1640px wide, 5 frames, 256-color shared palette; keep under 1 MB.
+- `patina-playground-en.png` — expanded-result still used where PNG is required.
+- `patina-preview-en.gif` — CLI `--preview` animation, linked from the README demo section and used by the Korean, Chinese, and Japanese READMEs.
   - source: a styled local HTML page with Notion-template-pack prose.
   - generated with: `node bin/patina.js --preview --lang en --tone marketing --backend codex-cli <sample>.html`
   - captured views: Rewritten → Diff → Original → Both → Diff.

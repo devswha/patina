@@ -52,7 +52,7 @@ More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPL
 
 ### Browser playground
 
-Open **[patina.vibetip.help](https://patina.vibetip.help/)** to try patina in your browser: paste KO / EN / ZH / JA text and get a real rewrite gated by the MPS/fidelity floors, with the deterministic AI signal measured before → after. Rewrites and scoring run server-side; the free tier uses the service's own model key (rate-limited). **API mode** uses your own key: it is kept in your browser's storage, forwarded with each request through the patina server to the provider you pick, and never stored or logged (server metrics are sanitized — no text, prompt, output, key, or IP). For Korean, the browser and CLI may surface `translationese` / `koPostEditese.v1` metadata as editing hints; this metadata is advisory only, is not calibrated score input, and must not drive hot paragraphs, gates, severity, baselines, percentiles, benchmark claims, prompt/rewrite gates, or authorship verdicts.
+Open **[patina.vibetip.help](https://patina.vibetip.help/)** — paste KO / EN / ZH / JA text for a real rewrite gated by the MPS/fidelity floors, with the deterministic AI signal measured before → after. Rewrites and scoring run server-side; the free tier uses the service's own model key (rate-limited). **API mode** forwards your own key per request through the patina server to the provider you pick — never stored or logged (metrics are sanitized: no text, prompt, output, key, or IP).
 
 ### Agent skill
 
@@ -100,16 +100,9 @@ printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
   | npx patina-cli --lang en --backend codex-cli
 ```
 
-Supported local backends: `codex-cli`, `claude-cli`, `gemini-cli`, `kimi-cli`.
-Without `--model`, patina passes the strongest documented default per backend:
-`gpt-5.5` for OpenAI/Codex, `claude-sonnet-4-6` for Claude, `gemini-2.5-pro`
-for Gemini, and `kimi-code/kimi-for-coding` for Kimi Code. See
-[Authentication](docs/AUTHENTICATION.md) ([한국어](docs/AUTHENTICATION_KR.md)).
+Supported local backends: `codex-cli`, `claude-cli`, `gemini-cli`, `kimi-cli` — patina passes the strongest documented default model per backend. See [Authentication](docs/AUTHENTICATION.md) ([한국어](docs/AUTHENTICATION_KR.md)).
 
-For large `--batch` rewrites, prefer an OpenAI-compatible HTTP backend. Local
-CLI backends are agent runtimes; patina caps them conservatively, uses compact
-prompts for them, and exposes `--timeout-ms`, `--max-concurrency`,
-`--max-retries`, `--max-failures`, and `--max-failure-rate` for batch safety.
+For large `--batch` runs, prefer an OpenAI-compatible HTTP backend; local CLI backends are agent runtimes, capped conservatively with `--timeout-ms`, `--max-concurrency`, `--max-retries`, and `--max-failures` for batch safety.
 
 ## What You Get
 
@@ -151,25 +144,15 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 
 ### Personas (voice)
 
-A **persona** is a reusable voice — the built-ins (`patina persona list`) or your
-own. Author one without editing source:
+A **persona** is a reusable voice — a built-in (`patina persona list`) or your own, authored without editing source:
 
 ```bash
 patina persona new my-voice --from-sample past-posts.txt   # learn from your writing
 patina persona new my-voice --describe "plain-spoken founder, casual"
-patina persona new my-voice                                 # interactive wizard
 patina --persona my-voice draft.md                          # then reuse it
 ```
 
-- **Multilingual**: personas work on `ko`, `en`, `zh`, `ja` (ko applies the
-  meaning-preserving `preserve` default automatically; other languages are opt-in).
-- **Composable**: layer `--tone` (register) and `--profile` (genre) on top; when
-  they overlap, register precedence is `--tone` > persona > profile.
-- **Safe by construction**: a persona can shape voice but never lowers the
-  meaning-preservation floors or disables detection. Authored personas are
-  validated before they're saved; the persona safety gate enforces MPS/fidelity
-  (and dropped-number checks) at rewrite time. Voice-match and surface churn are
-  advisory signals, not blockers.
+Works on ko/en/zh/ja and composes with `--tone`/`--profile` (register precedence `--tone` > persona > profile). A persona shapes voice but never lowers the meaning floors — authored personas are validated on save, and the safety gate still enforces MPS/fidelity + dropped-number checks.
 
 ## CI
 

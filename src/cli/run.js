@@ -36,6 +36,7 @@ import { loadPersona } from '../personas/loader.js';
 import { evaluatePersonaGate } from '../personas/gates.js';
 import { personaMatchScore } from '../features/persona-match.js';
 import { personaOwnsVoice } from '../personas/compose.js';
+import { evaluateMeaningProxy } from '../features/meaning-proxy.js';
 import { pathToFileURL } from 'node:url';
 import { humanizeXliffDocument, resolveUniqueCap } from './xliff.js';
 
@@ -532,6 +533,10 @@ function buildPersonaReport({ rewritten, original, persona, lang, repoRoot, thre
   const fidelityValue = fidelity ?? null;
   // Deterministic safety signal: source numbers that vanished from the rewrite.
   const dropped = droppedNumbers(original, rewritten);
+  // Deterministic, LLM-free meaning-floor proxy (Lane A). Phase A: ADVISORY —
+  // rides the JSON report and the gate's advisory list only; it never adds a CLI
+  // warning or changes the exit code (numbers stay separately enforced above).
+  const meaningProxy = evaluateMeaningProxy({ original, rewrite: rewritten, lang });
   const gate = evaluatePersonaGate({
     personaMatch: match.score,
     mps: mpsValue,
@@ -540,6 +545,7 @@ function buildPersonaReport({ rewritten, original, persona, lang, repoRoot, thre
     droppedNumbers: dropped,
     thresholds,
     persona,
+    meaningProxy,
   });
   return {
     id: persona.id,
@@ -550,6 +556,7 @@ function buildPersonaReport({ rewritten, original, persona, lang, repoRoot, thre
     fidelity: fidelityValue,
     over_edit_churn: overEditChurn,
     dropped_numbers: dropped,
+    meaning_proxy: meaningProxy,
     gate_result: gate,
   };
 }

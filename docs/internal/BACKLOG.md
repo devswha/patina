@@ -49,12 +49,17 @@ folded into the next minor):
    write re-validated through the persona safety gate). Path resolution reuses
    the loader's `safePersonaPath` containment guard.
 
-### Architecture seams still open (docs/ARCHITECTURE.md → Remaining)
-4. **`ouroboros.js` does not consume `persona-match`** — iterative rewrite ignores persona
-   drift (ouroboros is off the default CLI path; `--verify` replaced it).
-5. **No deterministic MPS/fidelity proxy** — without `--verify` (or a backend-reported
-   score), Lane B meaning floors are not enforced by code; `persona-match` + dropped-numbers
-   are the only always-on Method-D anchors.
+### Architecture seams (docs/ARCHITECTURE.md)
+4. ~~**`ouroboros.js` does not consume `persona-match`**~~ — WON'T-DO (resolved).
+   ouroboros is a research-only A/B baseline (`scripts/rewrite-ab.mjs`); the `--ouroboros`
+   flag was removed and `--verify` replaced it. The live path already runs `persona-match`
+   via the always-on persona gate, so wiring a research-only loop is not worth it.
+5. ~~**No deterministic MPS/fidelity proxy**~~ — DONE Phase A (advisory). `src/features/meaning-proxy.js`
+   (Lane A, LLM-free; module-boundary tested) ships `evaluateMeaningProxy` (dropped numbers +
+   rare-content-token recall [≥3-denominator] + negation-polarity delta [token-boundary] +
+   length-ratio extremes). Rides the persona report JSON (`meaning_proxy`) + gate advisory;
+   NO CLI warning, NO exit change in Phase A. Phase B promotion to enforcing = formal 2-round
+   ablation (~0 FP on legit rewrites, TP on the broken fixtures) → `source: calibrated`.
 6. **Persona thresholds `source: placeholder`** — churn/persona-match advisory values are
    observation-informed, not a formal 2-round promotion. Only revisit if churn is ever
    re-promoted to enforcing (unlikely — it's a surface metric, not meaning).

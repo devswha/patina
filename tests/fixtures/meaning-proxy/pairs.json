@@ -1,0 +1,42 @@
+{
+  "preserving": [
+    {
+      "name": "en paraphrase keeps claim/numbers/entities",
+      "lang": "en",
+      "original": "The 2024 report shows revenue grew because the new pricing model attracted 30 enterprise customers.",
+      "rewrite": "Revenue grew in the 2024 report, driven by the new pricing model that brought in 30 enterprise customers."
+    },
+    {
+      "name": "en de-puffed marketing keeps the fact",
+      "lang": "en",
+      "original": "We are thrilled to announce that our revolutionary platform now supports 12 languages and 3 export formats.",
+      "rewrite": "The platform now supports 12 languages and 3 export formats."
+    },
+    {
+      "name": "ko paraphrase keeps claim/numbers",
+      "lang": "ko",
+      "original": "2024년 보고서에 따르면 새 가격 정책이 기업 고객 30곳을 유치해 매출이 늘었다.",
+      "rewrite": "보고서를 보면 새 가격 정책 덕분에 기업 고객 30곳이 들어와 2024년 매출이 늘었다."
+    }
+  ],
+  "broken": [
+    {
+      "name": "en dropped entities + numbers + truncation",
+      "lang": "en",
+      "original": "The 2024 report shows revenue grew because the new pricing model attracted 30 enterprise customers in Berlin and Tokyo.",
+      "rewrite": "Things generally improved over the period."
+    },
+    {
+      "name": "en polarity inversion",
+      "lang": "en",
+      "original": "The migration is not safe and should never run without a backup, and it cannot be reverted.",
+      "rewrite": "The migration is safe and should always run, and it can be reverted."
+    },
+    {
+      "name": "en severe truncation",
+      "lang": "en",
+      "original": "Alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau upsilon phi chi psi omega.",
+      "rewrite": "Alpha beta."
+    }
+  ]
+}

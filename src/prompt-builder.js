@@ -352,9 +352,10 @@ function buildRewriteInstructions(
   inst += `\n1. Scan all patterns for AI tells\n`;
   inst += `2. Rewrite AI-sounding expressions into natural alternatives\n`;
   inst += `3. Preserve core meaning, claims, polarity, causation, numbers\n`;
-  inst += `4. Match profile tone\n`;
-  inst += `5. Inject personality per voice guidelines\n`;
-  inst += `6. Respect blocklist/allowlist and pattern overrides\n\n`;
+  inst += `4. Keep overall length close to the original — the fidelity gate measures character length and full marks require staying within 70-130% of the input. Cut filler and hype freely, but replace it with natural phrasing of similar weight; never compress the text into a summary\n`;
+  inst += `5. Match profile tone\n`;
+  inst += `6. Inject personality per voice guidelines\n`;
+  inst += `7. Respect blocklist/allowlist and pattern overrides\n\n`;
   const cjkGuard = buildCjkClauseRewriteGuard(lang);
   if (cjkGuard) {
     inst += `${cjkGuard}\n`;
@@ -633,8 +634,8 @@ function buildMinimalPrompt({ config, patterns, profile, persona = null, text, t
   }
 
   const instruction = lang === 'ko'
-    ? `이 글이 AI가 쓴 것 같아 보여서 사람이 쓴 것처럼 자연스럽게 다듬어줘. 아래 어휘들이 보이면 자연스러운 한국어로 풀어줘. 무리하게 의역하지 말고 의미·숫자·인과관계는 그대로 보존해.`
-    : `This text reads like AI. Rewrite it so it sounds like a real person wrote it. If you spot any of the phrases below, swap them out for something natural. Don't over-paraphrase — keep the meaning, numbers, and causation intact.`;
+    ? `이 글이 AI가 쓴 것 같아 보여서 사람이 쓴 것처럼 자연스럽게 다듬어줘. 아래 어휘들이 보이면 자연스러운 한국어로 풀어줘. 무리하게 의역하지 말고 의미·숫자·인과관계는 그대로 보존해. 분량도 원문과 비슷하게 유지해(대략 ±30% 이내) — 군더더기는 걷어내되 그 자리를 비슷한 무게의 자연스러운 표현으로 채우고, 요약문으로 줄여 버리지는 마.`
+    : `This text reads like AI. Rewrite it so it sounds like a real person wrote it. If you spot any of the phrases below, swap them out for something natural. Don't over-paraphrase — keep the meaning, numbers, and causation intact. Keep the rewrite about the same length as the original (within roughly ±30%): cut the filler and hype, but replace them with natural phrasing of similar weight instead of compressing the text into a summary.`;
 
   // Document brief: without a global frame the model paraphrases block by
   // block in its own default voice and the result still reads AI. Same

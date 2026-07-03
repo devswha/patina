@@ -120,4 +120,20 @@ describe('CLI persona harness', () => {
     assert.equal(payload.persona.gate_result.pass, true);
     assert.equal(exitCode, 0);
   });
+
+  it('lists built-in en/zh/ja seed personas via persona list', async () => {
+    const cases = {
+      en: ['blog-essay', 'natural-en', 'preserve', 'technical-explainer'],
+      zh: ['blog-essay', 'natural-zh', 'preserve'],
+      ja: ['blog-essay', 'natural-ja', 'preserve'],
+    };
+    for (const [lang, ids] of Object.entries(cases)) {
+      const { logs, exitCode } = await captureConsole(() => main(['persona', 'list', '--lang', lang]));
+      assert.equal(exitCode, 0);
+      const out = logs.join('\n');
+      for (const id of ids) {
+        assert.ok(out.includes(id), `persona list --lang ${lang} should list ${id}`);
+      }
+    }
+  });
 });

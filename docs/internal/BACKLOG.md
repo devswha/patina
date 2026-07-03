@@ -29,11 +29,12 @@ folded into the next minor):
 ## Not started
 
 ### Personas
-1. **Seed personas for en/zh/ja** — only `preserve` ships per non-ko language.
-   Author real voice seeds (natural-{lang}, blog-essay, etc.) with **language-neutral**
-   `target_features` (persona-match's ko-specific signals degrade on non-ko; churn is
-   advisory so that's tolerable, but targets must avoid `ko_register_*`). Highest-value
-   follow-up. (This was the deferred "(b)".)
+1. ~~**Seed personas for en/zh/ja**~~ — DONE (v6.2.0 line). Shipped `natural-en`,
+   `blog-essay`, `technical-explainer` (en) and `natural-{zh,ja}` + `blog-essay`
+   (zh/ja) under `personas/{en,zh,ja}/`, with **language-neutral** `target_features`
+   only (regression-fenced in `tests/unit/persona-seed.test.js` against `ko_register_*`
+   and `suffix_class_diversity`). Follow-up if wanted: calibrate targets on real
+   per-language corpora (current values are seed defaults with wide advisory tolerances).
 2. **Retire profile's voice body** — custom personas now capture genre voice, so profile
    can shrink to a **pattern-policy-only** axis. Do after en/zh/ja seeds exist as the
    voice alternative. (persona schema still forbids pattern control — that half stays.)

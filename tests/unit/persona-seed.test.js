@@ -46,3 +46,66 @@ test('seed personas load through schema validation with safe depth and inactive 
     assert.equal(persona.blocks.worldview.active, false);
   }
 });
+
+const NON_KO_SEEDS = {
+  en: ['blog-essay', 'natural-en', 'technical-explainer'],
+  zh: ['blog-essay', 'natural-zh'],
+  ja: ['blog-essay', 'natural-ja'],
+};
+
+// Language-neutral persona-match feature keys. en/zh/ja seeds MUST draw target
+// features ONLY from this set — the ko-specific keys (ko_register_plain_ratio,
+// ko_register_polite_ratio, suffix_class_diversity) degrade on non-ko text.
+const NEUTRAL_TARGET_FEATURES = new Set([
+  'burstiness_cv',
+  'mattr',
+  'sentence_opener_diversity',
+  'comma_per_sentence',
+  'lexicon_density_preferred',
+  'lexicon_density_avoid',
+  'over_edit_churn',
+  'overEditChurn',
+]);
+
+const KO_SPECIFIC_TARGET_FEATURES = ['ko_register_plain_ratio', 'ko_register_polite_ratio', 'suffix_class_diversity'];
+
+for (const [lang, seeds] of Object.entries(NON_KO_SEEDS)) {
+  test(`${lang} persona library includes preserve plus its v1 seeds`, () => {
+    const personas = listPersonas(REPO_ROOT, lang);
+    assert.deepEqual(personas, [...seeds, 'preserve'].sort());
+  });
+
+  test(`${lang} seed personas load through schema validation with safe depth and inactive worldview`, () => {
+    for (const id of seeds) {
+      const persona = loadPersona(REPO_ROOT, lang, id);
+      assert.equal(persona.schema, 'patina.persona.v1');
+      assert.equal(persona.id, id);
+      assert.equal(persona.lang, lang);
+      assert.equal(persona.source, 'library');
+      assert.ok(PERSONA_DEPTHS.includes(persona.depth));
+      assert.equal(persona.mps.enforce, true);
+      assert.equal(persona.mps.floor >= 70, true);
+      assert.equal(persona.fidelity.enforce, true);
+      assert.equal(persona.fidelity.floor >= 70, true);
+      assert.equal(persona.blocks.worldview.active, false);
+    }
+  });
+
+  test(`${lang} seeds use only language-neutral target_features (no ko-specific keys)`, () => {
+    for (const id of seeds) {
+      const persona = loadPersona(REPO_ROOT, lang, id);
+      const keys = Object.keys(persona.targetFeatures ?? {});
+      assert.ok(keys.length > 0, `${lang}/${id} should declare target_features`);
+      for (const key of keys) {
+        assert.ok(
+          NEUTRAL_TARGET_FEATURES.has(key),
+          `${lang}/${id} target_features key "${key}" is not language-neutral`
+        );
+        assert.ok(
+          !KO_SPECIFIC_TARGET_FEATURES.includes(key),
+          `${lang}/${id} target_features key "${key}" is ko-specific and degrades on non-ko text`
+        );
+      }
+    }
+  });
+}

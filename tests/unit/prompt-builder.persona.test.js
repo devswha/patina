@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { buildPrompt } from '../../src/prompt-builder.js';
 import { loadPersona } from '../../src/personas/loader.js';
 import { formatPersonaDirective } from '../../src/personas/compose.js';
+import { loadProfile } from '../../src/loader.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -60,4 +61,25 @@ test('an explicit tone overrides the persona register; the persona keeps its oth
   assert.doesNotMatch(withAuto, /polite_professional/);
   // Non-register structure targets survive the override in every case.
   for (const d of [noTone, withTone, withAuto]) assert.match(d, /CV/);
+});
+
+test('profile voice defers to a voice-owning persona; pattern policy note stays; preserve keeps profile voice', () => {
+  const profile = loadProfile(REPO_ROOT, 'blog');
+  const blogVoiceMarker = '1인칭을 적극적으로'; // a line unique to the blog profile body
+  const withProfile = { ...base, config: { language: 'ko', profile: 'blog' }, profile };
+
+  // A voice-owning persona suppresses the profile's voice body but keeps its
+  // pattern-policy note (the split): persona owns voice, profile owns pattern policy.
+  const voicePersona = loadPersona(REPO_ROOT, 'ko', 'soft-professional');
+  const strictVoice = buildPrompt({ ...withProfile, persona: voicePersona, promptMode: 'strict' });
+  assert.doesNotMatch(strictVoice, new RegExp(blogVoiceMarker));
+  assert.match(strictVoice, /voice guidance defers to the active persona/);
+  const minimalVoice = buildPrompt({ ...withProfile, persona: voicePersona, promptMode: 'minimal' });
+  assert.doesNotMatch(minimalVoice, new RegExp(blogVoiceMarker));
+  assert.match(minimalVoice, /패턴 정책은 적용/);
+
+  // preserve does NOT own voice → profile voice body still reaches the prompt.
+  const preserve = loadPersona(REPO_ROOT, 'ko', 'preserve');
+  const strictPreserve = buildPrompt({ ...withProfile, persona: preserve, promptMode: 'strict' });
+  assert.match(strictPreserve, new RegExp(blogVoiceMarker));
 });

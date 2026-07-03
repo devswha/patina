@@ -149,6 +149,25 @@ export function formatPersonaDirective(persona, { lang, tone, korean } = {}) {
 }
 
 /**
+ * Whether a persona actively shapes voice (so a profile's voice guidance should
+ * defer to it). True when the persona injects content emphasis (depth "content")
+ * or has any active voice block. A style-only persona with no active blocks
+ * (e.g. `preserve`) does NOT own voice, so profile voice guidance still applies.
+ *
+ * @param {object} persona Normalized persona object.
+ * @returns {boolean} True if the persona governs voice.
+ */
+export function personaOwnsVoice(persona) {
+  if (!persona) return false;
+  if (persona.depth === 'content') return true;
+  const blocks = persona.blocks ?? {};
+  return ACTIVE_BLOCK_TYPES.some((type) => {
+    const camel = type.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    return blocks[camel]?.active === true;
+  });
+}
+
+/**
  * Return deterministic persona target features for scoring.
  *
  * @param {object} persona Normalized persona object.

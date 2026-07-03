@@ -191,10 +191,11 @@ patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
 | `--score` | 0–100 AI 類似度スコア + カテゴリ別内訳 |
 | `--score --exit-on <n>` | CI を厳格に保つ: `overall > n` の場合は終了コード `3` |
 | `--diff` | 変更箇所をパターンごとに表示 |
-| `--ouroboros` | スコア収束まで反復（MPS ロールバック付き） |
+| `--verify` | 書き換え後に MPS/fidelity フロアを検査し、保守的に1回リトライ |
 | `--lang <ko\|en\|zh\|ja>` | 言語選択（デフォルト：`ko`） |
 | `--profile <名前>` | トーンプリセット：`blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes`, `namuwiki` |
-| `--tone <名前>` | トーンカテゴリ：`casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
+| `--tone <名前>` | レジスター（格式）：`casual`, `professional`, `auto`（ジャンルは `--profile` へ） |
+| `--persona <名前>` | ボイスペルソナ（組み込み + 自作；ko/en/zh/ja）。`patina persona new` で作成、`patina persona list` で一覧 |
 | `--batch` | 位置引数をファイル一覧として処理（例：`--batch docs/*.md`） |
 | `--format json\|text\|markdown` | JSON、プレーンテキスト、デフォルト Markdown 出力を選択 |
 | `--quiet` | stderr の状態・警告・進捗ログを抑制 |
@@ -239,6 +240,28 @@ rewrite モードでは、モデルは `[BODY]`/`[/BODY]` ブロックを囲む 
 | `instructional` | チュートリアル、ハウツー、技術ドキュメント | 命令形動詞、番号付き構造、推測表現を抑制 |
 
 `--tone auto` はヒューリスティック（語彙 + 構造シグナル）で最適なトーンを自動選択します。zh/ja では `auto` を含む全トーン指定時に警告を出して profile-only モードにフォールバックします。Phase 4.5b ヒューリスティックは ko/en のみ対応のためです。
+
+## ペルソナ（ボイス）
+
+**ペルソナ**は再利用できる「声色」です — 組み込みペルソナ（`patina persona list`）を
+使うか、ソースを触らずに自分で作成できます。
+
+```bash
+patina persona new my-voice --from-sample past-posts.txt   # 自分の文章から学習
+patina persona new my-voice --describe "率直な創業者、カジュアル"
+patina persona new my-voice                                 # 対話式ウィザード
+patina --persona my-voice draft.md                          # 以降は再利用
+```
+
+- **多言語**：`ko`, `en`, `zh`, `ja` で動作（ko は意味保持のデフォルト `preserve` を自動
+  適用、他の言語は明示指定時のみ）。
+- **組み合わせ可能**：`--tone`（レジスター）と `--profile`（ジャンル）を上に重ねられます。
+  競合時のレジスター優先順位は `--tone` > ペルソナ > `--profile`。ボイスを持つペルソナは
+  profile のボイスを譲り、profile のパターンポリシーはそのまま適用されます。
+- **設計上安全**：ペルソナは声色を変えるだけで、意味保持フロアを下げたり検出器を無効化
+  したりはできません。作成したペルソナは保存前に検証され、書き換え時には安全ゲートが
+  MPS/fidelity（および数値欠落）を強制します。ボイス一致・表層チャーン（churn）はブロック
+  ではなく参考シグナルです。
 
 ## 仕組み
 

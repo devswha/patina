@@ -46,6 +46,23 @@ export const TIER_LIMITS = Object.freeze({
 export const CONTEXT_LIMITS = Object.freeze({ maxTurns: 6, maxBytes: 12 * 1024 });
 
 /**
+ * Stable quota/service denial reason strings, emitted by the rate limiter
+ * (src/rate-limit.js) and the API entry (api/rewrite.js) and recognized by the
+ * browser error classifier (playground/rewrite-client.js). These exact strings
+ * are part of the public error contract: keep values backward-compatible and
+ * change them only with a coordinated classifier/UI migration.
+ */
+export const QUOTA_REASONS = Object.freeze({
+  DAILY: 'daily quota exceeded',
+  HOURLY: 'hourly burst exceeded',
+  CONCURRENT: 'concurrent limit exceeded',
+  IP_UNAVAILABLE: 'client ip unavailable',
+  STORAGE_UNAVAILABLE: 'quota storage unavailable',
+  SECRET_UNAVAILABLE: 'quota secret unavailable',
+  SERVICE_UNAVAILABLE: 'rewrite service unavailable',
+});
+
+/**
  * Stream frame protocol. The handler streams newline-delimited JSON ("NDJSON")
  * frames over a POST fetch ReadableStream. Every line is exactly one JSON frame
  * with a `type` field. A successful stream is `start` → `delta`* → `done`; any

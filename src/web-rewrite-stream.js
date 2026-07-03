@@ -104,22 +104,34 @@ export async function runWebRewriteStream({
   const fidelityScore = scoreFns.scoreFidelity || scoreFidelity;
   const deterministicScore = scoreFns.scoreDeterministicSignals || scoreDeterministicSignals;
 
-  const [mps, fidelity] = await Promise.all([
-    mpsScore({ original, rewritten: rewrite, apiKey: request.apiKey, baseURL: request.baseURL, model: request.model, signal, timeout }),
-    fidelityScore({ original, rewritten: rewrite, apiKey: request.apiKey, baseURL: request.baseURL, model: request.model, signal, timeout }),
-  ]);
-  const signals = {
-    before: deterministicScore({ text: original, config: effectiveConfig, repoRoot }),
-    after: deterministicScore({ text: rewrite, config: effectiveConfig, repoRoot }),
-  };
-  const diff = summarizeDiff(original, rewrite);
+  let mps, fidelity, signals, diff;
+  try {
+    [mps, fidelity] = await Promise.all([
+      mpsScore({ original, rewritten: rewrite, apiKey: request.apiKey, baseURL: request.baseURL, model: request.model, signal, timeout }),
+      fidelityScore({ original, rewritten: rewrite, apiKey: request.apiKey, baseURL: request.baseURL, model: request.model, signal, timeout }),
+    ]);
+    signals = {
+      before: deterministicScore({ text: original, config: effectiveConfig, repoRoot }),
+      after: deterministicScore({ text: rewrite, config: effectiveConfig, repoRoot }),
+    };
+    diff = summarizeDiff(original, rewrite);
+  } catch (err) {
+    // A scoring failure (including an abort during scoring) must terminate as
+    // a clean NDJSON error frame — never bubble to the handler's JSON 500,
+    // which would append a non-frame tail to an already-started stream.
+    const error = safeError(err);
+    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'scoring_failed', error });
+    return { ok: false, code: 'scoring_failed', error };
+  }
 
   // Pass the raw score values to evaluateFloors, which strictly requires a
   // finite number >= floor (a non-number fails closed). No Number() coercion.
   const floors = evaluateFloors({ mps: rawScore(mps, 'mps'), fidelity: rawScore(fidelity, 'fidelity') });
   if (!floors.ok) {
-    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'floor_failed', failed: floors.failed, rewrite, mps, fidelity });
-    return { ok: false, code: 'floor_failed', failed: floors.failed, mps, fidelity };
+    // Keep the already-computed audit metadata (deterministic signals + length
+    // diff) on floor failures so a flagged attempt stays auditable in the UI.
+    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'floor_failed', failed: floors.failed, rewrite, mps, fidelity, signals, diff });
+    return { ok: false, code: 'floor_failed', failed: floors.failed, mps, fidelity, signals, diff };
   }
 
   emit({ type: STREAM_FRAME_TYPES.DONE, rewrite, mps, fidelity, signals, diff });

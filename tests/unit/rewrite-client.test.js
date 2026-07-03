@@ -2,7 +2,12 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
 import { CONTEXT_LIMITS, WEB_TIERS } from '../../src/web-rewrite-contract.js';
-import { createRewriteThread, streamRewrite } from '../../playground/rewrite-client.js';
+import {
+  classifyRewriteError,
+  createRewriteThread,
+  REWRITE_ERROR_KINDS,
+  streamRewrite,
+} from '../../playground/rewrite-client.js';
 
 function streamResponse(lines, { status = 200 } = {}) {
   const encoder = new globalThis.TextEncoder();
@@ -132,4 +137,64 @@ test('createRewriteThread builds first/refine requests (commit-on-done) and caps
   assert.equal(thread.original, undefined);
   assert.equal(thread.currentDraft, '');
   assert.deepEqual(thread.turns, []);
+});
+
+test('classifyRewriteError maps every server reason string to a stable kind', () => {
+  const K = REWRITE_ERROR_KINDS;
+  // Exact reason strings emitted by src/rate-limit.js, api/rewrite.js, and
+  // validateRewriteRequest — the classifier is the single recognition point.
+  assert.equal(classifyRewriteError({ status: 429, error: 'daily quota exceeded' }), K.QUOTA_DAILY);
+  assert.equal(classifyRewriteError({ status: 429, error: 'hourly burst exceeded' }), K.QUOTA_HOURLY);
+  assert.equal(classifyRewriteError({ status: 429, error: 'concurrent limit exceeded' }), K.QUOTA_CONCURRENT);
+  assert.equal(classifyRewriteError({ status: 400, error: 'client ip unavailable' }), K.IP_UNAVAILABLE);
+  assert.equal(classifyRewriteError({ status: 503, error: 'quota storage unavailable' }), K.QUOTA_STORAGE);
+  assert.equal(classifyRewriteError({ status: 503, error: 'quota secret unavailable' }), K.QUOTA_SECRET);
+  assert.equal(classifyRewriteError({ status: 503, error: 'rewrite service unavailable' }), K.SERVICE_UNAVAILABLE);
+  assert.equal(classifyRewriteError({ status: 413, error: 'text exceeds 4000 characters for tier free' }), K.TEXT_TOO_LONG);
+  assert.equal(classifyRewriteError({ status: 413, error: 'original exceeds 20000 characters for tier byok' }), K.TEXT_TOO_LONG);
+  assert.equal(classifyRewriteError({ code: 'floor_failed', error: 'floors failed' }), K.FLOOR_FAILED);
+});
+
+test('classifyRewriteError falls back conservatively for unrecognized failures', () => {
+  const K = REWRITE_ERROR_KINDS;
+  // Unknown quota reason → retry-shortly copy beats a wrong "come back tomorrow".
+  assert.equal(classifyRewriteError({ status: 429, error: 'rate limited' }), K.QUOTA_HOURLY);
+  assert.equal(classifyRewriteError({ status: 503, error: 'upstream exploded' }), K.SERVICE_UNAVAILABLE);
+  assert.equal(classifyRewriteError({ status: 502 }), K.SERVICE_UNAVAILABLE);
+  assert.equal(classifyRewriteError({ status: 500, error: 'internal error' }), K.UNKNOWN);
+  assert.equal(classifyRewriteError({ status: 400, error: 'invalid JSON' }), K.UNKNOWN);
+  assert.equal(classifyRewriteError({}), K.UNKNOWN);
+  assert.equal(classifyRewriteError(null), K.UNKNOWN);
+  assert.equal(classifyRewriteError(undefined), K.UNKNOWN);
+});
+
+test('streamRewrite abort rejects with AbortError so the caller can classify user cancel', async () => {
+  const encoder = new globalThis.TextEncoder();
+  const fetchImpl = async (_url, init) => ({
+    ok: true,
+    status: 200,
+    body: new globalThis.ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('{"type":"start"}\n'));
+        // Simulate fetch abort semantics: the pending read rejects on abort.
+        init.signal.addEventListener('abort', () => {
+          controller.error(new globalThis.DOMException('The operation was aborted.', 'AbortError'));
+        });
+      },
+    }),
+  });
+
+  const controller = new globalThis.AbortController();
+  const done = [];
+  await assert.rejects(
+    streamRewrite({
+      body: { mode: 'first', lang: 'en', tier: 'free', text: 'Hello' },
+      fetchImpl,
+      signal: controller.signal,
+      onStart: () => controller.abort(),
+      onDone: () => done.push('done'),
+    }),
+    (err) => err.name === 'AbortError',
+  );
+  assert.deepEqual(done, []);
 });

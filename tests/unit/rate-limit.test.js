@@ -7,7 +7,7 @@ import {
   extractClientIp,
   quotaKeyHmac,
 } from '../../src/rate-limit.js';
-import { WEB_TIERS } from '../../src/web-rewrite-contract.js';
+import { QUOTA_REASONS, WEB_TIERS } from '../../src/web-rewrite-contract.js';
 
 test('quotaKeyHmac is deterministic, part-sensitive, and never exposes the raw IP', () => {
   const ip = '203.0.113.7';
@@ -173,4 +173,57 @@ test('BYOK concurrency bypasses shared free slot limit', async () => {
 
   assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.BYOK, ip: null })).allowed, true);
   assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.BYOK, ip: null })).allowed, true);
+});
+
+test('QUOTA_REASONS values stay backward-compatible with the emitted reason strings', () => {
+  // The browser classifier and any deployed clients key off these exact
+  // strings; this pins the contract so a constant rename cannot silently
+  // change the wire format.
+  assert.deepEqual(QUOTA_REASONS, {
+    DAILY: 'daily quota exceeded',
+    HOURLY: 'hourly burst exceeded',
+    CONCURRENT: 'concurrent limit exceeded',
+    IP_UNAVAILABLE: 'client ip unavailable',
+    STORAGE_UNAVAILABLE: 'quota storage unavailable',
+    SECRET_UNAVAILABLE: 'quota secret unavailable',
+    SERVICE_UNAVAILABLE: 'rewrite service unavailable',
+  });
+});
+
+test('abuse accounting is pinned: an hourly-denied attempt still consumes daily quota', async () => {
+  // Deliberate product/architecture decision (ralplan G003, architect review):
+  // the daily counter increments BEFORE the hourly burst check and is not
+  // rolled back on an hourly denial. Burst hammering therefore burns daily
+  // quota — an abuse deterrent. Changing this order without an atomic limiter
+  // would open an unlimited-hammering vector; this test locks the behavior.
+  const HOUR_MS = 3_600_000;
+  let t = 0;
+  const limiter = createRateLimiter({
+    kv: createMemoryKv(),
+    hmacSecret: 'secret',
+    now: () => t,
+    limits: { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 3, burstPerHour: 1 }, byok: { maxChars: 20000, maxConcurrent: 2 } },
+  });
+  const ip = '203.0.113.42';
+
+  // Hour 1: one allowed (day=1), one hourly-denied (day=2 — consumed anyway).
+  assert.equal((await limiter.check({ tier: WEB_TIERS.FREE, ip })).allowed, true);
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.FREE, ip }), {
+    allowed: false,
+    status: 429,
+    reason: QUOTA_REASONS.HOURLY,
+  });
+
+  // Hour 2: burst window reset; one allowed (day=3).
+  t = HOUR_MS;
+  assert.equal((await limiter.check({ tier: WEB_TIERS.FREE, ip })).allowed, true);
+
+  // Next attempt hits the DAILY cap (day=4 > 3), not the hourly one — proving
+  // the hour-1 denial consumed a daily slot. Under quota-fairness accounting
+  // this would still be an hourly denial (day would only be 3 here).
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.FREE, ip }), {
+    allowed: false,
+    status: 429,
+    reason: QUOTA_REASONS.DAILY,
+  });
 });

@@ -118,6 +118,7 @@ prompts for them, and exposes `--timeout-ms`, `--max-concurrency`,
 | **168 patterns** | 33 rewrite-capable + 9 score-only viral-hook per language (42 each across KO/EN/ZH/JA) — see the full 168-pattern catalog in [PATTERNS.md](docs/PATTERNS.md) |
 | **Modes** | rewrite · verify · audit · score · diff |
 | **Surfaces** | agent skill · Node CLI · in-place preview · browser playground (rewrite + score) |
+| **Voice** | `--persona` (built-in + your own, ko/en/zh/ja) · `--tone` register · `--profile` genre — composable with a fixed precedence |
 | **Free usage** | logged-in `codex`, `claude`, or `gemini` CLI can run rewrites without `PATINA_API_KEY` |
 | **Calibration** | 67.3% editing-hotspot catch [63.5–71.0%] across GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro (n=600, KO+EN); 16.0% false positives [11.6–21.7%] on KO+EN human controls (n=200) |
 | **License** | MIT |
@@ -140,10 +141,35 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `patina --preview page.html` | render rewrites back onto a saved HTML page with toggles and inline diff |
 | `patina --verify input.txt` | rewrite, then check MPS/fidelity floors with one retry |
 | `patina --tone auto --lang en input.txt` | infer and apply a KO/EN tone axis |
+| `patina --persona pragmatic-founder input.txt` | rewrite in a built-in voice persona |
+| `patina persona new my-voice --from-sample past.txt` | author your own persona from a writing sample |
+| `patina persona list` | list built-in + custom personas |
 | `patina --format json --quiet input.txt` | script-friendly output |
 | `patina --batch docs/*.md --outdir cleaned/` | batch file processing |
 
 `patina --help` prints the full flag list. `patina doctor --json` checks Node, backend, tmux, and API-key readiness without making an LLM call.
+
+### Personas (voice)
+
+A **persona** is a reusable voice — the built-ins (`patina persona list`) or your
+own. Author one without editing source:
+
+```bash
+patina persona new my-voice --from-sample past-posts.txt   # learn from your writing
+patina persona new my-voice --describe "plain-spoken founder, casual"
+patina persona new my-voice                                 # interactive wizard
+patina --persona my-voice draft.md                          # then reuse it
+```
+
+- **Multilingual**: personas work on `ko`, `en`, `zh`, `ja` (ko applies the
+  meaning-preserving `preserve` default automatically; other languages are opt-in).
+- **Composable**: layer `--tone` (register) and `--profile` (genre) on top; when
+  they overlap, register precedence is `--tone` > persona > profile.
+- **Safe by construction**: a persona can shape voice but never lowers the
+  meaning-preservation floors or disables detection. Authored personas are
+  validated before they're saved; the persona safety gate enforces MPS/fidelity
+  (and dropped-number checks) at rewrite time. Voice-match and surface churn are
+  advisory signals, not blockers.
 
 ## CI
 

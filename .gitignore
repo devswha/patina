@@ -61,3 +61,12 @@ sample/
 
 # Demo render scratch outputs (only the curated patina-preview-<lang>.gif/png are tracked)
 assets/demo/*real-tistory*
+# Dev/QA scratch under artifacts/ — screenshots, browser runs, QA reports.
+# Regenerated per QA pass, never committed. Curated corpora live in tracked
+# subdirs (persona-calibration-*/, rebaseline-*/) and are unaffected by these.
+artifacts/*-qa/
+artifacts/demo-en/
+artifacts/*.png
+artifacts/*.jpg
+artifacts/*.jpeg
+artifacts/ai-test-sources.md

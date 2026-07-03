@@ -138,6 +138,9 @@ patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 | `patina --persona pragmatic-founder input.txt` | rewrite in a built-in voice persona |
 | `patina persona new my-voice --from-sample past.txt` | author your own persona from a writing sample |
 | `patina persona list` | list built-in + custom personas |
+| `patina persona show my-voice --json` | print a persona's normalized config (never the docs body) |
+| `patina persona edit my-voice --name "New Name"` | copy-on-edit a persona into `custom/personas/` |
+| `patina persona rm my-voice` | remove a custom persona (built-ins + `preserve` protected) |
 | `patina --format json --quiet input.txt` | script-friendly output |
 | `patina --batch docs/*.md --outdir cleaned/` | batch file processing |
 
@@ -151,6 +154,10 @@ A **persona** is a reusable voice — a built-in (`patina persona list`) or your
 patina persona new my-voice --from-sample past-posts.txt   # learn from your writing
 patina persona new my-voice --describe "plain-spoken founder, casual"
 patina --persona my-voice draft.md                          # then reuse it
+
+patina persona show my-voice                                # inspect the normalized config (--json for machine output)
+patina persona edit my-voice --name "Founder voice"         # copy-on-edit into custom/personas/ (built-ins stay intact)
+patina persona rm my-voice                                  # remove a custom persona (--force to skip the confirm)
 ```
 
 Works on ko/en/zh/ja and composes with `--tone`/`--profile` (register precedence `--tone` > persona > profile). A persona shapes voice but never lowers the meaning floors — authored personas are validated on save, and the safety gate still enforces MPS/fidelity + dropped-number checks.

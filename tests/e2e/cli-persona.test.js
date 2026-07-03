@@ -1,6 +1,6 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -135,5 +135,23 @@ describe('CLI persona harness', () => {
         assert.ok(out.includes(id), `persona list --lang ${lang} should list ${id}`);
       }
     }
+  });
+
+  it('persona show natural-ko prints target features and exits 0', async () => {
+    const { logs, exitCode } = await captureConsole(() => main(['persona', 'show', 'natural-ko']));
+    assert.equal(exitCode, 0);
+    const out = logs.join('\n');
+    assert.ok(out.includes('target_features') || out.includes('burstiness_cv'), 'persona show should print target features');
+  });
+
+  it('persona rm natural-ko refuses the built-in seed and never deletes it', async () => {
+    const libPath = resolve(_REPO_ROOT, 'personas', 'ko', 'natural-ko.md');
+    assert.ok(existsSync(libPath), 'natural-ko library seed should exist before rm');
+    // Built-in personas cannot be removed: main() rejects with exit code 2.
+    await assert.rejects(
+      () => main(['persona', 'rm', 'natural-ko']),
+      (err) => err && err.exitCode === 2,
+    );
+    assert.ok(existsSync(libPath), 'natural-ko library seed must still exist after a refused rm');
   });
 });

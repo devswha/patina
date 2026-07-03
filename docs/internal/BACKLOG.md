@@ -38,8 +38,13 @@ folded into the next minor):
 2. **Retire profile's voice body** — custom personas now capture genre voice, so profile
    can shrink to a **pattern-policy-only** axis. Do after en/zh/ja seeds exist as the
    voice alternative. (persona schema still forbids pattern control — that half stays.)
-3. **`persona edit|rm|show` subcommands** — only `new`/`list` exist; edit/remove is manual
-   file editing today.
+3. ~~**`persona edit|rm|show` subcommands**~~ — DONE. Shipped `persona show <id>`
+   (print normalized config, `--json`; never the docs body), `persona rm <id>`
+   (custom-only delete; built-in seeds and `preserve` protected; `--force` or
+   interactive confirm), and `persona edit <id>` (copy-on-edit into
+   `custom/personas/<lang>/` via `--from-sample`/`--describe`/`--name`, every
+   write re-validated through the persona safety gate). Path resolution reuses
+   the loader's `safePersonaPath` containment guard.
 
 ### Architecture seams still open (docs/ARCHITECTURE.md → Remaining)
 4. **`ouroboros.js` does not consume `persona-match`** — iterative rewrite ignores persona

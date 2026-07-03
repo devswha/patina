@@ -58,7 +58,8 @@
         </label>
         <label class="ctl ctl--byok ctl--key" id="key-ctl">
           <span class="ctl__label">API key</span>
-          <input id="api-key" class="ctl__input" type="password" autocomplete="off" placeholder="sk-… (kept in your browser)" />
+          <input id="api-key" class="ctl__input" type="password" autocomplete="off" placeholder="sk-… (kept in your browser)" aria-label="API key (kept in your browser)" />
+          <span class="ctl__err" id="key-error" role="alert" hidden></span>
         </label>
       </div>
     </header>
@@ -72,12 +73,14 @@
           <p class="hero__sub">Paste AI-sounding text — patina rewrites it naturally. KO·EN·ZH·JA.</p>
 
           <form class="prompt" id="hero-form">
-            <textarea class="prompt__input" id="hero-input" rows="1" placeholder="Paste the text you want to clean up…" autofocus></textarea>
+            <textarea class="prompt__input" id="hero-input" rows="1" placeholder="Paste the text you want to clean up…" aria-label="Paste the text you want to clean up…" autofocus></textarea>
             <div class="prompt__bar">
               <button class="prompt__send" id="hero-send" type="submit" disabled aria-label="Send">
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 4l-7 7h4v7h6v-7h4z"/></svg>
+                <svg class="ic-send" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 4l-7 7h4v7h6v-7h4z"/></svg>
+                <svg class="ic-stop" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>
               </button>
             </div>
+            <p class="prompt__error" id="hero-error" role="alert" hidden></p>
           </form>
 
           <div class="suggest" id="suggest"></div>
@@ -185,17 +188,19 @@
 
       <main class="chatmain">
         <header class="chatbar">
-          <button class="iconbtn" id="toggle-sidebar" type="button" aria-label="Toggle sidebar">☰</button>
+          <button class="iconbtn" id="toggle-sidebar" type="button" aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded="false">☰</button>
           <span class="chatbar__title">patina</span>
         </header>
-        <div class="thread" id="thread"></div>
+        <div class="thread" id="thread" role="log" aria-live="polite" aria-relevant="additions text" aria-busy="false"></div>
         <div class="composer-wrap">
           <form class="composer" id="composer">
-            <textarea id="input" class="composer__input" rows="1" placeholder="Keep refining…  (Enter to send · Shift+Enter for newline)"></textarea>
+            <textarea id="input" class="composer__input" rows="1" placeholder="Keep refining…  (Enter to send · Shift+Enter for newline)" aria-label="Keep refining…  (Enter to send · Shift+Enter for newline)"></textarea>
             <button class="composer__send" id="send" type="submit" aria-label="Send" disabled>
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 4l-7 7h4v7h6v-7h4z"/></svg>
+              <svg class="ic-send" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 4l-7 7h4v7h6v-7h4z"/></svg>
+              <svg class="ic-stop" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>
             </button>
           </form>
+          <p class="composer__error" id="composer-error" role="alert" hidden></p>
           <p class="composer__hint">patina changes only the wording — never the claim, numbers, or causation. This demo rewrites via a local CLI; MPS/fidelity are preview values.</p>
         </div>
       </main>

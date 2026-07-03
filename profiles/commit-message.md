@@ -1,16 +1,8 @@
 ---
 profile: commit-message
 name: 커밋 메시지 프로필
-version: 1.0.0
+version: 2.0.0
 scope: Git commit subject/body, squash message, revert message, PR squash summary
-voice-overrides:
-  first-person: suppress        # 작성자 중심 대신 변경 의도 중심
-  opinions: suppress            # 평가보다 결정·근거·검증
-  rhythm-variation: reduce      # 짧은 subject + 필요한 body
-  humor: suppress               # 히스토리는 장기 기록
-  messiness: suppress           # 모호한 WIP/cleanup 표현 억제
-  concrete-emotions: suppress   # 감정 표현 비해당
-  intent-first: amplify         # 왜 바꿨는지 먼저
 pattern-overrides:
   ko:
     7: amplify                  # AI 고빈도 어휘 — 커밋에서는 특히 모호함

@@ -187,9 +187,15 @@ of them; what remains is named here as the surface for later work.
    stay core (70, enforcing); `churn_max`/`persona_match_min` are observation-
    informed advisory thresholds. (`source` stays `placeholder` — advisory tuning,
    not a formal 2-round promotion.)
-5. **Personas are multilingual.** `--persona` runs on ko/en/zh/ja; profile voice
-   defers to a voice-owning persona while profile pattern-policy still applies;
-   register precedence is `--tone` > persona > profile.
+5. **Personas are multilingual and are the sole voice owner.** `--persona` runs on
+   ko/en/zh/ja. As of v6.2 the persona owns ALL voice: whenever a persona is
+   active (including the `preserve` default), the profile contributes only its
+   pattern policy and its voice body is not sent to the model. Profiles were
+   reduced to a pattern-policy-only axis (`voice-overrides` frontmatter removed,
+   voice-guidance bodies dropped, versions bumped); a runtime migration warning
+   fires when a non-default profile is used for a rewrite without a voice-owning
+   persona. Register precedence stays `--tone` > persona > profile. (persona
+   schema still forbids pattern control — that half stays.)
 
 ### Remaining
 
@@ -199,10 +205,7 @@ of them; what remains is named here as the surface for later work.
 - **No deterministic MPS/fidelity proxy.** Without `--verify` (or a
   backend-reported score) Lane B's meaning floors are not enforced by code;
   `persona-match` + dropped-numbers are the only always-on Method-D anchors.
-- **profile still carries a voice half.** Now that custom personas can capture
-  genre voice, profile's voice body is a candidate to retire, leaving profile as
-  a pattern-policy-only axis.
-- **`persona new` LLM drafts are non-deterministic.** Authoring uses a one-time
+- **`persona new` / `persona edit` LLM drafts are non-deterministic.** Authoring uses a one-time
   model call; the saved persona file is deterministic, but two authoring runs on
   the same input can differ. Validation (`validatePersona`) is the safety net.
 

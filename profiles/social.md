@@ -1,15 +1,8 @@
 ---
 profile: social
 name: SNS/소셜미디어 프로필
-version: 1.0.0
+version: 2.0.0
 scope: 트위터/X, 인스타그램, 스레드, 블루스카이, 카카오스토리, 페이스북
-voice-overrides:
-  first-person: amplify        # 1인칭 적극 사용
-  opinions: amplify             # 의견 강하게
-  rhythm-variation: amplify     # 리듬 변화 극대화
-  humor: amplify                # 유머 적극 허용
-  messiness: amplify            # 불완전 구조, 파편 문장 적극 허용
-  concrete-emotions: amplify    # 구체적 감정 표현 강화
 pattern-overrides:
   ko:
     17: suppress                # 이모지 — SNS에서는 표준
@@ -38,14 +31,6 @@ pattern-overrides:
 ## 범위
 
 트위터/X, 인스타그램, 스레드, 블루스카이, 카카오스토리, 페이스북 포스트. 기업 공식 계정은 `default` 프로필이 더 적합.
-
-## 어조 지침
-
-- **짧게 쓴다.** SNS의 핵심은 간결함. 한두 문장이면 충분할 때가 많다.
-- **구어체가 기본이다.** "~거든", "~잖아", "ㅋㅋ", "ㅠㅠ" 등 자연스러운 SNS 언어 허용.
-- **이모지는 자유롭게.** 교정 대상이 아니다.
-- **의견을 과감하게.** "이거 진짜 별로다", "개꿀팁" — 태도가 뚜렷해야 사람다움.
-- **파편 문장 OK.** "진짜로.", "이게 맞나.", "아 글쎄." — SNS에서는 자연스럽다.
 
 ## 적극 교정 대상
 

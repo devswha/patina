@@ -112,7 +112,7 @@ For large `--batch` runs, prefer an OpenAI-compatible HTTP backend; local CLI ba
 | **168 patterns** | 33 rewrite-capable + 9 score-only viral-hook per language (42 each across KO/EN/ZH/JA) — see the full 168-pattern catalog in [PATTERNS.md](docs/PATTERNS.md) |
 | **Modes** | rewrite · verify · audit · score · diff |
 | **Surfaces** | agent skill · Node CLI · in-place preview · browser playground (rewrite + score) |
-| **Voice** | `--persona` (built-in + your own, ko/en/zh/ja) · `--tone` register · `--profile` genre — composable with a fixed precedence |
+| **Voice** | `--persona` (built-in + your own, ko/en/zh/ja) is the sole voice axis · `--tone` register · `--profile` pattern policy — composable with a fixed precedence |
 | **Free usage** | logged-in `codex`, `claude`, or `gemini` CLI can run rewrites without `PATINA_API_KEY` |
 | **Calibration** | 67.3% editing-hotspot catch [63.5–71.0%] across GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro (n=600, KO+EN); 16.0% false positives [11.6–21.7%] on KO+EN human controls (n=200) |
 | **License** | MIT |
@@ -160,7 +160,7 @@ patina persona edit my-voice --name "Founder voice"         # copy-on-edit into 
 patina persona rm my-voice                                  # remove a custom persona (--force to skip the confirm)
 ```
 
-Works on ko/en/zh/ja and composes with `--tone`/`--profile` (register precedence `--tone` > persona > profile). A persona shapes voice but never lowers the meaning floors — authored personas are validated on save, and the safety gate still enforces MPS/fidelity + dropped-number checks.
+Works on ko/en/zh/ja and composes with `--tone` (register) and `--profile` (pattern policy). The persona is the sole voice owner; register precedence is `--tone` > persona. A persona shapes voice but never lowers the meaning floors — authored personas are validated on save, and the safety gate still enforces MPS/fidelity + dropped-number checks.
 
 ## CI
 

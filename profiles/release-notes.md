@@ -1,16 +1,8 @@
 ---
 profile: release-notes
 name: 릴리스 노트 프로필
-version: 1.0.0
+version: 2.0.0
 scope: changelog, release notes, GitHub Releases, npm/GHCR release announcement
-voice-overrides:
-  first-person: reduce          # 팀/제품 중심, 과한 1인칭 억제
-  opinions: reduce              # 사용자 영향과 migration 중심
-  rhythm-variation: normal      # 항목별 길이 차이 허용
-  humor: suppress               # 릴리스 공지는 명확성 우선
-  messiness: reduce             # 섹션/목록 구조 유지
-  concrete-emotions: reduce     # 감정 대신 영향·조치
-  user-impact: amplify          # 변경의 사용자 영향 명시
 pattern-overrides:
   ko:
     14: reduce                  # 볼드체 — 릴리스 노트 heading/emphasis 일부 허용

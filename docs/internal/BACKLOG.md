@@ -35,9 +35,12 @@ folded into the next minor):
    only (regression-fenced in `tests/unit/persona-seed.test.js` against `ko_register_*`
    and `suffix_class_diversity`). Follow-up if wanted: calibrate targets on real
    per-language corpora (current values are seed defaults with wide advisory tolerances).
-2. **Retire profile's voice body** — custom personas now capture genre voice, so profile
-   can shrink to a **pattern-policy-only** axis. Do after en/zh/ja seeds exist as the
-   voice alternative. (persona schema still forbids pattern control — that half stays.)
+2. ~~**Retire profile's voice body**~~ — DONE (v6.2.0 line). Persona is now the sole
+   voice owner: prompt-builder defers ALL voice to the active persona (incl. the
+   `preserve` default), the 17 `profiles/*.md` dropped `voice-overrides` frontmatter +
+   voice-guidance bodies (versions bumped to 2.0.0), and a runtime migration warning
+   fires when a non-default profile is used for a rewrite without a voice-owning persona.
+   (persona schema still forbids pattern control — that half stays.)
 3. ~~**`persona edit|rm|show` subcommands**~~ — DONE. Shipped `persona show <id>`
    (print normalized config, `--json`; never the docs body), `persona rm <id>`
    (custom-only delete; built-in seeds and `preserve` protected; `--force` or

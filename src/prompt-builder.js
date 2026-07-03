@@ -3,7 +3,7 @@
 // is benign — both bindings are only dereferenced at call time, never during
 // module evaluation.
 import { SCORE_INTERPRETATION_BANDS } from './scoring.js';
-import { formatPersonaDirective, personaOwnsVoice } from './personas/compose.js';
+import { formatPersonaDirective } from './personas/compose.js';
 
 /**
  * Default per-detection severity points.
@@ -220,9 +220,10 @@ export function buildPrompt(options) {
 
   prompt += `## Profile\n\n`;
   if (profile) {
-    if (mode === 'rewrite' && persona && personaOwnsVoice(persona)) {
-      // Profile split: its pattern policy already applied to the packs above;
-      // its voice guidance defers to the active persona (persona owns voice).
+    if (mode === 'rewrite' && persona) {
+      // Persona is the sole voice owner (v6.2 profile-voice retirement): the
+      // profile's pattern policy already applied to the packs above; ALL voice
+      // guidance now comes from the active persona (incl. the preserve default).
       prompt += `- Profile "${profileName}" pattern policy applies; voice guidance defers to the active persona below.\n\n`;
     } else {
       prompt += `${profile.body}\n\n`;
@@ -686,8 +687,9 @@ function buildMinimalPrompt({ config, patterns, profile, persona = null, text, t
   // compact — just the profile body, no full pattern-overrides table.
   if (profile && profile.body) {
     prompt += lang === 'ko' ? `## 톤·프로필 가이드\n\n` : `## Tone & profile guide\n\n`;
-    if (persona && personaOwnsVoice(persona)) {
-      // Profile voice defers to the active persona; its pattern policy still applies.
+    if (persona) {
+      // Persona is the sole voice owner (v6.2): profile pattern policy applies,
+      // all voice comes from the active persona (incl. the preserve default).
       const pn = config.profile || 'default';
       prompt += lang === 'ko'
         ? `- 프로필 "${pn}"의 패턴 정책은 적용되고, 어조는 아래 페르소나를 따른다.\n\n`

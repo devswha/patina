@@ -39,13 +39,6 @@ Paste AI-sounding text into the **[playground](https://patina.vibetip.help/)** a
   <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-playground-en.gif" alt="Animated patina playground demo: an AI-sounding template-pack announcement is pasted into the web playground, rewritten naturally while keeping the 30-templates fact, and verified with MPS 100, Fidelity 75, and a deterministic AI-signal drop from 100 to 0" width="820">
 </p>
 
-Prefer the terminal? `--preview` snapshots a live URL or local `.html`, rewrites only the prose blocks, and renders the result back onto the page — the floating bar switches between **Rewritten / Original / Both / Diff** and shows the same deterministic score before → after ([animated sample](assets/demo/patina-preview-en.gif)):
-
-```bash
-patina --preview --lang en page.html         # a local .html file
-patina --preview https://example.com/post     # or a live URL
-```
-
 More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)) · [CLI transcript](docs/DEMO.md).
 
 ## Quick Start

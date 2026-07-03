@@ -569,11 +569,36 @@ export async function scoreMPS({
   // Opt-in structured-output request field; defaults off (undefined).
   responseFormat,
 }) {
+  // Anchor definition mirrors core/scoring.md §14-16 and SKILL.md step 4.5:
+  // anchors are explicitly stated FACTUAL meaning units (claim/polarity/
+  // causation/quantifier/negation), capped at 3 per paragraph. Stylistic
+  // packaging (hype, intensifiers, boilerplate enthusiasm) is exactly what the
+  // rewrite removes, so it must never be counted as an anchor — otherwise every
+  // successful de-puffing scores as meaning loss (#579). The zero-anchor case
+  // maps the spec's "MPS = N/A, gating exempt" to 100 because this JSON
+  // contract has no N/A and consumers fail closed on null.
   const prompt = `You are a Meaning Preservation evaluator. Compare the ORIGINAL text with the REWRITTEN text.
 
-Extract semantic anchors from the original (claims, polarity, causation, quantifiers, negations) and check if each is preserved in the rewritten text.
+Extract semantic anchors from the ORIGINAL text only, then verify whether each anchor survives in the REWRITTEN text.
+
+Anchor types:
+- claim: factual assertion or conclusion ("the system failed", "revenue grew 30%")
+- polarity: positive/negative/neutral stance of a claim
+- causation: cause-effect statement ("A caused B")
+- quantifier: number, degree, or range ("p<0.05", "about 3x", "most")
+- negation: negated statement ("does not", "never", "impossible")
+
+Extraction rules:
+- Extract only explicitly stated meaning. Never extract implications or subtext.
+- Extract at most 3 anchors per paragraph of the original.
+- Stylistic packaging is NOT an anchor. Intensifiers, marketing hype, and boilerplate enthusiasm ("cutting-edge", "we are thrilled to announce", "revolutionize your workflow", "unlock full potential", "take X to the next level", "comprehensive", "seamlessly") carry no factual content — removing or toning them down is the rewrite's job and must never be penalized as meaning loss.
+- If the original contains no factual anchors at all, return "anchors": [], "pass_count": 0, "total_count": 0, "polarity_pass_count": 0, "polarity_total_count": 0, "mps": 100 (nothing meaning-bearing was at risk).
 
 Verdict per anchor: PASS | SOFT_FAIL | HARD_FAIL
+- PASS: the anchor's core assertion is unambiguously recoverable from the rewritten text; rephrasing is fine.
+- SOFT_FAIL: present but weakened or made ambiguous.
+- HARD_FAIL: deleted, contradicted, or polarity inverted.
+- If the rewritten text fabricates new facts absent from the original (numbers, customers, outcomes, features), mark the closest related anchor HARD_FAIL. If facts were fabricated but no original anchor relates to them (including the zero-anchor case), add an anchor {"type": "claim", "content": "<the fabricated fact>", "verdict": "HARD_FAIL"} so fabrication always lowers mps — the mps-100 zero-anchor rule applies only when the rewritten text also adds no new facts.
 
 Return ONLY a JSON object:
 

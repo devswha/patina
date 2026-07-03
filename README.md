@@ -33,18 +33,18 @@ It is not a black-box paraphraser, authorship detector, or detector-bypass tool.
 
 ## Demo
 
-`--preview` is the main sample: patina snapshots a live URL or local `.html`, rewrites only the prose blocks, and renders the result back onto the page. The floating bar switches between **Rewritten / Original / Both / Diff**, jumps between every changed block, and shows the deterministic score before → after.
+Paste AI-sounding text into the **[playground](https://patina.vibetip.help/)** and patina rewrites it in place. The meaning floors verify the rewrite (**MPS 100 / Fidelity 75** here — the "30 templates" fact survives), and the deterministic AI signal is measured before → after: the hot-paragraph ratio falls **100 → 0** while the hype ("thrilled to announce", "revolutionize your workflow", "unlock their full potential") is gone.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-preview-en.gif" alt="Animated patina --preview demo toggling rewritten, original, both, and diff views on a Notion Template Pack page; the page layout stays fixed while AI-sounding phrasing is replaced and the score falls from 60 to 0" width="820">
+  <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-playground-en.gif" alt="Animated patina playground demo: an AI-sounding template-pack announcement is pasted into the web playground, rewritten naturally while keeping the 30-templates fact, and verified with MPS 100, Fidelity 75, and a deterministic AI-signal drop from 100 to 0" width="820">
 </p>
+
+Prefer the terminal? `--preview` snapshots a live URL or local `.html`, rewrites only the prose blocks, and renders the result back onto the page — the floating bar switches between **Rewritten / Original / Both / Diff** and shows the same deterministic score before → after ([animated sample](assets/demo/patina-preview-en.gif)):
 
 ```bash
 patina --preview --lang en page.html         # a local .html file
 patina --preview https://example.com/post     # or a live URL
 ```
-
-The sample keeps the page structure, headings, CTA, and concrete facts (`30 templates`, planning docs, handoffs). It removes inflated phrasing like “innovative solution,” “transform productivity,” and “new paradigm” with an inline audit trail instead of a black-box paraphrase.
 
 More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)) · [CLI transcript](docs/DEMO.md).
 

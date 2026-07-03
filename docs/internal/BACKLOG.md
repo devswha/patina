@@ -15,8 +15,12 @@ profile voice/pattern split, custom voice authoring (`patina persona new|list`),
 
 Docs-only changes stacked on `dev`, to release with the next feature (patch or
 folded into the next minor):
-- README (all 4 langs) slimmed: removed internal ko `translationese`/`koPostEditese`
+- README English slimmed: removed internal ko `translationese`/`koPostEditese`
   caveat, `--preview` demo, per-backend model list, verbose persona bullets.
+- README KR/JA/ZH resynced to the slimmed English structure (playground-led Demo,
+  `--preview` demo removed, version badge `5.4.0` → `6.1.0`); localized doc links
+  kept for KR. The earlier "all 4 langs slimmed" note was inaccurate — only English
+  had been restructured; the three translations are now caught up.
 - Agent-driven install snippet (paste a prompt → agent follows `INSTALLATION.md`)
   in all 4 READMEs.
 - `INSTALLATION.md` version refs fixed (3.11.0 → 6.1.0) + invalid `--tone narrative`

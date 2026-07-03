@@ -197,14 +197,27 @@ of them; what remains is named here as the surface for later work.
    persona. Register precedence stays `--tone` > persona > profile. (persona
    schema still forbids pattern control — that half stays.)
 
+6. **Deterministic meaning-floor proxy shipped (advisory).** `src/features/meaning-proxy.js`
+   (Lane A, LLM-free by construction — enforced by a module-boundary test)
+   provides `evaluateMeaningProxy({original, rewrite, lang})` as a conjunction of
+   high-precision invariants: dropped numbers, rare-content-token recall (active
+   only with ≥3 rare tokens; recall <0.5 warn / <0.3 fail), negation-polarity
+   delta (word/token-boundary, not raw substring), and length-ratio extremes
+   ([0.4, 2.5]). It rides the persona report JSON (`meaning_proxy`) and the gate's
+   advisory list. **Phase A is advisory-only** (no CLI warning, no exit change);
+   dropped numbers stay separately enforced. **Phase B promotion** to enforcing
+   (exit 4) requires the formal 2-round ablation (`aggregateAblation`/`ablationDecision`)
+   proving ~0 false positives on legitimate rewrites (live-quality + dogfood +
+   the local calibration corpus) and true positives on the meaning-broken
+   fixtures, recording `source: calibrated`.
+7. **`ouroboros.js` persona drift — won't-do.** The iterative loop is a
+   research-only A/B baseline (`scripts/rewrite-ab.mjs`; the `--ouroboros` CLI
+   flag was removed and `--verify` replaced it). The live path (`--verify` + the
+   always-on persona gate) already runs `persona-match`, so wiring it into a
+   research-only loop is not worth it.
+
 ### Remaining
 
-- **`ouroboros.js` does not consume `persona-match`.** The iterative rewrite
-  helper (no longer on the default CLI path — `--verify` replaced it) ignores
-  persona drift.
-- **No deterministic MPS/fidelity proxy.** Without `--verify` (or a
-  backend-reported score) Lane B's meaning floors are not enforced by code;
-  `persona-match` + dropped-numbers are the only always-on Method-D anchors.
 - **`persona new` / `persona edit` LLM drafts are non-deterministic.** Authoring uses a one-time
   model call; the saved persona file is deterministic, but two authoring runs on
   the same input can differ. Validation (`validatePersona`) is the safety net.

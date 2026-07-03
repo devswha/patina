@@ -216,10 +216,11 @@ patina --lang <ko|en|zh|ja> [모드] [--profile <이름>] input.txt
 | `--score` | 0–100 AI 유사도 점수 + 카테고리별 분석 |
 | `--score --exit-on <n>` | CI를 엄격하게 유지: `overall > n`이면 종료 코드 `3` |
 | `--diff` | 변경 사항을 패턴별로 표시 |
-| `--ouroboros` | 점수가 수렴할 때까지 반복 (MPS 롤백 포함) |
+| `--verify` | 재작성 후 MPS/fidelity 하한을 검사하고 1회 보수적 재시도 |
 | `--lang <ko\|en\|zh\|ja>` | 언어 선택 (기본값: `ko`) |
 | `--profile <이름>` | 톤 프리셋: `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes`, `namuwiki` |
-| `--tone <이름>` | 톤 카테고리: `casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
+| `--tone <이름>` | 격식(register): `casual`, `professional`, `auto` (장르는 `--profile`로) |
+| `--persona <이름>` | 보이스 페르소나 (내장 + 직접 제작; ko/en/zh/ja). `patina persona new`로 제작, `patina persona list`로 목록 |
 | `--batch` | 위치 인자를 파일 목록으로 처리 (예: `--batch docs/*.md`) |
 | `--format json\|text\|markdown` | JSON, 일반 텍스트, 기본 Markdown 출력 선택 |
 | `--quiet` | stderr의 상태, 경고, 진행 로그를 숨김 |
@@ -265,6 +266,28 @@ rewrite 모드에서 모델은 `[BODY]`/`[/BODY]` 블록을 감싸는 `[SELF_AUD
 | `instructional` | 튜토리얼, 하우투, 기술 문서 | 명령형 동사, 번호 매김 구조, 추측 표현 억제 |
 
 `--tone auto`는 휴리스틱(어휘 + 구조 신호)으로 가장 적합한 톤을 자동 선택합니다. zh/ja에서는 `auto`를 포함한 모든 톤 지정 시 경고를 내고 프로필 전용 모드로 폴백합니다. Phase 4.5b 휴리스틱이 ko/en만 지원하기 때문입니다.
+
+## 페르소나 (보이스)
+
+**페르소나**는 재사용 가능한 "말투"입니다 — 내장 페르소나(`patina persona list`)를
+쓰거나, 소스 코드를 건드리지 않고 직접 만들 수 있습니다.
+
+```bash
+patina persona new my-voice --from-sample past-posts.txt   # 내 글 샘플에서 학습
+patina persona new my-voice --describe "담백한 창업자, 반말"
+patina persona new my-voice                                 # 대화형 마법사
+patina --persona my-voice draft.md                          # 이후 재사용
+```
+
+- **다국어**: `ko`, `en`, `zh`, `ja`에서 동작 (ko는 의미 보존 기본값 `preserve`를 자동
+  적용, 나머지 언어는 명시 지정 시에만).
+- **조합 가능**: `--tone`(격식)과 `--profile`(장르)을 위에 얹을 수 있고, 겹칠 때 격식
+  우선순위는 `--tone` > 페르소나 > `--profile`. 말투 있는 페르소나는 profile의 말투를
+  양보시키되 profile의 패턴 정책은 그대로 적용.
+- **설계상 안전**: 페르소나는 말투만 바꿀 뿐 의미 보존 하한을 낮추거나 탐지기를 끌 수
+  없습니다. 제작된 페르소나는 저장 전에 검증되고, 재작성 시 안전 게이트가
+  MPS/fidelity(및 숫자 누락)를 강제합니다. 보이스 매칭·표면 변화량(churn)은 차단이 아닌
+  참고 신호입니다.
 
 ## 동작 원리
 

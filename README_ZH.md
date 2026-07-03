@@ -69,6 +69,14 @@ CLI transcript 见 [Demo](docs/DEMO.md)。更多例子见 [Before/After Gallery]
 
 ### 作为 Claude Code 或 Codex CLI 技能
 
+**让编码代理帮你安装** — 把下面这行粘贴到 Claude Code、Codex CLI、Cursor、Gemini CLI 或任意代理：
+
+```text
+Install patina by following https://raw.githubusercontent.com/devswha/patina/main/INSTALLATION.md
+```
+
+代理会获取 [`INSTALLATION.md`](INSTALLATION.md)（面向 AI 代理编写），按你的宿主环境执行相应安装路径并验证。或者自己安装：
+
 **Claude Code — 插件市场（无需克隆，推荐）：**
 
 ```text

@@ -447,17 +447,10 @@ export function validatePersonaRequest(parsed) {
     if (parsed[key]) {
       throw inputError(
         `${persona} cannot be combined with ${flag}`,
-        `${flag} ${why}. Persona v1 is Korean rewrite-only.`,
-        'Run a plain Korean rewrite, e.g. `patina --lang ko --persona preserve draft.md`, or drop --persona.'
+        `${flag} ${why}. A persona applies to rewrite mode only.`,
+        'Run a plain rewrite, e.g. `patina --persona preserve draft.md`, or drop --persona.'
       );
     }
-  }
-  if (parsed.lang && parsed.lang !== 'ko') {
-    throw inputError(
-      '--persona is Korean-only in v1',
-      `Received --lang ${parsed.lang}, but the persona library ships only for Korean rewrite mode.`,
-      'Use `--lang ko --persona <name>` or remove --persona for non-Korean text.'
-    );
   }
   for (const [flag, value] of [['--jargon', parsed.jargon], ['--tone', parsed.tone]]) {
     if (typeof value === 'string' && value.includes(',')) {
@@ -745,6 +738,9 @@ COMMANDS
   patina auth login       Print per-backend authentication instructions
   patina auth login <backend> [--yes]
                          Launch a backend login flow after confirmation
+  patina persona new <id>  Author a reusable custom voice persona (from a writing
+                          sample, a description, or a blank template)
+  patina persona list      List built-in and custom personas per language
 
 MODES
   --diff                  Show changes pattern by pattern
@@ -790,10 +786,12 @@ LANGUAGE & PROFILE
                           code-comment, commit-message, release-notes, namuwiki
   --tone <name[,name]>    Register: casual, professional, auto. (academic / marketing /
                           narrative / instructional are genres now — use --profile.)
-                          Resolution: --tone > config tone > config profile.
+                          Register precedence: --tone/config tone > persona
+                          register > config profile.
                           Comma list with --preview compares tones as variants
-  --persona <name>         Korean rewrite persona (default preserve); incompatible
-                          with score/audit/diff/preview
+  --persona <name>         Rewrite voice persona for ko/en/zh/ja (default preserve
+                          on ko; opt-in on other langs); incompatible with
+                          score/audit/diff/preview
   --jargon <policy[,policy]>
                           Technical-term policy (rewrite/--preview only):
                           keep (default), explain = add plain-language glosses,

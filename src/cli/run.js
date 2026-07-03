@@ -22,7 +22,7 @@ import { fetchPreviewPage, prepareSnapshotHtml, freezeSnapshotAssets, extractPro
 import { collectImageCandidates, stageOcrImages, ocrStagedImages, describeImage, hasOcrRunnerOverride } from '../ocr.js';
 import { rmSync, readFileSync, mkdirSync } from 'node:fs';
 
-import { verifyRewrite, deterministicMeaningGuard } from '../verify.js';
+import { verifyRewrite, deterministicMeaningGuard, droppedNumbers } from '../verify.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
 import { detectKoreanRegister } from '../features/stylometry.js';
 import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput, writeAtomicUtf8, resolveBatchOutputPath } from './batch.js';
@@ -237,6 +237,9 @@ export async function runDefault(parsed, logger) {
         });
         cancellation.throwIfCanceled();
 
+        // Real MPS/fidelity from --verify's scoring pass, reused by the persona
+        // safety gate so the two meaning checks share one decision (single path).
+        let verifyScores = null;
         if (mode === 'rewrite') {
           // The backend result still carries the [BODY]/[SELF_AUDIT] tags that
           // formatOutput strips for display; verify scoring and the meaning guard
@@ -275,6 +278,7 @@ export async function runDefault(parsed, logger) {
               logger,
             });
             result = verification.text;
+            verifyScores = { mps: verification.mps ?? null, fidelity: verification.fidelity ?? null };
             logger.info('verify.result', {
               message: `[patina] verify: MPS ${verification.mps ?? 'n/a'}, fidelity ${verification.fidelity}${verification.verified ? ' (passed)' : ' (below floor)'}${verification.retried ? ' [retried]' : ''}`,
             });
@@ -307,13 +311,30 @@ export async function runDefault(parsed, logger) {
             lang,
             repoRoot,
             thresholds: config.personas?.thresholds || {},
-            mps: extractNumericMetric(result, rewrittenForPersona, 'mps'),
-            fidelity: extractNumericMetric(result, rewrittenForPersona, 'fidelity'),
+            // Prefer --verify's real scoring pass; fall back to the backend's
+            // self-reported metrics only when verify did not run.
+            mps: verifyScores ? verifyScores.mps : extractNumericMetric(result, rewrittenForPersona, 'mps'),
+            fidelity: verifyScores ? verifyScores.fidelity : extractNumericMetric(result, rewrittenForPersona, 'fidelity'),
           });
-          if (!personaReport.gate_result.pass) {
-            logger.warn('persona.gate_failed', {
-              message: `[patina] persona gate failed: ${personaReport.gate_result.hardFailures.join(', ') || 'unknown'}`,
+          const gate = personaReport.gate_result;
+          if (!gate.pass) {
+            // SAFETY failure: meaning may not be preserved. Enforce with a
+            // non-zero exit (catchable in CI/automation) but stay non-destructive
+            // — the rewrite is still emitted for the user to review.
+            logger.warn('persona.safety_gate_failed', {
+              message: `[patina] persona safety gate failed: ${gate.safetyFailures.join(', ') || 'unknown'} — meaning may have drifted; review before publishing.`,
               persona: personaReport,
+            });
+            process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
+          }
+          if (gate.advisory.length > 0) {
+            // ADVISORY: voice-match quality and surface churn — never block or
+            // change the exit code. Surface churn is not a meaning signal.
+            const bits = [];
+            if (!gate.personaMatchPass) bits.push(`voice match ${gate.personaMatch} < ${gate.personaMatchMin}`);
+            if (!gate.churnPass) bits.push(`surface churn ${gate.churn} > ${gate.churnMax}`);
+            logger.warn('persona.advisory', {
+              message: `[patina] persona advisory: ${bits.join('; ')} (quality signals only; output not blocked).`,
             });
           }
         }
@@ -498,11 +519,14 @@ function buildPersonaReport({ rewritten, original, persona, lang, repoRoot, thre
   const overEditChurn = match.overEditChurn ?? match.deltas?.overEditChurn ?? match.featureVector?.over_edit_churn ?? 0;
   const mpsValue = mps ?? null;
   const fidelityValue = fidelity ?? null;
+  // Deterministic safety signal: source numbers that vanished from the rewrite.
+  const dropped = droppedNumbers(original, rewritten);
   const gate = evaluatePersonaGate({
     personaMatch: match.score,
     mps: mpsValue,
     fidelity: fidelityValue,
     churn: overEditChurn,
+    droppedNumbers: dropped,
     thresholds,
     persona,
   });
@@ -514,6 +538,7 @@ function buildPersonaReport({ rewritten, original, persona, lang, repoRoot, thre
     mps: mpsValue,
     fidelity: fidelityValue,
     over_edit_churn: overEditChurn,
+    dropped_numbers: dropped,
     gate_result: gate,
   };
 }
@@ -563,19 +588,28 @@ function cancellationError() {
  * cancellation.install();
  */
 
+// Languages with a persona library (personas/{lang}/). Multilingual as of the
+// persona multilang line; each ships at least a `preserve` default.
+const PERSONA_LANGS = new Set(['ko', 'en', 'zh', 'ja']);
+
 export function resolvePersonaForRun({ parsed = {}, config = {}, mode = 'rewrite', lang = 'ko', repoRoot = process.cwd() } = {}) {
   const defaultPreserve = parsed.persona === undefined && config.persona === 'preserve';
   const explicitPersona = parsed.persona !== undefined || (config.persona !== undefined && !defaultPreserve);
   const personaId = parsed.persona ?? config.persona ?? null;
-  const effective = mode === 'rewrite' && !parsed.preview && lang === 'ko';
+  const effective = mode === 'rewrite' && !parsed.preview && PERSONA_LANGS.has(lang);
   if (explicitPersona && !effective) {
     throw inputError(
-      'persona is only supported for Korean rewrite mode',
-      'Persona v1 runs only when the effective mode is rewrite, preview is off, and language is ko.',
-      'Use `patina --lang ko --persona <name> <file>`, or remove the persona setting for this mode/language.'
+      'persona is only supported for rewrite mode',
+      'A persona runs only when the effective mode is rewrite, preview is off, and the language is one of ko, en, zh, ja.',
+      'Use `patina --persona <name> <file>` on a rewrite (drop --score/--audit/--diff/--preview), or remove the persona setting.'
     );
   }
   if (!effective) return null;
+  // Back-compat: ko keeps its implicit-preserve default (a plain `patina` run
+  // resolves preserve). For en/zh/ja the persona axis is opt-in — a plain rewrite
+  // stays persona-free unless the user explicitly asks (--persona / config), so
+  // existing non-ko rewrites are unchanged.
+  if (lang !== 'ko' && !explicitPersona) return null;
   return loadPersona(repoRoot, lang, personaId ?? 'preserve');
 }
 

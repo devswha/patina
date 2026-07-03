@@ -8,6 +8,14 @@ User-facing documentation lives in `README*.md`, `docs/`, `examples/`, `patterns
 
 When moving a root-level Markdown file, either link it from `README.md` if it is public, or place it under `docs/internal/` with a short status note explaining its audience.
 
+## Development Workflow (branching & releases)
+
+Feature branches (`bot/*` / `feat/*`) branch from `dev` → PR into `dev`
+(integration/staging) → at release, `dev` → `main` via a **merge** (not squash)
+PR with a version bump. Keep `dev` at or ahead of `main`. Run parallel work in
+separate **git worktrees** (one branch each, branched from `dev`). Full guide:
+[`docs/WORKFLOW.md`](docs/WORKFLOW.md).
+
 ## Korean Translation Policy
 
 Primary user docs should keep a Korean companion when they explain installation, support, contribution, examples, or troubleshooting. The required pairs are:

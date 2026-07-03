@@ -191,10 +191,11 @@ patina --lang <ko|en|zh|ja> [模式] [--profile <名称>] input.txt
 | `--score` | 0–100 AI 相似度评分 + 类别细分 |
 | `--score --exit-on <n>` | 保持 CI 严格：当 `overall > n` 时以退出码 `3` 结束 |
 | `--diff` | 按模式逐项展示改动 |
-| `--ouroboros` | 反复改写直到分数收敛（含 MPS 回滚） |
+| `--verify` | 改写后检查 MPS/fidelity 下限，并保守地重试一次 |
 | `--lang <ko\|en\|zh\|ja>` | 选择语言（默认：`ko`） |
 | `--profile <名称>` | 语气预设：`blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes`, `namuwiki` |
-| `--tone <名称>` | 语调类别：`casual`, `professional`, `academic`, `narrative`, `marketing`, `instructional`, `auto` |
+| `--tone <名称>` | 语域（格式）：`casual`, `professional`, `auto`（体裁请用 `--profile`） |
+| `--persona <名称>` | 声音人格（内置 + 自制；ko/en/zh/ja）。用 `patina persona new` 创建，`patina persona list` 列出 |
 | `--batch` | 把位置参数当作文件列表（例：`--batch docs/*.md`） |
 | `--format json\|text\|markdown` | 选择 JSON、纯文本或默认 Markdown 输出 |
 | `--quiet` | 隐藏 stderr 中的状态、警告和进度日志 |
@@ -239,6 +240,26 @@ Markdown 较多的工程流程可以使用开发者 profile：`code-comment` 会
 | `instructional` | 教程、操作指南、技术文档 | 命令式动词、编号结构、抑制猜测语 |
 
 `--tone auto` 通过启发式（词汇 + 结构信号）自动选择最契合的语气。zh/ja 上使用任何语气（包括 `auto`）都会发出警告并回退到 profile-only 模式，因为 Phase 4.5b 启发式仅覆盖 ko/en。
+
+## 人格（声音）
+
+**人格**是可复用的“声音” — 使用内置人格（`patina persona list`），或不改动源码自行创建。
+
+```bash
+patina persona new my-voice --from-sample past-posts.txt   # 从你的文章中学习
+patina persona new my-voice --describe "直白的创始人，随意口吻"
+patina persona new my-voice                                 # 交互式向导
+patina --persona my-voice draft.md                          # 之后复用
+```
+
+- **多语言**：在 `ko`, `en`, `zh`, `ja` 上生效（ko 自动应用保留原意的默认 `preserve`，
+  其他语言仅在显式指定时启用）。
+- **可组合**：可在其上叠加 `--tone`（语域）与 `--profile`（体裁）；冲突时语域优先级为
+  `--tone` > 人格 > `--profile`。带声音的人格会让 profile 的声音让位，而 profile 的
+  模式策略仍然照常应用。
+- **设计上安全**：人格只改变声音，不能降低保留原意的下限或关闭检测器。自制人格在保存前
+  会经过校验，改写时安全闸门会强制 MPS/fidelity（以及数字缺失）检查。声音匹配与表层
+  改动量（churn）是参考信号，而非拦截项。
 
 ## 工作原理
 

@@ -1,4 +1,4 @@
-version: "6.0.1"
+version: "6.1.0"
 language: ko              # Korean (default) -- auto-loads all ko-*.md patterns
                           # language: en      -- English -- auto-loads all en-*.md patterns
                           # language: zh      -- Chinese -- auto-loads all zh-*.md patterns
@@ -28,12 +28,23 @@ personas:
   library: personas/ko
   thresholds:
     schema: patina.persona.thresholds.v1
+    # source stays `placeholder` because the advisory tuning below is informed by
+    # observation, not a formal 2-round promotion. The ENFORCING floors, however,
+    # are the product's core safety contract and do not depend on calibration.
     source: placeholder
     calibration_rounds_required: 2
-    persona_match_min: 70
+    # --- ENFORCING (safety gate; a miss sets a non-zero exit, non-destructive) ---
+    # Meaning + facts only. Enforced when evaluated (mps/fidelity need --verify or a
+    # backend-reported score); dropped source numbers always enforce deterministically.
     mps_floor: 70
     fidelity_floor: 70
-    churn_max: 0.45
+    # --- ADVISORY (warn only; never blocks or changes the exit code) ---
+    # persona_match: voice-quality signal. Observed real KO persona-match runs ~35-56,
+    # so 45 flags the low end without firing on every rewrite.
+    persona_match_min: 45
+    # churn: surface token change, NOT a meaning signal. Live KO humanizing rewrites
+    # churn ~0.5-0.85 while preserving meaning, so 0.9 flags only near-total rewrites.
+    churn_max: 0.9
 
 # Supported languages: ko, en, zh, ja
 

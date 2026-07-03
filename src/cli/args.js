@@ -738,6 +738,9 @@ COMMANDS
   patina auth login       Print per-backend authentication instructions
   patina auth login <backend> [--yes]
                          Launch a backend login flow after confirmation
+  patina persona new <id>  Author a reusable custom voice persona (from a writing
+                          sample, a description, or a blank template)
+  patina persona list      List built-in and custom personas per language
 
 MODES
   --diff                  Show changes pattern by pattern

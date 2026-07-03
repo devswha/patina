@@ -4,8 +4,14 @@ import { byteLength, redactSecrets, validateRewriteRequest } from './web-rewrite
 import { extractClientIp } from './rate-limit.js';
 
 /**
- * @typedef {{method?: string, headers?: Record<string, string|string[]|undefined>, body?: unknown, [Symbol.asyncIterator]?: () => AsyncIterator<Buffer|string|Uint8Array>}} RewriteReq
- * @typedef {{statusCode?: number, setHeader?: (name: string, value: string) => void, end?: (body?: string) => void}} RewriteRes
+ * Cancellation contract: `runRewrite` receives the raw `req`/`res`. Runtimes
+ * that expose emitter methods let the runner observe client disconnects —
+ * `res` emits 'close' (with `writableEnded === false` on a premature
+ * disconnect) and legacy `req` emits 'aborted'. All emitter members are
+ * optional so bare serverless/test mocks keep working.
+ *
+ * @typedef {{method?: string, headers?: Record<string, string|string[]|undefined>, body?: unknown, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, [Symbol.asyncIterator]?: () => AsyncIterator<Buffer|string|Uint8Array>}} RewriteReq
+ * @typedef {{statusCode?: number, setHeader?: (name: string, value: string) => void, write?: (chunk: string) => void, end?: (body?: string) => void, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, writableEnded?: boolean}} RewriteRes
  * @typedef {{check(input: {tier: string, ip: string|null}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string}>, acquireConcurrency?(input: {tier: string, ip: string|null}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string}>, releaseConcurrency?(input: {tier: string, ip: string|null}): Promise<void>}} RateLimiter
  */
 

@@ -2,9 +2,10 @@
 // patina — Lovable-composition controller: landing (hero prompt + sections) that
 // transitions into a chat view. Reuses the isomorphic streaming client + contract;
 // renders via safe DOM APIs.
-import { createRewriteThread, streamRewrite } from './rewrite-client.js';
+import { createRewriteThread, streamRewrite, classifyRewriteError, REWRITE_ERROR_KINDS } from './rewrite-client.js';
 import {
   PROVIDER_PRESETS,
+  TIER_LIMITS,
   WEB_TIERS,
   MPS_FLOOR,
   FIDELITY_FLOOR,
@@ -50,7 +51,7 @@ const LANG_NAME = { ko: '한국어', en: 'English', zh: '中文', ja: '日本語
 // Localized landing copy — the description follows the selected language.
 const I18N = {
   en: {
-    title: 'Make it sound <span class="grad">human</span>',
+    title: ['Make it sound ', 'human', ''],
     sub: 'Paste AI-sounding text — patina rewrites it naturally. KO·EN·ZH·JA.',
     promptPh: 'Paste the text you want to clean up…',
     howTitle: 'Three steps',
@@ -68,7 +69,7 @@ const I18N = {
     ctaTitle: 'Paste your own and see',
     ctaSub: 'Drop an AI-sounding draft into the box above. No code, no key.',
     ctaBtn: 'Start at the top ↑',
-    note: 'Deterministic humanizer —<br />same claim, numbers, tone.',
+    note: ['Deterministic humanizer —', 'same claim, numbers, tone.'],
     hint: 'patina changes only the wording — never the claim, numbers, or causation. This demo rewrites via a local CLI; MPS/fidelity are preview values.',
     chatPh: 'Keep refining…  (Enter to send · Shift+Enter for newline)',
     newchat: 'New chat',
@@ -77,9 +78,18 @@ const I18N = {
     failNote: 'Rewrite failed. Try again, or check the mode/key.',
     quotaDaily: 'You’ve used today’s free quota. Try again tomorrow, or switch to BYOK mode with your own API key for unlimited use.',
     quotaHourly: 'Free quota is full for now. Try again shortly, or use BYOK mode with your own API key.',
+    quotaConcurrent: 'A rewrite is already running for your connection. Wait for it to finish, then try again.',
+    serviceDown: 'The rewrite service is temporarily unavailable. Please try again later.',
+    tooLong: 'Text is over the {tier} limit of {cap} characters. Shorten it and try again.',
+    keyMissing: 'Enter your API key to use API mode.',
+    stopNote: 'Stopped — the rewrite was cancelled.',
+    timeoutNote: 'Rewrite timed out — no response from the server. Please try again.',
+    netNote: 'Network error: {msg}',
+    retry: 'Retry',
+    stopLabel: 'Stop',
   },
   ko: {
-    title: 'AI 티 없이, <span class="grad">자연스럽게</span>',
+    title: ['AI 티 없이, ', '자연스럽게', ''],
     sub: 'AI 티 나는 문장을 붙여넣으면 patina가 자연스럽게 다듬어요. KO·EN·ZH·JA.',
     promptPh: '다듬고 싶은 문장을 붙여넣어 보세요…',
     howTitle: '세 단계면 끝',
@@ -97,7 +107,7 @@ const I18N = {
     ctaTitle: '직접 붙여넣어 확인해 보세요',
     ctaSub: 'AI 티 나는 초안을 위 입력칸에 붙여넣으면 끝. 코드도 키도 필요 없어요.',
     ctaBtn: '맨 위로 가서 시작하기 ↑',
-    note: '의미·숫자·톤을 바꾸지 않는<br />결정론적 휴머나이저.',
+    note: ['의미·숫자·톤을 바꾸지 않는', '결정론적 휴머나이저.'],
     hint: 'patina는 주장·수치·인과를 바꾸지 않고 표현만 다듬습니다. 데모는 로컬 CLI로 리라이트하며 MPS/fidelity는 프리뷰 값입니다.',
     chatPh: '이어서 다듬기…  (Enter 전송 · Shift+Enter 줄바꿈)',
     newchat: '새 대화',
@@ -106,9 +116,18 @@ const I18N = {
     failNote: '리라이트 실패. 다시 시도하거나 모드·키를 확인해 주세요.',
     quotaDaily: '오늘 무료 사용량을 다 쓰셨어요. 내일 다시 시도하거나, 본인 API 키로 BYOK 모드를 쓰면 제한 없이 이용할 수 있어요.',
     quotaHourly: '무료 사용량이 잠시 가득 찼어요. 잠시 후 다시 시도하거나, 본인 API 키로 BYOK 모드를 쓰면 바로 이용할 수 있어요.',
+    quotaConcurrent: '이미 진행 중인 리라이트가 있어요. 끝난 뒤 다시 시도해 주세요.',
+    serviceDown: '리라이트 서비스를 잠시 사용할 수 없어요. 나중에 다시 시도해 주세요.',
+    tooLong: '{tier} 모드 한도({cap}자)를 넘었어요. 줄여서 다시 시도해 주세요.',
+    keyMissing: 'API 모드를 쓰려면 API 키를 입력해 주세요.',
+    stopNote: '중단했어요 — 리라이트가 취소됐어요.',
+    timeoutNote: '서버 응답이 없어 리라이트가 시간 초과됐어요. 다시 시도해 주세요.',
+    netNote: '네트워크 오류: {msg}',
+    retry: '다시 시도',
+    stopLabel: '중단',
   },
   zh: {
-    title: '让文字更<span class="grad">像人写的</span>',
+    title: ['让文字更', '像人写的', ''],
     sub: '粘贴有 AI 味的文字，patina 会自然地改写。支持 KO·EN·ZH·JA。',
     promptPh: '粘贴你想润色的文字…',
     howTitle: '三步搞定',
@@ -126,7 +145,7 @@ const I18N = {
     ctaTitle: '粘贴你的文字试试',
     ctaSub: '把有 AI 味的草稿粘到上面的输入框，无需代码或密钥。',
     ctaBtn: '回到顶部开始 ↑',
-    note: '不改变主张·数字·语气的<br />确定性人性化工具。',
+    note: ['不改变主张·数字·语气的', '确定性人性化工具。'],
     hint: 'patina 只调整措辞，绝不改变主张、数字或因果。本演示通过本地 CLI 改写，MPS/fidelity 为预览值。',
     chatPh: '继续润色…  (Enter 发送 · Shift+Enter 换行)',
     newchat: '新对话',
@@ -135,9 +154,18 @@ const I18N = {
     failNote: '改写失败。请重试，或检查模式 / 密钥。',
     quotaDaily: '今天的免费额度已用完。请明天再试，或切换到 BYOK 模式使用自己的 API 密钥，即可无限制使用。',
     quotaHourly: '免费额度暂时已满。请稍后再试，或使用 BYOK 模式和自己的 API 密钥。',
+    quotaConcurrent: '已有一个改写正在进行。请等它完成后再试。',
+    serviceDown: '改写服务暂时不可用，请稍后再试。',
+    tooLong: '文字超过 {tier} 模式的 {cap} 字上限。请缩短后重试。',
+    keyMissing: '使用 API 模式请先输入 API 密钥。',
+    stopNote: '已停止 — 改写已取消。',
+    timeoutNote: '服务器无响应，改写超时。请重试。',
+    netNote: '网络错误：{msg}',
+    retry: '重试',
+    stopLabel: '停止',
   },
   ja: {
-    title: 'AIっぽさを消して、<span class="grad">自然に</span>',
+    title: ['AIっぽさを消して、', '自然に', ''],
     sub: 'AIっぽい文章を貼り付けると、patinaが自然に書き換えます。KO·EN·ZH·JA対応。',
     promptPh: '整えたい文章を貼り付けてください…',
     howTitle: '3ステップで完了',
@@ -155,7 +183,7 @@ const I18N = {
     ctaTitle: '自分の文章で試す',
     ctaSub: 'AIっぽい下書きを上の入力欄に貼るだけ。コードも鍵も不要。',
     ctaBtn: '上に戻って始める ↑',
-    note: '主張・数字・トーンを変えない<br />決定論的ヒューマナイザー。',
+    note: ['主張・数字・トーンを変えない', '決定論的ヒューマナイザー。'],
     hint: 'patinaは表現だけを整え、主張・数値・因果は変えません。デモはローカルCLIで書き換え、MPS/fidelityはプレビュー値です。',
     chatPh: 'さらに整える…  (Enter送信 · Shift+Enter改行)',
     newchat: '新しいチャット',
@@ -164,6 +192,15 @@ const I18N = {
     failNote: '書き換えに失敗しました。再試行するか、モード・キーを確認してください。',
     quotaDaily: '本日の無料利用枠を使い切りました。明日また試すか、ご自身のAPIキーでBYOKモードに切り替えると無制限で使えます。',
     quotaHourly: '無料利用枠が一時的にいっぱいです。しばらくして再試行するか、ご自身のAPIキーでBYOKモードをお使いください。',
+    quotaConcurrent: 'すでに実行中の書き換えがあります。完了後にもう一度お試しください。',
+    serviceDown: '書き換えサービスは一時的に利用できません。しばらくしてからお試しください。',
+    tooLong: '{tier}モードの上限（{cap}文字）を超えています。短くしてからお試しください。',
+    keyMissing: 'APIモードを使うにはAPIキーを入力してください。',
+    stopNote: '停止しました — 書き換えはキャンセルされました。',
+    timeoutNote: 'サーバーから応答がなくタイムアウトしました。もう一度お試しください。',
+    netNote: 'ネットワークエラー：{msg}',
+    retry: '再試行',
+    stopLabel: '停止',
   },
 };
 
@@ -565,10 +602,53 @@ function detectLang(text) {
 }
 
 // ---------- unified submit ----------
-async function submit(text) {
+/** In-flight rewrite attempt: { controller, cancelled }. One at a time (busy gate). */
+let active = null;
+
+function i18n() { return I18N[els.lang.value] || I18N.en; }
+function tfmt(template, vars) { return String(template).replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? '')); }
+function tierLabel(tier) { return tier === WEB_TIERS.BYOK ? 'API' : 'Free'; }
+// Error notes are live alerts so assistive tech announces failures.
+function errorNote(text) { const n = el('div', 'error-note', text); n.setAttribute('role', 'alert'); return n; }
+
+function stopActive() {
+  if (active) { active.cancelled = true; active.controller.abort(); }
+}
+
+function inlineErrorNode(source) { return source === 'chat' ? $('#composer-error') : $('#hero-error'); }
+function clearInlineErrors() {
+  document.querySelectorAll('#hero-error, #composer-error, #key-error').forEach((n) => { /** @type {HTMLElement} */ (n).hidden = true; n.textContent = ''; });
+  els.apiKey.classList.remove('is-invalid');
+}
+function showInlineError(node, msg) { if (!node) return; node.textContent = msg; node.hidden = false; }
+
+// Client preflight mirrors the server contract caps (TIER_LIMITS — the server
+// stays the enforcer) so over-cap or key-less requests never hit the network.
+function preflight(clean, source) {
+  const t = i18n();
+  const tier = els.tier.value;
+  const cap = TIER_LIMITS[tier]?.maxChars;
+  if (cap && clean.length > cap) {
+    showInlineError(inlineErrorNode(source), tfmt(t.tooLong, { cap, tier: tierLabel(tier) }));
+    return false;
+  }
+  if (tier === WEB_TIERS.BYOK && els.apiKey.value.trim().length === 0) {
+    els.apiKey.classList.add('is-invalid');
+    showInlineError($('#key-error'), t.keyMissing);
+    showInlineError(inlineErrorNode(source), t.keyMissing);
+    els.apiKey.focus();
+    return false;
+  }
+  return true;
+}
+
+async function submit(text, source = 'hero') {
   if (state.busy) return;
   const clean = String(text || '').trim();
   if (!clean) return;
+
+  clearInlineErrors();
+  if (!preflight(clean, source)) return;
 
   let convo = activeConvo();
   if (!convo) { newConvo(); convo = activeConvo(); }
@@ -586,8 +666,6 @@ async function submit(text) {
   }
 
   showChat();
-  state.busy = true;
-  updateHeroSend(); updateChatSend();
 
   convo.messages.push({ role: 'user', text: clean });
   if (convo.title === 'New chat') { convo.title = clean.slice(0, 40); renderSidebar(); }
@@ -597,13 +675,9 @@ async function submit(text) {
   inner.appendChild(buildUserMsg(clean));
 
   const { node, body, textEl } = buildPatinaMsg();
-  textEl.style.display = 'none';
-  const typing = buildTyping();
-  body.appendChild(typing);
   inner.appendChild(node);
-  scrollDown();
 
-  els.heroInput.value = ''; autoGrow(els.heroInput); updateHeroSend();
+  els.heroInput.value = ''; autoGrow(els.heroInput);
   els.input.value = ''; autoGrow(els.input);
 
   const reqBody = convo.thread.buildRequest({
@@ -611,12 +685,31 @@ async function submit(text) {
     provider: els.provider.value, model: els.model.value, apiKey: els.apiKey.value,
   });
 
+  await runAttempt({ convo, clean, reqBody, body, textEl });
+}
+
+// One streaming attempt against /api/rewrite. Retry re-invokes this with the
+// same request context; the thread only commits on a done frame, so a failed
+// or cancelled attempt never poisons the conversation state.
+async function runAttempt(attempt) {
+  const { convo, clean, reqBody, body, textEl } = attempt;
+  state.busy = true;
+  updateHeroSend(); updateChatSend();
+  els.thread.setAttribute('aria-busy', 'true');
+
+  textEl.style.display = 'none';
+  textEl.classList.remove('msg__text--flagged');
+  const typing = buildTyping();
+  body.appendChild(typing);
+  scrollDown();
+
   let started = false;
   const start = () => { if (started) return; started = true; if (typing.parentElement) typing.remove(); textEl.style.display = ''; textEl.classList.add('streaming'); };
 
   // Fail-safe: if no stream frame arrives for IDLE_MS, abort so the UI never
   // hangs on a stalled backend (issue #541). The timer re-arms on every frame.
   const controller = new AbortController();
+  active = { controller, cancelled: false };
   const IDLE_MS = 60000;
   let timedOut = false;
   let idleTimer;
@@ -647,57 +740,110 @@ async function submit(text) {
     if (!ok) {
       if (typing.parentElement) typing.remove();
       textEl.classList.remove('streaming');
-      const t = I18N[els.lang.value] || I18N.en;
+      const t = i18n();
       const ff = finalFrame || {};
-      const attempt = typeof ff.rewrite === 'string' ? ff.rewrite.trim() : '';
+      const attemptText = typeof ff.rewrite === 'string' ? ff.rewrite.trim() : '';
       const hasScores = ff.mps != null || ff.fidelity != null;
-      if (attempt || hasScores) {
+      if (attemptText || hasScores) {
         // meaning floor not met: show the flagged attempt + scores + a clear warning (auditable, not silently shipped)
         textEl.style.display = '';
-        textEl.textContent = attempt || cleanStream(textEl.textContent);
+        textEl.textContent = attemptText || cleanStream(textEl.textContent);
         textEl.classList.add('msg__text--flagged');
         body.appendChild(buildMeta({ mps: ff.mps, fidelity: ff.fidelity, signals: ff.signals, diff: ff.diff, floorFailed: true }));
-        body.appendChild(el('div', 'error-note', t.floorWarn));
+        body.appendChild(errorNote(t.floorWarn));
       } else {
         textEl.style.display = 'none';
-        if (ff.status === 429) {
-          const hourly = typeof ff.error === 'string' && /hour/i.test(ff.error);
-          body.appendChild(el('div', 'error-note', hourly ? t.quotaHourly : t.quotaDaily));
-        } else {
-          const status = ff.status ? ` (HTTP ${ff.status})` : '';
-          body.appendChild(el('div', 'error-note', t.failNote + status));
-        }
+        body.appendChild(errorNote(failureMessage(classifyRewriteError(ff), ff, t)));
+        addRetry(body, attempt);
       }
     }
   } catch (e) {
     if (typing.parentElement) typing.remove();
     textEl.style.display = ''; textEl.classList.remove('streaming');
-    const msg = timedOut
-      ? 'Rewrite timed out — no response from the server. Please try again.'
-      : `Network error: ${String(e?.message || e)}`;
-    body.appendChild(el('div', 'error-note', msg));
+    const t = i18n();
+    const cancelled = active ? active.cancelled === true : false;
+    const msg = cancelled ? t.stopNote : timedOut ? t.timeoutNote : tfmt(t.netNote, { msg: String(e?.message || e) });
+    body.appendChild(errorNote(msg));
+    if (!cancelled) addRetry(body, attempt);
   } finally {
     clearTimeout(idleTimer);
+    active = null;
     state.busy = false;
+    els.thread.setAttribute('aria-busy', 'false');
     updateHeroSend(); updateChatSend();
     els.input.focus();
   }
 }
 
+// Stable error-kind → localized copy. Classification is centralized in
+// rewrite-client.js#classifyRewriteError (no ad-hoc string matching here).
+function failureMessage(kind, ff, t) {
+  const K = REWRITE_ERROR_KINDS;
+  switch (kind) {
+    case K.QUOTA_DAILY: return t.quotaDaily;
+    case K.QUOTA_HOURLY: return t.quotaHourly;
+    case K.QUOTA_CONCURRENT: return t.quotaConcurrent;
+    case K.IP_UNAVAILABLE:
+    case K.QUOTA_STORAGE:
+    case K.QUOTA_SECRET:
+    case K.SERVICE_UNAVAILABLE: return t.serviceDown;
+    case K.TEXT_TOO_LONG: {
+      const tier = els.tier.value;
+      return tfmt(t.tooLong, { cap: TIER_LIMITS[tier]?.maxChars ?? '', tier: tierLabel(tier) });
+    }
+    default: return t.failNote + (ff.status ? ` (HTTP ${ff.status})` : '');
+  }
+}
+
+// Retry a failed (non-floor) attempt: one resubmission per user activation.
+// Prior error UI is cleared; the thread still only commits on a done frame.
+function addRetry(body, attempt) {
+  const btn = el('button', 'retrybtn', i18n().retry);
+  btn.type = 'button';
+  btn.addEventListener('click', () => {
+    if (state.busy) return; // another attempt is streaming; keep the button for later
+    body.querySelectorAll('.error-note, .retrybtn').forEach((n) => n.remove());
+    runAttempt(attempt);
+  });
+  body.appendChild(btn);
+  scrollDown();
+}
+
 // ---------- composer UX ----------
 function autoGrow(node) { node.style.height = 'auto'; node.style.height = Math.min(node.scrollHeight, 200) + 'px'; }
-function updateHeroSend() { els.heroSend.disabled = state.busy || els.heroInput.value.trim().length === 0; }
-function updateChatSend() { els.send.disabled = state.busy || els.input.value.trim().length === 0; }
+function byokBlocked() { return els.tier.value === WEB_TIERS.BYOK && els.apiKey.value.trim().length === 0; }
+// While streaming, the send buttons become enabled Stop controls (is-stop).
+function syncSendButton(btn, input) {
+  btn.classList.toggle('is-stop', state.busy);
+  btn.setAttribute('aria-label', state.busy ? i18n().stopLabel : 'Send');
+  btn.disabled = state.busy ? false : (input.value.trim().length === 0 || byokBlocked());
+}
+function updateHeroSend() { syncSendButton(els.heroSend, els.heroInput); }
+function updateChatSend() { syncSendButton(els.send, els.input); }
 function scrollDown() { els.thread.scrollTop = els.thread.scrollHeight; }
-function closeMobileSidebar() { els.chat.classList.remove('sidebar-open'); }
+function closeMobileSidebar() { els.chat.classList.remove('sidebar-open'); els.toggleSidebar.setAttribute('aria-expanded', 'false'); }
 
 function applyI18n(lang) {
   const t = I18N[lang] || I18N.en;
   const set = (sel, text) => { const n = document.querySelector(sel); if (n) n.textContent = text; };
-  const setHtml = (sel, html) => { const n = document.querySelector(sel); if (n) n.innerHTML = html; };
-  setHtml('.hero__title', t.title);
+  // Structured copy is rendered via DOM nodes (textContent + createElement), so
+  // localized strings are never parsed as HTML (no innerHTML injection surface).
+  const setTitle = (sel, parts) => {
+    const n = document.querySelector(sel); if (!n) return;
+    n.textContent = parts[0];
+    n.appendChild(el('span', 'grad', parts[1]));
+    if (parts[2]) n.appendChild(document.createTextNode(parts[2]));
+  };
+  const setLines = (sel, lines) => {
+    const n = document.querySelector(sel); if (!n) return;
+    n.textContent = '';
+    lines.forEach((line, i) => { if (i) n.appendChild(document.createElement('br')); n.appendChild(document.createTextNode(line)); });
+  };
+  document.documentElement.lang = lang;
+  setTitle('.hero__title', t.title);
   set('.hero__sub', t.sub);
   els.heroInput.setAttribute('placeholder', t.promptPh);
+  els.heroInput.setAttribute('aria-label', t.promptPh);
   set('.how .sec__title', t.howTitle);
   const stepEls = document.querySelectorAll('.how__steps li');
   t.steps.forEach((s, i) => { const li = stepEls[i]; if (!li) return; const h = li.querySelector('h3'); const p = li.querySelector('p'); if (h) h.textContent = s[0]; if (p) p.textContent = s[1]; });
@@ -716,9 +862,10 @@ function applyI18n(lang) {
   set('.cta__title', t.ctaTitle);
   set('.cta__sub', t.ctaSub);
   set('#cta-start', t.ctaBtn);
-  setHtml('.sidebar__note', t.note);
+  setLines('.sidebar__note', t.note);
   set('.composer__hint', t.hint);
   els.input.setAttribute('placeholder', t.chatPh);
+  els.input.setAttribute('aria-label', t.chatPh);
   const nc = document.querySelector('#new-chat span:last-child'); if (nc) nc.textContent = t.newchat;
   const ex = EXAMPLES.find((e) => e.lang === lang) || EXAMPLES[0];
   const setPreview = (sel, tag, text) => { const n = document.querySelector(sel); if (!n) return; n.textContent = ''; n.appendChild(el('span', 'hp-tag', tag)); n.appendChild(document.createTextNode(text)); };
@@ -729,26 +876,36 @@ function applyI18n(lang) {
 function onLangChange() {
   applyI18n(els.lang.value);
   renderSuggest();
+  // Re-localize stateful button labels (e.g. an active Stop control's aria-label).
+  updateHeroSend(); updateChatSend();
   const convo = activeConvo();
   if (convo && convo.messages.length === 0) convo.thread = createRewriteThread({ lang: els.lang.value });
 }
 
 // ---------- events ----------
-els.heroForm.addEventListener('submit', (e) => { e.preventDefault(); submit(els.heroInput.value); });
+els.heroForm.addEventListener('submit', (e) => { e.preventDefault(); if (state.busy) { stopActive(); return; } submit(els.heroInput.value, 'hero'); });
 els.heroInput.addEventListener('input', () => { autoGrow(els.heroInput); updateHeroSend(); });
-els.heroInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(els.heroInput.value); } });
+els.heroInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!state.busy) submit(els.heroInput.value, 'hero'); } });
 
-els.composer.addEventListener('submit', (e) => { e.preventDefault(); submit(els.input.value); });
+els.composer.addEventListener('submit', (e) => { e.preventDefault(); if (state.busy) { stopActive(); return; } submit(els.input.value, 'chat'); });
 els.input.addEventListener('input', () => { autoGrow(els.input); updateChatSend(); });
-els.input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(els.input.value); } });
+els.input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!state.busy) submit(els.input.value, 'chat'); } });
 
-els.newChat.addEventListener('click', () => { newConvo(); showChat(); els.input.value = ''; autoGrow(els.input); updateChatSend(); closeMobileSidebar(); els.input.focus(); });
-els.toggleSidebar.addEventListener('click', () => { els.chat.classList.toggle('sidebar-open'); });
+els.newChat.addEventListener('click', () => { if (state.busy) stopActive(); newConvo(); showChat(); els.input.value = ''; autoGrow(els.input); updateChatSend(); closeMobileSidebar(); els.input.focus(); });
+els.toggleSidebar.addEventListener('click', () => {
+  const open = els.chat.classList.toggle('sidebar-open');
+  els.toggleSidebar.setAttribute('aria-expanded', String(open));
+});
 els.homeLink.addEventListener('click', (e) => { e.preventDefault(); showLanding(); globalThis.scrollTo({ top: 0, behavior: 'smooth' }); });
 els.ctaStart && els.ctaStart.addEventListener('click', () => { globalThis.scrollTo({ top: 0, behavior: 'smooth' }); els.heroInput.focus(); });
 
 els.lang.addEventListener('change', onLangChange);
-els.tier.addEventListener('change', syncTier);
+els.tier.addEventListener('change', () => { syncTier(); clearInlineErrors(); updateHeroSend(); updateChatSend(); });
+els.apiKey.addEventListener('input', () => {
+  els.apiKey.classList.remove('is-invalid');
+  const ke = $('#key-error'); if (ke) { ke.hidden = true; ke.textContent = ''; }
+  updateHeroSend(); updateChatSend();
+});
 els.provider.addEventListener('change', populateModels);
 
 // ---------- init ----------

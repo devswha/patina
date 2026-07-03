@@ -1,7 +1,7 @@
 // @ts-check
 import { createRateLimiter, createMemoryKv, isProductionPosture } from '../src/rate-limit.js';
 import { createRewriteHandler } from '../src/rewrite-handler.js';
-import { encodeStreamFrame, WEB_TIERS } from '../src/web-rewrite-contract.js';
+import { encodeStreamFrame, QUOTA_REASONS, WEB_TIERS } from '../src/web-rewrite-contract.js';
 import { buildRewriteMetric } from '../src/web-observability.js';
 import { runWebRewriteStream } from '../src/web-rewrite-stream.js';
 
@@ -67,6 +67,13 @@ export function createRestKv(env = {}) {
 }
 
 /**
+ * Default server-side budget for one rewrite stream (provider call + scoring).
+ * Bounds upstream work even when the client stays connected; override with
+ * env.PATINA_WEB_REWRITE_TIMEOUT_MS.
+ */
+const WEB_REWRITE_TIMEOUT_MS = 180_000;
+
+/**
  * @param {{env?: Record<string,string|undefined>, runWebRewriteStreamImpl?: typeof runWebRewriteStream, logger?: {info?: Function, warn?: Function, error?: Function, debug?: Function}, now?: () => number}} [options]
  */
 export function createRewriteApiHandler({ env = /** @type {Record<string,string|undefined>} */ (process.env), runWebRewriteStreamImpl = runWebRewriteStream, logger = console, now = () => Date.now() } = {}) {
@@ -79,7 +86,7 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
       env,
       logger: /** @type {any} */ (logger),
     }),
-    runRewrite: async ({ res, request }) => {
+    runRewrite: async ({ req, res, request }) => {
       // Resolve the effective LLM key server-side: BYOK uses the caller's key;
       // free uses the server's own provider key (never the request, which has
       // no key on the free tier). Fail closed if the free service is unconfigured.
@@ -87,16 +94,36 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
       if (!apiKey) {
         res.statusCode = 503;
         res.setHeader?.('Content-Type', 'application/json');
-        res.end?.(JSON.stringify({ error: 'rewrite service unavailable' }));
+        res.end?.(JSON.stringify({ error: QUOTA_REASONS.SERVICE_UNAVAILABLE }));
         return;
       }
       res.statusCode = 200;
       res.setHeader?.('Content-Type', 'application/x-ndjson');
+      // Server-side cancellation: when the client disconnects mid-stream,
+      // abort provider/scoring work so the upstream request and the free-tier
+      // concurrency slot are released promptly (the handler's finally still
+      // runs releaseConcurrency). 'close' with an unfinished response means a
+      // premature disconnect on Node/Vercel; after a clean end the guard is
+      // false and the abort is skipped. Runtimes whose req/res mocks lack
+      // emitter methods degrade gracefully (optional calls) to the timeout.
+      const controller = new AbortController();
+      const onClose = () => { if (!res.writableEnded) controller.abort(); };
+      res.on?.('close', onClose);
+      req.on?.('aborted', onClose);
+      const envTimeout = Number(env.PATINA_WEB_REWRITE_TIMEOUT_MS);
+      const timeout = Number.isFinite(envTimeout) && envTimeout > 0 ? envTimeout : WEB_REWRITE_TIMEOUT_MS;
       const startedAt = now();
-      await runWebRewriteStreamImpl({
-        request: { ...request, apiKey },
-        emit: (frame) => res.write?.(encodeStreamFrame(frame)),
-      });
+      try {
+        await runWebRewriteStreamImpl({
+          request: { ...request, apiKey },
+          emit: (frame) => res.write?.(encodeStreamFrame(frame)),
+          signal: controller.signal,
+          timeout,
+        });
+      } finally {
+        res.off?.('close', onClose);
+        req.off?.('aborted', onClose);
+      }
       res.end?.();
       // Sanitized observability ONLY: route/tier/provider/model/status/bucketed
       // latency + char count. Never the text, prompt, output, key, or full IP.

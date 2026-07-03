@@ -75,6 +75,51 @@ test('runWebRewriteStream fail-closes floor failures with error and no done', as
   assert.equal(terminal.type, 'error');
   assert.equal(terminal.code, 'floor_failed');
   assert.deepEqual(terminal.failed, ['mps']);
+  // Floor failures keep the flagged attempt auditable: the already-computed
+  // deterministic signals and length diff must ride on the error frame.
+  assert.equal(terminal.rewrite, 'bad rewrite');
+  assert.deepEqual(terminal.mps, { mps: 50 });
+  assert.deepEqual(terminal.fidelity, { fidelity: 95 });
+  assert.equal(terminal.signals.before.text, 'original anchor');
+  assert.equal(terminal.signals.after.text, 'bad rewrite');
+  assert.equal(terminal.diff.beforeChars, 'original anchor'.length);
+  assert.equal(terminal.diff.afterChars, 'bad rewrite'.length);
+  assert.equal(result.signals.after.text, 'bad rewrite');
+  assert.equal(result.diff.afterChars, 'bad rewrite'.length);
+});
+
+test('runWebRewriteStream forwards the abort signal and timeout to the LLM stream and scorers', async () => {
+  const frames = [];
+  const controller = new AbortController();
+  const seen = { stream: null, scorers: [] };
+  const callLLMStream = async ({ signal, timeout, onDelta }) => {
+    seen.stream = { signal, timeout };
+    onDelta('ok');
+    return { text: 'ok text' };
+  };
+  const scoreFns = {
+    scoreMPS: async ({ signal, timeout }) => { seen.scorers.push({ signal, timeout }); return { mps: 95 }; },
+    scoreFidelity: async ({ signal, timeout }) => { seen.scorers.push({ signal, timeout }); return { fidelity: 92 }; },
+    scoreDeterministicSignals: ({ text }) => ({ text }),
+  };
+
+  const result = await runWebRewriteStream({
+    request,
+    callLLMStream,
+    scoreFns,
+    emit: (frame) => frames.push(frame),
+    signal: controller.signal,
+    timeout: 4321,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(seen.stream.signal, controller.signal);
+  assert.equal(seen.stream.timeout, 4321);
+  assert.equal(seen.scorers.length, 2);
+  for (const scorer of seen.scorers) {
+    assert.equal(scorer.signal, controller.signal);
+    assert.equal(scorer.timeout, 4321);
+  }
 });
 
 test('runWebRewriteStream emits stream_failed and no done when transport throws', async () => {
@@ -110,4 +155,29 @@ test('runWebRewriteStream scores refine against request.original, not latest dra
   assert.equal(calls[1][1], 'original anchor');
   assert.notEqual(calls[0][1], request.text);
   assert.equal(frames.at(-1).type, 'done');
+});
+
+test('runWebRewriteStream turns a scoring failure into a terminal redacted error frame (no done, no throw)', async () => {
+  const frames = [];
+  const callLLMStream = async ({ onDelta }) => {
+    onDelta('ok');
+    return { text: 'ok text' };
+  };
+  const scoreFns = {
+    scoreMPS: async () => { throw new Error('scorer aborted sk-secret1234567890'); },
+    scoreFidelity: async () => ({ fidelity: 92 }),
+    scoreDeterministicSignals: ({ text }) => ({ text }),
+  };
+
+  // Must resolve (not reject): a throw here would bubble to the API handler's
+  // JSON 500 and append a non-frame tail to an already-started NDJSON stream.
+  const result = await runWebRewriteStream({ request, callLLMStream, scoreFns, emit: (frame) => frames.push(frame) });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'scoring_failed');
+  assert.equal(frames.some((f) => f.type === 'done'), false);
+  const terminal = frames.at(-1);
+  assert.equal(terminal.type, 'error');
+  assert.equal(terminal.code, 'scoring_failed');
+  assert.doesNotMatch(terminal.error, /sk-secret/);
 });

@@ -19,8 +19,11 @@ function makeReq({ body = undefined, method = 'POST' } = {}) {
 function makeRes() {
   const headers = new Map();
   const chunks = [];
+  /** @type {Map<string, Set<Function>>} */
+  const listeners = new Map();
   return {
     statusCode: 200,
+    writableEnded: false,
     setHeader(name, value) {
       headers.set(String(name).toLowerCase(), String(value));
     },
@@ -33,6 +36,20 @@ function makeRes() {
     end(body = '') {
       if (body) chunks.push(String(body));
       this.ended = true;
+      this.writableEnded = true;
+    },
+    on(event, listener) {
+      if (!listeners.has(event)) listeners.set(event, new Set());
+      listeners.get(event)?.add(listener);
+      return this;
+    },
+    off(event, listener) {
+      listeners.get(event)?.delete(listener);
+      return this;
+    },
+    /** Simulate the runtime 'close' event (premature when writableEnded is false). */
+    emitClose() {
+      for (const listener of listeners.get('close') ?? []) listener();
     },
     chunks,
     ended: false,
@@ -154,4 +171,70 @@ test('REST KV adapter calls Upstash decr and parses the numeric result', async (
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('the api wires an abort signal and a bounded timeout into the stream runner', async () => {
+  const env = { NODE_ENV: 'test', PATINA_FREE_API_KEY: 'sk-server-free-key' };
+  /** @type {any} */
+  let seen;
+  const injected = /** @type {any} */ (async ({ signal, timeout, emit }) => {
+    seen = { signal, timeout };
+    emit({ type: 'done', rewrite: 'ok' });
+  });
+  const api = createRewriteApiHandler({ env, runWebRewriteStreamImpl: injected });
+  const res = makeRes();
+  await api(makeReq(), res);
+  assert.ok(seen, 'runner must be invoked');
+  assert.ok(seen.signal instanceof globalThis.AbortSignal, 'runner must receive an AbortSignal');
+  assert.equal(seen.signal.aborted, false, 'signal must not be pre-aborted');
+  assert.equal(typeof seen.timeout, 'number');
+  assert.ok(seen.timeout > 0, 'timeout must be a positive bound');
+});
+
+test('PATINA_WEB_REWRITE_TIMEOUT_MS overrides the default stream budget', async () => {
+  const env = { NODE_ENV: 'test', PATINA_FREE_API_KEY: 'sk-server-free-key', PATINA_WEB_REWRITE_TIMEOUT_MS: '5000' };
+  let seenTimeout;
+  const injected = /** @type {any} */ (async ({ timeout, emit }) => {
+    seenTimeout = timeout;
+    emit({ type: 'done', rewrite: 'ok' });
+  });
+  const api = createRewriteApiHandler({ env, runWebRewriteStreamImpl: injected });
+  await api(makeReq(), makeRes());
+  assert.equal(seenTimeout, 5000);
+});
+
+test('client disconnect aborts the runner signal and never yields a false done frame', async () => {
+  const env = { NODE_ENV: 'test', PATINA_FREE_API_KEY: 'sk-server-free-key' };
+  const res = makeRes();
+  let abortedInsideRunner = false;
+  const injected = /** @type {any} */ (async ({ signal, emit }) => {
+    emit({ type: 'start', provider: 'openai', model: 'gpt-5.5' });
+    // Simulate the client dropping the connection while the runner is mid-flight.
+    res.emitClose();
+    abortedInsideRunner = signal.aborted;
+    // A signal-honoring runner terminates with an error frame, never done.
+    emit({ type: 'error', code: 'stream_failed', error: 'request aborted' });
+  });
+  const api = createRewriteApiHandler({ env, runWebRewriteStreamImpl: injected });
+  await api(makeReq(), res);
+  assert.equal(abortedInsideRunner, true, 'premature close must abort the runner signal');
+  const lines = res.chunks.join('').trim().split('\n').map((line) => JSON.parse(line));
+  assert.equal(lines.some((f) => f.type === 'done'), false, 'no false success done frame');
+  assert.equal(lines.at(-1)?.type, 'error');
+});
+
+test('a clean close after end does not abort the runner signal', async () => {
+  const env = { NODE_ENV: 'test', PATINA_FREE_API_KEY: 'sk-server-free-key' };
+  const res = makeRes();
+  /** @type {any} */
+  let seenSignal;
+  const injected = /** @type {any} */ (async ({ signal, emit }) => {
+    seenSignal = signal;
+    emit({ type: 'done', rewrite: 'ok' });
+  });
+  const api = createRewriteApiHandler({ env, runWebRewriteStreamImpl: injected });
+  await api(makeReq(), res);
+  // Node also emits 'close' after a normal end; writableEnded guards the abort.
+  res.emitClose();
+  assert.equal(seenSignal.aborted, false, 'clean completion must not abort');
 });

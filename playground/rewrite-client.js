@@ -3,6 +3,7 @@
 
 import {
   CONTEXT_LIMITS,
+  QUOTA_REASONS,
   REWRITE_MODES,
   STREAM_FRAME_TYPES,
   WEB_TIERS,
@@ -203,4 +204,54 @@ export async function streamRewrite({
   const frame = { type: STREAM_FRAME_TYPES.ERROR, error: 'stream ended before done' };
   onError?.(frame);
   return { ok: false, finalFrame: frame };
+}
+
+/**
+ * Stable error kinds for terminal rewrite failures. The UI maps these to
+ * localized copy; server reason strings are recognized in exactly one place
+ * (here) instead of ad-hoc substring checks scattered through the controller.
+ */
+export const REWRITE_ERROR_KINDS = Object.freeze({
+  QUOTA_DAILY: 'quota_daily',
+  QUOTA_HOURLY: 'quota_hourly',
+  QUOTA_CONCURRENT: 'quota_concurrent',
+  IP_UNAVAILABLE: 'ip_unavailable',
+  QUOTA_STORAGE: 'quota_storage',
+  QUOTA_SECRET: 'quota_secret',
+  SERVICE_UNAVAILABLE: 'service_unavailable',
+  TEXT_TOO_LONG: 'text_too_long',
+  FLOOR_FAILED: 'floor_failed',
+  UNKNOWN: 'unknown',
+});
+
+/**
+ * Classify a terminal error frame ({status?, code?, error?}) into a stable
+ * REWRITE_ERROR_KINDS value. Reason strings come from the shared contract's
+ * QUOTA_REASONS (single source of truth for src/rate-limit.js, api/rewrite.js,
+ * and this classifier) plus validateRewriteRequest's 413
+ * 'text exceeds N characters for tier T'. Unrecognized 429s fall back to
+ * QUOTA_HOURLY (retry-shortly copy is the least misleading), unrecognized
+ * 5xx to SERVICE_UNAVAILABLE.
+ *
+ * @param {Record<string, unknown>|null|undefined} frame
+ * @returns {string} one of REWRITE_ERROR_KINDS
+ */
+export function classifyRewriteError(frame) {
+  const K = REWRITE_ERROR_KINDS;
+  const R = QUOTA_REASONS;
+  const status = Number(frame?.status);
+  const code = typeof frame?.code === 'string' ? frame.code : '';
+  const reason = typeof frame?.error === 'string' ? frame.error.toLowerCase() : '';
+  if (code === 'floor_failed') return K.FLOOR_FAILED;
+  if (reason.includes(R.DAILY)) return K.QUOTA_DAILY;
+  if (reason.includes(R.HOURLY)) return K.QUOTA_HOURLY;
+  if (reason.includes(R.CONCURRENT)) return K.QUOTA_CONCURRENT;
+  if (reason.includes(R.IP_UNAVAILABLE)) return K.IP_UNAVAILABLE;
+  if (reason.includes(R.STORAGE_UNAVAILABLE)) return K.QUOTA_STORAGE;
+  if (reason.includes(R.SECRET_UNAVAILABLE)) return K.QUOTA_SECRET;
+  if (reason.includes(R.SERVICE_UNAVAILABLE)) return K.SERVICE_UNAVAILABLE;
+  if (status === 413 || (reason.includes('exceeds') && reason.includes('characters'))) return K.TEXT_TOO_LONG;
+  if (status === 429) return K.QUOTA_HOURLY;
+  if (status === 502 || status === 503 || status === 504) return K.SERVICE_UNAVAILABLE;
+  return K.UNKNOWN;
 }

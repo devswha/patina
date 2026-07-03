@@ -60,9 +60,12 @@ folded into the next minor):
    length-ratio extremes). Rides the persona report JSON (`meaning_proxy`) + gate advisory;
    NO CLI warning, NO exit change in Phase A. Phase B promotion to enforcing = formal 2-round
    ablation (~0 FP on legit rewrites, TP on the broken fixtures) → `source: calibrated`.
-6. **Persona thresholds `source: placeholder`** — churn/persona-match advisory values are
-   observation-informed, not a formal 2-round promotion. Only revisit if churn is ever
-   re-promoted to enforcing (unlikely — it's a surface metric, not meaning).
+6. ~~**Persona thresholds `source: placeholder`**~~ — RESOLVED (keep-as-is, documented).
+   churn/persona-match (and the new meaning-proxy) are advisory-only, so `placeholder` is the
+   honest provenance — a formal 2-round promotion is NOT required to ship an advisory signal.
+   Documented in `docs/ARCHITECTURE.md` (Resolved #4): promotion trigger = any of them made
+   enforcing; procedure = 2-round ablation via `aggregateAblation`/`ablationDecision`
+   (`scripts/persona-ablation.mjs`) → `source: calibrated`.
 
 ### Release / process
 7. **Next release via `dev → main` PR** (CI 6 required checks), NOT the direct-push bypass

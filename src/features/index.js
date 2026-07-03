@@ -1,3 +1,4 @@
+// patina-lane: A (deterministic substrate) — LLM-free. See docs/ARCHITECTURE.md.
 // Top-level analyzer: runs the deterministic stylometry + lexicon signals
 // described in core/stylometry.md and returns a per-paragraph result. This
 // is the in-tree port of the algorithm previously delegated to the LLM via

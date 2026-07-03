@@ -22,15 +22,23 @@ async function captureConsole(fn) {
   const errors = [];
   const originalLog = console.log;
   const originalError = console.error;
+  // main() runs in-process here, so any process.exitCode it sets (e.g. the
+  // persona safety gate on a churny rewrite) would leak into the test runner's
+  // own exit code. Snapshot and restore it, and hand the observed code back.
+  const originalExitCode = process.exitCode;
+  process.exitCode = 0;
   console.log = (...args) => logs.push(args.join(' '));
   console.error = (...args) => errors.push(args.join(' '));
+  let exitCode = 0;
   try {
     await fn();
+    exitCode = Number(process.exitCode) || 0;
   } finally {
     console.log = originalLog;
     console.error = originalError;
+    process.exitCode = originalExitCode;
   }
-  return { logs, errors };
+  return { logs, errors, exitCode };
 }
 
 describe('CLI persona harness', () => {
@@ -40,7 +48,7 @@ describe('CLI persona harness', () => {
     mockApiKeyPath = resolve(keyDir, 'key.txt');
     inputPath = resolve(keyDir, 'ko.txt');
     writeFileSync(mockApiKeyPath, 'test-key\n');
-    writeFileSync(inputPath, '이것은 테스트 문장입니다.');
+    writeFileSync(inputPath, '이것은 2026년에 시작한 테스트 문장입니다.');
   });
 
   after(async () => {
@@ -49,7 +57,7 @@ describe('CLI persona harness', () => {
   });
 
   it('runs --persona preserve with mocked backend and emits JSON persona field', async () => {
-    const { logs } = await captureConsole(() => main([
+    const { logs, exitCode } = await captureConsole(() => main([
       '--persona', 'preserve',
       '--format', 'json',
       '--api-key-file', mockApiKeyPath,
@@ -63,12 +71,19 @@ describe('CLI persona harness', () => {
     assert.equal(payload.persona.id, 'preserve');
     assert.equal(payload.persona.depth, 'style-only');
     assert.equal(payload.persona.thresholds_source, 'placeholder');
+    // The mock output drops the source number "2026", so the deterministic
+    // dropped-numbers safety signal fires: the gate ENFORCES (exit 4) while
+    // still emitting output. High surface churn stays advisory (never blocks).
+    assert.equal(exitCode, 4);
+    assert.ok(payload.persona.gate_result.safetyFailures.includes('numbers'));
+    assert.equal(payload.persona.gate_result.pass, false);
+    assert.ok(payload.persona.gate_result.advisory.includes('churn'));
   });
 
   it('keeps non-Korean no-persona rewrite path without persona gate', async () => {
     const enPath = resolve(keyDir, 'en.txt');
     writeFileSync(enPath, 'This is a test sentence.');
-    const { logs } = await captureConsole(() => main([
+    const { logs, exitCode } = await captureConsole(() => main([
       '--lang', 'en',
       '--format', 'json',
       '--api-key-file', mockApiKeyPath,
@@ -80,5 +95,29 @@ describe('CLI persona harness', () => {
     const payload = JSON.parse(logs.join('\n'));
     assert.equal(payload.mode, 'rewrite');
     assert.equal(payload.persona, null);
+    // No persona gate on the non-Korean path: nothing enforces an exit code.
+    assert.equal(exitCode, 0);
+  });
+
+  it('runs --lang en --persona preserve (multilingual persona axis)', async () => {
+    const enPath = resolve(keyDir, 'en2.txt');
+    writeFileSync(enPath, 'This is a plain test sentence with no numbers.');
+    const { logs, exitCode } = await captureConsole(() => main([
+      '--lang', 'en',
+      '--persona', 'preserve',
+      '--format', 'json',
+      '--api-key-file', mockApiKeyPath,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
+      '--model', 'gpt-5',
+      enPath,
+    ]));
+
+    const payload = JSON.parse(logs.join('\n'));
+    assert.equal(payload.mode, 'rewrite');
+    assert.equal(payload.persona.id, 'preserve');
+    assert.equal(payload.persona.depth, 'style-only');
+    // No source numbers to drop and self-reported MPS/fidelity pass → safety passes.
+    assert.equal(payload.persona.gate_result.pass, true);
+    assert.equal(exitCode, 0);
   });
 });

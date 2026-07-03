@@ -1,3 +1,4 @@
+// patina-lane: B (persona / LLM rewrite) — persona config SSOT. See docs/ARCHITECTURE.md.
 // Persona frontmatter schema + validation (patina.persona.v1).
 //
 // A persona is the single voice-composition config unit (deep-interview R4):

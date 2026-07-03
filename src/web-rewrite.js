@@ -1,4 +1,5 @@
 // @ts-check
+// patina-lane: B (persona / LLM rewrite) — web/hosted rewrite path. See docs/ARCHITECTURE.md.
 import { resolve } from 'node:path';
 import { callLLM as defaultCallLLM } from './api.js';
 import { inputError } from './errors.js';

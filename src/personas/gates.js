@@ -36,33 +36,76 @@ export function editChurn(original, rewritten) {
 }
 
 /**
- * Evaluate persona hard gates.
+ * Evaluate the persona gate.
+ *
+ * Splits into two decisions (see docs/ARCHITECTURE.md, seam #1):
+ *   - SAFETY (enforcing): mps, fidelity, and dropped source numbers — the
+ *     meaning-and-facts signals. A safety failure means meaning may not be
+ *     preserved; the caller enforces it (non-zero exit, non-destructive).
+ *     MPS/fidelity are only enforced when evaluated (a real score is present);
+ *     the deterministic dropped-numbers guard always enforces.
+ *   - ADVISORY (never blocks): personaMatch (voice quality) and churn (surface
+ *     change). Surface churn is NOT a meaning signal — legitimate humanizing
+ *     rewrites churn heavily while preserving meaning — so it warns but never
+ *     fails the gate. Likewise a low voice match warns only.
+ *
+ * `hardFailures` / `pass` reflect SAFETY only. `advisory` carries the non-
+ * blocking signals (personaMatch, churn).
  *
  * @param {object} input Gate inputs.
- * @returns {{pass: boolean, hardFailures: string[], personaMatch: number, mps: number|null, fidelity: number|null, churn: number, mpsEvaluated: boolean, fidelityEvaluated: boolean, thresholdSource: string|null}}
+ * @param {number} [input.personaMatch] Deterministic persona-match score (advisory).
+ * @param {number|null} [input.mps] LLM meaning-preservation score, or null if not evaluated.
+ * @param {number|null} [input.fidelity] LLM fidelity score, or null if not evaluated.
+ * @param {number} [input.churn] Deterministic token churn 0..1.
+ * @param {string[]} [input.droppedNumbers] Source numbers missing from the rewrite (deterministic safety signal).
+ * @param {object} [input.thresholds] Threshold config (snake or camel keyed).
+ * @param {object} [input.persona] Normalized persona (may raise floors).
+ * @returns {{pass: boolean, hardFailures: string[], safetyFailures: string[], advisory: string[], personaMatch: number, personaMatchMin: number, personaMatchEvaluated: boolean, personaMatchPass: boolean, mps: number|null, fidelity: number|null, churn: number, droppedNumbers: string[], mpsEvaluated: boolean, fidelityEvaluated: boolean, thresholdSource: string|null}}
  */
-export function evaluatePersonaGate({ personaMatch, mps, fidelity, churn, thresholds = {}, persona }) {
+export function evaluatePersonaGate({ personaMatch, mps, fidelity, churn, droppedNumbers = [], thresholds = {}, persona }) {
   const mpsFloor = Math.max(persona?.mps?.floor ?? 70, thresholds.mpsFloor ?? thresholds.mps_floor ?? 70);
   const fidelityFloor = Math.max(persona?.fidelity?.floor ?? 70, thresholds.fidelityFloor ?? thresholds.fidelity_floor ?? 70);
   const churnMax = thresholds.churnMax ?? thresholds.churn_max ?? 0.45;
   const personaMatchMin = thresholds.personaMatchMin ?? thresholds.persona_match_min ?? 70;
-  const hardFailures = [];
+  const dropped = Array.isArray(droppedNumbers) ? droppedNumbers.filter(Boolean) : [];
 
   const mpsEvaluated = typeof mps === 'number' && Number.isFinite(mps);
   const fidelityEvaluated = typeof fidelity === 'number' && Number.isFinite(fidelity);
 
-  if (mpsEvaluated && mps < mpsFloor) hardFailures.push('mps');
-  if (fidelityEvaluated && fidelity < fidelityFloor) hardFailures.push('fidelity');
-  if (typeof churn === 'number' && churn > churnMax) hardFailures.push('churn');
-  if (typeof personaMatch === 'number' && personaMatch < personaMatchMin) hardFailures.push('personaMatch');
+  // SAFETY (enforcing): meaning + facts only. Surface churn is NOT a meaning
+  // signal — live KO humanizing rewrites routinely churn 0.5–0.85 while fully
+  // preserving meaning — so it is advisory, not a hard gate (see churn below).
+  const safetyFailures = [];
+  if (mpsEvaluated && mps < mpsFloor) safetyFailures.push('mps');
+  if (fidelityEvaluated && fidelity < fidelityFloor) safetyFailures.push('fidelity');
+  if (dropped.length > 0) safetyFailures.push('numbers');
+
+  // ADVISORY (never blocks): voice-match quality and surface churn. These warn
+  // but do not fail the gate or change the exit code.
+  const personaMatchEvaluated = typeof personaMatch === 'number' && Number.isFinite(personaMatch);
+  const personaMatchPass = !personaMatchEvaluated || personaMatch >= personaMatchMin;
+  const churnEvaluated = typeof churn === 'number' && Number.isFinite(churn);
+  const churnPass = !churnEvaluated || churn <= churnMax;
+  const advisory = [];
+  if (!personaMatchPass) advisory.push('personaMatch');
+  if (!churnPass) advisory.push('churn');
 
   return {
-    pass: hardFailures.length === 0,
-    hardFailures,
+    pass: safetyFailures.length === 0,
+    hardFailures: safetyFailures,
+    safetyFailures,
+    advisory,
+    churnMax,
+    churnEvaluated,
+    churnPass,
     personaMatch,
+    personaMatchMin,
+    personaMatchEvaluated,
+    personaMatchPass,
     mps,
     fidelity,
     churn,
+    droppedNumbers: dropped,
     mpsEvaluated,
     fidelityEvaluated,
     thresholdSource: thresholds.source ?? thresholds.thresholdSource ?? null,

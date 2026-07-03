@@ -36,9 +36,9 @@ test('--persona rejects jargon rewrite policies', () => {
   assertPersonaInputError(['--persona', 'preserve', '--jargon', 'remove', 'draft.md']);
 });
 
-test('--persona rejects non-Korean languages at parsed flag level', () => {
-  for (const lang of ['en', 'zh', 'ja']) {
-    assertPersonaInputError(['--lang', lang, '--persona', 'preserve', 'draft.md']);
+test('--persona now allows all supported languages (multilingual)', () => {
+  for (const lang of ['ko', 'en', 'zh', 'ja']) {
+    assertPersonaAllowed(['--lang', lang, '--persona', 'preserve', 'draft.md']);
   }
 });
 

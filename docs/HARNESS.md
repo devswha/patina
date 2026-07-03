@@ -4,6 +4,11 @@ A map of every measurement, calibration, and gate tool in the repo: what it is,
 whether it is deterministic or LLM-backed, the command, and where the detailed
 docs live. This is an **index** — each tool documents itself in the linked file.
 
+> For the **runtime** axis — which engine lane (deterministic substrate vs
+> persona/LLM) owns each mode and module, and the invariants binding them — see
+> [`docs/ARCHITECTURE.md`](ARCHITECTURE.md). This file is the **tooling** axis
+> (measurement / calibration / gate commands).
+
 Two rules govern everything here:
 
 - **The analysis layer stays deterministic and LLM-free.** `src/features/*`,

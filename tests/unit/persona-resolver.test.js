@@ -9,21 +9,32 @@ import { PatinaCliError } from '../../src/errors.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
 
-test('implicit preserve is not applied outside Korean rewrite', () => {
+test('ko keeps implicit-preserve default; non-ko persona is opt-in', () => {
+  // Non-rewrite mode and preview never resolve a persona.
   assert.equal(resolvePersonaForRun({ parsed: {}, config: {}, mode: 'score', lang: 'ko', repoRoot: REPO_ROOT }), null);
-  assert.equal(resolvePersonaForRun({ parsed: {}, config: {}, mode: 'rewrite', lang: 'en', repoRoot: REPO_ROOT }), null);
   assert.equal(resolvePersonaForRun({ parsed: { preview: true }, config: {}, mode: 'rewrite', lang: 'ko', repoRoot: REPO_ROOT }), null);
+  // ko: a plain rewrite resolves preserve implicitly (back-compat).
+  const ko = resolvePersonaForRun({ parsed: {}, config: {}, mode: 'rewrite', lang: 'ko', repoRoot: REPO_ROOT });
+  assert.equal(ko.id, 'preserve');
+  assert.equal(ko.lang, 'ko');
+  // en/zh/ja: a plain rewrite stays persona-free unless explicitly requested.
+  for (const lang of ['en', 'zh', 'ja']) {
+    assert.equal(resolvePersonaForRun({ parsed: {}, config: {}, mode: 'rewrite', lang, repoRoot: REPO_ROOT }), null, `${lang} no-flag rewrite should be persona-free`);
+  }
 });
 
-test('config persona with non-Korean language is explicit and rejected', () => {
+test('an explicit persona resolves in every supported language', () => {
+  for (const lang of ['ko', 'en', 'zh', 'ja']) {
+    const persona = resolvePersonaForRun({ parsed: { persona: 'preserve' }, config: {}, mode: 'rewrite', lang, repoRoot: REPO_ROOT });
+    assert.equal(persona.id, 'preserve');
+    assert.equal(persona.lang, lang);
+  }
+});
+
+test('a persona id absent from a language library throws an input error', () => {
+  // en ships only `preserve` so far; a KO-only seed id must fail closed, not silently fall back.
   assert.throws(
-    () => resolvePersonaForRun({ parsed: { lang: 'en' }, config: { persona: 'blog-essay' }, mode: 'rewrite', lang: 'en', repoRoot: REPO_ROOT }),
+    () => resolvePersonaForRun({ parsed: { persona: 'blog-essay' }, config: {}, mode: 'rewrite', lang: 'en', repoRoot: REPO_ROOT }),
     (err) => err instanceof PatinaCliError && err.exitCode === 2,
   );
-});
-
-test('Korean rewrite resolves no-flag persona to preserve', () => {
-  const persona = resolvePersonaForRun({ parsed: {}, config: {}, mode: 'rewrite', lang: 'ko', repoRoot: REPO_ROOT });
-  assert.equal(persona.id, 'preserve');
-  assert.equal(persona.lang, 'ko');
 });

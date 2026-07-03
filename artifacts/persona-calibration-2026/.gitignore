@@ -2,3 +2,6 @@
 raw/
 *.private.*
 fixtures*.jsonl
+# Raw synthetic calibration corpora — full generated text, kept local for
+# 고도화 (tuning/reinforcement) only. Tracked siblings here are hash/metadata-only.
+synthetic-*.jsonl

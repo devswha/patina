@@ -98,4 +98,26 @@ describe('CLI persona harness', () => {
     // No persona gate on the non-Korean path: nothing enforces an exit code.
     assert.equal(exitCode, 0);
   });
+
+  it('runs --lang en --persona preserve (multilingual persona axis)', async () => {
+    const enPath = resolve(keyDir, 'en2.txt');
+    writeFileSync(enPath, 'This is a plain test sentence with no numbers.');
+    const { logs, exitCode } = await captureConsole(() => main([
+      '--lang', 'en',
+      '--persona', 'preserve',
+      '--format', 'json',
+      '--api-key-file', mockApiKeyPath,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
+      '--model', 'gpt-5',
+      enPath,
+    ]));
+
+    const payload = JSON.parse(logs.join('\n'));
+    assert.equal(payload.mode, 'rewrite');
+    assert.equal(payload.persona.id, 'preserve');
+    assert.equal(payload.persona.depth, 'style-only');
+    // No source numbers to drop and self-reported MPS/fidelity pass → safety passes.
+    assert.equal(payload.persona.gate_result.pass, true);
+    assert.equal(exitCode, 0);
+  });
 });

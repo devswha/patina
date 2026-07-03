@@ -229,7 +229,7 @@ export function buildPrompt(options) {
   }
 
   if (mode === 'rewrite' && persona) {
-    prompt += formatPersonaDirective(persona, { korean: lang === 'ko' });
+    prompt += formatPersonaDirective(persona, { lang });
     prompt += '\n';
   }
 
@@ -698,7 +698,7 @@ function buildMinimalPrompt({ config, patterns, profile, persona = null, text, t
   }
 
   if (persona) {
-    prompt += formatPersonaDirective(persona, { korean: lang === 'ko' });
+    prompt += formatPersonaDirective(persona, { lang });
     prompt += '\n';
   }
 

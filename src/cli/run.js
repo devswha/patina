@@ -588,19 +588,28 @@ function cancellationError() {
  * cancellation.install();
  */
 
+// Languages with a persona library (personas/{lang}/). Multilingual as of the
+// persona multilang line; each ships at least a `preserve` default.
+const PERSONA_LANGS = new Set(['ko', 'en', 'zh', 'ja']);
+
 export function resolvePersonaForRun({ parsed = {}, config = {}, mode = 'rewrite', lang = 'ko', repoRoot = process.cwd() } = {}) {
   const defaultPreserve = parsed.persona === undefined && config.persona === 'preserve';
   const explicitPersona = parsed.persona !== undefined || (config.persona !== undefined && !defaultPreserve);
   const personaId = parsed.persona ?? config.persona ?? null;
-  const effective = mode === 'rewrite' && !parsed.preview && lang === 'ko';
+  const effective = mode === 'rewrite' && !parsed.preview && PERSONA_LANGS.has(lang);
   if (explicitPersona && !effective) {
     throw inputError(
-      'persona is only supported for Korean rewrite mode',
-      'Persona v1 runs only when the effective mode is rewrite, preview is off, and language is ko.',
-      'Use `patina --lang ko --persona <name> <file>`, or remove the persona setting for this mode/language.'
+      'persona is only supported for rewrite mode',
+      'A persona runs only when the effective mode is rewrite, preview is off, and the language is one of ko, en, zh, ja.',
+      'Use `patina --persona <name> <file>` on a rewrite (drop --score/--audit/--diff/--preview), or remove the persona setting.'
     );
   }
   if (!effective) return null;
+  // Back-compat: ko keeps its implicit-preserve default (a plain `patina` run
+  // resolves preserve). For en/zh/ja the persona axis is opt-in — a plain rewrite
+  // stays persona-free unless the user explicitly asks (--persona / config), so
+  // existing non-ko rewrites are unchanged.
+  if (lang !== 'ko' && !explicitPersona) return null;
   return loadPersona(repoRoot, lang, personaId ?? 'preserve');
 }
 

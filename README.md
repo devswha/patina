@@ -49,6 +49,14 @@ Open **[patina.vibetip.help](https://patina.vibetip.help/)** — paste KO / EN /
 
 ### Agent skill
 
+**Let your coding agent install it** — paste this into Claude Code, Codex CLI, Cursor, Gemini CLI, or any agent:
+
+```text
+Install patina by following https://raw.githubusercontent.com/devswha/patina/main/INSTALLATION.md
+```
+
+The agent fetches [`INSTALLATION.md`](INSTALLATION.md) (written for AI agents) and runs the right install path for your host, then verifies it. Or do it yourself:
+
 **Claude Code — plugin marketplace (no clone, recommended):**
 
 ```text

@@ -69,6 +69,14 @@ CLI transcript は [Demo](docs/DEMO.md) にあります。その他の例は [Be
 
 ### Claude Code または Codex CLI スキルとして
 
+**コーディングエージェントにインストールさせる** — Claude Code、Codex CLI、Cursor、Gemini CLI などに以下を貼り付けてください：
+
+```text
+Install patina by following https://raw.githubusercontent.com/devswha/patina/main/INSTALLATION.md
+```
+
+エージェントが [`INSTALLATION.md`](INSTALLATION.md)（AI エージェント向けガイド）を取得し、ホストに合ったインストール手順を実行して検証します。自分で行う場合：
+
 **Claude Code — プラグインマーケットプレイス（クローン不要・推奨）：**
 
 ```text

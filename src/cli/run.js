@@ -35,6 +35,7 @@ import { resolve } from 'node:path';
 import { loadPersona } from '../personas/loader.js';
 import { evaluatePersonaGate } from '../personas/gates.js';
 import { personaMatchScore } from '../features/persona-match.js';
+import { personaOwnsVoice } from '../personas/compose.js';
 import { pathToFileURL } from 'node:url';
 import { humanizeXliffDocument, resolveUniqueCap } from './xliff.js';
 
@@ -104,6 +105,16 @@ export async function runDefault(parsed, logger) {
     : parsed.score ? 'score'
     : 'rewrite';
   const persona = resolvePersonaForRun({ parsed, config, mode, lang, repoRoot });
+
+  // v6.2 profile-voice retirement: profiles no longer carry voice — the active
+  // persona is the sole voice owner. Warn once when a non-default profile is
+  // used for a rewrite without a voice-owning persona, so users relying on the
+  // old profile voice migrate to a persona (e.g. --persona blog-essay).
+  if (mode === 'rewrite' && parsed.profile && parsed.profile !== 'default' && !personaOwnsVoice(persona)) {
+    logger.warn?.('profile.voice_retired', {
+      message: `[patina] profile "${parsed.profile}" no longer provides voice — profiles are pattern-policy only now. For genre voice use a persona (e.g. patina --lang ${lang} --persona <id> ...); run \`patina persona list --lang ${lang}\`.`,
+    });
+  }
 
   const inputTexts = parsed.preview ? [] : await loadInputs(parsed, logger);
   const timeoutMs = parsed.timeoutMs ?? DEFAULT_BACKEND_TIMEOUT_MS;

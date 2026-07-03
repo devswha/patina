@@ -1,15 +1,8 @@
 ---
 profile: email
 name: 비즈니스 이메일 프로필
-version: 1.0.0
+version: 2.0.0
 scope: 비즈니스 이메일, 공식 서신, 사내 커뮤니케이션
-voice-overrides:
-  first-person: normal          # 1인칭 자연스럽게 사용
-  opinions: reduce              # 의견 표현 절제
-  rhythm-variation: normal      # 리듬 변화 유지
-  humor: reduce                 # 유머 절제 (가벼운 것은 허용)
-  messiness: reduce             # 불완전 구조 절제
-  concrete-emotions: reduce     # 감정 표현 절제
 pattern-overrides:
   ko:
     18: reduce                  # 한자어/공식어 — 이메일에서 중간 수준 격식 허용
@@ -35,13 +28,6 @@ pattern-overrides:
 ## 범위
 
 비즈니스 이메일, 공식 서신, 사내 커뮤니케이션. 마케팅 이메일이나 뉴스레터는 `default` 또는 `blog` 프로필 사용.
-
-## 어조 지침
-
-- **적절한 격식을 유지한다.** 너무 캐주얼하지도, 너무 딱딱하지도 않게.
-- **공손함은 허용한다.** "감사합니다", "확인 부탁드립니다" 등은 이메일 관례. 단 "좋은 질문이십니다!"는 교정 대상.
-- **1인칭은 자연스럽게.** "제가 확인한 바로는", "저희 팀에서는" — 이메일에서 1인칭은 표준.
-- **간결하게 쓴다.** 이메일은 짧을수록 좋다. 불필요한 도입부, 결론 공식은 삭제.
 
 ## 적극 교정 대상
 

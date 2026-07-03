@@ -63,23 +63,25 @@ test('an explicit tone overrides the persona register; the persona keeps its oth
   for (const d of [noTone, withTone, withAuto]) assert.match(d, /CV/);
 });
 
-test('profile voice defers to a voice-owning persona; pattern policy note stays; preserve keeps profile voice', () => {
+test('any active persona (incl preserve) owns voice; profile body is only emitted when no persona is active', () => {
   const profile = loadProfile(REPO_ROOT, 'blog');
-  const blogVoiceMarker = '1인칭을 적극적으로'; // a line unique to the blog profile body
   const withProfile = { ...base, config: { language: 'ko', profile: 'blog' }, profile };
 
-  // A voice-owning persona suppresses the profile's voice body but keeps its
-  // pattern-policy note (the split): persona owns voice, profile owns pattern policy.
-  const voicePersona = loadPersona(REPO_ROOT, 'ko', 'soft-professional');
-  const strictVoice = buildPrompt({ ...withProfile, persona: voicePersona, promptMode: 'strict' });
-  assert.doesNotMatch(strictVoice, new RegExp(blogVoiceMarker));
-  assert.match(strictVoice, /voice guidance defers to the active persona/);
-  const minimalVoice = buildPrompt({ ...withProfile, persona: voicePersona, promptMode: 'minimal' });
-  assert.doesNotMatch(minimalVoice, new RegExp(blogVoiceMarker));
-  assert.match(minimalVoice, /패턴 정책은 적용/);
+  // v6.2: the persona is the SOLE voice owner. Any active persona — a voice
+  // persona (soft-professional) OR the preserve default — suppresses the whole
+  // profile voice body and keeps only the pattern-policy defer note.
+  for (const id of ['soft-professional', 'preserve']) {
+    const persona = loadPersona(REPO_ROOT, 'ko', id);
+    const strict = buildPrompt({ ...withProfile, persona, promptMode: 'strict' });
+    assert.ok(!strict.includes(profile.body), `${id}: profile voice body must not be dumped into the prompt`);
+    assert.match(strict, /voice guidance defers to the active persona/);
+    const minimal = buildPrompt({ ...withProfile, persona, promptMode: 'minimal' });
+    assert.ok(!minimal.includes(profile.body), `${id}: profile body must not be dumped in minimal mode`);
+    assert.match(minimal, /패턴 정책은 적용/);
+  }
 
-  // preserve does NOT own voice → profile voice body still reaches the prompt.
-  const preserve = loadPersona(REPO_ROOT, 'ko', 'preserve');
-  const strictPreserve = buildPrompt({ ...withProfile, persona: preserve, promptMode: 'strict' });
-  assert.match(strictPreserve, new RegExp(blogVoiceMarker));
+  // No persona at all → the profile body still reaches the prompt (non-persona
+  // paths: e.g. a non-ko no-persona rewrite, or non-rewrite modes).
+  const noPersona = buildPrompt({ ...withProfile, persona: null, promptMode: 'strict' });
+  assert.ok(noPersona.includes(profile.body), 'no-persona prompt should still include the profile body');
 });

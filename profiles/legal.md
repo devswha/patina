@@ -1,15 +1,8 @@
 ---
 profile: legal
 name: 법률 문서 프로필
-version: 1.0.0
+version: 2.0.0
 scope: 계약서, 법률 의견서, 판결문, 약관, 법률 보고서
-voice-overrides:
-  first-person: suppress        # 1인칭 억제
-  opinions: suppress            # 의견 억제
-  rhythm-variation: reduce      # 리듬 변화 절제 (법률 문서는 균일한 문체)
-  humor: suppress               # 유머 억제
-  messiness: suppress           # 불완전 구조 억제
-  concrete-emotions: suppress   # 감정 표현 억제
 pattern-overrides:
   ko:
     18: suppress                # 한자어/공식어 — 법률 문서의 표준 어휘
@@ -40,13 +33,6 @@ pattern-overrides:
 ## 범위
 
 계약서, 법률 의견서, 판결문, 약관, 법률 보고서. 법률 블로그나 법률 뉴스 기사는 `default` 또는 `blog` 프로필 사용.
-
-## 어조 지침
-
-- **법률 문서의 격식과 정밀성을 유지한다.** 구어체로 바꾸지 않는다.
-- **관례적 법률 용어를 보존한다.** "전술한", "상기", "본 계약" 등은 교정 대상이 아니다.
-- **수동태와 명사화를 허용한다.** "~에 의하여 정해진다", "~에 관한 사항" 등은 법률 문체.
-- **"~에 있어서"를 허용한다.** 법률에서는 정밀성을 위해 필요한 경우가 많다.
 
 ## 적극 교정 대상
 

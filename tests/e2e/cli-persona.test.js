@@ -154,4 +154,20 @@ describe('CLI persona harness', () => {
     );
     assert.ok(existsSync(libPath), 'natural-ko library seed must still exist after a refused rm');
   });
+
+  it('warns that a non-default profile no longer provides voice when no voice persona is active', async () => {
+    const enPath = resolve(keyDir, 'en-profile.txt');
+    writeFileSync(enPath, 'This is a plain test sentence with no numbers.');
+    const { errors, exitCode } = await captureConsole(() => main([
+      '--lang', 'en',
+      '--profile', 'blog',
+      '--format', 'json',
+      '--api-key-file', mockApiKeyPath,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
+      '--model', 'gpt-5',
+      enPath,
+    ]));
+    assert.equal(exitCode, 0);
+    assert.ok(errors.join('\n').includes('no longer provides voice'), 'expected the profile voice-retirement migration warning');
+  });
 });

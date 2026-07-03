@@ -12,6 +12,23 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## Unreleased
+
+**Persona seeds for en/zh/ja, `persona show|rm|edit`, and profile-voice retirement.**
+
+Semver rationale: minor — additive persona seeds and subcommands plus a profile
+behavior change (profiles are now pattern-policy only). The version bump across
+release-sync surfaces and the `dev → main` release land separately.
+
+### Added
+
+- **Seed voice personas for en/zh/ja**: `personas/en/{natural-en,blog-essay,technical-explainer}.md`, `personas/zh/{natural-zh,blog-essay}.md`, and `personas/ja/{natural-ja,blog-essay}.md`. Non-Korean seeds use only the language-neutral `target_features` set (burstiness CV, MATTR, opener diversity, comma rate, preferred/avoided lexicon density, over-edit churn); the ko-specific register/suffix signals are regression-fenced out in `tests/unit/persona-seed.test.js`. Each seed enforces MPS/fidelity floors ≥70 with `worldview` inactive. `avoid` lists draw from each language's AI-tell lexicon. No `src/features/*` changes.
+- **`patina persona show|rm|edit`**: `show <id>` prints a persona's normalized config (`--json`; the docs-only body is never printed); `rm <id>` deletes only custom personas under `custom/personas/<lang>/` (built-in seeds and `preserve` are protected; `--force` or an interactive confirm required); `edit <id>` is copy-on-edit into custom (`--from-sample`/`--describe` re-derive the voice; `--name` is a lossless rename that preserves every voice block). The loader's path-containment guard (`safePersonaPath`) is reused for all delete/edit path resolution.
+
+### Changed
+
+- **Profiles are now pattern-policy only; the persona is the sole voice owner.** Whenever a persona is active (including the `preserve` default), the profile's voice body is no longer sent to the model — all voice comes from the active persona. The 17 `profiles/*.md` dropped their `voice-overrides` frontmatter and voice-guidance bodies (versions bumped to 2.0.0), keeping scope + `pattern-overrides` + pattern-handling. Register precedence is unchanged (`--tone` > persona > profile). **Deprecation/migration:** a runtime warning fires when a non-default profile is used for a rewrite without a voice-owning persona — for genre voice, use a persona (e.g. `--persona blog-essay`); run `patina persona list`. The persona schema still forbids pattern control.
+
 ## 6.1.0 — 2026-07-03
 
 **Personas grow up: enforcing safety gate, multilingual voices, register/profile precedence, and custom voice authoring.**

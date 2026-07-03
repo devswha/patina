@@ -22,7 +22,7 @@ import { fetchPreviewPage, prepareSnapshotHtml, freezeSnapshotAssets, extractPro
 import { collectImageCandidates, stageOcrImages, ocrStagedImages, describeImage, hasOcrRunnerOverride } from '../ocr.js';
 import { rmSync, readFileSync, mkdirSync } from 'node:fs';
 
-import { verifyRewrite, deterministicMeaningGuard } from '../verify.js';
+import { verifyRewrite, deterministicMeaningGuard, droppedNumbers } from '../verify.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
 import { detectKoreanRegister } from '../features/stylometry.js';
 import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput, writeAtomicUtf8, resolveBatchOutputPath } from './batch.js';
@@ -237,6 +237,9 @@ export async function runDefault(parsed, logger) {
         });
         cancellation.throwIfCanceled();
 
+        // Real MPS/fidelity from --verify's scoring pass, reused by the persona
+        // safety gate so the two meaning checks share one decision (single path).
+        let verifyScores = null;
         if (mode === 'rewrite') {
           // The backend result still carries the [BODY]/[SELF_AUDIT] tags that
           // formatOutput strips for display; verify scoring and the meaning guard
@@ -275,6 +278,7 @@ export async function runDefault(parsed, logger) {
               logger,
             });
             result = verification.text;
+            verifyScores = { mps: verification.mps ?? null, fidelity: verification.fidelity ?? null };
             logger.info('verify.result', {
               message: `[patina] verify: MPS ${verification.mps ?? 'n/a'}, fidelity ${verification.fidelity}${verification.verified ? ' (passed)' : ' (below floor)'}${verification.retried ? ' [retried]' : ''}`,
             });
@@ -307,13 +311,26 @@ export async function runDefault(parsed, logger) {
             lang,
             repoRoot,
             thresholds: config.personas?.thresholds || {},
-            mps: extractNumericMetric(result, rewrittenForPersona, 'mps'),
-            fidelity: extractNumericMetric(result, rewrittenForPersona, 'fidelity'),
+            // Prefer --verify's real scoring pass; fall back to the backend's
+            // self-reported metrics only when verify did not run.
+            mps: verifyScores ? verifyScores.mps : extractNumericMetric(result, rewrittenForPersona, 'mps'),
+            fidelity: verifyScores ? verifyScores.fidelity : extractNumericMetric(result, rewrittenForPersona, 'fidelity'),
           });
-          if (!personaReport.gate_result.pass) {
-            logger.warn('persona.gate_failed', {
-              message: `[patina] persona gate failed: ${personaReport.gate_result.hardFailures.join(', ') || 'unknown'}`,
+          const gate = personaReport.gate_result;
+          if (!gate.pass) {
+            // SAFETY failure: meaning may not be preserved. Enforce with a
+            // non-zero exit (catchable in CI/automation) but stay non-destructive
+            // — the rewrite is still emitted for the user to review.
+            logger.warn('persona.safety_gate_failed', {
+              message: `[patina] persona safety gate failed: ${gate.safetyFailures.join(', ') || 'unknown'} — meaning may have drifted; review before publishing.`,
               persona: personaReport,
+            });
+            process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
+          }
+          if (gate.advisory.length > 0) {
+            // ADVISORY: voice-match quality only — never blocks or changes exit.
+            logger.warn('persona.match_low', {
+              message: `[patina] persona match ${gate.personaMatch} below advisory target ${gate.personaMatchMin} (voice quality only; output not blocked).`,
             });
           }
         }
@@ -498,11 +515,14 @@ function buildPersonaReport({ rewritten, original, persona, lang, repoRoot, thre
   const overEditChurn = match.overEditChurn ?? match.deltas?.overEditChurn ?? match.featureVector?.over_edit_churn ?? 0;
   const mpsValue = mps ?? null;
   const fidelityValue = fidelity ?? null;
+  // Deterministic safety signal: source numbers that vanished from the rewrite.
+  const dropped = droppedNumbers(original, rewritten);
   const gate = evaluatePersonaGate({
     personaMatch: match.score,
     mps: mpsValue,
     fidelity: fidelityValue,
     churn: overEditChurn,
+    droppedNumbers: dropped,
     thresholds,
     persona,
   });
@@ -514,6 +534,7 @@ function buildPersonaReport({ rewritten, original, persona, lang, repoRoot, thre
     mps: mpsValue,
     fidelity: fidelityValue,
     over_edit_churn: overEditChurn,
+    dropped_numbers: dropped,
     gate_result: gate,
   };
 }

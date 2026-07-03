@@ -43,11 +43,11 @@ patina --preview https://example.com/post
 
 CLI transcript 见 [Demo](docs/DEMO.md)。更多例子见 [Before/After Gallery](docs/EXAMPLES.md)（[한국어](docs/EXAMPLES_KR.md)）。
 
-## 浏览器审计 — 无需安装
+## 浏览器 playground — 无需安装
 
-**[patina.vibetip.help](https://patina.vibetip.help/)** 可以在浏览器里直接检查 KO / EN / ZH / JA 段落中的 AI 写作信号。
+在 **[patina.vibetip.help](https://patina.vibetip.help/)** 粘贴 KO / EN / ZH / JA 文本，即可在浏览器里获得真实的改写结果，并附带 MPS/忠实度下限校验和确定性 AI 信号（before → after）。
 
-> **仅检测。** playground 只在你的浏览器内运行确定性的文体统计分析。它不会改写文本，不会调用外部 LLM，也不会把 API key 发到服务器。需要实际改写时，请使用上面的 `--preview`、下面的 CLI 或 skill。
+> **改写与评分在服务器端执行。** 免费模式使用服务自己的模型 key（有速率限制）。**API 模式**使用你自己的 key：它只保存在你的浏览器存储中，每次请求经由 patina 服务器转发给你选择的 provider，不会被存储或记录（服务器指标不含文本、prompt、输出、key 或 IP）。
 
 品牌资源：[logo](assets/brand/patina-logo.svg)、[mark](assets/brand/patina-mark.svg)、[icon](assets/brand/patina-icon.svg)、[social preview](assets/social/patina-og.svg)、[before/after card](assets/social/patina-before-after.svg)。使用指南见 [BRANDING.md](docs/BRANDING.md)。
 
@@ -60,7 +60,7 @@ CLI transcript 见 [Demo](docs/DEMO.md)。更多例子见 [Before/After Gallery]
 | **基准报告** | 可复现的 ko/en/zh/ja 可疑区间基准：[overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [2026 rebaseline](docs/benchmarks/rebaseline-latest.md) · [detector comparison](docs/benchmarks/detector-comparison.md) |
 | **误检率** | 2026-05-22 KO+EN 人类对照为 16.0% [11.6–21.7%]（n=200）；不同文体的边界见 [stylometry.md](core/stylometry.md) — [报告误检](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
 | **模式** | rewrite · audit · score · diff · ouroboros |
-| **使用入口** | agent skill · Node CLI · 页面内 preview · 浏览器审计 playground |
+| **使用入口** | agent skill · Node CLI · 页面内 preview · 浏览器 playground（改写 + 评分） |
 | **免费使用** | 已登录的 `codex`、`claude` 或 `gemini` CLI 可直接运行，无需 API 密钥 |
 | **确定性** | 评分公式是确定性的；LLM 严重度判定阶段会有 ±8–10pt 波动（[scoring.md §8](core/scoring.md)） |
 | **许可证** | MIT |

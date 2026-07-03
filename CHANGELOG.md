@@ -28,6 +28,7 @@ Semver rationale: patch | minor | major — explain whether this changes pattern
 ### Changed
 
 - **English README demo is now the web playground**: the hero shows the real English playground flow — paste an AI-sounding announcement, streamed rewrite, MPS 100 / Fidelity 75 badges, and the deterministic AI-signal drop (hot-paragraph ratio 100 → 0) — captured from the real UI with a real LLM backend and real scoring (`assets/demo/patina-playground-en.gif`). The CLI `--preview` animation stays as the secondary demo and the non-English README hero.
+- **Playground copy tells the truth about rewriting and keys**: all four READMEs (and `AGENTS.md`, `docs/COMPARISON.md`, `docs/integrations/static-sites.md`) still described the playground as audit-only that "does not rewrite text, call external LLMs, or send API keys to a server" — stale since the 6.0.1 rewrite overhaul and wrong as a privacy claim. The copy now states what actually happens: rewrites and scoring run server-side; the free tier uses the service's own key (rate-limited, fail-closed); API-mode keys stay in browser storage and pass through the patina server per request to the chosen provider without being stored or logged (sanitized metrics only).
 
 ## 6.0.1 — 2026-06-28
 

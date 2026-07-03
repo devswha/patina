@@ -43,11 +43,11 @@ patina --preview https://example.com/post
 
 CLI transcript は [Demo](docs/DEMO.md) にあります。その他の例は [Before/After Gallery](docs/EXAMPLES.md)（[한국어](docs/EXAMPLES_KR.md)）にあります。
 
-## ブラウザ監査 — インストール不要
+## ブラウザ playground — インストール不要
 
-**[patina.vibetip.help](https://patina.vibetip.help/)** で、KO / EN / ZH / JA 段落の AI っぽい書き方のサインをブラウザ内で確認できます。
+**[patina.vibetip.help](https://patina.vibetip.help/)** に KO / EN / ZH / JA のテキストを貼り付けると、ブラウザ上で実際のリライトを試せます。結果には MPS / 忠実度フロアの検証と、決定的な AI シグナル（before → after）が表示されます。
 
-> **検出専用です。** playground は、決定的な文体統計分析だけをユーザーのブラウザ内で実行します。テキストを書き換えず、外部 LLM を呼び出さず、API キーをサーバーへ送りません。実際に書き換えたい場合は、上の `--preview`、下の CLI、または skill を使ってください。
+> **リライトと採点はサーバー側で実行されます。** 無料モードはサービス自身のモデルキーで動作します（レート制限あり）。**API モード**では自分のキーを使います。キーはブラウザのストレージにのみ保存され、リクエストごとに patina サーバーを経由して選択したプロバイダーへ転送されるだけで、サーバーに保存・ログ記録されることはありません（サーバーメトリクスはテキスト・プロンプト・出力・キー・IP を含みません）。
 
 ブランドリソース: [logo](assets/brand/patina-logo.svg)、[mark](assets/brand/patina-mark.svg)、[icon](assets/brand/patina-icon.svg)、[social preview](assets/social/patina-og.svg)、[before/after card](assets/social/patina-before-after.svg)。利用ガイドラインは [BRANDING.md](docs/BRANDING.md) を参照してください。
 
@@ -60,7 +60,7 @@ CLI transcript は [Demo](docs/DEMO.md) にあります。その他の例は [Be
 | **ベンチマークレポート** | 再現可能な ko/en/zh/ja suspect-zone benchmark: [overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [2026 rebaseline](docs/benchmarks/rebaseline-latest.md) · [detector comparison](docs/benchmarks/detector-comparison.md) |
 | **誤検出率** | 2026-05-22 KO+EN の人間文章コントロールで 16.0% [11.6–21.7%]（n=200）。レジスター別の境界は [stylometry.md](core/stylometry.md) に記録 — [誤検出を報告](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
 | **モード** | rewrite · audit · score · diff · ouroboros |
-| **利用形態** | agent skill · Node CLI · ページ内 preview · ブラウザ監査 playground |
+| **利用形態** | agent skill · Node CLI · ページ内 preview · ブラウザ playground（リライト + スコア） |
 | **無料利用** | ログイン済みの `codex`、`claude`、`gemini` CLI 経由で利用可能 (API キー不要) |
 | **決定性** | スコアリング式は決定的。LLM の severity 判定段階には ±8–10pt の変動があります ([scoring.md §8](core/scoring.md)) |
 | **ライセンス** | MIT |

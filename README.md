@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="https://patina.vibetip.help/"><b>Try the browser audit — no install</b></a>
+  <a href="https://patina.vibetip.help/"><b>Try it in the browser — no install</b></a>
 </p>
 
 patina is a deterministic, pattern-based humanizer for Korean, English, Chinese, and Japanese. It finds AI-sounding phrasing and rewrites it without changing the claim, numbers, polarity, or causation.
@@ -50,9 +50,9 @@ More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPL
 
 ## Quick Start
 
-### Browser audit
+### Browser playground
 
-Open **[patina.vibetip.help](https://patina.vibetip.help/)** to score KO / EN / ZH / JA text in your browser. The playground is audit-only: it does not rewrite text, call external LLMs, or send API keys to a server. For Korean, the browser and CLI may surface `translationese` / `koPostEditese.v1` metadata as editing hints; this metadata is advisory only, is not calibrated score input, and must not drive hot paragraphs, gates, severity, baselines, percentiles, benchmark claims, prompt/rewrite gates, or authorship verdicts.
+Open **[patina.vibetip.help](https://patina.vibetip.help/)** to try patina in your browser: paste KO / EN / ZH / JA text and get a real rewrite gated by the MPS/fidelity floors, with the deterministic AI signal measured before → after. Rewrites and scoring run server-side; the free tier uses the service's own model key (rate-limited). **API mode** uses your own key: it is kept in your browser's storage, forwarded with each request through the patina server to the provider you pick, and never stored or logged (server metrics are sanitized — no text, prompt, output, key, or IP). For Korean, the browser and CLI may surface `translationese` / `koPostEditese.v1` metadata as editing hints; this metadata is advisory only, is not calibrated score input, and must not drive hot paragraphs, gates, severity, baselines, percentiles, benchmark claims, prompt/rewrite gates, or authorship verdicts.
 
 ### Agent skill
 
@@ -117,7 +117,7 @@ prompts for them, and exposes `--timeout-ms`, `--max-concurrency`,
 |---|---|
 | **168 patterns** | 33 rewrite-capable + 9 score-only viral-hook per language (42 each across KO/EN/ZH/JA) — see the full 168-pattern catalog in [PATTERNS.md](docs/PATTERNS.md) |
 | **Modes** | rewrite · verify · audit · score · diff |
-| **Surfaces** | agent skill · Node CLI · in-place preview · browser audit playground |
+| **Surfaces** | agent skill · Node CLI · in-place preview · browser playground (rewrite + score) |
 | **Free usage** | logged-in `codex`, `claude`, or `gemini` CLI can run rewrites without `PATINA_API_KEY` |
 | **Calibration** | 67.3% editing-hotspot catch [63.5–71.0%] across GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro (n=600, KO+EN); 16.0% false positives [11.6–21.7%] on KO+EN human controls (n=200) |
 | **License** | MIT |

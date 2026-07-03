@@ -71,13 +71,20 @@ const DIRECTIVE_LABELS = {
  * @param {object} persona Normalized persona object from validatePersona().
  * @param {object} [options] Formatting options.
  * @param {string} [options.lang] Directive language (defaults to persona.lang, then ko).
+ * @param {object} [options.tone] Resolved tone metadata (resolveTone result). When an
+ *   explicit tone is in effect (tone_source user/auto), the tone block owns register,
+ *   so the persona's own register line is suppressed to avoid a contradiction.
+ *   Precedence: --tone/config tone > persona.register > profile voice.
  * @param {boolean} [options.korean] Deprecated back-compat alias: true → ko, false → en (only when lang is unset).
  * @returns {string} Persona prompt directive.
  */
-export function formatPersonaDirective(persona, { lang, korean } = {}) {
+export function formatPersonaDirective(persona, { lang, tone, korean } = {}) {
   if (!persona) return '';
   const resolvedLang = lang ?? persona.lang ?? (korean === false ? 'en' : 'ko');
   const L = DIRECTIVE_LABELS[resolvedLang] ?? DIRECTIVE_LABELS.en;
+  // An explicit tone (--tone / config tone, or auto inference) owns register; the
+  // persona defers so the directive never contradicts the Tone Resolution block.
+  const toneOwnsRegister = Boolean(tone && (tone.tone_source === 'user' || tone.tone_source === 'auto'));
 
   const lines = [
     L.persona(persona.name ?? persona.id, persona.id, persona.depth),
@@ -125,7 +132,7 @@ export function formatPersonaDirective(persona, { lang, korean } = {}) {
   const sentenceStructure = blocks.sentenceStructure ?? {};
   if (sentenceStructure.active) {
     const parts = [];
-    if (sentenceStructure.register) parts.push(L.register(sentenceStructure.register));
+    if (sentenceStructure.register && !toneOwnsRegister) parts.push(L.register(sentenceStructure.register));
     if (sentenceStructure.sentenceLengthCvTarget) parts.push(L.cv(...sentenceStructure.sentenceLengthCvTarget));
     if (sentenceStructure.avgSentenceEojeolTarget) parts.push(L.avgUnits(...sentenceStructure.avgSentenceEojeolTarget));
     if (sentenceStructure.paragraphSentenceCountTarget) parts.push(L.paraSent(...sentenceStructure.paragraphSentenceCountTarget));

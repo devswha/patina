@@ -783,7 +783,8 @@ LANGUAGE & PROFILE
                           code-comment, commit-message, release-notes, namuwiki
   --tone <name[,name]>    Register: casual, professional, auto. (academic / marketing /
                           narrative / instructional are genres now — use --profile.)
-                          Resolution: --tone > config tone > config profile.
+                          Register precedence: --tone/config tone > persona
+                          register > config profile.
                           Comma list with --preview compares tones as variants
   --persona <name>         Rewrite voice persona for ko/en/zh/ja (default preserve
                           on ko; opt-in on other langs); incompatible with

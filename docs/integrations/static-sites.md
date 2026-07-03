@@ -20,7 +20,7 @@ patina --lang en --backend codex-cli --score --exit-on 30 docs/**/*.md
 
 ## Hosted playground
 
-The public audit-only playground is documented in [playground.md](playground.md) and targets [patina.vibetip.help](https://patina.vibetip.help/). It is a no-build static Vercel app, not a rewrite service.
+The public playground is documented in [playground.md](playground.md) and targets [patina.vibetip.help](https://patina.vibetip.help/). It rewrites and scores text through a same-origin serverless function; for CI-style gating of a static site, use the CLI flows on this page instead.
 
 ## Hugo: JSON data + shortcode
 

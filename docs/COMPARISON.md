@@ -26,9 +26,9 @@ Sources checked on 2026-05-20: [QuillBot Premium](https://quillbot.com/premium),
 **Where patina is stronger:**
 
 - Four languages (KO/EN/ZH/JA), not Korean only.
-- A deterministic, LLM-free analysis engine (`src/features/*`) that runs identically in Node and the browser, so audit/score are reproducible without a model call.
+- A deterministic, LLM-free analysis engine (`src/features/*`) that runs identically in the CLI and the playground's server-side path, so audit/score are reproducible without a model call.
 - A published numeric benchmark layer (precision/recall/F1, low-FPR TPR@1%/5%FPR, ROC/PR, robustness) over labeled fixtures, plus a documented MPS/fidelity rollback contract.
-- Three surfaces: agent skill, standalone npm CLI (`patina-cli`), and an audit-only browser playground.
+- Three surfaces: agent skill, standalone npm CLI (`patina-cli`), and a browser playground with server-side rewrite + scoring.
 
 In short: im-not-ai optimizes for Korean-specialist humanization depth as a Claude Code skill; patina optimizes for multilingual, auditable, reproducible detection and rewrite across skill, CLI, and browser. They are complementary references more than direct substitutes.
 

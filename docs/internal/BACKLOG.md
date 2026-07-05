@@ -1,7 +1,7 @@
 # Backlog — outstanding work
 
 > Maintainer/agent note (see `CONTRIBUTING.md` → Public vs Internal Docs). Not a
-> product contract. Snapshot as of the 6.1.0 persona-hardening line.
+> product contract. Snapshot as of the 6.2.0 release (persona line shipped).
 
 ## Released in 6.1.0 (done — for context)
 
@@ -68,10 +68,14 @@ folded into the next minor):
    (`scripts/persona-ablation.mjs`) → `source: calibrated`.
 
 ### Release / process
-7. **Next release via `dev → main` PR** (CI 6 required checks), NOT the direct-push bypass
-   used for 6.1.0. Version bump across the surfaces `release:check` gates + merge (not squash).
-8. Watch `dev` drift — keep it at/ahead of `main`; if a hotfix lands on `main`, merge
-   `main → dev` immediately (see `docs/WORKFLOW.md`).
+7. ~~**Next release via `dev → main` PR**~~ — DONE. 6.2.0 shipped via the `dev → main`
+   merge PR #588 (merge, not squash; CI required checks green), version bumped across
+   every `release:check` surface (#587), tagged `v6.2.0` → `release.yml` published
+   `patina-cli@6.2.0` + `patina-humanizer@6.2.0` to npm (provenance). GHCR image not
+   published (tag path skips it; workflow_dispatch `publish_ghcr` only).
+8. ~~**Watch `dev` drift**~~ — currently in sync (`dev` == `main` at 6.2.0). Ongoing rule
+   stands: keep `dev` at/ahead of `main`; if a hotfix lands on `main`, merge `main → dev`
+   immediately (see `docs/WORKFLOW.md`).
 
 ### Repo / branding (optional, owner decision)
 9. **Org transfer** — moving `devswha/patina` to a GitHub org would drop the personal-account

@@ -6,7 +6,7 @@
   },
   "functions": {
     "api/rewrite.js": {
-      "includeFiles": "{patterns/**,profiles/**,core/**,lexicon/**,.patina.default.yaml}"
+      "includeFiles": "{patterns/**,profiles/**,personas/**,core/**,lexicon/**,.patina.default.yaml}"
     }
   },
   "rewrites": [

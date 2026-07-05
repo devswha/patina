@@ -54,8 +54,36 @@ test('runWebRewrite first-turn uses real patina assets for every supported langu
     assert.equal(result.rewrite, 'Canned rewrite');
     assert.match(calls[0].prompt, /## Pattern Packs/);
     assert.match(calls[0].prompt, /## Profile/);
-    assert.ok(calls[0].prompt.includes(profileToken), `${lang} prompt missing profile token ${profileToken}`);
+    if (assets.persona) {
+      // ko: persona is the sole voice owner — the profile body is replaced by a
+      // one-line defer and the persona directive is present (voice parity with CLI).
+      assert.match(calls[0].prompt, /voice guidance defers to the active persona/, `${lang} should defer profile voice to the persona`);
+    } else {
+      assert.ok(calls[0].prompt.includes(profileToken), `${lang} prompt missing profile token ${profileToken}`);
+    }
     assert.ok(calls[0].prompt.includes(patternToken), `${lang} prompt missing pattern token ${patternToken}`);
+  }
+});
+
+test('ko web rewrite gives the preserve persona voice ownership (regression: v6.2 profile-voice retirement)', () => {
+  const config = configFor('ko');
+  const assets = loadWebAssets({ repoRoot, lang: 'ko', profile: 'default', config });
+  // Before the fix the web path passed no persona, so a ko rewrite lost ALL voice:
+  // the retired profile body carried none, and no persona directive was emitted.
+  assert.ok(assets.persona, 'ko web assets must resolve a persona');
+  assert.equal(assets.persona.id, 'preserve');
+  const prompt = buildWebRewritePrompt({ request: baseRequest('ko'), config, assets });
+  assert.match(prompt, /voice guidance defers to the active persona/);
+  assert.match(prompt, /페르소나:/); // localized persona directive is present
+});
+
+test('en/zh/ja web rewrite stays persona-free (matches CLI opt-in policy)', () => {
+  for (const lang of ['en', 'zh', 'ja']) {
+    const config = configFor(lang);
+    const assets = loadWebAssets({ repoRoot, lang, profile: 'default', config });
+    assert.equal(assets.persona, null, `${lang} web assets must be persona-free`);
+    const prompt = buildWebRewritePrompt({ request: baseRequest(lang), config, assets });
+    assert.doesNotMatch(prompt, /voice guidance defers to the active persona/);
   }
 });
 

@@ -240,3 +240,34 @@ test('persona dispatch unknown subcommand lists all five subcommands', async () 
     (err) => err instanceof PatinaCliError && /new, list, show, rm, edit/.test(err.message),
   );
 });
+
+test('persona list marks a custom persona that shadows a built-in (#7)', async () => {
+  const repoRoot = tempRepo();
+  // Copy-on-edit natural-ko into custom/ → an active runtime shadow of the built-in.
+  await runPersonaEdit(['natural-ko', '--lang', 'ko', '--name', 'My Natural KO'], { repoRoot, logger: silent });
+  const listing = runPersonaList(['--lang', 'ko', '--format', 'json'], { repoRoot });
+  assert.ok(listing.ko.shadowed.includes('natural-ko'), 'shadowed list surfaces the shadowing id');
+  assert.ok(!listing.ko.custom.includes('natural-ko'), 'shadowing id is not double-listed under custom');
+  assert.ok(listing.ko.builtin.includes('natural-ko'), 'the underlying built-in still exists');
+  const { logs } = captureLog(() => runPersonaList(['--lang', 'ko'], { repoRoot }));
+  assert.match(logs.join('\n'), /natural-ko \(shadows built-in\)/);
+});
+
+test('persona new/edit reject a value-taking flag with a missing value (#8)', async () => {
+  const repoRoot = tempRepo();
+  for (const args of [['x', '--describe'], ['x', '--from-sample'], ['x', '--lang'], ['x', '--backend']]) {
+    await assert.rejects(
+      () => runPersonaNew(args, { repoRoot, logger: silent }),
+      (err) => err instanceof PatinaCliError && err.exitCode === 2,
+      `persona new ${args.join(' ')} must fail closed, not build an empty/undefined persona`,
+    );
+  }
+  await runPersonaNew(['seed', '--lang', 'ko', '--template'], { repoRoot, logger: silent });
+  for (const args of [['seed', '--lang', 'ko', '--name'], ['seed', '--lang', 'ko', '--describe'], ['seed', '--lang', 'ko', '--from-sample']]) {
+    await assert.rejects(
+      () => runPersonaEdit(args, { repoRoot, logger: silent }),
+      (err) => err instanceof PatinaCliError && err.exitCode === 2,
+      `persona edit ${args.join(' ')} must fail closed`,
+    );
+  }
+});

@@ -255,7 +255,7 @@ export function buildPrompt(options) {
   prompt += `Process the following text according to the output mode "${mode}".\n\n`;
 
   if (mode === 'rewrite') {
-    prompt += buildRewriteInstructions(structurePacks, lexicalPacks, { lang, includeSelfAudit, rewriteHeadings });
+    prompt += buildRewriteInstructions(structurePacks, lexicalPacks, { lang, includeSelfAudit, rewriteHeadings, personaActive: Boolean(persona) });
     prompt += buildTransformDirective({ jargon, korean: false });
   } else if (mode === 'diff') {
     prompt += buildDiffInstructions();
@@ -324,7 +324,7 @@ function buildHeadingPreservationRule(lang, rewriteHeadings = false) {
 function buildRewriteInstructions(
   structurePacks,
   lexicalPacks,
-  { includeSelfAudit = true, lang = 'ko', includeKoreanAdvisory = true, rewriteHeadings = false } = {}
+  { includeSelfAudit = true, lang = 'ko', includeKoreanAdvisory = true, rewriteHeadings = false, personaActive = false } = {}
 ) {
   const phaseCount = includeSelfAudit ? 3 : 2;
   let inst = `Follow the ${phaseCount}-Phase pipeline:\n\n`;
@@ -360,8 +360,16 @@ function buildRewriteInstructions(
   inst += `2. Rewrite AI-sounding expressions into natural alternatives\n`;
   inst += `3. Preserve core meaning, claims, polarity, causation, numbers\n`;
   inst += `4. Keep overall length close to the original — the fidelity gate measures character length and full marks require staying within 70-130% of the input. Cut filler and hype freely, but replace it with natural phrasing of similar weight; never compress the text into a summary\n`;
-  inst += `5. Match profile tone\n`;
-  inst += `6. Inject personality per voice guidelines\n`;
+  if (personaActive) {
+    // v6.2: persona is the sole voice owner; the profile contributes pattern
+    // policy only, so the strict instructions must not tell the model to take
+    // tone/personality from the (now voice-retired) profile body.
+    inst += `5. Follow the active persona's voice — the profile contributes pattern policy only\n`;
+    inst += `6. Do not apply profile-body voice guidance while a persona is active\n`;
+  } else {
+    inst += `5. Match profile tone\n`;
+    inst += `6. Inject personality per voice guidelines\n`;
+  }
   inst += `7. Respect blocklist/allowlist and pattern overrides\n\n`;
   const cjkGuard = buildCjkClauseRewriteGuard(lang);
   if (cjkGuard) {

@@ -74,7 +74,7 @@ export async function runWebRewriteStream({
   effectiveConfig.language = request.lang;
   effectiveConfig.profile = effectiveConfig.profile || 'default';
   const profile = effectiveConfig.profile;
-  const assets = loadWebAssets({ repoRoot, lang: request.lang, profile, config: effectiveConfig });
+  const assets = loadWebAssets({ repoRoot, lang: request.lang, profile, config: effectiveConfig, personaId: request.persona });
   const prompt = buildWebRewritePrompt({ request, config: effectiveConfig, assets });
 
   emit({ type: STREAM_FRAME_TYPES.START, provider: request.provider, model: request.model });

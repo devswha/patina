@@ -139,6 +139,20 @@ test('createRewriteThread builds first/refine requests (commit-on-done) and caps
   assert.deepEqual(thread.turns, []);
 });
 
+test('buildRequest carries an opted-in voice persona on every turn and omits it by default', () => {
+  const thread = createRewriteThread({ lang: 'ko' });
+  // No persona -> the field is absent (server picks its default voice).
+  assert.equal('persona' in thread.buildRequest({ text: '원문', tier: WEB_TIERS.FREE }), false);
+  // Opted-in voice -> present on the first turn.
+  const first = thread.buildRequest({ text: '원문', tier: WEB_TIERS.FREE, persona: 'blog-essay' });
+  assert.equal(first.persona, 'blog-essay');
+  // ...and still present after commit (a refine turn keeps the chosen voice).
+  thread.commit({ userText: '원문', assistantText: '다시 쓴 원문' });
+  const refine = thread.buildRequest({ text: '더 짧게', tier: WEB_TIERS.FREE, persona: 'blog-essay' });
+  assert.equal(refine.mode, 'refine');
+  assert.equal(refine.persona, 'blog-essay');
+});
+
 test('classifyRewriteError maps every server reason string to a stable kind', () => {
   const K = REWRITE_ERROR_KINDS;
   // Exact reason strings emitted by src/rate-limit.js, api/rewrite.js, and

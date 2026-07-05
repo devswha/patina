@@ -3,6 +3,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWebConfig, resolveBundleRoot } from '../../src/web-config.js';
 import { buildWebRewritePrompt, loadWebAssets, runWebRewrite } from '../../src/web-rewrite.js';
+import { WEB_PERSONAS } from '../../src/web-rewrite-contract.js';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 const repoRoot = resolveBundleRoot();
 const languages = ['ko', 'en', 'zh', 'ja'];
@@ -85,6 +88,26 @@ test('en/zh/ja web rewrite stays persona-free (matches CLI opt-in policy)', () =
     const prompt = buildWebRewritePrompt({ request: baseRequest(lang), config, assets });
     assert.doesNotMatch(prompt, /voice guidance defers to the active persona/);
   }
+});
+
+test('WEB_PERSONAS offers only bundled personas (curated set stays in sync with personas/)', () => {
+  for (const lang of Object.keys(WEB_PERSONAS)) {
+    for (const p of WEB_PERSONAS[lang]) {
+      const file = join(repoRoot, 'personas', lang, `${p.id}.md`);
+      assert.ok(existsSync(file), `WEB_PERSONAS.${lang} offers ${p.id} but ${file} is missing from the bundle`);
+    }
+  }
+});
+
+test('loadWebAssets resolves an explicit request persona for any language (opt-in voice)', () => {
+  // en defaults to voice-free; an explicit offered voice loads that persona and
+  // gives it voice ownership in the prompt (same as CLI --persona).
+  const config = configFor('en');
+  const assets = loadWebAssets({ repoRoot, lang: 'en', profile: 'default', config, personaId: 'blog-essay' });
+  assert.ok(assets.persona, 'explicit persona must resolve');
+  assert.equal(assets.persona.id, 'blog-essay');
+  const prompt = buildWebRewritePrompt({ request: baseRequest('en', { persona: 'blog-essay' }), config, assets });
+  assert.match(prompt, /voice guidance defers to the active persona/);
 });
 
 test('refine prompt carries a TRUSTED directive outside the data fence, with anchor/draft/history fenced', () => {

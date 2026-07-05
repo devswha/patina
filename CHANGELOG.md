@@ -12,13 +12,11 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
-## Unreleased
+## 6.2.0 — 2026-07-05
 
-**Persona seeds for en/zh/ja, `persona show|rm|edit`, and profile-voice retirement.**
+**Personas everywhere: en/zh/ja seeds, `persona show|rm|edit`, profile-voice retirement, an advisory meaning-floor proxy, and a hosted playground Voice selector.**
 
-Semver rationale: minor — additive persona seeds and subcommands plus a profile
-behavior change (profiles are now pattern-policy only). The version bump across
-release-sync surfaces and the `dev → main` release land separately.
+Semver rationale: minor — additive persona seeds and subcommands, a deterministic advisory meaning proxy, and the playground Voice selector, plus a profile behavior change (profiles are now pattern-policy only; the active persona owns voice). No stable public CLI/API is removed.
 
 ### Added
 

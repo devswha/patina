@@ -142,7 +142,7 @@ test -f ~/.claude/skills/patina/SKILL.md && \
   grep '^version:' ~/.claude/skills/patina/SKILL.md
 ```
 
-Expected output: `version: 6.1.0` (or newer).
+Expected output: `version: 6.2.0` (or newer).
 
 For each host you installed into, also verify the symlink target:
 
@@ -182,7 +182,7 @@ Or through Docker after the GHCR release image exists:
 
 ```bash
 printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
-  | docker run --rm -i -e PATINA_API_KEY ghcr.io/devswha/patina:6.1.0 --lang en --provider openai
+  | docker run --rm -i -e PATINA_API_KEY ghcr.io/devswha/patina:6.2.0 --lang en --provider openai
 ```
 
 The Docker image intentionally does not bake in codex/claude/gemini CLI binaries or logins. Use API-backed providers inside the container, or mount your own authenticated tooling explicitly.

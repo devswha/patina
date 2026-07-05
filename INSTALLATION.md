@@ -142,7 +142,7 @@ test -f ~/.claude/skills/patina/SKILL.md && \
   grep '^version:' ~/.claude/skills/patina/SKILL.md
 ```
 
-Expected output: `version: 3.11.0` (or newer).
+Expected output: `version: 6.2.0` (or newer).
 
 For each host you installed into, also verify the symlink target:
 
@@ -164,12 +164,12 @@ The user can now invoke patina as a slash command in their agent:
 [paste their text here]
 ```
 
-Or with a tone preset (v3.10+):
+Or with a persona or tone (register):
 
 ```
-/patina --tone narrative
+/patina --tone professional
 
-[paste their essay draft]
+[paste their text]
 ```
 
 Or via the standalone Node CLI (only if Step 3 of Path B was run):
@@ -182,7 +182,7 @@ Or through Docker after the GHCR release image exists:
 
 ```bash
 printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
-  | docker run --rm -i -e PATINA_API_KEY ghcr.io/devswha/patina:3.11.0 --lang en --provider openai
+  | docker run --rm -i -e PATINA_API_KEY ghcr.io/devswha/patina:6.2.0 --lang en --provider openai
 ```
 
 The Docker image intentionally does not bake in codex/claude/gemini CLI binaries or logins. Use API-backed providers inside the container, or mount your own authenticated tooling explicitly.

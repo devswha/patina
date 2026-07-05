@@ -6,68 +6,43 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#クイックスタート)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-5.4.0-blue)](CHANGELOG.md)
-
-<p align="center">
-  <img src="assets/demo/patina-preview-en.gif" alt="patina --preview が実際のページで Rewritten、Original、Both、Diff 表示を切り替え、レイアウトを保ったままAIっぽい表現を置き換え、スコアを60から0へ下げるアニメーション" width="820">
-</p>
-
-<p align="center">
-  <a href="https://patina.vibetip.help/"><b>自分の文章で試す — インストール不要</b></a>
-</p>
+[![Version](https://img.shields.io/badge/version-6.2.0-blue)](CHANGELOG.md)
 
 > **AIっぽさだけを落として、意味はそのまま。**
 
-patina は、日本語・韓国語・英語・中国語の文章から AI っぽく見える表現を見つけ、主張・数値・極性・因果関係を変えずに整えます。[Claude Code](https://docs.anthropic.com/en/docs/claude-code)、[Codex CLI](https://github.com/openai/codex)、[Cursor](https://cursor.sh)、OpenCode 向けのスキルとして使うことも、単体の Node.js CLI として実行することもできます。
+<p align="center">
+  <a href="https://patina.vibetip.help/"><b>ブラウザで試す — インストール不要</b></a>
+</p>
 
-中身の見えない言い換えツールでも、AI 検出器を避けるためのツールでもありません。patina は **明確なパターンベースで監査可能**です。何をなぜ変更したか、原文の主張が保たれているかを示します。`codex`、`claude`、`gemini` CLI のいずれかにログイン済みなら、API キーなしでも使えます。
+patina は、韓国語・英語・中国語・日本語向けの、決定的でパターンベースのヒューマナイザーです。AI っぽく聞こえる表現を見つけ、主張・数値・極性・因果関係を変えずに書き換えます。
 
-## デモ：実ページ上でプレビュー
+中身の見えない言い換えツールでも、著者判定ツールでも、AI 検出器を回避するためのツールでもありません。patina は、著者がより自然な文体・監査証跡・意味保持チェックを求める、許容された AI 支援の下書き作成のために作られています。
 
-`--preview` は URL またはローカル `.html` をスナップショット化し、本文ブロックだけを書き換えて元のページ上に戻します。浮動バーで **Rewritten / Original / Both / Diff** を切り替え、各変更ブロックへジャンプし、決定的スコアの before → after を確認できます。
+## デモ
 
-```bash
-patina --preview --lang ja page.html
-patina --preview https://example.com/post
-```
+AI っぽいテキストを **[playground](https://patina.vibetip.help/)** に貼り付けると、patina がその場で書き換えます。意味フロアが書き換えを検証し（ここでは **MPS 100 / Fidelity 75** — 「30 templates」という事実は保たれます）、決定的な AI シグナルを before → after で測定します。hot-paragraph 比率は **100 → 0** に下がり、誇張表現（"thrilled to announce"、"revolutionize your workflow"、"unlock their full potential"）は消えています。
 
-サンプルでは、ページ構造、見出し、CTA、具体的な事実（`30 個のテンプレート`、計画ドキュメント、引き継ぎ）を保ちます。“innovative solution”“transform productivity”“new paradigm” のような包装だけを落とし、ブラックボックスな言い換えではなくインライン diff として残します。
+<p align="center">
+  <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-playground-en.gif" alt="patina playground のアニメーションデモ：AI っぽいテンプレートパックの告知文を web playground に貼り付け、30-templates の事実を保ったまま自然に書き換え、MPS 100・Fidelity 75・100 から 0 への決定的な AI シグナル低下で検証する様子" width="820">
+</p>
 
-**ほかの例**
-
-| 入力タイプ | 落とす AI っぽさ | 保つ内容 |
-|---|---|---|
-| 韓国語マーケティング | “혁신적인 솔루션”, “새로운 패러다임” | Notion テンプレート 30 個、ワークフローに合う、コピー後に編集して使える |
-| 学術文体 | “획기적인 성과”, 広すぎる意義づけ | GitHub プロジェクト 60 個、72h→10m のセットアップ時間、p<0.01、限界の明記 |
-| 技術文書 | “핵심적인 역할”, 未来標準のような誇張 | GPU 管理、1 コマンドでの準備、5× 結果の注意点 |
-
-CLI transcript は [Demo](docs/DEMO.md) にあります。その他の例は [Before/After Gallery](docs/EXAMPLES.md)（[한국어](docs/EXAMPLES_KR.md)）にあります。
-
-## ブラウザ playground — インストール不要
-
-**[patina.vibetip.help](https://patina.vibetip.help/)** に KO / EN / ZH / JA のテキストを貼り付けると、ブラウザ上で実際のリライトを試せます。結果には MPS / 忠実度フロアの検証と、決定的な AI シグナル（before → after）が表示されます。
-
-> **リライトと採点はサーバー側で実行されます。** 無料モードはサービス自身のモデルキーで動作します（レート制限あり）。**API モード**では自分のキーを使います。キーはブラウザのストレージにのみ保存され、リクエストごとに patina サーバーを経由して選択したプロバイダーへ転送されるだけで、サーバーに保存・ログ記録されることはありません（サーバーメトリクスはテキスト・プロンプト・出力・キー・IP を含みません）。
-
-ブランドリソース: [logo](assets/brand/patina-logo.svg)、[mark](assets/brand/patina-mark.svg)、[icon](assets/brand/patina-icon.svg)、[social preview](assets/social/patina-og.svg)、[before/after card](assets/social/patina-before-after.svg)。利用ガイドラインは [BRANDING.md](docs/BRANDING.md) を参照してください。
-
-## 概要
-
-|  |  |
-|---|---|
-| **168 パターン** | 各言語 33 個の書き換え可能パターン + 9 個のスコア専用 viral-hook（KO/EN/ZH/JA 各 42 個） — [PATTERNS.md](docs/PATTERNS.md) |
-| **編集ホットスポット再現率** | 2026-05-22 modern-model rebaseline: GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro で全体の検出率 67.3% [63.5–71.0%]（n=600、韓国語+英語） |
-| **ベンチマークレポート** | 再現可能な ko/en/zh/ja suspect-zone benchmark: [overview](docs/benchmarks/README.md) · [latest.md](docs/benchmarks/latest.md) · [latest.json](docs/benchmarks/latest.json) · [2026 rebaseline](docs/benchmarks/rebaseline-latest.md) · [detector comparison](docs/benchmarks/detector-comparison.md) |
-| **誤検出率** | 2026-05-22 KO+EN の人間文章コントロールで 16.0% [11.6–21.7%]（n=200）。レジスター別の境界は [stylometry.md](core/stylometry.md) に記録 — [誤検出を報告](https://github.com/devswha/patina/issues/new?template=false_positive.yml) |
-| **モード** | rewrite · audit · score · diff · ouroboros |
-| **利用形態** | agent skill · Node CLI · ページ内 preview · ブラウザ playground（リライト + スコア） |
-| **無料利用** | ログイン済みの `codex`、`claude`、`gemini` CLI 経由で利用可能 (API キー不要) |
-| **決定性** | スコアリング式は決定的。LLM の severity 判定段階には ±8–10pt の変動があります ([scoring.md §8](core/scoring.md)) |
-| **ライセンス** | MIT |
+ほかの例：[Before/After Gallery](docs/EXAMPLES.md)（[한국어](docs/EXAMPLES_KR.md)）· [CLI transcript](docs/DEMO.md)。
 
 ## クイックスタート
 
-### Claude Code または Codex CLI スキルとして
+### ブラウザ playground
+
+**[patina.vibetip.help](https://patina.vibetip.help/)** を開き、KO / EN / ZH / JA のテキストを貼り付けると、MPS/忠実度フロアでゲートされた実際の書き換えを、決定的な AI シグナルの before → after 付きで試せます。書き換えと採点はサーバー側で実行され、無料ティアはサービス自身のモデルキーを使います（レート制限あり）。**API モード**では、リクエストごとに自分のキーが patina サーバーを経由して選択したプロバイダーへ転送され、保存もログ記録もされません（メトリクスはサニタイズ済み：テキスト・プロンプト・出力・キー・IP を含みません）。
+
+### エージェントスキル
+
+**コーディングエージェントにインストールさせる** — Claude Code、Codex CLI、Cursor、Gemini CLI などのエージェントに以下を貼り付けてください：
+
+```text
+Install patina by following https://raw.githubusercontent.com/devswha/patina/main/INSTALLATION.md
+```
+
+エージェントが [`INSTALLATION.md`](INSTALLATION.md)（AI エージェント向けに書かれています）を取得し、ホストに合ったインストール手順を実行して検証します。自分で行う場合：
 
 **Claude Code — プラグインマーケットプレイス（クローン不要・推奨）：**
 
@@ -81,77 +56,105 @@ CLI transcript は [Demo](docs/DEMO.md) にあります。その他の例は [Be
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/install.sh | bash
 ```
-インストーラは Claude Code、[Codex CLI](https://github.com/openai/codex)、Cursor、OpenCode に patina をまとめて接続します。インストール時に remote HEAD を具体的な commit に固定します。特定のバージョンに固定したい場合は `PATINA_REF=<tag-or-full-sha>` を設定してください。続いて：
 
-```
-/patina --lang ja
+続いて Claude Code、Codex CLI、Cursor、OpenCode からスキルを実行します：
+
+```text
+/patina --lang en
 
 [ここにテキストを貼り付け]
 ```
 
-特定のトーンで書き換え：
+便利なスキル呼び出し：
 
-```
-/patina --tone narrative
-
-[ここにエッセイの下書きを貼り付け]
-```
-
-適したトーンを自動選択：
-
-```
+```text
+/patina --tone professional
 /patina --tone auto --lang en
-
-[ここにテキストを貼り付け]
 ```
 
-> 注意：v1 では `--tone`（`auto` 含む）は ko/en のみ対応。zh/ja では警告を出し、profile-only モードにフォールバックします。
+### スタンドアロン CLI
 
-### スタンドアロン CLI として
-
-Node.js ≥ 18 が必要です。npm パッケージは公開済みなので、そのまま実行できます：
+Node.js >= 18 が必要です。
 
 ```bash
 npx patina-cli doctor
-npx patina-cli --lang ja input.txt
+npx patina-cli --lang en input.txt
 ```
 
-リポジトリを手元で編集しながら試す場合：
+API キーなしで、ログイン済みのローカルモデル CLI を使う：
 
 ```bash
-git clone https://github.com/devswha/patina.git
-cd patina && npm install && npm link
-patina --lang ja input.txt
+printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
+  | npx patina-cli --lang en --backend codex-cli
 ```
 
-`npm link` 後に stdin でも試せます:
+対応するローカルバックエンド：`codex-cli`、`claude-cli`、`gemini-cli`、`kimi-cli` — patina はバックエンドごとに、ドキュメント化された中で最も強力なデフォルトモデルを渡します。[Authentication](docs/AUTHENTICATION.md)（[한국어](docs/AUTHENTICATION_KR.md)）を参照してください。
+
+大規模な `--batch` 実行には OpenAI 互換の HTTP バックエンドを推奨します。ローカル CLI バックエンドはエージェントランタイムであり、バッチ処理の安全のために `--timeout-ms`、`--max-concurrency`、`--max-retries`、`--max-failures` で保守的に上限が設定されます。
+
+## できること
+
+|  |  |
+|---|---|
+| **168 パターン** | 各言語 33 個の書き換え可能パターン + 9 個のスコア専用 viral-hook（KO/EN/ZH/JA 各 42 個） — 完全な 168 パターンカタログは [PATTERNS.md](docs/PATTERNS.md) を参照 |
+| **モード** | rewrite · verify · audit · score · diff |
+| **利用形態** | agent skill · Node CLI · ページ内 preview · ブラウザ playground（rewrite + score） |
+| **ボイス** | `--persona`（組み込み + 自作、ko/en/zh/ja）· `--tone` レジスター · `--profile` ジャンル — 固定の優先順位で組み合わせ可能 |
+| **無料利用** | ログイン済みの `codex`、`claude`、`gemini` CLI なら `PATINA_API_KEY` なしで書き換え可能 |
+| **キャリブレーション** | GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro で編集ホットスポット再現率 67.3% [63.5–71.0%]（n=600、KO+EN）；KO+EN の人間文章コントロールで誤検出 16.0% [11.6–21.7%]（n=200） |
+| **ライセンス** | MIT |
+
+スコアは誤検出と見逃しを含む編集シグナルであり、著者判定の根拠ではありません。[Ethics](docs/ETHICS.md) を参照してください。
+
+## 主なコマンド
 
 ```bash
-printf '%s\n' 'コーヒーは、世界中の社会的交流を根本的に変えた重要な文化現象として浮上しました。' \
-  | patina --lang ja --backend codex-cli
+patina --lang <ko|en|zh|ja> [mode] [--profile <name>] input.txt
 ```
 
-> 🆓 **API キー不要** — [`codex`](https://github.com/openai/codex)、[`claude`](https://docs.anthropic.com/en/docs/claude-code)、[`gemini`](https://github.com/google-gemini/gemini-cli)、[`kimi`](https://moonshotai.github.io/kimi-cli/) のいずれか CLI にログイン済みであれば使えます。`--backend codex-cli | claude-cli | gemini-cli | kimi-cli` で直接選ぶか、`--backend claude-cli,codex-cli` のように明示的なフォールバック順を指定できます。モデル名で自動ルーティングすることもできます（`--model claude-*` / `--model kimi-*` → 対応 CLI など）。`--model` を省略すると、backend ごとのデフォルトモデル（`gpt-5.5`、`claude-sonnet-4-6`、`gemini-2.5-pro`、`kimi-code/kimi-for-coding`）を渡します。全バックエンドは [AUTHENTICATION.md](docs/AUTHENTICATION.md) を参照してください。
+| コマンド | 目的 |
+|---|---|
+| `patina input.txt` | デフォルトで書き換え |
+| `patina --audit input.txt` | パターン検出のみ |
+| `patina --score input.txt` | 0-100 の AI 類似度スコアを出力 |
+| `patina --score --exit-on 30 input.txt` | `overall > 30` で終了コード `3` を返す CI ゲート |
+| `patina --diff input.txt` | 変更をパターンごとに表示 |
+| `patina --preview page.html` | 保存済み HTML ページ上に書き換えを反映し、トグルとインライン diff を表示 |
+| `patina --verify input.txt` | 書き換え後、1 回のリトライで MPS/忠実度フロアを検査 |
+| `patina --tone auto --lang en input.txt` | KO/EN のトーン軸を推定して適用 |
+| `patina --persona pragmatic-founder input.txt` | 組み込みボイスペルソナで書き換え |
+| `patina persona new my-voice --from-sample past.txt` | 文章サンプルから自分のペルソナを作成 |
+| `patina persona list` | 組み込み + カスタムペルソナを一覧表示 |
+| `patina --format json --quiet input.txt` | スクリプト向け出力 |
+| `patina --batch docs/*.md --outdir cleaned/` | 複数ファイルの一括処理 |
 
-### CI 連携
+`patina --help` は全フラグ一覧を表示します。`patina doctor --json` は LLM 呼び出しなしで Node・backend・tmux・API キーの準備状況を確認します。
 
-Patina には、live model key なしで使える決定的な CI 文書チェックもあります:
+### ペルソナ（ボイス）
+
+**ペルソナ**は再利用できるボイスです — 組み込み（`patina persona list`）か、ソースを触らずに自作できます：
+
+```bash
+patina persona new my-voice --from-sample past-posts.txt   # learn from your writing
+patina persona new my-voice --describe "plain-spoken founder, casual"
+patina --persona my-voice draft.md                          # then reuse it
+```
+
+ko/en/zh/ja で動作し、`--tone`/`--profile` と組み合わせられます（レジスター優先順位は `--tone` > persona > profile）。ペルソナはボイスを形づくるだけで意味フロアを下げることはありません。作成したペルソナは保存時に検証され、安全ゲートは MPS/忠実度 + 数値欠落チェックを引き続き強制します。
+
+## CI
+
+GitHub Actions では、メンテナンス済みのラッパーが手書きのセットアップよりも短く済みます：
 
 ```yaml
-# .github/workflows/patina.yml
 name: Patina prose score
-
 on:
   pull_request:
-    paths:
-      - '**/*.md'
-      - '**/*.mdx'
-
+    paths: ['**/*.md', '**/*.mdx']
 permissions:
   contents: read
   pull-requests: read
   issues: write
-
 jobs:
   patina:
     runs-on: ubuntu-latest
@@ -164,180 +167,56 @@ jobs:
           comment: true
 ```
 
-Docker イメージ公開は npm release 経路とは別に追跡しています。GHCR イメージが公開されるまでは、コンテナが必要なときにローカルイメージをビルドしてください：
-
-```bash
-docker build -t patina:local .
-printf '%s\n' 'コーヒーは重要な文化現象として浮上しました。' \
-  | docker run --rm -i -e PATINA_API_KEY patina:local --lang ja --provider openai
-```
-
-Pre-commit、Husky、Lefthook、Docker、release workflow のメモは [docs/integrations/](docs/integrations/) にあります。
-
-## 正しい使用目的
-
-Patina は、著者が AI 支援で下書きを作ってよい場面で、その下書きを整えるためのツールです。どこをなぜ変えたかを確認しながら、意味を保ったまま文体を自然にします。テキストが「もともと人間によって書かれた」ことを保証するものではなく、学業上の honor code 回避、出版社 disclosure の迂回、盗用の洗浄、detector-bypass 主張に使うべきではありません。スコアは誤検出と見逃しを含む編集シグナルであり、著者判定の根拠ではありません。[ETHICS.md](docs/ETHICS.md) を参照してください。
-
-## モード
-
-```
-patina --lang <ko|en|zh|ja> [モード] [--profile <名前>] input.txt
-```
-
-| フラグ | 機能 |
-|--------|------|
-| *(デフォルト)* | 書き換え |
-| `--audit` | AI パターン検出のみ |
-| `--score` | 0–100 AI 類似度スコア + カテゴリ別内訳 |
-| `--score --exit-on <n>` | CI を厳格に保つ: `overall > n` の場合は終了コード `3` |
-| `--diff` | 変更箇所をパターンごとに表示 |
-| `--verify` | 書き換え後に MPS/fidelity フロアを検査し、保守的に1回リトライ |
-| `--lang <ko\|en\|zh\|ja>` | 言語選択（デフォルト：`ko`） |
-| `--profile <名前>` | トーンプリセット：`blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes`, `namuwiki` |
-| `--tone <名前>` | レジスター（格式）：`casual`, `professional`, `auto`（ジャンルは `--profile` へ） |
-| `--persona <名前>` | ボイスペルソナ（組み込み + 自作；ko/en/zh/ja）。`patina persona new` で作成、`patina persona list` で一覧 |
-| `--batch` | 位置引数をファイル一覧として処理（例：`--batch docs/*.md`） |
-| `--format json\|text\|markdown` | JSON、プレーンテキスト、デフォルト Markdown 出力を選択 |
-| `--quiet` | stderr の状態・警告・進捗ログを抑制 |
-
-全オプションは `patina --help` を参照してください。`patina doctor --json` は LLM 呼び出しなしで Node/backend/tmux/API-key の準備状況を確認します。プロジェクト設定は任意です。単発実行ではフラグを使い、固定のデフォルトが必要な場合だけ `.patina.yaml` を追加してください。
-
-Markdown 中心の開発ワークフローには、開発者向け profile もあります。`code-comment` は inline comments/docstrings を引き締め、`commit-message` は Git 履歴テキストを意図と検証が伝わる形に整えます。`release-notes` は changelog bullets をユーザー影響と移行リスクが見えるリリースノートに変えます。`namuwiki` は韓国語専用の wiki 風 profile で、NamuWiki の記事本文をコピーしない license-safe なオリジナルガイドだけを含みます。
-
-### スコア専用パターン
-
-`--score` と `--audit` は、`--rewrite` より少し広い範囲のシグナルを測定します。viral-hook パック（`ko/en/zh/ja-viral-hook`、各9パターン: 数字ショックフック、クリックベイト末尾、出典を飛ばした権威主張、息継ぎに最適化された短文の積み重ね、誇張されたエンゲージメント語彙、偽統計引用、肩書き積み上げ、未来の自分への約束、警句的パンチライン）は**検出専用**です。
-
-これらのシグナルはスコアと監査にだけ現れ、4言語の SNS マーケティングコピーに対するユーザーの直感とベンチマークを揃えるために使います。`--rewrite`/`--diff`/`--ouroboros` は、意図的な修辞であることが多いので対象外です。実例: [`examples/viral-hook/`](examples/viral-hook/)。
-
-### 短文スコアリング補正 (v3.11)
-
-入力が200文字以下、または3段落以下の場合、文体に敏感なカテゴリ（`language`、`style`、`viral-hook`）へ 1.5 倍の重みを適用し、単一段落の声色変化もスコアに反映されるようにします。case-04 では、長文向けの式がこれらを過小評価していたことが確認されました。
-
-### セルフ監査の分離 (v3.11)
-
-rewrite モードでは、モデルは `[BODY]`/`[/BODY]` ブロックを囲む `[SELF_AUDIT]`/`[/SELF_AUDIT]` タグの中にセルフ監査メモを出力します。patina はユーザーに表示する前に監査部分を取り除くため、出力はクリーンです。以前のバージョンでは "남아 있는 AI 티" や "Phase 3" のような前置きがユーザー向けテキストに漏れることがありました。
-
-### 機械可読出力と終了コード
-
-`--format json` は、すべてのモードを `overall`、`categories[]`、`tone`、`mps`、`gateResult`、クリーンな `output` 本文を含む安定した JSON envelope で包みます。`--quiet` は stdout だけ欲しいスクリプトのために状態・警告・進捗ログを隠します。`--format markdown` がデフォルトで、`--format text` は YAML tone footer なしのユーザー向け本文だけを残します。終了コードは [EXIT-CODES.md](docs/EXIT-CODES.md) にまとまっています: `0` success、`1` runtime/backend、`2` input/usage、`3` score gate exceeded。
-
-### スコア重みドリフト検出 (v3.11)
-
-`--score` 実行時は、モデルが出力した Weight 列を設定の `category-weights` と照合します。モデルが存在しないカテゴリ（例: `discord`）を作ったり、別の数値に置き換えたりした場合、stderr に `[patina]` 警告が出ます。これは観測用であり、weight check 自体はスコアを変更しません。`src/features/*` からの deterministic shadow score も記録され、LLM スコアと 20 点以上ずれた場合は警告し、gate には保守的な方の値を使います。
-
-## トーン
-
-`--tone` はパターン書き換えの上に重ねる、名前付きの声色軸です。優先順位：`--tone` CLI > `tone:` 設定 > `profile:` 設定。
-
-| トーン | 用途 | 主な特徴 |
-|--------|------|----------|
-| `casual` | ブログ、SNS、個人メモ | 短縮形、一人称、絵文字 OK、低い形式度 |
-| `professional` | 業務メール、レポート、ビジネス文書 | 明確で簡潔、形式的だが堅すぎない（legal/medical サブプロファイルは fidelity 下限を強制） |
-| `academic` | 論文、研究要旨、技術分析 | 客観的、根拠重視、一人称は最小限 |
-| `narrative` | 個人エッセイ、回想録、体験談 | 一人称基点、シーンの細部、感情の存在感 |
-| `marketing` | 広告コピー、ランディングページ、製品告知 | 短くインパクトのある文、説得力、CTA 親和 |
-| `instructional` | チュートリアル、ハウツー、技術ドキュメント | 命令形動詞、番号付き構造、推測表現を抑制 |
-
-`--tone auto` はヒューリスティック（語彙 + 構造シグナル）で最適なトーンを自動選択します。zh/ja では `auto` を含む全トーン指定時に警告を出して profile-only モードにフォールバックします。Phase 4.5b ヒューリスティックは ko/en のみ対応のためです。
-
-## ペルソナ（ボイス）
-
-**ペルソナ**は再利用できる「声色」です — 組み込みペルソナ（`patina persona list`）を
-使うか、ソースを触らずに自分で作成できます。
-
-```bash
-patina persona new my-voice --from-sample past-posts.txt   # 自分の文章から学習
-patina persona new my-voice --describe "率直な創業者、カジュアル"
-patina persona new my-voice                                 # 対話式ウィザード
-patina --persona my-voice draft.md                          # 以降は再利用
-```
-
-- **多言語**：`ko`, `en`, `zh`, `ja` で動作（ko は意味保持のデフォルト `preserve` を自動
-  適用、他の言語は明示指定時のみ）。
-- **組み合わせ可能**：`--tone`（レジスター）と `--profile`（ジャンル）を上に重ねられます。
-  競合時のレジスター優先順位は `--tone` > ペルソナ > `--profile`。ボイスを持つペルソナは
-  profile のボイスを譲り、profile のパターンポリシーはそのまま適用されます。
-- **設計上安全**：ペルソナは声色を変えるだけで、意味保持フロアを下げたり検出器を無効化
-  したりはできません。作成したペルソナは保存前に検証され、書き換え時には安全ゲートが
-  MPS/fidelity（および数値欠落）を強制します。ボイス一致・表層チャーン（churn）はブロック
-  ではなく参考シグナルです。
+そのほかの連携：[pre-commit](docs/integrations/pre-commit.md)、[static sites](docs/integrations/static-sites.md)、[Docker](docs/integrations/docker.md)、[release workflow](docs/integrations/release.md)。
 
 ## 仕組み
 
-```
-入力
-  ↓
-[ステップ 4.5]   セマンティックアンカー抽出 (主張、極性、因果、数値)
-[ステップ 4.6]   文体統計プリパス (burstiness CV + MATTR; zh/ja character-token fallback)
-[ステップ 4.7]   AI 語彙オーバーラップ (英 88 / 韓 102 / 中 60 / 日 60 項目)
-[フェーズ 1]     構造スキャン + アンカー検証
-[フェーズ 2]     文章リライト + アンカー検証
-[フェーズ 3]     セルフ監査 (極性、回帰、MPS)
-  ↓
-自然なテキスト（意味検証済み）
+```text
+Input
+  -> semantic anchor extraction (claims, polarity, causation, numbers)
+  -> stylometry + AI-lexicon scan
+  -> pattern-guided rewrite
+  -> self-audit and MPS/fidelity checks
+  -> cleaned text
 ```
 
-各検証ステップで意味のずれが見つかった場合、patina は再試行またはロールバックします。
-
-**キャリブレーション** *(2026-05-22 modern-model rebaseline；方法論は [2026-rebaseline.md](docs/research/2026-rebaseline.md))*：GPT-5.5、Claude Sonnet 4.6、Gemini 2.5 Pro CLI サンプルで、決定的な編集ホットスポット catch は 67.3% [63.5–71.0%]（n=600、韓国語+英語）。人間文章コントロールの誤検出は 16.0% [11.6–21.7%]（n=200）。言語×モデル別の結果は [rebaseline-latest.md](docs/benchmarks/rebaseline-latest.md) に記載しています。これは編集シグナルであり、作者判定でも検出回避の約束でもありません。
+意味がずれた場合、その変更は再試行またはロールバックされます。決定的な解析は `src/features/*` にあり、LLM を用いる書き換えとスコア呼び出しは選択したバックエンドを使います。
 
 ## 設定
 
 ```yaml
 # .patina.default.yaml
-version: "4.0.1"
+version: "6.2.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score
-tone:                     # casual | professional | academic | narrative | marketing | instructional | auto
+tone:                     # casual | professional | auto  (register; genre = profile)
 ```
 
-パターンパックは言語プレフィックスで自動検出されます。作業ディレクトリの `.patina.yaml` がデフォルトを上書きします。検出を拡張するリストキー（`blocklist`、`allowlist`、`skip-patterns`）は default/global/project 設定の間で追加マージされ、その他の配列キーは指定した値で置き換えられます。
+プロジェクトの `.patina.yaml` がデフォルトを上書きします。パターンパックは言語プレフィックスで自動検出されます。追加型のリストキー（`blocklist`、`allowlist`、`skip-patterns`）はマージされ、その他の配列は置き換えられます。
 
 ## ドキュメント
 
-- **[Cookbook](docs/COOKBOOK.md)** — 実用レシピ（Hugo バッチスコアリング、GitHub Actions、誤検出 triage、カスタム profile、pre-commit）
-- **[Glossary](docs/GLOSSARY.md)** — MPS、fidelity、burstiness、MATTR、モードなどの反復用語の短い定義
-- **[Demo](docs/DEMO.md)** — ターミナル transcript と複数ジャンルの before/after スナップショット
-- **[Patterns](docs/PATTERNS.md)** — 168 パターンカタログ
-- **[Authentication](docs/AUTHENTICATION.md)** ([한국어](docs/AUTHENTICATION_KR.md)) — バックエンド、プロバイダ、無料ティア設定
-- **[GitHub Action](docs/integrations/github-action.md)** — live model key なしで PR hotspot コメントと README score badge を生成
-- **[Pre-commit](docs/integrations/pre-commit.md)** — pre-commit、Husky、Lefthook の score-only レシピ
-- **[Static-site Stencils](docs/integrations/static-sites.md)** — Hugo、Astro、Next.js MDX のビルド時スコアリングレシピ
-- **[Docker](docs/integrations/docker.md)** — GHCR イメージの使い方と release tag
-- **[Release workflow](docs/integrations/release.md)** — npm provenance + GHCR 公開チェックリスト
-- **[CLI Contract](docs/CLI.md)** — score gate、JSON/text/Markdown 出力、自動化に安全なインターフェイス
-- **[API Reference](docs/API.md)** — プログラム的な import とスコアリング helper 向けの生成 JSDoc リファレンス
-- **[Flag Parity](docs/FLAG-PARITY.md)** — standalone CLI と `/patina` のオプション対応範囲
-- **[Exit Codes](docs/EXIT-CODES.md)** — CI とエディタ統合向けのプロセス終了コード契約
-- **[Ethics](docs/ETHICS.md)** — 正しい使用目的、禁止用途、disclosure 方針
-- **[FAQ](docs/FAQ.md)** ([한국어](docs/FAQ_KR.md)) — detector-bypass の懸念、MPS、誤検出、貢献の始め方
-- **[False-positive Gallery](docs/FALSE-POSITIVES.md)** — 指摘ではなく編集ヒントとして扱うべき人間らしい文体の例
-- **[Comparison](docs/COMPARISON.md)** — 一般的な paraphraser/humanizer ツールとの事実ベース比較
-- **[Branding](docs/BRANDING.md)** — canonical logo/social assets と OG 設定メモ
-- **[Design](DESIGN.md)** — repo-native SVG と README surface の製品/ブランド基準
-- **[Roadmap](docs/ROADMAP.md)** — 品質、ベンチマーク、プロダクト、コミュニティ、ローンチ優先事項
-- **[Docs Platform RFC](docs/RESEARCH-DOCS-PLATFORM.md)** — Docusaurus、Astro Starlight、MkDocs、GitHub Pages の調査
-- **[Benchmark Reports](docs/benchmarks/README.md)** — チェックインされたベンチマーク成果物、更新コマンド、public-claim gate
-- **[Benchmark Report](docs/benchmarks/latest.md)** — 最新の再現可能な suspect-zone ベンチマーク要約
-- **[Detector Comparison Harness](docs/benchmarks/detector-comparison.md)** — サードパーティ detector のオフライン/手動比較プロトコル
-- **[AI/Human Metrics Research](docs/research/ai-human-metrics.md)** — AI-like writing signals 測定用ベンチマーク設計メモ
-- **[2026 Modern-model Rebaseline](docs/research/2026-rebaseline.md)** — 現在の日付スタンプ付き KO+EN catch/FP claim
-- **[2025+ Re-baseline Plan](docs/research/2025-rebaseline-plan.md)** — より広い model-era claim 向けのプロトコル
-- **[zh/ja Lexicon Calibration](docs/research/zh-ja-lexicon-calibration.md)** — starter lexicon gate と残りの corpus risk
-- **[Launch Copy](docs/social/patina-launch-copy.md)** — launch sequence、score gate、Show HN/Product Hunt/Reddit/X/韓国コミュニティ向け下書き
-- **[Signs of AI Writing](docs/social/signs-of-ai-writing.md)** ([한국어](docs/social/signs-of-ai-writing_KR.md)) — 引用例付きの共有用編集 checklist
-- **[Stylometry](core/stylometry.md)** — burstiness + MATTR + AI 語彙アルゴリズム
-- **[Scoring](core/scoring.md)** — AI 類似度 + 忠実度 + MPS
-- **[Changelog](CHANGELOG.md)** — リリースノートと方法論
-- **[Contributing](CONTRIBUTING.md)** ([한국어](CONTRIBUTING_KR.md)) — パターン提出、誤検出 triage、ベンチマーク fixture、バージョン管理
-- **[Governance](GOVERNANCE.md)** / **[Maintainers](MAINTAINERS.md)** — 軽量なプロジェクト意思決定ルール
+まずはここから：
 
-## 着想元
+- [Cookbook](docs/COOKBOOK.md) — 一般的なレシピとワークフロー
+- [CLI Contract](docs/CLI.md) — フラグ、フォーマット、スコアゲート、終了時の挙動
+- [Authentication](docs/AUTHENTICATION.md) — ローカル CLI バックエンドと API プロバイダー
+- [Patterns](docs/PATTERNS.md) — 完全なパターンカタログ
+- [Subagents & strict flow](docs/agents.md) — 任意の読み取り専用 detector/fidelity/naturalness サブエージェントと `--strict` マルチパスモード
+- [Benchmarks](docs/benchmarks/README.md) · [latest report](docs/benchmarks/latest.md) · [2026 rebaseline](docs/research/2026-rebaseline.md)
+- [Measurement harness](docs/HARNESS.md) — すべてのベンチマーク・キャリブレーション・ゲートツールの索引（signal-impact ablation ハーネスを含む）
+- [FAQ](docs/FAQ.md)（[한국어](docs/FAQ_KR.md)）
+- [Ethics](docs/ETHICS.md)
+- [Contributing](CONTRIBUTING.md)（[한국어](CONTRIBUTING_KR.md)）
+- [Changelog](CHANGELOG.md)
 
-[oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh) のプラグインアーキテクチャ（パターンがプラグイン、プロファイルがテーマ）、[Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)、[blader/humanizer](https://github.com/blader/humanizer)。
+ブランドアセットと利用ルールは [Branding](docs/BRANDING.md) にあります。設計メモは [DESIGN.md](DESIGN.md) にあります。
+
+## 謝辞
+
+[oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh) のプラグインアーキテクチャ、[Wikipedia「Signs of AI writing」](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)、[blader/humanizer](https://github.com/blader/humanizer) に着想を得ています。
 
 ## ライセンス
 
-MIT
+MIT。[LICENSE](LICENSE) と [NOTICE](NOTICE) を参照してください。

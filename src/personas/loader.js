@@ -16,7 +16,7 @@ function assertPersonaId(id) {
   }
 }
 
-function safePersonaPath(baseDir, id) {
+export function safePersonaPath(baseDir, id) {
   const path = resolve(baseDir, `${id}.md`);
   if (!path.startsWith(baseDir + sep)) {
     throw inputError(

@@ -1,15 +1,8 @@
 ---
 profile: academic
 name: 학술 논문/연구 보고서 프로필
-version: 1.0.0
+version: 2.0.0
 scope: 학술 논문, 연구 보고서, 학회 발표 자료, 석/박사 논문
-voice-overrides:
-  first-person: reduce          # 1인칭 사용 억제 (학술 관행)
-  opinions: reduce              # 주관적 의견 억제, 근거 기반 서술
-  rhythm-variation: normal      # 리듬 변화는 유지하되 과하지 않게
-  humor: suppress               # 유머 억제
-  messiness: suppress           # 불완전 구조 억제, 정돈된 서술 유지
-  concrete-emotions: reduce     # 감정 표현 억제
 pattern-overrides:
   ko:
     18: reduce                  # 한자어/공식어 — 학술에서는 자연스러운 수준 허용
@@ -36,14 +29,6 @@ pattern-overrides:
 ## 범위
 
 학술 논문, 연구 보고서, 학회 발표 자료, 석/박사 논문. 과학 커뮤니케이션이나 대중 과학 글은 `default` 프로필 사용.
-
-## 어조 지침
-
-- **격식체를 유지한다.** 학술 문서의 격식 수준은 낮추지 않는다.
-- **1인칭은 신중하게.** "We found that ~" 정도는 허용하되, 과도한 개인적 표현은 억제.
-- **헤징은 허용한다.** "이 결과는 ~를 시사한다"는 학술에서 정당한 표현. 단, 헤지 3개 이상 중첩은 여전히 교정.
-- **수동태는 맥락에 따라.** 방법론 섹션의 수동태는 허용. 결과/논의에서 불필요한 수동태는 교정.
-- **유머, 감정, 여담은 억제.** 학술 문서에서는 부적절.
 
 ## 적극 교정 대상
 

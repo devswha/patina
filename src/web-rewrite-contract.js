@@ -109,6 +109,49 @@ export const PROVIDER_PRESETS = Object.freeze({
 });
 
 /**
+ * Voice personas offered by the hosted playground, per language. Curated genre
+ * voices only: when no persona is chosen the server applies its default (ko ->
+ * preserve; en/zh/ja stay voice-free), so this list is the OPT-IN set. It is the
+ * isomorphic single source of truth — the browser builds the Voice selector from
+ * it, and the server validates a requested id against it before ever touching the
+ * persona loader. Every id MUST ship as personas/<lang>/<id>.md (pinned by a
+ * bundled-assets test in tests/unit/web-rewrite.test.js).
+ */
+export const WEB_PERSONAS = Object.freeze({
+  ko: Object.freeze([
+    Object.freeze({ id: 'natural-ko', label: 'Natural' }),
+    Object.freeze({ id: 'blog-essay', label: 'Blog / essay' }),
+    Object.freeze({ id: 'technical-explainer', label: 'Technical' }),
+    Object.freeze({ id: 'soft-professional', label: 'Soft professional' }),
+    Object.freeze({ id: 'pragmatic-founder', label: 'Pragmatic founder' }),
+  ]),
+  en: Object.freeze([
+    Object.freeze({ id: 'natural-en', label: 'Natural' }),
+    Object.freeze({ id: 'blog-essay', label: 'Blog / essay' }),
+    Object.freeze({ id: 'technical-explainer', label: 'Technical' }),
+  ]),
+  zh: Object.freeze([
+    Object.freeze({ id: 'natural-zh', label: 'Natural' }),
+    Object.freeze({ id: 'blog-essay', label: 'Blog / essay' }),
+  ]),
+  ja: Object.freeze([
+    Object.freeze({ id: 'natural-ja', label: 'Natural' }),
+    Object.freeze({ id: 'blog-essay', label: 'Blog / essay' }),
+  ]),
+});
+
+/**
+ * Whether `id` is a voice persona the hosted surface offers for `lang`.
+ * @param {string} lang
+ * @param {string} id
+ * @returns {boolean}
+ */
+export function isWebPersonaAllowed(lang, id) {
+  const list = WEB_PERSONAS[/** @type {keyof typeof WEB_PERSONAS} */ (lang)];
+  return Array.isArray(list) && list.some((p) => p.id === id);
+}
+
+/**
  * Keys whose values are secrets and must be redacted before logging. Matched by
  * normalized substring (lowercased, separators stripped) so families like
  * apiKey/openaiApiKey/x-api-key, access_token/refreshToken, client_secret, and
@@ -299,6 +342,18 @@ export function validateRewriteRequest(body, env = {}) {
   const normHistory = normalizeHistory(history);
   if (!normHistory.ok) return { ok: false, status: 400, error: 'error' in normHistory ? normHistory.error : 'invalid history' };
 
+  // Optional voice persona. Absent -> the server default (ko preserve; en/zh/ja
+  // voice-free). When present it MUST be one of the offered voices for this
+  // language, so an arbitrary/adversarial id can never reach the persona loader.
+  const personaRaw = /** @type {any} */ (body).persona;
+  let persona;
+  if (personaRaw != null && personaRaw !== '') {
+    if (typeof personaRaw !== 'string' || !isWebPersonaAllowed(lang, personaRaw)) {
+      return { ok: false, status: 400, error: `persona must be one of the offered voices for ${lang}` };
+    }
+    persona = personaRaw;
+  }
+
   return {
     ok: true,
     value: {
@@ -312,6 +367,7 @@ export function validateRewriteRequest(body, env = {}) {
       model: resolved.model,
       baseURL: resolved.baseURL,
       apiKey: tier === WEB_TIERS.BYOK ? apiKey : undefined,
+      persona,
     },
   };
 }

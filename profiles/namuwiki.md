@@ -1,18 +1,10 @@
 ---
 profile: namuwiki
 name: 나무위키풍 프로필
-version: 1.0.0
+version: 2.0.0
 scope: 한국어 위키풍 설명, 인터넷 커뮤니티식 부연, 가벼운 리뷰/해설 글. ko 전용이며 실제 나무위키 문서 텍스트를 포함하지 않는다.
 language: ko
 license-note: Original style description only; do not copy CC BY-NC-SA NamuWiki article text into this repo.
-voice-overrides:
-  first-person: normal
-  opinions: amplify
-  rhythm-variation: amplify
-  humor: allow
-  messiness: amplify
-  concrete-emotions: amplify
-  structure-heavy: reduce
 pattern-overrides:
   ko:
     # current schema: suppress=allow this marker, reduce=only fix overuse, amplify=fix aggressively
@@ -52,15 +44,6 @@ pattern-overrides:
 - 한국어 글(`--lang ko`) 전용.
 - 짧은 제품 해설, 게임/도구 리뷰, 커뮤니티 공지, 가벼운 기술 소개에 적합하다.
 - 논문, 법률/의학 안내, 회사 공식 공지에는 쓰지 않는다. 이런 글은 `academic`, `legal`, `medical`, `formal`이 맞다.
-
-## 어조 지침
-
-- **표제어 설명처럼 시작한다.** 첫 문장은 대상을 짧게 정의하고, 바로 예외나 맥락을 붙인다.
-- **사족을 허용한다.** 괄호 부연, 짧은 딴지, `[* ...]` 형식의 주석을 쓸 수 있다. 단, 사실을 새로 만들지 않는다.
-- **완벽한 중립을 강요하지 않는다.** 원문에 평가가 있으면 살리고, 너무 홍보 문장처럼 보이면 한 발 물러서서 쓴다.
-- **목록과 산문을 섞는다.** 모든 단락을 같은 길이와 같은 구조로 맞추지 않는다.
-- **구어와 문어를 섞는다.** `~다`체를 기본으로 하되, `다만`, `문제는`, `그렇다고` 같은 구어적 연결을 허용한다.
-- **드립은 작게.** 농담은 문장 하나 안에서 끝내고, 핵심 설명을 가리지 않는다.
 
 ## 적극 보존 / 허용
 

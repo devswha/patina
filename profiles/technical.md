@@ -1,15 +1,8 @@
 ---
 profile: technical
 name: 기술 문서/API 문서 프로필
-version: 1.0.0
+version: 2.0.0
 scope: 기술 문서, API 문서, README, 가이드, 튜토리얼, 사양서
-voice-overrides:
-  first-person: suppress        # 1인칭 억제
-  opinions: suppress            # 의견 억제, 사실 기반 서술
-  rhythm-variation: normal      # 리듬 변화 유지
-  humor: suppress               # 유머 억제
-  messiness: suppress           # 불완전 구조 억제
-  concrete-emotions: suppress   # 감정 표현 억제
 pattern-overrides:
   ko:
     14: suppress                # 볼드체 — 기술 문서에서 키워드/파라미터 볼드 표준
@@ -37,13 +30,6 @@ pattern-overrides:
 ## 범위
 
 API 문서, README, 가이드, 튜토리얼, 기술 사양서. 기술 블로그 글은 `blog` 프로필이 더 적합.
-
-## 어조 지침
-
-- **명확하고 직접적으로 쓴다.** 기술 문서의 목표는 정확한 정보 전달.
-- **1인칭은 쓰지 않는다.** "Set the variable" (O), "I set the variable" (X).
-- **의견이나 유머는 넣지 않는다.** 사실과 절차만.
-- **일관된 용어를 유지한다.** 같은 개념을 같은 단어로 부른다 (유의어 순환 금지).
 
 ## 적극 교정 대상
 

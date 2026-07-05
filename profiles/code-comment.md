@@ -1,16 +1,8 @@
 ---
 profile: code-comment
 name: 코드 주석/docstring 프로필
-version: 1.0.0
+version: 2.0.0
 scope: 코드 주석, docstring, JSDoc/TSDoc, inline comment, TODO/FIXME 주석
-voice-overrides:
-  first-person: suppress        # 주석은 작성자가 아니라 코드 동작을 설명한다
-  opinions: suppress            # 평가·감상 대신 invariant/edge case를 적는다
-  rhythm-variation: reduce      # 짧고 일정한 호흡 허용
-  humor: suppress               # 코드 옆 농담은 유지보수 소음이 되기 쉽다
-  messiness: suppress           # 불완전 문장보다 정확한 조건·이유 우선
-  concrete-emotions: suppress   # 감정 표현 비해당
-  specificity: amplify          # 입력, 출력, 예외, 불변조건을 구체화
 pattern-overrides:
   ko:
     7: amplify                  # AI 고빈도 어휘 — 주석에서는 특히 소음

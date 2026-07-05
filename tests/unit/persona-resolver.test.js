@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-import { resolvePersonaForRun } from '../../src/cli/run.js';
+import { resolvePersonaForRun } from '../../src/personas/resolve.js';
 import { PatinaCliError } from '../../src/errors.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,9 +32,10 @@ test('an explicit persona resolves in every supported language', () => {
 });
 
 test('a persona id absent from a language library throws an input error', () => {
-  // en ships only `preserve` so far; a KO-only seed id must fail closed, not silently fall back.
+  // en ships preserve + en seeds (blog-essay/natural-en/technical-explainer); a
+  // KO-only seed id (pragmatic-founder) must fail closed, not silently fall back.
   assert.throws(
-    () => resolvePersonaForRun({ parsed: { persona: 'blog-essay' }, config: {}, mode: 'rewrite', lang: 'en', repoRoot: REPO_ROOT }),
+    () => resolvePersonaForRun({ parsed: { persona: 'pragmatic-founder' }, config: {}, mode: 'rewrite', lang: 'en', repoRoot: REPO_ROOT }),
     (err) => err instanceof PatinaCliError && err.exitCode === 2,
   );
 });

@@ -62,7 +62,7 @@ export function editChurn(original, rewritten) {
  * @param {object} [input.persona] Normalized persona (may raise floors).
  * @returns {{pass: boolean, hardFailures: string[], safetyFailures: string[], advisory: string[], personaMatch: number, personaMatchMin: number, personaMatchEvaluated: boolean, personaMatchPass: boolean, mps: number|null, fidelity: number|null, churn: number, droppedNumbers: string[], mpsEvaluated: boolean, fidelityEvaluated: boolean, thresholdSource: string|null}}
  */
-export function evaluatePersonaGate({ personaMatch, mps, fidelity, churn, droppedNumbers = [], thresholds = {}, persona }) {
+export function evaluatePersonaGate({ personaMatch, mps, fidelity, churn, droppedNumbers = [], thresholds = {}, persona, meaningProxy = null }) {
   const mpsFloor = Math.max(persona?.mps?.floor ?? 70, thresholds.mpsFloor ?? thresholds.mps_floor ?? 70);
   const fidelityFloor = Math.max(persona?.fidelity?.floor ?? 70, thresholds.fidelityFloor ?? thresholds.fidelity_floor ?? 70);
   const churnMax = thresholds.churnMax ?? thresholds.churn_max ?? 0.45;
@@ -89,6 +89,12 @@ export function evaluatePersonaGate({ personaMatch, mps, fidelity, churn, droppe
   const advisory = [];
   if (!personaMatchPass) advisory.push('personaMatch');
   if (!churnPass) advisory.push('churn');
+  // Deterministic meaning-floor proxy (Phase A: ADVISORY only — even a 'fail'
+  // severity never blocks the gate or changes the exit code; enforcement awaits
+  // formal calibration). Numbers stay separately enforced via safetyFailures.
+  const meaningProxyEvaluated = Boolean(meaningProxy) && typeof meaningProxy.severity === 'string';
+  const meaningProxyPass = !meaningProxyEvaluated || meaningProxy.severity === 'pass';
+  if (meaningProxyEvaluated && !meaningProxyPass) advisory.push('meaningProxy');
 
   return {
     pass: safetyFailures.length === 0,
@@ -106,6 +112,9 @@ export function evaluatePersonaGate({ personaMatch, mps, fidelity, churn, droppe
     fidelity,
     churn,
     droppedNumbers: dropped,
+    meaningProxy: meaningProxy ?? null,
+    meaningProxyEvaluated,
+    meaningProxyPass,
     mpsEvaluated,
     fidelityEvaluated,
     thresholdSource: thresholds.source ?? thresholds.thresholdSource ?? null,

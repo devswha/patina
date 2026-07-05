@@ -1,15 +1,8 @@
 ---
 profile: marketing
 name: 마케팅/광고 프로필
-version: 1.0.0
+version: 2.0.0
 scope: 광고 카피, 마케팅 콘텐츠, 제품 소개, 랜딩 페이지, 프레스 릴리즈
-voice-overrides:
-  first-person: normal          # 1인칭 브랜드 목소리에 따라
-  opinions: amplify             # 의견/포지셔닝 강화
-  rhythm-variation: amplify     # 리듬 변화 강화
-  humor: allow                  # 유머 허용 (브랜드에 따라)
-  messiness: reduce             # 불완전 구조 절제 (전문성 유지)
-  concrete-emotions: amplify    # 구체적 감정 호소 강화
 pattern-overrides:
   ko:
     4: reduce                   # 홍보성 언어 — 마케팅에서는 일부 허용, 과도한 것만 교정
@@ -38,13 +31,6 @@ pattern-overrides:
 ## 범위
 
 광고 카피, 마케팅 콘텐츠, 제품 소개, 랜딩 페이지, 프레스 릴리즈. 기업 블로그는 `blog` 프로필이 더 적합.
-
-## 어조 지침
-
-- **브랜드 목소리를 반영한다.** 원문의 톤이 활기차면 활기차게, 고급스러우면 고급스럽게.
-- **구체적으로 쓴다.** "최고의 솔루션" 대신 "응답 시간 3초 이내". 마케팅도 구체적일 때 설득력이 있다.
-- **CTA(Call to Action)는 직접적으로.** 돌려 말하지 않는다.
-- **경쟁사 비교 시 구체적 수치로.** "뛰어난 성능" 대신 "경쟁 제품 대비 40% 빠른 로딩".
 
 ## 적극 교정 대상
 

@@ -5,6 +5,7 @@
 import { createRewriteThread, streamRewrite, classifyRewriteError, REWRITE_ERROR_KINDS } from './rewrite-client.js';
 import {
   PROVIDER_PRESETS,
+  WEB_PERSONAS,
   TIER_LIMITS,
   WEB_TIERS,
   MPS_FLOOR,
@@ -21,6 +22,7 @@ const els = {
   // nav controls (shared by landing + chat)
   lang: /** @type {HTMLSelectElement} */ ($('#lang')),
   tier: /** @type {HTMLSelectElement} */ ($('#tier')),
+  persona: /** @type {HTMLSelectElement} */ ($('#persona')),
   provider: /** @type {HTMLSelectElement} */ ($('#provider')),
   model: /** @type {HTMLSelectElement} */ ($('#model')),
   apiKey: /** @type {HTMLInputElement} */ ($('#api-key')),
@@ -282,6 +284,19 @@ function populateModels() {
 function syncTier() {
   const byok = els.tier.value === WEB_TIERS.BYOK;
   els.byokRow.hidden = !byok;
+}
+
+// Populate the Voice selector from the contract's per-language persona list.
+// The empty option = the server's default voice (ko preserve; en/zh/ja voice-free).
+function populatePersonas() {
+  const prev = els.persona.value;
+  els.persona.innerHTML = '';
+  els.persona.appendChild(new Option('Default voice', ''));
+  for (const p of (WEB_PERSONAS[els.lang.value] || [])) {
+    els.persona.appendChild(new Option(p.label, p.id));
+  }
+  // Personas are per-language; keep a prior pick only if the new language offers it.
+  els.persona.value = Array.from(els.persona.options).some((o) => o.value === prev) ? prev : '';
 }
 
 // ---------- landing: suggestions + examples ----------
@@ -662,6 +677,7 @@ async function submit(text, source = 'hero') {
     els.lang.value = detected;
     applyI18n(detected);
     renderSuggest();
+    populatePersonas();
     convo.thread = createRewriteThread({ lang: detected });
   }
 
@@ -683,6 +699,7 @@ async function submit(text, source = 'hero') {
   const reqBody = convo.thread.buildRequest({
     text: clean, tier: els.tier.value,
     provider: els.provider.value, model: els.model.value, apiKey: els.apiKey.value,
+    persona: els.persona.value || undefined,
   });
 
   await runAttempt({ convo, clean, reqBody, body, textEl });
@@ -876,6 +893,7 @@ function applyI18n(lang) {
 function onLangChange() {
   applyI18n(els.lang.value);
   renderSuggest();
+  populatePersonas();
   // Re-localize stateful button labels (e.g. an active Stop control's aria-label).
   updateHeroSend(); updateChatSend();
   const convo = activeConvo();

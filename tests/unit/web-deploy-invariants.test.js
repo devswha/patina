@@ -24,7 +24,7 @@ test('vercel.json bundles patina assets into the rewrite function', () => {
   assert.ok(fn, 'api/rewrite.js must have a functions entry');
   const include = fn.includeFiles;
   assert.equal(typeof include, 'string', 'includeFiles must be a glob string');
-  for (const asset of ['patterns', 'profiles', 'core', 'lexicon', '.patina.default.yaml']) {
+  for (const asset of ['patterns', 'profiles', 'personas', 'core', 'lexicon', '.patina.default.yaml']) {
     assert.ok(
       include.includes(asset),
       `includeFiles must bundle ${asset} (got: ${include})`,

@@ -1,15 +1,8 @@
 ---
 profile: blog
 name: 블로그/에세이 프로필
-version: 1.0.0
+version: 2.0.0
 scope: 개인 블로그, 에세이, 개인 뉴스레터
-voice-overrides:
-  first-person: amplify        # 1인칭 적극 사용
-  opinions: amplify             # 의견 표현 강화
-  rhythm-variation: amplify     # 리듬 변화 강화
-  humor: allow                  # 유머 허용
-  messiness: amplify            # 불완전한 구조 허용
-  concrete-emotions: amplify    # 감정 구체화 강화
 pattern-overrides:
   ko:
     14: suppress                # 볼드체 — 블로그에서는 흔하게 사용, 교정 불필요
@@ -45,14 +38,6 @@ pattern-overrides:
 
 이 프로필은 **개인 블로그와 에세이**에 한정된다. 기업 블로그, 공식 뉴스레터, 보도자료는 이 프로필의 범위가 아니다.
 
-## 어조 지침
-
-- **1인칭을 적극적으로 쓴다.** "내가", "나는", "내 생각에는" — 블로그의 핵심은 개인의 목소리다.
-- **의견을 숨기지 않는다.** "솔직히 이건 좀 별로다", "이게 왜 좋냐면" — 중립적 나열보다 입장 표명.
-- **구어체를 허용한다.** "~거든요", "~잖아", "근데" — 완벽한 문어체보다 말하듯이 쓴다.
-- **불완전한 문장을 두려워하지 않는다.** "그래서?" "글쎄." — 짧은 파편 문장이 리듬을 만든다.
-- **유머와 자기비하를 허용한다.** "삽질을 이틀 했다", "이걸 왜 이제야 알았을까" — 사람다움의 핵심.
-
 ## 패턴 처리 (한국어)
 
 - **볼드체(ko #14), 인라인 헤더(ko #15):** 블로그에서는 가독성을 위해 흔히 사용하므로 관대하게 처리한다. 기계적으로 모든 키워드를 볼드 처리한 경우만 교정.
@@ -67,15 +52,3 @@ pattern-overrides:
 - **Emojis (en #17):** 1–2 natural uses are tolerated. Correct only when every item gets an emoji.
 - **AI vocabulary (en #7):** Words like "delve", "tapestry", "leverage", "multifaceted" are especially jarring in casual blog prose. Aggressively correct.
 - **Copula avoidance (en #8):** "Serves as", "functions as" read stiffly in blog writing. Replace with simple "is/are" constructions.
-
-## voice.md 오버라이드
-
-이 프로필은 `core/voice.md`의 지침을 다음과 같이 조절한다:
-
-| voice.md 지침 | 블로그 프로필에서 |
-|--------------|----------------|
-| "의견을 가져라" | **강화** — 모든 단락에 최소 하나의 주관적 반응 |
-| "리듬을 바꿔라" | **강화** — 의도적으로 1-2단어 문장 삽입 |
-| "나를 써라" | **강화** — 1인칭 시점 기본값 |
-| "좀 지저분해도 괜찮다" | **강화** — 곁가지, 여담 적극 허용 |
-| "감정을 구체적으로" | **강화** — 추상적 감정 대신 구체적 상황 묘사 |

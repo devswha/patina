@@ -53,6 +53,50 @@ test('dropped numbers are reported deterministically', () => {
   assert.deepEqual(droppedNumbers('1,200 units', '1200 units'), []);
 });
 
+test('empty original + non-empty rewrite fails as hallucinated expansion (#2)', () => {
+  const r = evaluateMeaningProxy({ original: '', rewrite: 'a fabricated new fact', lang: 'en' });
+  assert.equal(r.severity, 'fail', 'empty→non-empty must not record a benign ratio of 1');
+  assert.equal(r.ok, false);
+  // A true no-op (empty→empty) stays benign.
+  assert.notEqual(evaluateMeaningProxy({ original: '', rewrite: '', lang: 'en' }).severity, 'fail');
+});
+
+test('comma grouping normalizes only valid thousands groups (#3)', () => {
+  // Valid grouping collapses so 1,200 === 1200 (no false dropped-number).
+  assert.deepEqual(droppedNumbers('1,200 units', '1200 units'), []);
+  assert.deepEqual(droppedNumbers('n 1,234,567', 'n 1234567'), []);
+  assert.deepEqual(droppedNumbers('rate 1,234.56', 'rate 1234.56'), []);
+  // Non-standard grouping is preserved so it never collapses onto 12 / 314 and
+  // masks a genuinely dropped number.
+  assert.deepEqual(droppedNumbers('value 1,2', 'value 12'), ['1,2']);
+  assert.deepEqual(droppedNumbers('pi 3,14', 'pi 314'), ['3,14']);
+});
+
+test('rare-token recall does not false-survive short Latin substrings (#4)', () => {
+  // us/art/ai embedded inside business/party/chair must NOT count as survived.
+  const r = rareTokenRecall('AI US art', 'chair business party', 'en');
+  assert.equal(r.active, true);
+  assert.equal(r.survived, 0);
+  assert.equal(r.recall, 0);
+  // CJK substrings and long (>=5) Latin tokens still survive as substrings.
+  assert.ok(rareTokenRecall('삼성전자 반도체 실적', '삼성전자의 반도체 실적이 좋다', 'ko').recall > 0);
+  assert.ok(rareTokenRecall('deterministic humanizer pipeline', 'the deterministic humanizers pipelines run', 'en').recall > 0);
+});
+
+test('negation counting: multilingual advisory matrix and known Phase A gaps (#5)', () => {
+  // Working cases across languages.
+  assert.equal(countNegations('cannot go without it, notable', 'en'), 2);
+  assert.equal(countNegations('ではありません', 'ja'), 1);
+  assert.equal(countNegations('不能 没有', 'zh'), 2);
+  // KNOWN advisory-only gaps, pinned so Phase B calibration has a baseline:
+  //  ko: glued 안됐다/못했다 are missed; 아니메이션 false-positives on 아니 → net 1.
+  assert.equal(countNegations('안됐다 못했다 아니메이션', 'ko'), 1);
+  //  ja: mid-sentence 使わずに missed; 少ない (lexical adj) false-positive on ない → net 1.
+  assert.equal(countNegations('使わずに 少ない', 'ja'), 1);
+  //  zh: 非常/无锡 (compound / proper noun) false-positive on 非/无 → 4 not 2.
+  assert.equal(countNegations('不能 没有 非常 无锡', 'zh'), 4);
+});
+
 test('meaning-proxy imports no backend/LLM module (Lane A purity)', () => {
   const src = readFileSync(resolve(REPO_ROOT, 'src/features/meaning-proxy.js'), 'utf8');
   const imports = [...src.matchAll(/^import\s+.*?from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]);

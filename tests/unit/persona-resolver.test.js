@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-import { resolvePersonaForRun } from '../../src/cli/run.js';
+import { resolvePersonaForRun } from '../../src/personas/resolve.js';
 import { PatinaCliError } from '../../src/errors.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

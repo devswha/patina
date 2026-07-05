@@ -30,6 +30,10 @@ release-sync surfaces and the `dev → main` release land separately.
 
 - **Profiles are now pattern-policy only; the persona is the sole voice owner.** Whenever a persona is active (including the `preserve` default), the profile's voice body is no longer sent to the model — all voice comes from the active persona. The 17 `profiles/*.md` dropped their `voice-overrides` frontmatter and voice-guidance bodies (versions bumped to 2.0.0), keeping scope + `pattern-overrides` + pattern-handling. Register precedence is unchanged (`--tone` > persona > profile). **Deprecation/migration:** a runtime warning fires when a non-default profile is used for a rewrite without a voice-owning persona — for genre voice, use a persona (e.g. `--persona blog-essay`); run `patina persona list`. The persona schema still forbids pattern control.
 
+### Fixed
+
+- **Hosted playground rewrite lost its voice under the profile-voice retirement (regression).** The web/serverless rewrite path (`src/web-rewrite.js`) never resolved a persona, so once profiles stopped carrying voice a hosted Korean rewrite received neither the (now-retired) profile voice body nor a persona directive — only the shared `core/voice.md`, silently degrading quality versus the CLI. The web path now resolves the active persona through the same logic the CLI uses, extracted to `src/personas/resolve.js` (`resolvePersonaForRun`) as the single source of truth: `ko` defaults to the `preserve` persona (voice parity with the CLI), while en/zh/ja stay persona-free unless opted in. `personas/**` is now bundled into the Vercel `api/rewrite.js` function so the hosted lookup resolves at runtime (pinned by `tests/unit/web-deploy-invariants.test.js`).
+
 ## 6.1.0 — 2026-07-03
 
 **Personas grow up: enforcing safety gate, multilingual voices, register/profile precedence, and custom voice authoring.**

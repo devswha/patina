@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 
-import { runPersonaNew, runPersonaList, runPersona } from '../../src/commands/persona.js';
+import { runPersonaNew, runPersonaList, runPersonaShow, runPersonaRm, runPersonaEdit, runPersona } from '../../src/commands/persona.js';
 import { loadPersona } from '../../src/personas/loader.js';
 import { PatinaCliError } from '../../src/errors.js';
 
@@ -126,4 +126,148 @@ test('persona dispatch rejects an unknown subcommand', async () => {
     () => runPersona(['frobnicate'], { repoRoot: REPO_ROOT }),
     (err) => err instanceof PatinaCliError && err.exitCode === 2,
   );
+});
+
+function captureLog(fn) {
+  const logs = [];
+  const orig = console.log;
+  console.log = (...a) => logs.push(a.join(' '));
+  try { const ret = fn(); return { logs, ret }; }
+  finally { console.log = orig; }
+}
+
+test('persona show --json prints the normalized persona and never the body', () => {
+  const repoRoot = tempRepo();
+  const { logs, ret } = captureLog(() => runPersonaShow(['preserve', '--lang', 'ko', '--json'], { repoRoot }));
+  const printed = JSON.parse(logs.join('\n'));
+  const expected = loadPersona(repoRoot, 'ko', 'preserve');
+  assert.deepEqual(printed, expected);
+  assert.deepEqual(ret, expected);
+  // The docs-only Markdown body must never appear in JSON output.
+  assert.doesNotMatch(logs.join('\n'), /docs-only|# /);
+});
+
+test('persona show human output lists target_features and never prints the body', () => {
+  const repoRoot = tempRepo();
+  const { logs } = captureLog(() => runPersonaShow(['natural-ko', '--lang', 'ko'], { repoRoot }));
+  const out = logs.join('\n');
+  assert.match(out, /target_features:/);
+  assert.match(out, /burstiness_cv/);
+  assert.match(out, /source:\s+library/);
+});
+
+test('persona rm refuses a built-in library persona and leaves it intact', async () => {
+  const repoRoot = tempRepo();
+  const libPath = join(repoRoot, 'personas', 'ko', 'natural-ko.md');
+  assert.ok(existsSync(libPath));
+  await assert.rejects(
+    () => runPersonaRm(['natural-ko', '--lang', 'ko', '--force'], { repoRoot, logger: silent }),
+    (err) => err instanceof PatinaCliError && err.exitCode === 2 && /built-in personas cannot be removed/.test(err.message),
+  );
+  assert.ok(existsSync(libPath));
+});
+
+test('persona rm refuses the preserve default', async () => {
+  const repoRoot = tempRepo();
+  await assert.rejects(
+    () => runPersonaRm(['preserve', '--force'], { repoRoot, logger: silent }),
+    (err) => err instanceof PatinaCliError && err.exitCode === 2,
+  );
+});
+
+test('persona rm requires a custom persona to exist', async () => {
+  const repoRoot = tempRepo();
+  await assert.rejects(
+    () => runPersonaRm(['nope-not-here', '--lang', 'ko', '--force'], { repoRoot, logger: silent }),
+    (err) => err instanceof PatinaCliError && err.exitCode === 2,
+  );
+});
+
+test('persona rm --force deletes exactly the custom persona and leaves others intact', async () => {
+  const repoRoot = tempRepo();
+  await runPersonaNew(['one', '--lang', 'ko', '--template'], { repoRoot, logger: silent });
+  await runPersonaNew(['two', '--lang', 'ko', '--template'], { repoRoot, logger: silent });
+  const onePath = join(repoRoot, 'custom', 'personas', 'ko', 'one.md');
+  const twoPath = join(repoRoot, 'custom', 'personas', 'ko', 'two.md');
+  const removed = await runPersonaRm(['one', '--lang', 'ko', '--force'], { repoRoot, logger: silent });
+  assert.equal(removed, onePath);
+  assert.ok(!existsSync(onePath));
+  assert.ok(existsSync(twoPath));
+});
+
+test('persona rm honors the interactive confirm via injected ask', async () => {
+  const repoRoot = tempRepo();
+  await runPersonaNew(['keep', '--lang', 'ko', '--template'], { repoRoot, logger: silent });
+  const p = join(repoRoot, 'custom', 'personas', 'ko', 'keep.md');
+  // Declining leaves the file untouched.
+  const aborted = await runPersonaRm(['keep', '--lang', 'ko'], { repoRoot, logger: silent, ask: async () => 'n' });
+  assert.equal(aborted, null);
+  assert.ok(existsSync(p));
+  // 'yes' confirms and deletes.
+  const removed = await runPersonaRm(['keep', '--lang', 'ko'], { repoRoot, logger: silent, ask: async () => 'yes' });
+  assert.equal(removed, p);
+  assert.ok(!existsSync(p));
+});
+
+test('persona edit --name copies a library persona into custom and preserves the library', async () => {
+  const repoRoot = tempRepo();
+  const libPath = join(repoRoot, 'personas', 'ko', 'natural-ko.md');
+  const libBefore = readFileSync(libPath, 'utf8');
+  const written = await runPersonaEdit(['natural-ko', '--lang', 'ko', '--name', 'My Natural KO'], { repoRoot, logger: silent });
+  assert.match(written, /custom\/personas\/ko\/natural-ko\.md$/);
+  // Library file is untouched (copy-on-edit into custom only).
+  assert.ok(existsSync(libPath));
+  assert.equal(readFileSync(libPath, 'utf8'), libBefore);
+  // The shadow reloads through the validating loader (custom-first).
+  const reloaded = loadPersona(repoRoot, 'ko', 'natural-ko');
+  assert.equal(reloaded.name, 'My Natural KO');
+  assert.equal(reloaded.source, 'learned');
+  assert.equal(reloaded.mps.floor, 70);
+  assert.equal(reloaded.fidelity.floor, 70);
+});
+
+test('persona edit requires an edit input flag', async () => {
+  const repoRoot = tempRepo();
+  await assert.rejects(
+    () => runPersonaEdit(['natural-ko', '--lang', 'ko'], { repoRoot, logger: silent }),
+    (err) => err instanceof PatinaCliError && err.exitCode === 2,
+  );
+});
+
+test('persona dispatch unknown subcommand lists all five subcommands', async () => {
+  await assert.rejects(
+    () => runPersona(['frobnicate'], { repoRoot: REPO_ROOT }),
+    (err) => err instanceof PatinaCliError && /new, list, show, rm, edit/.test(err.message),
+  );
+});
+
+test('persona list marks a custom persona that shadows a built-in (#7)', async () => {
+  const repoRoot = tempRepo();
+  // Copy-on-edit natural-ko into custom/ → an active runtime shadow of the built-in.
+  await runPersonaEdit(['natural-ko', '--lang', 'ko', '--name', 'My Natural KO'], { repoRoot, logger: silent });
+  const listing = runPersonaList(['--lang', 'ko', '--format', 'json'], { repoRoot });
+  assert.ok(listing.ko.shadowed.includes('natural-ko'), 'shadowed list surfaces the shadowing id');
+  assert.ok(!listing.ko.custom.includes('natural-ko'), 'shadowing id is not double-listed under custom');
+  assert.ok(listing.ko.builtin.includes('natural-ko'), 'the underlying built-in still exists');
+  const { logs } = captureLog(() => runPersonaList(['--lang', 'ko'], { repoRoot }));
+  assert.match(logs.join('\n'), /natural-ko \(shadows built-in\)/);
+});
+
+test('persona new/edit reject a value-taking flag with a missing value (#8)', async () => {
+  const repoRoot = tempRepo();
+  for (const args of [['x', '--describe'], ['x', '--from-sample'], ['x', '--lang'], ['x', '--backend']]) {
+    await assert.rejects(
+      () => runPersonaNew(args, { repoRoot, logger: silent }),
+      (err) => err instanceof PatinaCliError && err.exitCode === 2,
+      `persona new ${args.join(' ')} must fail closed, not build an empty/undefined persona`,
+    );
+  }
+  await runPersonaNew(['seed', '--lang', 'ko', '--template'], { repoRoot, logger: silent });
+  for (const args of [['seed', '--lang', 'ko', '--name'], ['seed', '--lang', 'ko', '--describe'], ['seed', '--lang', 'ko', '--from-sample']]) {
+    await assert.rejects(
+      () => runPersonaEdit(args, { repoRoot, logger: silent }),
+      (err) => err instanceof PatinaCliError && err.exitCode === 2,
+      `persona edit ${args.join(' ')} must fail closed`,
+    );
+  }
 });

@@ -1,6 +1,6 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -119,5 +119,76 @@ describe('CLI persona harness', () => {
     // No source numbers to drop and self-reported MPS/fidelity pass → safety passes.
     assert.equal(payload.persona.gate_result.pass, true);
     assert.equal(exitCode, 0);
+  });
+
+  it('lists built-in en/zh/ja seed personas via persona list', async () => {
+    const cases = {
+      en: ['blog-essay', 'natural-en', 'preserve', 'technical-explainer'],
+      zh: ['blog-essay', 'natural-zh', 'preserve'],
+      ja: ['blog-essay', 'natural-ja', 'preserve'],
+    };
+    for (const [lang, ids] of Object.entries(cases)) {
+      const { logs, exitCode } = await captureConsole(() => main(['persona', 'list', '--lang', lang]));
+      assert.equal(exitCode, 0);
+      const out = logs.join('\n');
+      for (const id of ids) {
+        assert.ok(out.includes(id), `persona list --lang ${lang} should list ${id}`);
+      }
+    }
+  });
+
+  it('persona show natural-ko prints target features and exits 0', async () => {
+    const { logs, exitCode } = await captureConsole(() => main(['persona', 'show', 'natural-ko']));
+    assert.equal(exitCode, 0);
+    const out = logs.join('\n');
+    assert.ok(out.includes('target_features') || out.includes('burstiness_cv'), 'persona show should print target features');
+  });
+
+  it('persona rm natural-ko refuses the built-in seed and never deletes it', async () => {
+    const libPath = resolve(_REPO_ROOT, 'personas', 'ko', 'natural-ko.md');
+    assert.ok(existsSync(libPath), 'natural-ko library seed should exist before rm');
+    // Built-in personas cannot be removed: main() rejects with exit code 2.
+    await assert.rejects(
+      () => main(['persona', 'rm', 'natural-ko']),
+      (err) => err && err.exitCode === 2,
+    );
+    assert.ok(existsSync(libPath), 'natural-ko library seed must still exist after a refused rm');
+  });
+
+  it('warns that a non-default profile no longer provides voice when no voice persona is active', async () => {
+    const enPath = resolve(keyDir, 'en-profile.txt');
+    writeFileSync(enPath, 'This is a plain test sentence with no numbers.');
+    const { errors, exitCode } = await captureConsole(() => main([
+      '--lang', 'en',
+      '--profile', 'blog',
+      '--format', 'json',
+      '--api-key-file', mockApiKeyPath,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
+      '--model', 'gpt-5',
+      enPath,
+    ]));
+    assert.equal(exitCode, 0);
+    assert.ok(errors.join('\n').includes('no longer provides voice'), 'expected the profile voice-retirement migration warning');
+  });
+
+  it('warns for a .patina.yaml profile (config, not --profile) with no voice persona', async () => {
+    // The migration-relevant user has `profile: blog` in config and no --profile
+    // flag; the warning must key on the EFFECTIVE profile name, not parsed.profile.
+    const enPath = resolve(keyDir, 'en-config-profile.txt');
+    writeFileSync(enPath, 'This is a plain test sentence with no numbers.');
+    const configPath = resolve(keyDir, 'profile-blog.yaml');
+    writeFileSync(configPath, 'language: en\nprofile: blog\n');
+    const { errors, exitCode } = await captureConsole(() => main([
+      '--config', configPath,
+      '--format', 'json',
+      '--api-key-file', mockApiKeyPath,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
+      '--model', 'gpt-5',
+      enPath,
+    ]));
+    assert.equal(exitCode, 0);
+    const err = errors.join('\n');
+    assert.ok(err.includes('no longer provides voice'), 'config-file profile must also trigger the migration warning');
+    assert.ok(err.includes('"blog"'), 'warning names the effective profile from config');
   });
 });

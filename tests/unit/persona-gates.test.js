@@ -143,6 +143,27 @@ test('persona gate with null mps/fidelity and high churn still passes safety (ch
   assert.deepEqual(result.advisory, ['churn']);
 });
 
+test('meaningProxy fail rides advisory only and never sets a CLI-warnable bit (#1)', () => {
+  const result = evaluatePersonaGate({
+    persona: contentPersona,
+    personaMatch: 90, // passes advisory
+    mps: 95,
+    fidelity: 95, // safety passes
+    churn: 0.1, // passes advisory
+    droppedNumbers: [],
+    thresholds: { personaMatchMin: 70, mpsFloor: 70, fidelityFloor: 70, churnMax: 0.45 },
+    meaningProxy: { severity: 'fail', reasons: ['dropped terms/entities'] },
+  });
+  // Phase A: even a meaningProxy 'fail' is advisory — it never blocks the gate.
+  assert.equal(result.pass, true);
+  assert.deepEqual(result.advisory, ['meaningProxy'], 'rides the gate advisory list (JSON report)');
+  // run.js keys the CLI warning on personaMatch/churn only; both pass here, so no
+  // warning fires (the pre-fix path printed an empty "persona advisory: " line).
+  assert.equal(result.personaMatchPass, true);
+  assert.equal(result.churnPass, true);
+  assert.equal(result.meaningProxyPass, false);
+});
+
 test('ablation decision falls back on two consecutive failed rounds', () => {
   const fail = {
     aggregatePass: false,

@@ -12,6 +12,27 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## 6.2.0 — 2026-07-05
+
+**Personas everywhere: en/zh/ja seeds, `persona show|rm|edit`, profile-voice retirement, an advisory meaning-floor proxy, and a hosted playground Voice selector.**
+
+Semver rationale: minor — additive persona seeds and subcommands, a deterministic advisory meaning proxy, and the playground Voice selector, plus a profile behavior change (profiles are now pattern-policy only; the active persona owns voice). No stable public CLI/API is removed.
+
+### Added
+
+- **Seed voice personas for en/zh/ja**: `personas/en/{natural-en,blog-essay,technical-explainer}.md`, `personas/zh/{natural-zh,blog-essay}.md`, and `personas/ja/{natural-ja,blog-essay}.md`. Non-Korean seeds use only the language-neutral `target_features` set (burstiness CV, MATTR, opener diversity, comma rate, preferred/avoided lexicon density, over-edit churn); the ko-specific register/suffix signals are regression-fenced out in `tests/unit/persona-seed.test.js`. Each seed enforces MPS/fidelity floors ≥70 with `worldview` inactive. `avoid` lists draw from each language's AI-tell lexicon. No `src/features/*` changes.
+- **`patina persona show|rm|edit`**: `show <id>` prints a persona's normalized config (`--json`; the docs-only body is never printed); `rm <id>` deletes only custom personas under `custom/personas/<lang>/` (built-in seeds and `preserve` are protected; `--force` or an interactive confirm required); `edit <id>` is copy-on-edit into custom (`--from-sample`/`--describe` re-derive the voice; `--name` is a lossless rename that preserves every voice block). The loader's path-containment guard (`safePersonaPath`) is reused for all delete/edit path resolution.
+- **Deterministic meaning-floor proxy (advisory, Phase A)**: `src/features/meaning-proxy.js` is a Lane A, LLM-free (module-boundary tested) `evaluateMeaningProxy({original, rewrite, lang})` that flags likely meaning drift without a model — dropped numbers, rare-content-token recall (active only with ≥3 rare tokens; recall <0.5 warn / <0.3 fail), negation-polarity delta (word/token-boundary, not raw substring, so "cannot"/"notable"/안전/안내 are not miscounted), and length-ratio extremes ([0.4, 2.5]). It rides the persona report JSON as `meaning_proxy` and the gate's advisory list. **Phase A is advisory-only** — no CLI warning and no exit-code change (dropped numbers stay separately enforced); promotion to enforcing awaits the formal 2-round calibration. No detection-path (`analyzeText`) change — benchmark accuracy is unaffected.
+- **Playground voice selector**: the hosted playground now exposes a per-language **Voice** dropdown so a rewrite can opt into a genre persona (e.g. Natural, Blog / essay, Technical) instead of the default voice. The offered set is a new `WEB_PERSONAS` map in the isomorphic `web-rewrite-contract.js` (the single source of truth the browser builds the selector from and the server validates against, fail-closed — an unknown or foreign-language id is a 400 before the persona loader is ever touched). The server resolves an explicit voice through the same `resolvePersonaForRun` path as the CLI's `--persona` (`loadWebAssets` now caches by `lang::profile::persona`); leaving the dropdown on "Default voice" preserves prior behavior (ko → preserve, en/zh/ja voice-free). Applies to both Free and BYOK tiers and persists across refine turns. `personas/**` is bundled into the serverless function; the curated list is pinned against the shipped files in `tests/unit/web-rewrite.test.js`.
+
+### Changed
+
+- **Profiles are now pattern-policy only; the persona is the sole voice owner.** Whenever a persona is active (including the `preserve` default), the profile's voice body is no longer sent to the model — all voice comes from the active persona. The 17 `profiles/*.md` dropped their `voice-overrides` frontmatter and voice-guidance bodies (versions bumped to 2.0.0), keeping scope + `pattern-overrides` + pattern-handling. Register precedence is unchanged (`--tone` > persona > profile). **Deprecation/migration:** a runtime warning fires when a non-default profile is used for a rewrite without a voice-owning persona — for genre voice, use a persona (e.g. `--persona blog-essay`); run `patina persona list`. The persona schema still forbids pattern control.
+
+### Fixed
+
+- **Hosted playground rewrite lost its voice under the profile-voice retirement (regression).** The web/serverless rewrite path (`src/web-rewrite.js`) never resolved a persona, so once profiles stopped carrying voice a hosted Korean rewrite received neither the (now-retired) profile voice body nor a persona directive — only the shared `core/voice.md`, silently degrading quality versus the CLI. The web path now resolves the active persona through the same logic the CLI uses, extracted to `src/personas/resolve.js` (`resolvePersonaForRun`) as the single source of truth: `ko` defaults to the `preserve` persona (voice parity with the CLI), while en/zh/ja stay persona-free unless opted in. `personas/**` is now bundled into the Vercel `api/rewrite.js` function so the hosted lookup resolves at runtime (pinned by `tests/unit/web-deploy-invariants.test.js`).
+
 ## 6.1.0 — 2026-07-03
 
 **Personas grow up: enforcing safety gate, multilingual voices, register/profile precedence, and custom voice authoring.**

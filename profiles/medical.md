@@ -1,15 +1,8 @@
 ---
 profile: medical
 name: 의료/의학 문서 프로필
-version: 1.0.0
+version: 2.0.0
 scope: 임상 보고서, 의학 논문, 진료 가이드라인, 약물 정보, 환자 교육 자료
-voice-overrides:
-  first-person: reduce          # 1인칭 절제
-  opinions: suppress            # 의견 억제, 근거 기반
-  rhythm-variation: normal      # 리듬 변화 유지
-  humor: suppress               # 유머 억제
-  messiness: suppress           # 불완전 구조 억제
-  concrete-emotions: reduce     # 감정 표현 절제
 pattern-overrides:
   ko:
     23: reduce                  # 헤징 — 의학적 불확실성 ("~일 수 있다") 허용
@@ -36,13 +29,6 @@ pattern-overrides:
 ## 범위
 
 임상 보고서, 의학 논문, 진료 가이드라인, 약물 정보, 환자 교육 자료. 건강 블로그나 대중 건강 기사는 `default` 프로필 사용.
-
-## 어조 지침
-
-- **의학적 정확성이 최우선이다.** 간결하게 만들더라도 의미를 바꾸지 않는다.
-- **헤징은 허용한다.** "이 결과는 ~를 시사한다", "~와 관련이 있을 수 있다"는 의학에서 정당한 불확실성 표현.
-- **수동태는 방법론에서 허용.** "환자는 무작위로 배정되었다"는 임상시험의 표준 표현.
-- **전문 용어를 보존한다.** 의학 용어를 쉬운 말로 바꾸지 않는다 (환자 교육 자료 제외).
 
 ## 적극 교정 대상
 

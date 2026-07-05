@@ -1,0 +1,90 @@
+# Backlog — outstanding work
+
+> Maintainer/agent note (see `CONTRIBUTING.md` → Public vs Internal Docs). Not a
+> product contract. Snapshot as of the 6.1.0 persona-hardening line.
+
+## Released in 6.1.0 (done — for context)
+
+Persona hardening arc shipped: enforcing safety gate (MPS/fidelity/dropped-numbers
+enforce; churn + persona-match advisory), live calibration harness, multilingual
+`--persona` (ko/en/zh/ja), register precedence (`--tone` > persona > profile),
+profile voice/pattern split, custom voice authoring (`patina persona new|list`),
+`docs/ARCHITECTURE.md`, `docs/WORKFLOW.md`, README updates.
+
+## Parked on `dev` (not yet in `main`/npm)
+
+Docs-only changes stacked on `dev`, to release with the next feature (patch or
+folded into the next minor):
+- README English slimmed: removed internal ko `translationese`/`koPostEditese`
+  caveat, `--preview` demo, per-backend model list, verbose persona bullets.
+- README KR/JA/ZH resynced to the slimmed English structure (playground-led Demo,
+  `--preview` demo removed, version badge `5.4.0` → `6.1.0`); localized doc links
+  kept for KR. The earlier "all 4 langs slimmed" note was inaccurate — only English
+  had been restructured; the three translations are now caught up.
+- Agent-driven install snippet (paste a prompt → agent follows `INSTALLATION.md`)
+  in all 4 READMEs.
+- `INSTALLATION.md` version refs fixed (3.11.0 → 6.1.0) + invalid `--tone narrative`
+  example corrected.
+
+## Not started
+
+### Personas
+1. ~~**Seed personas for en/zh/ja**~~ — DONE (v6.2.0 line). Shipped `natural-en`,
+   `blog-essay`, `technical-explainer` (en) and `natural-{zh,ja}` + `blog-essay`
+   (zh/ja) under `personas/{en,zh,ja}/`, with **language-neutral** `target_features`
+   only (regression-fenced in `tests/unit/persona-seed.test.js` against `ko_register_*`
+   and `suffix_class_diversity`). Follow-up if wanted: calibrate targets on real
+   per-language corpora (current values are seed defaults with wide advisory tolerances).
+2. ~~**Retire profile's voice body**~~ — DONE (v6.2.0 line). Persona is now the sole
+   voice owner: prompt-builder defers ALL voice to the active persona (incl. the
+   `preserve` default), the 17 `profiles/*.md` dropped `voice-overrides` frontmatter +
+   voice-guidance bodies (versions bumped to 2.0.0), and a runtime migration warning
+   fires when a non-default profile is used for a rewrite without a voice-owning persona.
+   (persona schema still forbids pattern control — that half stays.)
+3. ~~**`persona edit|rm|show` subcommands**~~ — DONE. Shipped `persona show <id>`
+   (print normalized config, `--json`; never the docs body), `persona rm <id>`
+   (custom-only delete; built-in seeds and `preserve` protected; `--force` or
+   interactive confirm), and `persona edit <id>` (copy-on-edit into
+   `custom/personas/<lang>/` via `--from-sample`/`--describe`/`--name`, every
+   write re-validated through the persona safety gate). Path resolution reuses
+   the loader's `safePersonaPath` containment guard.
+
+### Architecture seams (docs/ARCHITECTURE.md)
+4. ~~**`ouroboros.js` does not consume `persona-match`**~~ — WON'T-DO (resolved).
+   ouroboros is a research-only A/B baseline (`scripts/rewrite-ab.mjs`); the `--ouroboros`
+   flag was removed and `--verify` replaced it. The live path already runs `persona-match`
+   via the always-on persona gate, so wiring a research-only loop is not worth it.
+5. ~~**No deterministic MPS/fidelity proxy**~~ — DONE Phase A (advisory). `src/features/meaning-proxy.js`
+   (Lane A, LLM-free; module-boundary tested) ships `evaluateMeaningProxy` (dropped numbers +
+   rare-content-token recall [≥3-denominator] + negation-polarity delta [token-boundary] +
+   length-ratio extremes). Rides the persona report JSON (`meaning_proxy`) + gate advisory;
+   NO CLI warning, NO exit change in Phase A. Phase B promotion to enforcing = formal 2-round
+   ablation (~0 FP on legit rewrites, TP on the broken fixtures) → `source: calibrated`.
+6. ~~**Persona thresholds `source: placeholder`**~~ — RESOLVED (keep-as-is, documented).
+   churn/persona-match (and the new meaning-proxy) are advisory-only, so `placeholder` is the
+   honest provenance — a formal 2-round promotion is NOT required to ship an advisory signal.
+   Documented in `docs/ARCHITECTURE.md` (Resolved #4): promotion trigger = any of them made
+   enforcing; procedure = 2-round ablation via `aggregateAblation`/`ablationDecision`
+   (`scripts/persona-ablation.mjs`) → `source: calibrated`.
+
+### Release / process
+7. **Next release via `dev → main` PR** (CI 6 required checks), NOT the direct-push bypass
+   used for 6.1.0. Version bump across the surfaces `release:check` gates + merge (not squash).
+8. Watch `dev` drift — keep it at/ahead of `main`; if a hotfix lands on `main`, merge
+   `main → dev` immediately (see `docs/WORKFLOW.md`).
+
+### Repo / branding (optional, owner decision)
+9. **Org transfer** — moving `devswha/patina` to a GitHub org would drop the personal-account
+   `owner` slug from search results. The `: description` part is already handled (short About
+   description set 2026-07). Not doing this now.
+10. **Google re-index** — the shortened GitHub About description ("AI-writing humanizer for
+    KO/EN/ZH/JA") will surface in search after re-crawl; request re-index via Search Console
+    if faster propagation is wanted.
+
+## Process notes (for future sessions)
+- npm auth: `~/.npmrc` had an expired literal token; fixed to `_authToken=${NPM_TOKEN}`
+  (backup `~/.npmrc.bak-6.1.0`). The env `NPM_TOKEN` is the valid one.
+- Calibration corpus (`artifacts/persona-calibration-2026/synthetic-ko.jsonl`) is a **local,
+  gitignored** asset fed via `--corpus` at runtime — never commit generated KO text.
+- `AGENTS.md` is **gitignored** in this repo (local-only); shared agent/workflow rules live in
+  tracked `CONTRIBUTING.md` + `docs/WORKFLOW.md`.

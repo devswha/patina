@@ -8,13 +8,19 @@ import { createLogger } from './logger.js';
 // Numeric tokens (integers, decimals, grouped numbers). Used by the cheap,
 // LLM-free meaning guard to catch numbers that silently vanish in a rewrite.
 const NUMBER_RE = /\d[\d.,]*/g;
+// Valid thousands grouping only (1,200 / 1,234,567 / 1,234.56). Non-standard
+// grouping like 1,2 or 3,14 is intentionally NOT stripped so it never collapses
+// onto 12 / 314 and masks a genuinely dropped number on the enforcing guard.
+const GROUPED_THOUSANDS_RE = /^\d{1,3}(,\d{3})+(\.\d+)?$/;
 
 function numbersIn(text) {
   const out = new Set();
   for (const m of String(text ?? '').matchAll(NUMBER_RE)) {
-    // Normalize grouping commas (1,200 === 1200) and strip trailing separators
-    // so the same number in a different format is not flagged as dropped.
-    const normalized = m[0].replace(/,/g, '').replace(/\.+$/, '');
+    // Normalize valid grouping commas (1,200 === 1200) and strip trailing
+    // separators so the same number in a different format is not flagged as
+    // dropped; non-standard grouping (1,2) is preserved to avoid false negatives.
+    const raw = m[0].replace(/\.+$/, '');
+    const normalized = GROUPED_THOUSANDS_RE.test(raw) ? raw.replace(/,/g, '') : raw;
     if (normalized) out.add(normalized);
   }
   return out;

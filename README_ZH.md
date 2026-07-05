@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#快速开始)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-6.1.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-6.2.0-blue)](CHANGELOG.md)
 
 <p align="center">
   <strong>去掉 AI 味，保留原意。</strong>
@@ -188,7 +188,7 @@ Input
 
 ```yaml
 # .patina.default.yaml
-version: "6.1.0"
+version: "6.2.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score

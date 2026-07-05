@@ -28,11 +28,11 @@ import { detectKoreanRegister } from '../features/stylometry.js';
 import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput, writeAtomicUtf8, resolveBatchOutputPath } from './batch.js';
 import { applyScoreGate, extractScoreOverall } from './score-gate.js';
 import { loadInputs } from './input.js';
-import { PatinaCliError, runtimeError, inputError } from '../errors.js';
+import { PatinaCliError, runtimeError } from '../errors.js';
 import { providerHttpKeyEnvVars, resolveHttpApiKey } from '../auth.js';
 import { DEFAULT_BACKEND_TIMEOUT_MS, getBackendSafety, resolveBackendMaxRetries } from '../backends/contract.js';
 import { resolve } from 'node:path';
-import { loadPersona } from '../personas/loader.js';
+import { resolvePersonaForRun } from '../personas/resolve.js';
 import { evaluatePersonaGate } from '../personas/gates.js';
 import { personaMatchScore } from '../features/persona-match.js';
 import { personaHasVoiceTraits } from '../personas/compose.js';
@@ -612,31 +612,6 @@ function cancellationError() {
  * const cancellation = createCancellationController();
  * cancellation.install();
  */
-
-// Languages with a persona library (personas/{lang}/). Multilingual as of the
-// persona multilang line; each ships at least a `preserve` default.
-const PERSONA_LANGS = new Set(['ko', 'en', 'zh', 'ja']);
-
-export function resolvePersonaForRun({ parsed = {}, config = {}, mode = 'rewrite', lang = 'ko', repoRoot = process.cwd() } = {}) {
-  const defaultPreserve = parsed.persona === undefined && config.persona === 'preserve';
-  const explicitPersona = parsed.persona !== undefined || (config.persona !== undefined && !defaultPreserve);
-  const personaId = parsed.persona ?? config.persona ?? null;
-  const effective = mode === 'rewrite' && !parsed.preview && PERSONA_LANGS.has(lang);
-  if (explicitPersona && !effective) {
-    throw inputError(
-      'persona is only supported for rewrite mode',
-      'A persona runs only when the effective mode is rewrite, preview is off, and the language is one of ko, en, zh, ja.',
-      'Use `patina --persona <name> <file>` on a rewrite (drop --score/--audit/--diff/--preview), or remove the persona setting.'
-    );
-  }
-  if (!effective) return null;
-  // Back-compat: ko keeps its implicit-preserve default (a plain `patina` run
-  // resolves preserve). For en/zh/ja the persona axis is opt-in — a plain rewrite
-  // stays persona-free unless the user explicitly asks (--persona / config), so
-  // existing non-ko rewrites are unchanged.
-  if (lang !== 'ko' && !explicitPersona) return null;
-  return loadPersona(repoRoot, lang, personaId ?? 'preserve');
-}
 
 export function createCancellationController({
   processObj = process,

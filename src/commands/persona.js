@@ -42,6 +42,17 @@ function assertLang(lang) {
   }
 }
 
+// Consume the value after a value-taking flag. A missing value (end of args) or
+// a following flag (`-`/`--`) is an input error, not a silent `undefined` that
+// would build an empty-description persona or crash on readFileSync(undefined).
+function takeValue(args, i, flag) {
+  const v = args[i + 1];
+  if (v === undefined || v.startsWith('-')) {
+    throw inputError(`${flag} requires a value`, `Missing value after ${flag}.`, `Pass ${flag} <value>.`);
+  }
+  return [v, i + 1];
+}
+
 // Extract the first balanced JSON object from an LLM response.
 function parseFirstJson(text) {
   const raw = String(text || '');
@@ -199,10 +210,8 @@ function makeCallLLM({ backends } = {}) {
 
 function writePersonaFile({ repoRoot, lang, id, frontmatter, force }) {
   const dir = resolve(repoRoot, 'custom', 'personas', lang);
-  const path = resolve(dir, `${id}.md`);
-  if (!path.startsWith(dir + '/')) {
-    throw inputError(`persona path escaped its library: ${id}`, `${path} is outside ${dir}.`, 'Use a plain id with no path separators.');
-  }
+  // Cross-platform containment guard (uses path.sep, not a hardcoded '/').
+  const path = safePersonaPath(dir, id);
   if (existsSync(path) && !force) {
     throw inputError(
       `persona already exists: ${id}`,
@@ -222,11 +231,11 @@ function parsePersonaNewArgs(args) {
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
     if (arg === '-h' || arg === '--help') opts.help = true;
-    else if (arg === '--lang' || arg === '--language') opts.lang = args[++i];
+    else if (arg === '--lang' || arg === '--language') { [opts.lang, i] = takeValue(args, i, arg); }
     else if (arg === '--template') opts.mode = 'template';
-    else if (arg === '--from-sample') { opts.mode = 'sample'; opts.sampleFile = args[++i]; }
-    else if (arg === '--describe') { opts.mode = 'describe'; opts.describe = args[++i]; }
-    else if (arg === '--backend') opts.backend = args[++i];
+    else if (arg === '--from-sample') { opts.mode = 'sample'; [opts.sampleFile, i] = takeValue(args, i, arg); }
+    else if (arg === '--describe') { opts.mode = 'describe'; [opts.describe, i] = takeValue(args, i, arg); }
+    else if (arg === '--backend') { [opts.backend, i] = takeValue(args, i, arg); }
     else if (arg === '--force') opts.force = true;
     else if (arg === '--no-interactive') opts.interactive = false;
     else if (!arg.startsWith('-') && opts.id === null) opts.id = arg;
@@ -339,9 +348,15 @@ export function runPersonaList(args, deps = {}) {
     const all = listPersonas(repoRoot, l);
     const customIds = new Set(existsSync(customDir) ? all.filter((id) => existsSync(resolve(customDir, `${id}.md`))) : []);
     const builtinIds = existsSync(builtinDir) ? all.filter((id) => existsSync(resolve(builtinDir, `${id}.md`))) : [];
+    const builtinSet = new Set(builtinIds);
+    // A custom id that also exists as a built-in shadows it: the loader is
+    // custom-first, so the custom file is what actually runs. Surface it
+    // explicitly instead of hiding it under `built-in`.
+    const shadowed = all.filter((id) => customIds.has(id) && builtinSet.has(id));
     result[l] = {
       builtin: builtinIds,
-      custom: all.filter((id) => customIds.has(id) && !builtinIds.includes(id)),
+      custom: all.filter((id) => customIds.has(id) && !builtinSet.has(id)),
+      shadowed,
     };
   }
   if (json) {
@@ -352,7 +367,11 @@ export function runPersonaList(args, deps = {}) {
   for (const [l, groups] of Object.entries(result)) {
     lines.push(`${l}:`);
     lines.push(`  built-in: ${groups.builtin.join(', ') || '(none)'}`);
-    lines.push(`  custom:   ${groups.custom.join(', ') || '(none)'}`);
+    const customLabels = [
+      ...groups.custom,
+      ...groups.shadowed.map((id) => `${id} (shadows built-in)`),
+    ];
+    lines.push(`  custom:   ${customLabels.join(', ') || '(none)'}`);
   }
   console.log(lines.join('\n'));
   return result;
@@ -477,11 +496,11 @@ function parsePersonaEditArgs(args) {
   const opts = { id: null, lang: 'ko', mode: null, sampleFile: null, describe: null, name: null, backend: process.env.PATINA_BACKEND || null };
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
-    if (arg === '--lang' || arg === '--language') opts.lang = args[++i];
-    else if (arg === '--from-sample') { opts.mode = 'sample'; opts.sampleFile = args[++i]; }
-    else if (arg === '--describe') { opts.mode = 'describe'; opts.describe = args[++i]; }
-    else if (arg === '--name') { opts.mode = 'name'; opts.name = args[++i]; }
-    else if (arg === '--backend') opts.backend = args[++i];
+    if (arg === '--lang' || arg === '--language') { [opts.lang, i] = takeValue(args, i, arg); }
+    else if (arg === '--from-sample') { opts.mode = 'sample'; [opts.sampleFile, i] = takeValue(args, i, arg); }
+    else if (arg === '--describe') { opts.mode = 'describe'; [opts.describe, i] = takeValue(args, i, arg); }
+    else if (arg === '--name') { opts.mode = 'name'; [opts.name, i] = takeValue(args, i, arg); }
+    else if (arg === '--backend') { [opts.backend, i] = takeValue(args, i, arg); }
     else if (!arg.startsWith('-') && opts.id === null) opts.id = arg;
     else throw inputError(`unknown persona edit argument: ${arg}`, 'Unrecognized flag or extra positional.', 'See `patina persona --help`.');
   }

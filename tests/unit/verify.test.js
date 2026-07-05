@@ -24,6 +24,15 @@ test('deterministicMeaningGuard treats grouped and plain numbers as equal (1,200
   );
 });
 
+test('deterministicMeaningGuard preserves non-standard grouping so a dropped 1,2 is not masked by 12', () => {
+  // Valid thousands grouping still normalizes (no false positive).
+  assert.deepEqual(deterministicMeaningGuard('n 1,234,567', 'n 1234567'), []);
+  // "1,2" (list/version/coordinate) must NOT collapse onto "12": dropping it
+  // while the rewrite happens to contain 12 must still flag on the enforcing guard.
+  const warnings = deterministicMeaningGuard('rated 1,2 overall', 'rated 12 overall');
+  assert.ok(warnings.some((w) => /numbers/.test(w)), warnings.join(' | '));
+});
+
 // ---------- verifyRewrite (injected scorers + callLLM) ----------
 
 const baseArgs = {

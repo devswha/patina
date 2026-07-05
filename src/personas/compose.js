@@ -149,15 +149,19 @@ export function formatPersonaDirective(persona, { lang, tone, korean } = {}) {
 }
 
 /**
- * Whether a persona actively shapes voice (so a profile's voice guidance should
- * defer to it). True when the persona injects content emphasis (depth "content")
- * or has any active voice block. A style-only persona with no active blocks
- * (e.g. `preserve`) does NOT own voice, so profile voice guidance still applies.
+ * Whether a persona injects ACTIVE voice traits — content-depth emphasis or any
+ * active voice block. This is NOT a statement about voice OWNERSHIP: under the
+ * v6.2 contract any active persona (including the `preserve` default) is the
+ * sole voice owner. This predicate answers only the narrower question the
+ * profile-voice-retirement migration warning needs: does the persona carry
+ * genre voice traits? A trait-less persona like `preserve` returns false, so a
+ * user still relying on the retired profile voice gets nudged toward a
+ * genre-voicing persona.
  *
  * @param {object} persona Normalized persona object.
- * @returns {boolean} True if the persona governs voice.
+ * @returns {boolean} True if the persona injects active voice traits.
  */
-export function personaOwnsVoice(persona) {
+export function personaHasVoiceTraits(persona) {
   if (!persona) return false;
   if (persona.depth === 'content') return true;
   const blocks = persona.blocks ?? {};

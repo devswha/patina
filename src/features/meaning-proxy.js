@@ -15,13 +15,18 @@
 import { tokenize } from './index.js';
 
 const NUMBER_RE = /\d[\d.,]*/g;
+// Valid thousands grouping only (1,200 / 1,234,567 / 1,234.56). Non-standard
+// grouping like 1,2 or 3,14 is intentionally NOT stripped so it never collapses
+// onto 12 / 314 and masks a genuinely dropped number.
+const GROUPED_THOUSANDS_RE = /^\d{1,3}(,\d{3})+(\.\d+)?$/;
 
 // Own, Lane-A-pure numeric extraction (mirrors verify.js#numbersIn so this module
 // imports nothing from Lane B). Normalizes grouping commas (1,200 === 1200).
 function numbersIn(text) {
   const out = new Set();
   for (const m of String(text ?? '').matchAll(NUMBER_RE)) {
-    const normalized = m[0].replace(/,/g, '').replace(/\.+$/, '');
+    const raw = m[0].replace(/\.+$/, '');
+    const normalized = GROUPED_THOUSANDS_RE.test(raw) ? raw.replace(/,/g, '') : raw;
     if (normalized) out.add(normalized);
   }
   return out;
@@ -69,7 +74,11 @@ export function rareTokenRecall(original, rewrite, lang = 'ko') {
   const rJoined = String(rewrite ?? '').normalize('NFC').toLowerCase();
   let survived = 0;
   for (const t of rare) {
-    if (rSet.has(t) || rJoined.includes(t)) survived += 1;
+    // Substring fallback only for CJK or long (>=5) Latin tokens. Short Latin
+    // rare tokens (us / art / ai / go) would false-survive inside business /
+    // chair / ongoing, masking a dropped entity/term.
+    const allowSubstring = CJK_RE.test(t) || t.length >= 5;
+    if (rSet.has(t) || (allowSubstring && rJoined.includes(t))) survived += 1;
   }
   return { active: true, recall: survived / rare.length, rareCount: rare.length, survived };
 }
@@ -154,7 +163,10 @@ export function evaluateMeaningProxy({ original, rewrite, lang = 'ko' } = {}) {
   // Signal 4 — length-ratio EXTREME bounds (truncation / hallucinated expansion).
   const oTokens = tokenize(String(original ?? ''), { lang }).length;
   const rTokens = tokenize(String(rewrite ?? ''), { lang }).length;
-  const lengthRatio = oTokens === 0 ? 1 : rTokens / oTokens;
+  // Empty original + non-empty rewrite is closer to hallucinated expansion than a
+  // meaning-preserving rewrite, so it must fail the extreme-bounds check rather
+  // than record a benign ratio of 1.
+  const lengthRatio = oTokens === 0 ? (rTokens === 0 ? 1 : Infinity) : rTokens / oTokens;
   if (lengthRatio < 0.4 || lengthRatio > 2.5) {
     reasons.push(`length ratio ${lengthRatio.toFixed(2)} outside [0.4, 2.5] — truncation or expansion`);
     bump('fail');

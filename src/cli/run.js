@@ -35,7 +35,7 @@ import { resolve } from 'node:path';
 import { loadPersona } from '../personas/loader.js';
 import { evaluatePersonaGate } from '../personas/gates.js';
 import { personaMatchScore } from '../features/persona-match.js';
-import { personaOwnsVoice } from '../personas/compose.js';
+import { personaHasVoiceTraits } from '../personas/compose.js';
 import { evaluateMeaningProxy } from '../features/meaning-proxy.js';
 import { pathToFileURL } from 'node:url';
 import { humanizeXliffDocument, resolveUniqueCap } from './xliff.js';
@@ -109,11 +109,14 @@ export async function runDefault(parsed, logger) {
 
   // v6.2 profile-voice retirement: profiles no longer carry voice — the active
   // persona is the sole voice owner. Warn once when a non-default profile is
-  // used for a rewrite without a voice-owning persona, so users relying on the
-  // old profile voice migrate to a persona (e.g. --persona blog-essay).
-  if (mode === 'rewrite' && parsed.profile && parsed.profile !== 'default' && !personaOwnsVoice(persona)) {
+  // requested for a rewrite but the active persona injects no genre voice
+  // traits, so users relying on the old profile voice migrate to a persona
+  // (e.g. --persona blog-essay). Keyed on the EFFECTIVE profile name so the
+  // warning also fires for `.patina.yaml` profile users (not just --profile),
+  // and stays silent when namuwiki fell back to default for a non-ko run.
+  if (mode === 'rewrite' && profileName !== 'default' && !personaHasVoiceTraits(persona)) {
     logger.warn?.('profile.voice_retired', {
-      message: `[patina] profile "${parsed.profile}" no longer provides voice — profiles are pattern-policy only now. For genre voice use a persona (e.g. patina --lang ${lang} --persona <id> ...); run \`patina persona list --lang ${lang}\`.`,
+      message: `[patina] profile "${profileName}" no longer provides voice — profiles are pattern-policy only now. For genre voice use a persona (e.g. patina --lang ${lang} --persona <id> ...); run \`patina persona list --lang ${lang}\`.`,
     });
   }
 
@@ -339,12 +342,16 @@ export async function runDefault(parsed, logger) {
             });
             process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
           }
-          if (gate.advisory.length > 0) {
-            // ADVISORY: voice-match quality and surface churn — never block or
-            // change the exit code. Surface churn is not a meaning signal.
-            const bits = [];
-            if (!gate.personaMatchPass) bits.push(`voice match ${gate.personaMatch} < ${gate.personaMatchMin}`);
-            if (!gate.churnPass) bits.push(`surface churn ${gate.churn} > ${gate.churnMax}`);
+          // ADVISORY (never blocks or changes the exit code): voice-match
+          // quality and surface churn. meaningProxy is Phase A JSON-only — it
+          // rides gate.advisory + the meaning_proxy report but MUST NOT emit a
+          // CLI warning, so key the warning on the CLI-warnable bits (not on
+          // gate.advisory.length, which would print an empty/leaky message when
+          // meaningProxy is the only advisory item).
+          const bits = [];
+          if (!gate.personaMatchPass) bits.push(`voice match ${gate.personaMatch} < ${gate.personaMatchMin}`);
+          if (!gate.churnPass) bits.push(`surface churn ${gate.churn} > ${gate.churnMax}`);
+          if (bits.length > 0) {
             logger.warn('persona.advisory', {
               message: `[patina] persona advisory: ${bits.join('; ')} (quality signals only; output not blocked).`,
             });

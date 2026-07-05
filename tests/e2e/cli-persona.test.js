@@ -170,4 +170,25 @@ describe('CLI persona harness', () => {
     assert.equal(exitCode, 0);
     assert.ok(errors.join('\n').includes('no longer provides voice'), 'expected the profile voice-retirement migration warning');
   });
+
+  it('warns for a .patina.yaml profile (config, not --profile) with no voice persona', async () => {
+    // The migration-relevant user has `profile: blog` in config and no --profile
+    // flag; the warning must key on the EFFECTIVE profile name, not parsed.profile.
+    const enPath = resolve(keyDir, 'en-config-profile.txt');
+    writeFileSync(enPath, 'This is a plain test sentence with no numbers.');
+    const configPath = resolve(keyDir, 'profile-blog.yaml');
+    writeFileSync(configPath, 'language: en\nprofile: blog\n');
+    const { errors, exitCode } = await captureConsole(() => main([
+      '--config', configPath,
+      '--format', 'json',
+      '--api-key-file', mockApiKeyPath,
+      '--base-url', `http://127.0.0.1:${mock.port}`,
+      '--model', 'gpt-5',
+      enPath,
+    ]));
+    assert.equal(exitCode, 0);
+    const err = errors.join('\n');
+    assert.ok(err.includes('no longer provides voice'), 'config-file profile must also trigger the migration warning');
+    assert.ok(err.includes('"blog"'), 'warning names the effective profile from config');
+  });
 });

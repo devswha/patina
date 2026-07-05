@@ -11,6 +11,8 @@ import {
   CONTEXT_LIMITS,
   STREAM_FRAME_TYPES,
   PROVIDER_PRESETS,
+  WEB_PERSONAS,
+  isWebPersonaAllowed,
   byteLength,
   redactSecrets,
   resolveProviderModel,
@@ -221,6 +223,38 @@ test('validateRewriteRequest rejects a key on the free tier and a missing key on
     validateRewriteRequest(freeFirst({ tier: 'byok', provider: 'openai', model: 'gpt-5.5' })).ok,
     false,
   );
+});
+
+test('validateRewriteRequest accepts an offered voice persona and rejects unknown/foreign ones', () => {
+  // An offered ko voice is normalized onto value.persona.
+  const ok = validateRewriteRequest(freeFirst({ persona: 'natural-ko' }));
+  assert.equal(ok.ok, true);
+  assert.equal(ok.value.persona, 'natural-ko');
+
+  // Absent or empty -> no persona (server applies its default voice).
+  assert.equal(validateRewriteRequest(freeFirst()).value.persona, undefined);
+  assert.equal(validateRewriteRequest(freeFirst({ persona: '' })).value.persona, undefined);
+
+  // Unknown id, non-string, and a voice offered only in another language all 400
+  // (fail-closed — an arbitrary id must never reach the persona loader).
+  assert.equal(validateRewriteRequest(freeFirst({ persona: 'no-such-voice' })).status, 400);
+  assert.equal(validateRewriteRequest(freeFirst({ persona: 42 })).status, 400);
+  // technical-explainer is offered for ko/en but NOT zh.
+  assert.equal(validateRewriteRequest(freeFirst({ lang: 'zh', persona: 'technical-explainer' })).status, 400);
+});
+
+test('WEB_PERSONAS covers every supported language with well-formed {id,label} entries', () => {
+  for (const lang of SUPPORTED_LANGS) {
+    const list = WEB_PERSONAS[lang];
+    assert.ok(Array.isArray(list) && list.length > 0, `${lang} must offer at least one voice`);
+    for (const p of list) {
+      assert.match(p.id, /^[a-z0-9][a-z0-9-]*$/);
+      assert.ok(typeof p.label === 'string' && p.label.length > 0);
+      assert.equal(isWebPersonaAllowed(lang, p.id), true);
+    }
+  }
+  assert.equal(isWebPersonaAllowed('ko', 'definitely-not-a-voice'), false);
+  assert.equal(isWebPersonaAllowed('xx', 'natural-ko'), false);
 });
 
 // --- history capping --------------------------------------------------------

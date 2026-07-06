@@ -8,7 +8,8 @@ import {
   quotaKeyHmac,
 } from '../../src/rate-limit.js';
 import { createRewriteHandler } from '../../src/rewrite-handler.js';
-import { WEB_TIERS } from '../../src/web-rewrite-contract.js';
+import { QUOTA_REASONS, TIER_LIMITS, WEB_TIERS } from '../../src/web-rewrite-contract.js';
+import { createRestKv } from '../../api/rewrite.js';
 
 function makeRes() {
   return {
@@ -305,4 +306,335 @@ test('category 7 stream body DoS: async body over maxBodyBytes aborts at 413 bef
   assert.equal(calls, 0);
   assert.ok(yielded < 4, `stream should stop before all chunks are consumed; yielded ${yielded}`);
   assertNoStore(res);
+});
+
+// ---------------------------------------------------------------------------
+// G003 red-team: pro subject metering (src/rate-limit.js switch(tier)) +
+// createRestKv atomicity/coercion (api/rewrite.js). These probe gaps beyond the
+// existing unit suite. Product code is frozen; tests assert the OBSERVED
+// contract and any deviation from the expected security contract is a FINDING.
+// ---------------------------------------------------------------------------
+
+const PRO = WEB_TIERS.PRO;
+const FREE = WEB_TIERS.FREE;
+const BYOK = WEB_TIERS.BYOK;
+
+/** Wrap createMemoryKv counting incr/decr so a compensating decr is observable. */
+function spyMemoryKv() {
+  const mem = createMemoryKv();
+  const counts = { incr: 0, decr: 0 };
+  return {
+    counts,
+    get: (key) => mem.get(key),
+    async incr(key, opts) { counts.incr += 1; return mem.incr(key, opts); },
+    async decr(key) { counts.decr += 1; return mem.decr(key); },
+  };
+}
+
+/** Swap globalThis.fetch for the duration of `run`, always restoring it. */
+async function withMockFetch(fetchImpl, run) {
+  const original = globalThis.fetch;
+  globalThis.fetch = /** @type {any} */ (fetchImpl);
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+/** Faithful Upstash/Vercel REST mock: POST SET stores verbatim; GET returns it. */
+function restKvMock() {
+  const store = new Map();
+  const posts = [];
+  const reads = [];
+  const fetchImpl = async (url, init) => {
+    const u = String(url);
+    if (init && init.method === 'POST') {
+      const args = JSON.parse(String(init.body));
+      posts.push({ args, headers: init.headers });
+      if (args[0] === 'SET') store.set(args[1], args[2]);
+      return { ok: true, async json() { return { result: 'OK' }; } };
+    }
+    reads.push(u);
+    const m = u.match(/\/get\/(.+)$/);
+    if (m) {
+      const key = decodeURIComponent(m[1]);
+      return { ok: true, async json() { return { result: store.has(key) ? store.get(key) : null }; } };
+    }
+    return { ok: true, async json() { return { result: null }; } };
+  };
+  return { fetchImpl, posts, reads, store };
+}
+
+test('category 8 pro subject injection: falsy AND truthy non-string subjects both fail closed with 401', async () => {
+  const need401 = { allowed: false, status: 401, reason: QUOTA_REASONS.LICENSE_REQUIRED };
+
+  // Every non-string (or empty-string) subject must fail closed with 401 on
+  // BOTH the metering check and the concurrency-slot acquire. The guard is a
+  // strict `typeof subject !== 'string' || subject === ''`, closing the earlier
+  // falsy-only defense-in-depth gap where a truthy non-string subject (object/
+  // array/non-zero number) slipped past and was String()-coerced, collapsing
+  // distinct license objects onto one shared '[object Object]' bucket.
+  for (const subject of [undefined, null, '', 0, Number.NaN, { license: 'A' }, ['x'], 42, true]) {
+    const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+    assert.deepEqual(await limiter.check({ tier: PRO, subject: /** @type {any} */ (subject), ip: '203.0.113.7' }), need401, `check subject=${String(subject)}`);
+    assert.deepEqual(await limiter.acquireConcurrency({ tier: PRO, subject: /** @type {any} */ (subject), ip: '203.0.113.7' }), need401, `acquire subject=${String(subject)}`);
+  }
+});
+
+test('category 9 pro is subject-keyed and never IP-keyed: same subject/diff IP shares a bucket, diff subject/same IP does not', async () => {
+  const limits = {
+    free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 },
+    byok: { maxChars: 20000, maxConcurrent: 2 },
+    pro: { maxChars: 20000, reqPerDay: 1, maxConcurrent: 3 },
+  };
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0, limits });
+  // Same subject, different IPs (and a missing IP) all hit the SAME bucket.
+  assert.equal((await limiter.check({ tier: PRO, subject: 'seat-1', ip: '203.0.113.1' })).allowed, true);
+  assert.deepEqual(await limiter.check({ tier: PRO, subject: 'seat-1', ip: '198.51.100.9' }), { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY });
+  assert.deepEqual(await limiter.check({ tier: PRO, subject: 'seat-1' }), { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY });
+  // A DIFFERENT subject on the SAME IP is a fresh bucket (the IP is irrelevant).
+  assert.equal((await limiter.check({ tier: PRO, subject: 'seat-2', ip: '203.0.113.1' })).allowed, true);
+
+  // The pro keys are derived from the subject only and never leak the raw
+  // subject/IP; adding an IP can never change the day key.
+  const dayKey = quotaKeyHmac('secret', 'pro', 'day', 'seat-1', 0);
+  assert.match(dayKey, /^[a-f0-9]{64}$/);
+  assert.equal(dayKey.includes('seat-1'), false);
+  assert.equal(quotaKeyHmac('secret', 'pro', 'concurrent', 'seat-1').includes('203.0.113.1'), false);
+});
+
+test('category 10 pro daily boundary: the request AT the cap is allowed with remainingDay 0 and the next crosses to 429 DAILY', async () => {
+  assert.equal(TIER_LIMITS.pro.reqPerDay, 200, 'boundary pinned to the frozen default (200)');
+  const cap = TIER_LIMITS.pro.reqPerDay;
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  const subject = 'seat-boundary';
+  let last;
+  for (let i = 0; i < cap; i += 1) last = await limiter.check({ tier: PRO, subject });
+  assert.deepEqual(last, { allowed: true, tier: PRO, remainingDay: 0 }, 'the 200th (== cap) is allowed with 0 remaining');
+  assert.deepEqual(await limiter.check({ tier: PRO, subject }), { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY }, 'the 201st crosses the cap');
+});
+
+test('category 11 pro concurrency boundary: N acquire, the (N+1)th is compensated by a decr and denied, and a release re-admits', async () => {
+  assert.equal(TIER_LIMITS.pro.maxConcurrent, 3, 'boundary pinned to the frozen default (3)');
+  const cap = TIER_LIMITS.pro.maxConcurrent;
+  const kv = spyMemoryKv();
+  const limiter = createRateLimiter({ kv, hmacSecret: 'secret', now: () => 0 });
+  const subject = 'seat-conc';
+  for (let i = 0; i < cap; i += 1) {
+    assert.deepEqual(await limiter.acquireConcurrency({ tier: PRO, subject }), { allowed: true, tier: PRO }, `slot ${i + 1}`);
+  }
+  assert.deepEqual(await limiter.acquireConcurrency({ tier: PRO, subject }), { allowed: false, status: 429, reason: QUOTA_REASONS.CONCURRENT });
+
+  // The over-limit acquire incremented THEN COMPENSATED with a decr, so the live
+  // counter never leaks past the cap (cap+1 incr, 1 decr => cap). Without the
+  // compensating decr the slot would be permanently poisoned and lock everyone out.
+  const key = quotaKeyHmac('secret', 'pro', 'concurrent', subject);
+  assert.equal(await kv.get(key), cap, 'counter compensated back to the cap, not stuck at cap+1');
+  assert.equal(kv.counts.incr, cap + 1);
+  assert.equal(kv.counts.decr, 1);
+
+  // Releasing one slot frees capacity and re-admits.
+  await limiter.releaseConcurrency({ tier: PRO, subject });
+  assert.equal(await kv.get(key), cap - 1);
+  assert.deepEqual(await limiter.acquireConcurrency({ tier: PRO, subject }), { allowed: true, tier: PRO });
+});
+
+test('category 12 pro degraded KV never fails open: NaN/negative/zero/object/undefined/throwing incr all deny with 503 on check and acquire', async () => {
+  const fail503 = { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+  const badReturns = [Number.NaN, -1, -999, 0, {}, undefined];
+  for (const bad of badReturns) {
+    const limiter = createRateLimiter({ kv: { async incr() { return /** @type {any} */ (bad); }, async decr() { return 0; } }, hmacSecret: 'secret', now: () => 0 });
+    assert.deepEqual(await limiter.check({ tier: PRO, subject: 'seat' }), fail503, `check incr->${String(bad)}`);
+    assert.deepEqual(await limiter.acquireConcurrency({ tier: PRO, subject: 'seat' }), fail503, `acquire incr->${String(bad)}`);
+  }
+  const thrower = createRateLimiter({ kv: { async incr() { throw new Error('kv down'); }, async decr() {} }, hmacSecret: 'secret', now: () => 0 });
+  assert.deepEqual(await thrower.check({ tier: PRO, subject: 'seat' }), fail503, 'check incr throws');
+  assert.deepEqual(await thrower.acquireConcurrency({ tier: PRO, subject: 'seat' }), fail503, 'acquire incr throws');
+});
+
+test('category 13 free tier no-regression: IP-keyed metering ignores subject, fails closed, and never embeds the raw IP in a key', async () => {
+  const ip = '203.0.113.60';
+
+  // Fail-closed in production without a durable KV; exact shape/reason unchanged.
+  const prod = createRateLimiter({ kv: null, hmacSecret: 'secret', env: { NODE_ENV: 'production' } });
+  assert.deepEqual(await prod.check({ tier: FREE, ip }), { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE });
+  // Missing IP is a stable 400 even if a bogus subject is supplied.
+  assert.deepEqual(await createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret' }).check({ tier: FREE, ip: null, subject: /** @type {any} */ ('ignored') }), { allowed: false, status: 400, reason: QUOTA_REASONS.IP_UNAVAILABLE });
+
+  // The daily cap (5) is enforced per IP and a supplied subject is IGNORED: the
+  // 6th request with a DIFFERENT subject but the SAME IP is still 429 DAILY.
+  // burstPerHour is lifted so the daily cap (not the hourly burst) is the gate.
+  const limits = { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 99 }, byok: { maxChars: 20000, maxConcurrent: 2 }, pro: { maxChars: 20000, reqPerDay: 200, maxConcurrent: 3 } };
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0, limits });
+  for (let i = 0; i < 5; i += 1) {
+    assert.equal((await limiter.check({ tier: FREE, ip, subject: /** @type {any} */ (`seat-${i}`) })).allowed, true, `free request ${i + 1}`);
+  }
+  assert.deepEqual(await limiter.check({ tier: FREE, ip, subject: /** @type {any} */ ('brand-new-subject') }), { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY });
+
+  // A first free response shape is exactly {allowed, tier, remainingDay}.
+  const fresh = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  assert.deepEqual(await fresh.check({ tier: FREE, ip, subject: /** @type {any} */ ('ignored') }), { allowed: true, tier: FREE, remainingDay: 4 });
+
+  // Free concurrency (max 1) enforces; a subject can neither widen nor bypass it.
+  const conc = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  assert.deepEqual(await conc.acquireConcurrency({ tier: FREE, ip, subject: /** @type {any} */ ('x') }), { allowed: true, tier: FREE });
+  assert.deepEqual(await conc.acquireConcurrency({ tier: FREE, ip, subject: /** @type {any} */ ('y') }), { allowed: false, status: 429, reason: QUOTA_REASONS.CONCURRENT });
+  await conc.releaseConcurrency({ tier: FREE, ip });
+  assert.deepEqual(await conc.acquireConcurrency({ tier: FREE, ip }), { allowed: true, tier: FREE });
+
+  // Every free key is a 64-hex HMAC that never leaks the raw IP.
+  for (const key of [
+    quotaKeyHmac('secret', 'free', 'day', ip, 0),
+    quotaKeyHmac('secret', 'free', 'hour', ip, 0),
+    quotaKeyHmac('secret', 'free', 'concurrent', ip),
+  ]) {
+    assert.match(key, /^[a-f0-9]{64}$/);
+    assert.equal(key.includes(ip), false);
+  }
+});
+
+test('category 14 byok tier no-regression: unmetered allow/no-op that never touches the KV, regardless of ip/subject', async () => {
+  const boom = {
+    async get() { throw new Error('byok must not read kv'); },
+    async set() { throw new Error('byok must not write kv'); },
+    async incr() { throw new Error('byok must not meter'); },
+    async decr() { throw new Error('byok must not release'); },
+  };
+  const limiter = createRateLimiter({ kv: boom, hmacSecret: 'secret', env: { NODE_ENV: 'production' }, now: () => 0 });
+
+  // Unmetered allow on check even in production with a hostile kv and any identity.
+  assert.deepEqual(await limiter.check({ tier: BYOK, ip: null, subject: null }), { allowed: true, tier: BYOK });
+  assert.deepEqual(await limiter.check({ tier: BYOK, ip: '203.0.113.9', subject: /** @type {any} */ ('ignored') }), { allowed: true, tier: BYOK });
+  // Concurrency acquire is a no-op allow; release is a no-op. Neither hits kv, so
+  // `boom` never throwing proves the byok path never touches storage.
+  assert.deepEqual(await limiter.acquireConcurrency({ tier: BYOK, ip: '203.0.113.9', subject: /** @type {any} */ ('ignored') }), { allowed: true, tier: BYOK });
+  await limiter.releaseConcurrency({ tier: BYOK, ip: '203.0.113.9', subject: /** @type {any} */ ('ignored') });
+});
+
+test('category 15 createRestKv set/get: atomic single-command SET(+PX) round-trips objects/arrays/nested/special chars; get coerces; !ok throws', async () => {
+  const { fetchImpl, posts } = restKvMock();
+  await withMockFetch(fetchImpl, async () => {
+    const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test/', KV_REST_API_TOKEN: 'token' });
+    assert.ok(kv);
+
+    const cases = [
+      { key: 'obj', val: { decision: 'allow', tier: 'pro', nested: { a: 1 } } },
+      { key: 'arr', val: [1, 'two', { three: 3 }, null, true] },
+      { key: 'deep', val: { a: { b: { c: { d: [{ e: 'f' }] } } } } },
+      { key: 'special chars', val: { s: 'quote"\ttab\nnewline\\backslash\u0000nul😀emoji', k: '한국어' } },
+      { key: 'json-looking-string', val: '{"not":"an object"}' },
+      { key: 'num', val: 42 },
+      { key: 'bool', val: false },
+    ];
+    for (const { key, val } of cases) {
+      posts.length = 0;
+      await kv.set(key, val, { ttlMs: 300_000 });
+      // Atomic: exactly ONE POST carrying SET ... PX ms (never SET then EXPIRE),
+      // so a crash cannot leave a TTL-less permanent entitlement-cache entry.
+      assert.equal(posts.length, 1, `set ${key} is a single atomic command`);
+      assert.deepEqual(posts[0].args, ['SET', key, JSON.stringify(val), 'PX', '300000'], `set ${key} args`);
+      assert.equal(posts[0].headers?.['Content-Type'], 'application/json');
+      assert.equal(posts[0].headers?.Authorization, 'Bearer token');
+      // Round-trip: object/array/nested come back deep-equal; a JSON-looking
+      // string comes back as the SAME string (never double-parsed into an object).
+      assert.deepEqual(await kv.get(key), val, `round-trip ${key}`);
+    }
+
+    // No TTL / non-positive TTL => plain SET, PX omitted.
+    for (const arg of [undefined, { ttlMs: 0 }, { ttlMs: -5 }]) {
+      posts.length = 0;
+      await kv.set('k', { a: 1 }, /** @type {any} */ (arg));
+      assert.deepEqual(posts[0].args, ['SET', 'k', JSON.stringify({ a: 1 })], `ttl=${JSON.stringify(arg)} omits PX`);
+    }
+    // A positive fractional TTL is floored to >= 1ms so a sub-ms cache entry
+    // never silently becomes permanent; a >1 fractional TTL uses ceil.
+    posts.length = 0;
+    await kv.set('k', { a: 1 }, { ttlMs: 0.4 });
+    assert.deepEqual(posts[0].args, ['SET', 'k', JSON.stringify({ a: 1 }), 'PX', '1'], 'fractional ttl floors to 1ms');
+    posts.length = 0;
+    await kv.set('k', { a: 1 }, { ttlMs: 1500.2 });
+    assert.deepEqual(posts[0].args, ['SET', 'k', JSON.stringify({ a: 1 }), 'PX', '1501'], 'fractional ttl uses ceil');
+  });
+
+  // get() coercion on non-object REST results: null -> undefined; non-JSON string
+  // -> verbatim; valid numeric string -> number; invalid-JSON numeric string
+  // (leading zero) -> verbatim string (JSON.parse fails, value is not dropped).
+  await withMockFetch(async (url, init) => {
+    if (init && init.method === 'POST') return { ok: true, async json() { return { result: 'OK' }; } };
+    const u = String(url);
+    if (u.endsWith('/null')) return { ok: true, async json() { return { result: null }; } };
+    if (u.endsWith('/legacy')) return { ok: true, async json() { return { result: 'plain-legacy-value' }; } };
+    if (u.endsWith('/num')) return { ok: true, async json() { return { result: '7' }; } };
+    if (u.endsWith('/leadingzero')) return { ok: true, async json() { return { result: '007' }; } };
+    return { ok: true, async json() { return { result: null }; } };
+  }, async () => {
+    const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
+    assert.equal(await kv.get('null'), undefined);
+    assert.equal(await kv.get('legacy'), 'plain-legacy-value');
+    assert.equal(await kv.get('num'), 7);
+    assert.equal(await kv.get('leadingzero'), '007');
+  });
+
+  // A non-ok REST response is fail-closed: get throws (read) and set throws (command).
+  await withMockFetch(async () => ({ ok: false, status: 500, async json() { return {}; } }), async () => {
+    const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
+    await assert.rejects(() => kv.get('k'), /kv request failed/);
+    await assert.rejects(() => kv.set('k', { a: 1 }), /kv command failed/);
+    await assert.rejects(() => kv.set('k', { a: 1 }, { ttlMs: 1000 }), /kv command failed/);
+  });
+});
+
+test('category 16 createRestKv incr/decr: numeric REST path is parsed independently of get and fails closed on an invalid counter', async () => {
+  // incr parses number|numeric-string|nested {result} via parseKvNumber and
+  // issues a SEPARATE /expire only when a positive ttl is supplied (counter path
+  // is unaffected by get()'s JSON-parsing round-trip).
+  {
+    const calls = [];
+    await withMockFetch(async (url) => {
+      const u = String(url);
+      calls.push(u);
+      if (u.includes('/incr/')) return { ok: true, async json() { return { result: '7' }; } };
+      if (u.includes('/expire/')) return { ok: true, async json() { return { result: 1 }; } };
+      if (u.includes('/decr/')) return { ok: true, async json() { return { result: { result: 3 } }; } };
+      return { ok: true, async json() { return { result: null }; } };
+    }, async () => {
+      const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
+      assert.equal(await kv.incr('c', { ttlMs: 60_000 }), 7, 'numeric-string incr result parses to a number');
+      assert.deepEqual(calls, ['https://kv.example.test/incr/c', 'https://kv.example.test/expire/c/60'], 'incr + expire, 60s = ceil(60000/1000)');
+      calls.length = 0;
+      assert.equal(await kv.incr('c'), 7, 'incr without a ttl issues no expire');
+      assert.deepEqual(calls, ['https://kv.example.test/incr/c']);
+      assert.equal(await kv.decr('c'), 3, 'nested {result} decr result parses to a number');
+    });
+  }
+
+  // A malformed counter (non-numeric, null, non-integer, object) fails closed by
+  // THROWING -- never silently returns a bogus count the limiter would trust
+  // (the limiter converts that throw into a 503, verified in category 12).
+  for (const bad of [{ result: 'not-a-number' }, { result: null }, { result: 1.5 }, { result: {} }, {}]) {
+    await withMockFetch(async () => ({ ok: true, async json() { return bad; } }), async () => {
+      const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
+      await assert.rejects(() => kv.incr('c'), /kv incr returned invalid counter/, `incr rejects ${JSON.stringify(bad)}`);
+      await assert.rejects(() => kv.decr('c'), /kv decr returned invalid counter/, `decr rejects ${JSON.stringify(bad)}`);
+    });
+  }
+
+  // The adapter is null (not a partial object) when REST env is absent, so the
+  // rate-limiter treats it as storage-unavailable rather than a broken adapter.
+  assert.equal(createRestKv({}), null);
+  assert.equal(createRestKv({ KV_REST_API_URL: 'https://kv.example.test' }), null);
+  assert.equal(createRestKv({ KV_REST_API_TOKEN: 'token' }), null);
+});
+
+test('category 17 unknown/malformed tier is a stable 400 on check and acquire, and a silent no-op on release', async () => {
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  const expected = { allowed: false, status: 400, reason: 'unsupported tier' };
+  const tiers = ['enterprise', 'admin', 'PRO', 'FREE', 'Byok', ' free', 'free ', 'pro\u0000', null, undefined, 123, {}, []];
+  for (const tier of tiers) {
+    assert.deepEqual(await limiter.check({ tier: /** @type {any} */ (tier), ip: '203.0.113.99', subject: 'x' }), expected, `check tier=${String(tier)}`);
+    assert.deepEqual(await limiter.acquireConcurrency({ tier: /** @type {any} */ (tier), ip: '203.0.113.99', subject: 'x' }), expected, `acquire tier=${String(tier)}`);
+    // release must never throw for an unknown tier (no key resolved => no-op).
+    await limiter.releaseConcurrency({ tier: /** @type {any} */ (tier), ip: '203.0.113.99', subject: 'x' });
+  }
 });

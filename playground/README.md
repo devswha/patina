@@ -63,6 +63,46 @@ Production domain:
 patina.vibetip.help
 ```
 
+## Tiers & environment
+
+`/api/rewrite` serves three tiers off one contract (`src/web-rewrite-contract.js`).
+All server env is set on the deployment; the browser never sees it, and every
+tier fails closed (missing config / KV / HMAC secret is denied before any
+provider call).
+
+| Tier | Auth | Metering | Provider key |
+|---|---|---|---|
+| `free` | none | IP quota (KV + HMAC) | `PATINA_FREE_API_KEY` |
+| `byok` | caller's own provider key (per request) | unmetered shared quota | caller key |
+| `pro` | `Authorization: Bearer <license_key>` | per-license quota (HMAC subject) | `PATINA_PRO_API_KEY` |
+
+**Pro tier ($9.99/mo USD)** is gated by a Lemon Squeezy license key. The server
+validates the key against Lemon Squeezy's validate-only endpoint
+(`POST /v1/licenses/validate`), caches the decision (default 5 min), and meters
+per license by an HMAC subject — the **raw license key is never stored, logged,
+put in a KV key, or forwarded to the runner**. Defaults: 20000 chars / 200 req
+per day / 3 concurrent, each env-overridable.
+
+Pro env (see `.env.example` for the full annotated list):
+
+- `LS_STORE_ID`, `LS_PRO_VARIANT_ID` — required; the validate response `meta`
+  must match. `LS_PRO_PRODUCT_ID` is an optional extra pin.
+- `PATINA_PRO_API_KEY` — required in production; when unset, production fails
+  closed (503) and never spends the free key on paid traffic. `PATINA_PRO_ALLOW_FREE_KEY=true`
+  is an explicit escape hatch that permits the `PATINA_FREE_API_KEY` fallback in
+  any posture (leave it unset in production to keep the 503; outside production
+  the free-key fallback is already on).
+- `PATINA_LICENSE_HMAC_SECRET` — license subject/KV-key secret (falls back to
+  `PATINA_QUOTA_HMAC_SECRET`).
+- `PATINA_PRO_PROVIDER` / `PATINA_PRO_MODEL` — fall back to the free provider/model.
+- `PATINA_PRO_MAX_CHARS` (20000) / `PATINA_PRO_REQ_PER_DAY` (200) /
+  `PATINA_PRO_MAX_CONCURRENT` (3).
+- `PATINA_LS_CACHE_TTL_MS` (300000) / `PATINA_LS_NEGATIVE_CACHE_TTL_MS` (60000) /
+  `PATINA_LS_TIMEOUT_MS` (2500) / `PATINA_LS_VALIDATE_RPM` (50, under LS's 60/min).
+
+Validate-only means revocation propagates within the positive-cache TTL (default
+5 min); a hard kill can shorten it by lowering `PATINA_LS_CACHE_TTL_MS`.
+
 ## Verification
 
 ```bash

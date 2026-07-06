@@ -270,3 +270,37 @@ test('BYOK concurrent requests bypass free concurrency limit', async () => {
   assert.equal(firstRes.statusCode, 200);
   assert.equal(secondRes.statusCode, 200);
 });
+test('send() tears down an already-committed response instead of throwing ERR_HTTP_HEADERS_SENT', async () => {
+  let destroyed = false;
+  const res = {
+    statusCode: 0,
+    headersSent: false,
+    writableEnded: false,
+    setHeader() {
+      // Mirror Node: mutating headers after they are flushed throws.
+      if (this.headersSent) throw new Error('ERR_HTTP_HEADERS_SENT');
+    },
+    write() {
+      // Writing the first frame commits the response (headers flushed).
+      this.headersSent = true;
+    },
+    end() {
+      if (this.headersSent) throw new Error('ERR_HTTP_HEADERS_SENT');
+    },
+    destroy() { destroyed = true; },
+  };
+  const handler = createRewriteHandler({
+    rateLimiter: allowedLimiter(),
+    runRewrite({ res: r }) {
+      r.write('{"type":"start"}\n'); // stream started -> response committed
+      throw new Error('boom after the first frame');
+    },
+    logger: { error() {} },
+  });
+
+  await assert.doesNotReject(
+    handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.24' }, body: validBody() }, res),
+    'a committed-response 500 path must not re-throw ERR_HTTP_HEADERS_SENT',
+  );
+  assert.equal(destroyed, true, 'a committed response must be torn down, not re-headered');
+});

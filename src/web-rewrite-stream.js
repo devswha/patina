@@ -17,9 +17,19 @@ function rawScore(score, field) {
   return /** @type {any} */ (score)?.[field];
 }
 
-/** @param {unknown} err */
-function safeError(err) {
-  return String(redactSecrets(/** @type {any} */ (err)?.message ?? err ?? 'unknown error'));
+/**
+ * @param {unknown} err
+ * @param {string} [secret] Request-scoped API key to scrub verbatim, on top of
+ *   pattern-based redaction. Covers provider key formats (e.g. GLM `id.secret`)
+ *   that carry no `sk-`/`Bearer`/label marker for the regex to catch, so a key
+ *   echoed in a provider error body never reaches an error frame or a log line.
+ */
+function safeError(err, secret) {
+  let out = String(redactSecrets(/** @type {any} */ (err)?.message ?? err ?? 'unknown error'));
+  if (typeof secret === 'string' && secret.length >= 8 && out.includes(secret)) {
+    out = out.split(secret).join('[REDACTED]');
+  }
+  return out;
 }
 
 /** @param {unknown} value */
@@ -94,7 +104,7 @@ export async function runWebRewriteStream({
     });
     rewrite = formatRewriteBodyForBrowser(streamResult.text);
   } catch (err) {
-    const error = safeError(err);
+    const error = safeError(err, request.apiKey);
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'stream_failed', error });
     return { ok: false, code: 'stream_failed', error };
   }
@@ -119,7 +129,7 @@ export async function runWebRewriteStream({
     // A scoring failure (including an abort during scoring) must terminate as
     // a clean NDJSON error frame — never bubble to the handler's JSON 500,
     // which would append a non-frame tail to an already-started stream.
-    const error = safeError(err);
+    const error = safeError(err, request.apiKey);
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'scoring_failed', error });
     return { ok: false, code: 'scoring_failed', error };
   }

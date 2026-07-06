@@ -12,6 +12,19 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## 6.3.0 — 2026-07-07
+
+**Hosted Pro tier: a Lemon Squeezy license-gated paid tier ($9.99/mo USD) on `/api/rewrite`, on Claude Sonnet 5, with a per-license monthly character cap.**
+
+Semver rationale: minor — additive hosted-service tier and env; the existing `free` (IP quota) and `byok` (caller key) contracts are unchanged and pinned by tests. No stable public CLI/API is removed. `src/features/*` (the deterministic layer) is untouched.
+
+### Added
+
+- **Pro tier (validate-only Lemon Squeezy license gate)**: `/api/rewrite` gains a `pro` tier alongside `free`/`byok`. The caller sends `Authorization: Bearer <license_key>`; the server validates it against Lemon Squeezy's validate-only endpoint (`POST /v1/licenses/validate`), caches the decision (5 min positive / 1 min negative), and meters per license by an **HMAC subject**. Fail-closed everywhere; the raw license key is never stored, logged, put in a KV key, forwarded to the runner, or returned. New `src/entitlement.js` (`extractBearerLicense`, `createLemonSqueezyLicenseValidator`) fronts LS with a single-flight admission guard that keeps patina under LS's 60 req/min ceiling. Contract additions in `src/web-rewrite-contract.js`: `WEB_TIERS.PRO`, `TIER_LIMITS.pro` (20000 chars / 200 req-day / 3 concurrent), `resolveTierLimits`, a dominant 401 `LICENSE_REQUIRED` auth gate, and `QUOTA_REASONS.LICENSE_*`.
+- **Claude Sonnet 5 on the Pro tier**: `PROVIDER_PRESETS.claude` adds `claude-sonnet-5` (the flagship default); Pro pins `PATINA_PRO_PROVIDER=claude` / `PATINA_PRO_MODEL=claude-sonnet-5` via env.
+- **Per-license monthly character cap (margin defense)**: a new `PATINA_PRO_CHARS_PER_MONTH` cap (default 1,000,000) accumulates each Pro request's input length per license subject in a UTC-month-bucketed, atomic KV counter that resets at the month boundary. Over the cap returns 429 `monthly character limit reached` with `remainingMonthlyChars`/`limitMonthlyChars`. The KV adapters gain an atomic `incrBy` (Upstash `INCRBY` + `PEXPIRE`).
+- **Pro env + docs**: `.env.example` and `playground/README.md` document every new env var (`LS_STORE_ID`, `LS_PRO_VARIANT_ID`, `LS_PRO_PRODUCT_ID`, `PATINA_PRO_API_KEY`, `PATINA_LICENSE_HMAC_SECRET`, `PATINA_PRO_PROVIDER`, `PATINA_PRO_MODEL`, `PATINA_PRO_MAX_CHARS`, `PATINA_PRO_REQ_PER_DAY`, `PATINA_PRO_MAX_CONCURRENT`, `PATINA_PRO_CHARS_PER_MONTH`, `PATINA_LS_CACHE_TTL_MS`, `PATINA_LS_NEGATIVE_CACHE_TTL_MS`, `PATINA_LS_TIMEOUT_MS`, `PATINA_LS_VALIDATE_RPM`, `PATINA_PRO_ALLOW_FREE_KEY`) and the $9.99/mo price.
+
 ## 6.2.0 — 2026-07-05
 
 **Personas everywhere: en/zh/ja seeds, `persona show|rm|edit`, profile-voice retirement, an advisory meaning-floor proxy, and a hosted playground Voice selector.**

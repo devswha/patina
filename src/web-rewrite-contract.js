@@ -15,8 +15,8 @@
 /** Languages the rewrite pipeline supports. */
 export const SUPPORTED_LANGS = Object.freeze(['ko', 'en', 'zh', 'ja']);
 
-/** Service tiers. `free` is the abuse-bounded shared proxy; `byok` uses the user's own key. */
-export const WEB_TIERS = Object.freeze({ FREE: 'free', BYOK: 'byok' });
+/** Service tiers. `free` is the abuse-bounded shared proxy; `byok` uses the user's own key; `pro` is the licensed hosted tier (server key, LS validate-only gated). */
+export const WEB_TIERS = Object.freeze({ FREE: 'free', BYOK: 'byok', PRO: 'pro' });
 
 /** Turn kinds. `first` is the one-shot rewrite; `refine` is a conversational follow-up. */
 export const REWRITE_MODES = Object.freeze({ FIRST: 'first', REFINE: 'refine' });
@@ -37,7 +37,36 @@ export const FIDELITY_FLOOR = 70;
 export const TIER_LIMITS = Object.freeze({
   free: Object.freeze({ maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }),
   byok: Object.freeze({ maxChars: 20000, maxConcurrent: 2 }),
+  pro: Object.freeze({ maxChars: 20000, reqPerDay: 200, maxConcurrent: 3 }),
 });
+
+/**
+ * Resolve the effective per-tier caps, applying optional env overrides to the
+ * `pro` tier only; `free`/`byok` are always the frozen defaults. Isomorphic and
+ * import-free — the server passes its process env, the browser/tests pass `{}`
+ * (or an explicit override map). Returns a fresh frozen object shaped exactly
+ * like TIER_LIMITS (free/byok/pro keys). Invalid overrides (non-integer, zero,
+ * or negative) fall back to the default so a malformed env can never widen a cap.
+ *
+ * @param {Record<string,string|undefined>} [env]
+ * @returns {typeof TIER_LIMITS}
+ */
+export function resolveTierLimits(env = {}) {
+  const readPositiveInt = (env, name, fallback) => {
+    const n = Number(env[name]);
+    return Number.isInteger(n) && n > 0 ? n : fallback;
+  };
+  const { pro } = TIER_LIMITS;
+  return Object.freeze({
+    free: TIER_LIMITS.free,
+    byok: TIER_LIMITS.byok,
+    pro: Object.freeze({
+      maxChars: readPositiveInt(env, 'PATINA_PRO_MAX_CHARS', pro.maxChars),
+      reqPerDay: readPositiveInt(env, 'PATINA_PRO_REQ_PER_DAY', pro.reqPerDay),
+      maxConcurrent: readPositiveInt(env, 'PATINA_PRO_MAX_CONCURRENT', pro.maxConcurrent),
+    }),
+  });
+}
 
 /**
  * Conversation context caps. The client holds the thread (no-store server); the
@@ -60,6 +89,9 @@ export const QUOTA_REASONS = Object.freeze({
   STORAGE_UNAVAILABLE: 'quota storage unavailable',
   SECRET_UNAVAILABLE: 'quota secret unavailable',
   SERVICE_UNAVAILABLE: 'rewrite service unavailable',
+  LICENSE_REQUIRED: 'license required',
+  LICENSE_INVALID: 'license not entitled',
+  LICENSE_UNAVAILABLE: 'license validation unavailable',
 });
 
 /**
@@ -155,11 +187,11 @@ export function isWebPersonaAllowed(lang, id) {
  * Keys whose values are secrets and must be redacted before logging. Matched by
  * normalized substring (lowercased, separators stripped) so families like
  * apiKey/openaiApiKey/x-api-key, access_token/refreshToken, client_secret, and
- * password/credential/authorization/bearer are all caught — over-redacting is
+ * password/credential/authorization/bearer/license are all caught — over-redacting is
  * the safe failure for a key-handling boundary.
  */
 const SECRET_KEY_MARKERS = Object.freeze([
-  'apikey', 'token', 'secret', 'password', 'passwd', 'credential', 'authorization', 'bearer',
+  'apikey', 'token', 'secret', 'password', 'passwd', 'credential', 'authorization', 'bearer', 'license',
 ]);
 function isSecretKey(key) {
   const norm = String(key).toLowerCase().replace(/[_-]/g, '');
@@ -167,7 +199,7 @@ function isSecretKey(key) {
 }
 /**
  * Inline secret shapes inside free-form strings (Bearer tokens, OpenAI keys),
- * plus labelled secrets (`apiKey=...`, `x-api-key: ...`, `token=...`) that
+ * plus labelled secrets (`apiKey=...`, `x-api-key: ...`, `token=...`, `license_key=...`) that
  * upstream provider error messages embed regardless of key format (#565).
  * The value part is bounded (no nested quantifiers) so a hostile error string
  * cannot trigger catastrophic backtracking; over-redacting is the safe
@@ -180,6 +212,7 @@ const SECRET_VALUE_RES = [
   /\b(?:access|refresh)[-_]?token\s*[:=]\s*[^\s"'`&,;]{6,}/gi,
   /\bclient[-_]?secret\s*[:=]\s*[^\s"'`&,;]{6,}/gi,
   /\b(?:token|secret|password|passwd|credential|authorization)\s*[:=]\s*[^\s"'`&,;]{6,}/gi,
+  /\blicense[-_]?key\s*[:=]\s*[^\s"'`&,;]{6,}/gi,
 ];
 const REDACTED = '[REDACTED]';
 
@@ -220,6 +253,8 @@ export function redactSecrets(value) {
  * - free: provider/model come from env (PATINA_FREE_PROVIDER/PATINA_FREE_MODEL),
  *   defaulting to the first preset; the request body cannot choose them.
  * - byok: provider+model must both be on the PROVIDER_PRESETS allowlist.
+ * - pro: like free, pinned by env (PATINA_PRO_* falling back to PATINA_FREE_*);
+ *   the request body cannot choose provider/model.
  * The base URL is ALWAYS taken from the preset, never from the request body.
  *
  * @param {{tier?:string, provider?:string, model?:string}} req
@@ -240,6 +275,14 @@ export function resolveProviderModel({ tier, provider, model } = {}, env = {}) {
     if (!preset) return { ok: false, error: 'free provider not configured' };
     const m = env.PATINA_FREE_MODEL || preset.models[0];
     if (!preset.models.includes(m)) return { ok: false, error: 'free model not allowlisted' };
+    return { ok: true, tier, provider: p, model: m, baseURL: preset.baseURL };
+  }
+  if (tier === WEB_TIERS.PRO) {
+    const p = env.PATINA_PRO_PROVIDER || env.PATINA_FREE_PROVIDER || 'openai';
+    const preset = presetFor(p);
+    if (!preset) return { ok: false, error: 'pro provider not configured' };
+    const m = env.PATINA_PRO_MODEL || env.PATINA_FREE_MODEL || preset.models[0];
+    if (!preset.models.includes(m)) return { ok: false, error: 'pro model not allowlisted' };
     return { ok: true, tier, provider: p, model: m, baseURL: preset.baseURL };
   }
   if (tier === WEB_TIERS.BYOK) {
@@ -283,13 +326,17 @@ export function normalizeHistory(history) {
 /**
  * Validate an inbound /api/rewrite request body against the contract.
  * Returns a normalized value on success, or an error plus the HTTP status the
- * handler should reply with (400 bad request, 413 payload too large).
+ * handler should reply with (400 bad request, 401 unauthorized, 413 payload too large).
  *
  * @param {unknown} body
  * @param {Record<string,string|undefined>} [env]
+ * @param {{proLicenseSource?:string}} [options] Out-of-band request facts the
+ *   handler has already established (e.g. that a pro license arrived as an
+ *   Authorization: Bearer header). Optional — existing 2-arg callers are
+ *   unaffected and behave exactly as before.
  * @returns {{ok:true, value:object}|{ok:false, status:number, error:string}}
  */
-export function validateRewriteRequest(body, env = {}) {
+export function validateRewriteRequest(body, env = {}, options = {}) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return { ok: false, status: 400, error: 'request body must be a JSON object' };
   }
@@ -301,14 +348,32 @@ export function validateRewriteRequest(body, env = {}) {
   if (!SUPPORTED_LANGS.includes(lang)) {
     return { ok: false, status: 400, error: `lang must be one of ${SUPPORTED_LANGS.join(', ')}` };
   }
-  if (tier !== WEB_TIERS.FREE && tier !== WEB_TIERS.BYOK) {
-    return { ok: false, status: 400, error: 'tier must be "free" or "byok"' };
+  if (tier !== WEB_TIERS.FREE && tier !== WEB_TIERS.BYOK && tier !== WEB_TIERS.PRO) {
+    return { ok: false, status: 400, error: 'tier must be "free", "byok", or "pro"' };
   }
   if (typeof text !== 'string' || text.trim().length === 0) {
     return { ok: false, status: 400, error: 'text must be a non-empty string' };
   }
 
-  const limits = TIER_LIMITS[tier];
+  // Pro tier gates on the license credential BEFORE char caps or provider/model
+  // resolution, so an unauthenticated pro request always fails closed with 401
+  // LICENSE_REQUIRED and never leaks limit/config state ahead of the auth
+  // boundary. The license is an entitlement (the handler verifies it via LS
+  // validate-only from an Authorization: Bearer header), never a provider key
+  // and never a body field.
+  if (tier === WEB_TIERS.PRO) {
+    if (/** @type {any} */ (body).apiKey != null) {
+      return { ok: false, status: 400, error: 'pro tier must not include an apiKey; the license is sent as Authorization: Bearer' };
+    }
+    if (/** @type {any} */ (body).licenseKey != null || /** @type {any} */ (body).license_key != null) {
+      return { ok: false, status: 400, error: 'pro tier license must be sent as Authorization: Bearer, not in the body' };
+    }
+    if (options.proLicenseSource !== 'authorization-bearer') {
+      return { ok: false, status: 401, error: QUOTA_REASONS.LICENSE_REQUIRED };
+    }
+  }
+
+  const limits = resolveTierLimits(env)[tier];
   if (text.length > limits.maxChars) {
     return { ok: false, status: 413, error: `text exceeds ${limits.maxChars} characters for tier ${tier}` };
   }

@@ -68,6 +68,14 @@ test('buildRewriteMetric normalizes unknown tier/provider/model/status defensive
   assert.equal(m.quotaDecision, 'n/a');
 });
 
+test('buildRewriteMetric preserves the pro tier (revenue-gate observability)', () => {
+  assert.equal(buildRewriteMetric({ tier: 'pro' }).tier, 'pro');
+  // Still allowlisted alongside free/byok; anything else normalizes to unknown.
+  assert.equal(buildRewriteMetric({ tier: 'enterprise' }).tier, 'unknown');
+  assert.equal(buildRewriteMetric({ tier: 'free' }).tier, 'free');
+  assert.equal(buildRewriteMetric({ tier: 'byok' }).tier, 'byok');
+});
+
 test('sanitizeMetric drops any non-allowlisted field', () => {
   const out = sanitizeMetric(/** @type {any} */ ({ tier: 'free', status: 200, apiKey: 'sk-x', text: 'secret', evil: 1 }));
   assert.deepEqual(Object.keys(out).sort(), ['status', 'tier']);

@@ -20,7 +20,7 @@
   <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
   <a href="#quick-start"><img alt="Skill: Claude Code | Codex | Cursor | OpenCode" src="https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet"></a>
   <a href="https://github.com/devswha/patina"><img alt="Languages: KO | EN | ZH | JA" src="https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green"></a>
-  <a href="CHANGELOG.md"><img alt="Version 6.2.0" src="https://img.shields.io/badge/version-6.2.0-blue"></a>
+  <a href="CHANGELOG.md"><img alt="Version 6.3.0" src="https://img.shields.io/badge/version-6.3.0-blue"></a>
 </p>
 
 <p align="center">
@@ -45,7 +45,7 @@ More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPL
 
 ### Browser playground
 
-Open **[patina.vibetip.help](https://patina.vibetip.help/)** — paste KO / EN / ZH / JA text for a real rewrite gated by the MPS/fidelity floors, with the deterministic AI signal measured before → after. Rewrites and scoring run server-side; the free tier uses the service's own model key (rate-limited). **API mode** forwards your own key per request through the patina server to the provider you pick — never stored or logged (metrics are sanitized: no text, prompt, output, key, or IP).
+Open **[patina.vibetip.help](https://patina.vibetip.help/)** — paste KO / EN / ZH / JA text for a real rewrite gated by the MPS/fidelity floors, with the deterministic AI signal measured before → after. Rewrites and scoring run server-side; the free tier uses the service's own model key (rate-limited). **API mode** forwards your own key per request through the patina server to the provider you pick — never stored or logged (metrics are sanitized: no text, prompt, output, key, or IP). **Pro** ($9.99/mo USD) unlocks higher limits (20000 chars, 200 rewrites/day) with a Lemon Squeezy license key sent as a bearer token — the raw key is validated server-side and never stored or logged.
 
 ### Agent skill
 
@@ -206,7 +206,7 @@ If meaning drifts, the change is retried or rolled back. Deterministic analysis 
 
 ```yaml
 # .patina.default.yaml
-version: "6.2.0"
+version: "6.3.0"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score

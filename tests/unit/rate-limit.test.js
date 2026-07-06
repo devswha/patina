@@ -164,6 +164,20 @@ test('free concurrency limit rejects a second active slot and releases after com
   assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.30' })).allowed, true);
 });
 
+test('concurrency slot TTL defaults to 5m and honors an override so an extended stream never expires the slot', async () => {
+  const defaultCalls = [];
+  const defaultKv = { async incr(_key, opts) { defaultCalls.push(opts); return 1; }, async decr() { return 0; } };
+  const defaultLimiter = createRateLimiter({ kv: defaultKv, hmacSecret: 'secret', now: () => 0 });
+  await defaultLimiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.40' });
+  assert.equal(defaultCalls[0].ttlMs, 5 * 60 * 1000);
+
+  const overrideCalls = [];
+  const overrideKv = { async incr(_key, opts) { overrideCalls.push(opts); return 1; }, async decr() { return 0; } };
+  const overrideLimiter = createRateLimiter({ kv: overrideKv, hmacSecret: 'secret', now: () => 0, concurrencyTtlMs: 12 * 60 * 1000 });
+  await overrideLimiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.40' });
+  assert.equal(overrideCalls[0].ttlMs, 12 * 60 * 1000);
+});
+
 test('BYOK concurrency bypasses shared free slot limit', async () => {
   const limiter = createRateLimiter({
     kv: createMemoryKv(),
@@ -187,6 +201,10 @@ test('QUOTA_REASONS values stay backward-compatible with the emitted reason stri
     STORAGE_UNAVAILABLE: 'quota storage unavailable',
     SECRET_UNAVAILABLE: 'quota secret unavailable',
     SERVICE_UNAVAILABLE: 'rewrite service unavailable',
+    LICENSE_REQUIRED: 'license required',
+    LICENSE_INVALID: 'license not entitled',
+    LICENSE_UNAVAILABLE: 'license validation unavailable',
+    MONTHLY_CHARS: 'monthly character limit reached',
   });
 });
 
@@ -226,4 +244,185 @@ test('abuse accounting is pinned: an hourly-denied attempt still consumes daily 
     status: 429,
     reason: QUOTA_REASONS.DAILY,
   });
+});
+
+test('pro tier meters a subject-keyed daily quota (200 pass, 201st is 429 DAILY) and never uses the IP', async () => {
+  // Default TIER_LIMITS.pro.reqPerDay is 200. No IP is ever supplied: pro is
+  // metered on the license subject, so it works with subject alone.
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  const subject = 'lic-subject-abc';
+  const first = await limiter.check({ tier: WEB_TIERS.PRO, subject });
+  assert.deepEqual(first, { allowed: true, tier: WEB_TIERS.PRO, remainingDay: 199 });
+  for (let i = 1; i < 200; i += 1) {
+    assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject })).allowed, true, `pro daily request ${i + 1} should be allowed`);
+  }
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.PRO, subject }), {
+    allowed: false,
+    status: 429,
+    reason: QUOTA_REASONS.DAILY,
+  });
+});
+
+test('pro quota is keyed on the subject, not the IP: differing IPs share one subject bucket', async () => {
+  const limiter = createRateLimiter({
+    kv: createMemoryKv(),
+    hmacSecret: 'secret',
+    now: () => 0,
+    limits: {
+      free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 },
+      byok: { maxChars: 20000, maxConcurrent: 2 },
+      pro: { maxChars: 20000, reqPerDay: 2, maxConcurrent: 3 },
+    },
+  });
+  const subject = 'lic-subject-shared';
+  // Same subject, different IPs: all count against the SAME subject bucket, so
+  // the 3rd is denied even though every IP differs (and the last has none).
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, ip: '203.0.113.1' })).allowed, true);
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, ip: '203.0.113.2' })).allowed, true);
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.PRO, subject }), {
+    allowed: false,
+    status: 429,
+    reason: QUOTA_REASONS.DAILY,
+  });
+});
+
+test('pro concurrency is subject-keyed: 3 slots pass, the 4th is 429 CONCURRENT, and a release re-admits', async () => {
+  // Default TIER_LIMITS.pro.maxConcurrent is 3.
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  const subject = 'lic-subject-conc';
+  assert.deepEqual(await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject }), { allowed: true, tier: WEB_TIERS.PRO });
+  assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject })).allowed, true);
+  assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject })).allowed, true);
+  assert.deepEqual(await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject }), {
+    allowed: false,
+    status: 429,
+    reason: QUOTA_REASONS.CONCURRENT,
+  });
+  await limiter.releaseConcurrency({ tier: WEB_TIERS.PRO, subject });
+  assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject })).allowed, true);
+});
+
+test('pro tier fails closed with 401 LICENSE_REQUIRED when no subject is supplied (defense-in-depth)', async () => {
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  const expected = { allowed: false, status: 401, reason: QUOTA_REASONS.LICENSE_REQUIRED };
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.PRO, subject: undefined }), expected);
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.PRO, subject: '' }), expected);
+  assert.deepEqual(await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject: null }), expected);
+});
+
+test('pro tier fails closed with 503 in production without durable KV or without an HMAC secret', async () => {
+  const subject = 'lic-subject-prod';
+  const noKv = createRateLimiter({ kv: null, hmacSecret: 'secret', env: { NODE_ENV: 'production' } });
+  assert.deepEqual(await noKv.check({ tier: WEB_TIERS.PRO, subject }), {
+    allowed: false,
+    status: 503,
+    reason: QUOTA_REASONS.STORAGE_UNAVAILABLE,
+  });
+
+  const memoryKv = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', env: { VERCEL: '1' } });
+  assert.deepEqual(await memoryKv.check({ tier: WEB_TIERS.PRO, subject }), {
+    allowed: false,
+    status: 503,
+    reason: QUOTA_REASONS.STORAGE_UNAVAILABLE,
+  });
+
+  const noSecret = createRateLimiter({ kv: { async incr() { return 1; } }, env: { VERCEL_ENV: 'production' } });
+  assert.deepEqual(await noSecret.check({ tier: WEB_TIERS.PRO, subject }), {
+    allowed: false,
+    status: 503,
+    reason: QUOTA_REASONS.SECRET_UNAVAILABLE,
+  });
+});
+
+test('an unknown tier is a stable 400 on check and concurrency (defense-in-depth)', async () => {
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  const expected = { allowed: false, status: 400, reason: 'unsupported tier' };
+  assert.deepEqual(await limiter.check({ tier: 'enterprise', ip: '203.0.113.99', subject: 'x' }), expected);
+  assert.deepEqual(await limiter.acquireConcurrency({ tier: '', ip: '203.0.113.99' }), expected);
+});
+
+test('pro subject guard rejects truthy non-string subjects with 401 (defense-in-depth, fail-closed)', async () => {
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  for (const bad of [{}, [], 123, true]) {
+    const chk = await limiter.check({ tier: WEB_TIERS.PRO, ip: '203.0.113.50', subject: /** @type {any} */ (bad) });
+    assert.equal(chk.allowed, false);
+    assert.equal(chk.status, 401);
+    assert.equal(chk.reason, QUOTA_REASONS.LICENSE_REQUIRED);
+    const acq = await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, ip: '203.0.113.50', subject: /** @type {any} */ (bad) });
+    assert.equal(acq.allowed, false);
+    assert.equal(acq.status, 401);
+    assert.equal(acq.reason, QUOTA_REASONS.LICENSE_REQUIRED);
+  }
+});
+
+test('pro monthly char cap: accumulates per-license, allows at the cap, and 429s over it with remaining guidance', async () => {
+  const subject = 'seat-month';
+  // Small cap to exercise the boundary cheaply; env would normally set 1,000,000.
+  const limits = { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }, byok: { maxChars: 20000, maxConcurrent: 2 }, pro: { maxChars: 20000, reqPerDay: 200, maxConcurrent: 3, charsPerMonth: 1000 } };
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0, limits });
+
+  // 400 + 400 = 800 (<= 1000) both allowed; the daily counter is unaffected.
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 400 })).allowed, true);
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 400 })).allowed, true);
+  // 800 + 200 = 1000 == cap: still allowed (cap is the max total, not "one under").
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 200 })).allowed, true);
+  // Any further chars cross the cap -> 429 MONTHLY_CHARS with remaining=0 + the limit.
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 1 }), {
+    allowed: false,
+    status: 429,
+    reason: QUOTA_REASONS.MONTHLY_CHARS,
+    remainingMonthlyChars: 0,
+    limitMonthlyChars: 1000,
+  });
+});
+
+test('pro monthly char cap resets at the UTC month boundary', async () => {
+  const subject = 'seat-reset';
+  const limits = { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }, byok: { maxChars: 20000, maxConcurrent: 2 }, pro: { maxChars: 20000, reqPerDay: 999999, maxConcurrent: 3, charsPerMonth: 1000 } };
+  // reqPerDay lifted so only the monthly cap can gate.
+  let t = Date.UTC(2026, 0, 15); // 2026-01-15
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => t, limits });
+
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 1000 })).allowed, true);
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 1 })).status, 429);
+
+  // Cross into February: a fresh month bucket, so the cap resets and admits again.
+  t = Date.UTC(2026, 1, 1);
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 1000 })).allowed, true);
+  // A different UTC month bucket keys a separate counter (no cross-month leakage).
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 1 })).status, 429);
+});
+
+test('pro monthly char cap counts concurrent requests atomically (no over-allow race)', async () => {
+  const subject = 'seat-conc';
+  const limits = { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }, byok: { maxChars: 20000, maxConcurrent: 2 }, pro: { maxChars: 20000, reqPerDay: 999999, maxConcurrent: 3, charsPerMonth: 1000 } };
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0, limits });
+
+  // Fire 10 concurrent 200-char checks against a 1000 cap. The atomic incrBy
+  // means EXACTLY 5 succeed (5*200=1000) and the rest are denied — no race lets
+  // the running total exceed the cap.
+  const results = await Promise.all(
+    Array.from({ length: 10 }, () => limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 200 })),
+  );
+  const allowed = results.filter((r) => r.allowed).length;
+  const denied = results.filter((r) => !r.allowed);
+  assert.equal(allowed, 5, 'exactly cap/chars requests admitted');
+  assert.equal(denied.length, 5);
+  for (const d of denied) {
+    assert.equal(d.status, 429);
+    assert.equal(d.reason, QUOTA_REASONS.MONTHLY_CHARS);
+  }
+});
+
+test('pro monthly char cap is skipped when no chars are supplied or the cap is unset (backward-compatible)', async () => {
+  const subject = 'seat-skip';
+  // Default TIER_LIMITS.pro.charsPerMonth applies, but with no chars the monthly
+  // dimension never engages: the response shape stays the daily-only contract.
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.PRO, subject }), { allowed: true, tier: WEB_TIERS.PRO, remainingDay: 199 });
+
+  // With chars but a limits object lacking charsPerMonth, monthly is not enforced.
+  const noCap = { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }, byok: { maxChars: 20000, maxConcurrent: 2 }, pro: { maxChars: 20000, reqPerDay: 200, maxConcurrent: 3 } };
+  const limiter2 = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0, limits: noCap });
+  assert.deepEqual(await limiter2.check({ tier: WEB_TIERS.PRO, subject, chars: 5_000_000 }), { allowed: true, tier: WEB_TIERS.PRO, remainingDay: 199 });
 });

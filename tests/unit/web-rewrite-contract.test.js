@@ -8,7 +8,9 @@ import {
   MPS_FLOOR,
   FIDELITY_FLOOR,
   TIER_LIMITS,
+  resolveTierLimits,
   CONTEXT_LIMITS,
+  QUOTA_REASONS,
   STREAM_FRAME_TYPES,
   PROVIDER_PRESETS,
   WEB_PERSONAS,
@@ -333,7 +335,7 @@ test('evaluateFloors fails closed on missing or non-numeric scores', () => {
 
 test('REWRITE_MODES and WEB_TIERS expose the documented values', () => {
   assert.deepEqual(REWRITE_MODES, { FIRST: 'first', REFINE: 'refine' });
-  assert.deepEqual(WEB_TIERS, { FREE: 'free', BYOK: 'byok' });
+  assert.deepEqual(WEB_TIERS, { FREE: 'free', BYOK: 'byok', PRO: 'pro' });
 });
 
 test('redactSecrets masks labelled provider secrets in free-form strings (#565)', () => {
@@ -351,4 +353,301 @@ test('redactSecrets masks labelled provider secrets in free-form strings (#565)'
   }
   // Benign prose without labelled values survives untouched.
   assert.equal(redactSecrets('no secrets here, just text'), 'no secrets here, just text');
+});
+
+// --- pro tier (licensed hosted tier, LS validate-only gated) -----------------
+// The pro tier extends the contract WITHOUT touching free/byok: the license is
+// an entitlement (verified out-of-band as Authorization: Bearer), never a
+// provider key, and must never surface in the body or the normalized value.
+function proFirst(overrides = {}) {
+  return { mode: 'first', lang: 'ko', tier: 'pro', text: '안녕하세요 프로 테스트 문장입니다.', ...overrides };
+}
+
+test('WEB_TIERS exposes the pro tier value', () => {
+  assert.equal(WEB_TIERS.PRO, 'pro');
+});
+
+test('TIER_LIMITS.pro documents the pro caps without regressing free/byok', () => {
+  assert.deepEqual(TIER_LIMITS.pro, { maxChars: 20000, reqPerDay: 200, maxConcurrent: 3, charsPerMonth: 1000000 });
+  // Free/byok caps are unchanged by the pro extension.
+  assert.equal(TIER_LIMITS.free.maxChars, 4000);
+  assert.equal(TIER_LIMITS.byok.maxChars, 20000);
+});
+
+test('resolveTierLimits returns the defaults when no env overrides are present', () => {
+  const limits = resolveTierLimits();
+  assert.deepEqual(limits.pro, { maxChars: 20000, reqPerDay: 200, maxConcurrent: 3, charsPerMonth: 1000000 });
+  assert.equal(limits.free.maxChars, 4000);
+  assert.equal(limits.byok.maxChars, 20000);
+  // An empty env behaves identically to the no-arg call.
+  assert.deepEqual(resolveTierLimits({}).pro, limits.pro);
+});
+
+test('resolveTierLimits applies positive-integer pro env overrides', () => {
+  const limits = resolveTierLimits({
+    PATINA_PRO_MAX_CHARS: '50000',
+    PATINA_PRO_REQ_PER_DAY: '1000',
+    PATINA_PRO_MAX_CONCURRENT: '8',
+    PATINA_PRO_CHARS_PER_MONTH: '2000000',
+  });
+  assert.deepEqual(limits.pro, { maxChars: 50000, reqPerDay: 1000, maxConcurrent: 8, charsPerMonth: 2000000 });
+  // Free/byok stay pinned to the defaults regardless of pro env.
+  assert.equal(limits.free.maxChars, 4000);
+  assert.equal(limits.byok.maxChars, 20000);
+});
+
+test('resolveTierLimits falls back to defaults for invalid pro overrides', () => {
+  for (const bad of ['0', '-5', 'abc', '3.5', '', ' ', undefined]) {
+    const limits = resolveTierLimits({
+      PATINA_PRO_MAX_CHARS: bad,
+      PATINA_PRO_REQ_PER_DAY: bad,
+      PATINA_PRO_MAX_CONCURRENT: bad,
+    });
+    assert.deepEqual(
+      limits.pro,
+      { maxChars: 20000, reqPerDay: 200, maxConcurrent: 3, charsPerMonth: 1000000 },
+      `invalid override ${JSON.stringify(bad)} must fall back to the default`,
+    );
+  }
+});
+
+test('resolveTierLimits returns a frozen object shaped like TIER_LIMITS', () => {
+  const limits = resolveTierLimits({ PATINA_PRO_MAX_CHARS: '9999' });
+  assert.ok(Object.isFrozen(limits));
+  assert.ok(Object.isFrozen(limits.pro));
+  assert.deepEqual(Object.keys(limits).sort(), ['byok', 'free', 'pro']);
+});
+
+test('resolveProviderModel resolves the pro tier from PATINA_PRO_* env', () => {
+  const r = resolveProviderModel(
+    { tier: WEB_TIERS.PRO, provider: 'evil', model: 'evil-model' },
+    { PATINA_PRO_PROVIDER: 'claude', PATINA_PRO_MODEL: 'claude-opus-4-1' },
+  );
+  assert.equal(r.ok, true);
+  assert.equal(r.tier, 'pro');
+  assert.equal(r.provider, 'claude');
+  assert.equal(r.model, 'claude-opus-4-1');
+  assert.equal(r.baseURL, PROVIDER_PRESETS.claude.baseURL);
+  // Body-provided provider/model are ignored for pro (server-pinned like free).
+  assert.notEqual(r.model, 'evil-model');
+});
+
+test('PROVIDER_PRESETS.claude includes claude-sonnet-5 as the flagship default', () => {
+  assert.ok(PROVIDER_PRESETS.claude.models.includes('claude-sonnet-5'));
+  // Flagship is first, so it is the claude preset default (models[0]).
+  assert.equal(PROVIDER_PRESETS.claude.models[0], 'claude-sonnet-5');
+  // The prior sonnet/opus/haiku ids remain allowlisted (no regression).
+  for (const m of ['claude-sonnet-4-5', 'claude-opus-4-1', 'claude-haiku-4-5']) {
+    assert.ok(PROVIDER_PRESETS.claude.models.includes(m));
+  }
+});
+
+test('resolveProviderModel pins the Pro tier to claude-sonnet-5 from PATINA_PRO_* env', () => {
+  const r = resolveProviderModel(
+    { tier: WEB_TIERS.PRO, provider: 'evil', model: 'evil-model' },
+    { PATINA_PRO_PROVIDER: 'claude', PATINA_PRO_MODEL: 'claude-sonnet-5' },
+  );
+  assert.equal(r.ok, true);
+  assert.equal(r.tier, 'pro');
+  assert.equal(r.provider, 'claude');
+  assert.equal(r.model, 'claude-sonnet-5');
+  assert.equal(r.baseURL, PROVIDER_PRESETS.claude.baseURL);
+  assert.notEqual(r.model, 'evil-model');
+});
+
+test('resolveProviderModel accepts a byok claude-sonnet-5 request', () => {
+  const r = resolveProviderModel({ tier: WEB_TIERS.BYOK, provider: 'claude', model: 'claude-sonnet-5' });
+  assert.equal(r.ok, true);
+  assert.equal(r.provider, 'claude');
+  assert.equal(r.model, 'claude-sonnet-5');
+  assert.equal(r.baseURL, PROVIDER_PRESETS.claude.baseURL);
+});
+
+test('resolveProviderModel falls back to PATINA_FREE_* then defaults for pro', () => {
+  // PRO env absent -> FREE env is the fallback source.
+  const viaFree = resolveProviderModel(
+    { tier: WEB_TIERS.PRO },
+    { PATINA_FREE_PROVIDER: 'deepseek', PATINA_FREE_MODEL: 'deepseek-chat' },
+  );
+  assert.equal(viaFree.ok, true);
+  assert.equal(viaFree.provider, 'deepseek');
+  assert.equal(viaFree.model, 'deepseek-chat');
+
+  // Nothing configured -> default openai + first allowlisted model.
+  const viaDefault = resolveProviderModel({ tier: WEB_TIERS.PRO }, {});
+  assert.equal(viaDefault.ok, true);
+  assert.equal(viaDefault.provider, 'openai');
+  assert.equal(viaDefault.model, PROVIDER_PRESETS.openai.models[0]);
+  assert.equal(viaDefault.baseURL, PROVIDER_PRESETS.openai.baseURL);
+});
+
+test('resolveProviderModel rejects unlisted pro provider/model cleanly', () => {
+  const badProvider = resolveProviderModel({ tier: WEB_TIERS.PRO }, { PATINA_PRO_PROVIDER: 'nope' });
+  assert.equal(badProvider.ok, false);
+  assert.match(badProvider.error, /pro provider not configured/);
+
+  const badModel = resolveProviderModel({ tier: WEB_TIERS.PRO }, { PATINA_PRO_MODEL: 'ghost-model' });
+  assert.equal(badModel.ok, false);
+  assert.match(badModel.error, /pro model not allowlisted/);
+
+  // A poisoned prototype name resolves to a clean rejection, never throws.
+  assert.doesNotThrow(() => resolveProviderModel({ tier: WEB_TIERS.PRO }, { PATINA_PRO_PROVIDER: '__proto__' }));
+  assert.equal(resolveProviderModel({ tier: WEB_TIERS.PRO }, { PATINA_PRO_PROVIDER: '__proto__' }).ok, false);
+});
+
+test('validateRewriteRequest accepts a pro request whose license arrived as Authorization: Bearer', () => {
+  const r = validateRewriteRequest(proFirst(), {}, { proLicenseSource: 'authorization-bearer' });
+  assert.equal(r.ok, true);
+  assert.equal(r.value.tier, 'pro');
+  // The server key is resolved later by the handler; the contract returns no key.
+  assert.equal(r.value.apiKey, undefined);
+  // A raw license must NEVER surface in the normalized value.
+  assert.equal('licenseKey' in r.value, false);
+  assert.equal('license_key' in r.value, false);
+  assert.equal('license' in r.value, false);
+  // Provider/model are pinned like the free path.
+  assert.equal(r.value.provider, 'openai');
+  assert.equal(r.value.baseURL, PROVIDER_PRESETS.openai.baseURL);
+});
+
+test('validateRewriteRequest allows pro text up to the 20000-char cap', () => {
+  const atCap = validateRewriteRequest(
+    proFirst({ text: 'a'.repeat(TIER_LIMITS.pro.maxChars) }),
+    {},
+    { proLicenseSource: 'authorization-bearer' },
+  );
+  assert.equal(atCap.ok, true);
+
+  const overCap = validateRewriteRequest(
+    proFirst({ text: 'a'.repeat(TIER_LIMITS.pro.maxChars + 1) }),
+    {},
+    { proLicenseSource: 'authorization-bearer' },
+  );
+  assert.equal(overCap.ok, false);
+  assert.equal(overCap.status, 413);
+});
+
+test('validateRewriteRequest honors a pro maxChars env override', () => {
+  const env = { PATINA_PRO_MAX_CHARS: '30000' };
+  // 25000 chars is over the default 20000 but under the overridden 30000.
+  const ok = validateRewriteRequest(
+    proFirst({ text: 'a'.repeat(25000) }),
+    env,
+    { proLicenseSource: 'authorization-bearer' },
+  );
+  assert.equal(ok.ok, true);
+
+  const over = validateRewriteRequest(
+    proFirst({ text: 'a'.repeat(30001) }),
+    env,
+    { proLicenseSource: 'authorization-bearer' },
+  );
+  assert.equal(over.ok, false);
+  assert.equal(over.status, 413);
+});
+
+test('validateRewriteRequest fails closed with 401 when the pro license source is missing', () => {
+  // No options -> the backward-compatible 2-arg call cannot assert a bearer source.
+  const noOpts = validateRewriteRequest(proFirst());
+  assert.equal(noOpts.ok, false);
+  assert.equal(noOpts.status, 401);
+  assert.equal(noOpts.error, QUOTA_REASONS.LICENSE_REQUIRED);
+
+  // A wrong source value is equally rejected.
+  const wrong = validateRewriteRequest(proFirst(), {}, { proLicenseSource: 'query-param' });
+  assert.equal(wrong.status, 401);
+  assert.equal(wrong.error, QUOTA_REASONS.LICENSE_REQUIRED);
+});
+
+test('validateRewriteRequest rejects a pro request carrying an apiKey', () => {
+  const r = validateRewriteRequest(
+    proFirst({ apiKey: 'sk-should-not-be-here' }),
+    {},
+    { proLicenseSource: 'authorization-bearer' },
+  );
+  assert.equal(r.ok, false);
+  assert.equal(r.status, 400);
+});
+
+test('validateRewriteRequest rejects a pro license smuggled in the body (400, not the header)', () => {
+  for (const field of ['licenseKey', 'license_key']) {
+    const r = validateRewriteRequest(
+      proFirst({ [field]: 'lic-abcdef123456' }),
+      {},
+      { proLicenseSource: 'authorization-bearer' },
+    );
+    assert.equal(r.ok, false, `${field} in body must be rejected`);
+    assert.equal(r.status, 400);
+    assert.match(r.error, /Authorization: Bearer/);
+  }
+});
+
+test('QUOTA_REASONS exposes stable license denial strings without changing existing ones', () => {
+  assert.equal(QUOTA_REASONS.LICENSE_REQUIRED, 'license required');
+  assert.equal(QUOTA_REASONS.LICENSE_INVALID, 'license not entitled');
+  assert.equal(QUOTA_REASONS.LICENSE_UNAVAILABLE, 'license validation unavailable');
+  // Pre-existing reason strings are untouched.
+  assert.equal(QUOTA_REASONS.DAILY, 'daily quota exceeded');
+  assert.equal(QUOTA_REASONS.SERVICE_UNAVAILABLE, 'rewrite service unavailable');
+});
+
+test('redactSecrets masks license keys and inline license_key labels', () => {
+  const out = /** @type {any} */ (redactSecrets({
+    licenseKey: 'lic-cafebabe12345678',
+    license_key: 'lic-deadbeef99999999',
+    nested: { message: 'activation failed: license_key=abcdef123 rejected' },
+    safe: 'keep-me',
+  }));
+  const json = JSON.stringify(out);
+  assert.doesNotMatch(json, /lic-cafebabe12345678/);
+  assert.doesNotMatch(json, /lic-deadbeef99999999/);
+  assert.doesNotMatch(json, /abcdef123/);
+  assert.equal(out.licenseKey, '[REDACTED]');
+  assert.equal(out.license_key, '[REDACTED]');
+  assert.ok(out.nested.message.includes('[REDACTED]'));
+  assert.equal(out.safe, 'keep-me');
+
+  // The bare labelled string form is masked too.
+  assert.equal(redactSecrets('license_key=abcdef123'), '[REDACTED]');
+});
+
+test('redactSecrets keeps masking bearer/sk- shapes after the license extension', () => {
+  const out = /** @type {any} */ (redactSecrets({
+    Authorization: 'Bearer sk-live-abcdefghij',
+    stray: 'inline sk-deadbeefcafef00d here',
+    note: 'no secret',
+  }));
+  const json = JSON.stringify(out);
+  assert.doesNotMatch(json, /sk-live-abcdefghij/);
+  assert.doesNotMatch(json, /sk-deadbeefcafef00d/);
+  assert.equal(out.note, 'no secret');
+});
+
+test('validateRewriteRequest: unauthenticated pro fails closed with 401 BEFORE char-cap/provider errors (auth gate dominant)', () => {
+  const env = { PATINA_FREE_PROVIDER: 'openai', PATINA_FREE_MODEL: 'gpt-5.5' };
+  const base = { mode: 'first', lang: 'en', tier: 'pro' };
+
+  // over-cap text + no bearer source -> 401 LICENSE_REQUIRED, not 413
+  const overCap = validateRewriteRequest({ ...base, text: 'x'.repeat(20001) }, env, {});
+  assert.equal(overCap.ok, false);
+  assert.equal(overCap.status, 401);
+  assert.equal(overCap.error, QUOTA_REASONS.LICENSE_REQUIRED);
+
+  // misconfigured pro provider env + no bearer source -> 401, not a 400 provider error
+  const badEnv = validateRewriteRequest({ ...base, text: 'hi' }, { PATINA_PRO_PROVIDER: 'not-a-provider' }, {});
+  assert.equal(badEnv.ok, false);
+  assert.equal(badEnv.status, 401);
+  assert.equal(badEnv.error, QUOTA_REASONS.LICENSE_REQUIRED);
+
+  // pro apiKey rejected with a pro-specific 400 message (never the free-tier wording)
+  const withKey = validateRewriteRequest({ ...base, text: 'hi', apiKey: 'sk-x' }, env, { proLicenseSource: 'authorization-bearer' });
+  assert.equal(withKey.ok, false);
+  assert.equal(withKey.status, 400);
+  assert.match(withKey.error, /pro tier must not include an apiKey/);
+  assert.doesNotMatch(withKey.error, /free tier/);
+
+  // authenticated pro over-cap still 413 (the cap applies only AFTER auth passes)
+  const authOverCap = validateRewriteRequest({ ...base, text: 'x'.repeat(20001) }, env, { proLicenseSource: 'authorization-bearer' });
+  assert.equal(authOverCap.ok, false);
+  assert.equal(authOverCap.status, 413);
 });

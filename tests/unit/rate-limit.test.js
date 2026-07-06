@@ -201,6 +201,9 @@ test('QUOTA_REASONS values stay backward-compatible with the emitted reason stri
     STORAGE_UNAVAILABLE: 'quota storage unavailable',
     SECRET_UNAVAILABLE: 'quota secret unavailable',
     SERVICE_UNAVAILABLE: 'rewrite service unavailable',
+    LICENSE_REQUIRED: 'license required',
+    LICENSE_INVALID: 'license not entitled',
+    LICENSE_UNAVAILABLE: 'license validation unavailable',
   });
 });
 
@@ -240,4 +243,113 @@ test('abuse accounting is pinned: an hourly-denied attempt still consumes daily 
     status: 429,
     reason: QUOTA_REASONS.DAILY,
   });
+});
+
+test('pro tier meters a subject-keyed daily quota (200 pass, 201st is 429 DAILY) and never uses the IP', async () => {
+  // Default TIER_LIMITS.pro.reqPerDay is 200. No IP is ever supplied: pro is
+  // metered on the license subject, so it works with subject alone.
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  const subject = 'lic-subject-abc';
+  const first = await limiter.check({ tier: WEB_TIERS.PRO, subject });
+  assert.deepEqual(first, { allowed: true, tier: WEB_TIERS.PRO, remainingDay: 199 });
+  for (let i = 1; i < 200; i += 1) {
+    assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject })).allowed, true, `pro daily request ${i + 1} should be allowed`);
+  }
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.PRO, subject }), {
+    allowed: false,
+    status: 429,
+    reason: QUOTA_REASONS.DAILY,
+  });
+});
+
+test('pro quota is keyed on the subject, not the IP: differing IPs share one subject bucket', async () => {
+  const limiter = createRateLimiter({
+    kv: createMemoryKv(),
+    hmacSecret: 'secret',
+    now: () => 0,
+    limits: {
+      free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 },
+      byok: { maxChars: 20000, maxConcurrent: 2 },
+      pro: { maxChars: 20000, reqPerDay: 2, maxConcurrent: 3 },
+    },
+  });
+  const subject = 'lic-subject-shared';
+  // Same subject, different IPs: all count against the SAME subject bucket, so
+  // the 3rd is denied even though every IP differs (and the last has none).
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, ip: '203.0.113.1' })).allowed, true);
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, ip: '203.0.113.2' })).allowed, true);
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.PRO, subject }), {
+    allowed: false,
+    status: 429,
+    reason: QUOTA_REASONS.DAILY,
+  });
+});
+
+test('pro concurrency is subject-keyed: 3 slots pass, the 4th is 429 CONCURRENT, and a release re-admits', async () => {
+  // Default TIER_LIMITS.pro.maxConcurrent is 3.
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  const subject = 'lic-subject-conc';
+  assert.deepEqual(await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject }), { allowed: true, tier: WEB_TIERS.PRO });
+  assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject })).allowed, true);
+  assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject })).allowed, true);
+  assert.deepEqual(await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject }), {
+    allowed: false,
+    status: 429,
+    reason: QUOTA_REASONS.CONCURRENT,
+  });
+  await limiter.releaseConcurrency({ tier: WEB_TIERS.PRO, subject });
+  assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject })).allowed, true);
+});
+
+test('pro tier fails closed with 401 LICENSE_REQUIRED when no subject is supplied (defense-in-depth)', async () => {
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  const expected = { allowed: false, status: 401, reason: QUOTA_REASONS.LICENSE_REQUIRED };
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.PRO, subject: undefined }), expected);
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.PRO, subject: '' }), expected);
+  assert.deepEqual(await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject: null }), expected);
+});
+
+test('pro tier fails closed with 503 in production without durable KV or without an HMAC secret', async () => {
+  const subject = 'lic-subject-prod';
+  const noKv = createRateLimiter({ kv: null, hmacSecret: 'secret', env: { NODE_ENV: 'production' } });
+  assert.deepEqual(await noKv.check({ tier: WEB_TIERS.PRO, subject }), {
+    allowed: false,
+    status: 503,
+    reason: QUOTA_REASONS.STORAGE_UNAVAILABLE,
+  });
+
+  const memoryKv = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', env: { VERCEL: '1' } });
+  assert.deepEqual(await memoryKv.check({ tier: WEB_TIERS.PRO, subject }), {
+    allowed: false,
+    status: 503,
+    reason: QUOTA_REASONS.STORAGE_UNAVAILABLE,
+  });
+
+  const noSecret = createRateLimiter({ kv: { async incr() { return 1; } }, env: { VERCEL_ENV: 'production' } });
+  assert.deepEqual(await noSecret.check({ tier: WEB_TIERS.PRO, subject }), {
+    allowed: false,
+    status: 503,
+    reason: QUOTA_REASONS.SECRET_UNAVAILABLE,
+  });
+});
+
+test('an unknown tier is a stable 400 on check and concurrency (defense-in-depth)', async () => {
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  const expected = { allowed: false, status: 400, reason: 'unsupported tier' };
+  assert.deepEqual(await limiter.check({ tier: 'enterprise', ip: '203.0.113.99', subject: 'x' }), expected);
+  assert.deepEqual(await limiter.acquireConcurrency({ tier: '', ip: '203.0.113.99' }), expected);
+});
+
+test('pro subject guard rejects truthy non-string subjects with 401 (defense-in-depth, fail-closed)', async () => {
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  for (const bad of [{}, [], 123, true]) {
+    const chk = await limiter.check({ tier: WEB_TIERS.PRO, ip: '203.0.113.50', subject: /** @type {any} */ (bad) });
+    assert.equal(chk.allowed, false);
+    assert.equal(chk.status, 401);
+    assert.equal(chk.reason, QUOTA_REASONS.LICENSE_REQUIRED);
+    const acq = await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, ip: '203.0.113.50', subject: /** @type {any} */ (bad) });
+    assert.equal(acq.allowed, false);
+    assert.equal(acq.status, 401);
+    assert.equal(acq.reason, QUOTA_REASONS.LICENSE_REQUIRED);
+  }
 });

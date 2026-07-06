@@ -49,7 +49,7 @@ export function charBucket(count) {
 export function buildRewriteMetric({ route = '/api/rewrite', tier, provider, model, status, latencyMs, quotaDecision, charCount, outcome } = {}) {
   return {
     route: String(route),
-    tier: tier === 'free' || tier === 'byok' ? tier : 'unknown',
+    tier: tier === 'free' || tier === 'byok' || tier === 'pro' ? tier : 'unknown',
     provider: provider ? String(provider) : 'unknown',
     model: model ? String(model) : 'unknown',
     status: Number.isFinite(Number(status)) ? Number(status) : 0,

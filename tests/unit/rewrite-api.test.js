@@ -119,6 +119,25 @@ test('the entrypoint emits a sanitized rewrite metric (no text/key/IP) on succes
   assert.equal('apiKey' in metric.fields, false);
 });
 
+test('the rewrite metric records the stream outcome so a failed stream is not logged as success', async () => {
+  const env = { NODE_ENV: 'test', PATINA_FREE_PROVIDER: 'openai', PATINA_FREE_MODEL: 'gpt-5.5', PATINA_FREE_API_KEY: 'sk-server-free-key' };
+  const metrics = [];
+  const logger = { info: (evt, fields) => metrics.push({ evt, fields }), error() {}, warn() {}, debug() {} };
+  const injected = async ({ emit }) => {
+    emit({ type: 'start', provider: 'openai', model: 'gpt-5.5' });
+    emit({ type: 'error', code: 'stream_failed', error: 'provider down' });
+    return { ok: false, code: 'stream_failed', error: 'provider down' };
+  };
+  const api = createRewriteApiHandler({ env, runWebRewriteStreamImpl: injected, logger });
+  const res = makeRes();
+  await api(makeReq(), res);
+
+  const metric = metrics.find((m) => m.evt === 'rewrite.metric');
+  assert.ok(metric, 'a rewrite.metric must be emitted even when the stream fails');
+  assert.equal(metric.fields.status, 200, 'the HTTP response genuinely committed 200');
+  assert.equal(metric.fields.outcome, 'stream_failed', 'but the stream failure must stay observable');
+});
+
 test('free tier fails closed with 503 when the server free API key is unconfigured', async () => {
   const env = { NODE_ENV: 'test', PATINA_FREE_PROVIDER: 'openai', PATINA_FREE_MODEL: 'gpt-5.5' }; // no PATINA_FREE_API_KEY
   let runnerCalled = false;

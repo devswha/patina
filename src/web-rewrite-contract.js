@@ -124,7 +124,7 @@ export const PROVIDER_PRESETS = Object.freeze({
   }),
   claude: Object.freeze({
     baseURL: 'https://api.anthropic.com/v1',
-    models: Object.freeze(['claude-sonnet-4-5', 'claude-opus-4-1', 'claude-haiku-4-5']),
+    models: Object.freeze(['claude-sonnet-5', 'claude-sonnet-4-5', 'claude-opus-4-1', 'claude-haiku-4-5']),
   }),
   deepseek: Object.freeze({
     baseURL: 'https://api.deepseek.com/v1',

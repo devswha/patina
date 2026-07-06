@@ -431,6 +431,37 @@ test('resolveProviderModel resolves the pro tier from PATINA_PRO_* env', () => {
   assert.notEqual(r.model, 'evil-model');
 });
 
+test('PROVIDER_PRESETS.claude includes claude-sonnet-5 as the flagship default', () => {
+  assert.ok(PROVIDER_PRESETS.claude.models.includes('claude-sonnet-5'));
+  // Flagship is first, so it is the claude preset default (models[0]).
+  assert.equal(PROVIDER_PRESETS.claude.models[0], 'claude-sonnet-5');
+  // The prior sonnet/opus/haiku ids remain allowlisted (no regression).
+  for (const m of ['claude-sonnet-4-5', 'claude-opus-4-1', 'claude-haiku-4-5']) {
+    assert.ok(PROVIDER_PRESETS.claude.models.includes(m));
+  }
+});
+
+test('resolveProviderModel pins the Pro tier to claude-sonnet-5 from PATINA_PRO_* env', () => {
+  const r = resolveProviderModel(
+    { tier: WEB_TIERS.PRO, provider: 'evil', model: 'evil-model' },
+    { PATINA_PRO_PROVIDER: 'claude', PATINA_PRO_MODEL: 'claude-sonnet-5' },
+  );
+  assert.equal(r.ok, true);
+  assert.equal(r.tier, 'pro');
+  assert.equal(r.provider, 'claude');
+  assert.equal(r.model, 'claude-sonnet-5');
+  assert.equal(r.baseURL, PROVIDER_PRESETS.claude.baseURL);
+  assert.notEqual(r.model, 'evil-model');
+});
+
+test('resolveProviderModel accepts a byok claude-sonnet-5 request', () => {
+  const r = resolveProviderModel({ tier: WEB_TIERS.BYOK, provider: 'claude', model: 'claude-sonnet-5' });
+  assert.equal(r.ok, true);
+  assert.equal(r.provider, 'claude');
+  assert.equal(r.model, 'claude-sonnet-5');
+  assert.equal(r.baseURL, PROVIDER_PRESETS.claude.baseURL);
+});
+
 test('resolveProviderModel falls back to PATINA_FREE_* then defaults for pro', () => {
   // PRO env absent -> FREE env is the fallback source.
   const viaFree = resolveProviderModel(

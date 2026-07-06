@@ -53,7 +53,7 @@ function getHeader(headers, name) {
 /**
  * Create an in-memory KV store for tests and local development only.
  *
- * @returns {{__memory: true, get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>}}
+ * @returns {{__memory: true, get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>}}
  */
 export function createMemoryKv() {
   /** @type {Map<string, {value: unknown, expiresAt: number}>} */
@@ -86,6 +86,13 @@ export function createMemoryKv() {
       entries.set(key, { value: next, expiresAt: expiresAt(ttlMs) });
       return next;
     },
+    async incrBy(key, amount, { ttlMs } = {}) {
+      expire();
+      const current = Number(entries.get(key)?.value ?? 0);
+      const next = current + Number(amount);
+      entries.set(key, { value: next, expiresAt: expiresAt(ttlMs) });
+      return next;
+    },
     async decr(key) {
       expire();
       const current = Number(entries.get(key)?.value ?? 0);
@@ -105,8 +112,8 @@ export function isProductionPosture(env = {}) {
 }
 
 /**
- * @typedef {{get?(key: string): Promise<unknown>, set?(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, decr?(key: string): Promise<number>, __memory?: boolean}} QuotaKv
- * @typedef {{allowed: true, tier: string, remainingDay?: number}|{allowed: false, status: number, reason: string}} RateLimitResult
+ * @typedef {{get?(key: string): Promise<unknown>, set?(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy?(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr?(key: string): Promise<number>, __memory?: boolean}} QuotaKv
+ * @typedef {{allowed: true, tier: string, remainingDay?: number}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} RateLimitResult
  * @typedef {{warn?: (...args: unknown[]) => void}} RateLimitLogger
  */
 
@@ -116,7 +123,7 @@ export function isProductionPosture(env = {}) {
  * @param {{kv?: QuotaKv|null, hmacSecret?: string, env?: Record<string, string|undefined>, now?: () => number, limits?: typeof TIER_LIMITS, logger?: RateLimitLogger, concurrencyTtlMs?: number}} options
  *   `concurrencyTtlMs` is the self-healing expiry for a concurrency slot; keep it
  *   >= the maximum stream budget so a slot never expires mid-stream (defaults to 5m).
- * @returns {{check(input: {tier: string, ip?: string|null, subject?: string|null}): Promise<RateLimitResult>, acquireConcurrency(input: {tier: string, ip?: string|null, subject?: string|null}): Promise<RateLimitResult>, releaseConcurrency(input: {tier: string, ip?: string|null, subject?: string|null}): Promise<void>}}
+ * @returns {{check(input: {tier: string, ip?: string|null, subject?: string|null, chars?: number}): Promise<RateLimitResult>, acquireConcurrency(input: {tier: string, ip?: string|null, subject?: string|null}): Promise<RateLimitResult>, releaseConcurrency(input: {tier: string, ip?: string|null, subject?: string|null}): Promise<void>}}
  */
 export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.now(), limits = TIER_LIMITS, logger = console, concurrencyTtlMs = DEFAULT_CONCURRENCY_TTL_MS }) {
   const productionGuard = () => {
@@ -167,7 +174,7 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
   };
 
   return {
-    async check({ tier, ip, subject }) {
+    async check({ tier, ip, subject, chars }) {
       switch (tier) {
         case WEB_TIERS.BYOK:
           return { allowed: true, tier };
@@ -234,6 +241,28 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
             }
             if (dayCount > proLimits.reqPerDay) {
               return { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY };
+            }
+            // Monthly total-character cap (per license subject), the margin
+            // defense against a single seat burning far more than the $9.99/mo
+            // subscription value under the daily/per-request caps. Only engages
+            // when a positive char count is supplied AND a positive cap is
+            // configured; the counter is atomic (incrBy) and resets at the UTC
+            // month boundary via the key bucket + TTL.
+            const monthlyCap = proLimits.charsPerMonth;
+            const reqChars = Number.isSafeInteger(chars) && chars > 0 ? chars : 0;
+            if (reqChars > 0 && Number.isSafeInteger(monthlyCap) && monthlyCap > 0) {
+              const monthDate = new Date(timestamp);
+              const monthBucket = monthDate.getUTCFullYear() * 12 + monthDate.getUTCMonth();
+              const monthKey = quotaKeyHmac(secret, 'pro', 'chars-month', subject, monthBucket);
+              const nextMonthStart = Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() + 1, 1);
+              const monthTtlMs = nextMonthStart - timestamp;
+              const monthTotal = await kv.incrBy(monthKey, reqChars, { ttlMs: monthTtlMs });
+              if (!Number.isSafeInteger(monthTotal) || monthTotal < 1) {
+                return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+              }
+              if (monthTotal > monthlyCap) {
+                return { allowed: false, status: 429, reason: QUOTA_REASONS.MONTHLY_CHARS, remainingMonthlyChars: 0, limitMonthlyChars: monthlyCap };
+              }
             }
             return { allowed: true, tier, remainingDay: Math.max(0, proLimits.reqPerDay - dayCount) };
           } catch {

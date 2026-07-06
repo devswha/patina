@@ -37,7 +37,7 @@ export const FIDELITY_FLOOR = 70;
 export const TIER_LIMITS = Object.freeze({
   free: Object.freeze({ maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }),
   byok: Object.freeze({ maxChars: 20000, maxConcurrent: 2 }),
-  pro: Object.freeze({ maxChars: 20000, reqPerDay: 200, maxConcurrent: 3 }),
+  pro: Object.freeze({ maxChars: 20000, reqPerDay: 200, maxConcurrent: 3, charsPerMonth: 1_000_000 }),
 });
 
 /**
@@ -64,6 +64,7 @@ export function resolveTierLimits(env = {}) {
       maxChars: readPositiveInt(env, 'PATINA_PRO_MAX_CHARS', pro.maxChars),
       reqPerDay: readPositiveInt(env, 'PATINA_PRO_REQ_PER_DAY', pro.reqPerDay),
       maxConcurrent: readPositiveInt(env, 'PATINA_PRO_MAX_CONCURRENT', pro.maxConcurrent),
+      charsPerMonth: readPositiveInt(env, 'PATINA_PRO_CHARS_PER_MONTH', pro.charsPerMonth),
     }),
   });
 }
@@ -92,6 +93,7 @@ export const QUOTA_REASONS = Object.freeze({
   LICENSE_REQUIRED: 'license required',
   LICENSE_INVALID: 'license not entitled',
   LICENSE_UNAVAILABLE: 'license validation unavailable',
+  MONTHLY_CHARS: 'monthly character limit reached',
 });
 
 /**

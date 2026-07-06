@@ -548,7 +548,7 @@ test('redteam(1): a valid pro request leaks the raw license nowhere (runner requ
     assert.equal(input.subject, 'SUBJECT-HMAC');
     assert.equal(input.tier, WEB_TIERS.PRO);
     assert.equal(input.ip, '203.0.113.60');
-    assert.deepEqual(Object.keys(input).sort(), ['ip', 'subject', 'tier']);
+    for (const k of Object.keys(input)) assert.ok(['chars', 'ip', 'subject', 'tier'].includes(k), `unexpected limiter arg key: ${k}`);
     assert.equal('license' in input, false);
     assert.equal('licenseKey' in input, false);
   }
@@ -894,4 +894,44 @@ test('redteam(6): the runner request has its Authorization header stripped; non-
   assert.equal(typeof runnerArgs.req.on, 'function');
   runnerArgs.req.on('aborted', () => {});
   assert.deepEqual(onEvents, ['aborted']);
+});
+
+test('pro path passes the request char count to the limiter (monthly cap plumbing); free passes 0', async () => {
+  const PRO_RAW = 'LICENSE-RAW-chars';
+  const proLimiter = spyLimiter();
+  const proHandler = createRewriteHandler({
+    rateLimiter: proLimiter,
+    licenseValidator: makeValidator({ ok: true, subject: 'SUBJ-chars', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' }),
+    runRewrite() { return 'ran'; },
+  });
+  const text = 'Rewrite this exact sentence.';
+  await proHandler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.90', authorization: `Bearer ${PRO_RAW}` }, body: proBody({ text }) }, makeRes());
+  assert.equal(proLimiter.calls.check[0].tier, WEB_TIERS.PRO);
+  assert.equal(proLimiter.calls.check[0].chars, text.length);
+  assert.equal(proLimiter.calls.check[0].subject, 'SUBJ-chars');
+
+  // Free carries no monthly char dimension: chars is 0 and no license is validated.
+  const freeLimiter = spyLimiter();
+  const freeHandler = createRewriteHandler({ rateLimiter: freeLimiter, runRewrite() { return 'free'; } });
+  await freeHandler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.91' }, body: validBody() }, makeRes());
+  assert.equal(freeLimiter.calls.check[0].chars, 0);
+  assert.equal(freeLimiter.calls.check[0].subject, undefined);
+});
+
+test('pro path forwards the monthly-char 429 with remaining/limit guidance and never runs the runner', async () => {
+  const res = makeRes();
+  let ran = false;
+  const handler = createRewriteHandler({
+    rateLimiter: {
+      async check() {
+        return { allowed: false, status: 429, reason: QUOTA_REASONS.MONTHLY_CHARS, remainingMonthlyChars: 0, limitMonthlyChars: 1000 };
+      },
+    },
+    licenseValidator: makeValidator({ ok: true, subject: 'SUBJ-over', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' }),
+    runRewrite() { ran = true; },
+  });
+  await handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.92', authorization: 'Bearer LICENSE-RAW-over' }, body: proBody() }, res);
+  assert.equal(res.statusCode, 429);
+  assert.deepEqual(res.json(), { error: QUOTA_REASONS.MONTHLY_CHARS, remainingMonthlyChars: 0, limitMonthlyChars: 1000 });
+  assert.equal(ran, false);
 });

@@ -325,6 +325,34 @@ test('REST KV set without a TTL omits PX; get is undefined for null and verbatim
   }
 });
 
+test('REST KV incrBy adds N atomically via /incrby and sets a whole-second PEXPIRE', async () => {
+  const gets = [];
+  const results = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = /** @type {any} */ (async (url) => {
+    gets.push(String(url));
+    return { ok: true, async json() { return results.shift(); } };
+  });
+  try {
+    const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
+    assert.ok(kv);
+
+    // incrby returns the new running total; ttlMs -> /expire with ceil(ms/1000) seconds.
+    results.push({ result: 1200 }); // incrby result
+    results.push({ result: 1 }); // expire ack
+    const total = await kv.incrBy('month key', 400, { ttlMs: 2_500 });
+    assert.equal(total, 1200);
+    assert.equal(gets[0], 'https://kv.example.test/incrby/month%20key/400');
+    assert.equal(gets[1], 'https://kv.example.test/expire/month%20key/3');
+
+    // A malformed counter (non-numeric) fails closed by throwing.
+    results.push({ result: 'not-a-number' });
+    await assert.rejects(() => kv.incrBy('k', 5), /invalid counter/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 /** A globalThis.fetch stub returning a valid Lemon Squeezy validate-only response. */
 function validLsFetch() {
   return /** @type {any} */ (async () => ({
@@ -474,6 +502,7 @@ test('pro tier: in production, no pro key + present free key + no allow-flag ret
     if (u.includes('/decr/')) return { ok: true, async json() { return { result: 0 }; } };
     if (u.includes('/expire/')) return { ok: true, async json() { return { result: 1 }; } };
     if (u.includes('/get/')) return { ok: true, async json() { return { result: null }; } };
+    if (u.includes('/incrby/')) return { ok: true, async json() { return { result: 100 }; } };
     return { ok: true, async json() { return { result: 'OK' }; } }; // command SET
   });
   try {

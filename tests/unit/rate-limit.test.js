@@ -204,6 +204,7 @@ test('QUOTA_REASONS values stay backward-compatible with the emitted reason stri
     LICENSE_REQUIRED: 'license required',
     LICENSE_INVALID: 'license not entitled',
     LICENSE_UNAVAILABLE: 'license validation unavailable',
+    MONTHLY_CHARS: 'monthly character limit reached',
   });
 });
 
@@ -352,4 +353,76 @@ test('pro subject guard rejects truthy non-string subjects with 401 (defense-in-
     assert.equal(acq.status, 401);
     assert.equal(acq.reason, QUOTA_REASONS.LICENSE_REQUIRED);
   }
+});
+
+test('pro monthly char cap: accumulates per-license, allows at the cap, and 429s over it with remaining guidance', async () => {
+  const subject = 'seat-month';
+  // Small cap to exercise the boundary cheaply; env would normally set 1,000,000.
+  const limits = { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }, byok: { maxChars: 20000, maxConcurrent: 2 }, pro: { maxChars: 20000, reqPerDay: 200, maxConcurrent: 3, charsPerMonth: 1000 } };
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0, limits });
+
+  // 400 + 400 = 800 (<= 1000) both allowed; the daily counter is unaffected.
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 400 })).allowed, true);
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 400 })).allowed, true);
+  // 800 + 200 = 1000 == cap: still allowed (cap is the max total, not "one under").
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 200 })).allowed, true);
+  // Any further chars cross the cap -> 429 MONTHLY_CHARS with remaining=0 + the limit.
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 1 }), {
+    allowed: false,
+    status: 429,
+    reason: QUOTA_REASONS.MONTHLY_CHARS,
+    remainingMonthlyChars: 0,
+    limitMonthlyChars: 1000,
+  });
+});
+
+test('pro monthly char cap resets at the UTC month boundary', async () => {
+  const subject = 'seat-reset';
+  const limits = { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }, byok: { maxChars: 20000, maxConcurrent: 2 }, pro: { maxChars: 20000, reqPerDay: 999999, maxConcurrent: 3, charsPerMonth: 1000 } };
+  // reqPerDay lifted so only the monthly cap can gate.
+  let t = Date.UTC(2026, 0, 15); // 2026-01-15
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => t, limits });
+
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 1000 })).allowed, true);
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 1 })).status, 429);
+
+  // Cross into February: a fresh month bucket, so the cap resets and admits again.
+  t = Date.UTC(2026, 1, 1);
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 1000 })).allowed, true);
+  // A different UTC month bucket keys a separate counter (no cross-month leakage).
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 1 })).status, 429);
+});
+
+test('pro monthly char cap counts concurrent requests atomically (no over-allow race)', async () => {
+  const subject = 'seat-conc';
+  const limits = { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }, byok: { maxChars: 20000, maxConcurrent: 2 }, pro: { maxChars: 20000, reqPerDay: 999999, maxConcurrent: 3, charsPerMonth: 1000 } };
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0, limits });
+
+  // Fire 10 concurrent 200-char checks against a 1000 cap. The atomic incrBy
+  // means EXACTLY 5 succeed (5*200=1000) and the rest are denied — no race lets
+  // the running total exceed the cap.
+  const results = await Promise.all(
+    Array.from({ length: 10 }, () => limiter.check({ tier: WEB_TIERS.PRO, subject, chars: 200 })),
+  );
+  const allowed = results.filter((r) => r.allowed).length;
+  const denied = results.filter((r) => !r.allowed);
+  assert.equal(allowed, 5, 'exactly cap/chars requests admitted');
+  assert.equal(denied.length, 5);
+  for (const d of denied) {
+    assert.equal(d.status, 429);
+    assert.equal(d.reason, QUOTA_REASONS.MONTHLY_CHARS);
+  }
+});
+
+test('pro monthly char cap is skipped when no chars are supplied or the cap is unset (backward-compatible)', async () => {
+  const subject = 'seat-skip';
+  // Default TIER_LIMITS.pro.charsPerMonth applies, but with no chars the monthly
+  // dimension never engages: the response shape stays the daily-only contract.
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
+  assert.deepEqual(await limiter.check({ tier: WEB_TIERS.PRO, subject }), { allowed: true, tier: WEB_TIERS.PRO, remainingDay: 199 });
+
+  // With chars but a limits object lacking charsPerMonth, monthly is not enforced.
+  const noCap = { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }, byok: { maxChars: 20000, maxConcurrent: 2 }, pro: { maxChars: 20000, reqPerDay: 200, maxConcurrent: 3 } };
+  const limiter2 = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0, limits: noCap });
+  assert.deepEqual(await limiter2.check({ tier: WEB_TIERS.PRO, subject, chars: 5_000_000 }), { allowed: true, tier: WEB_TIERS.PRO, remainingDay: 199 });
 });

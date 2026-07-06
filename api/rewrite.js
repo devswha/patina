@@ -27,7 +27,7 @@ function parseKvNumber(value) {
  * Create a dependency-free Upstash/Vercel KV REST adapter.
  *
  * @param {Record<string,string|undefined>} env
- * @returns {null|{get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>}}
+ * @returns {null|{get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>}}
  */
 export function createRestKv(env = {}) {
   const base = env.KV_REST_API_URL;
@@ -91,6 +91,19 @@ export function createRestKv(env = {}) {
       const data = await read(`/incr/${encoded}`);
       const value = parseKvNumber(data);
       if (value == null) throw new Error('kv incr returned invalid counter');
+      if (typeof ttlMs === 'number' && ttlMs > 0) {
+        const seconds = Math.max(1, Math.ceil(ttlMs / 1000));
+        await read(`/expire/${encoded}/${seconds}`);
+      }
+      return value;
+    },
+    async incrBy(key, amount, { ttlMs } = {}) {
+      const encoded = encodeURIComponent(key);
+      // Upstash/Vercel KV INCRBY: atomic add-N, returned as the new total. Used
+      // for the pro monthly character counter (add textLength per request).
+      const data = await read(`/incrby/${encoded}/${encodeURIComponent(String(amount))}`);
+      const value = parseKvNumber(data);
+      if (value == null) throw new Error('kv incrby returned invalid counter');
       if (typeof ttlMs === 'number' && ttlMs > 0) {
         const seconds = Math.max(1, Math.ceil(ttlMs / 1000));
         await read(`/expire/${encoded}/${seconds}`);

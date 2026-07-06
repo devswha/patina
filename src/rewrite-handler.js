@@ -13,7 +13,7 @@ import { extractBearerLicense } from './entitlement.js';
  *
  * @typedef {{method?: string, headers?: Record<string, string|string[]|undefined>, body?: unknown, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, [Symbol.asyncIterator]?: () => AsyncIterator<Buffer|string|Uint8Array>}} RewriteReq
  * @typedef {{statusCode?: number, setHeader?: (name: string, value: string) => void, write?: (chunk: string) => void, end?: (body?: string) => void, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, writableEnded?: boolean, headersSent?: boolean, destroy?: () => void}} RewriteRes
- * @typedef {{check(input: {tier: string, ip: string|null, subject?: string}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string}>, acquireConcurrency?(input: {tier: string, ip: string|null, subject?: string}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string}>, releaseConcurrency?(input: {tier: string, ip: string|null, subject?: string}): Promise<void>}} RateLimiter
+ * @typedef {{check(input: {tier: string, ip: string|null, subject?: string, chars?: number}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}>, acquireConcurrency?(input: {tier: string, ip: string|null, subject?: string}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string}>, releaseConcurrency?(input: {tier: string, ip: string|null, subject?: string}): Promise<void>}} RateLimiter
  * @typedef {{validate(input: {licenseKey: string}): Promise<{ok: true, subject: string, tier: string, status: string, cache: string}|{ok: false, status: number, reason: string}>}} LicenseValidator
  */
 
@@ -90,10 +90,17 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       // Authorization, so they pass through unchanged. Cancellation (on/off) still
       // delegates to the real req so 'aborted'/'close' fire normally.
       const runnerReq = tier === WEB_TIERS.PRO ? withoutAuthorization(req) : req;
-      const quota = await rateLimiter.check({ tier, ip, subject });
+      // Pro meters a per-license monthly total-character cap in addition to the
+      // daily/concurrency caps; pass the request's input length so the limiter
+      // can accumulate it. free/byok ignore chars (metered by IP/unmetered).
+      const chars = tier === WEB_TIERS.PRO && typeof request.text === 'string' ? request.text.length : 0;
+      const quota = await rateLimiter.check({ tier, ip, subject, chars });
       if (!quota.allowed) {
-        const denied = /** @type {{status: number, reason: string}} */ (quota);
-        return send(res, denied.status, { error: denied.reason });
+        const denied = /** @type {{status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} */ (quota);
+        const body = /** @type {Record<string, unknown>} */ ({ error: denied.reason });
+        if (typeof denied.remainingMonthlyChars === 'number') body.remainingMonthlyChars = denied.remainingMonthlyChars;
+        if (typeof denied.limitMonthlyChars === 'number') body.limitMonthlyChars = denied.limitMonthlyChars;
+        return send(res, denied.status, body);
       }
 
       if (typeof rateLimiter.acquireConcurrency !== 'function') {

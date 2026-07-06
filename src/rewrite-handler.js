@@ -11,7 +11,7 @@ import { extractClientIp } from './rate-limit.js';
  * optional so bare serverless/test mocks keep working.
  *
  * @typedef {{method?: string, headers?: Record<string, string|string[]|undefined>, body?: unknown, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, [Symbol.asyncIterator]?: () => AsyncIterator<Buffer|string|Uint8Array>}} RewriteReq
- * @typedef {{statusCode?: number, setHeader?: (name: string, value: string) => void, write?: (chunk: string) => void, end?: (body?: string) => void, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, writableEnded?: boolean}} RewriteRes
+ * @typedef {{statusCode?: number, setHeader?: (name: string, value: string) => void, write?: (chunk: string) => void, end?: (body?: string) => void, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, writableEnded?: boolean, headersSent?: boolean, destroy?: () => void}} RewriteRes
  * @typedef {{check(input: {tier: string, ip: string|null}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string}>, acquireConcurrency?(input: {tier: string, ip: string|null}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string}>, releaseConcurrency?(input: {tier: string, ip: string|null}): Promise<void>}} RateLimiter
  */
 
@@ -93,6 +93,15 @@ function setSecurityHeaders(res) {
  * @returns {undefined}
  */
 export function send(res, status, obj) {
+  // If the response is already committed (an exception escaped after a stream
+  // started writing frames), re-setting status/headers would throw
+  // ERR_HTTP_HEADERS_SENT inside the caller's catch and reject the handler
+  // promise. Fail closed by tearing down the socket: the client's stream
+  // contract already reads a truncated (no `done`) response as an error.
+  if (res.headersSent || res.writableEnded) {
+    res.destroy?.();
+    return undefined;
+  }
   res.statusCode = status;
   res.setHeader?.('Cache-Control', 'no-store');
   res.setHeader?.('X-Content-Type-Options', 'nosniff');

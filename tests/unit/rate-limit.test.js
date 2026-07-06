@@ -164,6 +164,20 @@ test('free concurrency limit rejects a second active slot and releases after com
   assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.30' })).allowed, true);
 });
 
+test('concurrency slot TTL defaults to 5m and honors an override so an extended stream never expires the slot', async () => {
+  const defaultCalls = [];
+  const defaultKv = { async incr(_key, opts) { defaultCalls.push(opts); return 1; }, async decr() { return 0; } };
+  const defaultLimiter = createRateLimiter({ kv: defaultKv, hmacSecret: 'secret', now: () => 0 });
+  await defaultLimiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.40' });
+  assert.equal(defaultCalls[0].ttlMs, 5 * 60 * 1000);
+
+  const overrideCalls = [];
+  const overrideKv = { async incr(_key, opts) { overrideCalls.push(opts); return 1; }, async decr() { return 0; } };
+  const overrideLimiter = createRateLimiter({ kv: overrideKv, hmacSecret: 'secret', now: () => 0, concurrencyTtlMs: 12 * 60 * 1000 });
+  await overrideLimiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.40' });
+  assert.equal(overrideCalls[0].ttlMs, 12 * 60 * 1000);
+});
+
 test('BYOK concurrency bypasses shared free slot limit', async () => {
   const limiter = createRateLimiter({
     kv: createMemoryKv(),

@@ -79,11 +79,19 @@ const WEB_REWRITE_TIMEOUT_MS = 180_000;
 export function createRewriteApiHandler({ env = /** @type {Record<string,string|undefined>} */ (process.env), runWebRewriteStreamImpl = runWebRewriteStream, logger = console, now = () => Date.now() } = {}) {
   const restKv = createRestKv(env);
   const kv = isProductionPosture(env) ? restKv : (restKv ?? createMemoryKv());
+  // One stream budget, computed once: bounds upstream work (provider + scoring)
+  // and, via concurrencyTtlMs, keeps a free-tier slot alive for at least a full
+  // stream so an operator-extended timeout can't expire the slot mid-stream and
+  // desync the counter (a later decr would drive it negative). Floor at 5m.
+  const envTimeout = Number(env.PATINA_WEB_REWRITE_TIMEOUT_MS);
+  const streamTimeoutMs = Number.isFinite(envTimeout) && envTimeout > 0 ? envTimeout : WEB_REWRITE_TIMEOUT_MS;
+  const concurrencyTtlMs = Math.max(5 * 60 * 1000, streamTimeoutMs + 30_000);
   return createRewriteHandler({
     rateLimiter: createRateLimiter({
       kv,
       hmacSecret: env.PATINA_QUOTA_HMAC_SECRET,
       env,
+      concurrencyTtlMs,
       logger: /** @type {any} */ (logger),
     }),
     runRewrite: async ({ req, res, request }) => {
@@ -110,23 +118,25 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
       const onClose = () => { if (!res.writableEnded) controller.abort(); };
       res.on?.('close', onClose);
       req.on?.('aborted', onClose);
-      const envTimeout = Number(env.PATINA_WEB_REWRITE_TIMEOUT_MS);
-      const timeout = Number.isFinite(envTimeout) && envTimeout > 0 ? envTimeout : WEB_REWRITE_TIMEOUT_MS;
       const startedAt = now();
+      let result;
       try {
-        await runWebRewriteStreamImpl({
+        result = await runWebRewriteStreamImpl({
           request: { ...request, apiKey },
           emit: (frame) => res.write?.(encodeStreamFrame(frame)),
           signal: controller.signal,
-          timeout,
+          timeout: streamTimeoutMs,
         });
       } finally {
         res.off?.('close', onClose);
         req.off?.('aborted', onClose);
       }
       res.end?.();
-      // Sanitized observability ONLY: route/tier/provider/model/status/bucketed
-      // latency + char count. Never the text, prompt, output, key, or full IP.
+      // Sanitized observability ONLY: route/tier/provider/model/status/outcome/
+      // bucketed latency + char count. Never the text, prompt, output, key, or
+      // full IP. The HTTP status is a genuine 200 (frames already committed), so
+      // `outcome` — not `status` — carries whether the stream itself failed, so
+      // abuse/provider-failure/floor-failure spikes stay observable.
       logger.info?.('rewrite.metric', buildRewriteMetric({
         tier: request.tier,
         provider: request.provider,
@@ -134,6 +144,7 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
         status: 200,
         latencyMs: now() - startedAt,
         quotaDecision: 'allowed',
+        outcome: result && result.ok === false ? String(result.code || 'failed') : 'ok',
         charCount: typeof request.text === 'string' ? request.text.length : 0,
       }));
     },

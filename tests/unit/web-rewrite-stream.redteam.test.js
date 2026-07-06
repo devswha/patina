@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { callLLMStream } from '../../src/streaming-api.js';
 import { runWebRewriteStream } from '../../src/web-rewrite-stream.js';
+import { redactSecrets } from '../../src/web-rewrite-contract.js';
 import { createRestKv, createRewriteApiHandler } from '../../api/rewrite.js';
 
 const baseRequest = {
@@ -204,6 +205,28 @@ test('redteam key leak scrubs stream_failed errors and emitted frames never expo
   assertNoDone(frames);
   const serialized = JSON.stringify({ frames, result });
   assert.doesNotMatch(serialized, /sk-LEAK/);
+  for (const frame of frames) assertNoSecretFields(frame);
+});
+
+test('redteam key leak scrubs an unlabelled provider key (GLM id.secret) that no redaction pattern matches', async () => {
+  // GLM keys are `id.secret` with no sk-/Bearer/label marker, so the pattern
+  // redactor (SECRET_VALUE_RES) cannot catch them echoed in an error body — only
+  // the request-scoped exact-substring scrub in safeError can.
+  const glmKey = '6a1b2c3d4e5f60718293.aZ9xY8wV7uT6sR5q';
+  // Sanity: pattern-based redaction alone leaves this key intact (proves the gap).
+  assert.equal(String(redactSecrets(`echoed ${glmKey}`)).includes(glmKey), true);
+
+  const { frames, result } = await runStream({
+    request: { ...baseRequest, apiKey: glmKey },
+    callLLMStream: async () => { throw new Error(`401 invalid api key: ${glmKey}`); },
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'stream_failed');
+  assertNoDone(frames);
+  const serialized = JSON.stringify({ frames, result });
+  assert.doesNotMatch(serialized, /aZ9xY8wV7uT6sR5q/);
+  assert.equal(serialized.includes(glmKey), false);
   for (const frame of frames) assertNoSecretFields(frame);
 });
 

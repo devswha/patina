@@ -5,6 +5,7 @@ import { QUOTA_REASONS, TIER_LIMITS, WEB_TIERS } from './web-rewrite-contract.js
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
+const DEFAULT_CONCURRENCY_TTL_MS = 5 * 60 * 1000;
 
 /**
  * Return a hex sha256 HMAC quota key for NUL-separated parts.
@@ -112,10 +113,12 @@ export function isProductionPosture(env = {}) {
 /**
  * Create a fail-closed rate limiter for the shared free proxy.
  *
- * @param {{kv?: QuotaKv|null, hmacSecret?: string, env?: Record<string, string|undefined>, now?: () => number, limits?: typeof TIER_LIMITS, logger?: RateLimitLogger}} options
+ * @param {{kv?: QuotaKv|null, hmacSecret?: string, env?: Record<string, string|undefined>, now?: () => number, limits?: typeof TIER_LIMITS, logger?: RateLimitLogger, concurrencyTtlMs?: number}} options
+ *   `concurrencyTtlMs` is the self-healing expiry for a concurrency slot; keep it
+ *   >= the maximum stream budget so a slot never expires mid-stream (defaults to 5m).
  * @returns {{check(input: {tier: string, ip?: string|null}): Promise<RateLimitResult>, acquireConcurrency(input: {tier: string, ip?: string|null}): Promise<RateLimitResult>, releaseConcurrency(input: {tier: string, ip?: string|null}): Promise<void>}}
  */
-export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.now(), limits = TIER_LIMITS, logger = console }) {
+export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.now(), limits = TIER_LIMITS, logger = console, concurrencyTtlMs = DEFAULT_CONCURRENCY_TTL_MS }) {
   const getConcurrencyKey = (tier, ip) => {
     if (tier === WEB_TIERS.BYOK) return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: true, tier }) };
     const production = isProductionPosture(env);
@@ -188,7 +191,7 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
       if (!resolved.ok) return resolved.result;
       const freeLimits = limits.free;
       try {
-        const activeCount = await kv.incr(resolved.key, { ttlMs: 5 * 60 * 1000 });
+        const activeCount = await kv.incr(resolved.key, { ttlMs: concurrencyTtlMs });
         if (!Number.isSafeInteger(activeCount) || activeCount < 1) {
           return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
         }

@@ -10,8 +10,11 @@
 
 /** The complete set of fields a rewrite metric may contain. */
 export const METRIC_FIELDS = Object.freeze([
-  'route', 'tier', 'provider', 'model', 'status', 'latencyBucket', 'quotaDecision', 'charBucket',
+  'route', 'tier', 'provider', 'model', 'status', 'latencyBucket', 'quotaDecision', 'charBucket', 'outcome',
 ]);
+
+/** Closed set of stream outcomes; anything else normalizes to 'n/a' so the field can never carry free-form text. */
+const OUTCOME_VALUES = Object.freeze(new Set(['ok', 'stream_failed', 'scoring_failed', 'floor_failed']));
 
 /** Bucket a latency (ms) into a coarse band so timings are not individually identifying. */
 export function latencyBucket(ms) {
@@ -40,19 +43,20 @@ export function charBucket(count) {
  * are read; any extra keys passed in are ignored, so text/prompt/key/IP can
  * never flow through.
  *
- * @param {{route?:string, tier?:string, provider?:string, model?:string, status?:number, latencyMs?:number, quotaDecision?:string, charCount?:number}} [input]
- * @returns {{route:string, tier:string, provider:string, model:string, status:number, latencyBucket:string, quotaDecision:string, charBucket:string}}
+ * @param {{route?:string, tier?:string, provider?:string, model?:string, status?:number, latencyMs?:number, quotaDecision?:string, charCount?:number, outcome?:string}} [input]
+ * @returns {{route:string, tier:string, provider:string, model:string, status:number, latencyBucket:string, quotaDecision:string, charBucket:string, outcome:string}}
  */
-export function buildRewriteMetric({ route = '/api/rewrite', tier, provider, model, status, latencyMs, quotaDecision, charCount } = {}) {
+export function buildRewriteMetric({ route = '/api/rewrite', tier, provider, model, status, latencyMs, quotaDecision, charCount, outcome } = {}) {
   return {
     route: String(route),
-    tier: tier === 'free' || tier === 'byok' ? tier : 'unknown',
+    tier: tier === 'free' || tier === 'byok' || tier === 'pro' ? tier : 'unknown',
     provider: provider ? String(provider) : 'unknown',
     model: model ? String(model) : 'unknown',
     status: Number.isFinite(Number(status)) ? Number(status) : 0,
     latencyBucket: latencyBucket(latencyMs),
     quotaDecision: quotaDecision ? String(quotaDecision) : 'n/a',
     charBucket: charBucket(charCount),
+    outcome: OUTCOME_VALUES.has(String(outcome)) ? String(outcome) : 'n/a',
   };
 }
 

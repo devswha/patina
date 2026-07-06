@@ -5,6 +5,7 @@ import { QUOTA_REASONS, TIER_LIMITS, WEB_TIERS } from './web-rewrite-contract.js
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
+const DEFAULT_CONCURRENCY_TTL_MS = 5 * 60 * 1000;
 
 /**
  * Return a hex sha256 HMAC quota key for NUL-separated parts.
@@ -52,7 +53,7 @@ function getHeader(headers, name) {
 /**
  * Create an in-memory KV store for tests and local development only.
  *
- * @returns {{__memory: true, get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>}}
+ * @returns {{__memory: true, get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>}}
  */
 export function createMemoryKv() {
   /** @type {Map<string, {value: unknown, expiresAt: number}>} */
@@ -85,6 +86,13 @@ export function createMemoryKv() {
       entries.set(key, { value: next, expiresAt: expiresAt(ttlMs) });
       return next;
     },
+    async incrBy(key, amount, { ttlMs } = {}) {
+      expire();
+      const current = Number(entries.get(key)?.value ?? 0);
+      const next = current + Number(amount);
+      entries.set(key, { value: next, expiresAt: expiresAt(ttlMs) });
+      return next;
+    },
     async decr(key) {
       expire();
       const current = Number(entries.get(key)?.value ?? 0);
@@ -104,27 +112,53 @@ export function isProductionPosture(env = {}) {
 }
 
 /**
- * @typedef {{get?(key: string): Promise<unknown>, set?(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, decr?(key: string): Promise<number>, __memory?: boolean}} QuotaKv
- * @typedef {{allowed: true, tier: string, remainingDay?: number}|{allowed: false, status: number, reason: string}} RateLimitResult
+ * @typedef {{get?(key: string): Promise<unknown>, set?(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy?(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr?(key: string): Promise<number>, __memory?: boolean}} QuotaKv
+ * @typedef {{allowed: true, tier: string, remainingDay?: number}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} RateLimitResult
  * @typedef {{warn?: (...args: unknown[]) => void}} RateLimitLogger
  */
 
 /**
  * Create a fail-closed rate limiter for the shared free proxy.
  *
- * @param {{kv?: QuotaKv|null, hmacSecret?: string, env?: Record<string, string|undefined>, now?: () => number, limits?: typeof TIER_LIMITS, logger?: RateLimitLogger}} options
- * @returns {{check(input: {tier: string, ip?: string|null}): Promise<RateLimitResult>, acquireConcurrency(input: {tier: string, ip?: string|null}): Promise<RateLimitResult>, releaseConcurrency(input: {tier: string, ip?: string|null}): Promise<void>}}
+ * @param {{kv?: QuotaKv|null, hmacSecret?: string, env?: Record<string, string|undefined>, now?: () => number, limits?: typeof TIER_LIMITS, logger?: RateLimitLogger, concurrencyTtlMs?: number}} options
+ *   `concurrencyTtlMs` is the self-healing expiry for a concurrency slot; keep it
+ *   >= the maximum stream budget so a slot never expires mid-stream (defaults to 5m).
+ * @returns {{check(input: {tier: string, ip?: string|null, subject?: string|null, chars?: number}): Promise<RateLimitResult>, acquireConcurrency(input: {tier: string, ip?: string|null, subject?: string|null}): Promise<RateLimitResult>, releaseConcurrency(input: {tier: string, ip?: string|null, subject?: string|null}): Promise<void>}}
  */
-export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.now(), limits = TIER_LIMITS, logger = console }) {
-  const getConcurrencyKey = (tier, ip) => {
-    if (tier === WEB_TIERS.BYOK) return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: true, tier }) };
+export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.now(), limits = TIER_LIMITS, logger = console, concurrencyTtlMs = DEFAULT_CONCURRENCY_TTL_MS }) {
+  const productionGuard = () => {
     const production = isProductionPosture(env);
-    if (production && (!kv || kv.__memory)) return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE }) };
-    if (production && !hmacSecret) return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.SECRET_UNAVAILABLE }) };
-    if (!kv) return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE }) };
-    if (!ip) return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 400, reason: QUOTA_REASONS.IP_UNAVAILABLE }) };
-    const secret = hmacSecret || 'patina-local-quota-secret';
-    return { ok: true, key: quotaKeyHmac(secret, 'free', 'concurrent', ip) };
+    if (production && (!kv || kv.__memory)) return /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE });
+    if (production && !hmacSecret) return /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.SECRET_UNAVAILABLE });
+    if (!kv) return /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE });
+    return null;
+  };
+
+  // Resolve the concurrency-slot key per tier: BYOK is unmetered (allow, no-op),
+  // FREE keys on the client IP, PRO keys on the license subject (never the IP).
+  // An unknown tier is a stable 400 (defense-in-depth). The production/KV/secret
+  // guards are shared with `check` via productionGuard.
+  const getConcurrencyKey = (tier, ip, subject) => {
+    switch (tier) {
+      case WEB_TIERS.BYOK:
+        return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: true, tier }) };
+      case WEB_TIERS.FREE: {
+        const guard = productionGuard();
+        if (guard) return { ok: false, result: guard };
+        if (!ip) return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 400, reason: QUOTA_REASONS.IP_UNAVAILABLE }) };
+        const secret = hmacSecret || 'patina-local-quota-secret';
+        return { ok: true, key: quotaKeyHmac(secret, 'free', 'concurrent', ip), maxConcurrent: limits.free.maxConcurrent };
+      }
+      case WEB_TIERS.PRO: {
+        const guard = productionGuard();
+        if (guard) return { ok: false, result: guard };
+        if (typeof subject !== 'string' || subject === '') return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 401, reason: QUOTA_REASONS.LICENSE_REQUIRED }) };
+        const secret = hmacSecret || 'patina-local-quota-secret';
+        return { ok: true, key: quotaKeyHmac(secret, 'pro', 'concurrent', subject), maxConcurrent: limits.pro.maxConcurrent };
+      }
+      default:
+        return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 400, reason: 'unsupported tier' }) };
+    }
   };
 
   const releaseKey = async (key) => {
@@ -140,59 +174,117 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
   };
 
   return {
-    async check({ tier, ip }) {
-      if (tier === WEB_TIERS.BYOK) return { allowed: true, tier };
+    async check({ tier, ip, subject, chars }) {
+      switch (tier) {
+        case WEB_TIERS.BYOK:
+          return { allowed: true, tier };
+        case WEB_TIERS.FREE: {
+          const guard = productionGuard();
+          if (guard) return guard;
+          if (!ip) return { allowed: false, status: 400, reason: QUOTA_REASONS.IP_UNAVAILABLE };
 
-      const production = isProductionPosture(env);
-      if (production && (!kv || kv.__memory)) return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
-      if (production && !hmacSecret) return { allowed: false, status: 503, reason: QUOTA_REASONS.SECRET_UNAVAILABLE };
-      if (!kv) return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
-      if (!ip) return { allowed: false, status: 400, reason: QUOTA_REASONS.IP_UNAVAILABLE };
+          const secret = hmacSecret || 'patina-local-quota-secret';
+          const timestamp = now();
+          const dayBucket = Math.floor(timestamp / DAY_MS);
+          const hourBucket = Math.floor(timestamp / HOUR_MS);
+          const freeLimits = limits.free;
+          const dayKey = quotaKeyHmac(secret, 'free', 'day', ip, dayBucket);
+          const hourKey = quotaKeyHmac(secret, 'free', 'hour', ip, hourBucket);
+          const dayTtlMs = (dayBucket + 1) * DAY_MS - timestamp;
+          const hourTtlMs = (hourBucket + 1) * HOUR_MS - timestamp;
 
-      const secret = hmacSecret || 'patina-local-quota-secret';
-      const timestamp = now();
-      const dayBucket = Math.floor(timestamp / DAY_MS);
-      const hourBucket = Math.floor(timestamp / HOUR_MS);
-      const freeLimits = limits.free;
-      const dayKey = quotaKeyHmac(secret, 'free', 'day', ip, dayBucket);
-      const hourKey = quotaKeyHmac(secret, 'free', 'hour', ip, hourBucket);
-      const dayTtlMs = (dayBucket + 1) * DAY_MS - timestamp;
-      const hourTtlMs = (hourBucket + 1) * HOUR_MS - timestamp;
+          try {
+            // A degraded KV adapter that resolves a malformed counter (undefined,
+            // NaN, an object, a non-integer) instead of throwing must be treated as
+            // storage-unavailable, not silently allowed: `bad > limit` is false and
+            // would otherwise fail OPEN on a public abuse boundary.
+            const dayCount = await kv.incr(dayKey, { ttlMs: dayTtlMs });
+            if (!Number.isSafeInteger(dayCount) || dayCount < 1) {
+              return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+            }
+            if (dayCount > freeLimits.reqPerDay) {
+              return { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY };
+            }
+            const hourCount = await kv.incr(hourKey, { ttlMs: hourTtlMs });
+            if (!Number.isSafeInteger(hourCount) || hourCount < 1) {
+              return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+            }
+            if (hourCount > freeLimits.burstPerHour) {
+              return { allowed: false, status: 429, reason: QUOTA_REASONS.HOURLY };
+            }
+            return { allowed: true, tier, remainingDay: Math.max(0, freeLimits.reqPerDay - dayCount) };
+          } catch {
+            return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+          }
+        }
+        case WEB_TIERS.PRO: {
+          const guard = productionGuard();
+          if (guard) return guard;
+          // Defense-in-depth: the contract already 401s an unauthenticated pro
+          // request, but a subject is REQUIRED here so a mis-wired caller can
+          // never meter pro traffic against a shared/absent identity.
+          if (typeof subject !== 'string' || subject === '') return { allowed: false, status: 401, reason: QUOTA_REASONS.LICENSE_REQUIRED };
 
-      try {
-        // A degraded KV adapter that resolves a malformed counter (undefined,
-        // NaN, an object, a non-integer) instead of throwing must be treated as
-        // storage-unavailable, not silently allowed: `bad > limit` is false and
-        // would otherwise fail OPEN on a public abuse boundary.
-        const dayCount = await kv.incr(dayKey, { ttlMs: dayTtlMs });
-        if (!Number.isSafeInteger(dayCount) || dayCount < 1) {
-          return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+          const secret = hmacSecret || 'patina-local-quota-secret';
+          const timestamp = now();
+          const dayBucket = Math.floor(timestamp / DAY_MS);
+          const proLimits = limits.pro;
+          // Pro meters a daily cap only (no hourly burst), keyed on the license
+          // subject — never the IP — so usage is counted per license seat.
+          const dayKey = quotaKeyHmac(secret, 'pro', 'day', subject, dayBucket);
+          const dayTtlMs = (dayBucket + 1) * DAY_MS - timestamp;
+
+          try {
+            const dayCount = await kv.incr(dayKey, { ttlMs: dayTtlMs });
+            if (!Number.isSafeInteger(dayCount) || dayCount < 1) {
+              return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+            }
+            if (dayCount > proLimits.reqPerDay) {
+              return { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY };
+            }
+            // Monthly total-character cap (per license subject), the margin
+            // defense against a single seat burning far more than the $9.99/mo
+            // subscription value under the daily/per-request caps. Only engages
+            // when a positive char count is supplied AND a positive cap is
+            // configured; the counter is atomic (incrBy) and resets at the UTC
+            // month boundary via the key bucket + TTL.
+            const monthlyCap = proLimits.charsPerMonth;
+            const reqChars = Number.isSafeInteger(chars) && chars > 0 ? chars : 0;
+            if (reqChars > 0 && Number.isSafeInteger(monthlyCap) && monthlyCap > 0) {
+              const monthDate = new Date(timestamp);
+              const monthBucket = monthDate.getUTCFullYear() * 12 + monthDate.getUTCMonth();
+              const monthKey = quotaKeyHmac(secret, 'pro', 'chars-month', subject, monthBucket);
+              const nextMonthStart = Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() + 1, 1);
+              const monthTtlMs = nextMonthStart - timestamp;
+              const monthTotal = await kv.incrBy(monthKey, reqChars, { ttlMs: monthTtlMs });
+              if (!Number.isSafeInteger(monthTotal) || monthTotal < 1) {
+                return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+              }
+              if (monthTotal > monthlyCap) {
+                return { allowed: false, status: 429, reason: QUOTA_REASONS.MONTHLY_CHARS, remainingMonthlyChars: 0, limitMonthlyChars: monthlyCap };
+              }
+            }
+            return { allowed: true, tier, remainingDay: Math.max(0, proLimits.reqPerDay - dayCount) };
+          } catch {
+            return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+          }
         }
-        if (dayCount > freeLimits.reqPerDay) {
-          return { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY };
-        }
-        const hourCount = await kv.incr(hourKey, { ttlMs: hourTtlMs });
-        if (!Number.isSafeInteger(hourCount) || hourCount < 1) {
-          return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
-        }
-        if (hourCount > freeLimits.burstPerHour) {
-          return { allowed: false, status: 429, reason: QUOTA_REASONS.HOURLY };
-        }
-        return { allowed: true, tier, remainingDay: Math.max(0, freeLimits.reqPerDay - dayCount) };
-      } catch {
-        return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+        default:
+          // Defense-in-depth: the contract already rejects unknown tiers; a
+          // stable 400 keeps a mis-wired caller fail-closed, never fail-open.
+          return { allowed: false, status: 400, reason: 'unsupported tier' };
       }
     },
-    async acquireConcurrency({ tier, ip }) {
-      const resolved = getConcurrencyKey(tier, ip);
+    async acquireConcurrency({ tier, ip, subject }) {
+      const resolved = getConcurrencyKey(tier, ip, subject);
       if (!resolved.ok) return resolved.result;
-      const freeLimits = limits.free;
+      const maxConcurrent = resolved.maxConcurrent;
       try {
-        const activeCount = await kv.incr(resolved.key, { ttlMs: 5 * 60 * 1000 });
+        const activeCount = await kv.incr(resolved.key, { ttlMs: concurrencyTtlMs });
         if (!Number.isSafeInteger(activeCount) || activeCount < 1) {
           return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
         }
-        if (activeCount > freeLimits.maxConcurrent) {
+        if (activeCount > maxConcurrent) {
           await releaseKey(resolved.key);
           return { allowed: false, status: 429, reason: QUOTA_REASONS.CONCURRENT };
         }
@@ -201,8 +293,8 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
         return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
       }
     },
-    async releaseConcurrency({ tier, ip }) {
-      const resolved = getConcurrencyKey(tier, ip);
+    async releaseConcurrency({ tier, ip, subject }) {
+      const resolved = getConcurrencyKey(tier, ip, subject);
       if (!resolved.ok || !resolved.key) return;
       await releaseKey(resolved.key);
     },

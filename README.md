@@ -41,7 +41,7 @@ More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPL
 
 ### Browser playground
 
-Open **[patina.vibetip.help](https://patina.vibetip.help/)** — paste KO / EN / ZH / JA text for a real rewrite gated by the MPS/fidelity floors, with the deterministic AI signal measured before → after. Rewrites and scoring run server-side; the free tier uses the service's own model key (rate-limited). **API mode** forwards your own key per request through the patina server to the provider you pick — never stored or logged (metrics are sanitized: no text, prompt, output, key, or IP). **Pro** ($9.99/mo USD) unlocks higher limits (20000 chars, 200 rewrites/day) with a Lemon Squeezy license key sent as a bearer token — the raw key is validated server-side and never stored or logged.
+Open **[patina.vibetip.help](https://patina.vibetip.help/)** — paste KO / EN / ZH / JA text for a real rewrite gated by the MPS/fidelity floors, with the deterministic AI signal measured before → after. Rewrites and scoring run server-side; the free tier uses the service's own model key (rate-limited). **API mode** forwards your own key per request through the patina server to the provider you pick — never stored or logged (metrics are sanitized: no text, prompt, output, key, or IP). A hosted **Pro** tier unlocks higher limits — [see pricing](https://patina.vibetip.help/#pricing).
 
 ### Agent skill
 

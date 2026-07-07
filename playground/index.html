@@ -22,6 +22,7 @@
         <a href="https://github.com/devswha/patina">GitHub</a>
         <a href="https://github.com/devswha/patina/tree/main/docs">Docs</a>
         <a href="#examples">Examples</a>
+        <a href="#pricing">Pricing</a>
         <a href="https://github.com/devswha/patina/blob/main/docs/benchmarks/latest.md">Benchmark</a>
         <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md">Ethics</a>
       </nav>
@@ -154,6 +155,51 @@
         <a class="bench__link" href="https://github.com/devswha/patina/blob/main/docs/benchmarks/latest.md">Read the full report →</a>
       </section>
 
+      <section class="pricing" id="pricing">
+        <div class="sec__head">
+          <p class="eyebrow"><span>pricing</span></p>
+          <h2 class="sec__title">Simple pricing</h2>
+          <p class="sec__lede">Try it free in the browser, bring your own key, or go Pro for higher limits on Claude Sonnet 5.</p>
+        </div>
+        <div class="pricing__grid">
+          <div class="price">
+            <h3 class="price__name">Free</h3>
+            <p class="price__cost">$0</p>
+            <ul class="price__feats">
+              <li>Browser playground</li>
+              <li>5 rewrites / day</li>
+              <li>Up to 4,000 characters</li>
+              <li>KO · EN · ZH · JA</li>
+            </ul>
+            <button class="price__cta" type="button" id="price-free">Try it now ↑</button>
+          </div>
+          <div class="price">
+            <h3 class="price__name">API</h3>
+            <p class="price__cost">Your key</p>
+            <ul class="price__feats">
+              <li>Bring your own provider key</li>
+              <li>Up to 20,000 characters</li>
+              <li>Key stays in your browser</li>
+              <li>Never stored or logged</li>
+            </ul>
+            <button class="price__cta" type="button" id="price-byok">Use API mode</button>
+          </div>
+          <div class="price price--pro">
+            <div class="price__badge">Most capable</div>
+            <h3 class="price__name">Pro</h3>
+            <p class="price__cost">$9.99<span>/mo</span></p>
+            <ul class="price__feats">
+              <li>Claude Sonnet 5</li>
+              <li>200 rewrites / day</li>
+              <li>Up to 20,000 characters</li>
+              <li>1,000,000 characters / month</li>
+            </ul>
+            <a class="price__cta price__cta--pro is-soon" id="pro-buy" role="button" aria-disabled="true" rel="noopener">Pro — coming soon</a>
+          </div>
+        </div>
+        <p class="pricing__note">Pro is a licensed hosted tier. After checkout you receive a license key to use via the CLI or API; playground license sign-in is coming next.</p>
+      </section>
+
       <section class="cta">
         <div class="cta__inner">
           <h2 class="cta__title">Paste your own and see</h2>
@@ -166,6 +212,7 @@
         <div class="foot__brand"><img class="foot__icon" src="/assets/brand/patina-mark.svg" alt="" width="20" height="20" /> patina</div>
         <nav class="foot__links" aria-label="Footer">
           <a href="https://github.com/devswha/patina">GitHub</a>
+          <a href="#pricing">Pricing</a>
           <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md">Ethics</a>
           <a href="https://github.com/devswha/patina/blob/main/docs/benchmarks/latest.md">Benchmark</a>
           <a href="https://github.com/devswha/patina/tree/main/docs">Docs</a>
@@ -205,7 +252,7 @@
             </button>
           </form>
           <p class="composer__error" id="composer-error" role="alert" hidden></p>
-          <p class="composer__hint">patina changes only the wording — never the claim, numbers, or causation. This demo rewrites via a local CLI; MPS/fidelity are preview values.</p>
+          <p class="composer__hint">patina changes only the wording — never the claim, numbers, or causation. Rewrites run the real patina pipeline server-side; MPS/fidelity are scored live.</p>
         </div>
       </main>
     </div>

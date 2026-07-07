@@ -4,7 +4,11 @@ The English README hero now uses the web playground surface; the CLI `--preview`
 
 Current assets:
 
-- `patina-playground-en.gif` — README (English) hero animation showing the web playground flow.
+- `patina-demo-live-en.gif` — **current** README (English) hero: a real production-hosted capture from patina.vibetip.help.
+  - source: live screen recording of the deployed hosted playground (not a local dev server / CLI capture) — real server-side rewrite and live MPS/fidelity scoring.
+  - captured flow: English typing on the landing → server-side rewrite → result with MPS 100 / Fidelity 75 badges (real service).
+  - specs: 960px wide, 12fps, ~685KB, ~25s.
+- `patina-playground-en.gif` — hero animation for the localized (KR/ZH/JA) READMEs; was the English README hero before the live capture above.
   - source: the real playground UI (English) served by `node scripts/dev-server.mjs` with a real LLM backend (`PATINA_DEV_LLM_*`, `PATINA_DEV_LLM_SCORE=real`) — real rewrite, real MPS/fidelity scoring, real deterministic AI-signal drop.
   - captured frames: typed sample on the landing → streaming rewrite (×2) → result with MPS/Fidelity badges → result with the AI-signal (hot-paragraph ratio 100 → 0) and length disclosures expanded.
   - expected visual contract: English UI ("Make it sound human"), Free mode nav, the 30-templates fact preserved in the rewrite, MPS 100 / Fidelity 75 badges, hot-paragraph ratio 100 → 0.

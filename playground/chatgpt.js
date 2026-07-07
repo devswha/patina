@@ -270,6 +270,71 @@ function el(tag, cls, text) {
   return n;
 }
 
+// ---------- launch: pricing CTAs, Pro checkout, UTM attribution ----------
+// Flip PRO_CHECKOUT_URL to the live Lemon Squeezy checkout link once payments
+// open. While it is empty the Pro CTA stays a non-clickable "coming soon" chip,
+// so the launch page never ships a dead buy button. UTM params from the landing
+// URL are captured client-side and appended to the checkout link so paid-tier
+// conversions can be attributed to their launch source (no third-party calls;
+// stays within the self-only CSP and no-telemetry posture).
+const PRO_CHECKOUT_URL = '';
+const PRO_PRICE = '$9.99/mo';
+const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'ref'];
+
+function captureUtm() {
+  try {
+    const params = new globalThis.URLSearchParams(globalThis.location.search);
+    const found = {};
+    for (const k of UTM_KEYS) {
+      const v = params.get(k);
+      if (v) found[k] = v.slice(0, 128);
+    }
+    if (Object.keys(found).length) globalThis.sessionStorage.setItem('patina_utm', JSON.stringify(found));
+  } catch { /* URL / sessionStorage unavailable — attribution is best-effort */ }
+}
+
+function proCheckoutHref() {
+  if (!PRO_CHECKOUT_URL) return '';
+  try {
+    const url = new globalThis.URL(PRO_CHECKOUT_URL);
+    const stored = JSON.parse(globalThis.sessionStorage.getItem('patina_utm') || '{}');
+    for (const [k, v] of Object.entries(stored)) url.searchParams.set(k, String(v));
+    return url.toString();
+  } catch { return PRO_CHECKOUT_URL; }
+}
+
+function wireProCta() {
+  const btn = $('#pro-buy');
+  if (!btn) return;
+  const href = proCheckoutHref();
+  if (href) {
+    btn.setAttribute('href', href);
+    btn.setAttribute('target', '_blank');
+    btn.removeAttribute('aria-disabled');
+    btn.classList.remove('is-soon');
+    btn.textContent = `Upgrade to Pro — ${PRO_PRICE}`;
+  } else {
+    btn.removeAttribute('href');
+    btn.setAttribute('aria-disabled', 'true');
+    btn.classList.add('is-soon');
+    btn.textContent = 'Pro — coming soon';
+  }
+}
+
+function wirePricingCtas() {
+  const free = $('#price-free');
+  if (free) free.addEventListener('click', () => { globalThis.scrollTo({ top: 0, behavior: 'smooth' }); els.heroInput?.focus(); });
+  const byok = $('#price-byok');
+  if (byok) byok.addEventListener('click', () => {
+    els.tier.value = WEB_TIERS.BYOK;
+    syncTier();
+    updateHeroSend();
+    updateChatSend();
+    globalThis.scrollTo({ top: 0, behavior: 'smooth' });
+    els.apiKey?.focus();
+  });
+}
+
 // ---------- provider / tier ----------
 function populateProviders() {
   els.provider.innerHTML = '';
@@ -931,6 +996,9 @@ populateProviders();
 syncTier();
 renderSuggest();
 renderExamples();
+captureUtm();
+wireProCta();
+wirePricingCtas();
 onLangChange();
 newConvo();
 showLanding();

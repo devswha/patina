@@ -27,17 +27,13 @@
   <a href="https://patina.vibetip.help/"><b>Try it in the browser — no install</b></a>
 </p>
 
-patina is a deterministic, pattern-based humanizer for Korean, English, Chinese, and Japanese. It finds AI-sounding phrasing and rewrites it without changing the claim, numbers, polarity, or causation.
-
-It is not a black-box paraphraser, authorship detector, or detector-bypass tool. patina is built for allowed AI-assisted drafting where the author wants cleaner voice, an audit trail, and meaning-preservation checks.
-
-## Demo
-
-Paste AI-sounding text into the **[playground](https://patina.vibetip.help/)** and patina rewrites it in place. The meaning floors verify the rewrite (**MPS 100 / Fidelity 75** here — the "30 templates" fact survives), and the deterministic AI signal is measured before → after: the hot-paragraph ratio falls **100 → 0** while the hype ("thrilled to announce", "revolutionize your workflow", "unlock their full potential") is gone.
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-playground-en.gif" alt="Animated patina playground demo: an AI-sounding template-pack announcement is pasted into the web playground, rewritten naturally while keeping the 30-templates fact, and verified with MPS 100, Fidelity 75, and a deterministic AI-signal drop from 100 to 0" width="820">
 </p>
+
+<p align="center"><em>Paste AI-sounding text → patina rewrites it in place, keeps the facts (the "30 templates" number survives), and drops the deterministic AI signal 100 → 0 (MPS 100 / Fidelity 75).</em></p>
+
+patina is a deterministic, pattern-based humanizer for Korean, English, Chinese, and Japanese. It finds AI-sounding phrasing and rewrites it without changing the claim, numbers, polarity, or causation. It is not a black-box paraphraser, authorship detector, or detector-bypass tool — it is built for allowed AI-assisted drafting where the author wants cleaner voice, an audit trail, and meaning-preservation checks.
 
 More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)) · [CLI transcript](docs/DEMO.md).
 

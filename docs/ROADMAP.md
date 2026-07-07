@@ -110,6 +110,8 @@ Candidate features:
 - sentence opener diversity
 - Korean passive/nominalization proxies
 - paragraph shape variation
+- **sentence-length / line-rhythm smoothness floor** (advisory): flag output whose sentence-length CV, line-length CV, or line-ending entropy falls **below** a human band — the "too smooth / over-edited" lower bound, distinct from the existing detection-side burstiness signal. Ship advisory-first (like the meaning proxy Phase A): warning only, no exit-code or gate change, no `analyzeText` coupling, so the benchmark stays unaffected. Reuses the burstiness CV already computed in `src/features/*`.
+  - Trigger: implementation starts only after payment is open and the launch is complete (P0 = payment/launch); adopted here as roadmap only. Idea from `kimsh-1/gn-voice` (`scripts/verify_style.py` smoothness lower-bound; MIT — Section A). Credit in `NOTICE` if its formula is reused.
 
 Acceptance criteria:
 
@@ -191,6 +193,10 @@ Goal: let users define their own persona / genre / tone instead of supplying raw
 - Build on the existing persona harness (`src/personas/`, `personas/ko/`) and the `--persona` / `--tone` / `--profile` axes rather than a separate sample-injection path.
 - Provide an authoring entry point so a user can create and reuse a named custom persona (voice + register + genre) with the same MPS/fidelity floors enforced.
 - This replaces the removed `--voice-sample` style anchor (dropped in 6.0.0): the "sound like me" use case becomes a saved custom persona, not a per-run sample file.
+- **Corpus-distilled quantitative bands**: a `persona new --from-corpus <dir>` path that ingests a multi-document personal corpus and distills per-metric allow-bands (p5/p95) from patina's existing deterministic stylometry (burstiness / MATTR / lexicon density / line rhythm) — promoting a persona from qualitative blocks to a quantitative, verifiable voice fingerprint, optionally segmented by genre/channel. Bands live in `src/features/*` (LLM-free); the persona still cannot lower the MPS/fidelity floors.
+- **Personalized avoided-lexicon**: derive a persona's `avoid` list from the user corpus's zero-occurrence terms (a personal AI-tell dictionary), complementing the generic corpus-grounded AI lexicon.
+- **Holdout validation methodology**: seal ~15% of the user corpus, build bands only on the rest, and verify a distilled persona generalizes to the unseen holdout (plus a corpus manifest/ledger integrity check) before it is offered.
+- Trigger + attribution: a large effort that competes with the payment/launch path — implementation starts only after payment stabilization and a **separate** approval. The genre×channel fingerprint bands, personalized zero-occurrence tells, and holdout/ledger methodology are adopted (idea-level) from `kimsh-1/gn-voice` (MIT — Section A: `scripts/`, `references/fingerprint-slim.json`, `references/ai-tells.json`, `style-profile/`). patina distills only the user's own corpus and never ingests gn-voice's `corpus/`, `analysis/`, or `examples/` (Section B, all rights reserved). Credit gn-voice in `NOTICE` if any Section A structure is reused.
 
 Acceptance criteria:
 

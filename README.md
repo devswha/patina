@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-playground-en.gif" alt="Animated patina playground demo: an AI-sounding template-pack announcement is pasted into the web playground, rewritten naturally while keeping the 30-templates fact, and verified with MPS 100, Fidelity 75, and a deterministic AI-signal drop from 100 to 0" width="820">
+  <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-demo-live-en.gif" alt="Live screen capture of the hosted patina playground at patina.vibetip.help: an AI-sounding English announcement is typed in, rewritten naturally by the real server-side pipeline while the facts survive, and verified with MPS 100 and Fidelity 75 plus a deterministic AI-signal drop from 100 to 0" width="960">
 </p>
 
 <p align="center"><em>Paste AI-sounding text → patina rewrites it in place, keeps the facts (the "30 templates" number survives), and drops the deterministic AI signal 100 → 0 (MPS 100 / Fidelity 75).</em></p>

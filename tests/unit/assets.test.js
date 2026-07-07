@@ -59,11 +59,12 @@ function localizeDemoSrc(src) {
 }
 
 test('localized READMEs point at a demo hero GIF that exists', () => {
-  // After the translation resync, every README (English + KR/ZH/JA) leads with
-  // the same playground-led demo hero GIF served from the main-branch raw URL.
+  // The English README (the launch-facing one) leads with the live, production-
+  // hosted capture; the localized KR/ZH/JA READMEs keep the playground demo hero.
+  const liveGif = 'https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-demo-live-en.gif';
   const playgroundGif = 'https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-playground-en.gif';
   const expected = {
-    'README.md': playgroundGif,
+    'README.md': liveGif,
     'README_KR.md': playgroundGif,
     'README_ZH.md': playgroundGif,
     'README_JA.md': playgroundGif,
@@ -100,7 +101,7 @@ test('localized READMEs have no broken local image references', () => {
 });
 
 test('README demo GIFs stay small enough for GitHub rendering', () => {
-  const files = ['assets/demo/patina-playground-en.gif', 'assets/demo/patina-preview-en.gif', 'assets/demo/patina-preview-ko.gif'];
+  const files = ['assets/demo/patina-demo-live-en.gif', 'assets/demo/patina-playground-en.gif', 'assets/demo/patina-preview-en.gif', 'assets/demo/patina-preview-ko.gif'];
   for (const file of files) {
     const size = statSync(resolve(REPO_ROOT, file)).size;
     assert.ok(size > 0, `${file}: empty asset`);

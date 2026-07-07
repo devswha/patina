@@ -20,24 +20,20 @@
   <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
   <a href="#quick-start"><img alt="Skill: Claude Code | Codex | Cursor | OpenCode" src="https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet"></a>
   <a href="https://github.com/devswha/patina"><img alt="Languages: KO | EN | ZH | JA" src="https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green"></a>
-  <a href="CHANGELOG.md"><img alt="Version 6.3.0" src="https://img.shields.io/badge/version-6.3.0-blue"></a>
+  <a href="CHANGELOG.md"><img alt="Version 6.3.1" src="https://img.shields.io/badge/version-6.3.1-blue"></a>
 </p>
 
 <p align="center">
   <a href="https://patina.vibetip.help/"><b>Try it in the browser — no install</b></a>
 </p>
 
-patina is a deterministic, pattern-based humanizer for Korean, English, Chinese, and Japanese. It finds AI-sounding phrasing and rewrites it without changing the claim, numbers, polarity, or causation.
-
-It is not a black-box paraphraser, authorship detector, or detector-bypass tool. patina is built for allowed AI-assisted drafting where the author wants cleaner voice, an audit trail, and meaning-preservation checks.
-
-## Demo
-
-Paste AI-sounding text into the **[playground](https://patina.vibetip.help/)** and patina rewrites it in place. The meaning floors verify the rewrite (**MPS 100 / Fidelity 75** here — the "30 templates" fact survives), and the deterministic AI signal is measured before → after: the hot-paragraph ratio falls **100 → 0** while the hype ("thrilled to announce", "revolutionize your workflow", "unlock their full potential") is gone.
-
 <p align="center">
-  <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-playground-en.gif" alt="Animated patina playground demo: an AI-sounding template-pack announcement is pasted into the web playground, rewritten naturally while keeping the 30-templates fact, and verified with MPS 100, Fidelity 75, and a deterministic AI-signal drop from 100 to 0" width="820">
+  <img src="https://raw.githubusercontent.com/devswha/patina/main/assets/demo/patina-demo-live-en.gif" alt="Live screen capture of the hosted patina playground at patina.vibetip.help: an AI-sounding English announcement is typed in, rewritten naturally by the real server-side pipeline while the facts survive, and verified with MPS 100 and Fidelity 75 plus a deterministic AI-signal drop from 100 to 0" width="960">
 </p>
+
+<p align="center"><em>Paste AI-sounding text → patina rewrites it in place, keeps the facts (the "30 templates" number survives), and drops the deterministic AI signal 100 → 0 (MPS 100 / Fidelity 75).</em></p>
+
+patina is a deterministic, pattern-based humanizer for Korean, English, Chinese, and Japanese. It finds AI-sounding phrasing and rewrites it without changing the claim, numbers, polarity, or causation. It is not a black-box paraphraser, authorship detector, or detector-bypass tool — it is built for allowed AI-assisted drafting where the author wants cleaner voice, an audit trail, and meaning-preservation checks.
 
 More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)) · [CLI transcript](docs/DEMO.md).
 
@@ -45,7 +41,7 @@ More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPL
 
 ### Browser playground
 
-Open **[patina.vibetip.help](https://patina.vibetip.help/)** — paste KO / EN / ZH / JA text for a real rewrite gated by the MPS/fidelity floors, with the deterministic AI signal measured before → after. Rewrites and scoring run server-side; the free tier uses the service's own model key (rate-limited). **API mode** forwards your own key per request through the patina server to the provider you pick — never stored or logged (metrics are sanitized: no text, prompt, output, key, or IP). **Pro** ($9.99/mo USD) unlocks higher limits (20000 chars, 200 rewrites/day) with a Lemon Squeezy license key sent as a bearer token — the raw key is validated server-side and never stored or logged.
+Open **[patina.vibetip.help](https://patina.vibetip.help/)** — paste KO / EN / ZH / JA text for a real rewrite gated by the MPS/fidelity floors, with the deterministic AI signal measured before → after. Rewrites and scoring run server-side; the free tier uses the service's own model key (rate-limited). **API mode** forwards your own key per request through the patina server to the provider you pick — never stored or logged (metrics are sanitized: no text, prompt, output, key, or IP). A hosted **Pro** tier unlocks higher limits — [see pricing](https://patina.vibetip.help/#pricing).
 
 ### Agent skill
 
@@ -206,7 +202,7 @@ If meaning drifts, the change is retried or rolled back. Deterministic analysis 
 
 ```yaml
 # .patina.default.yaml
-version: "6.3.0"
+version: "6.3.1"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score

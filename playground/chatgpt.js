@@ -72,7 +72,7 @@ const I18N = {
     ctaSub: 'Drop an AI-sounding draft into the box above. No code, no key.',
     ctaBtn: 'Start at the top ↑',
     note: ['Deterministic humanizer —', 'same claim, numbers, tone.'],
-    hint: 'patina changes only the wording — never the claim, numbers, or causation. This demo rewrites via a local CLI; MPS/fidelity are preview values.',
+    hint: 'patina changes only the wording — never the claim, numbers, or causation. Rewrites run the real patina pipeline server-side; MPS/fidelity are scored live.',
     chatPh: 'Keep refining…  (Enter to send · Shift+Enter for newline)',
     newchat: 'New chat',
     emptyChat: 'New chat — paste AI-sounding text below and patina cleans it up.',
@@ -110,7 +110,7 @@ const I18N = {
     ctaSub: 'AI 티 나는 초안을 위 입력칸에 붙여넣으면 끝. 코드도 키도 필요 없어요.',
     ctaBtn: '맨 위로 가서 시작하기 ↑',
     note: ['의미·숫자·톤을 바꾸지 않는', '결정론적 휴머나이저.'],
-    hint: 'patina는 주장·수치·인과를 바꾸지 않고 표현만 다듬습니다. 데모는 로컬 CLI로 리라이트하며 MPS/fidelity는 프리뷰 값입니다.',
+    hint: 'patina는 주장·수치·인과를 바꾸지 않고 표현만 다듬습니다. 리라이트는 실제 patina 파이프라인을 서버에서 실행하며 MPS/fidelity는 실시간으로 채점됩니다.',
     chatPh: '이어서 다듬기…  (Enter 전송 · Shift+Enter 줄바꿈)',
     newchat: '새 대화',
     emptyChat: '새 대화 — 아래에 AI 티 나는 문장을 붙여넣으면 patina가 다듬어요.',
@@ -148,7 +148,7 @@ const I18N = {
     ctaSub: '把有 AI 味的草稿粘到上面的输入框，无需代码或密钥。',
     ctaBtn: '回到顶部开始 ↑',
     note: ['不改变主张·数字·语气的', '确定性人性化工具。'],
-    hint: 'patina 只调整措辞，绝不改变主张、数字或因果。本演示通过本地 CLI 改写，MPS/fidelity 为预览值。',
+    hint: 'patina 只调整措辞，绝不改变主张、数字或因果。改写在服务器端运行真实的 patina 流程，MPS/fidelity 为实时评分。',
     chatPh: '继续润色…  (Enter 发送 · Shift+Enter 换行)',
     newchat: '新对话',
     emptyChat: '新对话 — 在下方粘贴有 AI 味的文字，patina 帮你润色。',
@@ -186,7 +186,7 @@ const I18N = {
     ctaSub: 'AIっぽい下書きを上の入力欄に貼るだけ。コードも鍵も不要。',
     ctaBtn: '上に戻って始める ↑',
     note: ['主張・数字・トーンを変えない', '決定論的ヒューマナイザー。'],
-    hint: 'patinaは表現だけを整え、主張・数値・因果は変えません。デモはローカルCLIで書き換え、MPS/fidelityはプレビュー値です。',
+    hint: 'patinaは表現だけを整え、主張・数値・因果は変えません。書き換えは実際のpatinaパイプラインをサーバー側で実行し、MPS/fidelityはリアルタイムで採点されます。',
     chatPh: 'さらに整える…  (Enter送信 · Shift+Enter改行)',
     newchat: '新しいチャット',
     emptyChat: '新しいチャット — 下にAIっぽい文章を貼ると patina が整えます。',
@@ -268,6 +268,71 @@ function el(tag, cls, text) {
   if (cls) n.className = cls;
   if (text != null) n.textContent = text;
   return n;
+}
+
+// ---------- launch: pricing CTAs, Pro checkout, UTM attribution ----------
+// Flip PRO_CHECKOUT_URL to the live Lemon Squeezy checkout link once payments
+// open. While it is empty the Pro CTA stays a non-clickable "coming soon" chip,
+// so the launch page never ships a dead buy button. UTM params from the landing
+// URL are captured client-side and appended to the checkout link so paid-tier
+// conversions can be attributed to their launch source (no third-party calls;
+// stays within the self-only CSP and no-telemetry posture).
+const PRO_CHECKOUT_URL = '';
+const PRO_PRICE = '$9.99/mo';
+const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'ref'];
+
+function captureUtm() {
+  try {
+    const params = new globalThis.URLSearchParams(globalThis.location.search);
+    const found = {};
+    for (const k of UTM_KEYS) {
+      const v = params.get(k);
+      if (v) found[k] = v.slice(0, 128);
+    }
+    if (Object.keys(found).length) globalThis.sessionStorage.setItem('patina_utm', JSON.stringify(found));
+  } catch { /* URL / sessionStorage unavailable — attribution is best-effort */ }
+}
+
+function proCheckoutHref() {
+  if (!PRO_CHECKOUT_URL) return '';
+  try {
+    const url = new globalThis.URL(PRO_CHECKOUT_URL);
+    const stored = JSON.parse(globalThis.sessionStorage.getItem('patina_utm') || '{}');
+    for (const [k, v] of Object.entries(stored)) url.searchParams.set(k, String(v));
+    return url.toString();
+  } catch { return PRO_CHECKOUT_URL; }
+}
+
+function wireProCta() {
+  const btn = $('#pro-buy');
+  if (!btn) return;
+  const href = proCheckoutHref();
+  if (href) {
+    btn.setAttribute('href', href);
+    btn.setAttribute('target', '_blank');
+    btn.removeAttribute('aria-disabled');
+    btn.classList.remove('is-soon');
+    btn.textContent = `Upgrade to Pro — ${PRO_PRICE}`;
+  } else {
+    btn.removeAttribute('href');
+    btn.setAttribute('aria-disabled', 'true');
+    btn.classList.add('is-soon');
+    btn.textContent = 'Pro — coming soon';
+  }
+}
+
+function wirePricingCtas() {
+  const free = $('#price-free');
+  if (free) free.addEventListener('click', () => { globalThis.scrollTo({ top: 0, behavior: 'smooth' }); els.heroInput?.focus(); });
+  const byok = $('#price-byok');
+  if (byok) byok.addEventListener('click', () => {
+    els.tier.value = WEB_TIERS.BYOK;
+    syncTier();
+    updateHeroSend();
+    updateChatSend();
+    globalThis.scrollTo({ top: 0, behavior: 'smooth' });
+    els.apiKey?.focus();
+  });
 }
 
 // ---------- provider / tier ----------
@@ -931,6 +996,9 @@ populateProviders();
 syncTier();
 renderSuggest();
 renderExamples();
+captureUtm();
+wireProCta();
+wirePricingCtas();
 onLangChange();
 newConvo();
 showLanding();

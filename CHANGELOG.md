@@ -12,6 +12,25 @@ All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```
 
+## 6.3.1 — 2026-07-07
+
+**Launch polish for the hosted playground and README — no CLI/engine changes.**
+
+Semver rationale: patch — hosted playground (landing) and documentation only; `src/`, `api/`, the rewrite contract, and CLI behavior are unchanged. Ships the accumulated launch-prep so production reflects the current landing before the payment-open launch.
+
+### Added
+
+- **Landing pricing + Pro CTA**: the playground gains a Pricing section (Free / API / Pro $9.99/mo) and a launch-gated Pro button. `PRO_CHECKOUT_URL` stays empty until payments open, so the CTA renders as a non-clickable "coming soon" chip and never ships a dead link.
+- **First-party UTM attribution**: `utm_*`/`ref` params on the landing URL are captured client-side and appended to the Pro checkout link, so paid conversions can be attributed to their launch source — within the self-only CSP and no-telemetry posture (no third-party calls).
+
+### Changed
+
+- **README launch polish**: demo-first hero using a real production-hosted capture (`assets/demo/patina-demo-live-en.gif`) on the first screen; the Pro mention is trimmed to an open-core-standard one line that links to the landing pricing (no price/limits in the README).
+
+### Fixed
+
+- **Stale playground hint**: the composer hint (static and the per-language I18N copy in `chatgpt.js`) still described a local-CLI/preview-values demo; it now accurately states that rewrites run the real patina pipeline server-side with live MPS/fidelity scoring.
+
 ## 6.3.0 — 2026-07-07
 
 **Hosted Pro tier: a Lemon Squeezy license-gated paid tier ($9.99/mo USD) on `/api/rewrite`, on Claude Sonnet 5, with a per-license monthly character cap.**

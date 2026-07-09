@@ -483,6 +483,9 @@ test('pro tier: in production, no pro key + present free key + no allow-flag ret
     PATINA_LICENSE_HMAC_SECRET: 'license-secret',
     PATINA_FREE_PROVIDER: 'openai', PATINA_FREE_MODEL: 'gpt-5.5',
     PATINA_FREE_API_KEY: 'sk-server-free-key',
+    // Provider/model ARE configured (production requires them explicitly), so the
+    // flow reaches the server-KEY policy this test is about.
+    PATINA_PRO_PROVIDER: 'claude', PATINA_PRO_MODEL: 'claude-sonnet-5',
     // No PATINA_PRO_API_KEY and no PATINA_PRO_ALLOW_FREE_KEY: paid traffic MUST NOT
     // silently spend the free key in production.
     LS_STORE_ID: '42', LS_PRO_VARIANT_ID: '99',

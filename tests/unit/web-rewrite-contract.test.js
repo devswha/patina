@@ -463,8 +463,8 @@ test('resolveProviderModel accepts a byok claude-sonnet-5 request', () => {
   assert.equal(r.baseURL, PROVIDER_PRESETS.claude.baseURL);
 });
 
-test('resolveProviderModel falls back to PATINA_FREE_* then defaults for pro', () => {
-  // PRO env absent -> FREE env is the fallback source.
+test('resolveProviderModel falls back to PATINA_FREE_* then defaults for pro OUTSIDE production only', () => {
+  // Non-production convenience: PRO env absent -> FREE env is the fallback source.
   const viaFree = resolveProviderModel(
     { tier: WEB_TIERS.PRO },
     { PATINA_FREE_PROVIDER: 'deepseek', PATINA_FREE_MODEL: 'deepseek-chat' },
@@ -479,6 +479,53 @@ test('resolveProviderModel falls back to PATINA_FREE_* then defaults for pro', (
   assert.equal(viaDefault.provider, 'openai');
   assert.equal(viaDefault.model, PROVIDER_PRESETS.openai.models[0]);
   assert.equal(viaDefault.baseURL, PROVIDER_PRESETS.openai.baseURL);
+});
+
+test('resolveProviderModel in production requires explicit PATINA_PRO_PROVIDER and PATINA_PRO_MODEL (no free fallback)', () => {
+  // Every production posture signal must enforce the same strictness.
+  for (const posture of [{ NODE_ENV: 'production' }, { VERCEL_ENV: 'production' }, { VERCEL: '1' }]) {
+    // Missing provider fails closed even when the free tier is fully configured:
+    // paying traffic must never silently run on the free provider/model.
+    const noProvider = resolveProviderModel(
+      { tier: WEB_TIERS.PRO },
+      { ...posture, PATINA_FREE_PROVIDER: 'openai', PATINA_FREE_MODEL: PROVIDER_PRESETS.openai.models[0] },
+    );
+    assert.equal(noProvider.ok, false);
+    assert.match(noProvider.error, /pro provider not configured/);
+
+    // Provider set but model missing fails closed too (no preset-default model).
+    const noModel = resolveProviderModel(
+      { tier: WEB_TIERS.PRO },
+      { ...posture, PATINA_PRO_PROVIDER: 'claude', PATINA_FREE_MODEL: PROVIDER_PRESETS.openai.models[0] },
+    );
+    assert.equal(noModel.ok, false);
+    assert.match(noModel.error, /pro model not configured/);
+
+    // Both set explicitly -> resolves exactly as configured.
+    const configured = resolveProviderModel(
+      { tier: WEB_TIERS.PRO },
+      { ...posture, PATINA_PRO_PROVIDER: 'claude', PATINA_PRO_MODEL: 'claude-sonnet-5' },
+    );
+    assert.equal(configured.ok, true);
+    assert.equal(configured.provider, 'claude');
+    assert.equal(configured.model, 'claude-sonnet-5');
+  }
+});
+
+test('validateRewriteRequest surfaces a production pro misconfiguration as 503, never a client 400', () => {
+  const body = { mode: 'first', lang: 'en', tier: WEB_TIERS.PRO, text: 'Rewrite this sentence.' };
+  const r = validateRewriteRequest(body, { NODE_ENV: 'production' }, { proLicenseSource: 'authorization-bearer' });
+  assert.equal(r.ok, false);
+  assert.equal(r.status, 503, 'missing pro env is a server availability problem, not a client error');
+  assert.match(r.error, /pro provider not configured/);
+
+  // A byok allowlist rejection is still the client\'s 400.
+  const byok = validateRewriteRequest(
+    { mode: 'first', lang: 'en', tier: WEB_TIERS.BYOK, text: 'hi', provider: 'nope', model: 'ghost', apiKey: 'sk-x' },
+    { NODE_ENV: 'production' },
+  );
+  assert.equal(byok.ok, false);
+  assert.equal(byok.status, 400);
 });
 
 test('resolveProviderModel rejects unlisted pro provider/model cleanly', () => {

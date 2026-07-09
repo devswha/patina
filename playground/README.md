@@ -94,7 +94,9 @@ Pro env (see `.env.example` for the full annotated list):
   the free-key fallback is already on).
 - `PATINA_LICENSE_HMAC_SECRET` — license subject/KV-key secret (falls back to
   `PATINA_QUOTA_HMAC_SECRET`).
-- `PATINA_PRO_PROVIDER` / `PATINA_PRO_MODEL` — fall back to the free provider/model.
+- `PATINA_PRO_PROVIDER` / `PATINA_PRO_MODEL` — **required in production** (a
+  missing value fails pro requests closed instead of silently serving the free
+  provider/model); outside production they fall back to the free provider/model.
 - `PATINA_PRO_MAX_CHARS` (20000) / `PATINA_PRO_REQ_PER_DAY` (200) /
   `PATINA_PRO_MAX_CONCURRENT` (3) / `PATINA_PRO_CHARS_PER_MONTH` (1000000, the
   per-license monthly total-character cap — over it returns 429

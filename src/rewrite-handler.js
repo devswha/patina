@@ -94,20 +94,27 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       // daily/concurrency caps; pass the request's input length so the limiter
       // can accumulate it. free/byok ignore chars (metered by IP/unmetered).
       const chars = tier === WEB_TIERS.PRO && typeof request.text === 'string' ? request.text.length : 0;
-      const quota = await rateLimiter.check({ tier, ip, subject, chars });
-      if (!quota.allowed) {
-        const denied = /** @type {{status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} */ (quota);
+
+      /** @param {{status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} denied */
+      const sendQuotaDenied = (denied) => {
         const body = /** @type {Record<string, unknown>} */ ({ error: denied.reason });
         if (typeof denied.remainingMonthlyChars === 'number') body.remainingMonthlyChars = denied.remainingMonthlyChars;
         if (typeof denied.limitMonthlyChars === 'number') body.limitMonthlyChars = denied.limitMonthlyChars;
         return send(res, denied.status, body);
-      }
+      };
 
       if (typeof rateLimiter.acquireConcurrency !== 'function') {
+        const quota = await rateLimiter.check({ tier, ip, subject, chars });
+        if (!quota.allowed) return sendQuotaDenied(/** @type {{status: number, reason: string}} */ (quota));
         // await so a runner rejection is caught by the redacted 500 handler below.
         return await runRewrite({ req: runnerReq, res, request, now });
       }
 
+      // The concurrency slot is acquired BEFORE check() charges the daily/monthly
+      // counters: those counters increment fail-closed with no refund path, so
+      // charging first would bill a request the concurrency gate then rejects
+      // with 429 (and bill again on the retry). Holding the slot for the extra
+      // quota round-trips costs milliseconds and is the cheaper unfairness.
       const concurrency = await rateLimiter.acquireConcurrency({ tier, ip, subject });
       if (!concurrency.allowed) {
         const denied = /** @type {{status: number, reason: string}} */ (concurrency);
@@ -115,6 +122,8 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       }
 
       try {
+        const quota = await rateLimiter.check({ tier, ip, subject, chars });
+        if (!quota.allowed) return sendQuotaDenied(/** @type {{status: number, reason: string}} */ (quota));
         // await so a runner rejection is caught by the redacted 500 handler below.
         return await runRewrite({ req: runnerReq, res, request, now });
       } finally {

@@ -15,6 +15,17 @@
 /** Languages the rewrite pipeline supports. */
 export const SUPPORTED_LANGS = Object.freeze(['ko', 'en', 'zh', 'ja']);
 
+/**
+ * Whether the env describes a production deployment. Shared by the rate
+ * limiter, the entitlement layer (both via rate-limit.js's re-export), and the
+ * pro provider resolution below, so "production" means one thing everywhere.
+ * @param {Record<string, string|undefined>} [env]
+ * @returns {boolean}
+ */
+export function isProductionPosture(env = {}) {
+  return env.NODE_ENV === 'production' || env.VERCEL_ENV === 'production' || env.VERCEL === '1';
+}
+
 /** Service tiers. `free` is the abuse-bounded shared proxy; `byok` uses the user's own key; `pro` is the licensed hosted tier (server key, LS validate-only gated). */
 export const WEB_TIERS = Object.freeze({ FREE: 'free', BYOK: 'byok', PRO: 'pro' });
 
@@ -255,8 +266,9 @@ export function redactSecrets(value) {
  * - free: provider/model come from env (PATINA_FREE_PROVIDER/PATINA_FREE_MODEL),
  *   defaulting to the first preset; the request body cannot choose them.
  * - byok: provider+model must both be on the PROVIDER_PRESETS allowlist.
- * - pro: like free, pinned by env (PATINA_PRO_* falling back to PATINA_FREE_*);
- *   the request body cannot choose provider/model.
+ * - pro: pinned by env (PATINA_PRO_*); in production both must be set explicitly
+ *   (no free fallback — see the tier branch), outside production PATINA_FREE_*
+ *   then the preset default fill in. The request body cannot choose provider/model.
  * The base URL is ALWAYS taken from the preset, never from the request body.
  *
  * @param {{tier?:string, provider?:string, model?:string}} req
@@ -280,10 +292,18 @@ export function resolveProviderModel({ tier, provider, model } = {}, env = {}) {
     return { ok: true, tier, provider: p, model: m, baseURL: preset.baseURL };
   }
   if (tier === WEB_TIERS.PRO) {
-    const p = env.PATINA_PRO_PROVIDER || env.PATINA_FREE_PROVIDER || 'openai';
+    // Pro is server-pinned like free, but in production it NEVER falls back to
+    // the free provider/model: paying traffic silently running on the free
+    // model would break the advertised contract, so a missing PATINA_PRO_PROVIDER
+    // or PATINA_PRO_MODEL fails closed instead. Outside production the free-env
+    // fallback stays for local playground/test convenience.
+    const production = isProductionPosture(env);
+    const p = env.PATINA_PRO_PROVIDER || (production ? undefined : (env.PATINA_FREE_PROVIDER || 'openai'));
+    if (!p) return { ok: false, error: 'pro provider not configured' };
     const preset = presetFor(p);
     if (!preset) return { ok: false, error: 'pro provider not configured' };
-    const m = env.PATINA_PRO_MODEL || env.PATINA_FREE_MODEL || preset.models[0];
+    const m = env.PATINA_PRO_MODEL || (production ? undefined : (env.PATINA_FREE_MODEL || preset.models[0]));
+    if (!m) return { ok: false, error: 'pro model not configured' };
     if (!preset.models.includes(m)) return { ok: false, error: 'pro model not allowlisted' };
     return { ok: true, tier, provider: p, model: m, baseURL: preset.baseURL };
   }
@@ -394,7 +414,15 @@ export function validateRewriteRequest(body, env = {}, options = {}) {
   const provider = /** @type {any} */ (body).provider;
   const model = /** @type {any} */ (body).model;
   const resolved = resolveProviderModel({ tier, provider, model }, env);
-  if (!resolved.ok) return { ok: false, status: 400, error: 'error' in resolved ? resolved.error : 'provider not allowed' };
+  if (!resolved.ok) {
+    const error = 'error' in resolved ? resolved.error : 'provider not allowed';
+    // A pro-tier "not configured" failure is a server-side misconfiguration
+    // (production requires explicit PATINA_PRO_PROVIDER/MODEL), never something
+    // the client sent wrong: surface it as 503 so operators see an availability
+    // signal, not a client-error blip. All other resolution failures stay 400.
+    const status = tier === WEB_TIERS.PRO && /not configured/.test(error) ? 503 : 400;
+    return { ok: false, status, error };
+  }
 
   const apiKey = /** @type {any} */ (body).apiKey;
   if (tier === WEB_TIERS.BYOK) {

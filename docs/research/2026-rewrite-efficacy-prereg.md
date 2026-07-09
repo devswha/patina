@@ -227,6 +227,40 @@ Ratings collected under the old parser were **discarded** and all arms re-run fr
 scratch: mixing parser versions inside one dataset means inconsistent inclusion
 criteria, which is exactly what a pre-registered protocol exists to prevent.
 
+### Deviation 3 (2026-07-10) — the gpt judge exhausted its quota mid-pilot
+
+Partway through Arm A the `codex` CLI began returning
+`ERROR: You've hit your usage limit` on stdout. The harness recorded eight cells
+as "unparseable" without keeping the reply, so the cause was invisible until the
+backend was probed by hand. Two fixes, both applied before the affected data was
+analysed:
+
+1. **Panel substitution.** The primary judge panel becomes **gemini + kimi**
+   (Moonshot). Both remain cross-family with respect to the rewriter (claude), so
+   the self-preference control of the registered design is intact. Every passage
+   in every arm is re-rated so the panel is uniform across A, B and C; a panel
+   that changed halfway through would make agreement statistics meaningless.
+2. **The `judge-gpt` ratings already collected are kept, untouched, as a partial
+   third rater.** They are reported separately with their coverage stated, never
+   merged into the primary panel — mixing raters across a partially-observed cell
+   is how a filtered subset masquerades as a complete one.
+
+Two harness defects surfaced with it and are fixed:
+- a failed judge call blanked its own reply, so a backend *quota error* was
+  indistinguishable from a model *formatting error*. The tail of the last reply
+  is now retained;
+- child processes were killed individually rather than by process group, so the
+  local CLIs' helper processes survived as orphans and blocked the next
+  invocation of the same CLI. One reaped orphan took Arm A from 26 minutes per
+  unit back to 2.5. Both harnesses now kill the group.
+
+**Limitation this introduces.** Judge identity is confounded with time: the
+gemini + kimi panel rated some passages minutes after the original run, and kimi
+never saw the passages under the same conditions codex did. The pilot's purpose
+is to size variance and validate the instrument, not to publish an effect, so the
+confound is acceptable here and must not carry into the main study — which will
+fix its panel up front and verify quota headroom before the first call.
+
 ## Sources
 - Self-Preference Bias in LLM-as-a-Judge — arXiv:2410.21819
 - TH-Bench (humanizing attacks vs detectors) — arXiv:2503.08708

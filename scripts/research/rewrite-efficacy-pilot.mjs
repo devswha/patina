@@ -97,9 +97,16 @@ const ARMS = {
 const SELECTED = (process.env.PILOT_ARMS ?? 'A,B,C').split(',').filter(Boolean);
 
 const REWRITER = { backend: 'claude-cli', family: 'claude' };
+// Panel = two families, neither of them the rewriter's (self-preference bias,
+// arXiv:2410.21819). judge-gpt (codex) exhausted its account quota mid-pilot; kimi
+// (Moonshot) replaces it as a third distinct family. See pre-registration
+// Deviation 3. Where codex ratings already exist they are kept as a partial third
+// rater and reported separately — never silently mixed into the primary panel.
+const KIMI_ARGS = ['--print', '--input-format', 'text', '--output-format', 'text',
+  '--final-message-only', '--no-thinking', '--max-steps-per-turn', '20'];
 const JUDGES = [
-  { id: 'judge-gpt', family: 'gpt', cmd: 'codex', args: ['exec'] },
   { id: 'judge-gemini', family: 'gemini', cmd: 'gemini', args: [] },
+  { id: 'judge-kimi', family: 'moonshot', cmd: 'kimi', args: KIMI_ARGS },
 ];
 
 const REWRITE_TIMEOUT_MS = 300_000;
@@ -116,14 +123,18 @@ const log = (m) => {
 /** Spawn a command, feed stdin, collect stdout. Never throws on non-zero — returns what it got. */
 function run(cmd, args, { input = '', timeout = 120_000, cwd = ROOT } = {}) {
   return new Promise((resolve) => {
-    const child = spawn(cmd, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'] });
+    // detached so the child leads its own process group: the local CLIs spawn
+    // helper processes that survive a bare child.kill() and linger as orphans,
+    // which then block the NEXT invocation of that CLI (observed: gemini calls
+    // hanging for 6+ minutes until the orphan was reaped by hand).
+    const child = spawn(cmd, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'], detached: true });
     let stdout = '';
     let stderr = '';
     let settled = false;
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      try { child.kill('SIGKILL'); } catch { /* noop */ }
+      try { process.kill(-child.pid, 'SIGKILL'); } catch { try { child.kill('SIGKILL'); } catch { /* noop */ } }
       resolve({ ok: false, stdout, stderr, error: `timeout after ${timeout}ms` });
     }, timeout);
     child.stdout.on('data', (d) => { stdout += d; });
@@ -298,13 +309,23 @@ function internalScore(text, lang) {
  */
 async function judgeOnce(judge, text, lang) {
   const attempts = [];
+  let lastOut = '';
+  let lastErr = '';
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     const res = await run(judge.cmd, judge.args, { input: judgePrompt(text, lang), timeout: JUDGE_TIMEOUT_MS });
     const parsed = parseJudge(res.stdout);
     if (parsed) return attempt === 1 ? parsed : { ...parsed, retried: true };
     attempts.push(res.error || 'unparseable');
+    lastOut = String(res.stdout);
+    lastErr = String(res.stderr);
   }
-  return { error: attempts.join(' | '), raw_head: '', retries_exhausted: true };
+  // Keep the tail of the last reply. Blanking it cost us a diagnosis once: eight
+  // "unparseable" cells were actually a backend quota error printed to stdout.
+  return {
+    error: attempts.join(' | '),
+    raw_head: (lastOut || lastErr).slice(-240),
+    retries_exhausted: true,
+  };
 }
 
 async function judgeText(text, lang) {

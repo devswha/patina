@@ -28,9 +28,14 @@ const LOG = join(DIR, 'topup.log');
 const DRY = process.argv.includes('--dry-run');
 
 const REWRITER = 'claude-cli';
+// Primary panel after Deviation 3 (codex quota exhausted mid-pilot). Any
+// judge-gpt cells already collected are LEFT ALONE: they are a partial third
+// rater, reported separately, never merged into the primary panel.
+const KIMI_ARGS = ['--print', '--input-format', 'text', '--output-format', 'text',
+  '--final-message-only', '--no-thinking', '--max-steps-per-turn', '20'];
 const JUDGES = [
-  { id: 'judge-gpt', cmd: 'codex', args: ['exec'] },
   { id: 'judge-gemini', cmd: 'gemini', args: [] },
+  { id: 'judge-kimi', cmd: 'kimi', args: KIMI_ARGS },
 ];
 // Generous: the top-up runs alone, and a slow answer still beats a missing one.
 const JUDGE_TIMEOUT_MS = 600_000;

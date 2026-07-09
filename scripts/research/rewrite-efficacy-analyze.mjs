@@ -15,7 +15,11 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DIR = join(ROOT, 'artifacts', 'rewrite-efficacy-pilot');
-const JUDGE_IDS = ['judge-gpt', 'judge-gemini'];
+// Primary panel (pre-registration Deviation 3). judge-gpt exhausted its quota
+// mid-pilot; its surviving cells are a PARTIAL third rater, reported separately
+// with their coverage stated and never merged into the primary panel.
+const JUDGE_IDS = ['judge-gemini', 'judge-kimi'];
+const PARTIAL_JUDGE = 'judge-gpt';
 const ALPHA_GATE = 0.4; // pre-registered RQ1 stop rule
 const BOOT = 5000;
 
@@ -341,6 +345,21 @@ function main() {
     }
     out.push('');
   }
+
+  // Transparency: how much of the matrix needed repair, and how far the partial
+  // third rater actually reaches. A complete-looking table with silent top-ups
+  // behind it is worse than an incomplete one.
+  const cells = rows.flatMap((r) => ['original', 'rewrite'].flatMap((c) => JUDGE_IDS.map((j) => r.judges?.[c]?.[j])));
+  const present = cells.filter((c) => c && typeof c.ai_likeness === 'number');
+  const toppedUp = present.filter((c) => c.topped_up).length;
+  const retried = present.filter((c) => c.retried).length;
+  const drifted = present.filter((c) => c.score_key).length;
+  const partialCells = rows.flatMap((r) => ['original', 'rewrite'].map((c) => r.judges?.[c]?.[PARTIAL_JUDGE]))
+    .filter((c) => c && typeof c.ai_likeness === 'number');
+  out.push(`- primary-panel ratings present: ${present.length}/${cells.length}` +
+    ` (of these ${toppedUp} repaired by the top-up pass, ${retried} needed a retry, ${drifted} used a drifted score key)`);
+  out.push(`- \`${PARTIAL_JUDGE}\` (partial third rater, quota-exhausted): ${partialCells.length} ratings — reported separately, excluded from the primary panel`);
+  out.push('');
 
   out.push('## RQ1 — construct validity (inter-judge agreement)');
   out.push('');

@@ -292,10 +292,15 @@ function main() {
   const a_ai = eff['A/ai'];
   if (a_ai) {
     const ci = a_ai.judge_delta_ci;
-    const negative = ci && ci[1] < 0;
-    out.push(negative
-      ? `**H2a (Arm A, AI texts): SUPPORTED** — mean judge delta ${fmt(a_ai.judge_delta_mean)} , 95% CI ${fmtCI(ci)} excludes 0.`
-      : `**H2a (Arm A, AI texts): NOT SUPPORTED** — mean judge delta ${fmt(a_ai.judge_delta_mean)}, 95% CI ${fmtCI(ci)} includes 0.`);
+    const d = fmt(a_ai.judge_delta_mean);
+    if (ci && ci[1] < 0) {
+      out.push(`**H2a (Arm A, AI texts): SUPPORTED** — mean judge delta ${d}, 95% CI ${fmtCI(ci)} lies entirely below 0.`);
+    } else if (ci && ci[0] > 0) {
+      // Worse than a null result: the rewrite moved the text AWAY from human.
+      out.push(`**H2a (Arm A, AI texts): REFUTED IN REVERSE** — mean judge delta ${d}, 95% CI ${fmtCI(ci)} lies entirely ABOVE 0: the rewrite made the prose read MORE AI-like, not less.`);
+    } else {
+      out.push(`**H2a (Arm A, AI texts): NOT SUPPORTED** — mean judge delta ${d}, 95% CI ${fmtCI(ci)} includes 0.`);
+    }
     out.push('');
     out.push('### Anti-circularity check (pre-registered)');
     out.push('');

@@ -20,7 +20,7 @@ This roadmap focuses on two things:
   - human-control false positives: 16.0% [11.6-21.7%], n=200 across KO+EN
   - per-cell results: `docs/benchmarks/rebaseline-latest.md`
 - Current distribution:
-  - npm package `patina-cli` is the public distribution channel; repo metadata targets `5.0.0` and is verified with `npm run release:check` (currently passing) before publishing.
+  - npm package `patina-cli` is the public distribution channel; repo metadata (package.json / SKILL.md / README) is version-synced and verified with `npm run release:check` before publishing.
 
 ## 0. Positioning principles
 

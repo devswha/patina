@@ -140,6 +140,84 @@ function loadRows() {
   return rows;
 }
 
+function loadTexts() {
+  const files = readdirSync(DIR).filter((f) => /^texts.*\.private\.jsonl$/.test(f));
+  const rows = [];
+  for (const f of files) {
+    for (const line of readFileSync(join(DIR, f), 'utf8').split('\n')) {
+      if (!line.trim()) continue;
+      try { rows.push(JSON.parse(line)); } catch { /* skip partial trailing line */ }
+    }
+  }
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
+// RQ4 — humanizer fingerprint. Deterministic, no LLM: if patina imposes a
+// convergent house style, its rewrites cluster tighter in style space than
+// independently-authored human texts do.
+
+/** Language-agnostic style vector (whitespace-free scripts use char counts). */
+function styleVector(text, lang) {
+  const sentences = text.split(/[.!?。！？\n]+/).map((s) => s.trim()).filter(Boolean);
+  const tokens = lang === 'ko' || lang === 'zh' || lang === 'ja'
+    ? [...text.replace(/\s+/g, '')]
+    : text.toLowerCase().match(/[a-z']+/g) || [];
+  if (sentences.length < 2 || tokens.length < 10) return null;
+
+  const lens = sentences.map((s) => s.length);
+  const m = mean(lens);
+  const sd = Math.sqrt(mean(lens.map((l) => (l - m) ** 2)));
+  const types = new Set(tokens).size;
+  const chars = text.length || 1;
+  return [
+    m / 100, // mean sentence length
+    m ? sd / m : 0, // burstiness (CV)
+    types / tokens.length, // type-token ratio
+    (text.match(/,/g) || []).length / chars * 100, // comma density
+    (text.match(/[;:—–]/g) || []).length / chars * 100, // "AI punctuation" density
+    mean(tokens.map((t) => t.length)) / 10, // mean token length
+  ];
+}
+
+const cosine = (a, b) => {
+  let dot = 0; let na = 0; let nb = 0;
+  for (let i = 0; i < a.length; i += 1) { dot += a[i] * b[i]; na += a[i] ** 2; nb += b[i] ** 2; }
+  return na && nb ? dot / Math.sqrt(na * nb) : 0;
+};
+
+/** Mean pairwise cosine similarity within a set of style vectors. */
+function meanPairwise(vs) {
+  if (vs.length < 2) return null;
+  const sims = [];
+  for (let i = 0; i < vs.length; i += 1) for (let j = i + 1; j < vs.length; j += 1) sims.push(cosine(vs[i], vs[j]));
+  return mean(sims);
+}
+
+/**
+ * Permutation test: is the rewrite set's internal cohesion higher than the human
+ * set's, beyond what relabeling the same texts would produce by chance?
+ */
+function fingerprintTest(rewriteVs, humanVs, { iters = 2000, seed = 20260710 } = {}) {
+  const obs = meanPairwise(rewriteVs);
+  const base = meanPairwise(humanVs);
+  if (obs === null || base === null) return null;
+  const pool = [...rewriteVs, ...humanVs];
+  const nR = rewriteVs.length;
+  const rnd = lcg(seed);
+  let extreme = 0;
+  for (let it = 0; it < iters; it += 1) {
+    const shuffled = [...pool];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(rnd() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    const diff = meanPairwise(shuffled.slice(0, nR)) - meanPairwise(shuffled.slice(nR));
+    if (diff >= obs - base) extreme += 1;
+  }
+  return { rewrite_cohesion: obs, human_cohesion: base, gap: obs - base, p: extreme / iters };
+}
+
 const scoreOf = (row, cond, judge) => {
   const j = row.judges?.[cond]?.[judge];
   return j && typeof j.ai_likeness === 'number' ? j.ai_likeness : null;
@@ -344,6 +422,27 @@ function main() {
     out.push(`Rewriting human text moved judge AI-likeness by ${fmt(a_hu.judge_delta_mean)} ${fmtCI(a_hu.judge_delta_ci)} ` +
       `and its "AI" call rate from ${fmt(a_hu.ai_call_rate_original * 100)}% to ${fmt(a_hu.ai_call_rate_rewrite * 100)}%. ` +
       'A rise here means patina makes human prose read MORE machine-like — the real-usage failure mode.');
+    out.push('');
+  }
+
+  // RQ4 — does the humanizer leave its own convergent style?
+  const texts = loadTexts();
+  const armA = texts.filter((t) => t.arm === 'A');
+  const rewriteVs = armA.filter((t) => t.source_class === 'ai' && t.rewritten)
+    .map((t) => styleVector(t.rewritten, t.lang)).filter(Boolean);
+  const humanVs = armA.filter((t) => t.source_class === 'human' && t.original)
+    .map((t) => styleVector(t.original, t.lang)).filter(Boolean);
+  const fp = fingerprintTest(rewriteVs, humanVs);
+  if (fp) {
+    out.push('## RQ4 — humanizer fingerprint (Arm A, deterministic style space)');
+    out.push('');
+    out.push(`Mean pairwise style cohesion: rewrites ${fmt(fp.rewrite_cohesion, 4)} (n=${rewriteVs.length}) vs human controls ${fmt(fp.human_cohesion, 4)} (n=${humanVs.length}); gap ${fmt(fp.gap, 4)}, permutation p = ${fmt(fp.p, 3)}.`);
+    out.push('');
+    out.push(fp.gap > 0 && fp.p < 0.05
+      ? '**H4: rewrites cluster tighter than independently-authored human prose.** patina imposes a detectable convergent house style — a second-order AI tell that a per-text AI-likeness score cannot see.'
+      : '**H4: no significant convergence** — rewrites are no more stylistically alike than human texts are to each other.');
+    out.push('');
+    out.push('_Small-n pilot estimate; the style vector is 6 deterministic features (sentence length, burstiness, TTR, comma density, dash/colon/semicolon density, token length)._');
     out.push('');
   }
 

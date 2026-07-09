@@ -181,14 +181,31 @@ function readJsonl(path) {
  * separator, which we strip.
  */
 async function patinaRewrite(text, lang) {
+  // NOT --quiet: the persona safety gate reports on stderr, and exit code 4 means
+  // "rewrite emitted, but the meaning-safety gate (MPS / fidelity / dropped
+  // numbers) failed" — see src/cli/run.js. Treating 4 as a failure would silently
+  // DISCARD exactly the meaning-drift cases, biasing RQ5a's pass rate toward 100%.
+  // We keep the text and record the gate verdict instead.
   const res = await run('node', [
     'bin/patina.js', '--lang', lang, '--backend', REWRITER.backend,
-    '--quiet', '--format', 'text', '--no-interactive',
+    '--format', 'text', '--no-interactive',
   ], { input: text, timeout: REWRITE_TIMEOUT_MS });
-  if (!res.ok) return { text: null, error: res.error || res.stderr.slice(0, 300) || `exit ${res.code}` };
+
+  const GATE_FAILED_EXIT = 4;
+  const gateFailed = res.code === GATE_FAILED_EXIT;
+  const usable = res.ok || gateFailed;
+  if (!usable) return { text: null, error: res.error || res.stderr.slice(0, 300) || `exit ${res.code}`, gate_failed: null, gate_reason: null };
+
   const body = String(res.stdout).split(/\n---\n/)[0].trim();
-  if (!body) return { text: null, error: 'empty rewrite' };
-  return { text: body, error: null };
+  if (!body) return { text: null, error: 'empty rewrite', gate_failed: null, gate_reason: null };
+
+  let gateReason = null;
+  if (gateFailed) {
+    const m = String(res.stderr).match(/persona safety gate failed:\s*([^\n]*)/);
+    gateReason = m ? m[1].trim().slice(0, 200) : 'unspecified';
+  }
+  const advisory = [...String(res.stderr).matchAll(/persona advisory:\s*([^\n]*)/g)].map((m) => m[1].trim().slice(0, 200));
+  return { text: body, error: null, gate_failed: gateFailed, gate_reason: gateReason, advisory };
 }
 
 /**
@@ -343,6 +360,7 @@ async function runArm(arm) {
     log(`${label}: rewriting (${original.length} chars)…`);
     const rw = await patinaRewrite(original, arm.lang);
     if (rw.error) log(`${label}: REWRITE FAILED — ${rw.error}`);
+    if (rw.gate_failed) log(`${label}: SAFETY GATE FAILED (text kept) — ${rw.gate_reason}`);
 
     log(`${label}: judging original…`);
     const judgedOriginal = await judgeText(original, arm.lang);
@@ -367,6 +385,11 @@ async function runArm(arm) {
       original_chars: original.length,
       rewrite_chars: rw.text ? rw.text.length : null,
       rewrite_error: rw.error,
+      // RQ5a: the persona safety gate (MPS / fidelity / dropped numbers).
+      // A failed gate still emits usable text — recorded, never discarded.
+      gate_failed: rw.gate_failed ?? null,
+      gate_reason: rw.gate_reason ?? null,
+      advisory: rw.advisory ?? null,
       internal: {
         original: internalScore(original, arm.lang),
         rewrite: rw.text ? internalScore(rw.text, arm.lang) : null,

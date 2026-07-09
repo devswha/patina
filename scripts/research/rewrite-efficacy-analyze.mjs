@@ -241,6 +241,29 @@ function main() {
   out.push(`- rows with >=1 unparseable judge response: ${unparseable.length}/${rows.length}`);
   out.push('');
 
+  // RQ5a — meaning preservation. Exit code 4 = rewrite emitted but the persona
+  // safety gate (MPS / fidelity / dropped numbers) failed. These rows are KEPT;
+  // discarding them would bias this pass rate toward 100%.
+  const gated = rows.filter((r) => r.rewrite_sha && r.gate_failed !== null && r.gate_failed !== undefined);
+  if (gated.length) {
+    const failedGate = gated.filter((r) => r.gate_failed);
+    const passRate = ((gated.length - failedGate.length) / gated.length) * 100;
+    out.push('## RQ5a — meaning-safety gate (MPS / fidelity / dropped numbers)');
+    out.push('');
+    out.push(`Pass rate: **${fmt(passRate)}%** (${gated.length - failedGate.length}/${gated.length}). Pre-registered target: >= 95%.`);
+    out.push(passRate >= 95 ? '**H5a: met.**' : '**H5a: NOT met** — meaning drifted on more than 1 in 20 rewrites.');
+    if (failedGate.length) {
+      out.push('');
+      out.push('Gate failures by reason:');
+      const reasons = new Map();
+      for (const r of failedGate) reasons.set(r.gate_reason || 'unspecified', (reasons.get(r.gate_reason || 'unspecified') ?? 0) + 1);
+      for (const [reason, n] of [...reasons.entries()].sort((a, b) => b[1] - a[1])) {
+        out.push(`- (${n}×) ${reason}`);
+      }
+    }
+    out.push('');
+  }
+
   out.push('## RQ1 — construct validity (inter-judge agreement)');
   out.push('');
   out.push('| arm | stimulus | units | Krippendorff alpha | Spearman rho | mean abs gap |');

@@ -1,7 +1,7 @@
 // @ts-check
 
 import { createHmac } from 'node:crypto';
-import { QUOTA_REASONS, TIER_LIMITS, WEB_TIERS } from './web-rewrite-contract.js';
+import { isProductionPosture, QUOTA_REASONS, TIER_LIMITS, WEB_TIERS } from './web-rewrite-contract.js';
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -103,13 +103,10 @@ export function createMemoryKv() {
   };
 }
 
-/**
- * @param {Record<string, string|undefined>} [env]
- * @returns {boolean}
- */
-export function isProductionPosture(env = {}) {
-  return env.NODE_ENV === 'production' || env.VERCEL_ENV === 'production' || env.VERCEL === '1';
-}
+// isProductionPosture's definition lives in web-rewrite-contract.js (the shared
+// base module) so the contract's provider resolution can use it without an
+// import cycle; re-exported here for existing importers.
+export { isProductionPosture };
 
 /**
  * @typedef {{get?(key: string): Promise<unknown>, set?(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy?(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr?(key: string): Promise<number>, __memory?: boolean}} QuotaKv

@@ -135,6 +135,69 @@ text stays gitignored, only hashes/metadata/scores are committed.
 - Raw generations/judgments in gitignored `artifacts/`; only
   hashes/metadata/scores committed.
 
+## Deviations from the registered plan
+
+Recorded as they happen, before the affected data is collected. The original
+text above is not edited.
+
+### Deviation 1 (2026-07-10) — stimulus length invalidates the planned substrate
+
+A 2-unit end-to-end smoke run of the pilot harness surfaced three problems with
+using the rebaseline intake as the efficacy substrate. All are **stimulus**
+problems, not construct problems, and would have produced an uninterpretable
+RQ1 failure ("the instrument is invalid") when the real cause was "the passages
+are too short to judge."
+
+1. **The corpus is paragraph-snippets, not documents.** ko AI: median 154 chars
+   (max 207). ko human controls: median 129. en AI: median 424. No sample in
+   `intake.*` has ≥ 3 paragraphs.
+2. **patina's own analyzer skips them.** `analyzeText` returns
+   `skipReason: paragraphs<=2`, so the internal sanity axis degenerates to a
+   1-paragraph 0-or-100 hot ratio. It cannot be compared against a graded judge
+   score.
+3. **Judges disagree wildly at this length.** On one 95-char human control the
+   two cross-family judges returned AI-likeness 24 ("human") and 75 ("ai").
+   Snippet-level judging is dominated by noise, exactly as the human-perception
+   literature predicts for short excerpts.
+
+Additionally, the labelled ko AI snippets were rated 32 / 12 (both "human") by
+the judges — the corpus's own AI class is not perceived as AI-like at snippet
+length. Any "rewrite reduced AI-likeness" claim measured from that floor would
+be meaningless.
+
+**Amended design.** The pilot is restructured into three arms, and the stimulus
+length itself becomes a measured moderator rather than an uncontrolled flaw:
+
+- **Arm A — instrument validation (en, document length).** Substrate switches to
+  the external, MIT-licensed **HAP-E** parallel corpus already present at
+  `artifacts/rebaseline-2025/private/hape-en.private.jsonl`: 8,290 human /
+  8,290 AI passages, **paired on `prompt_id`** (so topic *and* register are
+  controlled by construction), 6 registers, median 2,689 (human) / 3,300 (AI)
+  chars. This is the primary RQ1/RQ2 arm.
+- **Arm B — stimulus-length moderator (en, snippet length).** The same judges
+  rate the short en intake snippets (median 424 chars). Comparing inter-judge
+  agreement α_doc (Arm A) vs α_snippet (Arm B) *quantifies* how much of the
+  disagreement is a length artifact. This converts Deviation 1's discovery into
+  a reportable result.
+- **Arm C — ko, snippet length, explicitly limited.** No document-length Korean
+  substrate exists in this repository. ko runs at snippet length and its
+  conclusions are **interpreted only through Arm B's measured length penalty**.
+  ko human controls are drawn from `web-human-controls.generated.private.jsonl`
+  (250 rows, register-matched 50× each across the same 5 registers as the ko AI
+  set) to remove the register confound present in the 25-row control file.
+
+**Known limitation introduced.** HAP-E's AI side is a single 2024 model
+(`gpt-4o-2024-08-06`), so Arm A cannot speak to modern-model AI-likeness. Arm A
+answers "is the instrument valid and does rewrite move the needle at document
+length"; modern-model coverage stays with the (snippet-bound) Arms B/C until a
+document-length modern corpus exists.
+
+**Blocking future work (now a named gap).** A document-length Korean corpus —
+AI-generated across model families and human-authored controls, register-matched
+— does not exist here. It is a prerequisite for any credible Korean rewrite
+claim, and plausibly explains part of the weak ko cell in the detection
+rebaseline. Filed as follow-up.
+
 ## Sources
 - Self-Preference Bias in LLM-as-a-Judge — arXiv:2410.21819
 - TH-Bench (humanizing attacks vs detectors) — arXiv:2503.08708

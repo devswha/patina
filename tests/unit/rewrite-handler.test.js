@@ -689,7 +689,7 @@ test('redteam(2): a throwing validator is caught as a redacted generic 500 — n
   assert.equal(res.headers['cache-control'], 'no-store');
 });
 
-test('redteam(3): a pro check denial skips acquire, the runner, and release (subject threaded into check)', async () => {
+test('redteam(3): a pro check denial (after the slot is held) skips the runner and releases the slot', async () => {
   const res = makeRes();
   const limiter = proSpyLimiter({ denyCheck: { status: 429, reason: QUOTA_REASONS.DAILY } });
   const validator = makeValidator({ ok: true, subject: 'SUBJ', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' });
@@ -709,11 +709,11 @@ test('redteam(3): a pro check denial skips acquire, the runner, and release (sub
   assert.equal(ran, false);
   assert.equal(limiter.calls.check.length, 1);
   assert.equal(limiter.calls.check[0].subject, 'SUBJ');
-  assert.equal(limiter.calls.acquire.length, 0);
-  assert.equal(limiter.calls.release.length, 0);
+  // The slot was acquired before the quota charge and must be released on the denial.
+  assert.deepEqual(limiter.order, ['acquire', 'check', 'release']);
 });
 
-test('redteam(3): a pro acquire denial skips the runner and does NOT release (release only pairs a granted slot)', async () => {
+test('redteam(3): a pro acquire denial skips the quota charge, the runner, and release (no billing on a 429 slot rejection)', async () => {
   const res = makeRes();
   const limiter = proSpyLimiter({ denyAcquire: { status: 429, reason: QUOTA_REASONS.CONCURRENT } });
   const validator = makeValidator({ ok: true, subject: 'SUBJ', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' });
@@ -731,13 +731,15 @@ test('redteam(3): a pro acquire denial skips the runner and does NOT release (re
   assert.equal(res.statusCode, 429);
   assert.deepEqual(res.json(), { error: QUOTA_REASONS.CONCURRENT });
   assert.equal(ran, false);
-  assert.equal(limiter.calls.check.length, 1);
+  // Core billing-fairness contract: a request refused at the concurrency gate
+  // must never charge the daily/monthly counters (check has no refund path).
+  assert.equal(limiter.calls.check.length, 0);
   assert.equal(limiter.calls.acquire.length, 1);
   assert.equal(limiter.calls.acquire[0].subject, 'SUBJ');
   assert.equal(limiter.calls.release.length, 0); // key contract: no release without a granted slot
 });
 
-test('redteam(3): the pro success path threads the subject through check→acquire→run→release in order', async () => {
+test('redteam(3): the pro success path threads the subject through acquire→check→run→release in order', async () => {
   const res = makeRes();
   const limiter = proSpyLimiter();
   const validator = makeValidator({ ok: true, subject: 'SUBJ', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' });
@@ -752,7 +754,8 @@ test('redteam(3): the pro success path threads the subject through check→acqui
     body: proBody(),
   }, res);
   assert.equal(result, 'ran');
-  assert.deepEqual(limiter.order, ['check', 'acquire', 'run', 'release']);
+  assert.deepEqual(limiter.order, ['acquire', 'check', 'run', 'release']);
+  assert.equal(limiter.calls.check[0].subject, 'SUBJ');
   assert.equal(limiter.calls.release.length, 1);
   assert.equal(limiter.calls.release[0].subject, 'SUBJ');
 });
@@ -777,7 +780,7 @@ test('redteam(3): when the pro runner throws, release still runs in finally (sub
   assert.deepEqual(res.json(), { error: 'internal error' });
   assert.equal(limiter.calls.release.length, 1);
   assert.equal(limiter.calls.release[0].subject, 'SUBJ');
-  assert.deepEqual(limiter.order, ['check', 'acquire', 'run', 'release']);
+  assert.deepEqual(limiter.order, ['acquire', 'check', 'run', 'release']);
 });
 
 test('redteam(4): free and byok ignore an attacker-supplied Authorization header — no validator, no subject, no license in the runner request', async () => {

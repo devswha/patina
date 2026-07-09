@@ -37,8 +37,10 @@ const JUDGES = [
   { id: 'judge-gemini', cmd: 'gemini', args: [] },
   { id: 'judge-kimi', cmd: 'kimi', args: KIMI_ARGS },
 ];
-// Generous: the top-up runs alone, and a slow answer still beats a missing one.
-const JUDGE_TIMEOUT_MS = 600_000;
+// Judge latency is bimodal — a healthy call answers in seconds, a hung one never
+// returns. Waiting longer buys nothing, so cut fast and retry instead.
+const JUDGE_TIMEOUT_MS = 120_000;
+const JUDGE_ATTEMPTS = 3;
 const REWRITE_TIMEOUT_MS = 420_000;
 const SCORE_KEYS = ['ai_likeness', 'ai_status', 'ai_score', 'score', 'aiLikeness'];
 
@@ -137,6 +139,18 @@ function readJsonl(path) {
 
 const missing = (cell) => !cell || typeof cell.ai_likeness !== 'number';
 
+/** One judge, retried; a hang is cheap to abandon and expensive to wait out. */
+async function judgeWithRetries(judge, text, lang) {
+  const errors = [];
+  for (let attempt = 1; attempt <= JUDGE_ATTEMPTS; attempt += 1) {
+    const res = await run(judge.cmd, judge.args, { input: judgePrompt(text, lang), timeout: JUDGE_TIMEOUT_MS });
+    const parsed = parseJudge(res.stdout);
+    if (parsed) return { parsed, attempts: attempt };
+    errors.push(res.error || 'unparseable');
+  }
+  return { parsed: null, attempts: JUDGE_ATTEMPTS, error: errors.join(' | ') };
+}
+
 async function main() {
   const shards = readdirSync(DIR).filter((f) => /^pilot-rows-.*\.jsonl$/.test(f));
   const textIndex = new Map();
@@ -173,9 +187,10 @@ async function main() {
           row.judges.rewrite = {};
           stored.rewritten = rw.text;
           for (const j of JUDGES) {
-            const res = await run(j.cmd, j.args, { input: judgePrompt(rw.text, row.lang), timeout: JUDGE_TIMEOUT_MS });
-            const parsed = parseJudge(res.stdout);
-            row.judges.rewrite[j.id] = parsed ? { ...parsed, topped_up: true } : { error: res.error || 'unparseable', retries_exhausted: true };
+            const { parsed, error } = await judgeWithRetries(j, rw.text, row.lang);
+            row.judges.rewrite[j.id] = parsed
+              ? { ...parsed, topped_up: true }
+              : { error: error || 'unparseable', retries_exhausted: true, topup_failed: true };
           }
           appendFileSync(join(DIR, 'texts-TOPUP.private.jsonl'), JSON.stringify(stored) + '\n');
           repairedRewrites += 1;
@@ -196,17 +211,16 @@ async function main() {
           if (!missing(row.judges[cond][j.id])) continue;
           log(`${row.arm}/${row.source_class}/${row.original_sha}: re-judging ${cond} with ${j.id}`);
           if (DRY) { repairedJudges += 1; continue; }
-          const res = await run(j.cmd, j.args, { input: judgePrompt(text, row.lang), timeout: JUDGE_TIMEOUT_MS });
-          const parsed = parseJudge(res.stdout);
+          const { parsed, error, attempts } = await judgeWithRetries(j, text, row.lang);
           if (parsed) {
             row.judges[cond][j.id] = { ...parsed, topped_up: true };
             repairedJudges += 1;
             changed = true;
-            log(`  repaired -> ${parsed.ai_likeness} (${parsed.authorship})`);
+            log(`  repaired -> ${parsed.ai_likeness} (${parsed.authorship}) in ${attempts} attempt(s)`);
           } else {
-            row.judges[cond][j.id] = { error: res.error || 'unparseable', retries_exhausted: true, topup_failed: true };
+            row.judges[cond][j.id] = { error: error || 'unparseable', retries_exhausted: true, topup_failed: true };
             stillBroken += 1;
-            log(`  STILL FAILING: ${res.error || 'unparseable'}`);
+            log(`  STILL FAILING: ${error || 'unparseable'}`);
           }
         }
       }

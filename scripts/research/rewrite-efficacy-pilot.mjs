@@ -110,8 +110,12 @@ const JUDGES = [
 ];
 
 const REWRITE_TIMEOUT_MS = 300_000;
-// Raised from 240s: gemini timed out judging a 3.5k-char document at that limit.
-const JUDGE_TIMEOUT_MS = 360_000;
+// Judge latency is bimodal: a healthy call answers in 5-15s (gemini judged a
+// 3.6k-char document in 12s, kimi in 5s); an unhealthy one never returns at all.
+// Nothing useful lives between. A long deadline therefore buys no extra answers,
+// it only spends minutes confirming a hang — so cut fast and retry more often.
+const JUDGE_TIMEOUT_MS = 120_000;
+const JUDGE_ATTEMPTS = 3;
 
 const sha = (s) => createHash('sha256').update(s, 'utf8').digest('hex').slice(0, 16);
 const log = (m) => {
@@ -311,7 +315,7 @@ async function judgeOnce(judge, text, lang) {
   const attempts = [];
   let lastOut = '';
   let lastErr = '';
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
+  for (let attempt = 1; attempt <= JUDGE_ATTEMPTS; attempt += 1) {
     const res = await run(judge.cmd, judge.args, { input: judgePrompt(text, lang), timeout: JUDGE_TIMEOUT_MS });
     const parsed = parseJudge(res.stdout);
     if (parsed) return attempt === 1 ? parsed : { ...parsed, retried: true };

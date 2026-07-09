@@ -261,6 +261,38 @@ is to size variance and validate the instrument, not to publish an effect, so th
 confound is acceptable here and must not carry into the main study — which will
 fix its panel up front and verify quota headroom before the first call.
 
+### Deviation 4 (2026-07-10) — the HAP-E `spok` register is not written prose
+
+A rewrite failure led here, not a look at the effect sizes. The one Arm-A/B unit
+whose rewrite kept dying (`claude exited with code 1`) turned out to be the
+human side of the `spok` (spoken) register, which in HAP-E is degraded ASR
+output — word salad, not writing:
+
+> "No clue boots it on the live racist statue poor Lenny versus do something are
+> the land upon density is it has unique Su Chuan be a playground party..."
+
+Its AI counterpart is ordinary, coherent AI prose. So the `spok` cell does not
+compare AI writing against human writing; it compares AI writing against a
+corrupted transcript. Two consequences visible in the data:
+
+- the judges split 86 (gpt) vs 0 (gemini) on that single passage — the widest
+  disagreement anywhere in the pilot, and enough on its own to drag alpha down;
+- its rewrite fails reproducibly (probably a safety filter on the garbled text),
+  so the unit has no rewrite condition at all.
+
+The construct under study is *the AI-likeness of prose*. It is undefined for a
+passage that is not prose. `spok` is therefore excluded from Arms A and B.
+(HAP-E's other spoken register, `tvm`, is coherent dialogue and stays in.)
+
+**This is a post-hoc exclusion and is treated as one.** The criterion is a
+property of the corpus, checkable without reference to any outcome, and it was
+found through a crash rather than through inspecting effects. Even so, the
+results report **both** analyses: primary (excluding `spok`) and sensitivity
+(including it). If the two disagree, the disagreement is the finding.
+
+Arm C is unaffected — its registers are drawn from the ko intake, which has no
+`spok` cell.
+
 ## Sources
 - Self-Preference Bias in LLM-as-a-Judge — arXiv:2410.21819
 - TH-Bench (humanizing attacks vs detectors) — arXiv:2503.08708

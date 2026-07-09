@@ -22,6 +22,11 @@ const JUDGE_IDS = ['judge-gemini', 'judge-kimi'];
 const PARTIAL_JUDGE = 'judge-gpt';
 const ALPHA_GATE = 0.4; // pre-registered RQ1 stop rule
 const BOOT = 5000;
+// Pre-registration Deviation 4: HAP-E's `spok` human side is degraded ASR output,
+// not written prose, so "AI-likeness of the prose" is undefined for it. Excluded
+// from the primary analysis; the sensitivity analysis puts it back.
+const EXCLUDED_REGISTERS = new Set(['spok']);
+const isExcluded = (row) => EXCLUDED_REGISTERS.has(row.register);
 
 // ---------------------------------------------------------------------------
 // stats
@@ -302,14 +307,19 @@ function fmt(v, d = 1) {
 const fmtCI = (ci, d = 1) => (ci ? `[${fmt(ci[0], d)}, ${fmt(ci[1], d)}]` : 'n/a');
 
 function main() {
-  const rows = loadRows();
-  if (!rows.length) { console.error('no rows found in', DIR); process.exit(1); }
+  const allRows = loadRows();
+  if (!allRows.length) { console.error('no rows found in', DIR); process.exit(1); }
+  // Primary analysis drops the excluded registers (Deviation 4); the sensitivity
+  // section at the end puts them back, so the exclusion can be audited rather
+  // than taken on trust.
+  const rows = allRows.filter((r) => !isExcluded(r));
+  const droppedRows = allRows.length - rows.length;
 
   const arms = [...new Set(rows.map((r) => r.arm))].sort();
   const out = [];
   out.push('# Rewrite-efficacy pilot — results');
   out.push('');
-  out.push(`Rows: ${rows.length}. Arms: ${arms.join(', ')}. Judges: ${JUDGE_IDS.join(', ')}.`);
+  out.push(`Rows: ${rows.length} (of ${allRows.length}; ${droppedRows} excluded as register ${[...EXCLUDED_REGISTERS].join('/')} per Deviation 4). Arms: ${arms.join(', ')}. Judges: ${JUDGE_IDS.join(', ')}.`);
   out.push('Decision rules are those pre-registered in `2026-rewrite-efficacy-prereg.md`.');
   out.push('');
 
@@ -478,6 +488,32 @@ function main() {
     out.push(`- (${n}×) ${cue}`);
   }
   out.push('');
+
+  // Sensitivity: the same two headline numbers with the excluded register put
+  // back. A post-hoc exclusion that changes the conclusion is a finding, not a
+  // cleanup step.
+  if (droppedRows > 0) {
+    out.push('## Sensitivity — excluded register put back');
+    out.push('');
+    const aAll = allRows.filter((r) => r.arm === 'A');
+    const aPri = rows.filter((r) => r.arm === 'A');
+    const agAll = agreementFor(aAll);
+    const agPri = agreementFor(aPri);
+    const efAll = efficacyFor(aAll, 'ai');
+    const efPri = efficacyFor(aPri, 'ai');
+    out.push('| analysis | Arm A alpha | Arm A ai-delta (95% CI) | n |');
+    out.push('|---|---:|---|---:|');
+    out.push(`| primary (excl. ${[...EXCLUDED_REGISTERS].join('/')}) | ${fmt(agPri.alpha, 3)} | ${fmt(efPri.judge_delta_mean)} ${fmtCI(efPri.judge_delta_ci)} | ${efPri.n} |`);
+    out.push(`| sensitivity (incl.) | ${fmt(agAll.alpha, 3)} | ${fmt(efAll.judge_delta_mean)} ${fmtCI(efAll.judge_delta_ci)} | ${efAll.n} |`);
+    out.push('');
+    const alphaFlip = (agPri.alpha >= ALPHA_GATE) !== (agAll.alpha >= ALPHA_GATE);
+    const signFlip = efPri.judge_delta_ci && efAll.judge_delta_ci
+      && (efPri.judge_delta_ci[1] < 0) !== (efAll.judge_delta_ci[1] < 0);
+    out.push(alphaFlip || signFlip
+      ? '**The exclusion changes a verdict.** That dependence is itself the result: the pilot cannot separate the effect from the corpus defect, and neither analysis should be quoted alone.'
+      : 'Both verdicts survive the exclusion, so the headline does not rest on it.');
+    out.push('');
+  }
 
   const text = out.join('\n');
   const dest = join(DIR, 'RESULTS.md');

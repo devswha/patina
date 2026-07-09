@@ -4,9 +4,9 @@ Thanks for considering a contribution. Patina is a pattern-based tool, so the mo
 
 ## Public vs. Internal Docs
 
-User-facing documentation lives in `README*.md`, `docs/`, `examples/`, `patterns/`, `profiles/`, and the skill entrypoints. Maintainer or agent notes live under `docs/internal/` and should not be treated as install, CLI, or API contracts unless they are promoted back into the public docs list.
+User-facing documentation lives in `README*.md`, `docs/`, `examples/`, `patterns/`, `profiles/`, and the skill entrypoints. Maintainer or agent notes (backlogs, runbooks, launch playbooks) are kept out of this repository entirely — they live in the maintainer's private workspace, and `docs/internal/` is gitignored as a guard. Only real user-facing facts get promoted into the public docs list.
 
-When moving a root-level Markdown file, either link it from `README.md` if it is public, or place it under `docs/internal/` with a short status note explaining its audience.
+When moving a root-level Markdown file, link it from `README.md` if it is public; if it is maintainer-internal, it does not belong in the repository.
 
 ## Development Workflow (branching & releases)
 

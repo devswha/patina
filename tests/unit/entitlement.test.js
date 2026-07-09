@@ -371,6 +371,39 @@ test('validate: LS non-2xx fails closed with 503', async () => {
   assert.equal(fetchImpl.calls.length, 1);
 });
 
+test('validate: LS 4xx with a valid:false body is a definitive 403 denial and is negative-cached', async () => {
+  // LS answers an unknown key with 404 + {"valid": false, "error": "license_key not found."}
+  const fetchImpl = spyFetch(() => lsResponse({ valid: false, error: 'license_key not found.' }, { status: 404 }));
+  const validator = makeValidator({ fetchImpl });
+
+  const res = await validator.validate({ licenseKey: 'LK-unknown-key' });
+  assert.equal(res.ok, false);
+  assert.equal(res.status, 403, 'an invalid key is a license verdict, not an availability failure');
+  assert.equal(res.reason, QUOTA_REASONS.LICENSE_INVALID);
+
+  const retry = await validator.validate({ licenseKey: 'LK-unknown-key' });
+  assert.equal(retry.status, 403);
+  assert.equal(fetchImpl.calls.length, 1, 'the verdict must be negative-cached; retries must not re-charge the RPM bucket');
+});
+
+test('validate: LS 429 / 5xx / opaque 4xx stay transient 503 and are never cached', async () => {
+  const responders = [
+    ['429 rate limit', () => lsResponse({ valid: false, error: 'rate limited' }, { status: 429 })],
+    ['500 outage', () => lsResponse({ valid: false }, { status: 500 })],
+    ['404 unparseable body', () => lsResponse(null, { status: 404, throwJson: true })],
+    ['400 without valid:false', () => lsResponse({ error: 'bad request' }, { status: 400 })],
+  ];
+  for (const [label, respond] of responders) {
+    const fetchImpl = spyFetch(respond);
+    const validator = makeValidator({ fetchImpl });
+    const res = await validator.validate({ licenseKey: 'LK-transient' });
+    assert.equal(res.status, 503, `${label}: must fail closed as unavailable`);
+    assert.equal(res.reason, QUOTA_REASONS.LICENSE_UNAVAILABLE, label);
+    await validator.validate({ licenseKey: 'LK-transient' });
+    assert.equal(fetchImpl.calls.length, 2, `${label}: a transient failure must not be cached`);
+  }
+});
+
 test('validate: LS malformed JSON fails closed with 503', async () => {
   const fetchImpl = spyFetch(() => lsResponse(null, { status: 200, throwJson: true }));
   const validator = makeValidator({ fetchImpl });
@@ -511,6 +544,26 @@ test('security: a denied LS response that echoes the license is redacted before 
   const serialized = JSON.stringify(logger._entries);
   assert.equal(serialized.includes(license), false, 'raw license leaked into logs');
   assert.ok(serialized.includes('[REDACTED]'), 'the echoed license must be redacted');
+});
+
+test('security: a denial log never contains customer PII from the LS meta block', async () => {
+  const logger = spyLogger();
+  // A revoked/mismatched key of a REAL customer: LS echoes their email + name in meta.
+  const fetchImpl = spyFetch(() => lsResponse({
+    valid: false,
+    error: 'license_key not found.',
+    license_key: { status: 'active', expires_at: null },
+    meta: { ...GOOD_META, customer_email: 'buyer@example.com', customer_name: 'Real Buyer' },
+  }));
+  const res = await makeValidator({ fetchImpl, logger }).validate({ licenseKey: 'LK-pii-check' });
+  assert.equal(res.ok, false);
+  assert.equal(res.status, 403);
+
+  assert.ok(logger._entries.length > 0, 'the denial must still be logged for triage');
+  const logged = JSON.stringify(logger._entries);
+  assert.equal(logged.includes('buyer@example.com'), false, 'customer email leaked into logs');
+  assert.equal(logged.includes('Real Buyer'), false, 'customer name leaked into logs');
+  assert.ok(logged.includes('not-valid'), 'the triage detail must survive the PII cut');
 });
 
 test('regression(B1): re-read after acquiring the single-flight lock serves a winner-populated cache without a second LS call', async () => {

@@ -1,8 +1,10 @@
 # Pre-registration — Does patina rewrite actually reduce AI-likeness?
 
-Status: **pre-registered plan** (hypotheses, metrics, decision rules fixed
-before data collection). Registered 2026-07-10. Results land in a separate
-`2026-rewrite-efficacy.md`; this file is not edited to match outcomes.
+This is a plan, written down on 2026-07-10, before any of the data existed. The
+hypotheses, the metrics, and the rules for calling the thing a success or a
+failure are all fixed here so that none of them can quietly move once the numbers
+come back. Results go somewhere else — `2026-rewrite-efficacy.md`. Nothing below
+gets edited to match what we find. Deviations get appended, dated, and explained.
 
 > Framing (per `docs/ROADMAP.md`): patina is an **AI-likeness humanizer**, not a
 > detector-bypass product. "Efficacy" here means *reducing perceived AI-likeness
@@ -36,8 +38,8 @@ before data collection). Registered 2026-07-10. Results land in a separate
 
 ## Research questions & hypotheses
 
-**RQ1 — Construct validity (run first; gates the rest).**
-Is "AI-likeness" a stable construct across independent raters?
+**RQ1 — Construct validity.** Run this first. Everything downstream depends on
+whether "AI-likeness" even holds still when different raters look at it.
 - H1: pairwise agreement (Spearman ρ / Krippendorff's α) among the three
   cross-family LLM judges, the deterministic stylometry score, and the patina
   internal score is > 0 and materially positive on the pilot set.
@@ -45,8 +47,8 @@ Is "AI-likeness" a stable construct across independent raters?
   redesign the instrument (the yardstick is too noisy to trust any efficacy
   claim). Report the failure rather than proceeding.
 
-**RQ2 — Perceptual efficacy (primary).**
-Does rewrite reduce *perceived* AI-likeness on independent judges?
+**RQ2 — Perceptual efficacy.** The primary question, and the one patina exists
+to answer: does a rewrite read less like a machine to someone who wasn't told?
 - H2a: mean independent-judge AI-likeness(rewrite) < AI-likeness(original AI),
   reported as paired effect size (Cliff's δ) + 95% bootstrap CI.
 - H2b: in a shuffled 3-way blind (original-AI / rewrite / real-human), the rate
@@ -56,8 +58,7 @@ Does rewrite reduce *perceived* AI-likeness on independent judges?
   agreement band), we conclude patina is **gaming its own detector** and flag the
   rewrite pipeline for redesign — a headline finding, not a footnote.
 
-**RQ3 — Mechanism.**
-Which linguistic features drive the judge-perceived change?
+**RQ3 — Mechanism.** Suppose the needle moves. What actually moved it?
 - Regress per-text judge-score delta on feature deltas (burstiness /
   sentence-length variance, ending-suffix monotony [ko], type-token / MATTR,
   lexicon-marker count, patina pattern-hit count, ko: spacing & punctuation per
@@ -65,8 +66,9 @@ Which linguistic features drive the judge-perceived change?
 - Output: ranked list separating *perceptually load-bearing* tells from
   *detector-only* tells → evidence-based pattern-pack priorities.
 
-**RQ4 — Humanizer fingerprint (novel).**
-Does rewrite impose a detectable convergent "house style"?
+**RQ4 — Humanizer fingerprint.** Barely studied, and the one that would embarrass
+us most: a tool that scrubs every text into the *same* voice has not removed the
+machine, it has replaced one machine with another.
 - H4: mean pairwise stylistic similarity among *rewrites* vs among *human
   controls*. If rewrites cluster tighter than humans, the humanizer leaves its
   own signature (a second-order AI tell). Descriptive + permutation test.
@@ -197,6 +199,33 @@ AI-generated across model families and human-authored controls, register-matched
 — does not exist here. It is a prerequisite for any credible Korean rewrite
 claim, and plausibly explains part of the weak ko cell in the detection
 rebaseline. Filed as follow-up.
+
+### Deviation 2 (2026-07-10) — judge-response loss was silently biasing RQ1
+
+Mid-pilot inspection of the first 18 judge calls found an 11% unparseable rate on
+one judge (gemini) from two causes: a 240 s timeout on a 3.5 k-char document, and
+**schema drift** — the judge returned a valid 0-100 rating under the key
+`ai_status` instead of the requested `ai_likeness`, and the parser discarded it.
+
+This is not a cosmetic loss. Krippendorff's alpha needs *both* judges on the same
+passage, so every dropped rating destroys an entire agreement unit, and the drops
+are not random: they concentrate on whatever that judge found hard to answer.
+RQ1 — the gate for the whole program — would have been estimated on a filtered,
+easier subset.
+
+Amended before the affected data was analysed:
+- the judge parser accepts an explicit alias set for the score key
+  (`ai_likeness`, `ai_status`, `ai_score`, `score`, `aiLikeness`) and records
+  which key was used (`score_key`) so drift stays visible rather than silent;
+- it anchors on the `authorship` field and takes the last JSON object, so a judge
+  that narrates before answering (or wraps in a code fence) still parses;
+- each judge call gets one retry; residual failures are recorded with
+  `retries_exhausted` and reported in the results before any effect estimate;
+- the judge timeout rises 240 s -> 360 s for document-length passages.
+
+Ratings collected under the old parser were **discarded** and all arms re-run from
+scratch: mixing parser versions inside one dataset means inconsistent inclusion
+criteria, which is exactly what a pre-registered protocol exists to prevent.
 
 ## Sources
 - Self-Preference Bias in LLM-as-a-Judge — arXiv:2410.21819

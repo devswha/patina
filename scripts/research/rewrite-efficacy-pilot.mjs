@@ -103,7 +103,8 @@ const JUDGES = [
 ];
 
 const REWRITE_TIMEOUT_MS = 300_000;
-const JUDGE_TIMEOUT_MS = 240_000;
+// Raised from 240s: gemini timed out judging a 3.5k-char document at that limit.
+const JUDGE_TIMEOUT_MS = 360_000;
 
 const sha = (s) => createHash('sha256').update(s, 'utf8').digest('hex').slice(0, 16);
 const log = (m) => {
@@ -238,23 +239,37 @@ function judgePrompt(text, lang) {
   ].join('\n');
 }
 
+// Judges drift from the requested key: gemini has returned `ai_status` carrying a
+// perfectly valid 0-100 rating. Dropping those responses would lose ~11% of one
+// judge's ratings — and Krippendorff's alpha needs BOTH judges on a passage, so
+// the loss would land squarely on the RQ1 estimate, biased toward whatever that
+// judge found hard to answer. Accept a small, explicit alias set instead.
+const SCORE_KEYS = ['ai_likeness', 'ai_status', 'ai_score', 'score', 'aiLikeness'];
+
 function parseJudge(raw) {
   if (!raw) return null;
-  const matches = String(raw).match(/\{[^{}]*"ai_likeness"[^{}]*\}/g);
-  const candidate = matches ? matches[matches.length - 1] : null;
-  if (!candidate) return null;
-  try {
-    const o = JSON.parse(candidate);
-    const score = Number(o.ai_likeness);
-    const authorship = String(o.authorship || '').toLowerCase();
-    if (!Number.isFinite(score)) return null;
-    if (authorship !== 'human' && authorship !== 'ai') return null;
-    return {
-      authorship,
-      ai_likeness: Math.max(0, Math.min(100, Math.round(score))),
-      strongest_cue: String(o.strongest_cue || '').slice(0, 200),
-    };
-  } catch { return null; }
+  const text = String(raw);
+  // Any JSON object that carries an authorship field; take the last (models
+  // sometimes narrate before emitting the final object).
+  const matches = text.match(/\{[^{}]*"authorship"[^{}]*\}/g);
+  if (!matches) return null;
+  for (const candidate of [...matches].reverse()) {
+    try {
+      const o = JSON.parse(candidate);
+      const authorship = String(o.authorship || '').toLowerCase();
+      if (authorship !== 'human' && authorship !== 'ai') continue;
+      const key = SCORE_KEYS.find((k) => Number.isFinite(Number(o[k])));
+      if (!key) continue;
+      const score = Number(o[key]);
+      return {
+        authorship,
+        ai_likeness: Math.max(0, Math.min(100, Math.round(score))),
+        strongest_cue: String(o.strongest_cue || '').slice(0, 200),
+        score_key: key === 'ai_likeness' ? undefined : key, // record schema drift
+      };
+    } catch { /* try the next candidate */ }
+  }
+  return null;
 }
 
 /** patina's own deterministic score — sanity axis ONLY. */
@@ -275,15 +290,27 @@ function internalScore(text, lang) {
   }
 }
 
+/**
+ * One judge, with a single retry. A timeout or an unparseable reply is transient
+ * (load, or the model narrating instead of answering), and a silently dropped
+ * rating costs an entire agreement unit — alpha needs both judges on a passage.
+ * Retries and residual failures are both recorded.
+ */
+async function judgeOnce(judge, text, lang) {
+  const attempts = [];
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const res = await run(judge.cmd, judge.args, { input: judgePrompt(text, lang), timeout: JUDGE_TIMEOUT_MS });
+    const parsed = parseJudge(res.stdout);
+    if (parsed) return attempt === 1 ? parsed : { ...parsed, retried: true };
+    attempts.push(res.error || 'unparseable');
+  }
+  return { error: attempts.join(' | '), raw_head: '', retries_exhausted: true };
+}
+
 async function judgeText(text, lang) {
   const out = {};
   for (const judge of JUDGES) {
-    const res = await run(judge.cmd, judge.args, { input: judgePrompt(text, lang), timeout: JUDGE_TIMEOUT_MS });
-    const parsed = parseJudge(res.stdout);
-    out[judge.id] = parsed || {
-      error: res.error || 'unparseable',
-      raw_head: String(res.stdout).slice(0, 160),
-    };
+    out[judge.id] = await judgeOnce(judge, text, lang);
   }
   return out;
 }

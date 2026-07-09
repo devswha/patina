@@ -369,17 +369,36 @@ export function createLemonSqueezyLicenseValidator({
         clearTimeout(timer);
       }
 
-      if (!response || typeof response.ok !== 'boolean' || !response.ok) {
-        warnSafe('entitlement: LS validate non-2xx', { subject, status: response && response.status });
-        return unavailable();
-      }
+      if (!response || typeof response.ok !== 'boolean') return unavailable();
 
+      // Non-2xx: LS answers an unknown/malformed key with a 4xx whose body still
+      // carries `valid: false` (e.g. 404 "license_key not found"). That is a
+      // definitive license verdict, not an outage, so it falls through to the
+      // deny path below (403 + negative cache) — treating it as a 503 would break
+      // the client contract AND leave every same-key retry re-charging the global
+      // LS RPM bucket. A 429 (LS's own rate limit), any 5xx, or a 4xx without a
+      // parseable valid:false body stays a transient 503 and is never cached.
+      /** @type {any} */
       let data;
-      try {
-        data = await response.json();
-      } catch (err) {
-        warnSafe('entitlement: LS validate response parse failed', { subject, error: errorMessage(err) });
-        return unavailable();
+      if (!response.ok) {
+        const status = response.status;
+        const verdictCandidate = typeof status === 'number' && status >= 400 && status < 500 && status !== 429;
+        let body = null;
+        if (verdictCandidate) {
+          try { body = await response.json(); } catch { body = null; }
+        }
+        if (!body || typeof body !== 'object' || body.valid !== false) {
+          warnSafe('entitlement: LS validate non-2xx', { subject, status });
+          return unavailable();
+        }
+        data = body;
+      } else {
+        try {
+          data = await response.json();
+        } catch (err) {
+          warnSafe('entitlement: LS validate response parse failed', { subject, error: errorMessage(err) });
+          return unavailable();
+        }
       }
 
       // 6. Evaluate + cache. A denial is cached negatively (bounded); a transient
@@ -401,8 +420,11 @@ export function createLemonSqueezyLicenseValidator({
 
       const negTtl = readPositiveInt(env.PATINA_LS_NEGATIVE_CACHE_TTL_MS, DEFAULT_NEGATIVE_CACHE_TTL_MS);
       await safeSet(store, cacheKey, { decision: 'deny', tier: 'pro', status: decision.status, reason: decision.reason, expiresAt: nowMs + negTtl }, negTtl, warnSafe, subject);
-      // The concrete failing check is logged (redacted) for triage; the return is generic.
-      warnSafe('entitlement: license denied', { subject, detail: decision.detail, response: data });
+      // The concrete failing check (plus LS's own error string, if any) is logged
+      // for triage; the FULL LS body is never logged — its `meta` carries customer
+      // PII (customer_email / customer_name) that secret-name redaction won't catch.
+      const lsError = data && typeof data.error === 'string' ? data.error : undefined;
+      warnSafe('entitlement: license denied', { subject, detail: decision.detail, error: lsError });
       return /** @type {EntitlementDeny} */ ({ ok: false, status: decision.status, reason: decision.reason });
     } finally {
       await releaseLock();

@@ -44,6 +44,10 @@ SOUL.md
 TOOLS.md
 memory/
 
+# Maintainer/agent-internal docs (runbooks, backlogs, launch playbooks) live in
+# the private maintainer workspace (.omc/research/), never in the public tree.
+docs/internal/
+
 # Marketing bot workspace template (internal ops)
 
 # Generated benchmark artifacts (regenerated per `npm run benchmark`)

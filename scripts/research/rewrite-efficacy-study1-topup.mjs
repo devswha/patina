@@ -34,7 +34,7 @@ const JUDGES = [
 ];
 const JUDGE_TIMEOUT_MS = 120_000;
 const JUDGE_ATTEMPTS = 3;
-const REWRITE_TIMEOUT_MS = 420_000;
+const REWRITE_TIMEOUT_MS = Number(process.env.S1_REWRITE_TIMEOUT_MS ?? 420_000);
 const SCORE_KEYS = ['ai_likeness', 'ai_status', 'ai_score', 'score', 'aiLikeness'];
 
 const sha = (s) => createHash('sha256').update(s, 'utf8').digest('hex').slice(0, 16);

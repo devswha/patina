@@ -134,7 +134,17 @@ function loadGlob(re) {
   return rows;
 }
 const loadRows = () => loadGlob(/^s1-rows.*\.jsonl$/);
-const loadTexts = () => loadGlob(/^s1-texts.*\.private\.jsonl$/);
+/**
+ * The top-up pass re-appends a repaired row's full text record to
+ * s1-texts-TOPUP, so the same original appears twice across the glob. Dedupe
+ * by (arm, original_sha), keeping the LAST occurrence (the repaired one) —
+ * otherwise RQ4's human pool double-counts every repaired document.
+ */
+const loadTexts = () => {
+  const byKey = new Map();
+  for (const t of loadGlob(/^s1-texts.*\.private\.jsonl$/)) byKey.set(`${t.arm}:${t.original_sha}`, t);
+  return [...byKey.values()];
+};
 
 const scoreOf = (row, cond, judge) => {
   const j = row.judges?.[cond]?.[judge];
@@ -403,16 +413,23 @@ function main() {
   out.push('## H6 — surviving-cue taxonomy (deterministic rubric)');
   out.push('');
   for (const arm of arms) {
-    const counts = { structure: 0, lexical: 0, 'specificity-absence': 0, other: 0 };
+    // Registered analysis: every strongest_cue on a rewritten AI passage.
+    // Exploratory supplement: only cues from judgments that still CALLED the
+    // passage "ai" — the cue then explains a genuinely surviving tell rather
+    // than why a fooled judge found it human. Both reported; the registered
+    // one carries the verdict.
+    const tally = () => ({ structure: 0, lexical: 0, 'specificity-absence': 0, other: 0 });
+    const counts = tally();
+    const aiOnly = tally();
     const others = [];
-    const cueList = [];
     for (const r of rows.filter((x) => x.arm === arm && x.source_class === 'ai')) {
       for (const j of JUDGE_IDS) {
-        const cue = r.judges?.rewrite?.[j]?.strongest_cue;
+        const cell = r.judges?.rewrite?.[j];
+        const cue = cell?.strongest_cue;
         if (!cue) continue;
         const label = classifyCue(cue);
         counts[label] += 1;
-        cueList.push([label, cue]);
+        if (cell.authorship === 'ai') aiOnly[label] += 1;
         if (label === 'other') others.push(cue);
       }
     }
@@ -424,6 +441,13 @@ function main() {
     for (const [k, v] of Object.entries(counts)) out.push(`- ${k}: ${v} (${((v / total) * 100).toFixed(0)}%)`);
     out.push('');
     out.push(`**H6 (${arm}): ${modal === 'structure' ? 'SUPPORTED — structure is the modal surviving cue.' : `NOT supported — modal category is ${modal}.`}**`);
+    const aiTotal = Object.values(aiOnly).reduce((a, b) => a + b, 0);
+    if (aiTotal) {
+      const aiModal = Object.entries(aiOnly).sort((a, b) => b[1] - a[1])[0][0];
+      const parts = Object.entries(aiOnly).map(([k, v]) => `${k} ${v} (${((v / aiTotal) * 100).toFixed(0)}%)`).join(', ');
+      out.push('');
+      out.push(`_Exploratory (not pre-registered): restricted to still-called-"ai" judgments (${aiTotal} cues): ${parts} — modal: ${aiModal}._`);
+    }
     if (others.length) {
       out.push('');
       out.push(`Unclassified cues (verbatim, ${others.length}):`);

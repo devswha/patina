@@ -19,6 +19,14 @@ If the user is in an **interactive Claude Code session**, the simplest install i
 /plugin install patina@patina
 ```
 
+After installing, turn on automatic updates — third-party marketplaces ship with auto-update **disabled** by default, so without this step the plugin silently stays on the installed version:
+
+```text
+/plugin   ->  Marketplaces tab  ->  patina  ->  Enable auto-update
+```
+
+(Manual alternative: `/plugin marketplace update patina` then `/reload-plugins`.)
+
 Uninstall with `/plugin uninstall patina@patina`. This path loads the repo-root `SKILL.md` as the `/patina` skill. The git/symlink paths below (A/B/C) are for non-interactive installs or multi-host setups; to remove a script install, run `uninstall.sh` (or `curl -fsSL https://raw.githubusercontent.com/devswha/patina/main/uninstall.sh | bash`).
 
 ---

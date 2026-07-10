@@ -9,7 +9,7 @@
 // Usage: echo "prompt" | node scripts/research/xai-cli.mjs
 
 const API_KEY = process.env.XAI_API_KEY;
-const MODEL = process.env.XAI_MODEL || 'grok-4-fast-non-reasoning';
+const MODEL = process.env.XAI_MODEL || 'grok-4.5';
 const TIMEOUT_MS = Number(process.env.XAI_TIMEOUT_MS || 110_000);
 
 if (!API_KEY) {

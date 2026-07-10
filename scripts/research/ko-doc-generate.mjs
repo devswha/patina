@@ -28,11 +28,15 @@ const HUMAN = join(DIR, 'ko-human-docs.private.jsonl');
 const OUT = join(DIR, 'ko-ai-docs.private.jsonl');
 
 const ROTATION = ['gpt-family', 'claude-family', 'moonshot-family', 'xai-family'];
+// Latest model per family, probed 2026-07-10 (newer names all rejected by the
+// respective surfaces): sonnet-5 confirmed on claude CLI, grok-4.5 is the
+// newest flagship in /v1/models, kimi CLI tops out at k2.5, gpt-5.5 is the
+// codex CLI's current default.
 const FAMILIES = {
   'gpt-family': { provider: 'codex-cli', model: 'gpt-5.5' },
-  'claude-family': { provider: 'claude-cli', model: 'claude-sonnet-4-6' },
+  'claude-family': { provider: 'claude-cli', model: 'claude-sonnet-5' },
   'moonshot-family': { provider: 'kimi-cli', model: 'kimi-k2.5' },
-  'xai-family': { provider: 'xai-api', model: process.env.XAI_MODEL || 'grok-4-fast-non-reasoning' },
+  'xai-family': { provider: 'xai-api', model: process.env.XAI_MODEL || 'grok-4.5' },
 };
 
 const REGISTER_DESC = {

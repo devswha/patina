@@ -79,7 +79,7 @@ function genPrompt(title, register, minCh, maxCh) {
     `제목: ${title}`,
     '',
     `조건:`,
-    `- 분량 ${minCh}~${maxCh}자`,
+    `- 분량은 공백 포함 ${minCh}자 이상 ${maxCh}자 이하 — 반드시 ${minCh}자를 넘겨야 하며, 짧으면 실패로 처리됩니다. 각 문단을 충분히 상세하게 전개하세요.`,
     '- 최소 4개 문단, 문단 사이는 빈 줄로 구분',
     '- 제목이나 헤딩 없이 본문만 출력',
     '- 마크다운 문법(#, *, - 목록 등) 없이 일반 산문으로',
@@ -157,19 +157,34 @@ async function main() {
     const prompt = genPrompt(h.source_title, h.register, minCh, maxCh);
 
     log(`${sampleId} [${family}] target ${minCh}-${maxCh}ch…`);
-    let out = await invoke(family, prompt);
-    let text = out.text ? cleanBody(out.text) : null;
-    // One structured retry if the shape is off (too short / too few paragraphs).
-    if (!out.error && text && (text.length < 1000 || paraCount(text) < 3)) {
-      log(`  shape off (${text.length}ch, ${paraCount(text)}p) — one retry`);
-      out = await invoke(family, prompt + '\n\n(이전 응답이 조건에 미달했습니다. 분량과 문단 수 조건을 지켜 다시 작성하세요.)');
-      text = out.text ? cleanBody(out.text) : text;
+    // The pre-registered pairing is a per-document length band; Korean models
+    // chronically undershoot char targets, so enforce the band with structured
+    // retries that state the shortfall explicitly. The BEST attempt is kept —
+    // a retry that came out shorter must not replace a longer earlier draft.
+    const inBand = (t) => t && t.length >= minCh && paraCount(t) >= 3;
+    let text = null;
+    let lastError = null;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const nudge = attempt === 1 ? '' :
+        `\n\n(이전 응답이 ${text ? text.length : 0}자로 최소 분량 ${minCh}자에 미달했습니다. 각 문단을 더 상세히 전개해 ${minCh}자 이상으로 다시 작성하세요.)`;
+      const out = await invoke(family, prompt + nudge);
+      lastError = out.error ?? null;
+      const t = out.text ? cleanBody(out.text) : null;
+      if (t && (!text || t.length > text.length)) text = t;
+      if (inBand(text)) break;
+      if (out.error) log(`  attempt ${attempt} error: ${out.error}`);
+      else log(`  attempt ${attempt} shape off (${t ? t.length : 0}ch, ${t ? paraCount(t) : 0}p)`);
     }
-    if (out.error || !text) {
+    if (!text) {
       failed += 1;
-      log(`  FAILED: ${out.error ?? 'empty'}`);
-      appendFileSync(join(DIR, 'ko-ai-generate.log'), `${sampleId}\t${family}\tFAILED\t${out.error ?? 'empty'}\n`);
+      log(`  FAILED: ${lastError ?? 'empty'}`);
+      appendFileSync(join(DIR, 'ko-ai-generate.log'), `${sampleId}\t${family}\tFAILED\t${lastError ?? 'empty'}\n`);
       continue;
+    }
+    if (!inBand(text)) {
+      // Kept but flagged: the analyzer/corpus QA decides, not a silent drop.
+      log(`  WARN out of band after retries (${text.length}ch < ${minCh}ch) — recorded with band_met:false`);
+      appendFileSync(join(DIR, 'ko-ai-generate.log'), `${sampleId}\t${family}\tOUT_OF_BAND\t${text.length}<${minCh}\n`);
     }
 
     appendFileSync(OUT, JSON.stringify({
@@ -184,6 +199,7 @@ async function main() {
       source_title: h.source_title,
       generated_at: new Date().toISOString().slice(0, 10),
       target_chars: [minCh, maxCh],
+      band_met: inBand(text),
       paragraphs: paraCount(text),
       chars: text.length,
       text_hash: sha(text),

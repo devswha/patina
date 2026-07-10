@@ -293,6 +293,85 @@ results report **both** analyses: primary (excluding `spok`) and sensitivity
 Arm C is unaffected — its registers are drawn from the ko intake, which has no
 `spok` cell.
 
+## Study 1 (main study) — registered 2026-07-10, before any Study 1 data
+
+Study 0 cleared the RQ1 gate (α 0.82/0.67/0.86, all arms above 0.4), so the main
+study proceeds. This section fixes its design before the first corpus row or
+judge call exists. Study 0's four deviations are inherited as design inputs, not
+re-litigated.
+
+### Arms
+
+Study 1 is powered for **document length only** — the pilot already measured the
+snippet penalty (α 0.82 → 0.67; effect −14 vs −22), so snippet arms are dropped
+rather than re-run underpowered.
+
+- **Arm A1 — en, document.** HAP-E paired on `prompt_id`, same substrate and
+  filters as pilot Arm A (`spok` excluded per Deviation 4, sensitivity restored).
+  Target n = 25 AI + 25 human (paired), disjoint from the pilot's items where the
+  register spread allows.
+- **Arm D — ko, document.** The pilot's blocking prerequisite, built new:
+  - **Human side:** full-article documents (not paragraph snippets) from the 39
+    vetted public ko sources in `artifacts/rebaseline-2025/sources.ko-public.jsonl`
+    (5 registers). A document = consecutive accepted paragraphs of one page,
+    ≥ 3 paragraphs, 1 200–4 000 chars. Raw text stays gitignored/private,
+    hash-only redistribution — same policy as every prior corpus here.
+  - **AI side, topic-paired:** for each human document, ONE AI document generated
+    from its **public title + register + length band only** (the human text never
+    enters the prompt), so topic and register are controlled by construction, as
+    in HAP-E. Generation family rotates deterministically across
+    gpt (codex CLI) / claude (claude CLI) / moonshot (kimi CLI) / xai (grok API),
+    giving ~6–7 documents per family. claude-generated items are legitimate:
+    the rewriter-family-vs-judge control lives in the panel, not the corpus.
+- Target cell size: 20–30 (power from pilot Δ SDs); anything below 20 in a cell
+  is reported as underpowered, not silently pooled.
+
+### Judge panel (fixed up front, per the pilot's go/no-go conditions)
+
+- **Panel: `judge-kimi` (moonshot) + `judge-gpt` (codex) + `judge-grok` (xai).**
+  All three are cross-family to the rewriter (claude-cli, unchanged).
+- **gemini is excluded before the first call**: its API project exhausted the
+  monthly spending cap (429 RESOURCE_EXHAUSTED, probed 2026-07-10). This is a
+  scheduled-recovery outage, not a judging decision; recorded here so panel
+  composition cannot quietly follow quota luck mid-run, which is exactly what
+  Deviation 3 was.
+- **2-of-3 quorum:** a passage's panel score = mean of its parseable primary
+  ratings; a passage-condition with < 2 ratings after top-up is reported as a
+  data loss, never scored from a single judge.
+- Quota headroom is probed on all three backends (a real judge-format call, not
+  a ping) immediately before the recorded run; the probe results go in the run
+  log.
+
+### Outcomes (fixed)
+
+1. **H2a (primary, per arm):** panel AI-likeness Δ on AI texts, paired, Cliff's
+   δ + 95% bootstrap CI — same rule as Study 0.
+2. **H2b:** AI-call rate on rewritten AI text < half the original's rate.
+3. **H6 (new primary — structural-tell survival).** The pilot's headline was
+   that surviving cues are architectural. Study 1 pre-registers it: each judge
+   `strongest_cue` on a REWRITTEN AI passage is classified by a **deterministic
+   keyword rubric fixed in the harness before any data** into
+   `structure / lexical / specificity-absence / other`.
+   - H6: `structure` is the **modal category** of surviving cues at document
+     length, in both arms.
+   - The rubric is code, not judgment: cue strings are matched case-insensitively
+     against fixed keyword lists committed with the harness; unmatched cues fall
+     to `other` and are listed verbatim in the results.
+4. **RQ4 (house-style fingerprint)** re-run at n≈25: permutation test as in the
+   pilot, now adequately powered for a directional answer.
+5. **RQ5a/RQ5b** unchanged (gate pass-rate ≥ 95%; human-control collateral).
+6. **Anti-circularity rule** unchanged and evaluated per arm.
+
+### What Study 1 does NOT claim
+
+- zh/ja: no document-length corpus exists in either language; out of scope,
+  carried as a named gap exactly as ko was in Study 0.
+- Modern-model coverage in Arm A1 is still bounded by HAP-E's single 2024
+  generator; Arm D's rotated families carry the modern-model claim.
+- Judge identity differs from Study 0 (gemini+kimi → kimi+codex+grok), so
+  absolute score levels are not comparable across studies; only within-study
+  paired deltas are interpreted.
+
 ## Sources
 - Self-Preference Bias in LLM-as-a-Judge — arXiv:2410.21819
 - TH-Bench (humanizing attacks vs detectors) — arXiv:2503.08708

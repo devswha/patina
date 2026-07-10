@@ -19,10 +19,13 @@ test('quotaKeyHmac is deterministic, part-sensitive, and never exposes the raw I
 });
 
 test('extractClientIp honors trusted-header precedence and comma splitting', () => {
+  // The platform-controlled x-vercel-* header outranks x-real-ip: only the
+  // former is guaranteed proxy-set under every deploy topology (#607).
   assert.equal(
     extractClientIp({ 'x-real-ip': '198.51.100.1', 'x-vercel-forwarded-for': '203.0.113.1' }),
-    '198.51.100.1',
+    '203.0.113.1',
   );
+  assert.equal(extractClientIp({ 'x-real-ip': '198.51.100.1' }), '198.51.100.1');
   assert.equal(extractClientIp({ 'x-vercel-forwarded-for': '203.0.113.2, 10.0.0.1' }), '203.0.113.2');
   assert.equal(extractClientIp({ 'x-forwarded-for': '198.51.100.9' }), null);
   assert.equal(extractClientIp({}), null);

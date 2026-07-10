@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import yaml from 'js-yaml';
 import { validateProfileName } from './security.js';
@@ -38,7 +38,10 @@ export function splitFrontmatter(content) {
 }
 
 /**
- * Load language-specific pattern packs from patterns/{lang}-*.md.
+ * Load language-specific pattern packs from patterns/{lang}-*.md, plus any
+ * user or pro packs in custom/patterns/{lang}-*.md. On a filename collision
+ * the custom pack wins (same precedence the persona and lexicon loaders give
+ * custom/), so an installed pack can also override a built-in one.
  *
  * @param {string} repoRoot Repository root path.
  * @param {string} lang Language code, such as ko, en, zh, or ja.
@@ -50,20 +53,28 @@ export function splitFrontmatter(content) {
  */
 export function loadPatterns(repoRoot, lang, skipPatterns = []) {
   const patternsDir = resolve(repoRoot, 'patterns');
-  const files = readdirSync(patternsDir)
-    .filter((f) => f.startsWith(`${lang}-`) && f.endsWith('.md'))
-    .filter((f) => {
-      const packName = f.slice(0, -3);
-      return !skipPatterns.includes(packName);
-    })
-    .sort();
+  const customDir = resolve(repoRoot, 'custom', 'patterns');
+
+  const discover = (dir) => {
+    if (!existsSync(dir)) return [];
+    return readdirSync(dir)
+      .filter((f) => f.startsWith(`${lang}-`) && f.endsWith('.md'))
+      .filter((f) => !skipPatterns.includes(f.slice(0, -3)))
+      .map((f) => ({ file: f, path: resolve(dir, f) }));
+  };
+
+  // custom/ entries shadow built-ins with the same filename.
+  const byFile = new Map();
+  for (const entry of discover(patternsDir)) byFile.set(entry.file, entry);
+  for (const entry of discover(customDir)) byFile.set(entry.file, entry);
+  const entries = [...byFile.values()].sort((a, b) => a.file.localeCompare(b.file));
 
   const packs = [];
-  for (const file of files) {
-    const content = loadFile(resolve(patternsDir, file));
+  for (const entry of entries) {
+    const content = loadFile(entry.path);
     const { frontmatter, body } = splitFrontmatter(content);
     packs.push({
-      file,
+      file: entry.file,
       frontmatter,
       body,
       isStructure: frontmatter?.phase === 'structure',

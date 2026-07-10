@@ -586,25 +586,37 @@ test('category 15 createRestKv set/get: atomic single-command SET(+PX) round-tri
 });
 
 test('category 16 createRestKv incr/decr: numeric REST path is parsed independently of get and fails closed on an invalid counter', async () => {
-  // incr parses number|numeric-string|nested {result} via parseKvNumber and
-  // issues a SEPARATE /expire only when a positive ttl is supplied (counter path
-  // is unaffected by get()'s JSON-parsing round-trip).
+  // A TTL'd incr is ONE atomic root-POST EVAL(INCRBY+PEXPIRE) — never an /incr
+  // followed by a separate /expire the process could die before issuing (#605:
+  // a lost expire on the stable concurrency key would pin that identity near
+  // its cap until manual cleanup). No-ttl incr keeps the plain GET path. Both
+  // parse number|numeric-string|nested {result} via parseKvNumber.
   {
     const calls = [];
-    await withMockFetch(async (url) => {
+    const posts = [];
+    await withMockFetch(async (url, init) => {
+      if (init && init.method === 'POST') {
+        posts.push(JSON.parse(String(init.body)));
+        return { ok: true, async json() { return { result: '7' }; } };
+      }
       const u = String(url);
       calls.push(u);
       if (u.includes('/incr/')) return { ok: true, async json() { return { result: '7' }; } };
-      if (u.includes('/expire/')) return { ok: true, async json() { return { result: 1 }; } };
       if (u.includes('/decr/')) return { ok: true, async json() { return { result: { result: 3 } }; } };
       return { ok: true, async json() { return { result: null }; } };
     }, async () => {
       const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
-      assert.equal(await kv.incr('c', { ttlMs: 60_000 }), 7, 'numeric-string incr result parses to a number');
-      assert.deepEqual(calls, ['https://kv.example.test/incr/c', 'https://kv.example.test/expire/c/60'], 'incr + expire, 60s = ceil(60000/1000)');
-      calls.length = 0;
+      assert.equal(await kv.incr('c', { ttlMs: 60_000 }), 7, 'numeric-string EVAL result parses to a number');
+      assert.equal(posts.length, 1, 'ttl incr is a single atomic command');
+      assert.deepEqual(calls, [], 'ttl incr never touches the GET path');
+      assert.equal(posts[0][0], 'EVAL');
+      assert.match(posts[0][1], /INCRBY/);
+      assert.match(posts[0][1], /PEXPIRE/);
+      assert.deepEqual(posts[0].slice(2), ['1', 'c', '1', '60000'], 'one key; amount 1; ttl in ms');
+      posts.length = 0;
       assert.equal(await kv.incr('c'), 7, 'incr without a ttl issues no expire');
       assert.deepEqual(calls, ['https://kv.example.test/incr/c']);
+      assert.equal(posts.length, 0, 'no-ttl incr stays on the GET path');
       assert.equal(await kv.decr('c'), 3, 'nested {result} decr result parses to a number');
     });
   }
@@ -612,10 +624,13 @@ test('category 16 createRestKv incr/decr: numeric REST path is parsed independen
   // A malformed counter (non-numeric, null, non-integer, object) fails closed by
   // THROWING -- never silently returns a bogus count the limiter would trust
   // (the limiter converts that throw into a 503, verified in category 12).
+  // Checked on the GET path (no ttl) AND the atomic EVAL path (ttl).
   for (const bad of [{ result: 'not-a-number' }, { result: null }, { result: 1.5 }, { result: {} }, {}]) {
     await withMockFetch(async () => ({ ok: true, async json() { return bad; } }), async () => {
       const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
       await assert.rejects(() => kv.incr('c'), /kv incr returned invalid counter/, `incr rejects ${JSON.stringify(bad)}`);
+      await assert.rejects(() => kv.incr('c', { ttlMs: 1_000 }), /kv incr returned invalid counter/, `ttl incr rejects ${JSON.stringify(bad)}`);
+      await assert.rejects(() => kv.incrBy('c', 5, { ttlMs: 1_000 }), /kv incr returned invalid counter/, `ttl incrBy rejects ${JSON.stringify(bad)}`);
       await assert.rejects(() => kv.decr('c'), /kv decr returned invalid counter/, `decr rejects ${JSON.stringify(bad)}`);
     });
   }

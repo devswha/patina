@@ -56,6 +56,24 @@ export function createRestKv(env = {}) {
     return response.json();
   }
 
+  // Atomic counter bump + TTL in ONE round trip (EVAL): the GET-path
+  // /incr → /expire pair had the same crash window as SET+EXPIRE above. For
+  // time-bucketed quota keys a lost expire merely leaks storage, but the
+  // CONCURRENCY key is stable per IP/subject — a TTL-less counter there pins
+  // that identity near its cap until manual cleanup, so the self-heal TTL must
+  // be applied atomically with the increment.
+  const INCRBY_PEXPIRE_SCRIPT = "local v = redis.call('INCRBY', KEYS[1], ARGV[1]) redis.call('PEXPIRE', KEYS[1], ARGV[2]) return v";
+
+  async function incrByAtomic(key, amount, ttlMs) {
+    const data = await command([
+      'EVAL', INCRBY_PEXPIRE_SCRIPT, '1', key,
+      String(amount), String(Math.max(1, Math.ceil(ttlMs))),
+    ]);
+    const value = parseKvNumber(data);
+    if (value == null) throw new Error('kv incr returned invalid counter');
+    return value;
+  }
+
   return {
     async get(key) {
       const data = await read(`/get/${encodeURIComponent(key)}`);
@@ -87,27 +105,19 @@ export function createRestKv(env = {}) {
       }
     },
     async incr(key, { ttlMs } = {}) {
-      const encoded = encodeURIComponent(key);
-      const data = await read(`/incr/${encoded}`);
+      if (typeof ttlMs === 'number' && ttlMs > 0) return incrByAtomic(key, 1, ttlMs);
+      const data = await read(`/incr/${encodeURIComponent(key)}`);
       const value = parseKvNumber(data);
       if (value == null) throw new Error('kv incr returned invalid counter');
-      if (typeof ttlMs === 'number' && ttlMs > 0) {
-        const seconds = Math.max(1, Math.ceil(ttlMs / 1000));
-        await read(`/expire/${encoded}/${seconds}`);
-      }
       return value;
     },
     async incrBy(key, amount, { ttlMs } = {}) {
-      const encoded = encodeURIComponent(key);
       // Upstash/Vercel KV INCRBY: atomic add-N, returned as the new total. Used
       // for the pro monthly character counter (add textLength per request).
-      const data = await read(`/incrby/${encoded}/${encodeURIComponent(String(amount))}`);
+      if (typeof ttlMs === 'number' && ttlMs > 0) return incrByAtomic(key, amount, ttlMs);
+      const data = await read(`/incrby/${encodeURIComponent(key)}/${encodeURIComponent(String(amount))}`);
       const value = parseKvNumber(data);
       if (value == null) throw new Error('kv incrby returned invalid counter');
-      if (typeof ttlMs === 'number' && ttlMs > 0) {
-        const seconds = Math.max(1, Math.ceil(ttlMs / 1000));
-        await read(`/expire/${encoded}/${seconds}`);
-      }
       return value;
     },
     async decr(key) {

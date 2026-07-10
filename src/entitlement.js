@@ -37,6 +37,7 @@ const DEFAULT_NEGATIVE_CACHE_TTL_MS = 60_000; // negative-result cache
 const DEFAULT_TIMEOUT_MS = 2_500; // LS fetch abort deadline
 const DEFAULT_VALIDATE_RPM = 50; // stays below LS's hard 60 rpm ceiling
 const LOCK_TTL_MS = 10_000; // single-flight lock self-heal window
+const DEFAULT_LOCK_POLL_INTERVAL_MS = 150; // follower cache-poll cadence while the winner validates
 /** Dev-only HMAC fallback; only ever reached OUTSIDE production (prod requires a real secret). */
 const DEV_FALLBACK_SECRET = 'patina-local-license-secret';
 
@@ -291,6 +292,31 @@ export function createLemonSqueezyLicenseValidator({
     }
     if (!Number.isSafeInteger(lockCount) || lockCount < 1) return unavailable();
     if (lockCount > 1) {
+      // Follower path: the winner is validating this SAME license right now and
+      // writes the cache when it finishes (typically well under timeoutMs). An
+      // instant 503 here would break the advertised concurrency for a license's
+      // first burst — right after purchase, or whenever the positive cache TTL
+      // lapses — so followers briefly poll the cache instead (#606). The loop
+      // is bounded by ITERATION COUNT, never the wall clock, so an injected or
+      // frozen `now` cannot spin it forever; when the winner crashed or LS is
+      // down, nothing gets cached and this stays fail-closed 503.
+      const pollIntervalMs = readPositiveInt(env.PATINA_LS_LOCK_POLL_INTERVAL_MS, DEFAULT_LOCK_POLL_INTERVAL_MS);
+      const lockWaitMs = readPositiveInt(env.PATINA_LS_LOCK_WAIT_MS, Math.min(lockTtlMs, timeoutMs + 1_000));
+      const attempts = Math.max(1, Math.ceil(lockWaitMs / pollIntervalMs));
+      for (let i = 0; i < attempts; i += 1) {
+        await sleep(pollIntervalMs);
+        try {
+          const hit = readCacheEntry(await store.get(cacheKey), now());
+          if (hit) {
+            if (hit.decision === 'allow') {
+              return { ok: true, subject, tier: 'pro', status: hit.status, cache: 'hit' };
+            }
+            return /** @type {EntitlementDeny} */ ({ ok: false, status: hit.status, reason: hit.reason });
+          }
+        } catch {
+          /* a broken cache read never fails open; keep polling */
+        }
+      }
       warnSafe('entitlement: LS validate single-flight lock held', { subject, lockCount });
       return unavailable();
     }
@@ -459,6 +485,11 @@ function scrubLicense(value, license) {
     return v;
   };
   return walk(value);
+}
+
+/** @param {number} ms @returns {Promise<void>} */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** @param {unknown} err @returns {string} */

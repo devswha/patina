@@ -79,3 +79,7 @@ artifacts/ai-test-sources.md
 artifacts/rewrite-efficacy-pilot/
 artifacts/rewrite-efficacy-study1/
 artifacts/rewrite-efficacy-study2/
+artifacts/rewrite-efficacy-study3/
+
+# Judge-calibration side study raw outputs (same policy: raw text never committed)
+artifacts/judge-calibration-2026/

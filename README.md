@@ -33,6 +33,8 @@
 
 <p align="center"><em>Paste AI-sounding text → patina rewrites it in place, keeps the facts (the "30 templates" number survives), and drops the deterministic AI signal 100 → 0 (MPS 100 / Fidelity 75).</em></p>
 
+**The words are not the tell. The architecture is.** We ran a pre-registered study with independent cross-family LLM judges: a rewrite can strip the AI vocabulary, yet judges still recognize AI documents by their *shape* — uniform paragraphs, checklist-complete coverage, the tidy problem→lesson arc. Word-level cleanup moved judged AI-likeness a lot on English documents (−23 points) and barely at all on long Korean ones. That result decides patina's design: detect both layers, and publish the losses next to the wins ([the study](docs/research/2026-rewrite-efficacy-study1.md)).
+
 patina is a deterministic, pattern-based humanizer for Korean, English, Chinese, and Japanese. It finds AI-sounding phrasing and rewrites it without changing the claim, numbers, polarity, or causation. It is not a black-box paraphraser, authorship detector, or detector-bypass tool — it is built for allowed AI-assisted drafting where the author wants cleaner voice, an audit trail, and meaning-preservation checks.
 
 More examples: [Before/After Gallery](docs/EXAMPLES.md) ([한국어](docs/EXAMPLES_KR.md)) · [CLI transcript](docs/DEMO.md).

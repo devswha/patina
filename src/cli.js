@@ -1,6 +1,7 @@
 import { getRepoRoot } from './config.js';
 import { runDoctor } from './commands/doctor.js';
 import { runPersona } from './commands/persona.js';
+import { runPack } from './commands/pack.js';
 import { handleAuth, printBackendStatus } from './commands/auth.js';
 import { parseArgs, validateModeExclusivity, validateServeRequest, validatePreviewRequest, validateOutputRouting, validateTransformRequest, validatePersonaRequest, validateVerifyRequest, validateXliffRequest, printHelp } from './cli/args.js';
 import { runDefault } from './cli/run.js';
@@ -36,6 +37,9 @@ export async function main(args) {
   }
   if (args[0] === 'persona') {
     return runPersona(args.slice(1));
+  }
+  if (args[0] === 'pack') {
+    return runPack(args.slice(1));
   }
   if (args[0] === 'init') {
     throw inputError(

@@ -6,7 +6,7 @@ import { inputError } from '../errors.js';
 
 const MIN_NODE_MAJOR = 18;
 
-export function runDoctor(args = [], { version } = {}) {
+export async function runDoctor(args = [], { version, fetchImpl } = {}) {
   const parsed = parseDoctorArgs(args);
   if (parsed.help) {
     printDoctorHelp();
@@ -14,6 +14,9 @@ export function runDoctor(args = [], { version } = {}) {
   }
 
   const report = buildDoctorReport({ version });
+  if (parsed.updateCheck) {
+    await appendUpdateCheck(report, { version, fetchImpl });
+  }
   if (parsed.format === 'json') {
     console.log(JSON.stringify(report, null, 2));
   } else {
@@ -23,6 +26,66 @@ export function runDoctor(args = [], { version } = {}) {
   if (!report.ok) {
     process.exitCode = Math.max(Number(process.exitCode) || 0, 1);
   }
+}
+
+export const NPM_LATEST_URL = 'https://registry.npmjs.org/patina-cli/latest';
+const UPDATE_CHECK_TIMEOUT_MS = 3000;
+
+/** Numeric x.y.z compare; returns 1/0/-1, or null when either side is unparseable. */
+export function compareSemver(a, b) {
+  const parse = (v) => {
+    const m = String(v || '').match(/^(\d+)\.(\d+)\.(\d+)/);
+    return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+  };
+  const pa = parse(a);
+  const pb = parse(b);
+  if (!pa || !pb) return null;
+  for (let i = 0; i < 3; i += 1) {
+    if (pa[i] !== pb[i]) return pa[i] > pb[i] ? 1 : -1;
+  }
+  return 0;
+}
+
+/**
+ * Ask the npm registry for the latest published patina-cli version and append
+ * the verdict to the report. Diagnostics must degrade gracefully offline: any
+ * failure (timeout, DNS, 404, bad JSON) becomes an informational "could not
+ * check" line, never a warning or blocker, and never throws.
+ */
+export async function appendUpdateCheck(report, { version, fetchImpl = globalThis.fetch, timeoutMs = UPDATE_CHECK_TIMEOUT_MS } = {}) {
+  let latest = null;
+  let error = null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(NPM_LATEST_URL, {
+      signal: controller.signal,
+      headers: { accept: 'application/json' },
+    });
+    if (!response.ok) error = `registry answered ${response.status}`;
+    else latest = String((await response.json())?.version || '') || null;
+  } catch (err) {
+    error = err?.name === 'AbortError' ? `timed out after ${timeoutMs}ms` : String(err?.message ?? err);
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const cmp = latest ? compareSemver(latest, version) : null;
+  const updateAvailable = cmp === 1;
+  report.update = { latest, current: version || null, updateAvailable, error };
+  report.checks.push({
+    name: 'update',
+    // An available update is worth a visible `!`, but never a blocker — and an
+    // unreachable registry (air-gapped CI) stays a quiet informational line.
+    status: updateAvailable ? 'warning' : 'ok',
+    summary: updateAvailable
+      ? `update available: ${version} -> ${latest}`
+      : (latest ? `up to date (latest ${latest})` : 'update check skipped'),
+    detail: updateAvailable
+      ? 'npm: `npm update -g patina-cli` · plugin: `/plugin` -> Marketplaces -> patina -> update (or enable auto-update) · git: `git pull --ff-only`'
+      : (error ? `could not reach the npm registry (${error})` : 'patina-cli on the npm registry'),
+  });
+  return report;
 }
 
 export function buildDoctorReport({ version } = {}) {
@@ -120,7 +183,7 @@ export function buildDoctorReport({ version } = {}) {
 }
 
 function parseDoctorArgs(args) {
-  const parsed = { format: 'text' };
+  const parsed = { format: 'text', updateCheck: true };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     switch (arg) {
@@ -130,6 +193,9 @@ function parseDoctorArgs(args) {
         break;
       case '--json':
         parsed.format = 'json';
+        break;
+      case '--no-update-check':
+        parsed.updateCheck = false;
         break;
       case '--format': {
         const value = args[++i];
@@ -146,7 +212,7 @@ function parseDoctorArgs(args) {
       default:
         throw inputError(
           `unknown doctor option ${arg}`,
-          'The doctor command only accepts --json, --format, and --help.',
+          'The doctor command only accepts --json, --format, --no-update-check, and --help.',
           'Run `patina doctor --help` for usage.'
         );
     }
@@ -223,10 +289,12 @@ function yesNo(value) {
 function printDoctorHelp() {
   console.log(`patina doctor — check local CLI readiness
 
-Usage: patina doctor [--json]
+Usage: patina doctor [--json] [--no-update-check]
 
 Checks Node version, patina CLI version, backend availability/authentication,
-tmux, and PATINA/provider API key environment variables. Exits 0 when no
-blockers are found, or 1 when a blocking setup issue is detected.
+tmux, PATINA/provider API key environment variables, and whether a newer
+patina-cli is on npm (skip with --no-update-check; offline failures are
+informational, never blockers). Exits 0 when no blockers are found, or 1 when
+a blocking setup issue is detected.
 `);
 }

@@ -21,11 +21,19 @@ export function quotaKeyHmac(secret, ...parts) {
 /**
  * Extract a client IP only from trusted platform headers.
  *
+ * Order matters: `x-vercel-forwarded-for` is consulted FIRST because the
+ * `x-vercel-*` prefix is platform-controlled under every topology (Vercel
+ * always strips/sets it at its own proxy). `x-real-ip` is equally
+ * platform-set on a direct Vercel deployment, but its trustworthiness depends
+ * on that topology staying true — behind a future fronting proxy/CDN or a
+ * verified-proxy setup a client-supplied value could survive, which on this
+ * boundary would mint fresh per-IP free-tier quota per spoofed header (#607).
+ *
  * @param {Record<string, string|string[]|undefined>} headers
  * @param {{trustedHeaders?: string[]}} [options]
  * @returns {string|null}
  */
-export function extractClientIp(headers, { trustedHeaders = ['x-real-ip', 'x-vercel-forwarded-for'] } = {}) {
+export function extractClientIp(headers, { trustedHeaders = ['x-vercel-forwarded-for', 'x-real-ip'] } = {}) {
   for (const name of trustedHeaders) {
     const value = getHeader(headers, name);
     if (!value) continue;

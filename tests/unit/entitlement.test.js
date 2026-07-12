@@ -457,13 +457,20 @@ test('admission: the RPM bucket resets in a new minute', async () => {
   assert.equal(fetchImpl.calls.length, 2);
 });
 
-test('admission: a held single-flight lock denies without calling LS', async () => {
+test('admission: a held single-flight lock polls the cache, then denies without calling LS', async () => {
   const kv = createMemoryKv();
   const license = 'LK-lock-0001';
   const fetchImpl = spyFetch(() => lsResponse(okBody()));
-  const validator = makeValidator({ kv, fetchImpl });
+  // Small poll budget so the bounded follower wait doesn't slow the suite.
+  const validator = makeValidator({
+    kv,
+    fetchImpl,
+    env: baseEnv({ PATINA_LS_LOCK_POLL_INTERVAL_MS: '2', PATINA_LS_LOCK_WAIT_MS: '10' }),
+  });
 
-  // Simulate another instance mid-validation by pre-incrementing the shared lock key.
+  // Simulate another instance mid-validation by pre-incrementing the shared lock
+  // key — and never writing the cache (a crashed/stuck winner). The follower
+  // polls its bounded budget, then still fails CLOSED without touching LS.
   const lockKey = quotaKeyHmac(SECRET, 'ls-lock', license);
   await kv.incr(lockKey, { ttlMs: 10_000 }); // -> 1; the validator's incr then returns 2 (>1)
 
@@ -474,9 +481,37 @@ test('admission: a held single-flight lock denies without calling LS', async () 
   assert.equal(fetchImpl.calls.length, 0);
 });
 
+test('admission: a follower is served from the cache the winner writes mid-poll (no 503, no LS re-call)', async () => {
+  const kv = createMemoryKv();
+  const license = 'LK-lock-0002';
+  const fetchImpl = spyFetch(() => lsResponse(okBody()));
+  const validator = makeValidator({
+    kv,
+    fetchImpl,
+    env: baseEnv({ PATINA_LS_LOCK_POLL_INTERVAL_MS: '2' }),
+  });
+
+  // Another instance holds the lock…
+  const lockKey = quotaKeyHmac(SECRET, 'ls-lock', license);
+  await kv.incr(lockKey, { ttlMs: 10_000 });
+  // …and finishes validating while the follower is polling.
+  const cacheKey = quotaKeyHmac(SECRET, 'ls-license-cache', license);
+  setTimeout(() => {
+    void kv.set(cacheKey, { decision: 'allow', tier: 'pro', status: 'active', expiresAt: FIXED_NOW + 60_000 }, { ttlMs: 60_000 });
+  }, 4);
+
+  const res = await validator.validate({ licenseKey: license });
+  assert.equal(res.ok, true, 'the follower must pick up the winner-written cache');
+  assert.equal(res.cache, 'hit');
+  assert.equal(fetchImpl.calls.length, 0, 'the follower must never call LS itself');
+});
+
 test('admission: concurrent misses for one license call LS exactly once (single-flight)', async () => {
   const fetchImpl = spyFetch(() => lsResponse(okBody()));
-  const validator = makeValidator({ fetchImpl });
+  const validator = makeValidator({
+    fetchImpl,
+    env: baseEnv({ PATINA_LS_LOCK_POLL_INTERVAL_MS: '2' }),
+  });
   const license = 'LK-concurrent-0001';
 
   const results = await Promise.all([
@@ -487,9 +522,12 @@ test('admission: concurrent misses for one license call LS exactly once (single-
     validator.validate({ licenseKey: license }),
   ]);
 
+  // #606: the first concurrent burst for an uncached license must NOT 503 the
+  // followers — they poll into the cache the winner writes.
   assert.equal(fetchImpl.calls.length, 1, 'exactly one instance may call LS');
-  assert.equal(results.filter((r) => r.ok).length, 1, 'exactly one winner');
-  assert.equal(results.filter((r) => !r.ok && r.status === 503).length, 4, 'losers fail closed and retry into cache');
+  assert.equal(results.filter((r) => r.ok).length, 5, 'winner and followers all succeed');
+  assert.equal(results.filter((r) => r.ok && r.cache === 'miss').length, 1, 'exactly one winner validated against LS');
+  assert.equal(results.filter((r) => r.ok && r.cache === 'hit').length, 4, 'followers are served from the winner-written cache');
 });
 
 // ---------------------------------------------------------------------------

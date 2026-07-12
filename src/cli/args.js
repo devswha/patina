@@ -741,6 +741,8 @@ COMMANDS
   patina persona new <id>  Author a reusable custom voice persona (from a writing
                           sample, a description, or a blank template)
   patina persona list      List built-in and custom personas per language
+  patina pack list         List licensed pro packs (needs PATINA_LICENSE_KEY)
+  patina pack install <id> Install a pro pack into custom/
 
 MODES
   --diff                  Show changes pattern by pattern

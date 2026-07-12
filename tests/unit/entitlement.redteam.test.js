@@ -332,18 +332,37 @@ function lockKeyFor(license) {
   return quotaKeyHmac(SECRET, 'ls-lock', license);
 }
 
-check('C3-a', 'single-flight: N concurrent misses call LS exactly once', 'LS called once; 1 winner (miss); N-1 losers fail closed 503', async () => {
+check('C3-a', 'single-flight: N concurrent misses call LS exactly once', 'LS called once; 1 winner (miss); N-1 followers poll into the cache (hit)', async () => {
   const N = 8;
-  // The winner's fetch resolves on a macrotask so every loser returns 503 first.
+  // The winner's fetch resolves on a macrotask, so every follower enters the
+  // bounded cache poll (#606) before the winner writes the cache.
   const fetchImpl = spyFetch(async () => { await new Promise((r) => setTimeout(r, 15)); return lsResponse(okBody()); });
-  const validator = makeValidator({ fetchImpl });
+  const validator = makeValidator({ fetchImpl, env: baseEnv({ PATINA_LS_LOCK_POLL_INTERVAL_MS: '5' }) });
   const license = 'LK-c3-concurrent';
   const results = await Promise.all(Array.from({ length: N }, () => validator.validate({ licenseKey: license })));
   assert.equal(fetchImpl.calls.length, 1, 'exactly one instance may call LS');
-  const winners = results.filter((r) => r.ok);
-  assert.equal(winners.length, 1, 'exactly one winner');
-  assert.equal(winners[0].cache, 'miss');
-  assert.equal(results.filter((r) => !r.ok && r.status === 503).length, N - 1, 'losers fail closed');
+  assert.equal(results.filter((r) => r.ok).length, N, 'the whole first burst succeeds — no follower 503s (#606)');
+  assert.equal(results.filter((r) => r.ok && r.cache === 'miss').length, 1, 'exactly one winner validated against LS');
+  assert.equal(results.filter((r) => r.ok && r.cache === 'hit').length, N - 1, 'followers are served from the winner-written cache');
+});
+
+check('C3-a2', 'single-flight: a follower with a crashed winner exhausts its bounded poll', 'no cache ever appears -> follower stays fail-closed 503 without calling LS', async () => {
+  const kv = createMemoryKv();
+  const license = 'LK-c3-crashed-winner';
+  const fetchImpl = spyFetch(() => { throw new Error('a follower must never reach LS'); });
+  const validator = makeValidator({
+    kv,
+    fetchImpl,
+    env: baseEnv({ PATINA_LS_LOCK_POLL_INTERVAL_MS: '2', PATINA_LS_LOCK_WAIT_MS: '10' }),
+  });
+  // A "winner" that took the lock and died: the lock is held, no cache is ever
+  // written, and only the lock TTL will eventually self-heal it.
+  await kv.incr(lockKeyFor(license), { ttlMs: 10_000 });
+  const res = await validator.validate({ licenseKey: license });
+  assert.equal(res.ok, false);
+  assert.equal(res.status, 503, 'poll exhaustion stays fail-closed');
+  assert.equal(res.reason, QUOTA_REASONS.LICENSE_UNAVAILABLE);
+  assert.equal(fetchImpl.calls.length, 0);
 });
 
 check('C3-b', 'single-flight: a failed winner (non-2xx) releases the lock for retry', 'lock reset to 0; retry re-validates against LS and succeeds', async () => {

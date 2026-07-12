@@ -325,11 +325,16 @@ test('REST KV set without a TTL omits PX; get is undefined for null and verbatim
   }
 });
 
-test('REST KV incrBy adds N atomically via /incrby and sets a whole-second PEXPIRE', async () => {
+test('REST KV incrBy with a TTL adds N and applies the expiry in ONE atomic EVAL command', async () => {
   const gets = [];
+  const posts = [];
   const results = [];
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = /** @type {any} */ (async (url) => {
+  globalThis.fetch = /** @type {any} */ (async (url, init) => {
+    if (init && init.method === 'POST') {
+      posts.push(JSON.parse(String(init.body)));
+      return { ok: true, async json() { return { result: 1200 }; } };
+    }
     gets.push(String(url));
     return { ok: true, async json() { return results.shift(); } };
   });
@@ -337,13 +342,21 @@ test('REST KV incrBy adds N atomically via /incrby and sets a whole-second PEXPI
     const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
     assert.ok(kv);
 
-    // incrby returns the new running total; ttlMs -> /expire with ceil(ms/1000) seconds.
-    results.push({ result: 1200 }); // incrby result
-    results.push({ result: 1 }); // expire ack
+    // #605: increment + TTL is a single EVAL(INCRBY+PEXPIRE) round trip — never
+    // an /incrby followed by a separate /expire the process could die before.
     const total = await kv.incrBy('month key', 400, { ttlMs: 2_500 });
     assert.equal(total, 1200);
+    assert.equal(posts.length, 1, 'one atomic command, no separate expire call');
+    assert.equal(gets.length, 0, 'the GET path is never used when a TTL is supplied');
+    assert.equal(posts[0][0], 'EVAL');
+    assert.match(posts[0][1], /INCRBY/);
+    assert.match(posts[0][1], /PEXPIRE/);
+    assert.deepEqual(posts[0].slice(2), ['1', 'month key', '400', '2500'], 'one key; amount; ttl in ms');
+
+    // Without a TTL the plain GET-path INCRBY is kept.
+    results.push({ result: 800 });
+    assert.equal(await kv.incrBy('month key', 400), 800);
     assert.equal(gets[0], 'https://kv.example.test/incrby/month%20key/400');
-    assert.equal(gets[1], 'https://kv.example.test/expire/month%20key/3');
 
     // A malformed counter (non-numeric) fails closed by throwing.
     results.push({ result: 'not-a-number' });
@@ -496,10 +509,16 @@ test('pro tier: in production, no pro key + present free key + no allow-flag ret
   // One mock serves both the LS validate call and the Upstash KV REST adapter so
   // entitlement + rate limiting pass in production and the flow reaches the
   // server-key resolution (where the policy denial happens).
-  globalThis.fetch = /** @type {any} */ (async (url) => {
+  globalThis.fetch = /** @type {any} */ (async (url, init) => {
     const u = String(url);
     if (u.includes('api.lemonsqueezy.com')) {
       return { ok: true, status: 200, async json() { return { valid: true, license_key: { status: 'active' }, meta: { store_id: '42', variant_id: '99' } }; } };
+    }
+    if (init && init.method === 'POST') {
+      // Root-POST commands: atomic EVAL(INCRBY+PEXPIRE) counters return 1; SET returns OK.
+      const args = JSON.parse(String(init.body));
+      if (args[0] === 'EVAL') return { ok: true, async json() { return { result: 1 }; } };
+      return { ok: true, async json() { return { result: 'OK' }; } };
     }
     if (u.includes('/incr/')) return { ok: true, async json() { return { result: 1 }; } };
     if (u.includes('/decr/')) return { ok: true, async json() { return { result: 0 }; } };

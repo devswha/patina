@@ -24,6 +24,7 @@ This page expands the English pattern packs into a browsable reference. It is ge
 | 12 | rewrite | False Ranges | [en-language.md](../patterns/en-language.md) |
 | 32 | rewrite | Comparison Adverb Overuse ("more" without target) | [en-language.md](../patterns/en-language.md) |
 | 33 | rewrite | Definitional-Metaphor Equation ("X is the architecture of Z") | [en-language.md](../patterns/en-language.md) |
+| 34 | rewrite | False Agency (Inanimate Actors) | [en-language.md](../patterns/en-language.md) |
 | 13 | rewrite | Em Dash Overuse | [en-style.md](../patterns/en-style.md) |
 | 14 | rewrite | Boldface Overuse | [en-style.md](../patterns/en-style.md) |
 | 15 | rewrite | Inline-Header Vertical Lists | [en-style.md](../patterns/en-style.md) |
@@ -293,6 +294,34 @@ Example after:
 ---
 
 ## Style Patterns
+
+### 34. False Agency (Inanimate Actors)
+
+- Source: [en-language.md](../patterns/en-language.md)
+- Type: rewrite-capable pattern
+
+**Watch words:** the data tells us, the numbers speak, the decision emerged, the culture shifted, the conversation moved toward, the market rewards, the market decides, the complaint becomes, the strategy demands, this unlocks, the moment calls for, the work speaks for itself
+
+**Fire condition:** 2+ sentences in the same document where an inanimate subject performs a human action (deciding, telling, rewarding, demanding, moving a discussion) *and* the human actor is recoverable from context but never named. A single instance is an audit hint only.
+
+**Exclusion:**
+- Academic/report citation conventions ("the study finds", "the paper argues", "the data show a correlation") — standard metonymy for the authors.
+- Genuine agentless processes ("the temperature rose", "the deadline passed", "the market crashed" as an aggregate event).
+- Deliberate literary personification sustained as a device, and established idioms.
+- Software/system subjects doing what software actually does ("the linter flags", "the pipeline retries").
+
+**Disambiguation from #26/#27 (Passive/Nominalization):** passive voice hides the actor by grammar ("the decision was made"); false agency hides the actor by promoting an object to actor ("the decision emerged"). Both leave the same question — *who did it* — but this pattern fires on active-voice sentences, which passive detectors miss.
+
+**Semantic Risk:** HIGH
+**Preservation Note:** Never invent an actor the source does not support. If the text implies the actor (a team, the author, "you"), name that; if no actor is recoverable, restructure around what is actually known ("someone on the team killed the project" → only if the source says so; otherwise "the project was killed within days" may have to survive as-is). Fabricating agency is a meaning violation, not a style fix.
+
+**Problem:** AI systematically promotes abstractions into actors — decisions emerge, cultures shift, data tells, markets reward — because it lets the prose sound analytical while never committing to who did what. Human writing tends to name the person, or at least stand somewhere ("we", "you", "the team"). The tell is not one sentence but the accumulation: a paragraph where every event happens with no human in it.
+
+**Before:**
+> The feedback loop rewarded speed over quality, so the culture shifted within a quarter. Decisions emerged from Slack threads rather than meetings, and the roadmap bent toward whatever the metrics demanded.
+
+**After:**
+> Leadership paid out bonuses on shipping speed, not defect counts, so within a quarter engineers stopped polishing. People started making calls in Slack threads instead of meetings, and the PMs rewrote the roadmap around whatever number the dashboard showed that week.
 
 ### 13. Em Dash Overuse
 

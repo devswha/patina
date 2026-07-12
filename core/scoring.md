@@ -76,52 +76,52 @@ Unknown categories (from custom packs not in the weight config) get default weig
 | Category | Weight | Patterns | Notes |
 |----------|--------|----------|-------|
 | content | 0.18 | 6 | |
-| language | 0.18 | 8 | |
+| language | 0.18 | 9 | |
 | style | 0.18 | 6 | |
 | communication | 0.13 | 4 | |
 | filler | 0.08 | 4 | |
 | structure | 0.15 | 5 | |
 | viral-hook | 0.10 | 9 | score-only (no rewrite) |
-| **Total** | **1.00** | **42** | |
+| **Total** | **1.00** | **43** | |
 
 ### English (en)
 
 | Category | Weight | Patterns | Notes |
 |----------|--------|----------|-------|
 | content | 0.20 | 6 | |
-| language | 0.20 | 8 | |
+| language | 0.20 | 9 | |
 | style | 0.20 | 6 | |
 | communication | 0.12 | 4 | |
 | filler | 0.08 | 4 | |
 | structure | 0.10 | 5 | |
 | viral-hook | 0.10 | 9 | score-only (no rewrite) |
-| **Total** | **1.00** | **42** | |
+| **Total** | **1.00** | **43** | |
 
 ### Chinese (zh)
 
 | Category | Weight | Patterns | Notes |
 |----------|--------|----------|-------|
 | content | 0.18 | 6 | |
-| language | 0.18 | 8 | |
+| language | 0.18 | 9 | |
 | style | 0.18 | 6 | |
 | communication | 0.13 | 4 | |
 | filler | 0.08 | 4 | |
 | structure | 0.15 | 5 | |
 | viral-hook | 0.10 | 9 | score-only (no rewrite) |
-| **Total** | **1.00** | **42** | |
+| **Total** | **1.00** | **43** | |
 
 ### Japanese (ja)
 
 | Category | Weight | Patterns | Notes |
 |----------|--------|----------|-------|
 | content | 0.18 | 6 | |
-| language | 0.18 | 8 | |
+| language | 0.18 | 9 | |
 | style | 0.18 | 6 | |
 | communication | 0.13 | 4 | |
 | filler | 0.08 | 4 | |
 | structure | 0.15 | 5 | |
 | viral-hook | 0.10 | 9 | score-only (no rewrite) |
-| **Total** | **1.00** | **42** | |
+| **Total** | **1.00** | **43** | |
 
 Weights are configurable via `ouroboros.category-weights.{lang}` in `.patina.yaml`.
 
@@ -205,20 +205,20 @@ Category scores:
 | Category | Detected | Sum | Max (count×3) | Score |
 |----------|----------|-----|---------------|-------|
 | content | 3/6 | 3+2+1=6 | 6×3=18 | 33.3 |
-| language | 1/8 | 2 | 8×3=24 | 8.3 |
+| language | 1/9 | 2 | 9×3=27 | 7.4 |
 | style | 2/6 | 3+2=5 | 6×3=18 | 27.8 |
 | communication | 0/4 | 0 | 4×3=12 | 0.0 |
 | filler | 1/4 | 1 | 4×3=12 | 8.3 |
 | structure | 1/5 | 3 | 5×3=15 | 20.0 |
 | viral-hook | 0/9 | 0 | 9×3=27 | 0.0 |
 
-Overall = 33.3×0.18 + 8.3×0.18 + 27.8×0.18 + 0.0×0.13 + 8.3×0.08 + 20.0×0.15 + 0.0×0.10
-       = 6.0 + 1.5 + 5.0 + 0.0 + 0.7 + 3.0 + 0.0
-       = **16.2**
+Overall = 33.3×0.18 + 7.4×0.18 + 27.8×0.18 + 0.0×0.13 + 8.3×0.08 + 20.0×0.15 + 0.0×0.10
+       = 6.0 + 1.3 + 5.0 + 0.0 + 0.7 + 3.0 + 0.0
+       = **16.0**
 
 (Weighted terms are computed from the unrounded category scores and shown to
-one decimal; they sum exactly to the displayed total. Unrounded: 6.000 + 1.500
-+ 5.000 + 0.000 + 0.667 + 3.000 = 16.167 → 16.2.)
+one decimal; they sum exactly to the displayed total. Unrounded: 6.000 + 1.333
++ 5.000 + 0.000 + 0.667 + 3.000 = 16.000 → 16.0.)
 
 Interpretation: 16-30 range = "거의 사람다움" (Mostly human, minor traces)
 

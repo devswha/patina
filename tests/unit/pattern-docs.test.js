@@ -256,7 +256,7 @@ test('README and PATTERNS selector counts stay aligned with pattern packs', () =
     readme,
     new RegExp(`\\*\\*${total} patterns\\*\\* \\| ${rewriteCounts.ko} rewrite-capable \\+ ${viralCounts.ko} score-only viral-hook per language \\(${totalPerLang} each across KO/EN/ZH/JA\\)`),
   );
-  assert.match(readme, /full 168-pattern catalog/);
+  assert.match(readme, new RegExp(`full ${total}-pattern catalog`));
 
   const selector = readFileSync(resolve(DOCS_DIR, 'PATTERNS.md'), 'utf8');
   assert.match(selector, new RegExp(`Patina ships ${total} pattern entries across four languages\\.`));

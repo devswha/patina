@@ -397,6 +397,10 @@ details.foldout[open] > summary::before { content: "▾ "; }
 .retrybtn { display: inline-flex; align-items: center; margin-top: 10px; font-family: inherit; font-size: 13px; border-radius: 9999px; padding: 6px 16px; cursor: pointer; background: transparent; border: 1px solid var(--border-strong); color: var(--text); transition: background .15s; }
 .retrybtn:hover { background: var(--bg-hover); }
 
+/* Pro upsell link shown on free-tier quota exhaustion */
+.pro-upsell { display: inline-flex; align-items: center; margin: 10px 8px 0 0; font-size: 13px; font-weight: 600; border-radius: 9999px; padding: 6px 16px; text-decoration: none; background: var(--accent); color: var(--on-accent); box-shadow: var(--inset); transition: background .15s; }
+.pro-upsell:hover { background: var(--accent-press); }
+
 /* ───────── keyboard focus (a11y) ─────────
    Hover-only affordances are invisible to keyboard users; every interactive
    control gets one consistent focus ring. :focus-visible keeps mouse clicks
@@ -419,6 +423,7 @@ details.foldout[open] > summary::before { content: "▾ "; }
 .foot__links a:focus-visible,
 details.foldout > summary:focus-visible,
 .retrybtn:focus-visible,
+.pro-upsell:focus-visible,
 .ctl__select:focus-visible,
 .ctl__input:focus-visible {
   outline: 2px solid var(--accent);

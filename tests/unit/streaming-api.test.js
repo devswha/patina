@@ -84,3 +84,52 @@ test('callLLMStream skips malformed JSON data lines without crashing', async () 
   assert.deepEqual(deltas, ['ok']);
   assert.equal(result.text, 'ok');
 });
+
+test('callLLMStream drops temperature and retries once when the model rejects it (claude-sonnet-5)', async () => {
+  const bodies = [];
+  const fetchImpl = async (_url, init) => {
+    const body = JSON.parse(String(/** @type {any} */ (init).body));
+    bodies.push(body);
+    if ('temperature' in body) {
+      return new Response('{"error":{"code":"invalid_request_error","message":"`temperature` is deprecated for this model."}}', {
+        status: 400,
+        headers: new globalThis.Headers(),
+      });
+    }
+    return okResponse([
+      'data: {"choices":[{"delta":{"content":"ok"},"finish_reason":null}]}\n\n',
+      'data: [DONE]\n\n',
+    ]);
+  };
+
+  const result = await callLLMStream({ prompt: 'p', apiKey: 'sk-test', model: 'temp-reject-stream', fetchImpl });
+  assert.equal(result.text, 'ok');
+  assert.equal(bodies.length, 2, 'exactly one drop-and-retry');
+  assert.ok('temperature' in bodies[0], 'first attempt sends temperature');
+  assert.ok(!('temperature' in bodies[1]), 'retry omits temperature');
+
+  // The model is remembered: the next stream skips temperature up front.
+  bodies.length = 0;
+  const again = await callLLMStream({ prompt: 'p', apiKey: 'sk-test', model: 'temp-reject-stream', fetchImpl });
+  assert.equal(again.text, 'ok');
+  assert.equal(bodies.length, 1);
+  assert.ok(!('temperature' in bodies[0]), 'learned model skips temperature on the first attempt');
+});
+
+test('callLLMStream still throws for unrelated 400s', async () => {
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls++;
+    return new Response('bad request: missing field', { status: 400, headers: new globalThis.Headers() });
+  };
+  await assert.rejects(
+    callLLMStream({ prompt: 'p', apiKey: 'sk-test', model: 'temp-keep-stream', fetchImpl }),
+    (err) => {
+      const error = /** @type {any} */ (err);
+      assert.equal(error.name, 'HttpError');
+      assert.equal(error.status, 400);
+      return true;
+    }
+  );
+  assert.equal(calls, 1, 'a generic 400 is not retried');
+});

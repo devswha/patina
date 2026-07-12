@@ -8,7 +8,7 @@ cd "$(dirname "$0")/../.."
 ROWS=artifacts/rewrite-efficacy-study3/s3-rows-D3.jsonl
 LOG=artifacts/rewrite-efficacy-study3/s3-run.log
 
-for pass in $(seq 1 12); do
+for pass in $(seq 1 48); do
   echo "[loop] pass $pass" >> "$LOG"
   node scripts/research/rewrite-efficacy-study3.mjs
   # prune fail-soft rows so resume retries them

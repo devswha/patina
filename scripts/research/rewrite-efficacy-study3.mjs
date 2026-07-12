@@ -54,7 +54,13 @@ const JUDGES = [
   { id: 'judge-grok', family: 'xai', cmd: 'node', args: [join('scripts', 'research', 'xai-cli.mjs')] },
 ];
 
-const STAGE_TIMEOUT_MS = 600_000; // Study 1 top-up value, per S2
+// Plan stage matches S1/S2's rewrite budget; the execute stage's input is
+// original + plan (larger), and two distinct documents hit the 600s wall in
+// the live run (docs 20, 25) — raised to 900s mid-run as an execution note
+// (harness plumbing, same precedent as S1's 300→600 top-up; no analysis
+// criterion changes). Prompts untouched.
+const PLAN_TIMEOUT_MS = 600_000;
+const EXEC_TIMEOUT_MS = 900_000;
 const JUDGE_TIMEOUT_MS = 120_000;
 const JUDGE_ATTEMPTS = 3;
 
@@ -294,13 +300,13 @@ async function main() {
     if (consecutiveFailures >= 3) { log('3 consecutive rewrite failures — circuit breaker OPEN, stopping (prune failed rows, then resume)'); break; }
 
     log(`${label}: plan stage (${stored.original.length} chars)…`);
-    const plan = await claudeCall(planPrompt(stored.original), { timeout: STAGE_TIMEOUT_MS });
+    const plan = await claudeCall(planPrompt(stored.original), { timeout: PLAN_TIMEOUT_MS });
     if (plan.error) log(`${label}: PLAN FAILED — ${plan.error}`);
 
     let rw = { text: null, error: plan.error ? `plan: ${plan.error}` : null };
     if (plan.text) {
       log(`${label}: execute stage…`);
-      rw = await claudeCall(executePrompt(stored.original, plan.text), { timeout: STAGE_TIMEOUT_MS });
+      rw = await claudeCall(executePrompt(stored.original, plan.text), { timeout: EXEC_TIMEOUT_MS });
       if (rw.error) log(`${label}: EXECUTE FAILED — ${rw.error}`);
     }
     if (rw.error) consecutiveFailures += 1; else consecutiveFailures = 0;

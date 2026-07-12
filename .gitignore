@@ -13,7 +13,7 @@ custom/
 *~
 
 # Ops / runtime logs
-node_modules/
+node_modules
 .env
 .gjc/
 plans/

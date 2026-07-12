@@ -90,6 +90,13 @@ allowlist: []              # additive merge: 감지에서 제외할 어휘
 # Other arrays are replaced by the higher-precedence config so users can choose
 # an exact value instead of merging by accident.
 
+# Over-editing guard: before a rewrite, if the deterministic layer finds
+# nothing to fix (0 hot paragraphs, near-zero signal, 3+ paragraphs), warn that
+# rewriting already-human text can ADD AI-likeness (measured on human documents
+# in docs/research/2026-rewrite-efficacy-study1.md). Advisory only — never
+# blocks. Set to false to silence.
+over-editing-guard: true
+
 # Scoring: LLM score remains canonical, with a deterministic shadow score
 # from src/features/* for reproducible drift checks.
 scoring:

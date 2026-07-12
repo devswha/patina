@@ -420,6 +420,68 @@ in marketing or pack docs.
   NOT claim measured efficacy, and the next iteration targets whatever the
   surviving cues say.
 
+## Study 3 (structural-mechanism intervention) — registered 2026-07-12, before any Study 3 data
+
+Study 2 rejected the prompt-text mechanism: describing document-architecture
+patterns to the rewriter produced no perceptual improvement (paired d −0.7
+[−3.4, +1.8]) and violated both guard rails (meaning gate 87.0%, all failures
+dropped numbers; human-control over-editing d +5.1 [+0.3, +9.6]). Its results
+doc names the design implication: structural humanization needs a
+**structural mechanism**, not more prompt prose. Study 3 tests the first
+candidate on that list — a pre-rewrite **structure plan step**.
+
+### Design
+
+- **Intervention — two-stage rewrite (plan → execute), same rewriter
+  (claude-cli) for both stages:**
+  1. **Plan stage:** the model receives the original document plus a fixed
+     planning instruction and outputs a reorganization plan: explicit
+     merge/split/reorder decisions, target paragraph-size asymmetry, which
+     checklist/parallel structures to dismantle — under hard constraints
+     written into the plan contract: every number, date, and named entity is
+     enumerated in the plan and marked KEEP-verbatim; no new content units;
+     no plan may delete a content unit (S2's failure mode was compression
+     dropping facts).
+  2. **Execute stage:** the model receives the original plus the plan and
+     produces the rewrite by carrying out the plan. The plan text is recorded
+     per row alongside the rewrite (auditable intermediate).
+- **Arm D3:** re-rewrite the SAME 54 Study 1 ko documents (27 AI + 27 human,
+  by stored original text). Panel, quorum, prompts, analyzer stats identical
+  to Study 1/2 (kimi / gpt-5.5 / grok-4.5, 2-of-3). Originals are not
+  re-judged: Study 1 original ratings remain the shared baseline, so
+  d(doc) = Δ3 − Δ1, with Δ2 available as a descriptive second comparator only.
+- **Primary outcome (H-S3a):** mean paired d on AI documents negative with
+  95% bootstrap CI excluding 0 AND point estimate ≤ −5. The stricter point
+  threshold is deliberate: the mechanism doubles per-document rewrite cost
+  (2 LLM calls), so a sub-5-point gain does not justify shipping it.
+- **Secondary (H-S3b):** structural share of strongest-cues among
+  still-called-"ai" D3 judgments < 60% (S1: 81%, S2: 82%).
+- **Guard rails (both must hold; a violation blocks shipping regardless of d):**
+  1. meaning-safety gate pass ≥ 95% (≥ 52/54) — the direct test of the
+     KEEP-verbatim plan contract against S2's dropped-numbers failure;
+  2. human-control paired d must NOT be significantly positive (CI includes 0
+     or is negative) — no repeat of S2's measured over-editing harm.
+  Rewrite/original length ratio is reported per class (S2 mean 0.91).
+- **Confound noted up front:** same as Study 2 — rewriter/judges stochastic,
+  runs days apart; paired design absorbs document-level variance, not
+  run-level drift. Near-zero d again reads as "indistinguishable from rerun
+  variance", not spin.
+- Runner: extends the Study 2 harness (fail-soft recorded rows,
+  resume-by-original_sha); quota headroom on all judge backends probed
+  immediately before the run, per S2 practice.
+
+### What ships on the result
+
+- All criteria pass → the plan-step mechanism graduates to a **product
+  proposal** (separate approval; candidate surfaces: a restructure option in
+  the rewrite pipeline or a redesigned pro pack v2 that carries the plan
+  contract) citing this registration and the measured CIs.
+- H-S3a fails or a guard rail is violated → published as-is; next iteration
+  falls to candidate 2 from the Study 2 results doc (deterministic structure
+  transforms with LLM infill). No efficacy claim ships from a failed study.
+
+No Study 3 corpus row, rewrite, plan, or judgment exists at registration time.
+
 ## Sources
 - Self-Preference Bias in LLM-as-a-Judge — arXiv:2410.21819
 - TH-Bench (humanizing attacks vs detectors) — arXiv:2503.08708

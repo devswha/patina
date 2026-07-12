@@ -1,5 +1,5 @@
 // @ts-check
-import { HttpError, redactErrorText } from './api.js';
+import { HttpError, redactErrorText, isTemperatureRejectedError, markTemperatureRejected, modelRejectsTemperature } from './api.js';
 
 const DEFAULT_TIMEOUT = 120000;
 // Cap a single un-terminated SSE line so a malformed provider cannot grow the
@@ -97,23 +97,43 @@ export async function callLLMStream({
     cleanupSignal = () => signal.removeEventListener('abort', onAbort);
   }
 
+  // Skip `temperature` up front when this process already saw the model
+  // reject it (e.g. claude-sonnet-5) — avoids a guaranteed 400 round trip.
+  const payload = {
+    model,
+    messages: [{ role: 'user', content: prompt }],
+    stream: true,
+  };
+  if (!modelRejectsTemperature(model)) payload.temperature = temperature;
+
   try {
-    const response = await fetchImpl(`${baseURL}/chat/completions`, {
+    const issue = () => fetchImpl(`${baseURL}/chat/completions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature,
-        stream: true,
-      }),
+      body: JSON.stringify(payload),
       signal: controller.signal,
     });
 
+    let response = await issue();
+
     throwIfAborted(signal);
+    if (!response.ok) {
+      const body = typeof response.text === 'function' ? await response.text() : '';
+      const err = new HttpError(response.status, redact(body), response.headers?.get?.('retry-after'));
+      // `temperature` rejected for this model: drop the field and re-issue
+      // once. Cannot loop — the field is gone from `payload` after this hit.
+      if (isTemperatureRejectedError(err) && 'temperature' in payload) {
+        markTemperatureRejected(model);
+        delete payload.temperature;
+        response = await issue();
+        throwIfAborted(signal);
+      } else {
+        throw err;
+      }
+    }
     if (!response.ok) {
       const body = typeof response.text === 'function' ? await response.text() : '';
       throw new HttpError(response.status, redact(body), response.headers?.get?.('retry-after'));

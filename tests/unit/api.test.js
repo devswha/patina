@@ -450,3 +450,59 @@ test('callLLM falls back to buffered JSON when a server ignores stream:true (#57
     globalThis.fetch = originalFetch;
   }
 });
+
+test('callLLM drops temperature and retries once when the model rejects it (claude-sonnet-5)', async () => {
+  const originalFetch = globalThis.fetch;
+  const bodies = [];
+  globalThis.fetch = async (_url, opts) => {
+    const body = JSON.parse(opts.body);
+    bodies.push(body);
+    if ('temperature' in body) {
+      return {
+        ok: false,
+        status: 400,
+        headers: { get: () => null },
+        text: async () => '{"error":{"code":"invalid_request_error","message":"`temperature` is deprecated for this model."}}',
+      };
+    }
+    return { ok: true, json: async () => ({ model: body.model, choices: [{ message: { content: 'ok' } }] }) };
+  };
+  try {
+    let meta;
+    const out = await callLLM({
+      prompt: 'p', apiKey: 'k', model: 'temp-reject-buffered', maxRetries: 0,
+      onResponse: (m) => { meta = m; },
+    });
+    assert.equal(out, 'ok');
+    assert.equal(bodies.length, 2, 'exactly one drop-and-retry');
+    assert.ok('temperature' in bodies[0], 'first attempt sends temperature');
+    assert.ok(!('temperature' in bodies[1]), 'retry omits temperature');
+    assert.equal(meta.temperature, null, 'metadata reflects the dropped field');
+
+    // The model is remembered: the next call skips temperature up front.
+    bodies.length = 0;
+    await callLLM({ prompt: 'p', apiKey: 'k', model: 'temp-reject-buffered', maxRetries: 0 });
+    assert.equal(bodies.length, 1);
+    assert.ok(!('temperature' in bodies[0]), 'learned model skips temperature on the first attempt');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('callLLM does not strip temperature for unrelated 400s', async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return { ok: false, status: 400, headers: { get: () => null }, text: async () => 'bad request: missing field' };
+  };
+  try {
+    await assert.rejects(
+      callLLM({ prompt: 'p', apiKey: 'k', model: 'temp-keep-model', maxRetries: 0 }),
+      /400/
+    );
+    assert.equal(calls, 1, 'a generic 400 is not retried');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

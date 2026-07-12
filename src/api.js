@@ -26,6 +26,43 @@ const MAX_SSE_BUFFER_BYTES = 1024 * 1024;
  */
 export const DEFAULT_TEMPERATURE = 0.7;
 
+// Models that rejected the `temperature` field outright (HTTP 400
+// "deprecated" / "not supported" — Anthropic's OpenAI-compat endpoint started
+// this with claude-sonnet-5; some OpenAI reasoning models do the same).
+// Learned at runtime and shared with the streaming client so a warm process
+// skips the doomed first attempt on subsequent calls.
+const temperatureRejectedModels = new Set();
+
+/**
+ * True when the provider rejected a request solely because `temperature` is
+ * unsupported/deprecated for the requested model. Callers retry exactly once
+ * with the field omitted (and remember the model for this process).
+ *
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+export function isTemperatureRejectedError(err) {
+  if (!(err instanceof HttpError) || err.status !== 400) return false;
+  const text = `${err.message} ${err.body}`;
+  return /temperature/i.test(text) && /deprecat|unsupported|not (?:be )?support/i.test(text);
+}
+
+/**
+ * @param {string} model
+ * @returns {boolean} Whether this process already saw the model reject `temperature`.
+ */
+export function modelRejectsTemperature(model) {
+  return temperatureRejectedModels.has(model);
+}
+
+/**
+ * @param {string} model
+ * @returns {void}
+ */
+export function markTemperatureRejected(model) {
+  temperatureRejectedModels.add(model);
+}
+
 // Status codes that warrant a retry. Network errors (no status, AbortError)
 // are also retryable; auth / validation 4xxs are not.
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
@@ -324,8 +361,10 @@ export async function callLLM({
   const body = {
     model,
     messages: [{ role: 'user', content: prompt }],
-    temperature,
   };
+  // Skip `temperature` up front when this process already saw the model
+  // reject it (e.g. claude-sonnet-5) — avoids a guaranteed 400 round trip.
+  if (!modelRejectsTemperature(model)) body.temperature = temperature;
   if (seed !== undefined && seed !== null) body.seed = seed;
   if (responseFormat) body.response_format = responseFormat;
 
@@ -397,7 +436,7 @@ export async function callLLM({
         provider: 'openai-http',
         model: data.model ?? model,
         requestedModel: model,
-        temperature,
+        temperature: 'temperature' in body ? temperature : null,
         seed: seed ?? null,
         usage: data.usage ?? null,
         cacheTokens: extractCacheTokens(data.usage),
@@ -416,6 +455,15 @@ export async function callLLM({
       if (remainingAfterAttempt <= 0) {
         lastError = new Error(`LLM API deadline exceeded after attempt ${attempt + 1}: ${err.message}`);
         break;
+      }
+      // `temperature` rejected for this model: drop the field and re-issue
+      // immediately. Does not consume a backoff attempt; cannot loop because
+      // the field is gone from `body` after the first hit.
+      if (isTemperatureRejectedError(err) && 'temperature' in body) {
+        markTemperatureRejected(model);
+        delete body.temperature;
+        attempt--;
+        continue;
       }
       if (attempt < maxRetries && isRetryable(err)) {
         const delay = computeBackoffMs(attempt, err.retryAfter, {

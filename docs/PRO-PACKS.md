@@ -41,6 +41,14 @@ same precedence the loaders already give user files:
 Every download is integrity-checked: the CLI recomputes the file's sha256 and
 compares it against the server manifest before writing anything.
 
+## Efficacy policy
+
+Packs only carry efficacy claims that a pre-registered study measured. The
+first structure pack (ko-doc-structure 1.0.0) was **retired from the manifest
+on 2026-07-12** after its intervention study found no perceptual improvement
+and two guard-rail violations (docs/research/2026-rewrite-efficacy-study2.md)
+— the honest baseline this catalog is built on.
+
 ## Operating it (maintainer)
 
 - Content lives in the private repo (`PATINA_PACKS_REPO`, default

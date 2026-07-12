@@ -372,6 +372,54 @@ rather than re-run underpowered.
   absolute score levels are not comparable across studies; only within-study
   paired deltas are interpreted.
 
+## Study 2 (intervention study) — registered 2026-07-12, before any Study 2 data
+
+Study 1's headline was that Korean document rewrites barely move perception
+(Δ −6.0) and that 75–81% of surviving cues are structural. The
+`ko-doc-structure` pack (6 document-architecture patterns, private pro pack,
+authored 2026-07-10 from Study 1's cue evidence) is the designed response.
+Study 2 measures whether it actually works — before any efficacy claim ships
+in marketing or pack docs.
+
+### Design
+
+- **Intervention:** the `ko-doc-structure` pack installed into
+  `custom/patterns/` (via the shipping `patina pack` path), which places its 6
+  patterns into the live rewrite prompt. Everything else — corpus, rewriter
+  (claude-cli), judge panel, prompts, analyzer stats — is identical to
+  Study 1's Arm D.
+- **Arm D2:** re-rewrite the SAME 54 Study 1 ko documents (27 AI + 27 human,
+  by stored original text) with the pack active; judge each new rewrite with
+  the same fixed 3-judge panel (kimi / gpt-5.5 / grok-4.5, 2-of-3 quorum).
+  Originals are NOT re-judged: Study 1's original-condition ratings are reused
+  as the shared baseline, so the paired comparison is
+  Δ2(doc) = panel(rewrite₂) − panel(original₁) vs Δ1(doc) from Study 1.
+- **Primary outcome (H-S2a):** paired per-document improvement
+  d(doc) = Δ2 − Δ1 on AI documents; hypothesis mean d < 0 (the pack helps),
+  95% bootstrap CI excluding 0.
+- **Secondary (H-S2b):** among still-called-"ai" judgments on D2 rewrites, the
+  structural share of strongest-cues (same fixed rubric) falls below 60%
+  (Study 1: 81%).
+- **Guard rails:** RQ5a gate pass-rate ≥ 95% must hold (structure edits are
+  the riskiest for meaning); human-control Δ2 must not worsen beyond Study 1's
+  band (over-editing check); rewrite length ratio reported.
+- **Confound noted up front:** rewriter and judges are stochastic and two days
+  have passed; the comparison is same-original paired but not same-run
+  randomized. If d is small relative to rewrite-rerun noise, the honest read
+  is "cannot distinguish from rerun variance" — a no-effect verdict, not a
+  spin. (A same-run A/B was rejected for cost; this is a pilot-grade
+  intervention estimate.)
+- Quota headroom probed on all four backends immediately before the run
+  (done 2026-07-12: codex, kimi, grok, claude all answered).
+
+### What ships on the result
+
+- d meaningfully negative → the pack's efficacy line in PRO-PACKS/marketing
+  may cite it, with CIs and this registration.
+- d ≈ 0 or positive → published as-is in the results doc; the pack docs must
+  NOT claim measured efficacy, and the next iteration targets whatever the
+  surviving cues say.
+
 ## Sources
 - Self-Preference Bias in LLM-as-a-Judge — arXiv:2410.21819
 - TH-Bench (humanizing attacks vs detectors) — arXiv:2503.08708

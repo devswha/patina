@@ -235,6 +235,7 @@ export async function runDefault(parsed, logger) {
         // Route a deferred batch read failure (#503) into the per-file catch so
         // it counts against the circuit breaker (batch) or rethrows (single).
         if (readError) throw readError;
+        if (mode === 'rewrite') warnIfAlreadyHuman({ text, config, repoRoot, logger });
         let result;
 
         result = await invokeBackendChain({
@@ -1150,6 +1151,38 @@ function buildDocumentSignals({ text, lang }) {
     ? [`어미 분포: ${distribution} — 지배 어투 없음(혼합). 문서 성격에 맞는 어투 하나를 골라 전체를 통일할 것`]
     : [`지배 어투: ${register.label} — ${distribution}. 재작성 문장 전체를 이 어투로 통일할 것`];
   return { signals, register };
+}
+
+/**
+ * Over-editing guard (Study 1 RQ5b): rewriting text that already reads human
+ * measurably nudged it TOWARD AI-likeness (+3.3 judged points on human English
+ * documents, docs/research/2026-rewrite-efficacy-study1.md). When the
+ * deterministic layer finds nothing to fix, say so before spending a rewrite —
+ * advisory only, never blocks, and silent wherever the deterministic score is
+ * unavailable or the text is too short to judge (Study 0 Deviation 1).
+ * Opt out with `over-editing-guard: false` in config.
+ */
+export function warnIfAlreadyHuman({ text, config = {}, repoRoot, logger, scorer = scoreDeterministicSignals }) {
+  if (config['over-editing-guard'] === false) return null;
+  let score = null;
+  try {
+    score = scorer({ text, config, repoRoot, logger: { warn() {} } });
+  } catch {
+    return null; // the guard must never break a rewrite
+  }
+  if (!score || score.skipped) return null;
+  if (typeof score.paragraphCount !== 'number' || score.paragraphCount < 3) return null;
+  const clean = score.hotParagraphs === 0
+    && typeof score.signalScore === 'number' && score.signalScore <= 10
+    && (score.overall === 0 || score.overall === null);
+  if (!clean) return null;
+  logger?.warn?.('rewrite.over_editing_guard', {
+    message: '[patina] over-editing guard: this text already reads human on the deterministic layer '
+      + `(0 hot paragraphs, signal ${Math.round(score.signalScore * 10) / 10}). Rewriting anyway can ADD AI-likeness `
+      + '(measured on human documents in the rewrite-efficacy study). Consider --audit or --score first. '
+      + 'Proceeding; disable this note with `over-editing-guard: false`.',
+  });
+  return score;
 }
 
 function withDeterministicScore(rawResult, { text, config, repoRoot, logger }) {

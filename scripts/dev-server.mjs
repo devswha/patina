@@ -56,6 +56,7 @@ const REWRITES = new Map([
   ['/chatgpt.css', '/playground/chatgpt.css'],
   ['/rewrite-client.js', '/playground/rewrite-client.js'],
   ['/analytics.js', '/playground/analytics.js'],
+  ['/launch-config.js', '/playground/launch-config.js'],
 ]);
 
 const CONTENT_TYPES = new Map([
@@ -72,6 +73,12 @@ const CONTENT_TYPES = new Map([
   ['.ico', 'image/x-icon'],
   ['.woff2', 'font/woff2'],
   ['.map', 'application/json; charset=utf-8'],
+]);
+const STATIC_ROUTE_HEADERS = new Map([
+  ['/launch-config.js', {
+    'Content-Type': 'application/javascript; charset=utf-8',
+    'Cache-Control': 'no-store, max-age=0',
+  }],
 ]);
 
 function contentTypeFor(filePath) {
@@ -108,9 +115,10 @@ async function serveStatic(req, res, urlPath) {
     const info = await stat(abs);
     if (info.isDirectory()) { res.writeHead(403).end('forbidden'); return; }
     const buf = await readFile(abs);
+    const routeHeaders = STATIC_ROUTE_HEADERS.get(urlPath);
     res.writeHead(200, {
-      'Content-Type': contentTypeFor(abs),
-      'Cache-Control': 'no-store',
+      'Content-Type': routeHeaders?.['Content-Type'] || contentTypeFor(abs),
+      'Cache-Control': routeHeaders?.['Cache-Control'] || 'no-store',
       'Content-Length': buf.length,
     });
     // HEAD must return headers only — never a body (RFC 9110 §9.3.2).

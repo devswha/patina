@@ -3,6 +3,8 @@
 // transitions into a chat view. Reuses the isomorphic streaming client + contract;
 // renders via safe DOM APIs.
 import { createRewriteThread, streamRewrite, classifyRewriteError, REWRITE_ERROR_KINDS } from './rewrite-client.js';
+// @ts-expect-error Browser-root generated module is resolved at deployment, not by Node/tsc.
+import launchConfig from '/launch-config.js';
 import {
   PROVIDER_PRESETS,
   WEB_PERSONAS,
@@ -27,6 +29,10 @@ const els = {
   model: /** @type {HTMLSelectElement} */ ($('#model')),
   apiKey: /** @type {HTMLInputElement} */ ($('#api-key')),
   byokRow: $('#byok-row'),
+  proRow: $('#pro-row'),
+  licenseKey: /** @type {HTMLInputElement} */ ($('#license-key')),
+  licenseSignIn: /** @type {HTMLButtonElement} */ ($('#license-sign-in')),
+  licenseSignOut: /** @type {HTMLButtonElement} */ ($('#license-sign-out')),
   homeLink: $('#home-link'),
   // landing hero
   heroForm: /** @type {HTMLFormElement} */ ($('#hero-form')),
@@ -76,6 +82,8 @@ const I18N = {
     chatPh: 'Keep refining…  (Enter to send · Shift+Enter for newline)',
     newchat: 'New chat',
     emptyChat: 'New chat — paste AI-sounding text below and patina cleans it up.',
+    outputUnapproved: 'Unapproved — checks have not passed. Actions are disabled.',
+    outputApproved: 'Approved — checks passed. Actions are enabled.',
     floorWarn: 'This rewrite didn’t pass patina’s meaning-preservation floor (MPS / fidelity), so it’s flagged. Try again or pick a stronger model.',
     failNote: 'Rewrite failed. Try again, or check the mode/key.',
     quotaDaily: 'You’ve used today’s free quota. Try again tomorrow, or switch to BYOK mode with your own API key for unlimited use.',
@@ -115,6 +123,8 @@ const I18N = {
     chatPh: '이어서 다듬기…  (Enter 전송 · Shift+Enter 줄바꿈)',
     newchat: '새 대화',
     emptyChat: '새 대화 — 아래에 AI 티 나는 문장을 붙여넣으면 patina가 다듬어요.',
+    outputUnapproved: '미승인 — 검사를 통과하지 않았습니다. 작업을 사용할 수 없습니다.',
+    outputApproved: '승인됨 — 검사를 통과했습니다. 작업을 사용할 수 있습니다.',
     floorWarn: '이 리라이트는 patina의 의미 보존 기준(MPS·fidelity)을 통과하지 못해 경고로 표시했어요. 다시 시도하거나 더 강한 모델을 골라보세요.',
     failNote: '리라이트 실패. 다시 시도하거나 모드·키를 확인해 주세요.',
     quotaDaily: '오늘 무료 사용량을 다 쓰셨어요. 내일 다시 시도하거나, 본인 API 키로 BYOK 모드를 쓰면 제한 없이 이용할 수 있어요.',
@@ -154,6 +164,8 @@ const I18N = {
     chatPh: '继续润色…  (Enter 发送 · Shift+Enter 换行)',
     newchat: '新对话',
     emptyChat: '新对话 — 在下方粘贴有 AI 味的文字，patina 帮你润色。',
+    outputUnapproved: '未批准 — 尚未通过检查，操作不可用。',
+    outputApproved: '已批准 — 已通过检查，操作已启用。',
     floorWarn: '该改写未通过 patina 的语义保留阈值（MPS·fidelity），已标记。请重试或选择更强的模型。',
     failNote: '改写失败。请重试，或检查模式 / 密钥。',
     quotaDaily: '今天的免费额度已用完。请明天再试，或切换到 BYOK 模式使用自己的 API 密钥，即可无限制使用。',
@@ -193,6 +205,8 @@ const I18N = {
     chatPh: 'さらに整える…  (Enter送信 · Shift+Enter改行)',
     newchat: '新しいチャット',
     emptyChat: '新しいチャット — 下にAIっぽい文章を貼ると patina が整えます。',
+    outputUnapproved: '未承認 — チェックを通過していないため、操作は使えません。',
+    outputApproved: '承認済み — チェックを通過しました。操作を利用できます。',
     floorWarn: 'この書き換えは patina の意味保持しきい値（MPS・fidelity）を満たさず、警告表示しています。再試行するか、より強力なモデルを選んでください。',
     failNote: '書き換えに失敗しました。再試行するか、モード・キーを確認してください。',
     quotaDaily: '本日の無料利用枠を使い切りました。明日また試すか、ご自身のAPIキーでBYOKモードに切り替えると無制限で使えます。',
@@ -208,6 +222,12 @@ const I18N = {
     retry: '再試行',
     stopLabel: '停止',
   },
+};
+const PRO_I18N = {
+  en: { license: 'License key', placeholder: 'License key (kept in memory)', signIn: 'Sign in', signOut: 'Sign out', missing: 'Enter your license key to use Pro mode.' },
+  ko: { license: '라이선스 키', placeholder: '라이선스 키 (메모리에만 보관)', signIn: '로그인', signOut: '로그아웃', missing: 'Pro 모드를 사용하려면 라이선스 키를 입력해 주세요.' },
+  zh: { license: '许可证密钥', placeholder: '许可证密钥（仅保存在内存中）', signIn: '登录', signOut: '退出登录', missing: '使用 Pro 模式请输入许可证密钥。' },
+  ja: { license: 'ライセンスキー', placeholder: 'ライセンスキー（メモリ内のみ保持）', signIn: 'サインイン', signOut: 'サインアウト', missing: 'Proモードを使うにはライセンスキーを入力してください。' },
 };
 
 // Suggestion pills (label + text the pill loads into the prompt).
@@ -262,6 +282,8 @@ const state = {
   /** @type {Convo[]} */ convos: [],
   /** @type {string|null} */ activeId: null,
   busy: false,
+  license: '',
+  sessionEpoch: 0,
 };
 
 function uid() { return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -275,36 +297,55 @@ function el(tag, cls, text) {
 }
 
 // ---------- launch: pricing CTAs, Pro checkout, UTM attribution ----------
-// Flip PRO_CHECKOUT_URL to the live Lemon Squeezy checkout link once payments
-// open. While it is empty the Pro CTA stays a non-clickable "coming soon" chip,
-// so the launch page never ships a dead buy button. UTM params from the landing
-// URL are captured client-side and appended to the checkout link so paid-tier
-// conversions can be attributed to their launch source (no third-party calls;
-// stays within the self-only CSP and no-telemetry posture).
-const PRO_CHECKOUT_URL = '';
 const PRO_PRICE = '$9.99/mo';
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'ref'];
+const UTM_VALUE = /^[A-Za-z0-9._~-]{1,64}$/;
+let capturedUtm = {};
+
+function isSafeUtm(value) {
+  if (!UTM_VALUE.test(value)) return false;
+  if (/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(value)) return false;
+  if (/^[0-9a-f]{16,}$/i.test(value)) return false;
+  if (/^(?:(?:sk|pk|rk|api|key|token|secret|auth|bearer|ghp|github_pat)[_.-]?[A-Za-z0-9._~-]+|eyJ[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+){2})$/i.test(value)) return false;
+  if (value.length < 16) return true;
+  const counts = new Map();
+  for (const char of value) counts.set(char, (counts.get(char) || 0) + 1);
+  const entropy = [...counts.values()].reduce((sum, count) => {
+    const p = count / value.length;
+    return sum - p * Math.log2(p);
+  }, 0);
+  return entropy < 3.8;
+}
+
+function checkoutBase() {
+  const config = launchConfig;
+  if (!config || config.schemaVersion !== 1 || !config.enabled || !['staging', 'production'].includes(config.channel)) return null;
+  if (typeof config.checkoutOrigin !== 'string' || typeof config.checkoutPath !== 'string') return null;
+  try {
+    const origin = new globalThis.URL(config.checkoutOrigin);
+    if (origin.protocol !== 'https:' || origin.pathname !== '/' || origin.search || origin.hash || !config.checkoutPath.startsWith('/')) return null;
+    const url = new globalThis.URL(config.checkoutPath, origin);
+    if (url.origin !== origin.origin || url.search || url.hash) return null;
+    return url;
+  } catch { return null; }
+}
 
 function captureUtm() {
+  capturedUtm = {};
   try {
     const params = new globalThis.URLSearchParams(globalThis.location.search);
-    const found = {};
-    for (const k of UTM_KEYS) {
-      const v = params.get(k);
-      if (v) found[k] = v.slice(0, 128);
+    for (const key of UTM_KEYS) {
+      const value = params.get(key);
+      if (value && isSafeUtm(value)) capturedUtm[key] = value;
     }
-    if (Object.keys(found).length) globalThis.sessionStorage.setItem('patina_utm', JSON.stringify(found));
-  } catch { /* URL / sessionStorage unavailable — attribution is best-effort */ }
+  } catch { /* attribution is optional and held only in memory */ }
 }
 
 function proCheckoutHref() {
-  if (!PRO_CHECKOUT_URL) return '';
-  try {
-    const url = new globalThis.URL(PRO_CHECKOUT_URL);
-    const stored = JSON.parse(globalThis.sessionStorage.getItem('patina_utm') || '{}');
-    for (const [k, v] of Object.entries(stored)) url.searchParams.set(k, String(v));
-    return url.toString();
-  } catch { return PRO_CHECKOUT_URL; }
+  const url = checkoutBase();
+  if (!url) return '';
+  for (const [key, value] of Object.entries(capturedUtm)) url.searchParams.set(key, value);
+  return url.toString();
 }
 
 function wireProCta() {
@@ -319,15 +360,13 @@ function wireProCta() {
     btn.textContent = `Upgrade to Pro — ${PRO_PRICE}`;
   } else {
     btn.removeAttribute('href');
+    btn.removeAttribute('target');
     btn.setAttribute('aria-disabled', 'true');
     btn.classList.add('is-soon');
     btn.textContent = 'Pro — coming soon';
   }
 }
 
-// Pro upsell link for quota-exhausted errors — the roadmap's "optimal exposure
-// point". Before payments open (no PRO_CHECKOUT_URL) it routes to the landing
-// pricing section; once live it deep-links the UTM-attributed checkout.
 function quotaUpsell() {
   const a = el('a', 'pro-upsell', i18n().proUpsell);
   const href = proCheckoutHref();
@@ -336,12 +375,9 @@ function quotaUpsell() {
     a.target = '_blank';
     a.rel = 'noreferrer';
   } else {
-    a.href = '#pricing';
-    a.addEventListener('click', (e) => {
-      e.preventDefault();
-      showLanding();
-      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
-    });
+    a.removeAttribute('href');
+    a.setAttribute('aria-disabled', 'true');
+    a.classList.add('is-soon');
   }
   return a;
 }
@@ -373,7 +409,13 @@ function populateModels() {
 }
 function syncTier() {
   const byok = els.tier.value === WEB_TIERS.BYOK;
+  const pro = els.tier.value === WEB_TIERS.PRO;
+  const signedIn = Boolean(state.license);
   els.byokRow.hidden = !byok;
+  els.proRow.hidden = !pro;
+  els.licenseKey.disabled = signedIn;
+  els.licenseSignIn.hidden = signedIn;
+  els.licenseSignOut.hidden = !signedIn;
 }
 
 // Populate the Voice selector from the contract's per-language persona list.
@@ -589,9 +631,13 @@ function renderThread() {
     for (const m of convo.messages) {
       if (m.role === 'user') inner.appendChild(buildUserMsg(m.text));
       else {
-        const { node, body, textEl } = buildPatinaMsg();
+        const { node, body, textEl, statusEl } = buildPatinaMsg();
         textEl.textContent = m.text;
-        if (m.meta) body.appendChild(buildMeta(m.meta));
+        if (m.meta) {
+          approveOutput(textEl, statusEl);
+          body.appendChild(buildMeta(m.meta));
+          body.appendChild(buildOutputActions(m.text));
+        }
         inner.appendChild(node);
       }
     }
@@ -627,9 +673,29 @@ function buildPatinaMsg() {
   msg.appendChild(avatar);
   const body = el('div', 'msg__body');
   const textEl = el('div', 'msg__text');
-  body.appendChild(textEl);
+  const statusEl = el('p', 'output-status');
+  statusEl.id = `${uid()}-status`;
+  statusEl.setAttribute('role', 'status');
+  statusEl.setAttribute('aria-live', 'polite');
+  statusEl.setAttribute('aria-atomic', 'true');
+  textEl.setAttribute('aria-describedby', statusEl.id);
+  body.append(textEl, statusEl);
   msg.appendChild(body);
-  return { node: msg, body, textEl };
+  return { node: msg, body, textEl, statusEl };
+}
+function markOutputUnapproved(textEl, statusEl) {
+  textEl.classList.add('msg__text--unapproved');
+  textEl.dataset.outputStatus = 'unapproved';
+  textEl.setAttribute('aria-invalid', 'true');
+  statusEl.textContent = i18n().outputUnapproved;
+  statusEl.dataset.outputStatus = 'unapproved';
+}
+function approveOutput(textEl, statusEl) {
+  textEl.classList.remove('msg__text--unapproved');
+  delete textEl.dataset.outputStatus;
+  textEl.removeAttribute('aria-invalid');
+  statusEl.textContent = i18n().outputApproved;
+  statusEl.dataset.outputStatus = 'approved';
 }
 function buildTyping() {
   const t = el('div', 'typing');
@@ -693,6 +759,27 @@ function buildMeta(meta) {
   }
   return wrap;
 }
+function buildOutputActions(text) {
+  const actions = el('div', 'output-actions');
+  const copy = el('button', 'output-action', 'Copy');
+  copy.type = 'button';
+  copy.addEventListener('click', async () => {
+    try { await globalThis.navigator.clipboard?.writeText(text); copy.textContent = 'Copied'; } catch { copy.textContent = 'Copy failed'; }
+  });
+  const download = el('button', 'output-action', 'Download');
+  download.type = 'button';
+  const save = (name) => {
+    const href = globalThis.URL.createObjectURL(new globalThis.Blob([text], { type: 'text/plain;charset=utf-8' }));
+    const anchor = el('a'); anchor.href = href; anchor.download = name; anchor.click();
+    globalThis.URL.revokeObjectURL(href);
+  };
+  download.addEventListener('click', () => save('patina-rewrite.txt'));
+  const exportFile = el('button', 'output-action', 'Export');
+  exportFile.type = 'button';
+  exportFile.addEventListener('click', () => save('patina-rewrite-export.txt'));
+  actions.append(copy, download, exportFile);
+  return actions;
+}
 
 // Auto-detect the dominant script so pasted EN/ZH/JA text is not silently
 // rewritten under the default (ko) language. Kana => ja; Hangul => ko; Han
@@ -712,17 +799,50 @@ let active = null;
 
 function i18n() { return I18N[els.lang.value] || I18N.en; }
 function tfmt(template, vars) { return String(template).replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? '')); }
-function tierLabel(tier) { return tier === WEB_TIERS.BYOK ? 'API' : 'Free'; }
+function tierLabel(tier) {
+  if (tier === WEB_TIERS.BYOK) return 'API';
+  if (tier === WEB_TIERS.PRO) return 'Pro';
+  return 'Free';
+}
 // Error notes are live alerts so assistive tech announces failures.
 function errorNote(text) { const n = el('div', 'error-note', text); n.setAttribute('role', 'alert'); return n; }
 
 function stopActive() {
-  if (active) { active.cancelled = true; active.controller.abort(); }
+  if (!active) return;
+  active.cancelled = true;
+  active.controller.abort();
+  active.stop?.();
+}
+function signOutLicense() {
+  state.sessionEpoch += 1;
+  if (active) { active.cancelled = true; active.controller.abort(); active = null; }
+  state.busy = false;
+  state.license = '';
+  els.licenseKey.value = '';
+  state.convos = [];
+  newConvo();
+  els.thread.setAttribute('aria-busy', 'false');
+  syncTier();
+  updateHeroSend(); updateChatSend();
+}
+function signInLicense() {
+  if (state.license) return;
+  const license = els.licenseKey.value.trim();
+  const error = $('#license-error');
+  if (!license) {
+    showInlineError(error, (PRO_I18N[els.lang.value] || PRO_I18N.en).missing);
+    return;
+  }
+  state.license = license;
+  els.licenseKey.value = '';
+  if (error) { error.hidden = true; error.textContent = ''; }
+  syncTier();
+  updateHeroSend(); updateChatSend();
 }
 
 function inlineErrorNode(source) { return source === 'chat' ? $('#composer-error') : $('#hero-error'); }
 function clearInlineErrors() {
-  document.querySelectorAll('#hero-error, #composer-error, #key-error').forEach((n) => { /** @type {HTMLElement} */ (n).hidden = true; n.textContent = ''; });
+  document.querySelectorAll('#hero-error, #composer-error, #key-error, #license-error').forEach((n) => { /** @type {HTMLElement} */ (n).hidden = true; n.textContent = ''; });
   els.apiKey.classList.remove('is-invalid');
 }
 function showInlineError(node, msg) { if (!node) return; node.textContent = msg; node.hidden = false; }
@@ -742,6 +862,13 @@ function preflight(clean, source) {
     showInlineError($('#key-error'), t.keyMissing);
     showInlineError(inlineErrorNode(source), t.keyMissing);
     els.apiKey.focus();
+    return false;
+  }
+  if (tier === WEB_TIERS.PRO && !state.license) {
+    const message = (PRO_I18N[els.lang.value] || PRO_I18N.en).missing;
+    showInlineError($('#license-error'), message);
+    showInlineError(inlineErrorNode(source), message);
+    els.licenseKey.focus();
     return false;
   }
   return true;
@@ -780,32 +907,38 @@ async function submit(text, source = 'hero') {
   if (emptyState) emptyState.remove();
   inner.appendChild(buildUserMsg(clean));
 
-  const { node, body, textEl } = buildPatinaMsg();
+  const { node, body, textEl, statusEl } = buildPatinaMsg();
   inner.appendChild(node);
 
   els.heroInput.value = ''; autoGrow(els.heroInput);
   els.input.value = ''; autoGrow(els.input);
 
+  const tier = els.tier.value;
   const reqBody = convo.thread.buildRequest({
-    text: clean, tier: els.tier.value,
-    provider: els.provider.value, model: els.model.value, apiKey: els.apiKey.value,
+    text: clean, tier,
+    provider: els.provider.value, model: els.model.value,
+    apiKey: tier === WEB_TIERS.BYOK ? els.apiKey.value : undefined,
     persona: els.persona.value || undefined,
   });
-
-  await runAttempt({ convo, clean, reqBody, body, textEl });
+  await runAttempt({
+    convo, clean, reqBody, body, textEl, statusEl,
+    authorization: tier === WEB_TIERS.PRO ? `Bearer ${state.license}` : undefined,
+    epoch: state.sessionEpoch,
+  });
 }
 
 // One streaming attempt against /api/rewrite. Retry re-invokes this with the
 // same request context; the thread only commits on a done frame, so a failed
 // or cancelled attempt never poisons the conversation state.
 async function runAttempt(attempt) {
-  const { convo, clean, reqBody, body, textEl } = attempt;
+  const { convo, clean, reqBody, body, textEl, statusEl, authorization, epoch } = attempt;
   state.busy = true;
   updateHeroSend(); updateChatSend();
   els.thread.setAttribute('aria-busy', 'true');
 
   textEl.style.display = 'none';
   textEl.classList.remove('msg__text--flagged');
+  markOutputUnapproved(textEl, statusEl);
   const typing = buildTyping();
   body.appendChild(typing);
   scrollDown();
@@ -813,10 +946,21 @@ async function runAttempt(attempt) {
   let started = false;
   const start = () => { if (started) return; started = true; if (typing.parentElement) typing.remove(); textEl.style.display = ''; textEl.classList.add('streaming'); };
 
-  // Fail-safe: if no stream frame arrives for IDLE_MS, abort so the UI never
-  // hangs on a stalled backend (issue #541). The timer re-arms on every frame.
   const controller = new AbortController();
-  active = { controller, cancelled: false };
+  const run = {
+    controller,
+    cancelled: false,
+    stop: () => {
+      if (typing.parentElement) typing.remove();
+      textEl.style.display = '';
+      textEl.classList.remove('streaming');
+      textEl.classList.add('msg__text--flagged');
+      markOutputUnapproved(textEl, statusEl);
+      body.appendChild(errorNote(i18n().stopNote));
+    },
+  };
+  active = run;
+  const current = () => active === run && !run.cancelled && state.sessionEpoch === epoch;
   const IDLE_MS = 60000;
   let timedOut = false;
   let idleTimer;
@@ -829,30 +973,53 @@ async function runAttempt(attempt) {
   try {
     const { ok, finalFrame } = await streamRewrite({
       body: reqBody,
+      authorization,
       signal: controller.signal,
-      onStart: () => armIdle(),
-      onDelta: (_t, acc) => { armIdle(); start(); textEl.textContent = cleanStream(acc); scrollDown(); },
+      onStart: () => { if (current()) armIdle(); },
+      onDelta: (_t, acc) => { if (current()) { armIdle(); start(); textEl.textContent = cleanStream(acc); scrollDown(); } },
       onDone: (frame) => {
+        if (!current()) return;
         armIdle();
         start();
         const rewrite = typeof frame.rewrite === 'string' ? frame.rewrite : textEl.textContent;
+        const mpsSource = frame.mps;
+        const mpsNested = typeof mpsSource === 'object' && mpsSource !== null && 'mps' in mpsSource
+          ? mpsSource.mps
+          : undefined;
+        const mps = Number(mpsNested ?? mpsSource);
+        const fidelitySource = frame.fidelity;
+        const fidelityNested = typeof fidelitySource === 'object' && fidelitySource !== null && 'fidelity' in fidelitySource
+          ? fidelitySource.fidelity
+          : undefined;
+        const fidelity = Number(fidelityNested ?? fidelitySource);
+        const rejected = frame.floorFailed || !Number.isFinite(mps) || !Number.isFinite(fidelity) || mps < MPS_FLOOR || fidelity < FIDELITY_FLOOR;
+        const meta = { mps: frame.mps, fidelity: frame.fidelity, signals: frame.signals, diff: frame.diff, floorFailed: rejected };
         textEl.textContent = rewrite; textEl.classList.remove('streaming');
-        const meta = { mps: frame.mps, fidelity: frame.fidelity, signals: frame.signals, diff: frame.diff, floorFailed: frame.floorFailed };
         body.appendChild(buildMeta(meta));
+        if (rejected) {
+          textEl.classList.add('msg__text--flagged');
+          markOutputUnapproved(textEl, statusEl);
+          body.appendChild(errorNote(i18n().floorWarn));
+          return;
+        }
+        approveOutput(textEl, statusEl);
+        body.appendChild(buildOutputActions(rewrite));
         convo.messages.push({ role: 'assistant', text: rewrite, meta });
         convo.thread.commit({ userText: clean, assistantText: rewrite });
         scrollDown();
       },
     });
+    if (!current()) return;
     if (!ok) {
       if (typing.parentElement) typing.remove();
       textEl.classList.remove('streaming');
+      textEl.classList.add('msg__text--flagged');
+      markOutputUnapproved(textEl, statusEl);
       const t = i18n();
       const ff = finalFrame || {};
       const attemptText = typeof ff.rewrite === 'string' ? ff.rewrite.trim() : '';
       const hasScores = ff.mps != null || ff.fidelity != null;
       if (attemptText || hasScores) {
-        // meaning floor not met: show the flagged attempt + scores + a clear warning (auditable, not silently shipped)
         textEl.style.display = '';
         textEl.textContent = attemptText || cleanStream(textEl.textContent);
         textEl.classList.add('msg__text--flagged');
@@ -862,29 +1029,30 @@ async function runAttempt(attempt) {
         textEl.style.display = 'none';
         const kind = classifyRewriteError(ff);
         body.appendChild(errorNote(failureMessage(kind, ff, t)));
-        // Free-tier quota exhaustion is the optimal Pro exposure point.
         const K = REWRITE_ERROR_KINDS;
-        if (els.tier.value === WEB_TIERS.FREE && (kind === K.QUOTA_DAILY || kind === K.QUOTA_HOURLY)) {
-          body.appendChild(quotaUpsell());
-        }
+        if (els.tier.value === WEB_TIERS.FREE && (kind === K.QUOTA_DAILY || kind === K.QUOTA_HOURLY)) body.appendChild(quotaUpsell());
         addRetry(body, attempt);
       }
     }
   } catch (e) {
+    if (!current()) return;
     if (typing.parentElement) typing.remove();
     textEl.style.display = ''; textEl.classList.remove('streaming');
+    textEl.classList.add('msg__text--flagged');
+    markOutputUnapproved(textEl, statusEl);
     const t = i18n();
-    const cancelled = active ? active.cancelled === true : false;
-    const msg = cancelled ? t.stopNote : timedOut ? t.timeoutNote : tfmt(t.netNote, { msg: String(e?.message || e) });
+    const msg = run.cancelled ? t.stopNote : timedOut ? t.timeoutNote : tfmt(t.netNote, { msg: String(e?.message || e) });
     body.appendChild(errorNote(msg));
-    if (!cancelled) addRetry(body, attempt);
+    if (!run.cancelled) addRetry(body, attempt);
   } finally {
     clearTimeout(idleTimer);
-    active = null;
-    state.busy = false;
-    els.thread.setAttribute('aria-busy', 'false');
-    updateHeroSend(); updateChatSend();
-    els.input.focus();
+    if (active === run) {
+      active = null;
+      state.busy = false;
+      els.thread.setAttribute('aria-busy', 'false');
+      updateHeroSend(); updateChatSend();
+      els.input.focus();
+    }
   }
 }
 
@@ -914,7 +1082,7 @@ function addRetry(body, attempt) {
   const btn = el('button', 'retrybtn', i18n().retry);
   btn.type = 'button';
   btn.addEventListener('click', () => {
-    if (state.busy) return; // another attempt is streaming; keep the button for later
+    if (state.busy || attempt.epoch !== state.sessionEpoch) return;
     body.querySelectorAll('.error-note, .retrybtn, .pro-upsell').forEach((n) => n.remove());
     runAttempt(attempt);
   });
@@ -924,12 +1092,15 @@ function addRetry(body, attempt) {
 
 // ---------- composer UX ----------
 function autoGrow(node) { node.style.height = 'auto'; node.style.height = Math.min(node.scrollHeight, 200) + 'px'; }
-function byokBlocked() { return els.tier.value === WEB_TIERS.BYOK && els.apiKey.value.trim().length === 0; }
+function tierBlocked() {
+  return (els.tier.value === WEB_TIERS.BYOK && els.apiKey.value.trim().length === 0)
+    || (els.tier.value === WEB_TIERS.PRO && !state.license);
+}
 // While streaming, the send buttons become enabled Stop controls (is-stop).
 function syncSendButton(btn, input) {
   btn.classList.toggle('is-stop', state.busy);
   btn.setAttribute('aria-label', state.busy ? i18n().stopLabel : 'Send');
-  btn.disabled = state.busy ? false : (input.value.trim().length === 0 || byokBlocked());
+  btn.disabled = state.busy ? false : (input.value.trim().length === 0 || tierBlocked());
 }
 function updateHeroSend() { syncSendButton(els.heroSend, els.heroInput); }
 function updateChatSend() { syncSendButton(els.send, els.input); }
@@ -980,6 +1151,12 @@ function applyI18n(lang) {
   els.input.setAttribute('placeholder', t.chatPh);
   els.input.setAttribute('aria-label', t.chatPh);
   const nc = document.querySelector('#new-chat span:last-child'); if (nc) nc.textContent = t.newchat;
+  const pro = PRO_I18N[lang] || PRO_I18N.en;
+  set('#license-label', pro.license);
+  els.licenseKey.setAttribute('placeholder', pro.placeholder);
+  els.licenseKey.setAttribute('aria-label', pro.placeholder);
+  set('#license-sign-in', pro.signIn);
+  set('#license-sign-out', pro.signOut);
   const ex = EXAMPLES.find((e) => e.lang === lang) || EXAMPLES[0];
   const setPreview = (sel, tag, text) => { const n = document.querySelector(sel); if (!n) return; n.textContent = ''; n.appendChild(el('span', 'hp-tag', tag)); n.appendChild(document.createTextNode(text)); };
   setPreview('.hp-before', 'before', ex.before);
@@ -1020,6 +1197,9 @@ els.apiKey.addEventListener('input', () => {
   const ke = $('#key-error'); if (ke) { ke.hidden = true; ke.textContent = ''; }
   updateHeroSend(); updateChatSend();
 });
+els.licenseSignIn.addEventListener('click', signInLicense);
+els.licenseSignOut.addEventListener('click', signOutLicense);
+els.licenseKey.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); signInLicense(); } });
 els.provider.addEventListener('change', populateModels);
 
 // ---------- init ----------

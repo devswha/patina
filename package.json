@@ -12,6 +12,7 @@
   "scripts": {
     "test": "node --test tests/unit/*.test.js tests/e2e/*.test.js",
     "test:unit": "node --test tests/unit/*.test.js",
+    "launch-config:generate": "node scripts/generate-launch-config.mjs",
     "test:e2e": "node --test tests/e2e/*.test.js",
     "benchmark": "node tests/quality/benchmark.mjs",
     "benchmark:perf": "node scripts/perf-report.mjs",

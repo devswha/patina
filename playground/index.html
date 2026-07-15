@@ -45,6 +45,7 @@
           <select id="tier" class="ctl__select">
             <option value="free">Free</option>
             <option value="byok">API</option>
+            <option value="pro">Pro</option>
           </select>
         </label>
         <a class="btn btn--gh" href="https://github.com/devswha/patina" aria-label="patina on GitHub">
@@ -66,6 +67,15 @@
           <input id="api-key" class="ctl__input" type="password" autocomplete="off" placeholder="sk-… (kept in your browser)" aria-label="API key (kept in your browser)" />
           <span class="ctl__err" id="key-error" role="alert" hidden></span>
         </label>
+      </div>
+      <div class="nav__pro" id="pro-row" hidden>
+        <label class="ctl ctl--pro">
+          <span class="ctl__label" id="license-label">License key</span>
+          <input id="license-key" class="ctl__input" type="password" autocomplete="off" placeholder="License key (kept in memory)" aria-label="License key (kept in memory)" />
+        </label>
+        <button class="ctl__action" id="license-sign-in" type="button">Sign in</button>
+        <button class="ctl__action" id="license-sign-out" type="button" hidden>Sign out</button>
+        <span class="ctl__err" id="license-error" role="alert" hidden></span>
       </div>
     </header>
 
@@ -197,7 +207,7 @@
             <a class="price__cta price__cta--pro is-soon" id="pro-buy" role="button" aria-disabled="true" rel="noopener">Pro — coming soon</a>
           </div>
         </div>
-        <p class="pricing__note">Pro is a licensed hosted tier. After checkout you receive a license key to use via the CLI or API; playground license sign-in is coming next.</p>
+        <p class="pricing__note">Pro is a licensed hosted tier. Enter your license key in Pro mode to use it in this browser session; it is never saved.</p>
       </section>
 
       <section class="cta">

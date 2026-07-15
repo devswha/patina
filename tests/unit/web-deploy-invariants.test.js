@@ -3,6 +3,8 @@ import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+import { createLaunchConfig } from '../../scripts/generate-launch-config.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -67,4 +69,127 @@ test('vercel.json resolves the chat playground rewrites', () => {
   assert.ok(has('/chatgpt.js', '/playground/chatgpt.js'));
   assert.ok(has('/chatgpt.css', '/playground/chatgpt.css'));
   assert.ok(has('/rewrite-client.js', '/playground/rewrite-client.js'));
+});
+test('launch config defaults fail closed and only enables matched checkout evidence', () => {
+  assert.deepEqual(createLaunchConfig({
+    PATINA_PRO_CHECKOUT_ENABLED: 'false',
+    PATINA_DEPLOYMENT_CHANNEL: 'production',
+    PATINA_PRO_CHECKOUT_URL: 'http://unsafe.example/checkout?campaign=1',
+    PATINA_PRO_GATE_EVIDENCE_ID: 'not-evidence',
+  }), {
+    schemaVersion: 1,
+    channel: 'disabled',
+    enabled: false,
+    checkoutOrigin: null,
+    checkoutPath: null,
+    evidence: null,
+  });
+
+  assert.deepEqual(createLaunchConfig({
+    PATINA_PRO_CHECKOUT_ENABLED: 'true',
+    PATINA_DEPLOYMENT_CHANNEL: 'staging',
+    PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro',
+    PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
+  }), {
+    schemaVersion: 1,
+    channel: 'staging',
+    enabled: true,
+    checkoutOrigin: 'https://checkout.example.test',
+    checkoutPath: '/store/pro',
+    evidence: 'PAY-STG-20260715',
+  });
+
+  for (const env of [
+    {
+      PATINA_PRO_CHECKOUT_ENABLED: 'true',
+      PATINA_DEPLOYMENT_CHANNEL: 'staging',
+      PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro#fragment',
+      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
+    },
+    {
+      PATINA_PRO_CHECKOUT_ENABLED: 'true',
+      PATINA_DEPLOYMENT_CHANNEL: 'production',
+      PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test:443/store/pro',
+      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-B-20260715',
+    },
+    {
+      PATINA_PRO_CHECKOUT_ENABLED: 'true',
+      PATINA_DEPLOYMENT_CHANNEL: 'staging',
+      PATINA_PRO_CHECKOUT_URL: 'http://checkout.example.test/store/pro',
+      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
+    },
+    {
+      PATINA_PRO_CHECKOUT_ENABLED: 'true',
+      PATINA_DEPLOYMENT_CHANNEL: 'staging',
+      PATINA_PRO_CHECKOUT_URL: 'https://buyer@checkout.example.test/store/pro',
+      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
+    },
+    {
+      PATINA_PRO_CHECKOUT_ENABLED: 'true',
+      PATINA_DEPLOYMENT_CHANNEL: 'staging',
+      PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro?campaign=1',
+      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
+    },
+    {
+      PATINA_PRO_CHECKOUT_ENABLED: 'true',
+      PATINA_DEPLOYMENT_CHANNEL: 'preview',
+      PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro',
+      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
+    },
+    {
+      PATINA_PRO_CHECKOUT_ENABLED: 'true',
+      PATINA_DEPLOYMENT_CHANNEL: 'production',
+      PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro',
+      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
+    },
+  ]) {
+    assert.throws(() => createLaunchConfig(env));
+  }
+});
+
+test('invalid enabled launch configuration does not replace the checked-in artifact', () => {
+  const artifactPath = resolve(REPO_ROOT, 'playground/launch-config.js');
+  const before = readFileSync(artifactPath, 'utf8');
+  const result = spawnSync(process.execPath, ['scripts/generate-launch-config.mjs'], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PATINA_PRO_CHECKOUT_ENABLED: 'true',
+      PATINA_DEPLOYMENT_CHANNEL: 'staging',
+      PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro',
+      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-B-wrong-channel',
+    },
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.equal(readFileSync(artifactPath, 'utf8'), before);
+});
+
+test('checked-in browser launch config is disabled and Vercel serves it without caching', async () => {
+  const launchConfig = (await import('../../playground/launch-config.js')).default;
+  assert.deepEqual(launchConfig, {
+    schemaVersion: 1,
+    channel: 'disabled',
+    enabled: false,
+    checkoutOrigin: null,
+    checkoutPath: null,
+    evidence: null,
+  });
+
+  const config = vercelConfig();
+  assert.equal(config.buildCommand, 'npm run launch-config:generate');
+  assert.ok(config.rewrites.some((route) =>
+    route.source === '/launch-config.js' && route.destination === '/playground/launch-config.js'));
+
+  const routeHeaders = config.headers.find((header) => header.source === '/launch-config.js')?.headers;
+  assert.equal(routeHeaders?.find((header) => header.key === 'Content-Type')?.value, 'application/javascript; charset=utf-8');
+  assert.equal(routeHeaders?.find((header) => header.key === 'Cache-Control')?.value, 'no-store, max-age=0');
+});
+test('local dev server resolves the launch config with matching no-store headers', () => {
+  const devServer = readFileSync(resolve(REPO_ROOT, 'scripts/dev-server.mjs'), 'utf8');
+
+  assert.match(devServer, /\['\/launch-config\.js', '\/playground\/launch-config\.js'\]/);
+  assert.match(devServer, /'Content-Type': 'application\/javascript; charset=utf-8'/);
+  assert.match(devServer, /'Cache-Control': 'no-store, max-age=0'/);
 });

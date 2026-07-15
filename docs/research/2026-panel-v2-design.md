@@ -1,11 +1,12 @@
 # Panel v2 design — judge panel reconstitution after kimi's exit
 
-Drafted 2026-07-13, before any study uses it. Trigger: the kimi subscription
-ends 2026-07-17 (operator-confirmed), removing `judge-kimi` from the fixed
-3-judge panel used by Studies 0–3. This document is the registered design for
-every judging run in studies registered after this date; each future
-pre-registration binds itself to this design by citing it. Study 3 (running
-under its own 2026-07-12 registration) is unaffected.
+Adopted 2026-07-15, before any v2 study uses it. Trigger: the kimi
+subscription ends 2026-07-17 (operator-confirmed), removing `judge-kimi` from
+the fixed 3-judge panel used by Studies 0–3. The deterministic document scorer
+is promoted to chief judge under the 2026-07-14 calibration; gpt and grok remain
+the perceptual panel. Every judging run in studies registered after this date
+MUST import the executable policy in `scripts/research/panel-v2.mjs`. Study 3,
+registered on 2026-07-12, is unaffected.
 
 Grounding: the judge-calibration side study
 (`2026-judge-calibration.md`, registered design, 192/192 judgments) plus a
@@ -15,24 +16,30 @@ bridge analysis computed from its existing data — no new calls.
 
 | seat | scorer | role |
 |---|---|---|
-| judge-gpt | codex CLI, gpt-5.5 | LLM judge (calibrated AUC 1.00 [1.00, 1.00]) |
-| judge-grok | xai API, grok-4.5 | LLM judge (calibrated AUC 0.93 [0.83, 1.00]) |
-| judge-det | patina deterministic prose-score (lang-scoped) | always-on free baseline lane (calibrated AUC 0.98 [0.93, 1.00]) |
+| **chief: judge-det** | patina deterministic prose-score (lang-scoped) | primary document verdict (`score >= 35`) and continuous score |
+| judge-gpt | codex CLI, gpt-5.5 | perceptual corroboration (calibrated AUC 1.00 [1.00, 1.00]) |
+| judge-grok | xai API, grok-4.5 | perceptual corroboration (calibrated AUC 0.93 [0.83, 1.00]) |
 
-- **Primary perceptual metric:** LLM panel mean over gpt + grok, both
-  required per passage-condition; a missing/unparseable judge is data loss,
-  reported (no silent 1-of-2 scoring).
-- **judge-det is a co-primary corroboration lane, not pooled** into the LLM
-  mean: every study reports Δ_det beside Δ_panel. Pooling raw det scores
-  measured AUC 0.996 on the calibration corpus, but mixing scales (det human
-  mean 17.7 vs judges ~35) breaks absolute comparability with the archived
-  series; pooling stays deferred together with the operator-deferred panel-
-  shrink decision (#153 ③) until a middle-ground (edited/humanized text)
-  validation exists.
-- **Authorship-call metrics** (AI-call rate) come from the LLM judges only;
-  det's document-level binary verdict is miscalibrated (0.55 accuracy at
-  document length — see calibration results) and MUST NOT be used until the
-  approved recalibration task lands.
+- **Primary document metric:** judge-det's deterministic verdict and continuous
+  score. The chief lane is auditable, free, and independent of expiring model
+  subscriptions. Its threshold is fixed at 35; no study may tune it on outcome
+  data.
+- **Binding fresh-corpus gate:** before reporting det binary outcomes, each study
+  MUST pass its own labeled fresh corpus to
+  `requireFreshCorpusValidation()` in `scripts/research/panel-v2.mjs`.
+  Accuracy below 0.85 throws and disables the binary verdict column. Continuous
+  deterministic scores remain reportable. This preserves the 2026-07-14
+  calibration's anti-overfit condition in executable form.
+- **Perceptual corroboration:** report the gpt+grok mean and both individual
+  scores beside the chief result. Both are required for claude-generated
+  passages; a missing/unparseable required judge is data loss, never silently
+  reduced to one judge.
+- **No pooled score:** deterministic and LLM scales remain separate. The det
+  human mean was 17.7 versus roughly 35 for the LLM judges, so averaging them
+  would create a number with no stable interpretation.
+- **Authorship-call metrics:** the reported primary call comes from judge-det
+  after the fresh-corpus gate. LLM calls are labeled perceptual corroboration,
+  not quorum votes.
 
 ## Bridge to the old panel (computed from calibration data, n=44 docs)
 
@@ -74,10 +81,13 @@ with the LLM panel is reported separately (Spearman ρ) as a drift monitor.
 
 ## Effective date & audit trail
 
-- Binding for studies registered on/after the first registration that cites
-  this document; at the latest, any run after 2026-07-17 (kimi unavailable).
+- Adopted by the operator's 2026-07-15 autonomous reconstitution order and
+  binding for studies registered from that date; Study 3 remains archived under
+  its original panel.
 - The judge prompt, parser, retry policy, and invocation shapes remain
   byte-identical to the S2/S3 runners for the two LLM seats.
-- This design was approved as a proposal lane by tower decision #153 follow-up
-  (panel reconstitution requested by the operator); adoption of THIS concrete
-  design is a separate operator decision.
+- Calibration evidence: document threshold 35 reached 0.955 accuracy on 44
+  leakage-free KO documents. The same-corpus selection caveat is enforced by
+  the per-study fresh-corpus accuracy floor of 0.85.
+- Kimi's archived scores and old runners remain untouched for reproducibility;
+  no new runner may import `judge-kimi`.

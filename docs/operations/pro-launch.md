@@ -9,23 +9,29 @@ or support tickets.
 ## Launch configuration
 
 Generate the browser configuration during deployment with exactly these four
-non-secret inputs:
+non-secret inputs. Enabled values must exactly match a source-controlled checkout
+evidence binding keyed by `{channel, evidence, origin, path}`.
 Run `npm run launch-config:generate` in the deployment environment after setting
 the inputs; deploy the resulting `playground/launch-config.js` with that release.
 
 | Input | Disabled/default behavior | Enabled requirement |
 |---|---|---|
 | `PATINA_PRO_CHECKOUT_ENABLED` | Missing or `false` generates disabled checkout. | Must be exactly `true`. |
-| `PATINA_DEPLOYMENT_CHANNEL` | Not used while checkout is disabled. | Exactly `staging` or `production`. |
-| `PATINA_PRO_CHECKOUT_URL` | Not used while checkout is disabled. | Absolute HTTPS URL with no userinfo, port, query, or fragment. |
-| `PATINA_PRO_GATE_EVIDENCE_ID` | Not used while checkout is disabled. | Staging: `PAY-STG-` plus one or more ASCII letters, digits, `_`, or `-`; production: `PAY-B-` plus the same suffix. |
+| `PATINA_DEPLOYMENT_CHANNEL` | Not used while checkout is disabled. | Exactly `staging` or `production` and the binding channel. |
+| `PATINA_PRO_CHECKOUT_URL` | Not used while checkout is disabled. | Exact bound Lemon Squeezy HTTPS URL: no userinfo, port, query, fragment, alternate host/subdomain, encoded path, or trailing slash. |
+| `PATINA_PRO_GATE_EVIDENCE_ID` | Not used while checkout is disabled. | Staging: `PAY-STG-`; production: `PAY-B-`; exact bound evidence ID in either case. |
+
+`scripts/checkout-evidence-bindings.mjs` is the only authorization table. Its
+production bindings are empty and deeply frozen; environment values alone can
+never enable checkout. Add a real binding only after review of an immutable
+`PAY-STG`/`PAY-B` record and a human supplies the exact Lemon Squeezy URL. Do
+not add a placeholder or sample live binding. Invalid enabled configuration
+fails generation rather than publishing a partly enabled checkout, and explicit
+`false` wins over every other input.
 
 The generated public shape is `{schemaVersion:1, channel, enabled,
 checkoutOrigin, checkoutPath, evidence}`. It contains the checkout origin and
-path only, never a secret, payment-provider credential, or license key. Invalid
-enabled configuration must fail the deployment/config generation rather than
-publish a partly enabled checkout. An explicit `false` wins over all other
-inputs.
+path only, never a secret, payment-provider credential, or license key.
 
 Keep payment-provider dashboard/API credentials and alerting/monitor webhook
 credentials only in the deployment secret manager. This runbook neither assumes
@@ -97,11 +103,13 @@ config prefix from `PAY-B-`.
 ## Staging
 
 1. Keep production checkout disabled.
-2. Set `PATINA_PRO_CHECKOUT_ENABLED=true`, `PATINA_DEPLOYMENT_CHANNEL=staging`,
-   a vetted staging HTTPS checkout URL, and a fresh `PAY-STG-...` evidence ID in
-   the staging secret/deployment environment.
+2. After the immutable `PAY-STG-...` record is reviewed and a human supplies the
+   exact Lemon Squeezy URL, add its exact `{channel, evidence, origin, path}`
+   binding to source control. Then set `PATINA_PRO_CHECKOUT_ENABLED=true`,
+   `PATINA_DEPLOYMENT_CHANNEL=staging`, that exact URL, and that evidence ID in
+   the staging deployment environment.
 3. Generate and inspect the public config: it must have `schemaVersion: 1`,
-   `channel: 'staging'`, `enabled: true`, the expected origin/path, and only the
+   `channel: 'staging'`, `enabled: true`, the bound origin/path, and only the
    evidence ID. Confirm it has no query string, credential, or secret.
 4. Exercise the browser CTA, cancel/back path, unavailable checkout path, and
    the post-purchase license entry flow using approved staging access. Verify
@@ -113,9 +121,10 @@ config prefix from `PAY-B-`.
 ## Gate B
 
 Gate B authorizes a production checkout candidate, not an unreviewed payment
-integration. Require the staging evidence, reviewed production checkout URL,
-server health/admission checks, rollback owner, support/cancel path, telemetry
-and PII review, and an approved `PAY-B-...` evidence ID.
+integration. Require staging evidence, a reviewed immutable `PAY-B-...` record,
+the human-supplied exact production Lemon Squeezy URL and its reviewed
+source-controlled binding, server health/admission checks, rollback owner,
+support/cancel path, and telemetry and PII review.
 
 After Gate B, deploy **production with checkout still disabled first**:
 `PATINA_PRO_CHECKOUT_ENABLED=false`. Generate and inspect the config and verify
@@ -142,12 +151,13 @@ recorded evidence.
 
 ## Live open
 
-1. Starting from the approved checkout-disabled production artifact, set
+1. Starting from the approved checkout-disabled production artifact, use the
+   reviewed source-controlled production binding and set
    `PATINA_PRO_CHECKOUT_ENABLED=true`, `PATINA_DEPLOYMENT_CHANNEL=production`,
-   the approved HTTPS checkout URL, and the approved `PAY-B-...` evidence ID.
+   its exact Lemon Squeezy URL, and its approved `PAY-B-...` evidence ID.
 2. Generate and deploy the browser config atomically with the approved release.
 3. Inspect the deployed config and CTA. It must be production, enabled, and
-   limited to the approved origin/path; it must not expose secrets or a full URL
+   limited to the bound origin/path; it must not expose secrets or a full URL
    with query data.
 4. Monitor CTA errors, checkout handoff failures, authorization denial classes,
    validation latency/errors, Pro admission failures, and incident alerts. Do

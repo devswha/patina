@@ -4,7 +4,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { createLaunchConfig } from '../../scripts/generate-launch-config.mjs';
+import {
+  CHECKOUT_EVIDENCE_BINDINGS,
+  checkoutEvidenceBindingKey,
+} from '../../scripts/checkout-evidence-bindings.mjs';
+import { createLaunchConfig, createLaunchConfigForTest } from '../../scripts/generate-launch-config.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -78,7 +82,19 @@ test('vercel.json pins the private Pro monitor cron contract', () => {
   const monitorCrons = config.crons.filter((cron) => cron.path === '/api/pro-monitor');
   assert.deepEqual(monitorCrons, [{ path: '/api/pro-monitor', schedule: '*/15 * * * *' }]);
 });
-test('launch config defaults fail closed and only enables matched checkout evidence', () => {
+const TEST_CHECKOUT_BINDING = Object.freeze({
+  channel: 'staging',
+  evidence: 'PAY-STG-20260715',
+  origin: 'https://checkout.example.test',
+  path: '/store/pro',
+});
+const TEST_CHECKOUT_BINDINGS = Object.freeze({
+  [checkoutEvidenceBindingKey(TEST_CHECKOUT_BINDING)]: true,
+});
+
+test('launch config defaults fail closed and requires an exact source-controlled evidence binding', () => {
+  assert.deepEqual(CHECKOUT_EVIDENCE_BINDINGS, {});
+  assert.ok(Object.isFrozen(CHECKOUT_EVIDENCE_BINDINGS));
   assert.deepEqual(createLaunchConfig({
     PATINA_PRO_CHECKOUT_ENABLED: 'false',
     PATINA_DEPLOYMENT_CHANNEL: 'production',
@@ -93,12 +109,14 @@ test('launch config defaults fail closed and only enables matched checkout evide
     evidence: null,
   });
 
-  assert.deepEqual(createLaunchConfig({
+  const enabled = {
     PATINA_PRO_CHECKOUT_ENABLED: 'true',
     PATINA_DEPLOYMENT_CHANNEL: 'staging',
     PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro',
     PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
-  }), {
+  };
+  assert.throws(() => createLaunchConfig(enabled), /source-controlled checkout evidence binding/);
+  assert.deepEqual(createLaunchConfigForTest(enabled, TEST_CHECKOUT_BINDINGS), {
     schemaVersion: 1,
     channel: 'staging',
     enabled: true,
@@ -107,51 +125,33 @@ test('launch config defaults fail closed and only enables matched checkout evide
     evidence: 'PAY-STG-20260715',
   });
 
-  for (const env of [
+  for (const overrides of [
+    { PATINA_PRO_CHECKOUT_URL: 'https://other.example.test/store/pro' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://sub.checkout.example.test/store/pro' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/other' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro/' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/%70ro' },
+    { PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-other-evidence' },
     {
-      PATINA_PRO_CHECKOUT_ENABLED: 'true',
-      PATINA_DEPLOYMENT_CHANNEL: 'staging',
-      PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro#fragment',
-      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
-    },
-    {
-      PATINA_PRO_CHECKOUT_ENABLED: 'true',
       PATINA_DEPLOYMENT_CHANNEL: 'production',
-      PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test:443/store/pro',
       PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-B-20260715',
     },
-    {
-      PATINA_PRO_CHECKOUT_ENABLED: 'true',
-      PATINA_DEPLOYMENT_CHANNEL: 'staging',
-      PATINA_PRO_CHECKOUT_URL: 'http://checkout.example.test/store/pro',
-      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
-    },
-    {
-      PATINA_PRO_CHECKOUT_ENABLED: 'true',
-      PATINA_DEPLOYMENT_CHANNEL: 'staging',
-      PATINA_PRO_CHECKOUT_URL: 'https://buyer@checkout.example.test/store/pro',
-      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
-    },
-    {
-      PATINA_PRO_CHECKOUT_ENABLED: 'true',
-      PATINA_DEPLOYMENT_CHANNEL: 'staging',
-      PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro?campaign=1',
-      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
-    },
-    {
-      PATINA_PRO_CHECKOUT_ENABLED: 'true',
-      PATINA_DEPLOYMENT_CHANNEL: 'preview',
-      PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro',
-      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
-    },
-    {
-      PATINA_PRO_CHECKOUT_ENABLED: 'true',
-      PATINA_DEPLOYMENT_CHANNEL: 'production',
-      PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro',
-      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
-    },
   ]) {
-    assert.throws(() => createLaunchConfig(env));
+    assert.throws(
+      () => createLaunchConfigForTest({ ...enabled, ...overrides }, TEST_CHECKOUT_BINDINGS),
+      /source-controlled checkout evidence binding/,
+    );
+  }
+
+  for (const overrides of [
+    { PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro#fragment' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test:443/store/pro' },
+    { PATINA_PRO_CHECKOUT_URL: 'http://checkout.example.test/store/pro' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://buyer@checkout.example.test/store/pro' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro?campaign=1' },
+    { PATINA_DEPLOYMENT_CHANNEL: 'preview' },
+  ]) {
+    assert.throws(() => createLaunchConfigForTest({ ...enabled, ...overrides }, TEST_CHECKOUT_BINDINGS));
   }
 });
 

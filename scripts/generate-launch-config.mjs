@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CHECKOUT_EVIDENCE_BINDINGS, checkoutEvidenceBindingKey } from './checkout-evidence-bindings.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const OUTPUT_PATH = resolve(SCRIPT_DIR, '../playground/launch-config.js');
@@ -51,7 +52,7 @@ function checkoutUrl(value) {
   return { checkoutOrigin: url.origin, checkoutPath: url.pathname };
 }
 
-export function createLaunchConfig(env = process.env) {
+function createLaunchConfigWithBindings(env, bindings) {
   // An explicit false (and the safe default) wins over every other input.
   if (!checkoutEnabled(env.PATINA_PRO_CHECKOUT_ENABLED)) return DISABLED_CONFIG;
 
@@ -68,13 +69,38 @@ export function createLaunchConfig(env = process.env) {
     invalid('PATINA_PRO_GATE_EVIDENCE_ID', `must match the ${channel === 'staging' ? 'PAY-STG-*' : 'PAY-B-*'} release evidence format`);
   }
 
+  const url = checkoutUrl(env.PATINA_PRO_CHECKOUT_URL);
+  const binding = {
+    channel,
+    evidence,
+    origin: url.checkoutOrigin,
+    path: url.checkoutPath,
+  };
+  const matchesBinding = Object.hasOwn(bindings, checkoutEvidenceBindingKey(binding))
+    && env.PATINA_PRO_CHECKOUT_URL === `${binding.origin}${binding.path}`;
+
+  if (!matchesBinding) {
+    invalid('PATINA_PRO_CHECKOUT_URL', 'must exactly match a source-controlled checkout evidence binding');
+  }
+
   return Object.freeze({
     schemaVersion: 1,
     channel,
     enabled: true,
-    ...checkoutUrl(env.PATINA_PRO_CHECKOUT_URL),
+    checkoutOrigin: binding.origin,
+    checkoutPath: binding.path,
     evidence,
   });
+}
+
+export function createLaunchConfig(env = process.env) {
+  return createLaunchConfigWithBindings(env, CHECKOUT_EVIDENCE_BINDINGS);
+}
+
+// Test-only injection seam. Executable generation always uses the empty,
+// source-controlled CHECKOUT_EVIDENCE_BINDINGS table above.
+export function createLaunchConfigForTest(env, bindings) {
+  return createLaunchConfigWithBindings(env, bindings);
 }
 
 function render(config) {

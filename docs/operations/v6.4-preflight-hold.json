@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 3,
+  "release": "v6.4",
+  "state": "HOLD_NO_PROMOTION",
+  "promotionRows": [
+    { "surface": "OpenAI HTTP", "currentDefault": "gpt-5.5", "candidate": "gpt-5.6", "status": "HOLD_NO_PROMOTION" },
+    { "surface": "Codex CLI", "currentDefault": "gpt-5.5", "candidate": "gpt-5.6", "status": "HOLD_NO_PROMOTION" },
+    { "surface": "Claude CLI", "currentDefault": "claude-sonnet-4-6", "candidate": "claude-sonnet-5", "status": "HOLD_NO_PROMOTION" },
+    { "surface": "Gemini HTTP", "currentDefault": "gemini-2.5-pro", "candidate": "gemini-3.1-pro-preview", "ceiling": "opt_in_only", "status": "HOLD_NO_PROMOTION" },
+    { "surface": "Gemini CLI", "currentDefault": "gemini-2.5-pro", "candidate": "gemini-3.1-pro-preview", "ceiling": "opt_in_only", "status": "HOLD_NO_PROMOTION" }
+  ],
+  "completedDecisions": [
+    { "id": "GATE_C_OPENAI_HTTP_NO_PROMOTION", "status": "HOLD_NO_PROMOTION" },
+    { "id": "GATE_C_CODEX_CLI_NO_PROMOTION", "status": "HOLD_NO_PROMOTION" },
+    { "id": "GATE_C_CLAUDE_CLI_NO_PROMOTION", "status": "HOLD_NO_PROMOTION" },
+    { "id": "GATE_C_GEMINI_HTTP_NO_PROMOTION", "status": "HOLD_NO_PROMOTION" },
+    { "id": "GATE_C_GEMINI_CLI_NO_PROMOTION", "status": "HOLD_NO_PROMOTION" }
+  ],
+  "checkout": { "enabled": false },
+  "frozenSemantics": {
+    "manifestVersion": 3,
+    "providers": {
+      "openai": { "name": "openai", "baseURL": "https://api.openai.com/v1", "apiKeyEnv": "OPENAI_API_KEY", "defaultModel": "gpt-5.5", "freeTier": false, "note": "Paid. Default OpenAI Platform API." },
+      "gemini": { "name": "gemini", "baseURL": "https://generativelanguage.googleapis.com/v1beta/openai", "apiKeyEnv": "GEMINI_API_KEY", "defaultModel": "gemini-2.5-pro", "freeTier": true, "note": "Free tier available. Get a key at https://aistudio.google.com/app/apikey" },
+      "groq": { "name": "groq", "baseURL": "https://api.groq.com/openai/v1", "apiKeyEnv": "GROQ_API_KEY", "defaultModel": "llama-3.3-70b-versatile", "freeTier": true, "note": "Free tier with rate limits. Get a key at https://console.groq.com/keys" },
+      "kimi": { "name": "kimi", "baseURL": "https://api.moonshot.ai/v1", "apiKeyEnv": "KIMI_API_KEY", "defaultModel": "kimi-k2.5", "freeTier": false, "note": "Moonshot AI Kimi OpenAI-compatible API. Set KIMI_API_KEY or PATINA_API_KEY." },
+      "moonshot": { "name": "moonshot", "baseURL": "https://api.moonshot.ai/v1", "apiKeyEnv": "MOONSHOT_API_KEY", "defaultModel": "kimi-k2.5", "freeTier": false, "note": "Moonshot AI Kimi OpenAI-compatible API. Set MOONSHOT_API_KEY or PATINA_API_KEY." },
+      "together": { "name": "together", "baseURL": "https://api.together.xyz/v1", "apiKeyEnv": "TOGETHER_API_KEY", "defaultModel": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free", "freeTier": true, "note": "Free models available (suffix \"-Free\"). Get a key at https://api.together.xyz/settings/api-keys" }
+    },
+    "sourceHashes": {
+      ".env.example": "7f33aea2fbd9649c350d071c900c097c950d17ebf02f1fa758fab91ec9d504f6",
+      "src/model-defaults.js": "c568977fcac8ea44d5387a8a8745b062675ec94d73d39ce528c492ad35f87176",
+      "src/providers.js": "92415eacaf87da2d0f2aed7db97feeb98b8b087adfe584a02c4478353b807d90",
+      "src/web-rewrite-contract.js": "a444a821db1c8ae099a865bcbcac56773791f4747e1bcfbd8a1a95cfca69dd11",
+      "playground/launch-config.js": "4d19fc8ce36651f73f94d80bbcd108a2ccbb50fa3fc25b54d75f193b42ac6bf4",
+      "scripts/checkout-evidence-bindings.mjs": "1537fdb0cc80b1ef6dba20d213570f6d37592da1b74d678b273220ef0134eef3",
+      "scripts/generate-launch-config.mjs": "51f227e6aca210e601285524bdab6b032a2e394197fc00dd610e7e39390a1d89",
+      "docs/AUTHENTICATION.md": "e8c335550c4a0f0b144b79f4286d467a968962821a1c88049f1e679810751cfe",
+      "docs/AUTHENTICATION_KR.md": "5e077cd3a13c2299a11fc831c8303a204880c91dd0d465148d34a435dbe00796",
+      "docs/operations/pro-launch.md": "5a3ecb35a60374ee34111ad91e646a02f974439e9a2052ceb18b3ebc729d5acc",
+      "tests/e2e/providers.test.js": "47958be678e9bbfd06bcdd849ec0df37ed765f886e245b7b528e7d596b6d9dfe",
+      "tests/unit/backend-model-defaults.test.js": "a9a0428bd53cb470505df58b25d7bd75d59200a7565809eb9f457fda1d22db29",
+      "tests/unit/web-deploy-invariants.test.js": "4281150509880782fb026ec78a2647d690c083a03a36bcc89d4591ef888f424e",
+      "tests/unit/web-rewrite-contract.test.js": "d802df1b7f44ef05bcb11e3e68307f577da5529a406e5e92fa206d08bdcf2b2a",
+      "tests/unit/web-rewrite-contract.redteam.test.js": "3c7591926e168b14f486199297fd1e84ed447c1b8d339c9b4860f79da0f6a7bb",
+      "package.json": "027fe3720ed1e5886a0148a31f3fcb2a7070d8cc870968162b99124274f7649c",
+      "package-lock.json": "d4a0814cc96fd2b46d9c5453345e41623a53149b7e5bdf5e79213101d700680c",
+      "README.md": "b92e7c2414dd3b62787befe380710c5899feded39e0b42c5f2180d294f9905ad",
+      "README_KR.md": "663e9acf37165e667e353c2a674411a2773bbf369a7ea6ee66ab2a8b975f7488",
+      "README_ZH.md": "3bd54a90c4f3b0052c9fc7eaff2d4c75b8a93d18a6d160522fde8ed3e73294df",
+      "README_JA.md": "97d1cadafd2b3d58dc3ade734fab0e325e6dd695350bece5b23cc00618009fc5",
+      "SKILL.md": "29a516df3787062ba7c6563163b868e16ced0cc193a7aaf784cba5d2a8086324",
+      ".patina.default.yaml": "540a12d5f6a2234fd348e2a22548bbb37bb293fbb03cecdfee16e745cae3eac8",
+      "packages/patina-humanizer/package.json": "0a21036548a4b2be6e2fb0d9412fa481fc2310b9e4ab2b8f0fd18505c897662c",
+      ".claude-plugin/plugin.json": "baa2ddf798791d7f4edacedd70bd6b32b15e68c505ab77dfd1bf20f6e73cac5e",
+      ".claude-plugin/marketplace.json": "95a2847f1248752eceb77762cf8d67e58d8405e291036372363f678040041e81",
+      "CHANGELOG.md": "cfc3af68e2723dd27d87c26f9c66aff4e0242bcbfd2772c39448dd6aa0ba45ef"
+    }
+  },
+  "blockers": [
+    { "id": "LS_APPROVAL", "type": "human_action", "owner": "Lemon Squeezy Approval Owner", "exitEvidence": "Immutable Lemon Squeezy approval naming the exact store, product, and variant identities; exact staging and production HTTPS checkout URLs; and approval that is immutable.", "evidence": null },
+    { "id": "PAY_STG_BINDING_APPROVAL", "type": "human_action", "owner": "Lemon Squeezy Approval Owner", "exitEvidence": "Immutable pre-deployment staging source-binding approval naming the reviewed immutable evidence ID and exact staging Lemon Squeezy HTTPS checkout URL; it is not final Gate-B proof.", "evidence": null },
+    { "id": "PAY_B_BINDING_APPROVAL", "type": "human_action", "owner": "Lemon Squeezy Approval Owner", "exitEvidence": "Immutable pre-deployment production source-binding approval naming the reviewed immutable evidence ID and exact production Lemon Squeezy HTTPS checkout URL; it is not final Gate-B proof.", "evidence": null },
+    { "id": "SECRET_MANAGER", "type": "human_action", "owner": "Secret Manager Owner", "exitEvidence": "Secret-manager presence-only record, without values, for KV_REST_API_URL, KV_REST_API_TOKEN, LS_STORE_ID, LS_PRO_PRODUCT_ID, LS_PRO_VARIANT_ID, PATINA_PRO_API_KEY, PATINA_LICENSE_HMAC_SECRET, PATINA_QUOTA_HMAC_SECRET, PATINA_FREE_API_KEY, PATINA_PRO_PROVIDER, PATINA_PRO_MODEL, PATINA_PRO_CHECKOUT_ENABLED, PATINA_PRO_CHECKOUT_URL, PATINA_PRO_GATE_EVIDENCE_ID, PATINA_DEPLOYMENT_CHANNEL, PATINA_OBSERVABILITY_REST_API_URL, PATINA_OBSERVABILITY_REST_API_TOKEN, CRON_SECRET, PATINA_PUBLIC_BASE_URL, PATINA_PUBLIC_BASE_URL_SHA256, PATINA_SYNTHETIC_PRO_LICENSE, PATINA_SYNTHETIC_OBSERVER_SECRET, PATINA_VERCEL_LOG_QUERY_URL, PATINA_VERCEL_LOG_QUERY_URL_SHA256, PATINA_VERCEL_LOG_QUERY_TOKEN, PATINA_ALERT_DISCORD_WEBHOOK, VERCEL_GIT_COMMIT_SHA; PATINA_PRO_ALLOW_FREE_KEY is absent or exactly false.", "evidence": null },
+    { "id": "PAY_STG", "type": "human_action", "owner": "Deployment Owner", "exitEvidence": "Immutable private-staging PAY-STG deployment record naming the exact staging HTTPS checkout URL and completed staging source-binding integration commit or artifact.", "evidence": null },
+    { "id": "GATE_B", "type": "human_action", "owner": "Payment Runtime Owner + maintainer", "exitEvidence": "Gate-B approval by the Payment Runtime Owner and maintainer proving completed production source-binding integration commit or artifact, hosted identity, usage, dedicated runtime, content-valid PAY-B-COST evidence, and real-path OBS evidence.", "evidence": null },
+    { "id": "DEP_PROD_DISABLED", "type": "human_action", "owner": "Deployment Owner", "exitEvidence": "Immutable production-disabled artifact/config with the exact disabled launch shape; browser evidence that checkout is disabled; health, monitor, and operator evidence; and UTC timestamps.", "evidence": null },
+    { "id": "GATE_D", "type": "human_action", "owner": "Release Authority", "exitEvidence": "Gate-D record proving mandatory gates passed and naming the approving Release Authority.", "evidence": null },
+    { "id": "ROLLBACK_DRILLS", "type": "human_action", "owner": "Deployment Owner", "exitEvidence": "Timestamped rollback records: sale-close completed within 10 minutes, plus correctness evidence for service-kill and fallback without a 10-minute claim.", "evidence": null },
+    { "id": "PAY_OPEN", "type": "human_action", "owner": "Maintainer", "exitEvidence": "Maintainer authorization to open payment after the required gates and immutable evidence are complete.", "evidence": null },
+    { "id": "PAY_LIVE", "type": "human_action", "owner": "Payment Runtime Owner", "exitEvidence": "Bounded real-production payment, refund, revoke, license-denial, and recovery evidence, including denial and recovery within the documented propagation bound.", "evidence": null },
+    { "id": "REL_PUBLISH", "type": "human_action", "owner": "Release Authority", "exitEvidence": "Final Release Authority approval for the v6.4 tag and registry publication.", "evidence": null }
+  ],
+  "deferredActions": [
+    { "id": "SOURCE_BINDING_STAGING_INTEGRATION", "type": "repo_action", "blockedBy": ["PAY_STG_BINDING_APPROVAL"], "reason": "Cannot integrate reviewed staging checkout source bindings until the immutable pre-deployment staging binding approval exists.", "executable": false },
+    { "id": "SOURCE_BINDING_PRODUCTION_INTEGRATION", "type": "repo_action", "blockedBy": ["PAY_B_BINDING_APPROVAL"], "reason": "Cannot integrate reviewed production checkout source bindings until the immutable pre-deployment production binding approval exists.", "executable": false },
+    { "id": "V6_4_METADATA_COPY_RECONCILIATION", "type": "repo_action", "blockedBy": ["GATE_B"], "reason": "Cannot reconcile 6.4 metadata and copy until Gate B evidence exists; Gate-C no-promotion cutoff decisions are complete.", "executable": false },
+    { "id": "FINAL_TAG_PUBLISH_COMMAND", "type": "repo_action", "blockedBy": ["PAY_LIVE", "REL_PUBLISH"], "reason": "Cannot run the final tag and publish command until named external evidence exists.", "executable": false }
+  ],
+  "prohibitions": { "tag": true, "publish": true }
+}

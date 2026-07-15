@@ -70,6 +70,14 @@ test('vercel.json resolves the chat playground rewrites', () => {
   assert.ok(has('/chatgpt.css', '/playground/chatgpt.css'));
   assert.ok(has('/rewrite-client.js', '/playground/rewrite-client.js'));
 });
+test('vercel.json pins the private Pro monitor cron contract', () => {
+  const config = vercelConfig();
+  const monitor = config.functions?.['api/pro-monitor.js'];
+  assert.deepEqual(monitor, { maxDuration: 60 });
+
+  const monitorCrons = config.crons.filter((cron) => cron.path === '/api/pro-monitor');
+  assert.deepEqual(monitorCrons, [{ path: '/api/pro-monitor', schedule: '*/15 * * * *' }]);
+});
 test('launch config defaults fail closed and only enables matched checkout evidence', () => {
   assert.deepEqual(createLaunchConfig({
     PATINA_PRO_CHECKOUT_ENABLED: 'false',

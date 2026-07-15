@@ -257,7 +257,8 @@ test('category 5 handler abuse: rejects abusive inputs, avoids runner on denial,
     assert.deepEqual(res.json(), { error: 'internal error' });
     assert.equal(res.ended.includes('sk-secret-LEAK'), false);
     assert.equal(JSON.stringify(logs).includes('sk-secret-LEAK'), false);
-    assert.match(JSON.stringify(logs), /\[REDACTED\]/);
+    assert.equal(JSON.stringify(logs).includes('upstream exploded'), false);
+    assert.deepEqual(logs, [{ code: 'rewrite_handler_failed', stage: 'handler' }]);
     statuses.push(res);
   }
 

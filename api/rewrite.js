@@ -2,7 +2,7 @@
 import { createRateLimiter, createMemoryKv, isProductionPosture } from '../src/rate-limit.js';
 import { createRewriteHandler } from '../src/rewrite-handler.js';
 import { encodeStreamFrame, QUOTA_REASONS, resolveTierLimits, WEB_TIERS } from '../src/web-rewrite-contract.js';
-import { buildRewriteMetric } from '../src/web-observability.js';
+import { createWebObserver } from '../src/web-observability.js';
 import { runWebRewriteStream } from '../src/web-rewrite-stream.js';
 import { createLemonSqueezyLicenseValidator } from '../src/entitlement.js';
 
@@ -22,6 +22,67 @@ function parseKvNumber(value) {
   }
   return null;
 }
+/**
+ * Dedicated, bounded transport for aggregate observability. It deliberately
+ * does not share the quota adapter or its credentials.
+ *
+ * @param {Record<string,string|undefined>} env
+ * @returns {null|{increment(key: string, options: {ttlSeconds: number}): Promise<void>}}
+ */
+export function createObservabilityRestKv(env = {}) {
+  const base = env.PATINA_OBSERVABILITY_REST_API_URL;
+  const token = env.PATINA_OBSERVABILITY_REST_API_TOKEN;
+  if (!base || !token) return null;
+
+  let url;
+  try {
+    url = new URL(base);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' || url.username || url.password || url.port
+    || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.upstash\.io$/i.test(url.hostname)
+    || url.pathname !== '/' || url.search || url.hash) return null;
+
+  const INCREMENT_WITH_TTL = "local v = redis.call('INCRBY', KEYS[1], ARGV[1]) redis.call('PEXPIRE', KEYS[1], ARGV[2]) return v";
+  const root = url.origin;
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+  return {
+    async increment(key, { ttlSeconds }) {
+      const ttlMs = Math.max(1, Math.ceil(Number(ttlSeconds) * 1000));
+      if (!Number.isSafeInteger(ttlMs)) throw new Error('invalid observability ttl');
+
+      const controller = new AbortController();
+      let timer;
+      const deadline = new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new Error('observability deadline exceeded'));
+        }, 45);
+      });
+      const request = (async () => {
+        const response = await globalThis.fetch(root, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(['EVAL', INCREMENT_WITH_TTL, '1', key, '1', String(ttlMs)]),
+          redirect: 'error',
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error('observability request failed');
+        const data = await response.json();
+        if (!Number.isSafeInteger(data?.result) || data.result <= 0) {
+          throw new Error('observability increment returned invalid counter');
+        }
+      })();
+      try {
+        await Promise.race([request, deadline]);
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+  };
+}
 
 /**
  * Create a dependency-free Upstash/Vercel KV REST adapter.
@@ -33,13 +94,43 @@ export function createRestKv(env = {}) {
   const base = env.KV_REST_API_URL;
   const token = env.KV_REST_API_TOKEN;
   if (!base || !token) return null;
-  const root = base.replace(/\/+$/, '');
+
+  let url;
+  try {
+    url = new URL(base);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash
+    || (isProductionPosture(env) && (!url.hostname.endsWith('.upstash.io') || url.port || url.pathname !== '/'))) return null;
+
+  const root = url.toString().replace(/\/+$/, '');
   const headers = { Authorization: `Bearer ${token}` };
+  const deadlineMs = 2_000;
+
+  async function request(url, init, failureMessage) {
+    const controller = new AbortController();
+    let timer;
+    const deadline = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(new Error('kv request deadline exceeded'));
+      }, deadlineMs);
+    });
+    const response = (async () => {
+      const result = await globalThis.fetch(url, { ...init, redirect: 'error', signal: controller.signal });
+      if (!result.ok) throw new Error(failureMessage);
+      return result.json();
+    })();
+    try {
+      return await Promise.race([response, deadline]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 
   async function read(path) {
-    const response = await globalThis.fetch(`${root}${path}`, { headers });
-    if (!response.ok) throw new Error('kv request failed');
-    return response.json();
+    return request(`${root}${path}`, { headers }, 'kv request failed');
   }
 
   // Upstash/Vercel KV also accepts a command as a JSON array POSTed to the
@@ -47,13 +138,11 @@ export function createRestKv(env = {}) {
   // followed by a separate EXPIRE would leave a crash window that drops the TTL
   // and leaks a permanent entitlement-cache entry.
   async function command(args) {
-    const response = await globalThis.fetch(root, {
+    return request(root, {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify(args),
-    });
-    if (!response.ok) throw new Error('kv command failed');
-    return response.json();
+    }, 'kv command failed');
   }
 
   // Atomic counter bump + TTL in ONE round trip (EVAL): the GET-path
@@ -137,9 +226,9 @@ export function createRestKv(env = {}) {
 const WEB_REWRITE_TIMEOUT_MS = 180_000;
 
 /**
- * @param {{env?: Record<string,string|undefined>, runWebRewriteStreamImpl?: typeof runWebRewriteStream, logger?: {info?: Function, warn?: Function, error?: Function, debug?: Function}, now?: () => number}} [options]
+ * @param {{env?: Record<string,string|undefined>, runWebRewriteStreamImpl?: typeof runWebRewriteStream, logger?: {info?: Function, warn?: Function, error?: Function, debug?: Function}, now?: () => number, observabilityKv?: {increment: (key: string, options: {ttlSeconds: number}) => unknown}}} [options]
  */
-export function createRewriteApiHandler({ env = /** @type {Record<string,string|undefined>} */ (process.env), runWebRewriteStreamImpl = runWebRewriteStream, logger = console, now = () => Date.now() } = {}) {
+export function createRewriteApiHandler({ env = /** @type {Record<string,string|undefined>} */ (process.env), runWebRewriteStreamImpl = runWebRewriteStream, logger = console, now = () => Date.now(), observabilityKv } = {}) {
   const restKv = createRestKv(env);
   const kv = isProductionPosture(env) ? restKv : (restKv ?? createMemoryKv());
   // One stream budget, computed once: bounds upstream work (provider + scoring)
@@ -159,6 +248,19 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
     env,
     logger: /** @type {any} */ (logger),
   });
+  // The observer owns its channel and emits only its closed aggregate schema.
+  // Aggregate telemetry uses an isolated, short-deadline Upstash transport.
+  // Tests and local callers may still inject the narrow increment interface.
+  const channel = env.PATINA_DEPLOYMENT_CHANNEL;
+  const observabilityRestKv = createObservabilityRestKv(env);
+  const observer = (channel === 'production' || channel === 'staging')
+    ? createWebObserver({
+      channel,
+      logger,
+      kv: observabilityKv ?? observabilityRestKv ?? undefined,
+      now,
+    })
+    : null;
   return createRewriteHandler({
     rateLimiter: createRateLimiter({
       kv,
@@ -169,7 +271,50 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
       logger: /** @type {any} */ (logger),
     }),
     licenseValidator,
-    runRewrite: async ({ req, res, request }) => {
+    runRewrite: async ({ req, res, request, observe }) => {
+      let terminalObserved = false;
+      let legacyStartedAt;
+      if (typeof observe === 'function') {
+        try {
+          legacyStartedAt = Number(now());
+        } catch {
+          // Do not fabricate an epoch latency when the telemetry clock fails.
+        }
+      }
+      const observeTerminal = (outcome, status) => {
+        if (terminalObserved || typeof observe !== 'function' || !Number.isFinite(legacyStartedAt)) return false;
+        let endedAt;
+        try {
+          endedAt = Number(now());
+        } catch {
+          return false;
+        }
+        if (!Number.isFinite(endedAt)) return false;
+        terminalObserved = true;
+        try {
+          const result = observe({
+            tier: request.tier,
+            outcome,
+            status,
+            latencyMs: Math.max(0, endedAt - legacyStartedAt),
+          });
+          if (result && typeof result.catch === 'function') result.catch(() => {});
+        } catch {
+          // Closed telemetry must not change a customer response.
+        }
+        return true;
+      };
+      const observeGuarded = (input) => {
+        if (terminalObserved || typeof observe !== 'function') return undefined;
+        terminalObserved = true;
+        try {
+          const result = observe(input);
+          if (result && typeof result.catch === 'function') result.catch(() => {});
+          return result;
+        } catch {
+          return undefined;
+        }
+      };
       // Resolve the effective LLM key server-side, per tier:
       //   - byok → the caller's own key (from the validated request).
       //   - pro  → the server's dedicated pro key (PATINA_PRO_API_KEY). Outside
@@ -191,6 +336,7 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
         apiKey = env.PATINA_FREE_API_KEY;
       }
       if (!apiKey) {
+        observeTerminal('service_disabled', 503);
         res.statusCode = 503;
         res.setHeader?.('Content-Type', 'application/json');
         res.end?.(JSON.stringify({ error: QUOTA_REASONS.SERVICE_UNAVAILABLE }));
@@ -198,48 +344,41 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
       }
       res.statusCode = 200;
       res.setHeader?.('Content-Type', 'application/x-ndjson');
-      // Server-side cancellation: when the client disconnects mid-stream,
-      // abort provider/scoring work so the upstream request and the free-tier
-      // concurrency slot are released promptly (the handler's finally still
-      // runs releaseConcurrency). 'close' with an unfinished response means a
-      // premature disconnect on Node/Vercel; after a clean end the guard is
-      // false and the abort is skipped. Runtimes whose req/res mocks lack
-      // emitter methods degrade gracefully (optional calls) to the timeout.
       const controller = new AbortController();
       const onClose = () => { if (!res.writableEnded) controller.abort(); };
       res.on?.('close', onClose);
       req.on?.('aborted', onClose);
-      const startedAt = now();
-      let result;
+      let streamCompleted = false;
       try {
-        result = await runWebRewriteStreamImpl({
+        const result = await runWebRewriteStreamImpl({
           request: { ...request, apiKey },
           emit: (frame) => res.write?.(encodeStreamFrame(frame)),
           signal: controller.signal,
           timeout: streamTimeoutMs,
+          observe: observeGuarded,
+          now,
         });
+        if (!terminalObserved) {
+          observeTerminal(
+            result?.ok === false && result.code === 'number_safety_failed' ? 'number_safety_failed'
+              : result?.ok === false ? 'terminal_failed' : 'completed',
+            res.statusCode,
+          );
+        }
+        streamCompleted = true;
+        return result;
+      } catch (err) {
+        observeTerminal('terminal_failed', 500);
+        throw err;
       } finally {
         res.off?.('close', onClose);
         req.off?.('aborted', onClose);
+        if (streamCompleted) res.end?.();
       }
-      res.end?.();
-      // Sanitized observability ONLY: route/tier/provider/model/status/outcome/
-      // bucketed latency + char count. Never the text, prompt, output, key, or
-      // full IP. The HTTP status is a genuine 200 (frames already committed), so
-      // `outcome` — not `status` — carries whether the stream itself failed, so
-      // abuse/provider-failure/floor-failure spikes stay observable.
-      logger.info?.('rewrite.metric', buildRewriteMetric({
-        tier: request.tier,
-        provider: request.provider,
-        model: request.model,
-        status: 200,
-        latencyMs: now() - startedAt,
-        quotaDecision: 'allowed',
-        outcome: result && result.ok === false ? String(result.code || 'failed') : 'ok',
-        charCount: typeof request.text === 'string' ? request.text.length : 0,
-      }));
     },
     env,
+    now,
+    observe: observer?.observe,
   });
 }
 

@@ -117,6 +117,8 @@ function summarizeDiff(before, after) {
  * @param {(frame: object) => void} options.emit Frame sink.
  * @param {AbortSignal} [options.signal] Abort signal.
  * @param {number} [options.timeout] Timeout in milliseconds.
+ * @param {(input: {tier: string, outcome: string, status: number, latencyMs: number}) => unknown} [options.observe] Closed telemetry sink.
+ * @param {() => number} [options.now] Injectable clock.
  * @returns {Promise<object>} Small result summary.
  */
 export async function runWebRewriteStream({
@@ -128,8 +130,39 @@ export async function runWebRewriteStream({
   emit,
   signal,
   timeout,
+  observe,
+  now = () => Date.now(),
 }) {
   if (typeof emit !== 'function') throw new TypeError('emit must be a function');
+  let startedAt;
+  if (typeof observe === 'function') {
+    try {
+      startedAt = Number(now());
+    } catch {
+      // A telemetry clock cannot alter a customer result.
+    }
+  }
+  /**
+   * @param {'completed'|'number_safety_failed'|'terminal_failed'} outcome
+   * @param {number} status
+   */
+  const observeTerminal = (outcome, status) => {
+    if (typeof observe !== 'function' || !Number.isFinite(startedAt)) return false;
+    let endedAt;
+    try {
+      endedAt = Number(now());
+    } catch {
+      return false;
+    }
+    if (!Number.isFinite(endedAt)) return false;
+    try {
+      const result = observe({ tier: request.tier, outcome, status, latencyMs: Math.max(0, endedAt - startedAt) });
+      if (result && typeof /** @type {any} */ (result).catch === 'function') /** @type {Promise<unknown>} */ (result).catch(() => {});
+    } catch {
+      // Observability is strictly nonblocking and exception-isolated.
+    }
+    return true;
+  };
   const effectiveConfig = cloneConfig(config);
   effectiveConfig.language = request.lang;
   effectiveConfig.profile = effectiveConfig.profile || 'default';
@@ -181,7 +214,7 @@ export async function runWebRewriteStream({
     const error = safeError(err, request.apiKey);
     closeAttempts();
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'stream_failed', error });
-    return { ok: false, code: 'stream_failed', error, attempts };
+    return { ok: false, code: 'stream_failed', error, attempts, observed: observeTerminal('terminal_failed', 500) };
   }
 
   const original = String(request.original ?? request.text ?? '');
@@ -189,7 +222,7 @@ export async function runWebRewriteStream({
   if (!numberSafety.ok) {
     closeAttempts();
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'number_safety_failed' });
-    return { ok: false, code: 'number_safety_failed', numberSafety, attempts };
+    return { ok: false, code: 'number_safety_failed', numberSafety, attempts, observed: observeTerminal('number_safety_failed', 422) };
   }
 
   const mpsScore = scoreFns.scoreMPS || scoreMPS;
@@ -219,7 +252,7 @@ export async function runWebRewriteStream({
     const error = safeError(err, request.apiKey);
     closeAttempts();
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'scoring_failed', error });
-    return { ok: false, code: 'scoring_failed', error, attempts };
+    return { ok: false, code: 'scoring_failed', error, attempts, observed: observeTerminal('terminal_failed', 500) };
   }
 
   // Pass the raw score values to evaluateFloors, which strictly requires a
@@ -230,10 +263,10 @@ export async function runWebRewriteStream({
     // diff) on floor failures so a flagged attempt stays auditable in the UI.
     closeAttempts();
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'floor_failed', failed: floors.failed, rewrite, mps, fidelity, signals, diff });
-    return { ok: false, code: 'floor_failed', failed: floors.failed, mps, fidelity, signals, diff, attempts };
+    return { ok: false, code: 'floor_failed', failed: floors.failed, mps, fidelity, signals, diff, attempts, observed: observeTerminal('terminal_failed', 422) };
   }
 
   closeAttempts();
   emit({ type: STREAM_FRAME_TYPES.DONE, rewrite, mps, fidelity, signals, diff });
-  return { ok: true, rewrite, mps, fidelity, signals, diff, attempts };
+  return { ok: true, rewrite, mps, fidelity, signals, diff, attempts, observed: observeTerminal('completed', 200) };
 }

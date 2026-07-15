@@ -501,3 +501,88 @@ test('runWebRewriteStream fails closed for unchanged ambiguous dates before scor
   ]);
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
+test('terminal observer maps every terminal outcome once without frame leakage', async () => {
+  const canary = 'stream-observer-private-canary';
+  const scenarios = [
+    {
+      name: 'completed',
+      request: { ...request, original: 'We shipped 3 units.' },
+      callLLMStream: async () => ({ text: 'We shipped 3 units.' }),
+      scoreFns: scoring(),
+      expected: { outcome: 'completed', status: 200 },
+    },
+    {
+      name: 'number safety',
+      request: { ...request, original: 'Report date: 01/02/2024.' },
+      callLLMStream: async () => ({ text: 'Report date: 01/02/2024.' }),
+      scoreFns: scoring(),
+      expected: { outcome: 'number_safety_failed', status: 422 },
+    },
+    {
+      name: 'stream failure',
+      request,
+      callLLMStream: async () => { throw new Error(canary); },
+      scoreFns: scoring(),
+      expected: { outcome: 'terminal_failed', status: 500 },
+    },
+    {
+      name: 'scoring failure',
+      request: { ...request, original: 'We shipped three units.' },
+      callLLMStream: async () => ({ text: 'We shipped three units.' }),
+      scoreFns: {
+        ...scoring(),
+        scoreMPS: async () => { throw new Error(canary); },
+      },
+      expected: { outcome: 'terminal_failed', status: 500 },
+    },
+    {
+      name: 'floor failure',
+      request: { ...request, original: 'We shipped three units.' },
+      callLLMStream: async () => ({ text: 'We shipped three units.' }),
+      scoreFns: scoring({ mps: 1, fidelity: 1 }),
+      expected: { outcome: 'terminal_failed', status: 422 },
+    },
+  ];
+  for (const scenario of scenarios) {
+    const frames = [];
+    const events = [];
+    const result = await runWebRewriteStream({
+      request: scenario.request,
+      callLLMStream: scenario.callLLMStream,
+      scoreFns: scenario.scoreFns,
+      emit: (frame) => frames.push(frame),
+      now: () => 100,
+      observe(event) { events.push(event); return Promise.reject(new Error('observer failure')); },
+    });
+    assert.equal(result.observed, true, scenario.name);
+    assert.deepEqual(events, [{
+      tier: scenario.request.tier,
+      ...scenario.expected,
+      latencyMs: 0,
+    }], scenario.name);
+    assert.equal(JSON.stringify(events).includes(canary), false, scenario.name);
+    assertFramesDoNotLeakPrivateMetadata(frames);
+  }
+});
+
+test('terminal observer is optional and cannot change frames when it throws', async () => {
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request: { ...request, original: 'We shipped 3 units.' },
+    callLLMStream: async () => ({ text: 'We shipped 3 units.' }),
+    scoreFns: scoring(),
+    emit: (frame) => frames.push(frame),
+    observe() { throw new Error('observer failure'); },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.observed, true);
+  assert.deepEqual(frames.map((frame) => frame.type), ['start', 'done']);
+
+  const unobserved = await runWebRewriteStream({
+    request: { ...request, original: 'We shipped 3 units.' },
+    callLLMStream: async () => ({ text: 'We shipped 3 units.' }),
+    scoreFns: scoring(),
+    emit() {},
+  });
+  assert.equal(unobserved.observed, false);
+});

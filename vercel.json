@@ -8,8 +8,17 @@
   "functions": {
     "api/rewrite.js": {
       "includeFiles": "{patterns/**,profiles/**,personas/**,core/**,lexicon/**,.patina.default.yaml}"
+    },
+    "api/pro-monitor.js": {
+      "maxDuration": 60
     }
   },
+  "crons": [
+    {
+      "path": "/api/pro-monitor",
+      "schedule": "*/15 * * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/",

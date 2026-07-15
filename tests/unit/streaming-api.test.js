@@ -12,6 +12,16 @@ function streamFrom(chunks) {
     },
   });
 }
+function failingStreamFrom(chunks, error) {
+  const encoder = new globalThis.TextEncoder();
+  return {
+    async *[Symbol.asyncIterator]() {
+      for (const chunk of chunks) yield encoder.encode(chunk);
+      throw error;
+    },
+  };
+}
+
 
 function okResponse(chunks) {
   return new Response(streamFrom(chunks), { status: 200, headers: new globalThis.Headers() });
@@ -116,14 +126,23 @@ test('callLLMStream drops temperature and retries once when the model rejects it
   assert.ok(!('temperature' in bodies[0]), 'learned model skips temperature on the first attempt');
 });
 
-test('callLLMStream still throws for unrelated 400s', async () => {
+test('callLLMStream records one null-metadata attempt and no response for unrelated 400s', async () => {
   let calls = 0;
+  const attempts = [];
+  const responses = [];
   const fetchImpl = async () => {
     calls++;
     return new Response('bad request: missing field', { status: 400, headers: new globalThis.Headers() });
   };
   await assert.rejects(
-    callLLMStream({ prompt: 'p', apiKey: 'sk-test', model: 'temp-keep-stream', fetchImpl }),
+    callLLMStream({
+      prompt: 'p',
+      apiKey: 'sk-test',
+      model: 'temp-keep-stream',
+      fetchImpl,
+      onAttempt: (attempt) => attempts.push(attempt),
+      onResponse: (response) => responses.push(response),
+    }),
     (err) => {
       const error = /** @type {any} */ (err);
       assert.equal(error.name, 'HttpError');
@@ -132,4 +151,150 @@ test('callLLMStream still throws for unrelated 400s', async () => {
     }
   );
   assert.equal(calls, 1, 'a generic 400 is not retried');
+  assert.deepEqual(attempts, [{
+    attemptIndex: 1,
+    requestedModel: 'temp-keep-stream',
+    effectiveModel: null,
+    usage: null,
+    retryReason: 'initial',
+    minimumChargeApplied: false,
+    outcome: 'error',
+  }]);
+  assert.deepEqual(responses, []);
+});
+test('callLLMStream retains response metadata when the SSE body fails after a valid payload', async () => {
+  const attempts = [];
+  const responses = [];
+  const usage = { prompt_tokens: 3, completion_tokens: 2 };
+  const bodyError = new Error('stream body failed');
+  await assert.rejects(
+    callLLMStream({
+      prompt: 'p',
+      apiKey: 'sk-test',
+      model: 'requested-model',
+      fetchImpl: async () => ({
+        ok: true,
+        body: failingStreamFrom([
+          `data: {"model":"provider-model","usage":${JSON.stringify(usage)},"choices":[{"delta":{"content":"partial"}}]}\n\n`,
+        ], bodyError),
+      }),
+      onAttempt: (attempt) => attempts.push(attempt),
+      onResponse: (metadata) => responses.push(metadata),
+    }),
+    (error) => error === bodyError,
+  );
+  assert.deepEqual(attempts, [{
+    attemptIndex: 1,
+    requestedModel: 'requested-model',
+    effectiveModel: 'provider-model',
+    usage,
+    retryReason: 'initial',
+    minimumChargeApplied: false,
+    outcome: 'error',
+  }]);
+  assert.deepEqual(responses, []);
+});
+
+test('callLLMStream records split-stream metadata with the response-derived model and usage', async () => {
+  const attempts = [];
+  const responses = [];
+  const usage = { prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 };
+  const result = await callLLMStream({
+    prompt: 'p',
+    apiKey: 'sk-test',
+    model: 'requested-model',
+    fetchImpl: async () => okResponse([
+      'data: {"model":"provider-model","choices":[{"delta":{"content":"he',
+      'llo"}}]}\n\n',
+      `data: {"model":"provider-model","usage":${JSON.stringify(usage)},"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n`,
+      'data: [DONE]\n\n',
+    ]),
+    onAttempt: (attempt) => attempts.push(attempt),
+    onResponse: (metadata) => responses.push(metadata),
+  });
+
+  assert.deepEqual(result, { text: 'hello', finishReason: 'stop' });
+  assert.deepEqual(attempts, [{
+    attemptIndex: 1,
+    requestedModel: 'requested-model',
+    effectiveModel: 'provider-model',
+    usage,
+    retryReason: 'initial',
+    minimumChargeApplied: false,
+    outcome: 'success',
+  }]);
+  assert.equal(responses.length, 1);
+  assert.equal(responses[0].model, 'provider-model');
+  assert.equal(responses[0].effectiveModel, 'provider-model');
+  assert.equal(responses[0].requestedModel, 'requested-model');
+  assert.deepEqual(responses[0].usage, usage);
+});
+
+test('callLLMStream records retry errors, preserves null metadata, and isolates metadata callbacks', async () => {
+  const attempts = [];
+  const responses = [];
+  let calls = 0;
+  const result = await callLLMStream({
+    prompt: 'p',
+    apiKey: 'sk-test',
+    model: 'metadata-temp-reject-stream',
+    fetchImpl: async () => {
+      calls++;
+      if (calls === 1) {
+        return new Response('{"error":{"message":"temperature is not supported"}}', {
+          status: 400,
+          headers: new globalThis.Headers(),
+        });
+      }
+      return okResponse([
+        'data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\n',
+        'data: [DONE]\n\n',
+      ]);
+    },
+    onDelta: () => {
+      throw new Error('observer failure');
+    },
+    onAttempt: (attempt) => {
+      attempts.push(attempt);
+      throw new Error('observer failure');
+    },
+    onResponse: (metadata) => {
+      responses.push(metadata);
+      throw new Error('observer failure');
+    },
+  });
+
+  assert.deepEqual(result, { text: 'ok', finishReason: 'stop' });
+  assert.equal(calls, 2);
+  assert.deepEqual(responses, [{
+    provider: 'openai-http',
+    model: null,
+    effectiveModel: null,
+    requestedModel: 'metadata-temp-reject-stream',
+    temperature: null,
+    usage: null,
+    cacheTokens: null,
+    rawResponse: { choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] },
+    content: 'ok',
+  }]);
+  assert.deepEqual(attempts, [
+    {
+      attemptIndex: 1,
+      requestedModel: 'metadata-temp-reject-stream',
+      effectiveModel: null,
+      usage: null,
+      retryReason: 'initial',
+      minimumChargeApplied: false,
+      outcome: 'error',
+    },
+    {
+      attemptIndex: 2,
+      requestedModel: 'metadata-temp-reject-stream',
+      effectiveModel: null,
+      usage: null,
+      retryReason: 'temperature_schema',
+      minimumChargeApplied: false,
+      outcome: 'success',
+    },
+  ]);
 });

@@ -1,6 +1,7 @@
 // @ts-check
 import { callLLMStream as defaultStream } from './streaming-api.js';
 import { scoreDeterministicSignals, scoreFidelity, scoreMPS } from './scoring.js';
+import { evaluateNumberSafety } from './features/meaning-proxy.js';
 import { formatRewriteBodyForBrowser } from './output.js';
 import { loadWebConfig, resolveBundleRoot } from './web-config.js';
 import { buildWebRewritePrompt, loadWebAssets } from './web-rewrite.js';
@@ -15,6 +16,55 @@ import { evaluateFloors, redactSecrets, STREAM_FRAME_TYPES } from './web-rewrite
  */
 function rawScore(score, field) {
   return /** @type {any} */ (score)?.[field];
+}
+const ATTEMPT_RETRY_REASONS = new Set([
+  'initial',
+  'transport',
+  'network',
+  'timeout',
+  'temperature_schema',
+  'score_schema_parse',
+]);
+
+/**
+ * Retain only valid paid-attempt records in private result metadata.
+ * @param {{valid: boolean}} attempts
+ * @param {object[]} stageAttempts
+ * @param {number} expectedAttemptIndex
+ * @param {unknown} value
+ */
+function collectAttempt(attempts, stageAttempts, expectedAttemptIndex, value) {
+  const fields = [
+    'attemptIndex',
+    'requestedModel',
+    'effectiveModel',
+    'usage',
+    'retryReason',
+    'minimumChargeApplied',
+    'outcome',
+  ];
+  try {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
+    const source = /** @type {any} */ (value);
+    const keys = Reflect.ownKeys(source);
+    if (
+      keys.length !== fields.length
+      || !fields.every((field) => Object.prototype.hasOwnProperty.call(source, field))
+      || keys.some((key) => typeof key !== 'string' || !fields.includes(key))
+      || !Number.isInteger(source.attemptIndex)
+      || source.attemptIndex !== expectedAttemptIndex
+      || source.attemptIndex <= 0
+      || !(typeof source.requestedModel === 'string' || source.requestedModel === null)
+      || !(typeof source.effectiveModel === 'string' || source.effectiveModel === null)
+      || !(source.usage === null || (typeof source.usage === 'object' && !Array.isArray(source.usage)))
+      || !ATTEMPT_RETRY_REASONS.has(source.retryReason)
+      || typeof source.minimumChargeApplied !== 'boolean'
+      || !(source.outcome === 'success' || source.outcome === 'error')
+    ) throw new TypeError();
+    stageAttempts.push(value);
+  } catch {
+    attempts.valid = false;
+  }
 }
 
 /**
@@ -87,8 +137,30 @@ export async function runWebRewriteStream({
   const assets = loadWebAssets({ repoRoot, lang: request.lang, profile, config: effectiveConfig, personaId: request.persona });
   const prompt = buildWebRewritePrompt({ request, config: effectiveConfig, assets });
 
-  emit({ type: STREAM_FRAME_TYPES.START, provider: request.provider, model: request.model });
+  emit({ type: STREAM_FRAME_TYPES.START });
 
+  // This metadata is intentionally return-only: NDJSON frames are customer-safe.
+  /** @type {{valid: boolean, rewrite: object[], mps: object[], fidelity: object[]}} */
+  const attempts = { valid: true, rewrite: [], mps: [], fidelity: [] };
+  /** @type {{rewrite: number, mps: number, fidelity: number}} */
+  const attemptCounts = { rewrite: 0, mps: 0, fidelity: 0 };
+  /**
+   * @param {'rewrite'|'mps'|'fidelity'} stage
+   * @param {unknown} record
+   */
+  const recordAttempt = (stage, record) => {
+    if (attemptsClosed) return;
+    attemptCounts[stage] += 1;
+    collectAttempt(attempts, attempts[stage], attemptCounts[stage], record);
+  };
+  const recordInvalidAttempt = () => {
+    if (attemptsClosed) return;
+    attempts.valid = false;
+  };
+  const closeAttempts = () => {
+    attemptsClosed = true;
+  };
+  let attemptsClosed = false;
   let rewrite = '';
   try {
     const streamResult = await callLLMStream({
@@ -101,25 +173,40 @@ export async function runWebRewriteStream({
       onDelta: (text) => {
         emit({ type: STREAM_FRAME_TYPES.DELTA, text });
       },
+      onAttempt: (record) => recordAttempt('rewrite', record),
+      onAttemptInvalid: recordInvalidAttempt,
     });
     rewrite = formatRewriteBodyForBrowser(streamResult.text);
   } catch (err) {
     const error = safeError(err, request.apiKey);
+    closeAttempts();
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'stream_failed', error });
-    return { ok: false, code: 'stream_failed', error };
+    return { ok: false, code: 'stream_failed', error, attempts };
   }
 
   const original = String(request.original ?? request.text ?? '');
+  const numberSafety = evaluateNumberSafety(original, rewrite, request.lang);
+  if (!numberSafety.ok) {
+    closeAttempts();
+    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'number_safety_failed' });
+    return { ok: false, code: 'number_safety_failed', numberSafety, attempts };
+  }
+
   const mpsScore = scoreFns.scoreMPS || scoreMPS;
   const fidelityScore = scoreFns.scoreFidelity || scoreFidelity;
   const deterministicScore = scoreFns.scoreDeterministicSignals || scoreDeterministicSignals;
 
   let mps, fidelity, signals, diff;
   try {
-    [mps, fidelity] = await Promise.all([
-      mpsScore({ original, rewritten: rewrite, apiKey: request.apiKey, baseURL: request.baseURL, model: request.model, signal, timeout }),
-      fidelityScore({ original, rewritten: rewrite, apiKey: request.apiKey, baseURL: request.baseURL, model: request.model, signal, timeout }),
+    const scoreResults = await Promise.allSettled([
+      Promise.resolve().then(() => mpsScore({ original, rewritten: rewrite, apiKey: request.apiKey, baseURL: request.baseURL, model: request.model, signal, timeout, onAttempt: (record) => recordAttempt('mps', record), onAttemptInvalid: recordInvalidAttempt })),
+      Promise.resolve().then(() => fidelityScore({ original, rewritten: rewrite, apiKey: request.apiKey, baseURL: request.baseURL, model: request.model, signal, timeout, onAttempt: (record) => recordAttempt('fidelity', record), onAttemptInvalid: recordInvalidAttempt })),
     ]);
+    const [mpsResult, fidelityResult] = scoreResults;
+    if (mpsResult.status === 'rejected') throw mpsResult.reason;
+    if (fidelityResult.status === 'rejected') throw fidelityResult.reason;
+    mps = mpsResult.value;
+    fidelity = fidelityResult.value;
     signals = {
       before: deterministicScore({ text: original, config: effectiveConfig, repoRoot }),
       after: deterministicScore({ text: rewrite, config: effectiveConfig, repoRoot }),
@@ -130,8 +217,9 @@ export async function runWebRewriteStream({
     // a clean NDJSON error frame — never bubble to the handler's JSON 500,
     // which would append a non-frame tail to an already-started stream.
     const error = safeError(err, request.apiKey);
+    closeAttempts();
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'scoring_failed', error });
-    return { ok: false, code: 'scoring_failed', error };
+    return { ok: false, code: 'scoring_failed', error, attempts };
   }
 
   // Pass the raw score values to evaluateFloors, which strictly requires a
@@ -140,10 +228,12 @@ export async function runWebRewriteStream({
   if (!floors.ok) {
     // Keep the already-computed audit metadata (deterministic signals + length
     // diff) on floor failures so a flagged attempt stays auditable in the UI.
+    closeAttempts();
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'floor_failed', failed: floors.failed, rewrite, mps, fidelity, signals, diff });
-    return { ok: false, code: 'floor_failed', failed: floors.failed, mps, fidelity, signals, diff };
+    return { ok: false, code: 'floor_failed', failed: floors.failed, mps, fidelity, signals, diff, attempts };
   }
 
+  closeAttempts();
   emit({ type: STREAM_FRAME_TYPES.DONE, rewrite, mps, fidelity, signals, diff });
-  return { ok: true, rewrite, mps, fidelity, signals, diff };
+  return { ok: true, rewrite, mps, fidelity, signals, diff, attempts };
 }

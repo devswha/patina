@@ -5,25 +5,32 @@ import { fileURLToPath } from 'node:url';
 import { DEFAULT_BEST_MODELS } from '../../src/model-defaults.js';
 import { PROVIDERS } from '../../src/providers.js';
 import { PROVIDER_PRESETS } from '../../src/web-rewrite-contract.js';
+import { CHECKOUT_EVIDENCE_BINDINGS, checkoutEvidenceBindingKey } from '../../scripts/checkout-evidence-bindings.mjs';
 import { validateCheckedInPreflightHold, validatePreflightHold } from '../../scripts/check-v6.4-preflight-hold.mjs';
 
 const stateUrl = new URL('../../docs/operations/v6.4-preflight-hold.json', import.meta.url);
 const scriptUrl = new URL('../../scripts/check-v6.4-preflight-hold.mjs', import.meta.url);
+const evidenceUrl = new URL('../../docs/operations/pay-stg-binding-20260716.json', import.meta.url);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const checkedInState = () => JSON.parse(readFileSync(stateUrl, 'utf8'));
+const checkedInEvidence = () => JSON.parse(readFileSync(evidenceUrl, 'utf8'));
 function setAtPath(value, path, replacement) { const parent = path.slice(0, -1).reduce((current, key) => current[key], value); parent[path.at(-1)] = replacement; }
 function leaves(value, path = []) { if (Array.isArray(value)) return value.flatMap((entry, index) => leaves(entry, [...path, index])); if (value && typeof value === 'object') return Object.entries(value).flatMap(([key, entry]) => leaves(entry, [...path, key])); return [path]; }
-const validSources = () => ({ modelDefaults: clone(DEFAULT_BEST_MODELS), providers: clone(PROVIDERS), webProviderPresets: clone(PROVIDER_PRESETS), launch: { schemaVersion: 1, channel: 'disabled', enabled: false, checkoutOrigin: null, checkoutPath: null, evidence: null }, bindings: {}, checkHashes: false });
+const validSources = () => ({ modelDefaults: clone(DEFAULT_BEST_MODELS), providers: clone(PROVIDERS), webProviderPresets: clone(PROVIDER_PRESETS), launch: { schemaVersion: 1, channel: 'disabled', enabled: false, checkoutOrigin: null, checkoutPath: null, evidence: null }, bindings: CHECKOUT_EVIDENCE_BINDINGS, checkHashes: false });
 
-test('checked-in v6.4 preflight state is a closed non-receipt hold', () => {
+test('checked-in v6.4 preflight state is a staging-ready non-receipt hold', () => {
   const state = checkedInState();
   assert.deepEqual(validateCheckedInPreflightHold(), []);
   assert.equal(state.promotionRows.length, 5);
-  assert.equal(state.completedDecisions.length, 5);
-  assert.equal(state.blockers.length, 12);
-  assert.equal(state.deferredActions.length, 4);
+  assert.equal(state.completedDecisions.length, 7);
+  assert.equal(state.blockers.length, 11);
+  assert.equal(state.deferredActions.length, 3);
   assert.ok(state.blockers.every((blocker) => blocker.type === 'human_action' && blocker.evidence === null));
   assert.ok(state.deferredActions.every((action) => action.type === 'repo_action' && action.executable === false));
+  assert.deepEqual(state.completedDecisions.slice(-2), [
+    { id: 'PAY_STG_BINDING_APPROVAL', status: 'COMPLETED', evidence: 'PAY-STG-20260716-1199625-1875389' },
+    { id: 'SOURCE_BINDING_STAGING_INTEGRATION', status: 'COMPLETED', evidence: 'PAY-STG-20260716-1199625-1875389' },
+  ]);
 });
 
 test('validator rejects every held env-name, blocker, decision, deferred action, and freeze hash mutation', () => {
@@ -43,21 +50,54 @@ test('validator rejects every held source default, provider semantic field, laun
   for (const path of sourceFields) { const sources = validSources(); setAtPath(sources, path, '__mutated__'); assert.match(validatePreflightHold(checkedInState(), sources).join('\n'), /held source default/); }
   for (const provider of Object.keys(PROVIDERS)) for (const field of ['name', 'baseURL', 'apiKeyEnv', 'defaultModel', 'freeTier', 'note']) { const sources = validSources(); sources.providers[provider][field] = field === 'freeTier' ? !sources.providers[provider][field] : '__mutated__'; assert.match(validatePreflightHold(checkedInState(), sources).join('\n'), new RegExp(`source provider ${provider}`)); }
   for (const field of ['schemaVersion', 'channel', 'enabled', 'checkoutOrigin', 'checkoutPath', 'evidence']) { const sources = validSources(); sources.launch[field] = field === 'enabled' ? true : '__mutated__'; assert.match(validatePreflightHold(checkedInState(), sources).join('\n'), /launch artifact/); }
-  const sources = validSources(); sources.bindings.binding = {}; assert.match(validatePreflightHold(checkedInState(), sources).join('\n'), /binding table/);
+  const binding = { channel: 'staging', evidence: 'PAY-STG-20260716-1199625-1875389', origin: 'https://vibetip.lemonsqueezy.com', path: '/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514' };
+  for (const overrides of [{ origin: 'https://other.example.test' }, { path: '/checkout/buy/other' }, { evidence: 'PAY-STG-other' }, { channel: 'production' }]) {
+    const sources = validSources();
+    sources.bindings = Object.freeze({ [checkoutEvidenceBindingKey({ ...binding, ...overrides })]: true });
+    assert.match(validatePreflightHold(checkedInState(), sources).join('\n'), /binding table/);
+  }
+  const extra = validSources();
+  extra.bindings = Object.freeze({ ...CHECKOUT_EVIDENCE_BINDINGS, extra: true });
+  assert.match(validatePreflightHold(checkedInState(), extra).join('\n'), /binding table/);
+  const unfrozen = validSources();
+  unfrozen.bindings = { ...CHECKOUT_EVIDENCE_BINDINGS };
+  assert.match(validatePreflightHold(checkedInState(), unfrozen).join('\n'), /binding table/);
+});
+test('validator cryptographically and semantically validates the staging Lemon evidence', () => {
+  const state = checkedInState();
+  const mutateEvidence = (mutate, expected) => {
+    const sources = validSources();
+    sources.evidence = checkedInEvidence();
+    mutate(sources.evidence);
+    assert.match(validatePreflightHold(state, sources).join('\n'), expected);
+  };
+  mutateEvidence((evidence) => { evidence.factsSha256 = '0'.repeat(64); }, /factsSha256/);
+  mutateEvidence((evidence) => { evidence.product.extra = true; }, /must contain exactly/);
+  mutateEvidence((evidence) => { evidence.store.id = 425473; }, /store.id/);
+  mutateEvidence((evidence) => { evidence.product.testMode = false; }, /published and test mode/);
+  mutateEvidence((evidence) => { evidence.variant.interval = 'year'; }, /monthly/);
+  mutateEvidence((evidence) => { evidence.variant.priceCents = 1000; }, /monthly/);
+  mutateEvidence((evidence) => { evidence.variant.hasLicenseKeys = false; }, /license keys/);
+  mutateEvidence((evidence) => { evidence.prices = evidence.prices.filter((price) => price.category !== 'subscription'); }, /current subscription price/);
+  mutateEvidence((evidence) => { evidence.product.buyNowUrl = 'https://other.example.test/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514'; }, /checkout URL/);
+  const joined = validSources();
+  joined.evidence = checkedInEvidence();
+  joined.bindings = Object.freeze({ [checkoutEvidenceBindingKey({ channel: 'staging', evidence: joined.evidence.evidenceId, origin: 'https://other.example.test', path: '/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514' })]: true });
+  assert.match(validatePreflightHold(state, joined).join('\n'), /validated staging binding/);
+  const historicalOneTime = validSources();
+  historicalOneTime.evidence = checkedInEvidence();
+  assert.deepEqual(validatePreflightHold(state, historicalOneTime), []);
 });
 
 test('validator rejects unknown, self-referential, cyclic, and reversed dependency edges', () => {
   const unknown = checkedInState(); unknown.deferredActions[0].blockedBy = ['NOT_A_DEFINED_ID']; assert.match(validatePreflightHold(unknown, validSources()).join('\n'), /unknown ID/);
-  const self = checkedInState(); self.deferredActions[0].blockedBy = ['SOURCE_BINDING_STAGING_INTEGRATION']; assert.match(validatePreflightHold(self, validSources()).join('\n'), /self reference/);
-  const cyclic = checkedInState(); cyclic.deferredActions[0].blockedBy = ['SOURCE_BINDING_PRODUCTION_INTEGRATION']; cyclic.deferredActions[1].blockedBy = ['SOURCE_BINDING_STAGING_INTEGRATION']; assert.match(validatePreflightHold(cyclic, validSources()).join('\n'), /cycle/);
-  const reversed = checkedInState(); reversed.deferredActions[0].blockedBy = ['SOURCE_BINDING_PRODUCTION_INTEGRATION']; assert.match(validatePreflightHold(reversed, validSources()).join('\n'), /reverses release order/);
+  const self = checkedInState(); self.deferredActions[0].blockedBy = ['SOURCE_BINDING_PRODUCTION_INTEGRATION']; assert.match(validatePreflightHold(self, validSources()).join('\n'), /self reference/);
+  const cyclic = checkedInState(); cyclic.deferredActions[0].blockedBy = ['V6_4_METADATA_COPY_RECONCILIATION']; cyclic.deferredActions[1].blockedBy = ['SOURCE_BINDING_PRODUCTION_INTEGRATION']; assert.match(validatePreflightHold(cyclic, validSources()).join('\n'), /cycle/);
+  const reversed = checkedInState(); reversed.deferredActions[0].blockedBy = ['GATE_B']; assert.match(validatePreflightHold(reversed, validSources()).join('\n'), /reverses release order/);
 });
-test('validator rejects source-binding dependencies on deployments or final approval and missing binding references', () => {
-  const stagingDependency = checkedInState();
-  stagingDependency.deferredActions[0].blockedBy = ['PAY_STG'];
-  assert.match(validatePreflightHold(stagingDependency, validSources()).join('\n'), /SOURCE_BINDING_STAGING_INTEGRATION/);
+test('validator retains production source-binding and deployment evidence blockers', () => {
   const productionDependency = checkedInState();
-  productionDependency.deferredActions[1].blockedBy = ['GATE_B'];
+  productionDependency.deferredActions[0].blockedBy = ['GATE_B'];
   assert.match(validatePreflightHold(productionDependency, validSources()).join('\n'), /SOURCE_BINDING_PRODUCTION_INTEGRATION/);
   const stagingEvidence = checkedInState();
   stagingEvidence.blockers.find((blocker) => blocker.id === 'PAY_STG').exitEvidence = stagingEvidence.blockers.find((blocker) => blocker.id === 'PAY_STG').exitEvidence.replace('completed staging source-binding integration commit or artifact', 'completed staging source-binding integration');

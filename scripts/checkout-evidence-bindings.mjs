@@ -10,7 +10,13 @@ export function checkoutEvidenceBindingKey({ channel, evidence, origin, path }) 
   return JSON.stringify([channel, evidence, origin, path]);
 }
 
-// Add reviewed immutable PAY-STG/PAY-B evidence bindings here only after human
-// verification of the exact Lemon Squeezy checkout URL. The executable generator
-// uses this source-controlled table; environment variables cannot add a binding.
-export const CHECKOUT_EVIDENCE_BINDINGS = deepFreeze({});
+// The approved staging tuple is source controlled; environment variables cannot
+// add, alter, or promote checkout bindings.
+export const CHECKOUT_EVIDENCE_BINDINGS = deepFreeze({
+  [checkoutEvidenceBindingKey({
+    channel: 'staging',
+    evidence: 'PAY-STG-20260716-1199625-1875389',
+    origin: 'https://vibetip.lemonsqueezy.com',
+    path: '/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514',
+  })]: true,
+});

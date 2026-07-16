@@ -88,6 +88,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+      - name: Release-ready authorization
+        run: npm run release:ready
+
 
       - name: Verify release metadata
         run: npm run release:check
@@ -111,6 +114,13 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v6
+      - name: Set up Node 20 for release authorization
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Release-ready authorization
+        run: npm run release:ready
 
       - name: Log in to GHCR
         uses: docker/login-action@v3

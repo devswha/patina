@@ -82,18 +82,17 @@ test('vercel.json pins the private Pro monitor cron contract', () => {
   const monitorCrons = config.crons.filter((cron) => cron.path === '/api/pro-monitor');
   assert.deepEqual(monitorCrons, [{ path: '/api/pro-monitor', schedule: '*/15 * * * *' }]);
 });
-const TEST_CHECKOUT_BINDING = Object.freeze({
+const STAGING_CHECKOUT_BINDING = Object.freeze({
   channel: 'staging',
-  evidence: 'PAY-STG-20260715',
-  origin: 'https://checkout.example.test',
-  path: '/store/pro',
-});
-const TEST_CHECKOUT_BINDINGS = Object.freeze({
-  [checkoutEvidenceBindingKey(TEST_CHECKOUT_BINDING)]: true,
+  evidence: 'PAY-STG-20260716-1199625-1875389',
+  origin: 'https://vibetip.lemonsqueezy.com',
+  path: '/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514',
 });
 
-test('launch config defaults fail closed and requires an exact source-controlled evidence binding', () => {
-  assert.deepEqual(CHECKOUT_EVIDENCE_BINDINGS, {});
+test('launch config defaults fail closed, requires a trusted Vercel target, and pins the exact staging evidence binding', () => {
+  assert.deepEqual(CHECKOUT_EVIDENCE_BINDINGS, {
+    [checkoutEvidenceBindingKey(STAGING_CHECKOUT_BINDING)]: true,
+  });
   assert.ok(Object.isFrozen(CHECKOUT_EVIDENCE_BINDINGS));
   assert.deepEqual(createLaunchConfig({
     PATINA_PRO_CHECKOUT_ENABLED: 'false',
@@ -112,46 +111,74 @@ test('launch config defaults fail closed and requires an exact source-controlled
   const enabled = {
     PATINA_PRO_CHECKOUT_ENABLED: 'true',
     PATINA_DEPLOYMENT_CHANNEL: 'staging',
-    PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro',
-    PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260715',
+    PATINA_PRO_CHECKOUT_URL: 'https://vibetip.lemonsqueezy.com/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514',
+    PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-20260716-1199625-1875389',
+    VERCEL_ENV: 'preview',
   };
-  assert.throws(() => createLaunchConfig(enabled), /source-controlled checkout evidence binding/);
-  assert.deepEqual(createLaunchConfigForTest(enabled, TEST_CHECKOUT_BINDINGS), {
+  const expectedEnabledConfig = {
     schemaVersion: 1,
     channel: 'staging',
     enabled: true,
-    checkoutOrigin: 'https://checkout.example.test',
-    checkoutPath: '/store/pro',
-    evidence: 'PAY-STG-20260715',
-  });
+    checkoutOrigin: 'https://vibetip.lemonsqueezy.com',
+    checkoutPath: '/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514',
+    evidence: 'PAY-STG-20260716-1199625-1875389',
+  };
+  assert.deepEqual(createLaunchConfig(enabled), expectedEnabledConfig);
+
+  assert.throws(
+    () => createLaunchConfig({ ...enabled, VERCEL_ENV: 'production' }),
+    /Invalid VERCEL_ENV: must be "preview" when staging checkout is enabled/,
+  );
+  assert.throws(
+    () => createLaunchConfig({
+      ...enabled,
+      PATINA_DEPLOYMENT_CHANNEL: 'production',
+      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-B-20260716-1199625-1875389',
+    }),
+    /Invalid VERCEL_ENV: must be "production" when production checkout is enabled/,
+  );
+  for (const VERCEL_ENV of [undefined, 'development']) {
+    assert.throws(
+      () => createLaunchConfig({ ...enabled, VERCEL_ENV }),
+      /Invalid VERCEL_ENV: must be "preview" when staging checkout is enabled/,
+    );
+    assert.throws(
+      () => createLaunchConfigForTest({ ...enabled, VERCEL_ENV }, CHECKOUT_EVIDENCE_BINDINGS),
+      /Invalid VERCEL_ENV: must be "preview" when staging checkout is enabled/,
+    );
+  }
+  assert.deepEqual(
+    createLaunchConfigForTest(
+      { ...enabled, VERCEL_ENV: undefined },
+      CHECKOUT_EVIDENCE_BINDINGS,
+      { allowNonVercel: true },
+    ),
+    expectedEnabledConfig,
+  );
 
   for (const overrides of [
-    { PATINA_PRO_CHECKOUT_URL: 'https://other.example.test/store/pro' },
-    { PATINA_PRO_CHECKOUT_URL: 'https://sub.checkout.example.test/store/pro' },
-    { PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/other' },
-    { PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro/' },
-    { PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/%70ro' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://other.example.test/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://sub.vibetip.lemonsqueezy.com/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://vibetip.lemonsqueezy.com/checkout/buy/other' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://vibetip.lemonsqueezy.com/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514/' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://vibetip.lemonsqueezy.com/checkout/buy/%39e53eb90-c8a8-4cef-b06d-3ca0b429e514' },
     { PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-STG-other-evidence' },
-    {
-      PATINA_DEPLOYMENT_CHANNEL: 'production',
-      PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-B-20260715',
-    },
   ]) {
     assert.throws(
-      () => createLaunchConfigForTest({ ...enabled, ...overrides }, TEST_CHECKOUT_BINDINGS),
+      () => createLaunchConfigForTest({ ...enabled, ...overrides }, CHECKOUT_EVIDENCE_BINDINGS),
       /source-controlled checkout evidence binding/,
     );
   }
 
   for (const overrides of [
-    { PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro#fragment' },
-    { PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test:443/store/pro' },
-    { PATINA_PRO_CHECKOUT_URL: 'http://checkout.example.test/store/pro' },
-    { PATINA_PRO_CHECKOUT_URL: 'https://buyer@checkout.example.test/store/pro' },
-    { PATINA_PRO_CHECKOUT_URL: 'https://checkout.example.test/store/pro?campaign=1' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://vibetip.lemonsqueezy.com/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514#fragment' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://vibetip.lemonsqueezy.com:443/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514' },
+    { PATINA_PRO_CHECKOUT_URL: 'http://vibetip.lemonsqueezy.com/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://buyer@vibetip.lemonsqueezy.com/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514' },
+    { PATINA_PRO_CHECKOUT_URL: 'https://vibetip.lemonsqueezy.com/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514?campaign=1' },
     { PATINA_DEPLOYMENT_CHANNEL: 'preview' },
   ]) {
-    assert.throws(() => createLaunchConfigForTest({ ...enabled, ...overrides }, TEST_CHECKOUT_BINDINGS));
+    assert.throws(() => createLaunchConfigForTest({ ...enabled, ...overrides }, CHECKOUT_EVIDENCE_BINDINGS));
   }
 });
 

@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "PAY-STG-BINDING-v1",
+  "evidenceId": "PAY-STG-20260716-1199625-1875389",
+  "observedAt": "2026-07-16T02:52:37.198Z",
+  "source": "Lemon Squeezy API v1",
+  "store": {
+    "id": "425473",
+    "domain": "vibetip.lemonsqueezy.com"
+  },
+  "product": {
+    "id": "1199625",
+    "name": "Patina Pro",
+    "status": "published",
+    "testMode": true,
+    "buyNowUrl": "https://vibetip.lemonsqueezy.com/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514",
+    "createdAt": "2026-07-06T12:21:53.000000Z",
+    "updatedAt": "2026-07-16T02:41:48.000000Z"
+  },
+  "variant": {
+    "id": "1875389",
+    "name": "Default",
+    "status": "pending",
+    "testMode": true,
+    "isSubscription": true,
+    "interval": "month",
+    "intervalCount": 1,
+    "priceCents": 999,
+    "hasLicenseKeys": true,
+    "createdAt": "2026-07-06T12:21:54.000000Z",
+    "updatedAt": "2026-07-16T02:41:48.000000Z"
+  },
+  "prices": [
+    {
+      "id": "3154975",
+      "category": "one_time",
+      "scheme": "standard",
+      "unitPrice": 999,
+      "renewalInterval": null,
+      "renewalIntervalQuantity": null,
+      "createdAt": "2026-07-06T12:21:54.000000Z",
+      "updatedAt": "2026-07-06T12:21:54.000000Z"
+    },
+    {
+      "id": "3154982",
+      "category": "one_time",
+      "scheme": "standard",
+      "unitPrice": 999,
+      "renewalInterval": null,
+      "renewalIntervalQuantity": 1,
+      "createdAt": "2026-07-06T12:22:29.000000Z",
+      "updatedAt": "2026-07-06T12:22:29.000000Z"
+    },
+    {
+      "id": "3216919",
+      "category": "subscription",
+      "scheme": "standard",
+      "unitPrice": 999,
+      "renewalInterval": null,
+      "renewalIntervalQuantity": 1,
+      "createdAt": "2026-07-16T02:41:48.000000Z",
+      "updatedAt": "2026-07-16T02:41:48.000000Z"
+    }
+  ],
+  "approval": {
+    "kind": "user_directive",
+    "directive": "Proceed with the remaining work",
+    "scope": "staging source binding only"
+  },
+  "factsSha256": "6809f1b9fd77941637a02bd28b22499018247521739c98b886396df177c45b40"
+}

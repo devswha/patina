@@ -52,7 +52,17 @@ function checkoutUrl(value) {
   return { checkoutOrigin: url.origin, checkoutPath: url.pathname };
 }
 
-function createLaunchConfigWithBindings(env, bindings) {
+function enabledTarget(env, channel, { allowNonVercel = false } = {}) {
+  const target = env.VERCEL_ENV;
+  if (target === undefined && allowNonVercel) return;
+
+  const expected = channel === 'staging' ? 'preview' : 'production';
+  if (target !== expected) {
+    invalid('VERCEL_ENV', `must be "${expected}" when ${channel} checkout is enabled`);
+  }
+}
+
+function createLaunchConfigWithBindings(env, bindings, options) {
   // An explicit false (and the safe default) wins over every other input.
   if (!checkoutEnabled(env.PATINA_PRO_CHECKOUT_ENABLED)) return DISABLED_CONFIG;
 
@@ -60,7 +70,7 @@ function createLaunchConfigWithBindings(env, bindings) {
   if (channel !== 'staging' && channel !== 'production') {
     invalid('PATINA_DEPLOYMENT_CHANNEL', 'must be "staging" or "production" when checkout is enabled');
   }
-
+  enabledTarget(env, channel, options);
   const evidence = env.PATINA_PRO_GATE_EVIDENCE_ID;
   const evidencePattern = channel === 'staging'
     ? /^PAY-STG-[A-Za-z0-9][A-Za-z0-9_-]*$/
@@ -97,10 +107,9 @@ export function createLaunchConfig(env = process.env) {
   return createLaunchConfigWithBindings(env, CHECKOUT_EVIDENCE_BINDINGS);
 }
 
-// Test-only injection seam. Executable generation always uses the empty,
-// source-controlled CHECKOUT_EVIDENCE_BINDINGS table above.
-export function createLaunchConfigForTest(env, bindings) {
-  return createLaunchConfigWithBindings(env, bindings);
+// Test-only seams allow binding injection and an explicit local-development target.
+export function createLaunchConfigForTest(env, bindings, options) {
+  return createLaunchConfigWithBindings(env, bindings, options);
 }
 
 function render(config) {

@@ -63,24 +63,61 @@ test('rewrite chat is documented and the rewrite contract is published', () => {
   assert.match(readme, /fail-closed/i, 'README must document fail-closed rate limiting');
 });
 
-// The root '/' route and the chat entry rewrites must resolve so the static
-// chat page and its module graph load on Vercel.
-test('vercel.json resolves the chat playground rewrites', () => {
+test('vercel.json serves only the playground as its static output', () => {
   const config = vercelConfig();
-  const has = (source, destination) =>
-    config.rewrites.some((r) => r.source === source && r.destination === destination);
-  assert.ok(has('/', '/playground'));
-  assert.ok(has('/chatgpt.js', '/playground/chatgpt.js'));
-  assert.ok(has('/chatgpt.css', '/playground/chatgpt.css'));
-  assert.ok(has('/rewrite-client.js', '/playground/rewrite-client.js'));
-});
-test('vercel.json pins the private Pro monitor cron contract', () => {
-  const config = vercelConfig();
-  const monitor = config.functions?.['api/pro-monitor.js'];
-  assert.deepEqual(monitor, { maxDuration: 60 });
+  const staticPaths = [
+    'index.html',
+    'chatgpt.js',
+    'chatgpt.css',
+    'rewrite-client.js',
+    'analytics.js',
+    'launch-config.js',
+  ];
 
-  const monitorCrons = config.crons.filter((cron) => cron.path === '/api/pro-monitor');
-  assert.deepEqual(monitorCrons, [{ path: '/api/pro-monitor', schedule: '*/15 * * * *' }]);
+  assert.equal(config.outputDirectory, 'playground');
+  assert.notEqual(config.outputDirectory, '.', 'repository root must not be a static output');
+  assert.deepEqual(config.rewrites, [{ source: '/', destination: '/index.html' }]);
+  for (const staticPath of staticPaths) {
+    assert.ok(
+      existsSync(resolve(REPO_ROOT, config.outputDirectory, staticPath)),
+      `${staticPath} must resolve from the static output directory`,
+    );
+  }
+});
+
+test('vercel.json preserves API functions, cron, and security headers', () => {
+  const config = vercelConfig();
+
+  assert.deepEqual(config.functions, {
+    'api/rewrite.js': {
+      includeFiles: '{patterns/**,profiles/**,personas/**,core/**,lexicon/**,.patina.default.yaml}',
+    },
+    'api/pro-monitor.js': {
+      maxDuration: 60,
+    },
+  });
+  assert.deepEqual(config.crons, [{ path: '/api/pro-monitor', schedule: '*/15 * * * *' }]);
+  assert.deepEqual(config.headers, [
+    {
+      source: '/(.*)',
+      headers: [
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        { key: 'Permissions-Policy', value: 'clipboard-write=(self), camera=(), microphone=(), geolocation=()' },
+        {
+          key: 'Content-Security-Policy',
+          value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'",
+        },
+      ],
+    },
+    {
+      source: '/launch-config.js',
+      headers: [
+        { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+        { key: 'Cache-Control', value: 'no-store, max-age=0' },
+      ],
+    },
+  ]);
 });
 const STAGING_CHECKOUT_BINDING = Object.freeze({
   channel: 'staging',
@@ -214,9 +251,8 @@ test('checked-in browser launch config is disabled and Vercel serves it without 
 
   const config = vercelConfig();
   assert.equal(config.buildCommand, 'npm run launch-config:generate');
-  assert.ok(config.rewrites.some((route) =>
-    route.source === '/launch-config.js' && route.destination === '/playground/launch-config.js'));
-
+  assert.equal(config.outputDirectory, 'playground');
+  assert.ok(existsSync(resolve(REPO_ROOT, config.outputDirectory, 'launch-config.js')));
   const routeHeaders = config.headers.find((header) => header.source === '/launch-config.js')?.headers;
   assert.equal(routeHeaders?.find((header) => header.key === 'Content-Type')?.value, 'application/javascript; charset=utf-8');
   assert.equal(routeHeaders?.find((header) => header.key === 'Cache-Control')?.value, 'no-store, max-age=0');

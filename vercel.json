@@ -1,6 +1,7 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "outputDirectory": "playground",
   "buildCommand": "npm run launch-config:generate",
   "github": {
     "silent": true
@@ -22,27 +23,7 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/playground"
-    },
-    {
-      "source": "/chatgpt.js",
-      "destination": "/playground/chatgpt.js"
-    },
-    {
-      "source": "/chatgpt.css",
-      "destination": "/playground/chatgpt.css"
-    },
-    {
-      "source": "/rewrite-client.js",
-      "destination": "/playground/rewrite-client.js"
-    },
-    {
-      "source": "/analytics.js",
-      "destination": "/playground/analytics.js"
-    },
-    {
-      "source": "/launch-config.js",
-      "destination": "/playground/launch-config.js"
+      "destination": "/index.html"
     }
   ],
   "headers": [

@@ -12,6 +12,7 @@
   "scripts": {
     "test": "node --test tests/unit/*.test.js tests/e2e/*.test.js",
     "test:unit": "node --test tests/unit/*.test.js",
+    "launch-config:generate": "node scripts/generate-launch-config.mjs",
     "test:e2e": "node --test tests/e2e/*.test.js",
     "benchmark": "node tests/quality/benchmark.mjs",
     "benchmark:perf": "node scripts/perf-report.mjs",
@@ -31,8 +32,9 @@
     "card": "node scripts/share-card.mjs",
     "lint": "npm run lint:syntax && npm run lint:eslint && npm run typecheck && npm run spellcheck",
     "release:check": "node scripts/check-release-metadata.mjs",
+    "release:ready": "node scripts/check-v6.4-release-ready.mjs",
     "check:no-private-assets": "node scripts/check-no-private-assets.mjs",
-    "prepublishOnly": "npm run release:check && npm run check:no-private-assets && npm test && npm run benchmark:report && npm run dogfood",
+    "prepublishOnly": "RELEASE_READY_CONTEXT=publish npm run release:ready && npm run release:check && npm run check:no-private-assets && npm test && npm run benchmark:report && npm run dogfood",
     "benchmark:ranges": "node scripts/update-benchmark-ranges.mjs",
     "benchmark:compare": "node scripts/detector-comparison.mjs",
     "lint:syntax": "node scripts/lint.mjs",

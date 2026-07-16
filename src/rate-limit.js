@@ -1,6 +1,6 @@
 // @ts-check
 
-import { createHmac } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { isProductionPosture, QUOTA_REASONS, TIER_LIMITS, WEB_TIERS } from './web-rewrite-contract.js';
 
 const DAY_MS = 86_400_000;
@@ -59,23 +59,40 @@ function getHeader(headers, name) {
 }
 
 /**
+ * @typedef {Map<string, number>} LeaseRegistry
+ */
+
+/**
+ * @param {unknown} value
+ * @returns {value is LeaseRegistry}
+ */
+function isLeaseRegistry(value) {
+  if (!(value instanceof Map)) return false;
+  for (const [lease, expiry] of value) {
+    if (typeof lease !== 'string' || typeof expiry !== 'number') return false;
+  }
+  return true;
+}
+
+/**
  * Create an in-memory KV store for tests and local development only.
  *
- * @returns {{__memory: true, get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>}}
+ * @param {{now?: () => number}} [options]
+ * @returns {{__memory: true, get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>, acquireLease(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease(registryKey: string, lease: string): Promise<boolean>}}
  */
-export function createMemoryKv() {
+export function createMemoryKv({ now = () => Date.now() } = {}) {
   /** @type {Map<string, {value: unknown, expiresAt: number}>} */
   const entries = new Map();
 
   const expire = () => {
-    const now = Date.now();
+    const timestamp = now();
     for (const [key, entry] of entries) {
-      if (entry.expiresAt <= now) entries.delete(key);
+      if (entry.expiresAt <= timestamp) entries.delete(key);
     }
   };
 
   /** @param {number|undefined} ttlMs */
-  const expiresAt = (ttlMs) => (typeof ttlMs === 'number' && ttlMs > 0 ? Date.now() + ttlMs : Number.POSITIVE_INFINITY);
+  const expiresAt = (ttlMs) => (typeof ttlMs === 'number' && ttlMs > 0 ? now() + ttlMs : Number.POSITIVE_INFINITY);
 
   return {
     __memory: true,
@@ -104,9 +121,33 @@ export function createMemoryKv() {
     async decr(key) {
       expire();
       const current = Number(entries.get(key)?.value ?? 0);
-      const next = current - 1;
+      const next = Math.max(0, current - 1);
       entries.set(key, { value: next, expiresAt: entries.get(key)?.expiresAt ?? Number.POSITIVE_INFINITY });
       return next;
+    },
+    async acquireLease(registryKey, lease, maxConcurrent, { ttlMs }) {
+      expire();
+      const timestamp = now();
+      const registry = entries.get(registryKey);
+      const leases = registry?.value instanceof Map ? registry.value : new Map();
+      for (const [token, expiry] of leases) {
+        if (expiry <= timestamp) leases.delete(token);
+      }
+      if (leases.size >= maxConcurrent) return false;
+      leases.set(lease, timestamp + ttlMs);
+      entries.set(registryKey, { value: leases, expiresAt: timestamp + ttlMs });
+      return true;
+    },
+    async releaseLease(registryKey, lease) {
+      expire();
+      const registry = entries.get(registryKey);
+      const leases = registry?.value;
+      if (!isLeaseRegistry(leases)) return false;
+      const expiry = leases.get(lease);
+      if (typeof expiry !== 'number' || expiry <= now()) return false;
+      leases.delete(lease);
+      if (leases.size === 0) entries.delete(registryKey);
+      return true;
     },
   };
 }
@@ -117,20 +158,21 @@ export function createMemoryKv() {
 export { isProductionPosture };
 
 /**
- * @typedef {{get?(key: string): Promise<unknown>, set?(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy?(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr?(key: string): Promise<number>, __memory?: boolean}} QuotaKv
+ * @typedef {{get?(key: string): Promise<unknown>, set?(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy?(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr?(key: string): Promise<number>, acquireLease?(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease?(registryKey: string, lease: string): Promise<boolean>, __memory?: boolean}} QuotaKv
  * @typedef {{allowed: true, tier: string, remainingDay?: number}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} RateLimitResult
+ * @typedef {{allowed: true, tier: string, remainingDay?: number, lease: string}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} ConcurrencyResult
  * @typedef {{warn?: (...args: unknown[]) => void}} RateLimitLogger
  */
 
 /**
  * Create a fail-closed rate limiter for the shared free proxy.
  *
- * @param {{kv?: QuotaKv|null, hmacSecret?: string, env?: Record<string, string|undefined>, now?: () => number, limits?: typeof TIER_LIMITS, logger?: RateLimitLogger, concurrencyTtlMs?: number}} options
+ * @param {{kv?: QuotaKv|null, hmacSecret?: string, env?: Record<string, string|undefined>, now?: () => number, limits?: typeof TIER_LIMITS, logger?: RateLimitLogger, concurrencyTtlMs?: number, leaseId?: () => string}} options
  *   `concurrencyTtlMs` is the self-healing expiry for a concurrency slot; keep it
  *   >= the maximum stream budget so a slot never expires mid-stream (defaults to 5m).
- * @returns {{check(input: {tier: string, ip?: string|null, subject?: string|null, chars?: number}): Promise<RateLimitResult>, acquireConcurrency(input: {tier: string, ip?: string|null, subject?: string|null}): Promise<RateLimitResult>, releaseConcurrency(input: {tier: string, ip?: string|null, subject?: string|null}): Promise<void>}}
+ * @returns {{check(input: {tier: string, ip?: string|null, subject?: string|null, chars?: number}): Promise<RateLimitResult>, acquireConcurrency(input: {tier: string, ip?: string|null, subject?: string|null}): Promise<ConcurrencyResult>, releaseConcurrency(input: {tier: string, ip?: string|null, subject?: string|null, lease?: string}): Promise<void>}}
  */
-export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.now(), limits = TIER_LIMITS, logger = console, concurrencyTtlMs = DEFAULT_CONCURRENCY_TTL_MS }) {
+export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.now(), limits = TIER_LIMITS, logger = console, concurrencyTtlMs = DEFAULT_CONCURRENCY_TTL_MS, leaseId = () => randomBytes(32).toString('base64url') }) {
   const productionGuard = () => {
     const production = isProductionPosture(env);
     if (production && (!kv || kv.__memory)) return /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE });
@@ -166,13 +208,10 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
     }
   };
 
-  const releaseKey = async (key) => {
-    if (!kv || typeof kv.decr !== 'function') {
-      logger.warn?.('quota concurrency release skipped: kv decr unavailable');
-      return;
-    }
+  const releaseKey = async (key, lease) => {
+    if (!kv || typeof kv.releaseLease !== 'function' || typeof lease !== 'string' || lease === '') return;
     try {
-      await kv.decr(key);
+      await kv.releaseLease(key, lease);
     } catch {
       logger.warn?.('quota concurrency release failed');
     }
@@ -282,26 +321,51 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
     },
     async acquireConcurrency({ tier, ip, subject }) {
       const resolved = getConcurrencyKey(tier, ip, subject);
-      if (!resolved.ok) return resolved.result;
-      const maxConcurrent = resolved.maxConcurrent;
-      try {
-        const activeCount = await kv.incr(resolved.key, { ttlMs: concurrencyTtlMs });
-        if (!Number.isSafeInteger(activeCount) || activeCount < 1) {
+      if (!resolved.ok) {
+        if (!resolved.result.allowed) {
+          if (
+            'status' in resolved.result
+            && Number.isSafeInteger(resolved.result.status)
+            && 'reason' in resolved.result
+            && typeof resolved.result.reason === 'string'
+          ) {
+            return { allowed: false, status: resolved.result.status, reason: resolved.result.reason };
+          }
           return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
         }
-        if (activeCount > maxConcurrent) {
-          await releaseKey(resolved.key);
-          return { allowed: false, status: 429, reason: QUOTA_REASONS.CONCURRENT };
+        try {
+          const lease = leaseId();
+          if (typeof lease === 'string' && lease !== '') return { allowed: true, tier: resolved.result.tier, lease };
+        } catch {
+          // An unavailable cryptographic token source cannot grant a capability.
         }
-        return { allowed: true, tier };
+        return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+      }
+      if (!kv || typeof kv.acquireLease !== 'function' || typeof kv.releaseLease !== 'function') {
+        return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+      }
+      let lease;
+      try {
+        lease = leaseId();
+      } catch {
+        return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+      }
+      if (typeof lease !== 'string' || lease === '') {
+        return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
+      }
+      try {
+        const acquired = await kv.acquireLease(resolved.key, lease, resolved.maxConcurrent, { ttlMs: concurrencyTtlMs });
+        if (acquired === true) return { allowed: true, tier, lease };
+        if (acquired === false) return { allowed: false, status: 429, reason: QUOTA_REASONS.CONCURRENT };
+        return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
       } catch {
         return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
       }
     },
-    async releaseConcurrency({ tier, ip, subject }) {
+    async releaseConcurrency({ tier, ip, subject, lease }) {
       const resolved = getConcurrencyKey(tier, ip, subject);
       if (!resolved.ok || !resolved.key) return;
-      await releaseKey(resolved.key);
+      await releaseKey(resolved.key, lease);
     },
   };
 }

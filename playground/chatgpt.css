@@ -78,6 +78,8 @@ a { color: inherit; }
 .nav__end { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .nav__byok { flex-basis: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
 .nav__byok[hidden] { display: none; }
+.nav__pro { flex-basis: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
+.nav__pro[hidden] { display: none; }
 
 .ctl { display: flex; align-items: center; gap: 6px; }
 .ctl[hidden] { display: none; }
@@ -90,6 +92,12 @@ a { color: inherit; }
 .ctl__select:focus, .ctl__input:focus { border-color: var(--border-strong); box-shadow: var(--focus-shadow); }
 .ctl__input { width: 180px; }
 .ctl--key .ctl__input::placeholder { color: var(--text-faint); }
+.ctl--pro .ctl__input::placeholder { color: var(--text-faint); }
+.ctl__action, .output-action {
+  border: 1px solid var(--border-strong); border-radius: 8px; padding: 6px 9px;
+  color: var(--text); background: var(--bg-elev); font: inherit; font-size: 13px; cursor: pointer;
+}
+.ctl__action:hover, .output-action:hover { background: var(--bg-hover); }
 
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
@@ -339,6 +347,8 @@ a { color: inherit; }
 .msg--patina .msg__body { flex: 1; min-width: 0; }
 .msg__text { white-space: pre-wrap; word-break: break-word; }
 .msg__text--flagged { opacity: .72; }
+.msg__text--unapproved { border-inline-start: 2px solid var(--warn, #b7791f); padding-inline-start: 8px; }
+.output-status { margin: 8px 0 0; color: var(--text-muted, var(--text-faint)); font-size: 13px; }
 .msg__text.streaming::after { content: "▍"; color: var(--accent); margin-left: 1px; animation: blink 1s step-start infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
@@ -400,6 +410,9 @@ details.foldout[open] > summary::before { content: "▾ "; }
 /* Pro upsell link shown on free-tier quota exhaustion */
 .pro-upsell { display: inline-flex; align-items: center; margin: 10px 8px 0 0; font-size: 13px; font-weight: 600; border-radius: 9999px; padding: 6px 16px; text-decoration: none; background: var(--accent); color: var(--on-accent); box-shadow: var(--inset); transition: background .15s; }
 .pro-upsell:hover { background: var(--accent-press); }
+.pro-upsell.is-soon { background: var(--bg-elev); color: var(--text-faint); border: 1px solid var(--border); cursor: default; box-shadow: none; }
+.output-actions { display: flex; gap: 8px; margin-top: 10px; }
+.output-action { border-radius: 9999px; padding: 5px 12px; }
 
 /* ───────── keyboard focus (a11y) ─────────
    Hover-only affordances are invisible to keyboard users; every interactive
@@ -425,7 +438,9 @@ details.foldout > summary:focus-visible,
 .retrybtn:focus-visible,
 .pro-upsell:focus-visible,
 .ctl__select:focus-visible,
-.ctl__input:focus-visible {
+.ctl__input:focus-visible,
+.ctl__action:focus-visible,
+.output-action:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

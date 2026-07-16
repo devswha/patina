@@ -168,6 +168,24 @@ function sleepWithSignal(sleep, ms, signal) {
 }
 
 /**
+ * Invoke an optional metadata callback without allowing consumer code to affect
+ * a paid provider request or its result.
+ *
+ * @param {Function|undefined} callback
+ * @param {object} metadata
+ * @returns {void}
+ */
+function dispatchMetadata(callback, metadata) {
+  if (typeof callback !== 'function') return;
+  try {
+    Promise.resolve(callback(metadata)).catch(() => {});
+  } catch {
+    // Metadata observers are best-effort and must not affect provider calls.
+  }
+}
+
+
+/**
  * Decide whether an LLM call failure should be retried.
  *
  * @param {Error|Object} err Error thrown by fetch or {@link HttpError}.
@@ -231,9 +249,10 @@ export function computeBackoffMs(attempt, retryAfter, opts = {}) {
  * callLLM stays transport-agnostic (#576).
  *
  * @param {{ body: unknown }} response Fetch response with an SSE body.
+ * @param {(metadata: { effectiveModel: string|null, usage: object|null }) => void} [onMetadata]
  * @returns {Promise<{ choices: Array<{ message: { content: string }, finish_reason?: string }>, model?: string, usage?: object }>}
  */
-async function readStreamedCompletion(response) {
+async function readStreamedCompletion(response, onMetadata) {
   const body = /** @type {any} */ (response).body;
   if (!body) throw new Error('Streaming response body is empty');
   let chunks;
@@ -280,7 +299,8 @@ async function readStreamedCompletion(response) {
     }
     if (typeof parsed?.model === 'string' && !model) model = parsed.model;
     // Providers that report usage on a stream do so on the final chunk.
-    if (parsed?.usage) usage = parsed.usage;
+    if (parsed?.usage && typeof parsed.usage === 'object' && !Array.isArray(parsed.usage)) usage = parsed.usage;
+    onMetadata?.({ effectiveModel: model ?? null, usage });
     const choice = parsed?.choices?.[0];
     if (typeof choice?.finish_reason === 'string') finishReason = choice.finish_reason;
     const delta = choice?.delta?.content;
@@ -326,7 +346,8 @@ async function readStreamedCompletion(response) {
  * @param {number} [options.deadline] Absolute epoch-millisecond deadline for all attempts.
  * @param {AbortSignal} [options.signal] External cancellation signal.
  * @param {boolean} [options.allowInsecureBaseURL=false] Allow non-loopback HTTP base URLs.
- * @param {Function} [options.onResponse] Callback receiving provider metadata.
+ * @param {Function} [options.onResponse] Callback receiving successful provider metadata. Its exceptions are ignored.
+ * @param {Function} [options.onAttempt] Callback receiving each completed paid transport attempt as `{ attemptIndex, requestedModel, effectiveModel, usage, retryReason, minimumChargeApplied, outcome }`. Attempt indexes are one-based; its exceptions are ignored.
  * @param {Function} [options.sleep] Injectable sleep function for tests.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @returns {Promise<string>} Assistant message content.
@@ -352,6 +373,7 @@ export async function callLLM({
   signal,
   allowInsecureBaseURL = false,
   onResponse,
+  onAttempt,
   // Allows tests to inject a deterministic delay function.
   sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
   now = () => Date.now(),
@@ -372,6 +394,7 @@ export async function callLLM({
   let lastError;
   let attemptsMade = 0;
   let success = null;
+  let retryReason = 'initial';
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       throwIfAborted(signal);
@@ -388,6 +411,7 @@ export async function callLLM({
     const controller = new AbortController();
     let timer;
     let signalCleanup = () => {};
+    let attemptRecord = null;
     try {
       const attemptTimeout = Math.min(timeout, remainingBeforeAttempt);
       // Past undici's headersTimeout a non-streaming request cannot survive:
@@ -401,6 +425,15 @@ export async function callLLM({
         signalCleanup = () => signal.removeEventListener('abort', onAbort);
       }
       attemptsMade++;
+      attemptRecord = {
+        attemptIndex: attemptsMade,
+        requestedModel: model,
+        effectiveModel: null,
+        usage: null,
+        retryReason,
+        minimumChargeApplied: false,
+        outcome: 'error',
+      };
 
       const response = await fetch(url, {
         method: 'POST',
@@ -426,27 +459,35 @@ export async function callLLM({
       // parse whichever shape actually arrived (#576).
       const streamedReply = useStream &&
         !(response.headers?.get?.('content-type') ?? '').includes('application/json');
-      const data = streamedReply ? await readStreamedCompletion(response) : await response.json();
+      const data = streamedReply
+        ? await readStreamedCompletion(response, (metadata) => {
+          attemptRecord.effectiveModel = metadata.effectiveModel;
+          attemptRecord.usage = metadata.usage;
+        })
+        : await response.json();
+      const effectiveModel = typeof data.model === 'string' ? data.model : null;
+      const usage = data.usage && typeof data.usage === 'object' && !Array.isArray(data.usage)
+        ? data.usage
+        : null;
+      attemptRecord.effectiveModel = effectiveModel;
+      attemptRecord.usage = usage;
       const content = data.choices?.[0]?.message?.content;
       if (!content) {
         throw new Error('Empty response from LLM API');
       }
-
       const metadata = {
         provider: 'openai-http',
-        model: data.model ?? model,
+        model: effectiveModel,
+        effectiveModel,
         requestedModel: model,
         temperature: 'temperature' in body ? temperature : null,
         seed: seed ?? null,
-        usage: data.usage ?? null,
-        cacheTokens: extractCacheTokens(data.usage),
+        usage,
+        cacheTokens: extractCacheTokens(usage),
         rawResponse: data,
         content,
       };
-      // Success: stop retrying here. onResponse/return run OUTSIDE the retried
-      // block (below) so a throw from the consumer callback can't be misread as
-      // a retryable fetch failure (isRetryable treats TypeError as a network
-      // error) and re-issue the already-paid request (#444).
+      attemptRecord.outcome = 'success';
       success = { content, metadata };
     } catch (err) {
       lastError = err;
@@ -462,14 +503,24 @@ export async function callLLM({
       if (isTemperatureRejectedError(err) && 'temperature' in body) {
         markTemperatureRejected(model);
         delete body.temperature;
+        retryReason = 'temperature_schema';
         attempt--;
         continue;
       }
       if (attempt < maxRetries && isRetryable(err)) {
+        retryReason = err.name === 'AbortError'
+          ? 'timeout'
+          : typeof err.status === 'number'
+            ? 'transport'
+            : 'network';
         const delay = computeBackoffMs(attempt, err.retryAfter, {
           max: Math.min(DEFAULT_MAX_BACKOFF_MS, remainingAfterAttempt),
           now,
         });
+        if (attemptRecord) {
+          dispatchMetadata(onAttempt, attemptRecord);
+          attemptRecord = null;
+        }
         await sleepWithSignal(sleep, delay, signal);
         continue;
       }
@@ -478,12 +529,13 @@ export async function callLLM({
     } finally {
       clearTimeout(timer);
       signalCleanup();
+      if (attemptRecord) dispatchMetadata(onAttempt, attemptRecord);
     }
     if (success) break;
   }
 
   if (success) {
-    onResponse?.(success.metadata);
+    dispatchMetadata(onResponse, success.metadata);
     return success.content;
   }
 

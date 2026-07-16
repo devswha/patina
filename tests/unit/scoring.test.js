@@ -442,6 +442,7 @@ test('scoreText omits responseFormat when the opt-in is unset (#C2)', async () =
 });
 
 test('scoreText runs exactly two LLM attempts then yields a schema-failure result on persistent bad JSON (#C3)', async () => {
+  const attempts = [];
   let calls = 0;
   const result = await scoreText({
     text: 'draft to score',
@@ -452,9 +453,208 @@ test('scoreText runs exactly two LLM attempts then yields a schema-failure resul
       return 'definitely not json';
     },
     logger: { warn() {} },
+    onAttempt: (record) => attempts.push(record),
   });
   // Schema retry is owned by callAndParseJson: exactly 1 attempt + 1 temp-0 retry.
   assert.equal(calls, 2);
   assert.equal(result.overall, null);
   assert.equal(result.error, 'schema-failure');
+  assert.deepEqual(attempts, [], 'missing transport metadata must not fabricate paid attempts');
+});
+test('scoreText reports one-based transport and schema retries with response-only identity metadata', async () => {
+  const attempts = [];
+  let calls = 0;
+  const result = await scoreText({
+    text: 'draft to score',
+    config: loadConfig(),
+    patterns: [],
+    model: 'requested-model',
+    logger: { warn() {} },
+    onAttempt: (record) => attempts.push(record),
+    callLLM: async ({ onAttempt }) => {
+      calls += 1;
+      if (calls === 1) {
+        onAttempt({
+          attemptIndex: 1,
+          requestedModel: 'requested-model',
+          effectiveModel: null,
+          usage: null,
+          retryReason: 'network',
+          minimumChargeApplied: false,
+          outcome: 'error',
+        });
+        onAttempt({
+          attemptIndex: 2,
+          requestedModel: 'requested-model',
+          effectiveModel: 'provider-model',
+          usage: { prompt_tokens: 10 },
+          retryReason: 'initial',
+          minimumChargeApplied: true,
+          outcome: 'success',
+        });
+        return 'not json';
+      }
+      onAttempt({
+        attemptIndex: 1,
+        requestedModel: 'requested-model',
+        effectiveModel: 'provider-model',
+        usage: { prompt_tokens: 11 },
+        retryReason: 'initial',
+        minimumChargeApplied: true,
+        outcome: 'success',
+      });
+      return '{ "categories": {}, "overall": 20, "interpretation": "mostly human" }';
+    },
+  });
+
+  assert.equal(calls, 2);
+  assert.equal(result.overall, 20);
+  assert.deepEqual(attempts, [
+    {
+      attemptIndex: 1,
+      requestedModel: 'requested-model',
+      effectiveModel: null,
+      usage: null,
+      retryReason: 'network',
+      minimumChargeApplied: false,
+      outcome: 'error',
+    },
+    {
+      attemptIndex: 2,
+      requestedModel: 'requested-model',
+      effectiveModel: 'provider-model',
+      usage: { prompt_tokens: 10 },
+      retryReason: 'score_schema_parse',
+      minimumChargeApplied: true,
+      outcome: 'error',
+    },
+    {
+      attemptIndex: 3,
+      requestedModel: 'requested-model',
+      effectiveModel: 'provider-model',
+      usage: { prompt_tokens: 11 },
+      retryReason: 'initial',
+      minimumChargeApplied: true,
+      outcome: 'success',
+    },
+  ]);
+});
+test('scoreText rejects an invalid lower transport batch before global reindexing', async () => {
+  const attempts = [];
+  let invalidSignals = 0;
+  let calls = 0;
+  const validAttempt = {
+    attemptIndex: 1,
+    requestedModel: 'requested-model',
+    effectiveModel: 'provider-model',
+    usage: { prompt_tokens: 10 },
+    retryReason: 'initial',
+    minimumChargeApplied: true,
+    outcome: 'success',
+  };
+  const missingUsage = { ...validAttempt };
+  delete missingUsage.usage;
+  const result = await scoreText({
+    text: 'draft to score',
+    config: loadConfig(),
+    patterns: [],
+    logger: { warn() {} },
+    onAttempt: (record) => attempts.push(record),
+    onAttemptInvalid: async () => {
+      invalidSignals += 1;
+      throw new Error('invalid evidence observer failed');
+    },
+    callLLM: async ({ onAttempt }) => {
+      calls += 1;
+      if (calls === 1) {
+        onAttempt(undefined);
+        onAttempt({});
+        onAttempt(missingUsage);
+        onAttempt({ ...validAttempt, usage: [] });
+        onAttempt({ ...validAttempt, extra: true });
+        onAttempt(validAttempt);
+        return 'not json';
+      }
+      onAttempt(validAttempt);
+      return '{ "categories": {}, "overall": 20, "interpretation": "mostly human" }';
+    },
+  });
+
+  assert.equal(result.overall, 20);
+  assert.equal(invalidSignals, 1);
+  assert.deepEqual(attempts, [{ ...validAttempt, attemptIndex: 1 }]);
+});
+
+test('scoreText rejects lower transport index starts, gaps, and out-of-order batches', async () => {
+  const validAttempt = {
+    attemptIndex: 1,
+    requestedModel: 'requested-model',
+    effectiveModel: 'provider-model',
+    usage: { prompt_tokens: 10 },
+    retryReason: 'initial',
+    minimumChargeApplied: true,
+    outcome: 'success',
+  };
+  const invalidSequences = [
+    [{ ...validAttempt, attemptIndex: 7 }],
+    [validAttempt, { ...validAttempt, attemptIndex: 3 }],
+    [validAttempt, { ...validAttempt, attemptIndex: 3 }, { ...validAttempt, attemptIndex: 2 }],
+  ];
+
+  for (const sequence of invalidSequences) {
+    const attempts = [];
+    let invalidSignals = 0;
+    const result = await scoreText({
+      text: 'draft to score',
+      config: loadConfig(),
+      patterns: [],
+      logger: { warn() {} },
+      onAttempt: (record) => attempts.push(record),
+      onAttemptInvalid: () => { invalidSignals += 1; },
+      callLLM: async ({ onAttempt }) => {
+        for (const attempt of sequence) onAttempt(attempt);
+        return '{ "categories": {}, "overall": 20, "interpretation": "mostly human" }';
+      },
+    });
+
+    assert.equal(result.overall, 20);
+    assert.equal(invalidSignals, 1);
+    assert.deepEqual(attempts, []);
+  }
+});
+
+test('scoreText metadata callback is isolated and does not change legacy result shapes', async () => {
+  let paidCalls = 0;
+  let observedAttempts = 0;
+  const common = {
+    text: 'draft to score',
+    config: loadConfig(),
+    patterns: [],
+    logger: { warn() {} },
+    callLLM: async ({ onAttempt }) => {
+      paidCalls += 1;
+      onAttempt({
+        attemptIndex: 1,
+        requestedModel: 'requested-model',
+        effectiveModel: 'provider-model',
+        usage: { prompt_tokens: 10, completion_tokens: 2 },
+        retryReason: 'initial',
+        minimumChargeApplied: true,
+        outcome: 'success',
+      });
+      return '{ "categories": {}, "overall": 20, "interpretation": "mostly human" }';
+    },
+  };
+  const legacy = await scoreText(common);
+  const observed = await scoreText({
+    ...common,
+    onAttempt: async () => {
+      observedAttempts += 1;
+      throw new Error('collector failed');
+    },
+  });
+
+  assert.equal(paidCalls, 2, 'each score makes one paid lower-layer call');
+  assert.equal(observedAttempts, 1, 'the metadata observer receives the real attempt once');
+  assert.deepEqual(observed, legacy);
 });

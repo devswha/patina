@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { evaluateMeaningProxy, countNegations, rareTokenRecall, droppedNumbers } from '../../src/features/meaning-proxy.js';
+import { evaluateMeaningProxy, evaluateNumberSafety, countNegations, rareTokenRecall, droppedNumbers } from '../../src/features/meaning-proxy.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
@@ -104,5 +104,194 @@ test('meaning-proxy imports no backend/LLM module (Lane A purity)', () => {
   assert.deepEqual(imports, ['./index.js'], `unexpected imports: ${JSON.stringify(imports)}`);
   for (const forbidden of ['backends', 'api.js', 'scoring.js', 'providers.js', 'verify.js', 'prompt-builder']) {
     assert.ok(!src.includes(`/${forbidden}`) && !src.includes(`${forbidden}'`), `must not reference ${forbidden}`);
+  }
+});
+test('number safety accepts only deterministic equivalent claims across locales', () => {
+  const cases = [
+    ['en grouping', 'en', 'Revenue was 1,200.', 'Revenue was 1200.'],
+    ['en full date', 'en', 'Due January 2, 2024.', 'Due January 2, 2024.'],
+    ['en ISO currency', 'en', 'It cost USD 1,200.', 'It cost USD 1200.'],
+    ['en percent wording', 'en', 'Growth was 30 percent.', 'Growth was 30%.'],
+    ['en allowlisted unit conversion', 'en', 'The route is 1 km.', 'The route is 1000 m.'],
+    ['en word number', 'en', 'Choose one option.', 'Choose 1 option.'],
+    ['ko grouping', 'ko', '매출은 1,200이었다.', '매출은 1200이었다.'],
+    ['ko full date', 'ko', '마감일은 2024년 1월 2일이다.', '마감일은 2024년 1월 2일이다.'],
+    ['ko ISO currency', 'ko', '비용은 KRW 1200이다.', '비용은 KRW 1,200이다.'],
+    ['ko percent wording', 'ko', '성장률은 30퍼센트다.', '성장률은 30%다.'],
+    ['ko word number', 'ko', '하나를 선택한다.', '1개를 선택한다.'],
+    ['zh grouping', 'zh', '收入为1,200。', '收入为1200。'],
+    ['zh full date', 'zh', '截止日期是2024年1月2日。', '截止日期是2024年1月2日。'],
+    ['zh ISO currency', 'zh', '价格为CNY 1200。', '价格为CNY 1,200。'],
+    ['zh percent wording', 'zh', '增长百分之30。', '增长30%。'],
+    ['zh recognized percent claim', 'zh', '百分之30。', '30%。'],
+    ['zh word number', 'zh', '选择一项。', '选择1项。'],
+    ['ja grouping', 'ja', '売上は1,200です。', '売上は1200です。'],
+    ['ja full date', 'ja', '締切は2024年1月2日です。', '締切は2024年1月2日です。'],
+    ['ja ISO currency', 'ja', '価格はJPY 1200です。', '価格はJPY 1,200です。'],
+    ['ja percent wording', 'ja', '成長率は30パーセントです。', '成長率は30%です。'],
+    ['ja word number', 'ja', '一つ選びます。', '1つ選びます。'],
+  ];
+  for (const [name, lang, original, rewrite] of cases) {
+    const result = evaluateNumberSafety(original, rewrite, lang);
+    assert.equal(result.ok, true, `${name}: ${result.reason}`);
+    assert.equal(result.version, 'numeric-safety-v1');
+  }
+});
+
+test('number safety preserves independent numeric claims, signs, multiplicity, and punctuation commas', () => {
+  const passing = [
+    ['punctuation comma', 'en', 'Version 1, then 2.', 'Version 1, then 2.'],
+    ['negative value', 'en', 'The balance is -5.', 'The balance is -5.'],
+    ['negative value', 'ko', '잔액은 -5이다.', '잔액은 -5이다.'],
+    ['negative value', 'zh', '余额为-5。', '余额为-5。'],
+    ['negative value', 'ja', '残高は-5です。', '残高は-5です。'],
+    ['independent claim reordering', 'ko', '2024년에 고객 30명을 확보했다.', '고객 30명을 확보한 것은 2024년이다.'],
+    ['duplicate positive control', 'en', 'Values 1, then 1.', 'Values 1, then 1.'],
+    ['ordinary decimal', 'en', 'The value is 0.05.', 'The value is 0.05.'],
+  ];
+  for (const [name, lang, original, rewrite] of passing) {
+    assert.equal(evaluateNumberSafety(original, rewrite, lang).ok, true, name);
+  }
+  const groupedCurrency = evaluateNumberSafety('It cost USD 1,200.', 'It cost USD 1200.', 'en');
+  assert.deepEqual(groupedCurrency.originalClaims, ['currency:USD:1200/1']);
+  assert.deepEqual(groupedCurrency.rewriteClaims, ['currency:USD:1200/1']);
+
+  const failing = [
+    ['unsupported slash ratio', 'en', 'Ratio 1/2.', 'Ratio 2/1.', 'ambiguous_numeric_syntax'],
+    ['unsupported range', 'en', 'Range 1-2.', 'Range 1-2.', 'unsupported_numeric_syntax'],
+    ['unsupported addition', 'en', 'Total 1+2.', 'Total 1+2.', 'unsupported_numeric_syntax'],
+    ['unsupported ratio', 'en', 'Ratio 1:2.', 'Ratio 1:2.', 'unsupported_numeric_syntax'],
+    ['unsupported Unicode decimal digit', 'en', 'Value ３０.', 'Value ３０.', 'unsupported_numeric_syntax'],
+    ['duplicate occurrence loss', 'en', 'Values 1, then 1.', 'Value 1.', 'numeric_claim_changed'],
+    ['sign flip', 'en', 'The balance is -5.', 'The balance is 5.', 'numeric_claim_changed'],
+    ['sign flip', 'ko', '잔액은 -5이다.', '잔액은 5이다.', 'numeric_claim_changed'],
+    ['sign flip', 'zh', '余额为-5。', '余额为5。', 'numeric_claim_changed'],
+    ['sign flip', 'ja', '残高は-5です。', '残高は5です。', 'numeric_claim_changed'],
+    ['Unicode minus sign flip', 'en', 'The balance is −5.', 'The balance is 5.', 'numeric_claim_changed'],
+    ['leading-dot decimal comparator flip', 'en', 'p < .05', 'p > .05', 'unsupported_numeric_syntax'],
+    ['leading-dot decimal sign flip', 'en', 'The value is -.5.', 'The value is .5.', 'unsupported_numeric_syntax'],
+    ['unchanged leading-dot decimal syntax', 'en', 'The value is .05.', 'The value is .05.', 'unsupported_numeric_syntax'],
+    ['unchanged Unicode-minus leading-dot decimal syntax', 'en', 'The value is −.5.', 'The value is −.5.', 'unsupported_numeric_syntax'],
+    ['unchanged numeric comparator', 'en', 'p < 0.05', 'p < 0.05', 'unsupported_numeric_syntax'],
+    ['changed numeric comparator cannot reuse number multiset', 'en', 'p < 0.05', 'p > 0.05', 'unsupported_numeric_syntax'],
+  ];
+  for (const [name, lang, original, rewrite, reason] of failing) {
+    const result = evaluateNumberSafety(original, rewrite, lang);
+    assert.equal(result.ok, false, name);
+    assert.equal(result.reason, reason, name);
+    if (name === 'duplicate occurrence loss' || name === 'sign flip') {
+      const proxy = evaluateMeaningProxy({ original, rewrite, lang });
+      assert.equal(proxy.signals.numberSafety.ok, false, `${name}: stream-facing result`);
+      assert.ok(proxy.reasons.includes(`number safety failed: ${reason}`), `${name}: explicit failure reason`);
+    }
+  }
+});
+test('number safety handles numeric syntax adversaries without blocking common prose', () => {
+  const passing = [
+    ['hyphenated age adjective', 'en', 'A 3-year plan.', 'A 3-year plan.'],
+    ['chapter label', 'en', 'chapter 1: Introduction', 'chapter 1: Introduction'],
+    ['Chinese lexical 一般/一定', 'zh', '这是一般说明。', '这是一定说明。'],
+    ['Korean grammatical particles', 'ko', '이 일이 중요하다.', '이 일은 중요하다.'],
+    ['Chinese counter', 'zh', '选择一项。', '选择1项。'],
+    ['Japanese counter', 'ja', '一つ選びます。', '1つ選びます。'],
+    ['Korean lexical word is not a numeral', 'ko', '열정이 필요하다.', '의욕이 필요하다.'],
+  ];
+  for (const [name, lang, original, rewrite] of passing) {
+    assert.equal(evaluateNumberSafety(original, rewrite, lang).ok, true, name);
+  }
+
+  const failing = [
+    ['Unicode minus changes value', 'en', '−5', '5'],
+    ['unsupported degree temperature', 'en', '30 °C', '30 °F'],
+    ['abbreviated English month date', 'en', 'Feb 3, 2026', 'Mar 3, 2026'],
+  ];
+  for (const [name, lang, original, rewrite] of failing) {
+    assert.equal(evaluateNumberSafety(original, rewrite, lang).ok, false, name);
+  }
+});
+test('number safety handles CJK numeric context and Han numeral compounds', () => {
+  const passing = [
+    ['ko particle', 'ko', '1200이었다', 'number:1200/1'],
+    ['ko signed particle', 'ko', '-5이다', 'number:-5/1'],
+    ['zh counter', 'zh', '1项', 'number:1/1'],
+    ['ja particle', 'ja', '12です', 'number:12/1'],
+  ];
+  for (const [name, lang, text, claim] of passing) {
+    const result = evaluateNumberSafety(text, text, lang);
+    assert.equal(result.ok, true, name);
+    assert.equal(result.reason, null, name);
+    assert.deepEqual(result.originalClaims, [claim], name);
+  }
+  const changedCounters = [
+    ['zh 台 counter changes', 'zh', '一台设备。', '二台设备。'],
+    ['ja 台 counter changes', 'ja', '一台です。', '二台です。'],
+    ['ko enumerated word numerals change', 'ko', '하나를 선택한다.', '둘을 선택한다.'],
+  ];
+  for (const [name, lang, original, rewrite] of changedCounters) {
+    assert.equal(evaluateNumberSafety(original, rewrite, lang).ok, false, name);
+  }
+
+  const koreanEnumerated = [
+    ['하나 particle', '하나를 선택한다.', '1개를 선택한다.', 'number:1/1'],
+    ['둘 particle', '둘을 선택한다.', '2개를 선택한다.', 'number:2/1'],
+    ['explicit numeric counter', '1대를 선택한다.', '1대를 선택한다.', 'number:1/1'],
+  ];
+  for (const [name, original, rewrite, claim] of koreanEnumerated) {
+    const result = evaluateNumberSafety(original, rewrite, 'ko');
+    assert.equal(result.ok, true, name);
+    assert.deepEqual(result.originalClaims, [claim], name);
+  }
+
+  const failing = [
+    ['zh adjacent Han numerals', 'zh', '十二'],
+    ['ja adjacent Han numerals', 'ja', '十二'],
+  ];
+  for (const [name, lang, text] of failing) {
+    const result = evaluateNumberSafety(text, text, lang);
+    assert.equal(result.ok, false, name);
+    assert.equal(result.reason, 'unsupported_word_number', name);
+  }
+});
+
+test('number safety rejects unsupported or partial word-number expressions', () => {
+  const cases = [
+    ['en ordinal replacement', 'en', 'Choose the first option.', 'Choose the second option.'],
+    ['en fraction', 'en', 'Use half the amount.', 'Use half the amount.'],
+    ['en unsupported magnitude must not collapse', 'en', 'Choose one quadrillion options.', 'Choose one option.'],
+    ['en partial word number', 'en', 'Choose one hundred options.', 'Choose one option.'],
+    ['en unsupported word-number insertion', 'en', 'Choose one option.', 'Choose one hundred options.'],
+    ['ko compound word number', 'ko', '열하나를 선택한다.', '하나를 선택한다.'],
+    ['ko standalone magnitude with counter', 'ko', '백 명이 참석했다.', '백 명이 참석했다.'],
+    ['ko standalone fraction', 'ko', '절반을 사용한다.', '절반을 사용한다.'],
+    ['zh compound word number', 'zh', '选择十一项。', '选择一项。'],
+    ['zh standalone unsupported word number', 'zh', '百项选择。', '一项选择。'],
+    ['ja compound word number', 'ja', '十一個を選びます。', '一つ選びます。'],
+  ];
+  for (const [name, lang, original, rewrite] of cases) {
+    const result = evaluateNumberSafety(original, rewrite, lang);
+    assert.equal(result.ok, false, name);
+    assert.equal(result.reason, 'unsupported_word_number', name);
+  }
+});
+test('number safety fails closed for ambiguous or changed numeric claims', () => {
+  const cases = [
+    ['ambiguous comma decimal', 'en', 'The rate is 3,14.', 'The rate is 3,14.', 'ambiguous_number_grouping'],
+    ['ambiguous slash date', 'en', 'Due 01/02/2024.', 'Due 01/02/2024.', 'ambiguous_numeric_syntax'],
+    ['symbol-only currency', 'ko', '비용은 ₩1200이다.', '비용은 ₩1200이다.', 'ambiguous_numeric_syntax'],
+    ['compound unit', 'zh', '速度是10 km/h。', '速度是10 km/h。', 'ambiguous_numeric_syntax'],
+    ['missing value', 'ja', '在庫は12です。', '在庫があります。', 'numeric_claim_changed'],
+    ['added value', 'en', 'There are 12 seats.', 'There are 12 seats and 3 tables.', 'numeric_claim_changed'],
+    ['changed date', 'ko', '마감일은 2024년 1월 2일이다.', '마감일은 2024년 1월 3일이다.', 'numeric_claim_changed'],
+    ['changed currency', 'zh', '价格为CNY 1200。', '价格为CNY 1300。', 'numeric_claim_changed'],
+    ['changed percent', 'ja', '成長率は30%です。', '成長率は31%です。', 'numeric_claim_changed'],
+    ['unsupported conversion', 'en', 'The route is 1 km.', 'The route is 999 m.', 'numeric_claim_changed'],
+  ];
+  for (const [name, lang, original, rewrite, reason] of cases) {
+    const result = evaluateNumberSafety(original, rewrite, lang);
+    assert.equal(result.ok, false, name);
+    assert.equal(result.reason, reason, name);
+    const proxy = evaluateMeaningProxy({ original, rewrite, lang });
+    assert.equal(proxy.signals.numberSafety.ok, false, `${name}: stream-facing result`);
+    assert.ok(proxy.reasons.includes(`number safety failed: ${reason}`), `${name}: explicit failure reason`);
   }
 });

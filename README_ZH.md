@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#快速开始)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-6.2.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-6.3.1-blue)](CHANGELOG.md)
 
 <p align="center">
   <strong>去掉 AI 味，保留原意。</strong>
@@ -98,7 +98,7 @@ printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
 
 |  |  |
 |---|---|
-| **168 条模式** | 每种语言 33 条可改写模式 + 9 条仅评分的病毒式钩子模式（KO/EN/ZH/JA 各 42 条）—— 完整的 168 条模式目录见 [PATTERNS.md](docs/PATTERNS.md) |
+| **172 条模式** | 每种语言 34 条可改写模式 + 9 条仅评分的病毒式钩子模式（KO/EN/ZH/JA 各 43 条）—— 完整的 172 条模式目录见 [PATTERNS.md](docs/PATTERNS.md) |
 | **模式** | rewrite · verify · audit · score · diff |
 | **使用入口** | agent skill · Node CLI · 页面内 preview · 浏览器 playground（改写 + 评分） |
 | **声音** | `--persona`（内置 + 自制，ko/en/zh/ja）· `--tone` 语域 · `--profile` 体裁 —— 按固定优先级可组合 |
@@ -188,7 +188,7 @@ Input
 
 ```yaml
 # .patina.default.yaml
-version: "6.2.0"
+version: "6.3.1"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score

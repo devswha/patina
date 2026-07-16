@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#빠른-시작)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-6.2.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-6.3.1-blue)](CHANGELOG.md)
 
 <p align="center">
   <a href="https://patina.vibetip.help/"><b>브라우저에서 바로 써보기 — 설치 없음</b></a>
@@ -96,7 +96,7 @@ printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
 
 |  |  |
 |---|---|
-| **168개 패턴** | 언어별 재작성 가능 33개 + 스코어 전용 바이럴 훅 9개(KO/EN/ZH/JA 각각 42개) — 전체 168개 패턴 카탈로그는 [PATTERNS.md](docs/PATTERNS.md) 참고 |
+| **172개 패턴** | 언어별 재작성 가능 34개 + 스코어 전용 바이럴 훅 9개(KO/EN/ZH/JA 각각 43개) — 전체 172개 패턴 카탈로그는 [PATTERNS.md](docs/PATTERNS.md) 참고 |
 | **모드** | rewrite · verify · audit · score · diff |
 | **사용 채널** | 에이전트 스킬 · Node CLI · 페이지 내 preview · 브라우저 playground (리라이트 + 점수) |
 | **보이스** | `--persona` (내장 + 직접 제작, ko/en/zh/ja) · `--tone` 격식 · `--profile` 장르 — 고정된 우선순위로 조합 가능 |
@@ -186,7 +186,7 @@ Input
 
 ```yaml
 # .patina.default.yaml
-version: "6.2.0"
+version: "6.3.1"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score

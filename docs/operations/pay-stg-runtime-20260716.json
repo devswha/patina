@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "PAY-STG-RUNTIME-v1",
+  "evidenceId": "PAY-STG-RUNTIME-20260716-8973866",
+  "observedAt": "2026-07-16T03:35:03.000000Z",
+  "mode": "test",
+  "order": {
+    "id": "8973866",
+    "status": "paid",
+    "totalCents": 999,
+    "currency": "USD",
+    "paidAt": "2026-07-16T03:35:03.000000Z"
+  },
+  "subscription": {
+    "id": "2347121",
+    "status": "active",
+    "storeId": "425473",
+    "productId": "1199625",
+    "variantId": "1875389",
+    "orderId": "8973866",
+    "createdAt": "2026-07-16T03:34:59.000000Z"
+  },
+  "licenseRecord": {
+    "id": "1487257",
+    "status": "inactive",
+    "issuanceStatus": "issued",
+    "activationLimit": 3,
+    "rawMaterialPresent": false
+  },
+  "deployment": {
+    "environment": "preview",
+    "id": "dpl_67KJsb92zsiWHGMSQx53zVET84UE",
+    "immutableUrl": "https://patina-9ouqbaa1r-devshwas-projects.vercel.app",
+    "stableAlias": "https://patina-devswha-3436-devshwas-projects.vercel.app"
+  },
+  "checkoutBrowser": {
+    "environment": "test",
+    "attempt": 1,
+    "confirmation": "Thanks for your order!"
+  },
+  "proEntitlement": {
+    "environment": "staging",
+    "attempt": 1,
+    "url": "https://patina-devswha-3436-devshwas-projects.vercel.app",
+    "httpStatus": 200,
+    "terminal": "done",
+    "rawLicensePresent": false
+  },
+  "numberSafety": {
+    "environment": "staging",
+    "attempt": 1,
+    "terminal": "error",
+    "code": "number_safety_failed"
+  },
+  "stagingConfiguration": {
+    "environment": "staging",
+    "model": "claude-sonnet-4-5",
+    "allowlisted": true,
+    "scope": "staging_configuration_only"
+  },
+  "factsSha256": "5fa2bc0e84864bd1120e4c6dcb388ca02b2e03b443583bbd6459d651f7f0c370"
+}

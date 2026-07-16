@@ -55,6 +55,34 @@ test('streamRewrite dispatches a split success stream in protocol order', async 
   assert.equal(fetchCalls[0].init.method, 'POST');
   assert.equal(fetchCalls[0].init.headers['content-type'], 'application/json');
 });
+test('streamRewrite sends a Pro Bearer license only in the Authorization header', async () => {
+  const body = { mode: 'first', lang: 'en', tier: 'pro', text: 'Hello' };
+  const fetchCalls = [];
+  const license = 'Bearer pro-license-token';
+
+  await streamRewrite({
+    body,
+    authorization: license,
+    fetchImpl: async (url, init) => {
+      fetchCalls.push({ url, init });
+      return streamResponse(['{"type":"done"}\n']);
+    },
+  });
+
+  assert.equal(fetchCalls.length, 1);
+  const { init } = fetchCalls[0];
+  assert.equal(init.headers.Authorization, license);
+  assert.deepEqual(JSON.parse(init.body), {
+    mode: 'first',
+    lang: 'en',
+    tier: 'pro',
+    text: 'Hello',
+  });
+  assert.equal('authorization' in body, false);
+  assert.equal('license' in body, false);
+  assert.equal('Authorization' in JSON.parse(init.body), false);
+  assert.equal('license' in JSON.parse(init.body), false);
+});
 
 test('streamRewrite treats terminal floor_failed frame as error and never calls done', async () => {
   const events = [];
@@ -75,6 +103,43 @@ test('streamRewrite treats terminal floor_failed frame as error and never calls 
 
   assert.equal(summary.ok, false);
   assert.deepEqual(events, [['delta', 'unsafe'], ['error', 'floor_failed']]);
+});
+test('streamRewrite resolves at the first terminal frame without awaiting EOF or later frames', async () => {
+  const encoder = new globalThis.TextEncoder();
+  let cancelled = 0;
+  const response = {
+    ok: true,
+    status: 200,
+    body: new globalThis.ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('{"type":"done","mps":92,"fidelity":91}\n{"type":"error","error":"late failure"}\n'));
+      },
+      cancel() {
+        cancelled += 1;
+      },
+    }),
+  };
+  const events = [];
+  const pending = streamRewrite({
+    body: { mode: 'first', lang: 'en', tier: 'free', text: 'Hello' },
+    fetchImpl: async () => response,
+    onDone: () => events.push('done'),
+    onError: () => events.push('error'),
+  });
+  let timeout;
+  try {
+    const summary = await Promise.race([
+      pending,
+      new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('terminal frame did not resolve promptly')), 50); }),
+    ]);
+    assert.equal(summary.ok, true);
+    assert.equal(summary.finalFrame.type, 'done');
+  } finally {
+    clearTimeout(timeout);
+  }
+  await Promise.resolve();
+  assert.equal(cancelled, 1);
+  assert.deepEqual(events, ['done']);
 });
 
 test('streamRewrite reports non-2xx responses through onError', async () => {

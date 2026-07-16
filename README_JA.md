@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#クイックスタート)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-6.2.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-6.3.1-blue)](CHANGELOG.md)
 
 > **AIっぽさだけを落として、意味はそのまま。**
 
@@ -96,7 +96,7 @@ printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
 
 |  |  |
 |---|---|
-| **168 パターン** | 各言語 33 個の書き換え可能パターン + 9 個のスコア専用 viral-hook（KO/EN/ZH/JA 各 42 個） — 完全な 168 パターンカタログは [PATTERNS.md](docs/PATTERNS.md) を参照 |
+| **172 パターン** | 各言語 34 個の書き換え可能パターン + 9 個のスコア専用 viral-hook（KO/EN/ZH/JA 各 43 個） — 完全な 172 パターンカタログは [PATTERNS.md](docs/PATTERNS.md) を参照 |
 | **モード** | rewrite · verify · audit · score · diff |
 | **利用形態** | agent skill · Node CLI · ページ内 preview · ブラウザ playground（rewrite + score） |
 | **ボイス** | `--persona`（組み込み + 自作、ko/en/zh/ja）· `--tone` レジスター · `--profile` ジャンル — 固定の優先順位で組み合わせ可能 |
@@ -186,7 +186,7 @@ Input
 
 ```yaml
 # .patina.default.yaml
-version: "6.2.0"
+version: "6.3.1"
 language: ko              # ko | en | zh | ja
 profile: default
 output: rewrite           # rewrite | diff | audit | score

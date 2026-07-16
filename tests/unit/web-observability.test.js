@@ -2,82 +2,191 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
 import {
-  METRIC_FIELDS,
-  latencyBucket,
-  charBucket,
-  buildRewriteMetric,
-  sanitizeMetric,
+  AGGREGATE_TTL_SECONDS,
+  WEB_OBSERVABILITY_FIELDS,
+  WEB_OBSERVABILITY_SCHEMA,
+  buildAggregateKey,
+  buildWebObservabilityEvent,
+  createWebObserver,
+  sanitizeWebObservabilityEvent,
+  utcQuarterStart,
 } from '../../src/web-observability.js';
 
-test('latencyBucket and charBucket map to coarse bands (no raw values)', () => {
-  assert.equal(latencyBucket(10), '<250ms');
-  assert.equal(latencyBucket(500), '250ms-1s');
-  assert.equal(latencyBucket(2000), '1s-3s');
-  assert.equal(latencyBucket(5000), '3s-10s');
-  assert.equal(latencyBucket(99999), '>10s');
-  assert.equal(latencyBucket(-1), 'unknown');
-  assert.equal(latencyBucket('x'), 'unknown');
-
-  assert.equal(charBucket(100), '<500');
-  assert.equal(charBucket(1500), '500-2k');
-  assert.equal(charBucket(3000), '2k-4k');
-  assert.equal(charBucket(9000), '4k-20k');
-  assert.equal(charBucket(50000), '>20k');
-  assert.equal(charBucket(-5), 'unknown');
+test('canonical web observability schema is deeply frozen', () => {
+  assert.equal(WEB_OBSERVABILITY_SCHEMA.schemaVersion, 'v1');
+  assert.equal(WEB_OBSERVABILITY_SCHEMA.schema, 'patina.web.v1');
+  assert.equal(WEB_OBSERVABILITY_FIELDS, WEB_OBSERVABILITY_SCHEMA.fields);
+  assert.ok(Object.isFrozen(WEB_OBSERVABILITY_SCHEMA));
+  assert.ok(Object.isFrozen(WEB_OBSERVABILITY_SCHEMA.fields));
+  assert.ok(Object.isFrozen(WEB_OBSERVABILITY_SCHEMA.values));
+  for (const values of Object.values(WEB_OBSERVABILITY_SCHEMA.values)) assert.ok(Object.isFrozen(values));
+  assert.throws(() => { WEB_OBSERVABILITY_SCHEMA.values.channel[0] = 'development'; }, TypeError);
+  assert.throws(() => { WEB_OBSERVABILITY_SCHEMA.values.outcome.push('other'); }, TypeError);
 });
 
-test('buildRewriteMetric emits ONLY allowlisted sanitized fields', () => {
-  const m = buildRewriteMetric({
-    tier: 'byok', provider: 'openai', model: 'gpt-5.5', status: 200, latencyMs: 1200, quotaDecision: 'allowed', charCount: 1800,
-  });
-  assert.deepEqual(Object.keys(m).sort(), [...METRIC_FIELDS].sort());
-  assert.equal(m.tier, 'byok');
-  assert.equal(m.latencyBucket, '1s-3s');
-  assert.equal(m.charBucket, '500-2k');
-  assert.equal(m.status, 200);
-});
+test('builder output keys and closed values match the canonical schema', () => {
+  const common = { channel: 'production', tier: 'pro', outcome: 'completed', latencyMs: 1, status: 200 };
+  const events = [
+    ...WEB_OBSERVABILITY_SCHEMA.values.channel.map((channel) => buildWebObservabilityEvent({ ...common, channel })),
+    ...WEB_OBSERVABILITY_SCHEMA.values.tier.map((tier) => buildWebObservabilityEvent({ ...common, tier })),
+    ...WEB_OBSERVABILITY_SCHEMA.values.outcome.map((outcome) => buildWebObservabilityEvent({ ...common, outcome })),
+    ...[0, 30_001, 60_001, 120_001, -1].map((latencyMs) => buildWebObservabilityEvent({ ...common, latencyMs })),
+    ...[100, 200, 300, 400, 500, 0].map((status) => buildWebObservabilityEvent({ ...common, status })),
+    buildWebObservabilityEvent({ ...common, sampling: 'sampled_1_of_20' }),
+  ];
 
-test('buildRewriteMetric NEVER leaks text/prompt/output/apiKey/Authorization/full-IP even if passed', () => {
-  const m = buildRewriteMetric(/** @type {any} */ ({
-    tier: 'free', provider: 'openai', model: 'gpt-5.5', status: 200, latencyMs: 100, charCount: 50,
-    // hostile extras that must be ignored:
-    text: 'the user pasted secret prose',
-    prompt: 'full patina prompt with the document',
-    output: 'the rewritten text',
-    apiKey: 'sk-should-not-appear-123456',
-    authorization: 'Bearer sk-should-not-appear-123456',
-    ip: '203.0.113.42',
-    headers: { authorization: 'Bearer sk-x' },
-  }));
-  const json = JSON.stringify(m);
-  for (const leak of ['secret prose', 'patina prompt', 'rewritten text', 'sk-should-not-appear', '203.0.113.42']) {
-    assert.doesNotMatch(json, new RegExp(leak), `${leak} must not appear in the metric`);
+  const observed = Object.fromEntries(Object.keys(WEB_OBSERVABILITY_SCHEMA.values).map((field) => [field, new Set()]));
+  for (const event of events) {
+    assert.deepEqual(Object.keys(event), WEB_OBSERVABILITY_SCHEMA.fields);
+    assert.equal(event.schemaVersion, WEB_OBSERVABILITY_SCHEMA.schemaVersion);
+    assert.equal(event.schema, WEB_OBSERVABILITY_SCHEMA.schema);
+    for (const [field, values] of Object.entries(WEB_OBSERVABILITY_SCHEMA.values)) {
+      assert.ok(values.includes(event[field]), `${field}: ${event[field]}`);
+      observed[field].add(event[field]);
+    }
   }
-  // Only allowlisted keys exist.
-  for (const k of Object.keys(m)) assert.ok(METRIC_FIELDS.includes(k), `unexpected metric field ${k}`);
+  for (const [field, values] of Object.entries(WEB_OBSERVABILITY_SCHEMA.values)) {
+    assert.deepEqual(observed[field], new Set(values), field);
+  }
+});
+test('patina.web.v1 is closed and rejects raw dimensions', () => {
+  const event = buildWebObservabilityEvent(/** @type {any} */ ({
+    channel: 'production', tier: 'pro', outcome: 'completed', status: 201, latencyMs: 30_001,
+    text: 'customer document', prompt: 'secret prompt', output: 'rewritten document',
+    apiKey: 'sk-secret', Authorization: 'Bearer secret', ip: '203.0.113.42',
+    requestId: 'req_123', utm_source: 'campaign', license: 'raw-license', licenseHmac: 'hmac-license', error: 'raw-error-canary',
+  }));
+  assert.deepEqual(Object.keys(event).sort(), [...WEB_OBSERVABILITY_FIELDS].sort());
+  assert.deepEqual(event, {
+    schemaVersion: 'v1', schema: 'patina.web.v1', channel: 'production', evidenceClass: 'aggregate_only',
+    tier: 'pro', outcome: 'completed', latencyBucket: '30-60s', statusClass: '2xx', sampling: 'full',
+  });
+  const json = JSON.stringify(sanitizeWebObservabilityEvent(/** @type {any} */ ({ ...event, prompt: 'secret' })));
+  assert.doesNotMatch(json, /customer|secret|203\.0\.113\.42|req_123|campaign|raw-license|hmac-license|raw-error-canary/);
 });
 
-test('buildRewriteMetric normalizes unknown tier/provider/model/status defensively', () => {
-  const m = buildRewriteMetric({});
-  assert.equal(m.tier, 'unknown');
-  assert.equal(m.provider, 'unknown');
-  assert.equal(m.model, 'unknown');
-  assert.equal(m.status, 0);
-  assert.equal(m.latencyBucket, 'unknown');
-  assert.equal(m.charBucket, 'unknown');
-  assert.equal(m.quotaDecision, 'n/a');
+test('aggregate key uses compact UTC quarter starts, mandatory channel and tier, and exact TTL', () => {
+  const base = buildWebObservabilityEvent({
+    channel: 'production', tier: 'pro', outcome: 'completed', latencyMs: 30_000, status: 200,
+  });
+  assert.equal(
+    buildAggregateKey(base, '2026-07-15T12:14:59.999Z'),
+    'patina:mon:v1:production:pro:20260715T1200Z:completed:<=30s',
+  );
+  assert.equal(utcQuarterStart('2026-07-15T12:15:59.999Z'), '20260715T1215Z');
+  assert.equal(buildAggregateKey({ ...base, channel: 'development' }, new Date()), null);
+  assert.equal(buildAggregateKey({ ...base, channel: 'unknown' }, new Date()), null);
+  assert.equal(buildAggregateKey({ ...base, tier: 'enterprise' }, new Date()), null);
+  assert.equal(AGGREGATE_TTL_SECONDS, 7200);
+});
+test('aggregate key rejects sanitized unknown tiers instead of persisting them', () => {
+  const event = buildWebObservabilityEvent({
+    channel: 'production', tier: 'invalid-tier', outcome: 'completed', latencyMs: 1, status: 200,
+  });
+  assert.equal(event.tier, 'unknown');
+  assert.equal(buildAggregateKey(event, '2026-07-15T12:00:00.000Z'), null);
 });
 
-test('buildRewriteMetric preserves the pro tier (revenue-gate observability)', () => {
-  assert.equal(buildRewriteMetric({ tier: 'pro' }).tier, 'pro');
-  // Still allowlisted alongside free/byok; anything else normalizes to unknown.
-  assert.equal(buildRewriteMetric({ tier: 'enterprise' }).tier, 'unknown');
-  assert.equal(buildRewriteMetric({ tier: 'free' }).tier, 'free');
-  assert.equal(buildRewriteMetric({ tier: 'byok' }).tier, 'byok');
+test('observer isolates staging, production, and tier aggregate keys from event input contamination', async () => {
+  const calls = [];
+  const kv = { increment: (key, options) => { calls.push([key, options]); } };
+  const options = {
+    kv, now: () => '2026-07-15T12:15:00.000Z', sample: () => true,
+    setTimer: () => 0, clearTimer: () => {},
+  };
+  createWebObserver({ ...options, channel: 'staging' }).observe({
+    channel: 'production', tier: 'free', outcome: 'completed', latencyMs: 1, status: 200,
+  });
+  createWebObserver({ ...options, channel: 'production' }).observe({
+    channel: 'staging', tier: 'pro', outcome: 'completed', latencyMs: 1, status: 200,
+  });
+  await Promise.resolve();
+  assert.deepEqual(calls.map(([key]) => key), [
+    'patina:mon:v1:staging:free:20260715T1215Z:completed:<=30s',
+    'patina:mon:v1:production:pro:20260715T1215Z:completed:<=30s',
+  ]);
+  assert.deepEqual(calls.map(([, options]) => options), [
+    { ttlSeconds: 7200 },
+    { ttlSeconds: 7200 },
+  ]);
 });
 
-test('sanitizeMetric drops any non-allowlisted field', () => {
-  const out = sanitizeMetric(/** @type {any} */ ({ tier: 'free', status: 200, apiKey: 'sk-x', text: 'secret', evil: 1 }));
-  assert.deepEqual(Object.keys(out).sort(), ['status', 'tier']);
-  assert.doesNotMatch(JSON.stringify(out), /sk-x|secret/);
+test('observer samples free and BYOK completions but retains pro and denials at 100 percent', async () => {
+  const logs = [];
+  const calls = [];
+  let count = 0;
+  const observer = createWebObserver({
+    channel: 'production',
+    logger: (event) => logs.push(event),
+    kv: { increment: (key, options) => { calls.push({ key, options }); } },
+    sample: () => ++count % 20 === 0,
+    now: () => '2026-07-15T12:00:00.000Z',
+    setTimer: () => 0,
+    clearTimer: () => {},
+  });
+  for (const tier of ['free', 'byok']) {
+    for (let i = 0; i < 20; i += 1) observer.observe({ tier, outcome: 'completed', latencyMs: 1, status: 200 });
+  }
+  observer.observe({ tier: 'pro', outcome: 'completed', latencyMs: 1, status: 200 });
+  observer.observe({ tier: 'free', outcome: 'quota_denied', latencyMs: 1, status: 429 });
+  await Promise.resolve();
+
+  assert.deepEqual(logs.map((event) => [event.tier, event.outcome, event.sampling]), [
+    ['free', 'completed', 'sampled_1_of_20'],
+    ['byok', 'completed', 'sampled_1_of_20'],
+    ['pro', 'completed', 'full'],
+    ['free', 'quota_denied', 'full'],
+  ]);
+  assert.deepEqual(calls, [
+    { key: 'patina:mon:v1:production:free:20260715T1200Z:completed:<=30s', options: { ttlSeconds: 7200 } },
+    { key: 'patina:mon:v1:production:byok:20260715T1200Z:completed:<=30s', options: { ttlSeconds: 7200 } },
+    { key: 'patina:mon:v1:production:pro:20260715T1200Z:completed:<=30s', options: { ttlSeconds: 7200 } },
+    { key: 'patina:mon:v1:production:free:20260715T1200Z:quota_denied:<=30s', options: { ttlSeconds: 7200 } },
+  ]);
+});
+
+test('observer drops failed or timed-out aggregate writes once without recursive KV', () => {
+  const logs = [];
+  const timers = [];
+  let increments = 0;
+  const observer = createWebObserver({
+    channel: 'production',
+    logger: (event) => logs.push(event),
+    kv: { increment: () => { increments += 1; return new Promise(() => {}); } },
+    setTimer: (fn) => { timers.push(fn); return timers.length; },
+    clearTimer: () => {},
+    sample: () => true,
+  });
+  observer.observe({ tier: 'pro', outcome: 'completed', latencyMs: 1, status: 200 });
+  timers[0]();
+  timers[0]();
+  assert.equal(increments, 1);
+  assert.equal(logs.filter((event) => event.outcome === 'monitor_drop').length, 1);
+  assert.equal(logs.length, 2);
+});
+
+test('observer logs one monitor drop when a valid channel lacks a KV adapter', () => {
+  const logs = [];
+  const observer = createWebObserver({
+    channel: 'production',
+    logger: (event) => logs.push(event),
+    sample: () => true,
+  });
+
+  assert.doesNotThrow(() => observer.observe({ tier: 'pro', outcome: 'completed', latencyMs: 1, status: 200 }));
+  assert.deepEqual(logs.map((event) => event.outcome), ['completed', 'monitor_drop']);
+  assert.equal(logs.filter((event) => event.outcome === 'monitor_drop').length, 1);
+});
+test('logger and KV failures are isolated from each other', () => {
+  let increments = 0;
+  const observer = createWebObserver({
+    channel: 'production',
+    logger: () => { throw new Error('logger unavailable'); },
+    kv: { increment: () => { increments += 1; throw new Error('KV unavailable'); } },
+    setTimer: () => 0,
+    clearTimer: () => {},
+    sample: () => true,
+  });
+  assert.doesNotThrow(() => observer.observe({ tier: 'pro', outcome: 'terminal_failed', latencyMs: 1, status: 500 }));
+  assert.equal(increments, 1);
 });

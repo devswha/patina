@@ -124,6 +124,7 @@ export function createRewriteThread({ lang }) {
  * @param {(frame: Record<string, unknown>) => void} [options.onDone]
  * @param {(frame: Record<string, unknown>) => void} [options.onError]
  * @param {AbortSignal} [options.signal]
+ * @param {string} [options.authorization] Pro license sent only as an Authorization header.
  * @returns {Promise<{ok:boolean, finalFrame: Record<string, unknown>|null}>}
  */
 export async function streamRewrite({
@@ -135,6 +136,7 @@ export async function streamRewrite({
   onDone,
   onError,
   signal,
+  authorization,
 }) {
   if (typeof fetchImpl !== 'function') {
     throw new TypeError('fetchImpl must be a function');
@@ -142,7 +144,10 @@ export async function streamRewrite({
 
   const response = await fetchImpl(url, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      ...(authorization ? { Authorization: authorization } : {}),
+    },
     body: JSON.stringify(body),
     signal,
   });
@@ -190,24 +195,34 @@ export async function streamRewrite({
     }
   };
 
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split(/\r?\n/);
-    buffer = lines.pop() ?? '';
-    for (const line of lines) dispatchFrame(parseStreamFrame(line));
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        dispatchFrame(parseStreamFrame(line));
+        if (finalFrame) {
+          void reader.cancel().catch(() => {});
+          return { ok: !failed, finalFrame };
+        }
+      }
+    }
+
+    buffer += decoder.decode();
+    if (buffer) dispatchFrame(parseStreamFrame(buffer));
+
+    if (failed) return { ok: false, finalFrame };
+    if (finalFrame?.type === STREAM_FRAME_TYPES.DONE) return { ok: true, finalFrame };
+
+    const frame = { type: STREAM_FRAME_TYPES.ERROR, error: 'stream ended before done' };
+    onError?.(frame);
+    return { ok: false, finalFrame: frame };
+  } finally {
+    reader.releaseLock();
   }
-
-  buffer += decoder.decode();
-  if (buffer) dispatchFrame(parseStreamFrame(buffer));
-
-  if (failed) return { ok: false, finalFrame };
-  if (finalFrame?.type === STREAM_FRAME_TYPES.DONE) return { ok: true, finalFrame };
-
-  const frame = { type: STREAM_FRAME_TYPES.ERROR, error: 'stream ended before done' };
-  onError?.(frame);
-  return { ok: false, finalFrame: frame };
 }
 
 /**

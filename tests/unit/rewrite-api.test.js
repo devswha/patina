@@ -19,6 +19,7 @@ function makeReq({ body = undefined, method = 'POST' } = {}) {
 function makeRes() {
   const headers = new Map();
   const chunks = [];
+  const events = [];
   /** @type {Map<string, Set<Function>>} */
   const listeners = new Map();
   return {
@@ -31,9 +32,11 @@ function makeRes() {
       return headers.get(String(name).toLowerCase());
     },
     write(chunk) {
+      events.push('write');
       chunks.push(String(chunk));
     },
     end(body = '') {
+      events.push('end');
       if (body) chunks.push(String(body));
       this.ended = true;
       this.writableEnded = true;
@@ -52,6 +55,7 @@ function makeRes() {
       for (const listener of listeners.get('close') ?? []) listener();
     },
     chunks,
+    events,
     ended: false,
   };
 }
@@ -247,6 +251,60 @@ test('REST KV adapter calls Upstash decr and parses the numeric result', async (
     assert.equal(calls[0], 'https://kv.example.test/decr/slot%20key');
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+test('REST KV lease commands use one atomic EVAL with opaque capabilities and fail closed on malformed acknowledgements', async () => {
+  const posts = [];
+  const acknowledgements = ['1', 0, 1, 0];
+  const rawLicense = 'LICENSE-RAW-rest-lease-canary';
+  const lease = 'aB3dEfGhIjKlMnOpQrStUvWxYz012345';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = /** @type {any} */ (async (_url, init) => {
+    posts.push(JSON.parse(String(init.body)));
+    return { ok: true, async json() { return { result: acknowledgements.shift() }; } };
+  });
+  try {
+    const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
+    assert.ok(kv);
+
+    assert.equal(await kv.acquireLease('registry key', lease, 2, { ttlMs: 4_500 }), true);
+    assert.equal(await kv.releaseLease('registry key', 'wrongOpaqueLeaseToken1234567890'), false);
+    assert.equal(await kv.releaseLease('registry key', lease), true);
+    assert.equal(await kv.releaseLease('registry key', lease), false);
+
+    assert.equal(posts.length, 4, 'exactly one EVAL POST per acquire/release operation');
+    assert.deepEqual(posts[0].slice(0, 3), ['EVAL', posts[0][1], '1']);
+    assert.deepEqual(posts[0].slice(2), ['1', 'registry key', '4500', '2', lease]);
+    assert.match(posts[0][1], /redis\.call\('TIME'\)/);
+    assert.match(posts[0][1], /redis\.call\('ZREMRANGEBYSCORE', KEYS\[1\], '-inf', now\)/);
+    assert.match(posts[0][1], /redis\.call\('ZCARD', KEYS\[1\]\)/);
+    assert.match(posts[0][1], /redis\.call\('ZADD', KEYS\[1\], now \+ ttl, ARGV\[3\]\)/);
+    assert.match(posts[0][1], /redis\.call\('PEXPIRE', KEYS\[1\], ttl\)/);
+
+    for (const command of posts.slice(1)) {
+      assert.deepEqual(command.slice(0, 3), ['EVAL', command[1], '1']);
+      assert.equal(command.length, 5, 'release is a single exact-token EVAL command');
+      assert.match(command[1], /return redis\.call\('ZREM', KEYS\[1\], ARGV\[1\]\)/);
+    }
+    assert.doesNotMatch(JSON.stringify(posts), new RegExp(rawLicense));
+    assert.doesNotMatch(JSON.stringify(posts), /Bearer LICENSE-RAW-rest-lease-canary/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  for (const result of [undefined, null, false, {}, -1, 2, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    globalThis.fetch = /** @type {any} */ (async () => ({ ok: true, async json() { return { result }; } }));
+    try {
+      const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
+      assert.ok(kv);
+      await assert.rejects(
+        () => kv.releaseLease('registry key', lease),
+        /kv lease command returned invalid result/,
+        `malformed acknowledgement ${String(result)} fails closed`,
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   }
 });
 test('general REST KV rejects unsafe origins, uses redirect:error, and aborts delayed JSON bodies', async () => {
@@ -827,6 +885,7 @@ test('handler fallback maps number-safety and other terminal failures to closed 
 
     assert.equal(res.statusCode, 200);
     assert.equal(res.ended, true);
+    assert.deepEqual(res.events, ['write', 'end']);
     assert.deepEqual(increments, [{
       key: `patina:mon:v1:production:free:20260715T1200Z:${outcome}:<=30s`,
       options: { ttlSeconds: 7200 },

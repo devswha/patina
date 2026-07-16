@@ -320,16 +320,35 @@ const PRO = WEB_TIERS.PRO;
 const FREE = WEB_TIERS.FREE;
 const BYOK = WEB_TIERS.BYOK;
 
-/** Wrap createMemoryKv counting incr/decr so a compensating decr is observable. */
+/** Wrap lease operations so atomic capacity and exact-token release are observable. */
 function spyMemoryKv() {
   const mem = createMemoryKv();
-  const counts = { incr: 0, decr: 0 };
+  const counts = { acquireLease: 0, releaseLease: 0 };
+  const releases = [];
   return {
     counts,
+    releases,
     get: (key) => mem.get(key),
-    async incr(key, opts) { counts.incr += 1; return mem.incr(key, opts); },
-    async decr(key) { counts.decr += 1; return mem.decr(key); },
+    async acquireLease(key, lease, maxConcurrent, options) {
+      counts.acquireLease += 1;
+      return mem.acquireLease(key, lease, maxConcurrent, options);
+    },
+    async releaseLease(key, lease) {
+      counts.releaseLease += 1;
+      releases.push({ key, lease });
+      return mem.releaseLease(key, lease);
+    },
   };
+}
+
+/** A lease is an internal 256-bit base64url capability, never customer material. */
+function assertOpaqueLease(result, tier, forbidden) {
+  assert.deepEqual(Object.keys(result).sort(), ['allowed', 'lease', 'tier']);
+  assert.equal(result.allowed, true);
+  assert.equal(result.tier, tier);
+  assert.equal(typeof result.lease, 'string');
+  assert.match(result.lease, /^[A-Za-z0-9_-]{43}$/);
+  for (const value of forbidden) assert.equal(result.lease.includes(value), false, `lease must not reveal ${value}`);
 }
 
 /** Swap globalThis.fetch for the duration of `run`, always restoring it. */
@@ -416,29 +435,36 @@ test('category 10 pro daily boundary: the request AT the cap is allowed with rem
   assert.deepEqual(await limiter.check({ tier: PRO, subject }), { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY }, 'the 201st crosses the cap');
 });
 
-test('category 11 pro concurrency boundary: N acquire, the (N+1)th is compensated by a decr and denied, and a release re-admits', async () => {
+test('category 11 pro concurrency boundary: N opaque leases acquire, the (N+1)th denies, and exact release re-admits', async () => {
   assert.equal(TIER_LIMITS.pro.maxConcurrent, 3, 'boundary pinned to the frozen default (3)');
   const cap = TIER_LIMITS.pro.maxConcurrent;
   const kv = spyMemoryKv();
   const limiter = createRateLimiter({ kv, hmacSecret: 'secret', now: () => 0 });
   const subject = 'seat-conc';
+  const leases = [];
   for (let i = 0; i < cap; i += 1) {
-    assert.deepEqual(await limiter.acquireConcurrency({ tier: PRO, subject }), { allowed: true, tier: PRO }, `slot ${i + 1}`);
+    const acquired = await limiter.acquireConcurrency({ tier: PRO, subject });
+    assertOpaqueLease(acquired, PRO, [subject, 'secret']);
+    leases.push(acquired.lease);
   }
+  assert.equal(new Set(leases).size, cap, 'each admitted request receives its own capability');
   assert.deepEqual(await limiter.acquireConcurrency({ tier: PRO, subject }), { allowed: false, status: 429, reason: QUOTA_REASONS.CONCURRENT });
 
-  // The over-limit acquire incremented THEN COMPENSATED with a decr, so the live
-  // counter never leaks past the cap (cap+1 incr, 1 decr => cap). Without the
-  // compensating decr the slot would be permanently poisoned and lock everyone out.
+  // The registry remains at the cap after denial; no anonymous counter
+  // compensation can poison capacity or release a different request's slot.
   const key = quotaKeyHmac('secret', 'pro', 'concurrent', subject);
-  assert.equal(await kv.get(key), cap, 'counter compensated back to the cap, not stuck at cap+1');
-  assert.equal(kv.counts.incr, cap + 1);
-  assert.equal(kv.counts.decr, 1);
+  const registry = await kv.get(key);
+  assert.ok(registry instanceof Map);
+  assert.equal(registry.size, cap, 'denied acquire leaves the live lease registry at the cap');
+  assert.equal(kv.counts.acquireLease, cap + 1);
+  assert.equal(kv.counts.releaseLease, 0);
 
-  // Releasing one slot frees capacity and re-admits.
-  await limiter.releaseConcurrency({ tier: PRO, subject });
-  assert.equal(await kv.get(key), cap - 1);
-  assert.deepEqual(await limiter.acquireConcurrency({ tier: PRO, subject }), { allowed: true, tier: PRO });
+  // Releasing this exact capability frees one slot and re-admits.
+  await limiter.releaseConcurrency({ tier: PRO, subject, lease: leases[0] });
+  assert.deepEqual(kv.releases, [{ key, lease: leases[0] }]);
+  assert.equal((await kv.get(key)).size, cap - 1);
+  const readmitted = await limiter.acquireConcurrency({ tier: PRO, subject });
+  assertOpaqueLease(readmitted, PRO, [subject, 'secret']);
 });
 
 test('category 12 pro degraded KV never fails open: NaN/negative/zero/object/undefined/throwing incr all deny with 503 on check and acquire', async () => {
@@ -479,10 +505,15 @@ test('category 13 free tier no-regression: IP-keyed metering ignores subject, fa
 
   // Free concurrency (max 1) enforces; a subject can neither widen nor bypass it.
   const conc = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
-  assert.deepEqual(await conc.acquireConcurrency({ tier: FREE, ip, subject: /** @type {any} */ ('x') }), { allowed: true, tier: FREE });
-  assert.deepEqual(await conc.acquireConcurrency({ tier: FREE, ip, subject: /** @type {any} */ ('y') }), { allowed: false, status: 429, reason: QUOTA_REASONS.CONCURRENT });
+  const acquired = await conc.acquireConcurrency({ tier: FREE, ip, subject: /** @type {any} */ ('free-subject-x') });
+  assertOpaqueLease(acquired, FREE, [ip, 'free-subject-x', 'secret']);
+  assert.deepEqual(await conc.acquireConcurrency({ tier: FREE, ip, subject: /** @type {any} */ ('free-subject-y') }), { allowed: false, status: 429, reason: QUOTA_REASONS.CONCURRENT });
+  // A release without the opaque capability is a no-op; only its exact lease frees capacity.
   await conc.releaseConcurrency({ tier: FREE, ip });
-  assert.deepEqual(await conc.acquireConcurrency({ tier: FREE, ip }), { allowed: true, tier: FREE });
+  assert.deepEqual(await conc.acquireConcurrency({ tier: FREE, ip }), { allowed: false, status: 429, reason: QUOTA_REASONS.CONCURRENT });
+  await conc.releaseConcurrency({ tier: FREE, ip, lease: acquired.lease });
+  const readmitted = await conc.acquireConcurrency({ tier: FREE, ip });
+  assertOpaqueLease(readmitted, FREE, [ip, 'secret']);
 
   // Every free key is a 64-hex HMAC that never leaks the raw IP.
   for (const key of [
@@ -501,15 +532,19 @@ test('category 14 byok tier no-regression: unmetered allow/no-op that never touc
     async set() { throw new Error('byok must not write kv'); },
     async incr() { throw new Error('byok must not meter'); },
     async decr() { throw new Error('byok must not release'); },
+    async acquireLease() { throw new Error('byok must not acquire a lease'); },
+    async releaseLease() { throw new Error('byok must not release a lease'); },
   };
   const limiter = createRateLimiter({ kv: boom, hmacSecret: 'secret', env: { NODE_ENV: 'production' }, now: () => 0 });
 
   // Unmetered allow on check even in production with a hostile kv and any identity.
   assert.deepEqual(await limiter.check({ tier: BYOK, ip: null, subject: null }), { allowed: true, tier: BYOK });
   assert.deepEqual(await limiter.check({ tier: BYOK, ip: '203.0.113.9', subject: /** @type {any} */ ('ignored') }), { allowed: true, tier: BYOK });
-  // Concurrency acquire is a no-op allow; release is a no-op. Neither hits kv, so
-  // `boom` never throwing proves the byok path never touches storage.
-  assert.deepEqual(await limiter.acquireConcurrency({ tier: BYOK, ip: '203.0.113.9', subject: /** @type {any} */ ('ignored') }), { allowed: true, tier: BYOK });
+  // Concurrency acquire is an unmetered no-op allow carrying an internal lease;
+  // both release forms are no-ops and neither may touch storage.
+  const acquired = await limiter.acquireConcurrency({ tier: BYOK, ip: '203.0.113.9', subject: /** @type {any} */ ('ignored') });
+  assertOpaqueLease(acquired, BYOK, ['203.0.113.9', 'ignored', 'secret', 'sk-user-owned-key']);
+  await limiter.releaseConcurrency({ tier: BYOK, ip: '203.0.113.9', subject: /** @type {any} */ ('ignored'), lease: acquired.lease });
   await limiter.releaseConcurrency({ tier: BYOK, ip: '203.0.113.9', subject: /** @type {any} */ ('ignored') });
 });
 

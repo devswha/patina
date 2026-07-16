@@ -88,7 +88,7 @@ export function createObservabilityRestKv(env = {}) {
  * Create a dependency-free Upstash/Vercel KV REST adapter.
  *
  * @param {Record<string,string|undefined>} env
- * @returns {null|{get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>}}
+ * @returns {null|{get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>, acquireLease(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease(registryKey: string, lease: string): Promise<boolean>}}
  */
 export function createRestKv(env = {}) {
   const base = env.KV_REST_API_URL;
@@ -145,13 +145,21 @@ export function createRestKv(env = {}) {
     }, 'kv command failed');
   }
 
-  // Atomic counter bump + TTL in ONE round trip (EVAL): the GET-path
-  // /incr → /expire pair had the same crash window as SET+EXPIRE above. For
-  // time-bucketed quota keys a lost expire merely leaks storage, but the
-  // CONCURRENCY key is stable per IP/subject — a TTL-less counter there pins
-  // that identity near its cap until manual cleanup, so the self-heal TTL must
-  // be applied atomically with the increment.
+  // Quota identities use one sorted-set registry: scores are server-time expiry
+  // instants and members are opaque lease capabilities.  Both operations are one
+  // EVAL so no crash or client-clock window can create phantom occupancy.
   const INCRBY_PEXPIRE_SCRIPT = "local v = redis.call('INCRBY', KEYS[1], ARGV[1]) redis.call('PEXPIRE', KEYS[1], ARGV[2]) return v";
+  const ACQUIRE_LEASE_SCRIPT = "local t = redis.call('TIME') local now = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000) local ttl = tonumber(ARGV[1]) redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now) if redis.call('ZCARD', KEYS[1]) >= tonumber(ARGV[2]) then return 0 end redis.call('ZADD', KEYS[1], now + ttl, ARGV[3]) redis.call('PEXPIRE', KEYS[1], ttl) return 1";
+  const RELEASE_LEASE_SCRIPT = "local t = redis.call('TIME') local now = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000) local expiry = redis.call('ZSCORE', KEYS[1], ARGV[1]) if not expiry or tonumber(expiry) <= now then return 0 end return redis.call('ZREM', KEYS[1], ARGV[1])";
+
+  async function leaseCommand(script, registryKey, lease, maxConcurrent, ttlMs) {
+    const args = ['EVAL', script, '1', registryKey];
+    if (maxConcurrent != null) args.push(String(Math.max(1, Math.ceil(ttlMs))), String(maxConcurrent), lease);
+    else args.push(lease);
+    const value = parseKvNumber(await command(args));
+    if (value !== 0 && value !== 1) throw new Error('kv lease command returned invalid result');
+    return value === 1;
+  }
 
   async function incrByAtomic(key, amount, ttlMs) {
     const data = await command([
@@ -215,6 +223,12 @@ export function createRestKv(env = {}) {
       if (value == null) throw new Error('kv decr returned invalid counter');
       return value;
     },
+    async acquireLease(registryKey, lease, maxConcurrent, { ttlMs }) {
+      return leaseCommand(ACQUIRE_LEASE_SCRIPT, registryKey, lease, maxConcurrent, ttlMs);
+    },
+    async releaseLease(registryKey, lease) {
+      return leaseCommand(RELEASE_LEASE_SCRIPT, registryKey, lease);
+    },
   };
 }
 
@@ -232,9 +246,7 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
   const restKv = createRestKv(env);
   const kv = isProductionPosture(env) ? restKv : (restKv ?? createMemoryKv());
   // One stream budget, computed once: bounds upstream work (provider + scoring)
-  // and, via concurrencyTtlMs, keeps a free-tier slot alive for at least a full
-  // stream so an operator-extended timeout can't expire the slot mid-stream and
-  // desync the counter (a later decr would drive it negative). Floor at 5m.
+  // and keeps a free-tier lease live for at least a full stream. Floor at 5m.
   const envTimeout = Number(env.PATINA_WEB_REWRITE_TIMEOUT_MS);
   const streamTimeoutMs = Number.isFinite(envTimeout) && envTimeout > 0 ? envTimeout : WEB_REWRITE_TIMEOUT_MS;
   const concurrencyTtlMs = Math.max(5 * 60 * 1000, streamTimeoutMs + 30_000);
@@ -271,7 +283,7 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
       logger: /** @type {any} */ (logger),
     }),
     licenseValidator,
-    runRewrite: async ({ req, res, request, observe }) => {
+    runRewrite: async ({ req, res, request, observe, beforeResponseEnd }) => {
       let terminalObserved = false;
       let legacyStartedAt;
       if (typeof observe === 'function') {
@@ -339,6 +351,7 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
         observeTerminal('service_disabled', 503);
         res.statusCode = 503;
         res.setHeader?.('Content-Type', 'application/json');
+        await beforeResponseEnd?.();
         res.end?.(JSON.stringify({ error: QUOTA_REASONS.SERVICE_UNAVAILABLE }));
         return;
       }
@@ -373,7 +386,10 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
       } finally {
         res.off?.('close', onClose);
         req.off?.('aborted', onClose);
-        if (streamCompleted) res.end?.();
+        if (streamCompleted) {
+          await beforeResponseEnd?.();
+          res.end?.();
+        }
       }
     },
     env,

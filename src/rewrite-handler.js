@@ -13,14 +13,15 @@ import { extractBearerLicense } from './entitlement.js';
  *
  * @typedef {{method?: string, headers?: Record<string, string|string[]|undefined>, rawHeaders?: string[], body?: unknown, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, [Symbol.asyncIterator]?: () => AsyncIterator<Buffer|string|Uint8Array>}} RewriteReq
  * @typedef {{statusCode?: number, setHeader?: (name: string, value: string) => void, write?: (chunk: string) => void, end?: (body?: string) => void, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, writableEnded?: boolean, headersSent?: boolean, destroy?: () => void}} RewriteRes
- * @typedef {{check(input: {tier: string, ip: string|null, subject?: string, chars?: number}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}>, acquireConcurrency?(input: {tier: string, ip: string|null, subject?: string}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string}>, releaseConcurrency?(input: {tier: string, ip: string|null, subject?: string}): Promise<void>}} RateLimiter
+ * @typedef {{check(input: {tier: string, ip: string|null, subject?: string, chars?: number}): Promise<{allowed: true, tier: string}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}>, acquireConcurrency?(input: {tier: string, ip: string|null, subject?: string}): Promise<{allowed: true, tier: string, lease: string}|{allowed: false, status: number, reason: string}>, releaseConcurrency?(input: {tier: string, ip: string|null, subject?: string, lease: string}): Promise<void>}} RateLimiter
+ * @typedef {{req: RewriteReq, res: RewriteRes, request: Record<string, unknown>, now: () => number, observe?: Function, beforeResponseEnd?: () => Promise<void>}} RewriteRunnerInput
  * @typedef {{validate(input: {licenseKey: string}): Promise<{ok: true, subject: string, tier: string, status: string, cache: string}|{ok: false, status: number, reason: string}>}} LicenseValidator
  */
 
 /**
  * Create the /api/rewrite handler shell. The LLM runner is injected by later phases.
  *
- * @param {{rateLimiter: RateLimiter, runRewrite: Function, env?: Record<string, string|undefined>, now?: () => number, logger?: {error?: (...args: unknown[]) => void}, maxBodyBytes?: number, licenseValidator?: LicenseValidator, observe?: (input: {tier: string, outcome: string, status: number, latencyMs: number}) => unknown}} options
+ * @param {{rateLimiter: RateLimiter, runRewrite: (input: RewriteRunnerInput) => unknown, env?: Record<string, string|undefined>, now?: () => number, logger?: {error?: (...args: unknown[]) => void}, maxBodyBytes?: number, licenseValidator?: LicenseValidator, observe?: (input: {tier: string, outcome: string, status: number, latencyMs: number}) => unknown}} options
  * @returns {(req: RewriteReq, res: RewriteRes) => Promise<unknown>}
  */
 export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = () => Date.now(), logger = console, maxBodyBytes = 65_536, licenseValidator, observe }) {
@@ -167,7 +168,13 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
         return send(res, denied.status, body);
       };
 
-      if (typeof rateLimiter.acquireConcurrency !== 'function') {
+      const hasAcquire = typeof rateLimiter.acquireConcurrency === 'function';
+      const hasRelease = typeof rateLimiter.releaseConcurrency === 'function';
+      if (hasAcquire !== hasRelease) {
+        observeClosed(customerObserve, tier, 'quota_denied', 503, startedAt);
+        return send(res, 503, { error: QUOTA_REASONS.STORAGE_UNAVAILABLE });
+      }
+      if (!hasAcquire) {
         const quota = await rateLimiter.check({ tier, ip, subject, chars });
         if (!quota.allowed) return sendQuotaDenied(/** @type {{status: number, reason: string}} */ (quota));
         // await so a runner rejection is caught by the redacted 500 handler below.
@@ -185,14 +192,29 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
         observeClosed(customerObserve, tier, limiterOutcome(denied.reason), denied.status, startedAt);
         return send(res, denied.status, { error: denied.reason });
       }
+      if (typeof concurrency.lease !== 'string' || concurrency.lease === '') {
+        observeClosed(customerObserve, tier, 'quota_denied', 503, startedAt);
+        return send(res, 503, { error: QUOTA_REASONS.STORAGE_UNAVAILABLE });
+      }
 
+      /** @type {Promise<void> | undefined} */
+      let releasePromise;
+      const releaseSlot = () => {
+        releasePromise ??= rateLimiter.releaseConcurrency({ tier, ip, subject, lease: concurrency.lease });
+        return releasePromise;
+      };
       try {
         const quota = await rateLimiter.check({ tier, ip, subject, chars });
-        if (!quota.allowed) return sendQuotaDenied(/** @type {{status: number, reason: string}} */ (quota));
-        // await so a runner rejection is caught by the redacted 500 handler below.
-        return await runRewrite({ req: runnerReq, res, request, now, observe: customerObserve });
+        if (!quota.allowed) {
+          await releaseSlot();
+          return sendQuotaDenied(/** @type {{status: number, reason: string}} */ (quota));
+        }
+        // Runners that finalize a serverless response must await this hook before
+        // res.end(); the finally below retains compatibility with injected runners
+        // that do not use it and covers thrown paths.
+        return await runRewrite({ req: runnerReq, res, request, now, observe: customerObserve, beforeResponseEnd: releaseSlot });
       } finally {
-        await rateLimiter.releaseConcurrency?.({ tier, ip, subject });
+        await releaseSlot();
       }
     } catch (err) {
       logger.error?.({ code: 'rewrite_handler_failed', stage: 'handler' });

@@ -16,7 +16,8 @@
     { "id": "GATE_C_GEMINI_HTTP_NO_PROMOTION", "status": "HOLD_NO_PROMOTION" },
     { "id": "GATE_C_GEMINI_CLI_NO_PROMOTION", "status": "HOLD_NO_PROMOTION" },
     { "id": "PAY_STG_BINDING_APPROVAL", "status": "COMPLETED", "evidence": "PAY-STG-20260716-1199625-1875389" },
-    { "id": "SOURCE_BINDING_STAGING_INTEGRATION", "status": "COMPLETED", "evidence": "PAY-STG-20260716-1199625-1875389" }
+    { "id": "SOURCE_BINDING_STAGING_INTEGRATION", "status": "COMPLETED", "evidence": "PAY-STG-20260716-1199625-1875389" },
+    { "id": "PAY_STG_RUNTIME_TEST_SMOKE", "status": "COMPLETED", "evidence": "PAY-STG-RUNTIME-20260716-8973866" }
   ],
   "checkout": { "enabled": false },
   "frozenSemantics": {
@@ -43,12 +44,13 @@
       "docs/AUTHENTICATION_KR.md": "5e077cd3a13c2299a11fc831c8303a204880c91dd0d465148d34a435dbe00796",
       "docs/operations/pro-launch.md": "5a3ecb35a60374ee34111ad91e646a02f974439e9a2052ceb18b3ebc729d5acc",
       "docs/operations/pay-stg-binding-20260716.json": "2f523259de91f640f056fe7acfe00264e493d9891b7a61152fe5e91704c0ecdf",
+      "docs/operations/pay-stg-runtime-20260716.json": "b0229e892b06e1ec303a001c1317c4c63fc3c98fd7e10243e64db07df4803d29",
       "tests/e2e/providers.test.js": "47958be678e9bbfd06bcdd849ec0df37ed765f886e245b7b528e7d596b6d9dfe",
       "tests/unit/backend-model-defaults.test.js": "a9a0428bd53cb470505df58b25d7bd75d59200a7565809eb9f457fda1d22db29",
       "tests/unit/web-deploy-invariants.test.js": "3bf94db29218f5e0c2c7a49d4c905e2436a6939e733f137eedd66c68758f1932",
       "tests/unit/web-rewrite-contract.test.js": "d802df1b7f44ef05bcb11e3e68307f577da5529a406e5e92fa206d08bdcf2b2a",
       "tests/unit/web-rewrite-contract.redteam.test.js": "3c7591926e168b14f486199297fd1e84ed447c1b8d339c9b4860f79da0f6a7bb",
-      "tests/unit/v6.4-preflight-hold.test.js": "0a7b8a6d71fb7db2957f921e7c4e92be0a950e6479a24ff35f2baff59a77472c",
+      "tests/unit/v6.4-preflight-hold.test.js": "427987978461ac4f91b92483bb86177e8878114da353de188f51ab658e271e02",
       "tests/unit/v6.4-release-ready.test.js": "8d88aab35ce75bc40b4782932329c0402001afabc380ac349ccc1b82d01c12d7",
       "package.json": "f630732601b46fbc7a4fdd49924a7444cc5ff94fa8b4efb3559df19562ee416b",
       "package-lock.json": "d4a0814cc96fd2b46d9c5453345e41623a53149b7e5bdf5e79213101d700680c",

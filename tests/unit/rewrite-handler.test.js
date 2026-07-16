@@ -55,7 +55,7 @@ function spyLimiter() {
   return {
     calls,
     async check(input) { calls.check.push(input); return { allowed: true, tier: input.tier }; },
-    async acquireConcurrency(input) { calls.acquire.push(input); return { allowed: true, tier: input.tier }; },
+    async acquireConcurrency(input) { calls.acquire.push(input); return { allowed: true, tier: input.tier, lease: 'spy-lease' }; },
     async releaseConcurrency(input) { calls.release.push(input); },
   };
 }
@@ -81,6 +81,20 @@ function proBody(overrides = {}) {
 test('factory throws without runRewrite or rateLimiter.check', () => {
   assert.throws(() => createRewriteHandler({ rateLimiter: allowedLimiter() }), TypeError);
   assert.throws(() => createRewriteHandler({ rateLimiter: {}, runRewrite() {} }), TypeError);
+});
+test('factory fails closed when concurrency acquire and release capabilities are malformed', async () => {
+  for (const rateLimiter of [
+    { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; }, async acquireConcurrency() { return { allowed: true, tier: WEB_TIERS.FREE, lease: 'x' }; } },
+    { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; }, async releaseConcurrency() {} },
+    { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; }, async acquireConcurrency() { return { allowed: true, tier: WEB_TIERS.FREE }; }, async releaseConcurrency() {} },
+  ]) {
+    const res = makeRes();
+    let ran = false;
+    const handler = createRewriteHandler({ rateLimiter, runRewrite() { ran = true; } });
+    await handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.1' }, body: validBody() }, res);
+    assert.equal(res.statusCode, 503);
+    assert.equal(ran, false);
+  }
 });
 
 test('405 for non-POST and no-store header is always set', async () => {
@@ -548,7 +562,7 @@ function proSpyLimiter({ denyCheck, denyAcquire } = {}) {
     async acquireConcurrency(input) {
       calls.acquire.push(input);
       order.push('acquire');
-      return denyAcquire ? { allowed: false, status: denyAcquire.status, reason: denyAcquire.reason } : { allowed: true, tier: input.tier };
+      return denyAcquire ? { allowed: false, status: denyAcquire.status, reason: denyAcquire.reason } : { allowed: true, tier: input.tier, lease: 'opaqueLeaseCapability7X9' };
     },
     async releaseConcurrency(input) {
       calls.release.push(input);
@@ -591,15 +605,34 @@ test('redteam(1): a valid pro request leaks the raw license nowhere (runner requ
   assert.deepEqual(validator.state.lastInput, { licenseKey: PRO_RAW });
 
   // (b) Every limiter arg is metered by the HMAC subject and carries NO license material.
-  const limiterInputs = [...limiter.calls.check, ...limiter.calls.acquire, ...limiter.calls.release];
-  assert.equal(limiterInputs.length, 3);
-  for (const input of limiterInputs) {
+  const limiterCalls = [
+    ['check', ...limiter.calls.check],
+    ['acquire', ...limiter.calls.acquire],
+    ['release', ...limiter.calls.release],
+  ];
+  assert.equal(limiterCalls.length, 3);
+  for (const [operation, input] of limiterCalls) {
     assert.equal(input.subject, 'SUBJECT-HMAC');
     assert.equal(input.tier, WEB_TIERS.PRO);
     assert.equal(input.ip, '203.0.113.60');
-    for (const k of Object.keys(input)) assert.ok(['chars', 'ip', 'subject', 'tier'].includes(k), `unexpected limiter arg key: ${k}`);
+    const expectedKeys = operation === 'check'
+      ? ['chars', 'ip', 'subject', 'tier']
+      : operation === 'release'
+        ? ['ip', 'lease', 'subject', 'tier']
+        : ['ip', 'subject', 'tier'];
+    assert.deepEqual(Object.keys(input).sort(), expectedKeys, `${operation} limiter argument keys`);
     assert.equal('license' in input, false);
     assert.equal('licenseKey' in input, false);
+    assert.equal(JSON.stringify(input).includes(PRO_RAW), false);
+    assert.equal(JSON.stringify(input).includes(`Bearer ${PRO_RAW}`), false);
+    if (operation === 'release') {
+      assert.equal(typeof input.lease, 'string');
+      assert.match(input.lease, /^[A-Za-z0-9_-]{16,}$/);
+      assert.doesNotMatch(input.lease, /license|bearer/i);
+      assert.notEqual(input.lease, PRO_RAW);
+    } else {
+      assert.equal('lease' in input, false);
+    }
   }
   assert.equal(JSON.stringify(limiter.calls).includes(PRO_RAW), false);
 
@@ -767,9 +800,31 @@ test('redteam(2): a throwing validator returns a closed generic 500 with no lice
   assert.equal(res.headers['cache-control'], 'no-store');
 });
 
-test('redteam(3): a pro check denial (after the slot is held) skips the runner and releases the slot', async () => {
+test('redteam(3): a pro check denial waits for the held slot to release before ending the response', async () => {
+  const events = [];
+  const release = deferred();
   const res = makeRes();
+  const originalEnd = res.end;
+  res.end = function end(body) {
+    events.push('end');
+    return originalEnd.call(this, body);
+  };
   const limiter = proSpyLimiter({ denyCheck: { status: 429, reason: QUOTA_REASONS.DAILY } });
+  const acquireConcurrency = limiter.acquireConcurrency;
+  limiter.acquireConcurrency = async (input) => {
+    events.push('acquire');
+    return acquireConcurrency(input);
+  };
+  const check = limiter.check;
+  limiter.check = async (input) => {
+    events.push('check');
+    return check(input);
+  };
+  limiter.releaseConcurrency = async (input) => {
+    limiter.calls.release.push(input);
+    await release.promise;
+    events.push('release settled');
+  };
   const validator = makeValidator({ ok: true, subject: 'SUBJ', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' });
   let ran = false;
   const handler = createRewriteHandler({
@@ -777,18 +832,28 @@ test('redteam(3): a pro check denial (after the slot is held) skips the runner a
     licenseValidator: validator,
     runRewrite() { ran = true; },
   });
-  await handler({
+
+  const response = handler({
     method: 'POST',
     headers: { 'x-real-ip': '203.0.113.65', authorization: `Bearer ${PRO_RAW}` },
     body: proBody(),
   }, res);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(res.ended, undefined);
+  assert.equal(ran, false);
+  assert.equal(limiter.calls.release.length, 1);
+  assert.deepEqual(events, ['acquire', 'check']);
+
+  release.resolve();
+  await response;
+
   assert.equal(res.statusCode, 429);
   assert.deepEqual(res.json(), { error: QUOTA_REASONS.DAILY });
-  assert.equal(ran, false);
   assert.equal(limiter.calls.check.length, 1);
   assert.equal(limiter.calls.check[0].subject, 'SUBJ');
-  // The slot was acquired before the quota charge and must be released on the denial.
-  assert.deepEqual(limiter.order, ['acquire', 'check', 'release']);
+  assert.deepEqual(events, ['acquire', 'check', 'release settled', 'end']);
+  assert.equal(limiter.calls.release.length, 1);
 });
 
 test('redteam(3): a pro acquire denial skips the quota charge, the runner, and release (no billing on a 429 slot rejection)', async () => {
@@ -836,6 +901,129 @@ test('redteam(3): the pro success path threads the subject through acquire→che
   assert.equal(limiter.calls.check[0].subject, 'SUBJ');
   assert.equal(limiter.calls.release.length, 1);
   assert.equal(limiter.calls.release[0].subject, 'SUBJ');
+});
+test('concurrency release settles exactly once before response end for runner terminal paths', async () => {
+  for (const terminal of ['done', 'number_safety_failed', 'aborted']) {
+    const events = [];
+    const release = deferred();
+    const res = makeRes();
+    const originalEnd = res.end;
+    res.end = function end(body) {
+      events.push('end');
+      return originalEnd.call(this, body);
+    };
+    const limiter = proSpyLimiter();
+    limiter.releaseConcurrency = async (input) => {
+      limiter.calls.release.push(input);
+      await release.promise;
+      events.push('release settled');
+    };
+    const handler = createRewriteHandler({
+      rateLimiter: limiter,
+      licenseValidator: makeValidator({ ok: true, subject: 'SUBJ', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' }),
+      async runRewrite({ res: runnerRes, beforeResponseEnd }) {
+        await beforeResponseEnd?.();
+        await beforeResponseEnd?.();
+        runnerRes.end(JSON.stringify({ terminal }));
+        return terminal === 'number_safety_failed' ? { ok: false, code: terminal } : { ok: true };
+      },
+    });
+
+    const response = handler({
+      method: 'POST',
+      headers: { 'x-real-ip': '203.0.113.69', authorization: `Bearer ${PRO_RAW}` },
+      body: proBody(),
+    }, res);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(res.ended, undefined, terminal);
+    assert.equal(limiter.calls.release.length, 1, terminal);
+
+    release.resolve();
+    await response;
+
+    assert.deepEqual(events, ['release settled', 'end'], terminal);
+    assert.equal(limiter.calls.release.length, 1, terminal);
+  }
+});
+test('overlapping hook and finally releases await the same durable settlement before response end', async () => {
+  const events = [];
+  const release = deferred();
+  const res = makeRes();
+  const limiter = proSpyLimiter();
+  limiter.releaseConcurrency = async (input) => {
+    limiter.calls.release.push(input);
+    events.push('release started');
+    await release.promise;
+    events.push('release settled');
+  };
+  const handler = createRewriteHandler({
+    rateLimiter: limiter,
+    licenseValidator: makeValidator({ ok: true, subject: 'SUBJ', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' }),
+    runRewrite({ res: runnerRes, beforeResponseEnd }) {
+      const hookRelease = beforeResponseEnd();
+      hookRelease.then(() => {
+        events.push('hook settled');
+        runnerRes.end(JSON.stringify({ ok: true }));
+      });
+      return { ok: true };
+    },
+  });
+
+  const response = handler({
+    method: 'POST',
+    headers: { 'x-real-ip': '203.0.113.69', authorization: `Bearer ${PRO_RAW}` },
+    body: proBody(),
+  }, res);
+  let handlerSettled = false;
+  response.then(() => {
+    handlerSettled = true;
+    events.push('finally settled');
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(limiter.calls.release.length, 1);
+  assert.equal(res.ended, undefined);
+  assert.equal(handlerSettled, false);
+  assert.deepEqual(events, ['release started']);
+
+  release.resolve();
+  await response;
+
+  assert.deepEqual(res.json(), { ok: true });
+  assert.equal(handlerSettled, true);
+  assert.deepEqual(events, ['release started', 'release settled', 'hook settled', 'finally settled']);
+  assert.equal(limiter.calls.release.length, 1);
+});
+
+test('a thrown runner releases exactly once before the handler sends its generic error', async () => {
+  const events = [];
+  const res = makeRes();
+  const originalEnd = res.end;
+  res.end = function end(body) {
+    events.push('end');
+    return originalEnd.call(this, body);
+  };
+  const limiter = proSpyLimiter();
+  limiter.releaseConcurrency = async (input) => {
+    limiter.calls.release.push(input);
+    events.push('release');
+  };
+  const handler = createRewriteHandler({
+    rateLimiter: limiter,
+    licenseValidator: makeValidator({ ok: true, subject: 'SUBJ', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' }),
+    runRewrite() { throw new Error('provider failed'); },
+    logger: { error() {} },
+  });
+
+  await handler({
+    method: 'POST',
+    headers: { 'x-real-ip': '203.0.113.69', authorization: `Bearer ${PRO_RAW}` },
+    body: proBody(),
+  }, res);
+
+  assert.deepEqual(events, ['release', 'end']);
+  assert.equal(limiter.calls.release.length, 1);
 });
 
 test('redteam(3): when the pro runner throws, release still runs in finally (subject-scoped) and the handler returns a redacted 500', async () => {

@@ -11,9 +11,11 @@ import { validateCheckedInPreflightHold, validatePreflightHold } from '../../scr
 const stateUrl = new URL('../../docs/operations/v6.4-preflight-hold.json', import.meta.url);
 const scriptUrl = new URL('../../scripts/check-v6.4-preflight-hold.mjs', import.meta.url);
 const evidenceUrl = new URL('../../docs/operations/pay-stg-binding-20260716.json', import.meta.url);
+const runtimeEvidenceUrl = new URL('../../docs/operations/pay-stg-runtime-20260716.json', import.meta.url);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const checkedInState = () => JSON.parse(readFileSync(stateUrl, 'utf8'));
 const checkedInEvidence = () => JSON.parse(readFileSync(evidenceUrl, 'utf8'));
+const checkedInRuntimeEvidence = () => JSON.parse(readFileSync(runtimeEvidenceUrl, 'utf8'));
 function setAtPath(value, path, replacement) { const parent = path.slice(0, -1).reduce((current, key) => current[key], value); parent[path.at(-1)] = replacement; }
 function leaves(value, path = []) { if (Array.isArray(value)) return value.flatMap((entry, index) => leaves(entry, [...path, index])); if (value && typeof value === 'object') return Object.entries(value).flatMap(([key, entry]) => leaves(entry, [...path, key])); return [path]; }
 const validSources = () => ({ modelDefaults: clone(DEFAULT_BEST_MODELS), providers: clone(PROVIDERS), webProviderPresets: clone(PROVIDER_PRESETS), launch: { schemaVersion: 1, channel: 'disabled', enabled: false, checkoutOrigin: null, checkoutPath: null, evidence: null }, bindings: CHECKOUT_EVIDENCE_BINDINGS, checkHashes: false });
@@ -22,14 +24,15 @@ test('checked-in v6.4 preflight state is a staging-ready non-receipt hold', () =
   const state = checkedInState();
   assert.deepEqual(validateCheckedInPreflightHold(), []);
   assert.equal(state.promotionRows.length, 5);
-  assert.equal(state.completedDecisions.length, 7);
+  assert.equal(state.completedDecisions.length, 8);
   assert.equal(state.blockers.length, 11);
   assert.equal(state.deferredActions.length, 3);
   assert.ok(state.blockers.every((blocker) => blocker.type === 'human_action' && blocker.evidence === null));
   assert.ok(state.deferredActions.every((action) => action.type === 'repo_action' && action.executable === false));
-  assert.deepEqual(state.completedDecisions.slice(-2), [
+  assert.deepEqual(state.completedDecisions.slice(-3), [
     { id: 'PAY_STG_BINDING_APPROVAL', status: 'COMPLETED', evidence: 'PAY-STG-20260716-1199625-1875389' },
     { id: 'SOURCE_BINDING_STAGING_INTEGRATION', status: 'COMPLETED', evidence: 'PAY-STG-20260716-1199625-1875389' },
+    { id: 'PAY_STG_RUNTIME_TEST_SMOKE', status: 'COMPLETED', evidence: 'PAY-STG-RUNTIME-20260716-8973866' },
   ]);
 });
 
@@ -88,6 +91,24 @@ test('validator cryptographically and semantically validates the staging Lemon e
   const historicalOneTime = validSources();
   historicalOneTime.evidence = checkedInEvidence();
   assert.deepEqual(validatePreflightHold(state, historicalOneTime), []);
+});
+test('validator rejects staging runtime evidence tampering, secrets, and promotion overclaims', () => {
+  const state = checkedInState();
+  const mutateRuntimeEvidence = (mutate, expected) => {
+    const sources = validSources();
+    sources.runtimeEvidence = checkedInRuntimeEvidence();
+    mutate(sources.runtimeEvidence);
+    assert.match(validatePreflightHold(state, sources).join('\n'), expected);
+  };
+  mutateRuntimeEvidence((evidence) => { evidence.factsSha256 = '0'.repeat(64); }, /factsSha256/);
+  mutateRuntimeEvidence((evidence) => { evidence.order.id = '8973867'; }, /must exactly retain/);
+  mutateRuntimeEvidence((evidence) => { evidence.order.status = 'refunded'; }, /must exactly retain/);
+  mutateRuntimeEvidence((evidence) => { evidence.mode = 'live'; }, /must exactly retain/);
+  mutateRuntimeEvidence((evidence) => { evidence.deployment.immutableUrl = 'https://production.example.test'; }, /must exactly retain/);
+  mutateRuntimeEvidence((evidence) => { evidence.proEntitlement.environment = 'production'; }, /must exactly retain/);
+  mutateRuntimeEvidence((evidence) => { evidence.subscription.extraSecret = 'sk_test_not_a_real_secret'; }, /exactly|secret-like/);
+  mutateRuntimeEvidence((evidence) => { evidence.stagingConfiguration.scope = 'Gate B promotion'; }, /must exactly retain/);
+  mutateRuntimeEvidence((evidence) => { evidence.gateB = 'passed'; }, /must contain exactly/);
 });
 
 test('validator rejects unknown, self-referential, cyclic, and reversed dependency edges', () => {

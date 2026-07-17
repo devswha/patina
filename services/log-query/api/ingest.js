@@ -44,16 +44,20 @@ export function createIngestHandler({ env = process.env, kv = createLogqKv(env ?
    */
   return async function ingest(req, res) {
     res.setHeader('Cache-Control', 'no-store, max-age=0');
-    // Vercel verifies drain endpoints by expecting the x-vercel-verify value
-    // to be echoed back before any drain traffic flows.
-    const verify = req.headers['x-vercel-verify'];
-    if (typeof verify === 'string' && verify.length > 0 && verify.length <= 256 && /^[A-Za-z0-9._-]+$/.test(verify)) {
-      res.setHeader('x-vercel-verify', verify);
+    // Vercel verifies drain endpoints by expecting the team's endpoint
+    // verification code (GET /v1/verify-endpoint) in the x-vercel-verify
+    // response header before any drain traffic flows. Sending it on every
+    // response only asserts "this endpoint consents to receive this team's
+    // drain deliveries" — it authorizes nothing else.
+    const verifyCode = env?.LOGQ_VERCEL_VERIFY;
+    const hasCode = typeof verifyCode === 'string' && verifyCode.length > 0;
+    if (hasCode) res.setHeader('x-vercel-verify', verifyCode);
+    const challenge = req.headers['x-vercel-verify'];
+    if (typeof challenge === 'string' && challenge.length > 0 && challenge.length <= 256 && /^[A-Za-z0-9._-]+$/.test(challenge)) {
+      if (!hasCode) res.setHeader('x-vercel-verify', challenge);
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       res.statusCode = 200;
-      // Header and body both carry the token: Vercel's drain-endpoint
-      // verification accepts either transport.
-      res.end(verify);
+      res.end(typeof verifyCode === 'string' && verifyCode.length > 0 ? verifyCode : challenge);
       return;
     }
     if (req.method !== 'POST') { res.statusCode = 405; res.end('{"error":"method_not_allowed"}'); return; }

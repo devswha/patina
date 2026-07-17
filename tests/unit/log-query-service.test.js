@@ -186,6 +186,18 @@ test('ingest echoes the x-vercel-verify challenge before any secret checks', asy
   assert.equal(res.headers['x-vercel-verify'], 'verify-token-123');
 });
 
+test('ingest advertises the configured team verification code on every response', async () => {
+  const handler = createIngestHandler({ env: { LOGQ_VERCEL_VERIFY: 'team-code-abc' }, kv: null });
+  const challenged = fakeRes();
+  await handler(fakeReq({ headers: { 'x-vercel-verify': 'ignored-request-token' } }), challenged);
+  assert.equal(challenged.statusCode, 200);
+  assert.equal(challenged.headers['x-vercel-verify'], 'team-code-abc');
+  assert.equal(challenged.body, 'team-code-abc');
+  const plain = fakeRes();
+  await handler(fakeReq({ method: 'GET' }), plain);
+  assert.equal(plain.headers['x-vercel-verify'], 'team-code-abc');
+});
+
 test('ingest fails closed without a drain secret or KV, and rejects bad signatures', async () => {
   const kv = memoryKv();
   const noSecret = createIngestHandler({ env: {}, kv });

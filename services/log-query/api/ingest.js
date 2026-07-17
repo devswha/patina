@@ -68,10 +68,36 @@ export function createIngestHandler({ env = process.env, kv = createLogqKv(env ?
     if (!signatureValid(secret, body, req.headers['x-vercel-signature'])) { res.statusCode = 403; res.end('{"error":"signature"}'); return; }
     let stored = 0;
     try {
-      const increments = parseDrainDelivery(body.toString('utf8'), { now: now() });
+      const text = body.toString('utf8');
+      const increments = parseDrainDelivery(text, { now: now() });
       for (const { key, count } of increments) {
         await kv.incrBy(key, count, LOGQ_TTL_SECONDS);
         stored += 1;
+      }
+      if (env?.LOGQ_DEBUG_SHAPE === 'true') {
+        // Content-free delivery-shape diagnostic (booleans/counts/keys only),
+        // persisted as cumulative counters so no live log tail is needed.
+        let entryKeys = [];
+        let entryCount = -1;
+        let startsWith = text.trimStart().slice(0, 1);
+        try {
+          const parsed = JSON.parse(text);
+          entryCount = Array.isArray(parsed) ? parsed.length : -1;
+          const first = Array.isArray(parsed) ? parsed[0] : parsed;
+          if (first && typeof first === 'object') entryKeys = Object.keys(first).slice(0, 20);
+        } catch { /* NDJSON or malformed; shape fields stay defaults */ }
+        const mentionsSchema = text.includes('patina.web.v1');
+        try {
+          logger?.warn?.({
+            logq: 'shape', startsWith, entryCount, entryKeys,
+            bytes: body.length, mentionsSchema, counters: stored,
+          });
+        } catch { /* diagnostics must not fail ingest */ }
+        try {
+          await kv.incrBy('patina:logq:diag:deliveries', 1, LOGQ_TTL_SECONDS);
+          if (entryCount > 0) await kv.incrBy('patina:logq:diag:entries', entryCount, LOGQ_TTL_SECONDS);
+          if (mentionsSchema) await kv.incrBy('patina:logq:diag:mentions', 1, LOGQ_TTL_SECONDS);
+        } catch { /* diagnostics must not fail ingest */ }
       }
     } catch {
       // A partial store is acceptable: drains redeliver, counters are coarse,

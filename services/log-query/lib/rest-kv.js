@@ -1,7 +1,20 @@
 // @ts-check
 // Minimal Upstash-compatible REST adapter for the log-query counters. The
 // service owns a dedicated store; it never touches the quota/admission KV or
-// the monitor's strict observability store.
+// the monitor's strict observability store. All multi-key operations use a
+// single round trip so ingestion commits all-or-nothing and queries read one
+// coherent snapshot.
+
+// Applies every increment and its TTL atomically in one script invocation.
+// KEYS = counter keys; ARGV = one count per key followed by the TTL.
+const INCR_ALL_SCRIPT = [
+  'local ttl = ARGV[#ARGV]',
+  'for i = 1, #KEYS do',
+  "  redis.call('INCRBY', KEYS[i], ARGV[i])",
+  "  redis.call('EXPIRE', KEYS[i], ttl)",
+  'end',
+  'return #KEYS',
+].join(' ');
 
 /** @param {Record<string, string|undefined>} env */
 export function createLogqKv(env) {
@@ -26,22 +39,29 @@ export function createLogqKv(env) {
   };
   return {
     /**
-     * Atomically add `count` and (re)apply the TTL in one EVAL round trip.
-     * @param {string} key @param {number} count @param {number} ttlSeconds
+     * Apply every `{key, count}` increment and the TTL in ONE atomic EVAL.
+     * Throws on any transport or acknowledgement failure so the caller can
+     * refuse the delivery instead of committing a partial batch.
+     * @param {Array<{key: string, count: number}>} increments @param {number} ttlSeconds
      */
-    async incrBy(key, count, ttlSeconds) {
-      const result = await call([
-        'EVAL',
-        "local v = redis.call('INCRBY', KEYS[1], ARGV[1]) redis.call('EXPIRE', KEYS[1], ARGV[2]) return v",
-        '1', key, String(count), String(ttlSeconds),
-      ]);
-      if (!Number.isSafeInteger(Number(result))) throw new Error('kv_ack');
-      return Number(result);
+    async incrAll(increments, ttlSeconds) {
+      if (increments.length === 0) return 0;
+      const keys = increments.map(({ key }) => key);
+      const counts = increments.map(({ count }) => String(count));
+      const result = await call(['EVAL', INCR_ALL_SCRIPT, String(keys.length), ...keys, ...counts, String(ttlSeconds)]);
+      if (Number(result) !== keys.length) throw new Error('kv_ack');
+      return keys.length;
     },
-    /** @param {string} key */
-    async get(key) {
-      const result = await call(['GET', key]);
-      return result == null ? 0 : Number(result);
+    /**
+     * Read all keys in ONE MGET round trip. Returns the raw per-key values
+     * (string or null) for strict validation by the caller.
+     * @param {string[]} keys
+     */
+    async getMany(keys) {
+      if (keys.length === 0) return [];
+      const result = await call(['MGET', ...keys]);
+      if (!Array.isArray(result) || result.length !== keys.length) throw new Error('kv_shape');
+      return result;
     },
   };
 }

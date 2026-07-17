@@ -1,7 +1,8 @@
 // @ts-check
 // Vercel log-drain receiver. Counts closed patina.web.v1 outcomes into
 // per-quarter counters and discards everything else. Never stores or echoes
-// raw log content.
+// raw log content. Fail-closed: malformed deliveries and store failures are
+// rejected with non-2xx so the drain redelivers instead of losing evidence.
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { LOGQ_TTL_SECONDS, parseDrainDelivery } from '../lib/log-aggregate.js';
@@ -44,20 +45,18 @@ export function createIngestHandler({ env = process.env, kv = createLogqKv(env ?
    */
   return async function ingest(req, res) {
     res.setHeader('Cache-Control', 'no-store, max-age=0');
-    // Vercel verifies drain endpoints by expecting the team's endpoint
-    // verification code (GET /v1/verify-endpoint) in the x-vercel-verify
-    // response header before any drain traffic flows. Sending it on every
-    // response only asserts "this endpoint consents to receive this team's
-    // drain deliveries" — it authorizes nothing else.
+    // Vercel drain-endpoint verification: respond with the operator-configured
+    // team verification code (from GET /v1/verify-endpoint) when the platform
+    // presents its verification request. The request's own header value is a
+    // trigger only and is NEVER echoed; without the configured code there is
+    // no pre-authentication response path at all.
     const verifyCode = env?.LOGQ_VERCEL_VERIFY;
     const hasCode = typeof verifyCode === 'string' && verifyCode.length > 0;
     if (hasCode) res.setHeader('x-vercel-verify', verifyCode);
-    const challenge = req.headers['x-vercel-verify'];
-    if (typeof challenge === 'string' && challenge.length > 0 && challenge.length <= 256 && /^[A-Za-z0-9._-]+$/.test(challenge)) {
-      if (!hasCode) res.setHeader('x-vercel-verify', challenge);
+    if (hasCode && req.headers['x-vercel-verify'] !== undefined) {
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       res.statusCode = 200;
-      res.end(typeof verifyCode === 'string' && verifyCode.length > 0 ? verifyCode : challenge);
+      res.end(verifyCode);
       return;
     }
     if (req.method !== 'POST') { res.statusCode = 405; res.end('{"error":"method_not_allowed"}'); return; }
@@ -66,47 +65,26 @@ export function createIngestHandler({ env = process.env, kv = createLogqKv(env ?
     let body;
     try { body = await readBody(req); } catch { res.statusCode = 413; res.end('{"error":"body_too_large"}'); return; }
     if (!signatureValid(secret, body, req.headers['x-vercel-signature'])) { res.statusCode = 403; res.end('{"error":"signature"}'); return; }
-    let stored = 0;
+    const parsed = parseDrainDelivery(body.toString('utf8'), { now: now() });
+    if (parsed.ok !== true) {
+      // Reject the whole malformed delivery before any write; the reason is a
+      // closed enum, never delivery content.
+      res.statusCode = 400;
+      res.end(JSON.stringify({ error: 'malformed_delivery', reason: 'reason' in parsed ? parsed.reason : 'unknown' }));
+      return;
+    }
     try {
-      const text = body.toString('utf8');
-      const increments = parseDrainDelivery(text, { now: now() });
-      for (const { key, count } of increments) {
-        await kv.incrBy(key, count, LOGQ_TTL_SECONDS);
-        stored += 1;
-      }
-      if (env?.LOGQ_DEBUG_SHAPE === 'true') {
-        // Content-free delivery-shape diagnostic (booleans/counts/keys only),
-        // persisted as cumulative counters so no live log tail is needed.
-        let entryKeys = [];
-        let entryCount = -1;
-        let startsWith = text.trimStart().slice(0, 1);
-        try {
-          const parsed = JSON.parse(text);
-          entryCount = Array.isArray(parsed) ? parsed.length : -1;
-          const first = Array.isArray(parsed) ? parsed[0] : parsed;
-          if (first && typeof first === 'object') entryKeys = Object.keys(first).slice(0, 20);
-        } catch { /* NDJSON or malformed; shape fields stay defaults */ }
-        const mentionsSchema = text.includes('patina.web.v1');
-        try {
-          logger?.warn?.({
-            logq: 'shape', startsWith, entryCount, entryKeys,
-            bytes: body.length, mentionsSchema, counters: stored,
-          });
-        } catch { /* diagnostics must not fail ingest */ }
-        try {
-          await kv.incrBy('patina:logq:diag:deliveries', 1, LOGQ_TTL_SECONDS);
-          if (entryCount > 0) await kv.incrBy('patina:logq:diag:entries', entryCount, LOGQ_TTL_SECONDS);
-          if (mentionsSchema) await kv.incrBy('patina:logq:diag:mentions', 1, LOGQ_TTL_SECONDS);
-        } catch { /* diagnostics must not fail ingest */ }
-      }
+      await kv.incrAll(parsed.increments, LOGQ_TTL_SECONDS);
     } catch {
-      // A partial store is acceptable: drains redeliver, counters are coarse,
-      // and the monitor fails closed on unavailability rather than trusting
-      // silence. Never echo delivery content back.
-      try { logger?.warn?.({ logq: 'ingest_partial' }); } catch { /* logging must not fail ingest */ }
+      // All-or-nothing: nothing was committed (single atomic script), so a
+      // non-2xx makes the drain redeliver instead of silently losing counts.
+      try { logger?.warn?.({ logq: 'store_failed' }); } catch { /* logging must not mask the 503 */ }
+      res.statusCode = 503;
+      res.end('{"error":"store_failed"}');
+      return;
     }
     res.statusCode = 200;
-    res.end(JSON.stringify({ ok: true, counters: stored }));
+    res.end(JSON.stringify({ ok: true, counters: parsed.increments.length }));
   };
 }
 

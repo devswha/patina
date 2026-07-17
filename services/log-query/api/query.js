@@ -1,7 +1,9 @@
 // @ts-check
 // Aggregate-only query endpoint for the private Pro monitor. Returns only the
 // exact closed integer keys for the requested window; anything else is an
-// error. Never proxies or exposes raw Vercel logs.
+// error. Reads the whole window in one snapshot and fails closed (503) on any
+// store or validation failure — never a fabricated zero. Never proxies or
+// exposes raw Vercel logs.
 
 import { timingSafeEqual } from 'node:crypto';
 import { answerQuery } from '../lib/log-aggregate.js';
@@ -46,7 +48,7 @@ export function createQueryHandler({ env = process.env, kv = createLogqKv(env ??
       || params.get('aggregate_only') !== 'true'
     ) { res.statusCode = 400; res.end('{"error":"scope"}'); return; }
     try {
-      const values = await answerQuery({ channel, tier, window, readCounter: (key) => kv.get(key), now: now() });
+      const values = await answerQuery({ channel, tier, window, readCounters: (keys) => kv.getMany(keys), now: now() });
       res.statusCode = 200;
       res.end(JSON.stringify(values));
     } catch {

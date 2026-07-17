@@ -49,8 +49,11 @@ export function createIngestHandler({ env = process.env, kv = createLogqKv(env ?
     const verify = req.headers['x-vercel-verify'];
     if (typeof verify === 'string' && verify.length > 0 && verify.length <= 256 && /^[A-Za-z0-9._-]+$/.test(verify)) {
       res.setHeader('x-vercel-verify', verify);
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       res.statusCode = 200;
-      res.end('{}');
+      // Header and body both carry the token: Vercel's drain-endpoint
+      // verification accepts either transport.
+      res.end(verify);
       return;
     }
     if (req.method !== 'POST') { res.statusCode = 405; res.end('{"error":"method_not_allowed"}'); return; }

@@ -496,6 +496,77 @@ test('reconcileScoreOverall enforces the hard evidence floor on skipped short te
   assert.strictEqual(diverged.scorePreference?.reason, 'deterministic-divergence');
 });
 
+// --- P0 follow-up: hard evidence floor also binds NON-skipped text ----------
+// A near-proof leakage/structural floor must hold even for normal-length text
+// when the LLM lands within the divergence threshold below it. Previously the
+// floor only applied to skipped text, so a leaked long document could be
+// undercut to just under the floor by an LLM inside the threshold band.
+
+test('reconcileScoreOverall enforces the hard evidence floor on non-skipped text within the divergence band', () => {
+  const config = loadConfig();
+
+  // llm below floor but WITHIN the divergence threshold (delta 15 <= 20):
+  // previously returned 75 (undercut); now floored to the near-proof 90.
+  const floored = reconcileScoreOverall({
+    llmOverall: 75,
+    deterministicScore: { overall: 90, evidenceFloor: 90, skipped: false },
+    config,
+  });
+  assert.strictEqual(floored.overall, 90);
+  assert.strictEqual(floored.scorePreference?.reason, 'deterministic-evidence-floor');
+
+  // Boundary: llm exactly at the floor => not overridden (falls to divergence,
+  // delta 0 => defers to llm), no forced preference.
+  const atFloor = reconcileScoreOverall({
+    llmOverall: 90,
+    deterministicScore: { overall: 90, evidenceFloor: 90, skipped: false },
+    config,
+  });
+  assert.strictEqual(atFloor.overall, 90);
+  assert.strictEqual(atFloor.scorePreference, null);
+
+  // llm above the floor => floor inert; divergence within threshold keeps llm.
+  const above = reconcileScoreOverall({
+    llmOverall: 95,
+    deterministicScore: { overall: 90, evidenceFloor: 90, skipped: false },
+    config,
+  });
+  assert.strictEqual(above.overall, 95);
+  assert.strictEqual(above.scorePreference, null);
+
+  // Hot-ratio-only deterministic overall (evidenceFloor 0) still takes the
+  // ordinary divergence path — no floor manufactured on non-skipped text.
+  const hotRatio = reconcileScoreOverall({
+    llmOverall: 10,
+    deterministicScore: { overall: 100, evidenceFloor: 0, skipped: false },
+    config,
+  });
+  assert.strictEqual(hotRatio.overall, 100);
+  assert.strictEqual(hotRatio.scorePreference?.reason, 'deterministic-divergence');
+});
+
+test('scoreText floors a non-skipped AI-leaked document the LLM undercut within the threshold', async () => {
+  // Three ordinary-prose paragraphs (hot ratio 0) with one leaked tooling token
+  // => deterministic overall = leakage floor 90, evidenceFloor 90, not skipped.
+  const leakedText = [
+    'I rewrote the parser this morning and it finally handles nested quotes without choking on them. The previous version tripped over one rare edge case that took two days to reproduce.',
+    'Reviewers wanted another pass on the error copy, so I split the longest messages into a short summary plus a hint. According to turn0search1 the phrasing still needs work, yet the structure holds.',
+    'We shipped it behind a flag and watched the logs over lunch. Nothing broke. The on-call engineer shrugged and went back to her coffee.',
+  ].join('\n\n');
+  // LLM lands at 75 — within the default divergence threshold (20) of the 90
+  // floor, so the old code returned 75. The floor must now win.
+  const score = await scoreText({
+    text: leakedText,
+    config: loadConfig(),
+    patterns: [],
+    callLLM: async () => JSON.stringify({ categories: {}, overall: 75, interpretation: 'mixed' }),
+  });
+  assert.strictEqual(score.deterministicScore.skipped, false);
+  assert.ok(score.deterministicScore.evidenceFloor >= 90);
+  assert.strictEqual(score.overall, score.deterministicScore.evidenceFloor);
+  assert.strictEqual(score.scorePreference?.reason, 'deterministic-evidence-floor');
+});
+
 test('scoreText floors a short AI-leaked snippet even when the LLM returns 0', async () => {
   const callLLM = async () =>
     JSON.stringify({ categories: {}, overall: 0, interpretation: 'human' });

@@ -672,31 +672,35 @@ export function reconcileScoreOverall({
   const deterministic = toFiniteScore(deterministicScore?.overall);
   if (llm === null) return { overall: null, scorePreference: null };
   if (deterministic === null) return { overall: llm, scorePreference: null };
-  // `skipped` means the long-form stylometry/meta block was suppressed (text is
-  // ≤2 paragraphs / ≤2 sentences). That must NOT discard the hard evidence
-  // floor: near-proof markup leakage (#332) and the structural classifier stay
-  // decisive on short text. Enforce that floor here — only the calibrated hard
-  // floor, never the coarse per-paragraph hot ratio (1/1 = 100 on one
-  // paragraph) — so a short AI-leaked snippet can't be scored 0 just because it
-  // was too short for the meta-block, while clean short prose (no hard floor)
-  // still defers to the LLM. Non-skipped text keeps the existing divergence path.
-  if (deterministicScore?.skipped) {
-    const skippedFloor = toFiniteScore(deterministicScore?.evidenceFloor);
-    if (skippedFloor !== null && skippedFloor > 0 && llm < skippedFloor) {
-      return {
-        overall: skippedFloor,
-        scorePreference: {
-          reason: 'deterministic-evidence-floor',
-          selected: 'deterministic',
-          llmOverall: llm,
-          deterministicOverall: deterministic,
-          evidenceFloor: skippedFloor,
-          overall: skippedFloor,
-        },
-      };
-    }
-    return { overall: llm, scorePreference: null };
+  // Hard evidence floor applies in EVERY posture. Near-proof markup leakage
+  // (#332), the trained structural classifier, and the calibrated short-form
+  // tell are each decisive on their own, so the final score must never sit
+  // below them — not even when the text is short (skipped) OR when the LLM
+  // lands within the divergence threshold of the deterministic score. The
+  // coarse per-paragraph hot ratio is deliberately excluded from evidenceFloor
+  // (see scoreDeterministicSignals), so this cannot false-positive on ordinary
+  // prose. Applied before the skip/divergence branches, which only decide the
+  // score when no hard floor binds.
+  const evidenceFloor = toFiniteScore(deterministicScore?.evidenceFloor);
+  if (evidenceFloor !== null && evidenceFloor > 0 && llm < evidenceFloor) {
+    return {
+      overall: evidenceFloor,
+      scorePreference: {
+        reason: 'deterministic-evidence-floor',
+        selected: 'deterministic',
+        llmOverall: llm,
+        deterministicOverall: deterministic,
+        evidenceFloor,
+        overall: evidenceFloor,
+      },
+    };
   }
+
+  // `skipped` (≤2 paragraphs / ≤2 sentences) suppressed the long-form
+  // stylometry meta-block, and its coarse per-paragraph hot ratio is unreliable
+  // on such short text. With no hard floor binding above, defer to the LLM
+  // instead of running the divergence path on that coarse ratio.
+  if (deterministicScore?.skipped) return { overall: llm, scorePreference: null };
 
   const threshold = deterministicScoringOptions(config).divergenceThreshold;
   const delta = Math.abs(llm - deterministic);

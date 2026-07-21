@@ -340,7 +340,7 @@ export async function scoreText({
   onAttemptInvalid,
 }) {
   const lang = config.language || 'ko';
-  const deterministicScore = scoreDeterministicSignals({ text, config, logger });
+  const deterministicScore = scoreDeterministicSignals({ text, config, patterns, logger });
 
   // buildScoreMathCore carries the shared scoring math (weights, severity
   // scale, denominators, catalog digest) but no output contract; the strict
@@ -424,12 +424,34 @@ function buildContractExampleCategoryRow(patterns, config) {
   return `"${category}": {"detected": 0, "sum": 0, "max": ${max}, "score": 0.0, "weighted": 0.0}`;
 }
 
+// Calibrated evidence floor for the short-form (social/marketing) em-dash tell
+// (patterns/en-style.md #13 short-form branch). Reconstructs the same category
+// math the LLM scorer uses — adjusted severity / (style pattern count x high) x
+// weight, with the core/scoring.md short-text 1.5x boost — so the deterministic
+// floor and the LLM's own scoring of this tell agree instead of being an ad-hoc
+// penalty. Returns 0 when the tell is inert (not eligible / not en / no dash) or
+// when the style pattern count or category weight is unavailable.
+function computeShortFormEvidenceFloor({ result, config, lang, patterns = [] }) {
+  const rawSeverity = Number(result?.shortForm?.emDash?.severity ?? 0);
+  if (!(rawSeverity > 0)) return 0;
+  const severityPoints = resolveSeverityPoints(config);
+  const high = severityPoints.high;
+  const stylePack = patterns.find((pack) => pack?.frontmatter?.pack === `${lang}-style`);
+  const patternCount = Number(stylePack?.frontmatter?.patterns);
+  const weight = Number(config?.ouroboros?.['category-weights']?.[lang]?.style);
+  if (!(patternCount > 0) || !(high > 0) || !Number.isFinite(weight)) return 0;
+  // core/scoring.md short-text boost (1.5x, capped at `high`).
+  const adjusted = Math.min(high, rawSeverity * 1.5);
+  return roundScore((adjusted / (patternCount * high)) * 100 * weight);
+}
+
 /**
  * Compute deterministic stylometry/lexicon AI-likeness signals.
  *
  * @param {object} [options] Deterministic scoring options.
  * @param {string} [options.text] Text to analyze.
  * @param {object} [options.config={}] Effective config.
+ * @param {Array} [options.patterns=[]] Loaded pattern packs; used for short-form category math.
  * @param {string} [options.repoRoot] Repository root for analyzer resources.
  * @param {object} [options.logger] Optional logger for recoverable deterministic warnings.
  * @param {Function} [options.analyzer] Analyzer implementation.
@@ -440,6 +462,7 @@ function buildContractExampleCategoryRow(patterns, config) {
 export function scoreDeterministicSignals({
   text,
   config = {},
+  patterns = [],
   repoRoot = getRepoRoot(),
   analyzer = analyzeText,
   logger = createLogger(),
@@ -475,6 +498,8 @@ export function scoreDeterministicSignals({
     }
     const result = analyzer(String(text || ''), {
       lang,
+      profile: config.profile,
+      register: config.register ?? null,
       repoRoot,
       burstinessBands: config.stylometry?.burstiness?.bands,
       mattrBands: config.stylometry?.ttr?.bands,
@@ -513,10 +538,18 @@ export function scoreDeterministicSignals({
     // to the LLM. The coarse per-paragraph hot ratio (1/1 = 100 on a single
     // paragraph) is deliberately NOT part of this floor — only calibrated hard
     // signals are — so short prose cannot manufacture a false positive.
-    const evidenceFloor = Math.max(
+    const hardEvidenceFloor = Math.max(
       leaked ? LEAKAGE_SCORE_FLOOR : 0,
       structuralFloor,
     );
+    // Calibrated weak short-form (social/marketing) punctuation floor (#13
+    // short-form branch). Register-gated and Low-severity by design, so it only
+    // nudges eligible SNS text off an exact 0 and is inert for the default
+    // profile. Reconstructs the same category math as the LLM path (style
+    // pattern count x severity, short-text 1.5x boost) rather than an ad-hoc
+    // penalty, so a single em dash contributes ~1.7 and stays in the human band.
+    const shortFormFloor = computeShortFormEvidenceFloor({ result, config, lang, patterns });
+    const evidenceFloor = Math.max(hardEvidenceFloor, shortFormFloor);
     const overall = Math.max(hotRatioOverall, evidenceFloor);
     const signalScore = roundScore(summarizeSignalStrength(paragraphs, {
       burstinessBands: config.stylometry?.burstiness?.bands,
@@ -527,6 +560,7 @@ export function scoreDeterministicSignals({
     return {
       overall,
       evidenceFloor,
+      shortFormFloor,
       interpretation: interpretScore(overall),
       skipped: Boolean(result?.skipped),
       skipReason: result?.skipReason ?? null,

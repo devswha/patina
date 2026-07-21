@@ -8,7 +8,9 @@ import {
   scoreFidelity,
   scoreMPS,
   scoreDeterministicSignals,
+  reconcileScoreOverall,
   scoreText,
+  LEAKAGE_SCORE_FLOOR,
 } from '../../src/scoring.js';
 import { getRepoRoot, loadConfig } from '../../src/config.js';
 import { loadPatterns } from '../../src/loader.js';
@@ -404,6 +406,178 @@ test('deterministic skipped and failure payloads pin signalScore to zero', () =>
   });
   assert.strictEqual(failed.skipped, true);
   assert.strictEqual(failed.signalScore, 0);
+});
+
+// --- P0: short-text hard-evidence floor survives skipped bypass -------------
+// Regression for the scorer discarding deterministic evidence on ≤2-paragraph
+// text: analyzeText marks short input skipped=true, but near-proof markup
+// leakage (#332) still fires. reconcileScoreOverall must honor that hard floor
+// instead of silently returning the LLM's (possibly 0) score.
+
+test('scoreDeterministicSignals exposes an evidenceFloor that survives short-text skip', () => {
+  const shortLeaked = scoreDeterministicSignals({
+    text: 'According to turn0search1 the phrasing still needs work.',
+    config: loadConfig(),
+  });
+  // One sentence / one paragraph is below the stylometry meta-block threshold.
+  assert.strictEqual(shortLeaked.skipped, true);
+  // The near-proof leakage token still lifts the hard evidence floor.
+  assert.strictEqual(shortLeaked.bands.markupLeakage.leaked, true);
+  assert.strictEqual(shortLeaked.evidenceFloor, LEAKAGE_SCORE_FLOOR);
+  assert.strictEqual(shortLeaked.overall, LEAKAGE_SCORE_FLOOR);
+
+  const shortClean = scoreDeterministicSignals({
+    text: 'I rewrote the parser this morning and it finally works.',
+    config: loadConfig(),
+  });
+  assert.strictEqual(shortClean.skipped, true);
+  // No hard floor for ordinary short prose — must stay 0 so the LLM decides.
+  assert.strictEqual(shortClean.evidenceFloor, 0);
+});
+
+test('reconcileScoreOverall enforces the hard evidence floor on skipped short text', () => {
+  const config = loadConfig();
+
+  // Skipped + hard floor above the LLM score => floor wins (was discarded).
+  const floored = reconcileScoreOverall({
+    llmOverall: 0,
+    deterministicScore: { overall: 90, evidenceFloor: 90, skipped: true },
+    config,
+  });
+  assert.strictEqual(floored.overall, 90);
+  assert.strictEqual(floored.scorePreference?.reason, 'deterministic-evidence-floor');
+  assert.strictEqual(floored.scorePreference?.selected, 'deterministic');
+
+  // Skipped + LLM already at/above the floor => LLM stands, no forced floor.
+  const llmWins = reconcileScoreOverall({
+    llmOverall: 95,
+    deterministicScore: { overall: 90, evidenceFloor: 90, skipped: true },
+    config,
+  });
+  assert.strictEqual(llmWins.overall, 95);
+  assert.strictEqual(llmWins.scorePreference, null);
+
+  // Boundary: LLM exactly at the floor => floor satisfied, no forced override
+  // (guards the intended `<` vs `<=` contract).
+  const atFloor = reconcileScoreOverall({
+    llmOverall: 90,
+    deterministicScore: { overall: 90, evidenceFloor: 90, skipped: true },
+    config,
+  });
+  assert.strictEqual(atFloor.overall, 90);
+  assert.strictEqual(atFloor.scorePreference, null);
+
+  // Skipped + a high deterministic overall driven only by the coarse hot ratio
+  // (evidenceFloor 0) must NOT floor: hot ratio is not hard evidence.
+  const hotRatioOnly = reconcileScoreOverall({
+    llmOverall: 0,
+    deterministicScore: { overall: 100, evidenceFloor: 0, skipped: true },
+    config,
+  });
+  assert.strictEqual(hotRatioOnly.overall, 0);
+  assert.strictEqual(hotRatioOnly.scorePreference, null);
+
+  // Skipped + no hard floor (ordinary short prose) => unchanged: defer to LLM.
+  const cleanSkip = reconcileScoreOverall({
+    llmOverall: 0,
+    deterministicScore: { overall: 0, evidenceFloor: 0, skipped: true },
+    config,
+  });
+  assert.strictEqual(cleanSkip.overall, 0);
+  assert.strictEqual(cleanSkip.scorePreference, null);
+
+  // Non-skipped divergence path must be untouched by the floor change.
+  const diverged = reconcileScoreOverall({
+    llmOverall: 0,
+    deterministicScore: { overall: 60, evidenceFloor: 0, skipped: false },
+    config,
+  });
+  assert.strictEqual(diverged.overall, 60);
+  assert.strictEqual(diverged.scorePreference?.reason, 'deterministic-divergence');
+});
+
+test('scoreText floors a short AI-leaked snippet even when the LLM returns 0', async () => {
+  const callLLM = async () =>
+    JSON.stringify({ categories: {}, overall: 0, interpretation: 'human' });
+
+  const leaked = await scoreText({
+    text: 'According to turn0search1 the phrasing still needs work.',
+    config: loadConfig(),
+    patterns: [],
+    callLLM,
+  });
+  assert.strictEqual(leaked.overall, LEAKAGE_SCORE_FLOOR);
+  assert.strictEqual(leaked.scorePreference?.reason, 'deterministic-evidence-floor');
+
+  // Control: an ordinary short reply with no hard floor keeps the LLM's 0.
+  const clean = await scoreText({
+    text: 'same here, this saves me a ton of time every week.',
+    config: loadConfig(),
+    patterns: [],
+    callLLM,
+  });
+  assert.strictEqual(clean.overall, 0);
+  assert.strictEqual(clean.scorePreference, undefined);
+});
+
+// Producer-side locks (injected analyzer, no private model / no lexicon reliance):
+// pin that evidenceFloor carries ONLY the hard document-level floors and that a
+// short hot-ratio-only paragraph never manufactures a floor. Guards against a
+// future regression to evidenceFloor = Math.max(hotRatioOverall, ...).
+test('scoreDeterministicSignals keeps the coarse hot ratio OUT of evidenceFloor on skipped text', () => {
+  const hotRatioOnly = () => ({
+    paragraphs: [{ hot: true }, { hot: true }],
+    markupLeakage: { leaked: false, hits: [] },
+    discourseTells: null,
+    structuralClassifier: { available: false, hot: null, score: null },
+    skipped: true,
+    skipReason: 'sentences<=2',
+  });
+  const det = scoreDeterministicSignals({
+    text: 'x',
+    config: loadConfig(),
+    analyzer: hotRatioOnly,
+  });
+  assert.strictEqual(det.skipped, true);
+  assert.strictEqual(det.overall, 100); // hot ratio 2/2 still drives deterministic overall
+  assert.strictEqual(det.evidenceFloor, 0); // ...but it is NOT a hard evidence floor
+
+  // End-to-end: a purely hot-ratio-100 short text must not force the LLM's 0 up.
+  const reconciled = reconcileScoreOverall({
+    llmOverall: 0,
+    deterministicScore: det,
+    config: loadConfig(),
+  });
+  assert.strictEqual(reconciled.overall, 0);
+  assert.strictEqual(reconciled.scorePreference, null);
+});
+
+test('scoreDeterministicSignals floors skipped text on a structural-only verdict', () => {
+  const structuralOnly = () => ({
+    paragraphs: [{ hot: false }],
+    markupLeakage: { leaked: false, hits: [] },
+    discourseTells: null,
+    structuralClassifier: { available: true, hot: true, score: 0.8 },
+    skipped: true,
+    skipReason: 'paragraphs<=2',
+  });
+  const det = scoreDeterministicSignals({
+    text: 'x',
+    config: loadConfig(),
+    analyzer: structuralOnly,
+  });
+  assert.strictEqual(det.skipped, true);
+  // max(STRUCTURAL_CLASSIFIER_MIN_FLOOR 70, round(0.8*100) 80) = 80, no leakage.
+  assert.strictEqual(det.evidenceFloor, 80);
+  assert.strictEqual(det.overall, 80);
+
+  const reconciled = reconcileScoreOverall({
+    llmOverall: 0,
+    deterministicScore: det,
+    config: loadConfig(),
+  });
+  assert.strictEqual(reconciled.overall, 80);
+  assert.strictEqual(reconciled.scorePreference?.reason, 'deterministic-evidence-floor');
 });
 // --- C2: opt-in structured output ------------------------------------------
 

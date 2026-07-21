@@ -57,6 +57,7 @@ harness below ablates each one to report its marginal contribution.
 | Tool | Command | What it measures | Docs |
 |---|---|---|---|
 | Suspect-zone benchmark | `npm run benchmark` | 49-fixture hot/cold accuracy, ROC/PR-AUC, F1, confusion — the regression guard | [tests/quality/README.md](../tests/quality/README.md) |
+| Scorer benchmark | `node tests/quality/scorer-benchmark.mjs` | End-to-end scoring path (`scoreDeterministicSignals` + `reconcileScoreOverall`, LLM mocked to 0): guards that short AI-leaked snippets are not scored 0 and clean controls stay 0 — the class the analyzer benchmark cannot see | [tests/quality/README.md](../tests/quality/README.md#scorer-benchmark-end-to-end-scoring-path) |
 | Benchmark report | `npm run benchmark:report` | Refreshes `docs/benchmarks/latest.{md,json}` + ranking diagnostics | [benchmarks/README.md](benchmarks/README.md) |
 | Regression ranges | `npm run benchmark:ranges` | Pins per-fixture CV/MATTR/lexicon expectations | [tests/quality/README.md](../tests/quality/README.md) |
 | Signal impact / ablation | `npm run benchmark:signal-impact` | Per-signal **marginal** catch/FP contribution on a labeled manifest — use when adding/tuning a deterministic hot signal | this file (below) |

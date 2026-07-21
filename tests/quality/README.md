@@ -341,3 +341,39 @@ Human-control bodies live under `human-controls/raw/` (gitignored); when absent
 (e.g. CI) their FP is reported as not-evaluated **smoke only**. n=7 cannot bound
 FPR (0/7 still ~35% Wilson upper), so it is never a hard FP gate or public claim.
 Test: `node --test tests/unit/ai-tells-corpus-baseline.test.js`.
+
+## Scorer benchmark (end-to-end scoring path)
+
+`npm run benchmark` above is an **analyzer-only** harness: it grades
+`analyzeText().hot` and never runs the production scoring path. The scorer
+benchmark closes that blind spot.
+
+```bash
+node tests/quality/scorer-benchmark.mjs
+```
+
+It runs the real scoring path — `scoreDeterministicSignals()` +
+`reconcileScoreOverall()` (both in `src/scoring.js`) — over a small labeled
+fixture set, with the **LLM mocked to overall 0** (worst case). Any non-zero
+final score therefore comes from deterministic hard evidence alone, and any
+clean control that turns non-zero is a deterministic false positive. No LLM
+calls, no API key — CI-safe.
+
+Gates (non-zero exit on any violation, even under `--quiet`):
+
+- `positive_zero_score_rate` — hard-evidence positives (near-proof markup
+  leakage / structural) whose final score is 0. Must be 0. This catches the
+  regression where a short AI-leaked snippet scored 0 because `skipped=true`
+  discarded the hard evidence floor.
+- `false_positive_rate` — clean controls whose final score is > 0 at LLM 0.
+  Must be 0.
+- `skipped_evidence_discarded` — fixtures marked `skipped` that carry an
+  `evidenceFloor > 0` yet whose final dropped below it. Must be 0.
+- Per-fixture `skipped` / `evidenceFloor` / `final` expectations are pinned.
+
+`stylometry-hot-no-floor` fixtures pin the inverse guard: a paragraph that is
+analyzer-hot via a probabilistic signal (e.g. Korean ending-monotony) but has
+no hard floor must NOT be promoted — the coarse per-paragraph hot ratio is not
+an evidence floor, so the LLM's verdict stands.
+
+Outputs `tests/quality/scorer-results.json` (gitignored).

@@ -54,6 +54,7 @@ jobs:
         run: |
           npm run lint:syntax
           npm run benchmark
+          node tests/quality/scorer-benchmark.mjs
 
   quality:
     runs-on: ubuntu-latest

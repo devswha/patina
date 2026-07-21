@@ -97,11 +97,34 @@ const FIXTURES = [
     text: '이 도구는 정말 유용하다. 이 모델은 매우 강력하다. 이 시스템은 아주 안정적이다. 이 방법은 꽤 효율적이다. 이 결과는 상당히 명확하다.',
     expect: { skipped: true, evidenceFloor: 0, final: 0 },
   },
+  {
+    id: 'em-dash-social',
+    lang: 'en',
+    profile: 'social',
+    class: 'short-form-positive',
+    // Single em dash in a short social reply: the #13 short-form branch floors
+    // it off an exact 0 (~1.7, weak/Low) so the SNS "AI-polish" tell registers
+    // without overclaiming. Needs the en-style pack for the category math.
+    patterns: [{ frontmatter: { pack: 'en-style', patterns: 6 } }],
+    text: 'built patina for exactly that — keeps your meaning intact.',
+    expect: { skipped: true, final: 1.7 },
+  },
+  {
+    id: 'em-dash-default-control',
+    lang: 'en',
+    profile: 'default',
+    class: 'clean-control',
+    // Same dash, default profile: the branch is inert, so no false positive.
+    patterns: [{ frontmatter: { pack: 'en-style', patterns: 6 } }],
+    text: 'built patina for exactly that — keeps your meaning intact.',
+    expect: { skipped: true, evidenceFloor: 0, final: 0 },
+  },
 ];
 
 function evaluateFixture(fixture) {
-  const config = { ...loadConfig(), language: fixture.lang };
-  const deterministic = scoreDeterministicSignals({ text: fixture.text, config });
+  const config = { ...loadConfig(), language: fixture.lang, profile: fixture.profile ?? 'default' };
+  const patterns = fixture.patterns ?? [];
+  const deterministic = scoreDeterministicSignals({ text: fixture.text, config, patterns });
   // Worst-case: the LLM finds nothing (overall 0). A non-zero final must be
   // deterministic hard evidence; a non-zero clean control is a false positive.
   const reconciled = reconcileScoreOverall({
@@ -147,7 +170,9 @@ function main() {
   const quiet = process.argv.includes('--quiet');
   const rows = FIXTURES.map(evaluateFixture);
 
-  const positives = rows.filter((r) => r.class === 'hard-evidence-positive');
+  const positives = rows.filter(
+    (r) => r.class === 'hard-evidence-positive' || r.class === 'short-form-positive'
+  );
   const cleans = rows.filter((r) => r.class === 'clean-control');
 
   const positiveZero = positives.filter((r) => r.observed.final === 0);

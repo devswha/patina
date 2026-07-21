@@ -15,7 +15,9 @@ corpus-snapshot:
 
 ### 13. Em Dash Overuse
 
-**Fire condition:** 1+ em dash appears in each of 2+ consecutive paragraphs, or the document-level em-dash count is high relative to sentence count.
+**Long-form fire condition:** 1+ em dash appears in each of 2+ consecutive paragraphs, or the document-level em-dash count is high relative to sentence count.
+
+**Short-form scoring branch (`social` / `marketing` register only):** On English input of at most 200 non-whitespace characters and 1–4 prose sentences, count the em dashes that fall outside the exclusions below and score them directly: 1 → Low, 2 → Medium, 3+ → High. Always record `em_dash_count` and `em_dash_per_sentence = em_dash_count / max(1, prose_sentence_count)`. This is a **weak** score/audit signal — one dash alone is not evidence the author is AI, and it is inert for the default profile. The deterministic engine (`src/features/short-form.js`) records it and the scorer floors an eligible reply off an exact 0 via `computeShortFormEvidenceFloor` in `src/scoring.js` (~1.7 for a single dash), which keeps it inside the human band rather than promoting it.
 
 **Exclusion:** Do not trigger on interrupted speech in quoted dialogue, glossary or dictionary-style separators, or deliberate literary style where one or two parenthetical em dashes are clearly intentional.
 
@@ -38,6 +40,13 @@ corpus-snapshot:
 > The first cohort included twelve clinics, each serving a different rural county.
 >
 > Early feedback was positive. The team still needs retention data before expanding.
+
+**Short-form before / after (`--profile social`):**
+> Before: built patina for exactly that — it keeps your meaning intact.
+>
+> After: built patina for exactly that. it keeps your meaning intact.
+
+The single dash reads as a light AI-polish tell in a promo reply; a period (or comma) keeps the same beat without it. This branch only scores/audits it — rewrite mode still leaves genuinely intentional single dashes alone.
 
 ---
 

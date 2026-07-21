@@ -51,6 +51,7 @@ import {
   trainLogReg,
 } from './structural-classifier.js';
 import { loadStructuralModel, resolveStructuralModelPath } from './structural-model-loader.js';
+import { detectEnglishShortFormTells } from './short-form.js';
 
 export function analyzeText(text, opts = {}) {
   const {
@@ -67,6 +68,9 @@ export function analyzeText(text, opts = {}) {
     lexiconMinHotMatches = DEFAULT_LEXICON_MIN_HOT_MATCHES,
     lexicon: providedLexicon,
     structuralModel = null,
+    profile = 'default',
+    register = null,
+    shortFormLimits,
   } = opts;
 
   // Normalize to NFC at the boundary so downstream tokenization and lexicon
@@ -96,6 +100,17 @@ export function analyzeText(text, opts = {}) {
   const lexicon =
     providedLexicon ??
     (repoRoot ? loadLexicon(lang, repoRoot) : { strict: [], phrases: [] });
+
+  // Short-form (social/marketing) punctuation tell: em-dash count/density on
+  // short English input. Advisory + register-gated — it never enters the `hot`
+  // verdict below (that would let one dash in a single paragraph read as 1/1 =
+  // 100). The scorer routes it through a small calibrated evidence floor.
+  const shortForm = detectEnglishShortFormTells(normalized, {
+    lang,
+    profile,
+    register,
+    limits: shortFormLimits,
+  });
 
   // §8 skip conditions are advisory only — production callers (SKILL.md 4.6/4.7)
   // can suppress meta-block emission, but the benchmark wants raw signals on
@@ -194,6 +209,7 @@ export function analyzeText(text, opts = {}) {
     discourseTells,
     translationese,
     koPostEditese,
+    shortForm,
     // No `discourseTells.hot` disjunct here: whenever the document-level density
     // gate fires, at least one paragraph carries the tell (candor regexes cannot
     // span paragraph breaks; thematic breaks are whole lines), so the

@@ -579,6 +579,75 @@ test('scoreDeterministicSignals floors skipped text on a structural-only verdict
   assert.strictEqual(reconciled.overall, 80);
   assert.strictEqual(reconciled.scorePreference?.reason, 'deterministic-evidence-floor');
 });
+
+// --- P1: short-form (social/marketing) em-dash evidence floor ---------------
+// Register-gated weak signal: a single em dash in a short SNS reply floors the
+// score off an exact 0 (~1.7, still human band) for social/marketing profiles,
+// and is completely inert for the default profile.
+
+const EN_STYLE_PACK = [{ frontmatter: { pack: 'en-style', patterns: 6 } }];
+
+test('scoreDeterministicSignals floors a social short reply on a single em dash', () => {
+  const config = { ...loadConfig(), language: 'en', profile: 'social' };
+  const det = scoreDeterministicSignals({
+    text: 'built patina for exactly that — keeps your meaning intact.',
+    config,
+    patterns: EN_STYLE_PACK,
+  });
+  assert.strictEqual(det.skipped, true);
+  assert.strictEqual(det.shortFormFloor, 1.7); // Low severity 1 through the en-style category math
+  assert.strictEqual(det.evidenceFloor, 1.7);
+
+  const two = scoreDeterministicSignals({
+    text: 'first — then — done, that simple.',
+    config,
+    patterns: EN_STYLE_PACK,
+  });
+  assert.strictEqual(two.shortFormFloor, 3.3); // Medium severity 2
+});
+
+test('the short-form floor is inert for the default profile', () => {
+  const det = scoreDeterministicSignals({
+    text: 'built patina for exactly that — keeps your meaning intact.',
+    config: { ...loadConfig(), language: 'en', profile: 'default' },
+    patterns: EN_STYLE_PACK,
+  });
+  assert.strictEqual(det.shortFormFloor, 0);
+  assert.strictEqual(det.evidenceFloor, 0);
+});
+
+test('the short-form floor degrades to 0 without style pattern metadata', () => {
+  const det = scoreDeterministicSignals({
+    text: 'built patina for exactly that — keeps your meaning intact.',
+    config: { ...loadConfig(), language: 'en', profile: 'social' },
+    patterns: [], // no en-style pack => cannot reconstruct category math
+  });
+  assert.strictEqual(det.shortFormFloor, 0);
+});
+
+test('scoreText surfaces the short-form floor for a social reply even at LLM 0', async () => {
+  const callLLM = async () =>
+    JSON.stringify({ categories: {}, overall: 0, interpretation: 'human' });
+
+  const social = await scoreText({
+    text: 'built patina for exactly that — keeps your meaning intact.',
+    config: { ...loadConfig(), language: 'en', profile: 'social' },
+    patterns: EN_STYLE_PACK,
+    callLLM,
+  });
+  assert.strictEqual(social.overall, 1.7);
+  assert.strictEqual(social.scorePreference?.reason, 'deterministic-evidence-floor');
+
+  // Default profile: the same dash stays 0 (no false positive on general text).
+  const dflt = await scoreText({
+    text: 'built patina for exactly that — keeps your meaning intact.',
+    config: { ...loadConfig(), language: 'en', profile: 'default' },
+    patterns: EN_STYLE_PACK,
+    callLLM,
+  });
+  assert.strictEqual(dflt.overall, 0);
+  assert.strictEqual(dflt.scorePreference, undefined);
+});
 // --- C2: opt-in structured output ------------------------------------------
 
 test('scoreText forwards responseFormat to callLLM on both attempts and keeps strict-JSON fallback (#C2)', async () => {

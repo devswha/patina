@@ -452,6 +452,7 @@ export function scoreDeterministicSignals({
   if (Array.isArray(enabledLanguages) && !enabledLanguages.includes(lang)) {
     return {
       overall: null,
+      evidenceFloor: 0,
       interpretation: null,
       skipped: true,
       skipReason: 'language-disabled',
@@ -505,11 +506,18 @@ export function scoreDeterministicSignals({
     // high structural floor was capped at the (lower) leakage floor — a near-proof
     // leakage token could LOWER the overall score. Take the max of every signal so
     // a floor can only ever raise the score (#527 H5).
-    const overall = Math.max(
-      hotRatioOverall,
+    // Hard, document-level evidence floors: near-proof markup leakage (#332)
+    // and the trained structural classifier. Each is decisive on its own, so it
+    // must survive even when the text is too short for the stylometry meta-block
+    // (skipped=true): reconcileScoreOverall applies this floor before deferring
+    // to the LLM. The coarse per-paragraph hot ratio (1/1 = 100 on a single
+    // paragraph) is deliberately NOT part of this floor — only calibrated hard
+    // signals are — so short prose cannot manufacture a false positive.
+    const evidenceFloor = Math.max(
       leaked ? LEAKAGE_SCORE_FLOOR : 0,
       structuralFloor,
     );
+    const overall = Math.max(hotRatioOverall, evidenceFloor);
     const signalScore = roundScore(summarizeSignalStrength(paragraphs, {
       burstinessBands: config.stylometry?.burstiness?.bands,
       mattrBands: config.stylometry?.ttr?.bands,
@@ -518,6 +526,7 @@ export function scoreDeterministicSignals({
 
     return {
       overall,
+      evidenceFloor,
       interpretation: interpretScore(overall),
       skipped: Boolean(result?.skipped),
       skipReason: result?.skipReason ?? null,
@@ -556,6 +565,7 @@ export function scoreDeterministicSignals({
   } catch (err) {
     return {
       overall: null,
+      evidenceFloor: 0,
       interpretation: null,
       skipped: true,
       skipReason: 'deterministic-failure',
@@ -628,7 +638,31 @@ export function reconcileScoreOverall({
   const deterministic = toFiniteScore(deterministicScore?.overall);
   if (llm === null) return { overall: null, scorePreference: null };
   if (deterministic === null) return { overall: llm, scorePreference: null };
-  if (deterministicScore?.skipped) return { overall: llm, scorePreference: null };
+  // `skipped` means the long-form stylometry/meta block was suppressed (text is
+  // ≤2 paragraphs / ≤2 sentences). That must NOT discard the hard evidence
+  // floor: near-proof markup leakage (#332) and the structural classifier stay
+  // decisive on short text. Enforce that floor here — only the calibrated hard
+  // floor, never the coarse per-paragraph hot ratio (1/1 = 100 on one
+  // paragraph) — so a short AI-leaked snippet can't be scored 0 just because it
+  // was too short for the meta-block, while clean short prose (no hard floor)
+  // still defers to the LLM. Non-skipped text keeps the existing divergence path.
+  if (deterministicScore?.skipped) {
+    const skippedFloor = toFiniteScore(deterministicScore?.evidenceFloor);
+    if (skippedFloor !== null && skippedFloor > 0 && llm < skippedFloor) {
+      return {
+        overall: skippedFloor,
+        scorePreference: {
+          reason: 'deterministic-evidence-floor',
+          selected: 'deterministic',
+          llmOverall: llm,
+          deterministicOverall: deterministic,
+          evidenceFloor: skippedFloor,
+          overall: skippedFloor,
+        },
+      };
+    }
+    return { overall: llm, scorePreference: null };
+  }
 
   const threshold = deterministicScoringOptions(config).divergenceThreshold;
   const delta = Math.abs(llm - deterministic);

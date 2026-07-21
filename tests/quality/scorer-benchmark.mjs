@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// End-to-end scorer benchmark (deterministic; LLM mocked to overall 0).
+// End-to-end scorer benchmark (deterministic; LLM mocked, 0 by default).
 //
 // Complements tests/quality/benchmark.mjs, which is an ANALYZER-only regression
 // harness: it runs analyzeText() and grades result.hot, and never exercises the
@@ -119,16 +119,34 @@ const FIXTURES = [
     text: 'built patina for exactly that — keeps your meaning intact.',
     expect: { skipped: true, evidenceFloor: 0, final: 0 },
   },
+  {
+    id: 'nonskipped-leaked-undercut',
+    lang: 'en',
+    class: 'hard-evidence-positive',
+    // Three ordinary-prose paragraphs (hot ratio 0) with one leaked tooling
+    // token => non-skipped, evidenceFloor = leakage 90. The LLM lands at 75,
+    // INSIDE the divergence threshold (20) of 90, so the pre-fix code undercut
+    // it to 75. The hard floor must now bind: final = 90.
+    mockLlm: 75,
+    text: [
+      'I rewrote the parser this morning and it finally handles nested quotes without choking on them. The previous version tripped over one rare edge case that took two days to reproduce.',
+      'Reviewers wanted another pass on the error copy, so I split the longest messages into a short summary plus a hint. According to turn0search1 the phrasing still needs work, yet the structure holds.',
+      'We shipped it behind a flag and watched the logs over lunch. Nothing broke. The on-call engineer shrugged and went back to her coffee.',
+    ].join('\n\n'),
+    expect: { skipped: false, evidenceFloor: 90, final: 90 },
+  },
 ];
 
 function evaluateFixture(fixture) {
   const config = { ...loadConfig(), language: fixture.lang, profile: fixture.profile ?? 'default' };
   const patterns = fixture.patterns ?? [];
   const deterministic = scoreDeterministicSignals({ text: fixture.text, config, patterns });
-  // Worst-case: the LLM finds nothing (overall 0). A non-zero final must be
-  // deterministic hard evidence; a non-zero clean control is a false positive.
+  // Default worst-case: the LLM finds nothing (overall 0). A fixture may set an
+  // explicit `mockLlm` to exercise the divergence band (e.g. an LLM that lands
+  // just below a hard floor). A non-zero final on a control is a false positive.
+  const mockLlm = typeof fixture.mockLlm === 'number' ? fixture.mockLlm : 0;
   const reconciled = reconcileScoreOverall({
-    llmOverall: 0,
+    llmOverall: mockLlm,
     deterministicScore: deterministic,
     config,
   });
@@ -205,7 +223,7 @@ function main() {
   writeFileSync(RESULTS_PATH, JSON.stringify(results, null, 2) + '\n');
 
   if (!quiet) {
-    console.log(`# Scorer benchmark — ${rows.length} fixtures (LLM mocked to overall 0)`);
+    console.log(`# Scorer benchmark — ${rows.length} fixtures (LLM mocked; 0 unless a fixture overrides)`);
     console.log();
     console.log('| fixture | lang | class | skipped | evidenceFloor | final | reason | ok |');
     console.log('|---------|------|-------|---------|---------------|-------|--------|----|');

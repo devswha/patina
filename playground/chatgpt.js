@@ -85,6 +85,7 @@ const I18N = {
     outputUnapproved: 'Unapproved — checks have not passed. Actions are disabled.',
     outputApproved: 'Approved — checks passed. Actions are enabled.',
     floorWarn: 'This rewrite didn’t pass patina’s meaning-preservation floor (MPS / fidelity), so it’s flagged. Try again or pick a stronger model.',
+    reportFp: 'Flagged your own writing? Report a false positive →',
     failNote: 'Rewrite failed. Try again, or check the mode/key.',
     quotaDaily: 'You’ve used today’s free quota. Try again tomorrow, or switch to BYOK mode with your own API key for unlimited use.',
     quotaHourly: 'Free quota is full for now. Try again shortly, or use BYOK mode with your own API key.',
@@ -126,6 +127,7 @@ const I18N = {
     outputUnapproved: '미승인 — 검사를 통과하지 않았습니다. 작업을 사용할 수 없습니다.',
     outputApproved: '승인됨 — 검사를 통과했습니다. 작업을 사용할 수 있습니다.',
     floorWarn: '이 리라이트는 patina의 의미 보존 기준(MPS·fidelity)을 통과하지 못해 경고로 표시했어요. 다시 시도하거나 더 강한 모델을 골라보세요.',
+    reportFp: '직접 쓴 글인데 잡혔나요? 오탐 신고 →',
     failNote: '리라이트 실패. 다시 시도하거나 모드·키를 확인해 주세요.',
     quotaDaily: '오늘 무료 사용량을 다 쓰셨어요. 내일 다시 시도하거나, 본인 API 키로 BYOK 모드를 쓰면 제한 없이 이용할 수 있어요.',
     quotaHourly: '무료 사용량이 잠시 가득 찼어요. 잠시 후 다시 시도하거나, 본인 API 키로 BYOK 모드를 쓰면 바로 이용할 수 있어요.',
@@ -167,6 +169,7 @@ const I18N = {
     outputUnapproved: '未批准 — 尚未通过检查，操作不可用。',
     outputApproved: '已批准 — 已通过检查，操作已启用。',
     floorWarn: '该改写未通过 patina 的语义保留阈值（MPS·fidelity），已标记。请重试或选择更强的模型。',
+    reportFp: '人工撰写却被标记？反馈误报 →',
     failNote: '改写失败。请重试，或检查模式 / 密钥。',
     quotaDaily: '今天的免费额度已用完。请明天再试，或切换到 BYOK 模式使用自己的 API 密钥，即可无限制使用。',
     quotaHourly: '免费额度暂时已满。请稍后再试，或使用 BYOK 模式和自己的 API 密钥。',
@@ -208,6 +211,7 @@ const I18N = {
     outputUnapproved: '未承認 — チェックを通過していないため、操作は使えません。',
     outputApproved: '承認済み — チェックを通過しました。操作を利用できます。',
     floorWarn: 'この書き換えは patina の意味保持しきい値（MPS・fidelity）を満たさず、警告表示しています。再試行するか、より強力なモデルを選んでください。',
+    reportFp: '自分で書いた文章なのに検出？誤検出を報告 →',
     failNote: '書き換えに失敗しました。再試行するか、モード・キーを確認してください。',
     quotaDaily: '本日の無料利用枠を使い切りました。明日また試すか、ご自身のAPIキーでBYOKモードに切り替えると無制限で使えます。',
     quotaHourly: '無料利用枠が一時的にいっぱいです。しばらくして再試行するか、ご自身のAPIキーでBYOKモードをお使いください。',
@@ -628,14 +632,15 @@ function renderThread() {
   els.thread.innerHTML = '';
   const inner = el('div', 'thread__inner');
   if (convo && convo.messages.length) {
+    let lastUserText = null;
     for (const m of convo.messages) {
-      if (m.role === 'user') inner.appendChild(buildUserMsg(m.text));
+      if (m.role === 'user') { lastUserText = m.text; inner.appendChild(buildUserMsg(m.text)); }
       else {
         const { node, body, textEl, statusEl } = buildPatinaMsg();
         textEl.textContent = m.text;
         if (m.meta) {
           approveOutput(textEl, statusEl);
-          body.appendChild(buildMeta(m.meta));
+          body.appendChild(buildMeta(m.meta, lastUserText));
           body.appendChild(buildOutputActions(m.text));
         }
         inner.appendChild(node);
@@ -720,7 +725,7 @@ function badge(label, value, ok) {
   b.appendChild(el('b', null, value));
   return b;
 }
-function buildMeta(meta) {
+function buildMeta(meta, original) {
   const wrap = el('div', 'meta');
   const badges = el('div', 'badges');
   const mps = Number(meta?.mps?.mps ?? meta?.mps);
@@ -757,7 +762,36 @@ function buildMeta(meta) {
     r2.appendChild(el('span', null, `${meta.diff.beforeWords} → ${meta.diff.afterWords} (${sign(meta.diff.wordDelta)})`));
     b.appendChild(r1); b.appendChild(r2); det.appendChild(b); wrap.appendChild(det);
   }
+  const report = buildReportLink(meta, original);
+  if (report) wrap.appendChild(report);
   return wrap;
+}
+
+// False-positive report affordance (restores the pre-#560 audit-playground
+// loop). Shown only when the BEFORE signal flagged at least one paragraph, so
+// a user whose own writing was marked hot can file a prefilled GitHub issue
+// (.github/ISSUE_TEMPLATE/false_positive.yml). User-initiated navigation only —
+// nothing is sent anywhere until they submit the form on GitHub.
+function buildReportLink(meta, original) {
+  const b = meta?.signals?.before;
+  if (!b || !(Number(b.hotParagraphs) > 0) || !original) return null;
+  const sample = String(original).slice(0, 1200);
+  const score = [
+    'Source: playground rewrite (before-signal)',
+    `Signal: ${fmt(Number(b.signalScore))} (hot ${b.hotParagraphs}/${b.paragraphCount})`,
+    `MPS: ${fmt(Number(meta?.mps?.mps ?? meta?.mps))} / Fidelity: ${fmt(Number(meta?.fidelity?.fidelity ?? meta?.fidelity))}`,
+  ].join('\n');
+  const qs = new globalThis.URLSearchParams({
+    template: 'false_positive.yml',
+    language: els.lang.value,
+    fired_paragraph: sample,
+    score_output: score,
+  });
+  const a = el('a', 'report-fp', i18n().reportFp);
+  a.href = `https://github.com/devswha/patina/issues/new?${qs}`;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  return a;
 }
 function buildOutputActions(text) {
   const actions = el('div', 'output-actions');
@@ -1010,7 +1044,7 @@ async function runAttempt(attempt) {
         const rejected = frame.floorFailed || !Number.isFinite(mps) || !Number.isFinite(fidelity) || mps < MPS_FLOOR || fidelity < FIDELITY_FLOOR;
         const meta = { mps: frame.mps, fidelity: frame.fidelity, signals: frame.signals, diff: frame.diff, floorFailed: rejected };
         textEl.textContent = rewrite; textEl.classList.remove('streaming');
-        body.appendChild(buildMeta(meta));
+        body.appendChild(buildMeta(meta, clean));
         if (rejected) {
           textEl.classList.add('msg__text--flagged');
           markOutputUnapproved(textEl, statusEl);
@@ -1038,7 +1072,7 @@ async function runAttempt(attempt) {
         textEl.style.display = '';
         textEl.textContent = attemptText || cleanStream(textEl.textContent);
         textEl.classList.add('msg__text--flagged');
-        body.appendChild(buildMeta({ mps: ff.mps, fidelity: ff.fidelity, signals: ff.signals, diff: ff.diff, floorFailed: true }));
+        body.appendChild(buildMeta({ mps: ff.mps, fidelity: ff.fidelity, signals: ff.signals, diff: ff.diff, floorFailed: true }, clean));
         body.appendChild(errorNote(t.floorWarn));
       } else {
         textEl.style.display = 'none';

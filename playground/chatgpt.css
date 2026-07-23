@@ -415,6 +415,7 @@ details.foldout[open] > summary::before { content: "▾ "; }
 .output-action { border-radius: 9999px; padding: 5px 12px; }
 .report-fp { display: inline-block; margin-top: 8px; font-size: 13px; color: var(--text-dim); text-decoration: underline; text-underline-offset: 3px; }
 .report-fp:hover { color: var(--text); }
+.ver-badge { font-size: 11px; color: var(--text-faint); font-family: var(--mono); align-self: center; }
 
 /* ───────── keyboard focus (a11y) ─────────
    Hover-only affordances are invisible to keyboard users; every interactive

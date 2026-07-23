@@ -45,6 +45,7 @@ function createFixture() {
   writeFixtureFile(root, 'SKILL.md', `version: ${VERSION}\n`);
   writeFixtureFile(root, '.patina.default.yaml', `version: ${VERSION}\n`);
   writeFixtureFile(root, 'CHANGELOG.md', `## ${VERSION} — 2026-07-15\n`);
+  writeFixtureFile(root, 'playground/index.html', `<footer><span class="ver-badge">v${VERSION}</span></footer>\n`);
   for (const path of README_FILES) {
     writeFixtureFile(root, path, `![Version](https://img.shields.io/badge/version-${VERSION}-blue)\nversion: "${VERSION}"\n${README_CATALOGS[path]}\n`);
   }
@@ -149,6 +150,15 @@ for (const path of README_FILES) {
     });
   });
 }
+
+test('collector rejects playground ver-badge drift', () => {
+  withFixture((root) => {
+    writeFixtureFile(root, 'playground/index.html', '<footer><span class="ver-badge">v0.0.0</span></footer>\n');
+    assert.deepEqual(collectReleaseMetadataErrors({ repoRoot: root }).errors, [
+      'playground/index.html ver-badge must match package.json',
+    ]);
+  });
+});
 
 test('collector rejects a mismatched release tag', () => {
   withFixture((root) => {

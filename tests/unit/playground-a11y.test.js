@@ -5,7 +5,7 @@
 // and a closed mobile sidebar that leaves the tab order.
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -113,5 +113,23 @@ test('localized copy never flows through innerHTML (clear-only usage allowed)', 
   const assignments = js.match(/\.innerHTML\s*=\s*[^;]+/g) || [];
   for (const a of assignments) {
     assert.match(a, /\.innerHTML\s*=\s*''/, `unexpected non-empty innerHTML assignment: ${a}`);
+  }
+});
+
+test('every root-absolute asset reference resolves inside the served static root (playground/)', () => {
+  // vercel.json serves ONLY playground/ as the static output, so a reference
+  // like /assets/brand/patina-mark.svg 404s in production unless the file
+  // exists under playground/. The top-left brand mark and the favicon shipped
+  // broken exactly this way (repo-root assets/ is not deployed).
+  const refs = new Set();
+  for (const source of [html, js]) {
+    for (const m of source.matchAll(/["'`(](\/assets\/[A-Za-z0-9_./-]+)["'`)]/g)) refs.add(m[1]);
+  }
+  assert.ok(refs.size > 0, 'expected at least one /assets/ reference to guard');
+  for (const ref of refs) {
+    assert.ok(
+      existsSync(join(root, 'playground', ...ref.split('/').filter(Boolean))),
+      `${ref} is referenced by the playground but missing under playground/ (would 404 on the live deploy)`,
+    );
   }
 });

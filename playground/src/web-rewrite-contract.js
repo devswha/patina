@@ -135,14 +135,24 @@ export const STREAM_FRAME_VALUES = new Set(Object.values(STREAM_FRAME_TYPES));
  * be exfiltrated to an attacker-chosen host). BYOK requests may only select a
  * provider+model from this allowlist; free requests are pinned by env.
  */
+// Model refresh policy (2026-07-23): additions are opt-in choices appended
+// after the pinned default at index 0. Defaults stay exactly at the Gate-C
+// held values (openai gpt-5.5; gemini gemini-2.5-pro with the 3.1 preview
+// offered strictly under its opt_in_only ceiling). New entries mirror the CLI
+// provider presets (src/providers.js / src/model-defaults.js) so the web BYOK
+// surface never lags the models the CLI already documents.
 export const PROVIDER_PRESETS = Object.freeze({
   openai: Object.freeze({
     baseURL: 'https://api.openai.com/v1',
-    models: Object.freeze(['gpt-5.5', 'gpt-5.1', 'gpt-4.1', 'gpt-4.1-mini']),
+    models: Object.freeze(['gpt-5.5', 'gpt-5.6', 'gpt-5.1', 'gpt-4.1', 'gpt-4.1-mini']),
   }),
   claude: Object.freeze({
     baseURL: 'https://api.anthropic.com/v1',
-    models: Object.freeze(['claude-sonnet-5', 'claude-sonnet-4-5', 'claude-opus-4-1', 'claude-haiku-4-5']),
+    models: Object.freeze(['claude-sonnet-5', 'claude-sonnet-4-6', 'claude-sonnet-4-5', 'claude-opus-4-1', 'claude-haiku-4-5']),
+  }),
+  gemini: Object.freeze({
+    baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    models: Object.freeze(['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-3.1-pro-preview']),
   }),
   deepseek: Object.freeze({
     baseURL: 'https://api.deepseek.com/v1',
@@ -150,7 +160,7 @@ export const PROVIDER_PRESETS = Object.freeze({
   }),
   kimi: Object.freeze({
     baseURL: 'https://api.moonshot.ai/v1',
-    models: Object.freeze(['kimi-latest', 'moonshot-v1-128k', 'moonshot-v1-32k']),
+    models: Object.freeze(['kimi-k2.5', 'kimi-latest', 'moonshot-v1-128k', 'moonshot-v1-32k']),
   }),
   glm: Object.freeze({
     baseURL: 'https://open.bigmodel.cn/api/paas/v4',

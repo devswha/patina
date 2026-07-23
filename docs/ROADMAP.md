@@ -302,6 +302,14 @@ Campaign state:
 - Closed or verified during the campaign: #99, #104, #155, #156, #157, #160, #303, #165, #186, #191, #199, #209, #210, #286, #304, #305, #306, #308.
 - Kept open with explicit blocker comments or pending external action: #158, #159, #206, #207, #211, #212, #284, #307, #324.
 - Legacy bot/harness notes were removed from the public repo; restart autonomous bot work only from a fresh, tracked design if it becomes necessary.
+- Payment processor decision (2026-07-23, owner-agreed): ship Pro on Lemon
+  Squeezy — the store is active and the go-live path is mechanical. A Polar
+  migration (lower fees: 4%+$0.40 vs 5%+$0.50; stronger support reputation) is
+  deliberately deferred and becomes an agenda item only when either trigger
+  fires: (a) MRR exceeds $500, or (b) a concrete LS support/payout failure.
+  The entitlement layer stays provider-agnostic (injected license validator,
+  env-driven checkout URL) so an adapter remains bounded work; do not build it
+  speculatively before a trigger fires.
 
 Next recommended order:
 

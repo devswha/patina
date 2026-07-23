@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">patina icon</title>
+  <desc id="desc">A flat dark icon: copper transforms into patina teal around a warm preserved-meaning core.</desc>
+
+  <rect width="512" height="512" rx="112" fill="#020617"/>
+  <path d="M92 196C160 86 320 74 420 164L346 238C288 190 218 198 174 258Z" fill="#c46a2a"/>
+  <path d="M420 316C352 426 192 438 92 348L160 270C224 322 294 314 338 254Z" fill="#2dd4bf"/>
+  <circle cx="252" cy="248" r="54" fill="#ffe6a8" stroke="#020617" stroke-width="10"/>
+</svg>

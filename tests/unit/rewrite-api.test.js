@@ -1,7 +1,7 @@
 // @ts-check
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import handler, { createRestKv, createRewriteApiHandler } from '../../api/rewrite.js';
+import handler, { createObservabilityRestKv, createRestKv, createRewriteApiHandler } from '../../api/rewrite.js';
 
 function makeReq({ body = undefined, method = 'POST' } = {}) {
   return {
@@ -19,6 +19,7 @@ function makeReq({ body = undefined, method = 'POST' } = {}) {
 function makeRes() {
   const headers = new Map();
   const chunks = [];
+  const events = [];
   /** @type {Map<string, Set<Function>>} */
   const listeners = new Map();
   return {
@@ -31,9 +32,11 @@ function makeRes() {
       return headers.get(String(name).toLowerCase());
     },
     write(chunk) {
+      events.push('write');
       chunks.push(String(chunk));
     },
     end(body = '') {
+      events.push('end');
       if (body) chunks.push(String(body));
       this.ended = true;
       this.writableEnded = true;
@@ -52,6 +55,7 @@ function makeRes() {
       for (const listener of listeners.get('close') ?? []) listener();
     },
     chunks,
+    events,
     ended: false,
   };
 }
@@ -100,42 +104,17 @@ test('factory handler streams injected NDJSON frames in non-production memory po
   assert.doesNotMatch(res.chunks.join(''), /sk-server-free-key/);
 });
 
-test('the entrypoint emits a sanitized rewrite metric (no text/key/IP) on success', async () => {
+test('the entrypoint emits no legacy raw rewrite metric', async () => {
   const env = { NODE_ENV: 'test', PATINA_FREE_PROVIDER: 'openai', PATINA_FREE_MODEL: 'gpt-5.5', PATINA_FREE_API_KEY: 'sk-server-free-key' };
-  const metrics = [];
-  const logger = { info: (evt, fields) => metrics.push({ evt, fields }), error() {}, warn() {}, debug() {} };
+  const logs = [];
+  const logger = { info: (...args) => logs.push(args), error() {}, warn() {}, debug() {} };
   const injected = async ({ emit }) => emit({ type: 'done', rewrite: 'ok' });
   const api = createRewriteApiHandler({ env, runWebRewriteStreamImpl: injected, logger });
   const res = makeRes();
   await api(makeReq({ body: { mode: 'first', lang: 'en', tier: 'free', text: 'Some sensitive prose to humanize.' } }), res);
 
-  const metric = metrics.find((m) => m.evt === 'rewrite.metric');
-  assert.ok(metric, 'a rewrite.metric must be emitted');
-  const json = JSON.stringify(metric.fields);
-  assert.doesNotMatch(json, /sensitive prose|sk-server-free-key|203\.0\.113/);
-  assert.equal(metric.fields.tier, 'free');
-  assert.equal(metric.fields.charBucket, '<500'); // bucketed, not the raw length
-  assert.equal('text' in metric.fields, false);
-  assert.equal('apiKey' in metric.fields, false);
-});
-
-test('the rewrite metric records the stream outcome so a failed stream is not logged as success', async () => {
-  const env = { NODE_ENV: 'test', PATINA_FREE_PROVIDER: 'openai', PATINA_FREE_MODEL: 'gpt-5.5', PATINA_FREE_API_KEY: 'sk-server-free-key' };
-  const metrics = [];
-  const logger = { info: (evt, fields) => metrics.push({ evt, fields }), error() {}, warn() {}, debug() {} };
-  const injected = async ({ emit }) => {
-    emit({ type: 'start', provider: 'openai', model: 'gpt-5.5' });
-    emit({ type: 'error', code: 'stream_failed', error: 'provider down' });
-    return { ok: false, code: 'stream_failed', error: 'provider down' };
-  };
-  const api = createRewriteApiHandler({ env, runWebRewriteStreamImpl: injected, logger });
-  const res = makeRes();
-  await api(makeReq(), res);
-
-  const metric = metrics.find((m) => m.evt === 'rewrite.metric');
-  assert.ok(metric, 'a rewrite.metric must be emitted even when the stream fails');
-  assert.equal(metric.fields.status, 200, 'the HTTP response genuinely committed 200');
-  assert.equal(metric.fields.outcome, 'stream_failed', 'but the stream failure must stay observable');
+  assert.equal(logs.some(([event]) => event === 'rewrite.metric'), false);
+  assert.doesNotMatch(JSON.stringify(logs), /sensitive prose|sk-server-free-key|203\.0\.113/);
 });
 
 test('free tier fails closed with 503 when the server free API key is unconfigured', async () => {
@@ -149,6 +128,89 @@ test('free tier fails closed with 503 when the server free API key is unconfigur
   assert.equal(runnerCalled, false, 'runner must not run without a usable key');
   assert.match(res.chunks.join(''), /rewrite service unavailable/);
   assert.doesNotMatch(res.chunks.join(''), /"type"/);
+});
+test('missing provider credentials emit service_disabled exactly once before 503', async () => {
+  const increments = [];
+  const api = createRewriteApiHandler({
+    env: { NODE_ENV: 'test', PATINA_DEPLOYMENT_CHANNEL: 'production' },
+    now: () => Date.parse('2026-07-15T12:00:00.000Z'),
+    observabilityKv: { increment: (key, options) => increments.push({ key, options }) },
+    runWebRewriteStreamImpl: async () => assert.fail('runner must not run'),
+  });
+  await api(makeReq(), makeRes());
+  await Promise.resolve();
+  assert.deepEqual(increments, [{
+    key: 'patina:mon:v1:production:free:20260715T1200Z:service_disabled:<=30s',
+    options: { ttlSeconds: 7200 },
+  }]);
+});
+
+test('a thrown runner emits terminal_failed once before the handler returns a redacted 500', async () => {
+  const increments = [];
+  const api = createRewriteApiHandler({
+    env: { NODE_ENV: 'test', PATINA_DEPLOYMENT_CHANNEL: 'production', PATINA_FREE_API_KEY: 'sk-server-free-key' },
+    now: () => Date.parse('2026-07-15T12:00:00.000Z'),
+    observabilityKv: { increment: (key, options) => increments.push({ key, options }) },
+    runWebRewriteStreamImpl: async () => { throw new Error('private provider failure'); },
+  });
+  const res = makeRes();
+  await api(makeReq(), res);
+  await Promise.resolve();
+  assert.equal(res.statusCode, 500);
+  assert.deepEqual(increments, [{
+    key: 'patina:mon:v1:production:free:20260715T1200Z:terminal_failed:<=30s',
+    options: { ttlSeconds: 7200 },
+  }]);
+  assert.doesNotMatch(res.chunks.join(''), /private provider failure/);
+});
+
+test('trusted synthetic requests are stripped before the runner and excluded from customer observation', async () => {
+  const increments = [];
+  /** @type {{ request: object } | undefined} */
+  let runnerArgs;
+  let untrustedObserve;
+  const secret = 'server-only-synthetic-secret';
+  const api = createRewriteApiHandler({
+    env: {
+      NODE_ENV: 'test', PATINA_DEPLOYMENT_CHANNEL: 'production', PATINA_FREE_API_KEY: 'sk-server-free-key',
+      PATINA_SYNTHETIC_OBSERVER_SECRET: secret,
+    },
+    now: () => Date.parse('2026-07-15T12:00:00.000Z'),
+    observabilityKv: { increment: (key, options) => increments.push({ key, options }) },
+    runWebRewriteStreamImpl: async (args) => {
+      const { emit, observe } = args;
+      runnerArgs = args;
+      if (observe === undefined) {
+        emit({ type: 'done', rewrite: 'ok' });
+        return;
+      }
+      untrustedObserve = observe;
+      observe({ tier: 'free', outcome: 'quota_denied', status: 429, latencyMs: 1 });
+      emit({ type: 'done', rewrite: 'ok' });
+    },
+  });
+  const req = makeReq();
+  req.headers['x-patina-synthetic-observer'] = secret;
+  await api(req, makeRes());
+  assert.ok(runnerArgs, 'runner must be invoked');
+  assert.equal(Object.hasOwn(runnerArgs, 'req'), false);
+  assert.doesNotMatch(JSON.stringify(runnerArgs), /x-patina-synthetic-observer|server-only-synthetic-secret/);
+  assert.doesNotMatch(JSON.stringify(runnerArgs.request), /x-patina-synthetic-observer|server-only-synthetic-secret/);
+  assert.deepEqual(increments, []);
+
+  const nearMatch = makeReq();
+  nearMatch.headers['x-patina-synthetic-observer'] = `${secret}-near-match`;
+  await api(nearMatch, makeRes());
+  assert.ok(runnerArgs, 'runner must be invoked');
+  await Promise.resolve();
+  assert.equal(typeof untrustedObserve, 'function');
+  assert.equal(Object.hasOwn(runnerArgs, 'req'), false);
+  assert.doesNotMatch(JSON.stringify(runnerArgs), /x-patina-synthetic-observer|server-only-synthetic-secret/);
+  assert.doesNotMatch(JSON.stringify(runnerArgs.request), /x-patina-synthetic-observer|server-only-synthetic-secret/);
+  assert.deepEqual(increments, [{
+    key: 'patina:mon:v1:production:free:20260715T1200Z:quota_denied:<=30s',
+    options: { ttlSeconds: 7200 },
+  }]);
 });
 
 test('byok tier forwards the caller key (not the server free key) to the stream runner', async () => {
@@ -187,6 +249,213 @@ test('REST KV adapter calls Upstash decr and parses the numeric result', async (
     assert.ok(kv);
     assert.equal(await kv.decr('slot key'), 4);
     assert.equal(calls[0], 'https://kv.example.test/decr/slot%20key');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+test('REST KV lease commands use one atomic EVAL with opaque capabilities and fail closed on malformed acknowledgements', async () => {
+  const posts = [];
+  const acknowledgements = ['1', 0, 1, 0];
+  const rawLicense = 'LICENSE-RAW-rest-lease-canary';
+  const lease = 'aB3dEfGhIjKlMnOpQrStUvWxYz012345';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = /** @type {any} */ (async (_url, init) => {
+    posts.push(JSON.parse(String(init.body)));
+    return { ok: true, async json() { return { result: acknowledgements.shift() }; } };
+  });
+  try {
+    const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
+    assert.ok(kv);
+
+    assert.equal(await kv.acquireLease('registry key', lease, 2, { ttlMs: 4_500 }), true);
+    assert.equal(await kv.releaseLease('registry key', 'wrongOpaqueLeaseToken1234567890'), false);
+    assert.equal(await kv.releaseLease('registry key', lease), true);
+    assert.equal(await kv.releaseLease('registry key', lease), false);
+
+    assert.equal(posts.length, 4, 'exactly one EVAL POST per acquire/release operation');
+    assert.deepEqual(posts[0].slice(0, 3), ['EVAL', posts[0][1], '1']);
+    assert.deepEqual(posts[0].slice(2), ['1', 'registry key', '4500', '2', lease]);
+    assert.match(posts[0][1], /redis\.call\('TIME'\)/);
+    assert.match(posts[0][1], /redis\.call\('ZREMRANGEBYSCORE', KEYS\[1\], '-inf', now\)/);
+    assert.match(posts[0][1], /redis\.call\('ZCARD', KEYS\[1\]\)/);
+    assert.match(posts[0][1], /redis\.call\('ZADD', KEYS\[1\], now \+ ttl, ARGV\[3\]\)/);
+    assert.match(posts[0][1], /redis\.call\('PEXPIRE', KEYS\[1\], ttl\)/);
+
+    for (const command of posts.slice(1)) {
+      assert.deepEqual(command.slice(0, 3), ['EVAL', command[1], '1']);
+      assert.equal(command.length, 5, 'release is a single exact-token EVAL command');
+      assert.match(command[1], /return redis\.call\('ZREM', KEYS\[1\], ARGV\[1\]\)/);
+    }
+    assert.doesNotMatch(JSON.stringify(posts), new RegExp(rawLicense));
+    assert.doesNotMatch(JSON.stringify(posts), /Bearer LICENSE-RAW-rest-lease-canary/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  for (const result of [undefined, null, false, {}, -1, 2, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    globalThis.fetch = /** @type {any} */ (async () => ({ ok: true, async json() { return { result }; } }));
+    try {
+      const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
+      assert.ok(kv);
+      await assert.rejects(
+        () => kv.releaseLease('registry key', lease),
+        /kv lease command returned invalid result/,
+        `malformed acknowledgement ${String(result)} fails closed`,
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  }
+});
+test('general REST KV rejects unsafe origins, uses redirect:error, and aborts delayed JSON bodies', async () => {
+  for (const url of [
+    'http://kv.example.test',
+    'https://user@kv.example.test',
+    'https://kv.example.test?token=leak',
+    'https://kv.example.test#fragment',
+  ]) {
+    assert.equal(createRestKv({ KV_REST_API_URL: url, KV_REST_API_TOKEN: 'token' }), null);
+  }
+  assert.equal(createRestKv({
+    NODE_ENV: 'production', KV_REST_API_URL: 'https://quota.example.test', KV_REST_API_TOKEN: 'token',
+  }), null);
+  assert.equal(createRestKv({
+    NODE_ENV: 'production', KV_REST_API_URL: 'https://quota.upstash.io:8443', KV_REST_API_TOKEN: 'token',
+  }), null);
+  assert.equal(createRestKv({
+    NODE_ENV: 'production', KV_REST_API_URL: 'https://quota.upstash.io/custom', KV_REST_API_TOKEN: 'token',
+  }), null);
+  assert.ok(createRestKv({
+    NODE_ENV: 'production', KV_REST_API_URL: 'https://quota.upstash.io', KV_REST_API_TOKEN: 'token',
+  }));
+
+  const originalFetch = globalThis.fetch;
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  /** @type {any} */
+  let seen;
+  globalThis.setTimeout = /** @type {any} */ ((fn) => { globalThis.queueMicrotask(fn); return 0; });
+  globalThis.clearTimeout = /** @type {any} */ (() => {});
+  globalThis.fetch = /** @type {any} */ (async (_url, init) => {
+    seen = init;
+    return {
+      ok: true,
+      json: () => new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true })),
+    };
+  });
+  try {
+    const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
+    assert.ok(kv);
+    await assert.rejects(() => kv.decr('counter'), /deadline exceeded/);
+    assert.equal(seen.redirect, 'error');
+    assert.equal(seen.signal.aborted, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+  }
+});
+test('observability REST adapter permits only an exact HTTPS Upstash origin and atomically increments with the fixed TTL', async () => {
+  for (const url of [
+    'http://telemetry.upstash.io',
+    'https://user@telemetry.upstash.io',
+    'https://telemetry.upstash.io.evil.test',
+    'https://telemetry.upstash.io/path',
+  ]) {
+    assert.equal(createObservabilityRestKv({ PATINA_OBSERVABILITY_REST_API_URL: url, PATINA_OBSERVABILITY_REST_API_TOKEN: 'token' }), null);
+  }
+
+  /** @type {any} */
+  let seen;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = /** @type {any} */ (async (url, init) => {
+    seen = { url: String(url), init };
+    return { ok: true, async json() { return { result: 1 }; } };
+  });
+  try {
+    const kv = createObservabilityRestKv({
+      PATINA_OBSERVABILITY_REST_API_URL: 'https://telemetry.upstash.io/',
+      PATINA_OBSERVABILITY_REST_API_TOKEN: 'token',
+    });
+    assert.ok(kv);
+    await kv.increment('patina:mon:v1:production:free:20260715T1200Z:completed:<=30s', { ttlSeconds: 7200 });
+    assert.equal(seen.url, 'https://telemetry.upstash.io');
+    assert.equal(seen.init.redirect, 'error');
+    assert.ok(seen.init.signal instanceof globalThis.AbortSignal);
+    assert.equal(seen.init.signal.aborted, false);
+    assert.deepEqual(JSON.parse(seen.init.body), [
+      'EVAL',
+      "local v = redis.call('INCRBY', KEYS[1], ARGV[1]) redis.call('PEXPIRE', KEYS[1], ARGV[2]) return v",
+      '1',
+      'patina:mon:v1:production:free:20260715T1200Z:completed:<=30s',
+      '1',
+      '7200000',
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+test('observability REST adapter rejects malformed EVAL acknowledgements with one secret-free monitor_drop and preserves the response', async () => {
+  const originalFetch = globalThis.fetch;
+  const canary = 'private-observability-canary';
+  try {
+    for (const result of [undefined, 0, -1, 1.5, true, {}, null, Number.MAX_SAFE_INTEGER + 1, '1']) {
+      const logs = [];
+      globalThis.fetch = /** @type {any} */ (async () => ({ ok: true, async json() { return { result }; } }));
+      const api = createRewriteApiHandler({
+        env: {
+          NODE_ENV: 'test',
+          PATINA_DEPLOYMENT_CHANNEL: 'production',
+          PATINA_FREE_API_KEY: 'sk-server-free-key',
+          PATINA_OBSERVABILITY_REST_API_URL: 'https://telemetry.upstash.io',
+          PATINA_OBSERVABILITY_REST_API_TOKEN: 'telemetry-token-canary',
+        },
+        logger: { info: (...args) => logs.push(args), error() {}, warn() {}, debug() {} },
+        runWebRewriteStreamImpl: async ({ emit }) => {
+          emit({ type: 'error', code: 'stream_failed' });
+          return { ok: false, code: 'stream_failed' };
+        },
+      });
+      const res = makeRes();
+
+      await api(makeReq({ body: { mode: 'first', lang: 'en', tier: 'free', text: canary } }), res);
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 0));
+
+      assert.equal(res.statusCode, 200, `acknowledgement ${String(result)} must not alter the response`);
+      assert.equal(res.ended, true);
+      const events = logs.map(([event]) => event).filter((event) => event?.schema === 'patina.web.v1');
+      assert.equal(events.filter((event) => event.outcome === 'monitor_drop').length, 1);
+      assert.doesNotMatch(JSON.stringify(events), /private-observability-canary|sk-server-free-key|telemetry-token-canary/);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('observability REST adapter aborts header and JSON body stalls before the observer budget', async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    for (const stall of ['headers', 'body']) {
+      /** @type {globalThis.AbortSignal|undefined} */
+      let signal;
+      globalThis.fetch = /** @type {any} */ ((_url, init) => {
+        signal = init.signal;
+        if (stall === 'headers') {
+          return new Promise((_, reject) => signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true }));
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => new Promise((_, reject) => signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true })),
+        });
+      });
+      const kv = createObservabilityRestKv({
+        PATINA_OBSERVABILITY_REST_API_URL: 'https://telemetry.upstash.io',
+        PATINA_OBSERVABILITY_REST_API_TOKEN: 'token',
+      });
+      assert.ok(kv);
+      await assert.rejects(() => kv.increment('aggregate', { ttlSeconds: 7200 }), /deadline exceeded/);
+      assert.equal(signal?.aborted, true, `${stall} stall must be aborted`);
+    }
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -377,7 +646,7 @@ function validLsFetch() {
   }));
 }
 
-test('pro tier: a valid license streams with the server pro key and a pro-tier metric (no license leak)', async () => {
+test('pro tier: a valid license streams with the server pro key and no legacy metric or license leak', async () => {
   const RAW = 'LS-LICENSE-RAW-777';
   const env = {
     NODE_ENV: 'test',
@@ -387,8 +656,8 @@ test('pro tier: a valid license streams with the server pro key and a pro-tier m
     PATINA_LICENSE_HMAC_SECRET: 'license-secret',
     LS_STORE_ID: '42', LS_PRO_VARIANT_ID: '99',
   };
-  const metrics = [];
-  const logger = { info: (evt, fields) => metrics.push({ evt, fields }), error() {}, warn() {}, debug() {} };
+  const logs = [];
+  const logger = { info: (event) => logs.push(event), error() {}, warn() {}, debug() {} };
   let seenKey;
   let seenTier;
   const injected = async ({ request, emit }) => {
@@ -415,11 +684,8 @@ test('pro tier: a valid license streams with the server pro key and a pro-tier m
     // The server pro key reaches the runner — never the free key, never the license.
     assert.equal(seenKey, 'sk-server-pro-key');
     assert.equal(seenTier, 'pro');
-    // Observability preserves the pro tier and never carries the raw license.
-    const metric = metrics.find((m) => m.evt === 'rewrite.metric');
-    assert.ok(metric, 'a rewrite.metric must be emitted');
-    assert.equal(metric.fields.tier, 'pro');
-    assert.equal(JSON.stringify(metric.fields).includes(RAW), false);
+    assert.equal(logs.some((event) => event === 'rewrite.metric'), false);
+    assert.doesNotMatch(JSON.stringify(logs), new RegExp(RAW));
     // The license never appears in the NDJSON stream either.
     assert.equal(res.chunks.join('').includes(RAW), false);
   } finally {
@@ -490,7 +756,7 @@ test('pro tier: in production, no pro key + present free key + no allow-flag ret
   const RAW = 'LS-LICENSE-RAW-prodpolicy';
   const env = {
     NODE_ENV: 'production',
-    KV_REST_API_URL: 'https://kv.example.test',
+    KV_REST_API_URL: 'https://quota.upstash.io',
     KV_REST_API_TOKEN: 'kv-token',
     PATINA_QUOTA_HMAC_SECRET: 'quota-secret',
     PATINA_LICENSE_HMAC_SECRET: 'license-secret',
@@ -541,5 +807,138 @@ test('pro tier: in production, no pro key + present free key + no allow-flag ret
     assert.doesNotMatch(res.chunks.join(''), new RegExp(RAW));
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+test('handler emits a closed completed aggregate from the real rewrite path', async () => {
+  const increments = [];
+  const logs = [];
+  const secret = 'private-input-canary-924';
+  const env = {
+    NODE_ENV: 'test',
+    PATINA_DEPLOYMENT_CHANNEL: 'staging',
+    PATINA_FREE_API_KEY: 'sk-server-free-key',
+  };
+  const logger = { info: (...args) => logs.push(args), error() {}, warn() {}, debug() {} };
+  const api = createRewriteApiHandler({
+    env,
+    logger,
+    now: () => Date.parse('2026-07-15T12:00:00.000Z'),
+    observabilityKv: { increment: (key, options) => increments.push({ key, options }) },
+    runWebRewriteStreamImpl: async ({ emit }) => {
+      emit({ type: 'done', rewrite: 'ok' });
+      return { ok: true };
+    },
+  });
+
+  for (let requestCount = 1; requestCount <= 20; requestCount += 1) {
+    const res = makeRes();
+    const req = makeReq({ body: {
+      mode: 'first', lang: 'en', tier: 'free', text: secret,
+      provider: 'openai', model: 'private-model-canary',
+    } });
+    req.headers['x-real-ip'] = `198.51.100.${requestCount}`;
+    await api(req, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.getHeader('content-type'), 'application/x-ndjson');
+    assert.equal(res.ended, true);
+    if (requestCount === 1) {
+      assert.equal(increments.length, 0, 'the first free completion is not sampled');
+      assert.equal(logs.map(([value]) => value).find((value) => value?.schema === 'patina.web.v1'), undefined);
+    }
+  }
+  await Promise.resolve();
+
+  const events = logs.map(([value]) => value).filter((value) => value?.schema === 'patina.web.v1');
+  assert.deepEqual(events, [{
+    schemaVersion: 'v1', schema: 'patina.web.v1', channel: 'staging', evidenceClass: 'aggregate_only',
+    tier: 'free', outcome: 'completed', latencyBucket: '<=30s', statusClass: '2xx', sampling: 'sampled_1_of_20',
+  }]);
+  assert.deepEqual(increments, [{
+    key: 'patina:mon:v1:staging:free:20260715T1200Z:completed:<=30s',
+    options: { ttlSeconds: 7200 },
+  }]);
+  const observerData = JSON.stringify({ events, increments });
+  assert.doesNotMatch(observerData, /private-input-canary|sk-server-free-key|203\.0\.113|private-model-canary/);
+});
+
+test('handler fallback maps number-safety and other terminal failures to closed outcomes', async () => {
+  for (const [result, outcome] of [
+    [{ ok: false, code: 'number_safety_failed' }, 'number_safety_failed'],
+    [{ ok: false, code: 'stream_failed', error: 'private-error-canary' }, 'terminal_failed'],
+  ]) {
+    const increments = [];
+    assert.ok(typeof result !== 'string');
+    const api = createRewriteApiHandler({
+      env: { NODE_ENV: 'test', PATINA_DEPLOYMENT_CHANNEL: 'production', PATINA_FREE_API_KEY: 'sk-server-free-key' },
+      now: () => Date.parse('2026-07-15T12:00:00.000Z'),
+      observabilityKv: { increment: (key, options) => increments.push({ key, options }) },
+      runWebRewriteStreamImpl: async ({ emit }) => {
+        emit({ type: 'error', code: result.code });
+        return result;
+      },
+    });
+    const res = makeRes();
+
+    await api(makeReq(), res);
+    await Promise.resolve();
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.ended, true);
+    assert.deepEqual(res.events, ['write', 'end']);
+    assert.deepEqual(increments, [{
+      key: `patina:mon:v1:production:free:20260715T1200Z:${outcome}:<=30s`,
+      options: { ttlSeconds: 7200 },
+    }]);
+  }
+});
+
+test('handler suppresses fallback when the stream producer reports its terminal event observed', async () => {
+  const increments = [];
+  let receivedObserver;
+  const api = createRewriteApiHandler({
+    env: { NODE_ENV: 'test', PATINA_DEPLOYMENT_CHANNEL: 'staging', PATINA_FREE_API_KEY: 'sk-server-free-key' },
+    now: () => Date.parse('2026-07-15T12:00:00.000Z'),
+    observabilityKv: { increment: (key, options) => increments.push({ key, options }) },
+    runWebRewriteStreamImpl: async ({ emit, observe }) => {
+      receivedObserver = observe;
+      emit({ type: 'error', code: 'stream_failed' });
+      observe({ tier: 'free', outcome: 'terminal_failed', status: 200, latencyMs: 1 });
+      return { ok: false, code: 'stream_failed' };
+    },
+  });
+
+  await api(makeReq(), makeRes());
+  await Promise.resolve();
+
+  assert.equal(typeof receivedObserver, 'function');
+  assert.deepEqual(increments, [{
+    key: 'patina:mon:v1:staging:free:20260715T1200Z:terminal_failed:<=30s',
+    options: { ttlSeconds: 7200 },
+  }], 'the handler must not double-count an observed terminal result');
+});
+
+test('observer KV, logger, and slow fan-out failures leave the committed stream unchanged', async () => {
+  for (const observabilityKv of [
+    { increment() { throw new Error('private-kv-canary'); } },
+    { increment: () => new Promise(() => {}) },
+  ]) {
+    const api = createRewriteApiHandler({
+      env: { NODE_ENV: 'test', PATINA_DEPLOYMENT_CHANNEL: 'staging', PATINA_FREE_API_KEY: 'sk-server-free-key' },
+      logger: { info() { throw new Error('private-logger-canary'); }, error() {}, warn() {}, debug() {} },
+      observabilityKv,
+      runWebRewriteStreamImpl: async ({ emit }) => {
+        emit({ type: 'done', rewrite: 'ok' });
+        return { ok: true };
+      },
+    });
+    const res = makeRes();
+
+    await api(makeReq(), res);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.getHeader('content-type'), 'application/x-ndjson');
+    assert.equal(res.chunks.join('').trim().split('\n').at(-1), JSON.stringify({ type: 'done', rewrite: 'ok' }));
+    assert.equal(res.ended, true);
   }
 });

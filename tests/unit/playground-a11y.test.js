@@ -25,6 +25,21 @@ test('primary textareas carry aria-labels (hero + composer)', () => {
   assert.match(openingTag(html, 'hero-input'), /aria-label="/);
   assert.match(openingTag(html, 'input'), /aria-label="/);
 });
+test('Pro license entry is private and its controls have accessible names', () => {
+  const licenseInput = openingTag(html, 'license-key');
+  assert.match(licenseInput, /type="password"/);
+  assert.match(licenseInput, /autocomplete="off"/);
+  assert.match(licenseInput, /aria-label="[^"]+"/);
+
+  const proControls = html.match(/<div[^>]*id="pro-row"[^>]*>[\s\S]*?<\/div>/);
+  assert.ok(proControls, 'expected the Pro license control row');
+  assert.match(proControls[0], /<label\b[\s\S]*id="license-key"/);
+  for (const [id, name] of [['license-sign-in', 'Sign in'], ['license-sign-out', 'Sign out']]) {
+    const control = openingTag(html, id);
+    assert.match(control, /type="button"/);
+    assert.match(proControls[0], new RegExp(`<button[^>]*id="${id}"[^>]*>${name}</button>`));
+  }
+});
 
 test('chat thread is an announced live region', () => {
   const thread = openingTag(html, 'thread');

@@ -8,7 +8,9 @@ import {
   scoreFidelity,
   scoreMPS,
   scoreDeterministicSignals,
+  reconcileScoreOverall,
   scoreText,
+  LEAKAGE_SCORE_FLOOR,
 } from '../../src/scoring.js';
 import { getRepoRoot, loadConfig } from '../../src/config.js';
 import { loadPatterns } from '../../src/loader.js';
@@ -405,6 +407,318 @@ test('deterministic skipped and failure payloads pin signalScore to zero', () =>
   assert.strictEqual(failed.skipped, true);
   assert.strictEqual(failed.signalScore, 0);
 });
+
+// --- P0: short-text hard-evidence floor survives skipped bypass -------------
+// Regression for the scorer discarding deterministic evidence on ≤2-paragraph
+// text: analyzeText marks short input skipped=true, but near-proof markup
+// leakage (#332) still fires. reconcileScoreOverall must honor that hard floor
+// instead of silently returning the LLM's (possibly 0) score.
+
+test('scoreDeterministicSignals exposes an evidenceFloor that survives short-text skip', () => {
+  const shortLeaked = scoreDeterministicSignals({
+    text: 'According to turn0search1 the phrasing still needs work.',
+    config: loadConfig(),
+  });
+  // One sentence / one paragraph is below the stylometry meta-block threshold.
+  assert.strictEqual(shortLeaked.skipped, true);
+  // The near-proof leakage token still lifts the hard evidence floor.
+  assert.strictEqual(shortLeaked.bands.markupLeakage.leaked, true);
+  assert.strictEqual(shortLeaked.evidenceFloor, LEAKAGE_SCORE_FLOOR);
+  assert.strictEqual(shortLeaked.overall, LEAKAGE_SCORE_FLOOR);
+
+  const shortClean = scoreDeterministicSignals({
+    text: 'I rewrote the parser this morning and it finally works.',
+    config: loadConfig(),
+  });
+  assert.strictEqual(shortClean.skipped, true);
+  // No hard floor for ordinary short prose — must stay 0 so the LLM decides.
+  assert.strictEqual(shortClean.evidenceFloor, 0);
+});
+
+test('reconcileScoreOverall enforces the hard evidence floor on skipped short text', () => {
+  const config = loadConfig();
+
+  // Skipped + hard floor above the LLM score => floor wins (was discarded).
+  const floored = reconcileScoreOverall({
+    llmOverall: 0,
+    deterministicScore: { overall: 90, evidenceFloor: 90, skipped: true },
+    config,
+  });
+  assert.strictEqual(floored.overall, 90);
+  assert.strictEqual(floored.scorePreference?.reason, 'deterministic-evidence-floor');
+  assert.strictEqual(floored.scorePreference?.selected, 'deterministic');
+
+  // Skipped + LLM already at/above the floor => LLM stands, no forced floor.
+  const llmWins = reconcileScoreOverall({
+    llmOverall: 95,
+    deterministicScore: { overall: 90, evidenceFloor: 90, skipped: true },
+    config,
+  });
+  assert.strictEqual(llmWins.overall, 95);
+  assert.strictEqual(llmWins.scorePreference, null);
+
+  // Boundary: LLM exactly at the floor => floor satisfied, no forced override
+  // (guards the intended `<` vs `<=` contract).
+  const atFloor = reconcileScoreOverall({
+    llmOverall: 90,
+    deterministicScore: { overall: 90, evidenceFloor: 90, skipped: true },
+    config,
+  });
+  assert.strictEqual(atFloor.overall, 90);
+  assert.strictEqual(atFloor.scorePreference, null);
+
+  // Skipped + a high deterministic overall driven only by the coarse hot ratio
+  // (evidenceFloor 0) must NOT floor: hot ratio is not hard evidence.
+  const hotRatioOnly = reconcileScoreOverall({
+    llmOverall: 0,
+    deterministicScore: { overall: 100, evidenceFloor: 0, skipped: true },
+    config,
+  });
+  assert.strictEqual(hotRatioOnly.overall, 0);
+  assert.strictEqual(hotRatioOnly.scorePreference, null);
+
+  // Skipped + no hard floor (ordinary short prose) => unchanged: defer to LLM.
+  const cleanSkip = reconcileScoreOverall({
+    llmOverall: 0,
+    deterministicScore: { overall: 0, evidenceFloor: 0, skipped: true },
+    config,
+  });
+  assert.strictEqual(cleanSkip.overall, 0);
+  assert.strictEqual(cleanSkip.scorePreference, null);
+
+  // Non-skipped divergence path must be untouched by the floor change.
+  const diverged = reconcileScoreOverall({
+    llmOverall: 0,
+    deterministicScore: { overall: 60, evidenceFloor: 0, skipped: false },
+    config,
+  });
+  assert.strictEqual(diverged.overall, 60);
+  assert.strictEqual(diverged.scorePreference?.reason, 'deterministic-divergence');
+});
+
+// --- P0 follow-up: hard evidence floor also binds NON-skipped text ----------
+// A near-proof leakage/structural floor must hold even for normal-length text
+// when the LLM lands within the divergence threshold below it. Previously the
+// floor only applied to skipped text, so a leaked long document could be
+// undercut to just under the floor by an LLM inside the threshold band.
+
+test('reconcileScoreOverall enforces the hard evidence floor on non-skipped text within the divergence band', () => {
+  const config = loadConfig();
+
+  // llm below floor but WITHIN the divergence threshold (delta 15 <= 20):
+  // previously returned 75 (undercut); now floored to the near-proof 90.
+  const floored = reconcileScoreOverall({
+    llmOverall: 75,
+    deterministicScore: { overall: 90, evidenceFloor: 90, skipped: false },
+    config,
+  });
+  assert.strictEqual(floored.overall, 90);
+  assert.strictEqual(floored.scorePreference?.reason, 'deterministic-evidence-floor');
+
+  // Boundary: llm exactly at the floor => not overridden (falls to divergence,
+  // delta 0 => defers to llm), no forced preference.
+  const atFloor = reconcileScoreOverall({
+    llmOverall: 90,
+    deterministicScore: { overall: 90, evidenceFloor: 90, skipped: false },
+    config,
+  });
+  assert.strictEqual(atFloor.overall, 90);
+  assert.strictEqual(atFloor.scorePreference, null);
+
+  // llm above the floor => floor inert; divergence within threshold keeps llm.
+  const above = reconcileScoreOverall({
+    llmOverall: 95,
+    deterministicScore: { overall: 90, evidenceFloor: 90, skipped: false },
+    config,
+  });
+  assert.strictEqual(above.overall, 95);
+  assert.strictEqual(above.scorePreference, null);
+
+  // Hot-ratio-only deterministic overall (evidenceFloor 0) still takes the
+  // ordinary divergence path — no floor manufactured on non-skipped text.
+  const hotRatio = reconcileScoreOverall({
+    llmOverall: 10,
+    deterministicScore: { overall: 100, evidenceFloor: 0, skipped: false },
+    config,
+  });
+  assert.strictEqual(hotRatio.overall, 100);
+  assert.strictEqual(hotRatio.scorePreference?.reason, 'deterministic-divergence');
+});
+
+test('scoreText floors a non-skipped AI-leaked document the LLM undercut within the threshold', async () => {
+  // Three ordinary-prose paragraphs (hot ratio 0) with one leaked tooling token
+  // => deterministic overall = leakage floor 90, evidenceFloor 90, not skipped.
+  const leakedText = [
+    'I rewrote the parser this morning and it finally handles nested quotes without choking on them. The previous version tripped over one rare edge case that took two days to reproduce.',
+    'Reviewers wanted another pass on the error copy, so I split the longest messages into a short summary plus a hint. According to turn0search1 the phrasing still needs work, yet the structure holds.',
+    'We shipped it behind a flag and watched the logs over lunch. Nothing broke. The on-call engineer shrugged and went back to her coffee.',
+  ].join('\n\n');
+  // LLM lands at 75 — within the default divergence threshold (20) of the 90
+  // floor, so the old code returned 75. The floor must now win.
+  const score = await scoreText({
+    text: leakedText,
+    config: loadConfig(),
+    patterns: [],
+    callLLM: async () => JSON.stringify({ categories: {}, overall: 75, interpretation: 'mixed' }),
+  });
+  assert.strictEqual(score.deterministicScore.skipped, false);
+  assert.ok(score.deterministicScore.evidenceFloor >= 90);
+  assert.strictEqual(score.overall, score.deterministicScore.evidenceFloor);
+  assert.strictEqual(score.scorePreference?.reason, 'deterministic-evidence-floor');
+});
+
+test('scoreText floors a short AI-leaked snippet even when the LLM returns 0', async () => {
+  const callLLM = async () =>
+    JSON.stringify({ categories: {}, overall: 0, interpretation: 'human' });
+
+  const leaked = await scoreText({
+    text: 'According to turn0search1 the phrasing still needs work.',
+    config: loadConfig(),
+    patterns: [],
+    callLLM,
+  });
+  assert.strictEqual(leaked.overall, LEAKAGE_SCORE_FLOOR);
+  assert.strictEqual(leaked.scorePreference?.reason, 'deterministic-evidence-floor');
+
+  // Control: an ordinary short reply with no hard floor keeps the LLM's 0.
+  const clean = await scoreText({
+    text: 'same here, this saves me a ton of time every week.',
+    config: loadConfig(),
+    patterns: [],
+    callLLM,
+  });
+  assert.strictEqual(clean.overall, 0);
+  assert.strictEqual(clean.scorePreference, undefined);
+});
+
+// Producer-side locks (injected analyzer, no private model / no lexicon reliance):
+// pin that evidenceFloor carries ONLY the hard document-level floors and that a
+// short hot-ratio-only paragraph never manufactures a floor. Guards against a
+// future regression to evidenceFloor = Math.max(hotRatioOverall, ...).
+test('scoreDeterministicSignals keeps the coarse hot ratio OUT of evidenceFloor on skipped text', () => {
+  const hotRatioOnly = () => ({
+    paragraphs: [{ hot: true }, { hot: true }],
+    markupLeakage: { leaked: false, hits: [] },
+    discourseTells: null,
+    structuralClassifier: { available: false, hot: null, score: null },
+    skipped: true,
+    skipReason: 'sentences<=2',
+  });
+  const det = scoreDeterministicSignals({
+    text: 'x',
+    config: loadConfig(),
+    analyzer: hotRatioOnly,
+  });
+  assert.strictEqual(det.skipped, true);
+  assert.strictEqual(det.overall, 100); // hot ratio 2/2 still drives deterministic overall
+  assert.strictEqual(det.evidenceFloor, 0); // ...but it is NOT a hard evidence floor
+
+  // End-to-end: a purely hot-ratio-100 short text must not force the LLM's 0 up.
+  const reconciled = reconcileScoreOverall({
+    llmOverall: 0,
+    deterministicScore: det,
+    config: loadConfig(),
+  });
+  assert.strictEqual(reconciled.overall, 0);
+  assert.strictEqual(reconciled.scorePreference, null);
+});
+
+test('scoreDeterministicSignals floors skipped text on a structural-only verdict', () => {
+  const structuralOnly = () => ({
+    paragraphs: [{ hot: false }],
+    markupLeakage: { leaked: false, hits: [] },
+    discourseTells: null,
+    structuralClassifier: { available: true, hot: true, score: 0.8 },
+    skipped: true,
+    skipReason: 'paragraphs<=2',
+  });
+  const det = scoreDeterministicSignals({
+    text: 'x',
+    config: loadConfig(),
+    analyzer: structuralOnly,
+  });
+  assert.strictEqual(det.skipped, true);
+  // max(STRUCTURAL_CLASSIFIER_MIN_FLOOR 70, round(0.8*100) 80) = 80, no leakage.
+  assert.strictEqual(det.evidenceFloor, 80);
+  assert.strictEqual(det.overall, 80);
+
+  const reconciled = reconcileScoreOverall({
+    llmOverall: 0,
+    deterministicScore: det,
+    config: loadConfig(),
+  });
+  assert.strictEqual(reconciled.overall, 80);
+  assert.strictEqual(reconciled.scorePreference?.reason, 'deterministic-evidence-floor');
+});
+
+// --- P1: short-form (social/marketing) em-dash evidence floor ---------------
+// Register-gated weak signal: a single em dash in a short SNS reply floors the
+// score off an exact 0 (~1.7, still human band) for social/marketing profiles,
+// and is completely inert for the default profile.
+
+const EN_STYLE_PACK = [{ frontmatter: { pack: 'en-style', patterns: 6 } }];
+
+test('scoreDeterministicSignals floors a social short reply on a single em dash', () => {
+  const config = { ...loadConfig(), language: 'en', profile: 'social' };
+  const det = scoreDeterministicSignals({
+    text: 'built patina for exactly that — keeps your meaning intact.',
+    config,
+    patterns: EN_STYLE_PACK,
+  });
+  assert.strictEqual(det.skipped, true);
+  assert.strictEqual(det.shortFormFloor, 1.7); // Low severity 1 through the en-style category math
+  assert.strictEqual(det.evidenceFloor, 1.7);
+
+  const two = scoreDeterministicSignals({
+    text: 'first — then — done, that simple.',
+    config,
+    patterns: EN_STYLE_PACK,
+  });
+  assert.strictEqual(two.shortFormFloor, 3.3); // Medium severity 2
+});
+
+test('the short-form floor is inert for the default profile', () => {
+  const det = scoreDeterministicSignals({
+    text: 'built patina for exactly that — keeps your meaning intact.',
+    config: { ...loadConfig(), language: 'en', profile: 'default' },
+    patterns: EN_STYLE_PACK,
+  });
+  assert.strictEqual(det.shortFormFloor, 0);
+  assert.strictEqual(det.evidenceFloor, 0);
+});
+
+test('the short-form floor degrades to 0 without style pattern metadata', () => {
+  const det = scoreDeterministicSignals({
+    text: 'built patina for exactly that — keeps your meaning intact.',
+    config: { ...loadConfig(), language: 'en', profile: 'social' },
+    patterns: [], // no en-style pack => cannot reconstruct category math
+  });
+  assert.strictEqual(det.shortFormFloor, 0);
+});
+
+test('scoreText surfaces the short-form floor for a social reply even at LLM 0', async () => {
+  const callLLM = async () =>
+    JSON.stringify({ categories: {}, overall: 0, interpretation: 'human' });
+
+  const social = await scoreText({
+    text: 'built patina for exactly that — keeps your meaning intact.',
+    config: { ...loadConfig(), language: 'en', profile: 'social' },
+    patterns: EN_STYLE_PACK,
+    callLLM,
+  });
+  assert.strictEqual(social.overall, 1.7);
+  assert.strictEqual(social.scorePreference?.reason, 'deterministic-evidence-floor');
+
+  // Default profile: the same dash stays 0 (no false positive on general text).
+  const dflt = await scoreText({
+    text: 'built patina for exactly that — keeps your meaning intact.',
+    config: { ...loadConfig(), language: 'en', profile: 'default' },
+    patterns: EN_STYLE_PACK,
+    callLLM,
+  });
+  assert.strictEqual(dflt.overall, 0);
+  assert.strictEqual(dflt.scorePreference, undefined);
+});
 // --- C2: opt-in structured output ------------------------------------------
 
 test('scoreText forwards responseFormat to callLLM on both attempts and keeps strict-JSON fallback (#C2)', async () => {
@@ -442,6 +756,7 @@ test('scoreText omits responseFormat when the opt-in is unset (#C2)', async () =
 });
 
 test('scoreText runs exactly two LLM attempts then yields a schema-failure result on persistent bad JSON (#C3)', async () => {
+  const attempts = [];
   let calls = 0;
   const result = await scoreText({
     text: 'draft to score',
@@ -452,9 +767,208 @@ test('scoreText runs exactly two LLM attempts then yields a schema-failure resul
       return 'definitely not json';
     },
     logger: { warn() {} },
+    onAttempt: (record) => attempts.push(record),
   });
   // Schema retry is owned by callAndParseJson: exactly 1 attempt + 1 temp-0 retry.
   assert.equal(calls, 2);
   assert.equal(result.overall, null);
   assert.equal(result.error, 'schema-failure');
+  assert.deepEqual(attempts, [], 'missing transport metadata must not fabricate paid attempts');
+});
+test('scoreText reports one-based transport and schema retries with response-only identity metadata', async () => {
+  const attempts = [];
+  let calls = 0;
+  const result = await scoreText({
+    text: 'draft to score',
+    config: loadConfig(),
+    patterns: [],
+    model: 'requested-model',
+    logger: { warn() {} },
+    onAttempt: (record) => attempts.push(record),
+    callLLM: async ({ onAttempt }) => {
+      calls += 1;
+      if (calls === 1) {
+        onAttempt({
+          attemptIndex: 1,
+          requestedModel: 'requested-model',
+          effectiveModel: null,
+          usage: null,
+          retryReason: 'network',
+          minimumChargeApplied: false,
+          outcome: 'error',
+        });
+        onAttempt({
+          attemptIndex: 2,
+          requestedModel: 'requested-model',
+          effectiveModel: 'provider-model',
+          usage: { prompt_tokens: 10 },
+          retryReason: 'initial',
+          minimumChargeApplied: true,
+          outcome: 'success',
+        });
+        return 'not json';
+      }
+      onAttempt({
+        attemptIndex: 1,
+        requestedModel: 'requested-model',
+        effectiveModel: 'provider-model',
+        usage: { prompt_tokens: 11 },
+        retryReason: 'initial',
+        minimumChargeApplied: true,
+        outcome: 'success',
+      });
+      return '{ "categories": {}, "overall": 20, "interpretation": "mostly human" }';
+    },
+  });
+
+  assert.equal(calls, 2);
+  assert.equal(result.overall, 20);
+  assert.deepEqual(attempts, [
+    {
+      attemptIndex: 1,
+      requestedModel: 'requested-model',
+      effectiveModel: null,
+      usage: null,
+      retryReason: 'network',
+      minimumChargeApplied: false,
+      outcome: 'error',
+    },
+    {
+      attemptIndex: 2,
+      requestedModel: 'requested-model',
+      effectiveModel: 'provider-model',
+      usage: { prompt_tokens: 10 },
+      retryReason: 'score_schema_parse',
+      minimumChargeApplied: true,
+      outcome: 'error',
+    },
+    {
+      attemptIndex: 3,
+      requestedModel: 'requested-model',
+      effectiveModel: 'provider-model',
+      usage: { prompt_tokens: 11 },
+      retryReason: 'initial',
+      minimumChargeApplied: true,
+      outcome: 'success',
+    },
+  ]);
+});
+test('scoreText rejects an invalid lower transport batch before global reindexing', async () => {
+  const attempts = [];
+  let invalidSignals = 0;
+  let calls = 0;
+  const validAttempt = {
+    attemptIndex: 1,
+    requestedModel: 'requested-model',
+    effectiveModel: 'provider-model',
+    usage: { prompt_tokens: 10 },
+    retryReason: 'initial',
+    minimumChargeApplied: true,
+    outcome: 'success',
+  };
+  const missingUsage = { ...validAttempt };
+  delete missingUsage.usage;
+  const result = await scoreText({
+    text: 'draft to score',
+    config: loadConfig(),
+    patterns: [],
+    logger: { warn() {} },
+    onAttempt: (record) => attempts.push(record),
+    onAttemptInvalid: async () => {
+      invalidSignals += 1;
+      throw new Error('invalid evidence observer failed');
+    },
+    callLLM: async ({ onAttempt }) => {
+      calls += 1;
+      if (calls === 1) {
+        onAttempt(undefined);
+        onAttempt({});
+        onAttempt(missingUsage);
+        onAttempt({ ...validAttempt, usage: [] });
+        onAttempt({ ...validAttempt, extra: true });
+        onAttempt(validAttempt);
+        return 'not json';
+      }
+      onAttempt(validAttempt);
+      return '{ "categories": {}, "overall": 20, "interpretation": "mostly human" }';
+    },
+  });
+
+  assert.equal(result.overall, 20);
+  assert.equal(invalidSignals, 1);
+  assert.deepEqual(attempts, [{ ...validAttempt, attemptIndex: 1 }]);
+});
+
+test('scoreText rejects lower transport index starts, gaps, and out-of-order batches', async () => {
+  const validAttempt = {
+    attemptIndex: 1,
+    requestedModel: 'requested-model',
+    effectiveModel: 'provider-model',
+    usage: { prompt_tokens: 10 },
+    retryReason: 'initial',
+    minimumChargeApplied: true,
+    outcome: 'success',
+  };
+  const invalidSequences = [
+    [{ ...validAttempt, attemptIndex: 7 }],
+    [validAttempt, { ...validAttempt, attemptIndex: 3 }],
+    [validAttempt, { ...validAttempt, attemptIndex: 3 }, { ...validAttempt, attemptIndex: 2 }],
+  ];
+
+  for (const sequence of invalidSequences) {
+    const attempts = [];
+    let invalidSignals = 0;
+    const result = await scoreText({
+      text: 'draft to score',
+      config: loadConfig(),
+      patterns: [],
+      logger: { warn() {} },
+      onAttempt: (record) => attempts.push(record),
+      onAttemptInvalid: () => { invalidSignals += 1; },
+      callLLM: async ({ onAttempt }) => {
+        for (const attempt of sequence) onAttempt(attempt);
+        return '{ "categories": {}, "overall": 20, "interpretation": "mostly human" }';
+      },
+    });
+
+    assert.equal(result.overall, 20);
+    assert.equal(invalidSignals, 1);
+    assert.deepEqual(attempts, []);
+  }
+});
+
+test('scoreText metadata callback is isolated and does not change legacy result shapes', async () => {
+  let paidCalls = 0;
+  let observedAttempts = 0;
+  const common = {
+    text: 'draft to score',
+    config: loadConfig(),
+    patterns: [],
+    logger: { warn() {} },
+    callLLM: async ({ onAttempt }) => {
+      paidCalls += 1;
+      onAttempt({
+        attemptIndex: 1,
+        requestedModel: 'requested-model',
+        effectiveModel: 'provider-model',
+        usage: { prompt_tokens: 10, completion_tokens: 2 },
+        retryReason: 'initial',
+        minimumChargeApplied: true,
+        outcome: 'success',
+      });
+      return '{ "categories": {}, "overall": 20, "interpretation": "mostly human" }';
+    },
+  };
+  const legacy = await scoreText(common);
+  const observed = await scoreText({
+    ...common,
+    onAttempt: async () => {
+      observedAttempts += 1;
+      throw new Error('collector failed');
+    },
+  });
+
+  assert.equal(paidCalls, 2, 'each score makes one paid lower-layer call');
+  assert.equal(observedAttempts, 1, 'the metadata observer receives the real attempt once');
+  assert.deepEqual(observed, legacy);
 });

@@ -55,7 +55,7 @@ function spyLimiter() {
   return {
     calls,
     async check(input) { calls.check.push(input); return { allowed: true, tier: input.tier }; },
-    async acquireConcurrency(input) { calls.acquire.push(input); return { allowed: true, tier: input.tier }; },
+    async acquireConcurrency(input) { calls.acquire.push(input); return { allowed: true, tier: input.tier, lease: 'spy-lease' }; },
     async releaseConcurrency(input) { calls.release.push(input); },
   };
 }
@@ -81,6 +81,20 @@ function proBody(overrides = {}) {
 test('factory throws without runRewrite or rateLimiter.check', () => {
   assert.throws(() => createRewriteHandler({ rateLimiter: allowedLimiter() }), TypeError);
   assert.throws(() => createRewriteHandler({ rateLimiter: {}, runRewrite() {} }), TypeError);
+});
+test('factory fails closed when concurrency acquire and release capabilities are malformed', async () => {
+  for (const rateLimiter of [
+    { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; }, async acquireConcurrency() { return { allowed: true, tier: WEB_TIERS.FREE, lease: 'x' }; } },
+    { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; }, async releaseConcurrency() {} },
+    { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; }, async acquireConcurrency() { return { allowed: true, tier: WEB_TIERS.FREE }; }, async releaseConcurrency() {} },
+  ]) {
+    const res = makeRes();
+    let ran = false;
+    const handler = createRewriteHandler({ rateLimiter, runRewrite() { ran = true; } });
+    await handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.1' }, body: validBody() }, res);
+    assert.equal(res.statusCode, 503);
+    assert.equal(ran, false);
+  }
 });
 
 test('405 for non-POST and no-store header is always set', async () => {
@@ -108,18 +122,62 @@ test('400 for invalid JSON', async () => {
   assert.deepEqual(res.json(), { error: 'invalid JSON' });
 });
 
-test('400 and 413 from validateRewriteRequest', async () => {
-  const handler = createRewriteHandler({ rateLimiter: allowedLimiter(), runRewrite() {} });
+test('400 and 413 from validateRewriteRequest are not observed', async () => {
+  const events = [];
+  const handler = createRewriteHandler({
+    rateLimiter: allowedLimiter(),
+    runRewrite() {},
+    observe(event) { events.push(event); },
+  });
 
   const badLang = makeRes();
   await handler({ method: 'POST', headers: {}, body: validBody({ lang: 'fr' }) }, badLang);
   assert.equal(badLang.statusCode, 400);
   assert.match(badLang.json().error, /lang must be one of/);
 
+  const unknownTier = makeRes();
+  await handler({ method: 'POST', headers: {}, body: validBody({ tier: 'enterprise' }) }, unknownTier);
+  assert.equal(unknownTier.statusCode, 400);
+  assert.match(unknownTier.json().error, /tier must be/);
+
   const overCap = makeRes();
   await handler({ method: 'POST', headers: {}, body: validBody({ text: 'x'.repeat(4001) }) }, overCap);
   assert.equal(overCap.statusCode, 413);
   assert.match(overCap.json().error, /text exceeds 4000/);
+  assert.deepEqual(events, []);
+});
+
+test('production pro provider configuration denial emits one closed service event before limiter or runner', async () => {
+  const canary = 'LICENSE-RAW-provider-config-canary';
+  const events = [];
+  const limiter = spyLimiter();
+  let runnerCalls = 0;
+  const res = makeRes();
+  const handler = createRewriteHandler({
+    rateLimiter: limiter,
+    runRewrite() { runnerCalls += 1; },
+    env: { NODE_ENV: 'production' },
+    now: () => 100,
+    observe(event) { events.push(event); },
+  });
+
+  await handler({
+    method: 'POST',
+    headers: { authorization: `Bearer ${canary}` },
+    body: proBody(),
+  }, res);
+
+  assert.equal(res.statusCode, 503);
+  assert.deepEqual(res.json(), { error: 'pro provider not configured' });
+  assert.deepEqual(events, [{
+    tier: WEB_TIERS.PRO,
+    outcome: 'service_disabled',
+    status: 503,
+    latencyMs: 0,
+  }]);
+  assert.equal(JSON.stringify(events).includes(canary), false);
+  assert.deepEqual(limiter.calls, { check: [], acquire: [], release: [] });
+  assert.equal(runnerCalls, 0);
 });
 
 test('429 denial from limiter does not call runRewrite', async () => {
@@ -174,7 +232,7 @@ test('happy path calls runRewrite once with validated request value and tier', a
   assert.equal(observed.provider, 'openai');
 });
 
-test('thrown handler error returns generic 500 and logs a redacted message', async () => {
+test('thrown handler errors return a generic 500 and log only the closed handler code', async () => {
   const logs = [];
   const res = makeRes();
   const handler = createRewriteHandler({
@@ -188,8 +246,7 @@ test('thrown handler error returns generic 500 and logs a redacted message', asy
   assert.equal(res.statusCode, 500);
   assert.deepEqual(res.json(), { error: 'internal error' });
   assert.equal(res.ended.includes('sk-secret'), false);
-  assert.equal(JSON.stringify(logs).includes('sk-secret'), false);
-  assert.match(JSON.stringify(logs), /\[REDACTED\]/);
+  assert.deepEqual(logs, [{ code: 'rewrite_handler_failed', stage: 'handler' }]);
 });
 
 test('free concurrent requests allow one runner and reject the second before runRewrite', async () => {
@@ -201,6 +258,7 @@ test('free concurrent requests allow one runner and reject the second before run
     now: () => 0,
     limits: { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 99, burstPerHour: 99 }, byok: { maxChars: 20000, maxConcurrent: 2 } },
   });
+  const events = [];
   const handler = createRewriteHandler({
     rateLimiter: limiter,
     async runRewrite({ res }) {
@@ -209,6 +267,8 @@ test('free concurrent requests allow one runner and reject the second before run
       await gate.promise;
       res.end(JSON.stringify({ ok: true }));
     },
+    now: () => 100,
+    observe(event) { events.push(event); },
   });
 
   const firstRes = makeRes();
@@ -221,6 +281,9 @@ test('free concurrent requests allow one runner and reject the second before run
   assert.equal(calls, 1);
   assert.equal(secondRes.statusCode, 429);
   assert.deepEqual(secondRes.json(), { error: 'concurrent limit exceeded' });
+  assert.deepEqual(events, [{
+    tier: WEB_TIERS.FREE, outcome: 'quota_denied', status: 429, latencyMs: 0,
+  }]);
 
   gate.resolve();
   await first;
@@ -499,7 +562,7 @@ function proSpyLimiter({ denyCheck, denyAcquire } = {}) {
     async acquireConcurrency(input) {
       calls.acquire.push(input);
       order.push('acquire');
-      return denyAcquire ? { allowed: false, status: denyAcquire.status, reason: denyAcquire.reason } : { allowed: true, tier: input.tier };
+      return denyAcquire ? { allowed: false, status: denyAcquire.status, reason: denyAcquire.reason } : { allowed: true, tier: input.tier, lease: 'opaqueLeaseCapability7X9' };
     },
     async releaseConcurrency(input) {
       calls.release.push(input);
@@ -542,15 +605,34 @@ test('redteam(1): a valid pro request leaks the raw license nowhere (runner requ
   assert.deepEqual(validator.state.lastInput, { licenseKey: PRO_RAW });
 
   // (b) Every limiter arg is metered by the HMAC subject and carries NO license material.
-  const limiterInputs = [...limiter.calls.check, ...limiter.calls.acquire, ...limiter.calls.release];
-  assert.equal(limiterInputs.length, 3);
-  for (const input of limiterInputs) {
+  const limiterCalls = [
+    ['check', ...limiter.calls.check],
+    ['acquire', ...limiter.calls.acquire],
+    ['release', ...limiter.calls.release],
+  ];
+  assert.equal(limiterCalls.length, 3);
+  for (const [operation, input] of limiterCalls) {
     assert.equal(input.subject, 'SUBJECT-HMAC');
     assert.equal(input.tier, WEB_TIERS.PRO);
     assert.equal(input.ip, '203.0.113.60');
-    for (const k of Object.keys(input)) assert.ok(['chars', 'ip', 'subject', 'tier'].includes(k), `unexpected limiter arg key: ${k}`);
+    const expectedKeys = operation === 'check'
+      ? ['chars', 'ip', 'subject', 'tier']
+      : operation === 'release'
+        ? ['ip', 'lease', 'subject', 'tier']
+        : ['ip', 'subject', 'tier'];
+    assert.deepEqual(Object.keys(input).sort(), expectedKeys, `${operation} limiter argument keys`);
     assert.equal('license' in input, false);
     assert.equal('licenseKey' in input, false);
+    assert.equal(JSON.stringify(input).includes(PRO_RAW), false);
+    assert.equal(JSON.stringify(input).includes(`Bearer ${PRO_RAW}`), false);
+    if (operation === 'release') {
+      assert.equal(typeof input.lease, 'string');
+      assert.match(input.lease, /^[A-Za-z0-9_-]{16,}$/);
+      assert.doesNotMatch(input.lease, /license|bearer/i);
+      assert.notEqual(input.lease, PRO_RAW);
+    } else {
+      assert.equal('lease' in input, false);
+    }
   }
   assert.equal(JSON.stringify(limiter.calls).includes(PRO_RAW), false);
 
@@ -588,7 +670,7 @@ test('redteam(2): every malformed pro Authorization (absent/blank/non-Bearer/no-
       licenseValidator: validator,
       runRewrite() { ran = true; },
     });
-    await handler({ method: 'POST', headers: c.headers, body: proBody() }, res);
+    await handler({ method: 'POST', headers: c.headers, rawHeaders: c.rawHeaders, body: proBody() }, res);
     assert.equal(res.statusCode, 401, `${c.name}: status`);
     assert.deepEqual(res.json(), { error: QUOTA_REASONS.LICENSE_REQUIRED }, `${c.name}: reason`);
     assert.equal(validator.state.calls, 0, `${c.name}: validator must not run`);
@@ -596,6 +678,35 @@ test('redteam(2): every malformed pro Authorization (absent/blank/non-Bearer/no-
     assert.equal(ran, false, `${c.name}: runner must not run`);
     assert.equal(res.headers['cache-control'], 'no-store', `${c.name}: no-store`);
   }
+});
+test('redteam(2): duplicate raw Authorization fields fail closed before validation and leave logs secret-free', async () => {
+  const rawLicense = 'raw-license-canary';
+  const logs = [];
+  const res = makeRes();
+  const limiter = proSpyLimiter();
+  const validator = makeValidator({ ok: true, subject: 'S', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' });
+  let ran = false;
+  const handler = createRewriteHandler({
+    rateLimiter: limiter,
+    licenseValidator: validator,
+    logger: { error: (...args) => logs.push(args) },
+    runRewrite() { ran = true; },
+  });
+
+  await handler({
+    method: 'POST',
+    headers: { 'x-real-ip': '203.0.113.61', authorization: 'Bearer collapsed-license' },
+    rawHeaders: ['x-real-ip', '203.0.113.61', 'authorization', `Bearer ${rawLicense}`, 'Authorization', 'Bearer second-license'],
+    body: proBody(),
+  }, res);
+
+  assert.equal(res.statusCode, 401);
+  assert.deepEqual(res.json(), { error: QUOTA_REASONS.LICENSE_REQUIRED });
+  assert.equal(validator.state.calls, 0, 'validator must not run');
+  assert.equal(limiter.calls.check.length, 0, 'limiter.check must not run');
+  assert.equal(limiter.calls.acquire.length, 0, 'limiter.acquireConcurrency must not run');
+  assert.equal(ran, false, 'runner must not run');
+  assert.doesNotMatch(JSON.stringify(logs), /raw-license-canary|second-license|collapsed-license/);
 });
 
 test('redteam(2): a validator denial (401/403/503) is passed through verbatim and skips both the limiter and the runner', async () => {
@@ -653,7 +764,7 @@ test('redteam(2): an unwired validator (absent, empty, or non-function validate)
   }
 });
 
-test('redteam(2): a throwing validator is caught as a redacted generic 500 — no license in the body, redacted in the log, runner and limiter never reached', async () => {
+test('redteam(2): a throwing validator returns a closed generic 500 with no license or raw failure log', async () => {
   const res = makeRes();
   const limiter = proSpyLimiter();
   const logs = [];
@@ -683,15 +794,37 @@ test('redteam(2): a throwing validator is caught as a redacted generic 500 — n
   assert.equal(res.ended.includes(PRO_RAW), false); // license never in the response body
   assert.equal(ran, false); // runner never reached
   assert.equal(limiter.calls.check.length, 0); // metering never reached
-  // Defense-in-depth: the logged message is passed through redactSecrets.
+  assert.deepEqual(logs, [{ code: 'rewrite_handler_failed', stage: 'handler' }]);
   assert.equal(JSON.stringify(logs).includes(PRO_RAW), false);
-  assert.match(JSON.stringify(logs), /\[REDACTED\]/);
+  assert.equal(JSON.stringify(logs).includes('LS upstream 500'), false);
   assert.equal(res.headers['cache-control'], 'no-store');
 });
 
-test('redteam(3): a pro check denial (after the slot is held) skips the runner and releases the slot', async () => {
+test('redteam(3): a pro check denial waits for the held slot to release before ending the response', async () => {
+  const events = [];
+  const release = deferred();
   const res = makeRes();
+  const originalEnd = res.end;
+  res.end = function end(body) {
+    events.push('end');
+    return originalEnd.call(this, body);
+  };
   const limiter = proSpyLimiter({ denyCheck: { status: 429, reason: QUOTA_REASONS.DAILY } });
+  const acquireConcurrency = limiter.acquireConcurrency;
+  limiter.acquireConcurrency = async (input) => {
+    events.push('acquire');
+    return acquireConcurrency(input);
+  };
+  const check = limiter.check;
+  limiter.check = async (input) => {
+    events.push('check');
+    return check(input);
+  };
+  limiter.releaseConcurrency = async (input) => {
+    limiter.calls.release.push(input);
+    await release.promise;
+    events.push('release settled');
+  };
   const validator = makeValidator({ ok: true, subject: 'SUBJ', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' });
   let ran = false;
   const handler = createRewriteHandler({
@@ -699,18 +832,28 @@ test('redteam(3): a pro check denial (after the slot is held) skips the runner a
     licenseValidator: validator,
     runRewrite() { ran = true; },
   });
-  await handler({
+
+  const response = handler({
     method: 'POST',
     headers: { 'x-real-ip': '203.0.113.65', authorization: `Bearer ${PRO_RAW}` },
     body: proBody(),
   }, res);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(res.ended, undefined);
+  assert.equal(ran, false);
+  assert.equal(limiter.calls.release.length, 1);
+  assert.deepEqual(events, ['acquire', 'check']);
+
+  release.resolve();
+  await response;
+
   assert.equal(res.statusCode, 429);
   assert.deepEqual(res.json(), { error: QUOTA_REASONS.DAILY });
-  assert.equal(ran, false);
   assert.equal(limiter.calls.check.length, 1);
   assert.equal(limiter.calls.check[0].subject, 'SUBJ');
-  // The slot was acquired before the quota charge and must be released on the denial.
-  assert.deepEqual(limiter.order, ['acquire', 'check', 'release']);
+  assert.deepEqual(events, ['acquire', 'check', 'release settled', 'end']);
+  assert.equal(limiter.calls.release.length, 1);
 });
 
 test('redteam(3): a pro acquire denial skips the quota charge, the runner, and release (no billing on a 429 slot rejection)', async () => {
@@ -759,6 +902,129 @@ test('redteam(3): the pro success path threads the subject through acquire→che
   assert.equal(limiter.calls.release.length, 1);
   assert.equal(limiter.calls.release[0].subject, 'SUBJ');
 });
+test('concurrency release settles exactly once before response end for runner terminal paths', async () => {
+  for (const terminal of ['done', 'number_safety_failed', 'aborted']) {
+    const events = [];
+    const release = deferred();
+    const res = makeRes();
+    const originalEnd = res.end;
+    res.end = function end(body) {
+      events.push('end');
+      return originalEnd.call(this, body);
+    };
+    const limiter = proSpyLimiter();
+    limiter.releaseConcurrency = async (input) => {
+      limiter.calls.release.push(input);
+      await release.promise;
+      events.push('release settled');
+    };
+    const handler = createRewriteHandler({
+      rateLimiter: limiter,
+      licenseValidator: makeValidator({ ok: true, subject: 'SUBJ', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' }),
+      async runRewrite({ res: runnerRes, beforeResponseEnd }) {
+        await beforeResponseEnd?.();
+        await beforeResponseEnd?.();
+        runnerRes.end(JSON.stringify({ terminal }));
+        return terminal === 'number_safety_failed' ? { ok: false, code: terminal } : { ok: true };
+      },
+    });
+
+    const response = handler({
+      method: 'POST',
+      headers: { 'x-real-ip': '203.0.113.69', authorization: `Bearer ${PRO_RAW}` },
+      body: proBody(),
+    }, res);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(res.ended, undefined, terminal);
+    assert.equal(limiter.calls.release.length, 1, terminal);
+
+    release.resolve();
+    await response;
+
+    assert.deepEqual(events, ['release settled', 'end'], terminal);
+    assert.equal(limiter.calls.release.length, 1, terminal);
+  }
+});
+test('overlapping hook and finally releases await the same durable settlement before response end', async () => {
+  const events = [];
+  const release = deferred();
+  const res = makeRes();
+  const limiter = proSpyLimiter();
+  limiter.releaseConcurrency = async (input) => {
+    limiter.calls.release.push(input);
+    events.push('release started');
+    await release.promise;
+    events.push('release settled');
+  };
+  const handler = createRewriteHandler({
+    rateLimiter: limiter,
+    licenseValidator: makeValidator({ ok: true, subject: 'SUBJ', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' }),
+    runRewrite({ res: runnerRes, beforeResponseEnd }) {
+      const hookRelease = beforeResponseEnd();
+      hookRelease.then(() => {
+        events.push('hook settled');
+        runnerRes.end(JSON.stringify({ ok: true }));
+      });
+      return { ok: true };
+    },
+  });
+
+  const response = handler({
+    method: 'POST',
+    headers: { 'x-real-ip': '203.0.113.69', authorization: `Bearer ${PRO_RAW}` },
+    body: proBody(),
+  }, res);
+  let handlerSettled = false;
+  response.then(() => {
+    handlerSettled = true;
+    events.push('finally settled');
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(limiter.calls.release.length, 1);
+  assert.equal(res.ended, undefined);
+  assert.equal(handlerSettled, false);
+  assert.deepEqual(events, ['release started']);
+
+  release.resolve();
+  await response;
+
+  assert.deepEqual(res.json(), { ok: true });
+  assert.equal(handlerSettled, true);
+  assert.deepEqual(events, ['release started', 'release settled', 'hook settled', 'finally settled']);
+  assert.equal(limiter.calls.release.length, 1);
+});
+
+test('a thrown runner releases exactly once before the handler sends its generic error', async () => {
+  const events = [];
+  const res = makeRes();
+  const originalEnd = res.end;
+  res.end = function end(body) {
+    events.push('end');
+    return originalEnd.call(this, body);
+  };
+  const limiter = proSpyLimiter();
+  limiter.releaseConcurrency = async (input) => {
+    limiter.calls.release.push(input);
+    events.push('release');
+  };
+  const handler = createRewriteHandler({
+    rateLimiter: limiter,
+    licenseValidator: makeValidator({ ok: true, subject: 'SUBJ', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' }),
+    runRewrite() { throw new Error('provider failed'); },
+    logger: { error() {} },
+  });
+
+  await handler({
+    method: 'POST',
+    headers: { 'x-real-ip': '203.0.113.69', authorization: `Bearer ${PRO_RAW}` },
+    body: proBody(),
+  }, res);
+
+  assert.deepEqual(events, ['release', 'end']);
+  assert.equal(limiter.calls.release.length, 1);
+});
 
 test('redteam(3): when the pro runner throws, release still runs in finally (subject-scoped) and the handler returns a redacted 500', async () => {
   const res = makeRes();
@@ -797,6 +1063,7 @@ test('redteam(4): free and byok ignore an attacker-supplied Authorization header
   const freeResult = await freeHandler({
     method: 'POST',
     headers: { 'x-real-ip': '203.0.113.70', authorization: `Bearer ${PRO_RAW}` },
+    rawHeaders: ['x-real-ip', '203.0.113.70', 'authorization', `Bearer ${PRO_RAW}`, 'Authorization', 'Bearer duplicate-free-license'],
     body: validBody(),
   }, freeRes);
   assert.equal(freeResult, 'free-ran');
@@ -823,6 +1090,7 @@ test('redteam(4): free and byok ignore an attacker-supplied Authorization header
   const byokResult = await byokHandler({
     method: 'POST',
     headers: { 'x-real-ip': '203.0.113.71', authorization: `Bearer ${PRO_RAW}` },
+    rawHeaders: ['x-real-ip', '203.0.113.71', 'authorization', `Bearer ${PRO_RAW}`, 'Authorization', 'Bearer duplicate-byok-license'],
     body: validBody({ tier: WEB_TIERS.BYOK, provider: 'openai', model: 'gpt-5.5', apiKey: 'sk-caller-byok-key' }),
   }, byokRes);
   assert.equal(byokResult, 'byok-ran');
@@ -937,4 +1205,86 @@ test('pro path forwards the monthly-char 429 with remaining/limit guidance and n
   assert.equal(res.statusCode, 429);
   assert.deepEqual(res.json(), { error: QUOTA_REASONS.MONTHLY_CHARS, remainingMonthlyChars: 0, limitMonthlyChars: 1000 });
   assert.equal(ran, false);
+});
+test('closed observer records real entitlement, quota, and service denial paths without identifiers', async () => {
+  const canary = 'LICENSE-RAW-observer-canary';
+  const cases = [
+    {
+      name: 'missing license',
+      headers: {},
+      body: proBody(),
+      limiter: spyLimiter(),
+      expected: { tier: WEB_TIERS.PRO, outcome: 'entitlement_denied', status: 401 },
+    },
+    {
+      name: 'unwired validator',
+      headers: { authorization: `Bearer ${canary}` },
+      body: proBody(),
+      limiter: spyLimiter(),
+      expected: { tier: WEB_TIERS.PRO, outcome: 'entitlement_unavailable', status: 503 },
+    },
+    {
+      name: 'validator denial',
+      headers: { authorization: `Bearer ${canary}` },
+      body: proBody(),
+      limiter: spyLimiter(),
+      validator: makeValidator({ ok: false, status: 403, reason: 'license invalid' }),
+      expected: { tier: WEB_TIERS.PRO, outcome: 'entitlement_denied', status: 403 },
+    },
+    {
+      name: 'monthly quota',
+      headers: { authorization: `Bearer ${canary}` },
+      body: proBody(),
+      limiter: { async check() { return { allowed: false, status: 429, reason: QUOTA_REASONS.MONTHLY_CHARS }; } },
+      validator: makeValidator({ ok: true, subject: 'private-subject', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' }),
+      expected: { tier: WEB_TIERS.PRO, outcome: 'quota_denied', status: 429 },
+    },
+    {
+      name: 'service disabled',
+      headers: {},
+      body: validBody(),
+      limiter: { async check() { return { allowed: false, status: 503, reason: QUOTA_REASONS.SERVICE_UNAVAILABLE }; } },
+      expected: { tier: WEB_TIERS.FREE, outcome: 'service_disabled', status: 503 },
+    },
+  ];
+  for (const entry of cases) {
+    const events = [];
+    const handler = createRewriteHandler({
+      rateLimiter: entry.limiter,
+      licenseValidator: entry.validator,
+      runRewrite() { throw new Error('runner must not run'); },
+      now: () => 100,
+      observe(event) { events.push(event); },
+    });
+    await handler({ method: 'POST', headers: entry.headers, body: entry.body }, makeRes());
+    assert.equal(events.length, 1, entry.name);
+    assert.deepEqual(events[0], { ...entry.expected, latencyMs: 0 }, entry.name);
+    assert.equal(JSON.stringify(events).includes(canary), false, entry.name);
+    assert.equal(JSON.stringify(events).includes('private-subject'), false, entry.name);
+  }
+});
+
+test('closed observer failures cannot alter a denied response', async () => {
+  const res = makeRes();
+  const handler = createRewriteHandler({
+    rateLimiter: { async check() { return { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY }; } },
+    runRewrite() { throw new Error('runner must not run'); },
+    observe() { throw new Error('observer failure'); },
+  });
+  await handler({ method: 'POST', headers: {}, body: validBody() }, res);
+  assert.equal(res.statusCode, 429);
+  assert.deepEqual(res.json(), { error: QUOTA_REASONS.DAILY });
+});
+test('a failed telemetry clock does not emit an epoch-latency denial event', async () => {
+  const events = [];
+  const handler = createRewriteHandler({
+    rateLimiter: { async check() { return { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY }; } },
+    runRewrite() { throw new Error('runner must not run'); },
+    now() { throw new Error('clock unavailable'); },
+    observe(event) { events.push(event); },
+  });
+  const res = makeRes();
+  await handler({ method: 'POST', headers: {}, body: validBody() }, res);
+  assert.equal(res.statusCode, 429);
+  assert.deepEqual(events, []);
 });

@@ -131,6 +131,7 @@ function parseStrictJson(text) {
 }
 
 // Call LLM and parse strict JSON. On schema failure, retry once at temperature 0.
+// Attempt indices are one-based across all transport and schema retries in one score.
 async function callAndParseJson({
   prompt,
   apiKey,
@@ -148,36 +149,151 @@ async function callAndParseJson({
   // { type: 'json_object' }). Forwarded to callLLM on every attempt; the strict
   // JSON parse + temperature-0 retry below remains the fallback regardless.
   responseFormat,
+  onAttempt,
+  onAttemptInvalid,
 }) {
   let lastError;
+  let attemptIndex = 1;
   for (let attempt = 0; attempt < 2; attempt++) {
     const t = attempt === 0 ? temperature : 0;
-    const result = await callLLM({
-      prompt,
-      apiKey,
-      baseURL,
-      model,
-      temperature: t,
-      deadline,
-      signal,
-      timeout,
-      now,
-      sleep,
-      responseFormat,
-    });
+    const reportedAttempts = [];
+    let result;
     try {
-      return { parsed: parseStrictJson(result), raw: result };
+      result = await callLLM({
+        prompt,
+        apiKey,
+        baseURL,
+        model,
+        temperature: t,
+        deadline,
+        signal,
+        timeout,
+        now,
+        sleep,
+        responseFormat,
+        // Buffer provider records so a response which fails strict parsing can
+        // be reported as a score-schema retry rather than a transport success.
+        onAttempt: (record) => reportedAttempts.push(record),
+      });
+    } catch (error) {
+      dispatchAttempts(onAttempt, onAttemptInvalid, reportedAttempts, {
+        attemptIndex: () => attemptIndex++,
+      });
+      throw error;
+    }
+    let parsed;
+    try {
+      parsed = parseStrictJson(result);
     } catch (e) {
       lastError = e;
+      dispatchAttempts(onAttempt, onAttemptInvalid, reportedAttempts, {
+        attemptIndex: () => attemptIndex++,
+        scoreSchemaFailure: true,
+      });
       if (attempt === 0) {
         logger.warn('score.json_parse_retry', {
           message: `[patina] score JSON parse failed (${e.message}); retrying at temperature 0`,
         });
       }
+      continue;
     }
+    dispatchAttempts(onAttempt, onAttemptInvalid, reportedAttempts, {
+      attemptIndex: () => attemptIndex++,
+    });
+    return { parsed, raw: result };
   }
   throw lastError;
 }
+
+const ATTEMPT_RETRY_REASONS = new Set([
+  'initial',
+  'transport',
+  'network',
+  'timeout',
+  'temperature_schema',
+  'score_schema_parse',
+]);
+
+function dispatchAttempts(onAttempt, onAttemptInvalid, records, { attemptIndex, scoreSchemaFailure = false }) {
+  // Transport owns paid-attempt evidence. A scoring parse failure without a
+  // transport record is not proof that a paid request occurred.
+  if (records.length === 0) return;
+
+  const sources = records.map(validateAttemptRecord);
+  // A lower transport invocation owns one local attempt sequence. Do not
+  // reinterpret a malformed sequence as a new global sequence: that would
+  // fabricate provenance for an attempt whose local position is unknown.
+  if (sources.some((source, index) => !source || source.attemptIndex !== index + 1)) {
+    notifyInvalidAttempt(onAttemptInvalid);
+    return;
+  }
+
+  const lastValidIndex = sources.length - 1;
+  for (let i = 0; i < sources.length; i++) {
+    const source = sources[i];
+    if (!source) continue;
+    const schemaFailure = scoreSchemaFailure && i === lastValidIndex;
+    const record = {
+      attemptIndex: attemptIndex(),
+      requestedModel: source.requestedModel,
+      // Effective identity is provider-response-derived only.
+      effectiveModel: source.effectiveModel,
+      usage: source.usage,
+      retryReason: schemaFailure ? 'score_schema_parse' : source.retryReason,
+      minimumChargeApplied: source.minimumChargeApplied,
+      outcome: schemaFailure ? 'error' : source.outcome,
+    };
+    try {
+      Promise.resolve(onAttempt?.(record)).catch(() => {});
+    } catch {
+      // Observability must never alter paid requests or score results.
+    }
+  }
+}
+
+/** @param {unknown} value */
+function validateAttemptRecord(value) {
+  const fields = [
+    'attemptIndex',
+    'requestedModel',
+    'effectiveModel',
+    'usage',
+    'retryReason',
+    'minimumChargeApplied',
+    'outcome',
+  ];
+  try {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const source = /** @type {any} */ (value);
+    const keys = Reflect.ownKeys(source);
+    if (
+      keys.length !== fields.length
+      || !fields.every((field) => Object.prototype.hasOwnProperty.call(source, field))
+      || keys.some((key) => typeof key !== 'string' || !fields.includes(key))
+      || !Number.isInteger(source.attemptIndex)
+      || source.attemptIndex <= 0
+      || !(typeof source.requestedModel === 'string' || source.requestedModel === null)
+      || !(typeof source.effectiveModel === 'string' || source.effectiveModel === null)
+      || !(source.usage === null || (typeof source.usage === 'object' && !Array.isArray(source.usage)))
+      || !ATTEMPT_RETRY_REASONS.has(source.retryReason)
+      || typeof source.minimumChargeApplied !== 'boolean'
+      || !(source.outcome === 'success' || source.outcome === 'error')
+    ) return null;
+    return source;
+  } catch {
+    return null;
+  }
+}
+
+/** @param {Function|undefined} onAttemptInvalid */
+function notifyInvalidAttempt(onAttemptInvalid) {
+  try {
+    Promise.resolve(onAttemptInvalid?.()).catch(() => {});
+  } catch {
+    // Observability must never alter paid requests or score results.
+  }
+}
+
 
 /**
  * Score text for AI-likeness using an LLM JSON scorer plus deterministic shadow signals.
@@ -197,6 +313,8 @@ async function callAndParseJson({
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
  * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
+ * @param {Function} [options.onAttempt] Safe callback for one-based paid-attempt metadata records.
+ * @param {Function} [options.onAttemptInvalid] Safe callback when transport evidence is malformed; receives no provider metadata.
  * @returns {Promise<object>} Score payload with overall, interpretation, llmScore, and deterministicScore.
  * @throws {Error} When the operation is aborted.
  * @example
@@ -218,9 +336,11 @@ export async function scoreText({
   sleep,
   // Opt-in structured-output request field; defaults off (undefined).
   responseFormat,
+  onAttempt,
+  onAttemptInvalid,
 }) {
   const lang = config.language || 'ko';
-  const deterministicScore = scoreDeterministicSignals({ text, config, logger });
+  const deterministicScore = scoreDeterministicSignals({ text, config, patterns, logger });
 
   // buildScoreMathCore carries the shared scoring math (weights, severity
   // scale, denominators, catalog digest) but no output contract; the strict
@@ -267,6 +387,8 @@ ${text}
       now,
       sleep,
       responseFormat,
+      onAttempt,
+      onAttemptInvalid,
     });
     return withShadowScore(parsed, { deterministicScore, config, logger });
   } catch (e) {
@@ -302,12 +424,34 @@ function buildContractExampleCategoryRow(patterns, config) {
   return `"${category}": {"detected": 0, "sum": 0, "max": ${max}, "score": 0.0, "weighted": 0.0}`;
 }
 
+// Calibrated evidence floor for the short-form (social/marketing) em-dash tell
+// (patterns/en-style.md #13 short-form branch). Reconstructs the same category
+// math the LLM scorer uses — adjusted severity / (style pattern count x high) x
+// weight, with the core/scoring.md short-text 1.5x boost — so the deterministic
+// floor and the LLM's own scoring of this tell agree instead of being an ad-hoc
+// penalty. Returns 0 when the tell is inert (not eligible / not en / no dash) or
+// when the style pattern count or category weight is unavailable.
+function computeShortFormEvidenceFloor({ result, config, lang, patterns = [] }) {
+  const rawSeverity = Number(result?.shortForm?.emDash?.severity ?? 0);
+  if (!(rawSeverity > 0)) return 0;
+  const severityPoints = resolveSeverityPoints(config);
+  const high = severityPoints.high;
+  const stylePack = patterns.find((pack) => pack?.frontmatter?.pack === `${lang}-style`);
+  const patternCount = Number(stylePack?.frontmatter?.patterns);
+  const weight = Number(config?.ouroboros?.['category-weights']?.[lang]?.style);
+  if (!(patternCount > 0) || !(high > 0) || !Number.isFinite(weight)) return 0;
+  // core/scoring.md short-text boost (1.5x, capped at `high`).
+  const adjusted = Math.min(high, rawSeverity * 1.5);
+  return roundScore((adjusted / (patternCount * high)) * 100 * weight);
+}
+
 /**
  * Compute deterministic stylometry/lexicon AI-likeness signals.
  *
  * @param {object} [options] Deterministic scoring options.
  * @param {string} [options.text] Text to analyze.
  * @param {object} [options.config={}] Effective config.
+ * @param {Array} [options.patterns=[]] Loaded pattern packs; used for short-form category math.
  * @param {string} [options.repoRoot] Repository root for analyzer resources.
  * @param {object} [options.logger] Optional logger for recoverable deterministic warnings.
  * @param {Function} [options.analyzer] Analyzer implementation.
@@ -318,6 +462,7 @@ function buildContractExampleCategoryRow(patterns, config) {
 export function scoreDeterministicSignals({
   text,
   config = {},
+  patterns = [],
   repoRoot = getRepoRoot(),
   analyzer = analyzeText,
   logger = createLogger(),
@@ -330,6 +475,7 @@ export function scoreDeterministicSignals({
   if (Array.isArray(enabledLanguages) && !enabledLanguages.includes(lang)) {
     return {
       overall: null,
+      evidenceFloor: 0,
       interpretation: null,
       skipped: true,
       skipReason: 'language-disabled',
@@ -352,6 +498,8 @@ export function scoreDeterministicSignals({
     }
     const result = analyzer(String(text || ''), {
       lang,
+      profile: config.profile,
+      register: config.register ?? null,
       repoRoot,
       burstinessBands: config.stylometry?.burstiness?.bands,
       mattrBands: config.stylometry?.ttr?.bands,
@@ -383,11 +531,26 @@ export function scoreDeterministicSignals({
     // high structural floor was capped at the (lower) leakage floor — a near-proof
     // leakage token could LOWER the overall score. Take the max of every signal so
     // a floor can only ever raise the score (#527 H5).
-    const overall = Math.max(
-      hotRatioOverall,
+    // Hard, document-level evidence floors: near-proof markup leakage (#332)
+    // and the trained structural classifier. Each is decisive on its own, so it
+    // must survive even when the text is too short for the stylometry meta-block
+    // (skipped=true): reconcileScoreOverall applies this floor before deferring
+    // to the LLM. The coarse per-paragraph hot ratio (1/1 = 100 on a single
+    // paragraph) is deliberately NOT part of this floor — only calibrated hard
+    // signals are — so short prose cannot manufacture a false positive.
+    const hardEvidenceFloor = Math.max(
       leaked ? LEAKAGE_SCORE_FLOOR : 0,
       structuralFloor,
     );
+    // Calibrated weak short-form (social/marketing) punctuation floor (#13
+    // short-form branch). Register-gated and Low-severity by design, so it only
+    // nudges eligible SNS text off an exact 0 and is inert for the default
+    // profile. Reconstructs the same category math as the LLM path (style
+    // pattern count x severity, short-text 1.5x boost) rather than an ad-hoc
+    // penalty, so a single em dash contributes ~1.7 and stays in the human band.
+    const shortFormFloor = computeShortFormEvidenceFloor({ result, config, lang, patterns });
+    const evidenceFloor = Math.max(hardEvidenceFloor, shortFormFloor);
+    const overall = Math.max(hotRatioOverall, evidenceFloor);
     const signalScore = roundScore(summarizeSignalStrength(paragraphs, {
       burstinessBands: config.stylometry?.burstiness?.bands,
       mattrBands: config.stylometry?.ttr?.bands,
@@ -396,6 +559,8 @@ export function scoreDeterministicSignals({
 
     return {
       overall,
+      evidenceFloor,
+      shortFormFloor,
       interpretation: interpretScore(overall),
       skipped: Boolean(result?.skipped),
       skipReason: result?.skipReason ?? null,
@@ -434,6 +599,7 @@ export function scoreDeterministicSignals({
   } catch (err) {
     return {
       overall: null,
+      evidenceFloor: 0,
       interpretation: null,
       skipped: true,
       skipReason: 'deterministic-failure',
@@ -506,6 +672,34 @@ export function reconcileScoreOverall({
   const deterministic = toFiniteScore(deterministicScore?.overall);
   if (llm === null) return { overall: null, scorePreference: null };
   if (deterministic === null) return { overall: llm, scorePreference: null };
+  // Hard evidence floor applies in EVERY posture. Near-proof markup leakage
+  // (#332), the trained structural classifier, and the calibrated short-form
+  // tell are each decisive on their own, so the final score must never sit
+  // below them — not even when the text is short (skipped) OR when the LLM
+  // lands within the divergence threshold of the deterministic score. The
+  // coarse per-paragraph hot ratio is deliberately excluded from evidenceFloor
+  // (see scoreDeterministicSignals), so this cannot false-positive on ordinary
+  // prose. Applied before the skip/divergence branches, which only decide the
+  // score when no hard floor binds.
+  const evidenceFloor = toFiniteScore(deterministicScore?.evidenceFloor);
+  if (evidenceFloor !== null && evidenceFloor > 0 && llm < evidenceFloor) {
+    return {
+      overall: evidenceFloor,
+      scorePreference: {
+        reason: 'deterministic-evidence-floor',
+        selected: 'deterministic',
+        llmOverall: llm,
+        deterministicOverall: deterministic,
+        evidenceFloor,
+        overall: evidenceFloor,
+      },
+    };
+  }
+
+  // `skipped` (≤2 paragraphs / ≤2 sentences) suppressed the long-form
+  // stylometry meta-block, and its coarse per-paragraph hot ratio is unreliable
+  // on such short text. With no hard floor binding above, defer to the LLM
+  // instead of running the divergence path on that coarse ratio.
   if (deterministicScore?.skipped) return { overall: llm, scorePreference: null };
 
   const threshold = deterministicScoringOptions(config).divergenceThreshold;
@@ -548,6 +742,8 @@ export function reconcileScoreOverall({
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
  * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
+ * @param {Function} [options.onAttempt] Safe callback for one-based paid-attempt metadata records.
+ * @param {Function} [options.onAttemptInvalid] Safe callback when transport evidence is malformed; receives no provider metadata.
  * @returns {Promise<Object>} MPS result.
  * @throws {Error} When the operation is aborted.
  * @example
@@ -568,6 +764,8 @@ export async function scoreMPS({
   sleep,
   // Opt-in structured-output request field; defaults off (undefined).
   responseFormat,
+  onAttempt,
+  onAttemptInvalid,
 }) {
   // Anchor definition mirrors core/scoring.md §14-16 and SKILL.md step 4.5:
   // anchors are explicitly stated FACTUAL meaning units (claim/polarity/
@@ -639,6 +837,8 @@ ${rewritten}
       now,
       sleep,
       responseFormat,
+      onAttempt,
+      onAttemptInvalid,
     });
     return parsed;
   } catch (e) {
@@ -702,6 +902,8 @@ export function lengthRatioPoints(original, rewritten) {
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
  * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
+ * @param {Function} [options.onAttempt] Safe callback for one-based paid-attempt metadata records.
+ * @param {Function} [options.onAttemptInvalid] Safe callback when transport evidence is malformed; receives no provider metadata.
  * @returns {Promise<Object>} Fidelity result.
  * @throws {Error} When the operation is aborted.
  * @example
@@ -722,6 +924,8 @@ export async function scoreFidelity({
   sleep,
   // Opt-in structured-output request field; defaults off (undefined).
   responseFormat,
+  onAttempt,
+  onAttemptInvalid,
 }) {
   // Length is deterministic; only ask LLM for the three judgment criteria.
   const lengthPoints = lengthRatioPoints(original, rewritten);
@@ -770,6 +974,8 @@ ${rewritten}
       now,
       sleep,
       responseFormat,
+      onAttempt,
+      onAttemptInvalid,
     });
     parsed = result.parsed;
   } catch (e) {

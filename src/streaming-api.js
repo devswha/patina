@@ -8,6 +8,37 @@ const MAX_SSE_BUFFER_BYTES = 1024 * 1024;
 
 // Single source of truth for LLM-transport error redaction lives in api.js.
 const redact = redactErrorText;
+/**
+ * Invoke optional metadata callbacks without allowing observers to affect a
+ * provider request or its result.
+ *
+ * @param {Function|undefined} callback
+ * @param {unknown} metadata
+ * @returns {void}
+ */
+function dispatchMetadata(callback, metadata) {
+  if (typeof callback !== 'function') return;
+  try {
+    Promise.resolve(callback(metadata)).catch(() => {});
+  } catch {
+    // Metadata observers are best-effort.
+  }
+}
+/**
+ * @param {object|null} usage
+ * @returns {{ cachedReadTokens: unknown, cacheCreationTokens: unknown }|null}
+ */
+function extractCacheTokens(usage) {
+  if (!usage) return null;
+  const cachedRead = /** @type {any} */ (usage).prompt_tokens_details?.cached_tokens
+    ?? /** @type {any} */ (usage).cache_read_input_tokens
+    ?? null;
+  const cacheCreation = /** @type {any} */ (usage).cache_creation_input_tokens ?? null;
+  return cachedRead === null && cacheCreation === null
+    ? null
+    : { cachedReadTokens: cachedRead, cacheCreationTokens: cacheCreation };
+}
+
 
 /** @param {string} [message] */
 function abortError(message = 'The operation was aborted') {
@@ -64,8 +95,10 @@ function streamChunks(body) {
  * @param {AbortSignal} [options.signal] External cancellation signal.
  * @param {number} [options.timeout] Per-request timeout in milliseconds.
  * @param {(chunk: string) => void} [options.onDelta] Called for every text delta.
- * @param {Function} [options.fetchImpl] Injectable fetch implementation.
+ * @param {Function} [options.onResponse] Called with metadata from a successful provider response.
+ * @param {Function} [options.onAttempt] Called once for every issued provider request.
  * @param {() => number} [options.now] Injectable clock retained for API symmetry.
+ * @param {Function} [options.fetchImpl] Injectable fetch implementation.
  * @returns {Promise<{ text: string, finishReason?: string }>}
  */
 export async function callLLMStream({
@@ -77,6 +110,8 @@ export async function callLLMStream({
   signal,
   timeout = DEFAULT_TIMEOUT,
   onDelta,
+  onResponse,
+  onAttempt,
   fetchImpl = globalThis.fetch,
   now: _now,
 }) {
@@ -106,85 +141,125 @@ export async function callLLMStream({
   };
   if (!modelRejectsTemperature(model)) payload.temperature = temperature;
 
-  try {
-    const issue = () => fetchImpl(`${baseURL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
+  const issue = () => fetchImpl(`${baseURL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+    signal: controller.signal,
+  });
+  let attemptsMade = 0;
 
-    let response = await issue();
-
-    throwIfAborted(signal);
-    if (!response.ok) {
-      const body = typeof response.text === 'function' ? await response.text() : '';
-      const err = new HttpError(response.status, redact(body), response.headers?.get?.('retry-after'));
-      // `temperature` rejected for this model: drop the field and re-issue
-      // once. Cannot loop — the field is gone from `payload` after this hit.
-      if (isTemperatureRejectedError(err) && 'temperature' in payload) {
-        markTemperatureRejected(model);
-        delete payload.temperature;
-        response = await issue();
-        throwIfAborted(signal);
-      } else {
-        throw err;
-      }
-    }
-    if (!response.ok) {
-      const body = typeof response.text === 'function' ? await response.text() : '';
-      throw new HttpError(response.status, redact(body), response.headers?.get?.('retry-after'));
-    }
-
-    const decoder = new globalThis.TextDecoder();
-    let buffer = '';
-    let text = '';
-    let finishReason;
-
-    let streamDone = false;
-    const processLine = (line) => {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('data:')) return;
-      const data = trimmed.slice(5).trim();
-      if (!data) return;
-      if (data === '[DONE]') { streamDone = true; return; } // terminal sentinel
-      let parsed;
-      try {
-        parsed = JSON.parse(data);
-      } catch {
-        return;
-      }
-      const choice = parsed?.choices?.[0];
-      const chunk = choice?.delta?.content;
-      if (typeof choice?.finish_reason === 'string') finishReason = choice.finish_reason;
-      if (typeof chunk === 'string' && chunk.length > 0) {
-        text += chunk;
-        onDelta?.(chunk);
-      }
+  /**
+   * @param {'initial'|'temperature_schema'} retryReason
+   */
+  const runAttempt = async (retryReason) => {
+    const attempt = {
+      attemptIndex: ++attemptsMade,
+      requestedModel: model,
+      effectiveModel: null,
+      usage: null,
+      retryReason,
+      minimumChargeApplied: false,
+      outcome: 'error',
     };
-
-    for await (const chunk of streamChunks(response.body)) {
+    try {
+      const response = await issue();
       throwIfAborted(signal);
-      buffer += typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true });
-      const lines = buffer.split(/\r?\n/);
-      buffer = lines.pop() ?? '';
-      // A single un-terminated line over the cap = malformed/abusive provider.
-      if (buffer.length > MAX_SSE_BUFFER_BYTES) throw new Error('SSE response line exceeded the maximum buffer size');
-      for (const line of lines) {
-        processLine(line);
+      if (!response.ok) {
+        const body = typeof response.text === 'function' ? await response.text() : '';
+        throw new HttpError(response.status, redact(body), response.headers?.get?.('retry-after'));
+      }
+
+      const decoder = new globalThis.TextDecoder();
+      let buffer = '';
+      let text = '';
+      let finishReason;
+      let streamDone = false;
+      let rawResponse = null;
+      const processLine = (line) => {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) return;
+        const data = trimmed.slice(5).trim();
+        if (!data) return;
+        if (data === '[DONE]') { streamDone = true; return; }
+        let parsed;
+        try {
+          parsed = JSON.parse(data);
+        } catch {
+          return;
+        }
+        rawResponse = parsed;
+        if (typeof parsed?.model === 'string' && attempt.effectiveModel === null) {
+          attempt.effectiveModel = parsed.model;
+        }
+        if (parsed?.usage && typeof parsed.usage === 'object' && !Array.isArray(parsed.usage)) {
+          attempt.usage = parsed.usage;
+        }
+        const choice = parsed?.choices?.[0];
+        const chunk = choice?.delta?.content;
+        if (typeof choice?.finish_reason === 'string') finishReason = choice.finish_reason;
+        if (typeof chunk === 'string' && chunk.length > 0) {
+          text += chunk;
+          dispatchMetadata(onDelta, chunk);
+        }
+      };
+
+      for await (const chunk of streamChunks(response.body)) {
+        throwIfAborted(signal);
+        buffer += typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true });
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() ?? '';
+        // A single un-terminated line over the cap = malformed/abusive provider.
+        if (buffer.length > MAX_SSE_BUFFER_BYTES) throw new Error('SSE response line exceeded the maximum buffer size');
+        for (const line of lines) {
+          processLine(line);
+          if (streamDone) break;
+        }
         if (streamDone) break;
       }
-      if (streamDone) break; // stop reading after the [DONE] terminal sentinel
-    }
-    if (!streamDone) {
-      buffer += decoder.decode();
-      if (buffer.trim()) processLine(buffer);
-    }
+      if (!streamDone) {
+        buffer += decoder.decode();
+        if (buffer.trim()) processLine(buffer);
+      }
 
-    return finishReason ? { text, finishReason } : { text };
+      attempt.outcome = 'success';
+      const result = finishReason ? { text, finishReason } : { text };
+      return {
+        result,
+        metadata: {
+          provider: 'openai-http',
+          model: attempt.effectiveModel,
+          effectiveModel: attempt.effectiveModel,
+          requestedModel: model,
+          temperature: 'temperature' in payload ? temperature : null,
+          usage: attempt.usage,
+          cacheTokens: extractCacheTokens(attempt.usage),
+          rawResponse,
+          content: text,
+        },
+      };
+    } finally {
+      dispatchMetadata(onAttempt, attempt);
+    }
+  };
+
+  try {
+    let success;
+    try {
+      success = await runAttempt('initial');
+    } catch (err) {
+      // `temperature` rejected for this model: drop the field and re-issue
+      // once. Cannot loop — the field is gone from `payload` after this hit.
+      if (!isTemperatureRejectedError(err) || !('temperature' in payload)) throw err;
+      markTemperatureRejected(model);
+      delete payload.temperature;
+      success = await runAttempt('temperature_schema');
+    }
+    dispatchMetadata(onResponse, success.metadata);
+    return success.result;
   } catch (err) {
     if (timedOut) throw abortError('LLM stream timed out');
     if (signal?.aborted || /** @type {any} */ (err)?.name === 'AbortError') throw abortError('External abort signal canceled LLM stream');

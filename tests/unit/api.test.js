@@ -7,6 +7,16 @@ import {
   computeBackoffMs,
   callLLM,
 } from '../../src/api.js';
+function failingSseBody(chunks, error) {
+  const encoder = new globalThis.TextEncoder();
+  return {
+    async *[Symbol.asyncIterator]() {
+      for (const chunk of chunks) yield encoder.encode(chunk);
+      throw error;
+    },
+  };
+}
+
 
 test('HttpError captures status, body, and Retry-After', () => {
   const err = new HttpError(503, 'service down', '5');
@@ -198,6 +208,7 @@ test('callLLM reports usage metadata without changing string return value', asyn
     assert.equal(requestBody.seed, 42);
     assert.equal(seen.length, 1);
     assert.equal(seen[0].model, 'served-model');
+    assert.equal(seen[0].effectiveModel, 'served-model');
     assert.equal(seen[0].requestedModel, 'requested-model');
     assert.equal(seen[0].temperature, 0.2);
     assert.equal(seen[0].seed, 42);
@@ -209,6 +220,52 @@ test('callLLM reports usage metadata without changing string return value', asyn
     assert.equal(seen[0].content, 'hello');
     // No provider cache fields in this usage payload -> absent-safe null.
     assert.equal(seen[0].cacheTokens, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+test('callLLM retains JSON metadata for an empty completion without firing onResponse', async () => {
+  const originalFetch = globalThis.fetch;
+  const attempts = [];
+  const responses = [];
+  const usage = { prompt_tokens: 10, completion_tokens: 0 };
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return {
+      ok: true,
+      json: async () => ({
+        model: 'served-model',
+        choices: [{ message: { content: '' } }],
+        usage,
+      }),
+    };
+  };
+
+  try {
+    await assert.rejects(
+      callLLM({
+        prompt: 'x',
+        apiKey: 'test',
+        model: 'requested-model',
+        maxRetries: 2,
+        sleep: async () => {},
+        onAttempt: (attempt) => attempts.push(attempt),
+        onResponse: (metadata) => responses.push(metadata),
+      }),
+      /Empty response from LLM API/,
+    );
+    assert.equal(calls, 1, 'empty content remains non-retryable');
+    assert.deepEqual(attempts, [{
+      attemptIndex: 1,
+      requestedModel: 'requested-model',
+      effectiveModel: 'served-model',
+      usage,
+      retryReason: 'initial',
+      minimumChargeApplied: false,
+      outcome: 'error',
+    }]);
+    assert.deepEqual(responses, []);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -250,25 +307,195 @@ test('an externally aborted call still surfaces as AbortError (#444)', async () 
   }
 });
 
-test('a throw from onResponse does not re-issue the paid request (#444)', async () => {
+test('metadata callback exceptions do not re-issue or mask a paid request', async () => {
   const originalFetch = globalThis.fetch;
   let calls = 0;
+  let responseCallbacks = 0;
+  let attemptCallbacks = 0;
   globalThis.fetch = async () => {
     calls++;
     return { ok: true, json: async () => ({ choices: [{ message: { content: 'hi' } }] }) };
   };
   try {
+    const content = await callLLM({
+      prompt: 'x',
+      apiKey: 'test',
+      maxRetries: 3,
+      sleep: async () => {},
+      onResponse: () => {
+        responseCallbacks++;
+        throw new TypeError('response callback boom');
+      },
+      onAttempt: () => {
+        attemptCallbacks++;
+        throw new TypeError('attempt callback boom');
+      },
+    });
+    assert.equal(content, 'hi');
+    assert.equal(calls, 1, 'fetch must run exactly once despite callback throws');
+    assert.equal(responseCallbacks, 1, 'response callback must run exactly once');
+    assert.equal(attemptCallbacks, 1, 'attempt callback must run exactly once');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('callLLM records every paid retry exactly once with response-derived metadata', async () => {
+  const originalFetch = globalThis.fetch;
+  const attempts = [];
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    if (calls === 1) {
+      return {
+        ok: false,
+        status: 503,
+        headers: { get: () => null },
+        text: async () => 'busy',
+      };
+    }
+    return {
+      ok: true,
+      json: async () => ({
+        model: 'served-model',
+        choices: [{ message: { content: 'recovered' } }],
+        usage: { prompt_tokens: 7, completion_tokens: 2 },
+      }),
+    };
+  };
+  try {
+    const content = await callLLM({
+      prompt: 'x',
+      apiKey: 'test',
+      model: 'requested-model',
+      maxRetries: 1,
+      sleep: async () => {},
+      onAttempt: (attempt) => attempts.push(attempt),
+    });
+    assert.equal(content, 'recovered');
+    assert.equal(calls, 2);
+    assert.deepEqual(attempts, [
+      {
+        attemptIndex: 1,
+        requestedModel: 'requested-model',
+        effectiveModel: null,
+        usage: null,
+        retryReason: 'initial',
+        minimumChargeApplied: false,
+        outcome: 'error',
+      },
+      {
+        attemptIndex: 2,
+        requestedModel: 'requested-model',
+        effectiveModel: 'served-model',
+        usage: { prompt_tokens: 7, completion_tokens: 2 },
+        retryReason: 'transport',
+        minimumChargeApplied: false,
+        outcome: 'success',
+      },
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+test('callLLM retains streamed response metadata when the body fails after a valid payload', async () => {
+  const originalFetch = globalThis.fetch;
+  const attempts = [];
+  const responses = [];
+  const usage = { prompt_tokens: 3, completion_tokens: 2 };
+  globalThis.fetch = async () => ({
+    ok: true,
+    headers: { get: () => 'text/event-stream' },
+    body: failingSseBody([
+      `data: {"model":"provider-model","usage":${JSON.stringify(usage)},"choices":[{"delta":{"content":"partial"}}]}\n\n`,
+    ], new Error('stream body failed')),
+  });
+  try {
     await assert.rejects(
       callLLM({
         prompt: 'x',
         apiKey: 'test',
-        maxRetries: 3,
-        sleep: async () => {},
-        onResponse: () => { throw new TypeError('callback boom'); },
+        model: 'requested-model',
+        timeout: 300_001,
+        maxRetries: 0,
+        onAttempt: (attempt) => attempts.push(attempt),
+        onResponse: (metadata) => responses.push(metadata),
       }),
-      /callback boom/,
+      /LLM API failed after 1 attempts: stream body failed/,
     );
-    assert.equal(calls, 1, 'fetch must run exactly once despite the onResponse throw');
+    assert.deepEqual(attempts, [{
+      attemptIndex: 1,
+      requestedModel: 'requested-model',
+      effectiveModel: 'provider-model',
+      usage,
+      retryReason: 'initial',
+      minimumChargeApplied: false,
+      outcome: 'error',
+    }]);
+    assert.deepEqual(responses, []);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+test('callLLM labels the temperature omission retry as temperature_schema', async () => {
+  const originalFetch = globalThis.fetch;
+  const attempts = [];
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    if (calls === 1) {
+      return {
+        ok: false,
+        status: 400,
+        headers: { get: () => null },
+        text: async () => 'temperature is unsupported',
+      };
+    }
+    return {
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'ok' } }] }),
+    };
+  };
+  try {
+    assert.equal(
+      await callLLM({
+        prompt: 'x',
+        apiKey: 'test',
+        model: 'temperature-retry-model',
+        onAttempt: (attempt) => attempts.push(attempt),
+      }),
+      'ok',
+    );
+    assert.equal(calls, 2);
+    assert.deepEqual(attempts.map((attempt) => attempt.retryReason), ['initial', 'temperature_schema']);
+    assert.deepEqual(attempts.map((attempt) => attempt.outcome), ['error', 'success']);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('callLLM reports null effective identity when the provider omits it', async () => {
+  const originalFetch = globalThis.fetch;
+  const responses = [];
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({ choices: [{ message: { content: 'ok' } }] }),
+  });
+  try {
+    assert.equal(
+      await callLLM({
+        prompt: 'x',
+        apiKey: 'test',
+        model: 'requested-model',
+        onResponse: (metadata) => responses.push(metadata),
+      }),
+      'ok',
+    );
+    assert.equal(responses.length, 1);
+    assert.equal(responses[0].effectiveModel, null);
+    assert.equal(responses[0].model, null);
+    assert.equal(responses[0].requestedModel, 'requested-model');
+    assert.equal(responses[0].usage, null);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -323,6 +550,7 @@ test('callLLM sends response_format only when responseFormat is provided (#C2)',
 
 test('callLLM makes exactly maxRetries+1 transport attempts on a persistent retryable error (#C3)', async () => {
   const originalFetch = globalThis.fetch;
+  const attempts = [];
   let calls = 0;
   globalThis.fetch = async () => {
     calls += 1;
@@ -330,11 +558,47 @@ test('callLLM makes exactly maxRetries+1 transport attempts on a persistent retr
   };
   try {
     await assert.rejects(
-      callLLM({ prompt: 'x', apiKey: 'k', maxRetries: 2, sleep: async () => {} }),
+      callLLM({
+        prompt: 'x',
+        apiKey: 'k',
+        model: 'requested-model',
+        maxRetries: 2,
+        sleep: async () => {},
+        onAttempt: (attempt) => attempts.push(attempt),
+      }),
       (err) => err.status === 503,
     );
     // Transport retry is owned by callLLM: 1 initial attempt + 2 retries.
     assert.equal(calls, 3);
+    assert.deepEqual(attempts, [
+      {
+        attemptIndex: 1,
+        requestedModel: 'requested-model',
+        effectiveModel: null,
+        usage: null,
+        retryReason: 'initial',
+        minimumChargeApplied: false,
+        outcome: 'error',
+      },
+      {
+        attemptIndex: 2,
+        requestedModel: 'requested-model',
+        effectiveModel: null,
+        usage: null,
+        retryReason: 'transport',
+        minimumChargeApplied: false,
+        outcome: 'error',
+      },
+      {
+        attemptIndex: 3,
+        requestedModel: 'requested-model',
+        effectiveModel: null,
+        usage: null,
+        retryReason: 'transport',
+        minimumChargeApplied: false,
+        outcome: 'error',
+      },
+    ]);
   } finally {
     globalThis.fetch = originalFetch;
   }

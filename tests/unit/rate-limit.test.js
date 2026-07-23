@@ -154,28 +154,85 @@ test('free concurrency limit rejects a second active slot and releases after com
     limits: { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 99, burstPerHour: 99 }, byok: { maxChars: 20000, maxConcurrent: 2 } },
   });
 
-  assert.deepEqual(await limiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.30' }), {
-    allowed: true,
-    tier: WEB_TIERS.FREE,
-  });
+  const first = await limiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.30' });
+  assert.equal(first.allowed, true);
+  assert.equal(typeof first.lease, 'string');
   assert.deepEqual(await limiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.30' }), {
     allowed: false,
     status: 429,
     reason: 'concurrent limit exceeded',
   });
-  await limiter.releaseConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.30' });
+  await limiter.releaseConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.30', lease: first.lease });
   assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.30' })).allowed, true);
+});
+test('concurrency leases garbage-collect expired registry members under steady traffic and reject wrong, duplicate, and ABA releases', async () => {
+  let clock = 1_000;
+  const kv = createMemoryKv({ now: () => clock });
+  const limiter = createRateLimiter({
+    kv,
+    hmacSecret: 'secret',
+    concurrencyTtlMs: 10,
+    leaseId: (() => {
+      let n = 0;
+      return () => `lease-${++n}`;
+    })(),
+    limits: { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 99, burstPerHour: 99 }, byok: { maxChars: 20000, maxConcurrent: 2 } },
+  });
+  const input = { tier: WEB_TIERS.FREE, ip: '203.0.113.31' };
+  const first = await limiter.acquireConcurrency(input);
+  assert.equal(first.lease, 'lease-1');
+  await limiter.releaseConcurrency({ ...input, lease: 'wrong' });
+  assert.equal((await limiter.acquireConcurrency(input)).status, 429);
+  clock += 11;
+  const replacement = await limiter.acquireConcurrency(input);
+  assert.equal(replacement.lease, 'lease-3');
+  await limiter.releaseConcurrency({ ...input, lease: first.lease });
+  assert.equal((await limiter.acquireConcurrency(input)).status, 429);
+  await limiter.releaseConcurrency({ ...input, lease: replacement.lease });
+  await limiter.releaseConcurrency({ ...input, lease: replacement.lease });
+  assert.equal((await limiter.acquireConcurrency(input)).allowed, true);
+
+  // Each later acquisition keeps the registry key alive, but only live members
+  // count: expired members cannot accumulate into phantom occupancy.
+  for (let i = 0; i < 4; i += 1) {
+    clock += 11;
+    assert.equal((await limiter.acquireConcurrency(input)).allowed, true);
+  }
+  const twoSlotLimiter = createRateLimiter({
+    kv: createMemoryKv({ now: () => clock }),
+    hmacSecret: 'secret',
+    concurrencyTtlMs: 10,
+    leaseId: (() => {
+      let n = 0;
+      return () => `two-slot-${++n}`;
+    })(),
+    limits: { free: { maxChars: 4000, maxConcurrent: 2, reqPerDay: 99, burstPerHour: 99 }, byok: { maxChars: 20000, maxConcurrent: 2 } },
+  });
+  const twoSlotInput = { tier: WEB_TIERS.FREE, ip: '203.0.113.32' };
+  clock = 2_000;
+  assert.equal((await twoSlotLimiter.acquireConcurrency(twoSlotInput)).allowed, true);
+  clock += 5;
+  assert.equal((await twoSlotLimiter.acquireConcurrency(twoSlotInput)).allowed, true);
+  clock += 6;
+  assert.equal((await twoSlotLimiter.acquireConcurrency(twoSlotInput)).allowed, true, 'the first expired member is garbage-collected while the registry remains alive');
+  assert.equal((await twoSlotLimiter.acquireConcurrency(twoSlotInput)).status, 429, 'the cap counts the two remaining live leases');
 });
 
 test('concurrency slot TTL defaults to 5m and honors an override so an extended stream never expires the slot', async () => {
   const defaultCalls = [];
-  const defaultKv = { async incr(_key, opts) { defaultCalls.push(opts); return 1; }, async decr() { return 0; } };
+  const defaultKv = {
+    async acquireLease(_registryKey, _lease, _maxConcurrent, opts) { defaultCalls.push(opts); return true; },
+    async releaseLease() { return true; },
+  };
   const defaultLimiter = createRateLimiter({ kv: defaultKv, hmacSecret: 'secret', now: () => 0 });
   await defaultLimiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.40' });
   assert.equal(defaultCalls[0].ttlMs, 5 * 60 * 1000);
 
   const overrideCalls = [];
-  const overrideKv = { async incr(_key, opts) { overrideCalls.push(opts); return 1; }, async decr() { return 0; } };
+  const overrideKv = {
+    async acquireLease(_registryKey, _lease, _maxConcurrent, opts) { overrideCalls.push(opts); return true; },
+    async releaseLease() { return true; },
+  };
   const overrideLimiter = createRateLimiter({ kv: overrideKv, hmacSecret: 'secret', now: () => 0, concurrencyTtlMs: 12 * 60 * 1000 });
   await overrideLimiter.acquireConcurrency({ tier: WEB_TIERS.FREE, ip: '203.0.113.40' });
   assert.equal(overrideCalls[0].ttlMs, 12 * 60 * 1000);
@@ -293,15 +350,18 @@ test('pro concurrency is subject-keyed: 3 slots pass, the 4th is 429 CONCURRENT,
   // Default TIER_LIMITS.pro.maxConcurrent is 3.
   const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
   const subject = 'lic-subject-conc';
-  assert.deepEqual(await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject }), { allowed: true, tier: WEB_TIERS.PRO });
-  assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject })).allowed, true);
-  assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject })).allowed, true);
+  const leases = [];
+  for (let i = 0; i < 3; i += 1) {
+    const acquired = await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject });
+    assert.equal(acquired.allowed, true);
+    leases.push(acquired.lease);
+  }
   assert.deepEqual(await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject }), {
     allowed: false,
     status: 429,
     reason: QUOTA_REASONS.CONCURRENT,
   });
-  await limiter.releaseConcurrency({ tier: WEB_TIERS.PRO, subject });
+  await limiter.releaseConcurrency({ tier: WEB_TIERS.PRO, subject, lease: leases[0] });
   assert.equal((await limiter.acquireConcurrency({ tier: WEB_TIERS.PRO, subject })).allowed, true);
 });
 

@@ -13,11 +13,16 @@
   fixes (locale default, FP-report link, dead-UI contract artifact, version
   badge), numeric-safety v2/v2.1, the 184-pattern catalog, the free-quota
   raise (20/day, 10/hour), and the BYOK model refresh (+Gemini provider).
-- Payment: **step 1 (LS tax review) is CLEARED — observed 2026-07-23.** The
-  live checkout URL now resolves `302 → 200` at "Patina Pro - Checkout" with
-  the $9.99 price rendered (it returned 404 through 07-22). Store is active.
-  Owner should eyeball `Settings → Payouts → Tax information: Approved` in the
-  LS dashboard as final confirmation.
+- Payment: **step 1 (LS tax review) is still PENDING** — the dashboard shows
+  `Settings → Payouts → Tax information: Submitted` (owner-checked
+  2026-07-23). Progress signal, not clearance: the live checkout URL now
+  resolves `302 → 200` at "Patina Pro - Checkout" with the $9.99 price
+  rendered (it returned 404 through 07-22), which likely reflects the variant
+  publishing — LS can render checkout pages before the store is cleared to
+  take payments. **The dashboard status is authoritative**; a rendering
+  checkout page must never be recorded as review clearance again.
+  Owner steps that do NOT depend on the review (Vercel secret provisioning,
+  the PAY-B binding approval record) can proceed now; only Live-open waits.
 - Still not sellable by design: the deployed launch config remains the
   fail-closed disabled artifact and the site CTA stays "Pro — coming soon"
   until steps 2–8 below complete. Nothing opens payment automatically.

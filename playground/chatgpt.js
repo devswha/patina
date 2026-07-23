@@ -16,7 +16,7 @@ import {
 
 // Browser globals (eslint config declares only Node globals; sibling modules use
 // the same globalThis convention — e.g. rewrite-client.js).
-const { document, Option } = globalThis;
+const { document, Option, navigator } = globalThis;
 const $ = (sel) => /** @type {HTMLElement} */ (document.querySelector(sel));
 
 const els = {
@@ -793,6 +793,21 @@ function detectLang(text) {
   return null;
 }
 
+// Pick the initial UI language from the browser locale (ko/en/zh/ja; default
+// en). No client-side storage — the playground persists nothing; an explicit
+// pick simply lives in the select for the rest of the session, and pasted text
+// still re-routes via detectLang on the first turn.
+function initialLang() {
+  const langs = (Array.isArray(navigator.languages) && navigator.languages.length)
+    ? navigator.languages
+    : [navigator.language];
+  for (const l of langs) {
+    const base = String(l || '').toLowerCase().slice(0, 2);
+    if (Object.hasOwn(I18N, base)) return base;
+  }
+  return 'en';
+}
+
 // ---------- unified submit ----------
 /** In-flight rewrite attempt: { controller, cancelled }. One at a time (busy gate). */
 let active = null;
@@ -1203,6 +1218,7 @@ els.licenseKey.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.p
 els.provider.addEventListener('change', populateModels);
 
 // ---------- init ----------
+els.lang.value = initialLang();
 populateProviders();
 syncTier();
 renderSuggest();

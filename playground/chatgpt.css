@@ -413,6 +413,8 @@ details.foldout[open] > summary::before { content: "▾ "; }
 .pro-upsell.is-soon { background: var(--bg-elev); color: var(--text-faint); border: 1px solid var(--border); cursor: default; box-shadow: none; }
 .output-actions { display: flex; gap: 8px; margin-top: 10px; }
 .output-action { border-radius: 9999px; padding: 5px 12px; }
+.report-fp { display: inline-block; margin-top: 8px; font-size: 13px; color: var(--text-dim); text-decoration: underline; text-underline-offset: 3px; }
+.report-fp:hover { color: var(--text); }
 
 /* ───────── keyboard focus (a11y) ─────────
    Hover-only affordances are invisible to keyboard users; every interactive
@@ -440,7 +442,8 @@ details.foldout > summary:focus-visible,
 .ctl__select:focus-visible,
 .ctl__input:focus-visible,
 .ctl__action:focus-visible,
-.output-action:focus-visible {
+.output-action:focus-visible,
+.report-fp:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

@@ -300,6 +300,27 @@ test('number safety v2 leaves everyday KO/EN words claim-free (precision regress
   // v2 — the deterministic gate no longer rejects it.
   assert.equal(evaluateNumberSafety('Choose the first option.', 'Choose the second option.', 'en').ok, true);
 });
+test('number safety leaves bare KO discourse counters claim-free (v2.1 regression)', () => {
+  // Live 422: "아무도 말해주지 않는 사실 하나 —" claimed number:1, so the
+  // faux-insight rewrite that deletes the frame (with its counter) failed
+  // numeric equivalence. Bare numerals without a particle/counter are
+  // discourse counters, not quantity claims.
+  const original = '솔직히 말하면, 반전: 개발 기간은 겨우 두 달이었습니다. 아무도 말해주지 않는 사실 하나 — 좋은 도구는 홍보가 필요 없습니다.';
+  const rewrite = '개발 기간은 겨우 두 달이었다. 좋은 도구는 홍보가 필요 없다.';
+  const result = evaluateNumberSafety(original, rewrite, 'ko');
+  assert.equal(result.ok, true, result.reason);
+  assert.deepEqual(result.originalClaims, []);
+  const bare = [
+    ['sentence-final bare numeral', '팁 하나 공유합니다.', '팁을 공유합니다.'],
+    ['dash-separated bare numeral', '질문 하나. 왜 지금인가?', '왜 지금인가?'],
+  ];
+  for (const [name, o, r] of bare) {
+    assert.equal(evaluateNumberSafety(o, r, 'ko').ok, true, name);
+  }
+  // Particled/countered numerals stay claimed: dropping one still fails.
+  assert.equal(evaluateNumberSafety('하나를 선택한다.', '선택한다.', 'ko').ok, false);
+  assert.equal(evaluateNumberSafety('하나만 남았다.', '남았다.', 'ko').ok, false);
+});
 test('number safety claims KO digit+magnitude and fail-closes chained magnitudes', () => {
   const passing = [
     ['single magnitude with counter', '참석자가 3만 명이다.', '참석자가 3만 명이다.', ['number:30000/1']],

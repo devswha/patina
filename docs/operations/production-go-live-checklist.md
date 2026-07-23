@@ -7,7 +7,25 @@
 > flip from HOLD → live is mechanical once approvals land. **No secret values
 > live here or anywhere in the repo** — only names and non-secret identifiers.
 
-## Current state (2026-07-23)
+## Current state (2026-07-23, evening)
+
+- **First live payment landed.** The owner's real $9.99 subscription was
+  accepted on the live checkout; the issued license validates against store
+  425473 / product 1236551 / variant 1932893 — the exact PAY-B binding
+  identity. The tax-review question is settled functionally: the store takes
+  live payments (dashboard status lagged behind).
+- **Live pro path proven end-to-end**: license -> entitlement -> claude-sonnet-5
+  rewrite -> floors passed (fidelity 83.3 / MPS 100) with numeric claims
+  byte-preserved. Two env defects found and fixed the same day: 17-day-old
+  staging product/variant IDs in `LS_PRO_PRODUCT_ID`/`LS_PRO_VARIANT_ID`
+  (fail-closed 403 until corrected) and an 11-char placeholder `CRON_SECRET`
+  (rotated to 64-hex).
+- Production source binding integrated and sealed (main `f16e414`); Gate B
+  ledger: [`gate-b-readiness-20260723.md`](gate-b-readiness-20260723.md).
+  Outstanding: green cron-authorized monitor run on a git deployment, and
+  PAY-B-COST evidence via the G002 collector rebuild
+  ([`g002-collector-redesign.md`](g002-collector-redesign.md)). Rollback drill
+  procedures with measured latencies: [`rollback-drills.md`](rollback-drills.md).
 
 - Engine/quality: clean. Since 07-21, `dev`→`main` also shipped the playground
   fixes (locale default, FP-report link, dead-UI contract artifact, version

@@ -16,6 +16,8 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const checkedInState = () => JSON.parse(readFileSync(stateUrl, 'utf8'));
 const checkedInEvidence = () => JSON.parse(readFileSync(evidenceUrl, 'utf8'));
 const checkedInRuntimeEvidence = () => JSON.parse(readFileSync(runtimeEvidenceUrl, 'utf8'));
+const productionEvidenceUrl = new URL('../../docs/operations/pay-b-binding-20260723.json', import.meta.url);
+const checkedInProductionEvidence = () => JSON.parse(readFileSync(productionEvidenceUrl, 'utf8'));
 function setAtPath(value, path, replacement) { const parent = path.slice(0, -1).reduce((current, key) => current[key], value); parent[path.at(-1)] = replacement; }
 function leaves(value, path = []) { if (Array.isArray(value)) return value.flatMap((entry, index) => leaves(entry, [...path, index])); if (value && typeof value === 'object') return Object.entries(value).flatMap(([key, entry]) => leaves(entry, [...path, key])); return [path]; }
 const validSources = () => ({ modelDefaults: clone(DEFAULT_BEST_MODELS), providers: clone(PROVIDERS), webProviderPresets: clone(PROVIDER_PRESETS), launch: { schemaVersion: 1, channel: 'disabled', enabled: false, checkoutOrigin: null, checkoutPath: null, evidence: null }, bindings: CHECKOUT_EVIDENCE_BINDINGS, checkHashes: false });
@@ -24,15 +26,17 @@ test('checked-in v6.4 preflight state is a staging-ready non-receipt hold', () =
   const state = checkedInState();
   assert.deepEqual(validateCheckedInPreflightHold(), []);
   assert.equal(state.promotionRows.length, 5);
-  assert.equal(state.completedDecisions.length, 8);
-  assert.equal(state.blockers.length, 11);
-  assert.equal(state.deferredActions.length, 3);
+  assert.equal(state.completedDecisions.length, 10);
+  assert.equal(state.blockers.length, 10);
+  assert.equal(state.deferredActions.length, 2);
   assert.ok(state.blockers.every((blocker) => blocker.type === 'human_action' && blocker.evidence === null));
   assert.ok(state.deferredActions.every((action) => action.type === 'repo_action' && action.executable === false));
-  assert.deepEqual(state.completedDecisions.slice(-3), [
+  assert.deepEqual(state.completedDecisions.slice(-5), [
     { id: 'PAY_STG_BINDING_APPROVAL', status: 'COMPLETED', evidence: 'PAY-STG-20260716-1199625-1875389' },
     { id: 'SOURCE_BINDING_STAGING_INTEGRATION', status: 'COMPLETED', evidence: 'PAY-STG-20260716-1199625-1875389' },
     { id: 'PAY_STG_RUNTIME_TEST_SMOKE', status: 'COMPLETED', evidence: 'PAY-STG-RUNTIME-20260716-8973866' },
+    { id: 'PAY_B_BINDING_APPROVAL', status: 'COMPLETED', evidence: 'PAY-B-20260723-1236551-1932893' },
+    { id: 'SOURCE_BINDING_PRODUCTION_INTEGRATION', status: 'COMPLETED', evidence: 'PAY-B-20260723-1236551-1932893' },
   ]);
 });
 
@@ -87,7 +91,7 @@ test('validator cryptographically and semantically validates the staging Lemon e
   const joined = validSources();
   joined.evidence = checkedInEvidence();
   joined.bindings = Object.freeze({ [checkoutEvidenceBindingKey({ channel: 'staging', evidence: joined.evidence.evidenceId, origin: 'https://other.example.test', path: '/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514' })]: true });
-  assert.match(validatePreflightHold(state, joined).join('\n'), /validated staging binding/);
+  assert.match(validatePreflightHold(state, joined).join('\n'), /validated staging and production bindings/);
   const historicalOneTime = validSources();
   historicalOneTime.evidence = checkedInEvidence();
   assert.deepEqual(validatePreflightHold(state, historicalOneTime), []);
@@ -113,14 +117,23 @@ test('validator rejects staging runtime evidence tampering, secrets, and promoti
 
 test('validator rejects unknown, self-referential, cyclic, and reversed dependency edges', () => {
   const unknown = checkedInState(); unknown.deferredActions[0].blockedBy = ['NOT_A_DEFINED_ID']; assert.match(validatePreflightHold(unknown, validSources()).join('\n'), /unknown ID/);
-  const self = checkedInState(); self.deferredActions[0].blockedBy = ['SOURCE_BINDING_PRODUCTION_INTEGRATION']; assert.match(validatePreflightHold(self, validSources()).join('\n'), /self reference/);
-  const cyclic = checkedInState(); cyclic.deferredActions[0].blockedBy = ['V6_4_METADATA_COPY_RECONCILIATION']; cyclic.deferredActions[1].blockedBy = ['SOURCE_BINDING_PRODUCTION_INTEGRATION']; assert.match(validatePreflightHold(cyclic, validSources()).join('\n'), /cycle/);
-  const reversed = checkedInState(); reversed.deferredActions[0].blockedBy = ['GATE_B']; assert.match(validatePreflightHold(reversed, validSources()).join('\n'), /reverses release order/);
+  const self = checkedInState(); self.deferredActions[0].blockedBy = ['V6_4_METADATA_COPY_RECONCILIATION']; assert.match(validatePreflightHold(self, validSources()).join('\n'), /self reference/);
+  const cyclic = checkedInState(); cyclic.deferredActions[0].blockedBy = ['FINAL_TAG_PUBLISH_COMMAND']; cyclic.deferredActions[1].blockedBy = ['V6_4_METADATA_COPY_RECONCILIATION']; assert.match(validatePreflightHold(cyclic, validSources()).join('\n'), /cycle/);
+  const reversed = checkedInState(); reversed.deferredActions[0].blockedBy = ['REL_PUBLISH']; assert.match(validatePreflightHold(reversed, validSources()).join('\n'), /reverses release order/);
 });
-test('validator retains production source-binding and deployment evidence blockers', () => {
-  const productionDependency = checkedInState();
-  productionDependency.deferredActions[0].blockedBy = ['GATE_B'];
-  assert.match(validatePreflightHold(productionDependency, validSources()).join('\n'), /SOURCE_BINDING_PRODUCTION_INTEGRATION/);
+test('validator validates the production binding evidence and retains deployment evidence blockers', () => {
+  const mutateProductionEvidence = (mutate, expected) => {
+    const sources = validSources();
+    sources.productionEvidence = checkedInProductionEvidence();
+    mutate(sources.productionEvidence);
+    assert.match(validatePreflightHold(checkedInState(), sources).join('\n'), expected);
+  };
+  mutateProductionEvidence((evidence) => { evidence.factsSha256 = '0'.repeat(64); }, /factsSha256/);
+  mutateProductionEvidence((evidence) => { evidence.checkoutUrl = 'https://other.example.test/checkout/buy/8ab3a49b-cc55-49e8-bd94-9cbdff5e6a7d'; }, /checkout URL/);
+  mutateProductionEvidence((evidence) => { evidence.variant.priceCents = 1000; }, /\$9\.99/);
+  mutateProductionEvidence((evidence) => { evidence.reviewedStagingEvidence = 'PAY-STG-other'; }, /reviewed staging evidence/);
+  mutateProductionEvidence((evidence) => { evidence.approvalCommit = 'not-a-commit'; }, /40-hex/);
+  mutateProductionEvidence((evidence) => { evidence.gateB = 'passed'; }, /must contain exactly/);
   const stagingEvidence = checkedInState();
   stagingEvidence.blockers.find((blocker) => blocker.id === 'PAY_STG').exitEvidence = stagingEvidence.blockers.find((blocker) => blocker.id === 'PAY_STG').exitEvidence.replace('completed staging source-binding integration commit or artifact', 'completed staging source-binding integration');
   assert.match(validatePreflightHold(stagingEvidence, validSources()).join('\n'), /PAY_STG/);

@@ -7,7 +7,23 @@
 > flip from HOLD → live is mechanical once approvals land. **No secret values
 > live here or anywhere in the repo** — only names and non-secret identifiers.
 
-## Current state (2026-07-23)
+## Current state (2026-07-23, evening)
+
+- **First live payment landed.** The owner's real $9.99 subscription was
+  accepted on the live checkout; the issued license validates against store
+  425473 / product 1236551 / variant 1932893 — the exact PAY-B binding
+  identity. The tax-review question is settled functionally: the store takes
+  live payments (dashboard status lagged behind).
+- **Live pro path proven end-to-end**: license -> entitlement -> claude-sonnet-5
+  rewrite -> floors passed (fidelity 83.3 / MPS 100) with numeric claims
+  byte-preserved. Two env defects found and fixed the same day: 17-day-old
+  staging product/variant IDs in `LS_PRO_PRODUCT_ID`/`LS_PRO_VARIANT_ID`
+  (fail-closed 403 until corrected) and an 11-char placeholder `CRON_SECRET`
+  (rotated to 64-hex).
+- Production source binding integrated and sealed (main `f16e414`). Gate B
+  ledger: the "Gate B readiness" section below. Rollback drill procedures with
+  measured latencies: [`rollback-drills.md`](rollback-drills.md). PAY-B-COST
+  collector rebuild design: [`g002-collector-redesign.md`](g002-collector-redesign.md).
 
 - Engine/quality: clean. Since 07-21, `dev`→`main` also shipped the playground
   fixes (locale default, FP-report link, dead-UI contract artifact, version
@@ -112,3 +128,41 @@ Owner = human action; Agent = repo action I run once its blocker clears.
 Nothing further blocks on code — all repo actions are gated by owner approvals
 above. This checklist is the standing prep. When step 1 clears, ping me and I
 run the re-check → then execute the agent steps in order.
+
+## Gate B readiness (2026-07-23)
+
+Non-secret working ledger for the GATE_B blocker. Timestamps are UTC.
+
+### Complete
+
+| Requirement | Evidence |
+|---|---|
+| Production source-binding integration | patina main `f16e414` (PR #655): binding tuple + sealed `pay-b-binding-20260723.json` (factsSha256), hold ledgers revised, CI-validated on every commit |
+| Owner PAY-B approval | `PAY-B-20260723-1236551-1932893`, owner repo commit `487b51c` |
+| First live payment | Live checkout accepted a real $9.99 subscription (owner card, 2026-07-23). License meta from the public validate endpoint: store 425473, product 1236551, variant 1932893 — exact binding identity match |
+| Hosted identity / dedicated runtime | Pro path pinned to provider `claude`, model claude-sonnet-5, dedicated `PATINA_PRO_API_KEY` (separate from free); production requires explicit PRO env (503 fail-closed otherwise, verified live) |
+| Live pro runtime proof | 2026-07-23: `tier=pro` + purchased license -> HTTP 200 `done`; claims preserved ("1,200만 원", "3만 명" byte-exact), fidelity 83.3 / MPS 100; catalog patterns #35/#36/#37 applied on the paid path |
+| Entitlement fail-closed proofs | Dummy license -> 403 `license not entitled`; stale product/variant env (17-day-old staging IDs) also 403 until corrected to live IDs — the filter never passed a mismatch |
+| Synthetic monitoring inputs | `PATINA_SYNTHETIC_PRO_LICENSE` (the purchased license) registered in Production; CRON_SECRET rotated from an 11-char placeholder to a 64-hex random |
+
+### Outstanding for Gate B
+
+1. **Real-path OBS evidence**: `/api/pro-monitor` returns 503
+   `monitor_unavailable` on CLI-redeployed builds because `VERCEL_GIT_COMMIT_SHA`
+   is absent (identity check fails closed, correctly). Operational rule
+   recorded below; recovers on the next git-based production deployment, after
+   which a cron-authorized run must be captured green.
+2. **Content-valid PAY-B-COST evidence**: requires the G002 staging probe
+   collector, which was removed with the `ops/*` harness. Rebuild design:
+   [`g002-collector-redesign.md`](g002-collector-redesign.md). The receipt
+   issuer/validator (`scripts/pay-b-cost-receipt.mjs`, spec
+   [`pay-b-cost-v1.md`](pay-b-cost-v1.md)) is present and tested.
+3. **Owner + maintainer sign-off** naming the above once items 1 and 2 land.
+
+### Operational rule (learned 2026-07-23)
+
+A `vercel redeploy` build carries no `VERCEL_GIT_COMMIT_SHA`. The pro-monitor
+sees that as a broken deployment identity and stays at 503, which is the
+fail-closed behavior we want. So production ships through git, dev merged to
+main. Keep CLI redeploys for emergency env propagation, then follow up with a
+git deploy so the monitor gets its identity back.

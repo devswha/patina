@@ -46,7 +46,12 @@ export const FIDELITY_FLOOR = 70;
  * provider quota. These are recommended defaults; the server is the enforcer.
  */
 export const TIER_LIMITS = Object.freeze({
-  free: Object.freeze({ maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }),
+  // Launch-window free caps (2026-07-23): 5/day + 2/hour choked a first visit
+  // (sample + own text + one refine already hit the burst). 20/day at ~$0.01
+  // per free rewrite bounds worst-case spend at ~$0.20/IP/day while a session
+  // can actually explore. Still abuse-bounded — never unlimited: the free tier
+  // spends the server key.
+  free: Object.freeze({ maxChars: 4000, maxConcurrent: 1, reqPerDay: 20, burstPerHour: 10 }),
   byok: Object.freeze({ maxChars: 20000, maxConcurrent: 2 }),
   pro: Object.freeze({ maxChars: 20000, reqPerDay: 200, maxConcurrent: 3, charsPerMonth: 1_000_000 }),
 });

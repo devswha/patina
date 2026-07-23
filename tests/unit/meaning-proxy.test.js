@@ -134,7 +134,7 @@ test('number safety accepts only deterministic equivalent claims across locales'
   for (const [name, lang, original, rewrite] of cases) {
     const result = evaluateNumberSafety(original, rewrite, lang);
     assert.equal(result.ok, true, `${name}: ${result.reason}`);
-    assert.equal(result.version, 'numeric-safety-v1');
+    assert.equal(result.version, 'numeric-safety-v2');
   }
 });
 
@@ -255,8 +255,7 @@ test('number safety handles CJK numeric context and Han numeral compounds', () =
 
 test('number safety rejects unsupported or partial word-number expressions', () => {
   const cases = [
-    ['en ordinal replacement', 'en', 'Choose the first option.', 'Choose the second option.'],
-    ['en fraction', 'en', 'Use half the amount.', 'Use half the amount.'],
+    ['en unsupported teen word number', 'en', 'Choose thirteen options.', 'Choose one option.'],
     ['en unsupported magnitude must not collapse', 'en', 'Choose one quadrillion options.', 'Choose one option.'],
     ['en partial word number', 'en', 'Choose one hundred options.', 'Choose one option.'],
     ['en unsupported word-number insertion', 'en', 'Choose one option.', 'Choose one hundred options.'],
@@ -271,6 +270,60 @@ test('number safety rejects unsupported or partial word-number expressions', () 
     const result = evaluateNumberSafety(original, rewrite, lang);
     assert.equal(result.ok, false, name);
     assert.equal(result.reason, 'unsupported_word_number', name);
+  }
+});
+test('number safety v2 leaves everyday KO/EN words claim-free (precision regression)', () => {
+  // v1 regressions: Sino-Korean numeral morphemes inside ordinary words
+  // (이+해, 오+해, 구+조, 조+건, 경+이, 만+일) and bare EN ordinals/fractions
+  // 422-rejected most real prose on the live web tier. These must all pass.
+  const cases = [
+    ['ko 이해', 'ko', '이 문제를 이해하고 있다.'],
+    ['ko 오해', 'ko', '오해를 풀고 싶다.'],
+    ['ko 구조', 'ko', '시스템 구조를 바꿨다.'],
+    ['ko 조건', 'ko', '조건이 좋아진다.'],
+    ['ko 조회', 'ko', '조회수가 늘었다.'],
+    ['ko 만일', 'ko', '만일의 사태에 대비한다.'],
+    ['ko 환경+조사', 'ko', '디지털 환경이 빠르게 바뀌고 있다.'],
+    ['ko 천장', 'ko', '천장이 높다.'],
+    ['ko 만장일치', 'ko', '만장일치로 통과했다.'],
+    ['ko 해+명절', 'ko', '그 해 명절에 모였다.'],
+    ['ko 환경 개선', 'ko', '환경 개선이 필요하다.'],
+    ['en ordinal prose', 'en', 'The first thing to check is the score.'],
+    ['en fraction prose', 'en', 'Half of our users prefer the second option.'],
+    ['en quarter prose', 'en', 'Revenue grew this quarter.'],
+  ];
+  for (const [name, lang, text] of cases) {
+    const result = evaluateNumberSafety(text, text, lang);
+    assert.equal(result.ok, true, `${name}: ${result.reason}`);
+  }
+  // Ordinal/fraction word drift is delegated to the LLM MPS/fidelity floors in
+  // v2 — the deterministic gate no longer rejects it.
+  assert.equal(evaluateNumberSafety('Choose the first option.', 'Choose the second option.', 'en').ok, true);
+});
+test('number safety claims KO digit+magnitude and fail-closes chained magnitudes', () => {
+  const passing = [
+    ['single magnitude with counter', '참석자가 3만 명이다.', '참석자가 3만 명이다.', ['number:30000/1']],
+    ['grouped digits + magnitude', '매출이 1,200만 원 늘었다.', '매출이 1,200만 원 늘었다.', ['number:12000000/1']],
+    ['decimal magnitude', '예산은 1.5억이다.', '예산은 1.5억이다.', ['number:150000000/1']],
+    ['notation equivalence 3만 == 30000', '참석자가 3만 명이다.', '참석자가 30000명이다.', ['number:30000/1']],
+    ['만 as 滿 stays lexical (5점 만점)', '별점 5점 만점에 4점이다.', '별점 5점 만점에 4점이다.', ['number:5/1', 'number:4/1']],
+  ];
+  for (const [name, original, rewrite, claims] of passing) {
+    const result = evaluateNumberSafety(original, rewrite, 'ko');
+    assert.equal(result.ok, true, `${name}: ${result.reason}`);
+    assert.deepEqual(result.originalClaims, claims, name);
+  }
+  const failing = [
+    ['dropped magnitude value', '매출이 1,200만 원 늘었다.', '매출이 늘었다.', 'numeric_claim_changed'],
+    ['changed magnitude value', '참석자가 3만 명이다.', '참석자가 5만 명이다.', 'numeric_claim_changed'],
+    ['spaced chain fails closed', '예산은 1억 2천만 원이다.', '예산은 1억 2천만 원이다.', 'unsupported_word_number'],
+    ['chain drift never compares partial claims', '예산은 1억 2천만 원이다.', '예산은 1억 2천억 원이다.', 'unsupported_word_number'],
+    ['attached chain fails closed', '가격은 3만5천 원이다.', '가격은 3만5천 원이다.', 'unsupported_word_number'],
+  ];
+  for (const [name, original, rewrite, reason] of failing) {
+    const result = evaluateNumberSafety(original, rewrite, 'ko');
+    assert.equal(result.ok, false, name);
+    assert.equal(result.reason, reason, name);
   }
 });
 test('number safety fails closed for ambiguous or changed numeric claims', () => {

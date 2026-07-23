@@ -1,9 +1,9 @@
 # Gate B readiness — status as of 2026-07-23
 
-> Working ledger for the GATE_B blocker ("completed production source-binding
-> integration commit or artifact, hosted identity, usage, dedicated runtime,
-> content-valid PAY-B-COST evidence, and real-path OBS evidence"). Non-secret
-> facts only; timestamps UTC.
+> Working ledger for the GATE_B blocker. Its exit text asks for six things: a
+> completed production source-binding commit, hosted identity, usage, a
+> dedicated runtime, PAY-B-COST evidence with valid content, and OBS evidence
+> from the real path. Nothing on this page is secret. All timestamps are UTC.
 
 ## Complete
 
@@ -19,21 +19,22 @@
 
 ## Outstanding for Gate B
 
-1. **Real-path OBS evidence** — `/api/pro-monitor` returns 503
+1. **Real-path OBS evidence**: `/api/pro-monitor` returns 503
    `monitor_unavailable` on CLI-redeployed builds because `VERCEL_GIT_COMMIT_SHA`
    is absent (identity check fails closed, correctly). Operational rule
    recorded below; recovers on the next git-based production deployment, after
    which a cron-authorized run must be captured green.
-2. **Content-valid PAY-B-COST evidence** — requires the G002 staging probe
+2. **Content-valid PAY-B-COST evidence**: requires the G002 staging probe
    collector, which was removed with the `ops/*` harness. Rebuild design:
    [`g002-collector-redesign.md`](g002-collector-redesign.md). The receipt
    issuer/validator (`scripts/pay-b-cost-receipt.mjs`, spec
    [`pay-b-cost-v1.md`](pay-b-cost-v1.md)) is present and tested.
-3. **Owner + maintainer sign-off** naming the above once 1–2 land.
+3. **Owner + maintainer sign-off** naming the above once items 1 and 2 land.
 
 ## Operational rule (learned 2026-07-23)
 
-`vercel redeploy` produces deployments without `VERCEL_GIT_COMMIT_SHA`; the
-pro-monitor fails closed (503) on them. **Production must be deployed via git
-(dev -> main merge)**; CLI redeploys are for emergency env propagation only and
-must be followed by a git deploy to restore monitor identity.
+A `vercel redeploy` build carries no `VERCEL_GIT_COMMIT_SHA`. The pro-monitor
+sees that as a broken deployment identity and stays at 503, which is the
+fail-closed behavior we want. So production ships through git, dev merged to
+main. Keep CLI redeploys for emergency env propagation, then follow up with a
+git deploy so the monitor gets its identity back.

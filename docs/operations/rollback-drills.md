@@ -1,8 +1,8 @@
 # Rollback drills — procedures and measured latencies
 
-> Supports the ROLLBACK_DRILLS blocker: sale-close within 10 minutes, plus
-> correctness evidence for service-kill and fallback (no 10-minute claim).
-> Latencies below were measured on 2026-07-23 during real operations.
+> Covers the ROLLBACK_DRILLS blocker. Sale-close carries the 10-minute bound.
+> Service-kill and fallback only need correctness evidence, not a time claim.
+> The latencies below come from real operations on 2026-07-23, not estimates.
 
 ## Drill 1 — sale-close (target: ≤ 10 minutes end-to-end)
 
@@ -54,8 +54,8 @@ Note: rolled-back builds retain their original env snapshot — re-verify
 
 ## Standing cautions
 
-- Every CLI redeploy drops `VERCEL_GIT_COMMIT_SHA` and takes the pro-monitor
-  to fail-closed 503 until the next git deploy. Drills that use `redeploy`
-  must end with a dev -> main merge.
-- The monitor cron (15 min) alerts to Discord on synthetic failures; after any
-  drill, watch one full cron cycle before declaring recovery.
+- A CLI redeploy has no `VERCEL_GIT_COMMIT_SHA`, so the pro-monitor stays in
+  its fail-closed 503 until the next git deploy. Any drill that used
+  `redeploy` therefore ends with a dev -> main merge.
+- The monitor cron fires every 15 minutes and alerts Discord when synthetic
+  checks fail. Watch one full cycle after a drill before calling it recovered.

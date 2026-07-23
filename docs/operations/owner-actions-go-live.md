@@ -36,7 +36,7 @@ Vercel → patina project → Settings → Environment Variables → scope **Pro
 | `CRON_SECRET` | generate: `openssl rand -hex 32` |
 | `PATINA_ALERT_DISCORD_WEBHOOK` | Discord → server settings → integrations → webhook URL |
 | `PATINA_SYNTHETIC_PRO_LICENSE` / `PATINA_SYNTHETIC_OBSERVER_SECRET` | issue one synthetic license in LS (test customer) / `openssl rand -hex 32` |
-| `PATINA_PUBLIC_BASE_URL_SHA256` | `printf %s 'https://patina.vibetip.help' \| sha256sum` |
+| `PATINA_PUBLIC_BASE_URL_SHA256` | `printf %s 'https://patina.vibetip.help/' \| sha256sum` — note the **trailing slash**: the monitor hashes the URL-normalized form (`new URL(base).toString()`), which always ends in `/` |
 
 Leave **unset**: `PATINA_PRO_ALLOW_FREE_KEY` (its absence keeps the fail-closed 503).
 Optional caps (`PATINA_PRO_MAX_CHARS`, `PATINA_PRO_REQ_PER_DAY`, `PATINA_PRO_MAX_CONCURRENT`,

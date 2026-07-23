@@ -147,7 +147,7 @@ test('category 3 quota exhaustion + reset: daily/hourly caps reset by bucket and
   assert.deepEqual(await limiter.check({ tier: WEB_TIERS.FREE, ip: `${ip}-daily` }), {
     allowed: true,
     tier: WEB_TIERS.FREE,
-    remainingDay: 4,
+    remainingDay: 19,
   });
 
   const dailyLimiter = createRateLimiter({
@@ -163,8 +163,9 @@ test('category 3 quota exhaustion + reset: daily/hourly caps reset by bucket and
 
   clock = 0;
   const burstLimiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => clock });
-  assert.equal((await burstLimiter.check({ tier: WEB_TIERS.FREE, ip: '203.0.113.31' })).allowed, true);
-  assert.equal((await burstLimiter.check({ tier: WEB_TIERS.FREE, ip: '203.0.113.31' })).allowed, true);
+  for (let i = 0; i < 10; i += 1) {
+    assert.equal((await burstLimiter.check({ tier: WEB_TIERS.FREE, ip: '203.0.113.31' })).allowed, true, `burst request ${i + 1}`);
+  }
   assert.deepEqual(await burstLimiter.check({ tier: WEB_TIERS.FREE, ip: '203.0.113.31' }), { allowed: false, status: 429, reason: 'hourly burst exceeded' });
   clock = 3_600_001;
   assert.equal((await burstLimiter.check({ tier: WEB_TIERS.FREE, ip: '203.0.113.31' })).allowed, true);
@@ -501,7 +502,7 @@ test('category 13 free tier no-regression: IP-keyed metering ignores subject, fa
 
   // A first free response shape is exactly {allowed, tier, remainingDay}.
   const fresh = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });
-  assert.deepEqual(await fresh.check({ tier: FREE, ip, subject: /** @type {any} */ ('ignored') }), { allowed: true, tier: FREE, remainingDay: 4 });
+  assert.deepEqual(await fresh.check({ tier: FREE, ip, subject: /** @type {any} */ ('ignored') }), { allowed: true, tier: FREE, remainingDay: 19 });
 
   // Free concurrency (max 1) enforces; a subject can neither widen nor bypass it.
   const conc = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0 });

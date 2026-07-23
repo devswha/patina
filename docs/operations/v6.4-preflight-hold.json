@@ -34,7 +34,7 @@
       ".env.example": "7f33aea2fbd9649c350d071c900c097c950d17ebf02f1fa758fab91ec9d504f6",
       "src/model-defaults.js": "c568977fcac8ea44d5387a8a8745b062675ec94d73d39ce528c492ad35f87176",
       "src/providers.js": "92415eacaf87da2d0f2aed7db97feeb98b8b087adfe584a02c4478353b807d90",
-      "src/web-rewrite-contract.js": "a444a821db1c8ae099a865bcbcac56773791f4747e1bcfbd8a1a95cfca69dd11",
+      "src/web-rewrite-contract.js": "06c34e27377e7be9eaa56ff24df0c62ec6ba8a61abd0b7219496cf6b2b9d4319",
       "playground/launch-config.js": "4d19fc8ce36651f73f94d80bbcd108a2ccbb50fa3fc25b54d75f193b42ac6bf4",
       "vercel.json": "37a54c0850db54e80eec963c570d4b8a047fcfb4bf56d1a133e5a3934b28260e",
       "scripts/checkout-evidence-bindings.mjs": "b2d50f6b7bd73933058f141931644e18665d016bbd382876da25b10f47d3cab2",

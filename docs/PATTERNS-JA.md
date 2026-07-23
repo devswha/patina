@@ -31,6 +31,7 @@ This page expands the Japanese pattern packs into a browsable reference. It is g
 | 16 | rewrite | ございます／でございます敬語の過剰使用 | [ja-style.md](../patterns/ja-style.md) |
 | 17 | rewrite | 絵文字 | [ja-style.md](../patterns/ja-style.md) |
 | 18 | rewrite | 過剰なである調／硬質文体 | [ja-style.md](../patterns/ja-style.md) |
+| 37 | rewrite | コロン種明かし | [ja-style.md](../patterns/ja-style.md) |
 | 19 | rewrite | チャットボットの痕跡 | [ja-communication.md](../patterns/ja-communication.md) |
 | 20 | rewrite | 学習データ切断日の免責 | [ja-communication.md](../patterns/ja-communication.md) |
 | 21 | rewrite | お世辞・追従的な語調 | [ja-communication.md](../patterns/ja-communication.md) |
@@ -39,6 +40,8 @@ This page expands the Japanese pattern packs into a browsable reference. It is g
 | 23 | rewrite | 過剰なヘッジング | [ja-filler.md](../patterns/ja-filler.md) |
 | 24 | rewrite | 空虚な楽観的結論 | [ja-filler.md](../patterns/ja-filler.md) |
 | 31 | rewrite | 結論シグナルワードの濫用 | [ja-filler.md](../patterns/ja-filler.md) |
+| 35 | rewrite | 前置き咳払い | [ja-filler.md](../patterns/ja-filler.md) |
+| 36 | rewrite | 疑似インサイトの前振り | [ja-filler.md](../patterns/ja-filler.md) |
 | 25 | rewrite | 構造的繰り返し | [ja-structure.md](../patterns/ja-structure.md) |
 | 26 | rewrite | 翻訳調 | [ja-structure.md](../patterns/ja-structure.md) |
 | 27 | rewrite | ている進行形の多用 | [ja-structure.md](../patterns/ja-structure.md) |
@@ -425,6 +428,22 @@ Example after:
 
 > 対策は急いだ方がいい。現状の問題は2つ：人手不足と、既存システムとの互換性だ。
 
+### 37. コロン種明かし
+
+- Source: [ja-style.md](../patterns/ja-style.md)
+- Type: rewrite-capable pattern
+- Watch words: 結論：, オチ：, 一番すごいのは：, 実は：, ネタバレ：, おまけ：
+- Fire condition: 散文の中で、短い名詞句にコロンを付けて後半を劇的な種明かしとして演出する文が 2 回以上現れる場合。または 1 回でも平叙文に直して何も失われない場合。リスト・ラベル・定義ではない散文に限る。
+- Example files: [failure](../examples/ja-37-failure-01.md) · [success](../examples/ja-37-success-01.md)
+
+Example before:
+
+> チームは週末でマイグレーションを終えた。一番すごいのは：ダウンタイムゼロ。オチ：エンジニア二人でやり切った。
+
+Example after:
+
+> チームはエンジニア二人、週末だけでダウンタイムなしのマイグレーションを終えた。
+
 ## コミュニケーションパターン
 
 ### 19. チャットボットの痕跡
@@ -555,6 +574,38 @@ Example before:
 Example after:
 
 > デジタルノマドはもう流行の話ではない。働き方そのものが変わり、人々はその上に新しい日常を築いている。
+
+### 35. 前置き咳払い
+
+- Source: [ja-filler.md](../patterns/ja-filler.md)
+- Type: rewrite-capable pattern
+- Watch words: 正直に言うと, 正直なところ, ぶっちゃけ, はっきり言って, 本音を言えば, あえて言うと
+- Fire condition: 文や段落が前置き表現で始まり、それを削っても後続の主張から何も失われない場合。直後が本論なら 1 回で発火、文書全体で 2 回以上なら位置を問わず発火。
+- Example files: [failure](../examples/ja-35-failure-01.md) · [success](../examples/ja-35-success-01.md)
+
+Example before:
+
+> 正直に言うと、解約の原因は価格ではありません。はっきり言って、ユーザーは登録フォームの時点で離脱を決めています。
+
+Example after:
+
+> 解約の原因は価格ではない。ユーザーは登録フォームの時点で離脱を決めている。
+
+### 36. 疑似インサイトの前振り
+
+- Source: [ja-filler.md](../patterns/ja-filler.md)
+- Type: rewrite-capable pattern
+- Watch words: 誰も教えてくれない, ほとんどの人が間違えている, みんなが見落としている, 誰も言わない真実
+- Fire condition: 他の全員を無知の側に置き筆者だけを内部者に立てるフレームが主張の前に付き、そのフレームが主張の根拠を何も足していない場合。説明文では 1 回で発火、マーケティング文体では 2 回以上。
+- Example files: [failure](../examples/ja-36-failure-01.md) · [success](../examples/ja-36-success-01.md)
+
+Example before:
+
+> 誰も教えてくれない資金調達の真実：紹介はピッチ資料より重要です。ほとんどの人がこれを間違えています。
+
+Example after:
+
+> 紹介はピッチ資料より重要だ。同期 40 チームのうち調達に成功したチームは全て投資先創業者の紹介があり、コールドメールだけで調達したチームは一つもなかった。
 
 ## 構造パターン
 

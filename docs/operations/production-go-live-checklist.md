@@ -7,16 +7,20 @@
 > flip from HOLD → live is mechanical once approvals land. **No secret values
 > live here or anywhere in the repo** — only names and non-secret identifiers.
 
-## Current state (2026-07-21)
+## Current state (2026-07-23)
 
-- Engine/quality: clean (P0 evidence-floor fix, scorer benchmark leg, P1
-  short-form em-dash, non-skipped floor fix — all on `dev`).
-- Payment: `HOLD_NO_PROMOTION`. Store activation is blocked only by the
-  Lemon Squeezy **tax review** (`Settings → Payouts → Tax information:
-  Submitted / Pending`). Identity verification is `Active`; bank payout (KRW)
-  is set; the live product is `Published`.
-- Not sellable yet: live variant is `pending`, the checkout returns 404 until
-  the tax review clears and the store activates.
+- Engine/quality: clean. Since 07-21, `dev`→`main` also shipped the playground
+  fixes (locale default, FP-report link, dead-UI contract artifact, version
+  badge), numeric-safety v2/v2.1, the 184-pattern catalog, the free-quota
+  raise (20/day, 10/hour), and the BYOK model refresh (+Gemini provider).
+- Payment: **step 1 (LS tax review) is CLEARED — observed 2026-07-23.** The
+  live checkout URL now resolves `302 → 200` at "Patina Pro - Checkout" with
+  the $9.99 price rendered (it returned 404 through 07-22). Store is active.
+  Owner should eyeball `Settings → Payouts → Tax information: Approved` in the
+  LS dashboard as final confirmation.
+- Still not sellable by design: the deployed launch config remains the
+  fail-closed disabled artifact and the site CTA stays "Pro — coming soon"
+  until steps 2–8 below complete. Nothing opens payment automatically.
 
 ## Verified live Lemon Squeezy identity (non-secret)
 

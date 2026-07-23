@@ -31,6 +31,7 @@ This page expands the Chinese pattern packs into a browsable reference. It is ge
 | 16 | rewrite | "～地"副词修饰过度 | [zh-style.md](../patterns/zh-style.md) |
 | 17 | rewrite | 表情符号 | [zh-style.md](../patterns/zh-style.md) |
 | 18 | rewrite | 过度使用书面/公文体 | [zh-style.md](../patterns/zh-style.md) |
+| 37 | rewrite | 冒号悬念揭晓 | [zh-style.md](../patterns/zh-style.md) |
 | 19 | rewrite | 聊天机器人痕迹 | [zh-communication.md](../patterns/zh-communication.md) |
 | 20 | rewrite | 训练数据截止声明 | [zh-communication.md](../patterns/zh-communication.md) |
 | 21 | rewrite | 谄媚/讨好语气 | [zh-communication.md](../patterns/zh-communication.md) |
@@ -39,6 +40,8 @@ This page expands the Chinese pattern packs into a browsable reference. It is ge
 | 23 | rewrite | 过度弱化/套层对冲 | [zh-filler.md](../patterns/zh-filler.md) |
 | 24 | rewrite | 空洞的积极结尾 | [zh-filler.md](../patterns/zh-filler.md) |
 | 31 | rewrite | 结论信号词滥用 | [zh-filler.md](../patterns/zh-filler.md) |
+| 35 | rewrite | 清嗓式开场 | [zh-filler.md](../patterns/zh-filler.md) |
+| 36 | rewrite | 伪洞察铺垫 | [zh-filler.md](../patterns/zh-filler.md) |
 | 25 | rewrite | 结构性重复 | [zh-structure.md](../patterns/zh-structure.md) |
 | 26 | rewrite | 翻译腔/欧化语法 | [zh-structure.md](../patterns/zh-structure.md) |
 | 27 | rewrite | 被字句/被动语态过度使用 | [zh-structure.md](../patterns/zh-structure.md) |
@@ -426,6 +429,22 @@ Example after:
 
 > 各部门这个月要完成两件事：把客户投诉响应时间从48小时压到24小时，把上线前的测试覆盖率提到80%。
 
+### 37. 冒号悬念揭晓
+
+- Source: [zh-style.md](../patterns/zh-style.md)
+- Type: rewrite-capable pattern
+- Watch words: 重点来了：, 最关键的是：, 反转：, 真相是：, 更绝的是：, 彩蛋：
+- Fire condition: 在散文中用短名词短语加冒号把后半句包装成戏剧性揭晓，全文出现 2 处以上；或仅 1 处但改成平铺直叙毫无损失。仅限散文，不含列表、标签、定义。
+- Example files: [failure](../examples/zh-37-failure-01.md) · [success](../examples/zh-37-success-01.md)
+
+Example before:
+
+> 团队一个周末就完成了迁移。更绝的是：零停机。反转：只用了两名工程师。
+
+Example after:
+
+> 团队两名工程师用一个周末完成了迁移，全程零停机。
+
 ## 沟通模式
 
 ### 19. 聊天机器人痕迹
@@ -556,6 +575,38 @@ Example before:
 Example after:
 
 > 数字游民已经不只是潮流问题。工作方式整个变了，人们正在这上面建起新的日常。
+
+### 35. 清嗓式开场
+
+- Source: [zh-filler.md](../patterns/zh-filler.md)
+- Type: rewrite-capable pattern
+- Watch words: 说实话, 老实说, 坦白讲, 说白了, 不得不说, 讲真, 不夸张地说
+- Fire condition: 句子或段落以清嗓式开场开头，删掉它后面的论点毫无损失。若紧随其后的就是正文论点，1 处即触发；全文出现 2 处以上，无论位置均触发。
+- Example files: [failure](../examples/zh-35-failure-01.md) · [success](../examples/zh-35-success-01.md)
+
+Example before:
+
+> 说实话，用户流失和定价没有关系。不得不说，用户在注册表单那一步就已经决定要不要走了。
+
+Example after:
+
+> 用户流失和定价没有关系。用户在注册表单那一步就已经决定要不要走了。
+
+### 36. 伪洞察铺垫
+
+- Source: [zh-filler.md](../patterns/zh-filler.md)
+- Type: rewrite-capable pattern
+- Watch words: 没人告诉你, 大多数人都搞错了, 很多人不知道, 没人敢说的真相, 大多数人忽略的是
+- Fire condition: 把所有人放在无知一侧、把作者立为唯一内部人的框架出现在论点之前，且对论点本身不提供任何证据。说明文中 1 处即触发；营销文体 2 处以上触发。
+- Example files: [failure](../examples/zh-36-failure-01.md) · [success](../examples/zh-36-success-01.md)
+
+Example before:
+
+> 没人告诉你的融资真相：引荐比 BP 更重要。大多数人都搞错了这一点。
+
+Example after:
+
+> 引荐比 BP 更重要。我们这一期 40 个团队里，拿到投资的全部有被投创始人引荐，仅靠陌生邮件拿到投资的一个都没有。
 
 ## 结构模式
 

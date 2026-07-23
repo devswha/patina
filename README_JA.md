@@ -96,7 +96,7 @@ printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
 
 |  |  |
 |---|---|
-| **172 パターン** | 各言語 34 個の書き換え可能パターン + 9 個のスコア専用 viral-hook（KO/EN/ZH/JA 各 43 個） — 完全な 172 パターンカタログは [PATTERNS.md](docs/PATTERNS.md) を参照 |
+| **184 パターン** | 各言語 37 個の書き換え可能パターン + 9 個のスコア専用 viral-hook（KO/EN/ZH/JA 各 46 個） — 完全な 184 パターンカタログは [PATTERNS.md](docs/PATTERNS.md) を参照 |
 | **モード** | rewrite · verify · audit · score · diff |
 | **利用形態** | agent skill · Node CLI · ページ内 preview · ブラウザ playground（rewrite + score） |
 | **ボイス** | `--persona`（組み込み + 自作、ko/en/zh/ja）· `--tone` レジスター · `--profile` ジャンル — 固定の優先順位で組み合わせ可能 |

@@ -11,10 +11,10 @@ import {
 const VERSION = '6.3.1';
 const README_FILES = ['README.md', 'README_KR.md', 'README_ZH.md', 'README_JA.md'];
 const README_CATALOGS = {
-  'README.md': '**172 patterns** | 34 rewrite-capable + 9 score-only viral-hook per language (43 each across KO/EN/ZH/JA)',
-  'README_KR.md': '**172개 패턴** | 언어별 재작성 가능 34개 + 스코어 전용 바이럴 훅 9개(KO/EN/ZH/JA 각각 43개)',
-  'README_ZH.md': '**172 条模式** | 每种语言 34 条可改写模式 + 9 条仅评分的病毒式钩子模式（KO/EN/ZH/JA 各 43 条）',
-  'README_JA.md': '**172 パターン** | 各言語 34 個の書き換え可能パターン + 9 個のスコア専用 viral-hook（KO/EN/ZH/JA 各 43 個）',
+  'README.md': '**184 patterns** | 37 rewrite-capable + 9 score-only viral-hook per language (46 each across KO/EN/ZH/JA)',
+  'README_KR.md': '**184개 패턴** | 언어별 재작성 가능 37개 + 스코어 전용 바이럴 훅 9개(KO/EN/ZH/JA 각각 46개)',
+  'README_ZH.md': '**184 条模式** | 每种语言 37 条可改写模式 + 9 条仅评分的病毒式钩子模式（KO/EN/ZH/JA 各 46 条）',
+  'README_JA.md': '**184 パターン** | 各言語 37 個の書き換え可能パターン + 9 個のスコア専用 viral-hook（KO/EN/ZH/JA 各 46 個）',
 };
 
 function writeFixtureFile(root, path, content) {
@@ -137,15 +137,15 @@ for (const path of README_FILES) {
   });
   test(`collector rejects ${path} catalog total drift`, () => {
     withFixture((root) => {
-      updateReadme(root, path, (readme) => readme.replace('172', '168'));
-      assert.deepEqual(collectReleaseMetadataErrors({ repoRoot: root }).errors, [`${path} catalog must match the canonical 172-pattern breakdown`]);
+      updateReadme(root, path, (readme) => readme.replace('184', '168'));
+      assert.deepEqual(collectReleaseMetadataErrors({ repoRoot: root }).errors, [`${path} catalog must match the canonical 184-pattern breakdown`]);
     });
   });
 
   test(`collector rejects ${path} catalog breakdown drift`, () => {
     withFixture((root) => {
-      updateReadme(root, path, (readme) => readme.replace('34', '33'));
-      assert.deepEqual(collectReleaseMetadataErrors({ repoRoot: root }).errors, [`${path} catalog must match the canonical 172-pattern breakdown`]);
+      updateReadme(root, path, (readme) => readme.replace('37', '33'));
+      assert.deepEqual(collectReleaseMetadataErrors({ repoRoot: root }).errors, [`${path} catalog must match the canonical 184-pattern breakdown`]);
     });
   });
 }

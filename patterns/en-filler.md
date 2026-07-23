@@ -2,8 +2,8 @@
 pack: en-filler
 language: en
 name: Filler & Hedging Patterns
-version: 1.1.0
-patterns: 4
+version: 1.2.0
+patterns: 6
 corpus-snapshot:
   id: bootstrap-patterns-pre-provenance
   status: needs-quarterly-refresh
@@ -116,3 +116,47 @@ corpus-snapshot:
 > Work-life balance isn't optional. Without it, the rest of the structure cracks.
 
 **Not this pattern:** When the *content* of the conclusion is vague optimism --> Pattern 24 (Generic Positive Conclusions) handles that. Pattern 31 is about the signal *word itself* regardless of what follows.
+
+---
+
+### 35. Throat-Clearing Openers
+
+**Watch words:** here's the thing, here's what I mean, let me be clear, let me explain, I'll be honest, to be honest with you, the uncomfortable truth is, real talk, let's be real, here's the deal, the honest answer is
+
+**Fire condition:** A sentence or paragraph opens with a throat-clearing phrase that delays the actual claim, and the phrase can be deleted without losing any content. Fires on 1 instance when the following clause is the actual point, or 2+ instances anywhere in the document.
+
+**Exclusion:** Genuine hedging before a socially difficult statement in first-person writing ("I'll be honest, I almost quit that week") where the phrase carries real reluctance or self-disclosure, not rhythm. Quoted speech and dialogue.
+
+**Semantic Risk:** LOW
+
+**Problem:** AI drafts warm up before the point: "Here's the thing:" followed by the thing. The opener postures directness while adding a beat of delay. Human writers who are actually being direct just state the claim; the phrase survives editing only when it marks real discomfort or a spoken register.
+
+**Before:**
+> Here's the thing: most onboarding flows fail before the first screen. Let me be clear — users decide in the sign-up form, not the tutorial.
+
+**After:**
+> Most onboarding flows fail before the first screen. Users decide in the sign-up form, not the tutorial.
+
+**Not this pattern:** Empty transitional phrases mid-sentence ("at the end of the day", "when it comes to") --> Pattern 22 (Filler Phrases). Pattern 35 is specifically the *opener* that stages the next claim as candid.
+
+---
+
+### 36. Faux-Insight Setup
+
+**Watch words:** what nobody tells you, what most people get wrong, the part everyone misses, what they don't teach you, here's what nobody talks about, most people don't realize, the secret nobody shares, what if I told you
+
+**Fire condition:** A claim is introduced by framing everyone else as ignorant or the writer as the lone insider, and the framing adds no evidence for the claim itself. Fires on any instance in expository prose; in marketing copy 2+ instances.
+
+**Exclusion:** A verifiable contrarian claim where the piece then documents what the common view is and why it is wrong (the setup is doing real argumentative work, followed by evidence).
+
+**Semantic Risk:** LOW
+
+**Problem:** AI flatters the writer as the only honest expert: "What nobody tells you about X..." followed by a claim many people do in fact tell you. The setup borrows authority instead of earning it. Cut the frame and let the claim stand or fall on its own.
+
+**Before:**
+> What nobody tells you about fundraising: warm intros matter more than the deck. Most people get this wrong.
+
+**After:**
+> Warm intros matter more than the deck. Of the 40 founders in our batch, every one who raised had an intro from a portfolio founder; none raised from a cold deck alone.
+
+**Not this pattern:** An unresolved teaser at the *end* of the piece --> en-viral-hook #2 (Clickbait Mystery Close). Unsourced authority claims ("experts agree") --> Pattern 5 (Vague Attributions). Pattern 36 is the *lone-insider frame* placed before a claim.

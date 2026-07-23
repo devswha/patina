@@ -107,7 +107,7 @@ For large `--batch` runs, prefer an OpenAI-compatible HTTP backend; local CLI ba
 
 |  |  |
 |---|---|
-| **172 patterns** | 34 rewrite-capable + 9 score-only viral-hook per language (43 each across KO/EN/ZH/JA) — see the full 172-pattern catalog in [PATTERNS.md](docs/PATTERNS.md) |
+| **184 patterns** | 37 rewrite-capable + 9 score-only viral-hook per language (46 each across KO/EN/ZH/JA) — see the full 184-pattern catalog in [PATTERNS.md](docs/PATTERNS.md) |
 | **Modes** | rewrite · verify · audit · score · diff |
 | **Surfaces** | agent skill · Node CLI · in-place preview · browser playground (rewrite + score) |
 | **Voice** | `--persona` (built-in + your own, ko/en/zh/ja) is the sole voice axis · `--tone` register · `--profile` pattern policy — composable with a fixed precedence |

@@ -77,12 +77,12 @@ Unknown categories (from custom packs not in the weight config) get default weig
 |----------|--------|----------|-------|
 | content | 0.18 | 6 | |
 | language | 0.18 | 9 | |
-| style | 0.18 | 6 | |
+| style | 0.18 | 7 | |
 | communication | 0.13 | 4 | |
-| filler | 0.08 | 4 | |
+| filler | 0.08 | 6 | |
 | structure | 0.15 | 5 | |
 | viral-hook | 0.10 | 9 | score-only (no rewrite) |
-| **Total** | **1.00** | **43** | |
+| **Total** | **1.00** | **46** | |
 
 ### English (en)
 
@@ -90,12 +90,12 @@ Unknown categories (from custom packs not in the weight config) get default weig
 |----------|--------|----------|-------|
 | content | 0.20 | 6 | |
 | language | 0.20 | 9 | |
-| style | 0.20 | 6 | |
+| style | 0.20 | 7 | |
 | communication | 0.12 | 4 | |
-| filler | 0.08 | 4 | |
+| filler | 0.08 | 6 | |
 | structure | 0.10 | 5 | |
 | viral-hook | 0.10 | 9 | score-only (no rewrite) |
-| **Total** | **1.00** | **43** | |
+| **Total** | **1.00** | **46** | |
 
 ### Chinese (zh)
 
@@ -103,12 +103,12 @@ Unknown categories (from custom packs not in the weight config) get default weig
 |----------|--------|----------|-------|
 | content | 0.18 | 6 | |
 | language | 0.18 | 9 | |
-| style | 0.18 | 6 | |
+| style | 0.18 | 7 | |
 | communication | 0.13 | 4 | |
-| filler | 0.08 | 4 | |
+| filler | 0.08 | 6 | |
 | structure | 0.15 | 5 | |
 | viral-hook | 0.10 | 9 | score-only (no rewrite) |
-| **Total** | **1.00** | **43** | |
+| **Total** | **1.00** | **46** | |
 
 ### Japanese (ja)
 
@@ -116,12 +116,12 @@ Unknown categories (from custom packs not in the weight config) get default weig
 |----------|--------|----------|-------|
 | content | 0.18 | 6 | |
 | language | 0.18 | 9 | |
-| style | 0.18 | 6 | |
+| style | 0.18 | 7 | |
 | communication | 0.13 | 4 | |
-| filler | 0.08 | 4 | |
+| filler | 0.08 | 6 | |
 | structure | 0.15 | 5 | |
 | viral-hook | 0.10 | 9 | score-only (no rewrite) |
-| **Total** | **1.00** | **43** | |
+| **Total** | **1.00** | **46** | |
 
 Weights are configurable via `ouroboros.category-weights.{lang}` in `.patina.yaml`.
 
@@ -196,7 +196,6 @@ Input text detected patterns:
 | #5 모호한 출처 | content | Low (1) | normal | 1 |
 | #8 ~적 접미사 | language | Medium (2) | normal | 2 |
 | #14 볼드체 | style | High (3) | normal | 3 |
-| #17 이모지 | style | Medium (2) | normal | 2 |
 | #22 채움 표현 | filler | Low (1) | normal | 1 |
 | #25 구조적 반복 | structure | High (3) | normal | 3 |
 
@@ -206,21 +205,21 @@ Category scores:
 |----------|----------|-----|---------------|-------|
 | content | 3/6 | 3+2+1=6 | 6×3=18 | 33.3 |
 | language | 1/9 | 2 | 9×3=27 | 7.4 |
-| style | 2/6 | 3+2=5 | 6×3=18 | 27.8 |
+| style | 1/7 | 3 | 7×3=21 | 14.3 |
 | communication | 0/4 | 0 | 4×3=12 | 0.0 |
-| filler | 1/4 | 1 | 4×3=12 | 8.3 |
+| filler | 1/6 | 1 | 6×3=18 | 5.6 |
 | structure | 1/5 | 3 | 5×3=15 | 20.0 |
 | viral-hook | 0/9 | 0 | 9×3=27 | 0.0 |
 
-Overall = 33.3×0.18 + 7.4×0.18 + 27.8×0.18 + 0.0×0.13 + 8.3×0.08 + 20.0×0.15 + 0.0×0.10
-       = 6.0 + 1.3 + 5.0 + 0.0 + 0.7 + 3.0 + 0.0
-       = **16.0**
+Overall = 33.3×0.18 + 7.4×0.18 + 14.3×0.18 + 0.0×0.13 + 5.6×0.08 + 20.0×0.15 + 0.0×0.10
+       = 6.0 + 1.3 + 2.6 + 0.0 + 0.4 + 3.0 + 0.0
+       = **13.3**
 
 (Weighted terms are computed from the unrounded category scores and shown to
 one decimal; they sum exactly to the displayed total. Unrounded: 6.000 + 1.333
-+ 5.000 + 0.000 + 0.667 + 3.000 = 16.000 → 16.0.)
++ 2.571 + 0.000 + 0.444 + 3.000 = 13.349 → 13.3.)
 
-Interpretation: 16-30 range = "거의 사람다움" (Mostly human, minor traces)
+Interpretation: 0-15 range = "사람다움" (Strongly human-like)
 
 ---
 

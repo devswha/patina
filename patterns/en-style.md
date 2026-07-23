@@ -2,8 +2,8 @@
 pack: en-style
 language: en
 name: Style Patterns
-version: 1.0.0
-patterns: 6
+version: 1.1.0
+patterns: 7
 corpus-snapshot:
   id: bootstrap-patterns-pre-provenance
   status: needs-quarterly-refresh
@@ -159,3 +159,25 @@ The single dash reads as a light AI-polish tell in a promo reply; a period (or c
 > Set the variable: `name = "hello"`
 >
 > In your config file, add: `timeout = '30'`
+
+---
+
+### 37. Colon Reveal / Plot-Twist Setup
+
+**Watch words:** the best part:, the kicker:, the catch:, the result:, the twist:, plot twist:, the crazy part:, the wild part:, bonus:, spoiler:, the real reason:, translation:
+
+**Fire condition:** A short noun phrase followed by a colon stages the rest of the sentence as a dramatic reveal, in prose (not a list, label, or definition). Fires on 2+ instances in a document, or 1 instance where a plain sentence loses nothing.
+
+**Exclusion:** Colons doing structural work: list introductions, key–value labels, definitions, quote attributions, headlines and section labels, and code. A single colon reveal in intentionally punchy social copy the author wrote that way.
+
+**Semantic Risk:** LOW
+
+**Problem:** AI manufactures drama with a colon: a two-word setup, a beat, then the "reveal." Used once it is a rhythm choice; repeated, it turns every paragraph into a punchline delivery machine and reads as engagement-optimized copy. Rewrite as a plain sentence and keep the content.
+
+**Before:**
+> The team shipped the migration in one weekend. The best part: zero downtime. The kicker: they did it with two engineers.
+
+**After:**
+> The team shipped the migration in one weekend with zero downtime, using just two engineers.
+
+**Not this pattern:** Em dashes used for the same beat --> Pattern 13 (Em Dash Overuse). Bold "**Label:** explanation" bullets --> Pattern 15 (Inline-Header Vertical Lists). Short-sentence stacking for rhythm --> en-viral-hook #4. Pattern 37 is specifically the colon-staged reveal inside prose.

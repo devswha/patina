@@ -98,7 +98,7 @@ printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
 
 |  |  |
 |---|---|
-| **172 条模式** | 每种语言 34 条可改写模式 + 9 条仅评分的病毒式钩子模式（KO/EN/ZH/JA 各 43 条）—— 完整的 172 条模式目录见 [PATTERNS.md](docs/PATTERNS.md) |
+| **184 条模式** | 每种语言 37 条可改写模式 + 9 条仅评分的病毒式钩子模式（KO/EN/ZH/JA 各 46 条）—— 完整的 184 条模式目录见 [PATTERNS.md](docs/PATTERNS.md) |
 | **模式** | rewrite · verify · audit · score · diff |
 | **使用入口** | agent skill · Node CLI · 页面内 preview · 浏览器 playground（改写 + 评分） |
 | **声音** | `--persona`（内置 + 自制，ko/en/zh/ja）· `--tone` 语域 · `--profile` 体裁 —— 按固定优先级可组合 |

@@ -48,6 +48,12 @@ export function collectReleaseMetadataErrors({ repoRoot = REPO_ROOT, env = proce
     expect(readme.includes(README_CATALOGS[path]), `${path} catalog must match the canonical 184-pattern breakdown`);
   }
 
+  const playgroundHtml = readFileSync(repoPath('playground/index.html'), 'utf8');
+  expect(
+    playgroundHtml.includes(`<span class="ver-badge">v${version}</span>`),
+    'playground/index.html ver-badge must match package.json'
+  );
+
   expect(new RegExp(`^## ${escapeRegex(version)} — \\d{4}-\\d{2}-\\d{2}`, 'm').test(readFileSync(repoPath('CHANGELOG.md'), 'utf8')), 'CHANGELOG.md must contain a release heading for package.json version');
   const githubRef = env.GITHUB_REF;
   if (githubRef?.startsWith('refs/tags/')) {

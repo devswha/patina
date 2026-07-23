@@ -31,6 +31,7 @@ This page expands the English pattern packs into a browsable reference. It is ge
 | 16 | rewrite | Title Case in Headings | [en-style.md](../patterns/en-style.md) |
 | 17 | rewrite | Emojis | [en-style.md](../patterns/en-style.md) |
 | 18 | rewrite | Curly Quotation Marks | [en-style.md](../patterns/en-style.md) |
+| 37 | rewrite | Colon Reveal / Plot-Twist Setup | [en-style.md](../patterns/en-style.md) |
 | 19 | rewrite | Collaborative Communication Artifacts | [en-communication.md](../patterns/en-communication.md) |
 | 20 | rewrite | Knowledge-Cutoff Disclaimers | [en-communication.md](../patterns/en-communication.md) |
 | 21 | rewrite | Sycophantic/Servile Tone | [en-communication.md](../patterns/en-communication.md) |
@@ -39,6 +40,8 @@ This page expands the English pattern packs into a browsable reference. It is ge
 | 23 | rewrite | Excessive Hedging | [en-filler.md](../patterns/en-filler.md) |
 | 24 | rewrite | Generic Positive Conclusions | [en-filler.md](../patterns/en-filler.md) |
 | 31 | rewrite | Conclusion Signal Words | [en-filler.md](../patterns/en-filler.md) |
+| 35 | rewrite | Throat-Clearing Openers | [en-filler.md](../patterns/en-filler.md) |
+| 36 | rewrite | Faux-Insight Setup | [en-filler.md](../patterns/en-filler.md) |
 | 25 | rewrite | Metronomic Paragraph Structure | [en-structure.md](../patterns/en-structure.md) |
 | 26 | rewrite | Passive Nominalization Chains | [en-structure.md](../patterns/en-structure.md) |
 | 27 | rewrite | Zombie Nouns (Excessive Nominalization) | [en-structure.md](../patterns/en-structure.md) |
@@ -443,6 +446,22 @@ Example after:
 >
 > In your config file, add: `timeout = '30'`
 
+### 37. Colon Reveal / Plot-Twist Setup
+
+- Source: [en-style.md](../patterns/en-style.md)
+- Type: rewrite-capable pattern
+- Watch words: the best part:, the kicker:, the catch:, the result:, the twist:, plot twist:, the crazy part:, the wild part:, bonus:, spoiler:, the real reason:, translation:
+- Fire condition: A short noun phrase followed by a colon stages the rest of the sentence as a dramatic reveal, in prose (not a list, label, or definition). Fires on 2+ instances in a document, or 1 instance where a plain sentence loses nothing.
+- Example files: [failure](../examples/en-37-failure-01.md) · [success](../examples/en-37-success-01.md)
+
+Example before:
+
+> The team shipped the migration in one weekend. The best part: zero downtime. The kicker: they did it with two engineers.
+
+Example after:
+
+> The team shipped the migration in one weekend with zero downtime, using just two engineers.
+
 ## Communication Patterns
 
 ### 19. Collaborative Communication Artifacts
@@ -573,6 +592,38 @@ Example before:
 Example after:
 
 > Work-life balance isn't optional. Without it, the rest of the structure cracks.
+
+### 35. Throat-Clearing Openers
+
+- Source: [en-filler.md](../patterns/en-filler.md)
+- Type: rewrite-capable pattern
+- Watch words: here's the thing, here's what I mean, let me be clear, let me explain, I'll be honest, to be honest with you, the uncomfortable truth is, real talk, let's be real, here's the deal, the honest answer is
+- Fire condition: A sentence or paragraph opens with a throat-clearing phrase that delays the actual claim, and the phrase can be deleted without losing any content. Fires on 1 instance when the following clause is the actual point, or 2+ instances anywhere in the document.
+- Example files: [failure](../examples/en-35-failure-01.md) · [success](../examples/en-35-success-01.md)
+
+Example before:
+
+> Here's the thing: most onboarding flows fail before the first screen. Let me be clear — users decide in the sign-up form, not the tutorial.
+
+Example after:
+
+> Most onboarding flows fail before the first screen. Users decide in the sign-up form, not the tutorial.
+
+### 36. Faux-Insight Setup
+
+- Source: [en-filler.md](../patterns/en-filler.md)
+- Type: rewrite-capable pattern
+- Watch words: what nobody tells you, what most people get wrong, the part everyone misses, what they don't teach you, here's what nobody talks about, most people don't realize, the secret nobody shares, what if I told you
+- Fire condition: A claim is introduced by framing everyone else as ignorant or the writer as the lone insider, and the framing adds no evidence for the claim itself. Fires on any instance in expository prose; in marketing copy 2+ instances.
+- Example files: [failure](../examples/en-36-failure-01.md) · [success](../examples/en-36-success-01.md)
+
+Example before:
+
+> What nobody tells you about fundraising: warm intros matter more than the deck. Most people get this wrong.
+
+Example after:
+
+> Warm intros matter more than the deck. Of the 40 founders in our batch, every one who raised had an intro from a portfolio founder; none raised from a cold deck alone.
 
 ## Structure Patterns
 

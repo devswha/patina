@@ -96,7 +96,7 @@ printf '%s\n' 'Coffee has emerged as a pivotal cultural phenomenon.' \
 
 |  |  |
 |---|---|
-| **172개 패턴** | 언어별 재작성 가능 34개 + 스코어 전용 바이럴 훅 9개(KO/EN/ZH/JA 각각 43개) — 전체 172개 패턴 카탈로그는 [PATTERNS.md](docs/PATTERNS.md) 참고 |
+| **184개 패턴** | 언어별 재작성 가능 37개 + 스코어 전용 바이럴 훅 9개(KO/EN/ZH/JA 각각 46개) — 전체 184개 패턴 카탈로그는 [PATTERNS.md](docs/PATTERNS.md) 참고 |
 | **모드** | rewrite · verify · audit · score · diff |
 | **사용 채널** | 에이전트 스킬 · Node CLI · 페이지 내 preview · 브라우저 playground (리라이트 + 점수) |
 | **보이스** | `--persona` (내장 + 직접 제작, ko/en/zh/ja) · `--tone` 격식 · `--profile` 장르 — 고정된 우선순위로 조합 가능 |

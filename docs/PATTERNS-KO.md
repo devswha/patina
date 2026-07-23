@@ -31,6 +31,7 @@ This page expands the Korean pattern packs into a browsable reference. It is gen
 | 16 | rewrite | ~고 있다 진행형 남발 | [ko-style.md](../patterns/ko-style.md) |
 | 17 | rewrite | 이모지 | [ko-style.md](../patterns/ko-style.md) |
 | 18 | rewrite | 과도한 한자어/공식어 사용 | [ko-style.md](../patterns/ko-style.md) |
+| 37 | rewrite | 콜론 반전 연출 | [ko-style.md](../patterns/ko-style.md) |
 | 19 | rewrite | 챗봇 표현 | [ko-communication.md](../patterns/ko-communication.md) |
 | 20 | rewrite | 학습 데이터 기한 면책 | [ko-communication.md](../patterns/ko-communication.md) |
 | 21 | rewrite | 아첨하는 말투 | [ko-communication.md](../patterns/ko-communication.md) |
@@ -39,6 +40,8 @@ This page expands the Korean pattern packs into a browsable reference. It is gen
 | 23 | rewrite | 과도한 헤징 | [ko-filler.md](../patterns/ko-filler.md) |
 | 24 | rewrite | 막연한 긍정적 결론 | [ko-filler.md](../patterns/ko-filler.md) |
 | 31 | rewrite | 결론 신호어 남용 | [ko-filler.md](../patterns/ko-filler.md) |
+| 35 | rewrite | 뜸들이기 서두 | [ko-filler.md](../patterns/ko-filler.md) |
+| 36 | rewrite | 가짜 통찰 셋업 | [ko-filler.md](../patterns/ko-filler.md) |
 | 25 | rewrite | 구조적 반복 | [ko-structure.md](../patterns/ko-structure.md) |
 | 26 | rewrite | 번역체 | [ko-structure.md](../patterns/ko-structure.md) |
 | 27 | rewrite | 수동태 남용 | [ko-structure.md](../patterns/ko-structure.md) |
@@ -425,6 +428,22 @@ Example after:
 
 > 이 사업은 지역 경제를 살리고 주민 생활을 개선하려는 것이다. 시청과 구청이 함께 진행한다.
 
+### 37. 콜론 반전 연출
+
+- Source: [ko-style.md](../patterns/ko-style.md)
+- Type: rewrite-capable pattern
+- Watch words: 반전:, 핵심은 이것:, 더 놀라운 건:, 진짜 이유:, 보너스:, 결과:
+- Fire condition: 짧은 명사구 뒤에 콜론을 붙여 나머지를 극적인 반전처럼 연출하는 문장이 산문에서 2회 이상 등장하거나, 1회라도 평서문으로 바꿔 잃는 것이 없는 경우. 목록·라벨·정의가 아닌 산문에 한정.
+- Example files: [failure](../examples/37-failure-01.md) · [success](../examples/37-success-01.md)
+
+Example before:
+
+> 주말 동안 마이그레이션을 끝냈다. 더 놀라운 건: 다운타임 제로. 반전: 엔지니어 두 명이 해냈다.
+
+Example after:
+
+> 주말 동안 엔지니어 두 명이 다운타임 없이 마이그레이션을 끝냈다.
+
 ## 소통 패턴
 
 ### 19. 챗봇 표현
@@ -556,6 +575,38 @@ Example before:
 Example after:
 
 > 디지털 노마드는 더 이상 유행이 아니다. 일하는 방식 하나가 바뀌었고, 사람들은 그 위에 새 일상을 짓고 있다.
+
+### 35. 뜸들이기 서두
+
+- Source: [ko-filler.md](../patterns/ko-filler.md)
+- Type: rewrite-capable pattern
+- Watch words: 솔직히 말하면, 분명히 말하자면, 확실히 짚고 넘어가자면, 까놓고 말해서, 불편한 진실은, 사실대로 말하면, 한 가지 분명한 것은
+- Fire condition: 문장이나 문단이 뜸들이기 표현으로 시작하고, 그 표현을 지워도 뒤따르는 주장에서 아무것도 사라지지 않는 경우. 뒤 문장이 곧 본론이면 1회로도 발화, 문서 전체에서 2회 이상이면 위치와 무관하게 발화.
+- Example files: [failure](../examples/35-failure-01.md) · [success](../examples/35-success-01.md)
+
+Example before:
+
+> 솔직히 말하면, 온보딩 이탈은 가격 문제가 아닙니다. 분명히 말하자면 사용자는 가입 폼에서 이미 떠날지를 정합니다.
+
+Example after:
+
+> 온보딩 이탈은 가격 문제가 아니다. 사용자는 가입 폼에서 이미 떠날지를 정한다.
+
+### 36. 가짜 통찰 셋업
+
+- Source: [ko-filler.md](../patterns/ko-filler.md)
+- Type: rewrite-capable pattern
+- Watch words: 아무도 말해주지 않는, 대부분이 잘못 알고 있는, 사람들이 놓치는, 남들이 말하지 않는 진실, 아무도 알려주지 않는
+- Fire condition: 다른 모든 사람을 무지한 쪽에 놓고 필자만 내부자로 세우는 프레임이 주장 앞에 붙는데, 그 프레임이 주장의 근거를 전혀 더하지 않는 경우. 설명문에서는 1회로도 발화, 마케팅 문체에서는 2회 이상.
+- Example files: [failure](../examples/36-failure-01.md) · [success](../examples/36-success-01.md)
+
+Example before:
+
+> 아무도 말해주지 않는 투자 유치의 진실: 소개가 자료보다 중요합니다. 대부분이 이걸 잘못 알고 있죠.
+
+Example after:
+
+> 소개가 자료보다 중요하다. 우리 기수 40개 팀 중 투자를 받은 팀은 전부 포트폴리오 창업자의 소개가 있었고, 콜드 메일만으로 받은 팀은 없었다.
 
 ## 구조 패턴
 

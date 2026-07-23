@@ -183,7 +183,13 @@ function isClaimableWordNumber(source, index, word, lang) {
     const suffix = source.slice(index + word.length);
     const hangul = /\p{Script=Hangul}/u;
     if (hangul.test(previous)) return false;
-    if (!hangul.test(suffix[0] ?? '')) return true;
+    // Bare numeral with nothing attached (space, dash, punctuation, or EOF
+    // next): in Korean prose this position is dominated by discourse counters
+    // ("사실 하나 —", "팁 하나 공유합니다", "질문 하나.") that filler/hook
+    // rewrites legitimately delete; claiming them 422s meaning-preserving
+    // rewrites. Genuine quantity claims carry a particle or counter and are
+    // claimed below; bare-numeral drift is left to the LLM MPS/fidelity floors.
+    if (!hangul.test(suffix[0] ?? '')) return false;
     return /^(?:은|는|이|가|을|를|의|도|만|와|과|에|에서|에게|한테|으로|로|부터|까지|보다|처럼|마저|조차|이라도|라도|(?:개|건|권|그릇|대|마리|명|번|병|살|세|송이|장|채|층|통|편|회|년|월|일|시간|분|초))/.test(suffix);
   }
   if (lang !== 'zh' && lang !== 'ja') return true;

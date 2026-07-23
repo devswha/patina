@@ -18,8 +18,8 @@
   rewrite -> floors passed (fidelity 83.3 / MPS 100) with numeric claims
   byte-preserved. Two env defects found and fixed the same day: 17-day-old
   staging product/variant IDs in `LS_PRO_PRODUCT_ID`/`LS_PRO_VARIANT_ID`
-  (fail-closed 403 until corrected) and an 11-char placeholder `CRON_SECRET`
-  (rotated to 64-hex).
+  (fail-closed 403 until corrected); `CRON_SECRET` was also rotated to a fresh
+  64-hex value as hygiene during debugging.
 - Production source binding integrated and sealed (main `f16e414`). Gate B
   ledger: the "Gate B readiness" section below. Rollback drill procedures with
   measured latencies: [`rollback-drills.md`](rollback-drills.md). PAY-B-COST
@@ -143,7 +143,7 @@ Non-secret working ledger for the GATE_B blocker. Timestamps are UTC.
 | Hosted identity / dedicated runtime | Pro path pinned to provider `claude`, model claude-sonnet-5, dedicated `PATINA_PRO_API_KEY` (separate from free); production requires explicit PRO env (503 fail-closed otherwise, verified live) |
 | Live pro runtime proof | 2026-07-23: `tier=pro` + purchased license -> HTTP 200 `done`; claims preserved ("1,200만 원", "3만 명" byte-exact), fidelity 83.3 / MPS 100; catalog patterns #35/#36/#37 applied on the paid path |
 | Entitlement fail-closed proofs | Dummy license -> 403 `license not entitled`; stale product/variant env (17-day-old staging IDs) also 403 until corrected to live IDs — the filter never passed a mismatch |
-| Synthetic monitoring inputs | `PATINA_SYNTHETIC_PRO_LICENSE` (the purchased license) registered in Production; CRON_SECRET rotated from an 11-char placeholder to a 64-hex random |
+| Synthetic monitoring inputs | `PATINA_SYNTHETIC_PRO_LICENSE` (the purchased license) registered in Production; `CRON_SECRET` rotated to a fresh 64-hex value. Note: `vercel env pull` writes `[Sensitive]` (11 chars) for sensitive vars — an earlier read of that mask was misdiagnosed as a weak secret; sensitive values are write-only by design |
 
 ### Outstanding for Gate B
 

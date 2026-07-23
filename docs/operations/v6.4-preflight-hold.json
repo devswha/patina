@@ -17,7 +17,9 @@
     { "id": "GATE_C_GEMINI_CLI_NO_PROMOTION", "status": "HOLD_NO_PROMOTION" },
     { "id": "PAY_STG_BINDING_APPROVAL", "status": "COMPLETED", "evidence": "PAY-STG-20260716-1199625-1875389" },
     { "id": "SOURCE_BINDING_STAGING_INTEGRATION", "status": "COMPLETED", "evidence": "PAY-STG-20260716-1199625-1875389" },
-    { "id": "PAY_STG_RUNTIME_TEST_SMOKE", "status": "COMPLETED", "evidence": "PAY-STG-RUNTIME-20260716-8973866" }
+    { "id": "PAY_STG_RUNTIME_TEST_SMOKE", "status": "COMPLETED", "evidence": "PAY-STG-RUNTIME-20260716-8973866" },
+    { "id": "PAY_B_BINDING_APPROVAL", "status": "COMPLETED", "evidence": "PAY-B-20260723-1236551-1932893" },
+    { "id": "SOURCE_BINDING_PRODUCTION_INTEGRATION", "status": "COMPLETED", "evidence": "PAY-B-20260723-1236551-1932893" }
   ],
   "checkout": { "enabled": false },
   "frozenSemantics": {
@@ -37,7 +39,7 @@
       "src/web-rewrite-contract.js": "af4b970eb56c5738ffca6a00a7c03eb4366f1d67c3c9e6e7efc5a70a646484bc",
       "playground/launch-config.js": "4d19fc8ce36651f73f94d80bbcd108a2ccbb50fa3fc25b54d75f193b42ac6bf4",
       "vercel.json": "37a54c0850db54e80eec963c570d4b8a047fcfb4bf56d1a133e5a3934b28260e",
-      "scripts/checkout-evidence-bindings.mjs": "b2d50f6b7bd73933058f141931644e18665d016bbd382876da25b10f47d3cab2",
+      "scripts/checkout-evidence-bindings.mjs": "8dcdf4b23787f91c773b6d8b30857ae3bc90b9f6e1552561749b00c8502e1408",
       "scripts/generate-launch-config.mjs": "c5047625479bc687c510b6faf5045cf6118359ba978d219cea834325de5e8a07",
       "scripts/check-v6.4-release-ready.mjs": "fc4521db8f4677e03ac6a2199a86917b6332033030a9e8fe248cd166b0a59313",
       "docs/AUTHENTICATION.md": "e8c335550c4a0f0b144b79f4286d467a968962821a1c88049f1e679810751cfe",
@@ -45,12 +47,13 @@
       "docs/operations/pro-launch.md": "5a3ecb35a60374ee34111ad91e646a02f974439e9a2052ceb18b3ebc729d5acc",
       "docs/operations/pay-stg-binding-20260716.json": "2f523259de91f640f056fe7acfe00264e493d9891b7a61152fe5e91704c0ecdf",
       "docs/operations/pay-stg-runtime-20260716.json": "b0229e892b06e1ec303a001c1317c4c63fc3c98fd7e10243e64db07df4803d29",
+      "docs/operations/pay-b-binding-20260723.json": "96eb8e0aba9fcb4ce67dd356bd35aaf678d8abea96a7ec134218eab7cd20f132",
       "tests/e2e/providers.test.js": "47958be678e9bbfd06bcdd849ec0df37ed765f886e245b7b528e7d596b6d9dfe",
       "tests/unit/backend-model-defaults.test.js": "a9a0428bd53cb470505df58b25d7bd75d59200a7565809eb9f457fda1d22db29",
-      "tests/unit/web-deploy-invariants.test.js": "3bf94db29218f5e0c2c7a49d4c905e2436a6939e733f137eedd66c68758f1932",
+      "tests/unit/web-deploy-invariants.test.js": "0c858c964a350115af6b567d8f3f707cc6749ede5e2967ab56f30b2fa0fb8bcd",
       "tests/unit/web-rewrite-contract.test.js": "d802df1b7f44ef05bcb11e3e68307f577da5529a406e5e92fa206d08bdcf2b2a",
       "tests/unit/web-rewrite-contract.redteam.test.js": "3c7591926e168b14f486199297fd1e84ed447c1b8d339c9b4860f79da0f6a7bb",
-      "tests/unit/v6.4-preflight-hold.test.js": "427987978461ac4f91b92483bb86177e8878114da353de188f51ab658e271e02",
+      "tests/unit/v6.4-preflight-hold.test.js": "a14660535c998cde52e8810fec7812305d1688af67927cc868524040c2eafd17",
       "tests/unit/v6.4-release-ready.test.js": "8d88aab35ce75bc40b4782932329c0402001afabc380ac349ccc1b82d01c12d7",
       "package.json": "f630732601b46fbc7a4fdd49924a7444cc5ff94fa8b4efb3559df19562ee416b",
       "package-lock.json": "d4a0814cc96fd2b46d9c5453345e41623a53149b7e5bdf5e79213101d700680c",
@@ -69,7 +72,6 @@
   },
   "blockers": [
     { "id": "LS_APPROVAL", "type": "human_action", "owner": "Lemon Squeezy Approval Owner", "exitEvidence": "Immutable Lemon Squeezy approval naming the exact store, product, and variant identities; exact staging and production HTTPS checkout URLs; and approval that is immutable.", "evidence": null },
-    { "id": "PAY_B_BINDING_APPROVAL", "type": "human_action", "owner": "Lemon Squeezy Approval Owner", "exitEvidence": "Immutable pre-deployment production source-binding approval naming the reviewed immutable evidence ID and exact production Lemon Squeezy HTTPS checkout URL; it is not final Gate-B proof.", "evidence": null },
     { "id": "SECRET_MANAGER", "type": "human_action", "owner": "Secret Manager Owner", "exitEvidence": "Secret-manager presence-only record, without values, for KV_REST_API_URL, KV_REST_API_TOKEN, LS_STORE_ID, LS_PRO_PRODUCT_ID, LS_PRO_VARIANT_ID, PATINA_PRO_API_KEY, PATINA_LICENSE_HMAC_SECRET, PATINA_QUOTA_HMAC_SECRET, PATINA_FREE_API_KEY, PATINA_PRO_PROVIDER, PATINA_PRO_MODEL, PATINA_PRO_CHECKOUT_ENABLED, PATINA_PRO_CHECKOUT_URL, PATINA_PRO_GATE_EVIDENCE_ID, PATINA_DEPLOYMENT_CHANNEL, PATINA_OBSERVABILITY_REST_API_URL, PATINA_OBSERVABILITY_REST_API_TOKEN, CRON_SECRET, PATINA_PUBLIC_BASE_URL, PATINA_PUBLIC_BASE_URL_SHA256, PATINA_SYNTHETIC_PRO_LICENSE, PATINA_SYNTHETIC_OBSERVER_SECRET, PATINA_VERCEL_LOG_QUERY_URL, PATINA_VERCEL_LOG_QUERY_URL_SHA256, PATINA_VERCEL_LOG_QUERY_TOKEN, PATINA_ALERT_DISCORD_WEBHOOK, VERCEL_GIT_COMMIT_SHA; PATINA_PRO_ALLOW_FREE_KEY is absent or exactly false.", "evidence": null },
     { "id": "PAY_STG", "type": "human_action", "owner": "Deployment Owner", "exitEvidence": "Immutable private-staging PAY-STG deployment record naming the exact staging HTTPS checkout URL and completed staging source-binding integration commit or artifact.", "evidence": null },
     { "id": "GATE_B", "type": "human_action", "owner": "Payment Runtime Owner + maintainer", "exitEvidence": "Gate-B approval by the Payment Runtime Owner and maintainer proving completed production source-binding integration commit or artifact, hosted identity, usage, dedicated runtime, content-valid PAY-B-COST evidence, and real-path OBS evidence.", "evidence": null },
@@ -81,7 +83,6 @@
     { "id": "REL_PUBLISH", "type": "human_action", "owner": "Release Authority", "exitEvidence": "Final Release Authority approval for the v6.4 tag and registry publication.", "evidence": null }
   ],
   "deferredActions": [
-    { "id": "SOURCE_BINDING_PRODUCTION_INTEGRATION", "type": "repo_action", "blockedBy": ["PAY_B_BINDING_APPROVAL"], "reason": "Cannot integrate reviewed production checkout source bindings until the immutable pre-deployment production binding approval exists.", "executable": false },
     { "id": "V6_4_METADATA_COPY_RECONCILIATION", "type": "repo_action", "blockedBy": ["GATE_B"], "reason": "Cannot reconcile 6.4 metadata and copy until Gate B evidence exists; Gate-C no-promotion cutoff decisions are complete.", "executable": false },
     { "id": "FINAL_TAG_PUBLISH_COMMAND", "type": "repo_action", "blockedBy": ["PAY_LIVE", "REL_PUBLISH"], "reason": "Cannot run the final tag and publish command until named external evidence exists.", "executable": false }
   ],

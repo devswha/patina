@@ -125,10 +125,17 @@ const STAGING_CHECKOUT_BINDING = Object.freeze({
   origin: 'https://vibetip.lemonsqueezy.com',
   path: '/checkout/buy/9e53eb90-c8a8-4cef-b06d-3ca0b429e514',
 });
+const PRODUCTION_CHECKOUT_BINDING = Object.freeze({
+  channel: 'production',
+  evidence: 'PAY-B-20260723-1236551-1932893',
+  origin: 'https://vibetip.lemonsqueezy.com',
+  path: '/checkout/buy/8ab3a49b-cc55-49e8-bd94-9cbdff5e6a7d',
+});
 
-test('launch config defaults fail closed, requires a trusted Vercel target, and pins the exact staging evidence binding', () => {
+test('launch config defaults fail closed, requires a trusted Vercel target, and pins the exact staging and production evidence bindings', () => {
   assert.deepEqual(CHECKOUT_EVIDENCE_BINDINGS, {
     [checkoutEvidenceBindingKey(STAGING_CHECKOUT_BINDING)]: true,
+    [checkoutEvidenceBindingKey(PRODUCTION_CHECKOUT_BINDING)]: true,
   });
   assert.ok(Object.isFrozen(CHECKOUT_EVIDENCE_BINDINGS));
   assert.deepEqual(createLaunchConfig({
@@ -161,6 +168,30 @@ test('launch config defaults fail closed, requires a trusted Vercel target, and 
     evidence: 'PAY-STG-20260716-1199625-1875389',
   };
   assert.deepEqual(createLaunchConfig(enabled), expectedEnabledConfig);
+
+  const enabledProduction = {
+    PATINA_PRO_CHECKOUT_ENABLED: 'true',
+    PATINA_DEPLOYMENT_CHANNEL: 'production',
+    PATINA_PRO_CHECKOUT_URL: 'https://vibetip.lemonsqueezy.com/checkout/buy/8ab3a49b-cc55-49e8-bd94-9cbdff5e6a7d',
+    PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-B-20260723-1236551-1932893',
+    VERCEL_ENV: 'production',
+  };
+  assert.deepEqual(createLaunchConfig(enabledProduction), {
+    schemaVersion: 1,
+    channel: 'production',
+    enabled: true,
+    checkoutOrigin: 'https://vibetip.lemonsqueezy.com',
+    checkoutPath: '/checkout/buy/8ab3a49b-cc55-49e8-bd94-9cbdff5e6a7d',
+    evidence: 'PAY-B-20260723-1236551-1932893',
+  });
+  assert.throws(
+    () => createLaunchConfig({ ...enabledProduction, VERCEL_ENV: 'preview' }),
+    /Invalid VERCEL_ENV: must be "production" when production checkout is enabled/,
+  );
+  assert.throws(
+    () => createLaunchConfig({ ...enabledProduction, PATINA_PRO_GATE_EVIDENCE_ID: 'PAY-B-other' }),
+    /source-controlled checkout evidence binding/,
+  );
 
   assert.throws(
     () => createLaunchConfig({ ...enabled, VERCEL_ENV: 'production' }),

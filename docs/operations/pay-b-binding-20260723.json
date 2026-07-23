@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "PAY-B-BINDING-v1",
+  "evidenceId": "PAY-B-20260723-1236551-1932893",
+  "approvedAt": "2026-07-23T09:23:21Z",
+  "source": "owner approval record records/PAY-B-20260723.md in the owner-controlled horcrux repository",
+  "approvalCommit": "487b51cd9d612dd8bbb0be3e5273be410ece0bb2",
+  "approver": "e2e <e2e@example.com> (owner directive, patina operator session)",
+  "store": {
+    "id": "425473",
+    "domain": "vibetip.lemonsqueezy.com"
+  },
+  "product": {
+    "id": "1236551"
+  },
+  "variant": {
+    "id": "1932893",
+    "isSubscription": true,
+    "interval": "month",
+    "intervalCount": 1,
+    "priceCents": 999,
+    "hasLicenseKeys": true,
+    "activationLimit": 3
+  },
+  "checkoutUrl": "https://vibetip.lemonsqueezy.com/checkout/buy/8ab3a49b-cc55-49e8-bd94-9cbdff5e6a7d",
+  "reviewedStagingEvidence": "PAY-STG-20260716-1199625-1875389",
+  "factsSha256": "770b2f95d5a50586317c04eb0b5c7767990baa8f73f015a0e4284089e4182b7b"
+}

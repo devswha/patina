@@ -18,7 +18,7 @@ const NUMBER_RE = /\d[\d.,]*/g;
 // grouping like 1,2 or 3,14 is intentionally NOT stripped so it never collapses
 // onto 12 / 314 and masks a genuinely dropped number.
 const GROUPED_THOUSANDS_RE = /^\d{1,3}(,\d{3})+(\.\d+)?$/;
-const NUMERIC_SAFETY_VERSION = 'numeric-safety-v1';
+const NUMERIC_SAFETY_VERSION = 'numeric-safety-v2';
 const NUMBER_TOKEN_RE = /[-+−]?\d[\d,.]*/g;
 const ISO_DATE_RE = /\b(\d{4})-(\d{2})-(\d{2})\b/g;
 const EN_DATE_RE = /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s*(\d{4})\b|\b(\d{1,2})\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/gi;
@@ -40,19 +40,42 @@ const UNIT_FACTORS_V1 = Object.freeze({
   mL: ['volume-ml', 1],
   L: ['volume-ml', 1000],
 });
+const KO_MAGNITUDE_FACTORS = Object.freeze({
+  백: 100,
+  천: 1000,
+  만: 10000,
+  억: 100000000,
+  조: 1000000000000,
+  경: 10000000000000000,
+  해: 100000000000000000000,
+});
 const WORD_NUMBERS = Object.freeze({
   en: Object.freeze({ zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 }),
   ko: Object.freeze({ 영: 0, 하나: 1, 둘: 2, 셋: 3, 넷: 4, 다섯: 5, 여섯: 6, 일곱: 7, 여덟: 8, 아홉: 9, 열: 10 }),
   zh: Object.freeze({ 零: 0, 〇: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 }),
   ja: Object.freeze({ 零: 0, 〇: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 }),
 });
+// v2 precision pass (2026-07-23): word-number detection is scoped to contexts
+// that are actually numeric. v1 flagged bare ordinals/fractions (en: first,
+// half, quarter, score) and any Hangul containing a Sino-Korean numeral
+// morpheme (이해, 오해, 구조, 조건, 환경이 all matched 이+해 / 구+조 / 조+건 /
+// 경+이), which 422-rejected most real KO/EN prose on the live web tier.
+// Digit-anchored protection is untouched; word-only numeral drift (e.g.
+// "이백" -> "삼백", "first" -> "second") is delegated to the LLM MPS/fidelity
+// floors, which remain the enforcement line for non-digit claims.
 const UNSUPPORTED_WORD_NUMBER_RE = Object.freeze({
-  en: /\b(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth|thirtieth|fortieth|fiftieth|sixtieth|seventieth|eightieth|ninetieth|hundredth|thousandth|millionth|billionth|trillionth|quadrillionth|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|quadrillion|half|halves|quarter|quarters|third|thirds|fourth|fourths|fifth|fifths|dozen|score)\b/i,
-  ko: /(?:열(?:한|두)|스물|서른|마흔|쉰|예순|일흔|여든|아흔|(?:첫|둘|셋|넷|다섯|여섯|일곱|여덟|아홉)째|절반|분의|[공령일이삼사오육칠팔구십한두세네]+[백천만억조경해]|[백천만억조경해](?:[공령일이삼사오육칠팔구십한두세네]|[백천만억조경해]))/u,
+  en: /\b(?:thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|quadrillion|dozen)\b/i,
+  ko: /(?:열(?:한|두)|스물|서른|마흔|쉰|예순|일흔|여든|아흔|절반|분의)/u,
   zh: /(?:两|兩|壹|贰|貳|叁|參|肆|伍|陆|陸|柒|捌|玖|拾|廿|卅|卌|半|第|分之|百|千|萬|万|億|亿|兆|京|垓)/,
   ja: /(?:壱|弐|参|肆|伍|陸|漆|捌|玖|拾|半|第|分の|百|千|万|億|兆|京|垓)/,
 });
-const KO_SINGLE_MAGNITUDE_CONTEXT_RE = /(?:\d\s*[백천만억조경해]|[백천만억조경해](?:\s+(?:개|건|권|그릇|대|마리|명|번|병|살|세|송이|장|채|층|통|편|회|년|월|일)|(?:개|건|권|그릇|대|달러|마리|명|번|병|살|세|송이|원|엔|위안|장|채|층|통|퍼센트|편|회)))/u;
+// Bare-magnitude context: digits next to a magnitude are always claimable-
+// adjacent ("3백"), and a magnitude char is treated as numeric only when it is
+// a standalone eojeol head — `(?<![가-힣])` — so 환경/배경/골백 never fire. The
+// spaced/attached counter branches carry only 백천만억: 조/경/해 as bare word
+// numerals do not occur without digits, while their morpheme collisions are
+// everywhere (조건, 조회, 경우, "그 해 명절").
+const KO_SINGLE_MAGNITUDE_CONTEXT_RE = /(?:\d\s*[백천만억조경해]|(?<![가-힣])[백천만억](?:\s+(?:개|건|권|그릇|대|마리|명|번|병|살|세|송이|장|채|층|통|편|회|년|월|일)|(?:달러|원|엔|위안|퍼센트)))/u;
 const NUMERIC_OPERATOR_RE = /\p{Nd}\s*(?:[-+−–—:\x2F÷×*]\s*)+\p{Nd}/u;
 const NUMERIC_COMPARATOR_RE = /(?:[-+−]?\p{Nd}[\p{Nd}.,]*\s*(?:<=|>=|<|>|≤|≥)|(?:<=|>=|<|>|≤|≥)\s*[-+−]?\p{Nd})/u;
 const DECIMAL_DIGIT_RE = /\p{Nd}/u;
@@ -124,7 +147,22 @@ function hasUnsupportedWordNumberExpression(source, lang, occupied = []) {
     return compoundNumerals.test(uncoveredSource);
   }
   if (UNSUPPORTED_WORD_NUMBER_RE[lang]?.test(uncoveredSource)) return true;
-  if (lang === 'ko' && KO_SINGLE_MAGNITUDE_CONTEXT_RE.test(source)) return true;
+  if (lang === 'ko' && KO_SINGLE_MAGNITUDE_CONTEXT_RE.test(uncoveredSource)) return true;
+  if (lang === 'ko') {
+    // Chained magnitude terms ("1억 2천만", "3만5천") leave residual magnitude
+    // chars next to claimed spans or digits after the single-term scaled pass.
+    // Partial claims would compare wrong values (천만 -> 천억 undetected), so
+    // any leftover magnitude adjacent (space-skipped) to an occupied position
+    // or digit fails closed instead.
+    for (const match of uncoveredSource.matchAll(/[백천만억조경해]/gu)) {
+      let left = match.index - 1;
+      while (left >= 0 && /\s/.test(source[left])) left -= 1;
+      if (left >= 0 && (occupied[left] || /\d/.test(source[left]))) return true;
+      let right = match.index + 1;
+      while (right < source.length && /\s/.test(source[right])) right += 1;
+      if (right < source.length && (occupied[right] || /\d/.test(source[right]))) return true;
+    }
+  }
   const words = WORD_NUMBERS[lang] ?? WORD_NUMBERS.en;
   const matches = [];
   const re = lang === 'en'
@@ -242,6 +280,17 @@ function addClaims(text, lang) {
     const [dimension, factor] = UNIT_FACTORS_V1[m[2]];
     add(m.index, m[0].length, `unit:${dimension}:${scaledRational(normalizedNumber(m[1]), factor)}`);
   });
+
+  // KO digit+magnitude ("3만", "1,200만", "1.5억") is the dominant Korean way
+  // to write large numbers; v1 rejected it wholesale as unsupported, which
+  // 422-blocked most business/news prose. A single digit-anchored magnitude is
+  // deterministically convertible, so claim it as a scaled rational. Chained
+  // magnitude terms ("1억2천만", "3만5천") stay unclaimed and fall through to
+  // the fail-closed magnitude-context check on the uncovered residue.
+  if (lang === 'ko') {
+    const koScaled = new RegExp(String.raw`(?<![\w.])(${number})\s*([백천만억조경해])(?![\d백천만억조경해])`, 'g');
+    matchAll(koScaled, (m) => add(m.index, m[0].length, `number:${scaledRational(normalizedNumber(m[1]), KO_MAGNITUDE_FACTORS[m[2]])}`));
+  }
   if (hasUnsupportedNumericSyntax(source, occupied)) {
     return { ok: false, reason: 'unsupported_numeric_syntax', claims: [] };
   }

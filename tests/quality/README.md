@@ -110,6 +110,17 @@ npm run quality:live -- --language ko --limit 3
 The report records the judge under `settings.judge`, and the Markdown header
 prints `judge: <model>` (or `self` when unset).
 
+### Usage & latency capture (judge cost accounting)
+
+Every live call records wall time, paid attempt count, and normalized token
+usage (`prompt_tokens`, `completion_tokens`, `reasoning_tokens`,
+`cached_read_tokens`, `cache_write_tokens` — OpenAI-compat and native
+Anthropic shapes both map in). Per-fixture results carry
+`usage.candidate` / `usage.judge` aggregates and the JSON report sums them
+under `summary.usage`. Failed paid retries are billed into the totals via
+per-attempt usage, so schema-retry doubling and hidden reasoning tokens are
+visible instead of silently distorting judge cost comparisons.
+
 The fixture set lives in `tests/fixtures/live-quality/{en,ko}/*.md` with YAML
 frontmatter (`fixture_id`, `language`, optional `profile`, `anchors`,
 `expected_focus`) plus the body text. The legacy

@@ -300,6 +300,19 @@ test('number safety v2 leaves everyday KO/EN words claim-free (precision regress
   // v2 — the deterministic gate no longer rejects it.
   assert.equal(evaluateNumberSafety('Choose the first option.', 'Choose the second option.', 'en').ok, true);
 });
+test('number safety v2.2: 분의/쉰 substrings stay lexical, real numerals stay guarded', () => {
+  // Live 422s: '분의' is a substring of 여러분의/대부분의 and bare '쉰' is the
+  // rest-verb form far more often than fifty. Digit fractions keep their
+  // protection through claimed digits; 쉰 with a counter is still a numeral.
+  for (const t of ['대부분의 사람들이 동의한다.', '여러분의 성원에 감사드립니다.', '목이 쉰 소리가 났다.', '하루 쉰 다음 다시 시작했다.', '3분의 1이 찬성했다.']) {
+    const r = evaluateNumberSafety(t, t, 'ko');
+    assert.equal(r.ok, true, `${t}: ${r.reason}`);
+  }
+  for (const t of ['쉰 명이 모였다.', '쉰 살이 되었다.']) {
+    assert.equal(evaluateNumberSafety(t, t, 'ko').reason, 'unsupported_word_number', t);
+  }
+  assert.equal(evaluateNumberSafety('3분의 1이 찬성했다.', '3분의 2가 찬성했다.', 'ko').reason, 'numeric_claim_changed');
+});
 test('number safety leaves bare KO discourse counters claim-free (v2.1 regression)', () => {
   // Live 422: "아무도 말해주지 않는 사실 하나 —" claimed number:1, so the
   // faux-insight rewrite that deletes the frame (with its counter) failed

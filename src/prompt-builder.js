@@ -29,6 +29,26 @@ export const DEFAULT_SEVERITY_POINTS = Object.freeze({ high: 3, medium: 2, low: 
 // matters for `--batch` and score modes over third-party documents, where
 // the LLM-judged score is otherwise subvertible by adversarial input.
 const INPUT_DATA_FENCE = '⟦⟦⟦PATINA_INPUT_DATA⟧⟧⟧';
+/**
+ * Split a built prompt into a cacheable static prefix and a dynamic tail for
+ * provider prompt caching. The prefix is everything before the FIRST input
+ * fence: on a first-turn prompt that is the full static catalog (identical
+ * across requests for a given lang/profile/persona), while refine prompts
+ * carry variable fenced references near the top, so their prefix falls under
+ * the minimum and caching is skipped — avoiding cache writes that would never
+ * be re-read.
+ *
+ * @param {string} prompt Built prompt text.
+ * @param {number} [minPrefixChars] Minimum prefix size worth caching (~1k tokens).
+ * @returns {{ prefix: string|null, tail: string }}
+ */
+export function splitPromptForCaching(prompt, minPrefixChars = 4096) {
+  const text = String(prompt);
+  const index = text.indexOf(INPUT_DATA_FENCE);
+  if (index < minPrefixChars) return { prefix: null, tail: text };
+  return { prefix: text.slice(0, index), tail: text.slice(index) };
+}
+
 function neutralizeInputFenceCollisions(text) {
   return String(text).replaceAll(
     INPUT_DATA_FENCE,

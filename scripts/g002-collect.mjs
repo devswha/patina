@@ -20,7 +20,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { runWebRewriteStream } from '../src/web-rewrite-stream.js';
-import { collectPayBCostSourceBundle, issuePayBCostReceipt, sha256Canonical, canonicalJson } from './pay-b-cost-receipt.mjs';
+import { collectPayBCostSourceBundle, derivePayBCostFinancial, issuePayBCostReceipt, sha256Canonical, canonicalJson } from './pay-b-cost-receipt.mjs';
 
 const MODEL = process.env.G002_MODEL || 'claude-sonnet-5';
 const BASE = 'https://api.anthropic.com/v1';
@@ -53,7 +53,7 @@ const PROBES = [
     lang: 'ko',
     text: [
       '솔직히 말하면, 저는 이 앱을 처음 봤을 때 별 기대가 없었습니다. 시중에 비슷한 서비스가 이미 넘쳐나니까요.',
-      '그런데 일주일 써보고 생각이 완전히 바뀌었습니다. 반전: 하루 10분 투자로 업무 정리 시간이 절반으로 줄었습니다. 아무도 말해주지 않는 사실 하나 — 도구는 기능이 아니라 습관을 만들어줄 때 가치가 있습니다.',
+      '그런데 일주일 써보고 생각이 완전히 바뀌었습니다. 반전: 하루 10분 투자로 업무 정리 시간이 40% 넘게 줄었습니다. 아무도 말해주지 않는 사실 하나 — 도구는 기능이 아니라 습관을 만들어줄 때 가치가 있습니다.',
       '한 달 무료니까 일단 써보시고, 안 맞으면 지우면 됩니다. 저는 유료 전환했습니다.',
     ].join('\n\n'),
   },
@@ -81,22 +81,34 @@ const apiKey = loadKey();
 const rawProbes = [];
 let effectiveModel = null;
 for (const probe of PROBES) {
-  console.error(`[g002] running ${probe.id} (${probe.text.length} chars)…`);
-  const result = await runWebRewriteStream({
-    request: { mode: 'first', lang: probe.lang, tier: 'pro', text: probe.text, apiKey, baseURL: BASE, model: MODEL },
-    emit: () => {},
-    timeout: 180_000,
-  });
-  if (!result.attempts?.valid) throw new Error(`${probe.id}: attempt records invalid`);
-  if (!result.ok) console.error(`[g002] ${probe.id} terminal: ${result.code} (cost data still valid if stages succeeded)`);
+  // The rewrite model is nondeterministic: a run can trip the number-safety
+  // guard (rewrite mutated a numeric claim -> scoring never runs) and a probe
+  // then lacks complete stage records. Retry the probe wholesale, up to three
+  // runs, and keep the first run whose three stages all terminated in success.
+  // floor_failed is acceptable: scoring completed, so its cost data is whole;
+  // probe-level retry overhead is covered by the receipt's retry_failure
+  // sensitivity cases.
+  let accepted = null;
+  for (let attempt = 1; attempt <= 3 && !accepted; attempt += 1) {
+    console.error(`[g002] running ${probe.id} (${probe.text.length} chars), try ${attempt}…`);
+    const result = await runWebRewriteStream({
+      request: { mode: 'first', lang: probe.lang, tier: 'pro', text: probe.text, apiKey, baseURL: BASE, model: MODEL },
+      emit: () => {},
+      timeout: 180_000,
+    });
+    if (!result.attempts?.valid) throw new Error(`${probe.id}: attempt records invalid`);
+    if (!result.ok) console.error(`[g002] ${probe.id} terminal: ${result.code}`);
+    const complete = ['rewrite', 'mps', 'fidelity'].every((stage) => result.attempts[stage].length > 0 && result.attempts[stage].at(-1).outcome === 'success');
+    if (complete) accepted = result;
+    else console.error(`[g002] ${probe.id}: incomplete stages, retrying`);
+  }
+  if (!accepted) throw new Error(`${probe.id}: no complete run in 3 tries`);
   for (const stage of ['rewrite', 'mps', 'fidelity']) {
-    const records = result.attempts[stage];
-    if (!records.length || records.at(-1).outcome !== 'success') throw new Error(`${probe.id}/${stage}: no terminal success — rerun`);
-    const terminal = records.at(-1);
+    const terminal = accepted.attempts[stage].at(-1);
     if (effectiveModel === null) effectiveModel = terminal.effectiveModel;
     if (terminal.effectiveModel !== effectiveModel) throw new Error(`${probe.id}/${stage}: effective model drift ${terminal.effectiveModel}`);
   }
-  rawProbes.push({ id: probe.id, inputChars: probe.text.length, stages: { rewrite: result.attempts.rewrite, mps: result.attempts.mps, fidelity: result.attempts.fidelity } });
+  rawProbes.push({ id: probe.id, inputChars: probe.text.length, stages: { rewrite: accepted.attempts.rewrite, mps: accepted.attempts.mps, fidelity: accepted.attempts.fidelity } });
 }
 
 const rawG002 = { channel: 'staging', collectorVersion: COLLECTOR_VERSION, deploymentId: `local-${sourceCommitSha}`, effectiveModel, provider: PROVIDER, requestedModel: MODEL, sourceCommitSha, probes: rawProbes };
@@ -104,7 +116,10 @@ const providerBillingFacts = [];
 for (const probe of rawProbes) {
   for (const stage of ['rewrite', 'mps', 'fidelity']) {
     for (const record of probe.stages[stage]) {
-      const billed = record.outcome === 'success' && record.usage !== null;
+      // Paid means the provider metered it: an errored attempt that still
+      // carries usage (e.g. a schema-parse retry after a full response) was
+      // billed all the same.
+      const billed = record.usage !== null;
       providerBillingFacts.push({
         probeId: probe.id,
         stage,
@@ -146,6 +161,8 @@ const evidence = {
     bootstrap: { seed: EVIDENCE_ID, iterations: 10_000, confidenceBps: 9500 },
   },
 };
+writeFileSync(`${outPath}.bundle.json`, `${canonicalJson({ rawG002, providerBillingFacts, pricing, financialInputs: evidence.financial })}\n`);
+console.error(`[g002] raw bundle persisted: ${outPath}.bundle.json (offline scenario re-analysis needs no further spend)`);
 try {
   const receipt = issuePayBCostReceipt(evidence);
   writeFileSync(outPath, `${canonicalJson(receipt)}\n`);
@@ -154,8 +171,8 @@ try {
 } catch (error) {
   // The issuer mutates financial with the derived numbers before enforcing the
   // margin gate, so a rejection still leaves the real measurements available.
-  const f = evidence.financial;
   console.error(`[g002] receipt REFUSED: ${error.message}`);
+  const f = { ...evidence.financial, ...derivePayBCostFinancial(evidence) };
   if (Number.isFinite(f.selectedUpperCogsUsdMicros)) {
     console.error(`[g002] measured upper COGS/1M chars: $${(f.selectedUpperCogsUsdMicros / 1e6).toFixed(2)}`);
     console.error(`[g002] net revenue/mo: $${(f.netRevenueUsdMicros / 1e6).toFixed(2)} | gross margin at the 1M-char cap: ${(f.grossMarginBps / 100).toFixed(1)}%`);

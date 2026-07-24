@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 const SCHEMA_VERSION = 'PAY-B-COST-v1';
 const ISSUER = 'patina.pay-b-cost';
-const USAGE_ADAPTER_VERSION = 'g002-provider-usage-v1';
+const USAGE_ADAPTER_VERSION = 'g002-provider-usage-v2';
 const STAGES = ['rewrite', 'mps', 'fidelity'];
 const RETRY_REASONS = new Set(['initial', 'transport', 'network', 'timeout', 'temperature_schema', 'score_schema_parse']);
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -41,7 +41,29 @@ function normalizeUsage(usage, path) {
     const cached = usage.prompt_tokens_details?.cached_tokens ?? 0; if (cached > usage.prompt_tokens) fail(`${path}.prompt_tokens_details.cached_tokens exceeds prompt_tokens`);
     return { input: usage.prompt_tokens - cached, output: usage.completion_tokens, cacheRead: cached, cacheCreation: 0 };
   }
-  if (exact(['input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens'], ['input_tokens', 'output_tokens'])) return { input: integer(usage.input_tokens, `${path}.input_tokens`, 1), output: integer(usage.output_tokens, `${path}.output_tokens`), cacheRead: 'cache_read_input_tokens' in usage ? integer(usage.cache_read_input_tokens, `${path}.cache_read_input_tokens`) : 0, cacheCreation: 'cache_creation_input_tokens' in usage ? integer(usage.cache_creation_input_tokens, `${path}.cache_creation_input_tokens`) : 0 };
+  if (exact(['input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens', 'cache_creation', 'output_tokens_details', 'service_tier', 'inference_geo'], ['input_tokens', 'output_tokens'])) {
+    // v2: the first-party Messages API (2026) reports a cache_creation
+    // duration breakdown, an output thinking-token breakdown, and routing
+    // metadata. Billing stays single-rate: only the 5-minute ephemeral cache
+    // is accepted — a 1-hour write bills at 2x and would silently break the
+    // single cacheCreation rate in `pricing`, so it fails closed.
+    const input = integer(usage.input_tokens, `${path}.input_tokens`, 1);
+    const output = integer(usage.output_tokens, `${path}.output_tokens`);
+    const cacheRead = 'cache_read_input_tokens' in usage ? integer(usage.cache_read_input_tokens, `${path}.cache_read_input_tokens`) : 0;
+    const cacheCreation = 'cache_creation_input_tokens' in usage ? integer(usage.cache_creation_input_tokens, `${path}.cache_creation_input_tokens`) : 0;
+    if ('cache_creation' in usage) {
+      numericDetails(usage.cache_creation, ['ephemeral_5m_input_tokens', 'ephemeral_1h_input_tokens'], `${path}.cache_creation`);
+      if ((usage.cache_creation.ephemeral_1h_input_tokens ?? 0) !== 0) fail(`${path}.cache_creation must not use the 1-hour cache under single-rate pricing`);
+      if ((usage.cache_creation.ephemeral_5m_input_tokens ?? 0) !== cacheCreation) fail(`${path}.cache_creation breakdown must equal cache_creation_input_tokens`);
+    }
+    if ('output_tokens_details' in usage) {
+      numericDetails(usage.output_tokens_details, ['thinking_tokens'], `${path}.output_tokens_details`);
+      if ((usage.output_tokens_details.thinking_tokens ?? 0) > output) fail(`${path}.output_tokens_details.thinking_tokens exceeds output_tokens`);
+    }
+    if ('service_tier' in usage) text(usage.service_tier, `${path}.service_tier`);
+    if ('inference_geo' in usage) text(usage.inference_geo, `${path}.inference_geo`);
+    return { input, output, cacheRead, cacheCreation };
+  }
   fail(`${path} must contain exactly one supported ${USAGE_ADAPTER_VERSION} usage shape`);
 }
 function validateBillingEvidence(evidence, path, provider, usage, billed) {
@@ -80,6 +102,13 @@ function financialDerived(financial, bundle, pricing, costs) { const base = boot
 function validateFinancial(financial, bundle, pricing, costs, issuing) { const input = ['bootstrap', 'feeUsdMicros', 'refundReserveUsdMicros', 'unitChars']; const full = [...input, 'grossMarginBps', 'netRevenueUsdMicros', 'selectedUpperCogsUsdMicros', 'sensitivity', 'upperCogsUsdMicros']; object(financial, issuing ? input : full, 'financial'); if (financial.unitChars !== 1_000_000) fail('financial.unitChars must be 1000000'); integer(financial.feeUsdMicros, 'financial.feeUsdMicros'); integer(financial.refundReserveUsdMicros, 'financial.refundReserveUsdMicros'); object(financial.bootstrap, ['confidenceBps', 'iterations', 'seed'], 'financial.bootstrap'); if (financial.bootstrap.iterations !== 10_000 || financial.bootstrap.confidenceBps !== 9500) fail('financial.bootstrap must be bootstrap10k at 95%'); text(financial.bootstrap.seed, 'financial.bootstrap.seed'); const derived = financialDerived(financial, bundle, pricing, costs); if (issuing) Object.assign(financial, derived); else for (const key of Object.keys(derived)) if (canonicalJson(financial[key]) !== canonicalJson(derived[key])) fail(`financial.${key} is not derived`); if (financial.grossMarginBps < 6000) fail('financial.grossMarginBps must be at least 6000'); }
 function validateEnvelope(receipt, issuing) { const input = ['channel', 'collectorVersion', 'deploymentId', 'effectiveModel', 'financial', 'issuedAt', 'pricing', 'provider', 'receiptId', 'requestedModel', 'schemaVersion', 'sourceBundle', 'sourceBundleSha256', 'sourceCommitSha']; const full = [...input, 'artifactSha256', 'attemptCosts', 'issuer']; object(receipt, issuing ? input : full, 'receipt'); if (receipt.schemaVersion !== SCHEMA_VERSION || receipt.channel !== 'staging') fail('receipt must be PAY-B-COST-v1 staging evidence'); if (!UUID.test(receipt.receiptId)) fail('receiptId must be a UUID'); utc(receipt.issuedAt, 'issuedAt'); if (!COMMIT_SHA.test(receipt.sourceCommitSha)) fail('sourceCommitSha must be 40 lowercase hex'); for (const key of ['collectorVersion', 'deploymentId', 'provider', 'requestedModel', 'effectiveModel']) text(receipt[key], key); if (!SHA256.test(receipt.sourceBundleSha256) || receipt.sourceBundleSha256 !== sha256Canonical(receipt.sourceBundle)) fail('sourceBundleSha256 does not match immutable sourceBundle'); for (const key of ['channel', 'collectorVersion', 'deploymentId', 'provider', 'requestedModel', 'effectiveModel', 'sourceCommitSha']) if (receipt[key] !== receipt.sourceBundle[key]) fail(`receipt.${key} must equal sourceBundle.${key}`); if (!issuing && receipt.issuer !== ISSUER) fail(`issuer must be ${ISSUER}`); }
 export function validatePayBCostReceipt(receipt) { validateEnvelope(receipt, false); validatePricing(receipt.pricing); const costs = validateSourceBundle(receipt.sourceBundle, receipt.pricing); if (canonicalJson(receipt.attemptCosts) !== canonicalJson(expectedCostRecords(costs))) fail('attemptCosts is not derived from sourceBundle'); validateFinancial(receipt.financial, receipt.sourceBundle, receipt.pricing, costs, false); if (!SHA256.test(receipt.artifactSha256)) fail('artifactSha256 must be SHA-256 hex'); const { artifactSha256, ...unsigned } = receipt; if (artifactSha256 !== sha256Canonical(unsigned)) fail('artifactSha256 does not match canonical receipt'); return JSON.parse(canonicalJson(receipt)); }
+/** Derive the financial numbers without issuing — for refusal reporting and offline scenario analysis. */
+export function derivePayBCostFinancial(evidence) {
+  const clone = JSON.parse(canonicalJson(evidence));
+  validatePricing(clone.pricing);
+  const costs = validateSourceBundle(clone.sourceBundle, clone.pricing);
+  return financialDerived(clone.financial, clone.sourceBundle, clone.pricing, costs);
+}
 export function issuePayBCostReceipt(evidence) { validateEnvelope(evidence, true); const receipt = JSON.parse(canonicalJson(evidence)); receipt.issuer = ISSUER; validatePricing(receipt.pricing); const costs = validateSourceBundle(receipt.sourceBundle, receipt.pricing); receipt.attemptCosts = expectedCostRecords(costs); validateFinancial(receipt.financial, receipt.sourceBundle, receipt.pricing, costs, true); receipt.artifactSha256 = sha256Canonical(receipt); return validatePayBCostReceipt(receipt); }
 async function readStdin() { const chunks = []; for await (const chunk of process.stdin) chunks.push(chunk); return Buffer.concat(chunks).toString('utf8'); }
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) { try { process.stdout.write(`${canonicalJson(issuePayBCostReceipt(JSON.parse(await readStdin())))}\n`); } catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 1; } }

@@ -81,6 +81,52 @@ Supported live settings:
   `PATINA_API_KEY`.
 - `PATINA_LIVE_MODEL` / `PATINA_LIVE_API_BASE` / `PATINA_LIVE_TIMEOUT_MS`.
 
+### Fixed judge (recommended for cross-model comparisons)
+
+By default the candidate model also grades its own rewrite (`scoreText`,
+`scoreMPS`, `scoreFidelity`), so scores are not comparable across candidate
+models and are noisy run-to-run. Pin the grading side to one fixed judge with
+`--judge-*` flags or `PATINA_LIVE_JUDGE_*` env vars:
+
+```bash
+PATINA_LIVE=1 \
+PATINA_LIVE_API_BASE=https://token-plan.example/compatible-mode/v1 \
+PATINA_LIVE_API_KEY=... \
+PATINA_LIVE_MODEL=candidate-model \
+PATINA_LIVE_JUDGE_API_BASE=https://api.anthropic.com/v1 \
+PATINA_LIVE_JUDGE_MODEL=claude-sonnet-5 \
+PATINA_LIVE_JUDGE_API_KEY=... \
+npm run quality:live -- --language ko --limit 3
+```
+
+- `PATINA_LIVE_JUDGE_MODEL` / `--judge-model` — judge model id. With only this
+  set, the judge reuses the primary endpoint and credential.
+- `PATINA_LIVE_JUDGE_PROVIDER` / `PATINA_LIVE_JUDGE_API_BASE` — judge endpoint.
+  A judge on a different host never reuses the primary key; supply
+  `PATINA_LIVE_JUDGE_API_KEY` or the run fails closed.
+- `PATINA_LIVE_JUDGE_TIMEOUT_MS` / `--judge-timeout-ms` — scoring budget
+  (defaults to the primary timeout).
+- `PATINA_LIVE_JUDGE_BACKEND` / `--judge-backend` — run the judge on a local
+  **subscription CLI seat** (`codex-cli`, `claude-cli`, `gemini-cli`,
+  `kimi-cli`) instead of a paid HTTP API; no judge API key required. Pair
+  with `--judge-model` or let the backend use its documented default. CLI
+  backends report no token usage, so cost accounting shows calls and wall
+  time only.
+
+The report records the judge under `settings.judge`, and the Markdown header
+prints `judge: <model>` (or `self` when unset).
+
+### Usage & latency capture (judge cost accounting)
+
+Every live call records wall time, paid attempt count, and normalized token
+usage (`prompt_tokens`, `completion_tokens`, `reasoning_tokens`,
+`cached_read_tokens`, `cache_write_tokens` — OpenAI-compat and native
+Anthropic shapes both map in). Per-fixture results carry
+`usage.candidate` / `usage.judge` aggregates and the JSON report sums them
+under `summary.usage`. Failed paid retries are billed into the totals via
+per-attempt usage, so schema-retry doubling and hidden reasoning tokens are
+visible instead of silently distorting judge cost comparisons.
+
 The fixture set lives in `tests/fixtures/live-quality/{en,ko}/*.md` with YAML
 frontmatter (`fixture_id`, `language`, optional `profile`, `anchors`,
 `expected_focus`) plus the body text. The legacy

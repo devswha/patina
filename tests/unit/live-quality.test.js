@@ -9,6 +9,11 @@ import {
   evaluateRewriteQuality,
   loadLiveFixtures,
   renderMarkdownReport,
+  aggregateCalls,
+  createBackendJudgeCallLLM,
+  normalizeUsage,
+  resolveJudgeSettings,
+  summarizeUsage,
   resolveLiveSettings,
   runLiveQuality,
   runLiveQualityReport,
@@ -144,6 +149,230 @@ test('live report is structured and fail-closed when credentials are missing', a
   const markdown = renderMarkdownReport(report);
   assert.match(markdown, /schema_version: 1/);
   assert.match(markdown, /api_key: missing/);
+});
+
+test('judge settings resolve to null when no judge override is configured', () => {
+  assert.equal(resolveJudgeSettings({ env: {} }), null);
+  assert.equal(resolveJudgeSettings({ env: { PATINA_LIVE_MODEL: 'candidate' } }), null);
+});
+
+test('judge model alone inherits the primary endpoint and credential', () => {
+  const primary = {
+    baseURL: 'https://example.test/v1',
+    model: 'candidate-model',
+    apiKey: 'primary-key',
+    timeoutMs: 120000,
+  };
+  const judge = resolveJudgeSettings({ env: { PATINA_LIVE_JUDGE_MODEL: 'judge-model' } }, primary);
+
+  assert.equal(judge.model, 'judge-model');
+  assert.equal(judge.baseURL, 'https://example.test/v1');
+  assert.equal(judge.apiKey, 'primary-key');
+  assert.equal(judge.hasApiKey, true);
+  assert.equal(judge.apiKeySource, 'primary');
+  assert.equal(judge.timeoutMs, 120000);
+});
+
+test('judge on a different host never reuses the primary credential', () => {
+  const primary = {
+    baseURL: 'https://example.test/v1',
+    model: 'candidate-model',
+    apiKey: 'primary-key',
+    timeoutMs: 120000,
+  };
+  const judge = resolveJudgeSettings({
+    env: {
+      PATINA_LIVE_JUDGE_MODEL: 'judge-model',
+      PATINA_LIVE_JUDGE_API_BASE: 'https://other.test/v1',
+    },
+  }, primary);
+
+  assert.equal(judge.baseURL, 'https://other.test/v1');
+  assert.equal(judge.apiKey, null);
+  assert.equal(judge.hasApiKey, false);
+});
+
+test('live report fails closed when the judge lacks a credential', async () => {
+  const report = await runLiveQualityReport({
+    fixtures: [fixture],
+    live: true,
+    env: {
+      PATINA_LIVE_API_KEY: 'primary-key',
+      PATINA_LIVE_API_BASE: 'https://example.test/v1',
+      PATINA_LIVE_MODEL: 'candidate-model',
+      PATINA_LIVE_JUDGE_MODEL: 'judge-model',
+      PATINA_LIVE_JUDGE_API_BASE: 'https://other.test/v1',
+    },
+  });
+
+  assert.equal(report.summary.error, 1);
+  assert.match(report.results[0].errors[0], /judge API key/);
+  assert.equal(report.settings.judge.model, 'judge-model');
+  assert.equal(report.settings.judge.apiKey, undefined);
+});
+
+test('model-graded scoring calls route to the fixed judge, not the candidate', async () => {
+  const seenModels = [];
+  const recordingModel = (args) => {
+    seenModels.push(args.model);
+    return fakeQualityModel(args);
+  };
+  const result = await evaluateModelGradedRewrite(fixture, rewrite, {
+    settings: {
+      apiKey: 'candidate-key',
+      baseURL: 'https://example.test/v1',
+      model: 'candidate-model',
+      timeoutMs: 1000,
+    },
+    judgeSettings: {
+      apiKey: 'judge-key',
+      baseURL: 'https://judge.test/v1',
+      model: 'judge-model',
+      timeoutMs: 2000,
+    },
+    callLLM: recordingModel,
+  });
+
+  assert.equal(result.status, 'pass');
+  assert.ok(seenModels.length >= 4);
+  assert.ok(seenModels.every((model) => model === 'judge-model'));
+});
+
+test('judge backend env resolves a keyless CLI judge', () => {
+  const judge = resolveJudgeSettings({ env: { PATINA_LIVE_JUDGE_BACKEND: 'codex-cli' } }, {
+    baseURL: 'https://example.test/v1',
+    model: 'candidate-model',
+    apiKey: 'primary-key',
+    timeoutMs: 120000,
+  });
+
+  assert.equal(judge.backend, 'codex-cli');
+  assert.equal(judge.model, null);
+  assert.equal(judge.apiKey, null);
+  assert.equal(judge.hasApiKey, false);
+  assert.equal(judge.timeoutMs, 120000);
+});
+
+test('a backend judge passes the key fail-closed gate and reaches evaluation', async () => {
+  const report = await runLiveQualityReport({
+    fixtures: [fixture],
+    live: true,
+    env: {
+      PATINA_LIVE_API_KEY: 'primary-key',
+      PATINA_LIVE_API_BASE: 'https://example.test/v1',
+      PATINA_LIVE_MODEL: 'candidate-model',
+      PATINA_LIVE_JUDGE_BACKEND: 'claude-cli',
+      PATINA_LIVE_JUDGE_MODEL: 'claude-sonnet-5',
+    },
+    callLLM: fakeQualityModel,
+  });
+
+  assert.equal(report.results[0].status, 'pass');
+  assert.equal(report.settings.judge.backend, 'claude-cli');
+  const markdown = renderMarkdownReport(report);
+  assert.match(markdown, /judge: claude-cli\/claude-sonnet-5/);
+});
+
+test('createBackendJudgeCallLLM adapts invokeBackendChain to the scoring callLLM shape', async () => {
+  const seen = [];
+  const judge = { backend: 'codex-cli', model: 'gpt-5.5', timeoutMs: 5000 };
+  const callLLM = createBackendJudgeCallLLM(judge, {
+    resolveBackend: (name) => ({ name }),
+    invokeBackendChain: async (args) => {
+      seen.push(args);
+      return '{"ok":true}';
+    },
+  });
+
+  const out = await callLLM({ prompt: 'score this', apiKey: 'ignored', baseURL: 'https://ignored.test' });
+  assert.equal(out, '{"ok":true}');
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].backends[0].name, 'codex-cli');
+  assert.equal(seen[0].model, 'gpt-5.5');
+  assert.equal(seen[0].modelSource, 'option:judgeModel');
+  assert.equal(seen[0].timeout, 5000);
+  assert.equal(seen[0].prompt, 'score this');
+});
+
+test('normalizeUsage maps OpenAI-compat and native Anthropic shapes', () => {
+  assert.deepEqual(normalizeUsage({
+    prompt_tokens: 100,
+    completion_tokens: 60,
+    completion_tokens_details: { reasoning_tokens: 40 },
+    prompt_tokens_details: { cached_tokens: 80 },
+  }), {
+    prompt_tokens: 100,
+    completion_tokens: 60,
+    reasoning_tokens: 40,
+    cached_read_tokens: 80,
+    cache_write_tokens: null,
+  });
+  assert.deepEqual(normalizeUsage({
+    input_tokens: 50,
+    output_tokens: 30,
+    cache_read_input_tokens: 20,
+    cache_creation_input_tokens: 10,
+  }), {
+    prompt_tokens: 50,
+    completion_tokens: 30,
+    reasoning_tokens: null,
+    cached_read_tokens: 20,
+    cache_write_tokens: 10,
+  });
+  assert.equal(normalizeUsage(null), null);
+});
+
+test('aggregateCalls sums per-attempt usages so failed paid retries stay billed', () => {
+  const totals = aggregateCalls([
+    {
+      ms: 1000,
+      attempts: 2,
+      usages: [
+        { prompt_tokens: 100, completion_tokens: 10 },
+        { prompt_tokens: 100, completion_tokens: 50, completion_tokens_details: { reasoning_tokens: 30 } },
+      ],
+    },
+    { ms: 500, attempts: 1, usages: [] },
+  ]);
+
+  assert.equal(totals.calls, 2);
+  assert.equal(totals.duration_ms, 1500);
+  assert.equal(totals.attempts, 3);
+  assert.equal(totals.prompt_tokens, 200);
+  assert.equal(totals.completion_tokens, 60);
+  assert.equal(totals.reasoning_tokens, 30);
+  assert.equal(totals.cached_read_tokens, null);
+});
+
+test('model-graded results carry judge usage aggregates from live calls', async () => {
+  const withUsage = async (args) => {
+    if (typeof args.onAttempt === 'function') {
+      args.onAttempt({ attemptIndex: 1, usage: { prompt_tokens: 10, completion_tokens: 5 } });
+    }
+    return fakeQualityModel(args);
+  };
+  const result = await evaluateModelGradedRewrite(fixture, rewrite, {
+    settings: {
+      apiKey: 'test-key',
+      baseURL: 'https://example.test/v1',
+      model: 'test-model',
+      timeoutMs: 1000,
+    },
+    candidateCalls: [{ ms: 2000, attempts: 1, usages: [{ prompt_tokens: 900, completion_tokens: 300 }] }],
+    callLLM: withUsage,
+  });
+
+  assert.equal(result.usage.judge.calls, 4);
+  assert.equal(result.usage.judge.attempts, 4);
+  assert.equal(result.usage.judge.prompt_tokens, 40);
+  assert.equal(result.usage.judge.completion_tokens, 20);
+  assert.equal(result.usage.candidate.calls, 1);
+  assert.equal(result.usage.candidate.prompt_tokens, 900);
+
+  const summary = summarizeUsage([result]);
+  assert.equal(summary.judge.prompt_tokens, 40);
+  assert.equal(summary.candidate.completion_tokens, 300);
+  assert.equal(summarizeUsage([{ fixture_id: 'x' }]), null);
 });
 
 async function fakeQualityModel({ prompt }) {

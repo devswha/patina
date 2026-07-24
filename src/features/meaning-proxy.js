@@ -65,7 +65,11 @@ const WORD_NUMBERS = Object.freeze({
 // floors, which remain the enforcement line for non-digit claims.
 const UNSUPPORTED_WORD_NUMBER_RE = Object.freeze({
   en: /\b(?:thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|quadrillion|dozen)\b/i,
-  ko: /(?:열(?:한|두)|스물|서른|마흔|쉰|예순|일흔|여든|아흔|절반|분의)/u,
+  // 쉰 needs a counter ahead: bare 쉰 is overwhelmingly the rest-verb form
+  // (목이 쉰 소리, 하루 쉰 다음). 분의 was dropped in v2.2: it is a substring of
+  // 여러분의/대부분의 (both everyday words), and digit fractions like 3분의 1
+  // are already protected by their claimed digits.
+  ko: /(?:열(?:한|두)|스물|서른|마흔|쉰(?=\s?(?:명|살|개|번|세))|예순|일흔|여든|아흔|절반)/u,
   zh: /(?:两|兩|壹|贰|貳|叁|參|肆|伍|陆|陸|柒|捌|玖|拾|廿|卅|卌|半|第|分之|百|千|萬|万|億|亿|兆|京|垓)/,
   ja: /(?:壱|弐|参|肆|伍|陸|漆|捌|玖|拾|半|第|分の|百|千|万|億|兆|京|垓)/,
 });

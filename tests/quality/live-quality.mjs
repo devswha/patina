@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 
 import { callLLM as defaultCallLLM } from '../../src/api.js';
+import { invokeBackendChain, resolveBackend } from '../../src/backends/index.js';
 import { providerHttpKeyEnvVars, resolveHttpApiKey } from '../../src/auth.js';
 import { loadConfig, getRepoRoot } from '../../src/config.js';
 import { loadCoreFile, loadPatterns, loadProfile } from '../../src/loader.js';
@@ -186,7 +187,9 @@ export async function evaluateModelGradedRewrite(fixture, rawRewrite, options = 
   const patterns = loadPatterns(repoRoot, fixture.language);
   const deadline = judge.timeoutMs ? Date.now() + judge.timeoutMs : undefined;
   const judgeCalls = [];
-  const callLLM = createLiveCallLLM(options.callLLM || defaultCallLLM, judge, (call) => judgeCalls.push(call));
+  const baseCallLLM = options.callLLM
+    || (judge.backend ? createBackendJudgeCallLLM(judge, options.backendDeps) : defaultCallLLM);
+  const callLLM = createLiveCallLLM(baseCallLLM, judge, (call) => judgeCalls.push(call));
 
   const common = {
     apiKey: judge.apiKey,
@@ -348,6 +351,27 @@ function createLiveCallLLM(callLLM, settings, record) {
   };
 }
 
+/**
+ * Adapt a local subscription CLI backend (codex-cli, claude-cli, gemini-cli,
+ * kimi-cli) into the callLLM shape the scoring functions consume, so the
+ * fixed judge can run on a logged-in seat without an API key. CLI backends
+ * report no token usage; the usage capture records calls and wall time only.
+ */
+export function createBackendJudgeCallLLM(judge, deps = {}) {
+  const invoke = deps.invokeBackendChain || invokeBackendChain;
+  const resolve = deps.resolveBackend || resolveBackend;
+  const backend = resolve(judge.backend);
+  return (args) => invoke({
+    backends: [backend],
+    prompt: args.prompt,
+    model: judge.model ?? null,
+    modelSource: judge.model ? 'option:judgeModel' : 'default',
+    signal: args.signal,
+    timeout: judge.timeoutMs,
+    onResponse: args.onResponse,
+  });
+}
+
 export function computeMeaningSafety(fixture, rewrite) {
   const facts = preservedFacts(fixture.facts, rewrite, fixture.language);
   const factScore = facts.total ? (facts.preserved.length / facts.total) * 100 : 100;
@@ -387,8 +411,8 @@ export async function runLiveQualityReport(options = {}) {
       results.push(failedResult(fixture, new Error('live rewrite requested but no API key was found')));
       continue;
     }
-    if (liveRequested && judgeSettings && !judgeSettings.hasApiKey) {
-      results.push(failedResult(fixture, new Error('fixed judge requested but no judge API key was found (set PATINA_LIVE_JUDGE_API_KEY)')));
+    if (liveRequested && judgeSettings && !judgeSettings.backend && !judgeSettings.hasApiKey) {
+      results.push(failedResult(fixture, new Error('fixed judge requested but no judge API key was found (set PATINA_LIVE_JUDGE_API_KEY or PATINA_LIVE_JUDGE_BACKEND)')));
       continue;
     }
 
@@ -465,7 +489,23 @@ export function resolveJudgeSettings(options = {}, primary = null) {
   const model = options.judgeModel ?? env.PATINA_LIVE_JUDGE_MODEL ?? null;
   const baseURL = options.judgeBaseURL ?? env.PATINA_LIVE_JUDGE_API_BASE ?? null;
   const explicitApiKey = options.judgeApiKey ?? env.PATINA_LIVE_JUDGE_API_KEY ?? null;
-  if (!providerName && !model && !baseURL && !explicitApiKey) return null;
+  const backend = options.judgeBackend ?? env.PATINA_LIVE_JUDGE_BACKEND ?? null;
+  if (!providerName && !model && !baseURL && !explicitApiKey && !backend) return null;
+
+  // A subscription CLI backend judge (codex-cli, claude-cli, ...) needs no
+  // key or endpoint: the logged-in seat is the credential.
+  if (backend) {
+    return {
+      provider: null,
+      backend,
+      baseURL: null,
+      model,
+      apiKey: null,
+      hasApiKey: false,
+      apiKeySource: null,
+      timeoutMs: parsePositiveInt(options.judgeTimeoutMs ?? env.PATINA_LIVE_JUDGE_TIMEOUT_MS, (primary ?? resolveLiveSettings(options)).timeoutMs),
+    };
+  }
 
   const base = primary ?? resolveLiveSettings(options);
   const provider = selectProvider(providerName);
@@ -568,6 +608,12 @@ function buildReport({ results, settings, policy }) {
   };
 }
 
+function judgeLabel(judge) {
+  if (!judge) return 'self (candidate model scores itself)';
+  if (judge.backend) return `${judge.backend}/${judge.model ?? 'default'}`;
+  return judge.model;
+}
+
 export function renderMarkdownReport(reportOrResults) {
   const report = Array.isArray(reportOrResults)
     ? buildReport({ results: reportOrResults, settings: { legacy: true }, policy: DEFAULT_POLICY })
@@ -578,7 +624,7 @@ export function renderMarkdownReport(reportOrResults) {
     `schema_version: ${report.schema_version}`,
     `provider: ${report.settings.provider ?? 'default'}`,
     `model: ${report.settings.model ?? 'default'}`,
-    `judge: ${report.settings.judge ? report.settings.judge.model : 'self (candidate model scores itself)'}`,
+    `judge: ${judgeLabel(report.settings.judge)}`,
     `api_key: ${report.settings.hasApiKey ? `present (${report.settings.apiKeySource || 'unknown source'})` : 'missing'}`,
     `policy: AI-after<=${report.policy.aiAfterCeiling}, MPS>=${report.policy.mpsFloor}, fidelity>=${report.policy.fidelityFloor}`,
     '',
@@ -631,6 +677,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
     else if (arg === '--judge-provider') options.judgeProvider = argv[++i];
     else if (arg === '--judge-base-url') options.judgeBaseURL = argv[++i];
     else if (arg === '--judge-timeout-ms') options.judgeTimeoutMs = Number(argv[++i]);
+    else if (arg === '--judge-backend') options.judgeBackend = argv[++i];
     else if (arg === '--help' || arg === '-h') options.help = true;
     else throw new Error(`unknown argument: ${arg}`);
   }
@@ -768,6 +815,9 @@ Options:
   --judge-base-url <url>  Judge base URL (or PATINA_LIVE_JUDGE_API_BASE); a judge on a
                           different host needs its own PATINA_LIVE_JUDGE_API_KEY
   --judge-timeout-ms <ms> Judge scoring timeout budget (or PATINA_LIVE_JUDGE_TIMEOUT_MS)
+  --judge-backend <name>  Run the judge on a local subscription CLI backend
+                          (codex-cli, claude-cli, gemini-cli, kimi-cli — or
+                          PATINA_LIVE_JUDGE_BACKEND); no API key needed
   --fixtures <path>       Fixture directory or legacy JSONL file
   --candidate-dir <dir>   Score precomputed rewrites named <fixture_id>.md
   --language <lang>       Filter fixtures by language

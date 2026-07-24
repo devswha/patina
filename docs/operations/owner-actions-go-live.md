@@ -72,3 +72,36 @@ Approved by: <name>, <date, UTC>
    real checkout.
 4. First bounded real payment/refund/revoke evidence (PAY_LIVE) → v6.4 tag +
    npm publish (REL_PUBLISH) once the Release Authority approves.
+
+## Monitor env self-check (run locally, values never leave your shell)
+
+The pro-monitor returns 503 `monitor_unavailable` while any of its adapter
+env values fails its shape rule. Sensitive values cannot be read back from
+Vercel, so validate the value you are ABOUT to paste, locally:
+
+```bash
+node -e '
+const v = process.env.V; const { createHash } = require("crypto");
+const h = (x) => createHash("sha256").update(x).digest("hex");
+const u = new URL(v);
+console.log("normalized:", u.toString());
+console.log("obs-kv ok:", u.protocol === "https:" && u.hostname.endsWith(".upstash.io"));
+console.log("logq/base shape ok:", u.protocol === "https:" && !u.port && !u.search && !u.hash);
+console.log("discord ok:", ["discord.com","discordapp.com"].includes(u.hostname) && /^\/api\/webhooks\/\d+\/[A-Za-z0-9._-]+$/.test(u.pathname));
+console.log("sha256 of normalized:", h(u.toString()));
+' 2>/dev/null || echo "not a valid URL"
+```
+
+Run it as `V='<value>' node -e ...` per candidate. Rules that bite:
+
+- `PATINA_OBSERVABILITY_REST_API_URL`: https and the hostname must end in
+  `.upstash.io` (paste the Upstash REST URL untouched).
+- `PATINA_VERCEL_LOG_QUERY_URL_SHA256` and `PATINA_PUBLIC_BASE_URL_SHA256`:
+  always hash the **normalized** form the command prints (bare origins gain a
+  trailing slash).
+- `PATINA_ALERT_DISCORD_WEBHOOK`: exact `/api/webhooks/<id>/<token>` path on a
+  Discord host; no query string.
+
+After re-entering values, env changes only apply to NEW deployments: merge any
+dev commit to main (git deploy) rather than `vercel redeploy` so the monitor
+keeps its deployment identity.

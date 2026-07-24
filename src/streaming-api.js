@@ -1,5 +1,6 @@
 // @ts-check
 import { HttpError, redactErrorText, isTemperatureRejectedError, markTemperatureRejected, modelRejectsTemperature } from './api.js';
+import { buildNativeBody, createNativeStreamParser, nativeAnthropicEnabled, nativeEndpoint, nativeHeaders } from './anthropic-native.js';
 
 const DEFAULT_TIMEOUT = 120000;
 // Cap a single un-terminated SSE line so a malformed provider cannot grow the
@@ -134,23 +135,29 @@ export async function callLLMStream({
 
   // Skip `temperature` up front when this process already saw the model
   // reject it (e.g. claude-sonnet-5) — avoids a guaranteed 400 round trip.
-  const payload = {
-    model,
-    messages: [{ role: 'user', content: prompt }],
-    stream: true,
-    // Without include_usage, OpenAI-compatible streams omit the usage frame
-    // entirely, so successful streamed attempts recorded usage: null — which
-    // blinds cost observability and made PAY-B-COST billing evidence
-    // unassemblable for the rewrite stage (2026-07-24). Verified supported by
-    // the Anthropic compat endpoint; the #576 buffered fallback still covers
-    // servers that ignore streaming options.
-    stream_options: { include_usage: true },
-  };
-  if (!modelRejectsTemperature(model)) payload.temperature = temperature;
+  // Native Anthropic branch (opt-in): the compat endpoint ignores prompt
+  // caching, so the paid path issues /v1/messages with a cache_control prefix
+  // block instead. Same single-user-message semantics, native SSE parsing.
+  const native = nativeAnthropicEnabled({ baseURL });
+  const payload = native
+    ? buildNativeBody({ prompt, model, temperature: modelRejectsTemperature(model) ? undefined : temperature, stream: true })
+    : {
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        stream: true,
+        // Without include_usage, OpenAI-compatible streams omit the usage frame
+        // entirely, so successful streamed attempts recorded usage: null — which
+        // blinds cost observability and made PAY-B-COST billing evidence
+        // unassemblable for the rewrite stage (2026-07-24). Verified supported by
+        // the Anthropic compat endpoint; the #576 buffered fallback still covers
+        // servers that ignore streaming options.
+        stream_options: { include_usage: true },
+      };
+  if (!native && !modelRejectsTemperature(model)) payload.temperature = temperature;
 
-  const issue = () => fetchImpl(`${baseURL}/chat/completions`, {
+  const issue = () => fetchImpl(native ? nativeEndpoint(baseURL) : `${baseURL}/chat/completions`, {
     method: 'POST',
-    headers: {
+    headers: native ? nativeHeaders(apiKey) : {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
@@ -186,7 +193,21 @@ export async function callLLMStream({
       let finishReason;
       let streamDone = false;
       let rawResponse = null;
+      const nativeParser = native ? createNativeStreamParser() : null;
       const processLine = (line) => {
+        if (nativeParser) {
+          const delta = nativeParser.feed(line);
+          const state = nativeParser.state();
+          if (state.model && attempt.effectiveModel === null) attempt.effectiveModel = state.model;
+          if (state.usage) attempt.usage = state.usage;
+          if (state.stopReason) finishReason = state.stopReason;
+          if (state.done) streamDone = true;
+          if (delta) {
+            text += delta;
+            dispatchMetadata(onDelta, delta);
+          }
+          return;
+        }
         const trimmed = line.trim();
         if (!trimmed.startsWith('data:')) return;
         const data = trimmed.slice(5).trim();
@@ -237,7 +258,7 @@ export async function callLLMStream({
       return {
         result,
         metadata: {
-          provider: 'openai-http',
+          provider: native ? 'anthropic-native' : 'openai-http',
           model: attempt.effectiveModel,
           effectiveModel: attempt.effectiveModel,
           requestedModel: model,

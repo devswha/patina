@@ -9,6 +9,7 @@ import {
   evaluateRewriteQuality,
   loadLiveFixtures,
   renderMarkdownReport,
+  resolveJudgeSettings,
   resolveLiveSettings,
   runLiveQuality,
   runLiveQualityReport,
@@ -144,6 +145,93 @@ test('live report is structured and fail-closed when credentials are missing', a
   const markdown = renderMarkdownReport(report);
   assert.match(markdown, /schema_version: 1/);
   assert.match(markdown, /api_key: missing/);
+});
+
+test('judge settings resolve to null when no judge override is configured', () => {
+  assert.equal(resolveJudgeSettings({ env: {} }), null);
+  assert.equal(resolveJudgeSettings({ env: { PATINA_LIVE_MODEL: 'candidate' } }), null);
+});
+
+test('judge model alone inherits the primary endpoint and credential', () => {
+  const primary = {
+    baseURL: 'https://example.test/v1',
+    model: 'candidate-model',
+    apiKey: 'primary-key',
+    timeoutMs: 120000,
+  };
+  const judge = resolveJudgeSettings({ env: { PATINA_LIVE_JUDGE_MODEL: 'judge-model' } }, primary);
+
+  assert.equal(judge.model, 'judge-model');
+  assert.equal(judge.baseURL, 'https://example.test/v1');
+  assert.equal(judge.apiKey, 'primary-key');
+  assert.equal(judge.hasApiKey, true);
+  assert.equal(judge.apiKeySource, 'primary');
+  assert.equal(judge.timeoutMs, 120000);
+});
+
+test('judge on a different host never reuses the primary credential', () => {
+  const primary = {
+    baseURL: 'https://example.test/v1',
+    model: 'candidate-model',
+    apiKey: 'primary-key',
+    timeoutMs: 120000,
+  };
+  const judge = resolveJudgeSettings({
+    env: {
+      PATINA_LIVE_JUDGE_MODEL: 'judge-model',
+      PATINA_LIVE_JUDGE_API_BASE: 'https://other.test/v1',
+    },
+  }, primary);
+
+  assert.equal(judge.baseURL, 'https://other.test/v1');
+  assert.equal(judge.apiKey, null);
+  assert.equal(judge.hasApiKey, false);
+});
+
+test('live report fails closed when the judge lacks a credential', async () => {
+  const report = await runLiveQualityReport({
+    fixtures: [fixture],
+    live: true,
+    env: {
+      PATINA_LIVE_API_KEY: 'primary-key',
+      PATINA_LIVE_API_BASE: 'https://example.test/v1',
+      PATINA_LIVE_MODEL: 'candidate-model',
+      PATINA_LIVE_JUDGE_MODEL: 'judge-model',
+      PATINA_LIVE_JUDGE_API_BASE: 'https://other.test/v1',
+    },
+  });
+
+  assert.equal(report.summary.error, 1);
+  assert.match(report.results[0].errors[0], /judge API key/);
+  assert.equal(report.settings.judge.model, 'judge-model');
+  assert.equal(report.settings.judge.apiKey, undefined);
+});
+
+test('model-graded scoring calls route to the fixed judge, not the candidate', async () => {
+  const seenModels = [];
+  const recordingModel = (args) => {
+    seenModels.push(args.model);
+    return fakeQualityModel(args);
+  };
+  const result = await evaluateModelGradedRewrite(fixture, rewrite, {
+    settings: {
+      apiKey: 'candidate-key',
+      baseURL: 'https://example.test/v1',
+      model: 'candidate-model',
+      timeoutMs: 1000,
+    },
+    judgeSettings: {
+      apiKey: 'judge-key',
+      baseURL: 'https://judge.test/v1',
+      model: 'judge-model',
+      timeoutMs: 2000,
+    },
+    callLLM: recordingModel,
+  });
+
+  assert.equal(result.status, 'pass');
+  assert.ok(seenModels.length >= 4);
+  assert.ok(seenModels.every((model) => model === 'judge-model'));
 });
 
 async function fakeQualityModel({ prompt }) {

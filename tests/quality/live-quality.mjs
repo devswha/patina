@@ -175,18 +175,22 @@ export async function evaluateModelGradedRewrite(fixture, rawRewrite, options = 
   const repoRoot = options.repoRoot || REPO_ROOT;
   const policy = options.policy || DEFAULT_POLICY;
   const settings = options.settings || resolveLiveSettings(options);
+  const judgeSettings = options.judgeSettings !== undefined
+    ? options.judgeSettings
+    : resolveJudgeSettings(options, settings);
+  const judge = judgeSettings || settings;
   const rewrite = deliveredRewrite(rawRewrite, { logger: options.logger });
   const config = loadConfig();
   config.language = fixture.language;
   if (fixture.profile) config.profile = fixture.profile;
   const patterns = loadPatterns(repoRoot, fixture.language);
-  const deadline = settings.timeoutMs ? Date.now() + settings.timeoutMs : undefined;
-  const callLLM = createLiveCallLLM(options.callLLM || defaultCallLLM, settings);
+  const deadline = judge.timeoutMs ? Date.now() + judge.timeoutMs : undefined;
+  const callLLM = createLiveCallLLM(options.callLLM || defaultCallLLM, judge);
 
   const common = {
-    apiKey: settings.apiKey,
-    baseURL: settings.baseURL,
-    model: settings.model,
+    apiKey: judge.apiKey,
+    baseURL: judge.baseURL,
+    model: judge.model,
     deadline,
     callLLM,
     logger: options.logger,
@@ -282,6 +286,7 @@ export async function runLiveQualityReport(options = {}) {
   const policy = { ...DEFAULT_POLICY, ...(options.policy || {}) };
   const liveRequested = shouldRunLive(options);
   const settings = resolveLiveSettings(options);
+  const judgeSettings = resolveJudgeSettings(options, settings);
   const candidateDir = options.candidateDir ? resolve(options.candidateDir) : null;
   const results = [];
 
@@ -297,11 +302,15 @@ export async function runLiveQualityReport(options = {}) {
       results.push(failedResult(fixture, new Error('live rewrite requested but no API key was found')));
       continue;
     }
+    if (liveRequested && judgeSettings && !judgeSettings.hasApiKey) {
+      results.push(failedResult(fixture, new Error('fixed judge requested but no judge API key was found (set PATINA_LIVE_JUDGE_API_KEY)')));
+      continue;
+    }
 
     try {
       const rawRewrite = candidate ?? await runWithApi(fixture, { ...options, settings });
       const result = liveRequested
-        ? await evaluateModelGradedRewrite(fixture, rawRewrite, { ...options, settings, policy })
+        ? await evaluateModelGradedRewrite(fixture, rawRewrite, { ...options, settings, judgeSettings, policy })
         : evaluateRewriteQuality(fixture, rawRewrite, options);
       results.push(result);
     } catch (err) {
@@ -309,7 +318,14 @@ export async function runLiveQualityReport(options = {}) {
     }
   }
 
-  return buildReport({ results, settings: redactSettings(settings), policy });
+  return buildReport({
+    results,
+    settings: {
+      ...redactSettings(settings),
+      ...(judgeSettings ? { judge: redactSettings(judgeSettings) } : {}),
+    },
+    policy,
+  });
 }
 
 function shouldRunLive(options = {}) {
@@ -344,6 +360,44 @@ export function resolveLiveSettings(options = {}) {
     apiKeySource,
     baseURLSource: baseURL ? sourceLabel(options.baseURL, env.PATINA_LIVE_API_BASE, 'baseURL') : resolved.baseURLSource,
     modelSource: model ? sourceLabel(options.model, env.PATINA_LIVE_MODEL, 'model') : resolved.modelSource,
+    timeoutMs,
+  };
+}
+
+/**
+ * Resolve the optional fixed-judge settings used for model-graded scoring
+ * (scoreText/scoreMPS/scoreFidelity). Returns null when no judge override is
+ * configured, in which case the candidate model judges its own rewrite
+ * (historical behavior). Configure via --judge-* flags or PATINA_LIVE_JUDGE_*
+ * env vars. The primary credential is reused only when the judge talks to the
+ * same base URL; a different judge endpoint must bring its own API key so
+ * credentials never cross hosts.
+ */
+export function resolveJudgeSettings(options = {}, primary = null) {
+  const env = options.env || process.env;
+  const providerName = options.judgeProvider ?? env.PATINA_LIVE_JUDGE_PROVIDER ?? null;
+  const model = options.judgeModel ?? env.PATINA_LIVE_JUDGE_MODEL ?? null;
+  const baseURL = options.judgeBaseURL ?? env.PATINA_LIVE_JUDGE_API_BASE ?? null;
+  const explicitApiKey = options.judgeApiKey ?? env.PATINA_LIVE_JUDGE_API_KEY ?? null;
+  if (!providerName && !model && !baseURL && !explicitApiKey) return null;
+
+  const base = primary ?? resolveLiveSettings(options);
+  const provider = selectProvider(providerName);
+  const resolved = resolveProviderConfig({ provider, apiKey: explicitApiKey, baseURL, model });
+  const judgeBaseURL = baseURL ?? (providerName ? resolved.baseURL : base.baseURL);
+  const judgeModel = model ?? (providerName ? resolved.model : base.model);
+  const apiKey = explicitApiKey ?? (judgeBaseURL === base.baseURL ? base.apiKey : null);
+  const timeoutMs = parsePositiveInt(options.judgeTimeoutMs ?? env.PATINA_LIVE_JUDGE_TIMEOUT_MS, base.timeoutMs);
+
+  return {
+    provider: provider?.name ?? null,
+    baseURL: judgeBaseURL,
+    model: judgeModel,
+    apiKey,
+    hasApiKey: Boolean(apiKey),
+    apiKeySource: explicitApiKey
+      ? (options.judgeApiKey ? 'option:judgeApiKey' : 'env:PATINA_LIVE_JUDGE_API_KEY')
+      : (apiKey ? 'primary' : null),
     timeoutMs,
   };
 }
@@ -400,6 +454,7 @@ export function renderMarkdownReport(reportOrResults) {
     `schema_version: ${report.schema_version}`,
     `provider: ${report.settings.provider ?? 'default'}`,
     `model: ${report.settings.model ?? 'default'}`,
+    `judge: ${report.settings.judge ? report.settings.judge.model : 'self (candidate model scores itself)'}`,
     `api_key: ${report.settings.hasApiKey ? `present (${report.settings.apiKeySource || 'unknown source'})` : 'missing'}`,
     `policy: AI-after<=${report.policy.aiAfterCeiling}, MPS>=${report.policy.mpsFloor}, fidelity>=${report.policy.fidelityFloor}`,
     '',
@@ -448,6 +503,10 @@ export function parseArgs(argv = process.argv.slice(2)) {
     else if (arg === '--base-url') options.baseURL = argv[++i];
     else if (arg === '--api-key-file') options.apiKeyFile = argv[++i];
     else if (arg === '--timeout-ms') options.timeoutMs = Number(argv[++i]);
+    else if (arg === '--judge-model') options.judgeModel = argv[++i];
+    else if (arg === '--judge-provider') options.judgeProvider = argv[++i];
+    else if (arg === '--judge-base-url') options.judgeBaseURL = argv[++i];
+    else if (arg === '--judge-timeout-ms') options.judgeTimeoutMs = Number(argv[++i]);
     else if (arg === '--help' || arg === '-h') options.help = true;
     else throw new Error(`unknown argument: ${arg}`);
   }
@@ -579,6 +638,12 @@ Options:
   --base-url <url>        OpenAI-compatible base URL (or PATINA_LIVE_API_BASE)
   --api-key-file <path>   Read API key from a file
   --timeout-ms <ms>       Per fixture live timeout budget (default: 120000)
+  --judge-model <id>      Fixed judge model for scoring calls (or PATINA_LIVE_JUDGE_MODEL);
+                          default: the candidate model scores its own rewrite
+  --judge-provider <name> Provider preset for the judge (or PATINA_LIVE_JUDGE_PROVIDER)
+  --judge-base-url <url>  Judge base URL (or PATINA_LIVE_JUDGE_API_BASE); a judge on a
+                          different host needs its own PATINA_LIVE_JUDGE_API_KEY
+  --judge-timeout-ms <ms> Judge scoring timeout budget (or PATINA_LIVE_JUDGE_TIMEOUT_MS)
   --fixtures <path>       Fixture directory or legacy JSONL file
   --candidate-dir <dir>   Score precomputed rewrites named <fixture_id>.md
   --language <lang>       Filter fixtures by language

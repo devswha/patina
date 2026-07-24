@@ -31,7 +31,7 @@ const issued = (pricing) => issuePayBCostReceipt(evidence(pricing));
 
 test('collector deterministically joins every raw G002 attempt with one billing fact', () => {
   const raw = rawG002(); const bundle = collectPayBCostSourceBundle(raw, facts(raw));
-  assert.equal(bundle.usageAdapterVersion, 'g002-provider-usage-v1');
+  assert.equal(bundle.usageAdapterVersion, 'g002-provider-usage-v2');
   assert.deepEqual(bundle.probes[0].stages.rewrite[1].usage, openaiUsage); // fixture shape from API tests, including cost_usd and verified total_tokens
   assert.equal(bundle.probes[0].stages.rewrite[1].billingEvidence.rawUsageSha256, sha256Canonical(openaiUsage));
   const unbilledAttempt = bundle.probes[0].stages.rewrite[0];

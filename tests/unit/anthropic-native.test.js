@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildNativeBody, createNativeStreamParser, nativeAnthropicEnabled, nativeEndpoint, nativeHeaders, normalizeNativeResponse } from '../../src/anthropic-native.js';
+import { buildNativeBody, createNativeStreamParser, nativeAnthropicEnabled, nativeEndpoint, normalizeNativeResponse } from '../../src/anthropic-native.js';
 import { splitPromptForCaching } from '../../src/prompt-builder.js';
 import { callLLM } from '../../src/api.js';
 import { callLLMStream } from '../../src/streaming-api.js';
@@ -54,6 +54,9 @@ test('buildNativeBody keeps one user message with a cache_control prefix block',
   assert.ok(!('temperature' in buildNativeBody({ prompt: 'x', model: 'm', temperature: 1.5 })));
   assert.equal(typeof buildNativeBody({ prompt: 'x', model: 'm' }).messages[0].content, 'string');
   assert.equal(buildNativeBody({ prompt: PROMPT, model: 'm', stream: true }).stream, true);
+  // Thinking follows the provider default; the opt-out flag is experiment-only.
+  assert.ok(!('thinking' in buildNativeBody({ prompt: PROMPT, model: 'm' })));
+  assert.deepEqual(buildNativeBody({ prompt: PROMPT, model: 'm', env: { PATINA_ANTHROPIC_THINKING: '0' } }).thinking, { type: 'disabled' });
 });
 
 test('normalizeNativeResponse maps content, usage, and stop_reason to the OpenAI-ish shape', () => {

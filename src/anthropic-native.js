@@ -65,6 +65,7 @@ export function nativeHeaders(apiKey) {
  * @param {number} [options.temperature] Sent only when within Anthropic's 0..1 range.
  * @param {number} [options.maxTokens]
  * @param {boolean} [options.stream]
+ * @param {object} [options.env] Env source for the thinking opt-out (defaults to process.env).
  * @returns {object}
  */
 export function buildNativeBody({ prompt, model, temperature, maxTokens = DEFAULT_MAX_TOKENS, stream = false, env = process.env }) {

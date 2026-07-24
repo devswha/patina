@@ -67,7 +67,7 @@ export function nativeHeaders(apiKey) {
  * @param {boolean} [options.stream]
  * @returns {object}
  */
-export function buildNativeBody({ prompt, model, temperature, maxTokens = DEFAULT_MAX_TOKENS, stream = false }) {
+export function buildNativeBody({ prompt, model, temperature, maxTokens = DEFAULT_MAX_TOKENS, stream = false, env = process.env }) {
   const { prefix, tail } = splitPromptForCaching(prompt);
   const content = prefix
     ? [
@@ -84,6 +84,14 @@ export function buildNativeBody({ prompt, model, temperature, maxTokens = DEFAUL
     body.temperature = temperature;
   }
   if (stream) body.stream = true;
+  // Thinking stays at the provider default (ON for sonnet-5): a measured A/B
+  // showed thinking-off rewrites amputate content (fidelity 50 vs passing,
+  // 2026-07-24), and quality is what the pro tier sells — even though
+  // thinking bills as output tokens (76% of measured output cost). The
+  // opt-out below exists for experiments only.
+  if (env?.PATINA_ANTHROPIC_THINKING === '0' || env?.PATINA_ANTHROPIC_THINKING === 'false') {
+    body.thinking = { type: 'disabled' };
+  }
   return body;
 }
 

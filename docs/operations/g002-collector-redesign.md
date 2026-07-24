@@ -60,11 +60,11 @@ issue receipt -> attach to Gate B. Estimated one focused session.
 
 ## 2026-07-24 revision: in-process collection (implemented)
 
-The log-scrape path above assumed the Vercel log-query service, which is gone.
-`runWebRewriteStream` already returns validated one-based attempt records
-(requested/effective model, raw usage, retry reason, outcome) to its
-in-process caller, so the implemented collector runs the pinned source commit
-locally instead of scraping a deployment:
+The log-scrape plan above leaned on the Vercel log-query service. That
+service is gone. There is a shorter path anyway: `runWebRewriteStream` hands
+its caller the validated one-based attempt records, raw usage included. The
+implemented collector therefore runs the pinned source commit locally and
+never scrapes a deployment:
 
 - `scripts/g002-cache-probe.mjs`: two-call empirical check of whether the
   Anthropic OpenAI-compat path honors `cache_control` (run this FIRST; it
@@ -77,8 +77,9 @@ locally instead of scraping a deployment:
 - Key handling: `PATINA_PRO_API_KEY_LOCAL` or `~/.patina/pro-key.local`,
   never printed, never committed.
 
-Known economics before running (napkin, to be replaced by measurement):
-uncached sonnet-5 lands near $150/1M chars against a $3.40 60%-margin
-budget at the advertised 1M-chars/month cap — the gate will refuse, and the
-decision space is: cut the advertised monthly cap, change the pro model, or
-reprice. The measured numbers pick the branch.
+Napkin math before the run, to be replaced by measurement. Uncached
+sonnet-5 costs somewhere near $150 per million characters. The 60% margin
+budget at the advertised million-character monthly cap is $3.40. Expect the
+gate to refuse. A refusal narrows the product decision to three branches:
+cut the advertised monthly cap, change the pro model, or reprice. The
+measured numbers pick the branch.

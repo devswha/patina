@@ -20,7 +20,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { runWebRewriteStream } from '../src/web-rewrite-stream.js';
-import { collectPayBCostSourceBundle, issuePayBCostReceipt, sha256Canonical, canonicalJson } from './pay-b-cost-receipt.mjs';
+import { collectPayBCostSourceBundle, derivePayBCostFinancial, issuePayBCostReceipt, sha256Canonical, canonicalJson } from './pay-b-cost-receipt.mjs';
 
 const MODEL = process.env.G002_MODEL || 'claude-sonnet-5';
 const BASE = 'https://api.anthropic.com/v1';
@@ -161,6 +161,8 @@ const evidence = {
     bootstrap: { seed: EVIDENCE_ID, iterations: 10_000, confidenceBps: 9500 },
   },
 };
+writeFileSync(`${outPath}.bundle.json`, `${canonicalJson({ rawG002, providerBillingFacts, pricing, financialInputs: evidence.financial })}\n`);
+console.error(`[g002] raw bundle persisted: ${outPath}.bundle.json (offline scenario re-analysis needs no further spend)`);
 try {
   const receipt = issuePayBCostReceipt(evidence);
   writeFileSync(outPath, `${canonicalJson(receipt)}\n`);
@@ -169,8 +171,8 @@ try {
 } catch (error) {
   // The issuer mutates financial with the derived numbers before enforcing the
   // margin gate, so a rejection still leaves the real measurements available.
-  const f = evidence.financial;
   console.error(`[g002] receipt REFUSED: ${error.message}`);
+  const f = { ...evidence.financial, ...derivePayBCostFinancial(evidence) };
   if (Number.isFinite(f.selectedUpperCogsUsdMicros)) {
     console.error(`[g002] measured upper COGS/1M chars: $${(f.selectedUpperCogsUsdMicros / 1e6).toFixed(2)}`);
     console.error(`[g002] net revenue/mo: $${(f.netRevenueUsdMicros / 1e6).toFixed(2)} | gross margin at the 1M-char cap: ${(f.grossMarginBps / 100).toFixed(1)}%`);

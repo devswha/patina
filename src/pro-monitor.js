@@ -196,8 +196,21 @@ export async function evaluateProMonitor(deps) {
   const safetyLogs = await queryLogs(logQuery, channel, tier, '15m'); const dropLogs = await queryLogs(logQuery, channel, tier, '30m');
   const safety = safetyLogs.values; const drops = dropLogs.values;
   const numberSafety = number(safety.numberSafety); const entitlementNonOk = number(safety.entitlementNonOk); const entitlementTotal = number(safety.entitlementTotal); const monitorDrop = number(drops.monitorDrop);
-  let syntheticTerminal = 'failed'; try { const response = await syntheticRequest({ channel, tier, text: SYNTHETIC_TEXT, timeoutMs: 60_000 }); syntheticTerminal = response?.terminal === 'done' && response?.ok === true ? 'done' : 'failed'; } catch {}
-  const streakKey = controlKey(channel, tier, 'synthetic-streak'); const storedStreak = persistedStreak(await requiredControl(controlStore, 'get')(streakKey)); if (storedStreak === null) throw new Error('invalid synthetic streak state'); const previousStreak = storedStreak; if (syntheticTerminal !== 'done' && previousStreak === Number.MAX_SAFE_INTEGER) throw new Error('synthetic streak overflow'); const syntheticStreak = syntheticTerminal === 'done' ? 0 : previousStreak + 1; if (await requiredControl(controlStore, 'set')(streakKey, syntheticStreak, THIRTY_MINUTES_MS) !== true) throw new Error('synthetic streak persistence failed');
+  // Paid-probe guard (2026-07-23 incident): the synthetic probe is a real pro
+  // rewrite (three provider calls with the full catalog prompt). A run whose
+  // cheap adapters are already blind can only terminate as monitor_blind +
+  // 503, so its probe outcome would be discarded while the provider bill is
+  // real — an overnight cron burned ~82 probes exactly this way. Skip the
+  // probe when blind, and budget it to one per hour otherwise. A skipped
+  // probe reports 'failed' (conservative) but neither grows nor resets the
+  // persisted streak, so it can never fabricate a synthetic_failure alert.
+  const adaptersBlind = !aggregate.available || !safetyLogs.available || !dropLogs.available;
+  let syntheticTerminal = 'failed'; let syntheticRan = false;
+  if (!adaptersBlind && await acquire(controlStore, controlKey(channel, tier, 'synthetic-probe-budget'), `${now.getTime()}`, ONE_HOUR_MS)) {
+    syntheticRan = true;
+    try { const response = await syntheticRequest({ channel, tier, text: SYNTHETIC_TEXT, timeoutMs: 60_000 }); syntheticTerminal = response?.terminal === 'done' && response?.ok === true ? 'done' : 'failed'; } catch {}
+  }
+  const streakKey = controlKey(channel, tier, 'synthetic-streak'); const storedStreak = persistedStreak(await requiredControl(controlStore, 'get')(streakKey)); if (storedStreak === null) throw new Error('invalid synthetic streak state'); const previousStreak = storedStreak; if (syntheticRan && syntheticTerminal !== 'done' && previousStreak === Number.MAX_SAFE_INTEGER) throw new Error('synthetic streak overflow'); const syntheticStreak = syntheticRan ? (syntheticTerminal === 'done' ? 0 : previousStreak + 1) : previousStreak; if (await requiredControl(controlStore, 'set')(streakKey, syntheticStreak, THIRTY_MINUTES_MS) !== true) throw new Error('synthetic streak persistence failed');
   const triggers = [];
   if (numberSafety >= 1) triggers.push({ trigger: 'number_safety', count: numberSafety, window: '15m' });
   if (entitlementTotal >= 20 && entitlementNonOk >= 5) triggers.push({ trigger: 'entitlement_pro', count: entitlementNonOk, window: '15m' });

@@ -103,8 +103,36 @@ test('new ACKs retain safe active receipts for complete recovery linkage', async
 
 test('synthetic completion requires explicit terminal done', async () => {
   const control = store(); const common = deps({ controlStore: control, syntheticRequest: async () => ({ status: 204, ok: true, terminal: 'queued' }) });
-  await evaluateProMonitor(common); await evaluateProMonitor(common); const third = await evaluateProMonitor(common);
+  const budgetKey = 'patina:monctl:v1:production:pro:synthetic-probe-budget';
+  await evaluateProMonitor(common); control.values.delete(budgetKey);
+  await evaluateProMonitor(common); control.values.delete(budgetKey);
+  const third = await evaluateProMonitor(common);
   assert.equal(third.syntheticTerminal, 'failed'); assert.ok(third.triggers.some(({ trigger }) => trigger === 'synthetic_failure'));
+});
+
+test('a budget-skipped probe neither runs, grows, nor resets the synthetic streak', async () => {
+  const control = store(); let probes = 0;
+  const common = deps({ controlStore: control, syntheticRequest: async () => { probes += 1; return { ok: false, terminal: 'failed' }; } });
+  const first = await evaluateProMonitor(common);
+  assert.equal(probes, 1); assert.equal(first.syntheticStreak, 1);
+  const second = await evaluateProMonitor(common); // budget lease still held
+  assert.equal(probes, 1, 'skipped run must not spend a paid probe');
+  assert.equal(second.syntheticTerminal, 'failed');
+  assert.equal(second.syntheticStreak, 1, 'skipped run must preserve the streak');
+  assert.ok(!second.triggers.some(({ trigger }) => trigger === 'synthetic_failure'));
+});
+
+test('blind adapters skip the paid probe entirely (2026-07-23 burn regression)', async () => {
+  let probes = 0;
+  const result = await evaluateProMonitor(deps({
+    logQuery: async () => { throw new Error('log service down'); },
+    syntheticRequest: async () => { probes += 1; return { ok: true, terminal: 'done' }; },
+  }));
+  assert.equal(probes, 0, 'a blind run must never spend a paid probe');
+  assert.equal(result.syntheticTerminal, 'failed');
+  assert.equal(result.syntheticStreak, 0, 'skip preserves the fresh streak');
+  assert.ok(result.triggers.some(({ trigger }) => trigger === 'monitor_blind'));
+  assert.ok(!result.triggers.some(({ trigger }) => trigger === 'synthetic_failure'));
 });
 test('max-safe failed synthetic streak fails closed without persistence or alerts', async () => {
   const control = store(); const streakKey = 'patina:monctl:v1:production:pro:synthetic-streak'; control.values.set(streakKey, Number.MAX_SAFE_INTEGER);
@@ -253,7 +281,8 @@ test('dedup lease expires exactly at the one-hour boundary', async () => {
   assert.equal(beforeExpiry.alerts[0].deduped, true);
   assert.equal(atExpiry.alerts[0].sent, true);
   assert.equal(sends, 2);
-  assert.deepEqual(acquireTtls, [3_600_000, 3_600_000, 3_600_000]);
+  // Three runs × (synthetic probe-budget acquire + dedup-lease acquire), all one-hour TTLs.
+  assert.deepEqual(acquireTtls, [3_600_000, 3_600_000, 3_600_000, 3_600_000, 3_600_000, 3_600_000]);
 });
 test('active acknowledgements retain recovery linkage at the exact one-hour dedup boundary', async () => {
   let nowMs = NOW.getTime();

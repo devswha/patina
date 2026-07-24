@@ -185,7 +185,8 @@ export async function evaluateModelGradedRewrite(fixture, rawRewrite, options = 
   if (fixture.profile) config.profile = fixture.profile;
   const patterns = loadPatterns(repoRoot, fixture.language);
   const deadline = judge.timeoutMs ? Date.now() + judge.timeoutMs : undefined;
-  const callLLM = createLiveCallLLM(options.callLLM || defaultCallLLM, judge);
+  const judgeCalls = [];
+  const callLLM = createLiveCallLLM(options.callLLM || defaultCallLLM, judge, (call) => judgeCalls.push(call));
 
   const common = {
     apiKey: judge.apiKey,
@@ -203,7 +204,7 @@ export async function evaluateModelGradedRewrite(fixture, rawRewrite, options = 
     scoreFidelity({ original: fixture.text, rewritten: rewrite, ...common }),
   ]);
 
-  return modelGradedResult({
+  const result = modelGradedResult({
     fixture,
     beforeScore,
     afterScore,
@@ -211,6 +212,60 @@ export async function evaluateModelGradedRewrite(fixture, rawRewrite, options = 
     fidelityResult,
     policy,
   });
+  result.usage = {
+    candidate: aggregateCalls(options.candidateCalls || []),
+    judge: aggregateCalls(judgeCalls),
+  };
+  return result;
+}
+
+/**
+ * Normalize provider usage payloads (OpenAI-compat and native Anthropic
+ * shapes) into one token accounting so judge cost distortions — hidden
+ * reasoning tokens, cache reads/writes — are visible per run.
+ */
+export function normalizeUsage(usage) {
+  if (!usage || typeof usage !== 'object') return null;
+  const toCount = (value) => (Number.isFinite(Number(value)) ? Number(value) : null);
+  return {
+    prompt_tokens: toCount(usage.prompt_tokens ?? usage.input_tokens),
+    completion_tokens: toCount(usage.completion_tokens ?? usage.output_tokens),
+    reasoning_tokens: toCount(usage.completion_tokens_details?.reasoning_tokens),
+    cached_read_tokens: toCount(usage.prompt_tokens_details?.cached_tokens ?? usage.cache_read_input_tokens),
+    cache_write_tokens: toCount(usage.cache_creation_input_tokens),
+  };
+}
+
+/**
+ * Aggregate recorded live calls into totals. Token sums stay null until at
+ * least one call reports that field, so "provider reported nothing" is
+ * distinguishable from "zero tokens".
+ */
+export function aggregateCalls(calls) {
+  const totals = {
+    calls: calls.length,
+    duration_ms: 0,
+    attempts: 0,
+    prompt_tokens: null,
+    completion_tokens: null,
+    reasoning_tokens: null,
+    cached_read_tokens: null,
+    cache_write_tokens: null,
+  };
+  for (const call of calls) {
+    totals.duration_ms += Number.isFinite(call?.ms) ? call.ms : 0;
+    totals.attempts += Number.isFinite(call?.attempts) && call.attempts > 0 ? call.attempts : 1;
+    const usages = Array.isArray(call?.usages) ? call.usages : (call?.usage ? [call.usage] : []);
+    for (const raw of usages) {
+      const usage = normalizeUsage(raw);
+      if (!usage) continue;
+      for (const key of ['prompt_tokens', 'completion_tokens', 'reasoning_tokens', 'cached_read_tokens', 'cache_write_tokens']) {
+        if (usage[key] === null) continue;
+        totals[key] = (totals[key] ?? 0) + usage[key];
+      }
+    }
+  }
+  return totals;
 }
 
 function modelGradedResult({ fixture, beforeScore, afterScore, mpsResult, fidelityResult, policy }) {
@@ -256,11 +311,41 @@ function modelGradedResult({ fixture, beforeScore, afterScore, mpsResult, fideli
   };
 }
 
-function createLiveCallLLM(callLLM, settings) {
-  return (args) => callLLM({
-    ...args,
-    timeout: settings.timeoutMs,
-  });
+function createLiveCallLLM(callLLM, settings, record) {
+  return async (args) => {
+    const startedAt = Date.now();
+    // Per-attempt usages include tokens burnt on failed paid retries; the
+    // final-response usage is only a fallback when no attempt reported one.
+    const attemptUsages = [];
+    let responseUsage = null;
+    let model = null;
+    let attempts = 0;
+    const onResponse = (meta) => {
+      if (meta?.usage) responseUsage = meta.usage;
+      if (meta?.model) model = meta.model;
+      if (typeof args.onResponse === 'function') args.onResponse(meta);
+    };
+    const onAttempt = (attempt) => {
+      attempts += 1;
+      if (attempt?.usage) attemptUsages.push(attempt.usage);
+      if (typeof args.onAttempt === 'function') args.onAttempt(attempt);
+    };
+    try {
+      return await callLLM({
+        ...args,
+        timeout: settings.timeoutMs,
+        onResponse,
+        onAttempt,
+      });
+    } finally {
+      record?.({
+        ms: Date.now() - startedAt,
+        model: model ?? args.model ?? null,
+        usages: attemptUsages.length ? attemptUsages : (responseUsage ? [responseUsage] : []),
+        attempts,
+      });
+    }
+  };
 }
 
 export function computeMeaningSafety(fixture, rewrite) {
@@ -308,9 +393,10 @@ export async function runLiveQualityReport(options = {}) {
     }
 
     try {
-      const rawRewrite = candidate ?? await runWithApi(fixture, { ...options, settings });
+      const candidateCalls = [];
+      const rawRewrite = candidate ?? await runWithApi(fixture, { ...options, settings, recordCall: (call) => candidateCalls.push(call) });
       const result = liveRequested
-        ? await evaluateModelGradedRewrite(fixture, rawRewrite, { ...options, settings, judgeSettings, policy })
+        ? await evaluateModelGradedRewrite(fixture, rawRewrite, { ...options, settings, judgeSettings, policy, candidateCalls })
         : evaluateRewriteQuality(fixture, rawRewrite, options);
       results.push(result);
     } catch (err) {
@@ -427,6 +513,42 @@ function redactSettings(settings) {
   return safe;
 }
 
+/**
+ * Sum per-result usage aggregates across a run, keyed by role. Returns null
+ * when no result carries usage (offline/skip paths keep their legacy shape).
+ */
+export function summarizeUsage(results) {
+  const roles = ['candidate', 'judge'];
+  const totals = {};
+  let any = false;
+  for (const result of results) {
+    if (!result?.usage) continue;
+    for (const role of roles) {
+      const part = result.usage[role];
+      if (!part) continue;
+      any = true;
+      const target = totals[role] ?? (totals[role] = {
+        calls: 0,
+        duration_ms: 0,
+        attempts: 0,
+        prompt_tokens: null,
+        completion_tokens: null,
+        reasoning_tokens: null,
+        cached_read_tokens: null,
+        cache_write_tokens: null,
+      });
+      target.calls += part.calls ?? 0;
+      target.duration_ms += part.duration_ms ?? 0;
+      target.attempts += part.attempts ?? 0;
+      for (const key of ['prompt_tokens', 'completion_tokens', 'reasoning_tokens', 'cached_read_tokens', 'cache_write_tokens']) {
+        if (part[key] === null || part[key] === undefined) continue;
+        target[key] = (target[key] ?? 0) + part[key];
+      }
+    }
+  }
+  return any ? totals : null;
+}
+
 function buildReport({ results, settings, policy }) {
   const summary = {
     total: results.length,
@@ -435,6 +557,8 @@ function buildReport({ results, settings, policy }) {
     error: results.filter((result) => result.status === 'error' || result.status === 'fail').length,
     skipped: results.filter((result) => result.status === 'skipped').length,
   };
+  const usage = summarizeUsage(results);
+  if (usage) summary.usage = usage;
   return {
     schema_version: LIVE_QUALITY_SCHEMA_VERSION,
     settings,
@@ -530,7 +654,7 @@ export async function main(argv = process.argv.slice(2)) {
 async function runWithApi(fixture, options = {}) {
   const prompt = await buildPatinaRewritePrompt(fixture, options);
   const settings = options.settings || resolveLiveSettings(options);
-  const callLLM = createLiveCallLLM(options.callLLM || defaultCallLLM, settings);
+  const callLLM = createLiveCallLLM(options.callLLM || defaultCallLLM, settings, options.recordCall);
   return callLLM({
     prompt,
     apiKey: settings.apiKey,

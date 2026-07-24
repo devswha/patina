@@ -138,6 +138,13 @@ export async function callLLMStream({
     model,
     messages: [{ role: 'user', content: prompt }],
     stream: true,
+    // Without include_usage, OpenAI-compatible streams omit the usage frame
+    // entirely, so successful streamed attempts recorded usage: null — which
+    // blinds cost observability and made PAY-B-COST billing evidence
+    // unassemblable for the rewrite stage (2026-07-24). Verified supported by
+    // the Anthropic compat endpoint; the #576 buffered fallback still covers
+    // servers that ignore streaming options.
+    stream_options: { include_usage: true },
   };
   if (!modelRejectsTemperature(model)) payload.temperature = temperature;
 

@@ -57,3 +57,29 @@ Step 1 is a small, test-covered handler change (staging-gated logging);
 step 2 is a standalone script with no runtime footprint. Run order: deploy
 preview -> run collector (3 probes ≈ 9–18 paid calls on the staging model) ->
 issue receipt -> attach to Gate B. Estimated one focused session.
+
+## 2026-07-24 revision: in-process collection (implemented)
+
+The log-scrape plan above leaned on the Vercel log-query service. That
+service is gone. There is a shorter path anyway: `runWebRewriteStream` hands
+its caller the validated one-based attempt records, raw usage included. The
+implemented collector therefore runs the pinned source commit locally and
+never scrapes a deployment:
+
+- `scripts/g002-cache-probe.mjs`: two-call empirical check of whether the
+  Anthropic OpenAI-compat path honors `cache_control` (run this FIRST; it
+  decides whether the probes measure cached or uncached economics).
+- `scripts/g002-collect.mjs`: runs the three probes through the real
+  pipeline, assembles `rawG002` + `providerBillingFacts`, and pipes into
+  `issuePayBCostReceipt`. `deploymentId` is recorded as `local-<commit>`.
+  On a margin-gate refusal it still reports the measured COGS, the margin at
+  the 1M-char cap, and the monthly char cap that would clear 60%.
+- Key handling: `PATINA_PRO_API_KEY_LOCAL` or `~/.patina/pro-key.local`,
+  never printed, never committed.
+
+Napkin math before the run, to be replaced by measurement. Uncached
+sonnet-5 costs somewhere near $150 per million characters. The 60% margin
+budget at the advertised million-character monthly cap is $3.40. Expect the
+gate to refuse. A refusal narrows the product decision to three branches:
+cut the advertised monthly cap, change the pro model, or reprice. The
+measured numbers pick the branch.

@@ -106,6 +106,12 @@ npm run quality:live -- --language ko --limit 3
   `PATINA_LIVE_JUDGE_API_KEY` or the run fails closed.
 - `PATINA_LIVE_JUDGE_TIMEOUT_MS` / `--judge-timeout-ms` — scoring budget
   (defaults to the primary timeout).
+- `PATINA_LIVE_JUDGE_BACKEND` / `--judge-backend` — run the judge on a local
+  **subscription CLI seat** (`codex-cli`, `claude-cli`, `gemini-cli`,
+  `kimi-cli`) instead of a paid HTTP API; no judge API key required. Pair
+  with `--judge-model` or let the backend use its documented default. CLI
+  backends report no token usage, so cost accounting shows calls and wall
+  time only.
 
 The report records the judge under `settings.judge`, and the Markdown header
 prints `judge: <model>` (or `self` when unset).

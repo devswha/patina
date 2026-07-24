@@ -10,6 +10,7 @@ import {
   loadLiveFixtures,
   renderMarkdownReport,
   aggregateCalls,
+  createBackendJudgeCallLLM,
   normalizeUsage,
   resolveJudgeSettings,
   summarizeUsage,
@@ -235,6 +236,62 @@ test('model-graded scoring calls route to the fixed judge, not the candidate', a
   assert.equal(result.status, 'pass');
   assert.ok(seenModels.length >= 4);
   assert.ok(seenModels.every((model) => model === 'judge-model'));
+});
+
+test('judge backend env resolves a keyless CLI judge', () => {
+  const judge = resolveJudgeSettings({ env: { PATINA_LIVE_JUDGE_BACKEND: 'codex-cli' } }, {
+    baseURL: 'https://example.test/v1',
+    model: 'candidate-model',
+    apiKey: 'primary-key',
+    timeoutMs: 120000,
+  });
+
+  assert.equal(judge.backend, 'codex-cli');
+  assert.equal(judge.model, null);
+  assert.equal(judge.apiKey, null);
+  assert.equal(judge.hasApiKey, false);
+  assert.equal(judge.timeoutMs, 120000);
+});
+
+test('a backend judge passes the key fail-closed gate and reaches evaluation', async () => {
+  const report = await runLiveQualityReport({
+    fixtures: [fixture],
+    live: true,
+    env: {
+      PATINA_LIVE_API_KEY: 'primary-key',
+      PATINA_LIVE_API_BASE: 'https://example.test/v1',
+      PATINA_LIVE_MODEL: 'candidate-model',
+      PATINA_LIVE_JUDGE_BACKEND: 'claude-cli',
+      PATINA_LIVE_JUDGE_MODEL: 'claude-sonnet-5',
+    },
+    callLLM: fakeQualityModel,
+  });
+
+  assert.equal(report.results[0].status, 'pass');
+  assert.equal(report.settings.judge.backend, 'claude-cli');
+  const markdown = renderMarkdownReport(report);
+  assert.match(markdown, /judge: claude-cli\/claude-sonnet-5/);
+});
+
+test('createBackendJudgeCallLLM adapts invokeBackendChain to the scoring callLLM shape', async () => {
+  const seen = [];
+  const judge = { backend: 'codex-cli', model: 'gpt-5.5', timeoutMs: 5000 };
+  const callLLM = createBackendJudgeCallLLM(judge, {
+    resolveBackend: (name) => ({ name }),
+    invokeBackendChain: async (args) => {
+      seen.push(args);
+      return '{"ok":true}';
+    },
+  });
+
+  const out = await callLLM({ prompt: 'score this', apiKey: 'ignored', baseURL: 'https://ignored.test' });
+  assert.equal(out, '{"ok":true}');
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].backends[0].name, 'codex-cli');
+  assert.equal(seen[0].model, 'gpt-5.5');
+  assert.equal(seen[0].modelSource, 'option:judgeModel');
+  assert.equal(seen[0].timeout, 5000);
+  assert.equal(seen[0].prompt, 'score this');
 });
 
 test('normalizeUsage maps OpenAI-compat and native Anthropic shapes', () => {

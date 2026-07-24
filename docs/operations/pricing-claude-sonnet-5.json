@@ -1,0 +1,14 @@
+{
+  "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+  "sourceChars": "Claude Sonnet 5 starting September 1, 2026: Base Input $3 / MTok; 5m Cache Writes $3.75 / MTok; 1h Cache Writes $6 / MTok; Cache Hits & Refreshes $0.30 / MTok; Output $15 / MTok. Introductory pricing of $2/$10 per million input/output tokens is in effect through August 31, 2026, after which the standard pricing of $3/$15 per million input/output tokens will take effect. Retrieved 2026-07-24 from https://platform.claude.com/docs/en/about-claude/pricing (model pricing table). Standard post-introductory rates are used as the base for margin evaluation.",
+  "sourceSha256": "8bafd83ba9b47388be151750679a349be763fb74b45671c0740678ade4d80a59",
+  "inputUsdMicrosPerMillionTokens": 3000000,
+  "outputUsdMicrosPerMillionTokens": 15000000,
+  "cacheReadUsdMicrosPerMillionTokens": 300000,
+  "cacheCreationUsdMicrosPerMillionTokens": 3750000,
+  "inputBillingGranularityTokens": 1,
+  "outputBillingGranularityTokens": 1,
+  "cacheReadBillingGranularityTokens": 1,
+  "cacheCreationBillingGranularityTokens": 1,
+  "minimumChargeUsdMicros": 1
+}

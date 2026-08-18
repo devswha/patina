@@ -1,9 +1,13 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   invokeBackendChain,
   selectBackend,
   selectBackendChain,
+  selectOcrBackends,
   listBackends,
 } from '../../src/backends/index.js';
 import {
@@ -122,6 +126,81 @@ describe('Backend Selection', () => {
 
   it('throws on unknown backend name', () => {
     assert.throws(() => selectBackend({ name: 'invented-backend' }), /Unknown backend/);
+  });
+});
+
+describe('MiniMax-M3 media input', () => {
+  it('sends image and video content through both MiniMax endpoints', async () => {
+    const originalFetch = globalThis.fetch;
+    const directory = mkdtempSync(join(tmpdir(), 'patina-minimax-media-'));
+    const imagePath = join(directory, 'sample.png');
+    writeFileSync(imagePath, 'sample image bytes');
+    const requests = [];
+    globalThis.fetch = async (url, options) => {
+      requests.push({ url, body: JSON.parse(options.body) });
+      return {
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({
+          choices: [{ message: { content: 'read media' } }],
+          model: 'MiniMax-M3',
+        }),
+      };
+    };
+
+    try {
+      const { backends } = selectBackendChain({ name: 'openai-http' });
+      for (const baseURL of ['https://api.minimax.io/v1', 'https://api.minimaxi.com/v1']) {
+        assert.deepStrictEqual(
+          selectOcrBackends(backends, { model: 'MiniMax-M3', baseURL }),
+          backends
+        );
+        const result = await invokeBackendChain({
+          backends,
+          prompt: 'Read the attachments',
+          apiKey: 'test-key',
+          baseURL,
+          model: 'MiniMax-M3',
+          maxRetries: 0,
+          images: [imagePath],
+          videos: ['https://example.test/sample.mp4'],
+        });
+        assert.strictEqual(result, 'read media');
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+      rmSync(directory, { recursive: true, force: true });
+    }
+
+    assert.deepStrictEqual(requests.map((request) => request.url), [
+      'https://api.minimax.io/v1/chat/completions',
+      'https://api.minimaxi.com/v1/chat/completions',
+    ]);
+    for (const request of requests) {
+      const content = request.body.messages[0].content;
+      assert.deepStrictEqual(content[0], { type: 'text', text: 'Read the attachments' });
+      assert.match(content[1].image_url.url, /^data:image\/png;base64,/);
+      assert.deepStrictEqual(content[2], {
+        type: 'video_url',
+        video_url: { url: 'https://example.test/sample.mp4' },
+      });
+    }
+  });
+
+  it('keeps media disabled outside the MiniMax-M3 preset', async () => {
+    const { backends } = selectBackendChain({ name: 'openai-http' });
+    await assert.rejects(
+      invokeBackendChain({
+        backends,
+        prompt: 'Read the attachment',
+        apiKey: 'test-key',
+        baseURL: 'https://api.minimax.io/v1',
+        model: 'MiniMax-M2.7',
+        maxRetries: 0,
+        images: ['https://example.test/sample.png'],
+      }),
+      /media input is supported only for MiniMax-M3/
+    );
   });
 });
 

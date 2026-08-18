@@ -1109,12 +1109,16 @@ async function runPreviewJob({
 
 async function runOcrStage({ pageHtml, sourceUrl, parsed, backends, resolved, timeoutMs, cancellation, logger }) {
   // A test-injected OCR runner replaces backend selection entirely (CI has no
-  // installed vision CLI). In production we require a real image-capable CLI.
-  const ocrBackends = hasOcrRunnerOverride() ? [] : selectOcrBackends(backends, { logger });
+  // installed vision backend). In production we require a real image-capable backend.
+  const ocrBackends = hasOcrRunnerOverride() ? [] : selectOcrBackends(backends, {
+    logger,
+    model: resolved.model,
+    baseURL: resolved.baseURL,
+  });
   if (!hasOcrRunnerOverride() && ocrBackends.length === 0) {
     throw runtimeError(
       'no image-capable backend for --ocr',
-      'OCR needs an available, authenticated claude-cli, gemini-cli, or codex-cli (kimi-cli and openai-http cannot read images).',
+      'OCR needs an available, authenticated image-capable backend. MiniMax-M3 is supported through a configured MiniMax provider.',
       'Run `patina doctor` to check backend status, or drop --ocr.'
     );
   }
@@ -1142,14 +1146,16 @@ async function runOcrStage({ pageHtml, sourceUrl, parsed, backends, resolved, ti
     }
     cancellation.throwIfCanceled();
 
-    // No model override: an OCR fallback backend may differ from the text
-    // backend, so each CLI uses its own default model.
+    const ocrModel = ocrBackends.some((backend) => backend.name === 'openai-http')
+      ? resolved.model
+      : undefined;
     const invokeChain = ({ prompt, images }) => invokeBackendChain({
       backends: ocrBackends,
       prompt,
       images,
       apiKey: resolved.apiKey,
       baseURL: resolved.baseURL,
+      model: ocrModel,
       signal: cancellation.signal,
       timeout: timeoutMs,
       maxConcurrency: parsed.maxConcurrency,

@@ -336,6 +336,7 @@ async function readStreamedCompletion(response, onMetadata) {
  *
  * @param {object} options LLM request options.
  * @param {string} options.prompt User prompt sent as the single chat message.
+ * @param {string|Array<object>} [options.messageContent] Optional structured content for the user message.
  * @param {string} [options.apiKey] Bearer token for the provider.
  * @param {string} [options.baseURL] OpenAI-compatible API base URL. Defaults to https://api.openai.com/v1.
  * @param {string} [options.model] Model id to request. Defaults to gpt-5.5.
@@ -360,6 +361,7 @@ async function readStreamedCompletion(response, onMetadata) {
  */
 export async function callLLM({
   prompt,
+  messageContent,
   apiKey,
   baseURL = 'https://api.openai.com/v1',
   model = DEFAULT_BEST_MODELS.openai,
@@ -397,7 +399,7 @@ export async function callLLM({
         // Spread first so callers can never clobber the protocol fields below.
         ...(extraBody && typeof extraBody === 'object' && !Array.isArray(extraBody) ? extraBody : {}),
         model,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: messageContent ?? prompt }],
       };
   // Skip `temperature` up front when this process already saw the model
   // reject it (e.g. claude-sonnet-5) — avoids a guaranteed 400 round trip.
@@ -569,4 +571,3 @@ export async function callLLM({
   if (typeof lastStatus === 'number') /** @type {any} */ (err).status = lastStatus;
   throw err;
 }
-

@@ -516,17 +516,9 @@ details.foldout > summary:focus-visible,
 .settings__panel .ctl__select, .settings__panel .ctl__input { max-width: 100%; }
 .settings__panel .nav__presets { margin-top: 16px; }
 .settings__panel .nav__byok, .settings__panel .nav__pro { justify-content: flex-start; }
-.hero { min-height: calc(100dvh - 80px); padding-top: 36px; }
-.hero__inner { max-width: 1200px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 40px; text-align: left; }
-.hero__title { font-size: clamp(34px, 4.5vw, 56px); line-height: 1.12; }
-.hero__title .grad { white-space: normal; }
-.hero__sub { margin-bottom: 24px; }
 .hero__hint, .suggest__label { color: var(--text-dim); font-size: 13px; line-height: 1.6; margin: 12px 0 0; }
 .suggest__label { margin-top: 20px; }
-.hero .suggest { justify-content: flex-start; margin-top: 8px; }
-.hero .examples { padding: 0; width: 100%; min-width: 0; }
-.hero .sec__head { text-align: left; margin-bottom: 12px; }
-.hero .sec__title { font-size: 22px; }
+.hero .suggest { margin-top: 8px; }
 .prompt__bar { justify-content: space-between; color: var(--text-dim); font-size: 13px; }
 .editor__bar { padding: 10px; }
 .editor__tabs { flex-wrap: wrap; }
@@ -546,13 +538,11 @@ details.foldout > summary:focus-visible,
 .meaning-info p { color: var(--text-dim); }
 @media (max-width: 1020px) {
   .nav__end { flex-basis: auto; justify-content: flex-end; }
-  .hero__inner { gap: 24px; }
 }
 @media (max-width: 900px) {
   .nav { gap: 12px; padding: 12px 16px; }
   .nav__links { order: initial; flex-basis: auto; }
   .nav__links a { font-size: 12px; }
-  .hero__inner { grid-template-columns: 1fr; max-width: 640px; }
   .hero { padding: 24px 16px 40px; }
   .hero__title { font-size: 36px; }
   .hero__sub { margin-bottom: 16px; }

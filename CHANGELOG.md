@@ -2,6 +2,13 @@
 
 All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 
+## 8.5.2 — 2026-09-08
+
+Semver rationale: patch — restores the centered landing page after the first-use layout regression.
+
+- **Landing focus.** Restore the wide, centered input and move examples into their own section after the usage steps. Keep multilingual copy, optional settings, and rewrite verification unchanged.
+- **Availability.** This isolated source and web hotfix excludes unreleased dev changes. npm remains at 8.3.0 while publication is on hold.
+
 ## 8.5.1 — 2026-09-07
 
 Semver rationale: patch — fixes a CJK numeric-parser false positive found during the multilingual production checks.

@@ -4,13 +4,14 @@
 
 ## Source and web deployment while npm publication is pending
 
-The 8.5.1 source and web release adds a CJK numeric-parser correction to the multilingual examples, localized first-use screens, shared illustrative cards and anonymous page-funnel milestones.
+The 8.5.2 source and web hotfix restores the centered landing page and separate examples section. Multilingual copy, optional settings, and rewrite verification stay unchanged. Unreleased dev changes are excluded.
 The npm registry still serves 8.3.0; its package version does not establish which
 version is deployed on the website. Use a checkout with `npm ci` and
 `node bin/patina.js` for commands that have not reached npm yet.
 
-Web deployment follows the reviewed `dev` → `main` merge and the existing Vercel
-project. It does not require an npm publication or a release tag. Keep `dev` in
+Web deployment normally follows the reviewed `dev` → `main` merge and the existing
+Vercel project. The isolated 8.5.2 hotfix starts from released `main`; merge it
+back into `dev` immediately. Deployment needs no npm publication or release tag. Keep `dev` in
 sync with the resulting `main` history and verify the production version and
 rewrite flow after deployment.
 

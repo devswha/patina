@@ -117,6 +117,18 @@ icon's copper → teal → gold story:
 - Keyboard-first: every interactive control has a visible `:focus-visible` ring;
   streamed output and errors are announced via live regions.
 
+## Landing composition
+
+The first screen centers the heading and a wide input in a single column.
+The hero uses the existing 800px content limit, 768px prompt limit, and
+40px-to-64px heading scale. Suggestions stay centered below the prompt.
+The document owns scrolling; the examples editor is a separate section after
+the usage steps, never a second column competing with the input.
+
+Language selection stays visible and optional settings remain in the disclosure.
+Localized copy, example selection, and visible verification evidence keep their
+current behavior. Narrow screens retain the existing stacked layout and controls.
+
 ## Applied in
 
 - `playground/chatgpt.css` — tokens in `:root`; glow on `.hero__sky`; semantic

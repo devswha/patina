@@ -650,6 +650,14 @@ function renderExamples() {
 
   let active = EXAMPLES.find((example) => example.id === exampleSelection && example.lang === els.lang.value)
     || EXAMPLES.find((example) => example.lang === els.lang.value) || EXAMPLES[0];
+  // The copy button carries a transient result label; it belongs to the row that
+  // was copied, so switching rows drops both the label and its pending timer.
+  let copyReset;
+  const restCopy = () => {
+    clearTimeout(copyReset);
+    copy.textContent = ui.copyExample;
+    copy.classList.remove('is-ok');
+  };
   const reveal = () => {
     if (reduce) return;
     editor.classList.remove('is-reveal');
@@ -678,7 +686,7 @@ function renderExamples() {
       tab.setAttribute('aria-selected', String(selected));
       tab.setAttribute('tabindex', selected ? '0' : '-1');
     }
-    copy.textContent = ui.copyExample;
+    restCopy();
     if (animate) reveal();
   };
   selectExample = setActive;
@@ -711,16 +719,19 @@ function renderExamples() {
     loadIntoPrompt(selected.before);
     globalThis.scrollTo({ top: 0, behavior: 'smooth' });
   });
-  let copyReset;
   copy.addEventListener('click', async () => {
+    clearTimeout(copyReset);
     try {
       await globalThis.navigator.clipboard.writeText(active.after);
       copy.textContent = ui.copied;
       copy.classList.add('is-ok');
-    } catch { copy.textContent = ui.copyFailed; }
+    } catch {
+      // A failure must not keep the success styling from a previous copy.
+      copy.textContent = ui.copyFailed;
+      copy.classList.remove('is-ok');
+    }
     // Restore the resting label so a second copy still reads as an available action.
-    clearTimeout(copyReset);
-    copyReset = globalThis.setTimeout(() => { copy.textContent = ui.copyExample; copy.classList.remove('is-ok'); }, 1400);
+    copyReset = globalThis.setTimeout(restCopy, 1400);
   });
   setActive(active);
 }

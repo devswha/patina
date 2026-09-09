@@ -781,6 +781,100 @@ test('illustrative copy has no guessed scores while approved API scores stay vis
   assert.equal(a.document.querySelector('.output-status').textContent, 'Approved — checks passed. Actions are enabled.');
 });
 
+// The status line is the only visible statement about whether a result passed the
+// meaning gate, so its transitions are asserted as observable state, not as source shape.
+function statusOf(a) {
+  const node = a.document.querySelector('.output-status');
+  return node && { text: node.textContent, state: node.dataset.outputStatus };
+}
+
+test('the approval status is silent in flight and states every terminal outcome', async () => {
+  const t = { unapproved: 'Unapproved — checks have not passed. Actions are disabled.',
+    approved: 'Approved — checks passed. Actions are enabled.' };
+
+  // In flight: no claim either way, because the request has not produced a result.
+  let release;
+  const pending = app({ response: (options) => new Promise((resolve) => {
+    options.onStart?.({ type: 'start' });
+    options.onDelta?.('partial', 'partial');
+    release = () => {
+      const frame = { type: 'done', rewrite: 'Accepted 70%', mps: 91, fidelity: 87 };
+      options.onDone(frame); resolve({ ok: true, finalFrame: frame });
+    };
+  }) });
+  const streaming = pending.ui.submit('Source 70%');
+  assert.deepEqual(statusOf(pending), { text: '', state: 'streaming' },
+    'a running rewrite must not be announced as a failed check');
+  assert.equal(pending.document.querySelector('.output-action'), null);
+  release();
+  await streaming;
+  await pending.settle();
+  assert.deepEqual(statusOf(pending), { text: t.approved, state: 'approved' });
+  assert.ok(pending.document.querySelectorAll('.output-action').length > 0);
+
+  // Below the meaning floor: rejected, announced, and no actions offered.
+  const floor = app({ response: (options) => {
+    options.onStart?.({ type: 'start' });
+    const frame = { type: 'done', rewrite: 'Rejected', mps: 12, fidelity: 9 };
+    options.onDone(frame); return { ok: true, finalFrame: frame };
+  } });
+  await floor.ui.submit('Source 70%');
+  await floor.settle();
+  assert.deepEqual(statusOf(floor), { text: t.unapproved, state: 'unapproved' });
+  assert.equal(floor.document.querySelector('.output-action'), null);
+  assert.equal(floor.ui.activeConvo().thread.original, undefined);
+
+  // Transport failure: still a stated outcome, never a stranded empty line.
+  const failed = app({ response: () => ({ ok: false, finalFrame: { status: 500, error: 'upstream failed' } }) });
+  await failed.ui.submit('Source 70%');
+  await failed.settle();
+  assert.deepEqual(statusOf(failed), { text: t.unapproved, state: 'unapproved' });
+  assert.equal(failed.document.querySelector('.output-action'), null);
+
+  // Explicit Stop: the cancelled attempt reports unapproved rather than staying blank.
+  const stopped = app({ response: (options) => new Promise(() => { options.onStart?.({ type: 'start' }); }) });
+  const running = stopped.ui.submit('Source 70%');
+  assert.deepEqual(statusOf(stopped), { text: '', state: 'streaming' });
+  stopped.get('hero-form').emit('submit');
+  assert.deepEqual(statusOf(stopped), { text: t.unapproved, state: 'unapproved' });
+  void running;
+});
+
+test('a copied example resets its label and success styling, and never carries them to another row', async () => {
+  const a = app({ languages: ['ko-KR'] });
+  const ui = copy.onboardingCopy('ko');
+  const button = a.document.querySelector('.editor__btn');
+  const clipboard = [];
+  a.context.navigator.clipboard = { writeText: async (text) => { clipboard.push(text); } };
+  assert.equal(button.textContent, ui.copyExample);
+
+  button.emit('click');
+  await nextTurn();
+  assert.deepEqual(clipboard, [EXAMPLES.find((row) => row.id === 'ko-fixture-0').after]);
+  assert.equal(button.textContent, ui.copied);
+  assert.equal(button.classList.contains('is-ok'), true);
+
+  // Switching rows drops the transient result: it belonged to the copied row.
+  change(a, 'example-choice', 'ko-fixture-1');
+  assert.equal(button.textContent, ui.copyExample);
+  assert.equal(button.classList.contains('is-ok'), false, 'success styling must not survive a row change');
+
+  // A failure must not keep the previous success styling.
+  button.emit('click');
+  await nextTurn();
+  assert.equal(button.classList.contains('is-ok'), true);
+  a.context.navigator.clipboard = { writeText: async () => { throw new Error('clipboard unavailable'); } };
+  button.emit('click');
+  await nextTurn();
+  assert.equal(button.textContent, ui.copyFailed);
+  assert.equal(button.classList.contains('is-ok'), false);
+
+  // The resting label returns so a second copy still reads as an available action.
+  await new Promise((resolve) => setTimeout(resolve, 1600));
+  assert.equal(button.textContent, ui.copyExample);
+  assert.equal(button.classList.contains('is-ok'), false);
+});
+
 test('optional controls open for credentials, close with Escape, and Free restores setup-free sending', () => {
   const a = app();
   const panel = a.get('settings-panel');

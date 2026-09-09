@@ -130,7 +130,6 @@ export function configuredPortalHref(config) {
 // First-use copy stays separate from safety/error evidence shown after a request.
 export const ONBOARDING_COPY = {
   en: {
-    title: ['Make it sound ', 'natural', ''],
     sub: 'Turn a stiff draft into clear, natural writing. Keep your meaning.',
     steps: [['1 · Paste', 'Start with your own draft or an example. No account or key needed.'], ['2 · Rewrite', 'Smooth out stiff wording while keeping your meaning.'], ['3 · Review', 'Compare the result with your draft, then copy the approved text.']],
     settings: 'Options', settingsHint: 'Optional. Start with Free and keep the source style.',
@@ -146,7 +145,6 @@ export const ONBOARDING_COPY = {
     freeName: 'Free', freeCta: 'Try it now ↑', freeFeatures: ['Browser playground', '20 rewrites / day', 'Up to 4,000 characters', '한국어 · English · 中文 · 日本語'],
   },
   ko: {
-    title: ['딱딱한 문장을 ', '자연스럽게', ''],
     sub: '어색한 표현을 읽기 편하게 다듬어요. 전하려던 뜻은 그대로.',
     steps: [['1 · 붙여넣기', '내 글이나 예제로 시작해요. 가입도 키도 필요 없어요.'], ['2 · 다듬기', '뜻을 유지하면서 딱딱한 표현을 자연스럽게 고쳐요.'], ['3 · 확인', '원문과 결과를 비교한 뒤 승인된 글을 복사하세요.']],
     settings: '선택 설정', settingsHint: '필요할 때만 바꾸세요. 기본값은 무료 이용과 원문 문체 유지입니다.',
@@ -162,7 +160,6 @@ export const ONBOARDING_COPY = {
     freeName: '무료', freeCta: '지금 써보기 ↑', freeFeatures: ['브라우저에서 바로 이용', '하루 20회 다듬기', '최대 4,000자', '한국어 · English · 中文 · 日本語'],
   },
   zh: {
-    title: ['让生硬的文字', '自然流畅', ''],
     sub: '把拗口的草稿改得清楚好读，保留你原本想表达的意思。',
     steps: [['1 · 粘贴', '用自己的草稿或示例开始，无需账号或密钥。'], ['2 · 润色', '调整生硬的措辞，保留原意。'], ['3 · 检查', '对照原文查看结果，再复制已通过检查的文字。']],
     settings: '可选设置', settingsHint: '需要时再调整。默认免费使用，保留原文风格。',
@@ -178,7 +175,6 @@ export const ONBOARDING_COPY = {
     freeName: '免费', freeCta: '立即试用 ↑', freeFeatures: ['在浏览器中使用', '每天改写 20 次', '最多 4,000 字符', '한국어 · English · 中文 · 日本語'],
   },
   ja: {
-    title: ['堅い文章を、', '自然な言葉に', ''],
     sub: '伝えたい意味はそのままに、ぎこちない下書きを読みやすく整えます。',
     steps: [['1 · 貼り付け', '自分の下書きか例文で始めましょう。登録もキーも不要です。'], ['2 · 整える', '意味を保ちながら、堅い表現を自然な言葉に直します。'], ['3 · 確認', '原文と結果を比べてから、承認された文章をコピーします。']],
     settings: '任意の設定', settingsHint: '必要なときだけ変更できます。初期設定は無料利用・原文の文体を維持です。',

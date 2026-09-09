@@ -1484,12 +1484,6 @@ function applyI18n(lang) {
   set('#protected-hint', protection.hint);
   // Structured copy is rendered via DOM nodes (textContent + createElement), so
   // localized strings are never parsed as HTML (no innerHTML injection surface).
-  const setTitle = (sel, parts) => {
-    const n = document.querySelector(sel); if (!n) return;
-    n.textContent = parts[0];
-    n.appendChild(el('span', 'grad', parts[1]));
-    if (parts[2]) n.appendChild(document.createTextNode(parts[2]));
-  };
   const setLines = (sel, lines) => {
     const n = document.querySelector(sel); if (!n) return;
     n.textContent = '';
@@ -1498,7 +1492,8 @@ function applyI18n(lang) {
   document.documentElement.lang = lang;
   const proBuyBtn = document.querySelector('#pro-buy');
   if (proBuyBtn) proBuyBtn.textContent = proBuyBtn.classList.contains('is-soon') ? t.proSoon : t.proBuy;
-  setTitle('.hero__title', t.title);
+  // The hero headline stays in English for every locale and is owned by the
+  // markup, which carries its own lang="en". Only the subheading localizes.
   set('.hero__sub', t.sub);
   els.heroInput.setAttribute('placeholder', t.promptPh);
   els.heroInput.setAttribute('aria-label', t.promptPh);

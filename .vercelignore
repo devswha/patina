@@ -1,0 +1,29 @@
+# Local tooling and agent residue — never deploy.
+.git
+.codegraph
+.gjc
+.omo
+.omc
+.omx
+.claude
+.playwright-mcp
+.insane-review
+.vercel
+node_modules
+
+# Private research corpus and local artifacts — must never leave the machine.
+artifacts
+docs/internal
+memory
+plans
+sample
+custom
+services/log-query/.env.local
+services/log-query/.vercel
+tests/quality/results.json
+tests/quality/scorer-results.json
+
+# Local demo renders (sources are generated, not served).
+assets/demo/*.mp4
+assets/demo/*.webp
+assets/demo/*.html

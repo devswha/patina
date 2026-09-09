@@ -160,9 +160,6 @@ function app({ response, storage = new Map(), languages = [], language, search =
       options.onDone(frame);
       return { ok: true, finalFrame: frame };
     },
-    // These injected wrappers resolve this fixture's storage, not Node global storage.
-    readPresets: () => preferences.readPresets(() => context.localStorage),
-    writePresets: (items) => preferences.writePresets(items, () => context.localStorage),
   });
   vm.runInContext(controller + '\nglobalThis.ui = { state, submit, activeConvo, newConvo, selectConvo, readControls, failureMessage, addRecovery };', context);
   return {
@@ -529,9 +526,7 @@ for (const lang of contract.SUPPORTED_LANGS) {
     assert.equal('license' in a.calls[0].body, false);
     assert.equal(a.get('license-status').textContent, t.licenseStates.validated);
     assert.equal(a.ui.activeConvo().thread.original, 'A source 70%', '70/70 is accepted');
-    a.get('preset-name').value = 'Work';
-    a.get('preset-save').emit('click');
-    assert.doesNotMatch([...a.storage.values()].join(''), /private-license|A source|Accepted|history|authorization|apiKey/);
+    assert.equal(a.storage.size, 0, 'no license, source or transcript may reach browser storage');
     assert.equal(a.get('pro-portal').hidden, true, 'unconfigured portal stays hidden');
     assert.equal(a.document.querySelector('.price__badge').textContent, t.proBadge);
     assert.equal(a.document.querySelectorAll('.price')[1].querySelector('.price__name').textContent, 'BYOK');
@@ -566,25 +561,14 @@ test('actual A/B switches restore all controls and next payload; conflicting lan
   assert.equal(a.get('register').value, 'professional');
 });
 
-test('actual presets apply/delete/restore safely and reject a conflicting language without partial updates', async () => {
+test('conversation settings are never persisted to browser storage', async () => {
   const a = app();
-  change(a, 'lang', 'ko'); change(a, 'persona', 'soft-professional');
-  a.get('preset-name').value = '한국어'; a.get('preset-save').emit('click');
-  const storage = a.storage;
-  change(a, 'lang', 'en'); change(a, 'document-type', 'email');
-  await a.ui.submit('Source');
-  const before = controls(a);
-  a.get('preset-select').value = '한국어'; a.get('preset-select').emit('change'); a.get('preset-apply').emit('click');
-  assert.deepEqual(controls(a), before);
-  assert.equal(a.get('preset-status').textContent, copy.experienceCopy('en').languageLocked);
-  a.get('new-chat').emit('click'); a.get('preset-apply').emit('click');
-  assert.equal(controls(a).lang, 'ko');
-  assert.equal(controls(a).persona, 'soft-professional');
-  const reloaded = app({ storage });
-  assert.equal(reloaded.get('preset-select').options[1].value, '한국어');
-  assert.deepEqual(controls(reloaded), { lang: 'en', documentType: 'default', persona: '', register: '' });
-  reloaded.get('preset-select').value = '한국어'; reloaded.get('preset-select').emit('change'); reloaded.get('preset-delete').emit('click');
-  assert.equal(reloaded.get('preset-select').options.length, 1);
+  change(a, 'lang', 'ko'); change(a, 'persona', 'soft-professional'); change(a, 'document-type', 'namuwiki');
+  type(a, 'protected-text', 'ACME');
+  await a.ui.submit('원문 70%');
+  assert.equal(a.storage.size, 0, 'the playground writes nothing to browser storage');
+  // A fresh page keeps no memory of the previous conversation's settings.
+  assert.deepEqual(controls(app()), { lang: 'en', documentType: 'default', persona: '', register: '' });
 });
 
 for (const [status, error, kind] of [

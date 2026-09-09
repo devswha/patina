@@ -3,7 +3,7 @@
 // transitions into a chat view. Reuses the isomorphic streaming client + contract;
 // renders via safe DOM APIs.
 import { createRewriteThread, streamRewrite, classifyRewriteError, rewriteRecovery, REWRITE_ERROR_KINDS } from './rewrite-client.js';
-import { normalizePreferences, readPresets, writePresets, saveNamedPreset } from './preferences.js';
+import { normalizePreferences } from './preferences.js';
 import { EXPERIENCE_COPY, experienceCopy, initialLanguage, onboardingCopy, licenseStatusAfter, configuredPortalHref } from './experience-copy.js';
 // @ts-expect-error Served from the same public root in development and production.
 import { EXAMPLES } from '/examples/index.js';
@@ -531,7 +531,7 @@ function populatePersonas() {
   const prev = els.persona.value;
   els.persona.innerHTML = '';
   const copy = experienceCopy(els.lang.value);
-  els.persona.appendChild(new Option(copy.preserve, ''));
+  els.persona.appendChild(new Option(copy.keepVoice, ''));
   for (const p of (WEB_PERSONAS[els.lang.value] || [])) {
     const voiceIndex = p.id.startsWith('natural-') ? 0 : ['blog-essay', 'technical-explainer', 'soft-professional', 'pragmatic-founder'].indexOf(p.id) + 1;
     els.persona.appendChild(new Option(copy.voices[voiceIndex] || p.label, p.id));
@@ -755,7 +755,7 @@ function showChat() {
   els.app.setAttribute('data-view', 'chat');
   renderProtectedInput(); syncSettingsBusy();
   if (globalThis.matchMedia?.('(max-width: 720px)')?.matches) {
-    document.querySelectorAll('.nav__presets').forEach((panel) => panel.removeAttribute('open'));
+    document.querySelectorAll('.protected-controls').forEach((panel) => panel.removeAttribute('open'));
   }
 }
 
@@ -1013,7 +1013,7 @@ function detectLang(text) {
   return null;
 }
 
-// Landing locale seeds the UI; only a deliberate control/preset selection locks the source language.
+// Landing locale seeds the UI; only a deliberate control selection locks the source language.
 const DEFAULT_LANG = initialLanguage(globalThis.navigator, globalThis.location?.search);
 
 // ---------- unified submit ----------
@@ -1576,64 +1576,21 @@ function renderProtectedInput() {
   els.protectedInput.value = protectedInputOwner()?.protectedInput || '';
 }
 function syncSettingsBusy() {
-  for (const control of [els.lang, els.persona, els.documentType, els.register, $('#preset-apply')]) {
+  for (const control of [els.lang, els.persona, els.documentType, els.register]) {
     control.toggleAttribute('disabled', state.busy);
   }
-  syncPresetButtons();
   els.protectedInput.disabled = state.busy || Boolean(protectedInputOwner()?.reviewPending);
 }
 
-const storedPresets = readPresets();
-let presets = storedPresets.presets;
-let presetStatus = ({ unavailable: 'storageUnavailable', invalid: 'storageInvalid', version: 'storageVersion' })[storedPresets.status] || '';
-const presetSelect = /** @type {HTMLSelectElement} */ ($('#preset-select'));
-const presetName = /** @type {HTMLInputElement} */ ($('#preset-name'));
 els.protectedInput.addEventListener('input', () => {
   const owner = protectedInputOwner();
   if (owner && !state.busy && !owner.reviewPending) owner.protectedInput = els.protectedInput.value;
 });
-function renderPresets(selected = presetSelect.value) {
-  presetSelect.innerHTML = '';
-  presetSelect.appendChild(new Option(experienceCopy(els.lang.value).presetNone, ''));
-  presets.forEach((p) => presetSelect.appendChild(new Option(p.name, p.name)));
-  presetSelect.value = presets.some((p) => p.name === selected) ? selected : '';
-  $('#preset-status').textContent = experienceCopy(els.lang.value)[presetStatus] || '';
-  syncPresetButtons();
-}
-function syncPresetButtons() {
-  $('#preset-apply').toggleAttribute('disabled', state.busy || !presetSelect.value);
-  $('#preset-delete').toggleAttribute('disabled', !presetSelect.value);
-}
-function persistPresets(success) {
-  presetStatus = writePresets(presets) ? success : 'storageUnavailable';
-}
-function savePreset() {
-  const result = saveNamedPreset(presets, presetName.value, readControls());
-  if (result.ok) { presets = result.presets; persistPresets('presetSaved'); }
-  else presetStatus = result.reason === 'limit' ? 'presetLimit' : 'presetNameError';
-  renderPresets(result.ok ? presetName.value.trim() : presetSelect.value);
-}
-function applyPreset() {
-  if (state.busy) return;
-  const preset = presets.find((p) => p.name === presetSelect.value);
-  if (preset && state.heroDraft) newConvo(state.heroDraft.protectedInput);
-  const convo = activeConvo();
-  if (!preset || !convo) return;
-  const accepted = convo.thread.updatePreferences(preset.settings, { explicitLanguage: true });
-  restoreControls(convo);
-  presetStatus = accepted ? 'presetApplied' : 'languageLocked';
-  renderPresets();
-}
-function deletePreset() {
-  presets = presets.filter((p) => p.name !== presetSelect.value);
-  persistPresets('presetDeleted');
-  renderPresets('');
-}
 function applyExperienceCopy(lang, set) {
   const copy = experienceCopy(lang);
   const intro = onboardingCopy(lang);
   for (const [id, key] of [['settings-label', 'settings'], ['settings-hint', 'settingsHint'], ['hero-hint', 'heroHint'],
-    ['hero-action', 'heroAction'], ['suggest-label', 'suggestions'], ['price-free', 'freeCta']]) set(`#${id}`, intro[key]);
+    ['suggest-label', 'suggestions'], ['price-free', 'freeCta']]) set(`#${id}`, intro[key]);
   set('.nav__links a[href="#examples"]', intro.navExamples);
   set('.nav__links a[href="#pricing"]', intro.navPricing);
   els.homeLink.setAttribute('aria-label', intro.home);
@@ -1662,12 +1619,10 @@ function applyExperienceCopy(lang, set) {
     if (label) label.textContent = copy.labels[i];
     $(`#${id}`).setAttribute('aria-label', copy.labels[i]);
   }
-  for (const [value, label] of [['', copy.preserve], ['casual', copy.casual], ['professional', copy.professional]]) {
+  for (const [value, label] of [['', copy.keepRegister], ['casual', copy.casual], ['professional', copy.professional]]) {
     set(`#register option[value="${value}"]`, label);
   }
-  for (const [id, key] of [['presets-label', 'presets'], ['preset-select-label', 'presetSelect'], ['preset-name-label', 'presetName'],
-    ['preset-apply', 'presetApply'], ['preset-save', 'presetSave'], ['preset-delete', 'presetDelete'], ['preset-hint', 'presetHint']]) set(`#${id}`, copy[key]);
-  renderPresets(); syncTier();
+  syncTier();
 }
 
 // ---------- events ----------
@@ -1716,11 +1671,6 @@ els.ctaStart && els.ctaStart.addEventListener('click', () => { globalThis.scroll
 
 els.lang.addEventListener('change', onLangChange);
 for (const control of [els.documentType, els.persona, els.register]) control.addEventListener('change', onPreferencesChange);
-$('#preset-save').addEventListener('click', savePreset);
-$('#preset-apply').addEventListener('click', applyPreset);
-$('#preset-delete').addEventListener('click', deletePreset);
-presetSelect.addEventListener('change', () => { presetName.value = presetSelect.value; syncPresetButtons(); });
-presetName.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); savePreset(); } });
 els.tier.addEventListener('change', () => {
   track('Tier Selected', { tier: els.tier.value, surface: 'controls' });
   syncTier(); clearInlineErrors(); updateHeroSend(); updateChatSend();

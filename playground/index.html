@@ -58,7 +58,7 @@
               <label class="ctl">
                 <span class="ctl__label">Register</span>
                 <select id="register" class="ctl__select">
-                  <option value="">Preserve source</option>
+                  <option value="">My own tone</option>
                   <option value="casual">Casual</option>
                   <option value="professional">Professional</option>
                 </select>
@@ -91,19 +91,7 @@
               <a class="ctl__link" id="pro-portal" hidden target="_blank" rel="noopener noreferrer">Manage subscription in Polar</a>
               <span class="ctl__err" id="license-error" role="alert" hidden></span>
             </div>
-            <details class="nav__presets" id="presets-panel">
-              <summary id="presets-label">Local presets</summary>
-              <div class="preset-controls">
-                <label class="ctl"><span class="ctl__label" id="preset-select-label">Saved preset</span><select id="preset-select" class="ctl__select"></select></label>
-                <button class="ctl__action" id="preset-apply" type="button">Apply preset</button>
-                <button class="ctl__action" id="preset-delete" type="button">Delete preset</button>
-                <label class="ctl"><span class="ctl__label" id="preset-name-label">Preset name</span><input id="preset-name" class="ctl__input" type="text" maxlength="40" autocomplete="off" aria-describedby="preset-hint" /></label>
-                <button class="ctl__action" id="preset-save" type="button">Save / replace</button>
-                <p class="ctl__status" id="preset-hint">Saved only in this browser: language, document type, persona, and register. Do not put keys or private text in the name. Up to 20 names, 40 characters each.</p>
-                <p class="ctl__status" id="preset-status" role="status" aria-live="polite"></p>
-              </div>
-            </details>
-            <details class="nav__presets protected-controls">
+            <details class="protected-controls">
               <summary id="protected-label">Keep these phrases unchanged</summary>
               <textarea id="protected-text" class="ctl__input" rows="2" maxlength="4000" aria-labelledby="protected-label" aria-describedby="protected-hint" autocomplete="off" spellcheck="false"></textarea>
               <p class="ctl__status" id="protected-hint">Optional: one product name, quote or phrase per line. Kept in this conversation only.</p>
@@ -126,7 +114,6 @@
             <form class="prompt" id="hero-form">
               <textarea class="prompt__input" id="hero-input" rows="1" placeholder="Paste the text you want to clean up…" aria-label="Paste the text you want to clean up…" autofocus></textarea>
               <div class="prompt__bar">
-                <span id="hero-action">Rewrite my text</span>
                 <button class="prompt__send" id="hero-send" type="submit" disabled aria-label="Send">
                   <svg class="ic-send" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 4l-7 7h4v7h6v-7h4z"/></svg>
                   <svg class="ic-stop" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>

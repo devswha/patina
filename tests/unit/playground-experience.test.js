@@ -160,11 +160,8 @@ function app({ response, storage = new Map(), languages = [], language, search =
       options.onDone(frame);
       return { ok: true, finalFrame: frame };
     },
-    // These injected wrappers resolve this fixture's storage, not Node global storage.
-    readPresets: () => preferences.readPresets(() => context.localStorage),
-    writePresets: (items) => preferences.writePresets(items, () => context.localStorage),
   });
-  vm.runInContext(controller + '\nglobalThis.ui = { state, submit, activeConvo, newConvo, selectConvo, readControls, failureMessage, addRecovery };', context);
+  vm.runInContext(controller + '\nglobalThis.ui = { state, submit, activeConvo, newConvo, selectConvo, readControls, failureMessage, addRecovery, tierLabel };', context);
   return {
     document, calls, storage, context, ui: context.ui, get: (id) => document.querySelector(`#${id}`),
     async settle() { await nextTurn(); await Promise.all(reviews); await nextTurn(); },
@@ -529,12 +526,10 @@ for (const lang of contract.SUPPORTED_LANGS) {
     assert.equal('license' in a.calls[0].body, false);
     assert.equal(a.get('license-status').textContent, t.licenseStates.validated);
     assert.equal(a.ui.activeConvo().thread.original, 'A source 70%', '70/70 is accepted');
-    a.get('preset-name').value = 'Work';
-    a.get('preset-save').emit('click');
-    assert.doesNotMatch([...a.storage.values()].join(''), /private-license|A source|Accepted|history|authorization|apiKey/);
+    assert.equal(a.storage.size, 0, 'no license, source or transcript may reach browser storage');
     assert.equal(a.get('pro-portal').hidden, true, 'unconfigured portal stays hidden');
     assert.equal(a.document.querySelector('.price__badge').textContent, t.proBadge);
-    assert.equal(a.document.querySelectorAll('.price')[1].querySelector('.price__name').textContent, 'BYOK');
+    assert.equal(a.document.querySelectorAll('.price')[1].querySelector('.price__name').textContent, t.byokName);
   });
 }
 
@@ -566,25 +561,14 @@ test('actual A/B switches restore all controls and next payload; conflicting lan
   assert.equal(a.get('register').value, 'professional');
 });
 
-test('actual presets apply/delete/restore safely and reject a conflicting language without partial updates', async () => {
+test('conversation settings are never persisted to browser storage', async () => {
   const a = app();
-  change(a, 'lang', 'ko'); change(a, 'persona', 'soft-professional');
-  a.get('preset-name').value = '한국어'; a.get('preset-save').emit('click');
-  const storage = a.storage;
-  change(a, 'lang', 'en'); change(a, 'document-type', 'email');
-  await a.ui.submit('Source');
-  const before = controls(a);
-  a.get('preset-select').value = '한국어'; a.get('preset-select').emit('change'); a.get('preset-apply').emit('click');
-  assert.deepEqual(controls(a), before);
-  assert.equal(a.get('preset-status').textContent, copy.experienceCopy('en').languageLocked);
-  a.get('new-chat').emit('click'); a.get('preset-apply').emit('click');
-  assert.equal(controls(a).lang, 'ko');
-  assert.equal(controls(a).persona, 'soft-professional');
-  const reloaded = app({ storage });
-  assert.equal(reloaded.get('preset-select').options[1].value, '한국어');
-  assert.deepEqual(controls(reloaded), { lang: 'en', documentType: 'default', persona: '', register: '' });
-  reloaded.get('preset-select').value = '한국어'; reloaded.get('preset-select').emit('change'); reloaded.get('preset-delete').emit('click');
-  assert.equal(reloaded.get('preset-select').options.length, 1);
+  change(a, 'lang', 'ko'); change(a, 'persona', 'soft-professional'); change(a, 'document-type', 'namuwiki');
+  type(a, 'protected-text', 'ACME');
+  await a.ui.submit('원문 70%');
+  assert.equal(a.storage.size, 0, 'the playground writes nothing to browser storage');
+  // A fresh page keeps no memory of the previous conversation's settings.
+  assert.deepEqual(controls(app()), { lang: 'en', documentType: 'default', persona: '', register: '' });
 });
 
 for (const [status, error, kind] of [
@@ -774,11 +758,68 @@ test('illustrative copy has no guessed scores while approved API scores stay vis
     options.onDone(frame); return { ok: true, finalFrame: frame };
   } });
   assert.equal(a.get('example-note').textContent, copy.onboardingCopy('en').illustrative);
-  assert.doesNotMatch(a.get('example-cards').textContent, /MPS|Fidelity|verified live/i);
+  // A prepared example must never present a score, which would read as measured.
+  // Numbers inside the sample text itself are fine; a score label is not.
+  assert.doesNotMatch(a.get('example-cards').textContent, /Meaning kept|Close to your text|MPS|Fidelity|verified live/i);
   await a.ui.submit('Source 70%');
-  assert.match(a.get('thread').textContent, /MPS.*91/);
-  assert.match(a.get('thread').textContent, /Fidelity.*87/);
-  assert.equal(a.document.querySelector('.output-status').textContent, 'Approved — checks passed. Actions are enabled.');
+  // The real scores stay visible; only their labels are plain-language now.
+  assert.match(a.get('thread').textContent, /Meaning kept.*91/);
+  assert.match(a.get('thread').textContent, /Close to your text.*87/);
+  assert.equal(a.document.querySelector('.output-status').textContent, EN_STATUS.approved);
+});
+
+// Asserted as literals, not scraped from the controller: reading the expected
+// value out of the code under test would accept any wording it happens to hold.
+// Approval is an `mps >= 70 && fidelity >= 70` threshold, so the approved line
+// may report that the check passed but must never promise the meaning is
+// identical, and neither line may leak an internal metric name.
+const EN_STATUS = {
+  approved: 'Passed our meaning check. Worth a quick read before you use it.',
+  unapproved: 'This one did not pass our check, so we are not offering it to copy.',
+};
+
+// Three separate defects on this branch were English literals in the controller
+// reaching the DOM, which a source-scraping assertion cannot catch. Assert the
+// rendered result detail per locale instead.
+for (const lang of ['ko', 'zh', 'ja']) {
+  test(`${lang}: result badges and detail render in the selected language`, async () => {
+    const a = app({ response: (options) => {
+      const frame = { type: 'done', rewrite: 'Accepted 70%', mps: 91, fidelity: 87,
+        signals: { before: { signalScore: 40 }, after: { signalScore: 0 } },
+        diff: { beforeChars: 10, afterChars: 8, charDelta: -2, beforeWords: 2, afterWords: 2, wordDelta: 0 } };
+      options.onDone(frame); return { ok: true, finalFrame: frame };
+    } });
+    change(a, 'lang', lang);
+    await a.ui.submit('원문 70%');
+    await a.settle();
+    const thread = a.get('thread').textContent;
+    // The English literals must not survive into a non-English render.
+    for (const english of ['Meaning kept', 'Close to your text', 'Length (before', 'AI-sounding paragraphs', 'Audit JSON', 'Download']) {
+      assert.ok(!thread.includes(english), `${lang} rendered the English literal "${english}"`);
+    }
+    assert.ok(thread.includes('91') && thread.includes('87'), 'the real scores still render');
+  });
+}
+
+test('a renamed plan never appears under its retired name', () => {
+  const a = app();
+  for (const lang of ['en', 'ko', 'zh', 'ja']) {
+    change(a, 'lang', lang);
+    const t = copy.experienceCopy(lang);
+    assert.equal(a.ui.tierLabel('byok'), t.byokName);
+    assert.equal(a.ui.tierLabel('pro'), t.proName);
+    assert.equal(a.ui.tierLabel('free'), copy.onboardingCopy(lang).freeName);
+    assert.notEqual(a.ui.tierLabel('byok'), 'BYOK', 'the retired mode name must not reach a user');
+  }
+});
+
+test('status copy states a check result without promising identical meaning', () => {
+  for (const text of Object.values(EN_STATUS)) {
+    assert.doesNotMatch(text, /\bMPS\b|\bfidelity\b|BYOK/i, 'status must not name internal metrics');
+  }
+  // A 70-point threshold is not proof, so no absolute claim about the meaning.
+  assert.doesNotMatch(EN_STATUS.approved, /still says what you said|meaning is unchanged|same meaning/i);
+  assert.match(EN_STATUS.approved, /check/i, 'approval must be stated as a check result');
 });
 
 // The status line is the only visible statement about whether a result passed the
@@ -789,8 +830,7 @@ function statusOf(a) {
 }
 
 test('the approval status is silent in flight and states every terminal outcome', async () => {
-  const t = { unapproved: 'Unapproved — checks have not passed. Actions are disabled.',
-    approved: 'Approved — checks passed. Actions are enabled.' };
+  const t = EN_STATUS;
 
   // In flight: no claim either way, because the request has not produced a result.
   let release;

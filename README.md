@@ -20,7 +20,7 @@
   <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
   <a href="#quick-start"><img alt="Skill: Claude Code | Codex | Cursor | OpenCode" src="https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet"></a>
   <a href="https://github.com/devswha/patina"><img alt="Languages: KO | EN | ZH | JA" src="https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green"></a>
-  <a href="CHANGELOG.md"><img alt="Version 8.5.2" src="https://img.shields.io/badge/version-8.5.2-blue"></a>
+  <a href="CHANGELOG.md"><img alt="Version 8.6.0" src="https://img.shields.io/badge/version-8.6.0-blue"></a>
 </p>
 
 <p align="center">
@@ -49,7 +49,7 @@ patina is a deterministic, pattern-based humanizer for Korean, English, Chinese,
 
 ## Quick Start
 
-**Source and web version: 8.5.2.** npm publication is pending; the registry currently serves 8.3.0. Use this checkout with `npm ci` and `node bin/patina.js` for the new CLI commands. See [release channels](docs/integrations/release.md).
+**Source and web version: 8.6.0.** npm publication is pending; the registry currently serves 8.3.0. Use this checkout with `npm ci` and `node bin/patina.js` for the new CLI commands. See [release channels](docs/integrations/release.md).
 
 **Browser — nothing to install.** Open **[patina.vibetip.help](https://patina.vibetip.help/?lang=en&utm_source=github&utm_campaign=multilingual-20260907)** and paste text. Rewrites run server-side with the MPS/fidelity gates; API mode forwards your own key per request (never stored or logged).
 
@@ -115,7 +115,7 @@ Model evidence: [writing/scoring guide (Korean)](docs/research/model-guide-20260
 Project config lives in `.patina.yaml`:
 
 ```yaml
-version: "8.5.2"
+version: "8.6.0"
 language: ko              # ko | en | zh | ja
 document-type: default    # genre/purpose + pattern policy
 persona:                  # optional reusable voice; omit to preserve source

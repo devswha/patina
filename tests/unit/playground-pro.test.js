@@ -104,7 +104,7 @@ test('streaming output remains unapproved until an accepted DONE, then becomes a
     'body.appendChild(buildOutputActions(rewrite, frame.receipt));', 'convo.messages.push(', 'convo.thread.commit(']
     .map((step) => done.indexOf(step));
   assert.ok(order.every((offset, index) => offset >= 0 && (index === 0 || offset > order[index - 1])), 'approval precedes actions and history commit');
-  assert.match(controller, /function buildOutputActions\(text, receipt = null\)[\s\S]*?'Audit JSON'/);
+  assert.match(controller, /function buildOutputActions\(text, receipt = null\)[\s\S]*?i18n\(\)\.actAudit/);
   assert.match(controller, /patina-audit-receipt\.json/);
   assert.match(controller, /application\/json;charset=utf-8/);
   assert.match(attempt, /if \(!ok\) \{[\s\S]*?textEl\.classList\.add\('msg__text--flagged'\);[\s\S]*?markOutputUnapproved\(textEl, statusEl\)/);

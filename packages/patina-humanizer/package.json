@@ -1,13 +1,13 @@
 {
   "name": "patina-humanizer",
-  "version": "8.5.2",
+  "version": "8.6.0",
   "description": "SEO-friendly alias for patina-cli",
   "type": "module",
   "bin": {
     "patina-humanizer": "bin/patina-humanizer.js"
   },
   "dependencies": {
-    "patina-cli": "8.5.2"
+    "patina-cli": "8.6.0"
   },
   "license": "MIT",
   "repository": {

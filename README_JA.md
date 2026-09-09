@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#クイックスタート)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-8.5.2-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-8.6.0-blue)](CHANGELOG.md)
 
 > **AIっぽさだけを落として、意味はそのまま。**
 
@@ -104,7 +104,7 @@ patina --batch docs/*.md --outdir cleaned/
 
 ```yaml
 # .patina.default.yaml
-version: "8.5.2"
+version: "8.6.0"
 language: ko              # ko | en | zh | ja
 document-type: default    # ジャンル/用途 + パターン方針
 persona:                  # 任意。省略時は原文ボイスを保持

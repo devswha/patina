@@ -38,8 +38,16 @@ test('all native first-use dictionaries have the same complete shape', () => {
     }
     assert.equal(copy.steps.length, 3);
     assert.equal(copy.freeFeatures.length, 4);
-    assert.doesNotMatch(copy.sub + copy.heroHint + copy.settings, /MPS|fidelity/i);
-    assert.match(copy.hint, /MPS/);
+    // No visible string names an internal metric: a reader who does not build
+    // software should still learn what the check does. `steps` nests one level
+    // deeper than the rest, so flatten to any depth rather than just one.
+    const deep = (v) => (Array.isArray(v) ? v.flatMap(deep) : typeof v === 'object' && v ? Object.values(v).flatMap(deep) : [v]);
+    const everyString = Object.values(copy).flatMap(deep).filter((v) => typeof v === 'string').join(' ');
+    assert.ok(everyString.includes(copy.steps[1][1]), 'nested step copy must be included in the scan');
+    assert.doesNotMatch(everyString, /\bMPS\b|\bfidelity\b|BYOK|deterministic|Hosted API|programmatic/i, `${lang} exposes internal vocabulary`);
+    // The disclosure still has to explain the check rather than just name it.
+    assert.ok(copy.hint.length > 40, `${lang}.hint must explain the meaning check`);
+    assert.ok(copy.meaningLabel.trim(), `${lang}.meaningLabel`);
   }
 });
 

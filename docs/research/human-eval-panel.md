@@ -1,9 +1,12 @@
 # Blinded human evaluation panel plan
 
-Status: study design ready; panel not run.
-Related issue: #159.
+Status: cancelled by owner on 2026-09-08; panel not run.
+Related issue: #159, closed `not_planned`.
 
-This plan keeps human preference work separate from deterministic scoring. It should run only with texts that can be shown to reviewers and redistributed or summarized under consent.
+The unexecuted design below is retained as history, not as active or deferred
+work. No recruitment or ratings are scheduled. Resuming requires a new explicit
+request. Cancellation supplies no human-validation evidence and changes no
+deterministic scoring behavior.
 
 ## Research question
 

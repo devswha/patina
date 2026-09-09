@@ -1,5 +1,5 @@
 import { describe, it } from 'node:test';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import assert from 'node:assert';
 import { loadConfig } from '../../src/config.js';
@@ -65,6 +65,34 @@ describe('Config Loading', () => {
 });
 
 describe('Pattern Loading', () => {
+  for (const legacyCommunity of [false, true]) {
+    it(`loads symlinked custom packs with legacy community subtree ${legacyCommunity ? 'present' : 'absent'}`, (t) => {
+      const root = mkdtempSync(resolve(tmpdir(), 'patina-symlink-patterns-'));
+      const custom = mkdtempSync(resolve(tmpdir(), 'patina-custom-patterns-'));
+      t.after(() => {
+        rmSync(root, { recursive: true, force: true });
+        rmSync(custom, { recursive: true, force: true });
+      });
+      mkdirSync(resolve(root, 'patterns'));
+      writeFileSync(resolve(root, 'patterns/en-base.md'), 'Built-in text');
+      mkdirSync(resolve(custom, 'patterns'));
+      writeFileSync(resolve(custom, 'patterns/en-base.md'), 'Custom override');
+      writeFileSync(resolve(custom, 'patterns/en-extra.md'), '---\nphase: structure\nscore_only: true\n---\nCustom extra');
+      symlinkSync(custom, resolve(root, 'custom'));
+      if (legacyCommunity) {
+        mkdirSync(resolve(custom, 'community-packs/en-old'), { recursive: true });
+        writeFileSync(resolve(custom, 'community-packs/en-old/installed.json'), '{invalid');
+      }
+      const packs = loadPatterns(root, 'en');
+      assert.deepStrictEqual(packs.map((pack) => pack.file), ['en-base.md', 'en-extra.md']);
+      assert.strictEqual(packs[0].body, 'Custom override');
+      assert.strictEqual(packs[1].isStructure, true);
+      assert.strictEqual(packs[1].isScoreOnly, true);
+      assert.deepStrictEqual(loadPatterns(root, 'en', ['en-base']).map((pack) => pack.file), ['en-extra.md']);
+      assert.deepStrictEqual(loadPatterns(root, 'ko'), []);
+    });
+  }
+
   it('should load all pattern packs (24 base + 4 viral-hook)', () => {
     for (const lang of ['ko', 'en', 'zh', 'ja']) {
       const packs = loadPatterns(REPO_ROOT, lang);

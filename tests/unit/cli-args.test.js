@@ -227,3 +227,19 @@ test('--max-failure-rate values outside (1,2) do not warn (#508 G4)', () => {
   assert.equal(ratios.twoPointFive, 0.025);
   assert.deepEqual(lines, []);
 });
+
+
+test('internal config snapshot consumes a path and cannot mix with public config overlays', () => {
+  for (const args of [['--config-snapshot', 'captured.json'], ['--config-snapshot=captured.json']]) {
+    const parsed = parseArgs([...args, '--', 'draft.md']);
+    assert.equal(parsed.configSnapshot, 'captured.json');
+    assert.equal(parsed.config, undefined);
+    assert.deepEqual(parsed.files, ['draft.md']);
+  }
+  for (const args of [
+    ['--config-snapshot'], ['--config-snapshot='], ['--config-snapshot', '--quiet'],
+    ['--config', 'override.yaml', '--config-snapshot', 'captured.json'],
+    ['--config-snapshot', 'captured.json', '--config', 'override.yaml'],
+  ]) assert.throws(() => parseArgs(args), { exitCode: 2 });
+  assert.equal(parseArgs(['--config', 'override.yaml']).config, 'override.yaml');
+});

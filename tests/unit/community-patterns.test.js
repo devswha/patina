@@ -1,140 +1,118 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { cpSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
-import { communitySource, installCommunityPack, listCommunityPacks, removeCommunityPack, validateCommunityManifest } from '../../src/community-patterns.js';
 import { loadPatterns } from '../../src/loader.js';
-import { runPattern } from '../../src/commands/pattern.js';
 
-const SHA = 'a'.repeat(40);
+const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const FILE = 'en-community-corporate-bizspeak.md';
-const manifest = () => ({ name: 'en-corporate-bizspeak', version: '1.0.0', language: 'en', patterns: [FILE], compatibility: { min: '8.1.0', maxExclusive: '9.0.0' }, author: 'Test author', license: 'MIT' });
-const pattern = `---\npack: en-community-corporate-bizspeak\nlanguage: en\nversion: 1.0.0\npatterns: 1\n---\n### 1. Corporate filler\n**Before:** We leverage the tool.\n**After:** We use the tool.\n`;
 
-function fixture(t, pack = manifest()) {
-  const repoRoot = mkdtempSync(join(tmpdir(), 'patina-community-test-'));
-  t.after(() => rmSync(repoRoot, { recursive: true, force: true }));
-  writeFileSync(join(repoRoot, 'package.json'), '{"version":"8.1.3"}');
-  mkdirSync(join(repoRoot, 'patterns'));
-  const requests = [];
-  const fetchImpl = async (url, options) => {
-    requests.push({ url, options });
-    if (url.startsWith('https://api.github.com/')) return new Response(JSON.stringify({ sha: SHA }));
-    assert.ok(url.includes(`/${SHA}/`), 'every content read is pinned to one immutable commit');
-    if (url.endsWith('/pack.yaml')) return new Response(yaml.dump(pack));
-    return new Response(pattern);
+// An on-disk installation from the retired manager, without importing that manager.
+function fixture(t) {
+  const root = mkdtempSync(join(tmpdir(), 'patina-community-retired-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const version = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).version;
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ type: 'module', version }));
+  mkdirSync(join(root, 'patterns'));
+  writeFileSync(join(root, 'patterns/en-base.md'), 'Built-in text');
+  mkdirSync(join(root, 'custom/patterns'), { recursive: true });
+  writeFileSync(join(root, 'custom/patterns/en-custom.md'), 'Hand-written text');
+  const installed = join(root, 'custom/community-packs/en-corporate-bizspeak');
+  mkdirSync(installed, { recursive: true });
+  const files = {
+    'pack.yaml': yaml.dump({
+      name: 'en-corporate-bizspeak', version: '1.0.0', language: 'en',
+      patterns: [FILE], compatibility: { min: version, maxExclusive: '999.0.0' },
+      author: 'Test author', license: 'MIT',
+    }),
+    [FILE]: `---\npack: ${FILE.slice(0, -3)}\nlanguage: en\nversion: 1.0.0\npatterns: 1\n---\nLegacy pattern body`,
   };
-  return { repoRoot, fetchImpl, requests, version: '8.1.3' };
+  for (const [file, text] of Object.entries(files)) writeFileSync(join(installed, file), text);
+  writeFileSync(join(installed, 'installed.json'), JSON.stringify({
+    schemaVersion: 1, name: 'en-corporate-bizspeak',
+    source: { owner: 'example', repo: 'packs', ref: 'main', directory: 'packs/en-corporate-bizspeak', commit: 'a'.repeat(40) },
+    hashes: Object.fromEntries(Object.entries(files).map(([file, text]) => [file, createHash('sha256').update(text).digest('hex')])),
+  }));
+  return { root, installed };
 }
 
-test('community pack installs, loads, lists and removes without credentials or built-in changes', async (t) => {
-  const f = fixture(t);
-  const builtIn = join(f.repoRoot, 'patterns/en-original.md');
-  writeFileSync(builtIn, 'Built-in text');
-  const result = await installCommunityPack('en-corporate-bizspeak', f);
-  assert.equal(result.source.commit, SHA);
-  assert.deepEqual(loadPatterns(f.repoRoot, 'en').map((p) => p.file), [FILE, 'en-original.md']);
-  assert.deepEqual(loadPatterns(f.repoRoot, 'en', [FILE.slice(0, -3)]).map((p) => p.file), ['en-original.md']);
-  assert.equal(listCommunityPacks(f.repoRoot)[0].status, 'installed');
-  assert.equal(f.requests.length, 3);
-  assert.ok(f.requests.every(({ options }) => options.redirect === 'error' && !options.headers.authorization));
-  removeCommunityPack(result.name, f);
-  assert.deepEqual(listCommunityPacks(f.repoRoot), []);
-  assert.equal(readFileSync(builtIn, 'utf8'), 'Built-in text');
-});
+// Include metadata to catch same-content rewrites; do not follow symlinks or
+// include access times, since reading a file may legitimately update its atime.
+function snapshot(path) {
+  const stat = lstatSync(path);
+  const metadata = { mode: stat.mode, mtimeMs: stat.mtimeMs, ctimeMs: stat.ctimeMs };
+  if (stat.isSymbolicLink()) return { ...metadata, target: readlinkSync(path) };
+  if (stat.isDirectory()) return { ...metadata, entries: Object.fromEntries(readdirSync(path).sort().map((name) => [name, snapshot(join(path, name))])) };
+  return { ...metadata, bytes: readFileSync(path).toString('base64') };
+}
 
-test('list is offline and install refuses existing managed or custom content', async (t) => {
-  const f = fixture(t);
-  const output = [];
-  await runPattern(['list', '--json'], { ...f, fetchImpl: () => assert.fail('list must be offline'), out: (text) => output.push(JSON.parse(text)) });
-  assert.deepEqual(output, [{ packs: [] }]);
-  await installCommunityPack('en-corporate-bizspeak', f);
-  await assert.rejects(installCommunityPack('en-corporate-bizspeak', f), /already installed/);
-  removeCommunityPack('en-corporate-bizspeak', f);
-  mkdirSync(join(f.repoRoot, 'custom/patterns'));
-  writeFileSync(join(f.repoRoot, 'custom/patterns', FILE), 'User text');
-  await assert.rejects(installCommunityPack('en-corporate-bizspeak', f), /collision/);
-  assert.equal(readFileSync(join(f.repoRoot, 'custom/patterns', FILE), 'utf8'), 'User text');
-});
+for (const state of ['valid', 'edited', 'malformed', 'symlinked']) {
+  test(`loader ignores ${state} legacy community contents and leaves them intact`, (t) => {
+    const { root, installed } = fixture(t);
+    if (state === 'edited') writeFileSync(join(installed, FILE), 'User changes');
+    if (state === 'malformed') writeFileSync(join(installed, 'installed.json'), '{invalid');
+    if (state === 'symlinked') {
+      rmSync(join(installed, FILE));
+      symlinkSync(join(root, 'custom/patterns/en-custom.md'), join(installed, FILE));
+    }
+    const before = snapshot(root);
+    const packs = loadPatterns(root, 'en');
+    assert.deepEqual(packs.map(({ file, body }) => ({ file, body })), [
+      { file: 'en-base.md', body: 'Built-in text' },
+      { file: 'en-custom.md', body: 'Hand-written text' },
+    ]);
+    assert.deepEqual(loadPatterns(root, 'en', ['en-custom']).map((pack) => pack.file), ['en-base.md']);
+    assert.deepEqual(snapshot(root), before);
+  });
+}
 
-test('edited packs are reported, never loaded or destructively removed', async (t) => {
-  const f = fixture(t);
-  const installed = await installCommunityPack('en-corporate-bizspeak', f);
-  writeFileSync(join(installed.path, FILE), 'User changes');
-  assert.equal(listCommunityPacks(f.repoRoot)[0].status, 'invalid');
-  assert.throws(() => loadPatterns(f.repoRoot, 'en'), /local changes/);
-  assert.throws(() => removeCommunityPack(installed.name, f), /local changes/);
-  assert.equal(readFileSync(join(installed.path, FILE), 'utf8'), 'User changes');
-});
-
-test('source paths and metadata reject traversal, mixed language, hooks and unsupported versions', () => {
-  assert.throws(() => communitySource('https://github.com/alice/packs/tree/main/packs/../other'), /dot segments/);
-  for (const char of ['\t', '\n', '\r']) assert.throws(() => communitySource(`https://github.com/alice/packs/tree/main/packs/.${char}./other`), /control characters/);
-  assert.throws(() => validateCommunityManifest({ ...manifest(), version: ['1.0.0'] }), /version/);
-  assert.throws(() => validateCommunityManifest({ ...manifest(), author: '   ' }), /author/);
-  for (const url of ['https://evil.test/a', 'http://github.com/a/b/tree/main/p', 'https://u:p@github.com/a/b/tree/main/p', 'https://github.com/a/b/tree/main/%2e%2e', 'https://github.com/a/b/tree/main/p?token=x', '../outside']) assert.throws(() => communitySource(url));
-  assert.deepEqual(communitySource('https://github.com/alice/packs/tree/v1/packs/en-team'), { owner: 'alice', repo: 'packs', ref: 'v1', directory: 'packs/en-team' });
-  for (const patch of [{ patterns: ['../outside.md'] }, { patterns: ['en-filler.md'] }, { language: 'ko' }, { scripts: { install: 'run' } }, { patterns: [FILE, FILE] }]) assert.throws(() => validateCommunityManifest({ ...manifest(), ...patch }, '8.1.3'));
-  assert.throws(() => validateCommunityManifest(manifest(), '9.0.0'), /requires Patina/);
-});
-
-test('failed downloads cannot publish a partial pack', async (t) => {
-  const f = fixture(t); const normal = f.fetchImpl;
-  f.fetchImpl = (url, options) => url.endsWith(FILE) ? new Response('unavailable', { status: 503 }) : normal(url, options);
-  await assert.rejects(installCommunityPack('en-corporate-bizspeak', f), /503/);
-  assert.deepEqual(listCommunityPacks(f.repoRoot), []);
-});
-
-test('streaming download size limit works without a content-length header', async (t) => {
-  const f = fixture(t); const normal = f.fetchImpl;
-  f.fetchImpl = (url, options) => url.endsWith(FILE) ? new Response('x'.repeat(128 * 1024 + 1)) : normal(url, options);
-  await assert.rejects(installCommunityPack('en-corporate-bizspeak', f), /128 KiB/);
-  assert.deepEqual(listCommunityPacks(f.repoRoot), []);
-});
-
-test('early response rejection aborts the download before clearing its deadline', async (t) => {
-  for (const response of [new Response('unavailable', { status: 503 }), new Response('large', { headers: { 'content-length': String(128 * 1024 + 1) } })]) {
-    const f = fixture(t); let signal;
-    f.fetchImpl = async (_url, options) => { signal = options.signal; return response; };
-    await assert.rejects(installCommunityPack('en-corporate-bizspeak', f));
-    assert.equal(signal.aborted, true);
-  }
-});
-
-test('symlinked legacy custom packs load when no community subtree exists', (t) => {
-  const f = fixture(t), outside = mkdtempSync(join(tmpdir(), 'patina-legacy-custom-'));
-  t.after(() => rmSync(outside, { recursive: true, force: true }));
-  mkdirSync(join(outside, 'patterns')); writeFileSync(join(outside, 'patterns/en-legacy.md'), 'Legacy custom text');
-  symlinkSync(outside, join(f.repoRoot, 'custom'));
-  assert.equal(loadPatterns(f.repoRoot, 'en')[0].body, 'Legacy custom text');
-  assert.deepEqual(listCommunityPacks(f.repoRoot), []);
-});
-
-test('symlinked directories and installed files cannot escape the managed area', async (t) => {
-  const f = fixture(t); const outside = mkdtempSync(join(tmpdir(), 'patina-community-outside-'));
-  t.after(() => rmSync(outside, { recursive: true, force: true }));
-  symlinkSync(outside, join(f.repoRoot, 'custom'));
-  await assert.rejects(installCommunityPack('en-corporate-bizspeak', f), /unsafe directory/);
-  assert.deepEqual(readdirSync(outside), []);
-  rmSync(join(f.repoRoot, 'custom'));
-  const installed = await installCommunityPack('en-corporate-bizspeak', f);
-  const target = join(outside, 'draft.md'); writeFileSync(target, 'Private draft');
-  rmSync(join(installed.path, FILE)); symlinkSync(target, join(installed.path, FILE));
-  assert.throws(() => loadPatterns(f.repoRoot, 'en'), /unsafe file/);
-  assert.throws(() => removeCommunityPack(installed.name, f), /unsafe file/);
-  assert.equal(readFileSync(target, 'utf8'), 'Private draft');
-});
-
-test('receipt traversal and additional files block removal', async (t) => {
-  const f = fixture(t), installed = await installCommunityPack('en-corporate-bizspeak', f);
-  const receiptPath = join(installed.path, 'installed.json');
-  const original = readFileSync(receiptPath, 'utf8');
-  const receipt = JSON.parse(original); receipt.hashes['../outside.md'] = 'x';
-  writeFileSync(receiptPath, JSON.stringify(receipt));
-  assert.throws(() => removeCommunityPack(installed.name, f), /unsafe installation receipt/);
-  writeFileSync(receiptPath, original); writeFileSync(join(installed.path, 'my-notes.txt'), 'Keep me');
-  assert.throws(() => removeCommunityPack(installed.name, f), /added or removed/);
-  assert.equal(readFileSync(join(installed.path, 'my-notes.txt'), 'utf8'), 'Keep me');
+test('old pattern invocations reject without downloads, output or installation mutations', (t) => {
+  const { root } = fixture(t);
+  // Copy only runtime code so getRepoRoot() points at a disposable installation,
+  // not the shared worktree. Dependencies stay real; no dispatcher/loader mocks.
+  cpSync(join(REPO_ROOT, 'src'), join(root, 'src'), { recursive: true });
+  mkdirSync(join(root, 'scripts'));
+  cpSync(join(REPO_ROOT, 'scripts/prose-score.mjs'), join(root, 'scripts/prose-score.mjs'));
+  symlinkSync(join(REPO_ROOT, 'node_modules'), join(root, 'node_modules'));
+  writeFileSync(join(root, 'pattern'), 'A draft whose filename matches the retired command.');
+  const invocations = [
+    ['pattern'], ['pattern', 'help'], ['pattern', '--help'],
+    ['pattern', 'list'], ['pattern', 'list', '--json'],
+    ['pattern', 'install', 'en-corporate-bizspeak'],
+    ['pattern', 'install', 'https://github.com/example/packs/tree/main/packs/en-corporate-bizspeak', '--json'],
+    ['pattern', 'remove', 'en-corporate-bizspeak'],
+    ['pattern', 'remove', 'en-corporate-bizspeak', '--json'],
+    ['pattern', 'install', '--help'], ['pattern', 'list', '--help'], ['pattern', 'remove', '--help'],
+  ];
+  const before = snapshot(root);
+  const child = spawnSync(process.execPath, ['--input-type=module', '--eval', `
+    import { main } from './src/cli.js';
+    import { PatinaCliError } from './src/errors.js';
+    let fetches = 0;
+    let outputs = 0;
+    globalThis.fetch = () => { fetches++; throw new Error('unexpected fetch'); };
+    console.log = () => { outputs++; };
+    const results = [];
+    for (const args of ${JSON.stringify(invocations)}) {
+      try { await main(args); results.push({ rejected: false }); }
+      catch (error) { results.push({ rejected: true, typed: error instanceof PatinaCliError, exitCode: error.exitCode }); }
+    }
+    process.stdout.write(JSON.stringify({ results, fetches, outputs }));
+  `], {
+    cwd: root, encoding: 'utf8', timeout: 10_000,
+    env: { ...process.env, HOME: root, PATH: '', NODE_OPTIONS: '' },
+  });
+  assert.ifError(child.error);
+  assert.equal(child.status, 0, child.stderr);
+  assert.equal(child.stderr, '');
+  assert.deepEqual(JSON.parse(child.stdout), {
+    results: invocations.map(() => ({ rejected: true, typed: true, exitCode: 2 })),
+    fetches: 0, outputs: 0,
+  });
+  assert.deepEqual(snapshot(root), before);
 });

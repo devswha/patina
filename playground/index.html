@@ -34,6 +34,14 @@
             <option value="ja">日本語</option>
           </select>
         </label>
+        <label class="ctl">
+          <span class="ctl__label">Mode</span>
+          <select id="tier" class="ctl__select">
+            <option value="free">Free</option>
+            <option value="byok">Own key</option>
+            <option value="pro">Pro</option>
+          </select>
+        </label>
         <details class="settings" id="settings-panel">
           <summary id="settings-label">Options</summary>
           <div class="settings__panel">
@@ -50,23 +58,15 @@
               <label class="ctl">
                 <span class="ctl__label">Register</span>
                 <select id="register" class="ctl__select">
-                  <option value="">Preserve source</option>
+                  <option value="">My own tone</option>
                   <option value="casual">Casual</option>
                   <option value="professional">Professional</option>
-                </select>
-              </label>
-              <label class="ctl">
-                <span class="ctl__label">Mode</span>
-                <select id="tier" class="ctl__select">
-                  <option value="free">Free</option>
-                  <option value="byok">BYOK</option>
-                  <option value="pro">Pro</option>
                 </select>
               </label>
             </div>
             <div class="nav__byok" id="byok-row" hidden>
               <label class="ctl ctl--byok" id="provider-ctl">
-                <span class="ctl__label">Provider</span>
+                <span class="ctl__label">AI company</span>
                 <select id="provider" class="ctl__select"></select>
               </label>
               <label class="ctl ctl--byok" id="model-ctl">
@@ -87,23 +87,11 @@
               <button class="ctl__action" id="license-sign-in" type="button">Apply key</button>
               <button class="ctl__action" id="license-sign-out" type="button" hidden>Clear key and chats</button>
               <span class="ctl__status" id="license-status" role="status" aria-live="polite"></span>
-              <a class="ctl__link" id="pro-docs" href="https://github.com/devswha/patina/blob/main/docs/HTTP-API.md" target="_blank" rel="noopener noreferrer">Hosted API docs and limits</a>
+              <a class="ctl__link" id="pro-docs" href="https://github.com/devswha/patina/blob/main/docs/HTTP-API.md" target="_blank" rel="noopener noreferrer">Docs and usage limits</a>
               <a class="ctl__link" id="pro-portal" hidden target="_blank" rel="noopener noreferrer">Manage subscription in Polar</a>
               <span class="ctl__err" id="license-error" role="alert" hidden></span>
             </div>
-            <details class="nav__presets" id="presets-panel">
-              <summary id="presets-label">Local presets</summary>
-              <div class="preset-controls">
-                <label class="ctl"><span class="ctl__label" id="preset-select-label">Saved preset</span><select id="preset-select" class="ctl__select"></select></label>
-                <button class="ctl__action" id="preset-apply" type="button">Apply preset</button>
-                <button class="ctl__action" id="preset-delete" type="button">Delete preset</button>
-                <label class="ctl"><span class="ctl__label" id="preset-name-label">Preset name</span><input id="preset-name" class="ctl__input" type="text" maxlength="40" autocomplete="off" aria-describedby="preset-hint" /></label>
-                <button class="ctl__action" id="preset-save" type="button">Save / replace</button>
-                <p class="ctl__status" id="preset-hint">Saved only in this browser: language, document type, persona, and register. Do not put keys or private text in the name. Up to 20 names, 40 characters each.</p>
-                <p class="ctl__status" id="preset-status" role="status" aria-live="polite"></p>
-              </div>
-            </details>
-            <details class="nav__presets protected-controls">
+            <details class="protected-controls">
               <summary id="protected-label">Keep these phrases unchanged</summary>
               <textarea id="protected-text" class="ctl__input" rows="2" maxlength="4000" aria-labelledby="protected-label" aria-describedby="protected-hint" autocomplete="off" spellcheck="false"></textarea>
               <p class="ctl__status" id="protected-hint">Optional: one product name, quote or phrase per line. Kept in this conversation only.</p>
@@ -120,13 +108,14 @@
         <div class="hero__sky" aria-hidden="true"></div>
         <div class="hero__inner">
           <div class="hero__compose">
-            <h1 class="hero__title">Make it sound <span class="grad">natural</span></h1>
+            <!-- Product name, kept in English for every locale; the surrounding
+                 page still switches language, so this element declares its own. -->
+            <h1 class="hero__title" lang="en">Remove <span class="grad">AI Slop</span></h1>
             <p class="hero__sub">Turn a stiff draft into clear, natural writing. Keep your meaning.</p>
 
             <form class="prompt" id="hero-form">
-              <textarea class="prompt__input" id="hero-input" rows="1" placeholder="Paste the text you want to clean up…" aria-label="Paste the text you want to clean up…"></textarea>
+              <textarea class="prompt__input" id="hero-input" rows="1" placeholder="Paste the text you want to clean up…" aria-label="Paste the text you want to clean up…" autofocus></textarea>
               <div class="prompt__bar">
-                <span id="hero-action">Rewrite my text</span>
                 <button class="prompt__send" id="hero-send" type="submit" disabled aria-label="Send">
                   <svg class="ic-send" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 4l-7 7h4v7h6v-7h4z"/></svg>
                   <svg class="ic-stop" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>
@@ -149,13 +138,13 @@
         </div>
         <div class="how__grid">
           <ol class="how__steps">
-            <li><h3>1 · Paste</h3><p>Drop in your AI-sounding draft. No code, no key.</p></li>
-            <li><h3>2 · Rewrite</h3><p>Smooth out stiff wording while keeping your meaning.</p></li>
-            <li><h3>3 · Verify</h3><p>Compare the result with your draft, then copy the approved text.</p></li>
+            <li><h3>1 · Paste</h3><p>Drop in your own text, or try one of the examples. No sign-up.</p></li>
+            <li><h3>2 · Rewrite</h3><p>The stiff, AI-sounding parts get reworded. What you meant stays put.</p></li>
+            <li><h3>3 · Check</h3><p>Compare it with what you wrote, then copy it if you are happy.</p></li>
           </ol>
           <details class="meaning-info">
-            <summary id="meaning-label">How meaning checks work</summary>
-            <p id="meaning-hint">Your rewrite is checked for meaning preservation (MPS) and fidelity. Review the actual scores and approval status with each result.</p>
+            <summary id="meaning-label">Does it still say the same thing?</summary>
+            <p id="meaning-hint">Every rewrite is checked against your original: same claims, same numbers, same meaning. You see the check result with each answer, so you can tell whether it passed.</p>
           </details>
         </div>
       </section>
@@ -171,24 +160,24 @@
         <div class="sec__head">
           <p class="eyebrow"><span>benchmark</span></p>
           <h2 class="sec__title">Numbers, in the open</h2>
-          <p class="sec__lede">A deterministic suspect-zone benchmark on a checked-in fixture corpus — auditable, not an authorship test.</p>
+          <p class="sec__lede">We test patina on a fixed set of writing samples that anyone can open and check. It measures our own accuracy — it does not judge who wrote something.</p>
         </div>
         <dl class="bench__cards">
           <div class="bstat"><dt>100%</dt><dd>overall accuracy</dd><small>95% CI 92.7–100%</small></div>
-          <div class="bstat"><dt>49</dt><dd>fixtures</dd><small>AI vs. natural, labeled</small></div>
+          <div class="bstat"><dt>49</dt><dd>writing samples</dd><small>samples labeled AI-like and natural</small></div>
           <div class="bstat"><dt>4</dt><dd>languages</dd><small>KO · EN · ZH · JA</small></div>
-          <div class="bstat"><dt>0</dt><dd>false positives</dd><small>at the 1% FPR budget</small></div>
+          <div class="bstat"><dt>0</dt><dd>natural writing wrongly flagged</dd><small>at a 1-in-100 false-alarm target, in 23 natural-labeled samples</small></div>
         </dl>
         <div class="bench__signals">
-          <span class="sigchip">burstiness</span>
-          <span class="sigchip">MATTR</span>
-          <span class="sigchip">AI-lexicon</span>
-          <span class="sigchip">KO diagnostics</span>
+          <span class="sigchip">sentence rhythm</span>
+          <span class="sigchip">word variety</span>
+          <span class="sigchip">overused AI phrases</span>
+          <span class="sigchip">Korean-specific checks</span>
         </div>
         <div class="bench__tablewrap">
           <table class="bench__table">
             <thead>
-              <tr><th>lang</th><th>fixtures</th><th>accuracy</th><th>95% CI</th><th>F1</th></tr>
+              <tr><th>language</th><th>samples</th><th>accuracy</th><th>95% confidence range</th><th>F1 score</th></tr>
             </thead>
             <tbody>
               <tr><td>EN</td><td>13</td><td>100%</td><td>77.2–100%</td><td>1.00</td></tr>
@@ -198,7 +187,7 @@
             </tbody>
           </table>
         </div>
-        <p class="bench__note">Measured on 49 deterministic fixtures as a regression gate — not a claim of generalization to new models, genres, or edited AI text, and not an authorship verdict.</p>
+        <p class="bench__note">These numbers come from those 49 samples, and we use them to catch our own mistakes. They do not promise the same result on other kinds of writing, and they never say who wrote your text.</p>
         <a class="bench__link" href="https://github.com/devswha/patina/blob/main/docs/benchmarks/latest.md">Read the full report →</a>
       </section>
 
@@ -206,8 +195,8 @@
         <div class="sec__head">
           <p class="eyebrow"><span>pricing</span></p>
           <h2 class="sec__title">Simple pricing</h2>
-          <p class="sec__lede">Free, BYOK, and Pro use the same rewrite pipeline and quality gates. Paid access adds programmatic access and higher limits.</p>
-          <p class="sec__note">patina is an editing tool for writing you are allowed to produce with AI assistance: it changes wording, never your claims, numbers, or causation. It is not an authorship detector and not a tool for evading one — see the <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md">ethics policy</a>.</p>
+            <p class="sec__lede">Every plan rewrites your text the same way and runs the same checks. Paying only buys you more of it, and a way to plug patina into your own tools.</p>
+          <p class="sec__note">patina is for writing you are allowed to produce with AI help. It changes how something is worded — never what it claims, the numbers in it, or what causes what. It cannot tell you who wrote a text, and it is not built to slip past anything that tries to. Read our <a href="https://github.com/devswha/patina/blob/main/docs/ETHICS.md">ethics policy</a>.</p>
         </div>
         <div class="pricing__grid">
           <div class="price">
@@ -222,22 +211,22 @@
             <button class="price__cta" type="button" id="price-free">Try it now ↑</button>
           </div>
           <div class="price">
-            <h3 class="price__name">BYOK</h3>
-            <p class="price__cost">Your provider key</p>
+            <h3 class="price__name">Own key</h3>
+            <p class="price__cost">Your own key</p>
             <ul class="price__feats">
-              <li>Bring your own provider key</li>
+              <li>Use a key you already have</li>
               <li>Up to 20,000 characters</li>
               <li>120 requests/hour · 480/day</li>
-              <li>Provider usage is billed by your provider</li>
+              <li>The AI company bills you directly</li>
             </ul>
-            <button class="price__cta" type="button" id="price-byok">Use BYOK mode</button>
+            <button class="price__cta" type="button" id="price-byok">Use my own key</button>
           </div>
           <div class="price price--pro">
-            <div class="price__badge">Hosted API access</div>
-            <h3 class="price__name">Pro · Hosted API</h3>
+            <div class="price__badge">For your own tools</div>
+            <h3 class="price__name">Pro</h3>
             <p class="price__cost">$9.99<span>/mo</span></p>
             <ul class="price__feats">
-              <li>Programmatic access · same quality gates</li>
+              <li>Connect patina to your own tools</li>
               <li>100 rewrites / month</li>
               <li>Up to 20,000 characters each</li>
               <li>50,000 characters / month total</li>
@@ -246,19 +235,19 @@
             <button class="price__existing" id="pro-existing" type="button">Already purchased? Apply your license key</button>
           </div>
         </div>
-        <p class="pricing__note">Your Polar license key also works as the Hosted API key. Apply it in Pro mode; the first rewrite validates it. It is never saved. Monthly request and character allowances are separate; either can limit usage. Deployment limits may vary.</p>
+        <p class="pricing__note">The key from your purchase email is the only thing you need — paste it into Pro mode and your first rewrite checks it. We never save it. The monthly count and the monthly character total are separate limits, so either one can stop you first. The limits in place can differ from the ones listed here.</p>
       </section>
 
       <section class="cta">
         <div class="cta__inner">
           <h2 class="cta__title">Paste your own and see</h2>
-          <p class="cta__sub">Drop an AI-sounding draft into the box above. No code, no key.</p>
+          <p class="cta__sub">Put your own text in the box above and see what changes. Nothing to install, nothing to sign up for.</p>
           <button class="cta__btn" id="cta-start" type="button">Start at the top ↑</button>
         </div>
       </section>
 
       <footer class="foot">
-        <div class="foot__brand"><img class="foot__icon" src="/assets/brand/patina-mark.svg" alt="" width="20" height="20" /> patina <span class="ver-badge">v8.5.2</span></div>
+        <div class="foot__brand"><img class="foot__icon" src="/assets/brand/patina-mark.svg" alt="" width="20" height="20" /> patina <span class="ver-badge">v8.6.0</span></div>
         <nav class="foot__links" aria-label="Footer">
           <a href="https://github.com/devswha/patina">GitHub</a>
           <a href="#pricing">Pricing</a>
@@ -281,8 +270,8 @@
         </div>
         <nav class="sidebar__history" id="history" aria-label="Conversations"></nav>
         <div class="sidebar__foot">
-          <div class="brandmark"><img class="brandmark__icon" src="/assets/brand/patina-mark.svg" alt="" width="22" height="22" /> patina <span class="ver-badge">v8.5.2</span></div>
-          <div class="sidebar__note">Deterministic humanizer —<br />same claim, numbers, voice.</div>
+          <div class="brandmark"><img class="brandmark__icon" src="/assets/brand/patina-mark.svg" alt="" width="22" height="22" /> patina <span class="ver-badge">v8.6.0</span></div>
+          <div class="sidebar__note">Same claim, numbers, voice —<br />naturally rewritten.</div>
         </div>
       </aside>
 

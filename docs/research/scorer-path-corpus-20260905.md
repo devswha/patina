@@ -1,9 +1,11 @@
 # Scorer-path corpus intake, 2026-09-05
 
-Issue #643 now has an offline intake of 85 unique texts and an audit of the
-evidence behind them. There are no authenticated human authorship labels,
-human polish ratings, or human-edited AI pairs in this intake. The issue stays
-open, and no corpus metric becomes a CI gate.
+The September 5 work for issue #643 produced an offline intake of 85 unique
+texts and an audit of the evidence behind them. There are no authenticated human authorship labels,
+human polish ratings, or human-edited AI pairs in this intake. The owner
+cancelled the remaining study on 2026-09-08; #643 is closed `not_planned`, not
+deferred or completed. Existing results and tools are retained as history.
+Resuming requires a new explicit request; no corpus metric becomes a CI gate.
 
 The [JSON summary](scorer-path-corpus-20260905.json) contains counts, diagnostic
 results, hashes and an optional generation plan. Texts, prompts, source records
@@ -148,6 +150,9 @@ prompt, repeat and actual model metadata. At handoff this plan was not an execut
 and cannot fill the missing human evidence.
 
 ## Remaining acceptance requirements
+
+The remaining collection and evaluation work below was cancelled on September
+8. These gaps describe the evidence limits, not a pending execution queue.
 
 - Obtain authenticated human social/marketing text and reviewed sharing rights.
 - Collect actual text-bound human polish, quality, register and tell labels.

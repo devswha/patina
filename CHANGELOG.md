@@ -2,6 +2,16 @@
 
 All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 
+## 8.6.0 — 2026-09-09
+
+Semver rationale: minor — the hosted playground drops local presets and changes the wording of visible copy. No CLI, skill, pattern, or scoring behavior changes.
+
+- **Landing regressions repaired.** Restore the example copy button's resting label, dismiss the options panel with Escape from anywhere or a press outside it, return `autofocus` to the hero input, and move the plan selector back into the nav beside Language. An in-flight rewrite no longer announces itself as a failed check: the status line stays empty while streaming and states the real outcome when there is one.
+- **Local presets removed.** Saving named setting bundles asked for a decision before the first rewrite. Removing it also removes the playground's only browser-storage writer, so the page now persists nothing at all.
+- **Headline.** The hero reads "Remove AI Slop" in every locale, with the surrounding page still switching language.
+- **Plain-language copy.** Visible strings no longer use internal vocabulary. `MPS` / `fidelity` badges read "Meaning kept" / "Close to your text"; `fixtures`, `1% FPR budget`, `burstiness`, `MATTR`, `BYOK`, `programmatic access` and `Hosted API` are stated in ordinary words across all four languages. Every number, limit, price and ethics claim is unchanged.
+- **Duplicate defaults.** Document type, persona and register each name what they keep instead of repeating one shared "preserve source" label.
+
 ## 8.5.2 — 2026-09-08
 
 Semver rationale: patch — restores the centered landing page after the first-use layout regression.

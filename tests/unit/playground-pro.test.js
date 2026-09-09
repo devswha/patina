@@ -104,7 +104,7 @@ test('streaming output remains unapproved until an accepted DONE, then becomes a
     'body.appendChild(buildOutputActions(rewrite, frame.receipt));', 'convo.messages.push(', 'convo.thread.commit(']
     .map((step) => done.indexOf(step));
   assert.ok(order.every((offset, index) => offset >= 0 && (index === 0 || offset > order[index - 1])), 'approval precedes actions and history commit');
-  assert.match(controller, /function buildOutputActions\(text, receipt = null\)[\s\S]*?'Audit JSON'/);
+  assert.match(controller, /function buildOutputActions\(text, receipt = null\)[\s\S]*?i18n\(\)\.actAudit/);
   assert.match(controller, /patina-audit-receipt\.json/);
   assert.match(controller, /application\/json;charset=utf-8/);
   assert.match(attempt, /if \(!ok\) \{[\s\S]*?textEl\.classList\.add\('msg__text--flagged'\);[\s\S]*?markOutputUnapproved\(textEl, statusEl\)/);
@@ -124,7 +124,8 @@ test('output approval status is localized, announced, and associated with its ou
   assert.match(builder, /statusEl\.setAttribute\('role', 'status'\)/);
   assert.match(builder, /statusEl\.setAttribute\('aria-live', 'polite'\)/);
   assert.match(builder, /textEl\.setAttribute\('aria-describedby', statusEl\.id\)/);
-  assert.match(builder, /statusEl\.textContent = i18n\(\)\.outputUnapproved/);
+  // Unapproved is announced for a real outcome only; an in-flight stream stays silent.
+  assert.match(builder, /statusEl\.textContent = announce \? i18n\(\)\.outputUnapproved : ''/);
   assert.match(builder, /statusEl\.textContent = i18n\(\)\.outputApproved/);
   assert.match(stylesheet, /\.output-status/);
 });

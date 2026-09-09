@@ -80,16 +80,15 @@ a { color: inherit; }
 .nav__byok[hidden] { display: none; }
 .nav__pro { flex-basis: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
 .nav__pro[hidden] { display: none; }
-.nav__presets { flex-basis: 100%; font-size: 13px; }
-.nav__presets summary { cursor: pointer; width: fit-content; }
-.preset-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding-top: 10px; }
+.protected-controls { flex-basis: 100%; font-size: 13px; }
+.protected-controls summary { cursor: pointer; width: fit-content; }
 .ctl__status { flex-basis: 100%; color: var(--text-dim); font-size: 13px; line-height: 1.5; margin: 0; }
 .ctl__status:empty { display: none; }
 .ctl__link, .price__existing { color: var(--text-dim); font-size: 13px; text-decoration: underline; }
 .ctl__link[hidden] { display: none; }
 .price__existing { background: none; border: 0; cursor: pointer; font-family: inherit; margin-top: 12px; padding: 8px 0; }
 .ctl__action:disabled { opacity: .5; cursor: default; }
-.nav__presets summary:focus-visible, .ctl__action:focus-visible, .ctl__link:focus-visible,
+.protected-controls summary:focus-visible, .ctl__action:focus-visible, .ctl__link:focus-visible,
 .price__existing:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 .ctl { display: flex; align-items: center; gap: 6px; }
@@ -115,7 +114,6 @@ a { color: inherit; }
   padding: 8px 16px; border-radius: 9999px; font-size: 14px; font-family: inherit;
   text-decoration: none; cursor: pointer; border: 1px solid transparent;
 }
-.btn--ghost { background: transparent; color: var(--text); border-color: var(--border-strong); }
 
 /* ───────── landing ───────── */
 .landing { display: block; }
@@ -186,17 +184,6 @@ a { color: inherit; }
 
 .how, .examples, .bench, .cta { max-width: var(--page); margin: 0 auto; padding: 104px 24px; }
 .how__grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: center; }
-.how__preview {
-  background: var(--bg-cream); border: 1px solid var(--border); border-radius: 16px;
-  padding: 24px; display: flex; flex-direction: column; gap: 12px; font-size: 14px;
-}
-.hp-line { padding: 12px 14px; border-radius: 12px; background: var(--bg-elev); border: 1px solid var(--border); line-height: 1.5; }
-.hp-before { border-left: 2px solid var(--copper); }
-.hp-after { border-left: 2px solid var(--accent); }
-.hp-tag { display: inline-block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-faint); margin-right: 8px; font-family: var(--mono); }
-.hp-arrow { text-align: center; font-size: 12px; color: var(--accent); font-family: var(--mono); }
-.hp-meta { display: flex; gap: 8px; flex-wrap: wrap; }
-.hp-meta span { font-family: var(--mono); font-size: 11px; color: var(--gold); background: var(--bg-elev); border: 1px solid var(--border); border-radius: 9999px; padding: 3px 10px; }
 .how__steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 26px; }
 .how__steps h3 { font-size: 24px; font-weight: 600; margin: 0 0 4px; letter-spacing: -.4px; }
 .how__steps p { margin: 0; color: var(--text-dim); }
@@ -204,26 +191,20 @@ a { color: inherit; }
 /* examples — editor panel (Resend/Linear-style chrome) */
 .editor { max-width: 920px; margin: 0 auto; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 28px rgba(0, 0, 0, .18); }
 .editor__bar { display: flex; align-items: center; gap: 14px; padding: 11px 16px; border-bottom: 1px solid var(--border); background: var(--bg-cream); }
-.editor__dots { display: inline-flex; gap: 7px; flex: 0 0 auto; }
-.editor__dots i { width: 11px; height: 11px; border-radius: 50%; background: var(--border-strong); }
 .editor__tabs { display: flex; gap: 4px; flex: 1 1 auto; overflow-x: auto; scrollbar-width: none; }
 .editor__tabs::-webkit-scrollbar { display: none; }
 .editor__tab { font-family: inherit; font-size: 13px; color: var(--text-dim); background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 6px 12px; cursor: pointer; white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
 .editor__tab:hover { color: var(--text); background: var(--bg-hover); }
 .editor__tab.is-active { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 10%, transparent); }
-.editor__act { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
-.editor__state { font-family: var(--mono); font-size: 11px; color: var(--text-faint); white-space: nowrap; }
 .editor__btn { font-family: var(--mono); font-size: 11px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; padding: 5px 11px; transition: border-color .15s, color .15s; }
 .editor__btn:hover { border-color: var(--border-strong); color: var(--text); }
 .editor__btn.is-ok { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
 
 .editor__body { display: flex; align-items: flex-start; min-height: 128px; background-image: radial-gradient(circle at 1px 1px, rgba(232, 238, 247, 0.035) 1px, transparent 1.5px); background-size: 22px 22px; }
-.editor__gutter { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; padding: 18px 14px 18px 20px; border-right: 1px solid var(--border); font-family: var(--mono); font-size: 13px; line-height: 26px; color: var(--text-faint); user-select: none; }
 .editor__code { flex: 1 1 auto; min-width: 0; padding: 18px 24px; }
 
 .editor__foot { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--bg-cream); }
 .editor__cap { font-size: 12px; color: var(--text-faint); flex: 1 1 auto; }
-.editor__footact { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 
 /* examples — persistent before/after diff (both stay visible) */
 .editor__seg { font-size: 15px; line-height: 26px; word-break: keep-all; }
@@ -231,12 +212,9 @@ a { color: inherit; }
 .editor__seg--before .dtok--rm { color: var(--copper); }
 .editor__seg--after { color: var(--text); }
 .editor__seg--after .dtok--add { color: var(--accent); }
-.editor__arrow { font-family: var(--mono); font-size: 12px; line-height: 26px; color: var(--accent); opacity: .75; letter-spacing: .04em; }
-.editor__gx { color: var(--accent); opacity: .55; }
 .dtok { transition: color .35s ease; }
 
 /* one-shot reveal flourish on the after block; the before block never moves */
-.editor.is-reveal .editor__arrow,
 .editor.is-reveal .editor__seg--after { animation: seg-in .6s ease both; }
 @keyframes seg-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
 
@@ -247,7 +225,6 @@ a { color: inherit; }
 .xcard__try:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
 @media (prefers-reduced-motion: reduce) {
-  .editor.is-reveal .editor__arrow,
   .editor.is-reveal .editor__seg--after { animation: none; }
 }
 
@@ -492,10 +469,7 @@ details.foldout > summary:focus-visible,
   .chat:not(.sidebar-open) .sidebar { margin-left: -260px; visibility: hidden; transition: margin-left .2s ease, visibility 0s .2s; }
   .chat.sidebar-open .sidebar { visibility: visible; }
   .iconbtn { display: inline-block; }
-  .editor__dots { display: none; }
-  .editor__state { display: none; }
   .editor__code { padding: 16px; }
-  .editor__gutter { padding: 16px 10px; }
   .bench__cards { grid-template-columns: 1fr; }
 }
 
@@ -514,7 +488,7 @@ details.foldout > summary:focus-visible,
 .settings__panel .ctl { flex-wrap: wrap; min-width: 0; }
 .settings__panel .ctl__label { display: block; }
 .settings__panel .ctl__select, .settings__panel .ctl__input { max-width: 100%; }
-.settings__panel .nav__presets { margin-top: 16px; }
+.settings__panel .protected-controls { margin-top: 16px; }
 .settings__panel .nav__byok, .settings__panel .nav__pro { justify-content: flex-start; }
 .hero__hint, .suggest__label { color: var(--text-dim); font-size: 13px; line-height: 1.6; margin: 12px 0 0; }
 .suggest__label { margin-top: 20px; }

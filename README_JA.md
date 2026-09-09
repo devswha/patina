@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#クイックスタート)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-8.5.2-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-8.6.0-blue)](CHANGELOG.md)
 
 > **AIっぽさだけを落として、意味はそのまま。**
 
@@ -18,7 +18,7 @@ patina は、韓国語・英語・中国語・日本語向けの、決定的で�
 
 中身の見えない言い換えツールでも、著者判定ツールでも、AI 検出器を回避するためのツールでもありません。patina は、著者がより自然な文体・監査証跡・意味保持チェックを求める、許容された AI 支援の下書き作成のために作られています。
 
-エディター連携：[VS Code、Obsidian、Gmail プレビュー](docs/integrations/editors.md)。
+エディター連携：VS Code、Obsidian、Gmail プレビューの各クライアントはサポートを終了しました。[終了の記録](docs/integrations/editors.md)を参照してください。
 
 ## 日本語の書き換え例
 
@@ -104,7 +104,7 @@ patina --batch docs/*.md --outdir cleaned/
 
 ```yaml
 # .patina.default.yaml
-version: "8.5.2"
+version: "8.6.0"
 language: ko              # ko | en | zh | ja
 document-type: default    # ジャンル/用途 + パターン方針
 persona:                  # 任意。省略時は原文ボイスを保持

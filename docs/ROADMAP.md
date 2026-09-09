@@ -304,7 +304,7 @@ Do not lead with “bypass AI detectors.” Lead with:
 
 ## 5. Current state and next actions
 
-Last refreshed: 2026-09-02. GitHub issues are the source of truth for open
+Last refreshed: 2026-09-08. GitHub issues are the source of truth for open
 work; this section records only standing decisions and where their evidence
 lives, so nobody re-triages from a stale snapshot.
 
@@ -334,16 +334,24 @@ lives, so nobody re-triages from a stale snapshot.
 ### Research programme
 
 - Performance-only order frozen 2026-09-01 in
-  `docs/research/humanization-data-backlog.md`; step 1 (KO GPT-family
-  miss-review manifest) is the sole active item; its session handoff is
+  `docs/research/humanization-data-backlog.md`. Step 1 (KO GPT-family
+  miss-review manifest) is complete per the September 7 ledger
+  (`docs/operations/remaining-work-20260905.md`); its session handoff stays
   maintainer-private (`docs/internal/ko-gpt-miss-review-handoff-20260902.md`).
+  The registered downstream sequence is not an active execution queue.
+  The owner cancelled the previously deferred human panel (#159) and
+  human-labeled short-form corpus (#643) on 2026-09-08. Both issues are closed
+  `not_planned`; their cancellation does not activate other research.
 - Rewrite-efficacy study series: `2026-rewrite-efficacy-study1.md` (EN doc
   −23.4, KO doc −6.0), `study2.md` / `study3.md` (structure pack and plan-step
-  both failed; nothing shipped). Judge panel: `2026-judge-calibration.md`,
+  both failed; nothing shipped), `2026-rewrite-efficacy-study4.md` (complete;
+  the specificity constraint was not supported in either language, nothing
+  shipped). Judge panel: `2026-judge-calibration.md`,
   `2026-panel-v2-design.md`. Korean program verdict:
   `ko-confirmatory-verdict-20260901.md`. External literature survey:
   `humanization-literature-2026-09.md`.
-- #159 blinded human panel = step 3 of the frozen order
+- #159 blinded human panel, formerly step 3 of the frozen order, was cancelled
+  without running the panel. Its design is retained as history
   (`docs/research/human-eval-panel.md`). #158 cross-judge matrix was closed
   2026-07-12 as answered by Study 1's cross-family panel agreement
   (α 0.751 en / 0.526 ko); `2026-judge-calibration.md` adds per-judge AUC and
@@ -351,26 +359,40 @@ lives, so nobody re-triages from a stale snapshot.
 
 ### Ecosystem status
 
-Checked 2026-09-07 against the issue records and [editor guides](integrations/editors.md):
+Checked 2026-09-08 against the issue records and the [editor client record](integrations/editors.md):
 
-- #206: VS Code 1.1.0 is available as a VSIX; the issue is complete.
+- #206: VS Code 1.1.0 shipped as a VSIX and the issue is complete. The client
+  was retired on 2026-09-08 with the other first-party editor clients.
 - #211: community-pack commands and the starter repository shipped in 8.2.0;
-  the issue is complete.
-- #207: Obsidian 1.0.0 and host/backend checks are complete. Actual Community
-  directory submission remains open; npm publication is not its prerequisite.
-- #284: the Gmail preview is released. Signed-in Gmail acceptance remains open;
-  Chrome Web Store, Notion and LinkedIn are outside this MVP.
+  the issue is complete. The starter repository was archived and its local
+  copy deleted on 2026-09-08; the optional community-pattern CLI commands
+  were removed in source commit 31ae86e.
+- #207: Obsidian 1.0.0 and host/backend checks are complete; the client was
+  retired on 2026-09-08. Community directory submission is classified not
+  planned, and the issue was closed as not planned on 2026-09-08.
+- #284: the Gmail preview was released and retired on 2026-09-08. Signed-in
+  Gmail acceptance, Chrome Web Store, Notion and LinkedIn are classified not
+  planned, and the issue was closed as not planned on 2026-09-08.
 - #212: export and licensing tools are implemented, but publication was deferred
   and the issue was closed as `not_planned`. Closure is not evidence of a public
   Hugging Face upload.
 - The [Aside integration](integrations/aside.md#validation-boundary) is available
   in the source checkout. Native macOS/Aside acceptance remains unverified.
+- #772 (CLI-first skill execution with execution evidence) has source
+  implementation present in this non-npm change, including the helper,
+  installer runtime checks and default skill routing. Existing targeted tests
+  had passed at the September 8 pre-acceptance/pre-merge checkpoint; real
+  CLI/agent acceptance and final PR review/integration gates were still pending.
+  The issue was open; no final PR merge, deployment or npm release had happened
+  in this change at that checkpoint. See #772, its associated PR and CI for
+  later acceptance and integration evidence.
 
-The [2026-09-06 scope decision](https://github.com/devswha/patina/issues/643#issuecomment-5559803306)
-excludes human evaluation and owner-time work from the active research stream.
-#159 and the human-labeled acceptance criteria of #643 remain unmet and deferred.
-Automation-only diagnostics keep unknown labels unknown; they do not establish
-human false-positive or false-negative rates.
+The owner's 2026-09-08 cancellation of #159 and #643 supersedes their
+[September 6 deferral](https://github.com/devswha/patina/issues/643#issuecomment-5559803306).
+They are not pending work and require a new explicit request before resuming.
+Their human acceptance criteria remain unmet. Retained automation-only
+diagnostics keep unknown labels unknown; cancellation does not establish human
+false-positive or false-negative rates.
 
 ### Operating rules
 

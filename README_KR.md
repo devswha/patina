@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#빠른-시작)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-8.5.2-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-8.6.0-blue)](CHANGELOG.md)
 
 <p align="center">
   <a href="https://patina.vibetip.help/?lang=ko&amp;utm_source=github&amp;utm_campaign=multilingual-20260907"><b>브라우저에서 바로 써보기 — 설치 없음</b></a>
@@ -18,7 +18,7 @@ patina는 한국어·영어·중국어·일본어를 위한 결정론적 패턴 
 
 블랙박스형 패러프레이저도, 작성자 판별기도, 탐지기 우회 도구도 아닙니다. patina는 AI 도움을 받아도 되는 상황에서 초안을 다듬으려는 작성자를 위한 도구입니다 — 더 깔끔한 문체, 감사 추적, 그리고 의미 보존 검사를 원하는 경우에 맞춰져 있습니다.
 
-편집기 연동: [VS Code, Obsidian 및 Gmail 미리보기](docs/integrations/editors.md).
+편집기 연동: VS Code, Obsidian, Gmail 미리보기 클라이언트는 지원이 종료되었습니다. [지원 종료 기록](docs/integrations/editors.md)을 참고하세요.
 
 [모델 선택 가이드](docs/research/model-guide-20260905.md)와 [실제 채점 분포](docs/benchmarks/live-rebaseline-20260905.md)에서 검증 결과와 한계를 확인할 수 있습니다.
 
@@ -110,7 +110,7 @@ patina --batch docs/*.md --outdir cleaned/
 
 ```yaml
 # .patina.default.yaml
-version: "8.5.2"
+version: "8.6.0"
 language: ko              # ko | en | zh | ja
 document-type: default    # 장르·용도 + 패턴 정책
 persona:                  # 선택 사항; 생략하면 원문 보이스 보존

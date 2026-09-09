@@ -1,10 +1,16 @@
 # Humanization Data Backlog
 
-Status: research brief, no corpus generated  
+Status: research brief; #159 and #643 cancelled on 2026-09-08
+
 Written: 2026-06-06  
 Scope: AI 문체 신호 완화와 자연스러운 글 품질 개선에 필요한 데이터 생성 후보, 미해결 이슈, 검증 기준을 정리한다.
 
 이 문서는 구현 변경이나 새 데이터 생성을 하지 않는다. 기존 리베이스라인과 연구 메모를 바탕으로 다음 작업을 이슈화하기 위한 백로그다. Patina의 기준은 탐지 회피가 아니라 의미 보존, 주장 보존, 재현 가능한 문체 신호 완화다.
+
+2026-09-08 결정: 보류했던 사람 블라인드 평가 #159와 사람 라벨 기반
+짧은 글 코퍼스 #643은 폐기하고 `not_planned`로 종료했다. 아래에 남긴
+해당 설계와 요구사항은 이력이며 대기 작업이 아니다. 명시적인 새 요청 없이
+재개하지 않는다. 이 결정은 다른 연구의 실행이나 검증 기준 생략을 승인하지 않는다.
 
 ## Source Documents
 
@@ -67,7 +73,7 @@ Scope: AI 문체 신호 완화와 자연스러운 글 품질 개선에 필요한
    - Acceptance: record model name, version, serving path, decoding params, and prompt hash.
    - Non-goal: do not mix open-weight rows into published claims until n gates are met.
 
-5. Run rewrite human-evaluation pilot
+5. Cancelled: rewrite human-evaluation pilot (#159)
    - Acceptance: at least 30 before/after pairs, 5 raters, randomized order, naturalness preference, and meaning-loss labels.
    - Acceptance: report safe gain as score reduction only when meaning loss is not flagged.
    - Non-goal: do not treat MPS proxy as a humanness score.
@@ -175,7 +181,7 @@ Execution order frozen for the next performance-only cycle (2026-09-01):
 
 1. **KO GPT-family miss-review manifest.** Classify the currently available misses (up to 100) by register, deterministic signal breakdown, and root cause. Do not change thresholds or production behavior in this step. **Reviewed 2026-09-02 — GO (measure-only); design, data contract, taxonomy, procedure and acceptance criteria in [`ko-gpt-miss-review-step1-decision-20260902.md`](./ko-gpt-miss-review-step1-decision-20260902.md); implementation deferred to its own branches. Implemented 2026-09-02 (PR #718): hash-only discovery manifest (48 reviewed rows + 8 precondition exclusions from analyzer drift), blinded two-reviewer labels, and the measure-only report [`docs/benchmarks/ko-gpt-miss-review-v1.md`](../benchmarks/ko-gpt-miss-review-v1.md); taxonomy constants in [`ko-gpt-miss-taxonomy-v1.md`](./ko-gpt-miss-taxonomy-v1.md).**
 2. **Edited-AI intake and corpus.** Freeze light/heavy edit policies and the manifest schema before generating samples.
-3. **Rewrite human-evaluation panel.** Run at least 30 randomized before/after pairs with 5 raters, separating naturalness preference from meaning-loss labels.
+3. **Rewrite human-evaluation panel (#159; cancelled 2026-09-08).** The unexecuted design required at least 30 randomized before/after pairs with 5 raters, separating naturalness preference from meaning-loss labels. It is no longer queued.
 4. **Deterministic structure-transform experiment.** Test bounded merge/split and seam-only LLM infill against the single-pass baseline; keep it research-only.
 5. **Selective Korean treatment.** Apply short diagnosis guidance only to suspect paragraphs, with clean paragraphs preserve-only and no global diagnosis payload.
 6. **Meaning-proxy calibration.** Complete two independent calibration rounds plus metamorphic number, polarity, causation, entity-role, modality, honorific, and speech-level fixtures before considering enforcement.

@@ -3,7 +3,7 @@
 // transitions into a chat view. Reuses the isomorphic streaming client + contract;
 // renders via safe DOM APIs.
 import { createRewriteThread, streamRewrite, classifyRewriteError, rewriteRecovery, REWRITE_ERROR_KINDS } from './rewrite-client.js';
-import { normalizePreferences, readPresets, writePresets, saveNamedPreset } from './preferences.js';
+import { normalizePreferences } from './preferences.js';
 import { EXPERIENCE_COPY, experienceCopy, initialLanguage, onboardingCopy, licenseStatusAfter, configuredPortalHref } from './experience-copy.js';
 // @ts-expect-error Served from the same public root in development and production.
 import { EXAMPLES } from '/examples/index.js';
@@ -118,31 +118,35 @@ const I18N = {
     howTitle: 'Three steps',
     examplesTitle: 'Before and after',
     benchTitle: 'Numbers, in the open',
-    benchLede: 'A deterministic suspect-zone benchmark on a checked-in fixture corpus — auditable, not an authorship test.',
-    benchCards: [['overall accuracy', '95% CI 92.7–100%'], ['fixtures', 'AI vs. natural, labeled'], ['languages', 'KO · EN · ZH · JA'], ['false positives', 'at the 1% FPR budget']],
-    benchCols: ['lang', 'fixtures', 'accuracy', '95% CI', 'F1'],
-    benchNote: 'Measured on 49 deterministic fixtures as a regression gate — not a claim of generalization to new models, genres, or edited AI text, and not an authorship verdict.',
+    benchLede: 'We test patina on a fixed set of writing samples that anyone can open and check. It measures our own accuracy — it does not judge who wrote something.',
+    benchCards: [['overall accuracy', '95% CI 92.7–100%'], ['writing samples', 'samples labeled AI-like and natural'], ['languages', 'KO · EN · ZH · JA'], ['natural writing wrongly flagged', 'at a 1-in-100 false-alarm target, in 23 natural-labeled samples']],
+    benchCols: ['language', 'samples', 'accuracy', '95% confidence range', 'F1 score'],
+    benchNote: 'These numbers come from those 49 samples, and we use them to catch our own mistakes. They do not promise the same result on other kinds of writing, and they never say who wrote your text.',
     benchLink: 'Read the full report →',
     ctaTitle: 'Paste your own and see',
-    ctaSub: 'Drop an AI-sounding draft into the box above. No code, no key.',
+    ctaSub: 'Put your own text in the box above and see what changes. Nothing to install, nothing to sign up for.',
     ctaBtn: 'Start at the top ↑',
-    note: ['Deterministic humanizer —', 'same claim, numbers, voice.'],
+    note: ['Same claim, numbers, voice —', 'naturally rewritten.'],
     chatPh: 'Keep refining…  (Enter to send · Shift+Enter for newline)',
     newchat: 'New chat',
-    emptyChat: 'New chat — paste AI-sounding text below and patina cleans it up.',
-    outputUnapproved: 'Unapproved — checks have not passed. Actions are disabled.',
-    outputApproved: 'Approved — checks passed. Actions are enabled.',
-    floorWarn: 'This rewrite didn’t pass patina’s meaning-preservation floor (MPS / fidelity), so it’s flagged. Try again or pick a stronger model.',
+    emptyChat: 'New chat — paste your text below and patina cleans it up.',
+    outputUnapproved: 'This one did not pass our check, so we are not offering it to copy.',
+    actCopy: 'Copy', actCopied: 'Copied', actCopyFailed: 'Copy failed', actDownload: 'Download', actExport: 'Export', actAudit: 'Audit JSON',
+    metaLength: 'Length (before → after)', metaChars: 'Characters', metaWords: 'Words',
+    metaMeaning: 'Meaning kept', metaCloseness: 'Close to your text', metaDrifted: '⚠ drifted too far',
+    metaToneSummary: 'How much AI tone was there? (before → after)', metaToneLabel: 'AI-sounding paragraphs ',
+    outputApproved: 'Passed our meaning check. Worth a quick read before you use it.',
+    floorWarn: 'This version drifted too far from what you wrote, so we are not offering it. Try again, or switch to a stronger model.',
     reportFp: 'Flagged your own writing? Report a false positive →',
-    failNote: 'Rewrite failed. Try again, or check the mode/key.',
-    numberSafetyNote: 'The rewrite didn’t keep the numbers/times exactly as written, so patina discarded it for safety. Try again.',
+    failNote: 'That did not go through. Try again, or check your plan and key.',
+    numberSafetyNote: 'The result changed a number or a time, so we threw it away rather than show it to you. Try again.',
     proUpsell: 'Get API access — $9.99/mo',
     proBuy: 'Get API access — $9.99/mo',
     proSoon: 'Pro — coming soon',
     quotaConcurrent: 'A rewrite is already running for your connection. Wait for it to finish, then try again.',
     serviceDown: 'The rewrite service is temporarily unavailable. Please try again later.',
     tooLong: 'Text is over the {tier} limit of {cap} characters. Shorten it and try again.',
-    keyMissing: 'Enter your API key to use API mode.',
+    keyMissing: 'Paste your key first to use your own key.',
     stopNote: 'Stopped — the rewrite was cancelled.',
     timeoutNote: 'Rewrite timed out — no response from the server. Please try again.',
     netNote: 'Network error: {msg}',
@@ -154,33 +158,37 @@ const I18N = {
     howTitle: '세 단계면 끝',
     examplesTitle: '이런 문장을, 이렇게',
     benchTitle: '숨김없는 벤치마크',
-    benchLede: '저장소에 포함된 fixture 코퍼스로 측정한 결정론적 의심구간 벤치마크 — 작성자 판별이 아니라, 감사 가능한 회귀 지표예요.',
-    benchCards: [['전체 정확도', '95% CI 92.7–100%'], ['fixtures', 'AI·자연 라벨 코퍼스'], ['지원 언어', 'KO · EN · ZH · JA'], ['오탐(FP)', '1% FPR 기준']],
-    benchCols: ['언어', 'fixtures', '정확도', '95% CI', 'F1'],
-    benchNote: '결정론 fixture 49개로 측정한 회귀 게이트 결과입니다. 새 모델·장르·편집된 AI 글로의 일반화나 작성자 판별을 뜻하지 않아요.',
+    benchLede: '누구나 열어볼 수 있는 글 모음으로 patina를 시험해요. 우리 정확도를 재는 것이지, 누가 썼는지 가려내는 게 아니에요.',
+    benchCards: [['전체 정확도', '95% CI 92.7–100%'], ['시험한 글', 'AI 같다고 라벨한 글과 자연스러운 글'], ['지원 언어', 'KO · EN · ZH · JA'], ['자연스러운 글을 잘못 지목한 횟수', '오탐 100분의 1 기준, 자연 라벨 23개에서'], ],
+    benchCols: ['언어', '시험한 글', '정확도', '95% 신뢰 범위', 'F1 점수'],
+    benchNote: '이 숫자는 그 49개 글에서 나온 것이고, 우리 실수를 잡는 데 씁니다. 다른 종류의 글에서도 같은 결과가 나온다고 약속하지 않고, 누가 썼는지도 말하지 않아요.',
     benchLink: '전체 리포트 보기 →',
     ctaTitle: '직접 붙여넣어 확인해 보세요',
-    ctaSub: 'AI 티 나는 초안을 위 입력칸에 붙여넣으면 끝. 코드도 키도 필요 없어요.',
+    ctaSub: '위 칸에 직접 쓴 글을 넣고 어떻게 바뀌는지 보세요. 설치할 것도, 가입할 것도 없어요.',
     ctaBtn: '맨 위로 가서 시작하기 ↑',
-    note: ['의미·숫자·톤을 바꾸지 않는', '결정론적 휴머나이저.'],
+    note: ['의미·숫자·톤을 바꾸지 않는', '자연스러운 다듬기.'],
     chatPh: '이어서 다듬기…  (Enter 전송 · Shift+Enter 줄바꿈)',
     newchat: '새 대화',
-    emptyChat: '새 대화 — 아래에 AI 티 나는 문장을 붙여넣으면 patina가 다듬어요.',
-    outputUnapproved: '미승인 — 검사를 통과하지 않았습니다. 작업을 사용할 수 없습니다.',
-    outputApproved: '승인됨 — 검사를 통과했습니다. 작업을 사용할 수 있습니다.',
-    floorWarn: '이 리라이트는 patina의 의미 보존 기준(MPS·fidelity)을 통과하지 못해 경고로 표시했어요. 다시 시도하거나 더 강한 모델을 골라보세요.',
+    emptyChat: '새 대화 — 아래에 글을 붙여넣으면 patina가 다듬어요.',
+    outputUnapproved: '이 결과는 검사를 통과하지 못해서 복사할 수 있게 두지 않았어요.',
+    actCopy: '복사', actCopied: '복사했어요', actCopyFailed: '복사하지 못했어요', actDownload: '내려받기', actExport: '내보내기', actAudit: '검사 기록(JSON)',
+    metaLength: '길이 (전 → 후)', metaChars: '글자 수', metaWords: '단어 수',
+    metaMeaning: '의미 유지', metaCloseness: '원문과의 가까움', metaDrifted: '⚠ 너무 많이 달라짐',
+    metaToneSummary: 'AI 티가 얼마나 있었나요? (전 → 후)', metaToneLabel: 'AI 같은 문단 ',
+    outputApproved: '의미 검사를 통과했어요. 쓰기 전에 한 번 읽어 보세요.',
+    floorWarn: '이번 결과는 원래 글에서 너무 멀어져서 그대로 드리지 않을게요. 다시 시도하거나 더 좋은 모델을 골라 보세요.',
     reportFp: '직접 쓴 글인데 잡혔나요? 오탐 신고 →',
-    failNote: '리라이트 실패. 다시 시도하거나 모드·키를 확인해 주세요.',
-    numberSafetyNote: '리라이트가 숫자·시간 표기를 원문 그대로 보존하지 못해 안전을 위해 결과를 폐기했어요. 다시 시도해 주세요.',
+    failNote: '처리하지 못했어요. 다시 시도하거나 요금제와 키를 확인해 주세요.',
+    numberSafetyNote: '결과에서 숫자나 시간이 바뀌어서, 보여드리지 않고 버렸어요. 다시 시도해 주세요.',
     proUpsell: 'API 액세스 받기 — $9.99/월',
     proBuy: 'API 액세스 받기 — $9.99/월',
     proSoon: 'Pro — 곧 공개',
-    quotaConcurrent: '이미 진행 중인 리라이트가 있어요. 끝난 뒤 다시 시도해 주세요.',
-    serviceDown: '리라이트 서비스를 잠시 사용할 수 없어요. 나중에 다시 시도해 주세요.',
+    quotaConcurrent: '이미 다듬고 있는 글이 있어요. 끝난 뒤 다시 시도해 주세요.',
+    serviceDown: '지금은 잠시 이용할 수 없어요. 조금 뒤에 다시 시도해 주세요.',
     tooLong: '{tier} 모드 한도({cap}자)를 넘었어요. 줄여서 다시 시도해 주세요.',
-    keyMissing: 'API 모드를 쓰려면 API 키를 입력해 주세요.',
-    stopNote: '중단했어요 — 리라이트가 취소됐어요.',
-    timeoutNote: '서버 응답이 없어 리라이트가 시간 초과됐어요. 다시 시도해 주세요.',
+    keyMissing: '내 키로 쓰려면 키를 먼저 입력해 주세요.',
+    stopNote: '중단했어요 — 다듬기를 취소했어요.',
+    timeoutNote: '서버에서 답이 오지 않아 멈췄어요. 다시 시도해 주세요.',
     netNote: '네트워크 오류: {msg}',
     retry: '다시 시도',
     stopLabel: '중단',
@@ -190,31 +198,35 @@ const I18N = {
     howTitle: '三步搞定',
     examplesTitle: '改写前后',
     benchTitle: '公开的基准',
-    benchLede: '基于仓库内 fixture 语料的确定性可疑区间基准 — 可审计，而非作者判定。',
-    benchCards: [['总体准确率', '95% CI 92.7–100%'], ['fixtures', 'AI 与自然，已标注'], ['支持语言', 'KO · EN · ZH · JA'], ['误报', '1% FPR 预算下']],
-    benchCols: ['语言', 'fixtures', '准确率', '95% CI', 'F1'],
-    benchNote: '在 49 个确定性 fixture 上作为回归门测得 — 不代表对新模型、体裁或经过编辑的 AI 文本的泛化，也不是作者判定。',
+    benchLede: '我们用一组任何人都能打开查看的文章来测试 patina。它衡量的是我们自己的准确率，不判断文章是谁写的。',
+    benchCards: [['总体准确率', '95% CI 92.7–100%'], ['测试文章', '标为 AI 味和自然的文章'], ['支持语言', 'KO · EN · ZH · JA'], ['把自然文章误判的次数', '按百分之一误报目标，在 23 篇自然标注文章中']],
+    benchCols: ['语言', '测试文章', '准确率', '95% 置信区间', 'F1 分数'],
+    benchNote: '这些数字来自那 49 篇文章，我们用它来发现自己的问题。它不保证换一类文章也是同样结果，也不会说你的文字是谁写的。',
     benchLink: '查看完整报告 →',
     ctaTitle: '粘贴你的文字试试',
-    ctaSub: '把有 AI 味的草稿粘到上面的输入框，无需代码或密钥。',
+    ctaSub: '把你自己的文字放进上面的框里，看看会怎么变。不用装什么，也不用注册。',
     ctaBtn: '回到顶部开始 ↑',
-    note: ['不改变主张·数字·语气的', '确定性人性化工具。'],
+    note: ['不改变主张·数字·语气的', '自然改写。'],
     chatPh: '继续润色…  (Enter 发送 · Shift+Enter 换行)',
     newchat: '新对话',
     emptyChat: '新对话 — 在下方粘贴有 AI 味的文字，patina 帮你润色。',
-    outputUnapproved: '未批准 — 尚未通过检查，操作不可用。',
-    outputApproved: '已批准 — 已通过检查，操作已启用。',
-    floorWarn: '该改写未通过 patina 的语义保留阈值（MPS·fidelity），已标记。请重试或选择更强的模型。',
+    outputUnapproved: '这一条没通过核对，所以没有开放复制。',
+    actCopy: '复制', actCopied: '已复制', actCopyFailed: '复制失败', actDownload: '下载', actExport: '导出', actAudit: '核对记录（JSON）',
+    metaLength: '长度（前 → 后）', metaChars: '字符数', metaWords: '词数',
+    metaMeaning: '意思保留', metaCloseness: '与原文的接近度', metaDrifted: '⚠ 偏离太远',
+    metaToneSummary: '原来有多少 AI 味？（前 → 后）', metaToneLabel: '有 AI 味的段落 ',
+    outputApproved: '通过了我们的语义核对。用之前建议再读一遍。',
+    floorWarn: '这次的结果和你原来的意思差得太远，我们就不给出了。可以再试一次，或换个更强的模型。',
     reportFp: '人工撰写却被标记？反馈误报 →',
-    failNote: '改写失败。请重试，或检查模式 / 密钥。',
-    numberSafetyNote: '改写未能原样保留数字 / 时间，为安全起见已丢弃结果。请重试。',
+    failNote: '没能处理成功。请再试一次，或检查方案和密钥。',
+    numberSafetyNote: '结果里的数字或时间变了，所以我们没有拿给你，直接丢掉了。请再试一次。',
     proUpsell: '获取 API 访问权限 — 每月 $9.99',
     proBuy: '获取 API 访问权限 — 每月 $9.99',
     proSoon: 'Pro — 即将推出',
     quotaConcurrent: '已有一个改写正在进行。请等它完成后再试。',
     serviceDown: '改写服务暂时不可用，请稍后再试。',
     tooLong: '文字超过 {tier} 模式的 {cap} 字上限。请缩短后重试。',
-    keyMissing: '使用 API 模式请先输入 API 密钥。',
+    keyMissing: '要用自己的密钥，请先把密钥填进去。',
     stopNote: '已停止 — 改写已取消。',
     timeoutNote: '服务器无响应，改写超时。请重试。',
     netNote: '网络错误：{msg}',
@@ -226,31 +238,35 @@ const I18N = {
     howTitle: '3ステップで完了',
     examplesTitle: 'ビフォー・アフター',
     benchTitle: '隠さないベンチマーク',
-    benchLede: 'リポジトリ同梱の fixture コーパスで測る決定論的サスペクトゾーンのベンチマーク — 監査可能で、作者判定ではありません。',
-    benchCards: [['全体精度', '95% CI 92.7–100%'], ['fixtures', 'AI・自然のラベル付き'], ['対応言語', 'KO · EN · ZH · JA'], ['誤検知', '1% FPR 基準']],
-    benchCols: ['言語', 'fixtures', '精度', '95% CI', 'F1'],
-    benchNote: '49 件の決定論 fixture で回帰ゲートとして測定 — 新しいモデルやジャンル、編集済み AI 文章への一般化や作者判定を意味しません。',
+    benchLede: '誰でも開いて確認できる文章のセットで patina を試しています。測っているのは私たちの精度で、誰が書いたかを判定するものではありません。',
+    benchCards: [['全体精度', '95% CI 92.7–100%'], ['試した文章', 'AI っぽいと分類した文章と自然な文章'], ['対応言語', 'KO · EN · ZH · JA'], ['自然な文章を誤って指摘した数', '100 分の 1 の誤検知目標で、自然と分類した 23 件中']],
+    benchCols: ['言語', '試した文章', '精度', '95% 信頼区間', 'F1 スコア'],
+    benchNote: 'この数字は先ほどの 49 件から出たもので、私たちの間違いを見つけるために使っています。別の種類の文章でも同じ結果になるとは約束できませんし、誰が書いたかを示すものでもありません。',
     benchLink: '詳細レポートを見る →',
     ctaTitle: '自分の文章で試す',
-    ctaSub: 'AIっぽい下書きを上の入力欄に貼るだけ。コードも鍵も不要。',
+    ctaSub: '上の欄にご自分の文章を入れて、どう変わるか見てください。入れるものも、登録も要りません。',
     ctaBtn: '上に戻って始める ↑',
-    note: ['主張・数字・トーンを変えない', '決定論的ヒューマナイザー。'],
+    note: ['主張・数字・トーンを変えない', '自然な書き換え。'],
     chatPh: 'さらに整える…  (Enter送信 · Shift+Enter改行)',
     newchat: '新しいチャット',
     emptyChat: '新しいチャット — 下にAIっぽい文章を貼ると patina が整えます。',
-    outputUnapproved: '未承認 — チェックを通過していないため、操作は使えません。',
-    outputApproved: '承認済み — チェックを通過しました。操作を利用できます。',
-    floorWarn: 'この書き換えは patina の意味保持しきい値（MPS・fidelity）を満たさず、警告表示しています。再試行するか、より強力なモデルを選んでください。',
+    outputUnapproved: 'これは確認を通らなかったので、コピーできるようにはしていません。',
+    actCopy: 'コピー', actCopied: 'コピーしました', actCopyFailed: 'コピーできませんでした', actDownload: 'ダウンロード', actExport: '書き出し', actAudit: 'チェック記録（JSON）',
+    metaLength: '長さ（前 → 後）', metaChars: '文字数', metaWords: '単語数',
+    metaMeaning: '意味の保持', metaCloseness: '原文への近さ', metaDrifted: '⚠ 離れすぎ',
+    metaToneSummary: 'AI っぽさはどれくらい？（前 → 後）', metaToneLabel: 'AI っぽい段落 ',
+    outputApproved: '意味のチェックを通過しました。使う前に一度お読みください。',
+    floorWarn: '今回の結果は元の文章から離れすぎたので、お出ししません。もう一度試すか、性能の高いモデルを選んでください。',
     reportFp: '自分で書いた文章なのに検出？誤検出を報告 →',
-    failNote: '書き換えに失敗しました。再試行するか、モード・キーを確認してください。',
-    numberSafetyNote: '書き換えが数値・時刻を原文どおりに保持できなかったため、安全のため結果を破棄しました。もう一度お試しください。',
+    failNote: 'うまくいきませんでした。もう一度試すか、プランとキーをご確認ください。',
+    numberSafetyNote: '結果の中で数字や時刻が変わってしまったので、お見せせずに破棄しました。もう一度お試しください。',
     proUpsell: 'APIアクセスを取得 — 月額$9.99',
     proBuy: 'APIアクセスを取得 — 月額$9.99',
     proSoon: 'Pro — 近日公開',
     quotaConcurrent: 'すでに実行中の書き換えがあります。完了後にもう一度お試しください。',
     serviceDown: '書き換えサービスは一時的に利用できません。しばらくしてからお試しください。',
     tooLong: '{tier}モードの上限（{cap}文字）を超えています。短くしてからお試しください。',
-    keyMissing: 'APIモードを使うにはAPIキーを入力してください。',
+    keyMissing: '自分のキーで使うには、先にキーを入力してください。',
     stopNote: '停止しました — 書き換えはキャンセルされました。',
     timeoutNote: 'サーバーから応答がなくタイムアウトしました。もう一度お試しください。',
     netNote: 'ネットワークエラー：{msg}',
@@ -531,7 +547,7 @@ function populatePersonas() {
   const prev = els.persona.value;
   els.persona.innerHTML = '';
   const copy = experienceCopy(els.lang.value);
-  els.persona.appendChild(new Option(copy.preserve, ''));
+  els.persona.appendChild(new Option(copy.keepVoice, ''));
   for (const p of (WEB_PERSONAS[els.lang.value] || [])) {
     const voiceIndex = p.id.startsWith('natural-') ? 0 : ['blog-essay', 'technical-explainer', 'soft-professional', 'pragmatic-founder'].indexOf(p.id) + 1;
     els.persona.appendChild(new Option(copy.voices[voiceIndex] || p.label, p.id));
@@ -650,6 +666,14 @@ function renderExamples() {
 
   let active = EXAMPLES.find((example) => example.id === exampleSelection && example.lang === els.lang.value)
     || EXAMPLES.find((example) => example.lang === els.lang.value) || EXAMPLES[0];
+  // The copy button carries a transient result label; it belongs to the row that
+  // was copied, so switching rows drops both the label and its pending timer.
+  let copyReset;
+  const restCopy = () => {
+    clearTimeout(copyReset);
+    copy.textContent = ui.copyExample;
+    copy.classList.remove('is-ok');
+  };
   const reveal = () => {
     if (reduce) return;
     editor.classList.remove('is-reveal');
@@ -678,7 +702,7 @@ function renderExamples() {
       tab.setAttribute('aria-selected', String(selected));
       tab.setAttribute('tabindex', selected ? '0' : '-1');
     }
-    copy.textContent = ui.copyExample;
+    restCopy();
     if (animate) reveal();
   };
   selectExample = setActive;
@@ -712,10 +736,18 @@ function renderExamples() {
     globalThis.scrollTo({ top: 0, behavior: 'smooth' });
   });
   copy.addEventListener('click', async () => {
+    clearTimeout(copyReset);
     try {
       await globalThis.navigator.clipboard.writeText(active.after);
       copy.textContent = ui.copied;
-    } catch { copy.textContent = ui.copyFailed; }
+      copy.classList.add('is-ok');
+    } catch {
+      // A failure must not keep the success styling from a previous copy.
+      copy.textContent = ui.copyFailed;
+      copy.classList.remove('is-ok');
+    }
+    // Restore the resting label so a second copy still reads as an available action.
+    copyReset = globalThis.setTimeout(restCopy, 1400);
   });
   setActive(active);
 }
@@ -739,7 +771,7 @@ function showChat() {
   els.app.setAttribute('data-view', 'chat');
   renderProtectedInput(); syncSettingsBusy();
   if (globalThis.matchMedia?.('(max-width: 720px)')?.matches) {
-    document.querySelectorAll('.nav__presets').forEach((panel) => panel.removeAttribute('open'));
+    document.querySelectorAll('.protected-controls').forEach((panel) => panel.removeAttribute('open'));
   }
 }
 
@@ -836,12 +868,16 @@ function buildPatinaMsg() {
   msg.appendChild(body);
   return { node: msg, body, textEl, statusEl };
 }
-function markOutputUnapproved(textEl, statusEl) {
+// `announce: false` covers a rewrite that has not finished yet. The disabled-action
+// state is real from the first byte, but calling an in-flight stream "unapproved —
+// checks have not passed" reads as a failure warning during a normal 10-60s rewrite,
+// so the status line stays empty until there is an actual outcome to report.
+function markOutputUnapproved(textEl, statusEl, { announce = true } = {}) {
   textEl.classList.add('msg__text--unapproved');
   textEl.dataset.outputStatus = 'unapproved';
   textEl.setAttribute('aria-invalid', 'true');
-  statusEl.textContent = i18n().outputUnapproved;
-  statusEl.dataset.outputStatus = 'unapproved';
+  statusEl.textContent = announce ? i18n().outputUnapproved : '';
+  statusEl.dataset.outputStatus = announce ? 'unapproved' : 'streaming';
 }
 function approveOutput(textEl, statusEl) {
   textEl.classList.remove('msg__text--unapproved');
@@ -879,19 +915,19 @@ function buildMeta(meta, original) {
   const mps = Number(meta?.mps?.mps ?? meta?.mps);
   const fid = Number(meta?.fidelity?.fidelity ?? meta?.fidelity);
   const floorFailed = meta?.floorFailed || (Number.isFinite(mps) && mps < MPS_FLOOR) || (Number.isFinite(fid) && fid < FIDELITY_FLOOR);
-  badges.appendChild(badge('MPS', fmt(mps), Number.isFinite(mps) && mps >= MPS_FLOOR));
-  badges.appendChild(badge('Fidelity', fmt(fid), Number.isFinite(fid) && fid >= FIDELITY_FLOOR));
-  if (floorFailed) { const b = el('span', 'badge badge--warn'); b.appendChild(el('b', null, '⚠ floor failed')); badges.appendChild(b); }
+  badges.appendChild(badge(i18n().metaMeaning, fmt(mps), Number.isFinite(mps) && mps >= MPS_FLOOR));
+  badges.appendChild(badge(i18n().metaCloseness, fmt(fid), Number.isFinite(fid) && fid >= FIDELITY_FLOOR));
+  if (floorFailed) { const b = el('span', 'badge badge--warn'); b.appendChild(el('b', null, i18n().metaDrifted)); badges.appendChild(b); }
   wrap.appendChild(badges);
 
   const before = meta?.signals?.before?.signalScore;
   const after = meta?.signals?.after?.signalScore;
   if (before != null || after != null) {
     const det = el('details', 'foldout');
-    det.appendChild(el('summary', null, 'AI signal (before → after)'));
+    det.appendChild(el('summary', null, i18n().metaToneSummary));
     const b = el('div', 'foldout__body');
     const bar = el('div', 'signal-bar');
-    bar.appendChild(el('span', null, 'hot-paragraph ratio '));
+    bar.appendChild(el('span', null, i18n().metaToneLabel));
     bar.appendChild(el('span', 'sig-before', before == null ? '—' : String(before)));
     bar.appendChild(el('span', 'arrow', '→'));
     bar.appendChild(el('span', 'sig-after', after == null ? '—' : String(after)));
@@ -899,14 +935,14 @@ function buildMeta(meta, original) {
   }
   if (meta?.diff && (meta.diff.charDelta != null || meta.diff.wordDelta != null)) {
     const det = el('details', 'foldout');
-    det.appendChild(el('summary', null, 'Length (before → after)'));
+    det.appendChild(el('summary', null, i18n().metaLength));
     const b = el('div', 'foldout__body');
     const sign = (d) => (Number(d) > 0 ? `+${d}` : String(d));
     const r1 = el('div', 'diffrow');
-    r1.appendChild(el('span', 'k', 'Characters'));
+    r1.appendChild(el('span', 'k', i18n().metaChars));
     r1.appendChild(el('span', null, `${meta.diff.beforeChars} → ${meta.diff.afterChars} (${sign(meta.diff.charDelta)})`));
     const r2 = el('div', 'diffrow');
-    r2.appendChild(el('span', 'k', 'Words'));
+    r2.appendChild(el('span', 'k', i18n().metaWords));
     r2.appendChild(el('span', null, `${meta.diff.beforeWords} → ${meta.diff.afterWords} (${sign(meta.diff.wordDelta)})`));
     b.appendChild(r1); b.appendChild(r2); det.appendChild(b); wrap.appendChild(det);
   }
@@ -943,13 +979,13 @@ function buildReportLink(meta, original) {
 }
 function buildOutputActions(text, receipt = null) {
   const actions = el('div', 'output-actions');
-  const copy = el('button', 'output-action', 'Copy');
+  const copy = el('button', 'output-action', i18n().actCopy);
   copy.type = 'button';
   copy.addEventListener('click', async () => {
     track('Result Action', { action: 'copy' });
-    try { await globalThis.navigator.clipboard?.writeText(text); copy.textContent = 'Copied'; } catch { copy.textContent = 'Copy failed'; }
+    try { await globalThis.navigator.clipboard?.writeText(text); copy.textContent = i18n().actCopied; } catch { copy.textContent = i18n().actCopyFailed; }
   });
-  const download = el('button', 'output-action', 'Download');
+  const download = el('button', 'output-action', i18n().actDownload);
   download.type = 'button';
   const save = (name) => {
     const href = globalThis.URL.createObjectURL(new globalThis.Blob([text], { type: 'text/plain;charset=utf-8' }));
@@ -957,12 +993,12 @@ function buildOutputActions(text, receipt = null) {
     globalThis.URL.revokeObjectURL(href);
   };
   download.addEventListener('click', () => { track('Result Action', { action: 'download' }); save('patina-rewrite.txt'); });
-  const exportFile = el('button', 'output-action', 'Export');
+  const exportFile = el('button', 'output-action', i18n().actExport);
   exportFile.type = 'button';
   exportFile.addEventListener('click', () => { track('Result Action', { action: 'export' }); save('patina-rewrite-export.txt'); });
   actions.append(copy, download, exportFile);
   if (receipt) {
-    const audit = el('button', 'output-action', 'Audit JSON');
+    const audit = el('button', 'output-action', i18n().actAudit);
     audit.type = 'button';
     audit.addEventListener('click', () => {
       track('Result Action', { action: 'audit' });
@@ -993,7 +1029,7 @@ function detectLang(text) {
   return null;
 }
 
-// Landing locale seeds the UI; only a deliberate control/preset selection locks the source language.
+// Landing locale seeds the UI; only a deliberate control selection locks the source language.
 const DEFAULT_LANG = initialLanguage(globalThis.navigator, globalThis.location?.search);
 
 // ---------- unified submit ----------
@@ -1003,9 +1039,12 @@ let active = null;
 function i18n() { return { ...(I18N[els.lang.value] || I18N.en), ...experienceCopy(els.lang.value) }; }
 function tfmt(template, vars) { return String(template).replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? '')); }
 function tierLabel(tier) {
-  if (tier === WEB_TIERS.BYOK) return 'BYOK';
-  if (tier === WEB_TIERS.PRO) return 'Pro';
-  return 'Free';
+  // Plan names are user-visible and were renamed, so read the active copy
+  // instead of a literal that would name a mode the UI no longer shows.
+  const t = i18n();
+  if (tier === WEB_TIERS.BYOK) return t.byokName;
+  if (tier === WEB_TIERS.PRO) return t.proName;
+  return onboardingCopy(els.lang.value).freeName;
 }
 // Error notes are live alerts so assistive tech announces failures.
 function errorNote(text) { const n = el('div', 'error-note', text); n.setAttribute('role', 'alert'); return n; }
@@ -1046,6 +1085,17 @@ function signInLicense() {
 }
 
 function openSettings() { $('#settings-panel').setAttribute('open', ''); }
+function closeSettings({ restoreFocus = false } = {}) {
+  const panel = $('#settings-panel');
+  if (!panel.hasAttribute('open')) return;
+  panel.removeAttribute('open');
+  if (restoreFocus) $('#settings-label').focus();
+}
+function withinSettings(node) {
+  const panel = $('#settings-panel');
+  for (let current = node; current; current = current.parentElement) if (current === panel) return true;
+  return false;
+}
 
 function openLicenseControls() {
   openSettings();
@@ -1191,7 +1241,7 @@ async function runAttempt(attempt) {
 
   textEl.style.display = 'none';
   textEl.classList.remove('msg__text--flagged');
-  markOutputUnapproved(textEl, statusEl);
+  markOutputUnapproved(textEl, statusEl, { announce: false });
   const typing = buildTyping();
   body.appendChild(typing);
   scrollDown();
@@ -1453,12 +1503,6 @@ function applyI18n(lang) {
   set('#protected-hint', protection.hint);
   // Structured copy is rendered via DOM nodes (textContent + createElement), so
   // localized strings are never parsed as HTML (no innerHTML injection surface).
-  const setTitle = (sel, parts) => {
-    const n = document.querySelector(sel); if (!n) return;
-    n.textContent = parts[0];
-    n.appendChild(el('span', 'grad', parts[1]));
-    if (parts[2]) n.appendChild(document.createTextNode(parts[2]));
-  };
   const setLines = (sel, lines) => {
     const n = document.querySelector(sel); if (!n) return;
     n.textContent = '';
@@ -1467,7 +1511,8 @@ function applyI18n(lang) {
   document.documentElement.lang = lang;
   const proBuyBtn = document.querySelector('#pro-buy');
   if (proBuyBtn) proBuyBtn.textContent = proBuyBtn.classList.contains('is-soon') ? t.proSoon : t.proBuy;
-  setTitle('.hero__title', t.title);
+  // The hero headline stays in English for every locale and is owned by the
+  // markup, which carries its own lang="en". Only the subheading localizes.
   set('.hero__sub', t.sub);
   els.heroInput.setAttribute('placeholder', t.promptPh);
   els.heroInput.setAttribute('aria-label', t.promptPh);
@@ -1545,64 +1590,21 @@ function renderProtectedInput() {
   els.protectedInput.value = protectedInputOwner()?.protectedInput || '';
 }
 function syncSettingsBusy() {
-  for (const control of [els.lang, els.persona, els.documentType, els.register, $('#preset-apply')]) {
+  for (const control of [els.lang, els.persona, els.documentType, els.register]) {
     control.toggleAttribute('disabled', state.busy);
   }
-  syncPresetButtons();
   els.protectedInput.disabled = state.busy || Boolean(protectedInputOwner()?.reviewPending);
 }
 
-const storedPresets = readPresets();
-let presets = storedPresets.presets;
-let presetStatus = ({ unavailable: 'storageUnavailable', invalid: 'storageInvalid', version: 'storageVersion' })[storedPresets.status] || '';
-const presetSelect = /** @type {HTMLSelectElement} */ ($('#preset-select'));
-const presetName = /** @type {HTMLInputElement} */ ($('#preset-name'));
 els.protectedInput.addEventListener('input', () => {
   const owner = protectedInputOwner();
   if (owner && !state.busy && !owner.reviewPending) owner.protectedInput = els.protectedInput.value;
 });
-function renderPresets(selected = presetSelect.value) {
-  presetSelect.innerHTML = '';
-  presetSelect.appendChild(new Option(experienceCopy(els.lang.value).presetNone, ''));
-  presets.forEach((p) => presetSelect.appendChild(new Option(p.name, p.name)));
-  presetSelect.value = presets.some((p) => p.name === selected) ? selected : '';
-  $('#preset-status').textContent = experienceCopy(els.lang.value)[presetStatus] || '';
-  syncPresetButtons();
-}
-function syncPresetButtons() {
-  $('#preset-apply').toggleAttribute('disabled', state.busy || !presetSelect.value);
-  $('#preset-delete').toggleAttribute('disabled', !presetSelect.value);
-}
-function persistPresets(success) {
-  presetStatus = writePresets(presets) ? success : 'storageUnavailable';
-}
-function savePreset() {
-  const result = saveNamedPreset(presets, presetName.value, readControls());
-  if (result.ok) { presets = result.presets; persistPresets('presetSaved'); }
-  else presetStatus = result.reason === 'limit' ? 'presetLimit' : 'presetNameError';
-  renderPresets(result.ok ? presetName.value.trim() : presetSelect.value);
-}
-function applyPreset() {
-  if (state.busy) return;
-  const preset = presets.find((p) => p.name === presetSelect.value);
-  if (preset && state.heroDraft) newConvo(state.heroDraft.protectedInput);
-  const convo = activeConvo();
-  if (!preset || !convo) return;
-  const accepted = convo.thread.updatePreferences(preset.settings, { explicitLanguage: true });
-  restoreControls(convo);
-  presetStatus = accepted ? 'presetApplied' : 'languageLocked';
-  renderPresets();
-}
-function deletePreset() {
-  presets = presets.filter((p) => p.name !== presetSelect.value);
-  persistPresets('presetDeleted');
-  renderPresets('');
-}
 function applyExperienceCopy(lang, set) {
   const copy = experienceCopy(lang);
   const intro = onboardingCopy(lang);
   for (const [id, key] of [['settings-label', 'settings'], ['settings-hint', 'settingsHint'], ['hero-hint', 'heroHint'],
-    ['hero-action', 'heroAction'], ['suggest-label', 'suggestions'], ['price-free', 'freeCta']]) set(`#${id}`, intro[key]);
+    ['suggest-label', 'suggestions'], ['price-free', 'freeCta']]) set(`#${id}`, intro[key]);
   set('.nav__links a[href="#examples"]', intro.navExamples);
   set('.nav__links a[href="#pricing"]', intro.navPricing);
   els.homeLink.setAttribute('aria-label', intro.home);
@@ -1631,19 +1633,25 @@ function applyExperienceCopy(lang, set) {
     if (label) label.textContent = copy.labels[i];
     $(`#${id}`).setAttribute('aria-label', copy.labels[i]);
   }
-  for (const [value, label] of [['', copy.preserve], ['casual', copy.casual], ['professional', copy.professional]]) {
+  for (const [value, label] of [['', copy.keepRegister], ['casual', copy.casual], ['professional', copy.professional]]) {
     set(`#register option[value="${value}"]`, label);
   }
-  for (const [id, key] of [['presets-label', 'presets'], ['preset-select-label', 'presetSelect'], ['preset-name-label', 'presetName'],
-    ['preset-apply', 'presetApply'], ['preset-save', 'presetSave'], ['preset-delete', 'presetDelete'], ['preset-hint', 'presetHint']]) set(`#${id}`, copy[key]);
-  renderPresets(); syncTier();
+  syncTier();
 }
 
 // ---------- events ----------
-$('#settings-panel').addEventListener('keydown', (event) => {
+// The panel overlays the hero, so dismissal is document-scoped: Escape has to work
+// while typing in the prompt, and a press outside the panel has to close it.
+// A focused control inside the panel still bubbles its keydown up to the document,
+// so one listener covers both; an open native <select> popup consumes the first
+// Escape itself, which is the platform behavior and is left alone.
+document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
-  $('#settings-panel').removeAttribute('open');
-  $('#settings-label').focus();
+  closeSettings({ restoreFocus: true });
+});
+document.addEventListener('mousedown', (event) => {
+  if (withinSettings(event.target)) return;
+  closeSettings();
 });
 const inputStarted = new Set();
 function trackInputStarted(surface, input) {
@@ -1677,11 +1685,6 @@ els.ctaStart && els.ctaStart.addEventListener('click', () => { globalThis.scroll
 
 els.lang.addEventListener('change', onLangChange);
 for (const control of [els.documentType, els.persona, els.register]) control.addEventListener('change', onPreferencesChange);
-$('#preset-save').addEventListener('click', savePreset);
-$('#preset-apply').addEventListener('click', applyPreset);
-$('#preset-delete').addEventListener('click', deletePreset);
-presetSelect.addEventListener('change', () => { presetName.value = presetSelect.value; syncPresetButtons(); });
-presetName.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); savePreset(); } });
 els.tier.addEventListener('change', () => {
   track('Tier Selected', { tier: els.tier.value, surface: 'controls' });
   syncTier(); clearInlineErrors(); updateHeroSend(); updateChatSend();

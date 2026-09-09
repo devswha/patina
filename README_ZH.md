@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#快速开始)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-8.5.2-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-8.6.0-blue)](CHANGELOG.md)
 
 <p align="center">
   <strong>去掉 AI 味，保留原意。</strong>
@@ -20,7 +20,7 @@ patina 是一个面向韩文、英文、中文和日文的确定性、基于模�
 
 它不是黑盒式改写器，也不是作者身份检测器或用来绕过检测器的工具。patina 面向允许使用 AI 辅助起草的场景：作者希望获得更干净的语气、可审计的轨迹，以及保留原意的校验。
 
-编辑器集成：[VS Code、Obsidian 和 Gmail 预览版](docs/integrations/editors.md)。
+编辑器集成：VS Code、Obsidian 和 Gmail 预览版客户端已停止支持。详见[停用记录](docs/integrations/editors.md)。
 
 ## 效果展示
 
@@ -106,7 +106,7 @@ patina --batch docs/*.md --outdir cleaned/
 
 ```yaml
 # .patina.default.yaml
-version: "8.5.2"
+version: "8.6.0"
 language: ko              # ko | en | zh | ja
 document-type: default    # 体裁/用途 + 模式策略
 persona:                  # 可选；省略时保留原文声音

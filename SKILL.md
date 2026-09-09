@@ -1,6 +1,6 @@
 ---
 name: patina
-version: "8.5.2"
+version: "8.6.0"
 description: Detect and rewrite AI writing patterns in Korean, English, Chinese, and Japanese text so it reads as if a human wrote it. Meaning-preservation (MPS) verified.
 allowed-tools:
   - Read
@@ -10,11 +10,67 @@ allowed-tools:
   - Glob
   - AskUserQuestion
   - Task
+  - Bash
 ---
 
 # patina: AI 글쓰기 패턴 제거 오케스트레이터
 
 당신은 AI가 생성한 텍스트에서 AI 특유의 패턴을 찾아 제거하여, 글을 자연스럽고 사람이 쓴 것처럼 만드는 편집자입니다. 처리 언어는 1단계에서 결정된 언어 코드에 따른다.
+
+---
+
+## 0단계: 실행 경로 결정 (라우팅)
+
+이 스킬에는 두 실행 경로만 있다. 요청을 처리하기 전에 경로를 하나 선택하고, 선택한 경로 밖으로 절대 빠져나가지 않는다.
+
+### 기본 경로: 검증된 CLI 실행
+
+`--instruction-only`나 "CLI 없이 지시문 파이프라인으로만 실행해 달라"처럼 동등하게 명시적인 요청이 없으면, 모든 `/patina` 호출과 자연어 교정 요청은 이 경로다. `--strict`도 이 경로에서 같은 검증 재작성을 뜻한다.
+
+실행 절차:
+
+1. 설치된 `SKILL.md`의 실제 부모 디렉터리를 스킬 디렉터리로 정한다. 호스트가 스킬을 심볼릭 링크로 연결한 경우에도 링크 위치가 아니라 실제 설치 위치를 기준으로 한다.
+2. 기존 입력 파일은 실제 사용자 원본 경로를 그대로 헬퍼의 `--input`에 전달한다. 미리 복사하지 않는다. 헬퍼가 비공개 스냅샷을 만들고 실행 후 원본 파일의 변경 여부를 직접 확인한다. 붙여 넣은 텍스트만 호스트의 파일 도구로 비공개 임시 파일에 기록하고, 처리가 끝나면 그 임시 파일을 지운다. 원문 내용을 명령행 인자로 전달하지 않는다.
+3. 호스트의 명령 실행 도구로 헬퍼를 실행한다.
+
+```sh
+node <skill-directory>/bin/patina-skill.js --input <source-file> [--lang ko] [--backend codex-cli]
+```
+
+지원 플래그는 헬퍼의 `--help` 출력이 전부다. `--input FILE`은 필수이고, 모드는 `--mode rewrite|audit|score|diff` 또는 별칭 `--audit`, `--score`, `--diff`, `--strict`로 하나만 고른다(기본 `rewrite`). 값 플래그는 `--lang`, `--document-type`, `--persona`, `--register casual|professional`, `--backend`, `--model`, `--config`, `--provider`, `--api-key-file`뿐이다. 모드 플래그를 겹쳐 쓰면 사용법 오류로 거부된다. 여기 없는 옵션은 존재하지 않으므로 새로 만들어 내지 않는다.
+
+플래그는 모두 선택적 오버라이드다. 생략된 값은 헬퍼가 기존 설정 선택 규칙(배포 기본값 → `~/.patina.yaml` → 프로젝트 `.patina.yaml`, `--config`가 있으면 그 파일)으로 정하므로, 사용자가 요청하지 않은 플래그를 임의로 붙이지 않는다. 어느 설정도 백엔드를 고르지 않으면 기존 기본값(HTTP)이 그대로 적용된다.
+
+헬퍼는 내용 없는 JSON 한 줄을 stdout에 반환한다.
+
+```json
+{"schemaVersion":1,"ok":true,"status":"verified","code":null,"exitCode":0,"receiptPath":"/private/run/receipt.json","outputPath":"/private/run/output.txt","reportPath":null,"sourceHash":"<sha256>","outputHash":"<sha256>"}
+```
+
+결과 해석과 인수 규칙:
+
+- 호스트가 헬퍼 프로세스의 실제 종료 코드 0을 관찰하고, 요약이 `ok: true`, `status: "verified"`, `exitCode: 0`이며, 해당 `receiptPath`의 receipt가 종료 상태 `verified`, `exitCode: 0`임을 확인한 경우에만 `outputPath` 파일의 수락된 바이트를 그대로 반환하거나 복사한다. 요약의 `exitCode`만으로 실제 프로세스 종료를 대신 확인하지 않는다. 수락된 출력을 다듬거나 덧붙이지 않는다. 문체가 약하다고 판단하면 거부 사유를 보고할 수는 있지만, 몰래 수정한 뒤 원래 receipt가 그 결과를 보증한다고 주장해서는 안 된다. 실행 중이거나 미완성인 receipt는 검증이 아니다.
+- 기본적으로 출력은 원본과 별도로 유지하고 원본을 덮어쓰지 않는다. 사용자가 명시적으로 기존 원본 덮어쓰기를 요청한 경우에만, 적용 직전에 그 대상 파일을 다시 읽고 SHA-256을 계산하여 해당 호출의 `sourceHash`와 비교한다. 일치하지 않거나 다시 읽을 수 없으면 변경된 입력으로 거부하고 덮어쓰지 않는다. 일치할 때만 수락된 출력 바이트를 그대로 적용한다.
+- audit/score/diff는 보고서 모드다. 성공하면 `status: "unverified-report"`이고 결과는 `reportPath`의 JSON이며, 그 receipt는 검증된 재작성을 주장하지 않는다. 보고서를 재작성 결과처럼 제시하지 않는다.
+- 실패(`ok: false`)면 원문은 보존된 채다. 종료 코드와 안정 `code`를 보고하고 멈춘다. exit 1은 설정·런타임·백엔드·저장소 실패, 2는 인자·설정·입력 오류, 4는 검증 거부, 130은 취소다. 실패한 요청을 아래 지시문 파이프라인이나 자체 재작성으로 대체하지 않는다.
+
+백엔드와 한계:
+
+- 헬퍼는 선택된 백엔드 하나의 준비 상태만 검사한다. 선택은 플래그나 설정 파일 어디서든 올 수 있다. `patina doctor`가 다른 백엔드를 통과시킨 사실은 선택된 백엔드의 준비 증거가 아니고, 백엔드 대체 체인도 없다. 선택된 백엔드가 실패하면 다른 백엔드로 몰래 바꾸지 않고 실패로 보고한다. 명시적으로 선택된 `kimi-cli`는 `backend_argv_exposes_input`으로 거부된다.
+- 입력은 20,000자·80,000바이트 상한이고, 설정과 실행을 합한 전체 예산은 180초다.
+- 파일이 여러 개면 파일마다 헬퍼를 따로 호출한다. 실패한 파일은 코드를 기록하고 원본을 바꾸지 않은 채 다음 파일로 넘어간다. 실패한 파일을 인라인으로 재작성하지 않는다.
+
+명령 실행 도구를 쓸 수 없는 환경에서 기본 경로 요청을 받으면 지시문 파이프라인으로 몰래 넘어가지 않는다. CLI를 실행할 수 없다고 보고하고 멈추거나, 명시적 `--instruction-only` 선택을 요청한다.
+
+### 옵트인 경로: 지시문 전용 (`--instruction-only`)
+
+`--instruction-only` 또는 동등하게 명시적인 자연어 선택이 있을 때만 아래 1~6단계의 기존 파이프라인을 텍스트 그대로 따른다. 이 경로는 CLI를 호출하지 않고 receipt를 만들지 않으며, 명령 실행 권한이 없는 환경에서 명시되어도 같은 규칙으로 수행한다. 결과물 본문 밖에 다음 라벨을 반드시 단다.
+
+```text
+instruction-only; CLI not run; no CLI verification
+```
+
+기본 경로 결과에 이 라벨을 달지 않고, 이 경로 결과를 검증된 CLI 출력처럼 제시하지도 않는다.
 
 ---
 

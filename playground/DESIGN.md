@@ -125,9 +125,24 @@ The hero uses the existing 800px content limit, 768px prompt limit, and
 The document owns scrolling; the examples editor is a separate section after
 the usage steps, never a second column competing with the input.
 
-Language selection stays visible and optional settings remain in the disclosure.
+Language and Mode stay visible in the nav: choosing Free, BYOK or Pro is a
+purchase-path decision, not an optional preference, so it never hides behind a
+disclosure. Document type, persona, register and credential fields remain in it.
 Localized copy, example selection, and visible verification evidence keep their
 current behavior. Narrow screens retain the existing stacked layout and controls.
+
+The disclosure overlays the hero, so it is dismissed document-wide: Escape works
+while the prompt has focus, and a press anywhere outside it closes it.
+
+## Approval status
+
+Every rewrite carries a `role="status"` line stating whether checks passed. It is
+visible, not only announced — but only once there is an outcome. A rewrite runs
+10-60s against a real model, and labelling that entire window "unapproved — checks
+have not passed" reads as a failure report for a request that is merely still
+running. The line therefore stays empty while streaming (`data-output-status=
+"streaming"`) and fills in on the actual result. The disabled-action state,
+flagged border and `aria-invalid` marker apply from the first byte regardless.
 
 ## Applied in
 

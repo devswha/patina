@@ -18,6 +18,22 @@ patina --lang en --score --exit-on 30 draft.md
 
 `0` success · `1` runtime/backend · `2` input/usage · `3` score gate exceeded · `4` meaning-safety exit (`--verify` floor miss or dropped number; rewrite still printed) · `130` interrupted. Full definitions and merge rules: [EXIT-CODES.md](EXIT-CODES.md).
 
+## Internal configuration snapshots
+
+Ordinary `--config <path>` keeps its existing precedence: bundled defaults,
+home `.patina.yaml`, project `.patina.yaml`, then the explicit file. Additive
+`blocklist`, `allowlist`, and `skip-patterns` arrays are unioned across layers.
+
+The checkout-local skill helper uses internal `--config-snapshot <path>` for
+its private, complete captured configuration. This path loads only that YAML
+mapping (JSON is supported), without rereading bundled defaults or home/project
+config. Absent keys stay absent and captured arrays are not merged again. The
+ordinary mapping/retired-key validation and document-type normalization still
+apply; missing or invalid snapshots fail without falling back to ambient config.
+It cannot be combined with `--config`. This is helper-to-CLI transport, not a
+replacement for public `--config`; model/provider/environment resolution remains
+native, and implicit models are not converted into explicit model flags.
+
 ## Output formats
 
 `--format markdown` is the default human-readable output. `--format text` emits

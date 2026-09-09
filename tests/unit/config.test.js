@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -146,5 +146,69 @@ scoring:
       fidelity: 0, documentType: 'default', config,}),
       40
     );
+  });
+});
+
+
+test('loadConfig: explicit config preserves four-layer scalar and additive precedence', async t => {
+  const { root, home, project } = tempWorkspace();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const defaultPath = join(root, 'default.yaml');
+  const overridePath = join(root, 'override.json');
+  writeFileSync(defaultPath, JSON.stringify({ model: 'base-model', blocklist: ['base'], nested: { base: true } }));
+  writeFileSync(join(home, '.patina.yaml'), JSON.stringify({ model: 'home-model', blocklist: ['home'], nested: { home: true } }));
+  writeFileSync(join(project, '.patina.yaml'), JSON.stringify({ model: 'project-model', blocklist: ['project'], nested: { project: true } }));
+  writeFileSync(overridePath, JSON.stringify({ model: 'explicit-model', blocklist: ['explicit', 'home'], nested: { explicit: true } }));
+  await withEnv({ home, cwd: project }, async () => {
+    assert.equal(loadConfig(defaultPath).model, 'project-model');
+    const config = loadConfig(defaultPath, { overridePath });
+    assert.equal(config.model, 'explicit-model');
+    assert.deepEqual(config.blocklist, ['base', 'home', 'project', 'explicit']);
+    assert.deepEqual(config.nested, { base: true, home: true, project: true, explicit: true });
+  });
+});
+
+test('loadConfig: snapshot preserves absence and exact captured machine-consumed arrays', async t => {
+  const { root, home, project } = tempWorkspace();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const defaultPath = join(root, 'default.yaml');
+  const snapshotPath = join(root, 'snapshot.json');
+  writeFileSync(defaultPath, JSON.stringify({
+    'document-type': 'technical', blocklist: [{ term: 'base' }], allowlist: ['base-safe'],
+    'skip-patterns': ['en-filler'], nested: { blocklist: ['base-nested'] }, patterns: ['en-content']
+  }));
+  writeFileSync(join(home, '.patina.yaml'), JSON.stringify({ blocklist: ['home'] }));
+  writeFileSync(join(project, '.patina.yaml'), JSON.stringify({ blocklist: ['project'] }));
+  await withEnv({ home, cwd: project }, async () => {
+    const captured = loadConfig(defaultPath);
+    const snapshot = { ...captured, 'document-type': captured.documentType };
+    delete snapshot.documentType;
+    writeFileSync(snapshotPath, JSON.stringify(snapshot));
+    for (const path of [defaultPath, join(home, '.patina.yaml'), join(project, '.patina.yaml')]) {
+      writeFileSync(path, JSON.stringify({ model: 'changed-model', baseURL: 'http://127.0.0.1:1/v1', provider: 'openai',
+        persona: 'natural-en', blocklist: ['changed'], allowlist: ['changed-safe'], 'skip-patterns': ['en-content'],
+        nested: { blocklist: ['changed-nested'], added: true }, patterns: ['en-style'] }));
+    }
+    assert.deepEqual(loadConfig(defaultPath, { snapshotPath }), captured);
+    // No fallback to any base/home/project file, even if those become invalid.
+    for (const path of [defaultPath, join(home, '.patina.yaml'), join(project, '.patina.yaml')]) writeFileSync(path, '[invalid');
+    assert.deepEqual(loadConfig(defaultPath, { snapshotPath }), captured);
+    assert.deepEqual(loadConfig(join(root, 'missing-default'), { snapshotPath }), captured);
+  });
+});
+
+test('loadConfig: snapshot shares mapping and retired-key validation without ambient fallback', async t => {
+  const { root, home, project } = tempWorkspace();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const snapshotPath = join(root, 'snapshot.yaml');
+  await withEnv({ home, cwd: project }, async () => {
+    for (const invalid of ['', '[]', 'null', '42', '[invalid', 'profile: blog', 'tone: casual', 'formality: professional']) {
+      writeFileSync(snapshotPath, invalid);
+      assert.throws(() => loadConfig(undefined, { snapshotPath }));
+    }
+    assert.throws(() => loadConfig(undefined, { snapshotPath: join(root, 'missing') }));
+    writeFileSync(snapshotPath, 'language: en');
+    assert.deepEqual(loadConfig(undefined, { snapshotPath }), { language: 'en', documentType: 'default' });
+    assert.throws(() => loadConfig(undefined, { snapshotPath, overridePath: snapshotPath }), { exitCode: 2 });
   });
 });

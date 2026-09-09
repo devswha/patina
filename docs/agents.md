@@ -4,7 +4,7 @@ This document describes the three Claude Code plugin subagents bundled with pati
 
 ## Overview
 
-The standard `/patina` skill operates as a single-pass LLM-orchestrated pipeline (SKILL.md). The subagents described here are **additive** — they extend that pipeline with parallel, independent analysis lanes. Nothing about the core skill changes; the subagents can be invoked alongside it.
+The default `/patina` skill and ordinary `/patina --strict` return verified CLI output, without host-agent rewriting or polishing. A failed CLI run is reported, never silently replaced with an inline rewrite. The host-agent multi-pass flow described here requires explicit `/patina --instruction-only --strict` (SKILL.md). Its subagents are **additive** — they provide parallel, independent analysis lanes within that opt-in flow, not CLI verification.
 
 All three subagents are **read-only analysis agents**. None of them rewrites text. They produce reports and verdicts that the main skill (or Claude acting as orchestrator) uses to decide whether to accept, retry, or roll back a rewrite.
 
@@ -48,7 +48,7 @@ INPUT TEXT
 patina-detector ─────────────────── findings report (patterns + suspect zones)
     │
     ▼
-/patina rewrite (SKILL.md stages 5a/5b/5c)
+/patina --instruction-only --strict rewrite (SKILL.md stages 5a/5b/5c)
     │
     ├──► patina-fidelity-auditor ── PASS / NEEDS-ROLLBACK + offending spans
     │
@@ -65,9 +65,9 @@ The fidelity auditor and naturalness reviewer run in parallel after the rewrite 
 
 This flow is entirely optional. The standard `/patina` skill functions without these subagents. They add a structured audit trail and an explicit accept/retry/rollback gate.
 
-## Automatic delegation from `--strict`
+## Automatic delegation from `--instruction-only --strict`
 
-The `/patina --strict` mode (defined in `SKILL.md`) wires this flow automatically. When the patina plugin is installed and these subagents are available, `--strict` delegates its read-only analysis passes via the `Task` tool — P1 to `patina-detector`, P3 to `patina-fidelity-auditor`, P4 to `patina-naturalness-reviewer` — while the main skill keeps orchestration, the rewrite (P2), and the accept/retry/rollback gate (P5). When the subagents are not available (Codex CLI, Cursor, OpenCode, or a non-plugin install), `--strict` runs the same passes inline in a single agent. Both modes use identical floors and gate logic; delegation only adds context isolation.
+The explicit `/patina --instruction-only --strict` mode (defined in `SKILL.md`) wires this flow automatically. When the patina plugin is installed and these subagents are available, `--instruction-only --strict` delegates its read-only analysis passes via the `Task` tool — P1 to `patina-detector`, P3 to `patina-fidelity-auditor`, P4 to `patina-naturalness-reviewer` — while the main skill keeps orchestration, the rewrite (P2), and the accept/retry/rollback gate (P5). When the subagents are not available (Codex CLI, Cursor, OpenCode, or a non-plugin install), `--instruction-only --strict` runs the same passes inline in a single agent. Both modes use identical floors and gate logic; delegation only adds context isolation. This inline fallback exists only within the explicit instruction-only flow, never as a fallback for the default CLI route or ordinary `--strict`. Instruction-only output is labeled "instruction-only; CLI not run; no CLI verification" outside the prose and carries no CLI receipt.
 
 ## Advisory Metadata Rule
 

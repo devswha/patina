@@ -10,7 +10,7 @@ that **rewrites** AI-sounding text into something more natural for `ko`, `en`,
 - Styles: [`chatgpt.css`](chatgpt.css).
 - Controller: [`chatgpt.js`](chatgpt.js) — conversation store, streaming, safe DOM rendering.
 - Streaming client: [`rewrite-client.js`](rewrite-client.js) — isomorphic NDJSON client + client-held thread (one-shot → conversational refine).
-- Conversation settings and local presets: [`preferences.js`](preferences.js).
+- Conversation settings: [`preferences.js`](preferences.js).
 - Pro recovery, pricing, and settings copy in four languages: [`experience-copy.js`](experience-copy.js).
 - Contract: [`../src/web-rewrite-contract.js`](../src/web-rewrite-contract.js) — the single source of truth shared by the serverless handler, the web runner, the browser client, and the tests.
 - Vercel routes: [`../vercel.json`](../vercel.json).
@@ -49,13 +49,8 @@ language; changing languages requires a new chat. Persona and register are
 omitted by default to preserve the source. An explicit change to either applies
 to the next request in that conversation.
 
-Local presets store only a name and those four settings in this browser. They
-never capture text, transcripts, license keys, provider keys, or model choices.
-Names are limited to 40 characters and the list to 20 presets; saving an existing
-name replaces it. A preset with a conflicting language is rejected without
-partially changing an anchored conversation. Missing or unsupported voice choices
-fall back to preserving the source. Corrupt or unsupported storage is ignored;
-if browser storage is unavailable, presets remain usable for the current session.
+The playground writes nothing to browser storage. Settings live for the life of
+the conversation, and a reload starts from the defaults again.
 
 “Already purchased?” opens the Pro license controls. “Apply key” keeps the key
 in memory and marks validation as pending. The first rewrite request validates

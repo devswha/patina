@@ -87,22 +87,24 @@ checkout_install_ref() {
   fi
 }
 
-# Install runtime Node dependencies (currently just js-yaml) so the local CLI
-# entry points (bin/patina.js) work from the installed checkout. Best-effort:
-# the skill install itself does not need Node, so a missing npm or failed install
-# only warns rather than aborting. See issue #536.
+# Runtime readiness belongs to this checkout, not a dependency marker or a
+# globally linked CLI. Prepare dependencies only when actual startup fails.
 install_runtime_deps() {
-  if [ -f "${PATINA_DIR}/node_modules/js-yaml/package.json" ]; then
-    return 0
+  info "Skill files installed at ${PATINA_DIR}."
+  info "Backend readiness: not checked. Installation does not select or authenticate a backend."
+  command -v node >/dev/null 2>&1 || error "Runtime not ready: install Node.js >=18.1.0 and rerun the installer."
+  if ! node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major > 18 || (major === 18 && minor >= 1) ? 0 : 1)'; then
+    error "Runtime not ready: Node.js >=18.1.0 is required."
   fi
-  if ! command -v npm >/dev/null 2>&1; then
-    warn "  npm not found — skipping runtime deps. The local CLI needs 'js-yaml'; run 'npm install --omit=dev' in ${PATINA_DIR} to enable it."
-    return 0
+  if ! node "${PATINA_DIR}/bin/patina.js" --version >/dev/null 2>&1; then
+    command -v npm >/dev/null 2>&1 || error "Runtime not ready: npm is required to prepare dependencies in ${PATINA_DIR}. Install npm and rerun the installer."
+    info "Installing patina runtime dependencies from the lockfile..."
+    if ! ( cd "${PATINA_DIR}" && npm ci --omit=dev --no-audit --no-fund ); then
+      error "Runtime not ready: dependency installation failed in ${PATINA_DIR}. Resolve the npm error and rerun the installer."
+    fi
+    node "${PATINA_DIR}/bin/patina.js" --version || error "Runtime not ready: the installed CLI failed to start after dependency preparation."
   fi
-  info "Installing patina runtime dependencies..."
-  if ! ( cd "${PATINA_DIR}" && npm install --omit=dev --no-audit --no-fund >/dev/null 2>&1 ); then
-    warn "  Runtime dependency install failed. Run 'npm install --omit=dev' in ${PATINA_DIR} to enable the local CLI."
-  fi
+  success "Local CLI runtime ready: node \"${PATINA_DIR}/bin/patina.js\" --version"
 }
 
 # Ensure the patina repo checkout exists at PATINA_DIR (clone or update once).
@@ -139,7 +141,7 @@ if [ "${INSTALL_CLAUDE}" = "true" ]; then
 
   ensure_patina_repo
 
-  success "Claude Code: /patina ready"
+  success "Claude Code: skill files installed"
 else
   warn "Skipping Claude Code installation (INSTALL_CLAUDE=false)"
 fi
@@ -200,7 +202,11 @@ fi
 
 # Done
 printf "\n"
-success "✓ patina installed."
+if [ -n "${PATINA_REPO_READY}" ]; then
+  success "✓ patina skill files installed; local CLI runtime ready. Backend readiness not checked."
+else
+  info "No agent targets enabled; nothing installed and runtime/backend readiness not checked."
+fi
 info "  If it saves you edits, a star helps others find it → https://github.com/devswha/patina"
 printf "\n"
 info "Usage:"

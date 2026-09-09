@@ -34,7 +34,7 @@ function mergeOverrides(settings, overrides) {
   return normalizeAsideSettings({ ...settings, ...selected });
 }
 
-function cliVerification(value) {
+export function cliVerification(value) {
   const bounded = number => typeof number === 'number' && Number.isFinite(number) && number >= 0 && number <= 100;
   const reasons = ['passed', 'passed-on-retry', 'floor-not-met', 'retry-error', 'dropped-numbers', 'output-changed'];
   if (!value || typeof value !== 'object' || Array.isArray(value)
@@ -90,7 +90,7 @@ async function requireMissingOutput(path) {
 }
 
 /** Spawn the shipped CLI only. Drafts travel in a private snapshot file. */
-function invokeCli(args, { cwd, env, signal, timeoutMs, spawnImpl }) {
+export function invokeCli(args, { cwd, env, signal, timeoutMs, spawnImpl }) {
   return new Promise((resolveResult, reject) => {
     let child;
     let timer;

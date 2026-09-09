@@ -3,7 +3,6 @@ import { runDoctor } from './commands/doctor.js';
 import { runPersona } from './commands/persona.js';
 import { runPack } from './commands/pack.js';
 import { runInspect } from './commands/inspect.js';
-import { runPattern } from './commands/pattern.js';
 import { runAside } from './commands/aside.js';
 import { handleAuth, printBackendStatus } from './commands/auth.js';
 import { parseArgs, validateModeExclusivity, validateOfflineScoreRequest, validateServeRequest, validatePreviewRequest, validateOutputRouting, validateTransformRequest, validatePersonaRequest, validateVerifyRequest, validateXliffRequest, printHelp } from './cli/args.js';
@@ -33,7 +32,6 @@ const PACKAGE_VERSION = JSON.parse(
  */
 export async function main(args) {
   if (args[0] === 'aside') return runAside(args.slice(1));
-  if (args[0] === 'pattern') return runPattern(args.slice(1));
   if (args[0] === 'inspect') return runInspect(args.slice(1));
   if (args[0] === 'auth') {
     return handleAuth(args.slice(1));
@@ -46,6 +44,13 @@ export async function main(args) {
   }
   if (args[0] === 'pack') {
     return runPack(args.slice(1));
+  }
+  if (args[0] === 'pattern') {
+    throw inputError(
+      'patina pattern was removed',
+      'Community pattern packs are no longer supported.',
+      'Add hand-written patterns to custom/patterns/ instead.'
+    );
   }
   if (args[0] === 'init') {
     throw inputError(

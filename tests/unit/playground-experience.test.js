@@ -64,6 +64,7 @@ class Element {
   set hidden(value) { this.toggleAttribute('hidden', value); }
   setAttribute(name, value) { this.attributes[name] = String(value); }
   getAttribute(name) { return this.attributes[name] ?? null; }
+  hasAttribute(name) { return name in this.attributes; }
   removeAttribute(name) { delete this.attributes[name]; }
   toggleAttribute(name, force) { if (force) this.attributes[name] = ''; else delete this.attributes[name]; }
   appendChild(child) { child.parentElement = this; this.children.push(child); return child; }
@@ -159,11 +160,8 @@ function app({ response, storage = new Map(), languages = [], language, search =
       options.onDone(frame);
       return { ok: true, finalFrame: frame };
     },
-    // These injected wrappers resolve this fixture's storage, not Node global storage.
-    readPresets: () => preferences.readPresets(() => context.localStorage),
-    writePresets: (items) => preferences.writePresets(items, () => context.localStorage),
   });
-  vm.runInContext(controller + '\nglobalThis.ui = { state, submit, activeConvo, newConvo, selectConvo, readControls, failureMessage, addRecovery };', context);
+  vm.runInContext(controller + '\nglobalThis.ui = { state, submit, activeConvo, newConvo, selectConvo, readControls, failureMessage, addRecovery, tierLabel };', context);
   return {
     document, calls, storage, context, ui: context.ui, get: (id) => document.querySelector(`#${id}`),
     async settle() { await nextTurn(); await Promise.all(reviews); await nextTurn(); },
@@ -528,12 +526,10 @@ for (const lang of contract.SUPPORTED_LANGS) {
     assert.equal('license' in a.calls[0].body, false);
     assert.equal(a.get('license-status').textContent, t.licenseStates.validated);
     assert.equal(a.ui.activeConvo().thread.original, 'A source 70%', '70/70 is accepted');
-    a.get('preset-name').value = 'Work';
-    a.get('preset-save').emit('click');
-    assert.doesNotMatch([...a.storage.values()].join(''), /private-license|A source|Accepted|history|authorization|apiKey/);
+    assert.equal(a.storage.size, 0, 'no license, source or transcript may reach browser storage');
     assert.equal(a.get('pro-portal').hidden, true, 'unconfigured portal stays hidden');
     assert.equal(a.document.querySelector('.price__badge').textContent, t.proBadge);
-    assert.equal(a.document.querySelectorAll('.price')[1].querySelector('.price__name').textContent, 'BYOK');
+    assert.equal(a.document.querySelectorAll('.price')[1].querySelector('.price__name').textContent, t.byokName);
   });
 }
 
@@ -565,25 +561,14 @@ test('actual A/B switches restore all controls and next payload; conflicting lan
   assert.equal(a.get('register').value, 'professional');
 });
 
-test('actual presets apply/delete/restore safely and reject a conflicting language without partial updates', async () => {
+test('conversation settings are never persisted to browser storage', async () => {
   const a = app();
-  change(a, 'lang', 'ko'); change(a, 'persona', 'soft-professional');
-  a.get('preset-name').value = '한국어'; a.get('preset-save').emit('click');
-  const storage = a.storage;
-  change(a, 'lang', 'en'); change(a, 'document-type', 'email');
-  await a.ui.submit('Source');
-  const before = controls(a);
-  a.get('preset-select').value = '한국어'; a.get('preset-select').emit('change'); a.get('preset-apply').emit('click');
-  assert.deepEqual(controls(a), before);
-  assert.equal(a.get('preset-status').textContent, copy.experienceCopy('en').languageLocked);
-  a.get('new-chat').emit('click'); a.get('preset-apply').emit('click');
-  assert.equal(controls(a).lang, 'ko');
-  assert.equal(controls(a).persona, 'soft-professional');
-  const reloaded = app({ storage });
-  assert.equal(reloaded.get('preset-select').options[1].value, '한국어');
-  assert.deepEqual(controls(reloaded), { lang: 'en', documentType: 'default', persona: '', register: '' });
-  reloaded.get('preset-select').value = '한국어'; reloaded.get('preset-select').emit('change'); reloaded.get('preset-delete').emit('click');
-  assert.equal(reloaded.get('preset-select').options.length, 1);
+  change(a, 'lang', 'ko'); change(a, 'persona', 'soft-professional'); change(a, 'document-type', 'namuwiki');
+  type(a, 'protected-text', 'ACME');
+  await a.ui.submit('원문 70%');
+  assert.equal(a.storage.size, 0, 'the playground writes nothing to browser storage');
+  // A fresh page keeps no memory of the previous conversation's settings.
+  assert.deepEqual(controls(app()), { lang: 'en', documentType: 'default', persona: '', register: '' });
 });
 
 for (const [status, error, kind] of [
@@ -773,25 +758,192 @@ test('illustrative copy has no guessed scores while approved API scores stay vis
     options.onDone(frame); return { ok: true, finalFrame: frame };
   } });
   assert.equal(a.get('example-note').textContent, copy.onboardingCopy('en').illustrative);
-  assert.doesNotMatch(a.get('example-cards').textContent, /MPS|Fidelity|verified live/i);
+  // A prepared example must never present a score, which would read as measured.
+  // Numbers inside the sample text itself are fine; a score label is not.
+  assert.doesNotMatch(a.get('example-cards').textContent, /Meaning kept|Close to your text|MPS|Fidelity|verified live/i);
   await a.ui.submit('Source 70%');
-  assert.match(a.get('thread').textContent, /MPS.*91/);
-  assert.match(a.get('thread').textContent, /Fidelity.*87/);
-  assert.equal(a.document.querySelector('.output-status').textContent, 'Approved — checks passed. Actions are enabled.');
+  // The real scores stay visible; only their labels are plain-language now.
+  assert.match(a.get('thread').textContent, /Meaning kept.*91/);
+  assert.match(a.get('thread').textContent, /Close to your text.*87/);
+  assert.equal(a.document.querySelector('.output-status').textContent, EN_STATUS.approved);
+});
+
+// Asserted as literals, not scraped from the controller: reading the expected
+// value out of the code under test would accept any wording it happens to hold.
+// Approval is an `mps >= 70 && fidelity >= 70` threshold, so the approved line
+// may report that the check passed but must never promise the meaning is
+// identical, and neither line may leak an internal metric name.
+const EN_STATUS = {
+  approved: 'Passed our meaning check. Worth a quick read before you use it.',
+  unapproved: 'This one did not pass our check, so we are not offering it to copy.',
+};
+
+// Three separate defects on this branch were English literals in the controller
+// reaching the DOM, which a source-scraping assertion cannot catch. Assert the
+// rendered result detail per locale instead.
+for (const lang of ['ko', 'zh', 'ja']) {
+  test(`${lang}: result badges and detail render in the selected language`, async () => {
+    const a = app({ response: (options) => {
+      const frame = { type: 'done', rewrite: 'Accepted 70%', mps: 91, fidelity: 87,
+        signals: { before: { signalScore: 40 }, after: { signalScore: 0 } },
+        diff: { beforeChars: 10, afterChars: 8, charDelta: -2, beforeWords: 2, afterWords: 2, wordDelta: 0 } };
+      options.onDone(frame); return { ok: true, finalFrame: frame };
+    } });
+    change(a, 'lang', lang);
+    await a.ui.submit('원문 70%');
+    await a.settle();
+    const thread = a.get('thread').textContent;
+    // The English literals must not survive into a non-English render.
+    for (const english of ['Meaning kept', 'Close to your text', 'Length (before', 'AI-sounding paragraphs', 'Audit JSON', 'Download']) {
+      assert.ok(!thread.includes(english), `${lang} rendered the English literal "${english}"`);
+    }
+    assert.ok(thread.includes('91') && thread.includes('87'), 'the real scores still render');
+  });
+}
+
+test('a renamed plan never appears under its retired name', () => {
+  const a = app();
+  for (const lang of ['en', 'ko', 'zh', 'ja']) {
+    change(a, 'lang', lang);
+    const t = copy.experienceCopy(lang);
+    assert.equal(a.ui.tierLabel('byok'), t.byokName);
+    assert.equal(a.ui.tierLabel('pro'), t.proName);
+    assert.equal(a.ui.tierLabel('free'), copy.onboardingCopy(lang).freeName);
+    assert.notEqual(a.ui.tierLabel('byok'), 'BYOK', 'the retired mode name must not reach a user');
+  }
+});
+
+test('status copy states a check result without promising identical meaning', () => {
+  for (const text of Object.values(EN_STATUS)) {
+    assert.doesNotMatch(text, /\bMPS\b|\bfidelity\b|BYOK/i, 'status must not name internal metrics');
+  }
+  // A 70-point threshold is not proof, so no absolute claim about the meaning.
+  assert.doesNotMatch(EN_STATUS.approved, /still says what you said|meaning is unchanged|same meaning/i);
+  assert.match(EN_STATUS.approved, /check/i, 'approval must be stated as a check result');
+});
+
+// The status line is the only visible statement about whether a result passed the
+// meaning gate, so its transitions are asserted as observable state, not as source shape.
+function statusOf(a) {
+  const node = a.document.querySelector('.output-status');
+  return node && { text: node.textContent, state: node.dataset.outputStatus };
+}
+
+test('the approval status is silent in flight and states every terminal outcome', async () => {
+  const t = EN_STATUS;
+
+  // In flight: no claim either way, because the request has not produced a result.
+  let release;
+  const pending = app({ response: (options) => new Promise((resolve) => {
+    options.onStart?.({ type: 'start' });
+    options.onDelta?.('partial', 'partial');
+    release = () => {
+      const frame = { type: 'done', rewrite: 'Accepted 70%', mps: 91, fidelity: 87 };
+      options.onDone(frame); resolve({ ok: true, finalFrame: frame });
+    };
+  }) });
+  const streaming = pending.ui.submit('Source 70%');
+  assert.deepEqual(statusOf(pending), { text: '', state: 'streaming' },
+    'a running rewrite must not be announced as a failed check');
+  assert.equal(pending.document.querySelector('.output-action'), null);
+  release();
+  await streaming;
+  await pending.settle();
+  assert.deepEqual(statusOf(pending), { text: t.approved, state: 'approved' });
+  assert.ok(pending.document.querySelectorAll('.output-action').length > 0);
+
+  // Below the meaning floor: rejected, announced, and no actions offered.
+  const floor = app({ response: (options) => {
+    options.onStart?.({ type: 'start' });
+    const frame = { type: 'done', rewrite: 'Rejected', mps: 12, fidelity: 9 };
+    options.onDone(frame); return { ok: true, finalFrame: frame };
+  } });
+  await floor.ui.submit('Source 70%');
+  await floor.settle();
+  assert.deepEqual(statusOf(floor), { text: t.unapproved, state: 'unapproved' });
+  assert.equal(floor.document.querySelector('.output-action'), null);
+  assert.equal(floor.ui.activeConvo().thread.original, undefined);
+
+  // Transport failure: still a stated outcome, never a stranded empty line.
+  const failed = app({ response: () => ({ ok: false, finalFrame: { status: 500, error: 'upstream failed' } }) });
+  await failed.ui.submit('Source 70%');
+  await failed.settle();
+  assert.deepEqual(statusOf(failed), { text: t.unapproved, state: 'unapproved' });
+  assert.equal(failed.document.querySelector('.output-action'), null);
+
+  // Explicit Stop: the cancelled attempt reports unapproved rather than staying blank.
+  const stopped = app({ response: (options) => new Promise(() => { options.onStart?.({ type: 'start' }); }) });
+  const running = stopped.ui.submit('Source 70%');
+  assert.deepEqual(statusOf(stopped), { text: '', state: 'streaming' });
+  stopped.get('hero-form').emit('submit');
+  assert.deepEqual(statusOf(stopped), { text: t.unapproved, state: 'unapproved' });
+  void running;
+});
+
+test('a copied example resets its label and success styling, and never carries them to another row', async () => {
+  const a = app({ languages: ['ko-KR'] });
+  const ui = copy.onboardingCopy('ko');
+  const button = a.document.querySelector('.editor__btn');
+  const clipboard = [];
+  a.context.navigator.clipboard = { writeText: async (text) => { clipboard.push(text); } };
+  assert.equal(button.textContent, ui.copyExample);
+
+  button.emit('click');
+  await nextTurn();
+  assert.deepEqual(clipboard, [EXAMPLES.find((row) => row.id === 'ko-fixture-0').after]);
+  assert.equal(button.textContent, ui.copied);
+  assert.equal(button.classList.contains('is-ok'), true);
+
+  // Switching rows drops the transient result: it belonged to the copied row.
+  change(a, 'example-choice', 'ko-fixture-1');
+  assert.equal(button.textContent, ui.copyExample);
+  assert.equal(button.classList.contains('is-ok'), false, 'success styling must not survive a row change');
+
+  // A failure must not keep the previous success styling.
+  button.emit('click');
+  await nextTurn();
+  assert.equal(button.classList.contains('is-ok'), true);
+  a.context.navigator.clipboard = { writeText: async () => { throw new Error('clipboard unavailable'); } };
+  button.emit('click');
+  await nextTurn();
+  assert.equal(button.textContent, ui.copyFailed);
+  assert.equal(button.classList.contains('is-ok'), false);
+
+  // The resting label returns so a second copy still reads as an available action.
+  await new Promise((resolve) => setTimeout(resolve, 1600));
+  assert.equal(button.textContent, ui.copyExample);
+  assert.equal(button.classList.contains('is-ok'), false);
 });
 
 test('optional controls open for credentials, close with Escape, and Free restores setup-free sending', () => {
   const a = app();
   const panel = a.get('settings-panel');
   assert.equal(panel.getAttribute('open'), null);
-  assert.equal(panel.querySelector('#lang'), null, 'language is outside the optional disclosure');
-  for (const id of ['document-type', 'persona', 'register', 'tier', 'license-key', 'api-key', 'protected-text']) assert.ok(panel.querySelector(`#${id}`));
+  for (const id of ['lang', 'tier']) {
+    assert.equal(panel.querySelector(`#${id}`), null, `${id} stays outside the optional disclosure`);
+  }
+  for (const id of ['document-type', 'persona', 'register', 'license-key', 'api-key', 'protected-text']) assert.ok(panel.querySelector(`#${id}`));
   a.get('pro-existing').emit('click');
   assert.equal(panel.getAttribute('open'), '');
   assert.equal(a.get('license-key').focused, true);
-  panel.emit('keydown', { key: 'Escape' });
+  // The panel overlays the hero, so Escape must dismiss it from anywhere on the page.
+  a.document.emit('keydown', { key: 'Escape' });
   assert.equal(panel.getAttribute('open'), null);
   assert.equal(a.get('settings-label').focused, true);
+  // A control inside the panel bubbles its keydown to the document, so one
+  // listener covers both; this must not need a second panel-scoped listener.
+  a.get('pro-existing').emit('click');
+  assert.equal(panel.getAttribute('open'), '');
+  a.get('document-type').emit('keydown', { key: 'Escape' });
+  assert.equal(panel.getAttribute('open'), null, 'Escape from a control inside the panel dismisses it');
+  a.get('pro-existing').emit('click');
+  assert.equal(panel.getAttribute('open'), '');
+  a.get('hero-input').emit('mousedown');
+  assert.equal(panel.getAttribute('open'), null, 'a press outside the panel dismisses it');
+  // A press on a control inside the panel must leave it open.
+  a.get('pro-existing').emit('click');
+  a.get('license-key').emit('mousedown');
+  assert.equal(panel.getAttribute('open'), '', 'a press inside the panel keeps it open');
   a.get('price-byok').emit('click');
   assert.equal(panel.getAttribute('open'), '');
   assert.equal(a.get('api-key').focused, true);

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { createServer } from 'node:http';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
@@ -407,18 +408,25 @@ test('Aside cancellation before spawn and during a real child is bounded and con
     const controller = new AbortController();
     if (before) controller.abort(new Error('provider-secret'));
     let pid;
-    const spawnImpl = fakeCli({ script: 'setInterval(() => {}, 1000);', inspect: () => {
-      assert.equal(before, false);
-      setTimeout(() => controller.abort(new Error('provider-secret')), 40);
-    } });
+    let closed = Promise.resolve([]);
+    const spawnImpl = fakeCli({ script: "process.stdout.write('READY'); process.stdin.resume(); setInterval(() => {}, 1000);",
+      inspect: () => assert.equal(before, false) });
     const result = await runAsideRewrite({ ...f, signal: controller.signal, tempRoot: f.temporary,
-      spawnImpl: (...args) => { const child = spawnImpl(...args); pid = child.pid; return child; } });
+      spawnImpl: (...args) => {
+        const child = spawnImpl(...args);
+        pid = child.pid;
+        // invokeCli unrefs the killed child, so the close deadline must keep the loop alive.
+        const closeController = new AbortController();
+        const closeTimer = setTimeout(() => closeController.abort(), 5000);
+        closed = once(child, 'close', { signal: closeController.signal }).finally(() => clearTimeout(closeTimer));
+        child.stdout.once('data', () => controller.abort(new Error('provider-secret')));
+        return child;
+      } });
     assert.equal(result.status, 'error');
     assert.equal(result.code, 'aborted');
     assert.equal(result.exitCode, 1);
     if (pid) {
-      // Child close may follow the immediate rejection by one event-loop turn.
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await closed;
       assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
     }
     await assertNoOutput(f, result);

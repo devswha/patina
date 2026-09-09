@@ -51,9 +51,10 @@ import { inspectAuditSource } from '../inspection.js';
  * @throws {Error} For validation, provider, file, or runtime failures.
  */
 export async function runDefault(parsed, logger) {
-  const config = loadConfig(undefined, parsed.config
-    ? { overridePath: resolve(process.cwd(), parsed.config) }
-    : {});
+  const config = loadConfig(undefined, {
+    overridePath: parsed.config ? resolve(process.cwd(), parsed.config) : undefined,
+    snapshotPath: parsed.configSnapshot ? resolve(process.cwd(), parsed.configSnapshot) : undefined,
+  });
 
   if (parsed.lang) config.language = parsed.lang;
   if (parsed.documentType) config.documentType = parsed.documentType;

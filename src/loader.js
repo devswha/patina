@@ -3,7 +3,6 @@ import { resolve, sep } from 'node:path';
 import yaml from 'js-yaml';
 import { validateDocumentTypeName } from './security.js';
 import { inputError, runtimeError } from './errors.js';
-import { loadCommunityPatterns } from './community-patterns.js';
 
 /**
  * Read a UTF-8 text file.
@@ -82,13 +81,7 @@ export function loadPatterns(repoRoot, lang, skipPatterns = []) {
       isScoreOnly: frontmatter?.score_only === true,
     });
   }
-  for (const pack of loadCommunityPatterns(repoRoot, lang, skipPatterns)) {
-    if (byFile.has(pack.file) || packs.some((loaded) => loaded.file === pack.file)) {
-      throw runtimeError('community pattern filename collision', pack.file, 'Remove the conflicting community pack with `patina pattern remove <name>`.');
-    }
-    packs.push(pack);
-  }
-  return packs.sort((a, b) => a.file.localeCompare(b.file));
+  return packs;
 }
 
 /**

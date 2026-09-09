@@ -11,61 +11,30 @@ Patina ships 184 pattern entries across four languages. The language-specific re
 
 ## Notes
 
-- Rewrite-capable patterns are applied by the rewrite modes (default rewrite, `--verify`, and the skill-only `/patina --strict` multi-pass flow) and `--diff`, according to their pack metadata and runtime mode.
+- Rewrite-capable patterns are applied by the rewrite modes (default rewrite, `--verify`, and the explicit skill-only `/patina --instruction-only --strict` multi-pass flow) and `--diff`, according to their pack metadata and runtime mode. Default `/patina` and ordinary `/patina --strict` return verified CLI output; the host-agent multi-pass flow is opt-in, not an inline fallback for CLI failure.
 - Viral-hook patterns are score/audit-only SNS-marketing signals. They affect `--score` and `--audit`, but rewrite modes skip them because the rhetoric may be intentional.
 - Pattern packs are auto-discovered from `patterns/{lang}-*.md`. To add a language or custom pack, follow [CONTRIBUTING.md](../CONTRIBUTING.md) and the frontmatter format used in the existing packs.
 
-## Community Packs
+## Custom Patterns
 
-Community packs add prompt patterns through a separate unsigned GitHub distribution
-path. They do not require a Pro license. `patina pack` remains the licensed Pro
-pack command.
+The CLI loads built-in patterns from `patterns/{lang}-*.md` and user or licensed
+Pro patterns from `custom/patterns/{lang}-*.md`. A custom file replaces a built-in
+file with the same name. Follow the existing frontmatter format and include
+fire conditions, exclusions, meaning-preservation notes, and before/after examples.
+Keep a separate copy of custom files before reinstalling the CLI.
 
-```bash
-patina pattern install en-corporate-bizspeak
-patina pattern list
-patina pattern remove en-corporate-bizspeak
-```
+### Retired community packs
 
-Short names resolve under `devswha/patina-community-packs`, in `packs/<name>`.
-You can also pass `https://github.com/OWNER/REPO/tree/REF/DIRECTORY`. Use a tag,
-commit, or branch without slashes. The installer resolves it to a full commit
-before reading `pack.yaml` and every pattern file. Downloads use public HTTPS
-without credentials; redirects, scripts and archive extraction are unsupported.
+Community-pack support was retired from the source checkout on 2026-09-08.
+The `patina pattern` command no longer installs, lists, or removes packs, and
+the CLI no longer loads `custom/community-packs/`. Existing files there are
+left untouched.
 
-The manifest requires these fields:
-
-```yaml
-name: en-corporate-bizspeak
-version: 1.0.0
-language: en
-patterns:
-  - en-community-corporate-bizspeak.md
-compatibility:
-  min: 8.2.0
-  maxExclusive: 9.0.0
-author: devswha
-license: MIT
-```
-
-Pattern files use `LANG-community-NAME.md` and the regular pattern frontmatter:
-`pack` matching the filename stem, `language`, `version`, positive `patterns`
-count, and optional `phase` or `score_only`. Include fire conditions, exclusions,
-meaning-preservation notes, and before/after examples in each pattern's body.
-
-Installation publishes a complete pack directory into this CLI installation's
-`custom/community-packs/`. It never replaces built-in, Pro or hand-written
-custom patterns. Remove an unchanged installation before installing a newer
-version. Locally edited or unrecognized files block loading/removal so they can
-be preserved. A CLI reinstall can replace its installation directory; keep your
-source packs separately. `list` and `remove` work offline; `--json` is available
-on all three commands.
-
-Installed patterns participate in prompt-based rewriting and audit/scoring.
-They do not add deterministic detector features. The Node loader reads the
-managed directory; the agent skill's orchestration is unchanged. Packs are
-unsigned instructions from their authors, so install only sources you trust.
-Stored hashes detect later local changes, not malicious authorship.
+To keep an old pack, review its Markdown files and copy only the patterns you
+want into `custom/patterns/`. Check filenames first: a same-name file overrides
+a built-in pattern or replaces an existing custom file. The old `pack.yaml`
+and `installed.json` files are not used by the custom-pattern loader.
+The separate `patina pack` command for licensed Pro packs remains available.
 
 ## Supporting References
 

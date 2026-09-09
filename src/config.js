@@ -13,17 +13,28 @@ const REPO_ROOT = resolve(__dirname, '..');
  *
  * Precedence (low → high): base path → ~/.patina.yaml → ./.patina.yaml → overridePath.
  * The explicit `--config` file is layered LAST so an ambient project .patina.yaml
- * cannot silently override a pinned config (reproducible CI runs).
+ * cannot override explicit values. It is an overlay, not an execution snapshot.
+ * Internal snapshotPath instead loads only the captured mapping: no defaults,
+ * ambient files, or additive re-merging. Both paths share validation/normalization.
  *
  * @param {string} [path] Base YAML config path.
  * @param {object} [opts] Optional load options.
  * @param {string} [opts.overridePath] Explicit `--config` override path.
+ * @param {string} [opts.snapshotPath] Internal complete config snapshot; excludes overridePath.
  * @returns {object} Merged patina configuration object.
  * @throws {Error} When a config file is missing, invalid YAML, or not a mapping.
  * @example
  * const config = loadConfig();
  */
-export function loadConfig(path = resolve(REPO_ROOT, '.patina.default.yaml'), { overridePath } = {}) {
+export function loadConfig(path = resolve(REPO_ROOT, '.patina.default.yaml'), { overridePath, snapshotPath } = {}) {
+  if (snapshotPath && overridePath) {
+    throw inputError(
+      '--config-snapshot and --config cannot be combined',
+      'An execution snapshot must not be merged with other config files.',
+      'Use --config for ordinary overlays, or only --config-snapshot for a captured configuration.'
+    );
+  }
+  if (snapshotPath) path = resolve(snapshotPath);
   const raw = readFileSync(path, 'utf8');
   const parsed = yaml.load(raw);
   if (!isPlainObject(parsed)) {
@@ -35,15 +46,17 @@ export function loadConfig(path = resolve(REPO_ROOT, '.patina.default.yaml'), { 
   }
   const config = parsed;
 
-  // User config: ~/.patina.yaml (global), then ./.patina.yaml (project, takes precedence).
-  for (const userPath of [...new Set([resolve(homedir(), '.patina.yaml'), resolve(process.cwd(), '.patina.yaml')])]) {
-    if (!existsSync(userPath)) continue;
-    mergeYamlMapping(config, userPath, 'User config');
-  }
+  if (!snapshotPath) {
+    // User config: ~/.patina.yaml (global), then ./.patina.yaml (project, takes precedence).
+    for (const userPath of [...new Set([resolve(homedir(), '.patina.yaml'), resolve(process.cwd(), '.patina.yaml')])]) {
+      if (!existsSync(userPath)) continue;
+      mergeYamlMapping(config, userPath, 'User config');
+    }
 
-  // Explicit --config wins over both defaults and the ambient project/global files.
-  if (overridePath) {
-    mergeYamlMapping(config, resolve(overridePath), 'Config');
+    // Explicit --config wins over both defaults and the ambient project/global files.
+    if (overridePath) {
+      mergeYamlMapping(config, resolve(overridePath), 'Config');
+    }
   }
 
   if (Object.prototype.hasOwnProperty.call(config, 'profile')) {

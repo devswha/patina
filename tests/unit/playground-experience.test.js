@@ -64,6 +64,7 @@ class Element {
   set hidden(value) { this.toggleAttribute('hidden', value); }
   setAttribute(name, value) { this.attributes[name] = String(value); }
   getAttribute(name) { return this.attributes[name] ?? null; }
+  hasAttribute(name) { return name in this.attributes; }
   removeAttribute(name) { delete this.attributes[name]; }
   toggleAttribute(name, force) { if (force) this.attributes[name] = ''; else delete this.attributes[name]; }
   appendChild(child) { child.parentElement = this; this.children.push(child); return child; }
@@ -784,14 +785,31 @@ test('optional controls open for credentials, close with Escape, and Free restor
   const a = app();
   const panel = a.get('settings-panel');
   assert.equal(panel.getAttribute('open'), null);
-  assert.equal(panel.querySelector('#lang'), null, 'language is outside the optional disclosure');
-  for (const id of ['document-type', 'persona', 'register', 'tier', 'license-key', 'api-key', 'protected-text']) assert.ok(panel.querySelector(`#${id}`));
+  for (const id of ['lang', 'tier']) {
+    assert.equal(panel.querySelector(`#${id}`), null, `${id} stays outside the optional disclosure`);
+  }
+  for (const id of ['document-type', 'persona', 'register', 'license-key', 'api-key', 'protected-text']) assert.ok(panel.querySelector(`#${id}`));
   a.get('pro-existing').emit('click');
   assert.equal(panel.getAttribute('open'), '');
   assert.equal(a.get('license-key').focused, true);
-  panel.emit('keydown', { key: 'Escape' });
+  // The panel overlays the hero, so Escape must dismiss it from anywhere on the page.
+  a.document.emit('keydown', { key: 'Escape' });
   assert.equal(panel.getAttribute('open'), null);
   assert.equal(a.get('settings-label').focused, true);
+  // A control inside the panel bubbles its keydown to the document, so one
+  // listener covers both; this must not need a second panel-scoped listener.
+  a.get('pro-existing').emit('click');
+  assert.equal(panel.getAttribute('open'), '');
+  a.get('document-type').emit('keydown', { key: 'Escape' });
+  assert.equal(panel.getAttribute('open'), null, 'Escape from a control inside the panel dismisses it');
+  a.get('pro-existing').emit('click');
+  assert.equal(panel.getAttribute('open'), '');
+  a.get('hero-input').emit('mousedown');
+  assert.equal(panel.getAttribute('open'), null, 'a press outside the panel dismisses it');
+  // A press on a control inside the panel must leave it open.
+  a.get('pro-existing').emit('click');
+  a.get('license-key').emit('mousedown');
+  assert.equal(panel.getAttribute('open'), '', 'a press inside the panel keeps it open');
   a.get('price-byok').emit('click');
   assert.equal(panel.getAttribute('open'), '');
   assert.equal(a.get('api-key').focused, true);

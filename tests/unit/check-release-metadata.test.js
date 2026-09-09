@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import {
   collectReleaseMetadataErrors,
   runReleaseMetadataCheck,
+  syncPluginVersions,
 } from '../../scripts/check-release-metadata.mjs';
 
 const VERSION = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;
@@ -90,6 +91,54 @@ test('runner reports success without exiting the importing process', () => {
   });
   assert.equal(exitCode, 0);
   assert.equal(output, `Release metadata OK for ${VERSION}\n`);
+});
+
+test('explicit plugin sync updates only the two Claude mirrors and keeps the checker coherent', () => {
+  withFixture((root) => {
+    writeFixtureFile(root, '.claude-plugin/plugin.json', JSON.stringify({ name: 'patina', version: '0.0.0' }));
+    writeFixtureFile(root, '.claude-plugin/marketplace.json', JSON.stringify({
+      plugins: [{ name: 'patina', version: '0.0.0' }, { name: 'other', version: '3.0.0' }],
+    }));
+
+    const first = syncPluginVersions({ repoRoot: root });
+    assert.deepEqual(first, {
+      version: VERSION,
+      updated: ['.claude-plugin/plugin.json', '.claude-plugin/marketplace.json'],
+      changed: true,
+    });
+    assert.equal(readJson(root, '.claude-plugin/plugin.json').version, VERSION);
+    assert.equal(readJson(root, '.claude-plugin/marketplace.json').plugins[0].version, VERSION);
+    assert.equal(readJson(root, '.claude-plugin/marketplace.json').plugins[1].version, '3.0.0');
+    assert.deepEqual(collectReleaseMetadataErrors({ repoRoot: root }).errors, []);
+
+    const pluginText = readFileSync(join(root, '.claude-plugin/plugin.json'), 'utf8');
+    const marketplaceText = readFileSync(join(root, '.claude-plugin/marketplace.json'), 'utf8');
+    const second = syncPluginVersions({ repoRoot: root });
+    assert.deepEqual(second, { version: VERSION, updated: [], changed: false });
+    assert.equal(readFileSync(join(root, '.claude-plugin/plugin.json'), 'utf8'), pluginText);
+    assert.equal(readFileSync(join(root, '.claude-plugin/marketplace.json'), 'utf8'), marketplaceText);
+  });
+});
+
+test('plugin sync validates malformed or missing manifests before writing either mirror', () => {
+  withFixture((root) => {
+    const pluginPath = join(root, '.claude-plugin/plugin.json');
+    const marketplacePath = join(root, '.claude-plugin/marketplace.json');
+    const marketplaceBefore = readFileSync(marketplacePath, 'utf8');
+    writeFileSync(pluginPath, '{not-json');
+    assert.throws(() => syncPluginVersions({ repoRoot: root }), /plugin\.json is malformed JSON/);
+    assert.equal(readFileSync(marketplacePath, 'utf8'), marketplaceBefore);
+
+    rmSync(pluginPath);
+    assert.throws(() => syncPluginVersions({ repoRoot: root }), /plugin\.json is missing or unreadable/);
+    assert.equal(readFileSync(marketplacePath, 'utf8'), marketplaceBefore);
+
+    writeFileSync(pluginPath, JSON.stringify({ name: 'patina', version: '0.0.0' }));
+    const pluginBefore = readFileSync(pluginPath, 'utf8');
+    writeFileSync(marketplacePath, '{not-json');
+    assert.throws(() => syncPluginVersions({ repoRoot: root }), /marketplace\.json is malformed JSON/);
+    assert.equal(readFileSync(pluginPath, 'utf8'), pluginBefore);
+  });
 });
 
 for (const { label, mutate, message } of [

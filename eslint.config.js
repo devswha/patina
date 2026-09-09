@@ -19,6 +19,7 @@ export default [
     ignores: [
       '.git/**',
       '.omc/**',
+      '.omo/**',
       '.omx/**',
       'node_modules/**',
       'docs/benchmarks/*.json',

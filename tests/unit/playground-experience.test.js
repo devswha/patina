@@ -161,7 +161,7 @@ function app({ response, storage = new Map(), languages = [], language, search =
       return { ok: true, finalFrame: frame };
     },
   });
-  vm.runInContext(controller + '\nglobalThis.ui = { state, submit, activeConvo, newConvo, selectConvo, readControls, failureMessage, addRecovery };', context);
+  vm.runInContext(controller + '\nglobalThis.ui = { state, submit, activeConvo, newConvo, selectConvo, readControls, failureMessage, addRecovery, tierLabel };', context);
   return {
     document, calls, storage, context, ui: context.ui, get: (id) => document.querySelector(`#${id}`),
     async settle() { await nextTurn(); await Promise.all(reviews); await nextTurn(); },
@@ -768,20 +768,59 @@ test('illustrative copy has no guessed scores while approved API scores stay vis
   assert.equal(a.document.querySelector('.output-status').textContent, EN_STATUS.approved);
 });
 
-// The exact wording is product copy and changes; the contract is that both
-// outcomes are non-empty, distinct, and free of internal metric names. Read them
-// from the controller so a copy edit cannot silently break the status contract.
-const EN_STATUS = (() => {
-  const pick = (key) => controller.match(new RegExp(`${key}: '([^']+)'`))?.[1];
-  const approved = pick('outputApproved');
-  const unapproved = pick('outputUnapproved');
-  assert.ok(approved && unapproved, 'both status strings must exist');
-  assert.notEqual(approved, unapproved);
-  for (const text of [approved, unapproved]) {
-    assert.doesNotMatch(text, /\bMPS\b|\bfidelity\b/i, 'user-facing status must not name internal metrics');
+// Asserted as literals, not scraped from the controller: reading the expected
+// value out of the code under test would accept any wording it happens to hold.
+// Approval is an `mps >= 70 && fidelity >= 70` threshold, so the approved line
+// may report that the check passed but must never promise the meaning is
+// identical, and neither line may leak an internal metric name.
+const EN_STATUS = {
+  approved: 'Passed our meaning check. Worth a quick read before you use it.',
+  unapproved: 'This one did not pass our check, so we are not offering it to copy.',
+};
+
+// Three separate defects on this branch were English literals in the controller
+// reaching the DOM, which a source-scraping assertion cannot catch. Assert the
+// rendered result detail per locale instead.
+for (const lang of ['ko', 'zh', 'ja']) {
+  test(`${lang}: result badges and detail render in the selected language`, async () => {
+    const a = app({ response: (options) => {
+      const frame = { type: 'done', rewrite: 'Accepted 70%', mps: 91, fidelity: 87,
+        signals: { before: { signalScore: 40 }, after: { signalScore: 0 } },
+        diff: { beforeChars: 10, afterChars: 8, charDelta: -2, beforeWords: 2, afterWords: 2, wordDelta: 0 } };
+      options.onDone(frame); return { ok: true, finalFrame: frame };
+    } });
+    change(a, 'lang', lang);
+    await a.ui.submit('원문 70%');
+    await a.settle();
+    const thread = a.get('thread').textContent;
+    // The English literals must not survive into a non-English render.
+    for (const english of ['Meaning kept', 'Close to your text', 'Length (before', 'AI-sounding paragraphs', 'Audit JSON', 'Download']) {
+      assert.ok(!thread.includes(english), `${lang} rendered the English literal "${english}"`);
+    }
+    assert.ok(thread.includes('91') && thread.includes('87'), 'the real scores still render');
+  });
+}
+
+test('a renamed plan never appears under its retired name', () => {
+  const a = app();
+  for (const lang of ['en', 'ko', 'zh', 'ja']) {
+    change(a, 'lang', lang);
+    const t = copy.experienceCopy(lang);
+    assert.equal(a.ui.tierLabel('byok'), t.byokName);
+    assert.equal(a.ui.tierLabel('pro'), t.proName);
+    assert.equal(a.ui.tierLabel('free'), copy.onboardingCopy(lang).freeName);
+    assert.notEqual(a.ui.tierLabel('byok'), 'BYOK', 'the retired mode name must not reach a user');
   }
-  return { approved, unapproved };
-})();
+});
+
+test('status copy states a check result without promising identical meaning', () => {
+  for (const text of Object.values(EN_STATUS)) {
+    assert.doesNotMatch(text, /\bMPS\b|\bfidelity\b|BYOK/i, 'status must not name internal metrics');
+  }
+  // A 70-point threshold is not proof, so no absolute claim about the meaning.
+  assert.doesNotMatch(EN_STATUS.approved, /still says what you said|meaning is unchanged|same meaning/i);
+  assert.match(EN_STATUS.approved, /check/i, 'approval must be stated as a check result');
+});
 
 // The status line is the only visible statement about whether a result passed the
 // meaning gate, so its transitions are asserted as observable state, not as source shape.

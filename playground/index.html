@@ -66,7 +66,7 @@
             </div>
             <div class="nav__byok" id="byok-row" hidden>
               <label class="ctl ctl--byok" id="provider-ctl">
-                <span class="ctl__label">Provider</span>
+                <span class="ctl__label">AI company</span>
                 <select id="provider" class="ctl__select"></select>
               </label>
               <label class="ctl ctl--byok" id="model-ctl">
@@ -87,7 +87,7 @@
               <button class="ctl__action" id="license-sign-in" type="button">Apply key</button>
               <button class="ctl__action" id="license-sign-out" type="button" hidden>Clear key and chats</button>
               <span class="ctl__status" id="license-status" role="status" aria-live="polite"></span>
-              <a class="ctl__link" id="pro-docs" href="https://github.com/devswha/patina/blob/main/docs/HTTP-API.md" target="_blank" rel="noopener noreferrer">Hosted API docs and limits</a>
+              <a class="ctl__link" id="pro-docs" href="https://github.com/devswha/patina/blob/main/docs/HTTP-API.md" target="_blank" rel="noopener noreferrer">Docs and usage limits</a>
               <a class="ctl__link" id="pro-portal" hidden target="_blank" rel="noopener noreferrer">Manage subscription in Polar</a>
               <span class="ctl__err" id="license-error" role="alert" hidden></span>
             </div>
@@ -164,9 +164,9 @@
         </div>
         <dl class="bench__cards">
           <div class="bstat"><dt>100%</dt><dd>overall accuracy</dd><small>95% CI 92.7–100%</small></div>
-          <div class="bstat"><dt>49</dt><dd>writing samples</dd><small>AI-written and human-written</small></div>
+          <div class="bstat"><dt>49</dt><dd>writing samples</dd><small>samples labeled AI-like and natural</small></div>
           <div class="bstat"><dt>4</dt><dd>languages</dd><small>KO · EN · ZH · JA</small></div>
-          <div class="bstat"><dt>0</dt><dd>human writing wrongly flagged</dd><small>out of every sample we tested</small></div>
+          <div class="bstat"><dt>0</dt><dd>natural writing wrongly flagged</dd><small>at a 1-in-100 false-alarm target, in 23 natural-labeled samples</small></div>
         </dl>
         <div class="bench__signals">
           <span class="sigchip">sentence rhythm</span>
@@ -177,7 +177,7 @@
         <div class="bench__tablewrap">
           <table class="bench__table">
             <thead>
-              <tr><th>language</th><th>samples</th><th>accuracy</th><th>margin of error</th><th>F1 score</th></tr>
+              <tr><th>language</th><th>samples</th><th>accuracy</th><th>95% confidence range</th><th>F1 score</th></tr>
             </thead>
             <tbody>
               <tr><td>EN</td><td>13</td><td>100%</td><td>77.2–100%</td><td>1.00</td></tr>
@@ -226,7 +226,7 @@
             <h3 class="price__name">Pro</h3>
             <p class="price__cost">$9.99<span>/mo</span></p>
             <ul class="price__feats">
-              <li>Programmatic access · same quality gates</li>
+              <li>Connect patina to your own tools</li>
               <li>100 rewrites / month</li>
               <li>Up to 20,000 characters each</li>
               <li>50,000 characters / month total</li>
@@ -235,7 +235,7 @@
             <button class="price__existing" id="pro-existing" type="button">Already purchased? Apply your license key</button>
           </div>
         </div>
-        <p class="pricing__note">The key from your purchase email is the only thing you need — paste it into Pro mode and your first rewrite checks it. We never save it. The monthly count and the monthly character total are separate limits, so either one can stop you first.</p>
+        <p class="pricing__note">The key from your purchase email is the only thing you need — paste it into Pro mode and your first rewrite checks it. We never save it. The monthly count and the monthly character total are separate limits, so either one can stop you first. The limits in place can differ from the ones listed here.</p>
       </section>
 
       <section class="cta">
@@ -271,7 +271,7 @@
         <nav class="sidebar__history" id="history" aria-label="Conversations"></nav>
         <div class="sidebar__foot">
           <div class="brandmark"><img class="brandmark__icon" src="/assets/brand/patina-mark.svg" alt="" width="22" height="22" /> patina <span class="ver-badge">v8.6.0</span></div>
-          <div class="sidebar__note">Deterministic humanizer —<br />same claim, numbers, voice.</div>
+          <div class="sidebar__note">Same claim, numbers, voice —<br />naturally rewritten.</div>
         </div>
       </aside>
 

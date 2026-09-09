@@ -119,19 +119,23 @@ const I18N = {
     examplesTitle: 'Before and after',
     benchTitle: 'Numbers, in the open',
     benchLede: 'We test patina on a fixed set of writing samples that anyone can open and check. It measures our own accuracy — it does not judge who wrote something.',
-    benchCards: [['overall accuracy', '95% CI 92.7–100%'], ['writing samples', 'AI-written vs. human-written'], ['languages', 'KO · EN · ZH · JA'], ['human writing wrongly flagged', 'out of every sample we tested']],
-    benchCols: ['language', 'samples', 'accuracy', 'margin of error', 'F1 score'],
+    benchCards: [['overall accuracy', '95% CI 92.7–100%'], ['writing samples', 'samples labeled AI-like and natural'], ['languages', 'KO · EN · ZH · JA'], ['natural writing wrongly flagged', 'at a 1-in-100 false-alarm target, in 23 natural-labeled samples']],
+    benchCols: ['language', 'samples', 'accuracy', '95% confidence range', 'F1 score'],
     benchNote: 'These numbers come from those 49 samples, and we use them to catch our own mistakes. They do not promise the same result on other kinds of writing, and they never say who wrote your text.',
     benchLink: 'Read the full report →',
     ctaTitle: 'Paste your own and see',
     ctaSub: 'Put your own text in the box above and see what changes. Nothing to install, nothing to sign up for.',
     ctaBtn: 'Start at the top ↑',
-    note: ['Deterministic humanizer —', 'same claim, numbers, voice.'],
+    note: ['Same claim, numbers, voice —', 'naturally rewritten.'],
     chatPh: 'Keep refining…  (Enter to send · Shift+Enter for newline)',
     newchat: 'New chat',
     emptyChat: 'New chat — paste your text below and patina cleans it up.',
     outputUnapproved: 'This one did not pass our check, so we are not offering it to copy.',
-    outputApproved: 'Checked: it still says what you said. Ready to copy.',
+    actCopy: 'Copy', actCopied: 'Copied', actCopyFailed: 'Copy failed', actDownload: 'Download', actExport: 'Export', actAudit: 'Audit JSON',
+    metaLength: 'Length (before → after)', metaChars: 'Characters', metaWords: 'Words',
+    metaMeaning: 'Meaning kept', metaCloseness: 'Close to your text', metaDrifted: '⚠ drifted too far',
+    metaToneSummary: 'How much AI tone was there? (before → after)', metaToneLabel: 'AI-sounding paragraphs ',
+    outputApproved: 'Passed our meaning check. Worth a quick read before you use it.',
     floorWarn: 'This version drifted too far from what you wrote, so we are not offering it. Try again, or switch to a stronger model.',
     reportFp: 'Flagged your own writing? Report a false positive →',
     failNote: 'That did not go through. Try again, or check your plan and key.',
@@ -155,19 +159,23 @@ const I18N = {
     examplesTitle: '이런 문장을, 이렇게',
     benchTitle: '숨김없는 벤치마크',
     benchLede: '누구나 열어볼 수 있는 글 모음으로 patina를 시험해요. 우리 정확도를 재는 것이지, 누가 썼는지 가려내는 게 아니에요.',
-    benchCards: [['전체 정확도', '95% CI 92.7–100%'], ['시험한 글', 'AI가 쓴 글과 사람이 쓴 글'], ['지원 언어', 'KO · EN · ZH · JA'], ['사람 글을 잘못 지목한 횟수', '시험한 모든 글에서'], ],
-    benchCols: ['언어', '시험한 글', '정확도', '오차 범위', 'F1 점수'],
+    benchCards: [['전체 정확도', '95% CI 92.7–100%'], ['시험한 글', 'AI 같다고 라벨한 글과 자연스러운 글'], ['지원 언어', 'KO · EN · ZH · JA'], ['자연스러운 글을 잘못 지목한 횟수', '오탐 100분의 1 기준, 자연 라벨 23개에서'], ],
+    benchCols: ['언어', '시험한 글', '정확도', '95% 신뢰 범위', 'F1 점수'],
     benchNote: '이 숫자는 그 49개 글에서 나온 것이고, 우리 실수를 잡는 데 씁니다. 다른 종류의 글에서도 같은 결과가 나온다고 약속하지 않고, 누가 썼는지도 말하지 않아요.',
     benchLink: '전체 리포트 보기 →',
     ctaTitle: '직접 붙여넣어 확인해 보세요',
     ctaSub: '위 칸에 직접 쓴 글을 넣고 어떻게 바뀌는지 보세요. 설치할 것도, 가입할 것도 없어요.',
     ctaBtn: '맨 위로 가서 시작하기 ↑',
-    note: ['의미·숫자·톤을 바꾸지 않는', '결정론적 휴머나이저.'],
+    note: ['의미·숫자·톤을 바꾸지 않는', '자연스러운 다듬기.'],
     chatPh: '이어서 다듬기…  (Enter 전송 · Shift+Enter 줄바꿈)',
     newchat: '새 대화',
     emptyChat: '새 대화 — 아래에 글을 붙여넣으면 patina가 다듬어요.',
     outputUnapproved: '이 결과는 검사를 통과하지 못해서 복사할 수 있게 두지 않았어요.',
-    outputApproved: '확인했어요. 뜻은 그대로예요. 복사해서 쓰시면 돼요.',
+    actCopy: '복사', actCopied: '복사했어요', actCopyFailed: '복사하지 못했어요', actDownload: '내려받기', actExport: '내보내기', actAudit: '검사 기록(JSON)',
+    metaLength: '길이 (전 → 후)', metaChars: '글자 수', metaWords: '단어 수',
+    metaMeaning: '의미 유지', metaCloseness: '원문과의 가까움', metaDrifted: '⚠ 너무 많이 달라짐',
+    metaToneSummary: 'AI 티가 얼마나 있었나요? (전 → 후)', metaToneLabel: 'AI 같은 문단 ',
+    outputApproved: '의미 검사를 통과했어요. 쓰기 전에 한 번 읽어 보세요.',
     floorWarn: '이번 결과는 원래 글에서 너무 멀어져서 그대로 드리지 않을게요. 다시 시도하거나 더 좋은 모델을 골라 보세요.',
     reportFp: '직접 쓴 글인데 잡혔나요? 오탐 신고 →',
     failNote: '처리하지 못했어요. 다시 시도하거나 요금제와 키를 확인해 주세요.',
@@ -175,12 +183,12 @@ const I18N = {
     proUpsell: 'API 액세스 받기 — $9.99/월',
     proBuy: 'API 액세스 받기 — $9.99/월',
     proSoon: 'Pro — 곧 공개',
-    quotaConcurrent: '이미 진행 중인 리라이트가 있어요. 끝난 뒤 다시 시도해 주세요.',
-    serviceDown: '리라이트 서비스를 잠시 사용할 수 없어요. 나중에 다시 시도해 주세요.',
+    quotaConcurrent: '이미 다듬고 있는 글이 있어요. 끝난 뒤 다시 시도해 주세요.',
+    serviceDown: '지금은 잠시 이용할 수 없어요. 조금 뒤에 다시 시도해 주세요.',
     tooLong: '{tier} 모드 한도({cap}자)를 넘었어요. 줄여서 다시 시도해 주세요.',
     keyMissing: '내 키로 쓰려면 키를 먼저 입력해 주세요.',
-    stopNote: '중단했어요 — 리라이트가 취소됐어요.',
-    timeoutNote: '서버 응답이 없어 리라이트가 시간 초과됐어요. 다시 시도해 주세요.',
+    stopNote: '중단했어요 — 다듬기를 취소했어요.',
+    timeoutNote: '서버에서 답이 오지 않아 멈췄어요. 다시 시도해 주세요.',
     netNote: '네트워크 오류: {msg}',
     retry: '다시 시도',
     stopLabel: '중단',
@@ -191,19 +199,23 @@ const I18N = {
     examplesTitle: '改写前后',
     benchTitle: '公开的基准',
     benchLede: '我们用一组任何人都能打开查看的文章来测试 patina。它衡量的是我们自己的准确率，不判断文章是谁写的。',
-    benchCards: [['总体准确率', '95% CI 92.7–100%'], ['测试文章', 'AI 写的和人写的'], ['支持语言', 'KO · EN · ZH · JA'], ['把人写的误判的次数', '在我们测试的全部文章里']],
-    benchCols: ['语言', '测试文章', '准确率', '误差范围', 'F1 分数'],
+    benchCards: [['总体准确率', '95% CI 92.7–100%'], ['测试文章', '标为 AI 味和自然的文章'], ['支持语言', 'KO · EN · ZH · JA'], ['把自然文章误判的次数', '按百分之一误报目标，在 23 篇自然标注文章中']],
+    benchCols: ['语言', '测试文章', '准确率', '95% 置信区间', 'F1 分数'],
     benchNote: '这些数字来自那 49 篇文章，我们用它来发现自己的问题。它不保证换一类文章也是同样结果，也不会说你的文字是谁写的。',
     benchLink: '查看完整报告 →',
     ctaTitle: '粘贴你的文字试试',
     ctaSub: '把你自己的文字放进上面的框里，看看会怎么变。不用装什么，也不用注册。',
     ctaBtn: '回到顶部开始 ↑',
-    note: ['不改变主张·数字·语气的', '确定性人性化工具。'],
+    note: ['不改变主张·数字·语气的', '自然改写。'],
     chatPh: '继续润色…  (Enter 发送 · Shift+Enter 换行)',
     newchat: '新对话',
     emptyChat: '新对话 — 在下方粘贴有 AI 味的文字，patina 帮你润色。',
     outputUnapproved: '这一条没通过核对，所以没有开放复制。',
-    outputApproved: '核对完成，意思和你写的一样。可以复制了。',
+    actCopy: '复制', actCopied: '已复制', actCopyFailed: '复制失败', actDownload: '下载', actExport: '导出', actAudit: '核对记录（JSON）',
+    metaLength: '长度（前 → 后）', metaChars: '字符数', metaWords: '词数',
+    metaMeaning: '意思保留', metaCloseness: '与原文的接近度', metaDrifted: '⚠ 偏离太远',
+    metaToneSummary: '原来有多少 AI 味？（前 → 后）', metaToneLabel: '有 AI 味的段落 ',
+    outputApproved: '通过了我们的语义核对。用之前建议再读一遍。',
     floorWarn: '这次的结果和你原来的意思差得太远，我们就不给出了。可以再试一次，或换个更强的模型。',
     reportFp: '人工撰写却被标记？反馈误报 →',
     failNote: '没能处理成功。请再试一次，或检查方案和密钥。',
@@ -227,19 +239,23 @@ const I18N = {
     examplesTitle: 'ビフォー・アフター',
     benchTitle: '隠さないベンチマーク',
     benchLede: '誰でも開いて確認できる文章のセットで patina を試しています。測っているのは私たちの精度で、誰が書いたかを判定するものではありません。',
-    benchCards: [['全体精度', '95% CI 92.7–100%'], ['試した文章', 'AI が書いたものと人が書いたもの'], ['対応言語', 'KO · EN · ZH · JA'], ['人の文章を誤って指摘した数', '試したすべての文章のうち']],
-    benchCols: ['言語', '試した文章', '精度', '誤差の範囲', 'F1 スコア'],
+    benchCards: [['全体精度', '95% CI 92.7–100%'], ['試した文章', 'AI っぽいと分類した文章と自然な文章'], ['対応言語', 'KO · EN · ZH · JA'], ['自然な文章を誤って指摘した数', '100 分の 1 の誤検知目標で、自然と分類した 23 件中']],
+    benchCols: ['言語', '試した文章', '精度', '95% 信頼区間', 'F1 スコア'],
     benchNote: 'この数字は先ほどの 49 件から出たもので、私たちの間違いを見つけるために使っています。別の種類の文章でも同じ結果になるとは約束できませんし、誰が書いたかを示すものでもありません。',
     benchLink: '詳細レポートを見る →',
     ctaTitle: '自分の文章で試す',
     ctaSub: '上の欄にご自分の文章を入れて、どう変わるか見てください。入れるものも、登録も要りません。',
     ctaBtn: '上に戻って始める ↑',
-    note: ['主張・数字・トーンを変えない', '決定論的ヒューマナイザー。'],
+    note: ['主張・数字・トーンを変えない', '自然な書き換え。'],
     chatPh: 'さらに整える…  (Enter送信 · Shift+Enter改行)',
     newchat: '新しいチャット',
     emptyChat: '新しいチャット — 下にAIっぽい文章を貼ると patina が整えます。',
     outputUnapproved: 'これは確認を通らなかったので、コピーできるようにはしていません。',
-    outputApproved: '確認しました。意味はそのままです。コピーしてお使いいただけます。',
+    actCopy: 'コピー', actCopied: 'コピーしました', actCopyFailed: 'コピーできませんでした', actDownload: 'ダウンロード', actExport: '書き出し', actAudit: 'チェック記録（JSON）',
+    metaLength: '長さ（前 → 後）', metaChars: '文字数', metaWords: '単語数',
+    metaMeaning: '意味の保持', metaCloseness: '原文への近さ', metaDrifted: '⚠ 離れすぎ',
+    metaToneSummary: 'AI っぽさはどれくらい？（前 → 後）', metaToneLabel: 'AI っぽい段落 ',
+    outputApproved: '意味のチェックを通過しました。使う前に一度お読みください。',
     floorWarn: '今回の結果は元の文章から離れすぎたので、お出ししません。もう一度試すか、性能の高いモデルを選んでください。',
     reportFp: '自分で書いた文章なのに検出？誤検出を報告 →',
     failNote: 'うまくいきませんでした。もう一度試すか、プランとキーをご確認ください。',
@@ -899,19 +915,19 @@ function buildMeta(meta, original) {
   const mps = Number(meta?.mps?.mps ?? meta?.mps);
   const fid = Number(meta?.fidelity?.fidelity ?? meta?.fidelity);
   const floorFailed = meta?.floorFailed || (Number.isFinite(mps) && mps < MPS_FLOOR) || (Number.isFinite(fid) && fid < FIDELITY_FLOOR);
-  badges.appendChild(badge('Meaning kept', fmt(mps), Number.isFinite(mps) && mps >= MPS_FLOOR));
-  badges.appendChild(badge('Close to your text', fmt(fid), Number.isFinite(fid) && fid >= FIDELITY_FLOOR));
-  if (floorFailed) { const b = el('span', 'badge badge--warn'); b.appendChild(el('b', null, '⚠ drifted too far')); badges.appendChild(b); }
+  badges.appendChild(badge(i18n().metaMeaning, fmt(mps), Number.isFinite(mps) && mps >= MPS_FLOOR));
+  badges.appendChild(badge(i18n().metaCloseness, fmt(fid), Number.isFinite(fid) && fid >= FIDELITY_FLOOR));
+  if (floorFailed) { const b = el('span', 'badge badge--warn'); b.appendChild(el('b', null, i18n().metaDrifted)); badges.appendChild(b); }
   wrap.appendChild(badges);
 
   const before = meta?.signals?.before?.signalScore;
   const after = meta?.signals?.after?.signalScore;
   if (before != null || after != null) {
     const det = el('details', 'foldout');
-    det.appendChild(el('summary', null, 'How much AI tone was there? (before → after)'));
+    det.appendChild(el('summary', null, i18n().metaToneSummary));
     const b = el('div', 'foldout__body');
     const bar = el('div', 'signal-bar');
-    bar.appendChild(el('span', null, 'AI-sounding paragraphs '));
+    bar.appendChild(el('span', null, i18n().metaToneLabel));
     bar.appendChild(el('span', 'sig-before', before == null ? '—' : String(before)));
     bar.appendChild(el('span', 'arrow', '→'));
     bar.appendChild(el('span', 'sig-after', after == null ? '—' : String(after)));
@@ -919,14 +935,14 @@ function buildMeta(meta, original) {
   }
   if (meta?.diff && (meta.diff.charDelta != null || meta.diff.wordDelta != null)) {
     const det = el('details', 'foldout');
-    det.appendChild(el('summary', null, 'Length (before → after)'));
+    det.appendChild(el('summary', null, i18n().metaLength));
     const b = el('div', 'foldout__body');
     const sign = (d) => (Number(d) > 0 ? `+${d}` : String(d));
     const r1 = el('div', 'diffrow');
-    r1.appendChild(el('span', 'k', 'Characters'));
+    r1.appendChild(el('span', 'k', i18n().metaChars));
     r1.appendChild(el('span', null, `${meta.diff.beforeChars} → ${meta.diff.afterChars} (${sign(meta.diff.charDelta)})`));
     const r2 = el('div', 'diffrow');
-    r2.appendChild(el('span', 'k', 'Words'));
+    r2.appendChild(el('span', 'k', i18n().metaWords));
     r2.appendChild(el('span', null, `${meta.diff.beforeWords} → ${meta.diff.afterWords} (${sign(meta.diff.wordDelta)})`));
     b.appendChild(r1); b.appendChild(r2); det.appendChild(b); wrap.appendChild(det);
   }
@@ -963,13 +979,13 @@ function buildReportLink(meta, original) {
 }
 function buildOutputActions(text, receipt = null) {
   const actions = el('div', 'output-actions');
-  const copy = el('button', 'output-action', 'Copy');
+  const copy = el('button', 'output-action', i18n().actCopy);
   copy.type = 'button';
   copy.addEventListener('click', async () => {
     track('Result Action', { action: 'copy' });
-    try { await globalThis.navigator.clipboard?.writeText(text); copy.textContent = 'Copied'; } catch { copy.textContent = 'Copy failed'; }
+    try { await globalThis.navigator.clipboard?.writeText(text); copy.textContent = i18n().actCopied; } catch { copy.textContent = i18n().actCopyFailed; }
   });
-  const download = el('button', 'output-action', 'Download');
+  const download = el('button', 'output-action', i18n().actDownload);
   download.type = 'button';
   const save = (name) => {
     const href = globalThis.URL.createObjectURL(new globalThis.Blob([text], { type: 'text/plain;charset=utf-8' }));
@@ -977,12 +993,12 @@ function buildOutputActions(text, receipt = null) {
     globalThis.URL.revokeObjectURL(href);
   };
   download.addEventListener('click', () => { track('Result Action', { action: 'download' }); save('patina-rewrite.txt'); });
-  const exportFile = el('button', 'output-action', 'Export');
+  const exportFile = el('button', 'output-action', i18n().actExport);
   exportFile.type = 'button';
   exportFile.addEventListener('click', () => { track('Result Action', { action: 'export' }); save('patina-rewrite-export.txt'); });
   actions.append(copy, download, exportFile);
   if (receipt) {
-    const audit = el('button', 'output-action', 'Audit JSON');
+    const audit = el('button', 'output-action', i18n().actAudit);
     audit.type = 'button';
     audit.addEventListener('click', () => {
       track('Result Action', { action: 'audit' });
@@ -1023,9 +1039,12 @@ let active = null;
 function i18n() { return { ...(I18N[els.lang.value] || I18N.en), ...experienceCopy(els.lang.value) }; }
 function tfmt(template, vars) { return String(template).replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? '')); }
 function tierLabel(tier) {
-  if (tier === WEB_TIERS.BYOK) return 'BYOK';
-  if (tier === WEB_TIERS.PRO) return 'Pro';
-  return 'Free';
+  // Plan names are user-visible and were renamed, so read the active copy
+  // instead of a literal that would name a mode the UI no longer shows.
+  const t = i18n();
+  if (tier === WEB_TIERS.BYOK) return t.byokName;
+  if (tier === WEB_TIERS.PRO) return t.proName;
+  return onboardingCopy(els.lang.value).freeName;
 }
 // Error notes are live alerts so assistive tech announces failures.
 function errorNote(text) { const n = el('div', 'error-note', text); n.setAttribute('role', 'alert'); return n; }

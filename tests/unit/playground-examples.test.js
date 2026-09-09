@@ -38,8 +38,13 @@ test('all native first-use dictionaries have the same complete shape', () => {
     }
     assert.equal(copy.steps.length, 3);
     assert.equal(copy.freeFeatures.length, 4);
-    assert.doesNotMatch(copy.sub + copy.heroHint + copy.settings, /MPS|fidelity/i);
-    assert.match(copy.hint, /MPS/);
+    // No visible string names an internal metric: a reader who does not build
+    // software should still learn what the check does.
+    const everyString = Object.values(copy).flat().filter((v) => typeof v === 'string').join(' ');
+    assert.doesNotMatch(everyString, /\bMPS\b|\bfidelity\b|BYOK|deterministic/i, `${lang} exposes internal vocabulary`);
+    // The disclosure still has to explain the check rather than just name it.
+    assert.ok(copy.hint.length > 40, `${lang}.hint must explain the meaning check`);
+    assert.ok(copy.meaningLabel.trim(), `${lang}.meaningLabel`);
   }
 });
 

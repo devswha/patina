@@ -529,7 +529,7 @@ for (const lang of contract.SUPPORTED_LANGS) {
     assert.equal(a.storage.size, 0, 'no license, source or transcript may reach browser storage');
     assert.equal(a.get('pro-portal').hidden, true, 'unconfigured portal stays hidden');
     assert.equal(a.document.querySelector('.price__badge').textContent, t.proBadge);
-    assert.equal(a.document.querySelectorAll('.price')[1].querySelector('.price__name').textContent, 'BYOK');
+    assert.equal(a.document.querySelectorAll('.price')[1].querySelector('.price__name').textContent, t.byokName);
   });
 }
 
@@ -758,12 +758,30 @@ test('illustrative copy has no guessed scores while approved API scores stay vis
     options.onDone(frame); return { ok: true, finalFrame: frame };
   } });
   assert.equal(a.get('example-note').textContent, copy.onboardingCopy('en').illustrative);
-  assert.doesNotMatch(a.get('example-cards').textContent, /MPS|Fidelity|verified live/i);
+  // A prepared example must never present a score, which would read as measured.
+  // Numbers inside the sample text itself are fine; a score label is not.
+  assert.doesNotMatch(a.get('example-cards').textContent, /Meaning kept|Close to your text|MPS|Fidelity|verified live/i);
   await a.ui.submit('Source 70%');
-  assert.match(a.get('thread').textContent, /MPS.*91/);
-  assert.match(a.get('thread').textContent, /Fidelity.*87/);
-  assert.equal(a.document.querySelector('.output-status').textContent, 'Approved — checks passed. Actions are enabled.');
+  // The real scores stay visible; only their labels are plain-language now.
+  assert.match(a.get('thread').textContent, /Meaning kept.*91/);
+  assert.match(a.get('thread').textContent, /Close to your text.*87/);
+  assert.equal(a.document.querySelector('.output-status').textContent, EN_STATUS.approved);
 });
+
+// The exact wording is product copy and changes; the contract is that both
+// outcomes are non-empty, distinct, and free of internal metric names. Read them
+// from the controller so a copy edit cannot silently break the status contract.
+const EN_STATUS = (() => {
+  const pick = (key) => controller.match(new RegExp(`${key}: '([^']+)'`))?.[1];
+  const approved = pick('outputApproved');
+  const unapproved = pick('outputUnapproved');
+  assert.ok(approved && unapproved, 'both status strings must exist');
+  assert.notEqual(approved, unapproved);
+  for (const text of [approved, unapproved]) {
+    assert.doesNotMatch(text, /\bMPS\b|\bfidelity\b/i, 'user-facing status must not name internal metrics');
+  }
+  return { approved, unapproved };
+})();
 
 // The status line is the only visible statement about whether a result passed the
 // meaning gate, so its transitions are asserted as observable state, not as source shape.
@@ -773,8 +791,7 @@ function statusOf(a) {
 }
 
 test('the approval status is silent in flight and states every terminal outcome', async () => {
-  const t = { unapproved: 'Unapproved — checks have not passed. Actions are disabled.',
-    approved: 'Approved — checks passed. Actions are enabled.' };
+  const t = EN_STATUS;
 
   // In flight: no claim either way, because the request has not produced a result.
   let release;

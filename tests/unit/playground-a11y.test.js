@@ -145,3 +145,10 @@ test('actual output approval status remains visible, not only announced', () => 
   assert.ok(rule);
   assert.doesNotMatch(rule, /clip|position:\s*absolute|display:\s*none|visibility:\s*hidden/);
 });
+
+test('an in-flight rewrite is not announced as a failed check', () => {
+  // A normal rewrite runs 10-60s. Reporting "unapproved - checks have not passed"
+  // for that whole window reads as an error, so only a real outcome is announced.
+  assert.match(js, /markOutputUnapproved\(textEl, statusEl, \{ announce: false \}\)/);
+  assert.match(js, /statusEl\.textContent = announce \? i18n\(\)\.outputUnapproved : ''/);
+});

@@ -34,6 +34,14 @@
             <option value="ja">日本語</option>
           </select>
         </label>
+        <label class="ctl">
+          <span class="ctl__label">Mode</span>
+          <select id="tier" class="ctl__select">
+            <option value="free">Free</option>
+            <option value="byok">BYOK</option>
+            <option value="pro">Pro</option>
+          </select>
+        </label>
         <details class="settings" id="settings-panel">
           <summary id="settings-label">Options</summary>
           <div class="settings__panel">
@@ -53,14 +61,6 @@
                   <option value="">Preserve source</option>
                   <option value="casual">Casual</option>
                   <option value="professional">Professional</option>
-                </select>
-              </label>
-              <label class="ctl">
-                <span class="ctl__label">Mode</span>
-                <select id="tier" class="ctl__select">
-                  <option value="free">Free</option>
-                  <option value="byok">BYOK</option>
-                  <option value="pro">Pro</option>
                 </select>
               </label>
             </div>
@@ -124,7 +124,7 @@
             <p class="hero__sub">Turn a stiff draft into clear, natural writing. Keep your meaning.</p>
 
             <form class="prompt" id="hero-form">
-              <textarea class="prompt__input" id="hero-input" rows="1" placeholder="Paste the text you want to clean up…" aria-label="Paste the text you want to clean up…"></textarea>
+              <textarea class="prompt__input" id="hero-input" rows="1" placeholder="Paste the text you want to clean up…" aria-label="Paste the text you want to clean up…" autofocus></textarea>
               <div class="prompt__bar">
                 <span id="hero-action">Rewrite my text</span>
                 <button class="prompt__send" id="hero-send" type="submit" disabled aria-label="Send">

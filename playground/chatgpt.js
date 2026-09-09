@@ -650,6 +650,14 @@ function renderExamples() {
 
   let active = EXAMPLES.find((example) => example.id === exampleSelection && example.lang === els.lang.value)
     || EXAMPLES.find((example) => example.lang === els.lang.value) || EXAMPLES[0];
+  // The copy button carries a transient result label; it belongs to the row that
+  // was copied, so switching rows drops both the label and its pending timer.
+  let copyReset;
+  const restCopy = () => {
+    clearTimeout(copyReset);
+    copy.textContent = ui.copyExample;
+    copy.classList.remove('is-ok');
+  };
   const reveal = () => {
     if (reduce) return;
     editor.classList.remove('is-reveal');
@@ -678,7 +686,7 @@ function renderExamples() {
       tab.setAttribute('aria-selected', String(selected));
       tab.setAttribute('tabindex', selected ? '0' : '-1');
     }
-    copy.textContent = ui.copyExample;
+    restCopy();
     if (animate) reveal();
   };
   selectExample = setActive;
@@ -712,10 +720,18 @@ function renderExamples() {
     globalThis.scrollTo({ top: 0, behavior: 'smooth' });
   });
   copy.addEventListener('click', async () => {
+    clearTimeout(copyReset);
     try {
       await globalThis.navigator.clipboard.writeText(active.after);
       copy.textContent = ui.copied;
-    } catch { copy.textContent = ui.copyFailed; }
+      copy.classList.add('is-ok');
+    } catch {
+      // A failure must not keep the success styling from a previous copy.
+      copy.textContent = ui.copyFailed;
+      copy.classList.remove('is-ok');
+    }
+    // Restore the resting label so a second copy still reads as an available action.
+    copyReset = globalThis.setTimeout(restCopy, 1400);
   });
   setActive(active);
 }
@@ -836,12 +852,16 @@ function buildPatinaMsg() {
   msg.appendChild(body);
   return { node: msg, body, textEl, statusEl };
 }
-function markOutputUnapproved(textEl, statusEl) {
+// `announce: false` covers a rewrite that has not finished yet. The disabled-action
+// state is real from the first byte, but calling an in-flight stream "unapproved —
+// checks have not passed" reads as a failure warning during a normal 10-60s rewrite,
+// so the status line stays empty until there is an actual outcome to report.
+function markOutputUnapproved(textEl, statusEl, { announce = true } = {}) {
   textEl.classList.add('msg__text--unapproved');
   textEl.dataset.outputStatus = 'unapproved';
   textEl.setAttribute('aria-invalid', 'true');
-  statusEl.textContent = i18n().outputUnapproved;
-  statusEl.dataset.outputStatus = 'unapproved';
+  statusEl.textContent = announce ? i18n().outputUnapproved : '';
+  statusEl.dataset.outputStatus = announce ? 'unapproved' : 'streaming';
 }
 function approveOutput(textEl, statusEl) {
   textEl.classList.remove('msg__text--unapproved');
@@ -1046,6 +1066,17 @@ function signInLicense() {
 }
 
 function openSettings() { $('#settings-panel').setAttribute('open', ''); }
+function closeSettings({ restoreFocus = false } = {}) {
+  const panel = $('#settings-panel');
+  if (!panel.hasAttribute('open')) return;
+  panel.removeAttribute('open');
+  if (restoreFocus) $('#settings-label').focus();
+}
+function withinSettings(node) {
+  const panel = $('#settings-panel');
+  for (let current = node; current; current = current.parentElement) if (current === panel) return true;
+  return false;
+}
 
 function openLicenseControls() {
   openSettings();
@@ -1191,7 +1222,7 @@ async function runAttempt(attempt) {
 
   textEl.style.display = 'none';
   textEl.classList.remove('msg__text--flagged');
-  markOutputUnapproved(textEl, statusEl);
+  markOutputUnapproved(textEl, statusEl, { announce: false });
   const typing = buildTyping();
   body.appendChild(typing);
   scrollDown();
@@ -1640,10 +1671,18 @@ function applyExperienceCopy(lang, set) {
 }
 
 // ---------- events ----------
-$('#settings-panel').addEventListener('keydown', (event) => {
+// The panel overlays the hero, so dismissal is document-scoped: Escape has to work
+// while typing in the prompt, and a press outside the panel has to close it.
+// A focused control inside the panel still bubbles its keydown up to the document,
+// so one listener covers both; an open native <select> popup consumes the first
+// Escape itself, which is the platform behavior and is left alone.
+document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
-  $('#settings-panel').removeAttribute('open');
-  $('#settings-label').focus();
+  closeSettings({ restoreFocus: true });
+});
+document.addEventListener('mousedown', (event) => {
+  if (withinSettings(event.target)) return;
+  closeSettings();
 });
 const inputStarted = new Set();
 function trackInputStarted(surface, input) {

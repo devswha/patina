@@ -124,7 +124,8 @@ test('output approval status is localized, announced, and associated with its ou
   assert.match(builder, /statusEl\.setAttribute\('role', 'status'\)/);
   assert.match(builder, /statusEl\.setAttribute\('aria-live', 'polite'\)/);
   assert.match(builder, /textEl\.setAttribute\('aria-describedby', statusEl\.id\)/);
-  assert.match(builder, /statusEl\.textContent = i18n\(\)\.outputUnapproved/);
+  // Unapproved is announced for a real outcome only; an in-flight stream stays silent.
+  assert.match(builder, /statusEl\.textContent = announce \? i18n\(\)\.outputUnapproved : ''/);
   assert.match(builder, /statusEl\.textContent = i18n\(\)\.outputApproved/);
   assert.match(stylesheet, /\.output-status/);
 });

@@ -35,7 +35,7 @@
       {"id": "E-invalid-in-family-model", "exitCode": 1, "wallMs": 2179, "observed": "claude exited 1 with its model-catalog message; Patina surfaced it as a backend error and cleaned up."}
     ],
     "sessionLog": "~/.claude/projects/*patina-claude* sessions for the pilot window: 0 tool_use blocks and 0 mcp__ references in every session, confirming #798's --tools \"\" --strict-mcp-config on a live run. Score prompt cache read ~75k tokens (Claude Code system prompt + Patina score prompt); rewrite/verification ~18-25k.",
-    "sideObservation": "32 stale /tmp/patina-claude-* directories dated 2026-09-05 pre-date this pilot (earlier research runs); the pilot added none. Candidate cleanup, outside this record."
+    "sideObservation": "Correction (2026-09-10, later the same day): the '32 stale /tmp/patina-claude-* directories' first noted here were research scratch files named patina-claude-*.log/.mjs from 2026-09-05, not adapter temp directories. A pattern-exact scan for mkdtemp-style patina-{claude,codex,gemini,kimi,agy}-XXXXXX directories found exactly one orphan, /tmp/patina-codex-AkCVBR (empty, 2026-09-06 02:30, a run killed before cleanup), which was removed. The pilot itself left none; no adapter cleanup defect is indicated."
   },
   "geminiViaOpenCodex": {
     "backend": "openai-http",

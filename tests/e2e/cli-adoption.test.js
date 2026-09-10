@@ -74,9 +74,12 @@ describe('CLI adoption commands', () => {
     process.exitCode = undefined;
     try {
       await withEnv({ PATINA_API_KEY: 'test-key', PATINA_API_KEY_FILE: undefined }, async () => {
-        const { logs } = await captureConsole(() => main(['doctor', '--json']));
+        // --no-probe: the fake key must not be sent to a real provider, and
+        // the presence-based verdict is what this test pins.
+        const { logs } = await captureConsole(() => main(['doctor', '--json', '--no-probe']));
         const report = JSON.parse(logs.join('\n'));
         assert.strictEqual(report.ok, true);
+        assert.deepEqual(report.apiKeyProbe, { attempted: false, host: null, status: null, ok: null, error: null });
         assert.ok(report.node.ok);
         assert.ok(report.backends.some((backend) => backend.name === 'openai-http'));
         assert.ok(report.providers.some((provider) => provider.name === 'openai'));
@@ -101,7 +104,7 @@ describe('CLI adoption commands', () => {
         KIMI_API_KEY: undefined,
         MOONSHOT_API_KEY: undefined,
       }, async () => {
-        const { logs } = await captureConsole(() => main(['doctor']));
+        const { logs } = await captureConsole(() => main(['doctor', '--offline']));
         const output = logs.join('\n');
         assert.strictEqual(process.exitCode, 1);
         assert.match(output, /^patina doctor — blockers found/);
@@ -131,7 +134,7 @@ describe('CLI adoption commands', () => {
         MOONSHOT_API_KEY: undefined,
         PATINA_API_KEY_FILE: keyFile,
       }, async () => {
-        const { logs } = await captureConsole(() => main(['doctor', '--json']));
+        const { logs } = await captureConsole(() => main(['doctor', '--json', '--no-probe']));
         const report = JSON.parse(logs.join('\n'));
         const http = report.backends.find((backend) => backend.name === 'openai-http');
         const usable = report.checks.find((check) => check.name === 'usable-backend');

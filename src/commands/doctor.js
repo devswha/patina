@@ -1,7 +1,10 @@
 import { spawnSync } from 'node:child_process';
-import { HTTP_KEY_ENV_VARS, inspectHttpApiKeySource, providerHttpKeyEnvVars } from '../auth.js';
+import { HTTP_KEY_ENV_VARS, inspectHttpApiKeySource, providerHttpKeyEnvVars, resolveHttpApiKey } from '../auth.js';
 import { listBackends } from '../backends/index.js';
-import { PROVIDERS } from '../providers.js';
+import { loadConfig } from '../config.js';
+import { PROVIDERS, resolveProviderConfig, selectProvider } from '../providers.js';
+import { validateBaseURL } from '../security.js';
+import { nativeAnthropicEnabled, nativeHeaders } from '../anthropic-native.js';
 import { inputError } from '../errors.js';
 
 const MIN_NODE_MAJOR = 18;
@@ -14,6 +17,11 @@ export async function runDoctor(args = [], { version, fetchImpl } = {}) {
   }
 
   const report = buildDoctorReport({ version });
+  if (parsed.probe) {
+    await appendApiKeyProbe(report, { fetchImpl });
+  } else {
+    report.apiKeyProbe = { attempted: false, host: null, status: null, ok: null, error: null };
+  }
   if (parsed.updateCheck) {
     await appendUpdateCheck(report, { version, fetchImpl });
   }
@@ -30,6 +38,149 @@ export async function runDoctor(args = [], { version, fetchImpl } = {}) {
 
 export const NPM_LATEST_URL = 'https://registry.npmjs.org/patina-cli/latest';
 const UPDATE_CHECK_TIMEOUT_MS = 3000;
+const API_KEY_PROBE_TIMEOUT_MS = 3000;
+
+/**
+ * Ask the default HTTP endpoint whether the configured key is actually
+ * accepted, and fold the answer into the report.
+ *
+ * `api-key-env` only proves a key is present. A revoked or mistyped key
+ * still reads `authenticated=yes` and fails on the first real call
+ * (observed 2026-09-10: OPENAI_API_KEY set, provider answering 401). The
+ * probe is one `GET {baseURL}/models` with the same bearer header a rewrite
+ * would send, resolved exactly the way a rewrite resolves it (config file
+ * provider/base URL, provider key env order, PATINA_* env) and gated by the
+ * same validateBaseURL guard, so the key goes nowhere a rewrite would not
+ * send it and never to a destination a rewrite would refuse.
+ *
+ * Outcomes: 2xx = accepted (ok); 401/403 = rejected (warning, and the
+ * openai-http backend stops counting as authenticated so `usable-backend`
+ * tells the truth); anything else (timeout, DNS, 5xx, 404 from a proxy
+ * without /models, refused base URL) = inconclusive (informational ok, never
+ * a blocker). Never throws. Error text is redacted of the key value and of
+ * any credentials embedded in the base URL.
+ */
+export async function appendApiKeyProbe(report, { fetchImpl = globalThis.fetch, timeoutMs = API_KEY_PROBE_TIMEOUT_MS, config = null } = {}) {
+  const backend = report.backends.find((b) => b.name === 'openai-http');
+  const notAttempted = { attempted: false, host: null, status: null, ok: null, error: null };
+  if (!backend) {
+    report.apiKeyProbe = notAttempted;
+    return report;
+  }
+
+  let resolved;
+  let apiKey = null;
+  try {
+    const effective = config || loadConfig();
+    const provider = selectProvider(effective.provider);
+    apiKey = resolveHttpApiKey({ envVars: providerHttpKeyEnvVars(provider?.apiKeyEnv) }) || null;
+    if (!apiKey) {
+      report.apiKeyProbe = notAttempted;
+      return report;
+    }
+    resolved = resolveProviderConfig({ provider, apiKey, baseURL: effective.baseURL ?? effective['base-url'] });
+    validateBaseURL(resolved.baseURL);
+  } catch (err) {
+    // Unknown provider, unreadable key file, or a base URL a rewrite would
+    // refuse: nothing is sent, and the reason is reported without the key.
+    report.apiKeyProbe = { attempted: false, host: null, status: null, ok: null, error: redactSecrets(String(err?.message ?? err), apiKey) };
+    backend.keyProbe = 'inconclusive';
+    report.checks.push({
+      name: 'api-key-probe',
+      status: 'ok',
+      summary: 'default HTTP key not verified',
+      detail: `probe skipped (${report.apiKeyProbe.error}); the key may still work`,
+    });
+    return report;
+  }
+
+  const url = `${String(resolved.baseURL).replace(/\/+$/, '')}/models`;
+  // host excludes any userinfo; validateBaseURL already proved the URL parses.
+  const host = new URL(url).host;
+  // Same authentication headers a rewrite would send on this base URL: the
+  // opt-in native Anthropic mode uses x-api-key, everything else a bearer.
+  const authHeaders = nativeAnthropicEnabled({ baseURL: resolved.baseURL })
+    ? nativeHeaders(apiKey)
+    : { authorization: `Bearer ${apiKey}` };
+
+  let status = null;
+  let error = null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(url, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: { ...authHeaders, accept: 'application/json' },
+    });
+    status = Number(response.status) || null;
+    // fetch resolves at headers; only the status matters, so drop the body
+    // instead of leaving a streaming catalog response open past the budget.
+    try { await response.body?.cancel?.(); } catch {}
+  } catch (err) {
+    error = err?.name === 'AbortError'
+      ? `timed out after ${timeoutMs}ms`
+      : redactSecrets(String(err?.message ?? err), apiKey);
+  } finally {
+    controller.abort();
+    clearTimeout(timer);
+  }
+
+  const accepted = status !== null && status >= 200 && status < 300;
+  const rejected = status === 401 || status === 403;
+  const ok = accepted ? true : (rejected ? false : null);
+  report.apiKeyProbe = { attempted: true, host, status, ok, error };
+  backend.keyProbe = ok === null ? 'inconclusive' : (ok ? 'accepted' : 'rejected');
+
+  if (rejected) {
+    // Presence is not validity: a key the provider refuses cannot run a
+    // rewrite, so the backend is not usable and the aggregate check must
+    // recount rather than keep the presence-based verdict.
+    backend.authenticated = false;
+    backend.authHint = `The provider at ${host} rejected the configured key (HTTP ${status}). Replace the key or point PATINA_API_BASE at the right endpoint.`;
+    recountUsableBackends(report);
+  }
+
+  report.checks.push({
+    name: 'api-key-probe',
+    status: rejected ? 'warning' : 'ok',
+    summary: accepted
+      ? `default HTTP key accepted by ${host}`
+      : (rejected ? `default HTTP key rejected by ${host} (HTTP ${status})` : 'default HTTP key not verified'),
+    detail: accepted
+      ? 'GET /models answered 2xx with the configured bearer key'
+      : (rejected
+        ? 'presence alone is not authentication; replace the key or select a working backend'
+        : `could not probe ${host} (${error || `HTTP ${status}`}); the key may still work`),
+  });
+  return report;
+}
+
+// Strip the key value and any `scheme://user:pass@` userinfo from text that
+// may be printed or serialised. Fetch and URL errors can echo the request URL.
+// The userinfo match is greedy up to the LAST `@` before the path, matching
+// how URL parsers split `user:p@ss@host`; a first-`@` match would leave the
+// password tail behind.
+export function redactSecrets(text, apiKey) {
+  let out = String(text ?? '');
+  if (apiKey) out = out.split(apiKey).join('***');
+  return out.replace(/(\w+:\/\/)[^/\s]*@/g, '$1***@');
+}
+
+function recountUsableBackends(report) {
+  const usable = report.backends.filter((b) => b.available && b.authenticated);
+  const check = report.checks.find((c) => c.name === 'usable-backend');
+  if (check) {
+    check.status = usable.length > 0 ? 'ok' : 'blocker';
+    check.summary = usable.length > 0 ? `${usable.length} authenticated backend(s)` : 'no authenticated backend';
+    check.detail = usable.length > 0
+      ? usable.map((b) => b.name).join(', ')
+      : 'Set a working API key or authenticate one local backend (`codex login`, `claude`, `gemini`, or `agy`).';
+  }
+  const blockers = report.checks.filter((c) => c.status === 'blocker');
+  report.ok = blockers.length === 0;
+  report.blockers = blockers.map((c) => ({ name: c.name, summary: c.summary, detail: c.detail }));
+}
 
 /** Numeric x.y.z compare; returns 1/0/-1, or null when either side is unparseable. */
 export function compareSemver(a, b) {
@@ -183,7 +334,7 @@ export function buildDoctorReport({ version } = {}) {
 }
 
 function parseDoctorArgs(args) {
-  const parsed = { format: 'text', updateCheck: true };
+  const parsed = { format: 'text', updateCheck: true, probe: true };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     switch (arg) {
@@ -196,6 +347,13 @@ function parseDoctorArgs(args) {
         break;
       case '--no-update-check':
         parsed.updateCheck = false;
+        break;
+      case '--no-probe':
+        parsed.probe = false;
+        break;
+      case '--offline':
+        parsed.updateCheck = false;
+        parsed.probe = false;
         break;
       case '--format': {
         const value = args[++i];
@@ -212,7 +370,7 @@ function parseDoctorArgs(args) {
       default:
         throw inputError(
           `unknown doctor option ${arg}`,
-          'The doctor command only accepts --json, --format, --no-update-check, and --help.',
+          'The doctor command only accepts --json, --format, --no-update-check, --no-probe, --offline, and --help.',
           'Run `patina doctor --help` for usage.'
         );
     }
@@ -258,8 +416,9 @@ function formatDoctorText(report) {
   for (const backend of report.backends) {
     const ok = backend.available && backend.authenticated;
     const images = backend.supportsImages ? ', images=yes' : '';
+    const probe = backend.keyProbe ? `, key=${backend.keyProbe}` : '';
     lines.push(
-      `  ${ok ? '✓' : '!'} ${backend.name}: available=${yesNo(backend.available)}, authenticated=${yesNo(backend.authenticated)}${images}`
+      `  ${ok ? '✓' : '!'} ${backend.name}: available=${yesNo(backend.available)}, authenticated=${yesNo(backend.authenticated)}${probe}${images}`
     );
     if (!ok && backend.authHint) lines.push(`    → ${backend.authHint}`);
   }
@@ -289,12 +448,15 @@ function yesNo(value) {
 function printDoctorHelp() {
   console.log(`patina doctor — check local CLI readiness
 
-Usage: patina doctor [--json] [--no-update-check]
+Usage: patina doctor [--json] [--no-update-check] [--no-probe] [--offline]
 
 Checks Node version, patina CLI version, backend availability/authentication,
-tmux, PATINA/provider API key environment variables, and whether a newer
-patina-cli is on npm (skip with --no-update-check; offline failures are
-informational, never blockers). Exits 0 when no blockers are found, or 1 when
-a blocking setup issue is detected.
+tmux, PATINA/provider API key environment variables, whether the default HTTP
+key is actually accepted (one GET /models against the configured base URL;
+skip with --no-probe), and whether a newer patina-cli is on npm (skip with
+--no-update-check). --offline skips both network checks. Network failures are
+informational, never blockers; a key the provider rejects with 401/403 is a
+warning and no longer counts as an authenticated backend. Exits 0 when no
+blockers are found, or 1 when a blocking setup issue is detected.
 `);
 }

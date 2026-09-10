@@ -48,6 +48,14 @@ patina --backend codex-cli --lang ko input.txt
 patina --model codex --lang ko input.txt   # routes to codex-cli, uses gpt-5.5 default
 ```
 
+Notes: `codex exec` runs from a fresh temp directory with `--sandbox read-only`
+and with the `shell_tool`, `unified_exec` and `multi_agent` features disabled.
+A rewrite needs no tools, and with them enabled codex behaves as an agent —
+measured on 2026-09-10 it ran 3–13 shell commands per rewrite prompt, re-sending
+the ~20k-token prompt every turn (up to ~500k tokens for one Korean rewrite).
+With the tools removed the same rewrite is one turn, ~20k tokens, ~20 s. Reasoning
+effort is not overridden; it follows your `~/.codex/config.toml`.
+
 ## claude-cli backend
 
 Spawns local [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p` with the patina prompt on stdin. Free for anyone with a Claude subscription. Claude Code is an agent runtime, so patina treats it conservatively in batch mode: compact prompt mode, default max concurrency `1`, and default retries `0`. The default model passed to Claude Code is `claude-sonnet-4-6`; Claude Code may still apply its own model/session policy outside patina's control.
@@ -58,6 +66,10 @@ patina auth login claude-cli               # same, with confirmation
 patina --backend claude-cli --lang ko input.txt
 patina --model claude-sonnet-4-6 --lang ko input.txt   # auto-routes
 ```
+
+Notes: patina passes `--tools ""` and `--strict-mcp-config`, so the call carries
+no built-in tools and starts none of your configured MCP servers. The `--ocr`
+image route is the only exception and keeps `Read` for the staged image files.
 
 Auth file: `~/.claude/.credentials.json` (created by the OAuth flow). `patina
 doctor`, `patina auth status`, and automatic `--ocr` backend selection read
@@ -78,7 +90,7 @@ patina --backend gemini-cli --lang ko input.txt
 patina --model gemini-3-flash-preview --lang ko input.txt   # auto-routes
 ```
 
-Notes: patina passes `--skip-trust` because the prompt runs from a fresh temp directory (containment for prompt-injection in user text). Default timeout is higher than other CLIs because gemini's startup latency is longer.
+Notes: patina passes `--skip-trust` because the prompt runs from a fresh temp directory (containment for prompt-injection in user text), disables MCP servers, and passes a per-call `--policy` file that denies every tool (`toolName = "*"`), so the model receives no tool definitions and cannot spend turns on `run_shell_command` or `write_file`; image input uses `@file` includes, which the CLI resolves itself. Default timeout is higher than other CLIs because gemini's startup latency is longer.
 
 ## kimi-cli backend
 

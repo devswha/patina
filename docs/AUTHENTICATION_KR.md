@@ -48,6 +48,13 @@ patina --backend codex-cli --lang ko input.txt
 patina --model codex --lang ko input.txt   # codex-cli로 라우팅하고 gpt-5.5 기본값 사용
 ```
 
+참고: `codex exec`는 새 임시 디렉터리에서 `--sandbox read-only`로 실행되며
+`shell_tool`, `unified_exec`, `multi_agent` 기능을 끔니다. 재작성에는 도구가 필요 없는데,
+켜 두면 codex가 에이전트처럼 동작합니다 — 2026-09-10 측정에서 재작성 프롬프트 하나에
+셸 명령 3–13회를 실행하며 턴마다 약 20k 토큰 프롬프트를 다시 보냈습니다(한국어 재작성 한 건에
+최대 약 500k 토큰). 도구를 끕 뒤 같은 재작성은 1턴, 약 20k 토큰, 약 20초입니다. reasoning
+effort는 덮어쓰지 않고 `~/.codex/config.toml` 설정을 따릅니다.
+
 ## claude-cli backend
 
 로컬 [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p`에 patina 프롬프트를 stdin으로 넘겨 실행합니다. Claude 구독이 있으면 추가 API 키 없이 쓸 수 있습니다. Claude Code는 agent runtime이므로 batch 모드에서는 보수적으로 다룹니다: compact prompt mode, 기본 동시성 `1`, 기본 retry `0`. 기본 모델은 `claude-sonnet-4-6`이지만, Claude Code 자체의 모델/세션 정책은 patina가 완전히 통제하지 못할 수 있습니다.
@@ -58,6 +65,10 @@ patina auth login claude-cli               # same, with confirmation
 patina --backend claude-cli --lang ko input.txt
 patina --model claude-sonnet-4-6 --lang ko input.txt   # auto-routes
 ```
+
+참고: patina는 `--tools ""`과 `--strict-mcp-config`를 넘기므로 호출에 내장 도구가 실리지
+않고 사용자가 설정한 MCP 서버도 시작하지 않습니다. `--ocr` 이미지 경로만 예외로, 스테이징된
+이미지 파일을 읽기 위해 `Read`를 유지합니다.
 
 인증 파일: `~/.claude/.credentials.json` (OAuth 로그인 뒤 생성됩니다). `patina
 doctor`, `patina auth status`, 그리고 `--ocr`의 자동 백엔드 선택은 이 파일의 `claudeAiOauth` 토큰과 만료 시각을 읽습니다.
@@ -76,6 +87,11 @@ export GEMINI_API_KEY="..."                # AI Studio key
 patina --backend gemini-cli --lang ko input.txt
 patina --model gemini-3-flash-preview --lang ko input.txt   # auto-routes
 ```
+
+참고: 프롬프트는 새 임시 디렉터리에서 실행되므로 `--skip-trust`를 넘기고, MCP 서버를 끄며,
+모든 도구를 거부하는 호출별 `--policy` 파일(`toolName = "*"`)을 넘깁니다. 모델은 도구 정의를
+아예 받지 않으므로 `run_shell_command`나 `write_file`에 턴을 쓰지 못합니다. 이미지 입력은 CLI가
+직접 해석하는 `@file` include를 씁니다. gemini는 시작 지연이 길어 기본 timeout이 다른 CLI보다 깁니다.
 
 ## kimi-cli backend
 

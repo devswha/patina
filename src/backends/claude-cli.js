@@ -105,8 +105,17 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   // Vision input: images are staged INTO the temp cwd — claude's in-cwd Read
   // tool is auto-allowed in print mode, while paths outside cwd would be
   // permission-denied (and granting them would weaken the containment above).
+  //
+  // A rewrite or score is a pure text transform, so the built-in tool set is
+  // emptied (`--tools ""`) and the user's configured MCP servers are skipped
+  // (`--strict-mcp-config` with no --mcp-config): source text that contains
+  // instructions gets no tool to act on, no third-party MCP process starts
+  // per call, and the request carries no tool definitions. Only the image
+  // route keeps the Read tool, which is how claude ingests staged files.
   let effectivePrompt = prompt;
-  if (Array.isArray(images) && images.length > 0) {
+  const hasImages = Array.isArray(images) && images.length > 0;
+  const tools = hasImages ? 'Read' : '';
+  if (hasImages) {
     try {
       const staged = stageCliImages(dir, images);
       effectivePrompt = `${prompt}\n\nAttached image file(s) in the working directory: ${staged.map((f) => `./${f}`).join(', ')} — read them before answering.`;
@@ -121,7 +130,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   return new Promise((resolve, reject) => {
     const { proc, terminate, waitForClose } = spawnOwnedCliProcess(
       'claude',
-      ['-p', '--model', cliModel],
+      ['-p', '--model', cliModel, '--tools', tools, '--strict-mcp-config'],
       { stdio: ['pipe', 'pipe', 'pipe'], cwd: dir },
     );
 

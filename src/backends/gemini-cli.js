@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -18,6 +18,11 @@ export const installHint = 'Install Gemini CLI first, then run `patina auth logi
 // `--allowed-mcp-server-names` is an allowlist; naming one server that cannot
 // exist is how the CLI expresses "no MCP servers".
 const NO_MCP_SERVERS = '__patina_no_mcp__';
+
+// Policy-engine rule passed per invocation via --policy. `*` matches every
+// built-in and MCP tool; a global deny excludes them from the model's tool
+// list entirely. 999 is the highest TOML priority within the User tier.
+export const GEMINI_NO_TOOLS_POLICY = '[[rule]]\ntoolName = "*"\ndecision = "deny"\npriority = 999\n';
 
 export function isAvailable() {
   try {
@@ -74,9 +79,24 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   // the backend timeout (observed 2026-07-27: one scoring call sat for the
   // full 600s budget while sibling calls finished in ~30s). Same containment
   // rationale as the temp cwd — the agent gets nothing it does not need.
+  //
+  // Built-in tools are removed the same way through the policy engine: a
+  // global `deny` for `*` drops every tool definition from the request (the
+  // documented behaviour for rules without argsPattern), so the model cannot
+  // spend turns on run_shell_command/write_file and source text that contains
+  // instructions has nothing to act on. Earlier sessions (2026-08-18/19) show
+  // the model doing exactly that on rewrite prompts. Image input uses
+  // @-includes, which the CLI resolves before the model runs, not a tool.
   const dir = mkdtempSync(join(tmpdir(), 'patina-gemini-'));
+  const policyFile = join(dir, 'patina-no-tools.toml');
+  try {
+    writeFileSync(policyFile, GEMINI_NO_TOOLS_POLICY, { mode: 0o600 });
+  } catch (err) {
+    try { rmSync(dir, { recursive: true, force: true }); } catch {}
+    throw new Error(`gemini-cli backend: failed to write tool policy (${err.message})`);
+  }
   const cliModel = resolveLocalCliModel({ backendName: name, model, modelSource });
-  const args = ['-p', '', '--output-format', 'text', '--skip-trust', '--allowed-mcp-server-names', NO_MCP_SERVERS, '-m', cliModel];
+  const args = ['-p', '', '--output-format', 'text', '--skip-trust', '--allowed-mcp-server-names', NO_MCP_SERVERS, '--policy', policyFile, '-m', cliModel];
 
   // Vision input: gemini's @-includes are confined to the workspace root, so
   // images are staged into the temp cwd and referenced as @<filename>.

@@ -1,7 +1,10 @@
 import { spawnSync } from 'node:child_process';
 import { HTTP_KEY_ENV_VARS, inspectHttpApiKeySource, providerHttpKeyEnvVars, resolveHttpApiKey } from '../auth.js';
 import { listBackends } from '../backends/index.js';
-import { PROVIDERS, resolveProviderConfig } from '../providers.js';
+import { loadConfig } from '../config.js';
+import { PROVIDERS, resolveProviderConfig, selectProvider } from '../providers.js';
+import { validateBaseURL } from '../security.js';
+import { nativeAnthropicEnabled, nativeHeaders } from '../anthropic-native.js';
 import { inputError } from '../errors.js';
 
 const MIN_NODE_MAJOR = 18;
@@ -45,34 +48,60 @@ const API_KEY_PROBE_TIMEOUT_MS = 3000;
  * still reads `authenticated=yes` and fails on the first real call
  * (observed 2026-09-10: OPENAI_API_KEY set, provider answering 401). The
  * probe is one `GET {baseURL}/models` with the same bearer header a rewrite
- * would send, so nothing is sent anywhere the key would not go anyway.
+ * would send, resolved exactly the way a rewrite resolves it (config file
+ * provider/base URL, provider key env order, PATINA_* env) and gated by the
+ * same validateBaseURL guard, so the key goes nowhere a rewrite would not
+ * send it and never to a destination a rewrite would refuse.
  *
  * Outcomes: 2xx = accepted (ok); 401/403 = rejected (warning, and the
  * openai-http backend stops counting as authenticated so `usable-backend`
- * tells the truth); anything else (timeout, DNS, 5xx, odd status) =
- * inconclusive (informational ok, never a blocker). Never throws.
+ * tells the truth); anything else (timeout, DNS, 5xx, 404 from a proxy
+ * without /models, refused base URL) = inconclusive (informational ok, never
+ * a blocker). Never throws. Error text is redacted of the key value and of
+ * any credentials embedded in the base URL.
  */
-export async function appendApiKeyProbe(report, { fetchImpl = globalThis.fetch, timeoutMs = API_KEY_PROBE_TIMEOUT_MS } = {}) {
+export async function appendApiKeyProbe(report, { fetchImpl = globalThis.fetch, timeoutMs = API_KEY_PROBE_TIMEOUT_MS, config = null } = {}) {
   const backend = report.backends.find((b) => b.name === 'openai-http');
-  let apiKey = null;
-  try {
-    apiKey = resolveHttpApiKey() || null;
-  } catch {
-    apiKey = null;
-  }
-  if (!apiKey || !backend) {
-    report.apiKeyProbe = { attempted: false, host: null, status: null, ok: null, error: null };
+  const notAttempted = { attempted: false, host: null, status: null, ok: null, error: null };
+  if (!backend) {
+    report.apiKeyProbe = notAttempted;
     return report;
   }
 
-  const { baseURL } = resolveProviderConfig({});
-  const url = `${String(baseURL).replace(/\/+$/, '')}/models`;
-  let host;
+  let resolved;
+  let apiKey = null;
   try {
-    host = new URL(url).host;
-  } catch {
-    host = String(baseURL);
+    const effective = config || loadConfig();
+    const provider = selectProvider(effective.provider);
+    apiKey = resolveHttpApiKey({ envVars: providerHttpKeyEnvVars(provider?.apiKeyEnv) }) || null;
+    if (!apiKey) {
+      report.apiKeyProbe = notAttempted;
+      return report;
+    }
+    resolved = resolveProviderConfig({ provider, apiKey, baseURL: effective.baseURL ?? effective['base-url'] });
+    validateBaseURL(resolved.baseURL);
+  } catch (err) {
+    // Unknown provider, unreadable key file, or a base URL a rewrite would
+    // refuse: nothing is sent, and the reason is reported without the key.
+    report.apiKeyProbe = { attempted: false, host: null, status: null, ok: null, error: redactSecrets(String(err?.message ?? err), apiKey) };
+    backend.keyProbe = 'inconclusive';
+    report.checks.push({
+      name: 'api-key-probe',
+      status: 'ok',
+      summary: 'default HTTP key not verified',
+      detail: `probe skipped (${report.apiKeyProbe.error}); the key may still work`,
+    });
+    return report;
   }
+
+  const url = `${String(resolved.baseURL).replace(/\/+$/, '')}/models`;
+  // host excludes any userinfo; validateBaseURL already proved the URL parses.
+  const host = new URL(url).host;
+  // Same authentication headers a rewrite would send on this base URL: the
+  // opt-in native Anthropic mode uses x-api-key, everything else a bearer.
+  const authHeaders = nativeAnthropicEnabled({ baseURL: resolved.baseURL })
+    ? nativeHeaders(apiKey)
+    : { authorization: `Bearer ${apiKey}` };
 
   let status = null;
   let error = null;
@@ -82,12 +111,18 @@ export async function appendApiKeyProbe(report, { fetchImpl = globalThis.fetch, 
     const response = await fetchImpl(url, {
       method: 'GET',
       signal: controller.signal,
-      headers: { authorization: `Bearer ${apiKey}`, accept: 'application/json' },
+      headers: { ...authHeaders, accept: 'application/json' },
     });
     status = Number(response.status) || null;
+    // fetch resolves at headers; only the status matters, so drop the body
+    // instead of leaving a streaming catalog response open past the budget.
+    try { await response.body?.cancel?.(); } catch {}
   } catch (err) {
-    error = err?.name === 'AbortError' ? `timed out after ${timeoutMs}ms` : String(err?.message ?? err);
+    error = err?.name === 'AbortError'
+      ? `timed out after ${timeoutMs}ms`
+      : redactSecrets(String(err?.message ?? err), apiKey);
   } finally {
+    controller.abort();
     clearTimeout(timer);
   }
 
@@ -119,6 +154,14 @@ export async function appendApiKeyProbe(report, { fetchImpl = globalThis.fetch, 
         : `could not probe ${host} (${error || `HTTP ${status}`}); the key may still work`),
   });
   return report;
+}
+
+// Strip the key value and any `scheme://user:pass@` userinfo from text that
+// may be printed or serialised. Fetch and URL errors can echo the request URL.
+export function redactSecrets(text, apiKey) {
+  let out = String(text ?? '');
+  if (apiKey) out = out.split(apiKey).join('***');
+  return out.replace(/(\w+:\/\/)[^/@\s]+@/g, '$1***@');
 }
 
 function recountUsableBackends(report) {

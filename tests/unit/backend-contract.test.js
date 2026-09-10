@@ -142,48 +142,19 @@ test('backendSupportsStructuredOutput is true only for openai-http (#C2)', () =>
   assert.equal(backendSupportsStructuredOutput('mystery-backend'), false);
 });
 
-test('Claude CLI compatibility record remains version-only and unverified', () => {
-  const fixture = JSON.parse(readFileSync(
-    new URL('../fixtures/backend-claude-contract.json', import.meta.url),
-    'utf8',
-  ));
+// Shared shape check for a verified real-invocation compatibility record: the
+// fixture carries the verdict, the dated operations receipt carries the
+// per-scenario evidence, and neither may contain secrets or raw output.
+function assertVerifiedBackendRecord(fixture, { backend, cli, version, record }) {
   assert.equal(fixture.schemaVersion, 1);
-  assert.equal(fixture.backend, 'claude-cli');
-  assert.equal(fixture.cli, 'claude');
-  assert.equal(fixture.observedVersion, '2.1.261');
-  assert.equal(fixture.status, 'unverified');
-  assert.deepEqual(fixture.evidence, {
-    kind: 'version-only',
-    command: 'claude --version',
-    realInvocation: false,
-    outputParsingVerified: false,
-    errorsVerified: false,
-    authVerified: false,
-    quotaVerified: false,
-    timeoutVerified: false,
-  });
-  assert.equal(fixture.syntheticFixture, true);
-  assert.equal(fixture.rawOutputIncluded, false);
-  assert.deepEqual(Object.keys(fixture.requiredContracts), ['output', 'errors', 'auth', 'quota', 'timeout']);
-  assert.equal(Object.hasOwn(fixture, 'credentials'), false);
-});
-
-test('Codex CLI compatibility record is a real-invocation verification without raw output', () => {
-  const fixture = JSON.parse(readFileSync(
-    new URL('../fixtures/backend-codex-contract.json', import.meta.url),
-    'utf8',
-  ));
-  assert.equal(fixture.schemaVersion, 1);
-  assert.equal(fixture.backend, 'codex-cli');
-  assert.equal(fixture.cli, 'codex');
-  assert.equal(fixture.observedVersion, '0.153.4');
+  assert.equal(fixture.backend, backend);
+  assert.equal(fixture.cli, cli);
+  assert.equal(fixture.observedVersion, version);
   assert.equal(fixture.status, 'verified');
   assert.equal(fixture.evidence.kind, 'real-invocation');
   assert.equal(fixture.evidence.realInvocation, true);
-  // A verified record must point at the dated operations receipt that holds
-  // the per-scenario evidence; the fixture itself carries only the verdict.
-  assert.equal(fixture.evidence.record, 'docs/operations/backend-compat-codex-20260910.json');
-  assert.equal(existsSync(new URL(`../../${fixture.evidence.record}`, import.meta.url)), true);
+  assert.equal(fixture.evidence.record, record);
+  assert.equal(existsSync(new URL(`../../${record}`, import.meta.url)), true);
   for (const flag of ['outputParsingVerified', 'errorsVerified', 'authVerified', 'timeoutVerified']) {
     assert.equal(fixture.evidence[flag], true, flag);
   }
@@ -192,10 +163,38 @@ test('Codex CLI compatibility record is a real-invocation verification without r
   assert.equal(fixture.syntheticFixture, false);
   assert.equal(fixture.rawOutputIncluded, false);
   assert.deepEqual(Object.keys(fixture.requiredContracts), ['output', 'errors', 'auth', 'quota', 'timeout']);
-  assert.equal(Object.hasOwn(fixture, 'credentials'), false);
-  assert.equal(Object.hasOwn(fixture, 'prompt'), false);
-  assert.equal(Object.hasOwn(fixture, 'response'), false);
+  for (const key of ['credentials', 'prompt', 'response']) {
+    assert.equal(Object.hasOwn(fixture, key), false, key);
+  }
   assert.ok(Number.isInteger(fixture.scope.invocations) && fixture.scope.invocations > 0);
+}
+
+test('Claude CLI compatibility record is a real-invocation verification without raw output', () => {
+  const fixture = JSON.parse(readFileSync(
+    new URL('../fixtures/backend-claude-contract.json', import.meta.url),
+    'utf8',
+  ));
+  assertVerifiedBackendRecord(fixture, {
+    backend: 'claude-cli',
+    cli: 'claude',
+    version: '2.1.261',
+    record: 'docs/operations/backend-compat-claude-gemini-20260910.json',
+  });
+  // The earlier version-only status is retained as history, not erased.
+  assert.match(fixture.history['2026-09-09'], /version-only/);
+});
+
+test('Codex CLI compatibility record is a real-invocation verification without raw output', () => {
+  const fixture = JSON.parse(readFileSync(
+    new URL('../fixtures/backend-codex-contract.json', import.meta.url),
+    'utf8',
+  ));
+  assertVerifiedBackendRecord(fixture, {
+    backend: 'codex-cli',
+    cli: 'codex',
+    version: '0.153.4',
+    record: 'docs/operations/backend-compat-codex-20260910.json',
+  });
 });
 
 test('isRetryableBackendError honors message status even when err.status is null (#445)', () => {

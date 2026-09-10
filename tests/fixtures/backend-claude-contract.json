@@ -3,30 +3,43 @@
   "backend": "claude-cli",
   "cli": "claude",
   "observedVersion": "2.1.261",
-  "observedAt": "2026-09-09",
-  "status": "unverified",
+  "observedAt": "2026-09-10",
+  "status": "verified",
   "evidence": {
-    "kind": "version-only",
-    "command": "claude --version",
-    "realInvocation": false,
-    "outputParsingVerified": false,
-    "errorsVerified": false,
-    "authVerified": false,
+    "kind": "real-invocation",
+    "record": "docs/operations/backend-compat-claude-gemini-20260910.json",
+    "realInvocation": true,
+    "outputParsingVerified": true,
+    "errorsVerified": true,
+    "authVerified": true,
     "quotaVerified": false,
-    "timeoutVerified": false
+    "timeoutVerified": true
   },
-  "syntheticFixture": true,
+  "syntheticFixture": false,
   "rawOutputIncluded": false,
+  "history": {
+    "2026-09-09": "version-only / unverified record from `claude --version` (P17a)."
+  },
+  "scope": {
+    "platform": "linux-x64",
+    "node": "24.18.0",
+    "patina": "8.6.0 at dev 0ec1376 (agent tools removed, #798)",
+    "model": "claude-sonnet-4-6",
+    "authPath": "Claude Code OAuth session (~/.claude/.credentials.json claudeAiOauth, subscription); no ANTHROPIC_API_KEY in the environment",
+    "invocations": 7,
+    "scenarios": ["score", "rewrite --verify", "timeout", "invalid in-family model"]
+  },
   "requiredContracts": {
-    "output": "claude -p stdout is passed to Patina's output parser; this version-only fixture does not exercise body framing or parsing.",
-    "errors": "Non-zero exits, signal termination, spawn failures, user aborts, and timeouts remain distinct runtime outcomes.",
-    "auth": "Authentication is the Claude credential-file check; a version response does not prove login or authorization.",
-    "quota": "Provider or account quota failures are external runtime failures, not successful output or compatibility evidence.",
-    "timeout": "Patina's bounded child-process timeout rejects and cleans the owned invocation; version output does not exercise this path."
+    "output": "claude -p stdout is parsed by Patina's output layer; strict scoring JSON and the [BODY]/[SELF_AUDIT] rewrite framing both parsed on this version with --tools \"\" --strict-mcp-config.",
+    "errors": "A non-zero claude exit is reported as a backend error with the child's stderr (the unknown-model catalog message); the owned temp directory is removed and no claude process survives.",
+    "auth": "Authentication is the claudeAiOauth token/expiry classification of ~/.claude/.credentials.json; the verified run used a live subscription session, not an API key.",
+    "quota": "No quota or rate-limit failure occurred in the pilot budget; quota behavior is not verified by this record.",
+    "timeout": "Patina's bounded child timer rejected a live invocation at the requested budget, SIGKILLed the owned child, and left no temp directory or process behind."
   },
   "limitations": [
     "No credential, prompt, model response, or raw CLI output is recorded.",
-    "This record does not verify invocation, output parsing, authentication, quota behavior, or timeout behavior.",
-    "No Windows coverage is claimed for POSIX process-lifecycle fixtures."
+    "Verified only for Claude Code 2.1.261 on Linux with claude-sonnet-4-6; other versions, platforms, and models are unverified.",
+    "Quota and rate-limit handling were not exercised.",
+    "This is a connectivity/contract check, not a rewrite-quality experiment."
   ]
 }

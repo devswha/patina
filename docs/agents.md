@@ -75,26 +75,35 @@ The normal `/patina` and `/patina --strict` routes remain CLI-first: a failed CL
 run is an error, never an inline rewrite or a silent fallback. The optional
 instruction-only route above is the only host-agent analysis path.
 
-`tests/fixtures/backend-claude-contract.json` records the observed
-`claude --version` result (`2.1.261`) as **version-only / unverified**. It is a
-synthetic contract fixture, not an invocation recording: it contains no
-credentials, prompts, model response, or raw CLI output. The evidence must stay
-separate from these runtime distinctions:
+`tests/fixtures/backend-claude-contract.json` was a **version-only /
+unverified** record of `claude --version` (`2.1.261`) on 2026-09-09; on
+2026-09-10 it became a **real-invocation / verified** record for that same
+version (`claude-sonnet-4-6`, subscription OAuth, `--tools ""
+--strict-mcp-config`) with per-scenario evidence in
+`docs/operations/backend-compat-claude-gemini-20260910.json`. The same receipt
+verifies the `openai-http` backend against the loopback OpenCodex proxy route
+`google-antigravity/gemini-3.7-flash`; that is transport evidence for the HTTP
+backend, not `gemini-cli` evidence. Neither fixture contains credentials,
+prompts, model responses, or raw CLI output. The evidence must stay separate
+from these runtime distinctions:
 
 - **Output parsing:** `claude-cli` captures `-p` stdout; Patina's output layer
-  removes optional `[BODY]`/`[SELF_AUDIT]` scaffolding and returns the body. A
-  version response does not exercise that parser.
+  removes optional `[BODY]`/`[SELF_AUDIT]` scaffolding and returns the body.
+  Verified on 2.1.261 by the 2026-09-10 score and rewrite scenarios; a version
+  response alone would not exercise that parser.
 - **Errors and cancellation:** non-zero exits, signal termination, spawn
   failures, `AbortError`, and local timeout errors are reported as failures.
   Cancellation/timeout tests also require the owned child, invocation
   directory, and concurrency slot to be gone before a later call succeeds.
-- **Authentication and quota:** the Claude credential-file check is not an
+- **Authentication and quota:** the Claude credential classification is not an
   invocation check. Account authentication or quota failures are external
   runtime outcomes and must not be promoted to compatibility or rewrite
-  success by a version-only record.
+  success. The 2026-09-10 run establishes that the recorded OAuth session
+  authenticated; quota behavior was not exercised and stays unverified.
 - **Timeout:** the adapter's bounded child-process timer is distinct from
-  caller cancellation and from account quota. The fixture does not verify any
-  of these paths.
+  caller cancellation and from account quota. The pilot verified the timer
+  path (kill plus temp-directory cleanup) for 2.1.261; caller cancellation and
+  quota remain covered only by the lifecycle fixtures, not by a live run.
 
 `tests/fixtures/backend-codex-contract.json` is the first **real-invocation /
 verified** record: codex `0.153.4` on Linux with `gpt-5.5` over a ChatGPT OAuth

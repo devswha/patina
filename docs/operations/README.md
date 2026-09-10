@@ -137,7 +137,8 @@ application smoke nor Vercel account evidence.
 `cursor-acceptance-20260910.json` supersedes the P01 `inconclusive` row in
 `maintenance-delivery-20260910.json`. The real Cursor Agent CLI
 (2026.09.08, Linux) loaded the always-applied project rule and resolved
-`@AGENTS.md`, exposed the generated `~/.cursor/rules/patina.mdc` adapter as
+`@AGENTS.md` both in the maintainer checkout and in a fresh `--depth=1` clone
+of `dev` with no local files, exposed the generated `~/.cursor/rules/patina.mdc` adapter as
 agent-requestable, fetched the canonical `SKILL.md` from the adapter's absolute
 path, ran `bin/patina-skill.js`, refused to write output on two backend
 authentication failures, and wrote the result only after a `verified` receipt

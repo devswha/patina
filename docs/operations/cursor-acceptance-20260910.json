@@ -39,6 +39,17 @@
       ]
     },
     {
+      "id": "project-rule-loading-clean-clone",
+      "cwd": "fresh `git clone --depth=1 --branch dev` under /tmp at 46f5c4dcd29fbd9fe62ecefd1970f0ac4a6085f7; no CLAUDE.md, no local configuration, no node_modules",
+      "command": "cursor-agent -p --mode ask --trust --output-format text <context-inventory prompt>",
+      "result": "passed",
+      "observed": [
+        "Only two project rules were injected: .cursor/rules/patina.mdc (body `@AGENTS.md`) and the resolved AGENTS.md whose first heading is `# Repository development rules`.",
+        "No other workspace instruction file was loaded from the clean clone; the CLAUDE.md seen in the maintainer checkout was absent, as expected for a gitignored file.",
+        "The five injected user rules are the maintainer's personal Cursor rules and are unrelated to patina."
+      ]
+    },
+    {
       "id": "product-rule-end-to-end",
       "cwd": "fresh temporary git repository outside the checkout, one Korean AI-styled draft.md (432 bytes)",
       "command": "cursor-agent -p --trust --force --output-format text <humanize ./draft.md via Patina; --backend codex-cli>",
@@ -60,7 +71,7 @@
   "acceptance": {
     "P01": "passed-on-linux-cursor-agent-cli",
     "criteria": {
-      "publicRulesLoadFromCleanClone": "passed (project rule + AGENTS.md resolved by the real client)",
+      "publicRulesLoadFromCleanClone": "passed (probe project-rule-loading-clean-clone: fresh clone of dev, project rule + AGENTS.md resolved by the real client, no other workspace file loaded)",
       "productSkillBehaviorUnchanged": "passed (canonical SKILL.md fetched, helper invoked, verified receipt, unverified output refused)",
       "noDevelopmentGuidanceInProductAdapter": "passed (adapter body is SKILL.md; AGENTS.md was only loaded inside the repository checkout)"
     },

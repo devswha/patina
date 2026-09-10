@@ -67,10 +67,14 @@ reachable. The rewrite function bundle must include `patterns/**`,
 `PATINA_FREE_API_KEY` plus `KV_REST_API_URL` / `KV_REST_API_TOKEN` for the
 fail-closed quota.
 
-After a production deploy, verify the custom domain points at the latest
-deployment and not an older manual alias:
+Run production deploys from a clean `main` checkout at the released SHA, never
+from a `dev` working tree (see
+[`docs/integrations/release.md`](release.md)). After a production deploy,
+verify the custom domain points at the latest deployment and not an older
+manual alias:
 
 ```bash
+git switch main && git pull --ff-only && git status --porcelain   # must be empty
 vercel --prod --yes --scope <vercel-team>
 vercel alias set <latest-patina-*.vercel.app> patina.vibetip.help --scope <vercel-team>
 vercel inspect https://patina.vibetip.help --scope <vercel-team>

@@ -2,19 +2,44 @@
 
 기여를 검토해 주셔서 감사합니다. Patina는 패턴 기반 도구이므로 가장 큰 도움이 되는 기여는 새 패턴, 더 나은 예시, Document Type 정책, Persona 개선인 경우가 많습니다.
 
-## 공개 문서와 내부 문서
+## 문서 경계
 
-사용자용 문서는 `README*.md`, `docs/`, `examples/`, `patterns/`, `document-types/`, `personas/`, 스킬 엔트리포인트에 둡니다. 유지보수자나 에이전트용 메모(백로그, 런북, 런치 플레이북)는 이 저장소에 두지 않습니다 — 유지보수자의 비공개 작업 공간에 보관하며, `docs/internal/`은 안전장치로 gitignore 처리되어 있습니다. 실제 사용자에게 필요한 사실만 공개 문서 목록으로 승격합니다.
+추적되는 트리는 기본적으로 공개됩니다. 다음 역할을 구분해 유지합니다.
 
-루트의 Markdown 파일을 옮길 때 공개 문서라면 `README.md`에서 링크하고, 유지보수자 내부 문서라면 저장소 밖으로 옮깁니다.
+- **개발 정책:** `AGENTS.md`, 이 문서, 그리고 연결된
+  `docs/WORKFLOW.md`, `docs/ARCHITECTURE.md`, `docs/QA.md`.
+- **제품 문서와 자산:** `README*.md`, `SKILL.md`, `core/`, `patterns/`,
+  `document-types/`, `personas/`, `examples/`, 그리고 `docs/` 아래의
+  사용자용 자료.
+- **검토된 운영 증거:** 위생 처리하고 명시적으로 승인한 기록만
+  `docs/operations/` 아래에 둘 수 있습니다. 이는 사용자 문서를 대신하지
+  않습니다.
+- **역사적 증거:** 날짜가 있는 계획, 연구, benchmark 기록은 날짜, 조건,
+  소스 revision을 표시한 채 유지합니다. 역사적 결과를 현재의 주장으로
+  조용히 바꾸지 않습니다.
 
-## 개발 워크플로우 (브랜치 & 릴리즈)
+비공개 런북, 가공하지 않은 사용자 또는 모델 텍스트, 리뷰/실행 로그,
+자격 증명, 토큰, 개인 프로필, 로컬 QA 작업공간은 공개 트리 밖에 둡니다.
+`docs/internal/`, `.gjc/`, `.omo/`, `.omc/`, `.insane-review/`와 무시되는
+scoped agent 파일은 비공개 자료를 지키는 장치이지 공개 대상이 아닙니다.
+비공개 상위 `AGENTS.md`나 그 내용을 이 저장소에 복사하지 않습니다. 비공개
+자료를 issue, telemetry, package tarball, 예시에 넣지 않습니다.
 
-기능 브랜치(`bot/*` / `feat/*`)는 `dev`에서 분기 → `dev`(통합/스테이징)로 PR →
-릴리즈 시 `dev` → `main`을 **머지(squash 아님)** PR + 버전 bump으로 진행합니다.
-`dev`는 항상 `main`과 같거나 앞선 상태로 유지합니다. 병렬 작업은 각각 별도의
-**git worktree**(브랜치 하나씩, `dev`에서 분기)에서 합니다. 전체 가이드:
-[`docs/WORKFLOW.md`](docs/WORKFLOW.md).
+루트 `AGENTS.md`는 공개 저장소 개발 진입점이며, 제품 지침은 그곳에 두지
+않습니다. 이 저장소는 외부 공개, registry, 배포, 계정 또는 release 권한을
+부여하지 않습니다. 모든 외부 쓰기에는 유지보수자 승인과 문서화된 release
+절차가 필요합니다. 공개 루트 문서를 옮길 때는 `README.md`에서 링크하고,
+비공개 자료는 저장소로 옮기지 않습니다.
+
+## 개발 워크플로우와 정본 문서 링크
+
+세션마다 하나의 브랜치와 worktree를 사용하며, 일반적으로 `dev`에서
+분기합니다. 각 PR은 하나의 동작, 계약 또는 책임 변경으로 유지합니다.
+브랜치, PR/Issue, review, merge, release의 전체 정책은
+[`docs/WORKFLOW.md`](docs/WORKFLOW.md)를 따릅니다. 모듈 소유권과 공개
+계약은 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)에서, 검증 프로필,
+증거와 격리는 [`docs/QA.md`](docs/QA.md)에서 확인합니다. 이 문서들의
+내용을 여기 복제하지 않습니다.
 
 ## 한국어 번역 정책
 
@@ -30,7 +55,7 @@ PR에서 위 영어 문서를 바꾸면 같은 PR에서 한국어 쌍도 갱신�
 
 ## 새 패턴 추가
 
-1. **올바른 팩을 고릅니다.** 패턴은 `patterns/{lang}-{category}.md`에 있습니다. 카테고리: content, language, style, structure, communication, filler.
+1. **올바른 팩을 고릅니다.** 패턴은 `patterns/{lang}-{category}.md`에 있습니다. 카테고리: content, language, style, structure, communication, filler, 그리고 score 전용 `viral-hook` 팩입니다.
 
 2. **템플릿을 따릅니다.** 각 패턴에는 다음이 필요합니다.
    - 번호(다음 번호, 예: #30)
@@ -44,7 +69,7 @@ PR에서 위 영어 문서를 바꾸면 같은 PR에서 한국어 쌍도 갱신�
 
 4. **카운트를 맞춥니다.** 패턴을 추가한 뒤:
    - 팩 헤더의 `patterns:` 수를 올립니다.
-   - README.md와 README_KR.md의 패턴 표와 총계를 갱신합니다.
+   - `docs/PATTERNS.md`와 `docs/PATTERNS-{lang}.md`의 카탈로그를 재생성하고, README `Facts` 행의 총계를 갱신합니다.
    - SKILL.md 설명에 하드코딩된 총계가 있으면 갱신합니다.
 
 5. **예시를 추가합니다.** 가능하면 `examples/{lang}-{number}-success-01.md`와 `examples/{lang}-{number}-failure-01.md`(오탐 사례)를 추가합니다.
@@ -113,7 +138,10 @@ npm run benchmark:report
 3. **advisory 페이로드를 끌어쓰지 말고 1급 신호로 구현합니다.** advisory 신호(`translationese`, `koPostEditese.v1`)는 hot 판정에 들어가면 안 됩니다([docs/TRANSLATIONESE-KO.md](docs/TRANSLATIONESE-KO.md)). `src/features/stylometry.js`에 전용 계산을 추가하고 `src/features/index.js`의 hot OR에 연결하며, 짧은/코너케이스 텍스트에 과발동하면 정밀도 게이트(길이/횟수 하한)를 둡니다.
 4. **런타임 표면을 일치시킵니다.** 다음이 일치해야 신호가 완성됩니다: `src/features/index.js` 및 `src/web-rewrite-stream.js` 같은 서버측 feature 호출부, `scripts/rebaseline-score.mjs`의 `trigger_counts`, `core/stylometry.md`·`SKILL.md`의 hot 규칙 산문, 그리고 유닛 테스트(정밀도 가드 포함). 브라우저 playground는 `playground/chatgpt.js` UI이며, 탐지/채점은 별도 브라우저 미러가 아니라 서버측 `src/features/*` 경유로 수행합니다.
 5. **손이 아니라 하네스로 측정합니다.** `npm run benchmark:signal-impact`로 한계 before/after를, `npm run benchmark`로 49-fixture(자연 fixture가 hot으로 뒤집히면 안 됨 — 100% 유지)를 확인하고, 사람 대조군 오탐율이 `docs/benchmarks/rebaseline-latest.md`의 공개 CI 내에 머무는지 확인합니다. 측정값은 changelog에 기록합니다. 동결된 공개 claim 매니페스트는 신호 PR이 아니라 별도 rebaseline pass에서 갱신합니다.
-6. **버전을 올립니다.** 새 검출 신호는 hot 동작을 바꾸므로 **minor** 범프입니다(제거가 아닌 추가). 모든 버전 surface를 올리고, 측정한 catch/FP 델타와 가드한 실패 모드를 담은 changelog 항목을 추가합니다.
+6. **release 영향을 기록합니다.** 새 검출 신호는 hot 동작을 바꾸므로
+   일반적으로 **minor** release가 필요합니다(제거가 아닌 추가). PR에
+   해당 영향과 측정한 catch/FP 델타를 기록하되, package와 mirror 갱신은
+   release 절차에서 처리합니다.
 
 수용 기준(로드맵의 deterministic-feature-expansion 기준과 동일): 라벨드 매니페스트에서 재현율 또는 정밀도가 개선되고, 사람 대조군 오탐율이 공개 허용치 내에 머물며, 신호가 문서화된 실패 모드와 before/after 예시를 함께 제공합니다.
 
@@ -147,18 +175,21 @@ AI 문체 패턴은 모델이 미세 조정되면서 바뀝니다. 어떤 패턴
 - **새 패턴 제안:** 새 AI tell을 발견하면 실제 예시 3개 이상과 50문서 평가 fixture 또는 수집 계획을 포함해 이슈를 엽니다.
 - **분기별 리뷰:** 유지보수자는 [`process/pattern-freshness.md`](process/pattern-freshness.md)의 corpus freeze window, promotion threshold, frontmatter metadata 규칙을 따릅니다.
 - **Lexicon provenance:** 새로 마이닝하거나 다시 마이닝한 lexicon 항목은 동작을 바꾸기 전에 `added`, `source`, `last_validated` provenance를 기록해야 하며, `npm run lexicon:freshness`로 sidecar가 실제 shipped entry와 맞는지 확인합니다.
-- **버전 메모:** 각 패턴 팩에는 `version` 필드가 있습니다. 패턴이 바뀌면 올립니다.
+- **버전 메모:** 각 패턴 팩에는 `version` 필드가 있습니다. 패턴이 바뀌면
+  호환성 영향을 기록하고, package와 mirror 버전 갱신은 문서화된 release
+  절차에서 처리합니다.
 - **대체 없는 삭제 금지:** 패턴을 바로 제거하지 않습니다. `low` severity로 낮추거나 Document Type에서 `reduce`로 옮깁니다.
 
-## 버전 정책
+## 버전 관리와 release
 
-Patina는 CLI 동작과 패턴 팩 호환성에 semantic versioning을 사용합니다.
-
-- **Major:** 패턴 삭제/재번호 매기기, config/result schema 변경, 공개 CLI 의미 변경, 기존 패턴 팩과의 호환성 파괴.
-- **Minor:** 패턴, 언어, 프로필, 모드, 백엔드, benchmark schema field, 기여자용 workflow 추가.
-- **Patch:** 버그 수정, severity/exclusion 조정, 예시 명확화, schema 변경 없는 docs 갱신 또는 benchmark fixture refresh.
-
-각 changelog 항목에는 짧은 semver rationale line을 넣어 downstream 사용자가 pin, test, upgrade 중 무엇을 해야 하는지 알 수 있게 합니다.
+기능 또는 문서 PR에는 예상 semver 영향을 기록하되 package 버전은 올리지
+않습니다. 버전 변경은 release에서만 합니다. release PR에서 `package.json`을
+정본으로 삼아 문서에 명시된 mirror와 해당 `CHANGELOG.md` 항목을 한 번
+갱신합니다. [`docs/WORKFLOW.md`](docs/WORKFLOW.md)의 검사와
+version-bearing 파일 목록을 사용하며, `npm run release:check`를 최종
+metadata 검사로 유지합니다. 각 release 항목에는 짧은 semver rationale을
+포함합니다. 패턴 팩과 Document Type metadata에는 별도의 호환성 규칙이
+있을 수 있지만 package release 버전을 조용히 바꾸면 안 됩니다.
 
 ## 행동 강령
 
@@ -166,8 +197,14 @@ Patina는 CLI 동작과 패턴 팩 호환성에 semantic versioning을 사용합
 
 ## PR 절차
 
-1. `main`에서 fork/branch를 만듭니다.
-2. 변경합니다.
-3. 패턴 카운트가 일치하는지 확인합니다.
-4. 명확한 설명과 함께 PR을 엽니다.
-5. 보너스: 변경을 보여 주는 before/after 예시를 포함합니다.
+1. `dev`에서 branch를 만들고 독립적으로 review할 수 있는 가장 작은
+   변경을 합니다.
+2. 문제, 범위, 비목표, 공개 계약 영향, 위험, rollback을 설명하고 관련
+   테스트 또는 fixture와 그 증거를 포함합니다.
+3. 구현, 회귀 범위, 필요한 공개 문서를 함께 두되 무관한 정리, 생성물,
+   release bump는 분리합니다.
+4. 명확한 설명과 함께 `dev`를 대상으로 PR을 엽니다. 이후 `dev` → `main`
+   merge에는 release 절차를 사용하며, 기능 PR은 release가 아닙니다.
+5. 패턴 변경에는 before/after 예시를 포함하고 실행하지 않았거나 막힌
+   검사를 명시합니다. 실행하지 않았거나 오래된 검사를 통과한 것으로
+   취급하지 않습니다.

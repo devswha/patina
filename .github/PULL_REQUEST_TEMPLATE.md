@@ -1,54 +1,43 @@
-## Summary
+## Purpose / linked Issue
 
-<!-- Why is this change needed? -->
+Policy source: [`docs/WORKFLOW.md`](../docs/WORKFLOW.md)
+What user, contract, or maintenance behavior does this PR change?
 
-## Type
+Refs #...
 
-- [ ] Pattern change
-- [ ] Benchmark / quality change
-- [ ] CLI / API change
-- [ ] Docs only
-- [ ] Bot / automation
-- [ ] Other
+If no Issue is linked, explain the low-risk exemption:
 
-## Language / scope
+## Scope / non-goals
 
-- [ ] ko
-- [ ] en
-- [ ] zh
-- [ ] ja
-- [ ] cross-language
-- [ ] not language-specific
+One independently verifiable and revertible behavior or contract unit:
 
-## Pattern changes
+Not changed by this PR:
 
-If this edits patterns, include before/after examples.
+## Contract / risk / size
 
-**Before:**
+- Contract: `compatible` / `intentional-change` / `retirement` /
+  `not-applicable`
+- Risk: `low` / `standard` / `high`
+- Raw diff (lines/files):
+- Reviewable diff (lines/files):
+- Generated, lockfile, rename, or move evidence (source, generator/version,
+  reproducibility, artifact/hash):
+- Size exception rationale and owner approval (if over 600 lines or 15 files):
 
-```text
+## Verification evidence
 
-```
+- Diff / head SHA / base SHA:
+- Tested merge SHA and tree/build or artifact (when applicable):
+- Commands, environment, expected result, actual result, exit code:
+- QA profile/result/artifact, or why QA is not required:
+  see [`docs/QA.md`](../docs/QA.md)
+- Stale result or retry history (if any; retain the first failure):
 
-**After:**
+## Integration / delivery / rollback
 
-```text
-
-```
-
-False-positive risk:
-
-## Verification
-
-- [ ] `npm test`
-- [ ] `npm run benchmark`
-- [ ] `npm run quality:live` when relevant
-- [ ] Docs reviewed manually
-- [ ] `_KR` companion docs updated or not affected
-- [ ] Not run — explain why:
-
-## Meaning preservation
-
-For rewrite-related changes, explain how claims, polarity, causation, numbers, and negations are preserved.
-
-## Risks / follow-ups
+- Integration target: `dev`; explicit acceptance-criteria closure owner/status:
+- User delivery status by channel (`delivered`, `held`, `failed`, or `unknown`):
+- Semver impact and rationale (version bump belongs in the release PR only):
+- External writes requested and explicitly authorized (actor/channel/scope), or
+  `none`:
+- Rollback or revert procedure:

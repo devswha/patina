@@ -7,17 +7,25 @@ on:
     branches: [main, dev]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Node 18
+      - name: Set up Node 24
         uses: actions/setup-node@v6
         with:
-          node-version: "18"
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -28,9 +36,13 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
-        node-version: ["18.1.0", 20, 22, 24, "lts/*"]
+        # Branch protection requires the floating `test (lts/*)` check. The
+        # plan's preferred fixed-24 entry would duplicate current LTS
+        # (24.20.0), so review fixed coverage when the LTS line advances.
+        node-version: ["18.1.0", 20, 22, "lts/*"]
       fail-fast: false
 
     steps:
@@ -58,6 +70,7 @@ jobs:
 
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v6

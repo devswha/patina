@@ -16,7 +16,17 @@
   "authority": {
     "approval": "Maintainer asked to proceed with P17b in session on 2026-09-10 after removing the OpenAI key and restricting the Gemini key to product use.",
     "credentialPolicy": "OPENAI_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY and KIMI_API_KEY were unset in the pilot shell. Only the ChatGPT OAuth session behind the codex CLI was used; no provider API key was read or sent.",
-    "budget": {"maxInvocationsPlanned": 6, "invocationsObserved": 8, "note": "The --verify scenario retried once (rewrite + verify twice), which exceeded the planned count by two; recorded, not hidden."}
+    "budget": {"maxInvocationsPlanned": 6, "invocationsObserved": 10, "note": "Corrected after the run from the codex session log (~/.codex/sessions, 13:31-13:39 KST): A 1, B 6 (rewrite, two verification calls, retry rewrite, two verification calls), C 1 (killed), D 1, E 1 (rejected). The receipt first said 8 by assuming one verification call per candidate."},
+    "tokenUsage": {
+      "source": "codex rollout token_count events for the ten pilot sessions; ChatGPT subscription quota, not per-token billing",
+      "sessions": 10,
+      "modelTurns": 33,
+      "inputTokens": 1256282,
+      "cachedInputTokens": 944512,
+      "outputTokens": 23081,
+      "reasoningOutputTokens": 17383,
+      "observation": "Patina's own prompt is roughly 18-20k tokens for a rewrite or verification call and about 43k for --score (pattern packs). The multiple is codex exec behaving as an agent: on the rewrite/score prompts it issued 3-13 shell tool calls per session inside the read-only sandbox, re-sending the prompt each turn (the KO rewrite reached 11 turns), and the host config ran reasoning effort xhigh. A single-turn call would have cost roughly a third. Candidate follow-up: pass a codex config override that lowers reasoning effort and/or a prompt instruction not to run commands; outside this pilot."
+    }
   },
   "environment": {
     "os": "Linux 6.8.0-138-generic x64",

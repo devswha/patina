@@ -29,31 +29,45 @@ import { join } from 'node:path';
  *
  * win32 only: a CLI installed as an npm `.cmd`/`.bat` shim cannot be spawned
  * without a shell (Node refuses since the CVE-2024-27980 fix), while a real
- * `.exe` spawns bare. Walk PATH in order and return the first matching
- * candidate with the shell flag a batch shim needs. Anything else (a real
- * executable, or nothing found) keeps the bare name so the existing
- * not-installed error path is unchanged. Node quotes shell-spawn args only
- * since 18.20.2/20.12.2 — older win32 Nodes may mis-split paths with spaces.
+ * `.exe` spawns bare. Walk PATH in order and return the first PATHEXT match;
+ * batch shims come back flagged so callers launch them through cmd.exe (see
+ * spawnWindowsBatch). Real executables and unknown names keep the bare name
+ * so the existing not-installed error path is unchanged.
  *
  * @param {string} command Bare CLI name (e.g. 'gemini').
  * @param {object} [deps]
  * @param {string} [deps.platform]
  * @param {NodeJS.ProcessEnv} [deps.env]
  * @param {(path: string) => boolean} [deps.exists]
- * @returns {{ command: string, shell: boolean }}
+ * @returns {{ command: string, batch: boolean }}
  */
 export function resolveCliSpawnCommand(command, { platform = process.platform, env = process.env, exists = existsSync } = {}) {
-  if (platform !== 'win32') return { command, shell: false };
+  if (platform !== 'win32') return { command, batch: false };
   const extensions = String(env.PATHEXT || '.COM;.EXE;.BAT;.CMD').split(';').map((ext) => ext.toUpperCase());
   for (const dir of String(env.PATH || '').split(';')) {
     if (!dir) continue;
     for (const ext of extensions) {
       const candidate = join(dir, command + ext);
       if (!exists(candidate)) continue;
-      return { command: candidate, shell: ext === '.CMD' || ext === '.BAT' };
+      return { command: candidate, batch: ext === '.CMD' || ext === '.BAT' };
     }
   }
-  return { command, shell: false };
+  return { command, batch: false };
+}
+
+/**
+ * Build the spawn triple for a win32 batch shim. `shell: true` is not used:
+ * Node merely concatenates args with it (dropping empty strings, splitting
+ * on spaces, DEP0190). Instead cmd.exe gets one fully-quoted command line:
+ * every token is double-quoted, the whole line is wrapped in a second quote
+ * pair because cmd /s strips one outer pair, and windowsVerbatimArguments
+ * keeps Node's own quoting out of the way. Verified on Windows 11 with a
+ * space in the batch path, an empty-string arg and a space in an arg.
+ */
+export function windowsBatchSpawn(command, args, options = {}) {
+  const quote = (value) => `"${String(value).replace(/"/g, '""')}"`;
+  const line = [command, ...args].map(quote).join(' ');
+  return ['cmd.exe', ['/d', '/s', '/c', `"${line}"`], { ...options, windowsVerbatimArguments: true }];
 }
 
 /**
@@ -63,16 +77,15 @@ export function resolveCliSpawnCommand(command, { platform = process.platform, e
 export function probeCliAvailability(command, { platform = process.platform, env = process.env, exists = existsSync, spawnSyncImpl = spawnSync } = {}) {
   try {
     const resolved = resolveCliSpawnCommand(command, { platform, env, exists });
-    const result = spawnSyncImpl(resolved.command, ['--version'], {
-      stdio: 'ignore',
-      ...(resolved.shell ? { shell: true } : {}),
-    });
+    const [spawnCommand, spawnArgs, spawnOptions] = resolved.batch
+      ? windowsBatchSpawn(resolved.command, ['--version'], { stdio: 'ignore' })
+      : [resolved.command, ['--version'], { stdio: 'ignore' }];
+    const result = spawnSyncImpl(spawnCommand, spawnArgs, spawnOptions);
     return result.status === 0;
   } catch {
     return false;
   }
 }
-
 export const DEFAULT_BACKEND_TIMEOUT_MS = 600_000;
 export const DEFAULT_HTTP_MAX_RETRIES = 2;
 export const PROMPT_SIZE_WARNING_CHARS = 20_000;
@@ -442,9 +455,11 @@ export function spawnOwnedCliProcess(command, args = [], options = {}, {
 } = {}) {
   const ownsProcessGroup = supportsOwnedProcessGroup(platform);
   const resolved = resolveCliSpawnCommand(command, { platform });
-  const spawnOptions = ownsProcessGroup ? { ...options, detached: true } : { ...options };
-  if (resolved.shell) spawnOptions.shell = true;
-  const proc = spawnImpl(resolved.command, args, spawnOptions);
+  const baseOptions = ownsProcessGroup ? { ...options, detached: true } : { ...options };
+  const [spawnCommand, spawnArgs, spawnOptions] = resolved.batch
+    ? windowsBatchSpawn(resolved.command, args, baseOptions)
+    : [resolved.command, args, baseOptions];
+  const proc = spawnImpl(spawnCommand, spawnArgs, spawnOptions);
   let closeResult;
   let resolveClose;
   const closePromise = new Promise((resolve) => {

@@ -16,7 +16,6 @@ const GH_JSON_FIELDS = [
   'additions',
   'deletions',
   'changedFiles',
-  'files',
   'labels',
 ].join(',');
 
@@ -28,7 +27,7 @@ export const PR_POLICY = Object.freeze({
   reviewWarningFiles: 15,
 });
 
-const DIFF_STATUSES = new Set(['added', 'modified', 'deleted', 'copied', 'changed']);
+const DIFF_STATUSES = new Set(['added', 'modified', 'deleted', 'removed', 'copied', 'changed']);
 const RENAME_STATUSES = new Set(['renamed', 'rename']);
 
 function asObject(value) {
@@ -577,30 +576,67 @@ export function collectPrPolicyReport(pullRequest, {
   };
 }
 
+function runGhJson(spawn, args, { repoRoot, label }) {
+  const result = spawn('gh', args, {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  if (result?.error) throw new Error(`${label} could not start: ${result.error.message}`, { cause: result.error });
+  if ((result?.status ?? 1) !== 0) {
+    throw new Error(`${label} failed${result?.stderr ? `: ${result.stderr.trim()}` : ''}`);
+  }
+  try {
+    return JSON.parse(result.stdout);
+  } catch (error) {
+    throw new Error(`${label} returned malformed JSON: ${error.message}`, { cause: error });
+  }
+}
+
+function pullRequestFilesApiArgs(prId, repo) {
+  const repository = typeof repo === 'string' ? repo.trim() : '';
+  let endpoint = `repos/{owner}/{repo}/pulls/${prId}/files?per_page=100`;
+  const args = [];
+  if (repository) {
+    const parts = repository.split('/');
+    if (parts.length === 3 && parts.every(Boolean)) {
+      endpoint = `repos/${parts[1]}/${parts[2]}/pulls/${prId}/files?per_page=100`;
+      args.push('--hostname', parts[0]);
+    } else {
+      endpoint = `repos/${repository}/pulls/${prId}/files?per_page=100`;
+    }
+  }
+  return ['api', endpoint, '--paginate', '--slurp', ...args];
+}
+
+function flattenPullRequestFilePages(payload) {
+  if (!Array.isArray(payload)) throw new Error('gh api pull request files returned a non-array JSON payload');
+  if (payload.length === 0) return [];
+  if (payload.every((page) => Array.isArray(page))) return payload.flat();
+  if (payload.some((page) => Array.isArray(page))) {
+    throw new Error('gh api pull request files returned mixed paginated JSON pages');
+  }
+  return payload;
+}
+
 /**
- * Fetch a PR through the read-only GitHub CLI view command.
+ * Fetch scalar PR metadata through `gh pr view` and complete file metadata
+ * through the paginated REST files endpoint. The GraphQL-backed `files`
+ * field exposed by `gh pr view` does not include the status needed by policy.
  *
  * @param {{pr: string|number, repoRoot?: string, repo?: string, spawn?: Function}} options
  * @returns {object}
  */
 export function fetchPullRequest({ pr, repoRoot = REPO_ROOT, repo, spawn = spawnSync } = {}) {
   const prId = positivePrId(pr);
-  const args = ['pr', 'view', prId, '--json', GH_JSON_FIELDS];
-  if (repo) args.push('--repo', repo);
-  const result = spawn('gh', args, {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    maxBuffer: 16 * 1024 * 1024,
+  const viewArgs = ['pr', 'view', prId, '--json', GH_JSON_FIELDS];
+  if (repo) viewArgs.push('--repo', repo);
+  const scalar = runGhJson(spawn, viewArgs, { repoRoot, label: 'gh pr view' });
+  const filePages = runGhJson(spawn, pullRequestFilesApiArgs(prId, repo), {
+    repoRoot,
+    label: 'gh api pull request files',
   });
-  if (result?.error) throw new Error(`gh pr view could not start: ${result.error.message}`, { cause: result.error });
-  if ((result?.status ?? 1) !== 0) {
-    throw new Error(`gh pr view failed${result?.stderr ? `: ${result.stderr.trim()}` : ''}`);
-  }
-  try {
-    return JSON.parse(result.stdout);
-  } catch (error) {
-    throw new Error(`gh pr view returned malformed JSON: ${error.message}`, { cause: error });
-  }
+  return { ...scalar, files: flattenPullRequestFilePages(filePages) };
 }
 
 function readFixture(path) {

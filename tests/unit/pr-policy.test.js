@@ -400,6 +400,27 @@ test('large reviewable changes warn on target, 600-line, and 15-file thresholds 
   assert.equal(report.sizeException.waived, false);
 });
 
+test('live PR transport preserves multiple REST pages and rejects malformed pagination', () => {
+  const first = { filename: 'src/first.js', status: 'added', additions: 2, deletions: 0 };
+  const second = { filename: 'src/second.js', status: 'removed', additions: 0, deletions: 3 };
+  const fetch = (pages) => fetchPullRequest({
+    pr: 42,
+    repo: 'devswha/patina',
+    spawn: (_command, args) => ({
+      status: 0,
+      stdout: JSON.stringify(args[0] === 'pr'
+        ? { ...pr(), additions: 2, deletions: 3, changedFiles: 2, files: undefined }
+        : pages),
+    }),
+  });
+  const fetched = fetch([[first], [second]]);
+  assert.deepEqual(fetched.files, [first, second]);
+  assert.equal(collectPrPolicyReport(fetched).valid, true);
+  assert.throws(() => fetch({ files: [first] }), /non-array/);
+  assert.throws(() => fetch([[first], second]), /mixed paginated/);
+  assert.equal(collectPrPolicyReport(fetch([[first]])).valid, false);
+});
+
 test('CLI input stays offline and gh is used only for an explicit --pr request', () => {
   const fixture = pr();
   let output = '';
@@ -415,13 +436,40 @@ test('CLI input stays offline and gh is used only for an explicit --pr request',
     spawn: (command, args) => {
       calls += 1;
       assert.equal(command, 'gh');
-      assert.deepEqual(args.slice(0, 3), ['pr', 'view', '42']);
-      assert.deepEqual(args.slice(-2), ['--repo', 'devswha/patina']);
-      return { status: 0, stdout: JSON.stringify(fixture), stderr: '' };
+      if (calls === 1) {
+        assert.deepEqual(args.slice(0, 3), ['pr', 'view', '42']);
+        assert.deepEqual(args.slice(-2), ['--repo', 'devswha/patina']);
+        const { files: _files, ...scalar } = fixture;
+        return { status: 0, stdout: JSON.stringify(scalar), stderr: '' };
+      }
+      assert.deepEqual(args, [
+        'api',
+        'repos/devswha/patina/pulls/42/files?per_page=100',
+        '--paginate',
+        '--slurp',
+      ]);
+      return {
+        status: 0,
+        stdout: JSON.stringify([[{
+          filename: 'src/change.js',
+          status: 'modified',
+          additions: 120,
+          deletions: 100,
+        }]]),
+        stderr: '',
+      };
     },
   });
-  assert.deepEqual(fetched, fixture);
-  assert.equal(calls, 1);
+  assert.deepEqual(fetched, {
+    ...fixture,
+    files: [{
+      filename: 'src/change.js',
+      status: 'modified',
+      additions: 120,
+      deletions: 100,
+    }],
+  });
+  assert.equal(calls, 2);
 });
 
 test('PR parser rejects option-like and non-positive/non-integer identifiers', () => {

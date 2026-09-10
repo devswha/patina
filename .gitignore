@@ -38,7 +38,9 @@ credentials/
 .openclaw/
 .workclaw/
 .claude/
+# The root development entrypoint is public; scoped agent files stay ignored.
 AGENTS.md
+!/AGENTS.md
 BOOTSTRAP.md
 CLAUDE.md
 IDENTITY.md

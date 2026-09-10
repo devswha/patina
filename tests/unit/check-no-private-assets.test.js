@@ -2,6 +2,9 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import {
   FORBIDDEN_GLOBS,
+  PACKED_FORBIDDEN_GLOBS,
+  TRACKED_FORBIDDEN_GLOBS,
+  TRACKED_ALLOWED_PATHS,
   globToRegExp,
   matchForbidden,
   collectPackedFiles,
@@ -73,6 +76,66 @@ describe('leak gate: forbidden pattern set', () => {
       'patterns/ko-style.md',
     ];
     assert.deepStrictEqual(matchForbidden(benign), []);
+  });
+});
+
+describe('leak gate: source-specific development instructions', () => {
+  it('keeps the baseline matcher separate from development-only paths', () => {
+    assert.deepStrictEqual(matchForbidden(['src/AGENTS.md', 'src/CLAUDE.md']), []);
+    assert.ok(PACKED_FORBIDDEN_GLOBS.includes('**/AGENTS.md'));
+    assert.ok(TRACKED_FORBIDDEN_GLOBS.includes('**/AGENTS.md'));
+    assert.deepStrictEqual(TRACKED_ALLOWED_PATHS, ['AGENTS.md']);
+  });
+
+  it('allows the approved public root rule in git but rejects scoped rules in both sources', () => {
+    const clean = runGate({
+      packedFiles: ['SKILL.md', 'agents/patina-detector.md'],
+      trackedFiles: ['AGENTS.md'],
+    });
+    assert.strictEqual(clean.ok, true);
+
+    const packed = runGate({
+      packedFiles: ['src/AGENTS.md'],
+      trackedFiles: [],
+    });
+    assert.strictEqual(packed.ok, false);
+    assert.deepStrictEqual(packed.violations, [
+      { path: 'src/AGENTS.md', pattern: '**/AGENTS.md', source: 'package' },
+    ]);
+
+    const tracked = runGate({
+      packedFiles: [],
+      trackedFiles: ['src/AGENTS.md'],
+    });
+    assert.strictEqual(tracked.ok, false);
+    assert.deepStrictEqual(tracked.violations, [
+      { path: 'src/AGENTS.md', pattern: '**/AGENTS.md', source: 'git' },
+    ]);
+  });
+
+  it('rejects private instruction files and agent runtime workspaces from a package', () => {
+    const result = runGate({
+      packedFiles: ['src/CLAUDE.md', 'src/.omo/session.json', '.insane-review/review.json'],
+      trackedFiles: [],
+    });
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.violations, [
+      { path: 'src/CLAUDE.md', pattern: '**/CLAUDE.md', source: 'package' },
+      { path: 'src/.omo/session.json', pattern: '**/.omo/**', source: 'package' },
+      { path: '.insane-review/review.json', pattern: '**/.insane-review/**', source: 'package' },
+    ]);
+  });
+
+  it('continues rejecting the existing private asset shapes', () => {
+    const result = runGate({
+      packedFiles: ['src/ko.reinforced.md'],
+      trackedFiles: ['corpus/ko.jsonl'],
+    });
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.violations, [
+      { path: 'src/ko.reinforced.md', pattern: '**/*.reinforced.*', source: 'package' },
+      { path: 'corpus/ko.jsonl', pattern: '**/corpus/**', source: 'git' },
+    ]);
   });
 });
 

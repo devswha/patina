@@ -132,6 +132,19 @@ GitHub deployment `6347382527` (source
 `d7a4741ed9f767bd22a39255e10acf159351fb7a`) reported success but was neither
 application smoke nor Vercel account evidence.
 
+### P01 client acceptance (2026-09-10)
+
+`cursor-acceptance-20260910.json` supersedes the P01 `inconclusive` row in
+`maintenance-delivery-20260910.json`. The real Cursor Agent CLI
+(2026.09.08, Linux) loaded the always-applied project rule and resolved
+`@AGENTS.md` both in the maintainer checkout and in a fresh `--depth=1` clone
+of `dev` with no local files, exposed the generated `~/.cursor/rules/patina.mdc` adapter as
+agent-requestable, fetched the canonical `SKILL.md` from the adapter's absolute
+path, ran `bin/patina-skill.js`, refused to write output on two backend
+authentication failures, and wrote the result only after a `verified` receipt
+(mps 100 / fidelity 100, codex-cli). Cursor IDE desktop loading and other
+operating systems remain uncovered.
+
 P09 native Codex settings and any unexposed web account configuration remain
 unknown; no automation is inferred from a deployment result. The recurring
 maintenance owner is the repository maintainer. Repeated alerts for one

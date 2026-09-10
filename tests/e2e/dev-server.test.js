@@ -230,7 +230,6 @@ test('loopback preview serves the browser dependency graph and completes a real 
 test('public-root symlinks cannot expose private or hidden files', { timeout: 15000 }, async (t) => {
   // All filesystem probes live in a disposable replica, never in the shared playground.
   const root = await mkdtemp(path.join(tmpdir(), 'patina-preview-static-'));
-  t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(path.join(root, 'scripts'));
   await cp(path.join(ROOT, 'scripts/dev-server.mjs'), path.join(root, 'scripts/dev-server.mjs'));
   await mkdir(path.join(root, 'api'));
@@ -244,6 +243,11 @@ test('public-root symlinks cannot expose private or hidden files', { timeout: 15
   await symlink('.secret.js', path.join(root, 'playground', 'hidden.js'));
   await symlink('preferences.js', path.join(root, 'playground', 'public-alias.js'));
   const base = await startPreview(t, { root });
+  // t.after hooks run in registration order and a failed hook skips the
+  // rest: the replica rm must be registered AFTER startPreview's kill hook,
+  // or a win32 EBUSY (the child still holds root as cwd) would leak the
+  // server and hang the worker. maxRetries absorbs the handle-release lag.
+  t.after(() => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 }));
   for (const route of ['/outside.js', '/hidden.js', '/.secret.js']) {
     const response = await request(base, route);
     assert.equal(response.status, 403, route);

@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "recordType": "maintenance-dev-delivery",
+  "observedDate": "2026-09-10",
+  "repository": "devswha/patina",
+  "plan": "patina-repo-development-maintenance-plan-final-2026-09-09",
+  "trackingIssue": 783,
+  "authority": {
+    "actor": "session coding agent acting for repository maintainer",
+    "channel": "devswha/patina GitHub repository",
+    "scope": "approved maintenance implementation and source integration into dev",
+    "operations": ["local commits", "focused branch pushes", "tracking Issue and PR writes", "deterministic CI", "dev merges"],
+    "sizeException": "Maintainer explicitly selected per-domain PR size exceptions, retaining tests/review/rollback; not a single aggregate implementation PR.",
+    "excluded": ["main release", "npm/HF/GHCR publication", "production promotion or rollback", "account or credential changes", "live paid model calls"]
+  },
+  "source": {
+    "originalBase": "b8b7b756423d61582ea83b06bd59a49fdaa4738a",
+    "finalImplementationPRHead": "d7d5c7bfee0d71af2bc6b8ae14b9be88397204c2",
+    "finalImplementationTree": "6322013767e4af13ed12c274ff3449f2053c3215",
+    "localVerifiedTreeWithHistoricalReceipts": "fa0b8393db242ceccd5b7045d2a1a9831c6588d6",
+    "treeDifference": "Only the two dated historical maintenance JSON receipts; product/source/test bytes and file modes match.",
+    "version": "8.6.0",
+    "versionBumped": false
+  },
+  "mergedUnits": [
+    {"pr":784,"unit":"P05 metadata mirror synchronization","ciRun":34427547435,"review":"Independent APPROVE after malformed-entry no-write fix"},
+    {"pr":785,"unit":"P20 report-only performance","ciRun":34428160981,"review":"Independent APPROVE; finite metrics and actual contained tarball evidence"},
+    {"pr":786,"unit":"P15/P16a owned backend lifecycle","ciRun":34428375862,"review":"Independent APPROVE; normal output and termination cleanup retained"},
+    {"pr":788,"unit":"P01 product/development installation boundary","ciRun":34429946251,"review":"Unowned symlink finding fixed; parent29test regression and source review"},
+    {"pr":789,"unit":"P06/P14 architecture and contracts","ciRun":34430281717,"review":"Bare Node builtin finding fixed; parent boundary negatives pass"},
+    {"pr":790,"unit":"P07 browser regressions","ciRun":34430472235,"review":"Independent clipboard review clear; real Chromium9tests and controlled negatives"},
+    {"pr":791,"unit":"P11/P12/P13b/P19a artifact and source safety","ciRun":34430714616,"review":"Independent final APPROVE after provenance/path/anchor/recovery fixes"},
+    {"pr":787,"unit":"P21 aggregate and offline recovery","ciRun":34430984383,"review":"Malformed logs/overflow/skipped-streak writes fixed; parent63focused tests and full integration pass"},
+    {"pr":792,"unit":"P02/P03/P04/P18 policy and CI wiring","ciRun":34432172949,"review":"Governance clear; conservative counts and real REST transport gaps fixed and verified"}
+  ],
+  "verification": {
+    "localCommands": "npm test && npm run lint && npm run release:check && npm run check:no-private-assets && npm run test:browser",
+    "exitCode": 0,
+    "tests": {"total":2431,"passed":2429,"failed":0,"skipped":2},
+    "browser": {"passed":9,"failed":0,"transport":"loopback fixture only; external requests blocked"},
+    "architecture": {"modules":116,"edges":401,"violations":0},
+    "focused": {"installer":29,"monitorAndObservability":63,"prPolicy":29,"releaseAndWorkflow":28},
+    "livePrRead": "PR792 fetched through scalar gh pr view plus paginated REST files; valid status-bearing metadata, warnings retained, exit0. Initial gh-view-only transport failed on missing statuses and was corrected, not waived.",
+    "hostedMatrix": "Node18.1.0 minimum smoke; full Node20,22,lts tests; lint and quality. Earlier domain runs additionally retained fixed24 before P03 integration.",
+    "existingSkips": ["host-auth-dependent Codex test", "opt-in real Redis integration unavailable"],
+    "warnings": ["Existing dependency deprecations retained", "actionlint1.7.12 rejects officially supported queue:max; hosted release run accepts it", "Hosted upload-artifact v4 Node20 runtime forced to Node24 warning retained"]
+  },
+  "hostedBehavior": {
+    "prSupersession": {
+      "cancelledRuns": [34430983223,34431082159,34431208395],
+      "successfulSuccessor": 34431256970,
+      "finalSourceSuccessor": 34432172949,
+      "result": "New heads automatically cancelled superseded PR runs; current required checks remained present and succeeded. No manual cancellation counted as proof."
+    },
+    "releaseDryRun": {
+      "run":34428652422,
+      "status":"passed",
+      "publish":false,
+      "publishGhcr":false,
+      "artifactId":10133668506,
+      "artifactDigest":"sha256:7676a7ec7f4ae1194456390364227ebb73054befe55a328483e454d384297ccd",
+      "result":"Hosted real root/alias build, install, verification and upload passed; publication jobs correctly skipped. This is not real publication or queue-contention acceptance."
+    },
+    "previewSideEffect":"Existing Vercel GitHub integration automatically built PR previews. No production promotion or deployment command was issued."
+  },
+  "remainingAcceptance": [
+    {"ids":["P01"],"status":"inconclusive","reason":"Actual Cursor/client rule loading needs the client environment; installed generated content and helper paths are verified."},
+    {"ids":["P09"],"status":"inconclusive","reason":"Native Codex account trigger settings not exposed; no automatic invocation inferred from absent reviews. Local independent reviews are not native Codex approvals."},
+    {"ids":["P16b","P17b"],"status":"inconclusive","reason":"Other OS and authorized live backend environments unavailable; Linux and simulated platform fixtures do not establish live compatibility."},
+    {"ids":["P12b","P13a"],"status":"inconclusive","reason":"Real publication queue/recovery and owner-controlled production promotion/rollback remain outside source-merge authority. Publication hold retained."},
+    {"ids":["P21b"],"status":"local-fixture-passed-production-unverified","reason":"Offline monitor and npm recovery exercises verified; production drill not claimed."},
+    {"ids":["P08","P10","P19b"],"status":"conditional-deferred","reason":"No measured justification for selective CI, permanent desktop worker or speculative hotspot restructure."},
+    {"ids":["P04-followup","P22"],"status":"ongoing","reason":"First-ten-PR warning observation and weekly/monthly maintenance require real future observations; code merge is not their completion."}
+  ],
+  "completion": {
+    "localImplementationAndDevDelivery": "completed through the listed merged units",
+    "entirePlanIncludingHumanAndRecurringAcceptance": "not complete",
+    "trackingIssueMustRemainOpen": true,
+    "publicationHoldPreserved": true,
+    "historicalReceipts": "Prior JSON reports retain their original pre-commit/pre-hosted statements as historical observations; this record supersedes their delivery status without rewriting history."
+  }
+}

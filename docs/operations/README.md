@@ -132,6 +132,22 @@ GitHub deployment `6347382527` (source
 `d7a4741ed9f767bd22a39255e10acf159351fb7a`) reported success but was neither
 application smoke nor Vercel account evidence.
 
+**P13a closed as a recorded exception (2026-09-10, maintainer decision).**
+Read-only `vercel inspect` on 2026-09-10 explains the `sourceRef=dev`
+deployment: both 2026-09-09 production deployments were **CLI uploads from
+the local `dev` checkout**, not Git-integration builds ("Retrieving list of
+deployment files" / "Extracting deployment files" in the build log).
+`dpl_…eycb5nmuq` (19:14:25 KST) errored at file extraction after 797 ms;
+`dpl_9mLY4716GsCKWrGiomn8hKxZLEzN` (19:15:06 KST) succeeded 41 s later and
+still serves `patina.vibetip.help`. Because its tree is byte-identical to
+main `d7a4741` (8.6.0), the maintainer accepted it as production for 8.6.0
+rather than redeploying the same bytes. The contract for future releases is
+unchanged: promote from a main SHA, and prefer the Git integration or an
+explicit `vercel --prod` from a main checkout over uploading from `dev`. The
+prior production `dpl_H56Atjg5KJ7YdNPUjCPSs16exshy` remains the rollback
+target. Required-check settings and a live promote/rollback drill are still
+not exercised; they are release-time items, not open maintenance work.
+
 ### P01 client acceptance (2026-09-10)
 
 `cursor-acceptance-20260910.json` supersedes the P01 `inconclusive` row in

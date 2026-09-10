@@ -22,7 +22,12 @@ Web deployment normally follows the reviewed `dev` → `main` merge and the exis
 Vercel project. The isolated 8.5.2 hotfix starts from released `main`; merge it
 back into `dev` immediately. Deployment needs no npm publication or release tag. Keep `dev` in
 sync with the resulting `main` history and verify the production version and
-rewrite flow after deployment.
+rewrite flow after deployment. Production deployments must originate from a
+`main` SHA: let the Vercel Git integration build the merge commit, or run
+`vercel --prod` from a clean `main` checkout. Do not upload from a `dev`
+working tree; the 2026-09-09 exception is recorded in
+[`docs/operations/README.md`](../operations/README.md#p13a-deployment-evidence-read-only-promotion-still-gated)
+and keeps the previous production deployment ID as the rollback target.
 
 While npm publication is pending, do not push a release tag: tags start the npm
 publication job. The GitHub Release remains coupled to successful npm publication.

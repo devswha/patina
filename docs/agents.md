@@ -96,6 +96,16 @@ separate from these runtime distinctions:
   caller cancellation and from account quota. The fixture does not verify any
   of these paths.
 
+`tests/fixtures/backend-codex-contract.json` is the first **real-invocation /
+verified** record: codex `0.153.4` on Linux with `gpt-5.5` over a ChatGPT OAuth
+session, exercised on 2026-09-10 through `--score`, `--verify`, a live
+`--timeout-ms` kill, the foreign-model fallback, and an invalid in-family model
+(per-scenario evidence in `docs/operations/backend-compat-codex-20260910.json`).
+It verifies output parsing, error reporting, authentication path, and timeout
+cleanup for that version only; quota behavior, other versions, other models,
+and other operating systems remain unverified, and the record still contains
+no credentials, prompts, responses, or raw CLI output.
+
 The lifecycle/session fixtures use POSIX executables, owned process-group
 probes, and `/proc` state where available (a zombie is not running). They
 verify that an independent-stdio worker dies with its leader while an

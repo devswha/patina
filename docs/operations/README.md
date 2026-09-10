@@ -145,6 +145,19 @@ authentication failures, and wrote the result only after a `verified` receipt
 (mps 100 / fidelity 100, codex-cli). Cursor IDE desktop loading and other
 operating systems remain uncovered.
 
+### P17b backend compatibility pilot (2026-09-10)
+
+`backend-compat-codex-20260910.json` supersedes the P17b `inconclusive` row in
+`maintenance-delivery-20260910.json` for **codex-cli only**. Eight live
+invocations of codex 0.153.4 (gpt-5.5, ChatGPT OAuth, no provider API key
+read) verified score parsing, `--verify` retry, a 1.5 s timeout kill with
+process and temp-directory cleanup, the foreign-model fallback, and the
+invalid-model error path. The verdict lives in
+`tests/fixtures/backend-codex-contract.json`. claude-cli (expired OAuth),
+gemini-cli and openai-http (maintainer restricted those keys to product use),
+and kimi-cli were not exercised; quota behavior and other operating systems
+remain unverified.
+
 P09 native Codex settings and any unexposed web account configuration remain
 unknown; no automation is inferred from a deployment result. The recurring
 maintenance owner is the repository maintainer. Repeated alerts for one

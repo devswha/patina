@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "recordType": "maintenance-backend-compatibility-pilot",
+  "observedDate": "2026-09-10",
+  "repository": "devswha/patina",
+  "plan": "patina-repo-development-maintenance-plan-final-2026-09-09",
+  "planIds": ["P17b"],
+  "trackingIssue": 783,
+  "supersedes": {
+    "record": "maintenance-delivery-20260910.json",
+    "field": "remainingAcceptance",
+    "ids": ["P17b"],
+    "priorStatus": "inconclusive",
+    "note": "P16b (other operating systems) is not addressed by this record and stays inconclusive."
+  },
+  "authority": {
+    "approval": "Maintainer asked to proceed with P17b in session on 2026-09-10 after removing the OpenAI key and restricting the Gemini key to product use.",
+    "credentialPolicy": "OPENAI_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY and KIMI_API_KEY were unset in the pilot shell. Only the ChatGPT OAuth session behind the codex CLI was used; no provider API key was read or sent.",
+    "budget": {"maxInvocationsPlanned": 6, "invocationsObserved": 8, "note": "The --verify scenario retried once (rewrite + verify twice), which exceeded the planned count by two; recorded, not hidden."}
+  },
+  "environment": {
+    "os": "Linux 6.8.0-138-generic x64",
+    "node": "v24.18.0",
+    "patina": "8.6.0 at dev 73b2e7a",
+    "codex": "codex-cli 0.153.4",
+    "model": "gpt-5.5 (backend default; reasoning effort xhigh as reported by codex)",
+    "defaultTimeoutMs": "DEFAULT_BACKEND_TIMEOUT_MS from src/backends/contract.js",
+    "inputs": ["tests/fixtures/suspect-zones/en/ai/en-ai-01.md (1043 bytes)", "tests/fixtures/suspect-zones/ko/ai/ko-ai-01.md (942 bytes)"]
+  },
+  "scenarios": [
+    {
+      "id": "A-score",
+      "command": "patina --backend codex-cli --lang en --score --format json <en-ai-01>",
+      "exitCode": 0,
+      "wallMs": 55248,
+      "result": "verified",
+      "observed": "Strict scoring JSON parsed (no schema-failure). LLM overall 0 with 0 detections in every category; the fixture is designed so no catalogued EN pattern fires and burstiness is the only tell, so 0 is the expected pattern score. Deterministic overall 100 was skipped from reconciliation by the paragraphs<=2 rule. Minor: JSON category rows render `detected` as null because the markdown cell is a ratio string (0/6), a Patina rendering quirk unrelated to codex."
+    },
+    {
+      "id": "B-rewrite-verify",
+      "command": "patina --backend codex-cli --lang ko --verify --format json <ko-ai-01>",
+      "exitCode": 0,
+      "wallMs": 236908,
+      "result": "verified",
+      "observed": "First candidate failed a floor, one conservative retry passed: verified=true, mps 100, fidelity 100, reason passed-on-retry, floors 70/70. Rewrite body framing and verification JSON both parsed."
+    },
+    {
+      "id": "C-timeout",
+      "command": "patina --backend codex-cli --lang en --timeout-ms 1500 --format json <en-ai-01>",
+      "exitCode": 1,
+      "wallMs": 1633,
+      "result": "verified",
+      "observed": "Error `codex-cli backend: timed out after 1499ms`. One second later: zero `codex exec` processes, temp-directory count unchanged from baseline. Timeout, kill and cleanup behave as the adapter contract states."
+    },
+    {
+      "id": "D-foreign-model",
+      "command": "patina --backend codex-cli --model patina-nonexistent-model-zz <en-ai-01>",
+      "exitCode": 0,
+      "wallMs": 95026,
+      "result": "verified-as-designed",
+      "observed": "The id does not match the codex family regex, so resolveLocalCliModel substituted the backend default (#524) and the run succeeded. This is the documented foreign-model fallback, not an invalid-model error path; it cost one extra invocation."
+    },
+    {
+      "id": "E-invalid-in-family-model",
+      "command": "patina --backend codex-cli --model gpt-0-nonexistent-zz <en-ai-01>",
+      "exitCode": 1,
+      "wallMs": 2981,
+      "result": "verified",
+      "observed": "codex exited 1; Patina reported `codex-cli backend: codex exited with code 1` with the child's stderr, removed its temp directory and left no process. Observation: codex's stderr banner echoes the beginning of the prompt, so the surfaced error line contains the first words of the user's source text on the caller's terminal; receipts written by bin/patina-skill.js stayed content-free."
+    }
+  ],
+  "otherBackends": [
+    {"backend": "claude-cli", "version": "2.1.261", "status": "not-runnable", "reason": "Claude CLI OAuth session expired (observed 2026-09-10 through a cli_failed receipt). Not exercised; P17a fixture remains version-only."},
+    {"backend": "gemini-cli", "version": "0.58.0", "status": "not-exercised", "reason": "Configured with auth type gemini-api-key, i.e. it would consume GEMINI_API_KEY, which the maintainer restricted to product use."},
+    {"backend": "openai-http", "status": "not-exercised", "reason": "Maintainer removed the OpenAI key from agent use; the value still present in the shell returned HTTP 401 earlier the same day."},
+    {"backend": "kimi-cli", "status": "not-exercised", "reason": "bin/patina-skill.js refused it with backend_argv_exposes_input (helper guard, not a kimi failure); direct CLI use would need KIMI_API_KEY, which was not authorized."}
+  ],
+  "sideObservations": [
+    "One pre-existing /tmp/patina-codex-* directory dated 2026-09-06 was present before the pilot and untouched by it; the pilot itself left none.",
+    "`patina doctor` reports authenticated=yes for openai-http and claude-cli although both failed authentication on real calls; it checks credential presence, not validity. Candidate follow-up, outside this pilot."
+  ],
+  "acceptance": {
+    "P17b": "passed-for-codex-cli-0.153.4-linux",
+    "fixture": "tests/fixtures/backend-codex-contract.json",
+    "notCovered": ["claude-cli live check (P17a backend)", "quota/rate-limit behavior", "other operating systems (P16b)", "other codex versions or models"]
+  },
+  "boundaries": {
+    "productSourceChanged": false,
+    "versionBumped": false,
+    "publication": "none",
+    "researchRevived": false,
+    "credentialsRecorded": "none; auth mode names and HTTP status codes only"
+  }
+}

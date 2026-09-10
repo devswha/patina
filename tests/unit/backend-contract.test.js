@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { EventEmitter } from 'node:events';
-import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 
@@ -166,6 +166,36 @@ test('Claude CLI compatibility record remains version-only and unverified', () =
   assert.equal(fixture.rawOutputIncluded, false);
   assert.deepEqual(Object.keys(fixture.requiredContracts), ['output', 'errors', 'auth', 'quota', 'timeout']);
   assert.equal(Object.hasOwn(fixture, 'credentials'), false);
+});
+
+test('Codex CLI compatibility record is a real-invocation verification without raw output', () => {
+  const fixture = JSON.parse(readFileSync(
+    new URL('../fixtures/backend-codex-contract.json', import.meta.url),
+    'utf8',
+  ));
+  assert.equal(fixture.schemaVersion, 1);
+  assert.equal(fixture.backend, 'codex-cli');
+  assert.equal(fixture.cli, 'codex');
+  assert.equal(fixture.observedVersion, '0.153.4');
+  assert.equal(fixture.status, 'verified');
+  assert.equal(fixture.evidence.kind, 'real-invocation');
+  assert.equal(fixture.evidence.realInvocation, true);
+  // A verified record must point at the dated operations receipt that holds
+  // the per-scenario evidence; the fixture itself carries only the verdict.
+  assert.equal(fixture.evidence.record, 'docs/operations/backend-compat-codex-20260910.json');
+  assert.equal(existsSync(new URL(`../../${fixture.evidence.record}`, import.meta.url)), true);
+  for (const flag of ['outputParsingVerified', 'errorsVerified', 'authVerified', 'timeoutVerified']) {
+    assert.equal(fixture.evidence[flag], true, flag);
+  }
+  // Quota was never exercised; a verified record must not imply it was.
+  assert.equal(fixture.evidence.quotaVerified, false);
+  assert.equal(fixture.syntheticFixture, false);
+  assert.equal(fixture.rawOutputIncluded, false);
+  assert.deepEqual(Object.keys(fixture.requiredContracts), ['output', 'errors', 'auth', 'quota', 'timeout']);
+  assert.equal(Object.hasOwn(fixture, 'credentials'), false);
+  assert.equal(Object.hasOwn(fixture, 'prompt'), false);
+  assert.equal(Object.hasOwn(fixture, 'response'), false);
+  assert.ok(Number.isInteger(fixture.scope.invocations) && fixture.scope.invocations > 0);
 });
 
 test('isRetryableBackendError honors message status even when err.status is null (#445)', () => {

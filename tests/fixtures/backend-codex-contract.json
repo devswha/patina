@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "backend": "codex-cli",
+  "cli": "codex",
+  "observedVersion": "0.153.4",
+  "observedAt": "2026-09-10",
+  "status": "verified",
+  "evidence": {
+    "kind": "real-invocation",
+    "record": "docs/operations/backend-compat-codex-20260910.json",
+    "realInvocation": true,
+    "outputParsingVerified": true,
+    "errorsVerified": true,
+    "authVerified": true,
+    "quotaVerified": false,
+    "timeoutVerified": true
+  },
+  "syntheticFixture": false,
+  "rawOutputIncluded": false,
+  "scope": {
+    "platform": "linux-x64",
+    "node": "24.18.0",
+    "patina": "8.6.0",
+    "model": "gpt-5.5",
+    "authPath": "ChatGPT OAuth (~/.codex/auth.json auth_mode=chatgpt, API-key field null)",
+    "invocations": 8,
+    "scenarios": ["score", "rewrite --verify", "timeout", "foreign-model fallback", "invalid in-family model"]
+  },
+  "requiredContracts": {
+    "output": "codex exec --output-last-message file is read after a zero exit; strict scoring JSON and the [BODY]/[SELF_AUDIT] rewrite framing both parsed on this version.",
+    "errors": "A non-zero codex exit is reported as a backend error with the child's stderr; the owned temp directory is removed and no codex process survives.",
+    "auth": "Authentication is the ~/.codex/auth.json existence check; the verified run used a ChatGPT OAuth session, not an API key.",
+    "quota": "No quota or rate-limit failure occurred in the pilot budget; quota behavior is not verified by this record.",
+    "timeout": "Patina's bounded child timer rejected a live invocation at the requested budget, SIGKILLed the owned child, and left no temp directory or process behind."
+  },
+  "limitations": [
+    "No credential, prompt, model response, or raw CLI output is recorded.",
+    "Verified only for codex 0.153.4 on Linux with model gpt-5.5; other versions, platforms, and models are unverified.",
+    "Quota and rate-limit handling were not exercised.",
+    "This is a connectivity/contract check, not a rewrite-quality experiment."
+  ]
+}

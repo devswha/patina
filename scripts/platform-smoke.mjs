@@ -28,11 +28,10 @@ const REPO_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const WIN = process.platform === 'win32';
 const NPM = WIN ? 'npm.cmd' : 'npm';
 const STEP_TIMEOUT_MS = 20 * 60 * 1000;
-// The full suite is spawn-heavy, which Windows process creation (plus
-// real-time AV scanning) makes an order of magnitude slower than Linux:
-// measured 67 s on Linux, 72 s on macOS, and past the 20-minute default on a
-// Windows 11 host. The suite gets its own bound so a genuinely hung run is
-// still recorded as a timed-out step instead of passing silently.
+// Hang guard for the full-suite step: a genuinely wedged run (leaked server,
+// deadlocked child) must still be recorded as a timed-out step instead of
+// hanging the smoke forever. Far above the measured suite durations
+// (~70 s on Linux/macOS/Windows once teardown leaks are fixed).
 const SUITE_TIMEOUT_MS = 90 * 60 * 1000;
 const DIAG_CAP = 20_000;
 const KEY_ENV_NAMES = ['PATINA_API_KEY', 'PATINA_API_KEY_FILE', 'OPENAI_API_KEY', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY', 'KIMI_API_KEY', 'MOONSHOT_API_KEY', 'GROQ_API_KEY', 'TOGETHER_API_KEY', 'MINIMAX_API_KEY'];

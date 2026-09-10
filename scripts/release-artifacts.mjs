@@ -358,7 +358,9 @@ function runCommand(command, args, options = {}, execute = execFileSync) {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       // .cmd shims on win32 cannot be spawned without a shell
-      // (CVE-2024-27980).
+      // (CVE-2024-27980). Node quotes args for shell spawns only since
+      // 18.20.2/20.12.2; release tooling runs on the Linux runner, and win32
+      // use on older Nodes risks mis-split paths with spaces.
       ...(command.endsWith('.cmd') ? { shell: true } : {}),
       ...options,
     });

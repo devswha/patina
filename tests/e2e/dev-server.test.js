@@ -230,7 +230,11 @@ test('loopback preview serves the browser dependency graph and completes a real 
 test('public-root symlinks cannot expose private or hidden files', { timeout: 15000 }, async (t) => {
   // All filesystem probes live in a disposable replica, never in the shared playground.
   const root = await mkdtemp(path.join(tmpdir(), 'patina-preview-static-'));
-  await mkdir(path.join(root, 'scripts'));
+  // If setup or startPreview throws before the rm hook below is registered,
+  // still remove the replica.
+  let replicaCleanupArmed = false;
+  try {
+    await mkdir(path.join(root, 'scripts'));
   await cp(path.join(ROOT, 'scripts/dev-server.mjs'), path.join(root, 'scripts/dev-server.mjs'));
   await mkdir(path.join(root, 'api'));
   await cp(path.join(ROOT, 'api/funnel.js'), path.join(root, 'api/funnel.js'));
@@ -247,13 +251,18 @@ test('public-root symlinks cannot expose private or hidden files', { timeout: 15
   // rest: the replica rm must be registered AFTER startPreview's kill hook,
   // or a win32 EBUSY (the child still holds root as cwd) would leak the
   // server and hang the worker. maxRetries absorbs the handle-release lag.
-  t.after(() => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 }));
-  for (const route of ['/outside.js', '/hidden.js', '/.secret.js']) {
-    const response = await request(base, route);
-    assert.equal(response.status, 403, route);
-    assert.doesNotMatch(response.body, /sentinel/);
+    t.after(() => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 }));
+    replicaCleanupArmed = true;
+    for (const route of ['/outside.js', '/hidden.js', '/.secret.js']) {
+      const response = await request(base, route);
+      assert.equal(response.status, 403, route);
+      assert.doesNotMatch(response.body, /sentinel/);
+    }
+    assert.equal((await request(base, '/public-alias.js')).body, (await request(base, '/preferences.js')).body);
+  } catch (err) {
+    if (!replicaCleanupArmed) await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+    throw err;
   }
-  assert.equal((await request(base, '/public-alias.js')).body, (await request(base, '/preferences.js')).body);
 });
 
 test('DEV_LLM transport uses preview fixtures only when real scoring is disabled', { timeout: 30000 }, async (t) => {

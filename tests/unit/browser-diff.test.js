@@ -65,7 +65,9 @@ test('writeBrowserDiffPage uses a patina-scoped temp dir and restrictive permiss
     now: () => 42,
   });
 
-  const expectedDir = join('/tmp', 'patina-browser-diff-abc');
+  // The dir chmod receives the mkdtemp return value verbatim; only the file
+  // path goes through join().
+  const expectedDir = '/tmp/patina-browser-diff-abc';
   const expectedFile = join(expectedDir, 'browser-diff-42.html');
   assert.strictEqual(path, expectedFile);
   assert.deepStrictEqual(writes, [{ filePath: expectedFile, content: '<html/>', encoding: 'utf8' }]);

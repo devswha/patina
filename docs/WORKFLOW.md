@@ -216,9 +216,10 @@ specific reason. If an applicable profile is unavailable, record
 ### Independent review lane
 
 **Decision (P09, 2026-09-10, maintainer):** native Codex GitHub review is not
-used for this repository. No `chatgpt-codex-connector[bot]` review or comment
-exists on any PR, no workflow requests one, and the maintainer chose not to
-enable it. The required review lane for a `bot/*` PR is one independent,
+used for this repository. A repository-wide GitHub search for
+`chatgpt-codex-connector[bot]` comments and a check of five recent PRs found
+no evidence of native Codex review use, no workflow requests one, and the
+maintainer chose not to enable it. Account-side settings were not inspected. The required review lane for a `bot/*` PR is one independent,
 read-only review pass (the session's `architect` agent or an equivalent
 reviewer that did not write the change) plus the full deterministic CI
 (lint, unit/e2e, quality, architecture boundaries). The `vercel` bot only

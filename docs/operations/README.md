@@ -165,7 +165,9 @@ moves from version-only to verified. Still not exercised: gemini-cli
 quota behavior, other operating systems.
 
 P09 was closed on 2026-09-10 by maintainer decision: native Codex GitHub
-review is not used (zero bot reviews on any PR, no workflow requests one);
+review is not used (a repository-wide search for `chatgpt-codex-connector[bot]`
+comments and a five-PR spot check found no evidence of use; no workflow
+requests one; account-side settings were not inspected);
 the review lane is the independent read-only pass plus full CI described in
 [`docs/WORKFLOW.md`](../WORKFLOW.md#independent-review-lane). Unexposed web
 account configuration remains unknown; no automation is inferred from a

@@ -545,7 +545,11 @@ export function runInteractiveCommand({
     let settled = false;
     const settle = (fn) => { if (settled) return; settled = true; fn(); };
 
-    const proc = spawn(command, args, { cwd, env, stdio });
+    const resolved = resolveCliSpawnCommand(command);
+    const [spawnCommand, spawnArgs, spawnOptions] = resolved.batch
+      ? windowsBatchSpawn(resolved.command, args, { cwd, env, stdio })
+      : [command, args, { cwd, env, stdio }];
+    const proc = spawn(spawnCommand, spawnArgs, spawnOptions);
 
     proc.on('error', (err) => {
       if (err.code === 'ENOENT') {

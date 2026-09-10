@@ -49,10 +49,10 @@ patina --model codex --lang ko input.txt   # codex-cli로 라우팅하고 gpt-5.
 ```
 
 참고: `codex exec`는 새 임시 디렉터리에서 `--sandbox read-only`로 실행되며
-`shell_tool`, `unified_exec`, `multi_agent` 기능을 끔니다. 재작성에는 도구가 필요 없는데,
+`shell_tool`, `unified_exec`, `multi_agent` 기능을 끕니다. 재작성에는 도구가 필요 없는데,
 켜 두면 codex가 에이전트처럼 동작합니다 — 2026-09-10 측정에서 재작성 프롬프트 하나에
 셸 명령 3–13회를 실행하며 턴마다 약 20k 토큰 프롬프트를 다시 보냈습니다(한국어 재작성 한 건에
-최대 약 500k 토큰). 도구를 끕 뒤 같은 재작성은 1턴, 약 20k 토큰, 약 20초입니다. reasoning
+최대 약 500k 토큰). 도구를 끈 뒤 같은 재작성은 1턴, 약 20k 토큰, 약 20초입니다. reasoning
 effort는 덮어쓰지 않고 `~/.codex/config.toml` 설정을 따릅니다.
 
 ## claude-cli backend

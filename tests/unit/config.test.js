@@ -118,6 +118,7 @@ test('loadConfig: HOME reaching cwd through a symlink still merges .patina.yaml 
     assert.deepStrictEqual(config.blocklist, [{ term: 'shared-entry' }]);
   });
 });
+
 test('loadConfig preserves partial scoring defaults and explicit zero overrides', async () => {
   const { root, home, project } = tempWorkspace();
   const defaultPath = join(root, 'default.yaml');

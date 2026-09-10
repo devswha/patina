@@ -9,6 +9,11 @@
 // its realpath so every temp root a test creates is already canonical; child
 // processes (including npm) inherit the normalized value through the
 // environment. No-op on platforms whose temp root is not symlinked.
+//
+// Tradeoff by design: the suite runs under a canonical TMPDIR, so it cannot
+// detect a product-level literal-vs-real temp-path mismatch on macOS. Such a
+// defect would need its own product fix (like the src/config.js realpath
+// dedupe this helper was added alongside), not a harness change.
 const { realpathSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 

@@ -73,6 +73,13 @@ export const BACKEND_SAFETY_DEFAULTS = Object.freeze({
     agentRuntime: true,
     supportsStructuredOutput: false,
   },
+  'agy-cli': {
+    maxConcurrency: 1,
+    maxRetries: 0,
+    promptMode: 'minimal',
+    agentRuntime: true,
+    supportsStructuredOutput: false,
+  },
 });
 
 const UNKNOWN_BACKEND_SAFETY = Object.freeze({

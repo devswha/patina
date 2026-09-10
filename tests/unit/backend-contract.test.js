@@ -135,7 +135,7 @@ test('resolveBackendMaxConcurrency fails closed on an invalid override (#445)', 
 
 test('backendSupportsStructuredOutput is true only for openai-http (#C2)', () => {
   assert.equal(backendSupportsStructuredOutput('openai-http'), true);
-  for (const cli of ['codex-cli', 'claude-cli', 'gemini-cli', 'kimi-cli']) {
+  for (const cli of ['codex-cli', 'claude-cli', 'gemini-cli', 'kimi-cli', 'agy-cli']) {
     assert.equal(backendSupportsStructuredOutput(cli), false);
   }
   // Unknown backends fail closed: structured output is never sent.

@@ -111,7 +111,7 @@ describe('Backend Selection', () => {
   it('suggests every backend when no fallback chain remains', async () => {
     await assert.rejects(
       invokeBackendChain({ backends: [], prompt: 'rewrite this' }),
-      /openai-http, codex-cli, claude-cli, gemini-cli, or kimi-cli/
+      /openai-http, codex-cli, claude-cli, gemini-cli, kimi-cli, or agy-cli/
     );
   });
 

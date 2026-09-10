@@ -742,7 +742,7 @@ export function resolvePromptMode({ backend, model }) {
   if (backendStr && backendStr !== 'openai-http') return getBackendSafety(backendStr).promptMode;
   if (modelStr.includes('gemini')) return 'minimal';
   if (backendStr) return getBackendSafety(backendStr).promptMode;
-  if (modelStr.includes('kimi') || modelStr.includes('claude') || modelStr.includes('codex')) return 'minimal';
+  if (modelStr.includes('kimi') || modelStr.includes('claude') || modelStr.includes('codex') || modelStr === 'agy') return 'minimal';
   return 'strict';
 }
 
@@ -1153,7 +1153,7 @@ async function runOcrStage({ pageHtml, sourceUrl, parsed, backends, resolved, ti
   if (!hasOcrRunnerOverride() && ocrBackends.length === 0) {
     throw runtimeError(
       'no image-capable backend for --ocr',
-      'OCR needs an available, authenticated claude-cli, gemini-cli, or codex-cli (kimi-cli and openai-http cannot read images).',
+      'OCR needs an available, authenticated claude-cli, gemini-cli, or codex-cli (kimi-cli, agy-cli, and openai-http cannot read images).',
       'Run `patina doctor` to check backend status, or drop --ocr.'
     );
   }

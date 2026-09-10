@@ -29,6 +29,34 @@ never talks directly to a provider in v1).
 - Vercel routes: [`vercel.json`](../../vercel.json)
 - OG image: [`assets/social/patina-og.svg`](../../assets/social/patina-og.svg)
 
+## Browser regression tests
+
+The Chromium suite is opt-in and is not included in the default `npm test`
+unit/e2e glob. Install the pinned Playwright development dependency and its
+browser once, then run:
+
+```bash
+npm install
+npx playwright install chromium
+npm run test:browser
+```
+
+The direct equivalent is `node --test tests/browser/playground.test.js`.
+
+To use an already-installed system browser instead of Playwright's managed
+binary, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` (for example,
+`/snap/bin/chromium`):
+
+```bash
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/snap/bin/chromium npm run test:browser
+```
+
+The tests start `scripts/dev-server.mjs` on an ephemeral loopback port and
+intercept `/api/rewrite` with local NDJSON contract fixtures. They make no
+provider or live-auth calls and do not measure model quality. Chromium is real,
+but the rewrite transport is mocked: a passing browser regression only proves
+UI/controller and stream-state behavior, not real-model quality.
+
 ## Deploy notes
 
 Deploy the repository root on Vercel so the root `vercel.json` can rewrite `/` to

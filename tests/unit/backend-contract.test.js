@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { EventEmitter } from 'node:events';
+import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 
@@ -9,9 +10,116 @@ import {
   isRetryableBackendError,
   withBackendConcurrencySlot,
   backendSupportsStructuredOutput,
+  spawnOwnedCliProcess,
   TimeoutError,
   isTimeoutError,
 } from '../../src/backends/contract.js';
+
+class FakePipe extends EventEmitter {
+  constructor() {
+    super();
+    this.destroyed = false;
+    this.destroyCalls = 0;
+  }
+
+  destroy() {
+    if (this.destroyed) return this;
+    this.destroyed = true;
+    this.destroyCalls += 1;
+    this.emit('close');
+    return this;
+  }
+}
+
+class FakeChild extends EventEmitter {
+  constructor(pid) {
+    super();
+    this.pid = pid;
+    this.killed = false;
+    this.killSignals = [];
+    this.stdin = new FakePipe();
+    this.stdout = new FakePipe();
+    this.stderr = new FakePipe();
+    for (const stream of [this.stdin, this.stdout, this.stderr]) {
+      stream.once('close', () => {
+        if ([this.stdin, this.stdout, this.stderr].every((pipe) => pipe.destroyed)) {
+          globalThis.queueMicrotask(() => this.emit('close', 0, null));
+        }
+      });
+    }
+  }
+
+  kill(signal) {
+    this.killed = true;
+    this.killSignals.push(signal);
+    return true;
+  }
+}
+
+test('spawnOwnedCliProcess preserves normal output and closes direct-child pipes only on termination', async () => {
+  const normalChild = new FakeChild(4101);
+  const normal = spawnOwnedCliProcess('fixture', [], {}, {
+    platform: 'win32',
+    spawnImpl: () => normalChild,
+  });
+  const normalClose = normal.waitForClose();
+  normalChild.emit('exit', 0, null);
+  for (const stream of [normalChild.stdin, normalChild.stdout, normalChild.stderr]) {
+    assert.equal(stream.destroyed, false, 'normal exit must allow buffered output to drain');
+  }
+  normalChild.emit('close', 0, null);
+  assert.deepEqual(await normalClose, { code: 0, signal: null });
+
+  // If cancellation/timeout arrives after the leader exit, closing the
+  // parent-owned streams still breaks a descendant-held pipe promptly.
+  const exitedChild = new FakeChild(4102);
+  const exited = spawnOwnedCliProcess('fixture', [], {}, {
+    platform: 'win32',
+    spawnImpl: () => exitedChild,
+  });
+  const exitedClose = exited.waitForClose();
+  exitedChild.emit('exit', null, 'SIGKILL');
+  exited.terminate('SIGKILL');
+  const exitedResult = await exitedClose;
+  assert.deepEqual(exitedResult, { code: 0, signal: null });
+  for (const stream of [exitedChild.stdin, exitedChild.stdout, exitedChild.stderr]) {
+    assert.equal(stream.destroyed, true);
+    assert.equal(stream.destroyCalls, 1);
+  }
+  assert.deepEqual(exitedChild.killSignals, ['SIGKILL']);
+
+  // Conversely, termination before the leader's exit must defer pipe closure
+  // until the exit event confirms the direct child is gone.
+  const pendingChild = new FakeChild(4103);
+  const pending = spawnOwnedCliProcess('fixture', [], {}, {
+    platform: 'win32',
+    spawnImpl: () => pendingChild,
+  });
+  const pendingClose = pending.waitForClose();
+  pending.terminate('SIGKILL');
+  assert.equal(pendingChild.stdout.destroyed, false);
+  pendingChild.emit('exit', null, 'SIGKILL');
+  assert.deepEqual(await pendingClose, { code: 0, signal: null });
+
+  const posixChild = new FakeChild(4104);
+  let posixOptions;
+  const groupSignals = [];
+  const posix = spawnOwnedCliProcess('fixture', [], {}, {
+    platform: 'linux',
+    spawnImpl: (_command, _args, options) => {
+      posixOptions = options;
+      return posixChild;
+    },
+    killImpl: (pid, signal) => groupSignals.push({ pid, signal }),
+  });
+  const posixClose = posix.waitForClose();
+  posixChild.emit('exit', 0, null);
+  assert.equal(posixOptions.detached, true);
+  assert.deepEqual(groupSignals, [{ pid: -4104, signal: 'SIGKILL' }]);
+  assert.equal(posixChild.stdout.destroyed, false);
+  posixChild.emit('close', 0, null);
+  assert.deepEqual(await posixClose, { code: 0, signal: null });
+});
 
 test('resolveBackendMaxConcurrency fails closed on an invalid override (#445)', () => {
   // claude-cli's default cap is 1; an invalid override must not disable it.
@@ -32,6 +140,32 @@ test('backendSupportsStructuredOutput is true only for openai-http (#C2)', () =>
   }
   // Unknown backends fail closed: structured output is never sent.
   assert.equal(backendSupportsStructuredOutput('mystery-backend'), false);
+});
+
+test('Claude CLI compatibility record remains version-only and unverified', () => {
+  const fixture = JSON.parse(readFileSync(
+    new URL('../fixtures/backend-claude-contract.json', import.meta.url),
+    'utf8',
+  ));
+  assert.equal(fixture.schemaVersion, 1);
+  assert.equal(fixture.backend, 'claude-cli');
+  assert.equal(fixture.cli, 'claude');
+  assert.equal(fixture.observedVersion, '2.1.261');
+  assert.equal(fixture.status, 'unverified');
+  assert.deepEqual(fixture.evidence, {
+    kind: 'version-only',
+    command: 'claude --version',
+    realInvocation: false,
+    outputParsingVerified: false,
+    errorsVerified: false,
+    authVerified: false,
+    quotaVerified: false,
+    timeoutVerified: false,
+  });
+  assert.equal(fixture.syntheticFixture, true);
+  assert.equal(fixture.rawOutputIncluded, false);
+  assert.deepEqual(Object.keys(fixture.requiredContracts), ['output', 'errors', 'auth', 'quota', 'timeout']);
+  assert.equal(Object.hasOwn(fixture, 'credentials'), false);
 });
 
 test('isRetryableBackendError honors message status even when err.status is null (#445)', () => {

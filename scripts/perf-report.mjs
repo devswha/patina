@@ -5,7 +5,9 @@
 // is informational (latency p50/p95/p99 of the offline analyzer); it is NOT a
 // release gate and applies no latency threshold. Timing numbers are
 // machine-dependent, so the checked-in artifact is a snapshot, not a CI-drift
-// target.
+// target. Pass --costmetrics only when an npm pack byte count is wanted.
+//
+// Usage: node scripts/perf-report.mjs [--costmetrics]
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
@@ -23,6 +25,17 @@ function fmt(value) {
   return value == null ? 'n/a' : Number(value).toFixed(3);
 }
 
+function fmtBytes(value) {
+  return value == null ? 'n/a' : `${Number(value)} B`;
+}
+
+export function perfReportOptions(argv = process.argv.slice(2)) {
+  return {
+    measureCliColdStart: true,
+    costMetrics: argv.includes('--costmetrics'),
+  };
+}
+
 export function renderMarkdown(report) {
   const lines = [];
   lines.push('# Performance report (report-only)');
@@ -35,6 +48,13 @@ export function renderMarkdown(report) {
   lines.push(`- Node: ${report.nodeVersion} · ${report.platform}/${report.arch}`);
   lines.push(`- Passes: ${report.passes} measured (+${report.warmupPasses} warmup) per fixture`);
   lines.push(`- Fixtures: ${report.fixtureCount}`);
+  lines.push(`- Analyzer timing: ${report.repeatConditions?.analyzer?.timingMode || 'warm-in-process'}; warmup excluded`);
+  const cli = report.cliColdStart || {};
+  lines.push(`- CLI coldstart: ${cli.status || 'unknown'}; ${fmt(cli.meanMs)} ms mean over ${cli.passes ?? 'n/a'} fresh processes`);
+  const memory = report.memory || {};
+  lines.push(`- Process memory: ${memory.status || 'unknown'}; ${memory.definition || 'RSS definition unavailable'}; delta ${fmtBytes(memory.rssDeltaBytes)}`);
+  const costs = report.costMetrics || {};
+  lines.push(`- Cost metrics: ${costs.status || 'unknown'}; calls=${costs.calls == null ? 'unknown' : costs.calls}; costUsd=${costs.costUsd == null ? 'unknown' : costs.costUsd}; npm tarball=${fmtBytes(costs.tarballBytes)}`);
   lines.push(`- Full data: [perf-latest.json](./perf-latest.json)`);
   lines.push('');
   lines.push('## Per size bucket');
@@ -47,10 +67,10 @@ export function renderMarkdown(report) {
   lines.push('');
   lines.push('## Per fixture');
   lines.push('');
-  lines.push('| fixture | lang | bucket | chars | paras | p50 ms | p95 ms | p99 ms | mean ms | texts/sec |');
-  lines.push('|---------|------|--------|------:|------:|-------:|-------:|-------:|--------:|----------:|');
+  lines.push('| fixture | lang | bucket | chars | paras | input sha256 | p50 ms | p95 ms | p99 ms | mean ms | texts/sec |');
+  lines.push('|---------|------|--------|------:|------:|--------------|-------:|-------:|-------:|--------:|----------:|');
   for (const f of report.fixtures) {
-    lines.push(`| ${f.id} | ${f.lang} | ${f.sizeBucket} | ${f.inputChars} | ${f.inputParagraphs} | ${fmt(f.p50Ms)} | ${fmt(f.p95Ms)} | ${fmt(f.p99Ms)} | ${fmt(f.meanMs)} | ${fmt(f.textsPerSec)} |`);
+    lines.push(`| ${f.id} | ${f.lang} | ${f.sizeBucket} | ${f.inputChars} | ${f.inputParagraphs} | ${f.inputSha256 || 'n/a'} | ${fmt(f.p50Ms)} | ${fmt(f.p95Ms)} | ${fmt(f.p99Ms)} | ${fmt(f.meanMs)} | ${fmt(f.textsPerSec)} |`);
   }
   lines.push('');
   return `${lines.join('\n')}\n`;
@@ -64,7 +84,7 @@ export function writePerfReport(report, { jsonPath = JSON_PATH, markdownPath = M
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const report = buildPerfReport();
+  const report = buildPerfReport(perfReportOptions());
   const { jsonPath, markdownPath } = writePerfReport(report);
   console.log(`Wrote ${relative(REPO_ROOT, markdownPath)}`);
   console.log(`Wrote ${relative(REPO_ROOT, jsonPath)}`);

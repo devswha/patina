@@ -96,7 +96,7 @@ test('dataset publication cannot be reached from a privileged pull-request check
   assert.doesNotMatch(source, /actions\/checkout@v6[\s\S]*ref:\s*main/);
 });
 
-test('release shell binds dispatch versions and rejects missing or moved tags before writes', () => {
+test('release shell binds dispatch versions and rejects missing or moved tags before writes', { skip: process.platform === 'win32' && 'runs the workflow steps through bash and POSIX PATH shims' }, () => {
   const workflow = readYaml(resolve(REPO_ROOT, '.github/workflows/release.yml'));
   const verify = workflow.jobs.npm.steps.find(step => step.name === 'Verify downloaded release tarballs');
   const publish = workflow.jobs.npm.steps.find(step => step.name === 'Publish verified release tarballs with recovery');

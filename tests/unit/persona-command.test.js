@@ -25,7 +25,7 @@ test('persona new --template writes a valid, loadable custom persona', async () 
   const repoRoot = tempRepo();
   const path = await runPersonaNew(['my-voice', '--lang', 'en', '--template'], { repoRoot, logger: silent });
   assert.ok(existsSync(path));
-  assert.match(path, /custom\/personas\/en\/my-voice\.md$/);
+  assert.ok(path.endsWith(join('custom', 'personas', 'en', 'my-voice.md')), path);
   // Loads back through the real (validating) loader.
   const loaded = loadPersona(repoRoot, 'en', 'my-voice');
   assert.equal(loaded.id, 'my-voice');
@@ -206,7 +206,7 @@ test('persona edit --name copies a library persona into custom and preserves the
   const libPath = join(repoRoot, 'personas', 'ko', 'natural-ko.md');
   const libBefore = readFileSync(libPath, 'utf8');
   const written = await runPersonaEdit(['natural-ko', '--lang', 'ko', '--name', 'My Natural KO'], { repoRoot, logger: silent });
-  assert.match(written, /custom\/personas\/ko\/natural-ko\.md$/);
+  assert.ok(written.endsWith(join('custom', 'personas', 'ko', 'natural-ko.md')), written);
   // Library file is untouched (copy-on-edit into custom only).
   assert.ok(existsSync(libPath));
   assert.equal(readFileSync(libPath, 'utf8'), libBefore);

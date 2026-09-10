@@ -20,14 +20,18 @@ function command(args, cwd, env = process.env) {
     child.once('close', code => { clearTimeout(timer); resolve({ code, stdout, stderr }); });
   });
 }
-async function workspace(t) {
+async function workspace(t, { autoClean = true } = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'patina-aside-cli-'));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+  if (autoClean) t.after(() => rm(dir, { recursive: true, force: true }));
   return dir;
 }
 
 test('aside CLI discovers its skill and detached options session persists to status', async (t) => {
-  const dir = await workspace(t);
+  // No autoClean: the session-close hook and the rm must run in that order.
+  // t.after hooks run in registration order and a failed hook skips the
+  // rest, so the rm is registered after the close below; on win32 an rm
+  // racing the live detached server fails EBUSY and would skip the close.
+  const dir = await workspace(t, { autoClean: false });
   const skill = await command(['skill'], dir);
   assert.equal(skill.code, 0);
   const bundle = JSON.parse(skill.stdout);
@@ -40,7 +44,22 @@ test('aside CLI discovers its skill and detached options session persists to sta
   const session = JSON.parse(launched.stdout);
   const url = new URL(session.url);
   const headers = { 'X-Patina-Session': url.hash.slice(1), Origin: url.origin, 'Content-Type': 'application/json' };
-  t.after(async () => { await fetch(`${url.origin}/api/close`, { method: 'POST', headers, body: '{}' }).catch(() => {}); });
+  t.after(async () => {
+    await fetch(`${url.origin}/api/close`, { method: 'POST', headers, body: '{}' }).catch(() => {});
+    // The detached server exits asynchronously, and win32 cannot remove the
+    // workspace while the process still holds it as its cwd (EBUSY). Wait
+    // for the port to stop answering before the workspace rm runs.
+    const deadline = Date.now() + 10_000;
+    while (Date.now() < deadline) {
+      try {
+        await fetch(`${url.origin}/api/options`, { headers, signal: AbortSignal.timeout(500) });
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch {
+        return;
+      }
+    }
+  });
+  t.after(() => rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 }));
   const state = await (await fetch(`${url.origin}/api/options`, { headers })).json();
   const settings = { ...state.settings, language: 'ko', register: 'professional' };
   assert.equal((await fetch(`${url.origin}/api/options`, { method: 'POST', headers, body: JSON.stringify({ settings, baseHash: state.settingsHash }) })).status, 200);

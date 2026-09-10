@@ -1087,6 +1087,10 @@ test('runWebRewriteStream deadline completes an in-flight non-settling rewrite a
 
 test('runWebRewriteStream deadline completes non-settling scorers', async () => {
   const frames = [];
+  // A fake monotonic clock keeps the two deadline paths deterministic: with a
+  // real 5 ms budget, a loaded or slower host can exhaust the budget during
+  // the stream phase and report stream_failed instead of scoring_failed.
+  let now = 1000;
   const result = await runWebRewriteStream({
     request: { ...request, original: 'We shipped 3 units.' },
     callLLMStream: async ({ onAttempt }) => {
@@ -1094,12 +1098,13 @@ test('runWebRewriteStream deadline completes non-settling scorers', async () => 
       return { text: 'We shipped 3 units.' };
     },
     scoreFns: {
-      scoreMPS: () => new Promise(() => {}),
+      scoreMPS: () => { now += 10; return new Promise(() => {}); },
       scoreFidelity: () => new Promise(() => {}),
       scoreDeterministicSignals: () => ({}),
     },
     emit: (frame) => frames.push(frame),
     timeout: 5,
+    deadlineNow: () => now,
   });
   assert.equal(result.ok, false);
   assert.equal(result.code, 'scoring_failed');

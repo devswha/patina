@@ -19,15 +19,21 @@ function tempWorkspace() {
 
 async function withEnv({ home, cwd }, fn) {
   const oldHome = process.env.HOME;
+  const oldUserProfile = process.env.USERPROFILE;
   const oldCwd = process.cwd();
+  // os.homedir() reads HOME on POSIX but USERPROFILE on win32; redirect both
+  // so the fixture home is the home directory on every platform.
   process.env.HOME = home;
+  process.env.USERPROFILE = home;
   process.chdir(cwd);
   try {
-    await fn();
+    return await fn();
   } finally {
     process.chdir(oldCwd);
     if (oldHome === undefined) delete process.env.HOME;
     else process.env.HOME = oldHome;
+    if (oldUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = oldUserProfile;
   }
 }
 

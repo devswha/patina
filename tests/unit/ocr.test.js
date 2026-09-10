@@ -139,11 +139,17 @@ test('collectImageCandidates rejects file:// images from a remote page', () => {
 });
 
 test('collectImageCandidates allows file:// images for a local .html preview', () => {
+  // Build the file: URLs from platform paths: win32 file URLs carry a drive
+  // letter, POSIX ones do not, and Node's fileURLToPath rejects the other
+  // platform's shape.
+  const dir = join(tmpdir(), 'patina-ocr-local');
+  const base = pathToFileURL(join(dir, 'page.html')).href;
+  const expected = pathToFileURL(join(dir, 'banner.png')).href;
   const html = '<img src="banner.png" alt="배너 이미지입니다">';
-  const { candidates } = collectImageCandidates(html, 'file:///home/user/page.html');
+  const { candidates } = collectImageCandidates(html, base);
   assert.strictEqual(candidates.length, 1);
   assert.strictEqual(candidates[0].kind, 'file');
-  assert.strictEqual(candidates[0].url, 'file:///home/user/banner.png');
+  assert.strictEqual(candidates[0].url, expected);
 });
 
 test('collectImageCandidates caps by priority', () => {

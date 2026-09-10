@@ -4,7 +4,15 @@ import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, re
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { test } from 'node:test';
+import { test as nodeTest } from 'node:test';
+
+// install.sh/uninstall.sh and every fixture shim are POSIX shell (/bin/sh,
+// extensionless shebang PATH shims); QA.md declares the installer POSIX-only.
+// None of it can run on win32, so every test in this file registers as
+// skipped there — absent coverage, not a pass.
+const test = process.platform === 'win32'
+  ? (name, ..._rest) => nodeTest(name, { skip: 'POSIX-only installer fixtures (/bin/sh, shebang PATH shims)' }, () => {})
+  : nodeTest;
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const AGENTS = ['CLAUDE', 'CODEX', 'CURSOR', 'OPCODE'];

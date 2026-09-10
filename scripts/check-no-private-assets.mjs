@@ -169,10 +169,13 @@ export function runGate({ packedFiles = [], trackedFiles = [] } = {}) {
  * @throws {Error} When `npm pack` fails or emits unparseable JSON.
  */
 export function collectPackedFiles(cwd, prefix = '', { spawn = spawnSync } = {}) {
+  // npm is npm.cmd on Windows, which Node refuses to spawn without a shell
+  // since the CVE-2024-27980 fix.
   const result = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
     cwd,
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
+    shell: process.platform === 'win32',
   });
   if (result.error) {
     const code = result.error.code ? ` (${result.error.code})` : '';

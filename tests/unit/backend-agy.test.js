@@ -73,7 +73,15 @@ function hostSettingsProblem() {
     return err.message;
   }
 }
-const launchSkip = hostSettingsProblem();
+// The fake `agy` is an extensionless POSIX shebang script joined to PATH with
+// ':'. Windows never resolves an extensionless name through PATHEXT and (since
+// the Node CVE-2024-27980 fix) refuses to spawn a .cmd shim without a shell,
+// so the fake cannot intercept the launch there. Skipping is absent coverage
+// of the live Windows launch path, not a pass; everything else (argv building,
+// stream parsing, settings guard) still runs on win32.
+const launchSkip = process.platform === 'win32'
+  ? 'fake agy CLI shim requires POSIX shebang semantics; live Windows launch unverified'
+  : hostSettingsProblem();
 
 function argValue(args, flag) {
   const index = args.indexOf(flag);

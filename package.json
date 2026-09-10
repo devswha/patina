@@ -17,6 +17,7 @@
     "launch-config:generate": "node scripts/generate-launch-config.mjs",
     "test:e2e": "node --test tests/e2e/*.test.js",
     "test:browser": "node --test tests/browser/*.test.js",
+    "smoke:platform": "node scripts/platform-smoke.mjs",
     "benchmark": "node tests/quality/benchmark.mjs",
     "benchmark:perf": "node scripts/perf-report.mjs",
     "benchmark:rebaseline:low-fpr": "node scripts/rebaseline-low-fpr-report.mjs",

@@ -160,6 +160,37 @@ credential boundary, and non-determinism recorded. A mock-browser pass cannot
 be reported as a real-model pass, and a live-model result cannot stand in for
 browser interaction or deterministic regression tests.
 
+### Other operating systems (P16b)
+
+CI runs Linux only and the repository publishes no OS support matrix. The
+maintenance item P16b asks for one representative smoke per supported OS, not
+a full cross-matrix. `npm run smoke:platform` (`scripts/platform-smoke.mjs`)
+is that smoke: on the machine under test it runs `npm ci`, `patina --version`,
+offline scoring / `inspect` / batch output on an input file, output directory
+and working directory whose names carry Korean and a space, the owned-process
+cancellation and session-isolation tests (which skip by design on platforms
+without POSIX process groups — the skip counts are the evidence), `doctor
+--offline --json`, and the full unit + e2e suite with files enumerated by the
+script so no shell glob is involved. It makes no LLM call and records only
+the names of key variables that are set.
+
+Procedure per machine:
+
+```bash
+git clone https://github.com/devswha/patina.git && cd patina
+git switch dev            # or the exact SHA being accepted
+npm run smoke:platform    # add --skip-install if npm ci already ran
+```
+
+The script writes
+`docs/operations/platform-smoke-<platform>-<arch>-<YYYYMMDD>.json`, prints
+`ok`/`FAIL` per step, and exits 1 when any step failed. A failed step is
+evidence to record, not a reason to rerun until green: commit the receipt (or
+send it back) as-is, and open the product finding separately. On Windows use a
+Node-capable shell (PowerShell or Git Bash); `install.sh` is POSIX-only and is
+not part of this smoke. `platform-smoke-linux-x64-20260910.json` is the
+baseline from the CI platform.
+
 ## 5. Flaky and external failures
 
 Classify a failure as product, test-environment, or external-service before

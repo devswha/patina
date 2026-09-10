@@ -60,8 +60,8 @@ patina --model claude-sonnet-4-6 --lang ko input.txt   # auto-routes
 ```
 
 Auth file: `~/.claude/.credentials.json` (created by the OAuth flow). `patina
-doctor` and backend selection read its `claudeAiOauth` tokens and expiry
-timestamps: a file that Claude Code emptied after logout or a failed refresh
+doctor`, `patina auth status`, and automatic `--ocr` backend selection read
+its `claudeAiOauth` tokens and expiry timestamps: a file that Claude Code emptied after logout or a failed refresh
 reports `authenticated=no` with a hint to run `claude auth login` again. No
 network call is made; a token that is present but revoked server-side is only
 detected when the backend is invoked.

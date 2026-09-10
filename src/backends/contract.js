@@ -19,10 +19,59 @@
 //
 // Defaults are intentionally stable; changing a retry path means changing its
 // single owner here or in the file named above, never adding a parallel one.
-import { spawn } from 'node:child_process';
-import { copyFileSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
+
+/**
+ * Resolve how a bare CLI name must be spawned on the current platform.
+ *
+ * win32 only: a CLI installed as an npm `.cmd`/`.bat` shim cannot be spawned
+ * without a shell (Node refuses since the CVE-2024-27980 fix), while a real
+ * `.exe` spawns bare. Walk PATH in order and return the first matching
+ * candidate with the shell flag a batch shim needs. Anything else (a real
+ * executable, or nothing found) keeps the bare name so the existing
+ * not-installed error path is unchanged. Node quotes shell-spawn args only
+ * since 18.20.2/20.12.2 — older win32 Nodes may mis-split paths with spaces.
+ *
+ * @param {string} command Bare CLI name (e.g. 'gemini').
+ * @param {object} [deps]
+ * @param {string} [deps.platform]
+ * @param {NodeJS.ProcessEnv} [deps.env]
+ * @param {(path: string) => boolean} [deps.exists]
+ * @returns {{ command: string, shell: boolean }}
+ */
+export function resolveCliSpawnCommand(command, { platform = process.platform, env = process.env, exists = existsSync } = {}) {
+  if (platform !== 'win32') return { command, shell: false };
+  const extensions = String(env.PATHEXT || '.COM;.EXE;.BAT;.CMD').split(';').map((ext) => ext.toUpperCase());
+  for (const dir of String(env.PATH || '').split(';')) {
+    if (!dir) continue;
+    for (const ext of extensions) {
+      const candidate = join(dir, command + ext);
+      if (!exists(candidate)) continue;
+      return { command: candidate, shell: ext === '.CMD' || ext === '.BAT' };
+    }
+  }
+  return { command, shell: false };
+}
+
+/**
+ * Availability probe shared by every local CLI backend: `<cli> --version`
+ * with the platform's spawn shape (see resolveCliSpawnCommand).
+ */
+export function probeCliAvailability(command, { platform = process.platform, env = process.env, exists = existsSync, spawnSyncImpl = spawnSync } = {}) {
+  try {
+    const resolved = resolveCliSpawnCommand(command, { platform, env, exists });
+    const result = spawnSyncImpl(resolved.command, ['--version'], {
+      stdio: 'ignore',
+      ...(resolved.shell ? { shell: true } : {}),
+    });
+    return result.status === 0;
+  } catch {
+    return false;
+  }
+}
 
 export const DEFAULT_BACKEND_TIMEOUT_MS = 600_000;
 export const DEFAULT_HTTP_MAX_RETRIES = 2;
@@ -392,9 +441,10 @@ export function spawnOwnedCliProcess(command, args = [], options = {}, {
   killImpl = (pid, signal) => process.kill(pid, signal),
 } = {}) {
   const ownsProcessGroup = supportsOwnedProcessGroup(platform);
-  const proc = spawnImpl(command, args, ownsProcessGroup
-    ? { ...options, detached: true }
-    : options);
+  const resolved = resolveCliSpawnCommand(command, { platform });
+  const spawnOptions = ownsProcessGroup ? { ...options, detached: true } : { ...options };
+  if (resolved.shell) spawnOptions.shell = true;
+  const proc = spawnImpl(resolved.command, args, spawnOptions);
   let closeResult;
   let resolveClose;
   const closePromise = new Promise((resolve) => {

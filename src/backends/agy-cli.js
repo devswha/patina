@@ -1,10 +1,10 @@
-import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   DEFAULT_BACKEND_TIMEOUT_MS,
   runInteractiveCommand,
+  probeCliAvailability,
   spawnOwnedCliProcess,
 } from './contract.js';
 import { resolveLocalCliModel } from '../model-defaults.js';
@@ -44,12 +44,7 @@ Do not call any tool; answer directly with only the requested result.
 `;
 
 export function isAvailable() {
-  try {
-    const result = spawnSync('agy', ['--version'], { stdio: 'ignore' });
-    return result.status === 0;
-  } catch {
-    return false;
-  }
+  return probeCliAvailability('agy');
 }
 
 function antigravityDir() {

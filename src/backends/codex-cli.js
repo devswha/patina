@@ -1,10 +1,10 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   DEFAULT_BACKEND_TIMEOUT_MS,
   runInteractiveCommand,
+  probeCliAvailability,
   spawnOwnedCliProcess,
   stageCliImages,
 } from './contract.js';
@@ -25,12 +25,7 @@ export const CODEX_DISABLED_FEATURES = Object.freeze(['shell_tool', 'unified_exe
 export const installHint = 'Install it from https://github.com/openai/codex, then run `patina auth login codex-cli` again.';
 
 export function isAvailable() {
-  try {
-    const result = spawnSync('codex', ['--version'], { stdio: 'ignore' });
-    return result.status === 0;
-  } catch {
-    return false;
-  }
+  return probeCliAvailability('codex');
 }
 
 export function isAuthenticated() {

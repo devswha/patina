@@ -1,10 +1,10 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   DEFAULT_BACKEND_TIMEOUT_MS,
   runInteractiveCommand,
+  probeCliAvailability,
   spawnOwnedCliProcess,
   stageCliImages,
 } from './contract.js';
@@ -16,12 +16,7 @@ export const loginCommand = 'claude auth login';
 export const installHint = 'Install Claude Code first, then run `patina auth login claude-cli` again.';
 
 export function isAvailable() {
-  try {
-    const result = spawnSync('claude', ['--version'], { stdio: 'ignore' });
-    return result.status === 0;
-  } catch {
-    return false;
-  }
+  return probeCliAvailability('claude');
 }
 
 function credentialsPath() {

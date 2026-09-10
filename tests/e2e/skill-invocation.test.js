@@ -368,12 +368,17 @@ test('missing selected backend and missing selected authentication never fall ba
   const unavailable = await command(f, ['--backend', 'codex-cli']).done;
   assert.equal(unavailable.summary.code, 'backend_unavailable');
   assert.equal((await privateArtifacts(unavailable, ['receipt.json'])).invocationStarted, false);
-  const codex = join(executables, 'codex');
-  await writeFile(codex, '#!/bin/sh\nexit 0\n');
-  await chmod(codex, 0o700);
-  const unauthenticated = await command(f, ['--backend', 'codex-cli']).done;
-  assert.equal(unauthenticated.summary.code, 'backend_auth_missing');
-  assert.equal((await privateArtifacts(unauthenticated, ['receipt.json'])).selection.backend, 'codex-cli');
+  // The unauthenticated-CLI case needs an executable PATH shim: an
+  // extensionless POSIX script is never resolved through PATHEXT on win32, so
+  // only the unavailable-backend case is covered there.
+  if (process.platform !== 'win32') {
+    const codex = join(executables, 'codex');
+    await writeFile(codex, '#!/bin/sh\nexit 0\n');
+    await chmod(codex, 0o700);
+    const unauthenticated = await command(f, ['--backend', 'codex-cli']).done;
+    assert.equal(unauthenticated.summary.code, 'backend_auth_missing');
+    assert.equal((await privateArtifacts(unauthenticated, ['receipt.json'])).selection.backend, 'codex-cli');
+  }
   f.env.PATINA_API_KEY = '';
   const http = await command(f, ['--backend', 'openai-http']).done;
   assert.equal(http.summary.code, 'backend_auth_missing');

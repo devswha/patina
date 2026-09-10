@@ -28,6 +28,12 @@ const REPO_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const WIN = process.platform === 'win32';
 const NPM = WIN ? 'npm.cmd' : 'npm';
 const STEP_TIMEOUT_MS = 20 * 60 * 1000;
+// The full suite is spawn-heavy, which Windows process creation (plus
+// real-time AV scanning) makes an order of magnitude slower than Linux:
+// measured 67 s on Linux, 72 s on macOS, and past the 20-minute default on a
+// Windows 11 host. The suite gets its own bound so a genuinely hung run is
+// still recorded as a timed-out step instead of passing silently.
+const SUITE_TIMEOUT_MS = 90 * 60 * 1000;
 const DIAG_CAP = 20_000;
 const KEY_ENV_NAMES = ['PATINA_API_KEY', 'PATINA_API_KEY_FILE', 'OPENAI_API_KEY', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY', 'KIMI_API_KEY', 'MOONSHOT_API_KEY', 'GROQ_API_KEY', 'TOGETHER_API_KEY', 'MINIMAX_API_KEY'];
 
@@ -113,13 +119,13 @@ const diagnostics = { stem, steps: [] };
  * Run one child process and record it. `okWhen(result, parsed)` decides the
  * verdict once; the default is exit status 0 with no spawn error.
  */
-function run(name, command, argv, { cwd = REPO_ROOT, env = {}, parse = null, okWhen = null } = {}) {
+function run(name, command, argv, { cwd = REPO_ROOT, env = {}, parse = null, okWhen = null, timeout = STEP_TIMEOUT_MS } = {}) {
   const started = Date.now();
   const result = spawnSync(command, argv, {
     cwd,
     env: { ...process.env, ...env },
     encoding: 'utf8',
-    timeout: STEP_TIMEOUT_MS,
+    timeout,
     maxBuffer: 64 * 1024 * 1024,
     shell: WIN && command.endsWith('.cmd'),
   });
@@ -260,7 +266,7 @@ try {
 
   // 6. Full suite, files enumerated here so no shell glob expansion is needed.
   if (!flag('--skip-suite')) {
-    run('npm test (unit + e2e, tap)', process.execPath, ['-r', join(REPO_ROOT, 'tests', 'helpers', 'real-tmpdir.cjs'), '--test', '--test-reporter=tap', ...listTests('tests/unit'), ...listTests('tests/e2e')], { parse: parseTap });
+    run('npm test (unit + e2e, tap)', process.execPath, ['-r', join(REPO_ROOT, 'tests', 'helpers', 'real-tmpdir.cjs'), '--test', '--test-reporter=tap', ...listTests('tests/unit'), ...listTests('tests/e2e')], { parse: parseTap, timeout: SUITE_TIMEOUT_MS });
   } else {
     receipt.steps.push({ name: 'npm test (unit + e2e, tap)', ok: null, skipped: '--skip-suite' });
   }

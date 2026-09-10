@@ -23,7 +23,7 @@
     "patina": "8.6.0",
     "model": "gpt-5.5",
     "authPath": "ChatGPT OAuth (~/.codex/auth.json auth_mode=chatgpt, API-key field null)",
-    "invocations": 8,
+    "invocations": 10,
     "scenarios": ["score", "rewrite --verify", "timeout", "foreign-model fallback", "invalid in-family model"]
   },
   "requiredContracts": {

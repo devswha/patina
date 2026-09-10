@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { EventEmitter } from 'node:events';
-
+import { join, resolve as resolvePath } from 'node:path';
 import {
   buildBrowserDiffPromptInput,
   htmlEscape,
@@ -65,11 +65,13 @@ test('writeBrowserDiffPage uses a patina-scoped temp dir and restrictive permiss
     now: () => 42,
   });
 
-  assert.strictEqual(path, '/tmp/patina-browser-diff-abc/browser-diff-42.html');
-  assert.deepStrictEqual(writes, [{ filePath: '/tmp/patina-browser-diff-abc/browser-diff-42.html', content: '<html/>', encoding: 'utf8' }]);
+  const expectedDir = join('/tmp', 'patina-browser-diff-abc');
+  const expectedFile = join(expectedDir, 'browser-diff-42.html');
+  assert.strictEqual(path, expectedFile);
+  assert.deepStrictEqual(writes, [{ filePath: expectedFile, content: '<html/>', encoding: 'utf8' }]);
   assert.deepStrictEqual(chmods, [
-    { filePath: '/tmp/patina-browser-diff-abc', mode: 0o700 },
-    { filePath: '/tmp/patina-browser-diff-abc/browser-diff-42.html', mode: 0o600 },
+    { filePath: expectedDir, mode: 0o700 },
+    { filePath: expectedFile, mode: 0o600 },
   ]);
 });
 
@@ -104,7 +106,7 @@ test('openBrowserDiffPage selects the platform opener and propagates close failu
   };
 
   await openBrowserDiffPage('/tmp/demo.html', { platform: 'linux', spawn: successSpawn });
-  assert.deepStrictEqual(seen, { command: 'xdg-open', args: ['/tmp/demo.html'] });
+  assert.deepStrictEqual(seen, { command: 'xdg-open', args: [resolvePath('/tmp/demo.html')] });
   assert.strictEqual(unrefCalled, false);
 
   await assert.rejects(

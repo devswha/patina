@@ -191,6 +191,6 @@ test('resolveBatchOutputPath: suffix and outdir edge cases', () => {
   assert.equal(resolveBatchOutputPath({ suffix: '' }, '/tmp/input.xlf', { defaultSuffix: '' }), '/tmp/input.xlf');
   assert.equal(resolveBatchOutputPath({ suffix: 'human' }, '/tmp/input.xlf'), '/tmp/inputhuman.xlf');
   assert.equal(resolveBatchOutputPath({ suffix: '.human' }, '/tmp/README'), '/tmp/README.human');
-  assert.equal(resolveBatchOutputPath({ outdir: '/tmp/nested/out' }, '/tmp/a/b/input.xlf', { defaultSuffix: '.ignored' }), '/tmp/nested/out/input.xlf');
+  assert.equal(resolveBatchOutputPath({ outdir: '/tmp/nested/out' }, '/tmp/a/b/input.xlf', { defaultSuffix: '.ignored' }), join('/tmp/nested/out', 'input.xlf'));
   record('resolveBatchOutputPath routing', 'empty suffix unchanged; raw suffix accepted; no extension; nested outdir basename', 'matched');
 });

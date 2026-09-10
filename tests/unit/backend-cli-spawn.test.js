@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 
-import { probeCliAvailability, resolveCliSpawnCommand, spawnOwnedCliProcess } from '../../src/backends/contract.js';
+import { probeCliAvailability, resolveCliSpawnCommand, runInteractiveCommand, spawnOwnedCliProcess, windowsBatchSpawn } from '../../src/backends/contract.js';
 
 const WIN_ENV = { PATH: 'C:\\tools;C:\\other', PATHEXT: '.COM;.EXE;.BAT;.CMD' };
 
@@ -59,7 +59,7 @@ test('resolveCliSpawnCommand keeps the bare name when nothing is found', () => {
   );
 });
 
-test('probeCliAvailability spawns a .cmd shim with a shell and reports status', () => {
+test('probeCliAvailability routes a .cmd shim through cmd.exe and reports status', () => {
   const seen = [];
   const spawnSyncImpl = (command, args, options) => {
     seen.push({ command, args, options });
@@ -87,7 +87,7 @@ test('probeCliAvailability spawns a .cmd shim with a shell and reports status', 
   assert.equal(boom, false);
 });
 
-test('spawnOwnedCliProcess passes shell:true through for a .cmd-only CLI on win32', () => {
+test('spawnOwnedCliProcess routes a .cmd-only CLI through cmd.exe on win32', () => {
   // Uses the real env/exists seams: a .cmd fixture in a real temp PATH dir,
   // with only the platform injected — so this runs on any host OS.
   const dir = mkdtempSync(join(tmpdir(), 'patina-cli-spawn-'));
@@ -126,4 +126,38 @@ test('spawnOwnedCliProcess keeps the bare name for unknown CLIs on win32', () =>
   spawnOwnedCliProcess('definitely-not-a-real-cli-xyz', [], {}, { platform: 'win32', spawnImpl });
   assert.equal(seen.command, 'definitely-not-a-real-cli-xyz');
   assert.equal(seen.options.windowsVerbatimArguments, undefined);
+});
+
+test('windowsBatchSpawn pins the empty-string arg and space args in one quoted line', () => {
+  const [command, args, options] = windowsBatchSpawn('C:\\tools dir\\gemini.CMD', ['-p', '', '--output-format', 'text with space'], { stdio: 'ignore' });
+  assert.equal(command, 'cmd.exe');
+  assert.deepEqual(args.slice(0, 3), ['/d', '/s', '/c']);
+  // The line must quote every token (empty string becomes "") and wrap the
+  // whole line in a second quote pair for cmd /s stripping.
+  assert.equal(args[3], '""C:\\tools dir\\gemini.CMD" "-p" "" "--output-format" "text with space""');
+  assert.deepEqual(options, { stdio: 'ignore', windowsVerbatimArguments: true });
+});
+
+test('runInteractiveCommand routes a .cmd-only CLI through cmd.exe on win32', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'patina-cli-login-'));
+  const oldPath = process.env.PATH;
+  let seen = null;
+  const child = new EventEmitter();
+  try {
+    writeFileSync(join(dir, 'login-cli.CMD'), '@echo off\r\n');
+    process.env.PATH = `${dir};${oldPath || ''}`;
+    const spawnImpl = (command, args, options) => {
+      seen = { command, args, options };
+      process.nextTick(() => child.emit('close', 0));
+      return child;
+    };
+    await runInteractiveCommand({ backendName: 'test-cli', command: 'login-cli', platform: 'win32', spawnImpl });
+    assert.equal(seen.command, 'cmd.exe');
+    assert.deepEqual(seen.args, ['/d', '/s', '/c', `"${[`"${join(dir, 'login-cli.CMD')}"`].join(' ')}"`]);
+    assert.equal(seen.options.windowsVerbatimArguments, true);
+  } finally {
+    if (oldPath === undefined) delete process.env.PATH;
+    else process.env.PATH = oldPath;
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

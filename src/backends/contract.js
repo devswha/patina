@@ -31,7 +31,7 @@ import { join } from 'node:path';
  * without a shell (Node refuses since the CVE-2024-27980 fix), while a real
  * `.exe` spawns bare. Walk PATH in order and return the first PATHEXT match;
  * batch shims come back flagged so callers launch them through cmd.exe (see
- * spawnWindowsBatch). Real executables and unknown names keep the bare name
+ * windowsBatchSpawn). Real executables and unknown names keep the bare name
  * so the existing not-installed error path is unchanged.
  *
  * @param {string} command Bare CLI name (e.g. 'gemini').
@@ -63,6 +63,12 @@ export function resolveCliSpawnCommand(command, { platform = process.platform, e
  * pair because cmd /s strips one outer pair, and windowsVerbatimArguments
  * keeps Node's own quoting out of the way. Verified on Windows 11 with a
  * space in the batch path, an empty-string arg and a space in an arg.
+ *
+ * Arg domain: backend flags, model ids and temp paths only — user prose
+ * always travels via stdin, never argv. cmd still expands %var% inside
+ * quotes and the ""/doubling is lossy for embedded double quotes, so values
+ * containing `%` or `"` are NOT safe here; the backends above never produce
+ * them.
  */
 export function windowsBatchSpawn(command, args, options = {}) {
   const quote = (value) => `"${String(value).replace(/"/g, '""')}"`;
@@ -534,6 +540,8 @@ export function runInteractiveCommand({
   env = process.env,
   stdio = 'inherit',
   notFoundHint,
+  platform = process.platform,
+  spawnImpl = spawn,
 } = {}) {
   if (!backendName || !command) {
     throw new Error('interactive backend command requires backendName and command');
@@ -545,11 +553,11 @@ export function runInteractiveCommand({
     let settled = false;
     const settle = (fn) => { if (settled) return; settled = true; fn(); };
 
-    const resolved = resolveCliSpawnCommand(command);
+    const resolved = resolveCliSpawnCommand(command, { platform });
     const [spawnCommand, spawnArgs, spawnOptions] = resolved.batch
       ? windowsBatchSpawn(resolved.command, args, { cwd, env, stdio })
-      : [command, args, { cwd, env, stdio }];
-    const proc = spawn(spawnCommand, spawnArgs, spawnOptions);
+      : [resolved.command, args, { cwd, env, stdio }];
+    const proc = spawnImpl(spawnCommand, spawnArgs, spawnOptions);
 
     proc.on('error', (err) => {
       if (err.code === 'ENOENT') {

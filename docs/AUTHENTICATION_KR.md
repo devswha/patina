@@ -59,7 +59,11 @@ patina --backend claude-cli --lang ko input.txt
 patina --model claude-sonnet-4-6 --lang ko input.txt   # auto-routes
 ```
 
-인증 파일: `~/.claude/.credentials.json` (OAuth 로그인 뒤 생성됩니다).
+인증 파일: `~/.claude/.credentials.json` (OAuth 로그인 뒤 생성됩니다). `patina
+doctor`와 백엔드 선택은 이 파일의 `claudeAiOauth` 토큰과 만료 시각을 읽습니다.
+로그아웃이나 토큰 갱신 실패로 Claude Code가 비워 둔 파일은 `authenticated=no`로
+보고되고 `claude auth login` 재실행 안내가 붙습니다. 네트워크 호출은 하지 않으므로
+서버에서 폐기된 토큰은 실제 백엔드 호출 때에만 드러납니다.
 
 ## gemini-cli backend
 

@@ -5,6 +5,7 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { isAuthenticated as kimiAuthenticated } from '../../src/backends/kimi-cli.js';
+import { readClaudeCredentialState } from '../../src/backends/claude-cli.js';
 import {
   isAuthenticated as geminiAuthenticated,
   authHint as geminiAuthHint,
@@ -23,6 +24,48 @@ function withEnv(keys, body) {
     }
   }
 }
+
+// os.homedir() cannot be redirected here, so the classifier takes the file path
+// directly; isAuthenticated()/authHint() are thin wrappers over it.
+test('claude credential state distinguishes missing, unreadable, expired and live sessions', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'patina-claude-auth-'));
+  const file = join(dir, '.credentials.json');
+  const now = 1_800_000_000_000;
+  const write = (value) => writeFileSync(file, typeof value === 'string' ? value : JSON.stringify(value));
+  try {
+    assert.equal(readClaudeCredentialState(file, now), 'missing');
+
+    write('{not json');
+    assert.equal(readClaudeCredentialState(file, now), 'unreadable');
+
+    // Unknown layout (what the e2e fake login writes) keeps presence semantics.
+    write({});
+    assert.equal(readClaudeCredentialState(file, now), 'ok');
+
+    // Logged-out shape observed on disk: blank tokens, expiresAt 0, refresh
+    // expiry still in the future. Nothing usable remains.
+    write({ claudeAiOauth: { accessToken: '', refreshToken: '', expiresAt: 0, refreshTokenExpiresAt: now + 1 } });
+    assert.equal(readClaudeCredentialState(file, now), 'expired');
+
+    // Access token expired but a live refresh token lets the CLI renew it.
+    write({ claudeAiOauth: { accessToken: 'a', expiresAt: now - 1, refreshToken: 'r', refreshTokenExpiresAt: now + 1 } });
+    assert.equal(readClaudeCredentialState(file, now), 'ok');
+
+    // Both tokens past their timestamps.
+    write({ claudeAiOauth: { accessToken: 'a', expiresAt: now - 1, refreshToken: 'r', refreshTokenExpiresAt: now - 1 } });
+    assert.equal(readClaudeCredentialState(file, now), 'expired');
+
+    // Live access token with no timestamp is not treated as expired.
+    write({ claudeAiOauth: { accessToken: 'a' } });
+    assert.equal(readClaudeCredentialState(file, now), 'ok');
+
+    // Whitespace-only tokens are blank.
+    write({ claudeAiOauth: { accessToken: ' \t', refreshToken: '' } });
+    assert.equal(readClaudeCredentialState(file, now), 'expired');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 const KIMI_ENV = ['KIMI_API_KEY', 'MOONSHOT_API_KEY', 'KIMI_SHARE_DIR'];
 const GEMINI_ENV = ['GEMINI_API_KEY'];

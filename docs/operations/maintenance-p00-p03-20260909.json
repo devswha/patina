@@ -1,0 +1,146 @@
+{
+  "record_type": "maintenance_execution_evidence",
+  "plan": "patina-repo-development-maintenance-plan-final-2026-09-09",
+  "observed_date": "2026-09-09",
+  "display_timezone": "Asia/Seoul",
+  "repository": "devswha/patina",
+  "scope": "P00 baseline and one independent P03 CI execution unit; not completion of the full plan",
+  "target": {
+    "branch": "bot/maintenance-p03-20260909",
+    "base_dev_sha": "b8b7b756423d61582ea83b06bd59a49fdaa4738a",
+    "observed_main_sha": "d7a4741ed9f767bd22a39255e10acf159351fb7a",
+    "implementation_commit": null,
+    "working_tree_evidence": {
+      "git_tree": "264ec6db4df7853b0ff7e643e907cdd042ba3537",
+      "method": "Temporary GIT_INDEX_FILE: read-tree HEAD, add only the three implementation files, write-tree. No commit or change to the normal index.",
+      "receipt_excluded": "This execution record is excluded from the implementation tree to avoid a self-referential hash.",
+      "sha256": {
+        ".github/workflows/test.yml": "86b9314f57c0e3bf1a3a0b26cdaca297aa05eecefe35ee93d2a6e52953090e8c",
+        "docs/WORKFLOW.md": "e36847e6e13bede395fe40465d99cdb63b9a99c4ff48f2d6254aaa668d9e5a9c",
+        "tests/unit/ci-workflow.test.js": "5e96ba04188aaad3736bd947efa170f6e8b2be125e515cb5e3d07e9b09f484f6"
+      },
+      "implementation_diff": {"added": 162, "deleted": 3, "files": 3, "generated_exclusions": 0}
+    },
+    "pull_request": null,
+    "isolation": "Dedicated worktree branched from fetched origin/dev; original checkout and untracked plan preserved",
+    "branch_ancestry": "dev and main each have one unique commit: dev adds .vercelignore; main adds release merge #782. No shared branch was reconciled or changed."
+  },
+  "p00": {
+    "status": "observed_with_explicit_unknowns",
+    "github": {
+      "source": "GitHub REST repository, branch protection, rulesets, Actions permissions, environments, check-runs and deployment endpoints",
+      "default_branch": "main",
+      "visibility": "public",
+      "dev_classic_protection": "404 Branch not protected",
+      "repository_ruleset_count": 0,
+      "main_required_checks": ["lint", "test (20)", "test (22)", "test (lts/*)", "quality", "test (18.1.0)"],
+      "required_check_app_id": 15368,
+      "observed_check_app": "github-actions",
+      "main_strict_up_to_date": true,
+      "main_admin_enforcement": false,
+      "main_force_push_allowed": false,
+      "main_deletion_allowed": false,
+      "required_human_approvals": 0,
+      "default_actions_permissions": "read",
+      "actions_can_approve_reviews": false,
+      "allowed_actions": "all",
+      "sha_pinning_required": false,
+      "environment_observations": "hf-dataset-production has branch policy protection; Preview and Production expose no protection rules. GitHub environments do not prove Vercel account settings.",
+      "settings_mutated": false
+    },
+    "recent_prs": {
+      "source_command": "gh pr list --repo devswha/patina --state all --limit 20 --json number,baseRefName,additions,deletions,changedFiles",
+      "numbers": [782, 781, 780, 779, 778, 777, 776, 775, 774, 773, 771, 770, 769, 768, 767, 766, 765, 764, 763, 762],
+      "base_counts": {"main": 7, "dev": 13},
+      "over_600_raw_lines_or_15_files": 15,
+      "limitations": "Raw additions/deletions only, including release aggregates and generated files. Reviewable diff, Ready-to-merge time, review latency, repeat requests and follow-up defect rates were not measured. No PR-size enforcement or cost saving is inferred."
+    },
+    "recent_actions": {
+      "source_command": "gh run list --repo devswha/patina --limit 20 --json databaseId,workflowName,event,status,conclusion,headSha,createdAt,startedAt,updatedAt",
+      "run_ids": [34339315031, 34338909531, 34338667612, 34337108049, 34321848981, 34321139622, 34292214103, 34292059576, 34291803609, 34291541888, 34225024489, 34224788721, 34214058811, 34211783369, 34209399273, 34204939865, 34111182903, 34111182331, 34111093872, 34110858559],
+      "conclusions": {"success": 19, "failure": 1},
+      "test_workflow_runs": 19,
+      "test_created_to_updated_seconds": {"min": 55, "max": 155},
+      "latest_run_started_local": "2026-09-09T19:16:15+09:00",
+      "latest_run_updated_local": "2026-09-09T19:18:19+09:00",
+      "limitations": "Elapsed metadata interval is not runner-minutes, job queue time or Codex review latency. Failed run 34204939865 remains in the sample; no blanket CI slowness claim."
+    },
+    "runtime_support": {
+      "source": ["package.json", "INSTALLATION.md", "docs/ARCHITECTURE.md", ".github/workflows/test.yml", "https://nodejs.org/en/about/previous-releases"],
+      "product_node_floor": ">=18.1.0",
+      "official_release_status": {"18": "EOL", "20": "EOL", "22": "LTS", "24": "latest LTS", "26": "Current"},
+      "observed_ci_lts_version": "24.20.0",
+      "observed_ci_fixed_24_version": "24.20.0",
+      "runtime_evidence": "Run 34339315031, setup-node logs for test (lts/*) and test (24); both resolved the same cached runtime",
+      "local_node": "24.18.0",
+      "local_npm": "11.16.0",
+      "local_platform": "linux/x64",
+      "installed_claude_cli": "2.1.261",
+      "backend_limitations": "Version command only, not login, invocation or compatibility verification. codex/gemini were not found by command lookup; other backend versions unverified.",
+      "os_support": "No explicit OS support matrix found in README.md, INSTALLATION.md or package.json; existing CI uses ubuntu-latest. No additional platform promise or smoke result is inferred.",
+      "internal_api": "ARCHITECTURE explicitly marks iterative-baseline deep import unsupported; no exports map does not make every internal module public."
+    },
+    "existing_tools": {
+      "backend_contract": "src/backends/contract.js owns shared deadline and concurrency slots. Transport retry belongs to src/api.js, chain fallback to src/backends/index.js, schema retry to src/scoring.js. CLI defaults have zero transport retries; no new resilience layer needed.",
+      "cancellation_tests": "tests/unit/backend-cancellation.test.js checks AbortError for four CLI adapters and codex 8MB stdout drain. The cancellation test does not assert child PID death, slot cleanup or subsequent invocation success; broader coverage needs review for P15.",
+      "observability": "src/web-observability.js emits closed aggregate-only v2 events; Free/BYOK completed events sampled every twentieth process-local success; other outcomes full. KV uses 15-minute buckets, TTL 7200 seconds, 50ms observer budget. Raw counts cannot directly yield unbiased failure rates or exact latency p95.",
+      "performance": "benchmark:perf uses scripts/perf-report.mjs and tests/quality/perf.mjs for report-only analyzer latency. Existing writer retained; no benchmark executed or rebaselined by P00.",
+      "typecheck": "tsconfig.json has checkJs:false; some individual modules such as web-observability already opt into @ts-check. Not whole-repository checked JS.",
+      "release": "Existing release:check, check:no-private-assets, lint, npm test, benchmark:report and dogfood remain. Release workflow uses pack dry-runs, later source-directory publish and NPM_TOKEN; release source authorization requires main reachability.",
+      "rules": "Root AGENTS.md remains ignored/absent in clean worktree; Cursor adapter exists. P01 is not implemented by this CI unit.",
+      "updates": "No checked-in Dependabot or Renovate configuration found in the filename lookup; account-level enablement unknown.",
+      "hf": "publish-dataset.yml checks out ref: main under hf-dataset-production; dispatch SHA pinning remains a separate P13b unit."
+    },
+    "channels": {
+      "source_version": "8.6.0",
+      "npm_cli_latest": "8.3.0",
+      "npm_alias_latest": "8.3.0",
+      "registry_evidence": "Read-only npm view patina-cli dist-tags --json and npm view patina-humanizer dist-tags --json",
+      "npm_hold": "Retained; INSTALLATION.md prohibits publishing and docs/operations/non-npm-status-20260908.md records authorization unresolved. No publication or credential probe performed.",
+      "github_release_latest": "v8.3.0",
+      "github_release_published_local": "2026-09-05T13:51:05+09:00",
+      "production_deployment": {"github_deployment_id": 6347382527, "source_sha": "d7a4741ed9f767bd22a39255e10acf159351fb7a", "reported_status": "success", "status_created_local": "2026-09-09T19:12:08+09:00"},
+      "preview_deployment": {"github_deployment_id": 6347456451, "source_sha": "b8b7b756423d61582ea83b06bd59a49fdaa4738a"},
+      "deployment_limitations": "GitHub deployment/status evidence only; no production smoke, promotion, rollback or Vercel account configuration verification."
+    },
+    "unknowns": [
+      "Native Codex automatic invocation settings, Draft/Ready/push behavior and repeat-review timing; empty #781 review response is not proof that automation is disabled",
+      "Vercel production branch, required-check integration, secret scope and account-side promotion permissions",
+      "npm root/alias trusted-publisher identities, credential validity and usable publication authorization",
+      "Full supported OS matrix and actual backend compatibility beyond the observed version command"
+    ],
+    "audit_delivery": "Two read-only architect tasks failed without producing audit receipts; caller inspected the relevant source and remote metadata directly."
+  },
+  "p03": {
+    "status": "implemented_and_locally_verified_hosted_acceptance_unverified",
+    "contract": "No product behavior, Node floor, model, scoring, privacy or publication change",
+    "implemented": "Read-only workflow permissions; 15-minute job timeouts; workflow/event/ref/PR concurrency with PR-only cancellation; run_id uniqueness for all non-PR runs prevents pending push/manual replacement; Node24 lint host; duplicate matrix removal without changing required checks.",
+    "matrix_decision": "Keep required test (lts/*), remove duplicate unrequired fixed24 entry, keep minimum18.1 smoke and20/22/LTS full tests. This deliberately differs from the initial preferred fixed24-only proposal because removing a required check without an approved protection transition would strand releases.",
+    "future_runtime_review": "When latest LTS advances, review supported Node24 coverage and required-check policy together; no fixed24 claim for the floating job after that change.",
+    "remote_acceptance": "Not executed: actual older-PR cancellation/new-head success and release isolation require an authorized GitHub run. Local YAML contract tests are not hosted-run evidence.",
+    "verification": [
+      {"command": "npm ci --no-audit --no-fund", "exit_code": 0, "result": "270 locked packages installed", "warnings": "Existing deprecations: inflight, config-array, rimraf, glob, object-schema and ESLint8. Dependency upgrades are outside P03."},
+      {"command": "actionlint .github/workflows/test.yml", "exit_code": 0, "tool_version": "1.7.12", "tool_archive_sha256": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8", "result": "YAML and Actions expressions validated; release archive checksum matched the upstream release checksum file. No repo dependency added."},
+      {"command": "node --test tests/unit/ci-workflow.test.js", "exit_code": 0, "passed": 2, "failed": 0, "skipped": 0, "result": "Repeated after final review-only assertion additions."},
+      {"command": "Controlled temporary-fixture runs of ci-workflow.test.js", "harness_exit_code": 0, "expected_case_exit_code": 1, "result": "Original HEAD workflow plus eleven intentional mutations each failed with ERR_ASSERTION, not import/syntax errors. Temporary fixtures were removed.", "mutations": ["cross-workflow group collision", "cancel non-PR runs", "reuse non-PR group and replace pending runs", "remove protected LTS check", "skip private asset gate", "comment out private asset gate", "ignore quality failures", "path-filter required workflow", "remove timeout", "elevate job token permissions", "make benchmark drift exit zero"]},
+      {"command": "npm test", "exit_code": 0, "tests": 2323, "passed": 2321, "failed": 0, "canceled": 0, "skipped": 2, "result": "Final reviewed tree; earlier pre-review-hardening run also passed. Existing skips were host-auth-dependent backend coverage and unavailable real Redis integration; no new skip or expectation rebaseline introduced."},
+      {"command": "npm run lint", "exit_code": 1, "status": "failed_environment", "result": "Syntax416, ESLint and typecheck passed; CSpell inherited the parent .gjc ignore for this nested worktree and found zero files. This first failure is retained, not reported as lint success."},
+      {"command": "npm run spellcheck -- --gitignore-root .", "exit_code": 0, "checked_files": 32, "issues": 0, "result": "Documented CSpell option limits ancestor ignore lookup to this checkout. Repository gitignore rules, dictionaries and the spelling gate remain enabled and unchanged."},
+      {"command": "node_modules/.bin/eslint tests/unit/ci-workflow.test.js", "exit_code": 0, "result": "Final review assertion delta checked."},
+      {"command": "npm run release:check", "exit_code": 0, "result": "8.6.0 metadata consistent; no forbidden current retired concepts or historical drift."},
+      {"command": "npm run check:no-private-assets", "exit_code": 0, "result": "493 packed paths across root/alias and1321 tracked paths; no forbidden paths. Dry-run only, not actual tarball installation or publication."},
+      {"command": "npm run benchmark:report && npm run benchmark:compare", "exit_code": 0, "result": "Existing deterministic quality reports generated; workflow's exact metadata-filtered git diff passed. Only this run's generated benchmark files restored byte-for-byte afterward."},
+      {"command": "npm run dogfood", "exit_code": 0, "result": "All eight configured public-document checks passed; no thresholds changed."},
+      {"command": "git diff --check", "exit_code": 0, "result": "No whitespace errors."}
+    ],
+    "independent_review": {
+      "status": "CLEAR",
+      "initial_findings": "Two medium test-coverage gaps: job permissions overrides and softened benchmark-drift exit.",
+      "resolution": "Added inherited-read-only job assertion and full drift failure-body assertion; both added negative fixtures fail. Read-only architect re-review confirmed both resolved with no new finding.",
+      "limits": "Reviewer did not run tests or hosted Actions; test execution belongs to the caller."
+    },
+    "verification_limits": "No hosted concurrency scenario, alternate Node/OS matrix, real backend quality test, production smoke or npm publication was executed. Local standard lint was not wholly successful; all constituent gates passed with the explicit CSpell checkout boundary. This is local evidence, not merge/deploy approval.",
+    "rollback": "Reverse only the P03 workflow, focused test and WORKFLOW subsection changes; no registry, deployment or branch-setting rollback needed."
+  },
+  "unchanged_scope": "P01/P02 and all remaining plan units are unimplemented here. Conditional automation, paid backend probes, publication, PR/Issue creation, merge and account changes were not performed. Cancelled human studies remain cancelled; npm hold remains in force."
+}

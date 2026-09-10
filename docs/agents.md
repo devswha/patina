@@ -69,6 +69,44 @@ This flow is entirely optional. The standard `/patina` skill functions without t
 
 The explicit `/patina --instruction-only --strict` mode (defined in `SKILL.md`) wires this flow automatically. When the patina plugin is installed and these subagents are available, `--instruction-only --strict` delegates its read-only analysis passes via the `Task` tool — P1 to `patina-detector`, P3 to `patina-fidelity-auditor`, P4 to `patina-naturalness-reviewer` — while the main skill keeps orchestration, the rewrite (P2), and the accept/retry/rollback gate (P5). When the subagents are not available (Codex CLI, Cursor, OpenCode, or a non-plugin install), `--instruction-only --strict` runs the same passes inline in a single agent. Both modes use identical floors and gate logic; delegation only adds context isolation. This inline fallback exists only within the explicit instruction-only flow, never as a fallback for the default CLI route or ordinary `--strict`. Instruction-only output is labeled "instruction-only; CLI not run; no CLI verification" outside the prose and carries no CLI receipt.
 
+## CLI-first compatibility evidence
+
+The normal `/patina` and `/patina --strict` routes remain CLI-first: a failed CLI
+run is an error, never an inline rewrite or a silent fallback. The optional
+instruction-only route above is the only host-agent analysis path.
+
+`tests/fixtures/backend-claude-contract.json` records the observed
+`claude --version` result (`2.1.261`) as **version-only / unverified**. It is a
+synthetic contract fixture, not an invocation recording: it contains no
+credentials, prompts, model response, or raw CLI output. The evidence must stay
+separate from these runtime distinctions:
+
+- **Output parsing:** `claude-cli` captures `-p` stdout; Patina's output layer
+  removes optional `[BODY]`/`[SELF_AUDIT]` scaffolding and returns the body. A
+  version response does not exercise that parser.
+- **Errors and cancellation:** non-zero exits, signal termination, spawn
+  failures, `AbortError`, and local timeout errors are reported as failures.
+  Cancellation/timeout tests also require the owned child, invocation
+  directory, and concurrency slot to be gone before a later call succeeds.
+- **Authentication and quota:** the Claude credential-file check is not an
+  invocation check. Account authentication or quota failures are external
+  runtime outcomes and must not be promoted to compatibility or rewrite
+  success by a version-only record.
+- **Timeout:** the adapter's bounded child-process timer is distinct from
+  caller cancellation and from account quota. The fixture does not verify any
+  of these paths.
+
+The lifecycle/session fixtures use POSIX executables, owned process-group
+probes, and `/proc` state where available (a zombie is not running). They
+verify that an independent-stdio worker dies with its leader while an
+unrelated process group survives. They are skipped on unsupported operating
+systems and make no Windows coverage claim. On platforms without portable
+process-group signalling, cancellation still closes Patina's parent-owned
+stdio pipes before settling; descendants that inherited those pipes are not
+claimed to be killed.
+The two-session check gives both processes one shared temporary slot root, so
+separate HOME/config/output isolation cannot bypass the global backend cap.
+
 ## Advisory Metadata Rule
 
 Korean `translationese` and `koPostEditese.v1` signals are **advisory only** across the entire pipeline, including inside all three subagents. These signals must never influence the AI-likeness score, fidelity score, quality grade, verification outcome, or any authorship verdict. They appear in report output labeled as advisory and non-scoring.

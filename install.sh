@@ -71,7 +71,7 @@ cursor_target_replaceable() {
     return 0
   fi
   if [ -L "${target}" ]; then
-    return 0
+    return 1
   fi
   [ -f "${target}" ] && is_cursor_product_rule "${target}"
 }

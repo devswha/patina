@@ -58,7 +58,7 @@ in a stable envelope:
 - Score JSON may include `scores.llm`, `scores.deterministic`, and `scores.preference` when deterministic shadow scoring is available.
 - `mps` is populated when the underlying mode emits it.
 - `gateResult` is `null` unless `--exit-on` is used.
-- `patina doctor --json` emits setup diagnostics for CI without making an LLM call.
+- `patina doctor --json` emits setup diagnostics for CI without making an LLM call. It does make two small network requests by default — one `GET /models` against the configured HTTP base URL to confirm the key is accepted (a 401/403 downgrades `openai-http` to `authenticated=no`), and one npm registry lookup for updates. `--no-probe`, `--no-update-check`, or `--offline` skip them; network failures are informational, never blockers.
 
 
 ## Meaning verification: `--verify`

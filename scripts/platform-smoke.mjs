@@ -48,12 +48,27 @@ const HOME = homedir();
 // value, plus the home directory (identity) in the public receipt.
 const secretValues = KEY_ENV_NAMES.map((k) => process.env[k]).filter((v) => typeof v === 'string' && v.length >= 4);
 
+const TMP = tmpdir();
+
 function redact(text, { paths = true } = {}) {
   let out = String(text ?? '');
   for (const v of secretValues) out = out.split(v).join('***');
   out = out.replace(/(\w+:\/\/)[^/\s]*@/g, '$1***@');
-  if (paths && HOME) out = out.split(HOME).join('~');
+  if (paths) {
+    // Temp roots can live outside HOME (TMPDIR=/scratch/<user>); mask the
+    // root itself so neither identity nor machine layout is published.
+    if (TMP) out = out.split(TMP).join('<tmp>');
+    if (HOME) out = out.split(HOME).join('~');
+  }
   return out;
+}
+
+// Parser failures must not quote the child output they failed on: keep the
+// error class and the part of the message before any JSON excerpt.
+function describeParseError(err) {
+  const message = String(err?.message ?? err).split(/\r?\n/)[0];
+  const trimmed = message.replace(/\s*(?:in JSON at position \d+.*|\(line \d+ column \d+\).*|"[^"]*".*|'[^']*'.*)$/, '');
+  return redact(`${err?.name || 'Error'}: ${trimmed || 'output could not be parsed'}`);
 }
 
 function git(argv) {
@@ -114,7 +129,7 @@ function run(name, command, argv, { cwd = REPO_ROOT, env = {}, parse = null, okW
     try {
       parsed = parse(result.stdout || '', result.stderr || '');
     } catch (err) {
-      parseError = redact(String(err?.message ?? err));
+      parseError = describeParseError(err);
     }
   }
   const ok = okWhen

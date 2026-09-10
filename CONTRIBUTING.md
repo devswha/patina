@@ -2,19 +2,44 @@
 
 Thanks for considering a contribution. Patina is a pattern-based tool, so the most impactful contributions are usually new patterns, better examples, Document Type policies, or Persona refinements.
 
-## Public vs. Internal Docs
+## Documentation boundaries
 
-User-facing documentation lives in `README*.md`, `docs/`, `examples/`, `patterns/`, `document-types/`, `personas/`, and the skill entrypoints. Maintainer or agent notes (backlogs, runbooks, launch playbooks) are kept out of this repository entirely — they live in the maintainer's private workspace, and `docs/internal/` is gitignored as a guard. Only real user-facing facts get promoted into the public docs list.
+The tracked tree is public by default. Keep these roles distinct:
 
-When moving a root-level Markdown file, link it from `README.md` if it is public; if it is maintainer-internal, it does not belong in the repository.
+- **Development policy:** `AGENTS.md`, this file, and the linked
+  `docs/WORKFLOW.md`, `docs/ARCHITECTURE.md`, and `docs/QA.md`.
+- **Product documentation and assets:** `README*.md`, `SKILL.md`, `core/`,
+  `patterns/`, `document-types/`, `personas/`, `examples/`, and user-facing
+  material under `docs/`.
+- **Reviewed operational evidence:** a sanitized, explicitly approved record
+  may live under `docs/operations/`; it is not a substitute for user docs.
+- **Historical evidence:** dated plans, research, and benchmark records remain
+  labeled with their date, conditions, and source revision. Do not rewrite an
+  historical result as a current claim.
 
-## Development Workflow (branching & releases)
+Private runbooks, raw user or model text, review/run logs, credentials, tokens,
+personal profiles, and local QA workspaces belong outside the public tree.
+`docs/internal/`, `.gjc/`, `.omo/`, `.omc/`, `.insane-review/`, and ignored
+scoped agent files are guards for private material, not publication targets.
+Never copy a private parent `AGENTS.md` or its contents into this repository.
+Do not put private material in issues, telemetry, package tarballs, or examples.
 
-Feature branches (`bot/*` / `feat/*`) branch from `dev` → PR into `dev`
-(integration/staging) → at release, `dev` → `main` via a **merge** (not squash)
-PR with a version bump. Keep `dev` at or ahead of `main`. Run parallel work in
-separate **git worktrees** (one branch each, branched from `dev`). Full guide:
-[`docs/WORKFLOW.md`](docs/WORKFLOW.md).
+The root `AGENTS.md` is the public repository-development entrypoint; no
+product instructions belong there. This repository grants no external
+publication, registry, deployment, account, or release rights. Maintainer
+approval and the documented release process are required for every external
+write. When moving a public root document, link it from `README.md`; private
+material must not be moved into the repository.
+
+## Development workflow and canonical references
+
+Use one branch and worktree per session, normally branched from `dev`, and keep
+each PR to one behavior, contract, or responsibility change. The complete
+branch, PR/Issue, review, merge, and release policy is
+[`docs/WORKFLOW.md`](docs/WORKFLOW.md). Read
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for module ownership and public
+contracts, and [`docs/QA.md`](docs/QA.md) for verification profiles, evidence,
+and isolation. Do not duplicate those documents here.
 
 ## Korean Translation Policy
 
@@ -142,9 +167,10 @@ calibration bar. Follow this loop:
    `docs/benchmarks/rebaseline-latest.md`. Record the measured numbers in the
    changelog. The frozen public claim manifests are refreshed in a separate
    rebaseline pass, not in the signal PR.
-6. **Version it.** A new detection signal changes hot behavior → **minor** bump
-   (it is additive, not a removal). Bump all version surfaces and add a changelog
-   entry with the measured catch/FP deltas and the failure mode you guarded.
+6. **Record the release impact.** A new detection signal changes hot behavior
+   and normally warrants a **minor** release (it is additive, not a removal).
+   Record that impact and the measured catch/FP deltas in the PR, but leave
+   package and mirror updates to the release process.
 
 Acceptance bar (mirrors the roadmap's deterministic-feature-expansion criteria):
 recall or precision improves on the labeled manifest, the human-control
@@ -182,18 +208,21 @@ How we handle this:
 - **New pattern proposals:** If you spot a new AI tell, file an issue with 3+ real-world examples and a 50-document evaluation fixture or collection plan
 - **Quarterly review:** Maintainers follow [`process/pattern-freshness.md`](process/pattern-freshness.md) for corpus freeze windows, promotion thresholds, and frontmatter metadata
 - **Lexicon provenance:** Newly mined or re-mined lexicon entries need `added`, `source`, and `last_validated` provenance before changing shipped behavior; run `npm run lexicon:freshness` to verify sidecars match the shipped entries
-- **Version notes:** Each pattern pack has a `version` field — bump it when patterns change
+- **Version notes:** Each pattern pack has a `version` field. Record its
+  compatibility impact when patterns change; release preparation updates
+  package and mirror versions through the documented process.
 - **No deletion without replacement:** We don't remove patterns outright; we mark them as `low` severity or move them to `reduce` in a Document Type policy
 
-## Versioning Policy
+## Versioning and releases
 
-Patina uses semantic versioning for both CLI behavior and pattern-pack compatibility.
-
-- **Major:** remove or renumber patterns, break config/result schemas, change public CLI semantics, or make existing pattern packs incompatible.
-- **Minor:** add a pattern, language, Document Type, Persona, mode, backend, benchmark schema field, or contributor-facing workflow.
-- **Patch:** fix bugs, adjust severity/exclusions, clarify examples, update docs, refresh benchmark fixtures without changing schemas.
-
-Every changelog entry should include a short semver rationale line so downstream users know whether to pin, test, or upgrade normally.
+Record the expected semver impact in a feature or documentation PR, but do not
+bump the package version there. Version changes are release-only: the release
+PR updates `package.json` (the source of truth), its documented mirrors, and
+the matching `CHANGELOG.md` entry once. Use the checks and version-bearing-file
+list in [`docs/WORKFLOW.md`](docs/WORKFLOW.md); `npm run release:check` must
+remain the final metadata check. Include a short semver rationale in each
+release entry. Pattern-pack and Document Type metadata may have their own
+compatibility rules, but must not silently change the package release version.
 
 ## Code of Conduct
 
@@ -201,8 +230,12 @@ Be helpful. Don't be a jerk. AI writing patterns are not moral failings — we'r
 
 ## PR Process
 
-1. Fork and branch from `dev` (see the branching section above)
-2. Make your changes
-3. Verify pattern counts are consistent
-4. Open a PR with a clear description
-5. Bonus: include before/after examples that demonstrate your change
+1. Branch from `dev` and make the smallest independently reviewable change.
+2. Explain the problem, scope, non-goals, public-contract impact, risk, and
+   rollback. Include the relevant test or fixture and its evidence.
+3. Keep implementation, regression coverage, and required public documentation
+   together; separate unrelated cleanup, generated output, and release bumps.
+4. Open the PR into `dev` with a clear description. Use the release workflow
+   for the later `dev` → `main` merge; a feature PR is not a release.
+5. Include before/after examples for pattern changes and state any check that
+   was not run or is blocked. Do not treat an unrun or stale check as passing.

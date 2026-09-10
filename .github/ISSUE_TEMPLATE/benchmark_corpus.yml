@@ -3,6 +3,10 @@ description: Propose benchmark fixtures, corpus sources, or metric changes
 title: "benchmark: "
 labels: [benchmark]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        See the [Issue/PR workflow](https://github.com/devswha/patina/blob/dev/docs/WORKFLOW.md) for scope, acceptance, verification, and ownership.
   - type: dropdown
     id: kind
     attributes:
@@ -29,5 +33,18 @@ body:
     attributes:
       label: Validation idea
       description: How should we know this improves patina without raising false positives?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Scope and acceptance
+      description: See the [Issue/PR workflow](https://github.com/devswha/patina/blob/dev/docs/WORKFLOW.md) for scope, non-goals, acceptance, verification, risk, and ownership.
+      placeholder: |
+        Scope:
+        Non-goals:
+        Acceptance criteria:
+        Verification and risk:
+        Owner: maintainer until assigned
     validations:
       required: true

@@ -39,4 +39,16 @@ export default [
       'no-unused-vars': ['error', { argsIgnorePattern: '^_|^patterns$', varsIgnorePattern: '^_' }],
     },
   },
+  {
+    files: ['**/*.cjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'commonjs',
+      globals: { ...nodeGlobals, require: 'readonly', module: 'writable', __dirname: 'readonly' },
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_|^patterns$', varsIgnorePattern: '^_' }],
+    },
+  },
 ];

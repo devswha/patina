@@ -1,10 +1,10 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "recordType": "platform-smoke",
   "planIds": [
     "P16b"
   ],
-  "observedAt": "2026-09-10T10:08:40.221Z",
+  "observedAt": "2026-09-10T10:19:19.957Z",
   "host": {
     "platform": "linux",
     "release": "6.8.0-138-generic",
@@ -15,36 +15,50 @@
     "tmpdirHasSpace": false
   },
   "repo": {
-    "root": "/home/devswha/workspace/patina",
-    "head": "39da70f13fe06cd7187c80cf4f6bc274233d3214",
-    "branch": "dev",
-    "dirty": true
+    "root": "~/workspace/patina",
+    "head": "75461dfdb34e2c3c1b93ed94fe51260bed1efef9",
+    "branch": "bot/platform-smoke-20260910",
+    "dirty": true,
+    "gitAvailable": true
   },
   "keyEnvNamesSet": [],
   "steps": [
     {
+      "name": "npm ci",
+      "command": "npm ci --no-audit --no-fund",
+      "cwd": ".",
+      "status": 0,
+      "signal": null,
+      "ms": 1265,
+      "ok": true,
+      "spawnError": null,
+      "parseError": null,
+      "parsed": null
+    },
+    {
       "name": "cli --version",
-      "command": "/home/devswha/.nvm/versions/node/v24.18.0/bin/node bin/patina.js --version",
+      "command": "~/.nvm/versions/node/v24.18.0/bin/node bin/patina.js --version",
       "cwd": ".",
       "status": 0,
       "signal": null,
       "ms": 83,
       "ok": true,
-      "stdoutTail": "patina 8.6.0\n",
-      "stderrTail": "",
-      "error": null
+      "spawnError": null,
+      "parseError": null,
+      "parsed": {
+        "version": "patina 8.6.0"
+      }
     },
     {
       "name": "offline score on Korean/space path",
-      "command": "/home/devswha/.nvm/versions/node/v24.18.0/bin/node bin/patina.js --offline --score --format json /tmp/patina smoke 한글 경로 12vjWs/입력 폴더/초안 파일.md",
+      "command": "~/.nvm/versions/node/v24.18.0/bin/node bin/patina.js --offline --score --format json /tmp/patina smoke 한글 경로 vxhx5D/입력 폴더/초안 파일.md",
       "cwd": ".",
       "status": 0,
       "signal": null,
-      "ms": 103,
+      "ms": 102,
       "ok": true,
-      "stdoutTail": "{\n  \"mode\": \"score\",\n  \"format\": \"json\",\n  \"overall\": 100,\n  \"categories\": [],\n  \"register\": null,\n  \"mps\": null,\n  \"gateResult\": null,\n  \"persona\": null,\n  \"output\": \"Overall: 100\\nInterpretation: heavily AI\\nScoring: deterministic only; LLM-judged categories unavailable.\\nParagraphs: 1\\nHot paragraphs: 1\\nSignal score: 69\\nEvidence floor: 0\\nSkipped signal: paragraphs<=2\",\n  \"scores\": {\n    \"llm\": null,\n    \"deterministic\": {\n      \"overall\": 100,\n      \"evidenceFloor\": 0,\n      \"shortFormFloor\": 0,\n      \"interpretation\": \"heavily AI\",\n      \"skipped\": true,\n      \"skipReason\": \"paragraphs<=2\",\n      \"paragraphCount\": 1,\n      \"hotParagraphs\": 1,\n      \"signalScore\": 69,\n      \"bands\": {\n        \"burstiness\": {\n          \"low\": 1,\n          \"mid\": 0,\n          \"high\": 0,\n          \"null\": 0\n        },\n        \"mattr\": {\n          \"low\": 0,\n          \"mid\": 0,\n          \"high\": 1,\n          \"null\": 0\n        },\n        \"lexicon\": {\n          \"hot\": 0,\n          \"threshold\": 3\n        },\n        \"koDiagnostics\": {\n          \"hot\": 0,\n          \"thresholds\": {\n            \"minSentences\": 4,\n            \"minEojeols\": 20,\n            \"spacing\": {\n              \"maxEojeolLengthCV\": 0.38\n            },\n            \"comma\": {\n              \"maxPerSentence\": 1\n            },\n            \"posProxy\": {\n              \"minMatchedCount\": 10,\n              \"maxClassDiversity\": 0.26\n            }\n          }\n        },\n        \"markupLeakage\": {\n          \"leaked\": false,\n          \"hits\": 0,\n          \"floor\": 90\n        },\n        \"discourseTells\": {\n          \"hot\": false,\n          \"fakeCandor\": {\n            \"count\": 0,\n            \"hits\": [],\n            \"hot\": false,\n            \"threshold\": 2\n          },\n          \"thematicBreaks\": {\n            \"count\": 0,\n            \"adjacentToHeading\": 0,\n            \"hot\": false,\n            \"threshold\": 3\n          }\n        },\n        \"structuralClassifier\": {\n          \"available\": false,\n          \"hot\": null,\n          \"score\": null,\n          \"floor\": 0\n        }\n      }\n    },\n    \"preference\": \"deterministic-only\"\n  }\n}\n",
-      "stderrTail": "",
-      "error": null,
+      "spawnError": null,
+      "parseError": null,
       "parsed": {
         "deterministicOverall": 100,
         "paragraphCount": 1
@@ -52,47 +66,42 @@
     },
     {
       "name": "inspect on Korean/space path from a Korean/space cwd",
-      "command": "/home/devswha/.nvm/versions/node/v24.18.0/bin/node /home/devswha/workspace/patina/bin/patina.js inspect /tmp/patina smoke 한글 경로 12vjWs/입력 폴더/초안 파일.md",
-      "cwd": "/tmp/patina smoke 한글 경로 12vjWs/입력 폴더",
+      "command": "~/.nvm/versions/node/v24.18.0/bin/node ~/workspace/patina/bin/patina.js inspect /tmp/patina smoke 한글 경로 vxhx5D/입력 폴더/초안 파일.md",
+      "cwd": "/tmp/patina smoke 한글 경로 vxhx5D/입력 폴더",
       "status": 0,
       "signal": null,
-      "ms": 107,
+      "ms": 105,
       "ok": true,
-      "stdoutTail": "{\"schemaVersion\":1,\"language\":\"ko\",\"sourceHash\":\"849238ec1c06595c772d777fdf86bc6c45564a55462c2400375c50f7ee12ce72\",\"deterministicOnly\":true,\"offsetEncoding\":\"utf-16\",\"score\":100,\"interpretation\":\"heavily AI\",\"paragraphCount\":1,\"available\":true,\"diagnostics\":[{\"start\":0,\"end\":172,\"code\":\"ai-like-paragraph\",\"scope\":\"paragraph\",\"localized\":false,\"severity\":\"warning\",\"paragraph\":1,\"message\":\"This paragraph has AI-like editing signals.\",\"signals\":[\"uniform-sentence-length\",\"repeated-endings\"]}],\"diagnosticsTruncated\":false,\"skipped\":true,\"skipReason\":\"paragraphs<=2\"}\n",
-      "stderrTail": "",
-      "error": null,
+      "spawnError": null,
+      "parseError": null,
       "parsed": {
         "jsonParses": true
       }
     },
     {
       "name": "offline batch score into Korean/space outdir",
-      "command": "/home/devswha/.nvm/versions/node/v24.18.0/bin/node bin/patina.js --offline --score --batch --outdir /tmp/patina smoke 한글 경로 12vjWs/출력 폴더 /tmp/patina smoke 한글 경로 12vjWs/입력 폴더/초안 파일.md",
+      "command": "~/.nvm/versions/node/v24.18.0/bin/node bin/patina.js --offline --score --batch --outdir /tmp/patina smoke 한글 경로 vxhx5D/출력 폴더 /tmp/patina smoke 한글 경로 vxhx5D/입력 폴더/초안 파일.md",
       "cwd": ".",
       "status": 0,
       "signal": null,
-      "ms": 107,
+      "ms": 103,
       "ok": true,
-      "stdoutTail": "Written: /tmp/patina smoke 한글 경로 12vjWs/출력 폴더/초안 파일.md\n",
-      "stderrTail": "",
-      "error": null,
+      "spawnError": null,
+      "parseError": null,
       "parsed": {
-        "outdirEntries": [
-          "초안 파일.md"
-        ]
+        "outdirEntries": 1
       }
     },
     {
       "name": "cancellation + isolation tests",
-      "command": "/home/devswha/.nvm/versions/node/v24.18.0/bin/node --test --test-reporter=tap tests/unit/backend-cancellation.test.js tests/unit/backend-agy.test.js tests/e2e/session-isolation.test.js",
+      "command": "~/.nvm/versions/node/v24.18.0/bin/node --test --test-reporter=tap tests/unit/backend-cancellation.test.js tests/unit/backend-agy.test.js tests/e2e/session-isolation.test.js",
       "cwd": ".",
       "status": 0,
       "signal": null,
-      "ms": 11698,
+      "ms": 11636,
       "ok": true,
-      "stdoutTail": "TAP version 13\n# Subtest: two CLI sessions isolate HOME/config/output and recover after a failure\nok 1 - two CLI sessions isolate HOME/config/output and recover after a failure\n  ---\n  duration_ms: 3310.930416\n  type: 'test'\n  ...\n# Subtest: agy-cli sends the prompt as one stdin user event with a tool-free workspace agent\nok 2 - agy-cli sends the prompt as one stdin user event with a tool-free workspace agent\n  ---\n  duration_ms: 30.77341\n  type: 'test'\n  ...\n# Subtest: agy-cli fails closed on empty, error, tool-using, garbage and non-zero outcomes\nok 3 - agy-cli fails closed on empty, error, tool-using, garbage and non-zero outcomes\n  ---\n  duration_ms: 187.123893\n  type: 'test'\n  ...\n# Subtest: agy-cli maps a non-finite timeout to an effectively unlimited --print-timeout\nok 4 - agy-cli maps a non-finite timeout to an effectively unlimited --print-timeout\n  ---\n  duration_ms: 0.325314\n  type: 'test'\n  ...\n# Subtest: agy-cli rejects images and empty prompts before spawning\nok 5 - agy-cli rejects images and empty prompts before spawning\n  ---\n  duration_ms: 0.349941\n  type: 'test'\n  ...\n# Subtest: agy-cli refuses to launch unless Antigravity settings keep the headless defaults\nok 6 - agy-cli refuses to launch unless Antigravity settings keep the headless defaults\n  ---\n  duration_ms: 2.312003\n  type: 'test'\n  ...\n# Subtest: extractAgyResponse parses the documented stream shape\nok 7 - extractAgyResponse parses the documented stream shape\n  ---\n  duration_ms: 0.260752\n  type: 'test'\n  ...\n# Subtest: agy-cli is explicit-selection only with its own model family and safety defaults\nok 8 - agy-cli is explicit-selection only with its own model family and safety defaults\n  ---\n  duration_ms: 0.430282\n  type: 'test'\n  ...\n# Subtest: CLI backends cancel with owned child, temp dir, slot, and next-call evidence\nok 9 - CLI backends cancel with owned child, temp dir, slot, and next-call evidence\n  ---\n  duration_ms: 358.664501\n  type: 'test'\n  ...\n# Subtest: CLI backends timeout with SIGTERM-resistant child cleanup and next-call success\nok 10 - CLI backends timeout with SIGTERM-resistant child cleanup and next-call success\n  ---\n  duration_ms: 5175.378716\n  type: 'test'\n  ...\n# Subtest: CLI backends clean forked independent-stdio workers on abort, timeout, and normal leader exit\nok 11 - CLI backends clean forked independent-stdio workers on abort, timeout, and normal leader exit\n  ---\n  duration_ms: 6033.94191\n  type: 'test'\n  ...\n# Subtest: codex-cli does not deadlock when the child floods stdout (\\#438)\nok 12 - codex-cli does not deadlock when the child floods stdout (\\#438)\n  ---\n  duration_ms: 30.024787\n  type: 'test'\n  ...\n1..12\n# tests 12\n# suites 0\n# pass 12\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 11661.168547\n",
-      "stderrTail": "",
-      "error": null,
+      "spawnError": null,
+      "parseError": null,
       "parsed": {
         "tests": 12,
         "pass": 12,
@@ -103,17 +112,17 @@
     },
     {
       "name": "doctor --offline --json",
-      "command": "/home/devswha/.nvm/versions/node/v24.18.0/bin/node bin/patina.js doctor --offline --json",
+      "command": "~/.nvm/versions/node/v24.18.0/bin/node bin/patina.js doctor --offline --json",
       "cwd": ".",
       "status": 0,
       "signal": null,
-      "ms": 2052,
+      "ms": 1938,
       "ok": true,
-      "stdoutTail": "promptMode\": \"minimal\",\n        \"agentRuntime\": true,\n        \"supportsStructuredOutput\": false\n      },\n      \"maxConcurrency\": 1,\n      \"maxRetries\": 0,\n      \"promptMode\": \"minimal\",\n      \"agentRuntime\": true,\n      \"available\": true,\n      \"authenticated\": true,\n      \"supportsImages\": false,\n      \"authHint\": \"Run `kimi login` once interactively to log in with Kimi Code OAuth.\",\n      \"loginCommand\": \"kimi login\",\n      \"installHint\": \"Install Kimi Code CLI first, then run `patina auth login kimi-cli` again.\"\n    },\n    {\n      \"name\": \"agy-cli\",\n      \"kind\": \"local-cli\",\n      \"selectWith\": \"--backend agy-cli, --model agy\",\n      \"defaultModel\": \"gemini-3.7-flash-medium\",\n      \"safety\": {\n        \"maxConcurrency\": 1,\n        \"maxRetries\": 0,\n        \"promptMode\": \"minimal\",\n        \"agentRuntime\": true,\n        \"supportsStructuredOutput\": false\n      },\n      \"maxConcurrency\": 1,\n      \"maxRetries\": 0,\n      \"promptMode\": \"minimal\",\n      \"agentRuntime\": true,\n      \"available\": true,\n      \"authenticated\": true,\n      \"supportsImages\": false,\n      \"authHint\": \"Run `agy` once interactively and sign in with your Google account (uses your Antigravity plan, no API key needed).\",\n      \"loginCommand\": \"agy\",\n      \"installHint\": \"Install Antigravity CLI (https://antigravity.google/docs/cli/install), run `agy` once to sign in, then run `patina auth login agy-cli` again.\"\n    }\n  ],\n  \"providers\": [\n    {\n      \"name\": \"openai\",\n      \"apiKeyEnv\": \"OPENAI_API_KEY\",\n      \"providerEnvSet\": false,\n      \"keySource\": null,\n      \"baseURL\": \"https://api.openai.com/v1\",\n      \"defaultModel\": \"gpt-5.5\"\n    },\n    {\n      \"name\": \"gemini\",\n      \"apiKeyEnv\": \"GEMINI_API_KEY\",\n      \"providerEnvSet\": false,\n      \"keySource\": null,\n      \"baseURL\": \"https://generativelanguage.googleapis.com/v1beta/openai\",\n      \"defaultModel\": \"gemini-2.5-pro\"\n    },\n    {\n      \"name\": \"groq\",\n      \"apiKeyEnv\": \"GROQ_API_KEY\",\n      \"providerEnvSet\": false,\n      \"keySource\": null,\n      \"baseURL\": \"https://api.groq.com/openai/v1\",\n      \"defaultModel\": \"llama-3.3-70b-versatile\"\n    },\n    {\n      \"name\": \"kimi\",\n      \"apiKeyEnv\": \"KIMI_API_KEY\",\n      \"providerEnvSet\": false,\n      \"keySource\": null,\n      \"baseURL\": \"https://api.moonshot.ai/v1\",\n      \"defaultModel\": \"kimi-k2.5\"\n    },\n    {\n      \"name\": \"moonshot\",\n      \"apiKeyEnv\": \"MOONSHOT_API_KEY\",\n      \"providerEnvSet\": false,\n      \"keySource\": null,\n      \"baseURL\": \"https://api.moonshot.ai/v1\",\n      \"defaultModel\": \"kimi-k2.5\"\n    },\n    {\n      \"name\": \"together\",\n      \"apiKeyEnv\": \"TOGETHER_API_KEY\",\n      \"providerEnvSet\": false,\n      \"keySource\": null,\n      \"baseURL\": \"https://api.together.xyz/v1\",\n      \"defaultModel\": \"meta-llama/Llama-3.3-70B-Instruct-Turbo-Free\"\n    },\n    {\n      \"name\": \"minimax\",\n      \"apiKeyEnv\": \"MINIMAX_API_KEY\",\n      \"providerEnvSet\": false,\n      \"keySource\": null,\n      \"baseURL\": \"https://api.minimax.io/v1\",\n      \"defaultModel\": \"MiniMax-M3\"\n    },\n    {\n      \"name\": \"minimax-cn\",\n      \"apiKeyEnv\": \"MINIMAX_API_KEY\",\n      \"providerEnvSet\": false,\n      \"keySource\": null,\n      \"baseURL\": \"https://api.minimaxi.com/v1\",\n      \"defaultModel\": \"MiniMax-M3\"\n    }\n  ],\n  \"env\": {\n    \"apiKeys\": [\n      {\n        \"name\": \"PATINA_API_KEY\",\n        \"set\": false\n      },\n      {\n        \"name\": \"OPENAI_API_KEY\",\n        \"set\": false\n      },\n      {\n        \"name\": \"GEMINI_API_KEY\",\n        \"set\": false\n      },\n      {\n        \"name\": \"GROQ_API_KEY\",\n        \"set\": false\n      },\n      {\n        \"name\": \"TOGETHER_API_KEY\",\n        \"set\": false\n      },\n      {\n        \"name\": \"KIMI_API_KEY\",\n        \"set\": false\n      },\n      {\n        \"name\": \"MOONSHOT_API_KEY\",\n        \"set\": false\n      },\n      {\n        \"name\": \"MINIMAX_API_KEY\",\n        \"set\": false\n      }\n    ],\n    \"PATINA_API_KEY_FILE\": null\n  },\n  \"blockers\": [],\n  \"apiKeyProbe\": {\n    \"attempted\": false,\n    \"host\": null,\n    \"status\": null,\n    \"ok\": null,\n    \"error\": null\n  }\n}\n",
-      "stderrTail": "",
-      "error": null,
+      "spawnError": null,
+      "parseError": null,
       "parsed": {
         "ok": true,
+        "blockers": [],
         "backends": [
           {
             "name": "openai-http",
@@ -150,15 +159,14 @@
     },
     {
       "name": "npm test (unit + e2e, tap)",
-      "command": "/home/devswha/.nvm/versions/node/v24.18.0/bin/node --test --test-reporter=tap tests/unit/adversarial-mps-report.test.js tests/unit/adversarial-transforms.test.js tests/unit/ai-tells-corpus-baseline.test.js tests/unit/anthropic-native.test.js tests/unit/api.test.js tests/unit/architecture-boundaries.test.js tests/unit/aside-options.test.js tests/unit/aside-runner.test.js tests/unit/aside-server.test.js tests/unit/aside-ui.test.js tests/unit/assets.test.js tests/unit/audit-backstop.test.js tests/unit/backend-adapter-noise.test.js tests/unit/backend-agy.test.js tests/unit/backend-auth.test.js tests/unit/backend-cancellation.test.js tests/unit/backend-contract.test.js tests/unit/backend-model-defaults.test.js tests/unit/badge-json.test.js tests/unit/batch.test.js tests/unit/benchmark-report.test.js tests/unit/browser-core.test.js tests/unit/browser-diff.test.js tests/unit/byok-hardening.test.js tests/unit/check-no-private-assets.test.js tests/unit/check-release-metadata.test.js tests/unit/ci-workflow.test.js tests/unit/claude-study-isolation.test.js tests/unit/claude-study-stream.test.js tests/unit/cli-args.test.js tests/unit/cli-cancellation.test.js tests/unit/community-patterns.test.js tests/unit/community-retirement.test.js tests/unit/config.test.js tests/unit/detector-candidate-eval.test.js tests/unit/discourse-tells.test.js tests/unit/doctor-api-key-probe.test.js tests/unit/doctor-update-check.test.js tests/unit/document-signals.test.js tests/unit/document-type-pattern-policy.test.js tests/unit/edit-controls.test.js tests/unit/edit-review.test.js tests/unit/edited-ai-intake.test.js tests/unit/entitlement-polar.test.js tests/unit/entitlement.redteam.test.js tests/unit/entitlement.test.js tests/unit/existing-cohort-evaluation.test.js tests/unit/fp-fixture-export.test.js tests/unit/free-tier-monitor.test.js tests/unit/funnel-analytics.test.js tests/unit/funnel-query.test.js tests/unit/heading-preservation.test.js tests/unit/hf-dataset.test.js tests/unit/human-panel.test.js tests/unit/input-loading.test.js tests/unit/inspection.test.js tests/unit/issue-527-fixes.test.js tests/unit/issue-forms.test.js tests/unit/iterative-rewrite-baseline.test.js tests/unit/katfish-calibration.test.js tests/unit/kimi-isolation.test.js tests/unit/kimi-study-transport.test.js tests/unit/ko-miss-review.test.js tests/unit/korean-confirmatory-corpus.test.js tests/unit/korean-diagnosis.test.js tests/unit/korean-invariants-metamorphic.test.js tests/unit/korean-invariants.test.js tests/unit/korean-retention-mutations.test.js tests/unit/korean-structure-fingerprint.test.js tests/unit/lexicon-freshness.test.js tests/unit/lexicon.test.js tests/unit/live-quality.test.js tests/unit/live-scorer-benchmark.test.js tests/unit/loader.test.js tests/unit/log-query-service.test.js tests/unit/logger.test.js tests/unit/maintenance-workflows.test.js tests/unit/markup-leakage.test.js tests/unit/mdx-score.test.js tests/unit/meaning-proxy.test.js tests/unit/model-confirmation.test.js tests/unit/model-evaluation-join.test.js tests/unit/model-rewrite-benchmark.test.js tests/unit/mps-negation-validation.test.js tests/unit/mps-revalidation.test.js tests/unit/ocr.test.js tests/unit/over-editing-guard.test.js tests/unit/pack-command.test.js tests/unit/pack-handler.test.js tests/unit/panel-v2.test.js tests/unit/pattern-docs.test.js tests/unit/pattern-overlap.test.js tests/unit/pay-b-cost-receipt.test.js tests/unit/perf-report.test.js tests/unit/persona-ablation-live.test.js tests/unit/persona-args.test.js tests/unit/persona-calibration.test.js tests/unit/persona-command.test.js tests/unit/persona-gates.test.js tests/unit/persona-match.test.js tests/unit/persona-natural-ko.test.js tests/unit/persona-packaging.test.js tests/unit/persona-resolver.test.js tests/unit/persona-schema.test.js tests/unit/persona-seed.test.js tests/unit/playground-a11y.test.js tests/unit/playground-analytics.test.js tests/unit/playground-examples.test.js tests/unit/playground-experience.test.js tests/unit/playground-module-graph.test.js tests/unit/playground-preferences.test.js tests/unit/playground-pro.test.js tests/unit/polar-webhook.test.js tests/unit/pr-policy.test.js tests/unit/preparation-replay.test.js tests/unit/preview.test.js tests/unit/pro-monitor-api.test.js tests/unit/pro-monitor-e2e.test.js tests/unit/pro-monitor.test.js tests/unit/prompt-builder.persona.test.js tests/unit/prompt-builder.snapshot.test.js tests/unit/prose-score.test.js tests/unit/protected-input.test.js tests/unit/public-showcase.test.js tests/unit/quota-redis.test.js tests/unit/quota-reservation.test.js tests/unit/ranking-metrics.test.js tests/unit/rate-limit.redteam.test.js tests/unit/rate-limit.test.js tests/unit/rebaseline-build-claim-manifest.test.js tests/unit/rebaseline-generate-modern.test.js tests/unit/rebaseline-intake.test.js tests/unit/rebaseline-low-fpr-report.test.js tests/unit/rebaseline-score-collection.test.js tests/unit/rebaseline-score.test.js tests/unit/rebaseline-summary.test.js tests/unit/rebaseline-web-collect.test.js tests/unit/redos-mattr-evidence.test.js tests/unit/register.test.js tests/unit/release-artifacts.test.js tests/unit/retired-concepts.test.js tests/unit/rewrite-ab.test.js tests/unit/rewrite-api.test.js tests/unit/rewrite-client.test.js tests/unit/rewrite-handler.test.js tests/unit/score-overall-coercion.test.js tests/unit/scorer-path-corpus.test.js tests/unit/scorer-public-report.test.js tests/unit/scoring.test.js tests/unit/security.test.js tests/unit/share-card.test.js tests/unit/short-form.test.js tests/unit/shortform-collection.test.js tests/unit/signal-impact.test.js tests/unit/slice-metadata.test.js tests/unit/slice-metrics.test.js tests/unit/streaming-api.test.js tests/unit/structural-classifier.test.js tests/unit/structural-model-loader.test.js tests/unit/study-completion-persistence.test.js tests/unit/study-family.test.js tests/unit/study-persistence.test.js tests/unit/study-transport-process.test.js tests/unit/study-validation.test.js tests/unit/stylometry-ko.test.js tests/unit/stylometry.test.js tests/unit/threshold-parity.test.js tests/unit/transform-options.test.js tests/unit/translationese.test.js tests/unit/verification-schema.test.js tests/unit/verify.test.js tests/unit/web-config.test.js tests/unit/web-deploy-invariants.test.js tests/unit/web-edit-controls.test.js tests/unit/web-observability.test.js tests/unit/web-rewrite-contract.redteam.test.js tests/unit/web-rewrite-contract.test.js tests/unit/web-rewrite-stream.redteam.test.js tests/unit/web-rewrite-stream.test.js tests/unit/web-rewrite.redteam.test.js tests/unit/web-rewrite.test.js tests/unit/xliff-cli.redteam.test.js tests/unit/xliff-cli.test.js tests/unit/xliff-crossfile-dedup.test.js tests/unit/xliff-writeback.redteam.test.js tests/unit/xliff-writeback.test.js tests/unit/xliff.redteam.test.js tests/unit/xliff.test.js tests/e2e/aside-cli.test.js tests/e2e/auth-login.test.js tests/e2e/backends.test.js tests/e2e/check-no-private-assets.test.js tests/e2e/cli-adoption.test.js tests/e2e/cli-api.test.js tests/e2e/cli-cancellation.test.js tests/e2e/cli-persona.test.js tests/e2e/cli-verification.test.js tests/e2e/cli.test.js tests/e2e/dev-server.test.js tests/e2e/precommit-score.test.js tests/e2e/providers.test.js tests/e2e/public-contracts.test.js tests/e2e/release-artifacts.test.js tests/e2e/security.test.js tests/e2e/session-isolation.test.js tests/e2e/skill-install.test.js tests/e2e/skill-invocation.test.js",
+      "command": "~/.nvm/versions/node/v24.18.0/bin/node --test --test-reporter=tap tests/unit/adversarial-mps-report.test.js tests/unit/adversarial-transforms.test.js tests/unit/ai-tells-corpus-baseline.test.js tests/unit/anthropic-native.test.js tests/unit/api.test.js tests/unit/architecture-boundaries.test.js tests/unit/aside-options.test.js tests/unit/aside-runner.test.js tests/unit/aside-server.test.js tests/unit/aside-ui.test.js tests/unit/assets.test.js tests/unit/audit-backstop.test.js tests/unit/backend-adapter-noise.test.js tests/unit/backend-agy.test.js tests/unit/backend-auth.test.js tests/unit/backend-cancellation.test.js tests/unit/backend-contract.test.js tests/unit/backend-model-defaults.test.js tests/unit/badge-json.test.js tests/unit/batch.test.js tests/unit/benchmark-report.test.js tests/unit/browser-core.test.js tests/unit/browser-diff.test.js tests/unit/byok-hardening.test.js tests/unit/check-no-private-assets.test.js tests/unit/check-release-metadata.test.js tests/unit/ci-workflow.test.js tests/unit/claude-study-isolation.test.js tests/unit/claude-study-stream.test.js tests/unit/cli-args.test.js tests/unit/cli-cancellation.test.js tests/unit/community-patterns.test.js tests/unit/community-retirement.test.js tests/unit/config.test.js tests/unit/detector-candidate-eval.test.js tests/unit/discourse-tells.test.js tests/unit/doctor-api-key-probe.test.js tests/unit/doctor-update-check.test.js tests/unit/document-signals.test.js tests/unit/document-type-pattern-policy.test.js tests/unit/edit-controls.test.js tests/unit/edit-review.test.js tests/unit/edited-ai-intake.test.js tests/unit/entitlement-polar.test.js tests/unit/entitlement.redteam.test.js tests/unit/entitlement.test.js tests/unit/existing-cohort-evaluation.test.js tests/unit/fp-fixture-export.test.js tests/unit/free-tier-monitor.test.js tests/unit/funnel-analytics.test.js tests/unit/funnel-query.test.js tests/unit/heading-preservation.test.js tests/unit/hf-dataset.test.js tests/unit/human-panel.test.js tests/unit/input-loading.test.js tests/unit/inspection.test.js tests/unit/issue-527-fixes.test.js tests/unit/issue-forms.test.js tests/unit/iterative-rewrite-baseline.test.js tests/unit/katfish-calibration.test.js tests/unit/kimi-isolation.test.js tests/unit/kimi-study-transport.test.js tests/unit/ko-miss-review.test.js tests/unit/korean-confirmatory-corpus.test.js tests/unit/korean-diagnosis.test.js tests/unit/korean-invariants-metamorphic.test.js tests/unit/korean-invariants.test.js tests/unit/korean-retention-mutations.test.js tests/unit/korean-structure-fingerprint.test.js tests/unit/lexicon-freshness.test.js tests/unit/lexicon.test.js tests/unit/live-quality.test.js tests/unit/live-scorer-benchmark.test.js tests/unit/loader.test.js tests/unit/log-query-service.test.js tests/unit/logger.test.js tests/unit/maintenance-workflows.test.js tests/unit/markup-leakage.test.js tests/unit/mdx-score.test.js tests/unit/meaning-proxy.test.js tests/unit/model-confirmation.test.js tests/unit/model-evaluation-join.test.js tests/unit/model-rewrite-benchmark.test.js tests/unit/mps-negation-validation.test.js tests/unit/mps-revalidation.test.js tests/unit/ocr.test.js tests/unit/over-editing-guard.test.js tests/unit/pack-command.test.js tests/unit/pack-handler.test.js tests/unit/panel-v2.test.js tests/unit/pattern-docs.test.js tests/unit/pattern-overlap.test.js tests/unit/pay-b-cost-receipt.test.js tests/unit/perf-report.test.js tests/unit/persona-ablation-live.test.js tests/unit/persona-args.test.js tests/unit/persona-calibration.test.js tests/unit/persona-command.test.js tests/unit/persona-gates.test.js tests/unit/persona-match.test.js tests/unit/persona-natural-ko.test.js tests/unit/persona-packaging.test.js tests/unit/persona-resolver.test.js tests/unit/persona-schema.test.js tests/unit/persona-seed.test.js tests/unit/playground-a11y.test.js tests/unit/playground-analytics.test.js tests/unit/playground-examples.test.js tests/unit/playground-experience.test.js tests/unit/playground-module-graph.test.js tests/unit/playground-preferences.test.js tests/unit/playground-pro.test.js tests/unit/polar-webhook.test.js tests/unit/pr-policy.test.js tests/unit/preparation-replay.test.js tests/unit/preview.test.js tests/unit/pro-monitor-api.test.js tests/unit/pro-monitor-e2e.test.js tests/unit/pro-monitor.test.js tests/unit/prompt-builder.persona.test.js tests/unit/prompt-builder.snapshot.test.js tests/unit/prose-score.test.js tests/unit/protected-input.test.js tests/unit/public-showcase.test.js tests/unit/quota-redis.test.js tests/unit/quota-reservation.test.js tests/unit/ranking-metrics.test.js tests/unit/rate-limit.redteam.test.js tests/unit/rate-limit.test.js tests/unit/rebaseline-build-claim-manifest.test.js tests/unit/rebaseline-generate-modern.test.js tests/unit/rebaseline-intake.test.js tests/unit/rebaseline-low-fpr-report.test.js tests/unit/rebaseline-score-collection.test.js tests/unit/rebaseline-score.test.js tests/unit/rebaseline-summary.test.js tests/unit/rebaseline-web-collect.test.js tests/unit/redos-mattr-evidence.test.js tests/unit/register.test.js tests/unit/release-artifacts.test.js tests/unit/retired-concepts.test.js tests/unit/rewrite-ab.test.js tests/unit/rewrite-api.test.js tests/unit/rewrite-client.test.js tests/unit/rewrite-handler.test.js tests/unit/score-overall-coercion.test.js tests/unit/scorer-path-corpus.test.js tests/unit/scorer-public-report.test.js tests/unit/scoring.test.js tests/unit/security.test.js tests/unit/share-card.test.js tests/unit/short-form.test.js tests/unit/shortform-collection.test.js tests/unit/signal-impact.test.js tests/unit/slice-metadata.test.js tests/unit/slice-metrics.test.js tests/unit/streaming-api.test.js tests/unit/structural-classifier.test.js tests/unit/structural-model-loader.test.js tests/unit/study-completion-persistence.test.js tests/unit/study-family.test.js tests/unit/study-persistence.test.js tests/unit/study-transport-process.test.js tests/unit/study-validation.test.js tests/unit/stylometry-ko.test.js tests/unit/stylometry.test.js tests/unit/threshold-parity.test.js tests/unit/transform-options.test.js tests/unit/translationese.test.js tests/unit/verification-schema.test.js tests/unit/verify.test.js tests/unit/web-config.test.js tests/unit/web-deploy-invariants.test.js tests/unit/web-edit-controls.test.js tests/unit/web-observability.test.js tests/unit/web-rewrite-contract.redteam.test.js tests/unit/web-rewrite-contract.test.js tests/unit/web-rewrite-stream.redteam.test.js tests/unit/web-rewrite-stream.test.js tests/unit/web-rewrite.redteam.test.js tests/unit/web-rewrite.test.js tests/unit/xliff-cli.redteam.test.js tests/unit/xliff-cli.test.js tests/unit/xliff-crossfile-dedup.test.js tests/unit/xliff-writeback.redteam.test.js tests/unit/xliff-writeback.test.js tests/unit/xliff.redteam.test.js tests/unit/xliff.test.js tests/e2e/aside-cli.test.js tests/e2e/auth-login.test.js tests/e2e/backends.test.js tests/e2e/check-no-private-assets.test.js tests/e2e/cli-adoption.test.js tests/e2e/cli-api.test.js tests/e2e/cli-cancellation.test.js tests/e2e/cli-persona.test.js tests/e2e/cli-verification.test.js tests/e2e/cli.test.js tests/e2e/dev-server.test.js tests/e2e/precommit-score.test.js tests/e2e/providers.test.js tests/e2e/public-contracts.test.js tests/e2e/release-artifacts.test.js tests/e2e/security.test.js tests/e2e/session-isolation.test.js tests/e2e/skill-install.test.js tests/e2e/skill-invocation.test.js",
       "cwd": ".",
       "status": 0,
       "signal": null,
-      "ms": 66514,
+      "ms": 66579,
       "ok": true,
-      "stdoutTail": "r bytes\nok 2228 - property-ish span accuracy: every selected segment slices to its raw target inner bytes\n  ---\n  duration_ms: 0.470718\n  type: 'test'\n  ...\n# Subtest: scanXmlTokens: > inside a quoted attribute does not end the tag\nok 2229 - scanXmlTokens: > inside a quoted attribute does not end the tag\n  ---\n  duration_ms: 1.730495\n  type: 'test'\n  ...\n# Subtest: scanXmlTokens: comment containing fake </target> is a single comment token\nok 2230 - scanXmlTokens: comment containing fake </target> is a single comment token\n  ---\n  duration_ms: 0.239131\n  type: 'test'\n  ...\n# Subtest: scanXmlTokens: PI and CDATA are isolated, not parsed as tags/text\nok 2231 - scanXmlTokens: PI and CDATA are isolated, not parsed as tags/text\n  ---\n  duration_ms: 0.239411\n  type: 'test'\n  ...\n# Subtest: scanXmlTokens: unterminated constructs become a terminal malformed token\nok 2232 - scanXmlTokens: unterminated constructs become a terminal malformed token\n  ---\n  duration_ms: 0.189308\n  type: 'test'\n  ...\n# Subtest: parseAttributesFromTag: single/double quotes, lower-cased names, decoded values\nok 2233 - parseAttributesFromTag: single/double quotes, lower-cased names, decoded values\n  ---\n  duration_ms: 0.58267\n  type: 'test'\n  ...\n# Subtest: decodeXmlText: named + numeric entities; unknown left intact\nok 2234 - decodeXmlText: named + numeric entities; unknown left intact\n  ---\n  duration_ms: 0.234022\n  type: 'test'\n  ...\n# Subtest: hasUnsupportedEntity: bare & and unknown names are unsafe; known/numeric are safe\nok 2235 - hasUnsupportedEntity: bare & and unknown names are unsafe; known/numeric are safe\n  ---\n  duration_ms: 1.770991\n  type: 'test'\n  ...\n# Subtest: encodeXmlText: text context encoding round-trips through decode\nok 2236 - encodeXmlText: text context encoding round-trips through decode\n  ---\n  duration_ms: 0.216389\n  type: 'test'\n  ...\n# Subtest: normalizeLang: maps regional tags to supported base; rejects unsupported\nok 2237 - normalizeLang: maps regional tags to supported base; rejects unsupported\n  ---\n  duration_ms: 3.529551\n  type: 'test'\n  ...\n# Subtest: splitTargetInnerWhitespace: preserves leading/trailing without overlap\nok 2238 - splitTargetInnerWhitespace: preserves leading/trailing without overlap\n  ---\n  duration_ms: 1.294953\n  type: 'test'\n  ...\n# Subtest: hasInlineMarkup: true when any element tag is present\nok 2239 - hasInlineMarkup: true when any element tag is present\n  ---\n  duration_ms: 0.252677\n  type: 'test'\n  ...\n# Subtest: isProseLike: prose selected, labels/urls/placeholders skipped\nok 2240 - isProseLike: prose selected, labels/urls/placeholders skipped\n  ---\n  duration_ms: 0.56178\n  type: 'test'\n  ...\n# Subtest: parseXliffDocument: detects + normalizes target-language\nok 2241 - parseXliffDocument: detects + normalizes target-language\n  ---\n  duration_ms: 1.189264\n  type: 'test'\n  ...\n# Subtest: parseXliffDocument: throws on unsupported target-language\nok 2242 - parseXliffDocument: throws on unsupported target-language\n  ---\n  duration_ms: 0.525281\n  type: 'test'\n  ...\n# Subtest: parseXliffDocument: no units throws fail-closed\nok 2243 - parseXliffDocument: no units throws fail-closed\n  ---\n  duration_ms: 0.20643\n  type: 'test'\n  ...\n# Subtest: selectXliffSegments: selects safe prose, skips per rule, dedups identical cores\nok 2244 - selectXliffSegments: selects safe prose, skips per rule, dedups identical cores\n  ---\n  duration_ms: 1.127418\n  type: 'test'\n  ...\n# Subtest: selection: extracted target inner span slices back to the original bytes\nok 2245 - selection: extracted target inner span slices back to the original bytes\n  ---\n  duration_ms: 0.784872\n  type: 'test'\n  ...\n# Subtest: state allowlist: processes allowlisted/absent states, skips needs-*/unknown\nok 2246 - state allowlist: processes allowlisted/absent states, skips needs-*/unknown\n  ---\n  duration_ms: 0.825588\n  type: 'test'\n  ...\n1..2246\n# tests 2452\n# suites 40\n# pass 2450\n# fail 0\n# cancelled 0\n# skipped 2\n# todo 0\n# duration_ms 66431.862865\n",
-      "stderrTail": "",
-      "error": null,
+      "spawnError": null,
+      "parseError": null,
       "parsed": {
         "tests": 2452,
         "pass": 2450,
@@ -169,7 +177,8 @@
     }
   ],
   "summary": {
-    "stepsRun": 7,
+    "stepsRun": 8,
+    "stepsSkipped": [],
     "stepsFailed": [],
     "suite": {
       "tests": 2452,
@@ -186,5 +195,6 @@
       "failing": []
     },
     "verdict": "recorded; interpretation belongs to the maintenance record, not this script"
-  }
+  },
+  "diagnostics": "docs/internal/<stem>.diagnostics.json (gitignored; raw child output, operator-only)"
 }

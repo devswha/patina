@@ -131,6 +131,9 @@ export function syncPluginVersions({ repoRoot = REPO_ROOT } = {}) {
   if (!marketplace || Array.isArray(marketplace) || typeof marketplace !== 'object' || !Array.isArray(marketplace.plugins)) {
     throw new Error('.claude-plugin/marketplace.json must contain a plugins array');
   }
+  if (marketplace.plugins.some((entry) => !entry || typeof entry !== 'object' || Array.isArray(entry))) {
+    throw new Error('.claude-plugin/marketplace.json plugins must contain only objects');
+  }
   const marketplacePlugins = marketplace.plugins.filter((entry) => entry && typeof entry === 'object' && entry.name === 'patina');
   if (marketplacePlugins.length === 0) {
     throw new Error('.claude-plugin/marketplace.json must list a patina plugin entry');

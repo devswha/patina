@@ -120,6 +120,23 @@ test('explicit plugin sync updates only the two Claude mirrors and keeps the che
   });
 });
 
+test('plugin sync rejects malformed marketplace entries without writing either mirror', () => {
+  for (const invalid of [null, [], 'invalid', 1]) {
+    for (const first of [true, false]) {
+      withFixture((root) => {
+        const pluginPath = join(root, '.claude-plugin/plugin.json');
+        const marketplacePath = join(root, '.claude-plugin/marketplace.json');
+        writeFileSync(pluginPath, JSON.stringify({ name: 'patina', version: '0.0.0' }));
+        const target = { name: 'patina', version: '0.0.0' };
+        writeFileSync(marketplacePath, JSON.stringify({ plugins: first ? [invalid, target] : [target, invalid] }));
+        const before = [pluginPath, marketplacePath].map(path => readFileSync(path, 'utf8'));
+        assert.throws(() => syncPluginVersions({ repoRoot: root }), /plugins must contain only objects/);
+        assert.deepEqual([pluginPath, marketplacePath].map(path => readFileSync(path, 'utf8')), before);
+      });
+    }
+  }
+});
+
 test('plugin sync validates malformed or missing manifests before writing either mirror', () => {
   withFixture((root) => {
     const pluginPath = join(root, '.claude-plugin/plugin.json');

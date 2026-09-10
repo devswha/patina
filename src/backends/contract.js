@@ -357,6 +357,103 @@ function safePathSegment(value) {
   return String(value).replace(/[^a-z0-9._-]+/gi, '_');
 }
 
+// Detached POSIX children become the leader of an owned process group. Keep
+// the platform list explicit: Node's `detached` option and negative-PID
+// signalling do not have portable semantics, so other platforms retain the
+// direct-child-only behavior rather than making an untested cleanup promise.
+const OWNED_PROCESS_GROUP_PLATFORMS = new Set([
+  'aix',
+  'darwin',
+  'freebsd',
+  'haiku',
+  'linux',
+  'openbsd',
+  'sunos',
+]);
+
+function supportsOwnedProcessGroup(platform = process.platform) {
+  return OWNED_PROCESS_GROUP_PLATFORMS.has(platform);
+}
+
+// Spawn a non-interactive CLI with an owned process group where the platform
+// supports POSIX process-group semantics. The close waiter is deliberately
+// shared by all callers: cancellation/timeout can kill the group immediately,
+// then defer temporary-directory/slot cleanup until Node emits child `close`.
+export function spawnOwnedCliProcess(command, args = [], options = {}, {
+  platform = process.platform,
+  spawnImpl = spawn,
+  killImpl = (pid, signal) => process.kill(pid, signal),
+} = {}) {
+  const ownsProcessGroup = supportsOwnedProcessGroup(platform);
+  const proc = spawnImpl(command, args, ownsProcessGroup
+    ? { ...options, detached: true }
+    : options);
+  let closeResult;
+  let resolveClose;
+  const closePromise = new Promise((resolve) => {
+    resolveClose = resolve;
+  });
+  proc.once('close', (code, signal) => {
+    closeResult = { code, signal };
+    resolveClose(closeResult);
+  });
+
+  let terminationRequested = false;
+  let exited = false;
+  const destroyParentPipes = () => {
+    if (ownsProcessGroup) return;
+    for (const stream of [proc.stdin, proc.stdout, proc.stderr]) {
+      if (typeof stream?.destroy === 'function' && !stream.destroyed) stream.destroy();
+    }
+  };
+  const terminate = (signal = 'SIGKILL') => {
+    if (terminationRequested) return;
+    terminationRequested = true;
+
+    if (ownsProcessGroup && Number.isInteger(proc.pid) && proc.pid > 0) {
+      try {
+        // Detached POSIX children are process-group leaders, so a negative PID
+        // reaches workers that inherited the CLI's stdio pipes as well.
+        killImpl(-proc.pid, signal);
+        return;
+      } catch {
+        // Fall through for ESRCH (the leader/group may already be gone) and
+        // other errors alike: a direct-child attempt covers the tiny pre-exec
+        // window where the child exists but its detached group is not visible.
+      }
+    }
+
+    try {
+      if (!proc.killed) proc.kill(signal);
+    } catch {}
+
+    // A direct-child platform cannot signal descendants as a group. If the
+    // leader already exited, close the parent-owned pipes now so an inherited
+    // descendant cannot hold the adapter's close waiter open forever.
+    if (exited) destroyParentPipes();
+  };
+
+  // A leader can exit while a worker keeps stdout/stderr open. On POSIX, kill
+  // the owned group; elsewhere, only close parent-owned pipes after explicit
+  // termination so normal buffered output can still drain before `close`.
+  proc.once('exit', () => {
+    exited = true;
+    if (ownsProcessGroup) {
+      terminate();
+      return;
+    }
+    if (terminationRequested) destroyParentPipes();
+  });
+
+  return {
+    proc,
+    terminate,
+    waitForClose() {
+      return closeResult ? Promise.resolve(closeResult) : closePromise;
+    },
+  };
+}
+
 export function runInteractiveCommand({
   backendName,
   command,

@@ -78,13 +78,11 @@ if [ "${UNINSTALL_CODEX}" = "true" ]; then
   fi
 fi
 
-# --- Cursor (symlink) ---
+# --- Cursor (generated rule) ---
 if [ "${UNINSTALL_CURSOR}" = "true" ]; then
   TARGET="${CURSOR_RULES_DIR}/patina.mdc"
   if [ -L "${TARGET}" ]; then
-    rm -f "${TARGET}"
-    success "Cursor: removed ${TARGET}"
-    REMOVED=1
+    warn "Cursor: ${TARGET} is a symlink; leaving it untouched."
   elif [ -f "${TARGET}" ] && is_cursor_product_rule "${TARGET}"; then
     rm -f "${TARGET}"
     success "Cursor: removed ${TARGET}"

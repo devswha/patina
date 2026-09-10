@@ -1,8 +1,12 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand } from './contract.js';
+import {
+  DEFAULT_BACKEND_TIMEOUT_MS,
+  runInteractiveCommand,
+  spawnOwnedCliProcess,
+} from './contract.js';
 import { resolveLocalCliModel } from '../model-defaults.js';
 
 export const name = 'kimi-cli';
@@ -139,11 +143,19 @@ to access files, run commands, or contact services. Return only the requested re
 `, { mode: 0o600 });
   } catch (error) { cleanup(); throw error; }
   return new Promise((resolve, reject) => {
-    let proc;
-    try { proc = spawn('kimi', [...args, '--agent-file', profile, '--skills-dir', skills], {
-      stdio: ['pipe', 'pipe', 'pipe'], cwd: dir,
-      env: { ...process.env, KIMI_CODE_EXPERIMENTAL_FLAG: '1' },
-    }); } catch (error) { cleanup(); reject(error); return; }
+    let owned;
+    try {
+      owned = spawnOwnedCliProcess(
+        'kimi',
+        [...args, '--agent-file', profile, '--skills-dir', skills],
+        {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          cwd: dir,
+          env: { ...process.env, KIMI_CODE_EXPERIMENTAL_FLAG: '1' },
+        },
+      );
+    } catch (error) { cleanup(); reject(error); return; }
+    const { proc, terminate, waitForClose } = owned;
 
     let stdout = '';
     let stderr = '';
@@ -205,11 +217,11 @@ to access files, run commands, or contact services. Return only the requested re
       settled = true;
       clearTimeout(timer);
       cleanupSignal();
-      // SIGKILL reaches only the direct child; grandchildren (workers/MCP) are
-      // not in a killable group and may briefly outlive it — accepted leak (#446).
-      if (kill) proc.kill('SIGKILL');
-      cleanup();
-      reject(err);
+      if (kill) terminate('SIGKILL');
+      waitForClose().then(() => {
+        cleanup();
+        reject(err);
+      });
     }
 
     function finishResolve(content) {

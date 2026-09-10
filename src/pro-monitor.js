@@ -13,6 +13,10 @@ const THIRTY_MINUTES_MS = 30 * 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const TWO_HOURS_MS = 2 * ONE_HOUR_MS;
 const SNAPSHOT_DEADLINE_MS = 30_000;
+// Free and BYOK successful rewrites are emitted once per twenty requests.
+// Failures remain census events, so their observed count is never expanded.
+const LOW_TIER_SUCCESS_SAMPLE_SIZE = 20;
+const LOW_TIER_SUCCESS_SAMPLE_PROBABILITY = 1 / LOW_TIER_SUCCESS_SAMPLE_SIZE;
 
 function dimension(value, allowed) { return typeof value === 'string' && allowed.includes(value); }
 function asDate(value) {
@@ -190,8 +194,18 @@ export async function evaluateProMonitor(deps) {
   const now = asDate(clock()); const buckets = overlappingQuarterBuckets(now); const keys = [];
   for (const bucket of buckets) for (const outcome of OBSERVED_OUTCOMES) for (const latencyBucket of OBSERVED_LATENCY_BUCKETS) keys.push(aggregateKey({ channel, tier, at: bucket, outcome, latencyBucket }));
   const aggregate = await aggregateSnapshot(snapshot ? { snapshot } : aggregateReader, keys, Math.max(1, Math.min(Number(deadlineMs) || SNAPSHOT_DEADLINE_MS, SNAPSHOT_DEADLINE_MS)));
-  const histogramCounts = Object.fromEntries(LATENCY_BUCKETS.map((bucket) => [bucket, 0])); let productionAggregate = 0;
-  if (aggregate.available) for (const key of keys) { const value = aggregate.values[key]; productionAggregate += value; const parts = key.split(':'); if (parts[6] === 'completed' && LATENCY_BUCKETS.includes(parts[7])) histogramCounts[parts[7]] += value; }
+  const histogramCounts = Object.fromEntries(LATENCY_BUCKETS.map((bucket) => [bucket, 0]));
+  let productionAggregate = 0; let unknownAggregate = 0; let monitorDropAggregate = 0;
+  if (aggregate.available) for (const key of keys) {
+    const value = aggregate.values[key];
+    const parts = key.split(':');
+    // Unknown classifications and observer delivery drops are evidence that
+    // cannot establish a known production request denominator.
+    if (parts[6] === 'unknown') unknownAggregate += value;
+    else if (parts[6] === 'monitor_drop') monitorDropAggregate += value;
+    else productionAggregate += value;
+    if (parts[6] === 'completed' && LATENCY_BUCKETS.includes(parts[7])) histogramCounts[parts[7]] += value;
+  }
   const histogram = latencyHistogram(histogramCounts);
   const safetyLogs = await queryLogs(logQuery, channel, tier, '15m'); const dropLogs = await queryLogs(logQuery, channel, tier, '30m');
   const safety = safetyLogs.values; const drops = dropLogs.values;
@@ -217,7 +231,19 @@ export async function evaluateProMonitor(deps) {
   if (syntheticStreak >= 3) triggers.push({ trigger: 'synthetic_failure', count: syntheticStreak, window: '30m' });
   if (histogram.n >= 10 && histogram.selectedBucket === '>120s') triggers.push({ trigger: 'p95_latency', count: histogram.n, window: '30m', evidence: { latencyBound: '>120s', rankBand: 'p95' } });
   if (histogram.n >= 10 && histogram.over120Ratio > 0.05) triggers.push({ trigger: 'latency_tail', count: histogram.counts['>120s'], window: '30m', evidence: { ratioBand: '>5pct' } });
-  if (!aggregate.available || !safetyLogs.available || !dropLogs.available || productionAggregate === 0 || monitorDrop >= 3) triggers.push({ trigger: 'monitor_blind', count: !aggregate.available || !safetyLogs.available || !dropLogs.available ? 1 : monitorDrop, window: '30m', evidence: { reason: !aggregate.available ? 'aggregate_unavailable' : !safetyLogs.available || !dropLogs.available ? 'log_unavailable' : monitorDrop >= 3 ? 'monitor_drop' : 'no_production_aggregate' } });
+  if (!aggregate.available || !safetyLogs.available || !dropLogs.available || productionAggregate === 0 || monitorDrop >= 3) {
+    const unavailable = !aggregate.available || !safetyLogs.available || !dropLogs.available;
+    const unknownOnly = productionAggregate === 0 && (unknownAggregate > 0 || monitorDropAggregate > 0);
+    const reason = !aggregate.available ? 'aggregate_unavailable'
+      : !safetyLogs.available || !dropLogs.available ? 'log_unavailable'
+        : monitorDrop >= 3 ? 'monitor_drop'
+          : unknownOnly ? 'unknown_aggregate' : 'no_production_aggregate';
+    // Keep the receipt contract's monitor-blind count tied to the
+    // log-derived monitorDrop value; unknown aggregate classifications are
+    // exposed through the reason but cannot masquerade as delivery drops.
+    const count = unavailable ? 1 : monitorDrop;
+    triggers.push({ trigger: 'monitor_blind', count, window: '30m', evidence: { reason } });
+  }
   const denominators = { productionAggregate, entitlementTotal, entitlementNonOk, histogram: histogram.n, numberSafety, monitorDrop };
   const adapters = { aggregate: aggregate.available, safetyEntitlementLogs: safetyLogs.available, monitorDropLogs: dropLogs.available };
   const logWindows = { safetyEntitlement: { window: '15m', available: safetyLogs.available, denominator: entitlementTotal }, monitorDrop: { window: '30m', available: dropLogs.available, denominator: productionAggregate } };
@@ -304,20 +330,52 @@ export async function evaluateFreeTierHealth(deps) {
   }
   const aggregate = await aggregateSnapshot(snapshot ? { snapshot } : aggregateReader, keys, Math.max(1, Math.min(Number(deadlineMs) || SNAPSHOT_DEADLINE_MS, SNAPSHOT_DEADLINE_MS)));
 
-  let total = 0;
   let failed = 0;
+  let sampledSuccess = 0;
+  let quotaDenied = 0;
+  let monitorDrops = 0;
+  let unknownOutcomes = 0;
   if (aggregate.available) {
     for (const key of keys) {
       const value = number(aggregate.values[key]);
       if (!value) continue;
-      total += value;
-      // Everything that is not a completed rewrite is a user who asked for one
-      // and did not get it. quota_denied is excluded: that is the product
-      // working as designed, not an outage.
       const outcome = key.split(':')[6];
-      if (outcome !== 'completed' && outcome !== 'quota_denied') failed += value;
+      if (outcome === 'completed') sampledSuccess += value;
+      else if (outcome === 'quota_denied') quotaDenied += value;
+      else if (outcome === 'monitor_drop') monitorDrops += value;
+      else if (outcome === 'unknown') unknownOutcomes += value;
+      else failed += value;
     }
   }
+
+  // A sampled success is an estimate of the twenty-request stratum, while a
+  // failure is a full-census event. Keep the raw sample and its expansion
+  // visible so callers cannot mistake the observed success count for a census.
+  const sampledSuccessEstimate = sampledSuccess <= Number.MAX_SAFE_INTEGER / LOW_TIER_SUCCESS_SAMPLE_SIZE
+    ? sampledSuccess * LOW_TIER_SUCCESS_SAMPLE_SIZE
+    : null;
+  const totalAvailable = sampledSuccessEstimate !== null
+    && failed <= Number.MAX_SAFE_INTEGER - sampledSuccessEstimate;
+  const total = totalAvailable ? sampledSuccessEstimate + failed : 0;
+  const rateAvailable = aggregate.available === true
+    && sampledSuccessEstimate !== null
+    && totalAvailable
+    && total > 0
+    && unknownOutcomes === 0
+    && monitorDrops === 0;
+  const rate = {
+    available: rateAvailable,
+    window: '30m',
+    numerator: rateAvailable ? failed : null,
+    denominator: rateAvailable ? total : null,
+    success: {
+      observed: sampledSuccess,
+      estimate: sampledSuccessEstimate,
+      probability: LOW_TIER_SUCCESS_SAMPLE_PROBABILITY,
+    },
+    failures: { observed: failed, probability: 1 },
+    excluded: { quotaDenied, monitorDrops, unknown: unknownOutcomes },
+  };
 
   let canaryTerminal = null;
   if (typeof canaryRequest === 'function'
@@ -335,7 +393,7 @@ export async function evaluateFreeTierHealth(deps) {
     triggers.push({ trigger: 'free_canary_failure', count: 1, window: '30m', evidence: { tier } });
   }
   // A ratio needs a denominator; below 5 requests a single blip is not signal.
-  if (total >= 5 && failed / total > 0.5) {
+  if (rateAvailable && total >= 5 && failed / total > 0.5) {
     triggers.push({ trigger: 'free_failure_ratio', count: failed, window: '30m', evidence: { ratioBand: '>50pct', tier } });
   }
 
@@ -360,6 +418,7 @@ export async function evaluateFreeTierHealth(deps) {
     channel, tier, buckets,
     aggregateAvailable: aggregate.available,
     denominators: { total, failed },
+    rate,
     canaryTerminal,
     triggers,
     alerts,

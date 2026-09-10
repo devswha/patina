@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { aggregateKey, evaluateProMonitor, overlappingQuarterBuckets, utc15mBucket } from '../../src/pro-monitor.js';
+import { aggregateKey, evaluateFreeTierHealth, evaluateProMonitor, overlappingQuarterBuckets, utc15mBucket } from '../../src/pro-monitor.js';
 
 const NOW = new Date('2026-07-15T12:07:00.000Z');
 function store() {
@@ -41,7 +41,57 @@ test('closed dimensions and real compact quarter buckets are enforced', () => {
 test('takes one complete atomic snapshot with only approved latency dimensions', async () => {
   let calls = 0;
   const result = await evaluateProMonitor(deps({ deadlineMs: 7, aggregateReader: { async snapshot(keys, { deadlineMs }) { calls += 1; assert.equal(keys.length, 108); assert.ok(keys.every((item) => /:(?:<=30s|30-60s|60-120s|>120s)$/.test(item))); assert.equal(deadlineMs, 7); return Object.fromEntries(keys.map((item) => [item, 1])); } } }));
-  assert.equal(calls, 1); assert.equal(result.aggregateAvailable, true); assert.equal(result.denominators.productionAggregate, 108);
+  assert.equal(calls, 1); assert.equal(result.aggregateAvailable, true); assert.equal(result.denominators.productionAggregate, 84);
+});
+
+test('unknown outcome aggregates cannot stand in for a known production denominator', async () => {
+  const result = await evaluateProMonitor(deps({
+    aggregateReader: snapshot({ [key('unknown')]: 5 }),
+    logQuery: async () => ({}),
+  }));
+  assert.equal(result.denominators.productionAggregate, 0);
+  assert.deepEqual(result.triggers, [{
+    trigger: 'monitor_blind', count: 0, window: '30m', evidence: { reason: 'unknown_aggregate' },
+  }]);
+});
+
+test('free and BYOK rate denominators expand sampled successes but keep failures at census weight', async () => {
+  for (const tier of ['free', 'byok']) {
+    const result = await evaluateFreeTierHealth(deps({
+      tier,
+      aggregateReader: snapshot({
+        [key('completed', '<=30s', tier)]: 1,
+        [key('terminal_failed', '<=30s', tier)]: 20,
+      }),
+    }));
+    assert.equal(result.denominators.total, 40);
+    assert.equal(result.denominators.failed, 20);
+    assert.deepEqual(result.rate.success, { observed: 1, estimate: 20, probability: 1 / 20 });
+    assert.deepEqual(result.rate.failures, { observed: 20, probability: 1 });
+    assert.equal(result.rate.denominator, 40);
+    assert.equal(result.rate.numerator, 20);
+    assert.equal(result.rate.available, true);
+    assert.deepEqual(result.triggers, []);
+  }
+});
+
+test('unknown and monitor-drop aggregate buckets make a rate unavailable instead of a false census', async () => {
+  const result = await evaluateFreeTierHealth(deps({
+    tier: 'free',
+    aggregateReader: snapshot({
+      [key('completed', '<=30s', 'free')]: 1,
+      [key('terminal_failed', '<=30s', 'free')]: 20,
+      [key('unknown', '<=30s', 'free')]: 1,
+      [key('monitor_drop', '<=30s', 'free')]: 1,
+    }),
+  }));
+  assert.equal(result.denominators.total, 40);
+  assert.equal(result.denominators.failed, 20);
+  assert.equal(result.rate.available, false);
+  assert.equal(result.rate.denominator, null);
+  assert.equal(result.rate.numerator, null);
+  assert.deepEqual(result.rate.excluded, { quotaDenied: 0, monitorDrops: 1, unknown: 1 });
+  assert.deepEqual(result.triggers, []);
 });
 
 test('snapshot failure is all-or-nothing and produces no partial histogram', async () => {
@@ -91,6 +141,39 @@ test('ACK receipt IDs are active state and recovery links them only after Discor
   const recovered = await evaluateProMonitor(deps({ controlStore: control, aggregateReader: snapshot({ [key()]: 1 }), discordSender: async () => { recoverySends += 1; return recoverySends === 1 ? { status: 503 } : { status: 204, receiptId: 'recovery-ack' }; } }));
   assert.equal(recoverySends, 2); assert.equal(recovered.recoveryReceiptId, 'recovery-ack'); assert.equal(recovered.recovery.attempts, 2); assert.deepEqual(recovered.recovery.linkedAlertReceiptIds, ['alert-ack']);
 });
+
+test('offline recovery drill exposes an injected failure and then restored health', async () => {
+  const controlStore = store();
+  const aggregateReader = snapshot({ [key('completed')]: 1 });
+  const sent = [];
+  const first = await evaluateProMonitor(deps({
+    controlStore,
+    aggregateReader,
+    logQuery: async ({ window }) => window === '15m'
+      ? { numberSafety: 1, entitlementNonOk: 0, entitlementTotal: 0 }
+      : { monitorDrop: 0 },
+    discordSender: async (payload) => {
+      sent.push(payload.trigger);
+      return { status: 204, receiptId: `drill-${payload.trigger}` };
+    },
+  }));
+  assert.deepEqual(first.triggers.map(({ trigger }) => trigger), ['number_safety']);
+  assert.equal(first.alerts[0].sent, true);
+
+  const recovered = await evaluateProMonitor(deps({
+    controlStore,
+    aggregateReader,
+    logQuery: async () => ({ numberSafety: 0, entitlementNonOk: 0, entitlementTotal: 0, monitorDrop: 0 }),
+    discordSender: async (payload) => {
+      sent.push(payload.trigger);
+      return { status: 204, receiptId: `drill-${payload.trigger}` };
+    },
+  }));
+  assert.deepEqual(recovered.triggers, []);
+  assert.equal(recovered.recoveryReceiptId, 'drill-monitor_recovered');
+  assert.deepEqual(sent, ['number_safety', 'monitor_recovered']);
+});
+
 test('new ACKs retain safe active receipts for complete recovery linkage', async () => {
   const control = store();
   control.values.set('patina:monctl:v1:production:pro:active', ['prior-ack', 'prior-ack', 'unsafe receipt']);

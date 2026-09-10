@@ -81,6 +81,65 @@ live, which is terminal, and which must not be edited.
 - `secret-manager-record-20260803.md` predates 8.0.0, which removed
   `PATINA_LICENSE_PROVIDER` as a vendor selector.
 
+## 2026-09-09 maintenance evidence (P21/P22)
+
+The calculation source for the low-tier monitor is
+`src/pro-monitor.js#evaluateFreeTierHealth`; event collection remains the
+closed aggregate observer in `src/web-observability.js`. Free/BYOK successful
+events are `sampled_1_of_20` and failures are full-census events. A rate must
+therefore use the sampled-success estimate (observed successes × 20) plus
+full-census failures, never the raw success counter as a census denominator.
+Unknown outcomes or monitor-drop counts make that rate unavailable rather than
+silently treating missing data as zero; the paid monitor likewise excludes
+those classifications from its known production denominator and raises
+monitor blindness when they are the only aggregate evidence. The existing
+15-minute/30-minute windows, coarse latency buckets, no-interpolation p95 rule,
+7,200-second aggregate TTL, and aggregate-only/privacy boundary remain
+unchanged. An `unknown` latency bucket is aggregate-ineligible, never a
+zero-valued latency observation.
+
+The offline recovery fixture and its no-publication boundary are documented in
+[`rollback-drills.md`](rollback-drills.md). It is code evidence only: no
+production incident, deployment, provider, Discord, registry, or
+`OBS-ALERT-v1` receipt is claimed. The separate npm partial-registry recovery
+lane is owned by
+[`scripts/release-artifacts.mjs`](../../scripts/release-artifacts.mjs) and
+[`tests/unit/release-artifacts.test.js`](../../tests/unit/release-artifacts.test.js),
+with procedure in
+[`docs/integrations/release.md`](../integrations/release.md); this web lane
+does not unblock npm publication.
+
+### P13a deployment evidence (read-only, promotion still gated)
+
+The contract remains **approved main SHA → same-SHA preview/deployment →
+application smoke → maintainer-approved promotion → retained prior deployment
+rollback ID**. Read-only Vercel REST showed `productionBranch=main` and
+`gitForkProtection=true`; ready deployment
+`dpl_9mLY4716GsCKWrGiomn8hKxZLEzN` has source
+`b9fff3e44037ea05818311b894b57ca89d0ce595`, `sourceRef=dev`, and was created
+`2026-09-09T19:15:06.183+09:00`. Prior ready production
+`dpl_H56Atjg5KJ7YdNPUjCPSs16exshy` has source
+`d7a4741ed9f767bd22a39255e10acf159351fb7a`. The b9 SHA is a main ancestor and
+both deployment/release trees are
+`7cd7f924d1b2228a9692b64842b69918beaf2a21`, so the source-ref discrepancy is
+not a proven content mismatch; the maintainer must reconcile the `sourceRef=dev`
+exception. A public GET rendered the `8.6.0` title (basic read smoke only).
+Environment metadata exposed counts `production=34` and `preview=31` with
+`decrypt=false`; no values were read. Required checks/settings remain
+**unknown**; account confirmation is human-blocked, and promotion/rollback are
+unexecuted, unapproved, and human-blocked. The earlier
+GitHub deployment `6347382527` (source
+`d7a4741ed9f767bd22a39255e10acf159351fb7a`) reported success but was neither
+application smoke nor Vercel account evidence.
+
+P09 native Codex settings and any unexposed web account configuration remain
+unknown; no automation is inferred from a deployment result. The recurring
+maintenance owner is the repository maintainer. Repeated alerts for one
+repository/channel/tier/deployment/trigger/window are deduplicated into one
+incident record with a next-review date; retries are bounded and do not create
+unlimited Issues. Credentials, tokens, raw logs, request text, and provider
+responses are never collected in these records.
+
 ## Publishing
 
 This directory is excluded from the npm tarball (`package.json` `files`:

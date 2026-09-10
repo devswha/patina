@@ -1,10 +1,10 @@
-import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   DEFAULT_BACKEND_TIMEOUT_MS,
   runInteractiveCommand,
+  probeCliAvailability,
   spawnOwnedCliProcess,
 } from './contract.js';
 import { resolveLocalCliModel } from '../model-defaults.js';
@@ -16,12 +16,7 @@ export const installHint = 'Install Kimi Code CLI first, then run `patina auth l
 const KIMI_ENV_KEYS = ['KIMI_API_KEY', 'MOONSHOT_API_KEY'];
 
 export function isAvailable() {
-  try {
-    const result = spawnSync('kimi', ['--version'], { stdio: 'ignore' });
-    return result.status === 0;
-  } catch {
-    return false;
-  }
+  return probeCliAvailability('kimi');
 }
 
 export function isAuthenticated() {

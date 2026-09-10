@@ -19,11 +19,79 @@
 //
 // Defaults are intentionally stable; changing a retry path means changing its
 // single owner here or in the file named above, never adding a parallel one.
-import { spawn } from 'node:child_process';
-import { copyFileSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 
+/**
+ * Resolve how a bare CLI name must be spawned on the current platform.
+ *
+ * win32 only: a CLI installed as an npm `.cmd`/`.bat` shim cannot be spawned
+ * without a shell (Node refuses since the CVE-2024-27980 fix), while a real
+ * `.exe` spawns bare. Walk PATH in order and return the first PATHEXT match;
+ * batch shims come back flagged so callers launch them through cmd.exe (see
+ * windowsBatchSpawn). Real executables and unknown names keep the bare name
+ * so the existing not-installed error path is unchanged.
+ *
+ * @param {string} command Bare CLI name (e.g. 'gemini').
+ * @param {object} [deps]
+ * @param {string} [deps.platform]
+ * @param {NodeJS.ProcessEnv} [deps.env]
+ * @param {(path: string) => boolean} [deps.exists]
+ * @returns {{ command: string, batch: boolean }}
+ */
+export function resolveCliSpawnCommand(command, { platform = process.platform, env = process.env, exists = existsSync } = {}) {
+  if (platform !== 'win32') return { command, batch: false };
+  const extensions = String(env.PATHEXT || '.COM;.EXE;.BAT;.CMD').split(';').map((ext) => ext.toUpperCase());
+  for (const dir of String(env.PATH || '').split(';')) {
+    if (!dir) continue;
+    for (const ext of extensions) {
+      const candidate = join(dir, command + ext);
+      if (!exists(candidate)) continue;
+      return { command: candidate, batch: ext === '.CMD' || ext === '.BAT' };
+    }
+  }
+  return { command, batch: false };
+}
+
+/**
+ * Build the spawn triple for a win32 batch shim. `shell: true` is not used:
+ * Node merely concatenates args with it (dropping empty strings, splitting
+ * on spaces, DEP0190). Instead cmd.exe gets one fully-quoted command line:
+ * every token is double-quoted, the whole line is wrapped in a second quote
+ * pair because cmd /s strips one outer pair, and windowsVerbatimArguments
+ * keeps Node's own quoting out of the way. Verified on Windows 11 with a
+ * space in the batch path, an empty-string arg and a space in an arg.
+ *
+ * Arg domain: backend flags, model ids and temp paths only — user prose
+ * always travels via stdin, never argv. cmd still expands %var% inside
+ * quotes and the ""/doubling is lossy for embedded double quotes, so values
+ * containing `%` or `"` are NOT safe here; the backends above never produce
+ * them.
+ */
+export function windowsBatchSpawn(command, args, options = {}) {
+  const quote = (value) => `"${String(value).replace(/"/g, '""')}"`;
+  const line = [command, ...args].map(quote).join(' ');
+  return ['cmd.exe', ['/d', '/s', '/c', `"${line}"`], { ...options, windowsVerbatimArguments: true }];
+}
+
+/**
+ * Availability probe shared by every local CLI backend: `<cli> --version`
+ * with the platform's spawn shape (see resolveCliSpawnCommand).
+ */
+export function probeCliAvailability(command, { platform = process.platform, env = process.env, exists = existsSync, spawnSyncImpl = spawnSync } = {}) {
+  try {
+    const resolved = resolveCliSpawnCommand(command, { platform, env, exists });
+    const [spawnCommand, spawnArgs, spawnOptions] = resolved.batch
+      ? windowsBatchSpawn(resolved.command, ['--version'], { stdio: 'ignore' })
+      : [resolved.command, ['--version'], { stdio: 'ignore' }];
+    const result = spawnSyncImpl(spawnCommand, spawnArgs, spawnOptions);
+    return result.status === 0;
+  } catch {
+    return false;
+  }
+}
 export const DEFAULT_BACKEND_TIMEOUT_MS = 600_000;
 export const DEFAULT_HTTP_MAX_RETRIES = 2;
 export const PROMPT_SIZE_WARNING_CHARS = 20_000;
@@ -392,9 +460,12 @@ export function spawnOwnedCliProcess(command, args = [], options = {}, {
   killImpl = (pid, signal) => process.kill(pid, signal),
 } = {}) {
   const ownsProcessGroup = supportsOwnedProcessGroup(platform);
-  const proc = spawnImpl(command, args, ownsProcessGroup
-    ? { ...options, detached: true }
-    : options);
+  const resolved = resolveCliSpawnCommand(command, { platform });
+  const baseOptions = ownsProcessGroup ? { ...options, detached: true } : { ...options };
+  const [spawnCommand, spawnArgs, spawnOptions] = resolved.batch
+    ? windowsBatchSpawn(resolved.command, args, baseOptions)
+    : [resolved.command, args, baseOptions];
+  const proc = spawnImpl(spawnCommand, spawnArgs, spawnOptions);
   let closeResult;
   let resolveClose;
   const closePromise = new Promise((resolve) => {
@@ -469,6 +540,8 @@ export function runInteractiveCommand({
   env = process.env,
   stdio = 'inherit',
   notFoundHint,
+  platform = process.platform,
+  spawnImpl = spawn,
 } = {}) {
   if (!backendName || !command) {
     throw new Error('interactive backend command requires backendName and command');
@@ -480,7 +553,11 @@ export function runInteractiveCommand({
     let settled = false;
     const settle = (fn) => { if (settled) return; settled = true; fn(); };
 
-    const proc = spawn(command, args, { cwd, env, stdio });
+    const resolved = resolveCliSpawnCommand(command, { platform });
+    const [spawnCommand, spawnArgs, spawnOptions] = resolved.batch
+      ? windowsBatchSpawn(resolved.command, args, { cwd, env, stdio })
+      : [resolved.command, args, { cwd, env, stdio }];
+    const proc = spawnImpl(spawnCommand, spawnArgs, spawnOptions);
 
     proc.on('error', (err) => {
       if (err.code === 'ENOENT') {

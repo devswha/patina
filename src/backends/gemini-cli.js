@@ -1,10 +1,10 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   DEFAULT_BACKEND_TIMEOUT_MS,
   runInteractiveCommand,
+  probeCliAvailability,
   spawnOwnedCliProcess,
   stageCliImages,
 } from './contract.js';
@@ -25,12 +25,7 @@ const NO_MCP_SERVERS = '__patina_no_mcp__';
 export const GEMINI_NO_TOOLS_POLICY = '[[rule]]\ntoolName = "*"\ndecision = "deny"\npriority = 999\n';
 
 export function isAvailable() {
-  try {
-    const result = spawnSync('gemini', ['--version'], { stdio: 'ignore' });
-    return result.status === 0;
-  } catch {
-    return false;
-  }
+  return probeCliAvailability('gemini');
 }
 
 export function isAuthenticated() {

@@ -262,6 +262,41 @@ test('uninstall preserves an unowned Cursor rule', t => {
   assert.equal(readFileSync(target, 'utf8'), 'user-owned Cursor rule\n');
 });
 
+for (const symlinkKind of ['live', 'dangling']) {
+  test(`Cursor install and uninstall preserve an unowned ${symlinkKind} symlink`, t => {
+    const f = fixture(t);
+    const target = join(f.home, '.cursor/rules/patina.mdc');
+    const linkTarget = join(f.home, symlinkKind === 'live' ? 'user-owned-rule.md' : 'missing-user-owned-rule.md');
+    const targetBytes = 'user-owned Cursor rule through symlink\n';
+    mkdirSync(dirname(target), { recursive: true });
+    if (symlinkKind === 'live') writeFileSync(linkTarget, targetBytes);
+    symlinkSync(linkTarget, target);
+    const linkBefore = readlinkSync(target);
+
+    const installFlags = Object.fromEntries(AGENTS.map(name => [`INSTALL_${name}`, String(name === 'CURSOR')]));
+    const installed = f.install({ ...installFlags, PATINA_REF: f.ref });
+    assert.notEqual(installed.status, 0, installed.stdout + installed.stderr);
+    assert.match(`${installed.stdout}\n${installed.stderr}`, /Cursor target exists but was not installed by patina/);
+    assert.equal(lstatSync(target).isSymbolicLink(), true);
+    assert.equal(readlinkSync(target), linkBefore);
+    if (symlinkKind === 'live') {
+      assert.equal(readFileSync(linkTarget, 'utf8'), targetBytes);
+    } else {
+      assert.equal(existsSync(linkTarget), false);
+    }
+
+    const uninstalled = f.uninstall({ UNINSTALL_CLAUDE: 'false', UNINSTALL_CODEX: 'false', UNINSTALL_OPCODE: 'false' });
+    assert.equal(uninstalled.status, 0, uninstalled.stdout + uninstalled.stderr);
+    assert.equal(lstatSync(target).isSymbolicLink(), true);
+    assert.equal(readlinkSync(target), linkBefore);
+    if (symlinkKind === 'live') {
+      assert.equal(readFileSync(linkTarget, 'utf8'), targetBytes);
+    } else {
+      assert.equal(existsSync(linkTarget), false);
+    }
+  });
+}
+
 test('Cursor installation fails when the checkout has no canonical SKILL.md', t => {
   const f = fixture(t);
   f.git('rm', 'SKILL.md');

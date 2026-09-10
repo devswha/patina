@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "backend": "claude-cli",
+  "cli": "claude",
+  "observedVersion": "2.1.261",
+  "observedAt": "2026-09-09",
+  "status": "unverified",
+  "evidence": {
+    "kind": "version-only",
+    "command": "claude --version",
+    "realInvocation": false,
+    "outputParsingVerified": false,
+    "errorsVerified": false,
+    "authVerified": false,
+    "quotaVerified": false,
+    "timeoutVerified": false
+  },
+  "syntheticFixture": true,
+  "rawOutputIncluded": false,
+  "requiredContracts": {
+    "output": "claude -p stdout is passed to Patina's output parser; this version-only fixture does not exercise body framing or parsing.",
+    "errors": "Non-zero exits, signal termination, spawn failures, user aborts, and timeouts remain distinct runtime outcomes.",
+    "auth": "Authentication is the Claude credential-file check; a version response does not prove login or authorization.",
+    "quota": "Provider or account quota failures are external runtime failures, not successful output or compatibility evidence.",
+    "timeout": "Patina's bounded child-process timeout rejects and cleans the owned invocation; version output does not exercise this path."
+  },
+  "limitations": [
+    "No credential, prompt, model response, or raw CLI output is recorded.",
+    "This record does not verify invocation, output parsing, authentication, quota behavior, or timeout behavior.",
+    "No Windows coverage is claimed for POSIX process-lifecycle fixtures."
+  ]
+}

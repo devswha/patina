@@ -27,7 +27,8 @@ function store() {
   };
 }
 function snapshot(values = {}) { return { async snapshot(keys, options) { assert.ok(options.deadlineMs > 0); return Object.fromEntries(keys.map((key) => [key, values[key] ?? 0])); } }; }
-function deps(overrides = {}) { return { channel: 'production', tier: 'pro', clock: () => NOW, sleep: async () => {}, aggregateReader: snapshot(), logQuery: async () => ({}), syntheticRequest: async () => ({ ok: true, terminal: 'done' }), discordSender: async () => ({ status: 204, receiptId: 'discord-1' }), controlStore: store(), ...overrides }; }
+function validLogs({ window } = {}) { return window === '30m' ? { monitorDrop: 0 } : { numberSafety: 0, entitlementNonOk: 0, entitlementTotal: 0 }; }
+function deps(overrides = {}) { return { channel: 'production', tier: 'pro', clock: () => NOW, sleep: async () => {}, aggregateReader: snapshot(), logQuery: validLogs, syntheticRequest: async () => ({ ok: true, terminal: 'done' }), discordSender: async () => ({ status: 204, receiptId: 'discord-1' }), controlStore: store(), ...overrides }; }
 const key = (outcome = 'completed', latencyBucket = '<=30s', tier = 'pro') => aggregateKey({ channel: 'production', tier, at: '20260715T1200Z', outcome, latencyBucket });
 
 test('closed dimensions and real compact quarter buckets are enforced', () => {
@@ -40,19 +41,63 @@ test('closed dimensions and real compact quarter buckets are enforced', () => {
 
 test('takes one complete atomic snapshot with only approved latency dimensions', async () => {
   let calls = 0;
-  const result = await evaluateProMonitor(deps({ deadlineMs: 7, aggregateReader: { async snapshot(keys, { deadlineMs }) { calls += 1; assert.equal(keys.length, 108); assert.ok(keys.every((item) => /:(?:<=30s|30-60s|60-120s|>120s)$/.test(item))); assert.equal(deadlineMs, 7); return Object.fromEntries(keys.map((item) => [item, 1])); } } }));
+  const result = await evaluateProMonitor(deps({ deadlineMs: 7, aggregateReader: { async snapshot(keys, { deadlineMs }) { calls += 1; assert.equal(keys.length, 108); assert.ok(keys.every((item) => /:(?:<=30s|30-60s|60-120s|>120s)$/.test(item))); assert.equal(deadlineMs, 7); return Object.fromEntries(keys.map((item) => [item, /:(?:unknown|monitor_drop):/.test(item) ? 0 : 1])); } } }));
   assert.equal(calls, 1); assert.equal(result.aggregateAvailable, true); assert.equal(result.denominators.productionAggregate, 84);
 });
 
 test('unknown outcome aggregates cannot stand in for a known production denominator', async () => {
   const result = await evaluateProMonitor(deps({
     aggregateReader: snapshot({ [key('unknown')]: 5 }),
-    logQuery: async () => ({}),
+    logQuery: validLogs,
   }));
   assert.equal(result.denominators.productionAggregate, 0);
   assert.deepEqual(result.triggers, [{
     trigger: 'monitor_blind', count: 0, window: '30m', evidence: { reason: 'unknown_aggregate' },
   }]);
+});
+
+test('known traffic mixed with unknown or dropped aggregates remains monitor-blind', async () => {
+  const completed = key('completed');
+  for (const extra of ['unknown', 'monitor_drop']) {
+    const result = await evaluateProMonitor(deps({
+      aggregateReader: snapshot({ [completed]: 1, [key(extra)]: 1 }),
+      logQuery: validLogs,
+    }));
+    assert.equal(result.denominators.productionAggregate, 0);
+    assert.deepEqual(result.triggers, [{
+      trigger: 'monitor_blind', count: 0, window: '30m', evidence: { reason: 'aggregate_classification_unavailable' },
+    }]);
+  }
+});
+
+test('aggregate sums fail closed instead of overflowing into false traffic', async () => {
+  const first = key('completed');
+  const second = key('terminal_failed');
+  const result = await evaluateProMonitor(deps({
+    aggregateReader: snapshot({ [first]: Number.MAX_SAFE_INTEGER, [second]: 1 }),
+    logQuery: validLogs,
+  }));
+  assert.equal(result.aggregateAvailable, false);
+  assert.equal(result.denominators.productionAggregate, 0);
+  assert.equal(result.histogram.n, 0);
+  assert.deepEqual(result.triggers, [{
+    trigger: 'monitor_blind', count: 0, window: '30m', evidence: { reason: 'aggregate_overflow' },
+  }]);
+});
+
+test('invalid log counters are unavailable rather than coerced to zero', async () => {
+  for (const malformed of [undefined, null, -1, 1.5, '1', Number.MAX_SAFE_INTEGER + 1, true]) {
+    const result = await evaluateProMonitor(deps({
+      aggregateReader: snapshot({ [key()]: 1 }),
+      logQuery: async ({ window }) => window === '15m'
+        ? { numberSafety: malformed, entitlementNonOk: 0, entitlementTotal: 0 }
+        : { monitorDrop: 0 },
+    }));
+    assert.equal(result.adapters.safetyEntitlementLogs, false, String(malformed));
+    assert.deepEqual(result.triggers, [{
+      trigger: 'monitor_blind', count: 1, window: '30m', evidence: { reason: 'log_unavailable' },
+    }], String(malformed));
+  }
 });
 
 test('free and BYOK rate denominators expand sampled successes but keep failures at census weight', async () => {
@@ -106,9 +151,9 @@ test('queries distinct 15m safety and 30m drop windows with explicit availabilit
 test('only exact camelCase log aggregate keys drive monitor thresholds', async () => {
   const aggregateReader = snapshot({ [key()]: 1 });
   const snakeCase = await evaluateProMonitor(deps({ aggregateReader, logQuery: async ({ window }) => window === '15m' ? { number_safety: 1, entitlement_non_ok: 5, entitlement_total: 20 } : { monitor_drop: 3 } }));
-  assert.deepEqual(snakeCase.adapters, { aggregate: true, safetyEntitlementLogs: true, monitorDropLogs: true });
+  assert.deepEqual(snakeCase.adapters, { aggregate: true, safetyEntitlementLogs: false, monitorDropLogs: false });
   assert.deepEqual(snakeCase.denominators, { productionAggregate: 1, entitlementTotal: 0, entitlementNonOk: 0, histogram: 1, numberSafety: 0, monitorDrop: 0 });
-  assert.deepEqual(snakeCase.triggers, []);
+  assert.deepEqual(snakeCase.triggers, [{ trigger: 'monitor_blind', count: 1, window: '30m', evidence: { reason: 'log_unavailable' } }]);
 
   const camelCase = await evaluateProMonitor(deps({ aggregateReader, logQuery: async ({ window }) => window === '15m' ? { numberSafety: 1, entitlementNonOk: 5, entitlementTotal: 20 } : { monitorDrop: 3 } }));
   assert.deepEqual(camelCase.denominators, { productionAggregate: 1, entitlementTotal: 20, entitlementNonOk: 5, histogram: 1, numberSafety: 1, monitorDrop: 3 });
@@ -118,23 +163,23 @@ test('only exact camelCase log aggregate keys drive monitor thresholds', async (
 test('aggregate and control namespaces are channel and tier scoped', async () => {
   const shared = { at: NOW, outcome: 'completed', latencyBucket: '<=30s' };
   assert.notEqual(aggregateKey({ ...shared, channel: 'production', tier: 'pro' }), aggregateKey({ ...shared, channel: 'production', tier: 'free' }));
-  const control = store(); await evaluateProMonitor(deps({ controlStore: control, tier: 'free', logQuery: async () => ({ numberSafety: 1 }) }));
+  const control = store(); await evaluateProMonitor(deps({ controlStore: control, tier: 'free', logQuery: async ({ window }) => window === '30m' ? { monitorDrop: 0 } : { numberSafety: 1, entitlementNonOk: 0, entitlementTotal: 0 } }));
   assert.ok([...control.values.keys()].every((item) => item.startsWith('patina:monctl:v1:production:free:')));
 });
 
 test('concurrent monitor calls acquire a single atomic dedup lease', async () => {
-  const control = store(); let sends = 0; const common = deps({ controlStore: control, aggregateReader: snapshot({ [key()]: 1 }), logQuery: async () => ({ numberSafety: 1 }), discordSender: async () => { sends += 1; return { status: 204, receiptId: 'alert-a' }; } });
+  const control = store(); let sends = 0; const common = deps({ controlStore: control, aggregateReader: snapshot({ [key()]: 1 }), logQuery: ({ window }) => window === '30m' ? { monitorDrop: 0 } : { numberSafety: 1, entitlementNonOk: 0, entitlementTotal: 0 }, discordSender: async () => { sends += 1; return { status: 204, receiptId: 'alert-a' }; } });
   const [first, second] = await Promise.all([evaluateProMonitor(common), evaluateProMonitor(common)]);
   assert.equal(sends, 1); assert.equal(first.alerts[0].sent || second.alerts[0].sent, true); assert.equal(first.alerts[0].deduped || second.alerts[0].deduped, true);
 });
 
 test('failed delivery releases lease and never activates or recovers', async () => {
-  const control = store(); const failed = await evaluateProMonitor(deps({ controlStore: control, aggregateReader: snapshot({ [key()]: 1 }), logQuery: async () => ({ numberSafety: 1 }), discordSender: async () => ({ status: 500 }) }));
+  const control = store(); const failed = await evaluateProMonitor(deps({ controlStore: control, aggregateReader: snapshot({ [key()]: 1 }), logQuery: ({ window }) => window === '30m' ? { monitorDrop: 0 } : { numberSafety: 1, entitlementNonOk: 0, entitlementTotal: 0 }, discordSender: async () => ({ status: 500 }) }));
   assert.equal(failed.alertReceiptIds.length, 0); assert.equal(control.values.has('patina:monctl:v1:production:pro:active'), false); assert.equal([...control.values.keys()].some((item) => item.includes(':recovery')), false);
 });
 
 test('ACK receipt IDs are active state and recovery links them only after Discord ACK', async () => {
-  const control = store(); const alert = await evaluateProMonitor(deps({ controlStore: control, aggregateReader: snapshot({ [key()]: 1 }), logQuery: async () => ({ numberSafety: 1 }), discordSender: async () => ({ status: 204, receiptId: 'alert-ack' }) }));
+  const control = store(); const alert = await evaluateProMonitor(deps({ controlStore: control, aggregateReader: snapshot({ [key()]: 1 }), logQuery: ({ window }) => window === '30m' ? { monitorDrop: 0 } : { numberSafety: 1, entitlementNonOk: 0, entitlementTotal: 0 }, discordSender: async () => ({ status: 204, receiptId: 'alert-ack' }) }));
   assert.deepEqual(alert.alertReceiptIds, ['alert-ack']); assert.deepEqual(control.values.get('patina:monctl:v1:production:pro:active'), ['alert-ack']);
   for (const keyName of [...control.values.keys()]) if (keyName.includes(':dedup:')) control.values.delete(keyName);
   let recoverySends = 0;
@@ -163,7 +208,7 @@ test('offline recovery drill exposes an injected failure and then restored healt
   const recovered = await evaluateProMonitor(deps({
     controlStore,
     aggregateReader,
-    logQuery: async () => ({ numberSafety: 0, entitlementNonOk: 0, entitlementTotal: 0, monitorDrop: 0 }),
+    logQuery: validLogs,
     discordSender: async (payload) => {
       sent.push(payload.trigger);
       return { status: 204, receiptId: `drill-${payload.trigger}` };
@@ -177,7 +222,7 @@ test('offline recovery drill exposes an injected failure and then restored healt
 test('new ACKs retain safe active receipts for complete recovery linkage', async () => {
   const control = store();
   control.values.set('patina:monctl:v1:production:pro:active', ['prior-ack', 'prior-ack', 'unsafe receipt']);
-  const alerted = await evaluateProMonitor(deps({ controlStore: control, aggregateReader: snapshot({ [key()]: 1 }), logQuery: async () => ({ numberSafety: 1 }), discordSender: async () => ({ status: 204, receiptId: 'new-ack' }) }));
+  const alerted = await evaluateProMonitor(deps({ controlStore: control, aggregateReader: snapshot({ [key()]: 1 }), logQuery: ({ window }) => window === '30m' ? { monitorDrop: 0 } : { numberSafety: 1, entitlementNonOk: 0, entitlementTotal: 0 }, discordSender: async () => ({ status: 204, receiptId: 'new-ack' }) }));
   const active = control.values.get('patina:monctl:v1:production:pro:active');
   assert.deepEqual(alerted.alertReceiptIds, ['new-ack']); assert.deepEqual(active, ['prior-ack', 'new-ack']); assert.ok(Object.isFrozen(active));
   const recovered = await evaluateProMonitor(deps({ controlStore: control, aggregateReader: snapshot({ [key()]: 1 }), discordSender: async () => ({ status: 204, receiptId: 'recovery-ack' }) }));
@@ -203,6 +248,7 @@ test('a budget-skipped probe neither runs, grows, nor resets the synthetic strea
   assert.equal(second.syntheticTerminal, 'failed');
   assert.equal(second.syntheticStreak, 1, 'skipped run must preserve the streak');
   assert.ok(!second.triggers.some(({ trigger }) => trigger === 'synthetic_failure'));
+  assert.equal(control.values.get('patina:monctl:v1:production:pro:synthetic-streak'), 1);
 });
 
 test('blind adapters skip the paid probe entirely (2026-07-23 burn regression)', async () => {
@@ -232,11 +278,13 @@ test('overlapping quarter buckets include the exact boundary and both adjacent m
   assert.deepEqual(overlappingQuarterBuckets('2026-07-15T11:59:59.999Z'), ['20260715T1115Z', '20260715T1130Z', '20260715T1145Z']);
   assert.deepEqual(overlappingQuarterBuckets('2026-07-15T12:00:00.000Z'), ['20260715T1130Z', '20260715T1145Z', '20260715T1200Z']);
   assert.deepEqual(overlappingQuarterBuckets('2026-07-15T12:00:00.001Z'), ['20260715T1130Z', '20260715T1145Z', '20260715T1200Z']);
+  assert.deepEqual(overlappingQuarterBuckets('2026-07-15T12:14:59.999Z'), ['20260715T1130Z', '20260715T1145Z', '20260715T1200Z']);
+  assert.deepEqual(overlappingQuarterBuckets('2026-07-15T12:15:00.000Z'), ['20260715T1145Z', '20260715T1200Z', '20260715T1215Z']);
 });
 
 test('a sparse oldest overlap is fresh through its bucket end and stale once it leaves the window', async () => {
   const oldest = aggregateKey({ channel: 'production', tier: 'pro', at: '20260715T1130Z', outcome: 'completed', latencyBucket: '<=30s' });
-  const common = { aggregateReader: snapshot({ [oldest]: 1 }), logQuery: async () => ({}) };
+  const common = { aggregateReader: snapshot({ [oldest]: 1 }), logQuery: validLogs };
   const fresh = await evaluateProMonitor(deps({ ...common, clock: () => new Date('2026-07-15T12:00:00.000Z') }));
   const stale = await evaluateProMonitor(deps({ ...common, clock: () => new Date('2026-07-15T12:15:00.000Z') }));
   assert.equal(fresh.denominators.productionAggregate, 1);
@@ -251,8 +299,8 @@ test('production and staging aggregate snapshots cannot cross-read', async () =>
     requestedChannels.push(new Set(keys.map((item) => item.split(':')[3])));
     return Object.fromEntries(keys.map((item) => [item, item === production ? 1 : 0]));
   } };
-  const productionResult = await evaluateProMonitor(deps({ aggregateReader, logQuery: async () => ({}) }));
-  const stagingResult = await evaluateProMonitor(deps({ channel: 'staging', aggregateReader, logQuery: async () => ({}) }));
+  const productionResult = await evaluateProMonitor(deps({ aggregateReader, logQuery: validLogs }));
+  const stagingResult = await evaluateProMonitor(deps({ channel: 'staging', aggregateReader, logQuery: validLogs }));
   assert.equal(productionResult.denominators.productionAggregate, 1);
   assert.equal(stagingResult.denominators.productionAggregate, 0);
   assert.deepEqual([...requestedChannels[0]], ['production']);
@@ -266,7 +314,7 @@ test('unavailable log queries with a positive aggregate have only the log-unavai
 });
 
 test('monitor drops are isolated from zero-aggregate blindness', async () => {
-  const result = await evaluateProMonitor(deps({ aggregateReader: snapshot({ [key()]: 1 }), logQuery: async ({ window }) => window === '30m' ? { monitorDrop: 3 } : {} }));
+  const result = await evaluateProMonitor(deps({ aggregateReader: snapshot({ [key()]: 1 }), logQuery: async ({ window }) => window === '30m' ? { monitorDrop: 3 } : { numberSafety: 0, entitlementNonOk: 0, entitlementTotal: 0 } }));
   assert.equal(result.denominators.productionAggregate, 1);
   assert.deepEqual(result.triggers, [{ trigger: 'monitor_blind', count: 3, window: '30m', evidence: { reason: 'monitor_drop' } }]);
 });
@@ -274,8 +322,8 @@ test('monitor drops are isolated from zero-aggregate blindness', async () => {
 test('conservative p95 and tail thresholds distinguish one slow request at n=10 from exactly five percent at n=20', async () => {
   const slow = aggregateKey({ channel: 'production', tier: 'pro', at: '20260715T1200Z', outcome: 'completed', latencyBucket: '>120s' });
   const fast = aggregateKey({ channel: 'production', tier: 'pro', at: '20260715T1200Z', outcome: 'completed', latencyBucket: '<=30s' });
-  const n10 = await evaluateProMonitor(deps({ aggregateReader: snapshot({ [fast]: 9, [slow]: 1 }), logQuery: async () => ({}) }));
-  const n20 = await evaluateProMonitor(deps({ aggregateReader: snapshot({ [fast]: 19, [slow]: 1 }), logQuery: async () => ({}) }));
+  const n10 = await evaluateProMonitor(deps({ aggregateReader: snapshot({ [fast]: 9, [slow]: 1 }), logQuery: validLogs }));
+  const n20 = await evaluateProMonitor(deps({ aggregateReader: snapshot({ [fast]: 19, [slow]: 1 }), logQuery: validLogs }));
   assert.deepEqual(n10.triggers.map(({ trigger }) => trigger), ['p95_latency', 'latency_tail']);
   assert.deepEqual(n20.triggers, []);
 });
@@ -293,7 +341,7 @@ test('a shared store isolates channel snapshots, stale counts, and alert control
   const common = {
     aggregateReader,
     controlStore: control,
-    logQuery: async () => ({ numberSafety: 1 }),
+    logQuery: ({ window }) => window === '30m' ? { monitorDrop: 0 } : { numberSafety: 1, entitlementNonOk: 0, entitlementTotal: 0 },
     discordSender: async (payload) => { sent.push(payload); return { status: 204, receiptId: `${payload.channel}-${payload.trigger}` }; },
   };
   const production = await evaluateProMonitor(deps(common));
@@ -351,7 +399,7 @@ test('dedup lease expires exactly at the one-hour boundary', async () => {
     clock: () => new Date(nowMs),
     controlStore,
     aggregateReader: { async snapshot(keys) { return Object.fromEntries(keys.map((item) => [item, item.endsWith(':completed:<=30s') ? 1 : 0])); } },
-    logQuery: async () => ({ numberSafety: 1 }),
+    logQuery: ({ window }) => window === '30m' ? { monitorDrop: 0 } : { numberSafety: 1, entitlementNonOk: 0, entitlementTotal: 0 },
     discordSender: async () => { sends += 1; return { status: 204, receiptId: `alert-${sends}` }; },
   });
   const first = await evaluateProMonitor(common);
@@ -379,7 +427,7 @@ test('active acknowledgements retain recovery linkage at the exact one-hour dedu
     async acknowledge(leaseKey, leaseValue, keyName, receiptId, ttl) { if (leases.get(leaseKey)?.value !== leaseValue) return false; ackTtls.push(ttl); values.set(keyName, Object.freeze([...(values.get(keyName) ?? []), receiptId])); activeExpiry.set(keyName, nowMs + ttl); return true; },
     async completeRecovery(keyName, recoveryKey, recoveryValue, expectedActiveIds, recovery) { if (JSON.stringify(values.get(keyName)) !== JSON.stringify(expectedActiveIds) || leases.get(recoveryKey)?.value !== recoveryValue) return false; values.set(recoveryKey, recovery); values.set(keyName, Object.freeze([])); return true; },
   };
-  const common = deps({ clock: () => new Date(nowMs), controlStore, aggregateReader: { async snapshot(keys) { return Object.fromEntries(keys.map((item) => [item, item.endsWith(':completed:<=30s') ? 1 : 0])); } }, logQuery: async () => ({ numberSafety: nowMs === NOW.getTime() ? 1 : 0 }), discordSender: async (payload) => ({ status: 204, receiptId: payload.trigger === 'monitor_recovered' ? 'recovery-a' : 'alert-a' }) });
+  const common = deps({ clock: () => new Date(nowMs), controlStore, aggregateReader: { async snapshot(keys) { return Object.fromEntries(keys.map((item) => [item, item.endsWith(':completed:<=30s') ? 1 : 0])); } }, logQuery: ({ window }) => window === '30m' ? { monitorDrop: 0 } : { numberSafety: nowMs === NOW.getTime() ? 1 : 0, entitlementNonOk: 0, entitlementTotal: 0 }, discordSender: async (payload) => ({ status: 204, receiptId: payload.trigger === 'monitor_recovered' ? 'recovery-a' : 'alert-a' }) });
   await evaluateProMonitor(common);
   nowMs += 3_600_000;
   const recovered = await evaluateProMonitor(common);
@@ -398,16 +446,16 @@ test('rejects malformed MGET counters as an unavailable whole snapshot', async (
 test('ambiguous leases and failed alert release abort evaluation without an acknowledgement', async () => {
   const ambiguous = store();
   ambiguous.acquire = async () => undefined;
-  await assert.rejects(() => evaluateProMonitor(deps({ controlStore: ambiguous, logQuery: async () => ({ numberSafety: 1 }) })), /ambiguous control lease acquisition/);
+  await assert.rejects(() => evaluateProMonitor(deps({ controlStore: ambiguous, logQuery: ({ window }) => window === '30m' ? { monitorDrop: 0 } : { numberSafety: 1, entitlementNonOk: 0, entitlementTotal: 0 } })), /ambiguous control lease acquisition/);
   const releaseFailure = store();
   releaseFailure.release = async () => false;
-  await assert.rejects(() => evaluateProMonitor(deps({ controlStore: releaseFailure, logQuery: async () => ({ numberSafety: 1 }), discordSender: async () => ({ status: 500 }) })), /control lease release failed/);
+  await assert.rejects(() => evaluateProMonitor(deps({ controlStore: releaseFailure, logQuery: ({ window }) => window === '30m' ? { monitorDrop: 0 } : { numberSafety: 1, entitlementNonOk: 0, entitlementTotal: 0 }, discordSender: async () => ({ status: 500 }) })), /control lease release failed/);
   assert.equal(releaseFailure.values.has('patina:monctl:v1:production:pro:active'), false);
 });
 test('failed atomic acknowledgement never reports an alert receipt', async () => {
   const control = store();
   control.acknowledge = async () => false;
-  await assert.rejects(() => evaluateProMonitor(deps({ controlStore: control, logQuery: async () => ({ numberSafety: 1 }) })), /alert acknowledgement failed/);
+  await assert.rejects(() => evaluateProMonitor(deps({ controlStore: control, logQuery: ({ window }) => window === '30m' ? { monitorDrop: 0 } : { numberSafety: 1, entitlementNonOk: 0, entitlementTotal: 0 } })), /alert acknowledgement failed/);
   assert.equal(control.values.has('patina:monctl:v1:production:pro:active'), false);
 });
 test('recovery completion failure preserves active state and propagates', async () => {
@@ -440,7 +488,7 @@ test('prepares closed alert evidence after delivery and before atomic acknowledg
   const result = await evaluateProMonitor(deps({
     controlStore: control,
     aggregateReader: snapshot({ [key()]: 1 }),
-    logQuery: async () => ({ numberSafety: 1, entitlementTotal: 19, entitlementNonOk: 5 }),
+    logQuery: ({ window }) => window === '30m' ? { monitorDrop: 0 } : { numberSafety: 1, entitlementTotal: 19, entitlementNonOk: 5 },
     discordSender: async () => { events.push('discord'); return { status: 204, receiptId: 'alert-a' }; },
     prepareAlertEvidence: (fact) => {
       events.push('prepare');
@@ -461,7 +509,7 @@ test('invalid alert preparation releases the lease and does not acknowledge', as
   const release = control.release.bind(control);
   control.release = async (...args) => { released = true; return release(...args); };
   control.acknowledge = async () => { acknowledged = true; return true; };
-  await assert.rejects(() => evaluateProMonitor(deps({ controlStore: control, logQuery: async () => ({ numberSafety: 1 }), prepareAlertEvidence: () => null })), /evidence preparation failed/);
+  await assert.rejects(() => evaluateProMonitor(deps({ controlStore: control, logQuery: ({ window }) => window === '30m' ? { monitorDrop: 0 } : { numberSafety: 1, entitlementNonOk: 0, entitlementTotal: 0 }, prepareAlertEvidence: () => null })), /evidence preparation failed/);
   assert.equal(released, true);
   assert.equal(acknowledged, false);
   assert.equal(control.values.has('patina:monctl:v1:production:pro:active'), false);

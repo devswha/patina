@@ -47,9 +47,24 @@ export function aggregateKey({ channel, tier, at = new Date(), outcome, latencyB
   return `${MONITOR_KEY_PREFIX}:${channel}:${tier}:${utc15mBucket(at)}:${outcome}:${latencyBucket}`;
 }
 export const buildAggregateKey = aggregateKey;
+function safeAdd(left, right) {
+  return Number.isSafeInteger(left) && left >= 0 && Number.isSafeInteger(right) && right >= 0 && left <= Number.MAX_SAFE_INTEGER - right
+    ? left + right
+    : null;
+}
 export function latencyHistogram(values = {}) {
-  const counts = {}; let n = 0;
-  for (const bucket of LATENCY_BUCKETS) { const count = Number(values[bucket]); counts[bucket] = Number.isFinite(count) && count > 0 ? Math.floor(count) : 0; n += counts[bucket]; }
+  const counts = {}; let n = 0; let overflow = false;
+  for (const bucket of LATENCY_BUCKETS) {
+    const count = Number(values[bucket]);
+    counts[bucket] = Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+    const next = safeAdd(n, counts[bucket]);
+    if (next === null) overflow = true;
+    else n = next;
+  }
+  if (overflow) {
+    for (const bucket of LATENCY_BUCKETS) counts[bucket] = 0;
+    n = 0;
+  }
   const rank = n === 0 ? 0 : Math.ceil(n * 0.95); let cumulative = 0; let selectedBucket = null;
   for (const bucket of LATENCY_BUCKETS) { cumulative += counts[bucket]; if (rank && cumulative >= rank) { selectedBucket = bucket; break; } }
   const upperBound = selectedBucket === '<=30s' ? '30s' : selectedBucket === '30-60s' ? '60s' : selectedBucket === '60-120s' ? '120s' : selectedBucket === '>120s' ? '>120s' : null;
@@ -182,8 +197,14 @@ async function aggregateSnapshot(reader, keys, deadlineMs) {
 async function queryLogs(logQuery, channel, tier, window) {
   try {
     const result = await logQuery({ channel, tier, window, aggregateOnly: true, readOnly: true });
-    if (!result || typeof result !== 'object' || result.available === false) return { available: false, values: {} };
-    return { available: true, values: result.values && typeof result.values === 'object' ? result.values : result };
+    const values = result?.values && typeof result.values === 'object' && !Array.isArray(result.values) ? result.values : result;
+    const expected = window === '15m'
+      ? ['numberSafety', 'entitlementNonOk', 'entitlementTotal']
+      : ['monitorDrop'];
+    if (!values || typeof values !== 'object' || Array.isArray(values) || result.available === false
+      || Object.keys(values).length !== expected.length || expected.some((key) => !Object.hasOwn(values, key)
+        || !Number.isSafeInteger(values[key]) || values[key] < 0)) return { available: false, values: {} };
+    return { available: true, values };
   } catch { return { available: false, values: {} }; }
 }
 async function sendWithRetry(send, payload, sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay))) { for (let attempt = 1; attempt <= 3; attempt += 1) { try { const response = await send(payload); const status = typeof response === 'number' ? response : response?.status; const receiptId = response?.receiptId ?? response?.id; if (Number.isInteger(status) && status >= 200 && status < 300 && typeof receiptId === 'string' && RECEIPT_ID_PATTERN.test(receiptId)) return { ok: true, attempts: attempt, receiptId }; } catch {} if (attempt < 3) await sleep(attempt * 1000); } return { ok: false, attempts: 3 }; }
@@ -195,17 +216,35 @@ export async function evaluateProMonitor(deps) {
   for (const bucket of buckets) for (const outcome of OBSERVED_OUTCOMES) for (const latencyBucket of OBSERVED_LATENCY_BUCKETS) keys.push(aggregateKey({ channel, tier, at: bucket, outcome, latencyBucket }));
   const aggregate = await aggregateSnapshot(snapshot ? { snapshot } : aggregateReader, keys, Math.max(1, Math.min(Number(deadlineMs) || SNAPSHOT_DEADLINE_MS, SNAPSHOT_DEADLINE_MS)));
   const histogramCounts = Object.fromEntries(LATENCY_BUCKETS.map((bucket) => [bucket, 0]));
-  let productionAggregate = 0; let unknownAggregate = 0; let monitorDropAggregate = 0;
+  let productionAggregate = 0; let unknownAggregate = 0; let monitorDropAggregate = 0; let aggregateOverflow = false;
   if (aggregate.available) for (const key of keys) {
     const value = aggregate.values[key];
     const parts = key.split(':');
     // Unknown classifications and observer delivery drops are evidence that
     // cannot establish a known production request denominator.
-    if (parts[6] === 'unknown') unknownAggregate += value;
-    else if (parts[6] === 'monitor_drop') monitorDropAggregate += value;
-    else productionAggregate += value;
-    if (parts[6] === 'completed' && LATENCY_BUCKETS.includes(parts[7])) histogramCounts[parts[7]] += value;
+    if (parts[6] === 'unknown') unknownAggregate = safeAdd(unknownAggregate, value);
+    else if (parts[6] === 'monitor_drop') monitorDropAggregate = safeAdd(monitorDropAggregate, value);
+    else productionAggregate = safeAdd(productionAggregate, value);
+    if (parts[6] === 'completed' && LATENCY_BUCKETS.includes(parts[7])) histogramCounts[parts[7]] = safeAdd(histogramCounts[parts[7]], value);
+    if (productionAggregate === null || unknownAggregate === null || monitorDropAggregate === null
+      || Object.values(histogramCounts).some((count) => count === null)) aggregateOverflow = true;
   }
+  if (aggregateOverflow) {
+    productionAggregate = 0; unknownAggregate = 0; monitorDropAggregate = 0;
+    for (const bucket of LATENCY_BUCKETS) histogramCounts[bucket] = 0;
+  }
+  const aggregateClassificationUnavailable = productionAggregate > 0
+    && (unknownAggregate > 0 || monitorDropAggregate > 0);
+  if (aggregateClassificationUnavailable) {
+    productionAggregate = 0;
+    for (const bucket of LATENCY_BUCKETS) histogramCounts[bucket] = 0;
+  }
+  const aggregateAvailable = aggregate.available && !aggregateOverflow;
+  const aggregateUnavailableReason = aggregateOverflow
+    ? 'aggregate_overflow'
+    : aggregateClassificationUnavailable
+      ? 'aggregate_classification_unavailable'
+      : null;
   const histogram = latencyHistogram(histogramCounts);
   const safetyLogs = await queryLogs(logQuery, channel, tier, '15m'); const dropLogs = await queryLogs(logQuery, channel, tier, '30m');
   const safety = safetyLogs.values; const drops = dropLogs.values;
@@ -218,26 +257,32 @@ export async function evaluateProMonitor(deps) {
   // probe when blind, and budget it to one per hour otherwise. A skipped
   // probe reports 'failed' (conservative) but neither grows nor resets the
   // persisted streak, so it can never fabricate a synthetic_failure alert.
-  const adaptersBlind = !aggregate.available || !safetyLogs.available || !dropLogs.available;
+  const adaptersBlind = !aggregateAvailable || !safetyLogs.available || !dropLogs.available;
   let syntheticTerminal = 'failed'; let syntheticRan = false;
   if (!adaptersBlind && await acquire(controlStore, controlKey(channel, tier, 'synthetic-probe-budget'), `${now.getTime()}`, ONE_HOUR_MS)) {
     syntheticRan = true;
     try { const response = await syntheticRequest({ channel, tier, text: SYNTHETIC_TEXT, timeoutMs: 60_000 }); syntheticTerminal = response?.terminal === 'done' && response?.ok === true ? 'done' : 'failed'; } catch {}
   }
-  const streakKey = controlKey(channel, tier, 'synthetic-streak'); const storedStreak = persistedStreak(await requiredControl(controlStore, 'get')(streakKey)); if (storedStreak === null) throw new Error('invalid synthetic streak state'); const previousStreak = storedStreak; if (syntheticRan && syntheticTerminal !== 'done' && previousStreak === Number.MAX_SAFE_INTEGER) throw new Error('synthetic streak overflow'); const syntheticStreak = syntheticRan ? (syntheticTerminal === 'done' ? 0 : previousStreak + 1) : previousStreak; if (await requiredControl(controlStore, 'set')(streakKey, syntheticStreak, THIRTY_MINUTES_MS) !== true) throw new Error('synthetic streak persistence failed');
+  const streakKey = controlKey(channel, tier, 'synthetic-streak');
+  const storedStreak = persistedStreak(await requiredControl(controlStore, 'get')(streakKey));
+  if (storedStreak === null) throw new Error('invalid synthetic streak state');
+  const previousStreak = storedStreak;
+  if (syntheticRan && syntheticTerminal !== 'done' && previousStreak === Number.MAX_SAFE_INTEGER) throw new Error('synthetic streak overflow');
+  const syntheticStreak = syntheticRan ? (syntheticTerminal === 'done' ? 0 : previousStreak + 1) : previousStreak;
+  if (syntheticRan && await requiredControl(controlStore, 'set')(streakKey, syntheticStreak, THIRTY_MINUTES_MS) !== true) throw new Error('synthetic streak persistence failed');
   const triggers = [];
   if (numberSafety >= 1) triggers.push({ trigger: 'number_safety', count: numberSafety, window: '15m' });
   if (entitlementTotal >= 20 && entitlementNonOk >= 5) triggers.push({ trigger: 'entitlement_pro', count: entitlementNonOk, window: '15m' });
   if (syntheticStreak >= 3) triggers.push({ trigger: 'synthetic_failure', count: syntheticStreak, window: '30m' });
   if (histogram.n >= 10 && histogram.selectedBucket === '>120s') triggers.push({ trigger: 'p95_latency', count: histogram.n, window: '30m', evidence: { latencyBound: '>120s', rankBand: 'p95' } });
   if (histogram.n >= 10 && histogram.over120Ratio > 0.05) triggers.push({ trigger: 'latency_tail', count: histogram.counts['>120s'], window: '30m', evidence: { ratioBand: '>5pct' } });
-  if (!aggregate.available || !safetyLogs.available || !dropLogs.available || productionAggregate === 0 || monitorDrop >= 3) {
+  if (!aggregateAvailable || !safetyLogs.available || !dropLogs.available || productionAggregate === 0 || monitorDrop >= 3) {
     const unavailable = !aggregate.available || !safetyLogs.available || !dropLogs.available;
     const unknownOnly = productionAggregate === 0 && (unknownAggregate > 0 || monitorDropAggregate > 0);
-    const reason = !aggregate.available ? 'aggregate_unavailable'
+    const reason = !aggregateAvailable ? (aggregateOverflow ? 'aggregate_overflow' : 'aggregate_unavailable')
       : !safetyLogs.available || !dropLogs.available ? 'log_unavailable'
         : monitorDrop >= 3 ? 'monitor_drop'
-          : unknownOnly ? 'unknown_aggregate' : 'no_production_aggregate';
+          : aggregateUnavailableReason ?? (unknownOnly ? 'unknown_aggregate' : 'no_production_aggregate');
     // Keep the receipt contract's monitor-blind count tied to the
     // log-derived monitorDrop value; unknown aggregate classifications are
     // exposed through the reason but cannot masquerade as delivery drops.
@@ -245,9 +290,9 @@ export async function evaluateProMonitor(deps) {
     triggers.push({ trigger: 'monitor_blind', count, window: '30m', evidence: { reason } });
   }
   const denominators = { productionAggregate, entitlementTotal, entitlementNonOk, histogram: histogram.n, numberSafety, monitorDrop };
-  const adapters = { aggregate: aggregate.available, safetyEntitlementLogs: safetyLogs.available, monitorDropLogs: dropLogs.available };
+  const adapters = { aggregate: aggregateAvailable, safetyEntitlementLogs: safetyLogs.available, monitorDropLogs: dropLogs.available };
   const logWindows = { safetyEntitlement: { window: '15m', available: safetyLogs.available, denominator: entitlementTotal }, monitorDrop: { window: '30m', available: dropLogs.available, denominator: productionAggregate } };
-  const realPath = aggregate.available === true && productionAggregate > 0;
+  const realPath = aggregateAvailable === true && productionAggregate > 0;
   const alerts = []; const ackedReceiptIds = []; const activeKey = controlKey(channel, tier, 'active');
   for (const item of triggers) {
     const leaseKey = controlKey(channel, tier, `dedup:${item.trigger}`); const leaseValue = `${now.getTime()}-${item.trigger}`;
@@ -275,7 +320,7 @@ export async function evaluateProMonitor(deps) {
       }
     }
   }
-  return { channel, tier, buckets, keys: Object.freeze([...keys]), aggregateAvailable: aggregate.available, histogram, denominators, adapters, logWindows, syntheticTerminal, syntheticStreak, triggers, alerts, recovery, alertReceiptIds: safeReceiptIds(ackedReceiptIds), recoveryReceiptId: recovery?.receiptId ?? null };
+  return { channel, tier, buckets, keys: Object.freeze([...keys]), aggregateAvailable, histogram, denominators, adapters, logWindows, syntheticTerminal, syntheticStreak, triggers, alerts, recovery, alertReceiptIds: safeReceiptIds(ackedReceiptIds), recoveryReceiptId: recovery?.receiptId ?? null };
 }
 
 /**
@@ -335,29 +380,42 @@ export async function evaluateFreeTierHealth(deps) {
   let quotaDenied = 0;
   let monitorDrops = 0;
   let unknownOutcomes = 0;
+  let aggregateOverflow = false;
   if (aggregate.available) {
     for (const key of keys) {
       const value = number(aggregate.values[key]);
       if (!value) continue;
       const outcome = key.split(':')[6];
-      if (outcome === 'completed') sampledSuccess += value;
-      else if (outcome === 'quota_denied') quotaDenied += value;
-      else if (outcome === 'monitor_drop') monitorDrops += value;
-      else if (outcome === 'unknown') unknownOutcomes += value;
-      else failed += value;
+      if (outcome === 'completed') sampledSuccess = safeAdd(sampledSuccess, value);
+      else if (outcome === 'quota_denied') quotaDenied = safeAdd(quotaDenied, value);
+      else if (outcome === 'monitor_drop') monitorDrops = safeAdd(monitorDrops, value);
+      else if (outcome === 'unknown') unknownOutcomes = safeAdd(unknownOutcomes, value);
+      else failed = safeAdd(failed, value);
+      if ([sampledSuccess, failed, quotaDenied, monitorDrops, unknownOutcomes].some((count) => count === null)) aggregateOverflow = true;
     }
+  }
+
+  const aggregateAvailable = aggregate.available && !aggregateOverflow;
+  if (aggregateOverflow) {
+    sampledSuccess = 0;
+    failed = 0;
+    quotaDenied = 0;
+    monitorDrops = 0;
+    unknownOutcomes = 0;
   }
 
   // A sampled success is an estimate of the twenty-request stratum, while a
   // failure is a full-census event. Keep the raw sample and its expansion
   // visible so callers cannot mistake the observed success count for a census.
-  const sampledSuccessEstimate = sampledSuccess <= Number.MAX_SAFE_INTEGER / LOW_TIER_SUCCESS_SAMPLE_SIZE
+  const sampledSuccessEstimate = Number.isSafeInteger(sampledSuccess)
+    && sampledSuccess <= Number.MAX_SAFE_INTEGER / LOW_TIER_SUCCESS_SAMPLE_SIZE
     ? sampledSuccess * LOW_TIER_SUCCESS_SAMPLE_SIZE
     : null;
   const totalAvailable = sampledSuccessEstimate !== null
+    && Number.isSafeInteger(failed)
     && failed <= Number.MAX_SAFE_INTEGER - sampledSuccessEstimate;
-  const total = totalAvailable ? sampledSuccessEstimate + failed : 0;
-  const rateAvailable = aggregate.available === true
+  const total = aggregateAvailable && totalAvailable ? sampledSuccessEstimate + failed : 0;
+  const rateAvailable = aggregateAvailable === true
     && sampledSuccessEstimate !== null
     && totalAvailable
     && total > 0
@@ -416,7 +474,7 @@ export async function evaluateFreeTierHealth(deps) {
 
   return {
     channel, tier, buckets,
-    aggregateAvailable: aggregate.available,
+    aggregateAvailable,
     denominators: { total, failed },
     rate,
     canaryTerminal,

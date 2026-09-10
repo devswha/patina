@@ -104,13 +104,41 @@ patina --backend kimi-cli --lang ko input.txt
 patina --model kimi --lang ko input.txt     # routes to kimi-cli, uses backend default
 ```
 
+## agy-cli backend (Antigravity CLI)
+
+Spawns local [`agy`](https://antigravity.google/docs/cli) (Google's Antigravity
+CLI, the successor of Gemini CLI for unpaid and Google One accounts) in headless
+mode. Authentication is the Google sign-in cached by an interactive `agy`
+session; no API key is read. The Antigravity catalog mixes families
+(`gemini-3.8-flash-*`, `gemini-3.7-flash-*`, `gemini-3.1-pro-*`,
+`claude-sonnet-4-6`, `gpt-oss-120b-medium`; run `agy models`), so selection is
+explicit: `--backend agy-cli` or `--model agy`. `--model gemini-*` still routes
+to `gemini-cli`. The default model is `gemini-3.7-flash-medium`; the suffix is
+Antigravity's reasoning-effort tier.
+
+```bash
+agy                                        # one-time interactive sign-in
+patina auth login agy-cli                  # same, with confirmation
+patina --backend agy-cli --lang ko input.txt
+patina --backend agy-cli --model gemini-3.8-flash-high --lang ko input.txt
+```
+
+Notes: the prompt travels on stdin as a `stream-json` user event, never as an
+argv value. Each call runs from a fresh temp directory with a workspace-local
+custom agent (`.agents/agents/patina-text.md`, `commandExecutionPolicy: off`)
+whose system prompt forbids tools. Antigravity headless mode auto-denies any
+tool that would need a permission prompt (commands, URLs, MCP), and the adapter
+rejects a turn outright if the stream shows any tool step or an empty
+response, so a denied tool never becomes a silent empty rewrite. Image input
+is not supported. Default max concurrency `1`, retries `0`.
+
 Use `--yes` only for automation where the launch is already intentional:
 
 ```bash
 patina auth login codex-cli --yes
 ```
 
-> **Mode support:** `codex-cli`, `claude-cli`, `gemini-cli`, and `kimi-cli` can be used as rewrite backends without `PATINA_API_KEY` when their local CLIs are already authenticated.
+> **Mode support:** `codex-cli`, `claude-cli`, `gemini-cli`, `kimi-cli`, and `agy-cli` can be used as rewrite backends without `PATINA_API_KEY` when their local CLIs are already authenticated.
 
 For large rewrite batches, prefer `openai-http` or another stateless
 OpenAI-compatible HTTP provider over local agent CLIs. Batch mode exposes

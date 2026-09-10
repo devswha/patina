@@ -858,7 +858,7 @@ MODEL & AUTH
   --model <id>            Single model ID. Defaults use the strongest
                           documented model per backend: openai/codex gpt-5.5,
                           claude-sonnet-4-6, gemini-2.5-pro,
-                          kimi-code/kimi-for-coding.
+                          kimi-code/kimi-for-coding, agy gemini-3.7-flash-medium.
   --api-key-file <path>   Read API key from file (recommended)
   --base-url <url>        API base URL (or PATINA_API_BASE env)
   --backend <name[,name]> Backend or explicit fallback chain:

@@ -105,6 +105,29 @@ patina --backend kimi-cli --lang ko input.txt
 patina --model kimi --lang ko input.txt     # kimi-cli로 라우팅하고 backend 기본값 사용
 ```
 
+## agy-cli backend (Antigravity CLI)
+
+로컬 [`agy`](https://antigravity.google/docs/cli)(Google Antigravity CLI — 무료 및 Google One 계정의 Gemini CLI 후속)를
+headless 모드로 실행합니다. 인증은 대화형 `agy` 세션에서 한 번 로그인한 Google 계정을 쓰며 API 키는
+읽지 않습니다. Antigravity 카탈로그는 여러 계열이 섞여 있어(`gemini-3.8-flash-*`, `gemini-3.7-flash-*`,
+`gemini-3.1-pro-*`, `claude-sonnet-4-6`, `gpt-oss-120b-medium`; `agy models`로 확인) 선택은 명시적으로만
+합니다: `--backend agy-cli` 또는 `--model agy`. `--model gemini-*`는 여전히 `gemini-cli`로 갑니다.
+기본 모델은 `gemini-3.7-flash-medium`이고 접미사는 Antigravity의 reasoning effort 등급입니다.
+
+```bash
+agy                                        # one-time interactive sign-in
+patina auth login agy-cli                  # same, with confirmation
+patina --backend agy-cli --lang ko input.txt
+patina --backend agy-cli --model gemini-3.8-flash-high --lang ko input.txt
+```
+
+참고: 프롬프트는 argv가 아니라 stdin의 `stream-json` user 이벤트로 전달됩니다. 호출마다 새 임시
+디렉터리에서 실행되며, 도구 사용을 금지하는 워크스페이스 전용 커스텀 에이전트
+(`.agents/agents/patina-text.md`, `commandExecutionPolicy: off`)를 씁니다. Antigravity headless 모드는
+권한 확인이 필요한 도구(명령, URL, MCP)를 자동 거부하고, 어댑터는 스트림에 도구 단계가 하나라도
+보이거나 응답이 비어 있으면 그 턴을 통째로 거부합니다 — 거부된 도구가 빈 재작성으로 조용히 넘어가지
+않습니다. 이미지 입력은 지원하지 않습니다. 기본 동시성 `1`, retry `0`.
+
 자동화에서는 이미 실행 의도가 분명할 때만 `--yes`를 쓰세요.
 
 ```bash

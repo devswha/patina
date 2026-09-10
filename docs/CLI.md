@@ -298,7 +298,7 @@ patina --preview --ocr https://example.com/product
 ```
 
 - Image candidates come from `<img>` sources (including `srcset` and Next.js `/_next/image` wrappers, unwrapped to the original asset), CSS `url(…)` backgrounds scanned only inside `style="…"` attributes and `<style>` blocks (so SVG paint references like `fill="url(#grad)"` and `var(--x)` tokens aren't mistaken for images), and document-wide base64 data URIs (card-news content frequently ships as CSS `background-image` data URIs). Extension-less CDN URLs are accepted and identified by magic-byte sniffing after download — never by the server's claims. SVG is skipped; caps: 8 images per page by priority, 6MB per image, 16MB total.
-- Text extraction runs through an image-capable local CLI backend — `claude-cli`, `gemini-cli`, or `codex-cli` (your selected backend when capable, otherwise the first capable one available). One extra backend call per image; images are staged into the backend's isolated temp dir, preserving the empty-cwd prompt-injection containment. `kimi-cli` and `openai-http` cannot read images. Remote pages can only reference remote (http/https) images — `file:` images are accepted only for local `.html` previews.
+- Text extraction runs through an image-capable local CLI backend — `claude-cli`, `gemini-cli`, or `codex-cli` (your selected backend when capable, otherwise the first capable one available). One extra backend call per image; images are staged into the backend's isolated temp dir, preserving the empty-cwd prompt-injection containment. `kimi-cli`, `agy-cli`, and `openai-http` cannot read images. Remote pages can only reference remote (http/https) images — `file:` images are accepted only for local `.html` previews.
 - Extracted text joins the same rewrite call as extra blocks. Since pixels cannot be rewritten, each changed finding appears in the auto-opened "patina notes" panel as a card embedding **the exact image patina OCR'd** (a thumbnail) next to the extracted text and the suggested rewrite — so findings on carousel slides, lazy-loaded images, or CSS background images are visible regardless of how the snapshot froze. A plain `<img>` in the DOM additionally gets a dashed-bronze `I`-badge in place.
 - stdout never includes OCR text (pipe-safe); the flagged-image count is reported on stderr.
 
@@ -337,6 +337,7 @@ Defaults are intentionally conservative:
 | `claude-cli` | minimal | 1 | 0 |
 | `gemini-cli` | minimal | 2 | 0 |
 | `kimi-cli` | minimal | 1 | 0 |
+| `agy-cli` | minimal | 1 | 0 |
 
 Local CLIs are agent runtimes, not stateless completion APIs. For large rewrite
 batches, prefer an OpenAI-compatible HTTP provider. Override the guardrails only

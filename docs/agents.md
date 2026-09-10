@@ -75,11 +75,17 @@ The normal `/patina` and `/patina --strict` routes remain CLI-first: a failed CL
 run is an error, never an inline rewrite or a silent fallback. The optional
 instruction-only route above is the only host-agent analysis path.
 
-`tests/fixtures/backend-claude-contract.json` records the observed
-`claude --version` result (`2.1.261`) as **version-only / unverified**. It is a
-synthetic contract fixture, not an invocation recording: it contains no
-credentials, prompts, model response, or raw CLI output. The evidence must stay
-separate from these runtime distinctions:
+`tests/fixtures/backend-claude-contract.json` was a **version-only /
+unverified** record of `claude --version` (`2.1.261`) on 2026-09-09; on
+2026-09-10 it became a **real-invocation / verified** record for that same
+version (`claude-sonnet-4-6`, subscription OAuth, `--tools ""
+--strict-mcp-config`) with per-scenario evidence in
+`docs/operations/backend-compat-claude-gemini-20260910.json`. The same receipt
+verifies the `openai-http` backend against the loopback OpenCodex proxy route
+`google-antigravity/gemini-3.7-flash`; that is transport evidence for the HTTP
+backend, not `gemini-cli` evidence. Neither fixture contains credentials,
+prompts, model responses, or raw CLI output. The evidence must stay separate
+from these runtime distinctions:
 
 - **Output parsing:** `claude-cli` captures `-p` stdout; Patina's output layer
   removes optional `[BODY]`/`[SELF_AUDIT]` scaffolding and returns the body. A

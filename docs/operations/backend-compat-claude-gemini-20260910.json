@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "recordType": "maintenance-backend-compatibility-pilot",
+  "observedDate": "2026-09-10",
+  "repository": "devswha/patina",
+  "plan": "patina-repo-development-maintenance-plan-final-2026-09-09",
+  "planIds": ["P17b"],
+  "trackingIssue": 783,
+  "supersedes": {
+    "record": "backend-compat-codex-20260910.json",
+    "field": "otherBackends",
+    "entries": ["claude-cli", "gemini-cli"],
+    "note": "claude-cli moves from not-runnable to verified. gemini-cli stays not-exercised; the Gemini model was verified through a different transport (openai-http against the loopback OpenCodex proxy), which is recorded as its own backend/transport pair, not as gemini-cli evidence."
+  },
+  "authority": {
+    "approval": "Maintainer re-authenticated Claude Code and, on 2026-09-10, pointed at the existing loopback OpenCodex proxy as the approved Gemini route (the same policy as docs/operations/remaining-work-20260905.md: loopback OpenCodex with an explicit google-antigravity/ model, no Gemini API key).",
+    "credentialPolicy": "OPENAI_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY and KIMI_API_KEY were unset in the pilot shell. Claude used the subscription OAuth session. The OpenCodex leg used PATINA_API_KEY=opencodex-local (a placeholder the proxy ignores) and PATINA_API_BASE=http://127.0.0.1:10100/v1; no provider key was read or sent.",
+    "budget": {"claudeInvocationsObserved": 7, "opencodexRequestsObserved": 6, "note": "Claude: A 1, B 4 (rewrite, verification, retry rewrite, verification), C 1 (killed), E 1 (rejected). OpenCodex: A 1, B 3 (rewrite + two verification calls), C 1 (aborted), E 1 (404)."}
+  },
+  "environment": {
+    "os": "Linux 6.8.0-138-generic x64",
+    "node": "v24.18.0",
+    "patina": "8.6.0 at dev 0ec1376 (after #798 removed agent tools from local CLI calls)",
+    "claude": "Claude Code 2.1.261, model claude-sonnet-4-6, invoked with --tools \"\" --strict-mcp-config",
+    "opencodex": "opencodex 2.33.0 listening on 127.0.0.1:10100, catalog of 38 routes including google-antigravity/gemini-3.1-pro, gemini-3.7-flash, gemini-3.8-flash-{low,medium,high}; route used: google-antigravity/gemini-3.7-flash",
+    "inputs": ["body of tests/fixtures/suspect-zones/en/ai/en-ai-01.md without frontmatter (EN, burstiness-only fixture)", "body of tests/fixtures/suspect-zones/ko/ai/ko-ai-01.md without frontmatter (424 bytes)"],
+    "inputNote": "Frontmatter was stripped because the earlier codex pilot showed the number-preservation gate rejecting rewrites that drop frontmatter statistics; that is a fixture-file artifact, not a backend property."
+  },
+  "claudeCli": {
+    "status": "verified",
+    "scenarios": [
+      {"id": "A-score", "exitCode": 0, "wallMs": 92076, "observed": "Strict scoring JSON parsed; LLM overall 2.2 (fixture is designed with no catalogued EN pattern)."},
+      {"id": "B-rewrite-verify", "exitCode": 0, "wallMs": 195137, "observed": "verified=true, mps 100, fidelity 100, reason passed-on-retry (one conservative retry)."},
+      {"id": "C-timeout", "exitCode": 1, "wallMs": 1640, "observed": "`claude-cli backend: timed out after 1499ms`; zero claude processes and no new temp directory one second later."},
+      {"id": "E-invalid-in-family-model", "exitCode": 1, "wallMs": 2179, "observed": "claude exited 1 with its model-catalog message; Patina surfaced it as a backend error and cleaned up."}
+    ],
+    "sessionLog": "~/.claude/projects/*patina-claude* sessions for the pilot window: 0 tool_use blocks and 0 mcp__ references in every session, confirming #798's --tools \"\" --strict-mcp-config on a live run. Score prompt cache read ~75k tokens (Claude Code system prompt + Patina score prompt); rewrite/verification ~18-25k.",
+    "sideObservation": "32 stale /tmp/patina-claude-* directories dated 2026-09-05 pre-date this pilot (earlier research runs); the pilot added none. Candidate cleanup, outside this record."
+  },
+  "geminiViaOpenCodex": {
+    "backend": "openai-http",
+    "transport": "loopback OpenCodex proxy",
+    "model": "google-antigravity/gemini-3.7-flash",
+    "status": "verified-for-this-transport",
+    "scenarios": [
+      {"id": "A-score", "exitCode": 0, "wallMs": 7095, "observed": "Strict scoring JSON parsed; LLM overall 0 on the no-pattern fixture."},
+      {"id": "B-rewrite-verify", "exitCode": 0, "wallMs": 12011, "observed": "verified=true, mps 100, fidelity 100, reason passed, no retry."},
+      {"id": "C-timeout", "exitCode": 1, "wallMs": 1611, "observed": "`LLM API deadline exceeded after attempt 1: This operation was aborted`; the HTTP client honoured --timeout-ms."},
+      {"id": "E-invalid-model", "exitCode": 1, "wallMs": 887, "observed": "HTTP 404 from the proxy (`Antigravity invalid request: Requested entity was not found`) surfaced as `LLM API failed after 1 attempts: HTTP 404`."}
+    ],
+    "identityCaveat": "OpenCodex echoes the requested alias as response.model; this record verifies Patina's HTTP contract against that route, not the upstream model identity (same caveat as docs/research/model-guide-20260905.md)."
+  },
+  "notExercised": [
+    {"backend": "gemini-cli", "version": "0.58.0", "reason": "Configured auth type is gemini-api-key, which would consume the product-only GEMINI_API_KEY. The #798 --policy deny-all was verified offline (flag parse) only."},
+    {"backend": "antigravity-cli (agy 1.1.26)", "reason": "Present on the host with an OAuth token, but Patina has no adapter for it; it is not a Patina backend today. Recorded as a candidate, not evidence."},
+    {"backend": "openai-http against api.openai.com", "reason": "Maintainer withdrew the OpenAI key from agent use."},
+    {"backend": "kimi-cli", "reason": "Would need KIMI_API_KEY or the Kimi OAuth session; not authorized in this pilot."}
+  ],
+  "acceptance": {
+    "P17b": "passed for codex-cli (prior record), claude-cli, and openai-http over loopback OpenCodex; gemini-cli and kimi-cli remain unverified",
+    "fixtures": ["tests/fixtures/backend-codex-contract.json", "tests/fixtures/backend-claude-contract.json"],
+    "notCovered": ["gemini-cli", "kimi-cli", "quota/rate-limit behavior", "other operating systems (P16b)", "other CLI versions or models"]
+  },
+  "boundaries": {
+    "productSourceChanged": false,
+    "versionBumped": false,
+    "publication": "none",
+    "researchRevived": false,
+    "credentialsRecorded": "none; auth mode names, placeholder key name, and HTTP status codes only"
+  }
+}

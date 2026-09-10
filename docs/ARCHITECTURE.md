@@ -169,6 +169,98 @@ checks remain global. `--serve` is a `--preview` transport option.
   configuration namespaces. Persona thresholds cover advisory voice quality;
   verification owns MPS/fidelity floors.
 
+## Responsibility and lifecycle map
+
+The repository keeps its current directories; the following map assigns
+responsibility without turning every internal module into a supported API.
+
+| Lifecycle stage | Primary owner | Boundary that must remain true |
+|---|---|---|
+| CLI or HTTP entry | `bin/patina.js`, `src/cli.js`, `api/*.js` | Parse and validate user input before any provider, filesystem, or secret access. |
+| Input and settings | `src/cli/input.js`, `src/loader.js`, `src/config.js`, `src/web-config.js` | Resolve documented defaults and user assets; reject malformed or retired keys instead of silently guessing. |
+| Deterministic analysis | `src/features/**`, `src/prose-core.js`, deterministic scoring helpers | Remain reproducible, network-free, key-free, and independent of Lane B. |
+| Prompt and model execution | `src/prompt-builder.js`, `src/backends/**`, `src/api.js`, `src/streaming-api.js` | Keep credentials, provider calls, retries, and timeouts outside `src/features/**`. |
+| Meaning and quality verification | `src/verify.js`, `src/verification-schema.js`, deterministic meaning guards | Verify the exact candidate that will be emitted; never let Persona, Register, or Document Type lower global safety floors. |
+| Output and transport | `src/output.js`, `src/web-rewrite-contract.js`, `src/web-rewrite-stream.js` | Keep stdout/API terminal states machine-readable and distinguish failure, cancellation, and below-floor results. |
+| Browser presentation | `playground/**` | Use only browser-safe shared modules and the documented HTTP contract; no server secrets or Node-only runtime imports. |
+| Research and maintenance | `scripts/research/**`, `tests/quality/**`, `artifacts/**` | Stay outside product runtime and public consumer contracts; historical evidence is not a runtime default. |
+
+The normal request lifecycle is **entry → input/settings → deterministic
+analysis → (optional) model transform → verification → formatting/transport**.
+The browser follows the same server-side lifecycle over the HTTP contract; it
+does not duplicate the analyzer or carry provider credentials. Research scripts
+may call product modules for measurement, but product runtime must not call
+research modules.
+
+### Import support boundary
+
+The supported Node consumer is the installed `patina`/`patina-cli` command
+(`bin/patina.js`) and the commands and flags documented in
+[`docs/CLI.md`](CLI.md). HTTP consumers use the routes and schemas in
+[`docs/HTTP-API.md`](HTTP-API.md). `src/**` is an implementation namespace:
+deep-importing an internal file is not a compatibility promise unless a
+document explicitly names that module and contract. The same rule applies to
+`scripts/**`, `tests/**`, and generated playground assets.
+
+The public configuration surface is `.patina.yaml` / `--config` with the
+documented `document-type`, `persona`, `register`, verification, and list
+fields. `--config-snapshot` is an internal skill-to-CLI transport and is not a
+replacement public configuration format. The removed v6 keys `profile`, `tone`,
+and `formality` fail with an input error (exit code 2); they are never aliases or
+silent fallbacks. The deterministic `patina inspect` consumer contract emits
+JSON with `schemaVersion`, `language`, `sourceHash`, `deterministicOnly`,
+`offsetEncoding`, `available`, `score`, and `diagnostics`; consumers must check
+the exit code and validate the shape rather than treating a non-empty string as
+proof.
+
+### Machine-checked dependency boundaries
+
+`node scripts/check-architecture.mjs` builds an import graph with the
+repository's ESLint `espree` parser (the checked environment uses espree
+9.6.1). It reads static imports, re-exports, and string-literal dynamic
+imports from `src/`, `api/`, `bin/`, and `playground/`, plus the explicitly
+declared `bin` entries in the root and `packages/patina-humanizer` manifests.
+The published roots therefore include `bin/patina.js`,
+`scripts/precommit-score.mjs` (`patina-score`), and
+`packages/patina-humanizer/bin/patina-humanizer.js`; reachable non-research
+helpers are parsed without scanning all research scripts. A non-literal
+dynamic import, an unresolved local import, a parse/read failure, or a
+declared published bin omitted from the graph is reported as an incomplete
+graph rather than a pass. `--json` is intended for CI evidence and `--root DIR`
+is a fixture seam.
+
+The checker enforces only three reachability rules:
+
+1. `src/features/**` cannot reach model/network transports or network and
+   subprocess built-ins, directly or transitively.
+2. `playground/**` cannot reach server-secret modules, API handlers, or Node
+   built-ins.
+3. `src/**`, `api/**`, `bin/**`, and every declared published package bin
+   cannot reach packaged research modules.
+
+Deterministic shared modules are classified rather than blanket-banned:
+`src/edit-controls.js`, `src/errors.js`, `src/logger.js`,
+`src/model-defaults.js`, `src/web-rewrite-contract.js`,
+`src/personas/gates.js`, and `scripts/prose-score.mjs` are the reviewed
+examples. The current audited exceptions are the lexicon and structural model
+loaders' local `fs`/`path`/`os` reads, browser use of the shared
+`web-rewrite-contract`/`edit-controls` utilities, and inspection's reuse of
+the deterministic prose scorer. Each exception is exact-path and reason
+annotated in the checker; it is not a broad baseline whitelist.
+
+The checker's coverage is intentionally bounded: it does not evaluate runtime
+`eval`, generated code, non-literal module specifiers, package-internal
+resolution, or research modules' own loaders. Unresolved cases remain
+diagnostics and therefore cannot be reported as a complete passing graph.
+
+Type checking follows the same incremental boundary. The browser regression
+module [`tests/browser/playground.test.js`](../tests/browser/playground.test.js)
+is the current checked-JavaScript pilot: it uses `// @ts-check` and focused
+Playwright JSDoc types so the existing root `tsconfig.json` can catch a real
+async contract error (for example, a missing `await`). This is evidence for
+that test module only, not a claim that all JavaScript is type-checked and not
+a reason to add a second project-wide TypeScript configuration.
+
 ### Packaged research comparator (unsupported)
 
 - `scripts/iterative-rewrite-baseline.mjs` — `iterative-baseline`, a packaged

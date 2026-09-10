@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "recordType": "maintenance-client-acceptance",
+  "observedDate": "2026-09-10",
+  "repository": "devswha/patina",
+  "plan": "patina-repo-development-maintenance-plan-final-2026-09-09",
+  "planIds": ["P01"],
+  "trackingIssue": 783,
+  "supersedes": {
+    "record": "maintenance-delivery-20260910.json",
+    "field": "remainingAcceptance",
+    "priorStatus": "inconclusive",
+    "priorReason": "Actual Cursor/client rule loading needs the client environment; installed generated content and helper paths are verified."
+  },
+  "environment": {
+    "os": "Linux 6.8.0-138-generic x64",
+    "client": "Cursor Agent CLI 2026.09.08-6caf4ff (cursor-agent; no Cursor IDE installation)",
+    "node": "v24.18.0",
+    "installedSkillCommit": "46f5c4dcd29fbd9fe62ecefd1970f0ac4a6085f7",
+    "installedSkillDir": "~/.claude/skills/patina",
+    "installCommand": "INSTALL_CLAUDE=false INSTALL_CODEX=false INSTALL_OPCODE=false PATINA_REF=46f5c4dcd29fbd9fe62ecefd1970f0ac4a6085f7 sh ./install.sh",
+    "generatedUserRule": {
+      "path": "~/.cursor/rules/patina.mdc",
+      "sha256": "c5dd74534be38ad14c76b5acee6d191825f1d9aa1056b4d5d01b1bb868c112df",
+      "lines": 788,
+      "frontmatter": {"description": "Apply Patina product instructions when humanizing text.", "alwaysApply": false}
+    }
+  },
+  "probes": [
+    {
+      "id": "project-rule-loading",
+      "cwd": "repository checkout at 46f5c4d",
+      "command": "cursor-agent -p --mode ask --trust --output-format text <context-inventory prompt>",
+      "result": "passed",
+      "observed": [
+        ".cursor/rules/patina.mdc reported as always-applied project rule; body `@AGENTS.md` resolved and AGENTS.md content present with first heading `# Repository development rules`.",
+        "~/.cursor/rules/patina.mdc reported as agent-requestable with only its description injected, as expected for alwaysApply:false.",
+        "Untracked, gitignored CLAUDE.md in the checkout was also injected by the client as a workspace rule. Not a tarball leak (gitignored, excluded from npm), but maintainers should expect Cursor to read it when present."
+      ]
+    },
+    {
+      "id": "product-rule-end-to-end",
+      "cwd": "fresh temporary git repository outside the checkout, one Korean AI-styled draft.md (432 bytes)",
+      "command": "cursor-agent -p --trust --force --output-format text <humanize ./draft.md via Patina; --backend codex-cli>",
+      "result": "passed",
+      "attempts": [
+        {"backend": "openai-http (default)", "outcome": "helper status=error code=cli_failed; provider returned HTTP 401 for the shell's OPENAI_API_KEY (confirmed dead with a direct curl). Agent correctly refused to write unverified output."},
+        {"backend": "claude-cli", "outcome": "helper status=error code=cli_failed; expired Claude CLI OAuth. Agent again refused to write output."},
+        {"backend": "codex-cli", "outcome": "helper status=verified; agent wrote ./draft.humanized.md."}
+      ],
+      "observed": [
+        "Agent fetched ~/.claude/skills/patina/SKILL.md (v8.6.0) through the generated adapter's absolute path, not the repository-development rule.",
+        "Agent ran exactly: node ~/.claude/skills/patina/bin/patina-skill.js --input <abs>/draft.md --backend codex-cli",
+        "Receipt ~/.patina/runs/run-rvDg7E/receipt.json: status=verified, mode=rewrite, exitCode=0, mps=100 (floor 70), fidelity=100 (floor 70), retried=false, reason=passed.",
+        "sourceHash fddf800bfdecde00c7a18d7a8ec17434ff84aee47d49b4f27aa1f0364cd61e43; outputHash d8f0b26c45f5126dce4b5ab92c86c3d299623d2b990adf595dd90f77fb61a256.",
+        "Both failed attempts produced error receipts and no output file; the agent surfaced the backend cause instead of pasting model text. This is the CLI-first refusal path behaving as documented in docs/agents.md."
+      ]
+    }
+  ],
+  "acceptance": {
+    "P01": "passed-on-linux-cursor-agent-cli",
+    "criteria": {
+      "publicRulesLoadFromCleanClone": "passed (project rule + AGENTS.md resolved by the real client)",
+      "productSkillBehaviorUnchanged": "passed (canonical SKILL.md fetched, helper invoked, verified receipt, unverified output refused)",
+      "noDevelopmentGuidanceInProductAdapter": "passed (adapter body is SKILL.md; AGENTS.md was only loaded inside the repository checkout)"
+    },
+    "notCovered": [
+      "Cursor IDE (desktop) rule loading; only the Cursor Agent CLI was available.",
+      "Other operating systems (P16b remains inconclusive).",
+      "openai-http and claude-cli backends were unauthenticated in this environment; that is environment state, not a product finding."
+    ]
+  },
+  "boundaries": {
+    "productSourceChanged": false,
+    "versionBumped": false,
+    "publication": "none",
+    "credentialsRecorded": "none; only key names and HTTP status codes"
+  }
+}

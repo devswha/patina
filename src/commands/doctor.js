@@ -158,10 +158,13 @@ export async function appendApiKeyProbe(report, { fetchImpl = globalThis.fetch, 
 
 // Strip the key value and any `scheme://user:pass@` userinfo from text that
 // may be printed or serialised. Fetch and URL errors can echo the request URL.
+// The userinfo match is greedy up to the LAST `@` before the path, matching
+// how URL parsers split `user:p@ss@host`; a first-`@` match would leave the
+// password tail behind.
 export function redactSecrets(text, apiKey) {
   let out = String(text ?? '');
   if (apiKey) out = out.split(apiKey).join('***');
-  return out.replace(/(\w+:\/\/)[^/@\s]+@/g, '$1***@');
+  return out.replace(/(\w+:\/\/)[^/\s]*@/g, '$1***@');
 }
 
 function recountUsableBackends(report) {

@@ -210,6 +210,11 @@ test('redactSecrets strips the key value and URL userinfo from error text', () =
   assert.equal(redactSecrets('fetch failed for https://user:pw@proxy.example/v1/models', 'sk-abc'), 'fetch failed for https://***@proxy.example/v1/models');
   assert.equal(redactSecrets('bad key sk-abc in header', 'sk-abc'), 'bad key *** in header');
   assert.equal(redactSecrets('plain message', null), 'plain message');
+  // Passwords containing `@` are userinfo up to the last `@` before the path.
+  assert.equal(redactSecrets('x https://user:p@ss@proxy.example/v1 y', null), 'x https://***@proxy.example/v1 y');
+  assert.equal(redactSecrets('https://a@b@c@host/p', null), 'https://***@host/p');
+  assert.equal(redactSecrets('mailto-like a@b text and https://h/p', null), 'mailto-like a@b text and https://h/p');
+  assert.equal(redactSecrets('two https://u:p@h1/a https://u2:p2@h2/b', null), 'two https://***@h1/a https://***@h2/b');
   // An error that echoes a URL with embedded credentials never reaches the report unredacted.
   return withEnv({ PATINA_API_KEY: 'sk-abc', PATINA_API_BASE: 'https://user:pw@proxy.example/v1' }, async () => {
     const report = reportWithHttpKey();

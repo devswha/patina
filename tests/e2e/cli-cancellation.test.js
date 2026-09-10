@@ -11,7 +11,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
 const BIN = resolve(REPO_ROOT, 'bin/patina.js');
 
-test('SIGINT cancels an in-flight HTTP backend request and exits 130', async () => {
+// win32 cannot deliver SIGINT to a child: Node terminates the process
+// unconditionally, so the exit-130 cancellation path has no coverage there.
+test('SIGINT cancels an in-flight HTTP backend request and exits 130', { skip: process.platform === 'win32' && 'win32 has no SIGINT delivery to children' }, async () => {
   const dir = mkdtempSync(join(tmpdir(), 'patina-sigint-'));
   const inputPath = join(dir, 'input.txt');
   writeFileSync(inputPath, 'This draft should wait on the mock backend.\n');

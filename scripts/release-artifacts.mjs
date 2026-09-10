@@ -44,7 +44,7 @@ export const PACKAGE_ARTIFACTS = Object.freeze([
   }),
 ]);
 
-const DEFAULT_NPM_COMMAND = process.env.NPM_COMMAND || 'npm';
+const DEFAULT_NPM_COMMAND = process.env.NPM_COMMAND || (process.platform === 'win32' ? 'npm.cmd' : 'npm');
 const DEFAULT_NPM_TIMEOUT_MS = 120_000;
 const NPM_REGISTRY = 'https://registry.npmjs.org';
 
@@ -357,6 +357,9 @@ function runCommand(command, args, options = {}, execute = execFileSync) {
     return execute(command, args, {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
+      // .cmd shims on win32 cannot be spawned without a shell
+      // (CVE-2024-27980).
+      ...(command.endsWith('.cmd') ? { shell: true } : {}),
       ...options,
     });
   } catch (error) {

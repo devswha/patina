@@ -12,6 +12,6 @@ describe('CLI Entry Point', () => {
     const binPath = resolve(REPO_ROOT, 'bin/patina.js');
     const stats = fs.statSync(binPath);
     assert.ok(stats.isFile());
-    assert.ok(stats.mode & 0o111, 'Should be executable');
+    if (process.platform !== 'win32') assert.ok(stats.mode & 0o111, 'Should be executable');
   });
 });

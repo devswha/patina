@@ -7,12 +7,15 @@ import { createHash } from 'node:crypto';
 import { chmod, cp, mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { mpsResult } from '../fixtures/verification-results.js';
 import { DEFAULT_BEST_MODELS } from '../../src/model-defaults.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const HELPER = join(ROOT, 'bin/patina-skill.js');
+// ESM imports of absolute paths must be file:// URLs on win32 ('C:\...' is
+// parsed as the URL scheme 'c:'), while POSIX absolute paths import as-is.
+const HELPER_URL = pathToFileURL(HELPER).href;
 const SOURCE = 'The service retains 12 audit logs.';
 const hash = value => createHash('sha256').update(value).digest('hex');
 
@@ -130,7 +133,7 @@ test('captured config remains authoritative through the real CLI after ambient m
   const capturedPath = join(f.root, 'captured.json');
   const envelopePath = join(f.root, 'child-envelope.json');
   const result = await command(f, [], { program: `
-    import { runSkill } from ${JSON.stringify(HELPER)};
+    import { runSkill } from ${JSON.stringify(HELPER_URL)};
     import { spawn } from 'node:child_process';
     import { readFileSync, writeFileSync } from 'node:fs';
     const result = await runSkill(${JSON.stringify(['--input', f.input])}, { spawnImpl(command, argv, options) {
@@ -256,7 +259,7 @@ function seam(f, { output = SOURCE, verification, stdout, script, inspect = '', 
     mpsFloor: 70, fidelityFloor: 70, outputHash: hash(output) } : verification;
   const body = stdout ?? JSON.stringify({ mode: 'rewrite', format: 'json', output, verification: proof });
   return command(f, [], { program: `
-    import { runSkill } from ${JSON.stringify(HELPER)};
+    import { runSkill } from ${JSON.stringify(HELPER_URL)};
     import { spawn } from 'node:child_process';
     import { readFileSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
     import { dirname, join } from 'node:path';
@@ -431,7 +434,9 @@ test('final receipt write failure never advertises or retains accepted output', 
   assert.deepEqual(names.sort(), ['initial.json', 'receipt.json']);
 });
 
-test('public cancellation waits for the exact real provider request and cleans snapshots', async t => {
+// win32 cannot deliver SIGINT to a child, so the exit-130 cancellation path
+// has no coverage there (see cli-cancellation.test.js).
+test('public cancellation waits for the exact real provider request and cleans snapshots', { skip: process.platform === 'win32' && 'win32 has no SIGINT delivery to children' }, async t => {
   const f = await fixture(t);
   let ready;
   const requested = new Promise(resolve => { ready = resolve; });
@@ -459,7 +464,7 @@ test('output is bounded by the child byte cap, not the source character limit', 
 test('failed spawn records invocationStarted=false rather than a planned invocation', async t => {
   const f = await fixture(t);
   const result = await command(f, [], { program: `
-    import { runSkill } from ${JSON.stringify(HELPER)};
+    import { runSkill } from ${JSON.stringify(HELPER_URL)};
     import { spawn } from 'node:child_process';
     const result = await runSkill(${JSON.stringify(['--input', f.input])}, { spawnImpl(command, argv, options) {
       if (argv.includes('--version')) return spawn(command, argv, options);
@@ -475,7 +480,7 @@ test('unsupported Node and broken actual CLI version never read or send draft by
   for (const kind of ['node', 'cli']) {
     const f = await fixture(t);
     const result = await command(f, [], { program: `
-      import { runSkill } from ${JSON.stringify(HELPER)};
+      import { runSkill } from ${JSON.stringify(HELPER_URL)};
       import { spawn } from 'node:child_process';
       ${kind === 'node' ? "Object.defineProperty(process.versions, 'node', { value: '18.0.0' });" : ''}
       const result = await runSkill(${JSON.stringify(['--input', f.input])}, { spawnImpl(command, _argv, options) {

@@ -28,11 +28,12 @@ describe('leak gate (end to end): real npm pack + git enumeration', () => {
     const planted = resolve(REPO_ROOT, 'src/AGENTS.md');
     writeFileSync(planted, '# fixture-only scoped development rule\n');
     try {
-      const pack = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
-        cwd: REPO_ROOT,
-        encoding: 'utf8',
-        maxBuffer: 64 * 1024 * 1024,
-      });
+      // Bare npm is npm.cmd on win32 (needs a shell; CVE-2024-27980).
+      const pack = process.platform === 'win32'
+        ? spawnSync('npm.cmd', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+            cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, shell: true })
+        : spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+            cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
       assert.strictEqual(pack.status, 0, `npm pack should succeed:\n${pack.stdout}\n${pack.stderr}`);
       const packed = JSON.parse(pack.stdout)[0].files.map((file) => file.path);
       assert.ok(packed.includes('SKILL.md'), 'product SKILL.md must remain packaged');

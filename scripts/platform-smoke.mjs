@@ -241,6 +241,7 @@ try {
   // skip for a different reason (unsafe host Antigravity settings), so skip
   // counts must be read with the failing/skipped names, not alone.
   run('cancellation + isolation tests', process.execPath, [
+    '-r', join(REPO_ROOT, 'tests', 'helpers', 'real-tmpdir.cjs'),
     '--test', '--test-reporter=tap',
     `tests${sep}unit${sep}backend-cancellation.test.js`, `tests${sep}unit${sep}backend-agy.test.js`, `tests${sep}e2e${sep}session-isolation.test.js`,
   ], { parse: parseTap });
@@ -259,7 +260,7 @@ try {
 
   // 6. Full suite, files enumerated here so no shell glob expansion is needed.
   if (!flag('--skip-suite')) {
-    run('npm test (unit + e2e, tap)', process.execPath, ['--test', '--test-reporter=tap', ...listTests('tests/unit'), ...listTests('tests/e2e')], { parse: parseTap });
+    run('npm test (unit + e2e, tap)', process.execPath, ['-r', join(REPO_ROOT, 'tests', 'helpers', 'real-tmpdir.cjs'), '--test', '--test-reporter=tap', ...listTests('tests/unit'), ...listTests('tests/e2e')], { parse: parseTap });
   } else {
     receipt.steps.push({ name: 'npm test (unit + e2e, tap)', ok: null, skipped: '--skip-suite' });
   }

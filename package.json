@@ -10,13 +10,13 @@
     "patina-score": "scripts/precommit-score.mjs"
   },
   "scripts": {
-    "test": "node --test tests/unit/*.test.js tests/e2e/*.test.js",
-    "test:unit": "node --test tests/unit/*.test.js",
+    "test": "node -r ./tests/helpers/real-tmpdir.cjs --test tests/unit/*.test.js tests/e2e/*.test.js",
+    "test:unit": "node -r ./tests/helpers/real-tmpdir.cjs --test tests/unit/*.test.js",
     "dataset:export": "node scripts/export-hf-dataset.mjs",
     "dataset:publish": "node scripts/publish-hf-dataset.mjs",
     "launch-config:generate": "node scripts/generate-launch-config.mjs",
-    "test:e2e": "node --test tests/e2e/*.test.js",
-    "test:browser": "node --test tests/browser/*.test.js",
+    "test:e2e": "node -r ./tests/helpers/real-tmpdir.cjs --test tests/e2e/*.test.js",
+    "test:browser": "node -r ./tests/helpers/real-tmpdir.cjs --test tests/browser/*.test.js",
     "smoke:platform": "node scripts/platform-smoke.mjs",
     "benchmark": "node tests/quality/benchmark.mjs",
     "benchmark:perf": "node scripts/perf-report.mjs",

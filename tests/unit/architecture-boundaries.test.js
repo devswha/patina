@@ -67,6 +67,31 @@ describe('architecture import graph', () => {
     assert.ok(result.violations.some((violation) => violation.rule === 'unresolved-dynamic-import'));
   });
 
+  it('treats bare Node builtins as boundary targets', () => {
+    const root = fixture({
+      'src/features/http.js': 'import "http";\n',
+      'src/features/subprocess.js': 'import "child_process";\n',
+      'playground/fs.js': 'import "fs";\n',
+    });
+
+    const result = checkArchitecture({ root });
+    assert.ok(result.violations.some(
+      (violation) => violation.rule === 'features-no-model-network'
+        && violation.origin === 'src/features/http.js'
+        && violation.target === 'http',
+    ));
+    assert.ok(result.violations.some(
+      (violation) => violation.rule === 'features-no-model-network'
+        && violation.origin === 'src/features/subprocess.js'
+        && violation.target === 'child_process',
+    ));
+    assert.ok(result.violations.some(
+      (violation) => violation.rule === 'browser-no-server-secret'
+        && violation.origin === 'playground/fs.js'
+        && violation.target === 'fs',
+    ));
+  });
+
   it('catches indirect and dynamic feature, browser, and runtime research edges', () => {
     const root = fixture({
       'src/features/entry.js': [

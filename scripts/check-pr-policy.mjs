@@ -459,11 +459,12 @@ export function collectPrPolicyReport(pullRequest, {
   const rawLines = rawAdditions !== null && rawDeletions !== null
     ? rawAdditions + rawDeletions
     : null;
-  const rawFileCount = changedFiles !== null
-    ? changedFiles
-    : fileMetadataComplete
-      ? files.length
-      : null;
+  const knownFileCounts = [
+    changedFiles,
+    filesPresent ? files.length : null,
+  ].filter((value) => value !== null);
+  const conservativeFileCount = knownFileCounts.length ? Math.max(...knownFileCounts) : null;
+  const rawFileCount = conservativeFileCount;
   const reviewableAdditions = fileMetadataComplete
     ? listedReviewableAdditions
     : rawAdditions !== null
@@ -479,7 +480,7 @@ export function collectPrPolicyReport(pullRequest, {
     : null;
   const reviewableFiles = fileMetadataComplete
     ? files.filter((file) => !file.excluded).length
-    : changedFiles;
+    : conservativeFileCount;
 
   const labels = normalizeLabels(input.labels);
   const sizeExceptionRequested = labels.some((label) => /size-exception/i.test(label)) ||

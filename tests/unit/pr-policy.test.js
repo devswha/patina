@@ -218,6 +218,30 @@ test('truncated file list does not undercount known raw totals', () => {
   assert.equal(report.docsOnly, false);
 });
 
+test('inconclusive file metadata retains the larger reported or listed file count', () => {
+  const files = Array.from({ length: 16 }, (_, index) => ({
+    path: `src/partial-${index}.js`,
+    status: 'modified',
+    additions: 10,
+    deletions: 0,
+  }));
+  const report = collectPrPolicyReport(pr({
+    files: {
+      nodes: files,
+      pageInfo: { hasNextPage: true },
+    },
+    additions: 160,
+    deletions: 0,
+    changedFiles: 15,
+  }));
+  assert.equal(report.valid, false);
+  assert.equal(report.status, 'inconclusive');
+  assert.equal(report.raw.files, 16);
+  assert.equal(report.reviewableFiles, 16);
+  assert.ok(hasWarning(report, /15-file review warning threshold \(16 files\)/));
+  assert.equal(report.docsOnly, false);
+});
+
 test('incomplete file list with missing raw totals remains unknown rather than zero', () => {
   const report = collectPrPolicyReport(pr({
     files: undefined,

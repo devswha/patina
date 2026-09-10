@@ -9,6 +9,7 @@
 // incomplete.
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { builtinModules } from 'node:module';
 import { dirname, extname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'espree';
@@ -188,6 +189,7 @@ const RESEARCH_MODULES = Object.freeze([
 
 const MODULE_EXTENSIONS = new Set(['.js', '.mjs']);
 const LOCAL_SPECIFIER_RE = /^(?:\.{1,2}(?:\/|$)|\/)/;
+const BUILTIN_MODULES = new Set(builtinModules.flatMap((name) => [name, `node:${name}`]));
 
 function normalizePath(value) {
   return String(value).replace(/\\/g, '/').replace(/^\.\/+/, '');
@@ -218,6 +220,16 @@ function packageName(specifier) {
 
 function isLocalSpecifier(specifier) {
   return LOCAL_SPECIFIER_RE.test(specifier);
+}
+
+function isBuiltinSpecifier(specifier) {
+  return BUILTIN_MODULES.has(specifier);
+}
+
+function isModelNetworkBuiltin(specifier) {
+  if (!isBuiltinSpecifier(specifier)) return false;
+  const nodeSpecifier = specifier.startsWith('node:') ? specifier : `node:${specifier}`;
+  return MODEL_NETWORK_BUILTINS.has(nodeSpecifier);
 }
 
 /**
@@ -616,7 +628,7 @@ export function buildImportGraph({ root = REPO_ROOT, files, roots = SOURCE_ROOTS
  */
 export function classifyModule(value) {
   if (!value) return 'unresolved';
-  if (MODEL_NETWORK_BUILTINS.has(value) || MODEL_NETWORK_PACKAGES.has(packageName(value))) return 'model-network';
+  if (isModelNetworkBuiltin(value) || MODEL_NETWORK_PACKAGES.has(packageName(value))) return 'model-network';
   if (pathMatches(value, RESEARCH_MODULES)) return 'research';
   if (pathMatches(value, MODEL_NETWORK_MODULES)) return 'model-network';
   if (pathMatches(value, SERVER_SECRET_MODULES)) return 'server-secret';
@@ -632,13 +644,13 @@ function edgeTarget(edge) {
 }
 
 function isModelNetworkTarget(edge) {
-  if (!edge.to) return MODEL_NETWORK_BUILTINS.has(edge.specifier)
+  if (!edge.to) return isModelNetworkBuiltin(edge.specifier)
     || MODEL_NETWORK_PACKAGES.has(packageName(edge.specifier));
   return pathMatches(edge.to, MODEL_NETWORK_MODULES);
 }
 
 function isServerSecretTarget(edge) {
-  if (!edge.to) return edge.specifier.startsWith('node:');
+  if (!edge.to) return isBuiltinSpecifier(edge.specifier);
   return pathMatches(edge.to, SERVER_SECRET_MODULES);
 }
 

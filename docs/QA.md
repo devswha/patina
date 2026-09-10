@@ -160,6 +160,52 @@ credential boundary, and non-determinism recorded. A mock-browser pass cannot
 be reported as a real-model pass, and a live-model result cannot stand in for
 browser interaction or deterministic regression tests.
 
+### Other operating systems (P16b)
+
+CI runs Linux only and the repository publishes no OS support matrix. The
+maintenance item P16b asks for one representative smoke per supported OS, not
+a full cross-matrix. `npm run smoke:platform` (`scripts/platform-smoke.mjs`)
+is that smoke: on the machine under test it runs `npm ci`, `patina --version`,
+offline scoring / `inspect` / batch output on an input file, output directory
+and working directory whose names carry Korean and a space, the owned-process
+cancellation and session-isolation tests, `doctor --offline --json`, and the
+full unit + e2e suite with files enumerated by the script so no shell glob is
+involved. It makes no LLM call.
+
+Read the lifecycle numbers carefully. On platforms without POSIX process
+groups the cancellation/isolation tests **skip**, which is *absent coverage*,
+not a pass; the `backend-agy` launch tests in the same step skip for a
+different reason (host Antigravity settings that widen permissions). The
+receipt therefore carries failing names and counts, and the maintenance record
+must state which promise each skip removes rather than treating a skip total as
+platform support. `doctor` exit 1 with a valid report ("no usable backend") is
+a legitimate observation and counts as ok; a crash or non-JSON output does not.
+
+Procedure per machine:
+
+```bash
+git clone https://github.com/devswha/patina.git && cd patina
+git switch dev            # or the exact SHA being accepted
+npm run smoke:platform    # add --skip-install if npm ci already ran
+```
+
+The script writes two files. The **public receipt**
+`docs/operations/platform-smoke-<platform>-<arch>-<YYYYMMDD>.json` holds
+allow-listed structured evidence only: exit statuses, parsed counts, failing
+test names, sanitized error messages, the names (never values) of key
+variables that are set, and paths with the home directory replaced by `~`.
+The **private diagnostics**
+`docs/internal/platform-smoke-<…>.diagnostics.json` (gitignored) hold the raw
+child stdout/stderr tails for the operator; they are never committed or sent.
+The script prints `ok`/`FAIL` per step, always writes both files (a setup
+failure is recorded as a failed step), and exits 1 when any step failed. A
+failed step is evidence, not a reason to rerun until green: read the public
+receipt for anything the redaction could have missed, then commit it (or send
+it back) and open the product finding separately. On Windows use a
+Node-capable shell (PowerShell or Git Bash); `install.sh` is POSIX-only and is
+not part of this smoke. `platform-smoke-linux-x64-20260910.json` is the
+baseline from the CI platform; it is a run with `npm ci` included.
+
 ## 5. Flaky and external failures
 
 Classify a failure as product, test-environment, or external-service before

@@ -32,6 +32,38 @@ export const FORBIDDEN_GLOBS = Object.freeze([
   'server/**', // private service/server implementation
 ]);
 
+// Agent instructions and runtime workspaces are development-only. They are
+// checked separately from the baseline private-asset patterns so the public
+// root AGENTS.md can remain tracked without making any development guidance
+// publishable.
+const DEVELOPMENT_ONLY_GLOBS = Object.freeze([
+  '**/AGENTS.md',
+  '**/CLAUDE.md',
+  '**/BOOTSTRAP.md',
+  '**/IDENTITY.md',
+  '**/USER.md',
+  '**/MEMORY.md',
+  '**/HEARTBEAT.md',
+  '**/SOUL.md',
+  '**/TOOLS.md',
+  '**/memory/**',
+  '**/.omc/**',
+  '**/.omx/**',
+  '**/.omo/**',
+  '**/.openclaw/**',
+  '**/.workclaw/**',
+  '**/.claude/**',
+  '**/.insane-review/**',
+  '**/.gjc/**',
+]);
+
+// Keep package and git checks explicit: the package may never contain
+// development-only instructions, while git tracking allows exactly the
+// approved public root rule below.
+export const PACKED_FORBIDDEN_GLOBS = Object.freeze([...FORBIDDEN_GLOBS, ...DEVELOPMENT_ONLY_GLOBS]);
+export const TRACKED_FORBIDDEN_GLOBS = Object.freeze([...FORBIDDEN_GLOBS, ...DEVELOPMENT_ONLY_GLOBS]);
+export const TRACKED_ALLOWED_PATHS = Object.freeze(['AGENTS.md']);
+
 /**
  * Compile a path glob into an anchored RegExp.
  *
@@ -66,20 +98,38 @@ export function globToRegExp(glob) {
 }
 
 const FORBIDDEN_MATCHERS = FORBIDDEN_GLOBS.map((glob) => ({ glob, re: globToRegExp(glob) }));
+const PACKED_MATCHERS = PACKED_FORBIDDEN_GLOBS.map((glob) => ({ glob, re: globToRegExp(glob) }));
+const TRACKED_MATCHERS = TRACKED_FORBIDDEN_GLOBS.map((glob) => ({ glob, re: globToRegExp(glob) }));
+
+function normalizePath(path) {
+  return String(path).replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+function matchersFor(globs) {
+  if (globs === FORBIDDEN_GLOBS) return FORBIDDEN_MATCHERS;
+  if (globs === PACKED_FORBIDDEN_GLOBS) return PACKED_MATCHERS;
+  if (globs === TRACKED_FORBIDDEN_GLOBS) return TRACKED_MATCHERS;
+  return globs.map((glob) => ({ glob, re: globToRegExp(glob) }));
+}
 
 /**
  * Return every forbidden match for a set of paths.
  *
  * @param {Iterable<string>} paths Relative POSIX-style paths to test.
+ * @param {Array<string>} [globs=FORBIDDEN_GLOBS] Glob patterns to apply.
+ * @param {Iterable<string>} [allowedPaths=[]] Exact normalized paths to skip.
  * @returns {Array<{path: string, pattern: string}>} One entry per matched path/pattern.
  * @example
  * matchForbidden(['corpus/ko.jsonl']); // [{ path: 'corpus/ko.jsonl', pattern: '**\/corpus/**' }]
  */
-export function matchForbidden(paths) {
+export function matchForbidden(paths, globs = FORBIDDEN_GLOBS, allowedPaths = []) {
+  const matchers = matchersFor(globs);
+  const allowed = new Set([...allowedPaths].map(normalizePath));
   const hits = [];
   for (const path of paths) {
-    const normalized = String(path).replace(/\\/g, '/').replace(/^\.\//, '');
-    const matcher = FORBIDDEN_MATCHERS.find((m) => m.re.test(normalized));
+    const normalized = normalizePath(path);
+    if (allowed.has(normalized)) continue;
+    const matcher = matchers.find((m) => m.re.test(normalized));
     if (matcher) hits.push({ path: normalized, pattern: matcher.glob });
   }
   return hits;
@@ -91,14 +141,16 @@ export function matchForbidden(paths) {
  * @param {object} sources File lists to scan.
  * @param {string[]} [sources.packedFiles=[]] Files that npm would publish (repo-relative).
  * @param {string[]} [sources.trackedFiles=[]] Git-tracked files.
+ * The packed list rejects development-only instructions and runtime workspaces.
+ * The tracked list allows only the approved public root `AGENTS.md` exception.
  * @returns {{ok: boolean, violations: Array<{path: string, pattern: string, source: string}>, counts: {packed: number, tracked: number}}} Gate result.
  * @example
  * runGate({ packedFiles: ['src/index.js'], trackedFiles: ['src/index.js'] }).ok; // true
  */
 export function runGate({ packedFiles = [], trackedFiles = [] } = {}) {
   const violations = [
-    ...matchForbidden(packedFiles).map((hit) => ({ ...hit, source: 'package' })),
-    ...matchForbidden(trackedFiles).map((hit) => ({ ...hit, source: 'git' })),
+    ...matchForbidden(packedFiles, PACKED_FORBIDDEN_GLOBS).map((hit) => ({ ...hit, source: 'package' })),
+    ...matchForbidden(trackedFiles, TRACKED_FORBIDDEN_GLOBS, TRACKED_ALLOWED_PATHS).map((hit) => ({ ...hit, source: 'git' })),
   ];
   return {
     ok: violations.length === 0,
@@ -190,7 +242,7 @@ function main() {
       console.error(`  - [${v.source}] ${v.path}  (matched ${v.pattern})`);
     }
     console.error('\nForbidden patterns:');
-    for (const glob of FORBIDDEN_GLOBS) console.error(`  - ${glob}`);
+    for (const glob of PACKED_FORBIDDEN_GLOBS) console.error(`  - ${glob}`);
     process.exit(1);
   }
 

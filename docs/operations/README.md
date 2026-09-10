@@ -133,11 +133,13 @@ GitHub deployment `6347382527` (source
 application smoke nor Vercel account evidence.
 
 **P13a closed as a recorded exception (2026-09-10, maintainer decision).**
-Read-only `vercel inspect` on 2026-09-10 explains the `sourceRef=dev`
-deployment: both 2026-09-09 production deployments were **CLI uploads from
-the local `dev` checkout**, not Git-integration builds ("Retrieving list of
-deployment files" / "Extracting deployment files" in the build log).
-`dpl_…eycb5nmuq` (19:14:25 KST) errored at file extraction after 797 ms;
+Read-only `vercel inspect` on 2026-09-10 observed, for both 2026-09-09
+production deployments, `sourceRef=dev` and build logs that begin with
+"Retrieving list of deployment files" / "Extracting deployment files" rather
+than a Git clone step. The most likely reading is that they were CLI uploads
+(`vercel --prod`) from a local `dev` checkout; the invoking client and
+checkout were not directly recorded, so this is an inference, not a verified
+provenance. `dpl_…eycb5nmuq` (19:14:25 KST) errored at file extraction after 797 ms;
 `dpl_9mLY4716GsCKWrGiomn8hKxZLEzN` (19:15:06 KST) succeeded 41 s later and
 still serves `patina.vibetip.help`. Because its tree is byte-identical to
 main `d7a4741` (8.6.0), the maintainer accepted it as production for 8.6.0

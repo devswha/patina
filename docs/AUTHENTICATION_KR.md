@@ -121,12 +121,17 @@ patina --backend agy-cli --lang ko input.txt
 patina --backend agy-cli --model gemini-3.8-flash-high --lang ko input.txt
 ```
 
-참고: 프롬프트는 argv가 아니라 stdin의 `stream-json` user 이벤트로 전달됩니다. 호출마다 새 임시
-디렉터리에서 실행되며, 도구 사용을 금지하는 워크스페이스 전용 커스텀 에이전트
-(`.agents/agents/patina-text.md`, `commandExecutionPolicy: off`)를 씁니다. Antigravity headless 모드는
-권한 확인이 필요한 도구(명령, URL, MCP)를 자동 거부하고, 어댑터는 스트림에 도구 단계가 하나라도
-보이거나 응답이 비어 있으면 그 턴을 통째로 거부합니다 — 거부된 도구가 빈 재작성으로 조용히 넘어가지
-않습니다. 이미지 입력은 지원하지 않습니다. 기본 동시성 `1`, retry `0`.
+참고: 프롬프트는 argv가 아니라 stdin의 `stream-json` user 이벤트로 전달됩니다. 격리는
+Antigravity의 *기본값*에 기대니다: 권한이 필요한 도구(명령, 워크스페이스 밖 URL·파일, MCP)는
+물어보고, headless 모드는 물어볼 수 없으므로 자동 거부합니다. 도구 정의 자체는 프롬프트에 남아
+있으며 patina가 제거할 수 없습니다. headless 모드는 사용자의 전역 `permissions.allow` 목록을 그대로
+존중하므로, `~/.gemini/antigravity-cli/settings.json`에 자동 허용 규칙(예: `command(git)`,
+`read_url(*)`)이 하나라도 있으면 어댑터는 **실행 자체를 거부**합니다 — 그 규칙을 지우거나 다른
+백엔드를 쓰세요. 허용 규칙이 없으면 호출마다 빈 임시 디렉터리에서 도구 사용을 금지하는
+워크스페이스 전용 커스텀 에이전트(`.agents/agents/patina-text.md`, `commandExecutionPolicy: off`)로
+실행되고, 스트림에 도구 단계가 하나라도 보이거나 응답이 비어 있으면 그 턴을 통째로 거부합니다 —
+거부된 도구가 빈 재작성으로 조용히 넘어가지 않습니다. 이미지 입력은 지원하지 않습니다. 기본 동시성 `1`,
+retry `0`.
 
 자동화에서는 이미 실행 의도가 분명할 때만 `--yes`를 쓰세요.
 

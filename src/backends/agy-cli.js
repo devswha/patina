@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -52,8 +52,71 @@ export function isAvailable() {
   }
 }
 
+function antigravityDir() {
+  return join(homedir(), '.gemini', 'antigravity-cli');
+}
+
 function tokenPath() {
-  return join(homedir(), '.gemini', 'antigravity-cli', 'antigravity-oauth-token');
+  return join(antigravityDir(), 'antigravity-oauth-token');
+}
+
+export function agySettingsPath() {
+  return join(antigravityDir(), 'settings.json');
+}
+
+/**
+ * Read the `permissions.allow` rules from an Antigravity settings file.
+ *
+ * Headless agy honours the user's global allow list: an auto-allowed
+ * `command(*)`, `write_file(/)`, `read_url(*)` or `mcp(*)` executes without a
+ * prompt, and rejecting the turn afterwards cannot undo it. Patina's
+ * containment therefore only holds when nothing is auto-allowed, so the
+ * adapter checks before spawning. A missing file or missing `permissions`
+ * block means "defaults" (everything gated asks, which headless denies).
+ * Unreadable JSON fails closed.
+ *
+ * @param {string} [file=agySettingsPath()] Settings file to read.
+ * @returns {string[]} The allow rules, possibly empty.
+ */
+export function readAgyAllowRules(file = agySettingsPath()) {
+  let raw;
+  try {
+    raw = readFileSync(file, 'utf8');
+  } catch (err) {
+    if (err?.code === 'ENOENT') return [];
+    throw new Error(`agy-cli backend: cannot read Antigravity settings at ${file} (${err.message})`);
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(`agy-cli backend: Antigravity settings at ${file} are not valid JSON; refusing to run with unknown permissions`);
+  }
+  const allow = parsed?.permissions?.allow;
+  if (allow === undefined || allow === null) return [];
+  if (!Array.isArray(allow)) {
+    throw new Error(`agy-cli backend: Antigravity settings permissions.allow is not a list; refusing to run with unknown permissions`);
+  }
+  return allow.map((rule) => String(rule));
+}
+
+/**
+ * Fail closed when the user's Antigravity settings auto-allow anything.
+ *
+ * Every allow rule widens what a prompt-injected agent can do without a
+ * prompt: `command(git)` can push, `read_file(/)` can leak files into the
+ * rewrite, `read_url(*)` can exfiltrate. Patina cannot scope those per call,
+ * so it refuses instead of running with them.
+ *
+ * @param {string[]} allowRules Rules from readAgyAllowRules().
+ */
+export function assertAgyAllowRulesSafe(allowRules) {
+  const rules = (allowRules || []).map((r) => String(r).trim()).filter(Boolean);
+  if (rules.length === 0) return;
+  throw new Error(
+    `agy-cli backend: refusing to run because ~/.gemini/antigravity-cli/settings.json auto-allows ${rules.length} permission rule(s): ${rules.join(', ')}. `
+    + 'Headless agy would execute those without a prompt; remove them from permissions.allow or use another backend.'
+  );
 }
 
 // Antigravity CLI caches its sign-in in a single token file; headless runs
@@ -92,10 +155,16 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
 
   const cliModel = resolveLocalCliModel({ backendName: name, model, modelSource });
 
+  // Pre-launch gate: containment below assumes Antigravity's defaults, where
+  // every permission-gated tool asks and headless mode auto-denies. The user's
+  // global allow list overrides that, so refuse before anything can run.
+  assertAgyAllowRulesSafe(readAgyAllowRules());
+
   // Fresh temp cwd: Antigravity auto-allows file reads/writes inside the
-  // workspace root, so an empty directory is the whole blast radius for the
-  // tools it still exposes. Everything outside (commands, URLs, MCP) falls to
-  // "ask", which headless mode auto-denies.
+  // workspace root, so with no allow rules an empty directory is all the
+  // model can touch; commands, URLs outside it, and MCP fall to "ask", which
+  // headless mode auto-denies. The post-hoc tool-step rejection in
+  // extractAgyResponse is the second layer, not the only one.
   const dir = mkdtempSync(join(tmpdir(), 'patina-agy-'));
   const cleanup = () => { try { rmSync(dir, { recursive: true, force: true }); } catch {} };
   try {

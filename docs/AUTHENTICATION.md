@@ -124,11 +124,18 @@ patina --backend agy-cli --model gemini-3.8-flash-high --lang ko input.txt
 ```
 
 Notes: the prompt travels on stdin as a `stream-json` user event, never as an
-argv value. Each call runs from a fresh temp directory with a workspace-local
-custom agent (`.agents/agents/patina-text.md`, `commandExecutionPolicy: off`)
-whose system prompt forbids tools. Antigravity headless mode auto-denies any
-tool that would need a permission prompt (commands, URLs, MCP), and the adapter
-rejects a turn outright if the stream shows any tool step or an empty
+argv value. Containment relies on Antigravity's *defaults*: every
+permission-gated tool (commands, URLs outside the workspace, MCP, files
+outside the workspace) asks, and headless mode auto-denies what it cannot
+ask. Antigravity's tool definitions stay in the prompt; Patina cannot remove
+them. Because headless mode honours your global `permissions.allow` list, the
+adapter **refuses to run at all** when
+`~/.gemini/antigravity-cli/settings.json` auto-allows anything (for example
+`command(git)` or `read_url(*)`) — remove those rules or use another backend.
+With no allow rules, each call runs from a fresh empty temp directory with a
+workspace-local custom agent (`.agents/agents/patina-text.md`,
+`commandExecutionPolicy: off`) whose system prompt forbids tools, and the
+adapter rejects a turn outright if the stream shows any tool step or an empty
 response, so a denied tool never becomes a silent empty rewrite. Image input
 is not supported. Default max concurrency `1`, retries `0`.
 

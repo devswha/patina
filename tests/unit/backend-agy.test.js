@@ -57,13 +57,28 @@ async function withFakeAgy(mode, fn) {
   }
 }
 
+// invoke() reads the real ~/.gemini/antigravity-cli/settings.json and refuses
+// to launch when it auto-allows anything; os.homedir() cannot be redirected
+// here, so the launch-path tests skip on such hosts instead of flaking.
+function hostAllowRules() {
+  try {
+    return agyCli.readAgyAllowRules();
+  } catch (err) {
+    return [err.message];
+  }
+}
+const hostAllows = hostAllowRules();
+const launchSkip = hostAllows.length > 0
+  ? `host Antigravity settings auto-allow rules (${hostAllows.join(', ')}); invoke() refuses by design`
+  : false;
+
 function argValue(args, flag) {
   const index = args.indexOf(flag);
   assert.notStrictEqual(index, -1, `${flag} should be present in ${args.join(' ')}`);
   return args[index + 1];
 }
 
-test('agy-cli sends the prompt as one stdin user event with a tool-free workspace agent', async () => {
+test('agy-cli sends the prompt as one stdin user event with a tool-free workspace agent', { skip: launchSkip }, async () => {
   await withFakeAgy('success', async () => {
     const text = await agyCli.invoke({ prompt: 'rewrite this ✓ 한국어', timeout: 30_000 });
     assert.ok(text.startsWith('REWRITTEN::'));
@@ -91,7 +106,7 @@ test('agy-cli sends the prompt as one stdin user event with a tool-free workspac
   });
 });
 
-test('agy-cli fails closed on empty, error, tool-using, garbage and non-zero outcomes', async () => {
+test('agy-cli fails closed on empty, error, tool-using, garbage and non-zero outcomes', { skip: launchSkip }, async () => {
   await withFakeAgy('empty', async () => {
     await assert.rejects(agyCli.invoke({ prompt: 'x' }), /empty response[\s\S]*auto-denied/);
   });
@@ -114,6 +129,34 @@ test('agy-cli rejects images and empty prompts before spawning', async () => {
   await assert.rejects(agyCli.invoke({ prompt: 'x', images: ['/tmp/a.png'] }), /image input is not supported/);
   await assert.rejects(agyCli.invoke({ prompt: '' }), /prompt must be a non-empty string/);
   assert.strictEqual(agyCli.supportsImages, false);
+});
+
+test('agy-cli refuses to launch when Antigravity settings auto-allow anything', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'patina-agy-settings-'));
+  const file = join(dir, 'settings.json');
+  try {
+    // Missing file or no permissions block: defaults, nothing auto-allowed.
+    assert.deepEqual(agyCli.readAgyAllowRules(file), []);
+    writeFileSync(file, JSON.stringify({ model: 'x', trustedWorkspaces: ['/home/me'] }));
+    assert.deepEqual(agyCli.readAgyAllowRules(file), []);
+    // ask/deny lists never widen anything.
+    writeFileSync(file, JSON.stringify({ permissions: { ask: ['command(*)'], deny: ['command(sudo)'] } }));
+    assert.doesNotThrow(() => agyCli.assertAgyAllowRulesSafe(agyCli.readAgyAllowRules(file)));
+    // Any allow rule fails closed with the rules named.
+    writeFileSync(file, JSON.stringify({ permissions: { allow: ['command(git)', 'read_url(google.com)'] } }));
+    assert.throws(
+      () => agyCli.assertAgyAllowRulesSafe(agyCli.readAgyAllowRules(file)),
+      /auto-allows 2 permission rule\(s\): command\(git\), read_url\(google\.com\)/,
+    );
+    // Unknown shapes fail closed too.
+    writeFileSync(file, '{not json');
+    assert.throws(() => agyCli.readAgyAllowRules(file), /not valid JSON/);
+    writeFileSync(file, JSON.stringify({ permissions: { allow: 'command(*)' } }));
+    assert.throws(() => agyCli.readAgyAllowRules(file), /not a list/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  assert.match(agyCli.agySettingsPath(), /\.gemini[\\/]antigravity-cli[\\/]settings\.json$/);
 });
 
 test('extractAgyResponse parses the documented stream shape', () => {

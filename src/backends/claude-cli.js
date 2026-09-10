@@ -1,8 +1,13 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand, stageCliImages } from './contract.js';
+import {
+  DEFAULT_BACKEND_TIMEOUT_MS,
+  runInteractiveCommand,
+  spawnOwnedCliProcess,
+  stageCliImages,
+} from './contract.js';
 import { resolveLocalCliModel } from '../model-defaults.js';
 
 export const name = 'claude-cli';
@@ -70,7 +75,11 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   }
 
   return new Promise((resolve, reject) => {
-    const proc = spawn('claude', ['-p', '--model', cliModel], { stdio: ['pipe', 'pipe', 'pipe'], cwd: dir });
+    const { proc, terminate, waitForClose } = spawnOwnedCliProcess(
+      'claude',
+      ['-p', '--model', cliModel],
+      { stdio: ['pipe', 'pipe', 'pipe'], cwd: dir },
+    );
 
     let stdout = '';
     let stderr = '';
@@ -136,11 +145,11 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       settled = true;
       clearTimeout(timer);
       cleanupSignal();
-      // SIGKILL reaches only the direct child; grandchildren (workers/ripgrep/MCP)
-      // are not in a killable group and may briefly outlive it — accepted leak (#446).
-      if (kill) proc.kill('SIGKILL');
-      cleanup();
-      reject(err);
+      if (kill) terminate('SIGKILL');
+      waitForClose().then(() => {
+        cleanup();
+        reject(err);
+      });
     }
 
     function finishResolve(content) {

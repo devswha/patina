@@ -65,26 +65,21 @@ export function agySettingsPath() {
 }
 
 /**
- * Read the `permissions.allow` rules from an Antigravity settings file.
+ * Read the Antigravity settings file that headless agy inherits.
  *
- * Headless agy honours the user's global allow list: an auto-allowed
- * `command(*)`, `write_file(/)`, `read_url(*)` or `mcp(*)` executes without a
- * prompt, and rejecting the turn afterwards cannot undo it. Patina's
- * containment therefore only holds when nothing is auto-allowed, so the
- * adapter checks before spawning. A missing file or missing `permissions`
- * block means "defaults" (everything gated asks, which headless denies).
- * Unreadable JSON fails closed.
+ * A missing file means defaults. Unreadable or non-object JSON fails closed:
+ * the adapter cannot reason about permissions it cannot parse.
  *
  * @param {string} [file=agySettingsPath()] Settings file to read.
- * @returns {string[]} The allow rules, possibly empty.
+ * @returns {object} Parsed settings, `{}` when absent.
  */
-export function readAgyAllowRules(file = agySettingsPath()) {
+export function readAgySettings(file = agySettingsPath()) {
   let raw;
   try {
     raw = readFileSync(file, 'utf8');
   } catch (err) {
-    if (err?.code === 'ENOENT') return [];
-    throw new Error(`agy-cli backend: cannot read Antigravity settings at ${file} (${err.message})`);
+    if (err?.code === 'ENOENT') return {};
+    throw new Error(`agy-cli backend: cannot read Antigravity settings at ${file} (${err.message}); refusing to run with unknown permissions`);
   }
   let parsed;
   try {
@@ -92,30 +87,58 @@ export function readAgyAllowRules(file = agySettingsPath()) {
   } catch {
     throw new Error(`agy-cli backend: Antigravity settings at ${file} are not valid JSON; refusing to run with unknown permissions`);
   }
-  const allow = parsed?.permissions?.allow;
-  if (allow === undefined || allow === null) return [];
-  if (!Array.isArray(allow)) {
-    throw new Error(`agy-cli backend: Antigravity settings permissions.allow is not a list; refusing to run with unknown permissions`);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`agy-cli backend: Antigravity settings at ${file} are not a JSON object; refusing to run with unknown permissions`);
   }
-  return allow.map((rule) => String(rule));
+  return parsed;
 }
 
+// toolPermission values under which every non-read tool still asks (and
+// headless therefore denies). `proceed-in-sandbox` auto-runs sandboxed
+// commands and `always-proceed` runs everything, so both are unsafe here.
+const SAFE_TOOL_PERMISSION = new Set(['request-review', 'strict']);
+
 /**
- * Fail closed when the user's Antigravity settings auto-allow anything.
+ * Fail closed unless the effective Antigravity permissions are the defaults
+ * Patina's containment assumes.
  *
- * Every allow rule widens what a prompt-injected agent can do without a
- * prompt: `command(git)` can push, `read_file(/)` can leak files into the
- * rewrite, `read_url(*)` can exfiltrate. Patina cannot scope those per call,
- * so it refuses instead of running with them.
+ * Headless agy honours the global settings: `permissions.allow` rules,
+ * `toolPermission: always-proceed` / `proceed-in-sandbox`, and
+ * `allowNonWorkspaceAccess: true` each let a prompt-injected agent act
+ * (push with `command(git)`, read `~/.ssh` into the rewrite, fetch a URL)
+ * before the post-hoc tool-step rejection can fire, and rejecting the turn
+ * cannot undo a side effect. Patina cannot scope any of these per call, so it
+ * refuses to launch and names what to change.
  *
- * @param {string[]} allowRules Rules from readAgyAllowRules().
+ * @param {object} settings Parsed settings from readAgySettings().
  */
-export function assertAgyAllowRulesSafe(allowRules) {
-  const rules = (allowRules || []).map((r) => String(r).trim()).filter(Boolean);
-  if (rules.length === 0) return;
+export function assertAgySettingsSafe(settings) {
+  const problems = [];
+  const permissions = settings?.permissions;
+  if (permissions !== undefined && permissions !== null) {
+    if (typeof permissions !== 'object' || Array.isArray(permissions)) {
+      problems.push('permissions is not an object');
+    } else if (permissions.allow !== undefined && permissions.allow !== null) {
+      if (!Array.isArray(permissions.allow)) {
+        problems.push('permissions.allow is not a list');
+      } else {
+        const rules = permissions.allow.map((r) => String(r).trim()).filter(Boolean);
+        if (rules.length > 0) problems.push(`permissions.allow auto-allows ${rules.length} rule(s): ${rules.join(', ')}`);
+      }
+    }
+  }
+  const toolPermission = settings?.toolPermission;
+  if (toolPermission !== undefined && toolPermission !== null && !SAFE_TOOL_PERMISSION.has(String(toolPermission))) {
+    problems.push(`toolPermission is "${String(toolPermission)}" (needs request-review or strict)`);
+  }
+  const nonWorkspace = settings?.allowNonWorkspaceAccess;
+  if (nonWorkspace !== undefined && nonWorkspace !== null && nonWorkspace !== false) {
+    problems.push(`allowNonWorkspaceAccess is ${JSON.stringify(nonWorkspace)} (needs false or unset)`);
+  }
+  if (problems.length === 0) return;
   throw new Error(
-    `agy-cli backend: refusing to run because ~/.gemini/antigravity-cli/settings.json auto-allows ${rules.length} permission rule(s): ${rules.join(', ')}. `
-    + 'Headless agy would execute those without a prompt; remove them from permissions.allow or use another backend.'
+    `agy-cli backend: refusing to run because ~/.gemini/antigravity-cli/settings.json widens headless permissions: ${problems.join('; ')}. `
+    + 'Headless agy would act on those without a prompt; restore the defaults or use another backend.'
   );
 }
 
@@ -158,7 +181,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   // Pre-launch gate: containment below assumes Antigravity's defaults, where
   // every permission-gated tool asks and headless mode auto-denies. The user's
   // global allow list overrides that, so refuse before anything can run.
-  assertAgyAllowRulesSafe(readAgyAllowRules());
+  assertAgySettingsSafe(readAgySettings());
 
   // Fresh temp cwd: Antigravity auto-allows file reads/writes inside the
   // workspace root, so with no allow rules an empty directory is all the
@@ -178,14 +201,15 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   // The prompt travels on stdin as one NDJSON user event, not as an argv
   // value, so source text never shows up in the local process list.
   // --print-timeout mirrors Patina's own timer so agy gives up at the same
-  // point instead of its 5-minute default.
+  // point instead of its 5-minute default; a non-finite budget ("no timeout")
+  // maps to a year so agy's default does not reintroduce a deadline.
   const args = [
     '-p=',
     '--agent', AGY_AGENT_NAME,
     '--input-format', 'stream-json',
     '--output-format', 'stream-json',
     '--disable-slash-commands',
-    '--print-timeout', `${Math.max(1, Math.ceil((Number.isFinite(timeout) ? timeout : 300_000) / 1000))}s`,
+    '--print-timeout', agyPrintTimeout(timeout),
     '--model', cliModel,
   ];
   const stdinText = `${JSON.stringify({ event: 'user', message: { content: prompt } })}\n`;
@@ -284,8 +308,12 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
  * @param {string} [stderr] Diagnostics, appended to error messages.
  * @returns {string} Response text.
  */
+export function agyPrintTimeout(timeout) {
+  return Number.isFinite(timeout) ? `${Math.max(1, Math.ceil(timeout / 1000))}s` : '8760h';
+}
+
 export function extractAgyResponse(stdout, stderr = '') {
-  let result = null;
+  const results = [];
   const toolSteps = [];
   let sawEvent = false;
   for (const line of String(stdout).split(/\r?\n/)) {
@@ -299,7 +327,7 @@ export function extractAgyResponse(stdout, stderr = '') {
     }
     if (!event || typeof event.event !== 'string') continue;
     sawEvent = true;
-    if (event.event === 'result' && event.result && typeof event.result === 'object') result = event.result;
+    if (event.event === 'result') results.push(event.result && typeof event.result === 'object' ? event.result : null);
     if (event.event === 'step_update' && event.step_update?.step_type === 'tool') {
       toolSteps.push(String(event.step_update.tool_name || 'unknown'));
     }
@@ -309,7 +337,12 @@ export function extractAgyResponse(stdout, stderr = '') {
   if (toolSteps.length > 0) {
     throw new Error(`agy-cli backend: the agent invoked ${toolSteps.length} tool call(s) (${[...new Set(toolSteps)].join(', ')}); output rejected because Patina text tasks must not use tools${diag}`);
   }
-  if (!result) throw new Error(`agy-cli backend: stream ended without a result event${diag}`);
+  // One input event means exactly one terminal result; anything else is a
+  // stream Patina does not understand and must not pick a winner from.
+  if (results.length === 0) throw new Error(`agy-cli backend: stream ended without a result event${diag}`);
+  if (results.length > 1) throw new Error(`agy-cli backend: stream carried ${results.length} result events for one prompt; output rejected${diag}`);
+  const result = results[0];
+  if (!result) throw new Error(`agy-cli backend: result event had no payload${diag}`);
   if (result.status !== 'SUCCESS') {
     throw new Error(`agy-cli backend: agy reported ${result.status || 'an unknown status'}${result.error ? `: ${result.error}` : ''}${diag}`);
   }

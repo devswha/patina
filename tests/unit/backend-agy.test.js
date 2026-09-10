@@ -10,11 +10,13 @@ import { selectBackend } from '../../src/backends/index.js';
 import { getBackendSafety } from '../../src/backends/contract.js';
 
 // Fake `agy` that records argv, the stdin NDJSON, the workspace-local agent
-// definition, then emits whatever NDJSON the test asked for via env.
+// definition, then emits whatever NDJSON the test asked for via env. CommonJS
+// on purpose: an extensionless script is parsed as CJS on every supported
+// Node, so no ESM syntax detection is involved.
 const FAKE_AGY = [
-  '#!/usr/bin/env node',
-  "import { readFileSync, existsSync } from 'node:fs';",
-  "import { join } from 'node:path';",
+  `#!${process.execPath}`,
+  "const { readFileSync, existsSync } = require('node:fs');",
+  "const { join } = require('node:path');",
   'const args = process.argv.slice(2);',
   "if (args.includes('--version')) { process.stdout.write('1.1.26\\n'); process.exit(0); }",
   "let stdin = '';",
@@ -34,6 +36,8 @@ const FAKE_AGY = [
   "  else if (mode === 'tool') process.stdout.write(init + '\\n' + tool + '\\n' + result('SUCCESS', 'looks fine\\n') + '\\n');",
   "  else if (mode === 'exit') { process.stderr.write('error: invalid model selection\\n'); process.exit(1); }",
   "  else if (mode === 'garbage') process.stdout.write('not json at all\\n');",
+  "  else if (mode === 'double') process.stdout.write(init + '\\n' + result('ERROR', '', 'first turn failed') + '\\n' + result('SUCCESS', 'late answer\\n') + '\\n');",
+  "  else if (mode === 'nullpayload') process.stdout.write(init + '\\n' + result('SUCCESS', 'fine\\n') + '\\n' + JSON.stringify({ event: 'result', result: null }) + '\\n');",
   '});',
   '',
 ].join('\n');
@@ -58,19 +62,18 @@ async function withFakeAgy(mode, fn) {
 }
 
 // invoke() reads the real ~/.gemini/antigravity-cli/settings.json and refuses
-// to launch when it auto-allows anything; os.homedir() cannot be redirected
-// here, so the launch-path tests skip on such hosts instead of flaking.
-function hostAllowRules() {
+// to launch when it widens headless permissions; os.homedir() cannot be
+// redirected here, so the launch-path tests skip on such hosts instead of
+// flaking. The refusal itself is covered by the settings test below.
+function hostSettingsProblem() {
   try {
-    return agyCli.readAgyAllowRules();
+    agyCli.assertAgySettingsSafe(agyCli.readAgySettings());
+    return false;
   } catch (err) {
-    return [err.message];
+    return err.message;
   }
 }
-const hostAllows = hostAllowRules();
-const launchSkip = hostAllows.length > 0
-  ? `host Antigravity settings auto-allow rules (${hostAllows.join(', ')}); invoke() refuses by design`
-  : false;
+const launchSkip = hostSettingsProblem();
 
 function argValue(args, flag) {
   const index = args.indexOf(flag);
@@ -92,6 +95,9 @@ test('agy-cli sends the prompt as one stdin user event with a tool-free workspac
     assert.strictEqual(argValue(record.args, '--output-format'), 'stream-json');
     assert.ok(record.args.includes('--disable-slash-commands'));
     assert.strictEqual(argValue(record.args, '--print-timeout'), '30s');
+    // The single stdin line is newline-terminated so agy's NDJSON reader
+    // sees a complete message before EOF.
+    assert.ok(record.stdin.endsWith('\n'));
     assert.strictEqual(argValue(record.args, '--model'), DEFAULT_BEST_MODELS.agyCli);
 
     const lines = record.stdin.trim().split('\n');
@@ -123,6 +129,22 @@ test('agy-cli fails closed on empty, error, tool-using, garbage and non-zero out
   await withFakeAgy('exit', async () => {
     await assert.rejects(agyCli.invoke({ prompt: 'x' }), /agy exited with code 1[\s\S]*invalid model selection/);
   });
+  // Exactly one terminal result per prompt: a late SUCCESS after an ERROR, or
+  // a trailing null payload after a SUCCESS, are both rejected rather than
+  // letting either result win.
+  await withFakeAgy('double', async () => {
+    await assert.rejects(agyCli.invoke({ prompt: 'x' }), /carried 2 result events/);
+  });
+  await withFakeAgy('nullpayload', async () => {
+    await assert.rejects(agyCli.invoke({ prompt: 'x' }), /carried 2 result events/);
+  });
+});
+
+test('agy-cli maps a non-finite timeout to an effectively unlimited --print-timeout', async () => {
+  assert.strictEqual(agyCli.agyPrintTimeout(30_000), '30s');
+  assert.strictEqual(agyCli.agyPrintTimeout(1), '1s');
+  assert.strictEqual(agyCli.agyPrintTimeout(Infinity), '8760h');
+  assert.strictEqual(agyCli.agyPrintTimeout(NaN), '8760h');
 });
 
 test('agy-cli rejects images and empty prompts before spawning', async () => {
@@ -131,28 +153,36 @@ test('agy-cli rejects images and empty prompts before spawning', async () => {
   assert.strictEqual(agyCli.supportsImages, false);
 });
 
-test('agy-cli refuses to launch when Antigravity settings auto-allow anything', () => {
+test('agy-cli refuses to launch unless Antigravity settings keep the headless defaults', () => {
   const dir = mkdtempSync(join(tmpdir(), 'patina-agy-settings-'));
   const file = join(dir, 'settings.json');
+  const check = (settings) => agyCli.assertAgySettingsSafe(settings);
   try {
-    // Missing file or no permissions block: defaults, nothing auto-allowed.
-    assert.deepEqual(agyCli.readAgyAllowRules(file), []);
+    // Missing file, unrelated keys, ask/deny lists and the safe modes pass.
+    assert.deepEqual(agyCli.readAgySettings(file), {});
     writeFileSync(file, JSON.stringify({ model: 'x', trustedWorkspaces: ['/home/me'] }));
-    assert.deepEqual(agyCli.readAgyAllowRules(file), []);
-    // ask/deny lists never widen anything.
-    writeFileSync(file, JSON.stringify({ permissions: { ask: ['command(*)'], deny: ['command(sudo)'] } }));
-    assert.doesNotThrow(() => agyCli.assertAgyAllowRulesSafe(agyCli.readAgyAllowRules(file)));
-    // Any allow rule fails closed with the rules named.
-    writeFileSync(file, JSON.stringify({ permissions: { allow: ['command(git)', 'read_url(google.com)'] } }));
-    assert.throws(
-      () => agyCli.assertAgyAllowRulesSafe(agyCli.readAgyAllowRules(file)),
-      /auto-allows 2 permission rule\(s\): command\(git\), read_url\(google\.com\)/,
-    );
+    assert.doesNotThrow(() => check(agyCli.readAgySettings(file)));
+    assert.doesNotThrow(() => check({ permissions: { ask: ['command(*)'], deny: ['command(sudo)'], allow: [] } }));
+    assert.doesNotThrow(() => check({ toolPermission: 'request-review', allowNonWorkspaceAccess: false }));
+    assert.doesNotThrow(() => check({ toolPermission: 'strict' }));
+
+    // Each widening setting fails closed and is named.
+    assert.throws(() => check({ permissions: { allow: ['command(git)', 'read_url(google.com)'] } }),
+      /auto-allows 2 rule\(s\): command\(git\), read_url\(google\.com\)/);
+    assert.throws(() => check({ toolPermission: 'always-proceed' }), /toolPermission is "always-proceed"/);
+    assert.throws(() => check({ toolPermission: 'proceed-in-sandbox' }), /toolPermission is "proceed-in-sandbox"/);
+    assert.throws(() => check({ allowNonWorkspaceAccess: true }), /allowNonWorkspaceAccess is true/);
+    // Several problems are reported together.
+    assert.throws(() => check({ toolPermission: 'always-proceed', allowNonWorkspaceAccess: true, permissions: { allow: ['mcp(*)'] } }),
+      /mcp\(\*\)[\s\S]*always-proceed[\s\S]*allowNonWorkspaceAccess/);
+
     // Unknown shapes fail closed too.
     writeFileSync(file, '{not json');
-    assert.throws(() => agyCli.readAgyAllowRules(file), /not valid JSON/);
-    writeFileSync(file, JSON.stringify({ permissions: { allow: 'command(*)' } }));
-    assert.throws(() => agyCli.readAgyAllowRules(file), /not a list/);
+    assert.throws(() => agyCli.readAgySettings(file), /not valid JSON/);
+    writeFileSync(file, '[]');
+    assert.throws(() => agyCli.readAgySettings(file), /not a JSON object/);
+    assert.throws(() => check({ permissions: { allow: 'command(*)' } }), /permissions\.allow is not a list/);
+    assert.throws(() => check({ permissions: 'yes' }), /permissions is not an object/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

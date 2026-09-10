@@ -18,12 +18,20 @@ import * as codexCli from '../../src/backends/codex-cli.js';
 import { isTimeoutError, withBackendConcurrencySlot } from '../../src/backends/contract.js';
 import * as geminiCli from '../../src/backends/gemini-cli.js';
 import * as kimiCli from '../../src/backends/kimi-cli.js';
+import * as agyCli from '../../src/backends/agy-cli.js';
+
+// agy-cli refuses to launch when the host's Antigravity settings auto-allow
+// anything; its lifecycle rows are skipped (not failed) on such hosts.
+function agyLaunchable() {
+  try { agyCli.assertAgySettingsSafe(agyCli.readAgySettings()); return true; } catch { return false; }
+}
 
 const BACKENDS = [
   { command: 'claude', backend: claudeCli },
   { command: 'codex', backend: codexCli },
   { command: 'gemini', backend: geminiCli },
   { command: 'kimi', backend: kimiCli },
+  ...(agyLaunchable() ? [{ command: 'agy', backend: agyCli }] : []),
 ];
 
 // The fixture uses a POSIX executable and process.kill(pid, 0) as the
@@ -117,6 +125,9 @@ const FAKE_CLI_SOURCE = [
   '      writeFileSync(args[index + 1], output);',
   '    } else if (command === "kimi") {',
   '      process.stdout.write(`${JSON.stringify({ role: "assistant", content: output })}\\n`);',
+  '    } else if (command === "agy") {',
+  '      process.stdout.write(`${JSON.stringify({ event: "init", conversation_id: "c", init: { cwd: process.cwd(), tools: [], permission_mode: "request-review" } })}\\n`);',
+  '      process.stdout.write(`${JSON.stringify({ event: "result", result: { conversation_id: "c", status: "SUCCESS", response: output, num_turns: 1 } })}\\n`);',
   '    } else {',
   '      process.stdout.write(output);',
   '    }',

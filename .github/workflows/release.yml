@@ -15,12 +15,21 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  # One release publisher at a time. queue:max keeps up to GitHub's hosted
+  # pending-run limit; cancel-in-progress is deliberately false.
+  group: patina-release-publication
+  queue: max
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.artifacts.outputs.version }}
     steps:
       - uses: actions/checkout@v6
 
@@ -72,6 +81,26 @@ jobs:
       - name: Alias npm package dry run
         run: cd packages/patina-humanizer && npm pack --dry-run
 
+      - name: Build and verify release tarballs
+        id: artifacts
+        run: |
+          node scripts/release-artifacts.mjs --output-dir .release-artifacts --source-sha "$GITHUB_SHA"
+          node --input-type=module <<'EOF' >> "$GITHUB_OUTPUT"
+          import { readFileSync } from 'node:fs';
+          const manifest = JSON.parse(readFileSync('.release-artifacts/release-manifest.json', 'utf8'));
+          const version = JSON.parse(readFileSync('package.json', 'utf8')).version;
+          if (manifest.version !== version || manifest.sourceSHA !== process.env.GITHUB_SHA) throw new Error('Release artifact identity mismatch');
+          console.log(`version=${version}`);
+          EOF
+
+      - name: Upload verified release tarballs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-artifacts-${{ github.sha }}
+          path: .release-artifacts
+          include-hidden-files: true
+          if-no-files-found: error
+
   authorize-source:
     needs: verify
     runs-on: ubuntu-latest
@@ -115,15 +144,25 @@ jobs:
       - name: Verify release metadata
         run: npm run release:check
 
-      - name: Publish patina-cli
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public --provenance
+      - name: Download verified release tarballs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-artifacts-${{ github.sha }}
+          path: .release-artifacts
 
-      - name: Publish patina-humanizer alias
+      - name: Verify downloaded release tarballs
+        env:
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          test -n "$RELEASE_VERSION"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then test "$GITHUB_REF_NAME" = "v$RELEASE_VERSION"; fi
+          node scripts/release-artifacts.mjs --verify-only --output-dir .release-artifacts --source-sha "$GITHUB_SHA" --version "$RELEASE_VERSION"
+
+      - name: Publish verified release tarballs with recovery
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: cd packages/patina-humanizer && npm publish --access public --provenance
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+        run: node scripts/release-artifacts.mjs --publish --output-dir .release-artifacts --source-sha "$GITHUB_SHA" --version "$RELEASE_VERSION"
 
   github-release:
     needs: [verify, npm]
@@ -135,6 +174,15 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v6
+
+      - name: Set up Node 24 for GitHub release helpers
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install release helper dependencies
+        run: npm ci
 
       - name: Extract changelog notes for this version
         run: |
@@ -150,15 +198,105 @@ jobs:
           EOF
           cat release-notes.md | head -3
 
-      - name: Create GitHub release
+      - name: Create or update GitHub release without stale latest promotion
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" \
-            --title "v${VERSION}" \
-            --notes-file release-notes.md \
-            --latest
+          query_release() {
+            local endpoint="$1"
+            local response_file="$2"
+            local command_status
+            if gh api --include "$endpoint" >"$response_file"; then
+              command_status=0
+            else
+              command_status=$?
+            fi
+            GH_RESPONSE_FILE="$response_file" GH_COMMAND_STATUS="$command_status" node --input-type=module <<'EOF'
+          import { readFileSync } from 'node:fs';
+          import {
+            classifyGithubReleaseLookup,
+            parseGithubApiStatus,
+          } from './scripts/release-artifacts.mjs';
+          const output = readFileSync(process.env.GH_RESPONSE_FILE, 'utf8');
+          process.stdout.write(classifyGithubReleaseLookup({
+            httpStatus: parseGithubApiStatus(output),
+            commandStatus: Number(process.env.GH_COMMAND_STATUS),
+          }));
+          EOF
+          }
+
+          release_response="$(mktemp)"
+          latest_response="$(mktemp)"
+          trap 'rm -f "$release_response" "$latest_response"' EXIT
+
+          verify_release_tag() {
+            git fetch --no-tags origin "+refs/tags/${GITHUB_REF_NAME}:refs/patina/release-check"
+            test "$(git rev-parse 'refs/patina/release-check^{commit}')" = "$GITHUB_SHA"
+          }
+
+          # A tag query distinguishes an existing release from auth, network,
+          # or gh-tool failures. Only an explicit HTTP 404 means absent.
+          release_state="$(query_release "repos/${GITHUB_REPOSITORY}/releases/tags/${GITHUB_REF_NAME}" "$release_response")"
+          if [ "$release_state" = present ]; then
+            # A rerun updates only the failed release step and preserves the
+            # existing latest marker.
+            verify_release_tag
+            gh release edit "$GITHUB_REF_NAME" \
+              --title "v${VERSION}" \
+              --notes-file release-notes.md
+            exit 0
+          fi
+
+          # /releases/latest is authoritative; do not use the limited release
+          # list, whose default page can omit the current latest release.
+          latest_state="$(query_release "repos/${GITHUB_REPOSITORY}/releases/latest" "$latest_response")"
+          current_latest=""
+          if [ "$latest_state" = present ]; then
+            current_latest="$(GH_RESPONSE_FILE="$latest_response" node --input-type=module <<'EOF'
+          import { readFileSync } from 'node:fs';
+          import {
+            parseGithubApiJson,
+            parseGithubReleaseTag,
+          } from './scripts/release-artifacts.mjs';
+          const release = parseGithubApiJson(readFileSync(process.env.GH_RESPONSE_FILE, 'utf8'));
+          process.stdout.write(parseGithubReleaseTag(release.tag_name));
+          EOF
+            )"
+          fi
+
+          action="$(CURRENT_LATEST="$current_latest" CANDIDATE="$VERSION" node --input-type=module <<'EOF'
+          import { decideGithubReleaseAction } from './scripts/release-artifacts.mjs';
+          process.stdout.write(decideGithubReleaseAction({
+            candidateVersion: process.env.CANDIDATE,
+            currentLatestVersion: process.env.CURRENT_LATEST || undefined,
+          }));
+          EOF
+          )"
+          case "$action" in
+            create-latest)
+              verify_release_tag
+              gh release create "$GITHUB_REF_NAME" \
+                --verify-tag \
+                --title "v${VERSION}" \
+                --notes-file release-notes.md \
+                --latest
+              ;;
+            create-not-latest)
+              echo "::warning::Not promoting stale version v${VERSION} to GitHub latest (current latest v${current_latest})."
+              verify_release_tag
+              gh release create "$GITHUB_REF_NAME" \
+                --verify-tag \
+                --title "v${VERSION}" \
+                --notes-file release-notes.md \
+                --latest=false
+              ;;
+            *)
+              echo "::error::Unexpected GitHub release action: $action"
+              exit 1
+              ;;
+          esac
 
   ghcr:
     needs: [verify, authorize-source]

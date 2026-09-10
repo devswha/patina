@@ -192,7 +192,7 @@ scope + acceptance criteria + isolated worktree
   → Draft PR + cheap targeted checks and normal deterministic CI
   → current size, risk, rollback, and SHA/tree evidence
   → Ready
-  → required expensive Codex review and/or browser/execution QA
+  → independent read-only review lane and/or browser/execution QA
   → maintainer decision and merge
 ```
 
@@ -213,17 +213,23 @@ The sole `not run` result is a documented non-applicability decision with a
 specific reason. If an applicable profile is unavailable, record
 `inconclusive`; `not run` is never a waiver.
 
-### Codex review requests
+### Independent review lane
 
-Use at most **one Codex code-review request per PR/head/diff**. Whether native
-Codex automation runs on Draft, Ready, or a new push is **unknown until P09
-confirms the repository's actual native settings**. Do not invent a label,
-Action, trigger, or external configuration and do not report one as enabled.
-Until that check is complete, no automatic path is assumed; use one explicit,
-authorized request path when review is needed. If native settings cannot
-enforce the Ready-plus-cheap-CI condition, disable automatic calls and keep
-the explicit single path. Never run GitHub Codex, an Action, and Desktop
-review against the same diff.
+**Decision (P09, 2026-09-10, maintainer):** native Codex GitHub review is not
+used for this repository. A repository-wide GitHub search for
+`chatgpt-codex-connector[bot]` comments and a check of five recent PRs found
+no evidence of native Codex review use, no workflow requests one, and the
+maintainer chose not to enable it. Account-side settings were not inspected. The required review lane for a `bot/*` PR is one independent,
+read-only review pass (the session's `architect` agent or an equivalent
+reviewer that did not write the change) plus the full deterministic CI
+(lint, unit/e2e, quality, architecture boundaries). The `vercel` bot only
+builds a preview; it reads no code and is not a review.
+
+Use at most **one independent review per PR/head/diff** and record its
+verdict and findings in the PR body. Do not invent a label, Action, trigger,
+or external configuration and do not report one as enabled. Re-enabling native
+Codex review is a maintainer decision and would replace, not add to, the
+independent pass; never run two reviewers against the same diff.
 
 After a finding is fixed, keep it on the same PR and update the evidence.
 Automatic fix/review cycles stop after 2 retries; the owner then re-scopes the

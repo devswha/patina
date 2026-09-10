@@ -164,8 +164,14 @@ moves from version-only to verified. Still not exercised: gemini-cli
 (api-key mode would spend the product key), kimi-cli, `agy` (no adapter),
 quota behavior, other operating systems.
 
-P09 native Codex settings and any unexposed web account configuration remain
-unknown; no automation is inferred from a deployment result. The recurring
+P09 was closed on 2026-09-10 by maintainer decision: native Codex GitHub
+review is not used (a repository-wide search for `chatgpt-codex-connector[bot]`
+comments and a five-PR spot check found no evidence of use; no workflow
+requests one; account-side settings were not inspected);
+the review lane is the independent read-only pass plus full CI described in
+[`docs/WORKFLOW.md`](../WORKFLOW.md#independent-review-lane). Unexposed web
+account configuration remains unknown; no automation is inferred from a
+deployment result. The recurring
 maintenance owner is the repository maintainer. Repeated alerts for one
 repository/channel/tier/deployment/trigger/window are deduplicated into one
 incident record with a next-review date; retries are bounded and do not create

@@ -182,6 +182,28 @@ moves from version-only to verified. Still not exercised: gemini-cli
 (api-key mode would spend the product key), kimi-cli, `agy` (no adapter),
 quota behavior, other operating systems.
 
+### P17b completion: every local CLI backend verified on current versions (2026-09-13)
+
+`backend-compat-kimi-gemini-agy-20260913.json` closes the P17b remainder of
+the 2026-09-10 record above. The maintainer first refreshed the CLIs (kimi
+0.29.1→0.42.0 via the official installer, agy 1.2.0→1.2.2, codex
+0.153.4→0.154.0, claude 2.1.267→2.1.269; gemini 0.59.0 was already latest) and
+resolved the two open auth decisions: kimi verifies over the Kimi Code OAuth
+session with `KIMI_API_KEY`/`MOONSHOT_API_KEY` unset, and gemini-cli over
+personal Google OAuth (`selectedAuthType=oauth-personal`) with `GEMINI_API_KEY`
+unset, so the product key was never read and the loopback OpenCodex fallback
+was not needed. All five local CLI backends then passed the same surface —
+auth ping, strict scoring JSON parse, `--verify` rewrite with
+`verification.verified=true`, a 1500 ms timeout kill with clean owned-process
+and temp-workspace checks, and the invalid in-family model error paths — plus
+a live codex foreign-model fallback re-check on 0.154.0. New fixtures:
+`backend-kimi-contract.json`, `backend-gemini-contract.json`,
+`backend-agy-contract.json`; the codex and claude fixtures re-point at the new
+record with their 2026-09-10 verdicts retained as history. Still not covered:
+quota/rate-limit behavior, other operating systems (P16b), other CLI
+versions/models, and gemini-cli's API-key mode (deliberately unexercised:
+product-key policy).
+
 P09 was closed on 2026-09-10 by maintainer decision: native Codex GitHub
 review is not used (a repository-wide search for `chatgpt-codex-connector[bot]`
 comments and a five-PR spot check found no evidence of use; no workflow

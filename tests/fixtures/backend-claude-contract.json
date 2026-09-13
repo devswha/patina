@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "backend": "claude-cli",
   "cli": "claude",
-  "observedVersion": "2.1.261",
-  "observedAt": "2026-09-10",
+  "observedVersion": "2.1.269",
+  "observedAt": "2026-09-13",
   "status": "verified",
   "evidence": {
     "kind": "real-invocation",
-    "record": "docs/operations/backend-compat-claude-gemini-20260910.json",
+    "record": "docs/operations/backend-compat-kimi-gemini-agy-20260913.json",
     "realInvocation": true,
     "outputParsingVerified": true,
     "errorsVerified": true,
@@ -18,12 +18,13 @@
   "syntheticFixture": false,
   "rawOutputIncluded": false,
   "history": {
-    "2026-09-09": "version-only / unverified record from `claude --version` (P17a)."
+    "2026-09-09": "version-only / unverified record from `claude --version` (P17a).",
+    "2026-09-10": "verified on Claude Code 2.1.261 (docs/operations/backend-compat-claude-gemini-20260910.json, 7 invocations)."
   },
   "scope": {
     "platform": "linux-x64",
     "node": "24.18.0",
-    "patina": "8.6.0 at dev 0ec1376 (agent tools removed, #798)",
+    "patina": "8.6.0 at dev 9f9c7b6",
     "model": "claude-sonnet-4-6",
     "authPath": "Claude Code OAuth session (~/.claude/.credentials.json claudeAiOauth, subscription); no ANTHROPIC_API_KEY in the environment",
     "invocations": 7,
@@ -38,7 +39,7 @@
   },
   "limitations": [
     "No credential, prompt, model response, or raw CLI output is recorded.",
-    "Verified only for Claude Code 2.1.261 on Linux with claude-sonnet-4-6; other versions, platforms, and models are unverified.",
+    "Verified only for Claude Code 2.1.269 on Linux with claude-sonnet-4-6; other versions, platforms, and models are unverified.",
     "Quota and rate-limit handling were not exercised.",
     "This is a connectivity/contract check, not a rewrite-quality experiment."
   ]

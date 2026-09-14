@@ -137,6 +137,8 @@ register:                 # casual | professional; 생략하면 원문 레지스
 - [벤치마크](docs/benchmarks/latest.md) · [연구](docs/research/2026-rewrite-efficacy-study1.md) · [FAQ](docs/FAQ_KR.md) ([English](docs/FAQ.md))
 - [기여 가이드](CONTRIBUTING_KR.md) ([English](CONTRIBUTING.md)) · [체인지로그](CHANGELOG.md)
 
+패턴을 제출하려면 [CONTRIBUTING_KR.md](CONTRIBUTING_KR.md)를 따르세요. [패턴 제안 이슈](https://github.com/devswha/patina/issues/new?template=pattern_proposal.yml)를 열고([`.github/ISSUE_TEMPLATE/pattern_proposal.yml`](.github/ISSUE_TEMPLATE/pattern_proposal.yml)), `patterns/{lang}-*.md`의 팩 템플릿으로 추가합니다.
+
 <details>
 <summary>이전 영문 playground 실행 녹화</summary>
 

@@ -83,3 +83,7 @@ voice를 보존합니다. Register는 `casual`/`professional` 전달 방식만 �
 가장 쉬운 기여는 근거가 있는 작은 예시입니다. before/after 쌍, 오탐 사례, 빠진 AI-writing pattern, 모델 출력에 반복해서 보이는 언어별 표현이 좋습니다.
 
 좋은 패턴 기여에는 실패 예시와 성공적인 rewrite가 둘 다 있어야 합니다.
+
+## 패턴은 어떻게 제출하나요?
+
+[CONTRIBUTING_KR.md](../CONTRIBUTING_KR.md)를 따르세요. 그 파일이 방법 안내입니다. [패턴 제안 이슈](https://github.com/devswha/patina/issues/new?template=pattern_proposal.yml)를 열고([`.github/ISSUE_TEMPLATE/pattern_proposal.yml`](../.github/ISSUE_TEMPLATE/pattern_proposal.yml)), `patterns/{lang}-*.md`의 팩 템플릿으로 추가합니다.

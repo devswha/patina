@@ -190,3 +190,4 @@ does not rewrite the September 5–8 facts above.
   Those September 5/7 unverified rows are unchanged, not newly measured.
 
 Receipt: [maintenance-p22-20260914.json](maintenance-p22-20260914.json).
+P04 first-ten window: [maintenance-p04-observation-20260914.json](maintenance-p04-observation-20260914.json).

@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "recordType": "maintenance-p04-observation",
+  "observedDate": "2026-09-14",
+  "observedAt": {
+    "utc": "2026-09-14T09:45:00Z",
+    "displayTimezone": "Asia/Seoul"
+  },
+  "repository": "devswha/patina",
+  "plan": "patina-repo-development-maintenance-plan-final-2026-09-09",
+  "planIds": ["P04-followup"],
+  "trackingIssue": 783,
+  "trigger": {
+    "kind": "first-ten-pr-warning-window",
+    "policy": "docs/WORKFLOW.md#review-budget-and-evidence",
+    "note": "Read-only replay of npm run pr:check against the first ten PRs after P04 landed in #792, plus one later template-using PR. Does not flip enforcement to blocking."
+  },
+  "authority": {
+    "actor": "session coding agent acting for repository maintainer",
+    "scope": "local operations receipt; GitHub PR metadata read via scripts/check-pr-policy.mjs",
+    "allowed": ["gh pr view", "node scripts/check-pr-policy.mjs --pr --json"],
+    "excluded": [
+      "PR_POLICY.mode change",
+      "P08 selective CI",
+      "required-check tightening",
+      "npm publish",
+      "production promotion"
+    ]
+  },
+  "source": {
+    "branch": "bot/p04-observation-20260914",
+    "base": "origin/dev",
+    "destSha": "44d19f155b1651d080776e5ba89420e9e8a1d928",
+    "destShaShort": "44d19f1",
+    "sourceVersion": "8.6.0",
+    "versionBumped": false,
+    "checker": "scripts/check-pr-policy.mjs",
+    "policyMode": "warning"
+  },
+  "command": "node scripts/check-pr-policy.mjs --pr <n> --repo devswha/patina --json",
+  "window": {
+    "afterPolicyPr": 792,
+    "firstTen": [793, 794, 795, 796, 797, 798, 799, 800, 801, 802],
+    "laterControl": [821]
+  },
+  "summary": {
+    "enforcementStill": "warning",
+    "firstTenOk": 1,
+    "firstTenInconclusive": 9,
+    "sizeAbove600": [802],
+    "sizeBelowTarget": [794, 795, 796, 797, 798, 800, 801],
+    "missingRequiredSections": [794, 795, 796, 797, 798, 799, 800, 801, 802],
+    "laterControlOk": [821],
+    "decision": "keep-warning",
+    "decisionReason": "The dominant first-ten failure is missing PR template sections on bodies written before that template was used consistently, not a flood of unjustified 600-line size hits. Only #802 crossed 600 reviewable lines (agy-cli, 706/14). Later #821 used the template and passed with 216 reviewable lines. Blocking size or section gates, or P08 selective CI, are not justified from this sample."
+  },
+  "checks": [
+    {"pr": 793, "exit": 0, "ok": true, "status": "ok", "reviewableLines": 309, "reviewableFiles": 3, "warnings": [], "errors": []},
+    {"pr": 794, "exit": 1, "ok": false, "status": "inconclusive", "reviewableLines": 103, "reviewableFiles": 2, "warnings": ["Reviewable diff is below the 200-400-line target (103 lines)."], "errors": ["missing required sections"]},
+    {"pr": 795, "exit": 1, "ok": false, "status": "inconclusive", "reviewableLines": 191, "reviewableFiles": 5, "warnings": ["Reviewable diff is below the 200-400-line target (191 lines)."], "errors": ["missing required sections"]},
+    {"pr": 796, "exit": 1, "ok": false, "status": "inconclusive", "reviewableLines": 106, "reviewableFiles": 4, "warnings": ["Reviewable diff is below the 200-400-line target (106 lines)."], "errors": ["missing required sections"]},
+    {"pr": 797, "exit": 1, "ok": false, "status": "inconclusive", "reviewableLines": 16, "reviewableFiles": 3, "warnings": ["Reviewable diff is below the 200-400-line target (16 lines)."], "errors": ["missing required sections"]},
+    {"pr": 798, "exit": 1, "ok": false, "status": "inconclusive", "reviewableLines": 130, "reviewableFiles": 6, "warnings": ["Reviewable diff is below the 200-400-line target (130 lines)."], "errors": ["missing required sections"]},
+    {"pr": 799, "exit": 1, "ok": false, "status": "inconclusive", "reviewableLines": 244, "reviewableFiles": 5, "warnings": [], "errors": ["missing required sections"]},
+    {"pr": 800, "exit": 1, "ok": false, "status": "inconclusive", "reviewableLines": 40, "reviewableFiles": 2, "warnings": ["Reviewable diff is below the 200-400-line target (40 lines)."], "errors": ["missing required sections"]},
+    {"pr": 801, "exit": 1, "ok": false, "status": "inconclusive", "reviewableLines": 33, "reviewableFiles": 3, "warnings": ["Reviewable diff is below the 200-400-line target (33 lines)."], "errors": ["missing required sections"]},
+    {"pr": 802, "exit": 1, "ok": false, "status": "inconclusive", "reviewableLines": 706, "reviewableFiles": 14, "warnings": ["Reviewable diff is above the 200-400-line target (706 lines).", "Reviewable diff exceeds the 600-line review warning threshold (706 lines)."], "errors": ["missing required sections"]},
+    {"pr": 821, "exit": 0, "ok": true, "status": "ok", "reviewableLines": 216, "reviewableFiles": 4, "warnings": [], "errors": [], "note": "later control; not part of the first-ten window"}
+  ],
+  "nextReview": {
+    "date": "2026-10-14",
+    "condition": "Re-check ten consecutive dest PRs that used the current template. Flip to blocking only if size warnings are common and split-able, or if missing sections appear on new PRs after the template was the default.",
+    "doNotEnable": ["P08 selective CI", "PR_POLICY.mode=blocking"]
+  }
+}

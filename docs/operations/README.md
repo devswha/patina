@@ -228,6 +228,16 @@ remain conditional-deferred; P12b/P21b remain unverified on a real
 registry/production path; Cursor desktop rule loading remains inconclusive.
 No `OBS-ALERT-v1` or paid-conversion claim. #783 stays open.
 
+### P04 first-ten warning window (2026-09-14)
+
+`maintenance-p04-observation-20260914.json` replays
+`scripts/check-pr-policy.mjs` on PRs #793–#802 (the first ten after #792) and
+on later control #821. Enforcement stays `warning`. Nine of the first ten are
+`inconclusive` because the PR body omitted the current template sections;
+only #802 crossed the 600-line review warning (706 reviewable lines). #821
+used the template and passed. This is not a reason to turn size checks into
+required gates or to start P08 selective CI. Next review: 2026-10-14.
+
 ## Publishing
 
 This directory is excluded from the npm tarball (`package.json` `files`:

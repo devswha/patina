@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 1,
+  "recordType": "maintenance-p22-observation",
+  "observedDate": "2026-09-14",
+  "observedAt": {
+    "utc": "2026-09-14T09:09:28Z",
+    "local": "2026-09-14T18:09:28+0900",
+    "displayTimezone": "Asia/Seoul"
+  },
+  "repository": "devswha/patina",
+  "plan": "patina-repo-development-maintenance-plan-final-2026-09-09",
+  "planIds": ["P22"],
+  "trackingIssue": 783,
+  "trigger": {
+    "kind": "weekly-monthly-observation",
+    "policy": "docs/WORKFLOW.md#recurring-maintenance-and-ownership-p22",
+    "note": "Read-only inventory and remaining-acceptance update. Not a release, publication, deployment, or alert drill."
+  },
+  "authority": {
+    "actor": "session coding agent acting for repository maintainer",
+    "scope": "local operations receipt on an isolated worktree; no external writes",
+    "allowed": ["gh issue/pr list", "npm view (anonymous)", "git log", "local commit of this receipt"],
+    "excluded": [
+      "npm login or token restore",
+      "npm publish / tag",
+      "vercel --prod or production promotion",
+      "Discord send",
+      "secret-value reads",
+      "OBS-ALERT fabrication",
+      "paid-conversion inference without provider evidence"
+    ]
+  },
+  "source": {
+    "branch": "bot/ops-p22-status-20260914",
+    "base": "origin/dev",
+    "destSha": "a9b2c6483d3f553ae70a1b3b08c09d2428fdf2f7",
+    "destShaShort": "a9b2c64",
+    "destNote": "P17b #809 merged into origin/dev at this SHA on 2026-09-14T09:07:25Z",
+    "sourceVersion": "8.6.0",
+    "versionBumped": false
+  },
+  "queries": {
+    "openIssues": {
+      "command": "gh issue list --state open --limit 50",
+      "count": 3,
+      "items": [
+        {
+          "number": 810,
+          "title": "web: inject CLI Korean documentSignals into hosted rewrite prompts",
+          "updatedAt": "2026-09-14T09:08:09Z",
+          "note": "Opened after #809 merged; product work, not a P22 acceptance unit."
+        },
+        {
+          "number": 807,
+          "title": "win32 follow-ups from the P16b smoke: libuv teardown abort and unverified local CLI launch path",
+          "updatedAt": "2026-09-10T20:57:28Z"
+        },
+        {
+          "number": 783,
+          "title": "Complete repository maintenance acceptance and dev integration",
+          "updatedAt": "2026-09-10T15:56:43Z",
+          "note": "Must remain open: recurring/human/external acceptance is not complete."
+        }
+      ]
+    },
+    "openPullRequests": {
+      "command": "gh pr list --state open --limit 50",
+      "count": 0,
+      "items": []
+    },
+    "npmView": {
+      "command": "npm view patina-cli version && npm view patina-cli dist-tags --json && npm view patina-humanizer version",
+      "login": false,
+      "tokenRestore": false,
+      "patinaCli": {
+        "version": "8.3.0",
+        "distTags": { "latest": "8.3.0" },
+        "latestPublishedAt": "2026-09-05T04:50:10.710Z"
+      },
+      "patinaHumanizer": {
+        "version": "8.3.0",
+        "distTags": { "latest": "8.3.0" }
+      }
+    },
+    "githubReleaseLatest": {
+      "command": "gh api repos/devswha/patina/releases/latest",
+      "name": "v8.3.0",
+      "publishedAt": "2026-09-05T04:51:05Z"
+    }
+  },
+  "sinceLastTrackingComment": {
+    "last783CommentAt": "2026-09-10T15:56:43Z",
+    "last783CommentSubject": "P16b Windows leg via #806",
+    "mergedAfterThatComment": [
+      {
+        "pr": 808,
+        "mergedAt": "2026-09-10T21:00:27Z",
+        "sha": "9f9c7b61eb8f596d6ffa784e778969f77db871af",
+        "title": "fix(backends): launch .cmd-shimmed local CLIs on win32"
+      },
+      {
+        "pr": 809,
+        "mergedAt": "2026-09-14T09:07:25Z",
+        "sha": "a9b2c6483d3f553ae70a1b3b08c09d2428fdf2f7",
+        "title": "test(backends): complete P17b — kimi/gemini-cli/agy verified, codex/claude re-smoked on current versions"
+      }
+    ]
+  },
+  "closuresThisWindow": {
+    "P17b": {
+      "status": "closed",
+      "closedBy": 809,
+      "destSha": "a9b2c6483d3f553ae70a1b3b08c09d2428fdf2f7",
+      "evidence": "docs/operations/backend-compat-kimi-gemini-agy-20260913.json",
+      "note": "Every local CLI backend now has a real-invocation verification on its then-current version. Quota, other OS, other versions/models, and gemini-cli API-key mode remain out of scope."
+    },
+    "issue807Item2": {
+      "status": "closed",
+      "closedBy": 808,
+      "item": "unverified local CLI launch path on win32",
+      "evidence": "issue #807 comment 5625335954 (2026-09-10T20:57:28Z)"
+    }
+  },
+  "remainingAcceptance": [
+    {
+      "ids": ["#807-item-1"],
+      "status": "open",
+      "reason": "libuv teardown abort (0xC0000409) on the unverified win32 batch path remains open after #808 closed item 2."
+    },
+    {
+      "ids": ["P01-desktop"],
+      "status": "inconclusive",
+      "reason": "cursor-acceptance-20260910.json passed Cursor Agent CLI on Linux only. Cursor IDE desktop rule loading was not exercised and is still uncovered."
+    },
+    {
+      "ids": ["P08", "P10", "P19b"],
+      "status": "conditional-deferred",
+      "reason": "No measured justification this check for selective CI, a permanent desktop QA worker, or speculative hotspot restructure. Prior deferral stands."
+    },
+    {
+      "ids": ["P12b"],
+      "status": "unverified",
+      "reason": "Real registry publication, queue contention, and partial-publish recovery remain unexercised. npm hold is still in force."
+    },
+    {
+      "ids": ["P21b"],
+      "status": "local-fixture-passed-production-unverified",
+      "reason": "Offline monitor and npm-recovery fixtures exist. No production drill, Discord send, or live recovery receipt was run this check."
+    },
+    {
+      "ids": ["P04-followup"],
+      "status": "not-observed",
+      "reason": "First-ten-PR warning observation was not measured in this inventory. Code merge is not completion."
+    },
+    {
+      "ids": ["P22"],
+      "status": "this-observation-recorded",
+      "reason": "Weekly/monthly trigger continues. This receipt is the 2026-09-14 observation, not plan completion."
+    }
+  ],
+  "explicitlyNotClaimed": {
+    "OBS-ALERT-v1": {
+      "claimed": false,
+      "reason": "No monitor alert, ACK, or recovery receipt was fetched or produced. A successful historical cron status is not an eligible receipt."
+    },
+    "paidConversion": {
+      "claimed": false,
+      "reason": "No Polar/provider query was run. An empty or unread log is not evidence of zero sales or of a first paid sale."
+    },
+    "productionPromotion": {
+      "claimed": false,
+      "reason": "vercel --prod and account promotion/rollback were not executed."
+    }
+  },
+  "channelHold": {
+    "npmPublication": "ON HOLD",
+    "holdPreserved": true,
+    "sourceVersion": "8.6.0",
+    "registryLatest": "8.3.0",
+    "gap": "source 8.6.0 vs npm/GitHub release 8.3.0 unchanged since 2026-09-05",
+    "authorization": "unresolved; this check did not login, restore a token, or probe credential validity"
+  },
+  "environment": {
+    "platform": "linux-x64",
+    "node": "v24.18.0",
+    "npm": "11.16.0",
+    "isolation": "Worktree /home/devswha/workspace/patina-p22-ops on bot/ops-p22-status-20260914. Primary checkout /home/devswha/workspace/patina was not edited."
+  },
+  "delivery": {
+    "externalWrites": false,
+    "publicationOrDeployment": false,
+    "npmHoldPreserved": true,
+    "versionBump": false,
+    "releaseReady": false,
+    "discordSent": false,
+    "secretsRead": false,
+    "nextBoundary": "Keep #783 open. Close #807 only after item 1 has win32 evidence. Do not publish, tag, or restore npm tokens from this observation."
+  }
+}

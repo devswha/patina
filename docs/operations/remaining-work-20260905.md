@@ -170,3 +170,23 @@ remains outside this implementation request.
   do not silently substitute a model or transport.
 - Gemini requests are restricted to the loopback OpenCodex endpoint and an
   explicit `google-antigravity/` model ID. Direct Gemini API fallback is forbidden.
+
+## September 14 P22 observation
+
+Append-only status from dest SHA `a9b2c64` (P17b #809 merged). This section
+does not rewrite the September 5–8 facts above.
+
+- Open issues queried 2026-09-14: #810 (new web `documentSignals` gap),
+  #807 (item 1 libuv teardown abort still open; item 2 closed by #808),
+  #783 (tracking; remains open).
+- Open PRs: none.
+- npm `patina-cli` / `patina-humanizer` still 8.3.0 (`npm view`, no login).
+  Source remains 8.6.0. Publication hold preserved; no tag or token restore.
+- P17b is closed by #809. P08/P10/P19b stay conditional-deferred.
+  P12b/P21b stay unverified for a real registry or production drill.
+  Cursor desktop rule loading stays inconclusive
+  (`cursor-acceptance-20260910.json` covered Agent CLI only).
+- No `OBS-ALERT-v1` receipt and no paid-conversion evidence were obtained.
+  Those September 5/7 unverified rows are unchanged, not newly measured.
+
+Receipt: [maintenance-p22-20260914.json](maintenance-p22-20260914.json).

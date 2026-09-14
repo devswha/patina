@@ -177,11 +177,12 @@ test('Claude CLI compatibility record is a real-invocation verification without 
   assertVerifiedBackendRecord(fixture, {
     backend: 'claude-cli',
     cli: 'claude',
-    version: '2.1.261',
-    record: 'docs/operations/backend-compat-claude-gemini-20260910.json',
+    version: '2.1.269',
+    record: 'docs/operations/backend-compat-kimi-gemini-agy-20260913.json',
   });
-  // The earlier version-only status is retained as history, not erased.
+  // Earlier statuses are retained as history, not erased.
   assert.match(fixture.history['2026-09-09'], /version-only/);
+  assert.match(fixture.history['2026-09-10'], /2\.1\.261/);
 });
 
 test('Codex CLI compatibility record is a real-invocation verification without raw output', () => {
@@ -192,9 +193,57 @@ test('Codex CLI compatibility record is a real-invocation verification without r
   assertVerifiedBackendRecord(fixture, {
     backend: 'codex-cli',
     cli: 'codex',
-    version: '0.153.4',
-    record: 'docs/operations/backend-compat-codex-20260910.json',
+    version: '0.154.0',
+    record: 'docs/operations/backend-compat-kimi-gemini-agy-20260913.json',
   });
+  assert.match(fixture.history['2026-09-10'], /0\.153\.4/);
+});
+
+test('Kimi CLI compatibility record is a real-invocation verification without raw output', () => {
+  const fixture = JSON.parse(readFileSync(
+    new URL('../fixtures/backend-kimi-contract.json', import.meta.url),
+    'utf8',
+  ));
+  assertVerifiedBackendRecord(fixture, {
+    backend: 'kimi-cli',
+    cli: 'kimi',
+    version: '0.42.0',
+    record: 'docs/operations/backend-compat-kimi-gemini-agy-20260913.json',
+  });
+  // The OAuth-path verification is what upgraded this record from not-exercised.
+  assert.match(fixture.scope.authPath, /OAuth session/);
+  assert.match(fixture.scope.authPath, /KIMI_API_KEY and MOONSHOT_API_KEY were unset/);
+});
+
+test('Gemini CLI compatibility record is a real-invocation verification without raw output', () => {
+  const fixture = JSON.parse(readFileSync(
+    new URL('../fixtures/backend-gemini-contract.json', import.meta.url),
+    'utf8',
+  ));
+  assertVerifiedBackendRecord(fixture, {
+    backend: 'gemini-cli',
+    cli: 'gemini',
+    version: '0.59.0',
+    record: 'docs/operations/backend-compat-kimi-gemini-agy-20260913.json',
+  });
+  // Verified over personal OAuth with the product env key unset, per policy.
+  assert.match(fixture.scope.authPath, /oauth-personal/);
+  assert.match(fixture.scope.authPath, /GEMINI_API_KEY was unset/);
+});
+
+test('Antigravity CLI compatibility record is a real-invocation verification without raw output', () => {
+  const fixture = JSON.parse(readFileSync(
+    new URL('../fixtures/backend-agy-contract.json', import.meta.url),
+    'utf8',
+  ));
+  assertVerifiedBackendRecord(fixture, {
+    backend: 'agy-cli',
+    cli: 'agy',
+    version: '1.2.2',
+    record: 'docs/operations/backend-compat-kimi-gemini-agy-20260913.json',
+  });
+  // This backend has no API-key path at all; the verdict is plan-backed OAuth.
+  assert.match(fixture.scope.authPath, /no API-key path/);
 });
 
 test('isRetryableBackendError honors message status even when err.status is null (#445)', () => {

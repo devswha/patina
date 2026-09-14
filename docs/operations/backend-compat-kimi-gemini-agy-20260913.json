@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "recordType": "maintenance-backend-compatibility-pilot",
+  "observedDate": "2026-09-13",
+  "repository": "devswha/patina",
+  "plan": "patina-repo-development-maintenance-plan-final-2026-09-09",
+  "planIds": ["P17b"],
+  "trackingIssue": 783,
+  "supersedes": {
+    "record": "docs/operations/backend-compat-claude-gemini-20260910.json",
+    "field": "notExercised",
+    "entries": ["gemini-cli", "antigravity-cli (agy 1.1.26)", "kimi-cli"],
+    "note": "All three move to verified on 2026-09-13 against updated CLI versions. The 2026-09-10 record's codex 0.153.4 and claude 2.1.261 verdicts are also superseded for version coverage by re-smokes on codex 0.154.0 and claude 2.1.269; its openai-http-over-OpenCodex verdict is unaffected."
+  },
+  "authority": {
+    "approval": "Maintainer directed the CLI refresh and the P17b remainder on 2026-09-13 and resolved the two open auth decisions: (1) kimi must verify over the Kimi Code OAuth session, not the env API key; (2) gemini-cli should use personal Google OAuth, with the loopback OpenCodex route as fallback only if personal OAuth were impossible. Personal OAuth was possible and was used; the OpenCodex proxy was not running and was not needed.",
+    "credentialPolicy": "OPENAI_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY, KIMI_API_KEY and MOONSHOT_API_KEY were unset in every pilot shell. gemini-cli ran on selectedAuthType=oauth-personal; no product or provider API key was read by any leg.",
+    "budget": {
+      "kimiOauthInvocations": 10,
+      "geminiOauthInvocations": 8,
+      "agyPlanInvocations": 7,
+      "codexOauthInvocations": 8,
+      "claudeOauthInvocations": 7,
+      "note": "Per backend: 1 auth ping, A=1 scorer, B=1 rewrite + 2 scorers per candidate (kimi's passed-on-retry adds 1 rewrite + 2 scorers), C=1 killed at 1500 ms, E=1 rejected before generation (gemini E ran twice: once truncated in the console log, once to read the full error class). codex adds 1 foreign-model fallback check (a claude-* id passed to codex-cli resolves to the backend default and succeeds). An earlier pre-decision kimi ping had used the KIMI_API_KEY env path; it is not counted here and is not evidence for the OAuth verdict."
+    }
+  },
+  "environment": {
+    "os": "Linux 6.8.0-139-generic x64",
+    "node": "v24.18.0",
+    "patina": "8.6.0 at dev 9f9c7b6 (branch bot/backend-compat-p17b-20260913)",
+    "clis": {
+      "kimi": "Kimi Code 0.29.1 -> 0.42.0 (refreshed 2026-09-13 via the official install.sh; prior binary kept at ~/.kimi-code/bin/kimi.bak)",
+      "gemini": "0.59.0 (already latest; unchanged)",
+      "agy": "Antigravity CLI 1.2.0 -> 1.2.2 (agy update)",
+      "codex": "0.153.4 -> 0.154.0 (npm)",
+      "claude": "Claude Code 2.1.267 -> 2.1.269 (claude update)"
+    },
+    "inputs": [
+      "body of tests/fixtures/suspect-zones/en/ai/en-ai-01.md without frontmatter (423 bytes)",
+      "body of tests/fixtures/suspect-zones/ko/ai/ko-ai-01.md without frontmatter (174 bytes)"
+    ]
+  },
+  "scenarios": {
+    "kimi-cli": {
+      "status": "verified",
+      "model": "kimi-code/kimi-for-coding (backend default)",
+      "authPath": "Kimi Code OAuth session in ~/.kimi-code; both env key names unset",
+      "A-score": {"exitCode": 0, "observed": "Strict scoring JSON parsed and rendered; overall 1.1 on the no-catalogued-pattern EN fixture (one low-severity vague attribution)."},
+      "B-rewrite-verify": {"exitCode": 0, "observed": "verification.verified=true, mps 100, fidelity 100, reason passed-on-retry (one conservative retry), outputHash present; JSON envelope shape matches the CLI contract."},
+      "C-timeout": {"wallMs": 1540, "exitCode": 1, "observed": "`kimi-cli backend: timed out after 1500ms`; leak check found no /tmp/patina-* workspace and no process cwd-bound to one."},
+      "E-invalid-in-family-model": {"wallMs": 1104, "exitCode": 1, "observed": "kimi exited 1 with its unknown-model catalog message (Model \"kimi-nonexistent-model\" is not co[nfigured...]); surfaced as a backend error; cleanup clean."}
+    },
+    "gemini-cli": {
+      "status": "verified",
+      "model": "gemini-2.5-pro (backend default)",
+      "authPath": "oauth-personal (~/.gemini/gemini-credentials.json, settings selectedAuthType=oauth-personal); GEMINI_API_KEY unset so the product key was never a candidate",
+      "A-score": {"exitCode": 0, "observed": "Strict scoring JSON parsed and rendered; overall 0.0 on the no-pattern EN fixture."},
+      "B-rewrite-verify": {"exitCode": 0, "observed": "verification.verified=true, mps 100, fidelity 100, reason passed (no retry), outputHash present."},
+      "C-timeout": {"wallMs": 1522, "exitCode": 1, "observed": "`gemini-cli backend: timed out after 1500ms`; leak check clean."},
+      "E-invalid-in-family-model": {"wallMs": 1783, "exitCode": 1, "observed": "gemini exited 1 with `ModelNotFoundError: models/gemini-nonexistent-model is not found ... or is not supported for generateContent` after its usual terminal/ripgrep warnings, which stripGeminiNoise handles; surfaced as a backend error; cleanup clean."}
+    },
+    "agy-cli": {
+      "status": "verified",
+      "model": "gemini-3.7-flash-medium (backend default; Antigravity catalog id)",
+      "authPath": "Antigravity OAuth token (~/.gemini/antigravity-cli/antigravity-oauth-token); the adapter's pre-launch settings gate (assertAgySettingsSafe) passed on the host's default permissions",
+      "A-score": {"exitCode": 0, "observed": "Strict scoring JSON parsed and rendered; overall 0.0 on the no-pattern EN fixture. First live verification of the agy-cli adapter (#802): custom-agent definition, stdin NDJSON turn, and final-response extraction all worked on 1.2.2."},
+      "B-rewrite-verify": {"exitCode": 0, "observed": "verification.verified=true, mps 100, fidelity 100, reason passed (no retry), outputHash present."},
+      "C-timeout": {"wallMs": 1521, "exitCode": 1, "observed": "`agy-cli backend: timed out after 1500ms`; leak check clean."},
+      "E-invalid-in-family-model": {"wallMs": 4724, "exitCode": 1, "observed": "agy exited 1 with `invalid model selection ... model gemini-nonexistent-model is not recognized as a known model or custom model in settings` plus its catalog listing; surfaced as a backend error; cleanup clean."}
+    },
+    "codex-cli-resmoke": {
+      "status": "verified",
+      "model": "gpt-5.5 (backend default)",
+      "authPath": "ChatGPT OAuth session (~/.codex/auth.json); OPENAI_API_KEY unset",
+      "A-score": {"exitCode": 0, "observed": "Strict scoring JSON parsed; overall 1.1."},
+      "B-rewrite-verify": {"exitCode": 0, "observed": "verification.verified=true, mps 100, fidelity 91.7 (floor 70), reason passed, outputHash present."},
+      "C-timeout": {"wallMs": 1527, "exitCode": 1, "observed": "`codex-cli backend: timed out after 1500ms`; leak check clean."},
+      "E-invalid-in-family-model": {"wallMs": 3151, "exitCode": 1, "observed": "codex 0.154.0 exited 1 after warning that model metadata for `gpt-nonexistent-model` was not found; surfaced as a backend error; cleanup clean. Codex stderr includes its banner/session header; no such raw output is retained in this record."},
+      "F-foreign-model-fallback": {"wallMs": 5440, "exitCode": 0, "observed": "Passing a claude-* model id to codex-cli resolved to the backend default and returned normally (OK), re-confirming the resolveLocalCliModel family filter live on 0.154.0."}
+    },
+    "claude-cli-resmoke": {
+      "status": "verified",
+      "model": "claude-sonnet-4-6 (backend default)",
+      "authPath": "Claude Code subscription OAuth session; ANTHROPIC_API_KEY unset",
+      "A-score": {"exitCode": 0, "observed": "Strict scoring JSON parsed; overall 2.2 (same value as the 2.1.261 pilot on this fixture)."},
+      "B-rewrite-verify": {"exitCode": 0, "observed": "verification.verified=true, mps 100, fidelity 100, reason passed, outputHash present."},
+      "C-timeout": {"wallMs": 1523, "exitCode": 1, "observed": "`claude-cli backend: timed out after 1500ms`; leak check clean."},
+      "E-invalid-in-family-model": {"wallMs": 1708, "exitCode": 1, "observed": "claude exited 1 with this version's unknown-model catalog message (\"claude-nonexistent-model\" isn't described by this version's model catalog...); surfaced as a backend error; cleanup clean."}
+    }
+  },
+  "acceptance": {
+    "P17b": "passed for kimi-cli 0.42.0 (OAuth), gemini-cli 0.59.0 (oauth-personal), agy-cli 1.2.2 (plan OAuth), and re-verified on current versions codex-cli 0.154.0 and claude-cli 2.1.269. Together with the 2026-09-10 records, every Patina local CLI backend now has a real-invocation verification on its current version.",
+    "fixtures": [
+      "tests/fixtures/backend-kimi-contract.json",
+      "tests/fixtures/backend-gemini-contract.json",
+      "tests/fixtures/backend-agy-contract.json",
+      "tests/fixtures/backend-codex-contract.json",
+      "tests/fixtures/backend-claude-contract.json"
+    ],
+    "notCovered": ["quota/rate-limit behavior", "other operating systems (P16b)", "other CLI versions or models", "kimi's `--agent-file` tool-restriction surface beyond the adapter's zero-tool profile", "gemini-cli API-key mode (deliberately not exercised: product-key policy)"]
+  },
+  "boundaries": {
+    "productSourceChanged": false,
+    "versionBumped": false,
+    "publication": "none",
+    "researchRevived": false,
+    "credentialsRecorded": "none; auth mode names, exit codes, and error classes only. Raw CLI output, prompts, and model responses are not retained (scenario logs lived in /tmp during the run)."
+  }
+}

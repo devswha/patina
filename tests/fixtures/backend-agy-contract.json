@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "backend": "agy-cli",
+  "cli": "agy",
+  "observedVersion": "1.2.2",
+  "observedAt": "2026-09-13",
+  "status": "verified",
+  "evidence": {
+    "kind": "real-invocation",
+    "record": "docs/operations/backend-compat-kimi-gemini-agy-20260913.json",
+    "realInvocation": true,
+    "outputParsingVerified": true,
+    "errorsVerified": true,
+    "authVerified": true,
+    "quotaVerified": false,
+    "timeoutVerified": true
+  },
+  "syntheticFixture": false,
+  "rawOutputIncluded": false,
+  "history": {
+    "2026-09-10": "not exercised: agy 1.1.26 was present with an OAuth token but Patina had no adapter for it yet (the adapter shipped in #802)."
+  },
+  "scope": {
+    "platform": "linux-x64",
+    "node": "24.18.0",
+    "patina": "8.6.0 at dev 9f9c7b6",
+    "model": "gemini-3.7-flash-medium",
+    "authPath": "Antigravity OAuth token (~/.gemini/antigravity-cli/antigravity-oauth-token); the backend has no API-key path; the pre-launch settings gate (assertAgySettingsSafe) passed on default permissions",
+    "invocations": 7,
+    "scenarios": ["auth ping", "score", "rewrite --verify", "timeout", "invalid in-family model"]
+  },
+  "requiredContracts": {
+    "output": "Headless agy -p= with --input-format/--output-format stream-json, the workspace-local custom-agent definition, and the NDJSON final-response extraction all work on 1.2.2; strict scoring JSON and the [BODY]/[SELF_AUDIT] rewrite framing both parsed.",
+    "errors": "A non-zero agy exit is reported as a backend error with the child's stderr (the invalid-model-selection catalog message); the owned temp workspace is removed and no agy process survives.",
+    "auth": "Authentication is the non-empty Antigravity OAuth token file; the verified run used the plan-backed OAuth session and no API key (none exists for this backend).",
+    "quota": "No quota or rate-limit failure occurred in the pilot budget; quota behavior is not verified by this record.",
+    "timeout": "Patina's bounded child timer rejected a live invocation at 1500 ms, SIGKILLed the owned child, and left no temp workspace or process behind."
+  },
+  "limitations": [
+    "No credential, prompt, model response, or raw CLI output is recorded.",
+    "Verified only for Antigravity CLI 1.2.2 on Linux with gemini-3.7-flash-medium; other versions, platforms, and catalog models are unverified.",
+    "Quota and rate-limit handling were not exercised.",
+    "Tool denial relies on headless ask-mode auto-deny plus the post-hoc tool-step rejection; only the zero-tool rewrite/score profile was exercised.",
+    "This is a connectivity/contract check, not a rewrite-quality experiment."
+  ]
+}

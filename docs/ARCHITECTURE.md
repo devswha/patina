@@ -158,7 +158,7 @@ checks remain global. `--serve` is a `--preview` transport option.
 
 ### Shared infrastructure (lane-neutral)
 
-- `src/cli.js`, `cli/args.js`, `cli/run.js` (dispatcher), `cli/input.js`, `cli/batch.js`, `cli/xliff.js`
+- `src/cli.js`, `cli/args.js`, `cli/run.js` (dispatcher), `cli/input.js`, `cli/batch.js`, `cli/xliff.js`, `cli/teardown.js` (drain leftover fetch/stdin handles before CLI exit)
 - `src/commands/pack.js` — client half of `patina pack`
 - `src/config.js`, `errors.js`, `logger.js`, `loader.js`, `model-defaults.js`, `output.js`
 - `src/api.js`, `providers.js`, `backends/*`, `anthropic-native.js` (opt-in native
@@ -177,7 +177,7 @@ responsibility without turning every internal module into a supported API.
 
 | Lifecycle stage | Primary owner | Boundary that must remain true |
 |---|---|---|
-| CLI or HTTP entry | `bin/patina.js`, `src/cli.js`, `api/*.js` | Parse and validate user input before any provider, filesystem, or secret access. |
+| CLI or HTTP entry | `bin/patina.js`, `src/cli.js`, `src/cli/teardown.js`, `api/*.js` | Parse and validate user input before any provider, filesystem, or secret access. Drain leftover HTTP keep-alive / stdin handles before process exit. |
 | Input and settings | `src/cli/input.js`, `src/loader.js`, `src/config.js`, `src/web-config.js` | Resolve documented defaults and user assets; reject malformed or retired keys instead of silently guessing. |
 | Deterministic analysis | `src/features/**`, `src/prose-core.js`, deterministic scoring helpers | Remain reproducible, network-free, key-free, and independent of Lane B. |
 | Prompt and model execution | `src/prompt-builder.js`, `src/backends/**`, `src/api.js`, `src/streaming-api.js` | Keep credentials, provider calls, retries, and timeouts outside `src/features/**`. |

@@ -38,7 +38,7 @@ stay unmet; they are not active recruitment or annotation tasks.
 | Branch synchronization | Merge `main` history into `dev`, preserve research commits, delete merged work branches | September 7 baseline: main and dev both at 38423d3; source/web 8.4.0, npm 8.3.0 while publication is on hold |
 | Public benchmark/docs | Current reports, accurate versions/statuses, source-linked public claims | September 5 scorer/rewrite reports are published; this ledger and the roadmap now distinguish completed, unverified and deferred work |
 | GitHub cache removal | Confirm support submission/reply and inaccessible removed objects | Unverified; no support receipt or removed-object identifiers recorded as of September 8 |
-| Paid conversion | Verify provider-confirmed aggregate and first paid sale without exposing customer data | Unverified; an empty log-query result is not evidence of zero sales while retention is unknown |
+| Paid conversion | Polar checkout already live (2026-08-04). Later “first paid sale” count was optional evidence, not a missing payment system | Closed `not_planned` 2026-09-14. Empty logs are still not a sales total; do not treat that gap as unfinished Polar work |
 
 ### September 7 read-only operations check
 
@@ -188,8 +188,9 @@ does not rewrite the September 5–8 facts above.
   (`cursor-acceptance-20260910.json` covered Agent CLI only).
 - No `OBS-ALERT-v1` receipt and no paid-conversion evidence were obtained
   on September 5/7. Those rows stay historical. On 2026-09-14 the owner
-  dropped the OBS-ALERT receipt as remaining work (`not_planned`).
-  Paid-conversion verification is unchanged.
+  dropped both the OBS-ALERT receipt and paid-conversion counting as
+  remaining work (`not_planned`). Polar checkout itself has been live
+  since 2026-08-04.
 
 Receipt: [maintenance-p22-20260914.json](maintenance-p22-20260914.json).
 P04 first-ten window: [maintenance-p04-observation-20260914.json](maintenance-p04-observation-20260914.json).

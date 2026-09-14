@@ -232,8 +232,14 @@ No `OBS-ALERT-v1` or paid-conversion claim. #783 stays open.
 Owner decision: the first eligible `OBS-ALERT-v1` alert/recovery receipt is
 `not_planned`. Cron 200 stands as “monitor is running.” Do not open
 Sensitive observability credentials or synthesize an incident for this
-item. Paid-conversion verification is a separate Polar question and is
-unchanged.
+item.
+
+### Polar checkout already live; sales-count dropped (2026-09-14)
+
+Polar Pro checkout opened on production on 2026-08-04
+(`live-open-20260804.md`). That is the payment system. A later “first paid
+sale / order count” check is `not_planned`. Do not query Polar or treat
+empty webhook logs as unfinished checkout work.
 
 ### P04 first-ten warning window (2026-09-14)
 

@@ -44,37 +44,40 @@ function burstinessBlock(prompt) {
 }
 
 describe('resolveRhetoricPolicy', () => {
-  it('defaults unless PATINA_RHETORIC_POLICY is exactly h-rhetoric', () => {
+  it('defaults unless PATINA_RHETORIC_POLICY is legacy or the h-rhetoric alias', () => {
     assert.equal(resolveRhetoricPolicy({}), 'default');
     assert.equal(resolveRhetoricPolicy({ PATINA_RHETORIC_POLICY: 'default' }), 'default');
     assert.equal(resolveRhetoricPolicy({ PATINA_RHETORIC_POLICY: 'other' }), 'default');
     assert.equal(resolveRhetoricPolicy({ PATINA_RHETORIC_POLICY: 'h-rhetoric' }), 'h-rhetoric');
+    assert.equal(resolveRhetoricPolicy({ PATINA_RHETORIC_POLICY: 'legacy' }), 'legacy');
   });
 });
 
 describe('buildPrompt rhetoricPolicy', () => {
-  it('keeps the similar-weight / fidelity-length sentence on the default path', () => {
+  it('uses H-RHETORIC text on the default path and keeps the fidelity-length envelope', () => {
     const omitted = buildPrompt(BASE);
     const explicit = buildPrompt({ ...BASE, rhetoricPolicy: 'default' });
+    const alias = buildPrompt({ ...BASE, rhetoricPolicy: 'h-rhetoric' });
     assert.equal(omitted, explicit);
+    assert.equal(omitted, alias);
     assert.match(omitted, new RegExp(FIDELITY_LENGTH));
-    assert.match(omitted, new RegExp(SIMILAR_WEIGHT));
-    assert.doesNotMatch(omitted, H_POLICY);
+    assert.match(omitted, H_POLICY);
+    assert.match(omitted, /Keep the document purpose and register/);
+    assert.match(omitted, /If a phrase is the only carrier of intensity/);
+    assert.doesNotMatch(omitted, new RegExp(SIMILAR_WEIGHT));
   });
 
-  it('replaces only the rhetoric edit policy when rhetoricPolicy is h-rhetoric', () => {
-    const prompt = buildPrompt({ ...BASE, rhetoricPolicy: 'h-rhetoric' });
+  it('restores the similar-weight sentence only when rhetoricPolicy is legacy', () => {
+    const prompt = buildPrompt({ ...BASE, rhetoricPolicy: 'legacy' });
     assert.match(prompt, new RegExp(FIDELITY_LENGTH));
-    assert.match(prompt, H_POLICY);
-    assert.match(prompt, /Keep the document purpose and register/);
-    assert.match(prompt, /If a phrase is the only carrier of intensity/);
-    assert.doesNotMatch(prompt, new RegExp(SIMILAR_WEIGHT));
+    assert.match(prompt, new RegExp(SIMILAR_WEIGHT));
+    assert.doesNotMatch(prompt, H_POLICY);
     assert.doesNotMatch(prompt, /폭발적으로/);
   });
 
-  it('leaves CV/burstiness text unchanged between default and h-rhetoric', () => {
+  it('leaves CV/burstiness text unchanged between default and legacy', () => {
     const def = buildPrompt(BASE);
-    const variant = buildPrompt({ ...BASE, rhetoricPolicy: 'h-rhetoric' });
+    const variant = buildPrompt({ ...BASE, rhetoricPolicy: 'legacy' });
     assert.equal(burstinessBlock(def), burstinessBlock(variant));
     assert.match(def, /CV < 0\.30/);
     assert.match(def, /targeting CV ≥ 0\.35/);
@@ -84,11 +87,12 @@ describe('buildPrompt rhetoricPolicy', () => {
 
   it('applies the same isolated swap on the English minimal prompt', () => {
     const def = buildPrompt({ ...BASE, promptMode: 'minimal' });
-    const variant = buildPrompt({ ...BASE, promptMode: 'minimal', rhetoricPolicy: 'h-rhetoric' });
-    assert.match(def, /natural phrasing of similar weight/);
+    const variant = buildPrompt({ ...BASE, promptMode: 'minimal', rhetoricPolicy: 'legacy' });
+    assert.match(def, H_POLICY);
+    assert.doesNotMatch(def, /natural phrasing of similar weight/);
     assert.match(def, /within roughly ±30%/);
-    assert.doesNotMatch(variant, /natural phrasing of similar weight/);
-    assert.match(variant, H_POLICY);
+    assert.match(variant, /natural phrasing of similar weight/);
+    assert.doesNotMatch(variant, H_POLICY);
     assert.ok(def.includes(MINIMAL_RHYTHM_EN));
     assert.ok(variant.includes(MINIMAL_RHYTHM_EN));
     const defRhythm = def.slice(def.indexOf(MINIMAL_RHYTHM_EN), def.indexOf('##'));
@@ -96,27 +100,28 @@ describe('buildPrompt rhetoricPolicy', () => {
     assert.equal(defRhythm, variantRhythm);
   });
 
-  it('emits the Korean PLAN §5 meaning on the Korean minimal path', () => {
+  it('emits the Korean PLAN §5 meaning on the Korean minimal default path', () => {
     const koBase = { ...BASE, config: { language: 'ko', documentType: 'default' } };
     const def = buildPrompt({ ...koBase, promptMode: 'minimal' });
-    const variant = buildPrompt({ ...koBase, promptMode: 'minimal', rhetoricPolicy: 'h-rhetoric' });
-    assert.match(def, /비슷한 무게/);
-    assert.doesNotMatch(variant, /비슷한 무게/);
-    assert.match(variant, /정보가 없는 과장·상투적 도입·중복/);
-    assert.match(variant, /원문에 있다는 이유만으로/);
-    assert.match(variant, /강도 정보를 유일하게/);
-    assert.doesNotMatch(variant, /폭발적으로/);
+    const variant = buildPrompt({ ...koBase, promptMode: 'minimal', rhetoricPolicy: 'legacy' });
+    assert.match(def, /정보가 없는 과장·상투적 도입·중복/);
+    assert.match(def, /원문에 있다는 이유만으로/);
+    assert.match(def, /강도 정보를 유일하게/);
+    assert.doesNotMatch(def, /비슷한 무게/);
+    assert.doesNotMatch(def, /폭발적으로/);
+    assert.match(variant, /비슷한 무게/);
+    assert.doesNotMatch(variant, /정보가 없는 과장·상투적 도입·중복/);
     assert.ok(def.includes(MINIMAL_RHYTHM_KO));
     assert.ok(variant.includes(MINIMAL_RHYTHM_KO));
   });
 
   it('does not read PATINA_RHETORIC_POLICY from the environment', () => {
     const prev = process.env.PATINA_RHETORIC_POLICY;
-    process.env.PATINA_RHETORIC_POLICY = 'h-rhetoric';
+    process.env.PATINA_RHETORIC_POLICY = 'legacy';
     try {
       const prompt = buildPrompt(BASE);
-      assert.match(prompt, new RegExp(SIMILAR_WEIGHT));
-      assert.doesNotMatch(prompt, H_POLICY);
+      assert.match(prompt, H_POLICY);
+      assert.doesNotMatch(prompt, new RegExp(SIMILAR_WEIGHT));
     } finally {
       if (prev === undefined) delete process.env.PATINA_RHETORIC_POLICY;
       else process.env.PATINA_RHETORIC_POLICY = prev;

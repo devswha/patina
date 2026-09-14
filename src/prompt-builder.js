@@ -209,9 +209,10 @@ function buildRegisterDirective(value, lang) {
  *   Research-only strict rewrite structure treatment.
  * @param {'baseline'|'short-safe-v1'} [options.minimalStructureGuidance=baseline]
  *   Research/hosted short-request treatment for the minimal prompt.
- * @param {'default'|'h-rhetoric'} [options.rhetoricPolicy]
- *   Isolated PLAN §5 rhetoric edit-policy variant. Default rewrite is unchanged;
- *   pass `h-rhetoric` only for research comparison.
+ * @param {'default'|'h-rhetoric'|'legacy'} [options.rhetoricPolicy]
+ *   Rhetoric edit-policy. Default (and `h-rhetoric`) remove empty hype instead
+ *   of restocking similar-weight filler. Pass `legacy` for the pre-2026-09-14
+ *   similar-weight sentence.
  * @returns {string} Complete prompt text.
  * @throws {TypeError} When register evidence cannot be JSON-serialized.
  * @example
@@ -243,7 +244,7 @@ export function buildPrompt(options) {
   if (!['baseline', 'ko-contextual-v1'].includes(structureGuidance)) {
     throw new Error(`unknown structureGuidance: ${structureGuidance}`);
   }
-  if (!['default', 'h-rhetoric'].includes(rhetoricPolicy)) {
+  if (!['default', 'h-rhetoric', 'legacy'].includes(rhetoricPolicy)) {
     throw new Error(`unknown rhetoricPolicy: ${rhetoricPolicy}`);
   }
   const lang = config.language || 'ko';
@@ -402,41 +403,48 @@ function buildTransformDirective({ jargon = 'keep', korean = false } = {}) {
 }
 
 /**
- * Research-only opt-in for the isolated PLAN §5 rhetoric edit-policy variant.
- * PATINA_RHETORIC_POLICY=h-rhetoric selects `h-rhetoric`; any other value stays `default`.
+ * Resolve the rhetoric edit policy from the environment.
+ * `PATINA_RHETORIC_POLICY=legacy` restores the pre-2026-09-14 similar-weight
+ * sentence. `h-rhetoric` is kept as an alias of the product default.
  *
  * @param {NodeJS.ProcessEnv|object} [env=process.env]
- * @returns {'default'|'h-rhetoric'}
+ * @returns {'default'|'h-rhetoric'|'legacy'}
  */
 export function resolveRhetoricPolicy(env = process.env) {
-  return env?.PATINA_RHETORIC_POLICY === 'h-rhetoric' ? 'h-rhetoric' : 'default';
+  if (env?.PATINA_RHETORIC_POLICY === 'legacy') return 'legacy';
+  if (env?.PATINA_RHETORIC_POLICY === 'h-rhetoric') return 'h-rhetoric';
+  return 'default';
 }
 
-const DEFAULT_RHETORIC_STRICT =
+const LEGACY_RHETORIC_STRICT =
   'Cut filler and hype freely, but replace it with natural phrasing of similar weight; never compress the text into a summary';
-const H_RHETORIC_STRICT =
+const DEFAULT_RHETORIC_STRICT =
   'Keep the document purpose and register. Actually remove or tighten empty hype, stock openings, and redundancy; do not keep those phrases just because they appear in the source. Preserve numbers, agents, conditions, negation, uncertainty, causation, obligation, risk, important intensity, and attributed evaluations. If numbers and time spans already convey scale, you may drop redundant emphasis. If a phrase is the only carrier of intensity, do not delete that intensity — keep the force while tightening the wording. Do not change direct quotations, requested slogans, or already-natural sentences without need. Do not change claims or stance the document purpose does not authorize.';
 
-const DEFAULT_RHETORIC_MINIMAL_EN =
+const LEGACY_RHETORIC_MINIMAL_EN =
   'cut the filler and hype, but replace them with natural phrasing of similar weight instead of compressing the text into a summary';
-const H_RHETORIC_MINIMAL_EN =
+const DEFAULT_RHETORIC_MINIMAL_EN =
   'while keeping the document purpose and register, actually remove or tighten empty hype, stock openings, and redundancy. Do not keep those phrases just because they appear in the source. Preserve numbers, agents, conditions, negation, uncertainty, causation, obligation, risk, important intensity, and attributed evaluations. If numbers and time spans already convey scale, you may drop redundant emphasis. If a phrase is the only carrier of intensity, do not delete that intensity — keep the force while tightening the wording. Do not change direct quotations, requested slogans, or already-natural sentences without need. Do not change claims or stance the document purpose does not authorize';
 
-const DEFAULT_RHETORIC_MINIMAL_KO =
+const LEGACY_RHETORIC_MINIMAL_KO =
   '군더더기는 걷어내되 그 자리를 비슷한 무게의 자연스러운 표현으로 채우고, 요약문으로 줄여 버리지는 마';
-const H_RHETORIC_MINIMAL_KO =
+const DEFAULT_RHETORIC_MINIMAL_KO =
   '문서 목적과 말투를 유지하면서 정보가 없는 과장·상투적 도입·중복은 실제로 제거하거나 간결하게 고쳐. 원문에 있다는 이유만으로 그런 표현을 남기지 마. 단, 수치·주체·조건·부정·불확실성·인과관계·의무·위험·중요한 강도와 귀속된 평가는 보존해. 수치와 기간이 규모를 이미 전달하면 중복 강조는 덜어내도 돼. 표현이 강도 정보를 유일하게 담고 있으면 그 강도를 지우지 말고 유지한 채 다듬어. 직접 인용·요청된 슬로건·이미 자연스러운 문장은 필요 없이 고치지 마. 문서 목적상 허용되지 않은 주장·입장 변경은 하지 마';
 
+function usesLegacyRhetoric(rhetoricPolicy = 'default') {
+  return rhetoricPolicy === 'legacy';
+}
+
 function buildStrictRhetoricItem(rhetoricPolicy = 'default') {
-  const rhetoric = rhetoricPolicy === 'h-rhetoric' ? H_RHETORIC_STRICT : DEFAULT_RHETORIC_STRICT;
+  const rhetoric = usesLegacyRhetoric(rhetoricPolicy) ? LEGACY_RHETORIC_STRICT : DEFAULT_RHETORIC_STRICT;
   return `5. Keep overall length close to the original — the fidelity gate measures character length and full marks require staying within 50-130% of the input. ${rhetoric}\n`;
 }
 
 function buildMinimalRhetoricClause(lang, rhetoricPolicy = 'default') {
   if (lang === 'ko') {
-    return rhetoricPolicy === 'h-rhetoric' ? H_RHETORIC_MINIMAL_KO : DEFAULT_RHETORIC_MINIMAL_KO;
+    return usesLegacyRhetoric(rhetoricPolicy) ? LEGACY_RHETORIC_MINIMAL_KO : DEFAULT_RHETORIC_MINIMAL_KO;
   }
-  return rhetoricPolicy === 'h-rhetoric' ? H_RHETORIC_MINIMAL_EN : DEFAULT_RHETORIC_MINIMAL_EN;
+  return usesLegacyRhetoric(rhetoricPolicy) ? LEGACY_RHETORIC_MINIMAL_EN : DEFAULT_RHETORIC_MINIMAL_EN;
 }
 
 // Markdown ATX heading lines (`## ...`) are document structure — they drive the

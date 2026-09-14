@@ -350,7 +350,7 @@ async function runWebRewriteStreamUnscoped({
     promptMode: budget?.applied,
     structureGuidance,
     documentSignals,
-    // PATINA_RHETORIC_POLICY=h-rhetoric opts into the isolated PLAN §5 rhetoric variant for research.
+    // PATINA_RHETORIC_POLICY=legacy restores the pre-2026-09-14 similar-weight rhetoric sentence.
     rhetoricPolicy: resolveRhetoricPolicy(env),
   });
   if (!verifyOnly && protectedSpans.length) {

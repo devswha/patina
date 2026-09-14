@@ -91,3 +91,5 @@ Good pattern contributions should include both a failing example and a successfu
 ## How do I submit a pattern?
 
 Follow [CONTRIBUTING.md](../CONTRIBUTING.md). That file is the how-to. Open a [pattern proposal](https://github.com/devswha/patina/issues/new?template=pattern_proposal.yml) ([`.github/ISSUE_TEMPLATE/pattern_proposal.yml`](../.github/ISSUE_TEMPLATE/pattern_proposal.yml)), then add the pack from the template in `patterns/{lang}-*.md`.
+
+A worked example of one current pattern, including a case that must not fire, is in [pattern of the week](community/pattern-of-the-week.md).

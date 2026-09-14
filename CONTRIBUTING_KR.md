@@ -2,7 +2,7 @@
 
 기여를 검토해 주셔서 감사합니다. Patina는 패턴 기반 도구이므로 가장 큰 도움이 되는 기여는 새 패턴, 더 나은 예시, Document Type 정책, Persona 개선인 경우가 많습니다.
 
-패턴을 제출하려면 먼저 [패턴 제안 이슈 폼](.github/ISSUE_TEMPLATE/pattern_proposal.yml)을 여세요. 팩 템플릿과 PR 체크리스트는 [새 패턴 추가](#새-패턴-추가)에 있습니다.
+패턴을 제출하려면 먼저 [패턴 제안 이슈 폼](.github/ISSUE_TEMPLATE/pattern_proposal.yml)을 여세요. 팩 템플릿과 PR 체크리스트는 [새 패턴 추가](#새-패턴-추가)에 있습니다. 성공/오탐 한 쌍을 짧게 풀어 둔 글은 [pattern of the week](docs/community/pattern-of-the-week.md)에 있습니다.
 
 ## 문서 경계
 

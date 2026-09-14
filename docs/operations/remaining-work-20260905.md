@@ -186,8 +186,10 @@ does not rewrite the September 5–8 facts above.
   P12b/P21b stay unverified for a real registry or production drill.
   Cursor desktop rule loading stays inconclusive
   (`cursor-acceptance-20260910.json` covered Agent CLI only).
-- No `OBS-ALERT-v1` receipt and no paid-conversion evidence were obtained.
-  Those September 5/7 unverified rows are unchanged, not newly measured.
+- No `OBS-ALERT-v1` receipt and no paid-conversion evidence were obtained
+  on September 5/7. Those rows stay historical. On 2026-09-14 the owner
+  dropped the OBS-ALERT receipt as remaining work (`not_planned`).
+  Paid-conversion verification is unchanged.
 
 Receipt: [maintenance-p22-20260914.json](maintenance-p22-20260914.json).
 P04 first-ten window: [maintenance-p04-observation-20260914.json](maintenance-p04-observation-20260914.json).

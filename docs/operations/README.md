@@ -65,13 +65,12 @@ live, which is terminal, and which must not be edited.
 
 ## Known open loops (recorded, not resolved here)
 
-- First healthy `OBS-ALERT-v1` receipt after live-open: no record found.
-  The recurring 503 incident was repaired through the stable log-query alias
-  and the Discord message envelope fix in 8.1.3. Ordinary production cron
-  returned 200 on 2026-09-05. The formal eligible alert/recovery receipt still
-  needs its own evidence; a successful cron status alone does not establish it.
-  See `pro-monitor-endpoint-repair-20260904.md` and
-  `pro-failure-recovery-20260904.md`.
+- First healthy `OBS-ALERT-v1` receipt after live-open: **not required.**
+  Owner decision 2026-09-14 (`not_planned`). No record was found, and none
+  will be queued. Ordinary cron 200 is enough to treat the monitor as
+  running; do not fetch Sensitive observability tokens or manufacture an
+  alert/recovery cycle for this receipt. The 8.1.3 Discord envelope and
+  log-query repair stay. See `pro-monitor-endpoint-repair-20260904.md`.
 - Trusted server-side rewrite failures now restore Pro request/character
   allowance once (8.1.3). This is usage allowance restoration, not a payment
   refund. Client cancellations after admission remain charged.
@@ -227,6 +226,14 @@ Open PRs: none. npm stay on 8.3.0; publication remains ON HOLD. #807 item 1
 remain conditional-deferred; P12b/P21b remain unverified on a real
 registry/production path; Cursor desktop rule loading remains inconclusive.
 No `OBS-ALERT-v1` or paid-conversion claim. #783 stays open.
+
+### OBS-ALERT receipt dropped (2026-09-14)
+
+Owner decision: the first eligible `OBS-ALERT-v1` alert/recovery receipt is
+`not_planned`. Cron 200 stands as “monitor is running.” Do not open
+Sensitive observability credentials or synthesize an incident for this
+item. Paid-conversion verification is a separate Polar question and is
+unchanged.
 
 ### P04 first-ten warning window (2026-09-14)
 

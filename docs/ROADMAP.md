@@ -106,7 +106,7 @@ Acceptance criteria:
 
 ### Phase 3 — deterministic feature expansion
 
-Status (2026-09-02): in research. The Korean diagnosis modules (`src/features/korean-diagnosis.js`, `korean-invariants.js`, `korean-structure-fingerprint.js`) landed in 8.1.0 as research infrastructure and are **not** promoted to the shipped verdict (`docs/research/ko-confirmatory-verdict-20260901.md`). The smoothness-floor trigger below (payment open) has fired since 2026-08-04; the item is still roadmap-only.
+Status (2026-09-02): in research. The Korean diagnosis modules (`src/features/korean-diagnosis.js`, `korean-invariants.js`, `korean-structure-fingerprint.js`) landed in 8.1.0 as research infrastructure and are **not** promoted to the shipped verdict (`docs/research/ko-confirmatory-verdict-20260901.md`). The smoothness-floor item is **shipped advisory (CLI rewrite warning); not in analyzeText / benchmark**. Remaining Phase 3 candidates stay research-only.
 
 Goal: add signals that are not just sentence length or lexicon hits.
 
@@ -117,8 +117,7 @@ Candidate features:
 - sentence opener diversity
 - Korean passive/nominalization proxies
 - paragraph shape variation
-- **sentence-length / line-rhythm smoothness floor** (advisory): flag output whose sentence-length CV, line-length CV, or line-ending entropy falls **below** a human band — the "too smooth / over-edited" lower bound, distinct from the existing detection-side burstiness signal. Ship advisory-first (like the meaning proxy Phase A): warning only, no exit-code or gate change, no `analyzeText` coupling, so the benchmark stays unaffected. Reuses the burstiness CV already computed in `src/features/*`.
-  - Trigger: implementation starts only after payment is open and the launch is complete (P0 = payment/launch); adopted here as roadmap only. Idea from `kimsh-1/gn-voice` (`scripts/verify_style.py` smoothness lower-bound; MIT — Section A). Credit in `NOTICE` if its formula is reused.
+- **sentence-length / line-rhythm smoothness floor** (advisory): shipped advisory (CLI rewrite warning); not in analyzeText / benchmark. Flags rewrite output whose sentence-length CV, line-length CV, or line-ending entropy falls **below** a human band — the "too smooth / over-edited" lower bound, distinct from the existing detection-side burstiness signal. Warning only (`src/cli/smoothness-advisory.js`); no exit-code or gate change; missing `smoothness-floor` key is enabled. Reuses `burstinessCV`; line CV / ending entropy are local (no gn-voice NOTICE credit).
 
 Acceptance criteria:
 

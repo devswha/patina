@@ -1,7 +1,37 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
+import { buildDocumentSignals } from '../../src/features/document-signals.js';
 import { buildPrompt } from '../../src/prompt-builder.js';
+
+const KO_FORMAL = '주제만 주면 한 세트가 나옵니다. 직접 디자인할 필요가 없습니다. 캐러셀을 완성합니다. 바로 시작합니까?';
+const KO_MIXED = '어떤 글은 해요체예요. 다른 문장은 평서체다. 또 어떤 건 합니다. 이렇게 섞이면 어색해요. 그렇지만 다양하다. 혼합이다.';
+const EN_TEXT = 'Welcome home. This draft is English only. It has no Korean endings.';
+
+test('same Korean text and lang yield identical document signals', () => {
+  const first = buildDocumentSignals({ text: KO_FORMAL, lang: 'ko' });
+  const second = buildDocumentSignals({ text: KO_FORMAL, lang: 'ko' });
+  assert.deepEqual(first, second);
+  assert.deepEqual(first.signals, [
+    '지배 어투: 합쇼체(-습니다) — 합쇼체 100% · 해요체 0% · -다체 0% (문장 4개 기준). 재작성 문장 전체를 이 어투로 통일할 것',
+  ]);
+  assert.equal(first.register.register, 'formal');
+});
+
+test('mixed Korean register is measured, not guessed', () => {
+  const { signals, register } = buildDocumentSignals({ text: KO_MIXED, lang: 'ko' });
+  assert.equal(register.register, 'mixed');
+  assert.match(signals[0], /^어미 분포:/);
+  assert.match(signals[0], /지배 어투 없음\(혼합\)/);
+});
+
+test('non-Korean languages emit empty document signals', () => {
+  for (const lang of ['en', 'zh', 'ja']) {
+    assert.deepEqual(buildDocumentSignals({ text: KO_FORMAL, lang }), { signals: [], register: null }, lang);
+    assert.deepEqual(buildDocumentSignals({ text: EN_TEXT, lang }), { signals: [], register: null }, lang);
+  }
+  assert.deepEqual(buildDocumentSignals({ text: EN_TEXT, lang: 'ko' }), { signals: [], register: null });
+});
 
 const BASE = {
   config: { language: 'ko', documentType: 'default' },

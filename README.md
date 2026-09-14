@@ -55,7 +55,7 @@ patina is a deterministic, pattern-based humanizer for Korean, English, Chinese,
 
 [Hosted API (Pro)](docs/HTTP-API.md)
 
-[Aside blog workflow preview](docs/integrations/aside.md): choose local Patina options, then run a verified CLI rewrite before completing a blog draft. Native Aside desktop validation remains separate.
+[Aside blog workflow preview](docs/integrations/aside.md): choose local Patina options, then run a verified CLI rewrite before completing a blog draft. Native Aside desktop acceptance is not planned.
 
 **Agent skill — paste this into Claude Code, Codex CLI, Cursor, or any agent:**
 

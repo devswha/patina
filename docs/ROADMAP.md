@@ -380,7 +380,9 @@ Checked 2026-09-08 against the issue records and the [editor client record](inte
   and the issue was closed as `not_planned`. Closure is not evidence of a public
   Hugging Face upload.
 - The [Aside integration](integrations/aside.md#validation-boundary) is available
-  in the source checkout. Native macOS/Aside acceptance remains unverified.
+  in the source checkout. Native macOS/Aside desktop acceptance was abandoned
+  by the owner on 2026-09-14 (`not_planned`); Linux CLI evidence is not a
+  desktop proof.
 - #772 (CLI-first skill execution with execution evidence) has source
   implementation present in this non-npm change, including the helper,
   installer runtime checks and default skill routing. Existing targeted tests

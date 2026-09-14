@@ -186,12 +186,19 @@ be reported before the task is called complete.
 
 ## Validation boundary
 
-This guide was researched and the skill was authored on Linux. Actual Aside
-desktop testing was unavailable. Linux CLI and local-page checks, when reported
-with the integrating PR, do not prove skill registration, command permissions,
-localhost reachability, or a signed-in blog editor works inside Aside.
+This guide was researched and the skill was authored on Linux. Linux CLI,
+options-page, and adapter tests remain the supported evidence. They do not
+prove skill registration, command permissions, localhost reachability, or a
+signed-in blog editor inside Aside.
 
-Before describing this as tested in Aside on macOS, record these checks there:
+**Owner decision, 2026-09-14:** native macOS / Aside desktop live acceptance
+is abandoned (`not_planned`). Do not queue a Mac host, do not treat the
+checklist below as remaining work, and do not describe this integration as
+tested in Aside. The CLI adapter and this guide stay; only the desktop
+acceptance gate is dropped.
+
+The checks below are historical, not a queue. They were the intended macOS
+proof before the owner dropped that gate:
 
 - Create the skill through Aside's creator, select it, and verify its contents.
 - Run the source CLI and selected backend in Aside's task working folder.

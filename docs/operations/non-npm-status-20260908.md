@@ -127,3 +127,8 @@ pre-merge inventories below remain historical observations.
    later acceptance and integration evidence.
 5. **npm publication.** Requires restored npm authorization; excluded from
    this stream.
+
+Later owner decision, 2026-09-14: native macOS / Aside desktop live
+acceptance is `not_planned`. The CLI adapter remains active; Linux checks
+are not a desktop proof. See
+[`docs/integrations/aside.md#validation-boundary`](../integrations/aside.md#validation-boundary).

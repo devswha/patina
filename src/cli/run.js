@@ -5,7 +5,7 @@ import {
   loadDocumentType,
   loadCoreFile,
 } from '../loader.js';
-import { buildPrompt } from '../prompt-builder.js';
+import { buildPrompt, resolveRhetoricPolicy } from '../prompt-builder.js';
 import { buildTransformVariants } from './args.js';
 import { invokeBackendChain, selectBackendChain, selectOcrBackends, listBackends } from '../backends/index.js';
 import { selectProvider, resolveProviderConfig } from '../providers.js';
@@ -204,6 +204,8 @@ export async function runDefault(parsed, logger) {
       jargon: parsed.jargon,
       rewriteHeadings: parsed.rewriteHeadings,
       persona,
+      // PATINA_RHETORIC_POLICY=h-rhetoric opts into the isolated PLAN §5 rhetoric variant for research.
+      rhetoricPolicy: resolveRhetoricPolicy(process.env),
     }),
   }));
 
@@ -283,6 +285,7 @@ export async function runDefault(parsed, logger) {
               documentSignals: buildDocumentSignals({ text, lang }).signals,
               jargon: parsed.jargon,
               rewriteHeadings: parsed.rewriteHeadings,
+              rhetoricPolicy: resolveRhetoricPolicy(process.env),
               apiKey: resolved.apiKey,
               baseURL: resolved.baseURL,
               model: resolved.model,
@@ -549,6 +552,7 @@ export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
       text: core, mode: 'rewrite',
       register: null,
       promptMode, documentSignals: null,
+      rhetoricPolicy: resolveRhetoricPolicy(process.env),
     });
     const raw = await invokeBackendChain({
       backends, prompt, apiKey: resolved.apiKey, baseURL: resolved.baseURL,
@@ -571,6 +575,7 @@ export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
       documentType,
       voice: voice.body ? voice : null,
       scoring: scoring.body ? scoring : null, promptMode, register: null,
+      rhetoricPolicy: resolveRhetoricPolicy(process.env),
       apiKey: resolved.apiKey, baseURL: resolved.baseURL, model: resolved.model,
       callLLM, signal: cancellation.signal, timeout: timeoutMs, logger,
     });
@@ -877,6 +882,7 @@ async function runPreviewJob({
       promptMode,
       jargon: parsed.jargon,
       rewriteHeadings: parsed.rewriteHeadings,
+      rhetoricPolicy: resolveRhetoricPolicy(process.env),
     };
     const invokeInputs = {
       backends,

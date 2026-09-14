@@ -9,7 +9,7 @@ import { MPS_FLOOR, FIDELITY_FLOOR, redactSecrets, REWRITE_MODES, STREAM_FRAME_T
 import { evaluateVerification } from './verification-schema.js';
 import { buildWebRewriteReceipt, sha256 } from './web-rewrite-receipt.js';
 import { createTextEdits, normalizeProtectedSpans, validateProtectedText, isWellFormedText } from './edit-controls.js';
-import { fenceReferenceText } from './prompt-builder.js';
+import { fenceReferenceText, resolveRhetoricPolicy } from './prompt-builder.js';
 import { resolveWebPromptBudget } from './web-prompt-budget.js';
 import { buildDocumentSignals } from './features/document-signals.js';
 import {
@@ -350,6 +350,8 @@ async function runWebRewriteStreamUnscoped({
     promptMode: budget?.applied,
     structureGuidance,
     documentSignals,
+    // PATINA_RHETORIC_POLICY=h-rhetoric opts into the isolated PLAN §5 rhetoric variant for research.
+    rhetoricPolicy: resolveRhetoricPolicy(env),
   });
   if (!verifyOnly && protectedSpans.length) {
     const literals = protectedSpans.map(({ start, end }) => original.slice(start, end));

@@ -209,7 +209,7 @@ function buildRegisterDirective(value, lang) {
  *   Research-only strict rewrite structure treatment.
  * @param {'baseline'|'short-safe-v1'} [options.minimalStructureGuidance=baseline]
  *   Research/hosted short-request treatment for the minimal prompt.
- * @param {'default'|'h-rhetoric'} [options.rhetoricPolicy=default]
+ * @param {'default'|'h-rhetoric'} [options.rhetoricPolicy]
  *   Isolated PLAN §5 rhetoric edit-policy variant. Default rewrite is unchanged;
  *   pass `h-rhetoric` only for research comparison.
  * @returns {string} Complete prompt text.

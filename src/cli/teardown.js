@@ -1,5 +1,6 @@
 import http from 'node:http';
 import https from 'node:https';
+import { setImmediate } from 'node:timers';
 import { getProcessExitCode } from '../errors.js';
 
 const STDIO_FDS = new Set([0, 1, 2]);

@@ -143,6 +143,8 @@ Scores are editing signals with false positives and false negatives, not proof o
 - [Benchmarks](docs/benchmarks/latest.md) · [Research](docs/research/2026-rewrite-efficacy-study1.md) · [FAQ](docs/FAQ.md) ([한국어](docs/FAQ_KR.md))
 - [Contributing](CONTRIBUTING.md) ([한국어](CONTRIBUTING_KR.md)) · [Changelog](CHANGELOG.md)
 
+To submit a pattern, use [CONTRIBUTING.md](CONTRIBUTING.md). Open a [pattern proposal](https://github.com/devswha/patina/issues/new?template=pattern_proposal.yml) ([`.github/ISSUE_TEMPLATE/pattern_proposal.yml`](.github/ISSUE_TEMPLATE/pattern_proposal.yml)), then add the pack from the template in `patterns/{lang}-*.md`.
+
 ## License
 
 MIT. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Inspired by [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh), [Wikipedia's "Signs of AI writing"](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing), and [blader/humanizer](https://github.com/blader/humanizer).

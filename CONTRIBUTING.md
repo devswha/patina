@@ -2,6 +2,8 @@
 
 Thanks for considering a contribution. Patina is a pattern-based tool, so the most impactful contributions are usually new patterns, better examples, Document Type policies, or Persona refinements.
 
+To submit a pattern, start with the [pattern proposal issue form](.github/ISSUE_TEMPLATE/pattern_proposal.yml). The pack template and PR checklist are in [Adding a New Pattern](#adding-a-new-pattern).
+
 ## Documentation boundaries
 
 The tracked tree is public by default. Keep these roles distinct:
@@ -55,7 +57,9 @@ When a PR changes one of these English files, update the Korean pair in the same
 
 ## Adding a New Pattern
 
-1. **Pick the right pack.** Patterns live in `patterns/{lang}-{category}.md`. Categories: content, language, style, structure, communication, filler, plus the score-only `viral-hook` pack.
+If you are proposing a new tell, open a [pattern proposal](.github/ISSUE_TEMPLATE/pattern_proposal.yml) first. The form asks for language, examples, a rewrite, false-positive risk, and a 50-document evaluation fixture or collection plan.
+
+1. **Pick the right pack.** Patterns live in `patterns/{lang}-{category}.md`. Categories: content, language, style, structure, communication, filler, plus the score-only `viral-hook` pack. That pack file is the template: copy its frontmatter and a numbered `### N.` section.
 
 2. **Follow the template.** Each pattern needs:
    - Number (next available, e.g. #30)
@@ -205,7 +209,7 @@ AI writing patterns evolve as models get fine-tuned. Some patterns decay (e.g. "
 
 How we handle this:
 - **Community reporting:** If you notice a pattern that's no longer a reliable signal, open an issue
-- **New pattern proposals:** If you spot a new AI tell, file an issue with 3+ real-world examples and a 50-document evaluation fixture or collection plan
+- **New pattern proposals:** If you spot a new AI tell, file a [pattern proposal](.github/ISSUE_TEMPLATE/pattern_proposal.yml) with 3+ real-world examples and a 50-document evaluation fixture or collection plan
 - **Quarterly review:** Maintainers follow [`process/pattern-freshness.md`](process/pattern-freshness.md) for corpus freeze windows, promotion thresholds, and frontmatter metadata
 - **Lexicon provenance:** Newly mined or re-mined lexicon entries need `added`, `source`, and `last_validated` provenance before changing shipped behavior; run `npm run lexicon:freshness` to verify sidecars match the shipped entries
 - **Version notes:** Each pattern pack has a `version` field. Record its

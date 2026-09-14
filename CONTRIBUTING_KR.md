@@ -2,6 +2,8 @@
 
 기여를 검토해 주셔서 감사합니다. Patina는 패턴 기반 도구이므로 가장 큰 도움이 되는 기여는 새 패턴, 더 나은 예시, Document Type 정책, Persona 개선인 경우가 많습니다.
 
+패턴을 제출하려면 먼저 [패턴 제안 이슈 폼](.github/ISSUE_TEMPLATE/pattern_proposal.yml)을 여세요. 팩 템플릿과 PR 체크리스트는 [새 패턴 추가](#새-패턴-추가)에 있습니다.
+
 ## 문서 경계
 
 추적되는 트리는 기본적으로 공개됩니다. 다음 역할을 구분해 유지합니다.
@@ -55,7 +57,9 @@ PR에서 위 영어 문서를 바꾸면 같은 PR에서 한국어 쌍도 갱신�
 
 ## 새 패턴 추가
 
-1. **올바른 팩을 고릅니다.** 패턴은 `patterns/{lang}-{category}.md`에 있습니다. 카테고리: content, language, style, structure, communication, filler, 그리고 score 전용 `viral-hook` 팩입니다.
+새 tell을 제안한다면 먼저 [패턴 제안 이슈](.github/ISSUE_TEMPLATE/pattern_proposal.yml)를 엽니다. 폼은 언어, 예시, rewrite, 오탐 위험, 50문서 평가 fixture 또는 수집 계획을 받습니다.
+
+1. **올바른 팩을 고릅니다.** 패턴은 `patterns/{lang}-{category}.md`에 있습니다. 카테고리: content, language, style, structure, communication, filler, 그리고 score 전용 `viral-hook` 팩입니다. 그 팩 파일이 템플릿입니다. frontmatter와 번호가 붙은 `### N.` 섹션을 복사하세요.
 
 2. **템플릿을 따릅니다.** 각 패턴에는 다음이 필요합니다.
    - 번호(다음 번호, 예: #30)
@@ -172,7 +176,7 @@ AI 문체 패턴은 모델이 미세 조정되면서 바뀝니다. 어떤 패턴
 
 처리 방식:
 - **커뮤니티 보고:** 더 이상 reliable signal이 아닌 패턴을 발견하면 이슈를 엽니다.
-- **새 패턴 제안:** 새 AI tell을 발견하면 실제 예시 3개 이상과 50문서 평가 fixture 또는 수집 계획을 포함해 이슈를 엽니다.
+- **새 패턴 제안:** 새 AI tell을 발견하면 [패턴 제안 이슈](.github/ISSUE_TEMPLATE/pattern_proposal.yml)에 실제 예시 3개 이상과 50문서 평가 fixture 또는 수집 계획을 넣어 엽니다.
 - **분기별 리뷰:** 유지보수자는 [`process/pattern-freshness.md`](process/pattern-freshness.md)의 corpus freeze window, promotion threshold, frontmatter metadata 규칙을 따릅니다.
 - **Lexicon provenance:** 새로 마이닝하거나 다시 마이닝한 lexicon 항목은 동작을 바꾸기 전에 `added`, `source`, `last_validated` provenance를 기록해야 하며, `npm run lexicon:freshness`로 sidecar가 실제 shipped entry와 맞는지 확인합니다.
 - **버전 메모:** 각 패턴 팩에는 `version` 필드가 있습니다. 패턴이 바뀌면

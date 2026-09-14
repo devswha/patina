@@ -5,7 +5,7 @@ import { callLLM as defaultCallLLM } from './api.js';
 import { inputError } from './errors.js';
 import { loadCoreFile, loadPatterns, loadDocumentType, applyDocumentTypePatternPolicy } from './loader.js';
 import { formatRewriteBodyForBrowser } from './output.js';
-import { buildPrompt, fenceReferenceText } from './prompt-builder.js';
+import { buildPrompt, fenceReferenceText, resolveRhetoricPolicy } from './prompt-builder.js';
 import { resolvePersonaForRun } from './personas/resolve.js';
 import { loadWebConfig, resolveBundleRoot } from './web-config.js';
 import { resolveRegister } from './config.js';
@@ -102,6 +102,7 @@ function renderHistory(history = []) {
  * @param {'strict'|'minimal'} [options.promptMode='strict'] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals=null] Trusted deterministic signals.
  * @param {'baseline'|'ko-contextual-v1'} [options.structureGuidance='baseline'] Structure treatment.
+ * @param {'default'|'h-rhetoric'} [options.rhetoricPolicy='default'] Isolated rhetoric edit policy.
  * @returns {string} Prompt text.
  */
 export function buildWebRewritePrompt({
@@ -111,6 +112,7 @@ export function buildWebRewritePrompt({
   promptMode = 'strict',
   documentSignals = null,
   structureGuidance = 'baseline',
+  rhetoricPolicy = 'default',
 }) {
   if (request.mode === 'verify') {
     throw inputError('Verification does not generate text', 'Use the hosted verification pipeline for a reviewed draft.', 'Send mode "verify" to /api/rewrite.');
@@ -133,6 +135,7 @@ export function buildWebRewritePrompt({
     ),
     documentSignals,
     structureGuidance,
+    rhetoricPolicy,
   };
 
   if (request.mode === 'refine') {
@@ -209,6 +212,8 @@ export async function runWebRewrite({
     assets,
     structureGuidance,
     documentSignals,
+    // PATINA_RHETORIC_POLICY=h-rhetoric opts into the isolated PLAN §5 rhetoric variant for research.
+    rhetoricPolicy: resolveRhetoricPolicy(env),
   });
   const raw = await callLLM({
     prompt,

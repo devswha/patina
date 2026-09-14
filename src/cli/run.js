@@ -39,6 +39,7 @@ import { personaMatchScore } from '../features/persona-match.js';
 import { pathToFileURL } from 'node:url';
 import { humanizeXliffDocument, resolveUniqueCap } from './xliff.js';
 import { inspectAuditSource } from '../inspection.js';
+import { warnIfTooSmooth } from './smoothness-advisory.js';
 
 /**
  * Run the default patina pipeline for an already-parsed CLI invocation:
@@ -332,6 +333,8 @@ export async function runDefault(parsed, logger) {
           if (meaningSafetyReason) {
             process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
           }
+          // Advisory only — rewrite output, never the source. Does not touch exit codes.
+          warnIfTooSmooth({ text: finalText, config, logger, lang });
         }
 
         if (mode === 'score') {

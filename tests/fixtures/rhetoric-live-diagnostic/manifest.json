@@ -1,0 +1,56 @@
+{
+  "source": "PLAN.md v2 §2.3",
+  "language": "ko",
+  "redistribution": "repo-ok",
+  "note": "Synthetic diagnostic texts only. Not a quality sample.",
+  "cases": [
+    {
+      "id": "01",
+      "class": "T",
+      "file": "01-t-innovative.txt",
+      "intent": "plain usage description; empty promotional adjective"
+    },
+    {
+      "id": "02",
+      "class": "T",
+      "file": "02-t-growth-numbers.txt",
+      "intent": "numbers already state scale; redundant intensifier"
+    },
+    {
+      "id": "03",
+      "class": "C",
+      "file": "03-c-traffic-outage.txt",
+      "intent": "increase intensity plus causation"
+    },
+    {
+      "id": "04",
+      "class": "C/T",
+      "file": "04-ct-users-growing.txt",
+      "intent": "borderline; intensity may be the only scale cue"
+    },
+    {
+      "id": "05",
+      "class": "C",
+      "file": "05-c-error-rate-may.txt",
+      "intent": "preserve possibility"
+    },
+    {
+      "id": "06",
+      "class": "C",
+      "file": "06-c-quoted-growth.txt",
+      "intent": "preserve quote and attribution"
+    },
+    {
+      "id": "07",
+      "class": "C",
+      "file": "07-c-exponential-search.txt",
+      "intent": "preserve technical degree"
+    },
+    {
+      "id": "08",
+      "class": "C",
+      "file": "08-c-poster-slogan.txt",
+      "intent": "preserve requested slogan"
+    }
+  ]
+}

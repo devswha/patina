@@ -9,6 +9,7 @@ import { buildPrompt, fenceReferenceText } from './prompt-builder.js';
 import { resolvePersonaForRun } from './personas/resolve.js';
 import { loadWebConfig, resolveBundleRoot } from './web-config.js';
 import { resolveRegister } from './config.js';
+import { buildDocumentSignals } from './features/document-signals.js';
 import {
   buildKoreanDiagnosis,
   diagnosisStructureGuidance,
@@ -198,11 +199,16 @@ export async function runWebRewrite({
     ? buildKoreanDiagnosis(request.text, { repoRoot })
     : null;
   const structureGuidance = diagnosis ? diagnosisStructureGuidance(diagnosis) : 'baseline';
+  const documentSignals = buildDocumentSignals({
+    text: request.text,
+    lang: request.lang,
+  }).signals;
   const prompt = buildWebRewritePrompt({
     request,
     config: effectiveConfig,
     assets,
     structureGuidance,
+    documentSignals,
   });
   const raw = await callLLM({
     prompt,

@@ -27,3 +27,4 @@ export {
   structuralModelVerdict, thresholdForMaxFpr, trainLogReg,
 } from './structural-classifier.js';
 export { loadStructuralModel, resolveStructuralModelPath } from './structural-model-loader.js';
+export { buildDocumentSignals } from './document-signals.js';

@@ -113,7 +113,8 @@ checks remain global. `--serve` is a `--preview` transport option.
 - `src/features/index.js` — `analyzeText()`, the engine
 - `src/features/stylometry.js`, `translationese.js`, `discourse-tells.js`,
   `markup-leakage.js`, `segment.js`, `structural-features.js`,
-  `structural-model-loader.js`, `lexicon.js`, `lexicon-core.js`, `catalog/*`
+  `structural-model-loader.js`, `lexicon.js`, `lexicon-core.js`,
+  `document-signals.js`, `catalog/*`
 - `src/output.js#buildDeterministicAuditBackstop`,
   `src/cli/run.js#withDeterministicScore` — audit/score backstops
 - `src/cli/score-gate.js` — `--exit-on` score gate

@@ -2,7 +2,7 @@
 
 Thanks for considering a contribution. Patina is a pattern-based tool, so the most impactful contributions are usually new patterns, better examples, Document Type policies, or Persona refinements.
 
-To submit a pattern, start with the [pattern proposal issue form](.github/ISSUE_TEMPLATE/pattern_proposal.yml). The pack template and PR checklist are in [Adding a New Pattern](#adding-a-new-pattern).
+To submit a pattern, start with the [pattern proposal issue form](.github/ISSUE_TEMPLATE/pattern_proposal.yml). The pack template and PR checklist are in [Adding a New Pattern](#adding-a-new-pattern). A short worked pair is in [pattern of the week](docs/community/pattern-of-the-week.md).
 
 ## Documentation boundaries
 

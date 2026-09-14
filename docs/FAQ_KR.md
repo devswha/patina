@@ -87,3 +87,5 @@ voice를 보존합니다. Register는 `casual`/`professional` 전달 방식만 �
 ## 패턴은 어떻게 제출하나요?
 
 [CONTRIBUTING_KR.md](../CONTRIBUTING_KR.md)를 따르세요. 그 파일이 방법 안내입니다. [패턴 제안 이슈](https://github.com/devswha/patina/issues/new?template=pattern_proposal.yml)를 열고([`.github/ISSUE_TEMPLATE/pattern_proposal.yml`](../.github/ISSUE_TEMPLATE/pattern_proposal.yml)), `patterns/{lang}-*.md`의 팩 템플릿으로 추가합니다.
+
+현재 패턴 하나를 성공/오탐으로 풀어 둔 예는 [pattern of the week](community/pattern-of-the-week.md)에 있습니다.

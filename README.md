@@ -143,7 +143,7 @@ Scores are editing signals with false positives and false negatives, not proof o
 - [Benchmarks](docs/benchmarks/latest.md) · [Research](docs/research/2026-rewrite-efficacy-study1.md) · [FAQ](docs/FAQ.md) ([한국어](docs/FAQ_KR.md))
 - [Contributing](CONTRIBUTING.md) ([한국어](CONTRIBUTING_KR.md)) · [Changelog](CHANGELOG.md)
 
-To submit a pattern, use [CONTRIBUTING.md](CONTRIBUTING.md). Open a [pattern proposal](https://github.com/devswha/patina/issues/new?template=pattern_proposal.yml) ([`.github/ISSUE_TEMPLATE/pattern_proposal.yml`](.github/ISSUE_TEMPLATE/pattern_proposal.yml)), then add the pack from the template in `patterns/{lang}-*.md`.
+To submit a pattern, use [CONTRIBUTING.md](CONTRIBUTING.md). Open a [pattern proposal](https://github.com/devswha/patina/issues/new?template=pattern_proposal.yml) ([`.github/ISSUE_TEMPLATE/pattern_proposal.yml`](.github/ISSUE_TEMPLATE/pattern_proposal.yml)), then add the pack from the template in `patterns/{lang}-*.md`. See [pattern of the week](docs/community/pattern-of-the-week.md) for one worked pair.
 
 ## License
 

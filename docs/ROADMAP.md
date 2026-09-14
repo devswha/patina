@@ -252,7 +252,11 @@ Acceptance criteria:
 
 ### Phase 2 — contribution flywheel
 
-Status (2026-09-02): open. No labelled starter-issue programme or "pattern of the week" cadence is recorded; pattern PR requirements live in `CONTRIBUTING.md`.
+Status (2026-09-14): submit path shipped in README/FAQ (#813). First
+pattern-of-the-week note is [`docs/community/pattern-of-the-week.md`](community/pattern-of-the-week.md).
+Labels `good first issue`, `patterns`, `benchmark`, and `docs` already exist;
+new starter issues should use them. Pattern PR requirements stay in
+`CONTRIBUTING.md`.
 
 Goal: turn users into pattern contributors.
 

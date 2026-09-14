@@ -102,7 +102,7 @@ function renderHistory(history = []) {
  * @param {'strict'|'minimal'} [options.promptMode='strict'] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals=null] Trusted deterministic signals.
  * @param {'baseline'|'ko-contextual-v1'} [options.structureGuidance='baseline'] Structure treatment.
- * @param {'default'|'h-rhetoric'} [options.rhetoricPolicy='default'] Isolated rhetoric edit policy.
+ * @param {'default'|'h-rhetoric'|'legacy'} [options.rhetoricPolicy='default'] Rhetoric edit policy.
  * @returns {string} Prompt text.
  */
 export function buildWebRewritePrompt({
@@ -212,7 +212,7 @@ export async function runWebRewrite({
     assets,
     structureGuidance,
     documentSignals,
-    // PATINA_RHETORIC_POLICY=h-rhetoric opts into the isolated PLAN §5 rhetoric variant for research.
+    // PATINA_RHETORIC_POLICY=legacy restores the pre-2026-09-14 similar-weight rhetoric sentence.
     rhetoricPolicy: resolveRhetoricPolicy(env),
   });
   const raw = await callLLM({

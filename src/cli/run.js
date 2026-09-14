@@ -205,7 +205,7 @@ export async function runDefault(parsed, logger) {
       jargon: parsed.jargon,
       rewriteHeadings: parsed.rewriteHeadings,
       persona,
-      // PATINA_RHETORIC_POLICY=h-rhetoric opts into the isolated PLAN §5 rhetoric variant for research.
+      // PATINA_RHETORIC_POLICY=legacy restores the pre-2026-09-14 similar-weight rhetoric sentence.
       rhetoricPolicy: resolveRhetoricPolicy(process.env),
     }),
   }));

@@ -39,7 +39,7 @@ node bin/patina.js --lang ko --format json --backend claude-cli \
   tests/fixtures/rhetoric-live-diagnostic/<case>.txt
 ```
 
-No `--verify`, `--model`, `--document-type`, `--persona`, or `--register`. Ambient `~/.patina.yaml` exists and only overlays `ouroboros.category-weights` (score-path Discord weights). It does not change rewrite instructions. Project `.patina.yaml` was absent. `PATINA_API_KEY` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` were unset in this shell.
+No `--verify`, `--model`, `--document-type`, `--persona`, or `--register`. Ambient `~/.patina.yaml` exists and only overlays score-path Discord category weights. It does not change rewrite instructions. Project `.patina.yaml` was absent. `PATINA_API_KEY` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` were unset in this shell.
 
 `--verify` was skipped because each candidate needs two scoring calls and a floor miss adds another rewrite plus two more scores (`docs/CLI.md`). That is well above “optional 8 verify” and would not stay inside the stated 8-rewrite budget.
 

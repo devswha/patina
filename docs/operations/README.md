@@ -218,6 +218,16 @@ incident record with a next-review date; retries are bounded and do not create
 unlimited Issues. Credentials, tokens, raw logs, request text, and provider
 responses are never collected in these records.
 
+### P22 weekly/monthly observation (2026-09-14)
+
+`maintenance-p22-20260914.json` is the 2026-09-14 inventory on dest SHA
+`a9b2c64` (P17b #809 merged). Open issues at writing: #810, #807, #783.
+Open PRs: none. npm stay on 8.3.0; publication remains ON HOLD. #807 item 1
+(libuv teardown abort) is still open after #808 closed item 2. P08/P10/P19b
+remain conditional-deferred; P12b/P21b remain unverified on a real
+registry/production path; Cursor desktop rule loading remains inconclusive.
+No `OBS-ALERT-v1` or paid-conversion claim. #783 stays open.
+
 ## Publishing
 
 This directory is excluded from the npm tarball (`package.json` `files`:

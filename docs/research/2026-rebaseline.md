@@ -100,3 +100,14 @@ All intervals below are Wilson 95% confidence intervals.
 2. Add non-KO/EN languages once public controls and generated positives reach the same n≥100 cell gate.
 3. Repeat the generation on API surfaces with explicit decoding parameters if a stricter lab-style claim is needed.
 4. Review Korean GPT-family misses before changing thresholds; the current result argues for targeted KO diagnostics rather than global score inflation.
+
+
+## Amendment 2026-09-16: claim manifest re-scored with the current analyzer
+
+The tables above are the 2026-05-22 analyzer's results and stay unchanged as
+historical evidence. On 2026-09-16 (owner decision recorded in
+[ko-gpt-miss-review-step1-decision-20260902.md](ko-gpt-miss-review-step1-decision-20260902.md))
+the claim manifest was regenerated with the current analyzer; the live claim
+surface is `docs/benchmarks/rebaseline-latest.{md,json}`. Headline deltas:
+ko gpt-family 44% -> 52% (miss set identical to the 48 reviewed hashes),
+overall accuracy 71.5% -> 73.6%, FPR 16% -> 11% (EN 14 -> 4, KO unchanged 18).

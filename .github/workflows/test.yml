@@ -117,3 +117,45 @@ jobs:
       - name: Dogfood public docs
         run: npm run dogfood
 
+      - name: Install Redis test executables
+        # tests/unit/quota-redis.test.js skips unless both executables are
+        # supplied, so a hosted run without Redis would pass while proving
+        # nothing. Install them explicitly and fail here if that is not
+        # possible. The regression owns and launches its own Redis process on a
+        # private UNIX socket, so no OS-managed service is started or used.
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends redis-server redis-tools
+          sudo systemctl disable --now redis-server \
+            || echo 'no systemd-managed redis-server unit to disable'
+          REDIS_SERVER="$(command -v redis-server)"
+          REDIS_CLI="$(command -v redis-cli)"
+          test -n "$REDIS_SERVER"
+          test -x "$REDIS_SERVER"
+          test -n "$REDIS_CLI"
+          test -x "$REDIS_CLI"
+          "$REDIS_SERVER" --version
+          "$REDIS_CLI" --version
+          echo "PATINA_TEST_REDIS_SERVER=$REDIS_SERVER" >> "$GITHUB_ENV"
+          echo "PATINA_TEST_REDIS_CLI=$REDIS_CLI" >> "$GITHUB_ENV"
+
+      - name: Real Redis quota regression
+        # Re-verify the resolved paths so a lost or empty environment value
+        # fails here instead of silently reverting to the skip path, then
+        # require the run to report one executed test and zero skips.
+        run: |
+          set -euo pipefail
+          test -n "${PATINA_TEST_REDIS_SERVER:-}"
+          test -x "$PATINA_TEST_REDIS_SERVER"
+          test -n "${PATINA_TEST_REDIS_CLI:-}"
+          test -x "$PATINA_TEST_REDIS_CLI"
+          log="$RUNNER_TEMP/redis-quota-regression.log"
+          node -r ./tests/helpers/real-tmpdir.cjs \
+            --test tests/unit/quota-redis.test.js | tee "$log"
+          grep -qE '(^|[^0-9])pass 1([^0-9]|$)' "$log"
+          grep -qE '(^|[^0-9])fail 0([^0-9]|$)' "$log"
+          grep -qE '(^|[^0-9])skipped 0([^0-9]|$)' "$log" || {
+            echo '::error::tests/unit/quota-redis.test.js did not execute against real Redis (non-zero skip count).'
+            exit 1
+          }

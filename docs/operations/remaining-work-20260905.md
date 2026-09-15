@@ -194,3 +194,37 @@ does not rewrite the September 5–8 facts above.
 
 Receipt: [maintenance-p22-20260914.json](maintenance-p22-20260914.json).
 P04 first-ten window: [maintenance-p04-observation-20260914.json](maintenance-p04-observation-20260914.json).
+
+## September 15 session observation
+
+Append-only status from `origin/dev` SHA `4140f8d` (H-RHETORIC default #828
+merged). This section does not rewrite the facts above.
+
+- #829 fixed in source: PR #831 (`bot/fix-829-claude-cli-macos-auth`, head
+  `0bb7700`) — claude-cli macOS Keychain auth detection + patina-skill
+  symlink entrypoint, with regression tests. Open, CI pending, not merged.
+- PR #830 (pattern-of-the-week #2) approved after independent verification
+  against the tree. Not merged: the Vercel status context fails on the
+  GitHub authorization gate (not a build/test failure); the green-CI rule
+  in docs/WORKFLOW.md applies until the authorization is granted or an
+  exception is recorded.
+- H-RHETORIC confirmation-experiment decision recorded: PR #832
+  (`docs/research/2026-09-15-rhetoric-confirmation-decision.md`). The §7.B
+  pilot will run, gated on the pre-flight quota/budget check PLAN §7.B
+  requires. Environment fact: five authenticated CLI backends, no default
+  HTTP API key (`node bin/patina.js doctor`, 2026-09-15, exit 0).
+- **npm authorization recovery attempted and blocked.** `npm whoami` →
+  401 Unauthorized (2026-09-15; log under `~/.npm/_logs/`). The local
+  `~/.npmrc` holds one `_authToken` line (existence checked by count only;
+  the value was not read or printed). GitHub secret `NPM_TOKEN` exists
+  (metadata updated 2026-06-07; value unreadable and validity unverified).
+  Registry still serves 8.3.0 for both packages; source is 8.6.0. Restoring
+  publication authorization requires the owner to mint a new npm access
+  token (publish scope on `patina-cli` and `patina-humanizer`) or run
+  `npm login` interactively, then update `~/.npmrc` and the `NPM_TOKEN`
+  secret. Credential creation is outside agent authority.
+- P12b stays unverified and is now explicitly blocked on the npm token
+  above: a real registry publication / queue-contention / partial-publish
+  drill cannot run without it. P21b stays local-fixture-only.
+- No npm login, token rotation, secret update, tag, or publication was
+  performed by this session.

@@ -89,6 +89,7 @@ artifacts/rewrite-efficacy-study1/
 artifacts/rewrite-efficacy-study2/
 artifacts/rewrite-efficacy-study3/
 artifacts/rewrite-efficacy-study4/
+artifacts/rhetoric-pilot-20260916/
 
 # Private model-study rewrites and judge rationales; publish sanitized rows only.
 artifacts/model-evaluation-*/*.private.jsonl

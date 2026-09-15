@@ -12,7 +12,6 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   LIFECYCLE_MARKER_PATH,
-  REQUIRED_LIFECYCLE_ID,
   scanLifecycleRecord,
   scanLifecycleText,
   scanPaths,
@@ -34,11 +33,11 @@ function relocateFirstMatch(source) {
 
 const lifecycleMarker = '<!-- maintenance-lifecycle: npm-token-publishing; owner=repository-maintainer; review=2026-10-09; remove-after=root-and-alias-trusted-publishing-verified -->';
 
-test('temporary publication lifecycle marker requires owner, review, and removal condition', () => {
+test('a lifecycle marker requires owner, review, and removal condition', () => {
   const clean = scanLifecycleText(`before\n${lifecycleMarker}\nafter\n`);
   assert.equal(clean.errors.length, 0);
   assert.equal(clean.records.length, 1);
-  assert.equal(clean.records[0].id, REQUIRED_LIFECYCLE_ID);
+  assert.equal(clean.records[0].id, 'npm-token-publishing');
   assert.equal(clean.records[0].owner, 'repository-maintainer');
   assert.equal(clean.records[0].review, '2026-10-09');
   assert.equal(clean.records[0]['remove-after'], 'root-and-alias-trusted-publishing-verified');
@@ -70,11 +69,23 @@ test('temporary publication lifecycle marker requires owner, review, and removal
     '<!-- maintenance-lifecycle: npm-token-publishing; owner; review=2026-10-09; remove-after=verified -->'
   );
   assert.ok(malformedField.errors.some((error) => error.segment === 'owner'));
+
+  const duplicated = scanLifecycleText(`${lifecycleMarker}\n${lifecycleMarker}\n`);
+  assert.ok(duplicated.errors.some((error) => /at most one lifecycle marker npm-token-publishing/.test(error.reason)));
   // The checker records lifecycle metadata; it never makes a date-based
   // deletion or pass decision.
 });
 
-test('root lifecycle pilot checks the tracked release policy path only', () => {
+test('no lifecycle marker is required after the npm-token-publishing pilot closed', () => {
+  // Retirement regression: the pilot marker's remove-after condition
+  // (OIDC verified for both npm packages) was met on 2026-09-15, so its
+  // absence must not drift the release check.
+  const report = scanLifecycleText('no markers here\n');
+  assert.equal(report.records.length, 0);
+  assert.equal(report.errors.length, 0);
+});
+
+test('root lifecycle scan checks the tracked release policy path only', () => {
   const root = mkdtempSync(join(tmpdir(), 'patina-lifecycle-scan-'));
   try {
     mkdirSync(resolve(root, 'docs/integrations'), { recursive: true });

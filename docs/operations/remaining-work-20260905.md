@@ -299,3 +299,42 @@ approved the release, cut as **8.7.0** (main was already 8.6.0 source/web).
 - `main` was merged back into `dev` (fast-forward to `b508c92`) per the
   workflow. The `v8.7.0` tag stays; the npm gap (registry 8.3.0 vs source
   8.7.0) is once again explicit.
+
+## September 15 — 8.7.0 published via OIDC trusted publishing
+
+Append-only. Resolves the E403 blocker recorded above.
+
+- The owner configured npm Trusted Publishing for both packages
+  (`devswha/patina` + `release.yml`, direct `npm publish` allowed). Workflow
+  switch landed via #840 (drop `NODE_AUTH_TOKEN`/`registry-url`, install
+  npm `^11.5.1`) and reached `main` via #841 (`6ecd3ce`).
+- Dispatch run `34926513662` (main, `publish: true`): OIDC auth and
+  provenance signing succeeded. The publish step reported
+  `ERR_PUBLISH_UNCONFIRMED` for `patina-cli` at 03:53:41Z, but the package
+  was in fact accepted — the registry showed `patina-cli@8.7.0` at
+  03:57:49Z with GitHub Actions provenance (commit `6ecd3ce`). The
+  post-publish confirmation is a single immediate read and lost the race
+  against registry visibility (~4 minutes).
+- `gh run rerun 34926513662 --failed` then exercised the P12b
+  partial-publish recovery path for real: the already-published root was
+  confirmed at initial inspection and skipped; only the alias was
+  published. The same confirmation race hit `patina-humanizer`
+  (04:32:51Z) and it appeared on the registry minutes later, with
+  `dist-tags.latest` = 8.7.0. Final state verified 2026-09-15: both
+  packages serve 8.7.0, `latest` = 8.7.0 on both.
+- The GitHub Release for `v8.7.0` was created manually from the CHANGELOG
+  entry after both publishes were confirmed, preserving the workflow
+  invariant that a release is recorded only after npm publish succeeded.
+- **P12b closes.** Real-registry authorization (OIDC), tarball reuse,
+  provenance, partial-publish recovery, stale-latest protection (latest
+  moved only to 8.7.0), and the release-gating invariant were all exercised
+  on the live registry. Queue contention was not exercised (no concurrent
+  publication occurred); the `cancel-in-progress: false` serialization is
+  source-verified only.
+- **Follow-up gap (new):** `scripts/release-artifacts.mjs` post-publish
+  confirmation performs one immediate registry read; with current registry
+  visibility lag (~4 minutes) it false-fails successful publishes. It needs
+  bounded polling (e.g. up to 10 minutes) before declaring
+  `ERR_PUBLISH_UNCONFIRMED`. Tracked as the next small CI fix.
+- The `NPM_TOKEN` secret remains stored but is now unused by the workflow;
+  deletion is an owner action.

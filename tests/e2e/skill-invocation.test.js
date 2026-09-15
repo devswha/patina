@@ -407,6 +407,23 @@ test('missing installed CLI and dependency failure have a before-import receipt'
   }
 });
 
+test('helper invoked through a symlinked install still enters the CLI entrypoint (#829)', { skip: process.platform === 'win32' && 'win32 file symlinks need privileges' }, async t => {
+  const f = await fixture(t);
+  // Before the fix, resolve(argv[1]) kept the symlink path while
+  // import.meta.url was the realpath, so the entrypoint guard never matched
+  // and the process exited 0 with no output.
+  const link = join(f.root, 'linked-patina-skill.js');
+  await symlink(HELPER, link);
+  const child = spawn(process.execPath, [link, '--help'], { cwd: f.root, env: f.env, stdio: ['ignore', 'pipe', 'pipe'] });
+  let stdout = '', stderr = '';
+  child.stdout.on('data', chunk => { stdout += chunk; });
+  child.stderr.on('data', chunk => { stderr += chunk; });
+  const [exitCode] = await once(child, 'close', { signal: globalThis.AbortSignal.timeout(30_000) });
+  assert.equal(exitCode, 0);
+  assert.equal(stderr, '');
+  assert.match(stdout, /^Usage: node bin\/patina-skill\.js/);
+});
+
 test('unsafe managed storage is rejected without traversing its symlink', async t => {
   const f = await fixture(t);
   const outside = join(f.root, 'outside');

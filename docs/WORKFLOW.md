@@ -313,6 +313,19 @@ runtime impact, lockfile installation, and the relevant contract smoke. Keep
 general update PRs to at most 2 open at once; security updates are triaged
 separately and are never auto-merged solely because they are automated.
 
+Routine updates follow the same branch model as everything else.
+`.github/dependabot.yml` sets `target-branch: dev` for both the npm and
+github-actions entries, so ordinary **version** update PRs open against the
+integration branch instead of landing directly on `main`. **Security** updates
+keep GitHub's own contract: Dependabot raises them against the repository
+default branch (`main`), so a security fix can still arrive there. When it
+does, the rule in the branch model applies unchanged — merge `main` → `dev`
+immediately so `dev` never drifts behind. Changing this file on `dev`
+integrates the configuration but does not activate it: GitHub reads
+`.github/dependabot.yml` from the **default branch**, so the routing becomes
+operational only after the normal `dev` → `main` delivery path carries it to
+`main`.
+
 
 ## Safety rules (you are not alone in the repo)
 

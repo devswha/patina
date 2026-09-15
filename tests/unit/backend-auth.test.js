@@ -5,7 +5,11 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { isAuthenticated as kimiAuthenticated } from '../../src/backends/kimi-cli.js';
-import { readClaudeCredentialState } from '../../src/backends/claude-cli.js';
+import {
+  hasMacOsKeychainCredentials,
+  isAuthenticated as claudeAuthenticated,
+  readClaudeCredentialState,
+} from '../../src/backends/claude-cli.js';
 import {
   isAuthenticated as geminiAuthenticated,
   authHint as geminiAuthHint,
@@ -65,6 +69,44 @@ test('claude credential state distinguishes missing, unreadable, expired and liv
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('claude macOS Keychain probe runs `security` only on darwin (#829)', () => {
+  const calls = [];
+  const spawn = (result) => (...args) => { calls.push(args); return result; };
+
+  // Non-darwin platforms never touch the Keychain: the file check decides.
+  for (const platform of ['linux', 'win32', 'freebsd']) {
+    assert.equal(hasMacOsKeychainCredentials({ platform, spawnSyncImpl: spawn({ status: 0 }) }), false);
+  }
+  assert.equal(calls.length, 0);
+
+  // A stored `Claude Code-credentials` generic password means authenticated.
+  assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: 0 }) }), true);
+  assert.deepEqual(calls[0], ['security', ['find-generic-password', '-s', 'Claude Code-credentials'], { stdio: 'ignore' }]);
+
+  // A lookup miss (e.g. errSecItemNotFound) means the Keychain has no session.
+  assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: 44 }) }), false);
+
+  // A missing `security` binary surfaces as a spawn error, not a throw; any
+  // synchronous failure also falls back to the file check instead of crashing.
+  assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: null, error: new Error('spawn security ENOENT') }) }), false);
+  assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: () => { throw new Error('spawn failed'); } }), false);
+});
+
+test('claude isAuthenticated accepts macOS Keychain credentials, keeps file check elsewhere (#829)', () => {
+  // The Keychain path short-circuits to true regardless of the on-disk file,
+  // which cannot be redirected away from os.homedir() in this test.
+  assert.equal(claudeAuthenticated({ platform: 'darwin', spawnSyncImpl: () => ({ status: 0 }) }), true);
+
+  // Off darwin the probe must not run and the answer stays the file check's.
+  let probed = false;
+  const answer = claudeAuthenticated({
+    platform: 'linux',
+    spawnSyncImpl: () => { probed = true; return { status: 0 }; },
+  });
+  assert.equal(probed, false);
+  assert.equal(answer, readClaudeCredentialState(join(homedir(), '.claude', '.credentials.json')) === 'ok');
 });
 
 const KIMI_ENV = ['KIMI_API_KEY', 'MOONSHOT_API_KEY', 'KIMI_SHARE_DIR'];

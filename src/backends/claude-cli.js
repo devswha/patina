@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -59,8 +60,29 @@ export function readClaudeCredentialState(file, now = Date.now()) {
     : 'expired';
 }
 
-export function isAuthenticated() {
-  return readClaudeCredentialState(credentialsPath()) === 'ok';
+/**
+ * macOS Keychain probe. On macOS Claude Code stores OAuth credentials in the
+ * login Keychain as the generic password `Claude Code-credentials` and never
+ * writes ~/.claude/.credentials.json, so the file check alone reported an
+ * authenticated install as unauthenticated there (#829). Only darwin runs
+ * `security`; a missing binary, a lookup miss, or any spawn error reports
+ * false and the file check decides, leaving every other platform untouched.
+ *
+ * @param {{platform?: string, spawnSyncImpl?: Function}} [deps] Test seam.
+ * @returns {boolean} Whether the Keychain holds Claude Code credentials.
+ */
+export function hasMacOsKeychainCredentials({ platform = process.platform, spawnSyncImpl = spawnSync } = {}) {
+  if (platform !== 'darwin') return false;
+  try {
+    const result = spawnSyncImpl('security', ['find-generic-password', '-s', 'Claude Code-credentials'], { stdio: 'ignore' });
+    return result.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+export function isAuthenticated(deps = {}) {
+  return readClaudeCredentialState(credentialsPath()) === 'ok' || hasMacOsKeychainCredentials(deps);
 }
 
 export function authHint() {

@@ -28,11 +28,14 @@ export function isAvailable() {
   return probeCliAvailability('gemini');
 }
 
-export function isAuthenticated() {
+export function isAuthenticated({ credentialsFile = join(homedir(), '.gemini', 'gemini-credentials.json') } = {}) {
   // Two valid auth paths: OAuth (Code Assist) or API key. Either is enough
-  // for `gemini -p` to run; checking both avoids false negatives.
+  // for `gemini -p` to run; checking both avoids false negatives. The
+  // credentials-file path is injectable so tests can classify owned fixtures;
+  // the default is the real runtime path, so a no-argument call behaves
+  // exactly as before.
   return (
-    existsSync(join(homedir(), '.gemini', 'gemini-credentials.json')) ||
+    existsSync(credentialsFile) ||
     !!process.env.GEMINI_API_KEY?.trim()
   );
 }

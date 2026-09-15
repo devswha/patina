@@ -194,3 +194,65 @@ does not rewrite the September 5–8 facts above.
 
 Receipt: [maintenance-p22-20260914.json](maintenance-p22-20260914.json).
 P04 first-ten window: [maintenance-p04-observation-20260914.json](maintenance-p04-observation-20260914.json).
+
+## September 15 session observation
+
+Append-only status from `origin/dev` SHA `4140f8d` (H-RHETORIC default #828
+merged). This section does not rewrite the facts above.
+
+- #829 fixed in source: PR #831 (`bot/fix-829-claude-cli-macos-auth`, head
+  `0bb7700`) — claude-cli macOS Keychain auth detection + patina-skill
+  symlink entrypoint, with regression tests. Open, CI pending, not merged.
+- PR #830 (pattern-of-the-week #2) approved after independent verification
+  against the tree. Not merged: the Vercel status context fails on the
+  GitHub authorization gate (not a build/test failure); the green-CI rule
+  in docs/WORKFLOW.md applies until the authorization is granted or an
+  exception is recorded.
+- H-RHETORIC confirmation-experiment decision recorded: PR #832
+  (`docs/research/2026-09-15-rhetoric-confirmation-decision.md`). The §7.B
+  pilot will run, gated on the pre-flight quota/budget check PLAN §7.B
+  requires. Environment fact: five authenticated CLI backends, no default
+  HTTP API key (`node bin/patina.js doctor`, 2026-09-15, exit 0).
+- **npm authorization recovery attempted and blocked.** `npm whoami` →
+  401 Unauthorized (2026-09-15; log under `~/.npm/_logs/`). The local
+  `~/.npmrc` holds one `_authToken` line (existence checked by count only;
+  the value was not read or printed). GitHub secret `NPM_TOKEN` exists
+  (metadata updated 2026-06-07; value unreadable and validity unverified).
+  Registry still serves 8.3.0 for both packages; source is 8.6.0. Restoring
+  publication authorization requires the owner to mint a new npm access
+  token (publish scope on `patina-cli` and `patina-humanizer`) or run
+  `npm login` interactively, then update `~/.npmrc` and the `NPM_TOKEN`
+  secret. Credential creation is outside agent authority.
+- P12b stays unverified and is now explicitly blocked on the npm token
+  above: a real registry publication / queue-contention / partial-publish
+  drill cannot run without it. P21b stays local-fixture-only.
+- No npm login, token rotation, secret update, tag, or publication was
+  performed by this session.
+
+### npm authorization restored (owner `npm login`, 2026-09-15)
+
+The owner ran `npm login` after the observation above. Follow-up checks:
+
+- `npm whoami` → `devswha`, exit 0. `npm access list packages` shows the
+  account holds read-write on `patina-cli` and `patina-humanizer`.
+- `npm run release:check` on `dev` @ `4140f8d` → exit 0: release metadata
+  agrees on 8.6.0; retired-concept scan clean (13 allowed historical hits,
+  0 forbidden current hits).
+- `node scripts/release-artifacts.mjs --source-sha 4140f8d... --version 8.6.0`
+  (default dry-run: pack, hash, verify, local install-smoke of the root and
+  alias tarballs) → exit 0, artifacts verified under `.release-artifacts/`.
+- Real-registry state unchanged: both packages still serve 8.3.0; no tag,
+  publish, or dist-tag change was made. The dry-run exercises auth, the
+  artifact path and local install smoke; it does **not** exercise an actual
+  registry publish, queue contention, or partial-publish recovery, so P12b
+  stays "real-drill unverified" until the 8.6.0 release itself runs through
+  `.github/workflows/release.yml` (concurrency group
+  `patina-release-publication`, `cancel-in-progress: false`, GitHub Release
+  created only after npm publish succeeds).
+- The GitHub Actions `NPM_TOKEN` secret (metadata dated 2026-06-07) was not
+  rotated by this session; its equality with the now-working local token is
+  unverified. If CI publish fails with 401 on the next release run, the
+  owner should refresh the secret with the current token.
+- Next owner decision: whether to cut the 8.6.0 release (release PR
+  `dev` → `main` + `v8.6.0` tag per docs/WORKFLOW.md). That release run is
+  also the P12b real drill.

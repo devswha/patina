@@ -2,7 +2,7 @@
 // Checkout-local skill boundary. Only builtins load before the initial receipt.
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { constants } from 'node:fs';
+import { constants, realpathSync } from 'node:fs';
 import { chmod, lstat, mkdir, mkdtemp, open, rename, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, parse, resolve, sep } from 'node:path';
@@ -311,7 +311,12 @@ export async function runSkill(argv, { spawnImpl = spawn, signal } = {}) {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// The guard compares real paths: resolve() does not follow symlinks, while
+// import.meta.url is already realpath-resolved, so invoking the helper through
+// a symlinked install (e.g. .claude/skills/patina → .agents/skills/patina)
+// never matched and the process exited 0 without doing anything (#829). A
+// mismatch still exits silently — this file is imported as a module.
+if (process.argv[1] && realpathSync(resolve(process.argv[1])) === fileURLToPath(import.meta.url)) {
   if (process.argv.length === 3 && ['--help', '-h'].includes(process.argv[2])) {
     console.log('Usage: node bin/patina-skill.js --input FILE [--mode rewrite|audit|score|diff] [--lang LANG] [--document-type TYPE] [--persona NAME] [--register casual|professional] [--backend NAME] [--model ID] [--config FILE] [--provider NAME] [--api-key-file FILE]\nAliases: --audit, --score, --diff; --strict enforces the same verified rewrite.\nReturns content-free JSON. Rewrite output requires verification; reports are unverified.');
   } else {

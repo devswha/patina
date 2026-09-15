@@ -210,7 +210,7 @@ test('existing four source prompt hashes and frozen 12-call plan remain unchange
   assert.deepEqual(plan, published.optionalGenerationPlan);
 });
 
-test('private output uses restrictive permissions, content hashes and refuses to overwrite', () => {
+test('private output uses restrictive permissions, content hashes and refuses to overwrite', { skip: process.platform === 'win32' && 'research private-output 0700 enforcement is POSIX-only; tool stays fail-closed on win32' }, () => {
   const directory = mkdtempSync(resolve(tmpdir(), 'scorer-corpus-unit-'));
   try {
     const output = resolve(directory, 'private'), secret = Buffer.from('Synthetic private text marker.');

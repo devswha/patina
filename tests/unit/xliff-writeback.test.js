@@ -134,7 +134,7 @@ test('writeAtomicUtf8: failure (bad dir) throws and leaves no output at destinat
 // ---------- resolveBatchOutputPath ----------
 test('resolveBatchOutputPath: in-place / outdir / suffix / default suffix', () => {
   assert.equal(resolveBatchOutputPath({ inPlace: true }, '/a/b/f.xliff'), '/a/b/f.xliff');
-  assert.equal(resolveBatchOutputPath({ outdir: '/out' }, '/a/b/f.xliff'), '/out/f.xliff');
+  assert.equal(resolveBatchOutputPath({ outdir: '/out' }, '/a/b/f.xliff'), join('/out', 'f.xliff'));
   assert.equal(resolveBatchOutputPath({ suffix: '.humanized' }, '/a/b/f.xliff'), '/a/b/f.humanized.xliff');
   assert.equal(resolveBatchOutputPath({}, '/a/b/f.xliff', { defaultSuffix: '.humanized' }), '/a/b/f.humanized.xliff');
 });

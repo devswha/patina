@@ -915,6 +915,61 @@ test('a copied example resets its label and success styling, and never carries t
   assert.equal(button.classList.contains('is-ok'), false);
 });
 
+test('stale example copy completions cannot relabel a reset row or clobber the latest copy', async () => {
+  const a = app({ languages: ['ko-KR'] });
+  const ui = copy.onboardingCopy('ko');
+  const button = a.document.querySelector('.editor__btn');
+  const requests = [];
+  a.context.navigator.clipboard = {
+    writeText(text) {
+      let resolve, reject;
+      const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+      requests.push({ text, resolve, reject });
+      return promise;
+    },
+  };
+  const first = EXAMPLES.find((row) => row.id === 'ko-fixture-0');
+  const second = EXAMPLES.find((row) => row.id === 'ko-fixture-1');
+
+  // A completion from the previous row must not restore its transient label.
+  button.emit('click');
+  assert.deepEqual(requests.map((request) => request.text), [first.after]);
+  change(a, 'example-choice', second.id);
+  requests[0].resolve();
+  await nextTurn();
+  assert.equal(button.textContent, ui.copyExample);
+  assert.equal(button.classList.contains('is-ok'), false);
+
+  // The same row reset must discard a rejected write as well.
+  change(a, 'example-choice', first.id);
+  button.emit('click');
+  assert.equal(requests[1].text, first.after, 'the failed write starts before switching rows');
+  change(a, 'example-choice', second.id);
+  requests[1].reject(new Error('clipboard unavailable'));
+  await nextTurn();
+  assert.equal(button.textContent, ui.copyExample);
+  assert.equal(button.classList.contains('is-ok'), false);
+
+  // If copies overlap, the latest result owns the button even when the old
+  // request settles afterwards.
+  change(a, 'example-choice', first.id);
+  button.emit('click');
+  change(a, 'example-choice', second.id);
+  button.emit('click');
+  assert.deepEqual(requests.map((request) => request.text), [first.after, first.after, first.after, second.after]);
+  requests[3].resolve();
+  await nextTurn();
+  assert.equal(button.textContent, ui.copied);
+  assert.equal(button.classList.contains('is-ok'), true);
+  requests[2].reject(new Error('old request failed'));
+  await nextTurn();
+  assert.equal(button.textContent, ui.copied);
+  assert.equal(button.classList.contains('is-ok'), true);
+
+  // Do not leave the latest reset timer pending for the rest of the suite.
+  change(a, 'example-choice', first.id);
+});
+
 test('optional controls open for credentials, close with Escape, and Free restores setup-free sending', () => {
   const a = app();
   const panel = a.get('settings-panel');

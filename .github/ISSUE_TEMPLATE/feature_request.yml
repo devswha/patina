@@ -7,6 +7,7 @@ body:
     attributes:
       value: |
         Keep the request focused on the user workflow. Avoid pasting private writing samples.
+        See the [Issue/PR workflow](https://github.com/devswha/patina/blob/dev/docs/WORKFLOW.md) for scope, acceptance, verification, and ownership.
   - type: dropdown
     id: area
     attributes:
@@ -35,3 +36,16 @@ body:
       description: Optional. Mention workarounds or simpler variants.
     validations:
       required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Scope and acceptance
+      description: See the [Issue/PR workflow](https://github.com/devswha/patina/blob/dev/docs/WORKFLOW.md) for scope, non-goals, acceptance, verification, risk, and ownership.
+      placeholder: |
+        Scope:
+        Non-goals:
+        Acceptance criteria:
+        Verification and risk:
+        Owner: maintainer until assigned
+    validations:
+      required: true

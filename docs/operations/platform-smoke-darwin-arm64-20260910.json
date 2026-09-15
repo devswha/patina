@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 2,
+  "recordType": "platform-smoke",
+  "planIds": [
+    "P16b"
+  ],
+  "observedAt": "2026-09-10T12:35:22.142Z",
+  "host": {
+    "platform": "darwin",
+    "release": "25.6.0",
+    "arch": "arm64",
+    "node": "v22.23.1",
+    "shell": "zsh",
+    "homeHasNonAscii": false,
+    "tmpdirHasSpace": false
+  },
+  "repo": {
+    "root": "~/workspace/patina-smoke-darwin",
+    "head": "81375ee1df8d6ee13850d3de7d49b1e88a4468db",
+    "branch": "HEAD",
+    "dirty": true,
+    "gitAvailable": true
+  },
+  "keyEnvNamesSet": [],
+  "steps": [
+    {
+      "name": "npm ci",
+      "command": "npm ci --no-audit --no-fund",
+      "cwd": ".",
+      "status": 0,
+      "signal": null,
+      "ms": 1001,
+      "ok": true,
+      "spawnError": null,
+      "parseError": null,
+      "parsed": null
+    },
+    {
+      "name": "cli --version",
+      "command": "/opt/homebrew/Cellar/node@22/22.23.1/bin/node bin/patina.js --version",
+      "cwd": ".",
+      "status": 0,
+      "signal": null,
+      "ms": 88,
+      "ok": true,
+      "spawnError": null,
+      "parseError": null,
+      "parsed": {
+        "version": "patina 8.6.0"
+      }
+    },
+    {
+      "name": "offline score on Korean/space path",
+      "command": "/opt/homebrew/Cellar/node@22/22.23.1/bin/node bin/patina.js --offline --score --format json <tmp>/patina smoke 한글 경로 e0rJ3h/입력 폴더/초안 파일.md",
+      "cwd": ".",
+      "status": 0,
+      "signal": null,
+      "ms": 101,
+      "ok": true,
+      "spawnError": null,
+      "parseError": null,
+      "parsed": {
+        "deterministicOverall": 100,
+        "paragraphCount": 1
+      }
+    },
+    {
+      "name": "inspect on Korean/space path from a Korean/space cwd",
+      "command": "/opt/homebrew/Cellar/node@22/22.23.1/bin/node ~/workspace/patina-smoke-darwin/bin/patina.js inspect <tmp>/patina smoke 한글 경로 e0rJ3h/입력 폴더/초안 파일.md",
+      "cwd": "<tmp>/patina smoke 한글 경로 e0rJ3h/입력 폴더",
+      "status": 0,
+      "signal": null,
+      "ms": 98,
+      "ok": true,
+      "spawnError": null,
+      "parseError": null,
+      "parsed": {
+        "jsonParses": true
+      }
+    },
+    {
+      "name": "offline batch score into Korean/space outdir",
+      "command": "/opt/homebrew/Cellar/node@22/22.23.1/bin/node bin/patina.js --offline --score --batch --outdir <tmp>/patina smoke 한글 경로 e0rJ3h/출력 폴더 <tmp>/patina smoke 한글 경로 e0rJ3h/입력 폴더/초안 파일.md",
+      "cwd": ".",
+      "status": 0,
+      "signal": null,
+      "ms": 97,
+      "ok": true,
+      "spawnError": null,
+      "parseError": null,
+      "parsed": {
+        "outdirEntries": 1
+      }
+    },
+    {
+      "name": "cancellation + isolation tests",
+      "command": "/opt/homebrew/Cellar/node@22/22.23.1/bin/node -r ~/workspace/patina-smoke-darwin/tests/helpers/real-tmpdir.cjs --test --test-reporter=tap tests/unit/backend-cancellation.test.js tests/unit/backend-agy.test.js tests/e2e/session-isolation.test.js",
+      "cwd": ".",
+      "status": 0,
+      "signal": null,
+      "ms": 16915,
+      "ok": true,
+      "spawnError": null,
+      "parseError": null,
+      "parsed": {
+        "tests": 12,
+        "pass": 12,
+        "fail": 0,
+        "skip": 0,
+        "failing": []
+      }
+    },
+    {
+      "name": "doctor --offline --json",
+      "command": "/opt/homebrew/Cellar/node@22/22.23.1/bin/node bin/patina.js doctor --offline --json",
+      "cwd": ".",
+      "status": 0,
+      "signal": null,
+      "ms": 1818,
+      "ok": true,
+      "spawnError": null,
+      "parseError": null,
+      "parsed": {
+        "ok": true,
+        "blockers": [],
+        "backends": [
+          {
+            "name": "openai-http",
+            "available": true,
+            "authenticated": false
+          },
+          {
+            "name": "codex-cli",
+            "available": true,
+            "authenticated": true
+          },
+          {
+            "name": "claude-cli",
+            "available": false,
+            "authenticated": true
+          },
+          {
+            "name": "gemini-cli",
+            "available": true,
+            "authenticated": false
+          },
+          {
+            "name": "kimi-cli",
+            "available": false,
+            "authenticated": false
+          },
+          {
+            "name": "agy-cli",
+            "available": false,
+            "authenticated": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "npm test (unit + e2e, tap)",
+      "command": "/opt/homebrew/Cellar/node@22/22.23.1/bin/node -r ~/workspace/patina-smoke-darwin/tests/helpers/real-tmpdir.cjs --test --test-reporter=tap tests/unit/adversarial-mps-report.test.js tests/unit/adversarial-transforms.test.js tests/unit/ai-tells-corpus-baseline.test.js tests/unit/anthropic-native.test.js tests/unit/api.test.js tests/unit/architecture-boundaries.test.js tests/unit/aside-options.test.js tests/unit/aside-runner.test.js tests/unit/aside-server.test.js tests/unit/aside-ui.test.js tests/unit/assets.test.js tests/unit/audit-backstop.test.js tests/unit/backend-adapter-noise.test.js tests/unit/backend-agy.test.js tests/unit/backend-auth.test.js tests/unit/backend-cancellation.test.js tests/unit/backend-contract.test.js tests/unit/backend-model-defaults.test.js tests/unit/badge-json.test.js tests/unit/batch.test.js tests/unit/benchmark-report.test.js tests/unit/browser-core.test.js tests/unit/browser-diff.test.js tests/unit/byok-hardening.test.js tests/unit/check-no-private-assets.test.js tests/unit/check-release-metadata.test.js tests/unit/ci-workflow.test.js tests/unit/claude-study-isolation.test.js tests/unit/claude-study-stream.test.js tests/unit/cli-args.test.js tests/unit/cli-cancellation.test.js tests/unit/community-patterns.test.js tests/unit/community-retirement.test.js tests/unit/config.test.js tests/unit/detector-candidate-eval.test.js tests/unit/discourse-tells.test.js tests/unit/doctor-api-key-probe.test.js tests/unit/doctor-update-check.test.js tests/unit/document-signals.test.js tests/unit/document-type-pattern-policy.test.js tests/unit/edit-controls.test.js tests/unit/edit-review.test.js tests/unit/edited-ai-intake.test.js tests/unit/entitlement-polar.test.js tests/unit/entitlement.redteam.test.js tests/unit/entitlement.test.js tests/unit/existing-cohort-evaluation.test.js tests/unit/fp-fixture-export.test.js tests/unit/free-tier-monitor.test.js tests/unit/funnel-analytics.test.js tests/unit/funnel-query.test.js tests/unit/heading-preservation.test.js tests/unit/hf-dataset.test.js tests/unit/human-panel.test.js tests/unit/input-loading.test.js tests/unit/inspection.test.js tests/unit/issue-527-fixes.test.js tests/unit/issue-forms.test.js tests/unit/iterative-rewrite-baseline.test.js tests/unit/katfish-calibration.test.js tests/unit/kimi-isolation.test.js tests/unit/kimi-study-transport.test.js tests/unit/ko-miss-review.test.js tests/unit/korean-confirmatory-corpus.test.js tests/unit/korean-diagnosis.test.js tests/unit/korean-invariants-metamorphic.test.js tests/unit/korean-invariants.test.js tests/unit/korean-retention-mutations.test.js tests/unit/korean-structure-fingerprint.test.js tests/unit/lexicon-freshness.test.js tests/unit/lexicon.test.js tests/unit/live-quality.test.js tests/unit/live-scorer-benchmark.test.js tests/unit/loader.test.js tests/unit/log-query-service.test.js tests/unit/logger.test.js tests/unit/maintenance-workflows.test.js tests/unit/markup-leakage.test.js tests/unit/mdx-score.test.js tests/unit/meaning-proxy.test.js tests/unit/model-confirmation.test.js tests/unit/model-evaluation-join.test.js tests/unit/model-rewrite-benchmark.test.js tests/unit/mps-negation-validation.test.js tests/unit/mps-revalidation.test.js tests/unit/ocr.test.js tests/unit/over-editing-guard.test.js tests/unit/pack-command.test.js tests/unit/pack-handler.test.js tests/unit/panel-v2.test.js tests/unit/pattern-docs.test.js tests/unit/pattern-overlap.test.js tests/unit/pay-b-cost-receipt.test.js tests/unit/perf-report.test.js tests/unit/persona-ablation-live.test.js tests/unit/persona-args.test.js tests/unit/persona-calibration.test.js tests/unit/persona-command.test.js tests/unit/persona-gates.test.js tests/unit/persona-match.test.js tests/unit/persona-natural-ko.test.js tests/unit/persona-packaging.test.js tests/unit/persona-resolver.test.js tests/unit/persona-schema.test.js tests/unit/persona-seed.test.js tests/unit/playground-a11y.test.js tests/unit/playground-analytics.test.js tests/unit/playground-examples.test.js tests/unit/playground-experience.test.js tests/unit/playground-module-graph.test.js tests/unit/playground-preferences.test.js tests/unit/playground-pro.test.js tests/unit/polar-webhook.test.js tests/unit/pr-policy.test.js tests/unit/preparation-replay.test.js tests/unit/preview.test.js tests/unit/pro-monitor-api.test.js tests/unit/pro-monitor-e2e.test.js tests/unit/pro-monitor.test.js tests/unit/prompt-builder.persona.test.js tests/unit/prompt-builder.snapshot.test.js tests/unit/prose-score.test.js tests/unit/protected-input.test.js tests/unit/public-showcase.test.js tests/unit/quota-redis.test.js tests/unit/quota-reservation.test.js tests/unit/ranking-metrics.test.js tests/unit/rate-limit.redteam.test.js tests/unit/rate-limit.test.js tests/unit/rebaseline-build-claim-manifest.test.js tests/unit/rebaseline-generate-modern.test.js tests/unit/rebaseline-intake.test.js tests/unit/rebaseline-low-fpr-report.test.js tests/unit/rebaseline-score-collection.test.js tests/unit/rebaseline-score.test.js tests/unit/rebaseline-summary.test.js tests/unit/rebaseline-web-collect.test.js tests/unit/redos-mattr-evidence.test.js tests/unit/register.test.js tests/unit/release-artifacts.test.js tests/unit/retired-concepts.test.js tests/unit/rewrite-ab.test.js tests/unit/rewrite-api.test.js tests/unit/rewrite-client.test.js tests/unit/rewrite-handler.test.js tests/unit/score-overall-coercion.test.js tests/unit/scorer-path-corpus.test.js tests/unit/scorer-public-report.test.js tests/unit/scoring.test.js tests/unit/security.test.js tests/unit/share-card.test.js tests/unit/short-form.test.js tests/unit/shortform-collection.test.js tests/unit/signal-impact.test.js tests/unit/slice-metadata.test.js tests/unit/slice-metrics.test.js tests/unit/streaming-api.test.js tests/unit/structural-classifier.test.js tests/unit/structural-model-loader.test.js tests/unit/study-completion-persistence.test.js tests/unit/study-family.test.js tests/unit/study-persistence.test.js tests/unit/study-transport-process.test.js tests/unit/study-validation.test.js tests/unit/stylometry-ko.test.js tests/unit/stylometry.test.js tests/unit/threshold-parity.test.js tests/unit/transform-options.test.js tests/unit/translationese.test.js tests/unit/verification-schema.test.js tests/unit/verify.test.js tests/unit/web-config.test.js tests/unit/web-deploy-invariants.test.js tests/unit/web-edit-controls.test.js tests/unit/web-observability.test.js tests/unit/web-rewrite-contract.redteam.test.js tests/unit/web-rewrite-contract.test.js tests/unit/web-rewrite-stream.redteam.test.js tests/unit/web-rewrite-stream.test.js tests/unit/web-rewrite.redteam.test.js tests/unit/web-rewrite.test.js tests/unit/xliff-cli.redteam.test.js tests/unit/xliff-cli.test.js tests/unit/xliff-crossfile-dedup.test.js tests/unit/xliff-writeback.redteam.test.js tests/unit/xliff-writeback.test.js tests/unit/xliff.redteam.test.js tests/unit/xliff.test.js tests/e2e/aside-cli.test.js tests/e2e/auth-login.test.js tests/e2e/backends.test.js tests/e2e/check-no-private-assets.test.js tests/e2e/cli-adoption.test.js tests/e2e/cli-api.test.js tests/e2e/cli-cancellation.test.js tests/e2e/cli-persona.test.js tests/e2e/cli-verification.test.js tests/e2e/cli.test.js tests/e2e/dev-server.test.js tests/e2e/precommit-score.test.js tests/e2e/providers.test.js tests/e2e/public-contracts.test.js tests/e2e/release-artifacts.test.js tests/e2e/security.test.js tests/e2e/session-isolation.test.js tests/e2e/skill-install.test.js tests/e2e/skill-invocation.test.js",
+      "cwd": ".",
+      "status": 0,
+      "signal": null,
+      "ms": 72381,
+      "ok": true,
+      "spawnError": null,
+      "parseError": null,
+      "parsed": {
+        "tests": 2453,
+        "pass": 2446,
+        "fail": 0,
+        "skip": 7,
+        "failing": []
+      }
+    }
+  ],
+  "summary": {
+    "stepsRun": 8,
+    "stepsSkipped": [],
+    "stepsFailed": [],
+    "suite": {
+      "tests": 2453,
+      "pass": 2446,
+      "fail": 0,
+      "skip": 7,
+      "failing": []
+    },
+    "lifecycle": {
+      "tests": 12,
+      "pass": 12,
+      "fail": 0,
+      "skip": 0,
+      "failing": []
+    },
+    "verdict": "recorded; interpretation belongs to the maintenance record, not this script"
+  },
+  "diagnostics": "docs/internal/<stem>.diagnostics.json (gitignored; raw child output, operator-only)"
+}

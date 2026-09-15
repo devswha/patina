@@ -11,6 +11,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  LIFECYCLE_MARKER_PATH,
+  REQUIRED_LIFECYCLE_ID,
+  scanLifecycleRecord,
+  scanLifecycleText,
   scanPaths,
   scanRoot,
   scanText,
@@ -27,6 +31,75 @@ function relocateFirstMatch(source) {
   [lines[from], lines[to]] = [lines[to], lines[from]];
   return lines.join('\n');
 }
+
+const lifecycleMarker = '<!-- maintenance-lifecycle: npm-token-publishing; owner=repository-maintainer; review=2026-10-09; remove-after=root-and-alias-trusted-publishing-verified -->';
+
+test('temporary publication lifecycle marker requires owner, review, and removal condition', () => {
+  const clean = scanLifecycleText(`before\n${lifecycleMarker}\nafter\n`);
+  assert.equal(clean.errors.length, 0);
+  assert.equal(clean.records.length, 1);
+  assert.equal(clean.records[0].id, REQUIRED_LIFECYCLE_ID);
+  assert.equal(clean.records[0].owner, 'repository-maintainer');
+  assert.equal(clean.records[0].review, '2026-10-09');
+  assert.equal(clean.records[0]['remove-after'], 'root-and-alias-trusted-publishing-verified');
+
+  const missing = scanLifecycleText(
+    '<!-- maintenance-lifecycle: npm-token-publishing; owner=; review=; remove-after= -->'
+  );
+  assert.equal(missing.records.length, 1);
+  assert.deepEqual(
+    missing.errors.map((error) => error.field),
+    ['owner', 'review', 'remove-after']
+  );
+
+  const malformedDate = scanLifecycleText(
+    '<!-- maintenance-lifecycle: npm-token-publishing; owner=maintainer; review=next-month; remove-after=verified -->'
+  );
+  assert.ok(malformedDate.errors.some((error) => error.field === 'review'));
+  const impossibleDate = scanLifecycleText(
+    '<!-- maintenance-lifecycle: npm-token-publishing; owner=maintainer; review=2023-02-29; remove-after=verified -->'
+  );
+  assert.ok(impossibleDate.errors.some((error) => error.field === 'review'));
+
+  const duplicateField = scanLifecycleText(
+    '<!-- maintenance-lifecycle: npm-token-publishing; owner=maintainer; owner=another-maintainer; review=2026-10-09; remove-after=verified -->'
+  );
+  assert.ok(duplicateField.errors.some((error) => error.field === 'owner' && /duplicated/.test(error.reason)));
+
+  const malformedField = scanLifecycleText(
+    '<!-- maintenance-lifecycle: npm-token-publishing; owner; review=2026-10-09; remove-after=verified -->'
+  );
+  assert.ok(malformedField.errors.some((error) => error.segment === 'owner'));
+  // The checker records lifecycle metadata; it never makes a date-based
+  // deletion or pass decision.
+});
+
+test('root lifecycle pilot checks the tracked release policy path only', () => {
+  const root = mkdtempSync(join(tmpdir(), 'patina-lifecycle-scan-'));
+  try {
+    mkdirSync(resolve(root, 'docs/integrations'), { recursive: true });
+    writeFileSync(resolve(root, LIFECYCLE_MARKER_PATH), lifecycleMarker);
+    const files = [LIFECYCLE_MARKER_PATH];
+    const report = scanLifecycleRecord(root, files, new Map([
+      [LIFECYCLE_MARKER_PATH, lifecycleMarker],
+    ]));
+    assert.equal(report.errors.length, 0);
+    assert.equal(report.records.length, 1);
+
+    const missing = scanLifecycleRecord(root, files, new Map([
+      [LIFECYCLE_MARKER_PATH, '<!-- maintenance-lifecycle: npm-token-publishing; owner=maintainer -->'],
+    ]));
+    assert.ok(missing.errors.some((error) => error.field === 'review'));
+
+    writeFileSync(resolve(root, LIFECYCLE_MARKER_PATH), Buffer.from(`${lifecycleMarker}\n\0`, 'utf8'));
+    const binary = scanPaths(root, files, { requireLifecycleRecords: true });
+    assert.equal(binary.filesSkipped.binary, 1);
+    assert.equal(binary.lifecycleRecordCount, 0);
+    assert.ok(binary.lifecycleDrift.some((error) => /unavailable/.test(error.reason)));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 
 test('current product references are forbidden case-insensitively', () => {

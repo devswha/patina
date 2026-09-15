@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWebConfig, resolveBundleRoot } from '../../src/web-config.js';
+import { buildDocumentSignals } from '../../src/features/document-signals.js';
 import { buildWebRewritePrompt, loadWebAssets, runWebRewrite } from '../../src/web-rewrite.js';
 import { WEB_PERSONAS } from '../../src/web-rewrite-contract.js';
 import { classifyWebPromptBudget, resolveWebPromptBudget } from '../../src/web-prompt-budget.js';
@@ -263,6 +264,75 @@ test('runWebRewrite forwards BYOK provider options to callLLM', async () => {
   assert.equal(calls[0].model, 'gpt-4.1-mini');
   assert.equal(calls[0].timeout, 1234);
   assert.ok(calls[0].signal);
+});
+
+test('hosted first-turn and refine prompts receive CLI Korean documentSignals', async () => {
+  const text = '주제만 주면 한 세트가 나옵니다. 직접 디자인할 필요가 없습니다. 캐러셀을 완성합니다. 바로 시작합니까?';
+  const { signals } = buildDocumentSignals({ text, lang: 'ko' });
+  assert.equal(signals.length, 1);
+  const config = configFor('ko');
+  const assets = loadWebAssets({ repoRoot, lang: 'ko', documentType: 'default', config });
+  const firstPrompt = buildWebRewritePrompt({
+    request: baseRequest('ko', { text, original: text }),
+    config,
+    assets,
+    documentSignals: signals,
+  });
+  assert.ok(firstPrompt.includes('## Document Signals (deterministic measurements)'));
+  assert.ok(firstPrompt.includes(signals[0]));
+
+  const refinePrompt = buildWebRewritePrompt({
+    request: baseRequest('ko', {
+      mode: 'refine',
+      text,
+      original: text,
+      history: [{ role: 'user', content: '조금 더 짧게.' }],
+    }),
+    config,
+    assets,
+    documentSignals: signals,
+  });
+  assert.ok(refinePrompt.includes(signals[0]));
+
+  let seen = '';
+  await runWebRewrite({
+    request: baseRequest('ko', { text, original: text }),
+    config,
+    repoRoot,
+    callLLM: async ({ prompt }) => {
+      seen = prompt;
+      return '한 세트가 나옵니다.';
+    },
+  });
+  assert.ok(seen.includes(signals[0]), 'runWebRewrite must inject the shared Korean signals');
+});
+
+test('hosted rewrite prompts keep non-Korean documentSignals empty', async () => {
+  const text = 'Welcome home. This draft is English only. It has no Korean endings.';
+  for (const lang of ['en', 'zh', 'ja']) {
+    assert.deepEqual(buildDocumentSignals({ text, lang }).signals, []);
+    const config = configFor(lang);
+    const assets = loadWebAssets({ repoRoot, lang, documentType: 'default', config });
+    const prompt = buildWebRewritePrompt({
+      request: baseRequest(lang, { text, original: text }),
+      config,
+      assets,
+      documentSignals: buildDocumentSignals({ text, lang }).signals,
+    });
+    assert.doesNotMatch(prompt, /Document Signals|문서 신호/);
+  }
+
+  let seen = '';
+  await runWebRewrite({
+    request: baseRequest('en', { text, original: text }),
+    config: configFor('en'),
+    repoRoot,
+    callLLM: async ({ prompt }) => {
+      seen = prompt;
+      return 'Welcome home.';
+    },
+  });
+  assert.doesNotMatch(seen, /Document Signals|문서 신호/);
 });
 
 test('Korean web prompt carries the bounded deterministic diagnosis', () => {

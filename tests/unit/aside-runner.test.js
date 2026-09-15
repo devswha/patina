@@ -22,7 +22,9 @@ const NESTED_GRADED = 'The service does not store drafts. [BODY]It runs locally.
 
 async function fixture(t, { source = SOURCE, settings } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'aside-runner-test-'));
-  t.after(() => rm(root, { recursive: true, force: true }));
+  // maxRetries absorbs win32 EBUSY: the OS releases directory handles a beat
+  // after the child that held the workspace as cwd has already exited.
+  t.after(() => rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }));
   const workspace = join(root, 'workspace with spaces');
   const temporary = join(root, 'temporary');
   await mkdir(workspace);

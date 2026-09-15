@@ -1,0 +1,6 @@
+---
+description: Load Patina's public repository development rules
+alwaysApply: true
+---
+
+@AGENTS.md

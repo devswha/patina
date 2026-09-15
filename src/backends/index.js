@@ -3,6 +3,7 @@ import * as codexCli from './codex-cli.js';
 import * as claudeCli from './claude-cli.js';
 import * as geminiCli from './gemini-cli.js';
 import * as kimiCli from './kimi-cli.js';
+import * as agyCli from './agy-cli.js';
 import { inspectHttpApiKeySource } from '../auth.js';
 import { inputError } from '../errors.js';
 import { DEFAULT_BEST_MODELS } from '../model-defaults.js';
@@ -50,6 +51,7 @@ const REGISTRY = {
   'claude-cli': claudeCli,
   'gemini-cli': geminiCli,
   'kimi-cli': kimiCli,
+  'agy-cli': agyCli,
 };
 
 const BACKEND_META = {
@@ -77,6 +79,13 @@ const BACKEND_META = {
     kind: 'local-cli',
     selectWith: '--backend kimi-cli, --model kimi-*',
     defaultModel: DEFAULT_BEST_MODELS.kimiCli,
+  },
+  'agy-cli': {
+    kind: 'local-cli',
+    // Antigravity serves gemini-*, claude-* and gpt-oss-* ids, so no model
+    // prefix can route here unambiguously; selection is explicit only.
+    selectWith: '--backend agy-cli, --model agy',
+    defaultModel: DEFAULT_BEST_MODELS.agyCli,
   },
 };
 
@@ -129,6 +138,9 @@ export function selectBackend({ name, model, modelSource } = {}) {
   if (useModelHeuristic && /^kimi(-|$)/i.test(model)) {
     return { backend: REGISTRY['kimi-cli'], autoSelected: false, reason: 'model heuristic' };
   }
+  if (useModelHeuristic && /^agy$/i.test(model)) {
+    return { backend: REGISTRY['agy-cli'], autoSelected: false, reason: 'model heuristic' };
+  }
 
   // No silent auto-fallback to any CLI backend. Sending arbitrary text to a
   // coding agent is a higher-trust action than calling a plain completion
@@ -167,7 +179,7 @@ export function selectBackendChain({ name, model, modelSource } = {}) {
 
 // Image-capable backends in default OCR preference order: claude verbatim
 // Korean fidelity (measured), gemini near-verbatim and slightly faster,
-// codex native -i attachment. kimi-cli and openai-http reject images.
+// codex native -i attachment. kimi-cli, agy-cli and openai-http reject images.
 const OCR_BACKEND_ORDER = ['claude-cli', 'gemini-cli', 'codex-cli'];
 
 // Resolve the backend chain for OCR calls: keep the user's selected
@@ -211,7 +223,7 @@ export async function invokeBackendChain({
     throw inputError(
       'no backend selected',
       'patina could not resolve a backend to run.',
-      'Pass --backend openai-http, codex-cli, claude-cli, gemini-cli, or kimi-cli.'
+      'Pass --backend openai-http, codex-cli, claude-cli, gemini-cli, kimi-cli, or agy-cli.'
     );
   }
 

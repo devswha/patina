@@ -48,6 +48,13 @@ patina --backend codex-cli --lang ko input.txt
 patina --model codex --lang ko input.txt   # codex-cli로 라우팅하고 gpt-5.5 기본값 사용
 ```
 
+참고: `codex exec`는 새 임시 디렉터리에서 `--sandbox read-only`로 실행되며
+`shell_tool`, `unified_exec`, `multi_agent` 기능을 끕니다. 재작성에는 도구가 필요 없는데,
+켜 두면 codex가 에이전트처럼 동작합니다 — 2026-09-10 측정에서 재작성 프롬프트 하나에
+셸 명령 3–13회를 실행하며 턴마다 약 20k 토큰 프롬프트를 다시 보냈습니다(한국어 재작성 한 건에
+최대 약 500k 토큰). 도구를 끈 뒤 같은 재작성은 1턴, 약 20k 토큰, 약 20초입니다. reasoning
+effort는 덮어쓰지 않고 `~/.codex/config.toml` 설정을 따릅니다.
+
 ## claude-cli backend
 
 로컬 [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p`에 patina 프롬프트를 stdin으로 넘겨 실행합니다. Claude 구독이 있으면 추가 API 키 없이 쓸 수 있습니다. Claude Code는 agent runtime이므로 batch 모드에서는 보수적으로 다룹니다: compact prompt mode, 기본 동시성 `1`, 기본 retry `0`. 기본 모델은 `claude-sonnet-4-6`이지만, Claude Code 자체의 모델/세션 정책은 patina가 완전히 통제하지 못할 수 있습니다.
@@ -59,7 +66,15 @@ patina --backend claude-cli --lang ko input.txt
 patina --model claude-sonnet-4-6 --lang ko input.txt   # auto-routes
 ```
 
-인증 파일: `~/.claude/.credentials.json` (OAuth 로그인 뒤 생성됩니다).
+참고: patina는 `--tools ""`과 `--strict-mcp-config`를 넘기므로 호출에 내장 도구가 실리지
+않고 사용자가 설정한 MCP 서버도 시작하지 않습니다. `--ocr` 이미지 경로만 예외로, 스테이징된
+이미지 파일을 읽기 위해 `Read`를 유지합니다.
+
+인증 파일: `~/.claude/.credentials.json` (OAuth 로그인 뒤 생성됩니다). `patina
+doctor`, `patina auth status`, 그리고 `--ocr`의 자동 백엔드 선택은 이 파일의 `claudeAiOauth` 토큰과 만료 시각을 읽습니다.
+로그아웃이나 토큰 갱신 실패로 Claude Code가 비워 둔 파일은 `authenticated=no`로
+보고되고 `claude auth login` 재실행 안내가 붙습니다. 네트워크 호출은 하지 않으므로
+서버에서 폐기된 토큰은 실제 백엔드 호출 때에만 드러납니다.
 
 ## gemini-cli backend
 
@@ -73,6 +88,11 @@ patina --backend gemini-cli --lang ko input.txt
 patina --model gemini-3-flash-preview --lang ko input.txt   # auto-routes
 ```
 
+참고: 프롬프트는 새 임시 디렉터리에서 실행되므로 `--skip-trust`를 넘기고, MCP 서버를 끄며,
+모든 도구를 거부하는 호출별 `--policy` 파일(`toolName = "*"`)을 넘깁니다. 모델은 도구 정의를
+아예 받지 않으므로 `run_shell_command`나 `write_file`에 턴을 쓰지 못합니다. 이미지 입력은 CLI가
+직접 해석하는 `@file` include를 씁니다. gemini는 시작 지연이 길어 기본 timeout이 다른 CLI보다 깁니다.
+
 ## kimi-cli backend
 
 로컬 [`kimi`](https://moonshotai.github.io/kimi-cli/)를 print mode로 실행하고 patina 프롬프트를 stdin으로 넘깁니다. Kimi Code CLI 브라우저 로그인이나 `KIMI_API_KEY`, `MOONSHOT_API_KEY` 중 하나로 인증할 수 있습니다. Kimi Code는 agent runtime이므로 batch 모드에서는 보수적으로 다룹니다: compact prompt mode, 기본 동시성 `1`, 기본 retry `0`. 로컬 CLI 기본 모델은 `kimi-code/kimi-for-coding`이며, CLI 표시 이름은 Moonshot HTTP 모델 ID와 다를 수 있습니다.
@@ -84,6 +104,34 @@ export KIMI_API_KEY="..."                   # optional API key path
 patina --backend kimi-cli --lang ko input.txt
 patina --model kimi --lang ko input.txt     # kimi-cli로 라우팅하고 backend 기본값 사용
 ```
+
+## agy-cli backend (Antigravity CLI)
+
+로컬 [`agy`](https://antigravity.google/docs/cli)(Google Antigravity CLI — 무료 및 Google One 계정의 Gemini CLI 후속)를
+headless 모드로 실행합니다. 인증은 대화형 `agy` 세션에서 한 번 로그인한 Google 계정을 쓰며 API 키는
+읽지 않습니다. Antigravity 카탈로그는 여러 계열이 섞여 있어(`gemini-3.8-flash-*`, `gemini-3.7-flash-*`,
+`gemini-3.1-pro-*`, `claude-sonnet-4-6`, `gpt-oss-120b-medium`; `agy models`로 확인) 선택은 명시적으로만
+합니다: `--backend agy-cli` 또는 `--model agy`. `--model gemini-*`는 여전히 `gemini-cli`로 갑니다.
+기본 모델은 `gemini-3.7-flash-medium`이고 접미사는 Antigravity의 reasoning effort 등급입니다.
+
+```bash
+agy                                        # one-time interactive sign-in
+patina auth login agy-cli                  # same, with confirmation
+patina --backend agy-cli --lang ko input.txt
+patina --backend agy-cli --model gemini-3.8-flash-high --lang ko input.txt
+```
+
+참고: 프롬프트는 argv가 아니라 stdin의 `stream-json` user 이벤트로 전달됩니다. 격리는
+Antigravity의 *기본값*에 기대니다: 권한이 필요한 도구(명령, 워크스페이스 밖 URL·파일, MCP)는
+물어보고, headless 모드는 물어볼 수 없으므로 자동 거부합니다. 도구 정의 자체는 프롬프트에 남아
+있으며 patina가 제거할 수 없습니다. headless 모드는 사용자의 전역 `permissions.allow` 목록을 그대로
+존중하므로, `~/.gemini/antigravity-cli/settings.json`에 자동 허용 규칙(예: `command(git)`,
+`read_url(*)`)이 하나라도 있으면 어댑터는 **실행 자체를 거부**합니다 — 그 규칙을 지우거나 다른
+백엔드를 쓰세요. 허용 규칙이 없으면 호출마다 빈 임시 디렉터리에서 도구 사용을 금지하는
+워크스페이스 전용 커스텀 에이전트(`.agents/agents/patina-text.md`, `commandExecutionPolicy: off`)로
+실행되고, 스트림에 도구 단계가 하나라도 보이거나 응답이 비어 있으면 그 턴을 통째로 거부합니다 —
+거부된 도구가 빈 재작성으로 조용히 넘어가지 않습니다. 이미지 입력은 지원하지 않습니다. 기본 동시성 `1`,
+retry `0`.
 
 자동화에서는 이미 실행 의도가 분명할 때만 `--yes`를 쓰세요.
 

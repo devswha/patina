@@ -6,6 +6,11 @@ import { join } from 'node:path';
 
 import { isAuthenticated as kimiAuthenticated } from '../../src/backends/kimi-cli.js';
 import {
+  hasMacOsKeychainCredentials,
+  isAuthenticated as claudeAuthenticated,
+  readClaudeCredentialState,
+} from '../../src/backends/claude-cli.js';
+import {
   isAuthenticated as geminiAuthenticated,
   authHint as geminiAuthHint,
 } from '../../src/backends/gemini-cli.js';
@@ -23,6 +28,86 @@ function withEnv(keys, body) {
     }
   }
 }
+
+// os.homedir() cannot be redirected here, so the classifier takes the file path
+// directly; isAuthenticated()/authHint() are thin wrappers over it.
+test('claude credential state distinguishes missing, unreadable, expired and live sessions', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'patina-claude-auth-'));
+  const file = join(dir, '.credentials.json');
+  const now = 1_800_000_000_000;
+  const write = (value) => writeFileSync(file, typeof value === 'string' ? value : JSON.stringify(value));
+  try {
+    assert.equal(readClaudeCredentialState(file, now), 'missing');
+
+    write('{not json');
+    assert.equal(readClaudeCredentialState(file, now), 'unreadable');
+
+    // Unknown layout (what the e2e fake login writes) keeps presence semantics.
+    write({});
+    assert.equal(readClaudeCredentialState(file, now), 'ok');
+
+    // Logged-out shape observed on disk: blank tokens, expiresAt 0, refresh
+    // expiry still in the future. Nothing usable remains.
+    write({ claudeAiOauth: { accessToken: '', refreshToken: '', expiresAt: 0, refreshTokenExpiresAt: now + 1 } });
+    assert.equal(readClaudeCredentialState(file, now), 'expired');
+
+    // Access token expired but a live refresh token lets the CLI renew it.
+    write({ claudeAiOauth: { accessToken: 'a', expiresAt: now - 1, refreshToken: 'r', refreshTokenExpiresAt: now + 1 } });
+    assert.equal(readClaudeCredentialState(file, now), 'ok');
+
+    // Both tokens past their timestamps.
+    write({ claudeAiOauth: { accessToken: 'a', expiresAt: now - 1, refreshToken: 'r', refreshTokenExpiresAt: now - 1 } });
+    assert.equal(readClaudeCredentialState(file, now), 'expired');
+
+    // Live access token with no timestamp is not treated as expired.
+    write({ claudeAiOauth: { accessToken: 'a' } });
+    assert.equal(readClaudeCredentialState(file, now), 'ok');
+
+    // Whitespace-only tokens are blank.
+    write({ claudeAiOauth: { accessToken: ' \t', refreshToken: '' } });
+    assert.equal(readClaudeCredentialState(file, now), 'expired');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('claude macOS Keychain probe runs `security` only on darwin (#829)', () => {
+  const calls = [];
+  const spawn = (result) => (...args) => { calls.push(args); return result; };
+
+  // Non-darwin platforms never touch the Keychain: the file check decides.
+  for (const platform of ['linux', 'win32', 'freebsd']) {
+    assert.equal(hasMacOsKeychainCredentials({ platform, spawnSyncImpl: spawn({ status: 0 }) }), false);
+  }
+  assert.equal(calls.length, 0);
+
+  // A stored `Claude Code-credentials` generic password means authenticated.
+  assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: 0 }) }), true);
+  assert.deepEqual(calls[0], ['security', ['find-generic-password', '-s', 'Claude Code-credentials'], { stdio: 'ignore' }]);
+
+  // A lookup miss (e.g. errSecItemNotFound) means the Keychain has no session.
+  assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: 44 }) }), false);
+
+  // A missing `security` binary surfaces as a spawn error, not a throw; any
+  // synchronous failure also falls back to the file check instead of crashing.
+  assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: null, error: new Error('spawn security ENOENT') }) }), false);
+  assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: () => { throw new Error('spawn failed'); } }), false);
+});
+
+test('claude isAuthenticated accepts macOS Keychain credentials, keeps file check elsewhere (#829)', () => {
+  // The Keychain path short-circuits to true regardless of the on-disk file,
+  // which cannot be redirected away from os.homedir() in this test.
+  assert.equal(claudeAuthenticated({ platform: 'darwin', spawnSyncImpl: () => ({ status: 0 }) }), true);
+
+  // Off darwin the probe must not run and the answer stays the file check's.
+  let probed = false;
+  const answer = claudeAuthenticated({
+    platform: 'linux',
+    spawnSyncImpl: () => { probed = true; return { status: 0 }; },
+  });
+  assert.equal(probed, false);
+  assert.equal(answer, readClaudeCredentialState(join(homedir(), '.claude', '.credentials.json')) === 'ok');
+});
 
 const KIMI_ENV = ['KIMI_API_KEY', 'MOONSHOT_API_KEY', 'KIMI_SHARE_DIR'];
 const GEMINI_ENV = ['GEMINI_API_KEY'];

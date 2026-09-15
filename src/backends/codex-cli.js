@@ -1,22 +1,31 @@
-import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEFAULT_BACKEND_TIMEOUT_MS, runInteractiveCommand, stageCliImages } from './contract.js';
+import {
+  DEFAULT_BACKEND_TIMEOUT_MS,
+  runInteractiveCommand,
+  probeCliAvailability,
+  spawnOwnedCliProcess,
+  stageCliImages,
+} from './contract.js';
 import { resolveLocalCliModel } from '../model-defaults.js';
 
 export const name = 'codex-cli';
 export const supportsImages = true;
 export const loginCommand = 'codex login';
+
+// Codex feature flags that expose agent tools. A rewrite or score is a pure
+// text transform, yet with these enabled `codex exec` behaves as an agent:
+// on the 2026-09-10 P17b pilot it issued 3-13 shell tool calls per prompt
+// inside the read-only sandbox, re-sending the prompt on every turn (one KO
+// rewrite reached 11 turns, ~500k cumulative input tokens). Disabling them
+// removes the tool definitions from the request and leaves a single turn.
+// Images still arrive through `-i`, which is model input, not a tool.
+export const CODEX_DISABLED_FEATURES = Object.freeze(['shell_tool', 'unified_exec', 'multi_agent']);
 export const installHint = 'Install it from https://github.com/openai/codex, then run `patina auth login codex-cli` again.';
 
 export function isAvailable() {
-  try {
-    const result = spawnSync('codex', ['--version'], { stdio: 'ignore' });
-    return result.status === 0;
-  } catch {
-    return false;
-  }
+  return probeCliAvailability('codex');
 }
 
 export function isAuthenticated() {
@@ -70,12 +79,13 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   }
 
   return new Promise((resolve, reject) => {
-    const proc = spawn('codex', [
+    const { proc, terminate, waitForClose } = spawnOwnedCliProcess('codex', [
       'exec',
       '--skip-git-repo-check',
       '--sandbox', 'read-only',
       '-C', dir,
       '--model', cliModel,
+      ...CODEX_DISABLED_FEATURES.flatMap((feature) => ['--disable', feature]),
       '--output-last-message', outFile,
       ...imageArgs,
       // stdout is discarded, not piped: `codex exec` streams session/progress
@@ -150,12 +160,11 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       settled = true;
       clearTimeout(timer);
       cleanupSignal();
-      // SIGKILL reaches only the direct child; these agent CLIs are not spawned
-      // detached, so forked grandchildren (workers/ripgrep/MCP) can outlive the
-      // kill and briefly hold the now-removed temp cwd — an accepted leak (#446).
-      if (kill) proc.kill('SIGKILL');
-      cleanup();
-      reject(err);
+      if (kill) terminate('SIGKILL');
+      waitForClose().then(() => {
+        cleanup();
+        reject(err);
+      });
     }
 
     function finishResolve(content) {

@@ -335,6 +335,4 @@ If no anchors extracted: `MPS = N/A`
 - `.patina.default.yaml` — configuration defaults
 - `core/voice.md` — voice injection guidelines
 - `core/scoring.md` — complete scoring algorithm
-- `SKILL.md` — Claude Code-specific pipeline specification
-- `AGENTS.md` — multi-agent project context
-- `.cursor/rules/patina.md` — Cursor IDE rules
+- `SKILL.md` — canonical product skill instructions (also used for the Cursor adapter)

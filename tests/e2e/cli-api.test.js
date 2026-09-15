@@ -283,7 +283,7 @@ describe('CLI End-to-End with Mock API', () => {
 
       assert.ok(previewRun.logs.join('\n').includes('First paragraph rewritten by the mock backend'));
       assert.strictEqual(mock.callCount, 2);
-      assert.ok(previewRun.errors.some((line) => line.includes('Preview page saved at /tmp/patina-preview-456/browser-diff-456.html')));
+      assert.ok(previewRun.errors.some((line) => line.includes(`Preview page saved at ${join('/tmp', 'patina-preview-456', 'browser-diff-456.html')}`)));
       assert.ok(previewRun.errors.some((line) => line.includes('Browser open failed: browser opener exited with code 1')));
     } finally {
       resetBrowserDiffRuntimeForTests();
@@ -420,7 +420,7 @@ describe('CLI End-to-End with Mock API', () => {
       await mainPromise;
 
       assert.deepStrictEqual(spawns, [], 'serve mode must not spawn a window opener');
-      assert.ok(errors.some((line) => line.includes('Preview page saved at /tmp/patina-preview-serve/browser-diff-999.html')));
+      assert.ok(errors.some((line) => line.includes(`Preview page saved at ${join('/tmp', 'patina-preview-serve', 'browser-diff-999.html')}`)));
       assert.ok(errors.some((line) => line.includes('Stops after 10 idle minutes')));
       assert.ok(logs.join('\n').includes('First paragraph rewritten by the mock backend'));
       assert.strictEqual(mock.callCount, 2);
@@ -513,8 +513,8 @@ describe('CLI End-to-End with Mock API', () => {
       // Document-brief stage: the rewrite request primes a global frame.
       assert.ok(mock.requestBodies[0].messages[0].content.includes('Phase 0: Document Brief'));
       assert.ok(previewRun.logs.join('\n').includes('First paragraph rewritten by the mock backend'));
-      assert.ok(previewRun.errors.some((line) => line.includes('Preview page saved at /tmp/patina-preview-77/browser-diff-77.html (2 of 2 blocks rewritten)')));
-      assert.deepStrictEqual(spawns, [{ command: 'xdg-open', args: ['/tmp/patina-preview-77/browser-diff-77.html'] }]);
+      assert.ok(previewRun.errors.some((line) => line.includes(`Preview page saved at ${join('/tmp', 'patina-preview-77', 'browser-diff-77.html')} (2 of 2 blocks rewritten)`)));
+      assert.deepStrictEqual(spawns, [{ command: 'xdg-open', args: [resolve(join('/tmp', 'patina-preview-77', 'browser-diff-77.html'))] }]);
 
       const page = writes[0].data;
       assert.ok(page.includes('<span class="ptna-after">First paragraph rewritten by the mock backend for the preview test.</span>'));

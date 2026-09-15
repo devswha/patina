@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@v6
         with:
@@ -28,17 +28,32 @@ jobs:
       - run: npm ci
       - name: Export hash-reviewed public fixtures
         run: node scripts/export-hf-dataset.mjs --output artifacts/hf-export
+      - name: Verify immutable export provenance
+        id: source
+        env:
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          test -n "$DISPATCH_SHA"
+          test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
+          source_commit="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('artifacts/hf-export/source-manifest.json', 'utf8')).sourceCommit)")"
+          test "$source_commit" = "$DISPATCH_SHA"
+          printf 'source_commit=%s\n' "$source_commit" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: patina-hf-dataset
           path: artifacts/hf-export
+          if-no-files-found: error
       - name: Publish reviewed main history
         if: inputs.publish == true
         env:
           HF_TOKEN: ${{ secrets.HF_DATASET_WRITE_TOKEN }}
           HF_DATASET_REPO: ${{ vars.HF_DATASET_REPO }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.source_commit }}
         run: |
           test -n "$HF_TOKEN"
           test -n "$HF_DATASET_REPO"
+          test -n "$SOURCE_COMMIT"
           git fetch origin main
+          git merge-base --is-ancestor "$SOURCE_COMMIT" origin/main
+          test "$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('artifacts/hf-export/source-manifest.json', 'utf8')).sourceCommit)")" = "$SOURCE_COMMIT"
           node scripts/publish-hf-dataset.mjs --directory artifacts/hf-export --repository "$HF_DATASET_REPO" --publish

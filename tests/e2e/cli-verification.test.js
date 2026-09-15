@@ -97,7 +97,13 @@ async function runMeaningSafetyBatch(scenario, {
 }
 
 for (const scenario of ['hard-fail', 'malformed', 'nested-body', 'dropped-number', 'dropped-number-unverified']) {
-  test(`CLI batch in-place preserves failed ${scenario} input and still writes the next valid file`, async () => {
+  // win32: dropped-number-unverified still needs a Windows host to prove the
+  // child exits 4 without libuv abort (0xC0000409, async.c:94, Node 24.17.0).
+  // Linux now drains the leftover callLLM fetch keep-alive sockets in
+  // src/cli/teardown.js before natural exit; do not treat that as a Windows fix.
+  const skip = process.platform === 'win32' && scenario === 'dropped-number-unverified'
+    && 'win32 teardown abort unproven after handle drain; need host exit-4 proof (issue #807)';
+  test(`CLI batch in-place preserves failed ${scenario} input and still writes the next valid file`, { skip }, async () => {
     for (const format of ['text', 'json']) {
       const { result, counts, first, second, original, validCandidate, firstAfter, secondAfter } =
         await runMeaningSafetyBatch(scenario, { format });

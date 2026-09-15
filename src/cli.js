@@ -7,7 +7,8 @@ import { runAside } from './commands/aside.js';
 import { handleAuth, printBackendStatus } from './commands/auth.js';
 import { parseArgs, validateModeExclusivity, validateOfflineScoreRequest, validateServeRequest, validatePreviewRequest, validateOutputRouting, validateTransformRequest, validatePersonaRequest, validateVerifyRequest, validateXliffRequest, printHelp } from './cli/args.js';
 import { runDefault } from './cli/run.js';
-import { inputError, renderCliError, getProcessExitCode } from './errors.js';
+import { inputError, renderCliError } from './errors.js';
+import { runCliProcess } from './cli/teardown.js';
 import { createLogger } from './logger.js';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -112,8 +113,10 @@ export async function main(args) {
 // run main(). When imported (e.g. by bin/patina.js or tests), just expose
 // the exports.
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  main(process.argv.slice(2)).catch((err) => {
-    createLogger().error('cli.error', { message: renderCliError(err) });
-    process.exit(getProcessExitCode(err));
+  runCliProcess(process.argv.slice(2), {
+    mainFn: main,
+    onError: (err) => {
+      createLogger().error('cli.error', { message: renderCliError(err) });
+    },
   });
 }

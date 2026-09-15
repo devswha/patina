@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
 import { main } from '../src/cli.js';
-import { renderCliError, getProcessExitCode } from '../src/errors.js';
+import { renderCliError } from '../src/errors.js';
+import { runCliProcess } from '../src/cli/teardown.js';
 
-main(process.argv.slice(2)).catch((err) => {
-  console.error(renderCliError(err));
-  process.exit(getProcessExitCode(err));
+await runCliProcess(process.argv.slice(2), {
+  mainFn: main,
+  onError: (err) => console.error(renderCliError(err)),
 });

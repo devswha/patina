@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "backend": "gemini-cli",
+  "cli": "gemini",
+  "observedVersion": "0.59.0",
+  "observedAt": "2026-09-13",
+  "status": "verified",
+  "evidence": {
+    "kind": "real-invocation",
+    "record": "docs/operations/backend-compat-kimi-gemini-agy-20260913.json",
+    "realInvocation": true,
+    "outputParsingVerified": true,
+    "errorsVerified": true,
+    "authVerified": true,
+    "quotaVerified": false,
+    "timeoutVerified": true
+  },
+  "syntheticFixture": false,
+  "rawOutputIncluded": false,
+  "history": {
+    "2026-09-10": "not exercised: the configured auth type was gemini-api-key, which would consume the product-only GEMINI_API_KEY; only the --policy flag surface was checked offline."
+  },
+  "scope": {
+    "platform": "linux-x64",
+    "node": "24.18.0",
+    "patina": "8.6.0 at dev 9f9c7b6",
+    "model": "gemini-2.5-pro",
+    "authPath": "oauth-personal (~/.gemini/gemini-credentials.json, selectedAuthType=oauth-personal); GEMINI_API_KEY was unset in the pilot shell, so the product key was never a candidate",
+    "invocations": 8,
+    "scenarios": ["auth ping", "score", "rewrite --verify", "timeout", "invalid in-family model"]
+  },
+  "requiredContracts": {
+    "output": "gemini -p with stdin prompt and --output-format text works on 0.59.0 with --skip-trust, the no-MCP allowlist entry, and the deny-all --policy file; leading terminal/ripgrep warnings are stripped and strict scoring JSON and the [BODY]/[SELF_AUDIT] rewrite framing both parsed.",
+    "errors": "A non-zero gemini exit is reported as a backend error with the child's stderr (ModelNotFoundError for an unknown model); the owned temp directory is removed and no gemini process survives.",
+    "auth": "Authentication accepts the OAuth credentials file or GEMINI_API_KEY; the verified run unset the env key and used personal Google OAuth (Code Assist), so no provider API key was read.",
+    "quota": "No quota or rate-limit failure occurred in the pilot budget; quota behavior is not verified by this record.",
+    "timeout": "Patina's bounded child timer rejected a live invocation at 1500 ms, SIGKILLed the owned child, and left no temp directory or process behind."
+  },
+  "limitations": [
+    "No credential, prompt, model response, or raw CLI output is recorded.",
+    "Verified only for gemini-cli 0.59.0 on Linux with gemini-2.5-pro over personal OAuth; other versions, platforms, models, and the API-key auth mode are unverified (API-key mode is deliberately not exercised: product-key policy).",
+    "Quota and rate-limit handling were not exercised.",
+    "This is a connectivity/contract check, not a rewrite-quality experiment."
+  ]
+}

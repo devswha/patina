@@ -182,7 +182,7 @@ function makeCallLLM({ backends } = {}) {
     throw inputError(
       'no backend available for persona authoring',
       'Sample/describe authoring needs an LLM backend to extract voice traits.',
-      'Pass --backend <codex-cli|claude-cli|gemini-cli|kimi-cli|openai-http>, set PATINA_BACKEND, or use `--template`.'
+      'Pass --backend <codex-cli|claude-cli|gemini-cli|kimi-cli|agy-cli|openai-http>, set PATINA_BACKEND, or use `--template`.'
     );
   }
   return ({ prompt, signal, timeout }) => invokeBackendChain({ backends: resolved, prompt, signal, timeout, maxConcurrency: 1, maxRetries: 1 });

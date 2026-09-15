@@ -100,6 +100,14 @@ test('aggregate key rejects sanitized unknown tiers instead of persisting them',
   assert.equal(buildAggregateKey(event, '2026-07-15T12:00:00.000Z'), null);
 });
 
+test('unknown latency buckets stay aggregate-ineligible instead of becoming a false zero', () => {
+  const event = buildWebObservabilityEvent({
+    channel: 'production', tier: 'pro', outcome: 'completed', latencyMs: 'not-a-duration', status: 200,
+  });
+  assert.equal(event.latencyBucket, 'unknown');
+  assert.equal(buildAggregateKey(event, '2026-07-15T12:00:00.000Z'), null);
+});
+
 test('observer isolates staging, production, and tier aggregate keys from event input contamination', async () => {
   const calls = [];
   const kv = { increment: (key, options) => { calls.push([key, options]); } };
@@ -141,6 +149,7 @@ test('observer samples free and BYOK completions but retains pro and denials at 
     for (let i = 0; i < 20; i += 1) observer.observe({ tier, outcome: 'completed', latencyMs: 1, status: 200 });
   }
   observer.observe({ tier: 'pro', outcome: 'completed', latencyMs: 1, status: 200 });
+  observer.observe({ tier: 'free', outcome: 'terminal_failed', latencyMs: 1, status: 500 });
   observer.observe({ tier: 'free', outcome: 'quota_denied', latencyMs: 1, status: 429 });
   await Promise.resolve();
 
@@ -148,12 +157,14 @@ test('observer samples free and BYOK completions but retains pro and denials at 
     ['free', 'completed', 'sampled_1_of_20'],
     ['byok', 'completed', 'sampled_1_of_20'],
     ['pro', 'completed', 'full'],
+    ['free', 'terminal_failed', 'full'],
     ['free', 'quota_denied', 'full'],
   ]);
   assert.deepEqual(calls, [
     { key: 'patina:mon:v1:production:free:20260715T1200Z:completed:<=30s', options: { ttlSeconds: 7200 } },
     { key: 'patina:mon:v1:production:byok:20260715T1200Z:completed:<=30s', options: { ttlSeconds: 7200 } },
     { key: 'patina:mon:v1:production:pro:20260715T1200Z:completed:<=30s', options: { ttlSeconds: 7200 } },
+    { key: 'patina:mon:v1:production:free:20260715T1200Z:terminal_failed:<=30s', options: { ttlSeconds: 7200 } },
     { key: 'patina:mon:v1:production:free:20260715T1200Z:quota_denied:<=30s', options: { ttlSeconds: 7200 } },
   ]);
 });

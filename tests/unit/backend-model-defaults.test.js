@@ -29,6 +29,12 @@ const FAKE_CLI = [
   '});',
   '',
 ].join('\n');
+// The fake CLIs are extensionless POSIX shebang scripts; on win32 they cannot
+// intercept a spawn, so the fake-dependent tests below would invoke the REAL
+// host CLIs. Skipping is absent coverage on Windows, not a pass.
+const FAKE_CLI_SKIP = process.platform === 'win32'
+  ? 'fake CLI PATH shims require POSIX shebang semantics'
+  : false;
 
 async function withFakeCli(fn, script = FAKE_CLI) {
   const binDir = mkdtempSync(join(tmpdir(), 'patina-model-cli-'));
@@ -112,7 +118,7 @@ test('drops foreign-family models from env/provider sources for local CLI backen
   );
 });
 
-test('local CLI backends pass default best-model flags to child processes', async () => {
+test('local CLI backends pass default best-model flags to child processes', { skip: FAKE_CLI_SKIP }, async () => {
   await withFakeCli(async () => {
     const codex = JSON.parse(await codexCli.invoke({ prompt: 'rewrite this', modelSource: 'default' }));
     assert.strictEqual(basename(codex.command), 'codex');
@@ -142,7 +148,60 @@ test('local CLI backends pass default best-model flags to child processes', asyn
   });
 });
 
-test('local CLI backends pass explicit non-alias model ids', async () => {
+// A fake CLI that also captures the gemini --policy file body before the
+// adapter removes its temp directory.
+const FAKE_CLI_WITH_POLICY = FAKE_CLI.replace(
+  "  const payload = JSON.stringify({ command: basename(process.argv[1]), args, stdin, isolation });",
+  "  const policyIndex = args.indexOf('--policy');\n" +
+  "  const policy = policyIndex >= 0 ? readFileSync(args[policyIndex + 1], 'utf8') : null;\n" +
+  "  const payload = JSON.stringify({ command: basename(process.argv[1]), args, stdin, isolation, policy });",
+);
+
+test('local CLI backends strip agent tools from every text invocation', { skip: FAKE_CLI_SKIP }, async () => {
+  await withFakeCli(async () => {
+    const codex = JSON.parse(await codexCli.invoke({ prompt: 'rewrite this' }));
+    for (const feature of codexCli.CODEX_DISABLED_FEATURES) {
+      const index = codex.args.indexOf('--disable');
+      assert.notStrictEqual(index, -1);
+      assert.ok(codex.args.some((arg, i) => arg === '--disable' && codex.args[i + 1] === feature), `codex should disable ${feature}`);
+    }
+    assert.deepEqual(codexCli.CODEX_DISABLED_FEATURES, ['shell_tool', 'unified_exec', 'multi_agent']);
+    // Sandbox containment stays in place alongside the feature switches.
+    assertArgValue(codex.args, '--sandbox', 'read-only');
+
+    const claude = JSON.parse(await claudeCli.invoke({ prompt: 'rewrite this' }));
+    assertArgValue(claude.args, '--tools', '');
+    assert.ok(claude.args.includes('--strict-mcp-config'));
+    assert.ok(!claude.args.includes('--mcp-config'));
+
+    const gemini = JSON.parse(await geminiCli.invoke({ prompt: 'rewrite this' }));
+    assert.strictEqual(gemini.policy, geminiCli.GEMINI_NO_TOOLS_POLICY);
+    assert.match(gemini.policy, /toolName = "\*"/);
+    assert.match(gemini.policy, /decision = "deny"/);
+    assertArgValue(gemini.args, '--allowed-mcp-server-names', '__patina_no_mcp__');
+  }, FAKE_CLI_WITH_POLICY);
+});
+
+test('claude keeps only the Read tool when images are attached; gemini stays tool-free', { skip: FAKE_CLI_SKIP }, async () => {
+  const imageDir = mkdtempSync(join(tmpdir(), 'patina-tool-image-'));
+  const image = join(imageDir, 'shot.png');
+  writeFileSync(image, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  try {
+    await withFakeCli(async () => {
+      const claude = JSON.parse(await claudeCli.invoke({ prompt: 'read the image', images: [image] }));
+      assertArgValue(claude.args, '--tools', 'Read');
+      assert.ok(claude.args.includes('--strict-mcp-config'));
+
+      const gemini = JSON.parse(await geminiCli.invoke({ prompt: 'read the image', images: [image] }));
+      assert.strictEqual(gemini.policy, geminiCli.GEMINI_NO_TOOLS_POLICY);
+      assert.match(gemini.stdin, /^@ocr-image-0\.png\n/);
+    }, FAKE_CLI_WITH_POLICY);
+  } finally {
+    rmSync(imageDir, { recursive: true, force: true });
+  }
+});
+
+test('local CLI backends pass explicit non-alias model ids', { skip: FAKE_CLI_SKIP }, async () => {
   await withFakeCli(async () => {
     const codex = JSON.parse(await codexCli.invoke({
       prompt: 'rewrite this',
@@ -167,7 +226,7 @@ test('local CLI backends pass explicit non-alias model ids', async () => {
   });
 });
 
-test('Kimi detailed output preserves validated private session identities', async () => {
+test('Kimi detailed output preserves validated private session identities', { skip: FAKE_CLI_SKIP }, async () => {
   const uuid = '04698749-1e50-4b73-a5a8-6d3f3c61f4c9';
   const script = `#!/usr/bin/env node
 const args = process.argv.slice(2);
@@ -188,7 +247,7 @@ console.log(JSON.stringify({ role: 'meta', type: 'session.resume_hint', session_
   }, script);
 });
 
-test('Kimi clients lacking explicit tool restrictions never fall back to unrestricted mode', async () => {
+test('Kimi clients lacking explicit tool restrictions never fall back to unrestricted mode', { skip: FAKE_CLI_SKIP }, async () => {
   const script = `#!/usr/bin/env node
 if (process.argv.includes('--agent-file')) {
   process.stderr.write('unknown option: --agent-file');

@@ -94,6 +94,14 @@ function makeFakeCliEnv() {
   };
 }
 
+// The fake CLIs are extensionless POSIX shebang scripts. On win32 a PATH shim
+// like that cannot intercept a spawn, so these tests would launch the REAL
+// host CLIs instead — and an interactive `claude auth login` never returns.
+// Skipping is absent coverage on Windows, not a pass.
+const FAKE_LOGIN_SKIP = process.platform === 'win32'
+  ? 'fake login CLIs require POSIX shebang PATH shims; would launch real host CLIs on Windows'
+  : false;
+
 describe('patina auth login <backend>', () => {
   it('keeps no-arg login as a per-backend instruction listing', async () => {
     const output = await captureConsole(async () => {
@@ -107,7 +115,7 @@ describe('patina auth login <backend>', () => {
     assert.match(output, /kimi-cli/);
   });
 
-  it('launches codex login and re-checks authentication', async () => {
+  it('launches codex login and re-checks authentication', { skip: FAKE_LOGIN_SKIP }, async () => {
     const env = makeFakeCliEnv();
     const output = await withEnv(env, () => captureConsole(async () => {
       await main(['auth', 'login', 'codex-cli', '--yes']);
@@ -118,7 +126,7 @@ describe('patina auth login <backend>', () => {
     assert.match(output, /codex-cli: authenticated/);
   });
 
-  it('launches claude, gemini, and kimi interactive login flows', async () => {
+  it('launches claude, gemini, and kimi interactive login flows', { skip: FAKE_LOGIN_SKIP }, async () => {
     const env = makeFakeCliEnv();
     const output = await withEnv(env, () => captureConsole(async () => {
       await main(['auth', 'login', 'claude-cli', '--yes']);

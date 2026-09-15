@@ -66,7 +66,17 @@ test('nullable intake verifies bytes and evidence without inventing human or gen
   assert.throws(() => loadNullableIntake(options.intake), /evidence mismatch/);
 });
 
-test('no opt-in means no call; snapshots preserve exact private inputs and loaded resources', async t => {
+// The research collector prepares its private output directory with POSIX
+// 0700 permissions and fails closed when they do not hold
+// (collect-rebaseline-scores.mjs). win32 has no POSIX mode bits, so every
+// test that reaches output preparation fails there by design — the tool
+// stays fail-closed on Windows. These skips are absent coverage, not passes;
+// the validation-only tests in this file still run on win32.
+const POSIX_PRIVATE_OUTPUT_SKIP = process.platform === 'win32'
+  ? 'research private-output 0700 enforcement is POSIX-only; tool stays fail-closed on win32'
+  : false;
+
+test('no opt-in means no call; snapshots preserve exact private inputs and loaded resources', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options, records } = setup(t);
   const report = await collectRebaselineScores({ ...options, live: false }, { complete: async () => assert.fail('not opted in') });
   assert.equal(report.attempted, 0);
@@ -94,7 +104,7 @@ test('missing, unknown, denied and route-mismatched approvals never dispatch', a
   }
 });
 
-test('mixed admission freezes the full denominator and preserves nullable labels', async t => {
+test('mixed admission freezes the full denominator and preserves nullable labels', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options, approval, records } = setup(t, 2);
   approval.decisions[1].decision = 'unknown'; options.maxCalls = 2; write(options.approvals, approval);
   let calls = 0;
@@ -109,7 +119,7 @@ test('mixed admission freezes the full denominator and preserves nullable labels
   assert.equal(report.languages.en.packs['viral-hook'].missing, 1);
 });
 
-test('completed observations replay offline byte-for-byte; resume never pays for them again', async t => {
+test('completed observations replay offline byte-for-byte; resume never pays for them again', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options } = setup(t, 2); let calls = 0;
   await collectRebaselineScores(options, { complete: async () => { calls++; return valid(); } });
   assert.equal(calls, 2);
@@ -120,7 +130,7 @@ test('completed observations replay offline byte-for-byte; resume never pays for
   await collectRebaselineScores(resume(options), { complete: async () => assert.fail('already paid') });
 });
 
-test('production JSON retry is retained, while valid-JSON schema failure is a separate missing score', async t => {
+test('production JSON retry is retained, while valid-JSON schema failure is a separate missing score', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options } = setup(t, 2); const temperatures = [];
   const report = await collectRebaselineScores(options, { complete: async (_candidate, _prompt, args) => {
     temperatures.push(args.temperature);
@@ -134,7 +144,7 @@ test('production JSON retry is retained, while valid-JSON schema failure is a se
   assert.equal((await replayCollection(options.output)).fullObservedReplay, true);
 });
 
-test('transport failures remain errors and missing scores, with no transport retry', async t => {
+test('transport failures remain errors and missing scores, with no transport retry', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options } = setup(t); let calls = 0;
   const report = await collectRebaselineScores(options, { complete: async () => { calls++; throw new Error('HTTP 429'); } });
   assert.equal(calls, 1); assert.equal(report.valid, 0); assert.equal(report.distributions.overall.n, 0);
@@ -142,7 +152,7 @@ test('transport failures remain errors and missing scores, with no transport ret
   assert.equal((await replayCollection(options.output)).fullObservedReplay, true);
 });
 
-test('snapshot/row/receipt changes and missing parser receipts reject before any resumed paid call', async t => {
+test('snapshot/row/receipt changes and missing parser receipts reject before any resumed paid call', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   for (const variant of ['snapshot', 'row', 'wire', 'missing-parser-call']) {
     const { options, records } = setup(t); let count = 0;
     await collectRebaselineScores(options, { complete: async () => (++count === 1 && variant === 'missing-parser-call' ? { ...valid(), text: 'malformed' } : valid()) });
@@ -162,7 +172,7 @@ test('snapshot/row/receipt changes and missing parser receipts reject before any
   }
 });
 
-test('persistence failure before dispatch pays nothing; after dispatch it stops and blocks paid resume', async t => {
+test('persistence failure before dispatch pays nothing; after dispatch it stops and blocks paid resume', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   for (const phase of ['started', 'completed']) {
     const { options } = setup(t, 2); let calls = 0;
     await assert.rejects(collectRebaselineScores(options, {
@@ -174,7 +184,7 @@ test('persistence failure before dispatch pays nothing; after dispatch it stops 
   }
 });
 
-test('completed paid receipts can recover a missing row offline after row persistence failure', async t => {
+test('completed paid receipts can recover a missing row offline after row persistence failure', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options } = setup(t); let calls = 0;
   await assert.rejects(collectRebaselineScores(options, { complete: async () => { calls++; return valid(); },
     persist: (path, value) => { if (path.includes('/rows/')) throw new Error('disk full'); persistPrivate(path, value); } }), /persistence/);
@@ -182,7 +192,7 @@ test('completed paid receipts can recover a missing row offline after row persis
   assert.equal(calls, 1); assert.equal(report.valid, 1);
 });
 
-test('secrets reject preparation or response capture; no redacted full-replay claim', async t => {
+test('secrets reject preparation or response capture; no redacted full-replay claim', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const secret = 'sk-' + 'x'.repeat(32);
   const a = setup(t); a.options.config = resolve(a.root, 'secret.yaml'); fs.writeFileSync(a.options.config, `api_key: ${secret}\n`);
   await assert.rejects(collectRebaselineScores(a.options, { complete: async () => assert.fail('secret config') }), /secret/);
@@ -217,7 +227,7 @@ test('the bounded HTTP path sends once even for temperature rejection and captur
   assert.ok(!JSON.stringify(observed).includes('Authorization'));
 });
 
-test('opt-in is boolean and the bound includes every production parser invocation', async t => {
+test('opt-in is boolean and the bound includes every production parser invocation', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const a = setup(t);
   const report = await collectRebaselineScores({ ...a.options, live: 'false' }, { complete: async () => assert.fail('string is not opt-in') });
   assert.equal(report.attempted, 0);
@@ -229,7 +239,7 @@ test('opt-in is boolean and the bound includes every production parser invocatio
   await assert.rejects(collectRebaselineScores(resume(b.options), { complete: async () => assert.fail('budget cannot grow on resume') }));
 });
 
-test('observed partial error metadata survives replay without a new invocation', async t => {
+test('observed partial error metadata survives replay without a new invocation', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options } = setup(t);
   const report = await collectRebaselineScores(options, { complete: async () => {
     const error = new Error('CLI failed');
@@ -241,7 +251,7 @@ test('observed partial error metadata survives replay without a new invocation',
   assert.equal(replay.fullObservedReplay, true);
 });
 
-test('native profile admission remains distinct from server model verification', async t => {
+test('native profile admission remains distinct from server model verification', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options, approval, records } = setup(t);
   const native = { id: 'unit-native', provider: 'kimi', transport: 'kimi-cli', model: 'kimi-code/kimi-for-coding' };
   write(options.protocol, { schemaVersion: 1, candidates: [native] });
@@ -263,7 +273,7 @@ test('native profile admission remains distinct from server model verification',
   assert.equal((await replayCollection(options.output)).fullObservedReplay, true);
 });
 
-test('dataset genre and delivery register remain separate; source labels never label new targets', async t => {
+test('dataset genre and delivery register remain separate; source labels never label new targets', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options, records, approval, root } = setup(t, 4);
   const genres = ['social', 'marketing', 'chat-update', 'chat-update'];
   const documentTypes = ['social', 'marketing', undefined, 'casual-conversation'];
@@ -345,7 +355,7 @@ function parentSetup(t, count = 2) {
   return { ...base, gemini, parent, review, reviewPath };
 }
 
-test('parent approval is consumed losslessly and only approved text/scoring instructions reach HTTP', async t => {
+test('parent approval is consumed losslessly and only approved text/scoring instructions reach HTTP', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options, parent, reviewPath, records, gemini } = parentSetup(t);
   const approvalBytes = fs.readFileSync(options.approvals, 'utf8'), reviewBytes = fs.readFileSync(reviewPath, 'utf8');
   const previous = globalThis.fetch; t.after(() => { globalThis.fetch = previous; });
@@ -424,7 +434,7 @@ test('approval of original bytes does not permit automatic input-fence neutraliz
   await assert.rejects(collectRebaselineScores(options, { complete: async () => assert.fail('changed text cannot be sent') }), /fencing changes approved text/);
 });
 
-test('offline replay still rejects actual scorer code changes in the isolated source tree', async t => {
+test('offline replay still rejects actual scorer code changes in the isolated source tree', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options } = setup(t);
   await collectRebaselineScores(options, { complete: async () => valid() });
   const path = resolve(ROOT, 'src/scoring.js'), before = fs.readFileSync(path);
@@ -497,7 +507,7 @@ assert.equal(getEventListeners(signal, 'abort').length, 0, 'per-call cancellatio
 console.log(JSON.stringify({ mode, fetchCalls, globalAborted: signal.aborted, activeFetchAborted: activeSignal?.aborted ?? null }));
 `;
 
-test('programmatic abortStudy and real SIGTERM abort active HTTP fetch and stop later texts', t => {
+test('programmatic abortStudy and real SIGTERM abort active HTTP fetch and stop later texts', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, t => {
   for (const mode of ['programmatic', 'sigterm']) {
     const { options } = setup(t, 2); options.timeoutMs = 5000;
     const result = execFileSync(process.execPath, ['--input-type=module', '-e', cancellationProgram, ROOT, JSON.stringify(options), mode], { encoding: 'utf8', timeout: 15000 });
@@ -514,7 +524,7 @@ test('already-aborted and listener-installation races dispatch zero HTTP request
   }
 });
 
-test('ordinary deadlines and network AbortError are recorded errors and the cohort continues', async t => {
+test('ordinary deadlines and network AbortError are recorded errors and the cohort continues', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const previous = globalThis.fetch; t.after(() => { globalThis.fetch = previous; });
   const signal = getStudyCancellationSignal();
   const baseline = getEventListeners(signal, 'abort').length;
@@ -567,7 +577,7 @@ async function exhaustParserDeadline(options, records, dependencies) {
   finally { Date.now = originalNow; globalThis.fetch = originalFetch; }
 }
 
-test('logical deadline after malformed response records two journals but only one dispatched wire', async t => {
+test('logical deadline after malformed response records two journals but only one dispatched wire', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options, records } = setup(t, 2); options.timeoutMs = 1000;
   const result = await exhaustParserDeadline(options, records);
   const snapshot = read(resolve(options.output, 'snapshot.private.json'));
@@ -595,7 +605,7 @@ test('logical deadline after malformed response records two journals but only on
   assert.deepEqual(Object.fromEntries(paths(options.output).map(path => [path, hash(fs.readFileSync(path))])), before);
 });
 
-test('wireless notStarted timeout recovers a missing row without a replacement completion', async t => {
+test('wireless notStarted timeout recovers a missing row without a replacement completion', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options, records } = setup(t); options.timeoutMs = 1000;
   const result = await exhaustParserDeadline(options, records, { persist: (path, value) => {
     if (path.includes('/rows/')) throw new Error('row persistence interrupted');
@@ -613,7 +623,7 @@ test('wireless notStarted timeout recovers a missing row without a replacement c
   assert.equal((await replayCollection(options.output)).fullObservedReplay, true);
 });
 
-test('zero-dispatch receipts require exact prompt/request/ordinal/state and no dispatch evidence', async t => {
+test('zero-dispatch receipts require exact prompt/request/ordinal/state and no dispatch evidence', { skip: POSIX_PRIVATE_OUTPUT_SKIP }, async t => {
   const { options, records } = setup(t); options.timeoutMs = 1000;
   const result = await exhaustParserDeadline(options, records);
   assert.equal(result.error, undefined);

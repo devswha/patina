@@ -48,6 +48,14 @@ patina --backend codex-cli --lang ko input.txt
 patina --model codex --lang ko input.txt   # routes to codex-cli, uses gpt-5.5 default
 ```
 
+Notes: `codex exec` runs from a fresh temp directory with `--sandbox read-only`
+and with the `shell_tool`, `unified_exec` and `multi_agent` features disabled.
+A rewrite needs no tools, and with them enabled codex behaves as an agent —
+measured on 2026-09-10 it ran 3–13 shell commands per rewrite prompt, re-sending
+the ~20k-token prompt every turn (up to ~500k tokens for one Korean rewrite).
+With the tools removed the same rewrite is one turn, ~20k tokens, ~20 s. Reasoning
+effort is not overridden; it follows your `~/.codex/config.toml`.
+
 ## claude-cli backend
 
 Spawns local [`claude`](https://docs.anthropic.com/en/docs/claude-code) `-p` with the patina prompt on stdin. Free for anyone with a Claude subscription. Claude Code is an agent runtime, so patina treats it conservatively in batch mode: compact prompt mode, default max concurrency `1`, and default retries `0`. The default model passed to Claude Code is `claude-sonnet-4-6`; Claude Code may still apply its own model/session policy outside patina's control.
@@ -59,7 +67,16 @@ patina --backend claude-cli --lang ko input.txt
 patina --model claude-sonnet-4-6 --lang ko input.txt   # auto-routes
 ```
 
-Auth file: `~/.claude/.credentials.json` (created by the OAuth flow).
+Notes: patina passes `--tools ""` and `--strict-mcp-config`, so the call carries
+no built-in tools and starts none of your configured MCP servers. The `--ocr`
+image route is the only exception and keeps `Read` for the staged image files.
+
+Auth file: `~/.claude/.credentials.json` (created by the OAuth flow). `patina
+doctor`, `patina auth status`, and automatic `--ocr` backend selection read
+its `claudeAiOauth` tokens and expiry timestamps: a file that Claude Code emptied after logout or a failed refresh
+reports `authenticated=no` with a hint to run `claude auth login` again. No
+network call is made; a token that is present but revoked server-side is only
+detected when the backend is invoked.
 
 ## gemini-cli backend
 
@@ -73,7 +90,7 @@ patina --backend gemini-cli --lang ko input.txt
 patina --model gemini-3-flash-preview --lang ko input.txt   # auto-routes
 ```
 
-Notes: patina passes `--skip-trust` because the prompt runs from a fresh temp directory (containment for prompt-injection in user text). Default timeout is higher than other CLIs because gemini's startup latency is longer.
+Notes: patina passes `--skip-trust` because the prompt runs from a fresh temp directory (containment for prompt-injection in user text), disables MCP servers, and passes a per-call `--policy` file that denies every tool (`toolName = "*"`), so the model receives no tool definitions and cannot spend turns on `run_shell_command` or `write_file`; image input uses `@file` includes, which the CLI resolves itself. Default timeout is higher than other CLIs because gemini's startup latency is longer.
 
 ## kimi-cli backend
 
@@ -87,13 +104,48 @@ patina --backend kimi-cli --lang ko input.txt
 patina --model kimi --lang ko input.txt     # routes to kimi-cli, uses backend default
 ```
 
+## agy-cli backend (Antigravity CLI)
+
+Spawns local [`agy`](https://antigravity.google/docs/cli) (Google's Antigravity
+CLI, the successor of Gemini CLI for unpaid and Google One accounts) in headless
+mode. Authentication is the Google sign-in cached by an interactive `agy`
+session; no API key is read. The Antigravity catalog mixes families
+(`gemini-3.8-flash-*`, `gemini-3.7-flash-*`, `gemini-3.1-pro-*`,
+`claude-sonnet-4-6`, `gpt-oss-120b-medium`; run `agy models`), so selection is
+explicit: `--backend agy-cli` or `--model agy`. `--model gemini-*` still routes
+to `gemini-cli`. The default model is `gemini-3.7-flash-medium`; the suffix is
+Antigravity's reasoning-effort tier.
+
+```bash
+agy                                        # one-time interactive sign-in
+patina auth login agy-cli                  # same, with confirmation
+patina --backend agy-cli --lang ko input.txt
+patina --backend agy-cli --model gemini-3.8-flash-high --lang ko input.txt
+```
+
+Notes: the prompt travels on stdin as a `stream-json` user event, never as an
+argv value. Containment relies on Antigravity's *defaults*: every
+permission-gated tool (commands, URLs outside the workspace, MCP, files
+outside the workspace) asks, and headless mode auto-denies what it cannot
+ask. Antigravity's tool definitions stay in the prompt; Patina cannot remove
+them. Because headless mode honours your global `permissions.allow` list, the
+adapter **refuses to run at all** when
+`~/.gemini/antigravity-cli/settings.json` auto-allows anything (for example
+`command(git)` or `read_url(*)`) — remove those rules or use another backend.
+With no allow rules, each call runs from a fresh empty temp directory with a
+workspace-local custom agent (`.agents/agents/patina-text.md`,
+`commandExecutionPolicy: off`) whose system prompt forbids tools, and the
+adapter rejects a turn outright if the stream shows any tool step or an empty
+response, so a denied tool never becomes a silent empty rewrite. Image input
+is not supported. Default max concurrency `1`, retries `0`.
+
 Use `--yes` only for automation where the launch is already intentional:
 
 ```bash
 patina auth login codex-cli --yes
 ```
 
-> **Mode support:** `codex-cli`, `claude-cli`, `gemini-cli`, and `kimi-cli` can be used as rewrite backends without `PATINA_API_KEY` when their local CLIs are already authenticated.
+> **Mode support:** `codex-cli`, `claude-cli`, `gemini-cli`, `kimi-cli`, and `agy-cli` can be used as rewrite backends without `PATINA_API_KEY` when their local CLIs are already authenticated.
 
 For large rewrite batches, prefer `openai-http` or another stateless
 OpenAI-compatible HTTP provider over local agent CLIs. Batch mode exposes

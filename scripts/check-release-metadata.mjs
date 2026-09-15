@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -79,6 +79,101 @@ export function collectReleaseMetadataErrors({ repoRoot = REPO_ROOT, env = proce
   return { errors: checks, version };
 }
 
+/**
+ * Synchronize the two Claude plugin version mirrors from package.json.
+ *
+ * This is intentionally an explicit maintenance operation. The normal release
+ * metadata check remains read-only and only reports drift. Every input is read
+ * and validated before either mirror is written, so a malformed or missing
+ * plugin manifest cannot leave a partially updated pair behind.
+ *
+ * @param {{repoRoot?: string}} [options]
+ * @returns {{version: string, updated: string[], changed: boolean}}
+ * @throws {Error} When package or plugin metadata is missing or malformed.
+ */
+export function syncPluginVersions({ repoRoot = REPO_ROOT } = {}) {
+  const repoPath = (path) => resolve(repoRoot, path);
+  const packagePath = repoPath('package.json');
+  const pluginPath = repoPath('.claude-plugin/plugin.json');
+  const marketplacePath = repoPath('.claude-plugin/marketplace.json');
+
+  const readJsonForSync = (path, label) => {
+    let text;
+    try {
+      text = readFileSync(path, 'utf8');
+    } catch (error) {
+      throw new Error(`${label} is missing or unreadable: ${error.message}`, { cause: error });
+    }
+    try {
+      return { data: JSON.parse(text), text };
+    } catch (error) {
+      throw new Error(`${label} is malformed JSON: ${error.message}`, { cause: error });
+    }
+  };
+
+  const packageData = readJsonForSync(packagePath, 'package.json').data;
+  const version = packageData?.version;
+  if (typeof version !== 'string' || !version.trim()) {
+    throw new Error('package.json version must be a non-empty string');
+  }
+
+  const pluginFile = readJsonForSync(pluginPath, '.claude-plugin/plugin.json');
+  const marketplaceFile = readJsonForSync(marketplacePath, '.claude-plugin/marketplace.json');
+  const plugin = pluginFile.data;
+  const marketplace = marketplaceFile.data;
+
+  if (!plugin || Array.isArray(plugin) || typeof plugin !== 'object' || plugin.name !== 'patina') {
+    throw new Error('.claude-plugin/plugin.json must be an object with name "patina"');
+  }
+  if (typeof plugin.version !== 'string' || !plugin.version.trim()) {
+    throw new Error('.claude-plugin/plugin.json version must be a non-empty string');
+  }
+  if (!marketplace || Array.isArray(marketplace) || typeof marketplace !== 'object' || !Array.isArray(marketplace.plugins)) {
+    throw new Error('.claude-plugin/marketplace.json must contain a plugins array');
+  }
+  if (marketplace.plugins.some((entry) => !entry || typeof entry !== 'object' || Array.isArray(entry))) {
+    throw new Error('.claude-plugin/marketplace.json plugins must contain only objects');
+  }
+  const marketplacePlugins = marketplace.plugins.filter((entry) => entry && typeof entry === 'object' && entry.name === 'patina');
+  if (marketplacePlugins.length === 0) {
+    throw new Error('.claude-plugin/marketplace.json must list a patina plugin entry');
+  }
+  if (marketplacePlugins.length > 1) {
+    throw new Error('.claude-plugin/marketplace.json must list exactly one patina plugin entry');
+  }
+  const marketplacePlugin = marketplacePlugins[0];
+  if (typeof marketplacePlugin.version !== 'string' || !marketplacePlugin.version.trim()) {
+    throw new Error('.claude-plugin/marketplace.json patina plugin version must be a non-empty string');
+  }
+
+  const pluginNeedsSync = plugin.version !== version;
+  const marketplaceNeedsSync = marketplacePlugin.version !== version;
+  if (!pluginNeedsSync && !marketplaceNeedsSync) {
+    return { version, updated: [], changed: false };
+  }
+
+  plugin.version = version;
+  marketplacePlugin.version = version;
+
+  const encodeJson = (data, originalText) => {
+    const newline = originalText.endsWith('\n') ? '\n' : '';
+    return `${JSON.stringify(data, null, 2)}${newline}`;
+  };
+  const pluginText = encodeJson(plugin, pluginFile.text);
+  const marketplaceText = encodeJson(marketplace, marketplaceFile.text);
+  const updated = [];
+  if (pluginNeedsSync && pluginText !== pluginFile.text) {
+    writeFileSync(pluginPath, pluginText);
+    updated.push('.claude-plugin/plugin.json');
+  }
+  if (marketplaceNeedsSync && marketplaceText !== marketplaceFile.text) {
+    writeFileSync(marketplacePath, marketplaceText);
+    updated.push('.claude-plugin/marketplace.json');
+  }
+
+  return { version, updated, changed: updated.length > 0 };
+}
+
 export function runReleaseMetadataCheck(options = {}) {
   const { stderr = process.stderr, stdout = process.stdout, ...collectorOptions } = options;
   const { errors, version } = collectReleaseMetadataErrors(collectorOptions);
@@ -91,7 +186,19 @@ export function runReleaseMetadataCheck(options = {}) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  process.exitCode = runReleaseMetadataCheck();
+  if (process.argv.includes('--sync-plugin-versions')) {
+    try {
+      const result = syncPluginVersions();
+      const suffix = result.updated.length ? `: ${result.updated.join(', ')}` : ': already current';
+      process.stdout.write(`Plugin versions synced to ${result.version}${suffix}\n`);
+      process.exitCode = 0;
+    } catch (error) {
+      process.stderr.write(`${error.message}\n`);
+      process.exitCode = 1;
+    }
+  } else {
+    process.exitCode = runReleaseMetadataCheck();
+  }
 }
 
 function escapeRegex(value) {

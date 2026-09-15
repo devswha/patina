@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "backend": "kimi-cli",
+  "cli": "kimi",
+  "observedVersion": "0.42.0",
+  "observedAt": "2026-09-13",
+  "status": "verified",
+  "evidence": {
+    "kind": "real-invocation",
+    "record": "docs/operations/backend-compat-kimi-gemini-agy-20260913.json",
+    "realInvocation": true,
+    "outputParsingVerified": true,
+    "errorsVerified": true,
+    "authVerified": true,
+    "quotaVerified": false,
+    "timeoutVerified": true
+  },
+  "syntheticFixture": false,
+  "rawOutputIncluded": false,
+  "history": {
+    "2026-09-10": "not exercised: would have needed KIMI_API_KEY or the Kimi OAuth session; not authorized in that pilot."
+  },
+  "scope": {
+    "platform": "linux-x64",
+    "node": "24.18.0",
+    "patina": "8.6.0 at dev 9f9c7b6",
+    "model": "kimi-code/kimi-for-coding",
+    "authPath": "Kimi Code OAuth session in ~/.kimi-code; KIMI_API_KEY and MOONSHOT_API_KEY were unset in the pilot shell",
+    "invocations": 10,
+    "scenarios": ["auth ping", "score", "rewrite --verify (one conservative retry)", "timeout", "invalid in-family model"]
+  },
+  "requiredContracts": {
+    "output": "kimi --prompt <text> --output-format stream-json NDJSON final-message extraction works on Kimi Code 0.42.0; strict scoring JSON and the [BODY]/[SELF_AUDIT] rewrite framing both parsed on this version.",
+    "errors": "A non-zero kimi exit is reported as a backend error with the child's stderr (the unknown-model catalog message); the owned temp directory is removed and no kimi process survives.",
+    "auth": "Authentication checks the ~/.kimi-code|~/.kimi credential/config paths or the env keys; the verified run unset both env key names and used the Kimi Code OAuth session, not an API key.",
+    "quota": "No quota or rate-limit failure occurred in the pilot budget; quota behavior is not verified by this record.",
+    "timeout": "Patina's bounded child timer rejected a live invocation at 1500 ms, SIGKILLed the owned child, and left no temp directory or process behind."
+  },
+  "limitations": [
+    "No credential, prompt, model response, or raw CLI output is recorded.",
+    "Verified only for Kimi Code 0.42.0 on Linux with kimi-code/kimi-for-coding; other versions, platforms, and models are unverified. 0.29.1 -> 0.42.0 was a large jump verified only through this smoke surface.",
+    "Quota and rate-limit handling were not exercised.",
+    "kimi's --agent-file tool-restriction surface was exercised only through the adapter's zero-tool profile.",
+    "This is a connectivity/contract check, not a rewrite-quality experiment."
+  ]
+}

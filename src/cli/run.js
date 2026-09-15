@@ -5,7 +5,7 @@ import {
   loadDocumentType,
   loadCoreFile,
 } from '../loader.js';
-import { buildPrompt } from '../prompt-builder.js';
+import { buildPrompt, resolveRhetoricPolicy } from '../prompt-builder.js';
 import { buildTransformVariants } from './args.js';
 import { invokeBackendChain, selectBackendChain, selectOcrBackends, listBackends } from '../backends/index.js';
 import { selectProvider, resolveProviderConfig } from '../providers.js';
@@ -25,7 +25,7 @@ import { createHash } from 'node:crypto';
 
 import { verifyRewrite, deterministicMeaningGuard, droppedNumbers } from '../verify.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
-import { detectKoreanRegister } from '../features/stylometry.js';
+import { buildDocumentSignals } from '../features/document-signals.js';
 import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput, writeAtomicUtf8, resolveBatchOutputPath } from './batch.js';
 import { applyScoreGate, extractScoreOverall } from './score-gate.js';
 import { loadInputs } from './input.js';
@@ -39,6 +39,7 @@ import { personaMatchScore } from '../features/persona-match.js';
 import { pathToFileURL } from 'node:url';
 import { humanizeXliffDocument, resolveUniqueCap } from './xliff.js';
 import { inspectAuditSource } from '../inspection.js';
+import { warnIfTooSmooth } from './smoothness-advisory.js';
 
 /**
  * Run the default patina pipeline for an already-parsed CLI invocation:
@@ -204,6 +205,8 @@ export async function runDefault(parsed, logger) {
       jargon: parsed.jargon,
       rewriteHeadings: parsed.rewriteHeadings,
       persona,
+      // PATINA_RHETORIC_POLICY=legacy restores the pre-2026-09-14 similar-weight rhetoric sentence.
+      rhetoricPolicy: resolveRhetoricPolicy(process.env),
     }),
   }));
 
@@ -283,6 +286,7 @@ export async function runDefault(parsed, logger) {
               documentSignals: buildDocumentSignals({ text, lang }).signals,
               jargon: parsed.jargon,
               rewriteHeadings: parsed.rewriteHeadings,
+              rhetoricPolicy: resolveRhetoricPolicy(process.env),
               apiKey: resolved.apiKey,
               baseURL: resolved.baseURL,
               model: resolved.model,
@@ -329,6 +333,8 @@ export async function runDefault(parsed, logger) {
           if (meaningSafetyReason) {
             process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
           }
+          // Advisory only — rewrite output, never the source. Does not touch exit codes.
+          warnIfTooSmooth({ text: finalText, config, logger, lang });
         }
 
         if (mode === 'score') {
@@ -549,6 +555,7 @@ export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
       text: core, mode: 'rewrite',
       register: null,
       promptMode, documentSignals: null,
+      rhetoricPolicy: resolveRhetoricPolicy(process.env),
     });
     const raw = await invokeBackendChain({
       backends, prompt, apiKey: resolved.apiKey, baseURL: resolved.baseURL,
@@ -571,6 +578,7 @@ export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
       documentType,
       voice: voice.body ? voice : null,
       scoring: scoring.body ? scoring : null, promptMode, register: null,
+      rhetoricPolicy: resolveRhetoricPolicy(process.env),
       apiKey: resolved.apiKey, baseURL: resolved.baseURL, model: resolved.model,
       callLLM, signal: cancellation.signal, timeout: timeoutMs, logger,
     });
@@ -742,7 +750,7 @@ export function resolvePromptMode({ backend, model }) {
   if (backendStr && backendStr !== 'openai-http') return getBackendSafety(backendStr).promptMode;
   if (modelStr.includes('gemini')) return 'minimal';
   if (backendStr) return getBackendSafety(backendStr).promptMode;
-  if (modelStr.includes('kimi') || modelStr.includes('claude') || modelStr.includes('codex')) return 'minimal';
+  if (modelStr.includes('kimi') || modelStr.includes('claude') || modelStr.includes('codex') || modelStr === 'agy') return 'minimal';
   return 'strict';
 }
 
@@ -877,6 +885,7 @@ async function runPreviewJob({
       promptMode,
       jargon: parsed.jargon,
       rewriteHeadings: parsed.rewriteHeadings,
+      rhetoricPolicy: resolveRhetoricPolicy(process.env),
     };
     const invokeInputs = {
       backends,
@@ -1153,7 +1162,7 @@ async function runOcrStage({ pageHtml, sourceUrl, parsed, backends, resolved, ti
   if (!hasOcrRunnerOverride() && ocrBackends.length === 0) {
     throw runtimeError(
       'no image-capable backend for --ocr',
-      'OCR needs an available, authenticated claude-cli, gemini-cli, or codex-cli (kimi-cli and openai-http cannot read images).',
+      'OCR needs an available, authenticated claude-cli, gemini-cli, or codex-cli (kimi-cli, agy-cli, and openai-http cannot read images).',
       'Run `patina doctor` to check backend status, or drop --ocr.'
     );
   }
@@ -1207,21 +1216,6 @@ async function runOcrStage({ pageHtml, sourceUrl, parsed, backends, resolved, ti
   } finally {
     try { rmSync(dir, { recursive: true, force: true }); } catch {}
   }
-}
-
-// Deterministic document signals for the rewrite prompt (document-brief
-// stage). Korean only for now: the dominant register is measured, not
-// guessed, so the model gets it as ground truth instead of re-deriving it.
-function buildDocumentSignals({ text, lang }) {
-  if (lang !== 'ko') return { signals: [], register: null };
-  const register = detectKoreanRegister(text);
-  if (!register) return { signals: [], register: null };
-  const pct = (value) => `${Math.round(value * 100)}%`;
-  const distribution = `합쇼체 ${pct(register.shares.formal)} · 해요체 ${pct(register.shares.polite)} · -다체 ${pct(register.shares.plain)} (문장 ${register.classified}개 기준)`;
-  const signals = register.register === 'mixed'
-    ? [`어미 분포: ${distribution} — 지배 어투 없음(혼합). 문서 성격에 맞는 어투 하나를 골라 전체를 통일할 것`]
-    : [`지배 어투: ${register.label} — ${distribution}. 재작성 문장 전체를 이 어투로 통일할 것`];
-  return { signals, register };
 }
 
 /**

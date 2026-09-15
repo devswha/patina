@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -19,15 +19,21 @@ function tempWorkspace() {
 
 async function withEnv({ home, cwd }, fn) {
   const oldHome = process.env.HOME;
+  const oldUserProfile = process.env.USERPROFILE;
   const oldCwd = process.cwd();
+  // os.homedir() reads HOME on POSIX but USERPROFILE on win32; redirect both
+  // so the fixture home is the home directory on every platform.
   process.env.HOME = home;
+  process.env.USERPROFILE = home;
   process.chdir(cwd);
   try {
-    await fn();
+    return await fn();
   } finally {
     process.chdir(oldCwd);
     if (oldHome === undefined) delete process.env.HOME;
     else process.env.HOME = oldHome;
+    if (oldUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = oldUserProfile;
   }
 }
 
@@ -98,6 +104,27 @@ test('loadConfig: when HOME equals cwd the shared .patina.yaml is applied once, 
     assert.deepStrictEqual(config.blocklist, [{ term: 'shared-entry' }]);
   });
 });
+
+// Windows needs elevated privileges for directory symlinks; the literal-path
+// case above (G5) still covers the dedupe there.
+test('loadConfig: HOME reaching cwd through a symlink still merges .patina.yaml once', { skip: process.platform === 'win32' }, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'patina-config-symlink-'));
+  const real = join(root, 'real');
+  const alias = join(root, 'alias');
+  mkdirSync(real);
+  symlinkSync(real, alias, 'dir');
+  const defaultPath = join(real, 'default.yaml');
+  writeFileSync(defaultPath, 'register: casual\n');
+  writeFileSync(join(real, '.patina.yaml'), 'blocklist:\n  - term: shared-entry\n');
+
+  // HOME keeps the symlink spelling while process.cwd() reports the real
+  // path, so the two candidate paths differ as strings but name one file.
+  await withEnv({ home: alias, cwd: real }, async () => {
+    const config = loadConfig(defaultPath);
+    assert.deepStrictEqual(config.blocklist, [{ term: 'shared-entry' }]);
+  });
+});
+
 test('loadConfig preserves partial scoring defaults and explicit zero overrides', async () => {
   const { root, home, project } = tempWorkspace();
   const defaultPath = join(root, 'default.yaml');

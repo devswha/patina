@@ -46,6 +46,19 @@ success() {
   printf "%b\n" "${GREEN}$1${RESET}"
 }
 
+is_cursor_product_rule() {
+  awk '
+    NR == 1 && $0 == "---" { next }
+    NR == 2 && $0 == "description: Apply Patina product instructions when humanizing text." { next }
+    NR == 3 && $0 == "alwaysApply: false" { next }
+    NR == 4 && $0 == "---" { next }
+    NR == 5 && $0 == "" { next }
+    NR == 6 && $0 == "<!-- patina-cursor-product-adapter -->" { found = 1; exit 0 }
+    { exit 1 }
+    END { if (!found) exit 1 }
+  ' "$1"
+}
+
 error() {
   printf "%b\n" "${RED}$1${RESET}" >&2
   exit 1
@@ -65,15 +78,17 @@ if [ "${UNINSTALL_CODEX}" = "true" ]; then
   fi
 fi
 
-# --- Cursor (symlink) ---
+# --- Cursor (generated rule) ---
 if [ "${UNINSTALL_CURSOR}" = "true" ]; then
-  TARGET="${CURSOR_RULES_DIR}/patina.md"
+  TARGET="${CURSOR_RULES_DIR}/patina.mdc"
   if [ -L "${TARGET}" ]; then
+    warn "Cursor: ${TARGET} is a symlink; leaving it untouched."
+  elif [ -f "${TARGET}" ] && is_cursor_product_rule "${TARGET}"; then
     rm -f "${TARGET}"
     success "Cursor: removed ${TARGET}"
     REMOVED=1
   elif [ -e "${TARGET}" ]; then
-    warn "Cursor: ${TARGET} exists but is not a symlink; leaving it untouched."
+    warn "Cursor: ${TARGET} exists but was not installed by patina; leaving it untouched."
   fi
 fi
 

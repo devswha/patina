@@ -2,6 +2,7 @@ import js from '@eslint/js';
 
 const nodeGlobals = {
   AbortController: 'readonly',
+  AbortSignal: 'readonly',
   Buffer: 'readonly',
   URL: 'readonly',
   console: 'readonly',
@@ -33,6 +34,18 @@ export default [
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: nodeGlobals,
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_|^patterns$', varsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    files: ['**/*.cjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'commonjs',
+      globals: { ...nodeGlobals, require: 'readonly', module: 'writable', __dirname: 'readonly' },
     },
     rules: {
       'no-empty': ['error', { allowEmptyCatch: true }],

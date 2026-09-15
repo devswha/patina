@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, realpathSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -48,8 +48,16 @@ export function loadConfig(path = resolve(REPO_ROOT, '.patina.default.yaml'), { 
 
   if (!snapshotPath) {
     // User config: ~/.patina.yaml (global), then ./.patina.yaml (project, takes precedence).
-    for (const userPath of [...new Set([resolve(homedir(), '.patina.yaml'), resolve(process.cwd(), '.patina.yaml')])]) {
+    const seenUserConfig = new Set();
+    for (const userPath of [resolve(homedir(), '.patina.yaml'), resolve(process.cwd(), '.patina.yaml')]) {
       if (!existsSync(userPath)) continue;
+      // The same file can be reached through symlinked directory spellings
+      // (macOS /var → /private/var, a symlinked HOME): dedupe on the real
+      // path, not the literal string, so one file is never merged twice.
+      let identity = userPath;
+      try { identity = realpathSync(userPath); } catch { /* keep the literal spelling */ }
+      if (seenUserConfig.has(identity)) continue;
+      seenUserConfig.add(identity);
       mergeYamlMapping(config, userPath, 'User config');
     }
 

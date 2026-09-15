@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mpsResult, fidelityResult } from '../fixtures/verification-results.js';
+import { buildDocumentSignals } from '../../src/features/document-signals.js';
 import { rewriteExtraBody, runWebRewriteStream, scoringExtraBody } from '../../src/web-rewrite-stream.js';
 import { buildWebRewriteReceipt, canonicalJson, sha256 } from '../../src/web-rewrite-receipt.js';
 import { loadWebConfig, resolveBundleRoot } from '../../src/web-config.js';
@@ -177,6 +178,69 @@ test('runWebRewriteStream applies the resolved prompt budget without changing su
   assert.deepEqual(active.receipt.promptBudget, active.budget);
   assert.equal(calls.filter(([stage]) => stage === 'mps').length, 2);
   assert.equal(calls.filter(([stage]) => stage === 'fidelity').length, 2);
+});
+
+test('runWebRewriteStream injects shared Korean documentSignals and skips them in verify', async () => {
+  const text = '주제만 주면 한 세트가 나옵니다. 직접 디자인할 필요가 없습니다. 캐러셀을 완성합니다. 바로 시작합니까?';
+  const { signals } = buildDocumentSignals({ text, lang: 'ko' });
+  assert.equal(signals.length, 1);
+  let firstPrompt = '';
+  let refinePrompt = '';
+  let verifyPrompt = '';
+
+  await runWebRewriteStream({
+    request: { ...request, mode: 'first', lang: 'ko', text, original: text },
+    callLLMStream: async ({ prompt }) => {
+      firstPrompt = prompt;
+      return { text };
+    },
+    scoreFns: scoring(),
+    emit: () => {},
+  });
+  assert.ok(firstPrompt.includes(signals[0]));
+
+  await runWebRewriteStream({
+    request: {
+      ...request,
+      mode: 'refine',
+      lang: 'ko',
+      text,
+      original: text,
+      history: [{ role: 'user', content: '조금 더 짧게.' }],
+    },
+    callLLMStream: async ({ prompt }) => {
+      refinePrompt = prompt;
+      return { text };
+    },
+    scoreFns: scoring(),
+    emit: () => {},
+  });
+  assert.ok(refinePrompt.includes(signals[0]));
+
+  const english = 'Welcome home. This draft is English only. It has no Korean endings.';
+  assert.deepEqual(buildDocumentSignals({ text: english, lang: 'en' }).signals, []);
+  let englishPrompt = '';
+  await runWebRewriteStream({
+    request: { ...request, mode: 'first', lang: 'en', text: english, original: english },
+    callLLMStream: async ({ prompt }) => {
+      englishPrompt = prompt;
+      return { text: english };
+    },
+    scoreFns: scoring(),
+    emit: () => {},
+  });
+  assert.doesNotMatch(englishPrompt, /Document Signals|문서 신호/);
+
+  await runWebRewriteStream({
+    request: { ...request, mode: 'verify', lang: 'ko', text, original: text },
+    callLLMStream: async ({ prompt }) => {
+      verifyPrompt = prompt;
+      return { text };
+    },
+    scoreFns: scoring(),
+    emit: () => {},
+  });
+  assert.equal(verifyPrompt, '');
 });
 
 test('rewrite receipt canonically binds exact source inputs without exposing them', () => {
@@ -1087,6 +1151,10 @@ test('runWebRewriteStream deadline completes an in-flight non-settling rewrite a
 
 test('runWebRewriteStream deadline completes non-settling scorers', async () => {
   const frames = [];
+  // A fake monotonic clock keeps the two deadline paths deterministic: with a
+  // real 5 ms budget, a loaded or slower host can exhaust the budget during
+  // the stream phase and report stream_failed instead of scoring_failed.
+  let now = 1000;
   const result = await runWebRewriteStream({
     request: { ...request, original: 'We shipped 3 units.' },
     callLLMStream: async ({ onAttempt }) => {
@@ -1094,12 +1162,13 @@ test('runWebRewriteStream deadline completes non-settling scorers', async () => 
       return { text: 'We shipped 3 units.' };
     },
     scoreFns: {
-      scoreMPS: () => new Promise(() => {}),
+      scoreMPS: () => { now += 10; return new Promise(() => {}); },
       scoreFidelity: () => new Promise(() => {}),
       scoreDeterministicSignals: () => ({}),
     },
     emit: (frame) => frames.push(frame),
     timeout: 5,
+    deadlineNow: () => now,
   });
   assert.equal(result.ok, false);
   assert.equal(result.code, 'scoring_failed');

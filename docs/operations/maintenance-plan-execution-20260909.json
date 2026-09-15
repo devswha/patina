@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-09",
+  "repository": "devswha/patina",
+  "status": "local-implementation-verified-external-acceptance-inconclusive",
+  "source": {
+    "baseSHA": "b8b7b756423d61582ea83b06bd59a49fdaa4738a",
+    "headSHA": "b8b7b756423d61582ea83b06bd59a49fdaa4738a",
+    "branch": "bot/maintenance-p03-20260909",
+    "changedPathsBeforeReceipt": 73,
+    "testedContentSHA256": "a2619ec7968e6b7405d90a2acae5251e6730789a3f6ede54fae9b38f5352909e",
+    "fingerprintAlgorithm": "Union git diff HEAD --name-only and git ls-files --others --exclude-standard; unique sorted paths; SHA256 of concatenated path + NUL + SHA256(file bytes) or deleted + NUL. This execution receipt is excluded to avoid self-reference.",
+    "committed": false,
+    "staged": false,
+    "integratedIntoDev": false
+  },
+  "environment": {
+    "platform": "linux-x64",
+    "node": "24.18.0",
+    "npm": "11.16.0",
+    "playwright": "1.63.0",
+    "actionlint": "1.7.12",
+    "isolation": "Final npm test/lint/release/private gates used a temporary empty HOME, XDG configuration, npm user configuration and cache. Model and production credentials were not used for live calls. Browser traffic used loopback fixtures with external requests blocked."
+  },
+  "checks": [
+    { "command": "npm ci --no-audit --no-fund", "status": "passed", "exitCode": 0, "result": "272 packages installed with isolated HOME/cache; existing dependency deprecation warnings retained." },
+    { "command": "npm test", "status": "passed", "exitCode": 0, "tests": 2422, "passed": 2420, "failed": 0, "skipped": 2, "skipReasons": ["Existing installed-and-authenticated Codex condition is unavailable in isolated HOME.", "Existing real Redis integration is opt-in and not configured."] },
+    { "command": "npm run lint", "status": "passed", "exitCode": 0, "result": "429 syntax files; ESLint and TypeScript passed; CSpell 32 files, zero issues; architecture 116 modules, 401 edges, zero violations." },
+    { "command": "npm run release:check", "status": "passed", "exitCode": 0, "result": "Version 8.6.0 unchanged; zero current retired-concept, historical, or lifecycle drift." },
+    { "command": "npm run check:no-private-assets", "status": "passed", "exitCode": 0, "result": "493 root/alias packed paths plus 1321 tracked paths; zero forbidden paths. Additional untracked WIP enumeration was checked separately." },
+    { "command": "npm run test:browser", "status": "passed", "exitCode": 0, "tests": 9, "result": "Real managed Chromium with local transport: copy/timers, Escape/outside-click/IME, narrow Free/BYOK/Pro entry, approved/below-floor/failure/cancel." },
+    { "command": "node --test tests/e2e/skill-install.test.js", "status": "passed", "exitCode": 0, "tests": 27, "result": "Actual source assets through isolated local git/dependency fixtures; generated Cursor product rule, canonical helper path, updates, missing skill rejection, unowned file/directory preservation and uninstall." },
+    { "command": "node --test tests/unit/backend-cancellation.test.js tests/unit/backend-contract.test.js tests/e2e/session-isolation.test.js", "status": "passed", "exitCode": 0, "tests": 17, "result": "POSIX child/group/independent-stdio worker cleanup, unrelated sentinel, slots/temp cleanup/next invocation; simulated non-POSIX pipes settle only after termination without truncating normal buffered output." },
+    { "command": "node --test tests/unit/release-artifacts.test.js tests/e2e/release-artifacts.test.js tests/unit/maintenance-workflows.test.js", "status": "passed", "exitCode": 0, "tests": 28, "result": "Real root+alias tarball install and lock integrity; byte tamper and symlink rejection; trusted anchors; partial publish/timeout/inspection failure state; actual workflow shell dispatch version and matching/moved/missing tag mock scenarios." },
+    { "command": "node --test tests/unit/perf-report.test.js tests/unit/retired-concepts.test.js", "status": "passed", "exitCode": 0, "tests": 20, "result": "Malformed/date/duplicate/NUL lifecycle inputs fail closed; extreme timing samples preserve finite positive metrics or error/null; external and traversal tarball paths rejected." },
+    { "command": "node --test tests/unit/architecture-boundaries.test.js tests/unit/pr-policy.test.js", "status": "passed", "exitCode": 0, "tests": 34, "result": "Published root/alias bin transitive boundaries, incomplete metadata conservative counts, parser/exported PR argv rejection." },
+    { "command": "npm run benchmark:report && npm run benchmark:compare; workflow metadata-filtered git diff --exit-code -- docs/benchmarks", "status": "passed", "exitCode": 0, "result": "No deterministic report drift. Four generated metadata-only outputs restored from pre-run bytes; historical reports unchanged." },
+    { "command": "npm run dogfood", "status": "passed", "exitCode": 0, "result": "All eight configured public documents stayed below existing thresholds." },
+    { "command": "exportDataset({output: temporaryDirectory}) with sourceCommit assertion against HEAD", "status": "passed", "exitCode": 0, "rows": 49, "dataSHA256": "2ef1310da31e4507ee42e6a90ab3e2ff18344f3f5944eb71e0fe0b08886c605f", "publication": false },
+    { "command": "buildPerfReport(perfReportOptions(['--costmetrics'])); writePerfReport to temporary output", "status": "passed", "exitCode": 0, "fixtureCount": 7, "coldCliMeanMs": 85.777, "tarballBytes": 1483003, "calls": null, "costUsd": null, "reportSHA256": "7225c14b535688811ce494815a44299352c924690088e983d294e23dccbad7f7", "limit": "Single-run report-only observation, not a performance threshold or comparative improvement claim; raw report remains private." },
+    { "command": "Controlled clipboard ownership-guard removal against stale-copy fixture", "status": "passed", "exitCode": 0, "negativeChildExitCode": 1, "result": "Missing guard causes stale copied-label assertion failure; unchanged corrected fixture passes with guard." },
+    { "command": "tsc -p . with temporary checked-JS missing-await mutation", "status": "passed", "exitCode": 0, "negativeChildExitCode": 2, "result": "TS2367 rejects Promise<number> compared to 1; temporary mutation removed." },
+    { "command": "actionlint .github/workflows/test.yml .github/workflows/publish-dataset.yml; sh -n install.sh uninstall.sh; git diff --check", "status": "passed", "exitCode": 0 },
+    { "command": "actionlint .github/workflows/release.yml", "status": "failed", "exitCode": 1, "acceptance": "inconclusive", "result": "actionlint 1.7.12 rejects concurrency.queue. Current GitHub workflow-syntax documentation explicitly supports queue:max. Diagnostic was not suppressed and the safety setting was not removed.", "source": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#concurrency" }
+  ],
+  "firstFailuresAndCorrections": [
+    "Initial clipboard VM fixture expected the second row although the write began before switching; reproduced before correction. Ownership assertions retained and controlled product mutation rejected.",
+    "Initial graph fixtures and implementation had nested violations, package-relative bin resolution and diagnostic-shape errors; PR fixture reduced a pagination object. Corrected without removing negative coverage.",
+    "Malformed plugin fixture wrote to an incorrectly joined absolute path. Corrected fixture to mutate the actual manifest before testing atomic validation.",
+    "Initial aggregate lint failed on browser globals; qualified browser evaluation globals. Later fixture globals and missing release verifier import also failed and were corrected before final full pass.",
+    "Initial release mock never recorded published bytes, so exact post-publication confirmation correctly failed. Fixture updated, confirmation retained.",
+    "One isolated integration attempt observed a deleted transient Cursor adapter during concurrent implementation and failed; classified stale, not passing. Final coherent installer and integrated tests rerun.",
+    "Independent review found non-POSIX cancellation could wait forever on inherited pipes. Termination now closes parent-owned pipes after leader exit, while normal output drains untouched; real Windows remains unverified.",
+    "Independent review found NUL-skipped lifecycle input reread fail-open and timing overflow/round-to-zero; closed with negative fixtures.",
+    "Independent review found manual dispatch version mismatch, tag provenance gap, symlink artifact escape, missing anchor admission and incomplete registry failure diagnostics. Implemented checked manifest version, final peeled-tag check/verify-tag, filesystem containment, explicit anchors and state-preserving errors."
+  ],
+  "review": {
+    "policy": "Independent governance review CLEAR.",
+    "runtime": "Independent clipboard review CLEAR; non-POSIX finding implemented and parent-reviewed with regression proof.",
+    "releaseAndPerformance": "Independent findings addressed and covered by final focused/full tests; no separate post-fix independent approval claimed.",
+    "graphAndPrPolicy": "Independent reviewer attempts failed without a verdict; parent source review and focused negatives completed. Independent final acceptance remains inconclusive.",
+    "limits": "Several review transports failed; none counted as approval. Prior P00/P03 evidence remains historical, not reused as current acceptance."
+  },
+  "conditionalOrUnavailable": [
+    "Actual Cursor client rule loading remains inconclusive; generated file/runtime paths and local install/uninstall are verified.",
+    "Hosted PR cancellation/new-head behavior and release queue behavior remain inconclusive pending hosted acceptance.",
+    "Real Windows/macOS installation and backend compatibility remain inconclusive; Linux and simulated direct-child semantics are not cross-platform acceptance.",
+    "Trusted npm publishing, native reviewer account settings, actual deployment/promotion/rollback and production recovery receipts remain inconclusive and require authorization/environment.",
+    "P08 selective CI and P10 permanent desktop QA worker remain conditional: no measured justification to enable them.",
+    "Live-model checks and cancelled human studies were not run; they are outside this maintenance execution scope."
+  ],
+  "delivery": {
+    "externalWrites": false,
+    "commitPushOrPR": false,
+    "publicationOrDeployment": false,
+    "npmHoldPreserved": true,
+    "versionBump": false,
+    "releaseReady": false,
+    "nextBoundary": "Obtain missing independent/hosted/client acceptance and explicitly authorized small reversible delivery units; do not publish this integrated WIP as one automatically approved release."
+  }
+}

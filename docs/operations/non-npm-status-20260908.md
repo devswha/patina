@@ -106,16 +106,15 @@ pre-merge inventories below remain historical observations.
 
 ## Exact unresolved prerequisites
 
-1. **Eligible `OBS-ALERT-v1` alert/recovery receipt.** The production
-   credential names exist as Sensitive/Hidden Vercel entries, but their
-   values are inaccessible from this environment (`CRON_SECRET`,
-   observability REST URL/token, log-query token), so the durable
-   warning/recovery records still cannot be read here. Eligibility requires
-   a real-path triggered alert with its recovery; ordinary 200 monitor
-   responses and log-row observations do not qualify.
-2. **Paid conversion verification.** Requires Polar authorization (access
-   token, org, product) or provider-confirmed aggregates; none is available.
-   Unverified is not zero sales.
+1. **Eligible `OBS-ALERT-v1` alert/recovery receipt.** Closed
+   `not_planned` by the owner on 2026-09-14. The September 8 note that
+   Sensitive credentials were unreadable and that cron 200 is not a
+   receipt remains historically true; it is no longer an acceptance
+   prerequisite. Do not request those values or synthesize an alert.
+2. **Paid conversion verification.** Closed `not_planned` by the owner on
+   2026-09-14. Polar checkout itself opened on production on 2026-08-04
+   (`live-open-20260804.md`). A first-sale count was never an unfinished
+   payment build. Do not query Polar or infer zero sales from empty logs.
 3. **GitHub cache removal.** Requires the support ticket receipt and the
    removed-object identifiers; neither is recorded.
 4. **#772 acceptance and integration.** Source implementation is present in
@@ -127,3 +126,15 @@ pre-merge inventories below remain historical observations.
    later acceptance and integration evidence.
 5. **npm publication.** Requires restored npm authorization; excluded from
    this stream.
+
+Later owner decision, 2026-09-14: native macOS / Aside desktop live
+acceptance is `not_planned`. The CLI adapter remains active; Linux checks
+are not a desktop proof. See
+[`docs/integrations/aside.md#validation-boundary`](../integrations/aside.md#validation-boundary).
+
+Same day: the first eligible `OBS-ALERT-v1` receipt is also `not_planned`.
+The monitor keeps running; the missing formal receipt is not remaining
+work. See [`docs/operations/README.md`](README.md#known-open-loops-recorded-not-resolved-here).
+
+Same day: paid-conversion verification is `not_planned`. Polar is already
+the live checkout. Sales-count evidence is not remaining work.

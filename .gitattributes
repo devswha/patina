@@ -1,0 +1,4 @@
+# The test suite hashes, counts and snapshot-compares committed bytes, so
+# text files must check out with LF on every platform (a Windows clone with
+# core.autocrlf=true otherwise breaks dozens of byte-exact tests).
+* text=auto eol=lf

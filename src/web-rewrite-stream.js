@@ -9,8 +9,9 @@ import { MPS_FLOOR, FIDELITY_FLOOR, redactSecrets, REWRITE_MODES, STREAM_FRAME_T
 import { evaluateVerification } from './verification-schema.js';
 import { buildWebRewriteReceipt, sha256 } from './web-rewrite-receipt.js';
 import { createTextEdits, normalizeProtectedSpans, validateProtectedText, isWellFormedText } from './edit-controls.js';
-import { fenceReferenceText } from './prompt-builder.js';
+import { fenceReferenceText, resolveRhetoricPolicy } from './prompt-builder.js';
 import { resolveWebPromptBudget } from './web-prompt-budget.js';
+import { buildDocumentSignals } from './features/document-signals.js';
 import {
   buildKoreanDiagnosis,
   diagnosisStructureGuidance,
@@ -339,12 +340,18 @@ async function runWebRewriteStreamUnscoped({
     ? buildKoreanDiagnosis(request.text, { repoRoot })
     : null;
   const structureGuidance = diagnosis ? diagnosisStructureGuidance(diagnosis) : 'baseline';
+  const documentSignals = verifyOnly
+    ? null
+    : buildDocumentSignals({ text: request.text, lang: request.lang }).signals;
   let prompt = verifyOnly ? '' : buildWebRewritePrompt({
     request,
     config: effectiveConfig,
     assets,
     promptMode: budget?.applied,
     structureGuidance,
+    documentSignals,
+    // PATINA_RHETORIC_POLICY=legacy restores the pre-2026-09-14 similar-weight rhetoric sentence.
+    rhetoricPolicy: resolveRhetoricPolicy(env),
   });
   if (!verifyOnly && protectedSpans.length) {
     const literals = protectedSpans.map(({ start, end }) => original.slice(start, end));

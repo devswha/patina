@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#빠른-시작)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-8.6.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-8.7.0-blue)](CHANGELOG.md)
 
 <p align="center">
   <a href="https://patina.vibetip.help/?lang=ko&amp;utm_source=github&amp;utm_campaign=multilingual-20260907"><b>브라우저에서 바로 써보기 — 설치 없음</b></a>
@@ -110,7 +110,7 @@ patina --batch docs/*.md --outdir cleaned/
 
 ```yaml
 # .patina.default.yaml
-version: "8.6.0"
+version: "8.7.0"
 language: ko              # ko | en | zh | ja
 document-type: default    # 장르·용도 + 패턴 정책
 persona:                  # 선택 사항; 생략하면 원문 보이스 보존
@@ -136,6 +136,8 @@ register:                 # casual | professional; 생략하면 원문 레지스
 - [CLI 실행 기록](docs/DEMO.md) — 위 가상 예시와 별개의 과거 자료
 - [벤치마크](docs/benchmarks/latest.md) · [연구](docs/research/2026-rewrite-efficacy-study1.md) · [FAQ](docs/FAQ_KR.md) ([English](docs/FAQ.md))
 - [기여 가이드](CONTRIBUTING_KR.md) ([English](CONTRIBUTING.md)) · [체인지로그](CHANGELOG.md)
+
+패턴을 제출하려면 [CONTRIBUTING_KR.md](CONTRIBUTING_KR.md)를 따르세요. [패턴 제안 이슈](https://github.com/devswha/patina/issues/new?template=pattern_proposal.yml)를 열고([`.github/ISSUE_TEMPLATE/pattern_proposal.yml`](.github/ISSUE_TEMPLATE/pattern_proposal.yml)), `patterns/{lang}-*.md`의 팩 템플릿으로 추가합니다.
 
 <details>
 <summary>이전 영문 playground 실행 녹화</summary>

@@ -87,3 +87,9 @@ global and independent of all three axes.
 The easiest contributions are small, evidence-backed examples: a before/after pair, a false positive case, a missing AI-writing pattern, or a language-specific phrase that keeps appearing in model output.
 
 Good pattern contributions should include both a failing example and a successful rewrite.
+
+## How do I submit a pattern?
+
+Follow [CONTRIBUTING.md](../CONTRIBUTING.md). That file is the how-to. Open a [pattern proposal](https://github.com/devswha/patina/issues/new?template=pattern_proposal.yml) ([`.github/ISSUE_TEMPLATE/pattern_proposal.yml`](../.github/ISSUE_TEMPLATE/pattern_proposal.yml)), then add the pack from the template in `patterns/{lang}-*.md`.
+
+A worked example of one current pattern, including a case that must not fire, is in [pattern of the week](community/pattern-of-the-week.md).

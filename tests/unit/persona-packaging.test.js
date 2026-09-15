@@ -20,7 +20,11 @@ test('package files allowlist includes personas/', () => {
 });
 
 test('npm pack artifact contains the built-in KO Persona catalog', () => {
-  const res = spawnSync('npm', ['pack', '--dry-run', '--json'], { cwd: REPO_ROOT, encoding: 'utf8' });
+  // Bare `npm` is npm.cmd on Windows, which Node refuses to spawn without a
+  // shell since the CVE-2024-27980 fix.
+  const res = process.platform === 'win32'
+    ? spawnSync('npm.cmd', ['pack', '--dry-run', '--json'], { cwd: REPO_ROOT, encoding: 'utf8', shell: true })
+    : spawnSync('npm', ['pack', '--dry-run', '--json'], { cwd: REPO_ROOT, encoding: 'utf8' });
   assert.equal(res.status, 0, res.stderr);
   const packed = JSON.parse(res.stdout)[0].files.map((f) => f.path);
   assert.ok(packed.includes('personas/ko/natural-ko.md'), 'natural-ko Persona must be in the packed artifact');

@@ -64,15 +64,20 @@ PATINA_REF=<tag-or-full-sha> \
 
 **What it does** (so you can explain to the user):
 - Clones the repo into `~/.claude/skills/patina` (canonical location).
-- Symlinks the `patina` skill into:
+- Installs the `patina` skill for:
   - `~/.claude/skills/` (Claude Code)
   - `~/.codex/skills/` (Codex CLI)
-  - `~/.cursor/rules/` (Cursor)
+  - `~/.cursor/rules/patina.mdc` (Cursor product adapter generated from `SKILL.md`)
   - `~/.config/opencode/skills/` (OpenCode)
 - Checks out a detached commit resolved from `PATINA_REF`, or from remote `HEAD` when `PATINA_REF` is unset.
 - Verifies the local runtime: requires Node.js >= 18.1.0 and starts the installed CLI with `node ~/.claude/skills/patina/bin/patina.js --version`. Only when startup fails, it runs `npm ci --omit=dev --no-audit --no-fund` in the checkout and starts the CLI again. A working checkout never touches npm. Any failure here exits 1 instead of claiming success.
 - Does not check backend readiness: no doctor run, no login, no backend selection.
 - Skips any target whose corresponding env var is set to `false` (e.g. `INSTALL_CURSOR=false`).
+
+The Cursor rule is generated from the installed checkout's canonical `SKILL.md`
+with Cursor's `.mdc` frontmatter. It is a regular file rather than a symlink, so
+its product instructions remain valid after installation and never load the
+repository-development `AGENTS.md` rule.
 
 **Skip a target:**
 
@@ -109,7 +114,7 @@ Pick the row matching the host the user is running you in, and run **only that c
 |---|---|
 | Claude Code | (none — Step 1 already placed it under `~/.claude/skills/patina`) |
 | Codex CLI | `mkdir -p ~/.codex/skills && ln -snf ~/.claude/skills/patina ~/.codex/skills/patina` |
-| Cursor | `mkdir -p ~/.cursor/rules && ln -snf ~/.claude/skills/patina ~/.cursor/rules/patina` |
+| Cursor | `INSTALL_CLAUDE=false INSTALL_CODEX=false INSTALL_OPCODE=false sh ~/.claude/skills/patina/install.sh` |
 | OpenCode | `mkdir -p ~/.config/opencode/skills && ln -snf ~/.claude/skills/patina ~/.config/opencode/skills/patina` |
 | Gemini CLI | `mkdir -p ~/.gemini/skills && ln -snf ~/.claude/skills/patina ~/.gemini/skills/patina` |
 
@@ -221,7 +226,7 @@ Other backends: a logged-in `gemini` or `claude` CLI works with `--backend gemin
 ```bash
 # Remove all symlinks
 rm -f ~/.codex/skills/patina
-rm -f ~/.cursor/rules/patina
+rm -f ~/.cursor/rules/patina.mdc
 rm -f ~/.config/opencode/skills/patina
 rm -f ~/.gemini/skills/patina
 

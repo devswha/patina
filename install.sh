@@ -52,6 +52,30 @@ error() {
   exit 1
 }
 
+is_cursor_product_rule() {
+  awk '
+    NR == 1 && $0 == "---" { next }
+    NR == 2 && $0 == "description: Apply Patina product instructions when humanizing text." { next }
+    NR == 3 && $0 == "alwaysApply: false" { next }
+    NR == 4 && $0 == "---" { next }
+    NR == 5 && $0 == "" { next }
+    NR == 6 && $0 == "<!-- patina-cursor-product-adapter -->" { found = 1; exit 0 }
+    { exit 1 }
+    END { if (!found) exit 1 }
+  ' "$1"
+}
+
+cursor_target_replaceable() {
+  target="$1"
+  if [ ! -e "${target}" ] && [ ! -L "${target}" ]; then
+    return 0
+  fi
+  if [ -L "${target}" ]; then
+    return 1
+  fi
+  [ -f "${target}" ] && is_cursor_product_rule "${target}"
+}
+
 # Check prerequisites
 command -v git >/dev/null 2>&1 || error "git is not installed. Please install git first."
 
@@ -105,6 +129,67 @@ install_runtime_deps() {
     node "${PATINA_DIR}/bin/patina.js" --version || error "Runtime not ready: the installed CLI failed to start after dependency preparation."
   fi
   success "Local CLI runtime ready: node \"${PATINA_DIR}/bin/patina.js\" --version"
+}
+
+# Materialize Cursor's user rule from the canonical product skill. Cursor's
+# @file references are project-relative, so a symlinked adapter cannot safely
+# point back to this checkout from ~/.cursor/rules. Keep the Cursor frontmatter
+# separate, record the absolute installed skill paths, and copy the current
+# SKILL.md body verbatim.
+install_cursor_rule() {
+  source="$1"
+  target="$2"
+  skill_dir="$(dirname "${source}")"
+  helper="${skill_dir}/bin/patina-skill.js"
+  tmp="${target}.tmp.$$"
+
+  if ! cursor_target_replaceable "${target}"; then
+    error "Cursor target exists but was not installed by patina: ${target}."
+  fi
+
+  if ! {
+    printf '%s\n' \
+      '---' \
+      'description: Apply Patina product instructions when humanizing text.' \
+      'alwaysApply: false' \
+      '---' \
+      '' \
+      '<!-- patina-cursor-product-adapter -->' \
+      'Patina product integration context (generated from the canonical skill):' \
+      "- Canonical product instructions: \"${source}\"" \
+      "- Patina skill directory: \"${skill_dir}\"" \
+      "- CLI-first helper: \`node \"${helper}\" --input <source-file> ...\`" \
+      '- This generated Cursor adapter is not the canonical skill file. Resolve any skill-directory references using the absolute path above.'
+    printf '%s' ''
+    awk '
+      NR == 1 && $0 == "---" {
+        in_frontmatter = 1
+        saw_frontmatter = 1
+        next
+      }
+      in_frontmatter && $0 == "---" {
+        in_frontmatter = 0
+        saw_end = 1
+        next
+      }
+      in_frontmatter { next }
+      { print }
+      END {
+        if (!saw_frontmatter || !saw_end) exit 1
+      }
+    ' "${source}"
+  } > "${tmp}"; then
+    rm -f "${tmp}"
+    error "Cursor product instructions could not be generated from ${source}."
+  fi
+  if ! cursor_target_replaceable "${target}"; then
+    rm -f "${tmp}"
+    error "Cursor target changed and was not installed by patina: ${target}."
+  fi
+  if ! mv -f "${tmp}" "${target}"; then
+    rm -f "${tmp}"
+    error "Cursor product instructions could not be installed at ${target}."
+  fi
 }
 
 # Ensure the patina repo checkout exists at PATINA_DIR (clone or update once).
@@ -171,14 +256,14 @@ if [ "${INSTALL_CURSOR}" = "true" ]; then
     mkdir -p "${CURSOR_RULES_DIR}"
   fi
 
-  # Cursor rules are inside the repo; symlink or copy depending on install method
+  # Generate the product adapter from the canonical skill, not the
+  # repository-development Cursor rule.
   ensure_patina_repo
-  if [ -f "${PATINA_DIR}/.cursor/rules/patina.md" ]; then
-    ln -snf "${PATINA_DIR}/.cursor/rules/patina.md" "${CURSOR_RULES_DIR}/patina.md"
-    success "Cursor: rules linked to ${CURSOR_RULES_DIR}/patina.md"
-  else
-    warn "Cursor rules not found in repo. Run 'git pull' or check repo integrity."
+  if [ ! -f "${PATINA_DIR}/SKILL.md" ]; then
+    error "Cursor product instructions not found at ${PATINA_DIR}/SKILL.md."
   fi
+  install_cursor_rule "${PATINA_DIR}/SKILL.md" "${CURSOR_RULES_DIR}/patina.mdc"
+  success "Cursor: product rules installed at ${CURSOR_RULES_DIR}/patina.mdc"
 else
   warn "Skipping Cursor installation (INSTALL_CURSOR=false)"
 fi
@@ -222,7 +307,7 @@ if [ "${INSTALL_CODEX}" = "true" ]; then
 fi
 if [ "${INSTALL_CURSOR}" = "true" ]; then
   printf "  Cursor:\n"
-  printf "    Rules loaded from ~/.cursor/rules/patina.md\n"
+  printf "    Product rules loaded from ~/.cursor/rules/patina.mdc\n"
 fi
 if [ "${INSTALL_OPCODE}" = "true" ]; then
   printf "  OpenCode / Sisyphus:\n"

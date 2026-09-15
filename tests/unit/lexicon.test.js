@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { computeDensity, phraseToRegex, loadLexicon } from '../../src/features/lexicon.js';
 import { tokenize } from '../../src/features/segment.js';
 import { analyzeText } from '../../src/features/index.js';
@@ -13,7 +13,7 @@ const REPO_ROOT = resolve(__dirname, '../..');
 test('loads zh and ja AI lexicons with at least 50 entries each', () => {
   for (const lang of ['zh', 'ja']) {
     const lexicon = loadLexicon(lang, REPO_ROOT);
-    assert.ok(lexicon.path?.endsWith(`lexicon/ai-${lang}.md`));
+    assert.ok(lexicon.path?.endsWith(join('lexicon', `ai-${lang}.md`)), lexicon.path);
     assert.strictEqual(lexicon.strict.length, 0);
     assert.ok(lexicon.phrases.length >= 50, `${lang} lexicon should have at least 50 phrases`);
   }

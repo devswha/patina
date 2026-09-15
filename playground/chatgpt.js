@@ -669,8 +669,11 @@ function renderExamples() {
   // The copy button carries a transient result label; it belongs to the row that
   // was copied, so switching rows drops both the label and its pending timer.
   let copyReset;
+  let copyGeneration = 0;
   const restCopy = () => {
+    copyGeneration += 1;
     clearTimeout(copyReset);
+    copyReset = undefined;
     copy.textContent = ui.copyExample;
     copy.classList.remove('is-ok');
   };
@@ -737,11 +740,15 @@ function renderExamples() {
   });
   copy.addEventListener('click', async () => {
     clearTimeout(copyReset);
+    const copiedText = active.after;
+    const requestGeneration = ++copyGeneration;
     try {
-      await globalThis.navigator.clipboard.writeText(active.after);
+      await globalThis.navigator.clipboard.writeText(copiedText);
+      if (requestGeneration !== copyGeneration) return;
       copy.textContent = ui.copied;
       copy.classList.add('is-ok');
     } catch {
+      if (requestGeneration !== copyGeneration) return;
       // A failure must not keep the success styling from a previous copy.
       copy.textContent = ui.copyFailed;
       copy.classList.remove('is-ok');

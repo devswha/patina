@@ -59,3 +59,72 @@ Note: rolled-back builds retain their original env snapshot — re-verify
   `redeploy` therefore ends with a dev -> main merge.
 - The monitor cron fires every 15 minutes and alerts Discord when synthetic
   checks fail. Watch one full cycle after a drill before calling it recovered.
+
+## Drill 4 — offline monitor recovery fixture (P21b; no deployment)
+
+This is the locally verifiable recovery exercise. It uses the existing
+aggregate-only monitor calculator and in-memory control store; it does not call
+Vercel, a provider, Discord, a registry, or any production endpoint.
+
+```bash
+node --test tests/unit/pro-monitor.test.js \
+  --test-name-pattern="offline recovery drill exposes an injected failure and then restored health"
+```
+
+The first fixture run injects `numberSafety=1` into the 15-minute aggregate
+adapter and asserts a visible `number_safety` trigger plus an acknowledged
+alert. The second run returns zero safety/drop counts and asserts no active
+trigger, a `monitor_recovered` receipt, and consumption of the linked alert
+state. A pass is code evidence only; it is not a production incident,
+deployment, Discord, or `OBS-ALERT-v1` receipt.
+
+The source authority is
+`src/pro-monitor.js#evaluateProMonitor`; the deployed route, when separately
+approved, is `api/pro-monitor.js`. The owner authority is the repository
+maintainer, who alone approves a production promotion or rollback and records
+the exact source SHA, deployment ID, smoke result, and prior rollback ID.
+Do not collect credentials, request text, provider responses, or raw logs for
+this fixture.
+
+## P13a — web deployment binding (human-gated)
+
+The required sequence is **approved main SHA → preview/deployment built from
+that same SHA → application smoke → owner-approved promotion → retained prior
+deployment ID for rollback**. No step below authorizes a promotion or rollback.
+
+Read-only evidence captured from the existing Vercel account (no secret
+plaintext/decrypt/log access) is limited to:
+
+- `/v9/projects/patina` reports `link.productionBranch=main` and
+  `gitForkProtection=true`.
+- `/v13/deployments` reports ready deployment
+  `dpl_9mLY4716GsCKWrGiomn8hKxZLEzN`, `sourceSha=b9fff3e44037ea05818311b894b57ca89d0ce595`,
+  `sourceRef=dev`, created `2026-09-09T19:15:06.183+09:00`.
+- The prior ready production deployment is
+  `dpl_H56Atjg5KJ7YdNPUjCPSs16exshy`, source
+  `d7a4741ed9f767bd22a39255e10acf159351fb7a`.
+- `b9fff3e...` is an ancestor of `origin/main`; the deployed `b9fff3e...`
+  tree and the `d7a4741...` release-merge tree are both
+  `7cd7f924d1b2228a9692b64842b69918beaf2a21`. The source-ref/SHA discrepancy
+  is therefore not a content mismatch or proven malfunction; the maintainer
+  must reconcile the `sourceRef=dev` exception before promotion.
+- `https://patina.vibetip.help` returned a basic read smoke rendering the
+  `8.6.0` title. This is not application acceptance evidence.
+- Environment metadata exposed target counts `production=34` and `preview=31`
+  with `decrypt=false`; no values were read or printed. Required-check and
+  remaining account-setting fields were not exposed and remain **unknown**;
+  account confirmation is human-blocked.
+
+The earlier GitHub production deployment record `6347382527` (source
+`d7a4741ed9f767bd22a39255e10acf159351fb7a`) reported success, but did not
+prove an application smoke or Vercel account configuration. Real promotion and
+rollback remain unexecuted, unapproved, and human-blocked, so the retained
+prior ID above is an inventory fact, not a completed rollback drill.
+
+The separate npm artifact recovery lane owns its mock partial-registry
+exercise: [`scripts/release-artifacts.mjs`](../../scripts/release-artifacts.mjs),
+[`tests/unit/release-artifacts.test.js`](../../tests/unit/release-artifacts.test.js),
+and [`docs/integrations/release.md`](../integrations/release.md). Do not
+report that lane or this web drill as passed until the parent verification
+records its result. Native Codex automation settings (P09) and any unexposed
+web account configuration remain unknown.

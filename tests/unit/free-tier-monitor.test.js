@@ -40,17 +40,47 @@ test('a healthy free tier raises nothing', async () => {
   }));
   assert.deepEqual(result.triggers, []);
   assert.equal(result.canaryTerminal, 'done');
-  assert.deepEqual(result.denominators, { total: 20, failed: 0 });
+  // `completed: 20` is twenty observed sampled successes, not twenty
+  // requests. The effective success estimate is 20 / (1/20) = 400.
+  assert.deepEqual(result.denominators, { total: 400, failed: 0 });
+  assert.deepEqual(result.rate.success, { observed: 20, estimate: 400, probability: 1 / 20 });
+  assert.deepEqual(result.rate.failures, { observed: 0, probability: 1 });
+  assert.equal(result.rate.denominator, 400);
+  assert.equal(result.rate.numerator, 0);
 });
 
 test('a majority-failing free tier alerts on the ratio', async () => {
   // The 2026-07-27 shape: users asking for rewrites and getting provider errors.
+  // The completed counter is sampled; 2 observed successes represent 40
+  // effective successes. Forty-three full-census failures therefore remain a
+  // majority (43 / 83 > 50%) and must still alert.
   const result = await evaluateFreeTierHealth(deps({
-    aggregateReader: snapshot({ [key('completed')]: 2, [key('terminal_failed')]: 8 }),
+    aggregateReader: snapshot({ [key('completed')]: 2, [key('terminal_failed')]: 43 }),
   }));
-  assert.deepEqual(result.denominators, { total: 10, failed: 8 });
+  assert.deepEqual(result.denominators, { total: 83, failed: 43 });
+  assert.deepEqual(result.rate.success, { observed: 2, estimate: 40, probability: 1 / 20 });
+  assert.deepEqual(result.rate.failures, { observed: 43, probability: 1 });
+  assert.equal(result.rate.denominator, 83);
+  assert.equal(result.rate.numerator, 43);
   assert.equal(result.triggers[0].trigger, 'free_failure_ratio');
   assert.equal(result.alerts[0].sent, true);
+});
+
+test('a raw sampled-success denominator would falsely alert at the boundary', async () => {
+  const result = await evaluateFreeTierHealth(deps({
+    // One sampled success represents twenty effective successes. Twenty
+    // failures are exactly 50% of the weighted denominator, so the strict
+    // >50% threshold must not fire. A raw 1 + 20 denominator would be 95.2%
+    // and would expose an accidental rollback to raw-count math.
+    aggregateReader: snapshot({ [key('completed')]: 1, [key('terminal_failed')]: 20 }),
+  }));
+  assert.equal(result.rate.success.observed, 1);
+  assert.equal(result.rate.success.estimate, 20);
+  assert.equal(result.denominators.total, 40);
+  assert.equal(result.denominators.failed, 20);
+  assert.equal(result.rate.denominator, 40);
+  assert.equal(result.rate.numerator, 20);
+  assert.deepEqual(result.triggers, []);
 });
 
 test('quota denials are the product working, not an outage', async () => {

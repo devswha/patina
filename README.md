@@ -20,7 +20,7 @@
   <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
   <a href="#quick-start"><img alt="Skill: Claude Code | Codex | Cursor | OpenCode" src="https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet"></a>
   <a href="https://github.com/devswha/patina"><img alt="Languages: KO | EN | ZH | JA" src="https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green"></a>
-  <a href="CHANGELOG.md"><img alt="Version 8.6.0" src="https://img.shields.io/badge/version-8.6.0-blue"></a>
+  <a href="CHANGELOG.md"><img alt="Version 8.7.0" src="https://img.shields.io/badge/version-8.7.0-blue"></a>
 </p>
 
 <p align="center">
@@ -49,13 +49,13 @@ patina is a deterministic, pattern-based humanizer for Korean, English, Chinese,
 
 ## Quick Start
 
-**Source and web version: 8.6.0.** npm publication is pending; the registry currently serves 8.3.0. Use this checkout with `npm ci` and `node bin/patina.js` for the new CLI commands. See [release channels](docs/integrations/release.md).
+**Version: 8.7.0.** npm publication has resumed; the registry serves 8.7.0 for both `patina-cli` and `patina-humanizer`. See [release channels](docs/integrations/release.md).
 
 **Browser — nothing to install.** Open **[patina.vibetip.help](https://patina.vibetip.help/?lang=en&utm_source=github&utm_campaign=multilingual-20260907)** and paste text. Rewrites run server-side with the MPS/fidelity gates; API mode forwards your own key per request (never stored or logged).
 
 [Hosted API (Pro)](docs/HTTP-API.md)
 
-[Aside blog workflow preview](docs/integrations/aside.md): choose local Patina options, then run a verified CLI rewrite before completing a blog draft. Native Aside desktop validation remains separate.
+[Aside blog workflow preview](docs/integrations/aside.md): choose local Patina options, then run a verified CLI rewrite before completing a blog draft. Native Aside desktop acceptance is not planned.
 
 **Agent skill — paste this into Claude Code, Codex CLI, Cursor, or any agent:**
 
@@ -115,7 +115,7 @@ Model evidence: [writing/scoring guide (Korean)](docs/research/model-guide-20260
 Project config lives in `.patina.yaml`:
 
 ```yaml
-version: "8.6.0"
+version: "8.7.0"
 language: ko              # ko | en | zh | ja
 document-type: default    # genre/purpose + pattern policy
 persona:                  # optional reusable voice; omit to preserve source
@@ -142,6 +142,8 @@ Scores are editing signals with false positives and false negatives, not proof o
 - [Architecture](docs/ARCHITECTURE.md) · [Configuration & authentication](docs/AUTHENTICATION.md)
 - [Benchmarks](docs/benchmarks/latest.md) · [Research](docs/research/2026-rewrite-efficacy-study1.md) · [FAQ](docs/FAQ.md) ([한국어](docs/FAQ_KR.md))
 - [Contributing](CONTRIBUTING.md) ([한국어](CONTRIBUTING_KR.md)) · [Changelog](CHANGELOG.md)
+
+To submit a pattern, use [CONTRIBUTING.md](CONTRIBUTING.md). Open a [pattern proposal](https://github.com/devswha/patina/issues/new?template=pattern_proposal.yml) ([`.github/ISSUE_TEMPLATE/pattern_proposal.yml`](.github/ISSUE_TEMPLATE/pattern_proposal.yml)), then add the pack from the template in `patterns/{lang}-*.md`. See [pattern of the week](docs/community/pattern-of-the-week.md) for one worked pair.
 
 ## License
 

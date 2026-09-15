@@ -120,15 +120,30 @@ jobs:
       - name: Install Redis test executables
         # tests/unit/quota-redis.test.js skips unless both executables are
         # supplied, so a hosted run without Redis would pass while proving
-        # nothing. Install them explicitly and fail here if that is not
-        # possible. The regression owns and launches its own Redis process on a
-        # private UNIX socket, so no OS-managed service is started or used.
+        # nothing. Install the executables explicitly and fail here if that is
+        # not possible.
+        #
+        # redis-server.postinst runs `deb-systemd-invoke start
+        # redis-server.service` (and `invoke-rc.d ... start`) on a new install,
+        # so a plain apt install would briefly launch an OS-managed Redis. Both
+        # invokers honour the Debian policy layer, so install behind a
+        # policy-rc.d that denies service start, then remove it again. The
+        # package still *enables* the unit, so disable it afterwards and assert
+        # that nothing OS-managed is running: this regression owns and launches
+        # its own Redis process on a private UNIX socket.
         run: |
           set -euo pipefail
+          printf '#!/bin/sh\nexit 101\n' | sudo tee /usr/sbin/policy-rc.d > /dev/null
+          sudo chmod +x /usr/sbin/policy-rc.d
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends redis-server redis-tools
+          sudo rm -f /usr/sbin/policy-rc.d
           sudo systemctl disable --now redis-server \
             || echo 'no systemd-managed redis-server unit to disable'
+          # Fail closed if packaging ever starts an OS-managed Redis anyway.
+          ! systemctl is-active --quiet redis-server
+          ! pgrep -x redis-server > /dev/null
+          echo 'OS-managed redis-server unit: inactive and disabled'
           REDIS_SERVER="$(command -v redis-server)"
           REDIS_CLI="$(command -v redis-cli)"
           test -n "$REDIS_SERVER"

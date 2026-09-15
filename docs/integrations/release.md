@@ -93,7 +93,11 @@ git push origin "$VERSION"
 
 Required secret:
 
-- `NPM_TOKEN` for npm provenance publishing.
+- Publishing authenticates with **npm Trusted Publishing (OIDC)**: the `npm`
+  job holds `id-token: write` and carries no token. Each package
+  (`patina-cli`, `patina-humanizer`) names this repository and
+  `release.yml` as its trusted publisher in its npmjs.com settings. No
+  publish secret is required or read.
 
 On a tag push the workflow:
 

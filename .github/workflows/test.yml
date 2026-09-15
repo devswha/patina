@@ -117,3 +117,60 @@ jobs:
       - name: Dogfood public docs
         run: npm run dogfood
 
+      - name: Install Redis test executables
+        # tests/unit/quota-redis.test.js skips unless both executables are
+        # supplied, so a hosted run without Redis would pass while proving
+        # nothing. Install the executables explicitly and fail here if that is
+        # not possible.
+        #
+        # redis-server.postinst runs `deb-systemd-invoke start
+        # redis-server.service` (and `invoke-rc.d ... start`) on a new install,
+        # so a plain apt install would briefly launch an OS-managed Redis. Both
+        # invokers honour the Debian policy layer, so install behind a
+        # policy-rc.d that denies service start, then remove it again. The
+        # package still *enables* the unit, so disable it afterwards and assert
+        # that nothing OS-managed is running: this regression owns and launches
+        # its own Redis process on a private UNIX socket.
+        run: |
+          set -euo pipefail
+          printf '#!/bin/sh\nexit 101\n' | sudo tee /usr/sbin/policy-rc.d > /dev/null
+          sudo chmod +x /usr/sbin/policy-rc.d
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends redis-server redis-tools
+          sudo rm -f /usr/sbin/policy-rc.d
+          sudo systemctl disable --now redis-server \
+            || echo 'no systemd-managed redis-server unit to disable'
+          # Fail closed if packaging ever starts an OS-managed Redis anyway.
+          ! systemctl is-active --quiet redis-server
+          ! pgrep -x redis-server > /dev/null
+          echo 'OS-managed redis-server unit: inactive and disabled'
+          REDIS_SERVER="$(command -v redis-server)"
+          REDIS_CLI="$(command -v redis-cli)"
+          test -n "$REDIS_SERVER"
+          test -x "$REDIS_SERVER"
+          test -n "$REDIS_CLI"
+          test -x "$REDIS_CLI"
+          "$REDIS_SERVER" --version
+          "$REDIS_CLI" --version
+          echo "PATINA_TEST_REDIS_SERVER=$REDIS_SERVER" >> "$GITHUB_ENV"
+          echo "PATINA_TEST_REDIS_CLI=$REDIS_CLI" >> "$GITHUB_ENV"
+
+      - name: Real Redis quota regression
+        # Re-verify the resolved paths so a lost or empty environment value
+        # fails here instead of silently reverting to the skip path, then
+        # require the run to report one executed test and zero skips.
+        run: |
+          set -euo pipefail
+          test -n "${PATINA_TEST_REDIS_SERVER:-}"
+          test -x "$PATINA_TEST_REDIS_SERVER"
+          test -n "${PATINA_TEST_REDIS_CLI:-}"
+          test -x "$PATINA_TEST_REDIS_CLI"
+          log="$RUNNER_TEMP/redis-quota-regression.log"
+          node -r ./tests/helpers/real-tmpdir.cjs \
+            --test tests/unit/quota-redis.test.js | tee "$log"
+          grep -qE '(^|[^0-9])pass 1([^0-9]|$)' "$log"
+          grep -qE '(^|[^0-9])fail 0([^0-9]|$)' "$log"
+          grep -qE '(^|[^0-9])skipped 0([^0-9]|$)' "$log" || {
+            echo '::error::tests/unit/quota-redis.test.js did not execute against real Redis (non-zero skip count).'
+            exit 1
+          }

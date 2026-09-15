@@ -11,8 +11,21 @@ policy label, not a new script.
 
 Use a command that exists in `package.json`, with the arguments shown in the
 record. Do not invent `npm run verify`, a generic browser command, or an
-unrecorded wrapper. If no existing command covers the required boundary, record
-that fact and use `inconclusive` until an approved command is available.
+unrecorded wrapper.
+
+A **focused run of an existing test framework is allowed and needs no new
+package script.** Invoking the runner the repository already uses directly on
+specific files — for example `node --test tests/unit/maintenance-workflows.test.js`
+— is a narrowed form of an existing profile, not a new command, and adding an
+npm script merely to run it is unnecessary. Such a run must use the framework
+already in the repository, **supplement rather than replace** the applicable
+full profile and required CI, and be recorded with its exact command,
+arguments, and exit code like any other run. Introducing an ad-hoc replacement
+test framework, or a wrapper that hides which runner actually executed, remains
+prohibited.
+
+If no existing command or focused invocation covers the required boundary,
+record that fact and use `inconclusive` until an approved command is available.
 
 | Profile | Real command | Boundary |
 |---|---|---|
@@ -258,7 +271,7 @@ publication. A failed, stale, canceled, or inconclusive run blocks the gate it
 covers until rerun or an explicitly recorded maintainer decision; it is never
 silently promoted.
 
-## 7. Artifact handling and weekly review
+## 7. Artifact handling and record review
 
 Keep only the minimum logs, fixture IDs/hashes, screenshots, and machine output
 needed to reproduce the result. Redact API keys, access tokens, cookies,
@@ -268,11 +281,13 @@ Store artifact hash, byte size, retention/access boundary, and the redaction
 check. Do not commit per-run screenshots or long logs to the repository; private
 raw corpus and raw prompts remain private.
 
-The **maintainer owns the weekly review**. Each week they review open
-`failed`/`inconclusive`/`stale`/`canceled` records, flaky exceptions and their
-seven-day deadlines, profile/script drift, resource leaks/shared-service
-incidents, performance warnings, and artifacts awaiting redaction. Update the
-existing tracking Issue or review record, retain first failures, and select the
-next bounded action. Do not create duplicate Issue storms, auto-rerun forever,
+The **maintainer owns this review**. The fixed weekly cadence is retired (owner
+decision, 2026-09-15, #783): run it when such records actually exist rather than
+on a schedule, and treat a period without one as normal rather than as missed
+work. The review covers open `failed`/`inconclusive`/`stale`/`canceled` records,
+flaky exceptions and their seven-day deadlines, profile/script drift, resource
+leaks/shared-service incidents, performance warnings, and artifacts awaiting
+redaction. Update the existing tracking Issue or review record, retain first
+failures, and select the next bounded action. Do not create duplicate Issue storms, auto-rerun forever,
 or claim a quality, performance, compatibility, hosted, or production result
 without matching evidence.

@@ -47,9 +47,14 @@ because the deterministic substrate (Method D) underwrites everything the model
 (Method P) emits.
 
 This is the key correction to the intuitive "audit modes are deterministic,
-rewrite is the LLM one" picture: **every CLI mode calls the backend**
-(`invokeBackendChain` in `src/cli/run.js`). What differs is the *strength of the
-Method-D anchor* under each surface — see [Known seams](#known-seams).
+rewrite is the LLM one" picture: **every backend-backed CLI mode calls the
+backend** (`invokeBackendChain` in `src/cli/run.js`) — including `--audit`,
+`--score`, and `--diff`, whose names alone suggest they are model-free.
+Backend-free surfaces stay backend-free and make no backend call:
+`patina inspect`, `--score --offline`, `--xliff --dry-run`,
+`patina pack list/install`, and the `patina-score` bin. What differs across
+the backend-backed surfaces is the *strength of the Method-D anchor* — see the
+table below and [Known seams](#known-seams).
 
 ---
 
@@ -96,6 +101,7 @@ Backend-backed modes use Method P; the rightmost column is the Method-D anchor.
 | `--diff` | `diff` | yes | deterministic pattern/detection report |
 | `--preview [--serve]` | preview job | yes | deterministic prose extraction + word-diff rendering |
 | `--xliff [--dry-run]` | xliff | yes (none with `--dry-run`) | deterministic segment parse/scan/select in `src/cli/xliff.js`; rewrites reuse the rewrite lane |
+| `patina inspect` | — | **no** | deterministic score and source-aligned diagnostics over `analyzeText()` + `scoreDeterministicSignals` (`src/commands/inspect.js` → `src/inspection.js`); provider/backend options are rejected |
 | `patina pack list/install` | — | **no** | licensed pack delivery (`src/commands/pack.js` ↔ `src/pack-handler.js`), entitlement checked server-side |
 | `patina-score` (bin) | — | **no** | hot-paragraph ratio over `analyzeText()` |
 | playground / hosted rewrite | — | yes | shared server-side prompt, analysis, and scoring assets |

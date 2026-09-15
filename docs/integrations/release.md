@@ -2,14 +2,10 @@
 
 `release.yml` is the maintainer path for npm distribution artifacts.
 
-<!-- maintenance-lifecycle: npm-token-publishing; owner=repository-maintainer; review=2026-10-09; remove-after=root-and-alias-trusted-publishing-verified -->
-
-The npm `NPM_TOKEN` path remains an intentional hold. The repository maintainer
-owns the path and reviews it monthly (next review: **2026-10-09**). Remove the
-hold and token path **only after trusted publishing/OIDC has been verified for
-both `patina-cli` and `patina-humanizer` in the actual npm accounts**. No
-automatic credential deletion, dist-tag change, or hold release is implied by
-the workflow.
+npm publication uses Trusted Publishing (OIDC), verified end-to-end for both
+`patina-cli` and `patina-humanizer` on 2026-09-15 with the 8.7.0 publish
+(provenance: GitHub Actions, `release.yml`, commit `6ecd3ce`). The former
+`NPM_TOKEN` path is retired; no publish secret is read by the workflow.
 
 ## Source and web deployment
 

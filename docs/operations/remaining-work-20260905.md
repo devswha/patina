@@ -228,3 +228,31 @@ merged). This section does not rewrite the facts above.
   drill cannot run without it. P21b stays local-fixture-only.
 - No npm login, token rotation, secret update, tag, or publication was
   performed by this session.
+
+### npm authorization restored (owner `npm login`, 2026-09-15)
+
+The owner ran `npm login` after the observation above. Follow-up checks:
+
+- `npm whoami` → `devswha`, exit 0. `npm access list packages` shows the
+  account holds read-write on `patina-cli` and `patina-humanizer`.
+- `npm run release:check` on `dev` @ `4140f8d` → exit 0: release metadata
+  agrees on 8.6.0; retired-concept scan clean (13 allowed historical hits,
+  0 forbidden current hits).
+- `node scripts/release-artifacts.mjs --source-sha 4140f8d... --version 8.6.0`
+  (default dry-run: pack, hash, verify, local install-smoke of the root and
+  alias tarballs) → exit 0, artifacts verified under `.release-artifacts/`.
+- Real-registry state unchanged: both packages still serve 8.3.0; no tag,
+  publish, or dist-tag change was made. The dry-run exercises auth, the
+  artifact path and local install smoke; it does **not** exercise an actual
+  registry publish, queue contention, or partial-publish recovery, so P12b
+  stays "real-drill unverified" until the 8.6.0 release itself runs through
+  `.github/workflows/release.yml` (concurrency group
+  `patina-release-publication`, `cancel-in-progress: false`, GitHub Release
+  created only after npm publish succeeds).
+- The GitHub Actions `NPM_TOKEN` secret (metadata dated 2026-06-07) was not
+  rotated by this session; its equality with the now-working local token is
+  unverified. If CI publish fails with 401 on the next release run, the
+  owner should refresh the secret with the current token.
+- Next owner decision: whether to cut the 8.6.0 release (release PR
+  `dev` → `main` + `v8.6.0` tag per docs/WORKFLOW.md). That release run is
+  also the P12b real drill.

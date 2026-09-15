@@ -46,6 +46,8 @@ export const PACKAGE_ARTIFACTS = Object.freeze([
 
 const DEFAULT_NPM_COMMAND = process.env.NPM_COMMAND || (process.platform === 'win32' ? 'npm.cmd' : 'npm');
 const DEFAULT_NPM_TIMEOUT_MS = 120_000;
+const DEFAULT_CONFIRM_TIMEOUT_MS = 600_000;
+const DEFAULT_CONFIRM_INTERVAL_MS = 20_000;
 const NPM_REGISTRY = 'https://registry.npmjs.org';
 
 export class ReleaseArtifactError extends Error {
@@ -956,7 +958,9 @@ async function sleep(milliseconds) {
  * transport is injectable: `inspect({name, version})` must return null or a
  * registry record, and `publish({name, version, tarball, artifact})` uploads
  * the supplied tarball.  No retry occurs until a timed-out upload is checked
- * in the registry.
+ * in the registry.  A successful upload is confirmed by polling the registry
+ * until the exact artifact appears or `confirmTimeoutMs` elapses, because a
+ * fresh version can take minutes to become visible.
  */
 export async function publishWithRecovery({
   version,
@@ -966,6 +970,8 @@ export async function publishWithRecovery({
   transport,
   maxAttempts = 2,
   retryDelayMs = 0,
+  confirmTimeoutMs = DEFAULT_CONFIRM_TIMEOUT_MS,
+  confirmIntervalMs = DEFAULT_CONFIRM_INTERVAL_MS,
 } = {}) {
   if (!transport || typeof transport.inspect !== 'function' || typeof transport.publish !== 'function') {
     throw new ReleaseArtifactError('publish transport must provide inspect and publish', 'ERR_TRANSPORT');
@@ -1123,8 +1129,22 @@ export async function publishWithRecovery({
           tarball: byKey[key].path || byKey[key].file,
           artifact: byKey[key],
         });
-        const afterPublish = await inspectRecovery(key, 'post-publish inspection');
-        if (!(await confirm(key, afterPublish, 'post-publish inspection'))) {
+        // A fresh version can take minutes to propagate through the
+        // registry, so confirmation polls until the bound elapses.  A
+        // mismatched record still fails closed on the first sighting.
+        const confirmDeadline = Date.now() + confirmTimeoutMs;
+        let confirmed = false;
+        for (;;) {
+          const afterPublish = await inspectRecovery(key, 'post-publish inspection');
+          if (await confirm(key, afterPublish, 'post-publish inspection')) {
+            confirmed = true;
+            break;
+          }
+          const remainingMs = confirmDeadline - Date.now();
+          if (remainingMs <= 0) break;
+          await sleep(Math.min(confirmIntervalMs, remainingMs));
+        }
+        if (!confirmed) {
           throw new ReleaseArtifactError(
             `${packageName(key)} publish returned without an exact registry artifact`,
             'ERR_PUBLISH_UNCONFIRMED',

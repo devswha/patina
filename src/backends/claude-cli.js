@@ -85,8 +85,17 @@ export function hasMacOsKeychainCredentials({ platform = process.platform, spawn
   }
 }
 
-export function isAuthenticated(deps = {}) {
-  return readClaudeCredentialState(credentialsPath()) === 'ok' || hasMacOsKeychainCredentials(deps);
+/**
+ * Classify Claude Code authentication without touching the network. The
+ * credentials file and the platform/spawn pair are injectable so tests can
+ * classify owned fixtures instead of the host home; every default is the
+ * real runtime value, so a no-argument call behaves exactly as before.
+ *
+ * @param {{credentialsFile?: string, platform?: string, spawnSyncImpl?: Function}} [deps] Internal test seam.
+ * @returns {boolean} Whether a usable Claude Code session exists.
+ */
+export function isAuthenticated({ credentialsFile = credentialsPath(), platform = process.platform, spawnSyncImpl = spawnSync } = {}) {
+  return readClaudeCredentialState(credentialsFile) === 'ok' || hasMacOsKeychainCredentials({ platform, spawnSyncImpl });
 }
 
 export function authHint() {

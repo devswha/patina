@@ -67,6 +67,9 @@ export function readClaudeCredentialState(file, now = Date.now()) {
  * authenticated install as unauthenticated there (#829). Only darwin runs
  * `security`; a missing binary, a lookup miss, or any spawn error reports
  * false and the file check decides, leaving every other platform untouched.
+ * The probe is bounded at 5000ms (the same convention as doctor's
+ * checkCommand, #448) so a hung `security` binary cannot block credential
+ * classification indefinitely; a timeout fails closed like any spawn error.
  *
  * @param {{platform?: string, spawnSyncImpl?: Function}} [deps] Test seam.
  * @returns {boolean} Whether the Keychain holds Claude Code credentials.
@@ -74,7 +77,7 @@ export function readClaudeCredentialState(file, now = Date.now()) {
 export function hasMacOsKeychainCredentials({ platform = process.platform, spawnSyncImpl = spawnSync } = {}) {
   if (platform !== 'darwin') return false;
   try {
-    const result = spawnSyncImpl('security', ['find-generic-password', '-s', 'Claude Code-credentials'], { stdio: 'ignore' });
+    const result = spawnSyncImpl('security', ['find-generic-password', '-s', 'Claude Code-credentials'], { stdio: 'ignore', timeout: 5000 });
     return result.status === 0;
   } catch {
     return false;

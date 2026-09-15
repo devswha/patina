@@ -71,7 +71,7 @@ test('claude credential state distinguishes missing, unreadable, expired and liv
   }
 });
 
-test('claude macOS Keychain probe runs `security` only on darwin (#829)', () => {
+test('claude macOS Keychain probe runs `security` only on darwin with a finite bound (#829, #448)', () => {
   const calls = [];
   const spawn = (result) => (...args) => { calls.push(args); return result; };
 
@@ -83,7 +83,10 @@ test('claude macOS Keychain probe runs `security` only on darwin (#829)', () => 
 
   // A stored `Claude Code-credentials` generic password means authenticated.
   assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: 0 }) }), true);
-  assert.deepEqual(calls[0], ['security', ['find-generic-password', '-s', 'Claude Code-credentials'], { stdio: 'ignore' }]);
+  // The probe is bounded: 5000ms mirrors the doctor checkCommand convention
+  // (#448) so a wedged `security` binary or Keychain dialog cannot block
+  // auth classification indefinitely.
+  assert.deepEqual(calls[0], ['security', ['find-generic-password', '-s', 'Claude Code-credentials'], { stdio: 'ignore', timeout: 5000 }]);
 
   // A lookup miss (e.g. errSecItemNotFound) means the Keychain has no session.
   assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: 44 }) }), false);
@@ -92,6 +95,12 @@ test('claude macOS Keychain probe runs `security` only on darwin (#829)', () => 
   // synchronous failure also falls back to the file check instead of crashing.
   assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: null, error: new Error('spawn security ENOENT') }) }), false);
   assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: () => { throw new Error('spawn failed'); } }), false);
+
+  // A Keychain query that outlives the bound (spawnSync timeout shape: status
+  // null, SIGTERM, ETIMEDOUT error) fails closed like any other probe error —
+  // the file check decides instead of waiting forever.
+  const timedOut = Object.assign(new Error('spawn security ETIMEDOUT'), { code: 'ETIMEDOUT' });
+  assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: null, signal: 'SIGTERM', error: timedOut }) }), false);
 });
 
 test('claude isAuthenticated accepts macOS Keychain credentials, keeps file check elsewhere (#829)', () => {

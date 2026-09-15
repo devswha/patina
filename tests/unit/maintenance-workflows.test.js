@@ -19,7 +19,7 @@ function readDatasetWorkflow() {
   return { workflow: readYaml(DATASET_WORKFLOW_PATH), source: readFileSync(DATASET_WORKFLOW_PATH, 'utf8') };
 }
 
-test('Dependabot keeps weekly ordinary updates bounded and unautomated', () => {
+test('Dependabot routes weekly version updates through dev, bounded and unautomated', () => {
   const config = readYaml(DEPENDABOT_PATH);
   assert.equal(config.version, 2);
   assert.deepEqual(config.updates.map((update) => update['package-ecosystem']), ['npm', 'github-actions']);
@@ -30,7 +30,7 @@ test('Dependabot keeps weekly ordinary updates bounded and unautomated', () => {
     assert.equal(update.directory, '/');
     assert.deepEqual(update.schedule, { interval: 'weekly' });
     assert.equal(update['open-pull-requests-limit'], 1);
-    assert.equal(update['target-branch'], undefined);
+    assert.equal(update['target-branch'], 'dev');
     assert.equal(update['rebase-strategy'], undefined);
   }
 

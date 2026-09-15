@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-15T07:30:42.053Z",
+  "generatedAt": "2026-09-15T16:59:56.169Z",
   "input": "artifacts/rebaseline-2025/rebaseline-2026.scored.public.jsonl",
   "targets": {
     "protocolPerLanguageClassRegister": 25,
@@ -99,30 +99,30 @@
     ]
   },
   "metrics": {
-    "tp": 404,
-    "fp": 32,
-    "fn": 196,
-    "tn": 168,
+    "tp": 411,
+    "fp": 22,
+    "fn": 189,
+    "tn": 178,
     "total": 800,
-    "accuracy": 0.715,
-    "precision": 0.927,
-    "recall": 0.673,
-    "f1": 0.78,
-    "falsePositiveRate": 0.16,
-    "falseNegativeRate": 0.327,
+    "accuracy": 0.736,
+    "precision": 0.949,
+    "recall": 0.685,
+    "f1": 0.796,
+    "falsePositiveRate": 0.11,
+    "falseNegativeRate": 0.315,
     "accuracyCi": {
-      "low": 0.683,
-      "high": 0.745,
+      "low": 0.705,
+      "high": 0.766,
       "method": "Wilson score interval, 95%"
     },
     "recallCi": {
-      "low": 0.635,
-      "high": 0.71,
+      "low": 0.647,
+      "high": 0.721,
       "method": "Wilson score interval, 95%"
     },
     "falsePositiveRateCi": {
-      "low": 0.116,
-      "high": 0.217,
+      "low": 0.074,
+      "high": 0.161,
       "method": "Wilson score interval, 95%"
     }
   },
@@ -144,12 +144,12 @@
       "language": "en",
       "modelFamily": "gemini-family",
       "n": 100,
-      "caught": 79,
-      "missed": 21,
-      "catchRate": 0.79,
+      "caught": 80,
+      "missed": 20,
+      "catchRate": 0.8,
       "catchRateCi": {
-        "low": 0.7,
-        "high": 0.858,
+        "low": 0.711,
+        "high": 0.867,
         "method": "Wilson score interval, 95%"
       }
     },
@@ -170,12 +170,12 @@
       "language": "ko",
       "modelFamily": "claude-family",
       "n": 100,
-      "caught": 68,
-      "missed": 32,
-      "catchRate": 0.68,
+      "caught": 67,
+      "missed": 33,
+      "catchRate": 0.67,
       "catchRateCi": {
-        "low": 0.583,
-        "high": 0.763,
+        "low": 0.573,
+        "high": 0.754,
         "method": "Wilson score interval, 95%"
       }
     },
@@ -183,12 +183,12 @@
       "language": "ko",
       "modelFamily": "gemini-family",
       "n": 100,
-      "caught": 62,
-      "missed": 38,
-      "catchRate": 0.62,
+      "caught": 61,
+      "missed": 39,
+      "catchRate": 0.61,
       "catchRateCi": {
-        "low": 0.522,
-        "high": 0.709,
+        "low": 0.512,
+        "high": 0.7,
         "method": "Wilson score interval, 95%"
       }
     },
@@ -196,12 +196,12 @@
       "language": "ko",
       "modelFamily": "gpt-family",
       "n": 100,
-      "caught": 44,
-      "missed": 56,
-      "catchRate": 0.44,
+      "caught": 52,
+      "missed": 48,
+      "catchRate": 0.52,
       "catchRateCi": {
-        "low": 0.347,
-        "high": 0.538,
+        "low": 0.423,
+        "high": 0.615,
         "method": "Wilson score interval, 95%"
       }
     }
@@ -210,12 +210,12 @@
     "en": {
       "language": "en",
       "n": 100,
-      "falsePositives": 14,
-      "trueNegatives": 86,
-      "falsePositiveRate": 0.14,
+      "falsePositives": 4,
+      "trueNegatives": 96,
+      "falsePositiveRate": 0.04,
       "falsePositiveRateCi": {
-        "low": 0.085,
-        "high": 0.221,
+        "low": 0.016,
+        "high": 0.098,
         "method": "Wilson score interval, 95%"
       }
     },
@@ -234,58 +234,58 @@
   },
   "metricsByRegister": {
     "academic-summary": {
-      "tp": 89,
-      "fp": 18,
-      "fn": 31,
-      "tn": 52,
+      "tp": 94,
+      "fp": 10,
+      "fn": 26,
+      "tn": 60,
       "total": 190,
-      "accuracy": 0.742,
-      "precision": 0.832,
-      "recall": 0.742,
-      "f1": 0.784,
-      "falsePositiveRate": 0.257,
-      "falseNegativeRate": 0.258,
+      "accuracy": 0.811,
+      "precision": 0.904,
+      "recall": 0.783,
+      "f1": 0.839,
+      "falsePositiveRate": 0.143,
+      "falseNegativeRate": 0.217,
       "accuracyCi": {
-        "low": 0.676,
-        "high": 0.799,
+        "low": 0.749,
+        "high": 0.86,
         "method": "Wilson score interval, 95%"
       },
       "recallCi": {
-        "low": 0.657,
-        "high": 0.812,
+        "low": 0.701,
+        "high": 0.848,
         "method": "Wilson score interval, 95%"
       },
       "falsePositiveRateCi": {
-        "low": 0.169,
-        "high": 0.37,
+        "low": 0.079,
+        "high": 0.243,
         "method": "Wilson score interval, 95%"
       }
     },
     "blog": {
-      "tp": 70,
-      "fp": 6,
-      "fn": 50,
-      "tn": 64,
+      "tp": 72,
+      "fp": 4,
+      "fn": 48,
+      "tn": 66,
       "total": 190,
-      "accuracy": 0.705,
-      "precision": 0.921,
-      "recall": 0.583,
-      "f1": 0.714,
-      "falsePositiveRate": 0.086,
-      "falseNegativeRate": 0.417,
+      "accuracy": 0.726,
+      "precision": 0.947,
+      "recall": 0.6,
+      "f1": 0.735,
+      "falsePositiveRate": 0.057,
+      "falseNegativeRate": 0.4,
       "accuracyCi": {
-        "low": 0.637,
-        "high": 0.766,
+        "low": 0.659,
+        "high": 0.785,
         "method": "Wilson score interval, 95%"
       },
       "recallCi": {
-        "low": 0.494,
-        "high": 0.668,
+        "low": 0.511,
+        "high": 0.683,
         "method": "Wilson score interval, 95%"
       },
       "falsePositiveRateCi": {
-        "low": 0.04,
-        "high": 0.175,
+        "low": 0.022,
+        "high": 0.138,
         "method": "Wilson score interval, 95%"
       }
     },

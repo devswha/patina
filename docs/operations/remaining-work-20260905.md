@@ -256,3 +256,46 @@ The owner ran `npm login` after the observation above. Follow-up checks:
 - Next owner decision: whether to cut the 8.6.0 release (release PR
   `dev` → `main` + `v8.6.0` tag per docs/WORKFLOW.md). That release run is
   also the P12b real drill.
+
+## September 15 release 8.7.0 — P12b real drill outcome
+
+Append-only. Supersedes the "next owner decision" line above: the owner
+approved the release, cut as **8.7.0** (main was already 8.6.0 source/web).
+
+- Release prep #834 (version-bearing files 8.6.0 → 8.7.0, CHANGELOG entry,
+  availability text; `release:check`, `check:no-private-assets`, lint, full
+  `npm test` 2494 pass / 0 fail, and an artifacts dry-run all exit 0) merged
+  to `dev`. Release PR #835 (`dev` → `main`, 63+1 already-reviewed PRs
+  listed) merged with a merge commit at `b508c92` after a green full matrix.
+- Tag `v8.7.0` pushed; release run `34923908763`: verify + authorize-source
+  success, **npm job failed**, ghcr skipped (input off), github-release
+  correctly skipped because npm failed.
+- Failure: `E403` on the first publish (`patina-cli`): "Two-factor
+  authentication or granular access token with bypass 2fa enabled is
+  required". `npm profile get` shows `two-factor auth: auth-and-writes`, so
+  the web-login session token (which this session had placed into the
+  `NPM_TOKEN` secret) cannot publish from CI. A provenance statement was
+  signed to the transparency log before the 403; **no package version was
+  published** — both packages still serve 8.3.0 (`npm view`, 2026-09-15).
+  No partial-publish state exists, so no registry recovery was needed.
+- P12b assessment: the real drill exercised authorization, tarball
+  verification, provenance signing, serialization (single run; no
+  contention occurred), and the failure gate (GitHub Release withheld on
+  npm failure — verified correct). Actual publish success, queue
+  contention, and partial-publish recovery remain unexercised.
+- Remediation (owner action, one of):
+  1. Create an npm **granular access token** with publish on `patina-cli` +
+     `patina-humanizer` and 2FA-bypass for automation, then update the
+     `NPM_TOKEN` secret and rerun the failed jobs
+     (`gh run rerun 34923908763 --failed`); the publish script's
+     already-published check makes the retry safe. Note npm has announced
+     restrictions on bypass-2FA tokens (npm notice in the run log).
+  2. Or configure **npm Trusted Publishing (OIDC)** for this repo +
+     `release.yml` on both packages (the workflow already carries
+     `id-token: write` and signs provenance) and drop the token dependency.
+  3. Or publish locally with OTP via
+     `node scripts/release-artifacts.mjs --publish --source-sha b508c92… --version 8.7.0`
+     from the `v8.7.0` tag checkout (interactive OTP; outside agent reach).
+- `main` was merged back into `dev` (fast-forward to `b508c92`) per the
+  workflow. The `v8.7.0` tag stays; the npm gap (registry 8.3.0 vs source
+  8.7.0) is once again explicit.

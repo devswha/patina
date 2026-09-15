@@ -54,7 +54,7 @@ Backend-free surfaces stay backend-free and make no backend call:
 `patina inspect`, `--score --offline`, `--xliff --dry-run`,
 `patina pack list/install`, and the `patina-score` bin. What differs across
 the backend-backed surfaces is the *strength of the Method-D anchor* — see the
-table below and [Known seams](#known-seams).
+table below and [Seams: resolved and remaining](#seams-resolved-and-remaining).
 
 ---
 

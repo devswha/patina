@@ -2,6 +2,17 @@
 
 All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 
+## 8.7.0 — 2026-09-15
+
+Semver rationale: minor — adds a new backend (agy-cli) and an advisory smoothness floor, and changes the default rewrite rhetoric policy (H-RHETORIC). Existing invocations behave as before, and the previous rhetoric text can be restored with an environment flag.
+
+- **H-RHETORIC rewrite policy is now the default** (#818, #828). The rewrite prompt now directs the model to actually remove content-free exaggeration, formulaic openers, and redundancy while preserving numbers, conditions, quotations, and meaningful intensity. Set `PATINA_RHETORIC_POLICY=legacy` to restore the previous similar-weight instruction.
+- **agy-cli (Antigravity CLI) backend** (#802). Select with `--backend agy-cli` or an `agy-*` model; authentication uses the Antigravity CLI's own Google sign-in.
+- **Advisory smoothness floor** for rewrite output (#821). When sentence-length CV drops below the existing burstiness low band, or line-length/line-ending entropy is extremely low, the CLI prints a warning note. Advisory only — exit code, scores, and rewrite text are unchanged; disable with `smoothness-floor: false`.
+- **Fixes.** Detect Claude Code macOS Keychain authentication and run patina-skill through symlinks (#831, issue #829); launch .cmd-shimmed local CLIs on win32 (#808); drain leftover fetch sockets before CLI teardown (#811); inject CLI Korean documentSignals into hosted rewrite (#812); merge a symlinked user config only once (#805); strip agent tools from local CLI rewrite calls (#798); report an emptied Claude Code session as not authenticated (#796); doctor probes the default HTTP key instead of trusting its presence (#803).
+- **QA, operations, community.** Cross-platform smoke runner with Linux baseline and win32 suite support (#804–#806); backend compatibility verification P17b for codex-cli, claude-cli, gemini-cli, kimi-cli, and agy-cli (#795–#809); pattern-of-the-week (#824, #830) and a visible submit-a-pattern path (#813).
+- **Availability.** npm publication resumes with this release: both npm packages, `patina-cli` and `patina-humanizer`, are published at 8.7.0.
+
 ## 8.6.0 — 2026-09-09
 
 Semver rationale: minor — the hosted playground drops local presets and changes the wording of visible copy. No CLI, skill, pattern, or scoring behavior changes.

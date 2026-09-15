@@ -84,9 +84,9 @@ test('claude macOS Keychain probe runs `security` only on darwin with a finite b
   // A stored `Claude Code-credentials` generic password means authenticated.
   assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: 0 }) }), true);
   // The probe is bounded: 5000ms mirrors the doctor checkCommand convention
-  // (#448) so a wedged `security` binary or Keychain dialog cannot block
-  // auth classification indefinitely.
-  assert.deepEqual(calls[0], ['security', ['find-generic-password', '-s', 'Claude Code-credentials'], { stdio: 'ignore', timeout: 5000 }]);
+  // (#448) and killSignal SIGKILL makes the bound strict — a wedged
+  // `security` that ignored SIGTERM cannot hold auth classification.
+  assert.deepEqual(calls[0], ['security', ['find-generic-password', '-s', 'Claude Code-credentials'], { stdio: 'ignore', timeout: 5000, killSignal: 'SIGKILL' }]);
 
   // A lookup miss (e.g. errSecItemNotFound) means the Keychain has no session.
   assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: 44 }) }), false);
@@ -97,10 +97,10 @@ test('claude macOS Keychain probe runs `security` only on darwin with a finite b
   assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: () => { throw new Error('spawn failed'); } }), false);
 
   // A Keychain query that outlives the bound (spawnSync timeout shape: status
-  // null, SIGTERM, ETIMEDOUT error) fails closed like any other probe error —
-  // the file check decides instead of waiting forever.
+  // null, killed by the configured SIGKILL, ETIMEDOUT error) fails closed
+  // like any other probe error — the file check decides instead of waiting.
   const timedOut = Object.assign(new Error('spawn security ETIMEDOUT'), { code: 'ETIMEDOUT' });
-  assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: null, signal: 'SIGTERM', error: timedOut }) }), false);
+  assert.equal(hasMacOsKeychainCredentials({ platform: 'darwin', spawnSyncImpl: spawn({ status: null, signal: 'SIGKILL', error: timedOut }) }), false);
 });
 
 test('claude isAuthenticated accepts macOS Keychain credentials, keeps file check elsewhere (#829)', () => {

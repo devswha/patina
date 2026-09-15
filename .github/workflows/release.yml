@@ -28,6 +28,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       version: ${{ steps.artifacts.outputs.version }}
     steps:
@@ -104,6 +105,7 @@ jobs:
   authorize-source:
     needs: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && (inputs.publish == true || inputs.publish_ghcr == true))
     steps:
       - uses: actions/checkout@v6
@@ -125,6 +127,7 @@ jobs:
   npm:
     needs: [verify, authorize-source]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish == true)
     permissions:
       contents: read
@@ -170,6 +173,7 @@ jobs:
   github-release:
     needs: [verify, npm]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # Tag pushes only: workflow_dispatch dry-runs must not create releases,
     # and a release is only recorded after npm publish actually succeeded.
     if: startsWith(github.ref, 'refs/tags/v')
@@ -304,6 +308,7 @@ jobs:
   ghcr:
     needs: [verify, authorize-source]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: github.event_name == 'workflow_dispatch' && inputs.publish_ghcr == true
     permissions:
       contents: read

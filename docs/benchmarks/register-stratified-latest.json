@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-05-21T16:24:01.336Z",
+  "generatedAt": "2026-09-15T07:30:42.207Z",
   "input": "artifacts/rebaseline-2025/human-controls.public.jsonl",
   "targets": {
     "protocolPerLanguageClassRegister": 25,
@@ -63,6 +63,31 @@
       "low": 0.781,
       "high": 0.873,
       "method": "Wilson score interval, 95%"
+    },
+    "recallCi": {
+      "low": 0,
+      "high": 0,
+      "method": "Wilson score interval, 95%"
+    },
+    "falsePositiveRateCi": {
+      "low": 0.127,
+      "high": 0.219,
+      "method": "Wilson score interval, 95%"
+    }
+  },
+  "catchByLanguageFamily": {},
+  "falsePositiveByLanguage": {
+    "ko": {
+      "language": "ko",
+      "n": 250,
+      "falsePositives": 42,
+      "trueNegatives": 208,
+      "falsePositiveRate": 0.168,
+      "falsePositiveRateCi": {
+        "low": 0.127,
+        "high": 0.219,
+        "method": "Wilson score interval, 95%"
+      }
     }
   },
   "metricsByRegister": {
@@ -82,6 +107,16 @@
         "low": 0.738,
         "high": 0.93,
         "method": "Wilson score interval, 95%"
+      },
+      "recallCi": {
+        "low": 0,
+        "high": 0,
+        "method": "Wilson score interval, 95%"
+      },
+      "falsePositiveRateCi": {
+        "low": 0.07,
+        "high": 0.262,
+        "method": "Wilson score interval, 95%"
       }
     },
     "blog": {
@@ -99,6 +134,16 @@
       "accuracyCi": {
         "low": 0.67,
         "high": 0.888,
+        "method": "Wilson score interval, 95%"
+      },
+      "recallCi": {
+        "low": 0,
+        "high": 0,
+        "method": "Wilson score interval, 95%"
+      },
+      "falsePositiveRateCi": {
+        "low": 0.112,
+        "high": 0.33,
         "method": "Wilson score interval, 95%"
       }
     },
@@ -118,6 +163,16 @@
         "low": 0.865,
         "high": 0.989,
         "method": "Wilson score interval, 95%"
+      },
+      "recallCi": {
+        "low": 0,
+        "high": 0,
+        "method": "Wilson score interval, 95%"
+      },
+      "falsePositiveRateCi": {
+        "low": 0.011,
+        "high": 0.135,
+        "method": "Wilson score interval, 95%"
       }
     },
     "product-doc": {
@@ -136,6 +191,16 @@
         "low": 0.762,
         "high": 0.944,
         "method": "Wilson score interval, 95%"
+      },
+      "recallCi": {
+        "low": 0,
+        "high": 0,
+        "method": "Wilson score interval, 95%"
+      },
+      "falsePositiveRateCi": {
+        "low": 0.056,
+        "high": 0.238,
+        "method": "Wilson score interval, 95%"
       }
     },
     "technical-how-to": {
@@ -153,6 +218,16 @@
       "accuracyCi": {
         "low": 0.522,
         "high": 0.776,
+        "method": "Wilson score interval, 95%"
+      },
+      "recallCi": {
+        "low": 0,
+        "high": 0,
+        "method": "Wilson score interval, 95%"
+      },
+      "falsePositiveRateCi": {
+        "low": 0.224,
+        "high": 0.478,
         "method": "Wilson score interval, 95%"
       }
     }

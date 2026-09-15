@@ -58,7 +58,7 @@ Avoid overclaiming:
 
 ### Phase 1 — benchmark credibility
 
-Status (2026-09-02): shipped. `docs/benchmarks/latest.md` carries Wilson CIs, ROC-AUC / PR-AUC and threshold diagnostics; register split lives in `docs/benchmarks/register-stratified-latest.md`; the adversarial MPS gate is `docs/research/adversarial-mps.md`. Remaining: keep the reports regenerated after deterministic-layer changes (the 8.1.0 Korean modules post-date the 2026-06-14 `-latest` reports).
+Status (2026-09-15): shipped. `docs/benchmarks/latest.md` carries Wilson CIs, ROC-AUC / PR-AUC and threshold diagnostics; register split lives in `docs/benchmarks/register-stratified-latest.md`; the adversarial MPS gate is `docs/research/adversarial-mps.md`. All public `-latest` reports were regenerated against 8.7.0 on 2026-09-15 (metrics unchanged — deterministic verdicts are unchanged by the research modules). `katfish-ko-latest` (2026-05-21) is frozen as historical evidence: its regeneration needed the private KatFish inputs and is retired by owner decision 2026-09-15, so it must not be tracked or re-attempted as pending work.
 
 Goal: make claims easier to verify and harder to dismiss.
 

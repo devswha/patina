@@ -1,6 +1,6 @@
 # Rebaseline Manifest Summary
 
-- Generated at: 2026-05-21T16:24:01.336Z
+- Generated at: 2026-09-15T07:30:42.207Z
 - Input: `artifacts/rebaseline-2025/human-controls.public.jsonl`
 - Records: 250
 - Protocol target: 25 samples per language × class × register cell
@@ -83,10 +83,22 @@ Public performance claim: **BLOCKED**
 | accuracy CI | 78.1%–87.3% |
 | precision | 0.0% |
 | recall | 0.0% |
+| recall CI | 0.0%–0.0% |
 | F1 | 0.000 |
 | false positive rate | 16.8% |
+| false positive rate CI | 12.7%–21.9% |
 | false negative rate | 0.0% |
 | TP/FP/FN/TN | 0/42/0/208 |
+
+### Catch rate by language × model family
+
+No positive outcome rows yet.
+
+### False-positive rate by language
+
+| language | n | false-positive rate | 95% CI | FP/TN |
+|---|---:|---:|---:|---:|
+| ko | 250 | 16.8% | 12.7%–21.9% | 42/208 |
 
 ### By register
 

@@ -2,6 +2,16 @@
 
 All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 
+## 8.7.1 — 2026-09-16
+
+Semver rationale: patch — a backend authentication fix and release-tooling hardening; no new user-facing surface, no default or scoring change.
+
+- **Fixes.** Bound the macOS Keychain credential presence probe with a hard timeout and fail-closed error handling so a hung `security` call can no longer stall backend detection (#847); after a publish, the release tooling polls the npm registry until the exact artifact is served, closing the publish-verification gap (#843).
+- **Release/CI.** npm publication now uses Trusted Publishing (OIDC) with no stored token (#840); the real-Redis quota regression executes in every hosted `quality` run and a silent skip is a hard failure (#850); release and dataset jobs carry explicit timeouts (#853); routine dependency updates route through `dev` (#846).
+- **Tests.** Credential classification tests run isolated from the host home directory (#851).
+- **Benchmarks/claims.** The public rebaseline claim manifest is re-scored with the current analyzer (#855): overall accuracy 71.5% → 73.6%, FPR 16% → 11%, ko GPT-family catch 44% → 52% with the reviewed 48-miss set carried over unchanged.
+- **Records.** Package-surface audit refreshed on the converged tree, conclusion KEEP (#848); maintainer rules reconciled (#849); observability computation-contract review (#854); same-host perf variance baseline, warning-first (#857); H-RHETORIC §7.B pilot recorded — exploration rule not met, §7.C stays gated, the 8.7.0 default unchanged (#856); public `-latest` reports regenerated (#844); ARCHITECTURE anchor repair (#852).
+
 ## 8.7.0 — 2026-09-15
 
 Semver rationale: minor — adds a new backend (agy-cli) and an advisory smoothness floor, and changes the default rewrite rhetoric policy (H-RHETORIC). Existing invocations behave as before, and the previous rhetoric text can be restored with an environment flag.

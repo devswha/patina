@@ -10,7 +10,7 @@ npm publication uses Trusted Publishing (OIDC), verified end-to-end for both
 ## Source and web deployment
 
 The npm publication hold ended with the 8.7.0 release: the registry serves
-8.7.0 for both `patina-cli` and `patina-humanizer`. The npm package version
+8.7.1 for both `patina-cli` and `patina-humanizer`. The npm package version
 does not establish which version is deployed on the website; verify the
 production version after each web deployment.
 

@@ -153,10 +153,15 @@ an excuse to hide work: report both the raw diff and the reviewable diff, and
 list generated output, lockfiles, renames, and pure moves separately while
 retaining their raw cost.
 
-The first **10 PRs** using this budget are warnings only. Use their review time,
-false alarms, and follow-up regressions to decide whether a blocking policy is
-justified. A size exception needs the reason it cannot be split, its validation
-and rollback plan, and owner approval; a label by itself is not approval.
+These thresholds stay **warnings only**. The first-ten-PR observation window is
+closed: the 2026-09-14 replay
+(`docs/operations/maintenance-p04-observation-20260914.json`) concluded that
+enforcement stays `warning`, and the recurring observation cadence was retired
+by owner decision on 2026-09-15 (#783). Do not open a new observation window,
+and do not promote these numbers into an automatic blocking or approving gate
+without an explicit owner decision. A size exception needs the reason it cannot
+be split, its validation and rollback plan, and owner approval; a label by
+itself is not approval.
 Generated evidence includes the source inputs, generator command and version,
 reproducibility result, and artifact path or hash. Handwritten Markdown/JSON,
 prompts, patterns, and fixtures remain reviewable even when generated files
@@ -286,10 +291,15 @@ git switch dev && git merge main           # keep dev in sync after the release
 - Delivery is reported per channel only after the exact main SHA, artifact or
   deployment identifier, and smoke/evidence are recorded. Integration and
   delivery status are never collapsed into one “done” label.
-- npm publication remains **on hold**. This document does not lift that hold,
-  grant registry credentials, or authorize a publish. A release may be
-  integrated and verified while npm is held; any future publication requires a
-  separate, explicit external-write authorization and channel evidence.
+- npm publication is **possible but never automatic**. The former hold ended
+  with the 8.7.0 release: publication runs through npm Trusted Publishing
+  (OIDC) from `release.yml`, verified end-to-end for `patina-cli` and
+  `patina-humanizer` on 2026-09-15 ([`docs/integrations/release.md`](integrations/release.md)).
+  Capability is not authority. This document does not authorize a publish or
+  grant registry credentials, and no session may publish, tag, or deploy on its
+  own initiative; each publication still requires a separate, explicit
+  external-write authorization and its channel evidence. A release may be
+  integrated and verified without being published.
 
 
 ## External tools and dependency updates
@@ -313,6 +323,19 @@ runtime impact, lockfile installation, and the relevant contract smoke. Keep
 general update PRs to at most 2 open at once; security updates are triaged
 separately and are never auto-merged solely because they are automated.
 
+Routine updates follow the same branch model as everything else.
+`.github/dependabot.yml` sets `target-branch: dev` for both the npm and
+github-actions entries, so ordinary **version** update PRs open against the
+integration branch instead of landing directly on `main`. **Security** updates
+keep GitHub's own contract: Dependabot raises them against the repository
+default branch (`main`), so a security fix can still arrive there. When it
+does, the rule in the branch model applies unchanged — merge `main` → `dev`
+immediately so `dev` never drifts behind. Changing this file on `dev`
+integrates the configuration but does not activate it: GitHub reads
+`.github/dependabot.yml` from the **default branch**, so the routing becomes
+operational only after the normal `dev` → `main` delivery path carries it to
+`main`.
+
 
 ## Safety rules (you are not alone in the repo)
 
@@ -332,10 +355,17 @@ or open a PR automatically. Every exception (size, flaky test, compatibility
 gap, unverified tool, or deferred check) has a named owner, a next-review date,
 the condition that closes it, and a link to its existing tracking record.
 
+**The fixed weekly/monthly observation cadence is retired** (owner decision,
+2026-09-15, #783). The 2026-09-14 inventory
+(`docs/operations/maintenance-p22-20260914.json`) was the last scheduled one,
+and no future session owes a recurring observation or its receipt. The rows
+below remain prompts to apply **when the listed condition actually appears** —
+they are not scheduled work, and their absence is not an outstanding obligation.
+
 | Trigger | Owner review | Required record |
 |---|---|---|
-| Weekly | General dependency updates, due flaky-test isolation, external CLI/API versions, repeated CI/review failures, and the Ready/QA queue | Update or close the existing Issue/PR; keep general update PRs within the limit and preserve first failures |
-| Monthly | Temporary branches/flags and document status, old unverified backends, performance trend evidence, stale size/check exceptions, and ownership coverage | Record the decision and next date in the existing tracking record; do not silently extend, delete, or mass-create Issues |
+| Dependency and tooling drift | General dependency updates, due flaky-test isolation, external CLI/API versions, repeated CI/review failures, and the Ready/QA queue | Update or close the existing Issue/PR; keep general update PRs within the limit and preserve first failures |
+| Accumulated repository state | Temporary branches/flags and document status, old unverified backends, performance trend evidence, stale size/check exceptions, and ownership coverage | Record the decision and next date in the existing tracking record; do not silently extend, delete, or mass-create Issues |
 | Before release | Contract/support smoke, exact source/artifact SHA, channel hold or delivery state, and rollback evidence | Release record distinguishes integrated, delivered, held, failed, and unknown channels |
 
 If an owner or review date is missing, the item remains unresolved rather than

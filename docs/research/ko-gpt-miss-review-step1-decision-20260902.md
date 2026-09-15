@@ -103,3 +103,29 @@ Taxonomy constants, the deficit encoding and the two clarified readings (KO diag
 3. Blinded review kit — per-reviewer permutation and the signal-only view; capture of both labels, margins, disagreement flags, adjudication.
 4. Measure-only report — population/selection counts, `register × miss_reason`, `provider/model × miss_reason`, agreement rate, confusion matrix; committed under `docs/benchmarks/` with the manifest hash.
 5. Only after 1–4: any treatment proposal goes through a new preregistration bound to a fresh corpus, per the line above.
+
+
+## Amendment 2026-09-16: the deferred re-score decision was taken and executed
+
+The owner approved the re-score left open above (2026-09-16 instruction to
+complete all remaining decided work). `scripts/rebaseline-build-claim-manifest.mjs`
+was re-run with the current analyzer at `origin/dev`
+`75bcf7f37147fa4d54ab7b0fb62d46eb4e065c89`, regenerating
+`artifacts/rebaseline-2025/rebaseline-2026.scored.public.jsonl` and
+`docs/benchmarks/rebaseline-latest.{md,json}`.
+
+- The published KO GPT-family catch rate moved 44% -> **52%** (52/48,
+  95% CI 42.3%-61.5%), exactly as predicted here.
+- **Carryover verified:** the miss set under the new score is byte-identical
+  to the 48 reviewed `text_hash`es of `ko-gpt-miss-review.v1.jsonl`
+  (0 in-new-not-reviewed, 0 in-reviewed-not-new), so the blinded review above
+  carries over unchanged, and the 8 `precondition-violated:document-hot`
+  exclusions are the 8 newly caught rows.
+- The full-manifest re-score also moved sibling cells (all reported in the
+  regenerated `rebaseline-latest.md`): overall accuracy 71.5% -> 73.6%,
+  precision 92.7% -> 94.9%, recall 67.3% -> 68.5%, FPR 16.0% -> 11.0%
+  (EN FP 14 -> 4; KO FP unchanged 18); en gemini 79% -> 80%;
+  ko claude 68% -> 67%; ko gemini 62% -> 61%.
+- The frozen review population and this document's recorded evidence remain
+  bound to the 2026-05-22 analyzer as stated; nothing above this amendment
+  was rewritten.

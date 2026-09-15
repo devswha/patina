@@ -58,7 +58,7 @@ Avoid overclaiming:
 
 ### Phase 1 — benchmark credibility
 
-Status (2026-09-02): shipped. `docs/benchmarks/latest.md` carries Wilson CIs, ROC-AUC / PR-AUC and threshold diagnostics; register split lives in `docs/benchmarks/register-stratified-latest.md`; the adversarial MPS gate is `docs/research/adversarial-mps.md`. Remaining: keep the reports regenerated after deterministic-layer changes (the 8.1.0 Korean modules post-date the 2026-06-14 `-latest` reports).
+Status (2026-09-15): shipped. `docs/benchmarks/latest.md` carries Wilson CIs, ROC-AUC / PR-AUC and threshold diagnostics; register split lives in `docs/benchmarks/register-stratified-latest.md`; the adversarial MPS gate is `docs/research/adversarial-mps.md`. All public `-latest` reports were regenerated against 8.7.0 on 2026-09-15 (metrics unchanged — deterministic verdicts are unchanged by the research modules). `katfish-ko-latest` (2026-05-21) is frozen as historical evidence: its regeneration needed the private KatFish inputs and is retired by owner decision 2026-09-15, so it must not be tracked or re-attempted as pending work.
 
 Goal: make claims easier to verify and harder to dismiss.
 
@@ -170,7 +170,7 @@ Acceptance criteria:
 
 ### Phase 2 — packaging and distribution
 
-Status (2026-09-07): the source/web release is 8.5.1; npm `patina-cli` and `patina-humanizer` remain at 8.3.0 while publication is on hold. GitHub Releases follow successful npm publication on tag push (`docs/integrations/release.md`). The public image `ghcr.io/devswha/patina:latest` has a separate manual release path (`docs/integrations/docker.md`). Homebrew has not started.
+Status (2026-09-15): the source release is 8.7.0; npm `patina-cli` and `patina-humanizer` are published at 8.7.0 through npm Trusted Publishing (OIDC), verified on 2026-09-15 (`docs/integrations/release.md`). The earlier publication hold has ended; publishing still requires separate explicit external-write authorization. GitHub Releases follow successful npm publication on tag push (`docs/integrations/release.md`). The public image `ghcr.io/devswha/patina:latest` has a separate manual release path (`docs/integrations/docker.md`). Homebrew has not started.
 
 Goal: make patina installable from the channels users expect.
 

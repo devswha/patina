@@ -8,24 +8,23 @@ import { fileURLToPath } from 'node:url';
 const RETIRED_TERM = ['ouro', 'boros'].join('');
 const ARCHIVE_PREFIXES = ['.gjc/', '.insane-review/'];
 export const LIFECYCLE_MARKER_PATH = 'docs/integrations/release.md';
-export const REQUIRED_LIFECYCLE_ID = 'npm-token-publishing';
 const LIFECYCLE_MARKER_PREFIX = '<!-- maintenance-lifecycle:';
 const REQUIRED_LIFECYCLE_FIELDS = ['owner', 'review', 'remove-after'];
 const HISTORICAL_EXPECTATIONS = new Map([
   ['CHANGELOG.md', new Map([
-    ['a1aa4b471c432c2582586204d20566967533254171fbbd790a9da36a81412086', [415]],
-    ['d82c21439e957bf40f694b896d8eadd49a433fb66af9cca49495111604b69d75', [417]],
-    ['83f5e36d2ba73ed824cfec62e9f8fb72e569f26f3ab6c42604d1ef34f5b98e9b', [432]],
-    ['0e80229112d7d40105c64406604dbcd0312d5ae370ec871fa3258bb787af7bd1', [438]],
-    ['0bd7e2489f54e1e87a3efaae8e38df5c1a2878fa438c5f13775fc24b551440c7', [458]],
-    ['aa223b28b35c246b21ff99d20281bfa980bf01820845308948311c81e98a0de9', [463]],
-    ['12016238717b99f22a55d26b490943b50f82aef4a7ab27b6d662a1cdc5094dda', [512]],
-    ['af36a82757b517832706c84fc3d2b7dc93915243d8ce7b6ee80d65ecfdb6f31c', [521]],
-    ['51baf38ef6a43340c026a25e627e1544c70fc2c1dd99da3500ff2f11d8732e56', [526]],
-    ['61ff8778bd3e54e59a01636618c1de3c7d42659eb513a6385e71e161ec944c87', [536]],
-    ['272cba65bd46320ff28f5344fb3844c4b4ba08a95064db0009efd6bc145c2557', [584]],
-    ['45be57ebe8b5ba976d59551aef7c201a4205c4f86c1cf7952f15d3697b48d664', [587]],
-    ['226653d656455e6c74f4ae6216209470f05942ec9c0a275d1639a44d09bd0385', [880]],
+    ['a1aa4b471c432c2582586204d20566967533254171fbbd790a9da36a81412086', [425]],
+    ['d82c21439e957bf40f694b896d8eadd49a433fb66af9cca49495111604b69d75', [427]],
+    ['83f5e36d2ba73ed824cfec62e9f8fb72e569f26f3ab6c42604d1ef34f5b98e9b', [442]],
+    ['0e80229112d7d40105c64406604dbcd0312d5ae370ec871fa3258bb787af7bd1', [448]],
+    ['0bd7e2489f54e1e87a3efaae8e38df5c1a2878fa438c5f13775fc24b551440c7', [468]],
+    ['aa223b28b35c246b21ff99d20281bfa980bf01820845308948311c81e98a0de9', [473]],
+    ['12016238717b99f22a55d26b490943b50f82aef4a7ab27b6d662a1cdc5094dda', [522]],
+    ['af36a82757b517832706c84fc3d2b7dc93915243d8ce7b6ee80d65ecfdb6f31c', [531]],
+    ['51baf38ef6a43340c026a25e627e1544c70fc2c1dd99da3500ff2f11d8732e56', [536]],
+    ['61ff8778bd3e54e59a01636618c1de3c7d42659eb513a6385e71e161ec944c87', [546]],
+    ['272cba65bd46320ff28f5344fb3844c4b4ba08a95064db0009efd6bc145c2557', [594]],
+    ['45be57ebe8b5ba976d59551aef7c201a4205c4f86c1cf7952f15d3697b48d664', [597]],
+    ['226653d656455e6c74f4ae6216209470f05942ec9c0a275d1639a44d09bd0385', [890]],
   ])],
 ]);
 
@@ -128,16 +127,19 @@ function validCalendarDate(value) {
   return day <= daysInMonth;
 }
 
-// This pilot intentionally checks one known temporary publication branch. It
-// validates that the owner, review date, and removal condition are recorded;
-// it never compares the review date with the clock or removes the branch.
+// Lifecycle markers are validated generically: any marker that is present
+// must record owner, review date, and a removal condition, and ids must not
+// repeat. No marker is required — the npm-token-publishing pilot closed on
+// 2026-09-15 when its remove-after condition (OIDC verified for both
+// packages) was met. The checker never makes a date-based deletion or pass
+// decision.
 export function scanLifecycleText(source, path = LIFECYCLE_MARKER_PATH) {
   const records = [];
   const errors = [];
   if (typeof source !== 'string') {
     return {
       records,
-      errors: [{ path, reason: 'required lifecycle file is unavailable' }],
+      errors: [{ path, reason: 'lifecycle-tracked file is unavailable' }],
     };
   }
 
@@ -146,49 +148,50 @@ export function scanLifecycleText(source, path = LIFECYCLE_MARKER_PATH) {
     const parsed = parseLifecycleMarker(lines[index], index + 1, path);
     if (!parsed) continue;
     if (parsed.errors.length) errors.push(...parsed.errors);
-    if (parsed.record?.id === REQUIRED_LIFECYCLE_ID) records.push(parsed.record);
-    if (parsed.markerId === REQUIRED_LIFECYCLE_ID && parsed.errors.length) {
-      records.push({ id: REQUIRED_LIFECYCLE_ID, path, line: index + 1, malformed: true });
+    if (parsed.record) records.push(parsed.record);
+    if (parsed.markerId && parsed.errors.length) {
+      records.push({ id: parsed.markerId, path, line: index + 1, malformed: true });
     }
   }
 
-  if (records.length === 0) {
-    errors.push({
-      path,
-      reason: `required lifecycle marker ${REQUIRED_LIFECYCLE_ID} is missing`,
-    });
-    return { records, errors };
-  }
   const validRecords = records.filter((record) => !record.malformed);
-  if (validRecords.length > 1) {
-    errors.push({
-      path,
-      reason: `expected exactly one lifecycle marker ${REQUIRED_LIFECYCLE_ID}`,
-      lines: validRecords.map((record) => record.line),
-    });
+  const linesById = new Map();
+  for (const record of validRecords) {
+    const lines = linesById.get(record.id) ?? [];
+    lines.push(record.line);
+    linesById.set(record.id, lines);
   }
-
-  const record = validRecords[0];
-  if (!record) return { records, errors };
-  for (const field of REQUIRED_LIFECYCLE_FIELDS) {
-    if (typeof record[field] !== 'string' || !record[field]) {
+  for (const [id, idLines] of linesById) {
+    if (idLines.length > 1) {
       errors.push({
         path,
-        line: record.line,
-        field,
-        reason: `lifecycle marker ${REQUIRED_LIFECYCLE_ID} is missing ${field}`,
+        reason: `expected at most one lifecycle marker ${id}`,
+        lines: idLines,
       });
     }
   }
-  if (record.review && !validCalendarDate(record.review)) {
-    errors.push({
-      path,
-      line: record.line,
-      field: 'review',
-      reason: 'lifecycle review must be a valid calendar date in YYYY-MM-DD',
-    });
+
+  for (const record of validRecords) {
+    for (const field of REQUIRED_LIFECYCLE_FIELDS) {
+      if (typeof record[field] !== 'string' || !record[field]) {
+        errors.push({
+          path,
+          line: record.line,
+          field,
+          reason: `lifecycle marker ${record.id} is missing ${field}`,
+        });
+      }
+    }
+    if (record.review && !validCalendarDate(record.review)) {
+      errors.push({
+        path,
+        line: record.line,
+        field: 'review',
+        reason: 'lifecycle review must be a valid calendar date in YYYY-MM-DD',
+      });
+    }
   }
-  return { records: validRecords, errors };
+  return { records, errors };
 }
 
 export function scanLifecycleRecord(root, files = [], scannedSources) {
@@ -196,7 +199,7 @@ export function scanLifecycleRecord(root, files = [], scannedSources) {
   if (!normalizedFiles.includes(LIFECYCLE_MARKER_PATH)) {
     return {
       records: [],
-      errors: [{ path: LIFECYCLE_MARKER_PATH, reason: 'required lifecycle file is not tracked' }],
+      errors: [{ path: LIFECYCLE_MARKER_PATH, reason: 'lifecycle-tracked file is not tracked' }],
     };
   }
   if (scannedSources instanceof Map) {

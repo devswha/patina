@@ -7,8 +7,8 @@ This is the latest checked-in report for patina's deterministic suspect-zone ben
 ## Current result
 
 - Status: **passing**
-- Generated at: 2026-09-05T01:00:26.521Z
-- Node: v24.18.0
+- Generated at: 2026-09-15T07:30:41.682Z
+- Node: v22.23.1
 - Fixture schema: v1
 - Fixtures: 49
 - Languages: 4 (en, ja, ko, zh)

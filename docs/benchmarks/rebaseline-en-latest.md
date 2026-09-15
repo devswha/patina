@@ -1,6 +1,6 @@
 # Rebaseline Manifest Summary
 
-- Generated at: 2026-06-14T14:07:13.464Z
+- Generated at: 2026-09-15T07:30:41.753Z
 - Input: `artifacts/rebaseline-2025/manifest.en.scored.public.jsonl`
 - Records: 330
 - Protocol target: 25 samples per language × class × register cell

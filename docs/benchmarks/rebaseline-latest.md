@@ -1,6 +1,6 @@
 # Rebaseline Manifest Summary
 
-- Generated at: 2026-05-21T18:13:21.576Z
+- Generated at: 2026-09-15T16:59:56.169Z
 - Input: `artifacts/rebaseline-2025/rebaseline-2026.scored.public.jsonl`
 - Records: 800
 - Protocol target: 25 samples per language × class × register cell
@@ -81,41 +81,41 @@ Gate conditions met by this manifest.
 
 | metric | value |
 |---|---:|
-| accuracy | 71.5% |
-| accuracy CI | 68.3%–74.5% |
-| precision | 92.7% |
-| recall | 67.3% |
-| recall CI | 63.5%–71.0% |
-| F1 | 0.780 |
-| false positive rate | 16.0% |
-| false positive rate CI | 11.6%–21.7% |
-| false negative rate | 32.7% |
-| TP/FP/FN/TN | 404/32/196/168 |
+| accuracy | 73.6% |
+| accuracy CI | 70.5%–76.6% |
+| precision | 94.9% |
+| recall | 68.5% |
+| recall CI | 64.7%–72.1% |
+| F1 | 0.796 |
+| false positive rate | 11.0% |
+| false positive rate CI | 7.4%–16.1% |
+| false negative rate | 31.5% |
+| TP/FP/FN/TN | 411/22/189/178 |
 
 ### Catch rate by language × model family
 
 | language | model family | n | catch rate | 95% CI | caught/missed |
 |---|---|---:|---:|---:|---:|
 | en | claude-family | 100 | 74.0% | 64.6%–81.6% | 74/26 |
-| en | gemini-family | 100 | 79.0% | 70.0%–85.8% | 79/21 |
+| en | gemini-family | 100 | 80.0% | 71.1%–86.7% | 80/20 |
 | en | gpt-family | 100 | 77.0% | 67.8%–84.2% | 77/23 |
-| ko | claude-family | 100 | 68.0% | 58.3%–76.3% | 68/32 |
-| ko | gemini-family | 100 | 62.0% | 52.2%–70.9% | 62/38 |
-| ko | gpt-family | 100 | 44.0% | 34.7%–53.8% | 44/56 |
+| ko | claude-family | 100 | 67.0% | 57.3%–75.4% | 67/33 |
+| ko | gemini-family | 100 | 61.0% | 51.2%–70.0% | 61/39 |
+| ko | gpt-family | 100 | 52.0% | 42.3%–61.5% | 52/48 |
 
 ### False-positive rate by language
 
 | language | n | false-positive rate | 95% CI | FP/TN |
 |---|---:|---:|---:|---:|
-| en | 100 | 14.0% | 8.5%–22.1% | 14/86 |
+| en | 100 | 4.0% | 1.6%–9.8% | 4/96 |
 | ko | 100 | 18.0% | 11.7%–26.7% | 18/82 |
 
 ### By register
 
 | register | n | FP rate | FN rate | TP/FP/FN/TN |
 |---|---:|---:|---:|---:|
-| blog | 190 | 8.6% | 41.7% | 70/6/50/64 |
-| academic-summary | 190 | 25.7% | 25.8% | 89/18/31/52 |
+| blog | 190 | 5.7% | 40.0% | 72/4/48/66 |
+| academic-summary | 190 | 14.3% | 21.7% | 94/10/26/60 |
 | product-doc | 140 | 10.0% | 21.7% | 94/2/26/18 |
 | chat-update | 140 | 0.0% | 49.2% | 61/0/59/20 |
 | technical-how-to | 140 | 30.0% | 25.0% | 90/6/30/14 |

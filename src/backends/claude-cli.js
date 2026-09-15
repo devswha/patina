@@ -67,6 +67,10 @@ export function readClaudeCredentialState(file, now = Date.now()) {
  * authenticated install as unauthenticated there (#829). Only darwin runs
  * `security`; a missing binary, a lookup miss, or any spawn error reports
  * false and the file check decides, leaving every other platform untouched.
+ * The probe is bounded at 5000ms (the same convention as doctor's
+ * checkCommand, #448) and the timeout kills with SIGKILL, so the bound
+ * holds even if a wedged `security` would ignore SIGTERM; a timeout
+ * fails closed like any spawn error and the file check decides.
  *
  * @param {{platform?: string, spawnSyncImpl?: Function}} [deps] Test seam.
  * @returns {boolean} Whether the Keychain holds Claude Code credentials.
@@ -74,15 +78,24 @@ export function readClaudeCredentialState(file, now = Date.now()) {
 export function hasMacOsKeychainCredentials({ platform = process.platform, spawnSyncImpl = spawnSync } = {}) {
   if (platform !== 'darwin') return false;
   try {
-    const result = spawnSyncImpl('security', ['find-generic-password', '-s', 'Claude Code-credentials'], { stdio: 'ignore' });
+    const result = spawnSyncImpl('security', ['find-generic-password', '-s', 'Claude Code-credentials'], { stdio: 'ignore', timeout: 5000, killSignal: 'SIGKILL' });
     return result.status === 0;
   } catch {
     return false;
   }
 }
 
-export function isAuthenticated(deps = {}) {
-  return readClaudeCredentialState(credentialsPath()) === 'ok' || hasMacOsKeychainCredentials(deps);
+/**
+ * Classify Claude Code authentication without touching the network. The
+ * credentials file and the platform/spawn pair are injectable so tests can
+ * classify owned fixtures instead of the host home; every default is the
+ * real runtime value, so a no-argument call behaves exactly as before.
+ *
+ * @param {{credentialsFile?: string, platform?: string, spawnSyncImpl?: Function}} [deps] Internal test seam.
+ * @returns {boolean} Whether a usable Claude Code session exists.
+ */
+export function isAuthenticated({ credentialsFile = credentialsPath(), platform = process.platform, spawnSyncImpl = spawnSync } = {}) {
+  return readClaudeCredentialState(credentialsFile) === 'ok' || hasMacOsKeychainCredentials({ platform, spawnSyncImpl });
 }
 
 export function authHint() {

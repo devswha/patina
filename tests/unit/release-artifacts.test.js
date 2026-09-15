@@ -555,3 +555,67 @@ test('registry inspection failures preserve publication state details', async ()
       && error.details?.retries?.root === 0
   );
 });
+
+test('post-publish confirmation polls until the exact registry artifact appears', async () => {
+  const registry = new Map();
+  const inspections = new Map();
+  const transport = {
+    async inspect({ name }) {
+      const count = (inspections.get(name) || 0) + 1;
+      inspections.set(name, count);
+      // The upload is real, but the registry only becomes visible after a
+      // delay: the initial inspection and the first two post-publish
+      // inspections all miss.
+      if (count < 4) return null;
+      return registry.get(name) || null;
+    },
+    async latest() {
+      return null;
+    },
+    async publish({ name, artifact }) {
+      registry.set(name, {
+        integrity: artifact.integrity,
+        sha256: artifact.sha256,
+        sha512: artifact.sha512,
+      });
+    },
+  };
+  const result = await publishWithRecovery({
+    version: '8.6.0',
+    expectedVersion: '8.6.0',
+    sourceSHA: 'unit-source-sha',
+    artifacts: [ROOT, ALIAS],
+    transport,
+    confirmTimeoutMs: 1000,
+    confirmIntervalMs: 1,
+  });
+  assert.deepEqual(result.states, { root: 'done', alias: 'done' });
+  assert.equal(inspections.get(ROOT.name), 4);
+  assert.equal(inspections.get(ALIAS.name), 4);
+});
+
+test('post-publish confirmation fails unconfirmed once the bound elapses', async () => {
+  const transport = {
+    async inspect() {
+      return null;
+    },
+    async latest() {
+      return null;
+    },
+    async publish() {},
+  };
+  await assert.rejects(
+    publishWithRecovery({
+      version: '8.6.0',
+      expectedVersion: '8.6.0',
+      sourceSHA: 'unit-source-sha',
+      artifacts: [ROOT, ALIAS],
+      transport,
+      confirmTimeoutMs: 25,
+      confirmIntervalMs: 1,
+    }),
+    (error) => error instanceof ReleaseArtifactError
+      && error.code === 'ERR_PUBLISH_UNCONFIRMED'
+      && error.details?.states?.root === 'failed'
+  );
+});

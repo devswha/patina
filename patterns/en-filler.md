@@ -2,7 +2,7 @@
 pack: en-filler
 language: en
 name: Filler & Hedging Patterns
-version: 1.2.1
+version: 1.2.2
 patterns: 6
 corpus-snapshot:
   id: bootstrap-patterns-pre-provenance
@@ -93,15 +93,18 @@ corpus-snapshot:
 
 ### 31. Conclusion Signal Words
 
-**Watch words:** In conclusion, Ultimately, In summary, To conclude, To sum up, Finally, All in all, In the end, Overall, On the whole, This taught me, I learned that, the takeaway
+**Watch words:** In conclusion, Ultimately, In summary, To conclude, To sum up, Finally, All in all, In the end, Overall, On the whole, This taught me, I learned that, the takeaway, what this story shows is, what it all comes down to, which just goes to show
 
-**Fire condition:** The document's final paragraph (or second-to-last) opens with one of the watch words, or those last 1–2 paragraphs function as a lesson closer ("This taught me", "I learned that", "the takeaway") without adding a new number, name, or decision. Or 2+ such conclusion signals appear across paragraphs.
+**Fire condition:** The document's final paragraph (or second-to-last) opens with one of the watch words, or those last 1–2 paragraphs function as a lesson closer ("This taught me", "I learned that", "the takeaway") without adding a new number, name, or decision. The same applies when the closer only names the theme or moral of claims the body already made ("What this story shows is the power of consistency") instead of asserting something new. Or 2+ such conclusion signals appear across paragraphs.
 
 **Exclusion:**
 - Academic papers with an explicit "Conclusion" section header (the header already signals; in-prose markers are redundant)
 - Multi-step arguments where "Therefore" or "Thus" follows from a clear preceding chain (logic markers, not stylistic markers)
 - Speech or lecture transcripts where the speaker explicitly signposts wrap-up
 - A closer that states a new number, name, or decision
+- The closer is the piece's only thesis — the body never stated it
+- A lessons-learned list is the document's purpose (postmortem, retrospective, instructional summary)
+- A quoted speaker states the lesson
 
 **Problem:** AI essays announce their conclusions ("In conclusion, X is Y") or bolt on a lesson function in the last 1–2 paragraphs. Human writers rarely flag the conclusion paragraph, and they do not invent a moral the draft did not already have.
 

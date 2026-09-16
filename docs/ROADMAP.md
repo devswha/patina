@@ -118,6 +118,7 @@ Candidate features:
 - Korean passive/nominalization proxies
 - paragraph shape variation
 - **sentence-length / line-rhythm smoothness floor** (advisory): shipped advisory (CLI rewrite warning); not in analyzeText / benchmark. Flags rewrite output whose sentence-length CV, line-length CV, or line-ending entropy falls **below** a human band — the "too smooth / over-edited" lower bound, distinct from the existing detection-side burstiness signal. Warning only (`src/cli/smoothness-advisory.js`); no exit-code or gate change; missing `smoothness-floor` key is enabled. Reuses `burstinessCV`; line CV / ending entropy are local (no gn-voice NOTICE credit).
+- **rewrite overcorrection guard** (advisory): shipped advisory (CLI rewrite warning); not in analyzeText / benchmark. The mirror of the smoothness floor — it compares SOURCE to OUTPUT and notes when a rewrite traded one slop class for another: every typographic dash removed from a dash-leaning source, or slang the source never used appearing in the rewrite (en/ko). Warning only (`src/cli/overcorrection-advisory.js`); no exit-code, text, or gate change; missing `overcorrection-guard` key is enabled. Deliberately not a dash ban — one surviving dash clears the check, and a source with fewer than two dashes is never judged (#882).
 
 Acceptance criteria:
 

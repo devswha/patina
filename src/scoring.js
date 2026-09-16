@@ -361,7 +361,14 @@ function buildContractExampleCategoryRow(patterns, config) {
 // penalty. Returns 0 when the tell is inert (not eligible / not en / no dash) or
 // when the style pattern count or category weight is unavailable.
 function computeShortFormEvidenceFloor({ result, config, lang, patterns = [] }) {
-  const rawSeverity = Number(result?.shortForm?.emDash?.severity ?? 0);
+  // #879: the 2026 cadence combination (stack + set group + informationless aside,
+  // or a short-form phrase) is a stronger tell than a lone dash, so the floor takes
+  // whichever signal is stronger. Both run through the same short-text boost and the
+  // same `high` cap below, so this raises no ceiling — it only stops a combination
+  // from scoring as if it were a single dash.
+  const dashSeverity = Number(result?.shortForm?.emDash?.severity ?? 0);
+  const cadenceSeverity = Number(result?.shortForm?.cadence?.severity ?? 0);
+  const rawSeverity = Math.max(dashSeverity, cadenceSeverity);
   if (!(rawSeverity > 0)) return 0;
   const severityPoints = resolveSeverityPoints(config);
   const high = severityPoints.high;

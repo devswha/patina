@@ -286,7 +286,14 @@ function wantsJsonResponse(headers = {}) {
 }
 
 /**
- * @param {{env?: Record<string,string|undefined>, runWebRewriteStreamImpl?: typeof runWebRewriteStream, logger?: {info?: Function, warn?: Function, error?: Function, debug?: Function}, now?: () => number, observabilityKv?: {increment: (key: string, options: {ttlSeconds: number}) => unknown}}} [options]
+ * `runWebRewriteStreamImpl` is typed by what this handler consumes, not by the
+ * full implementation signature: the frames are delivered through `emit`, and
+ * the resolved value is only read for `ok`/`code` (and forwarded to
+ * `beforeResponseEnd`), which is why the reads here are already optional.
+ * Requiring the whole result shape would force every injected stand-in to
+ * fabricate fields this handler never looks at.
+ *
+ * @param {{env?: Record<string,string|undefined>, runWebRewriteStreamImpl?: (options: Parameters<typeof runWebRewriteStream>[0]) => Promise<{ok?: boolean, code?: string}|undefined>, logger?: {info?: Function, warn?: Function, error?: Function, debug?: Function}, now?: () => number, observabilityKv?: {increment: (key: string, options: {ttlSeconds: number}) => unknown}}} [options]
  */
 export function createRewriteApiHandler({ env = /** @type {Record<string,string|undefined>} */ (process.env), runWebRewriteStreamImpl = runWebRewriteStream, logger = console, now = () => Date.now(), observabilityKv } = {}) {
   const restKv = createRestKv(env);

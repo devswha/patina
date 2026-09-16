@@ -391,7 +391,7 @@ function extractOverall(result, body) {
  * @param {string|object|null} result Structured result whose `overall` field is checked first.
  * @param {string} text Raw output text scanned for embedded JSON, a score table, or inline "overall: N".
  * @param {object} options Extraction options (required).
- * @param {function(*): (number|null)} options.coerce Numeric coercer applied to candidate values.
+ * @param {(value: unknown) => number|null} options.coerce Numeric coercer applied to candidate values.
  * @param {boolean} [options.parseResultFallback=false] When the text yields no JSON, also try parsing `result` itself if it is a string (output.js JSON formatter behavior).
  * @param {boolean} [options.pipeBoundary=false] Accept a `|` table-cell boundary before "overall" in the inline-text regex (score-gate behavior).
  * @returns {number|null} Extracted overall score, or null when none is found.

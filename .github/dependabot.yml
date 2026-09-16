@@ -12,12 +12,6 @@ updates:
         update-types:
           - patch
           - minor
-    ignore:
-      # Held until the TypeScript 7 readiness unit (#862) is complete.
-      # Patch and minor updates keep flowing through the devtools group.
-      - dependency-name: typescript
-        update-types:
-          - version-update:semver-major
   - package-ecosystem: github-actions
     directory: /
     target-branch: dev

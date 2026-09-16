@@ -5,11 +5,15 @@ import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const README_FILES = ['README.md', 'README_KR.md', 'README_ZH.md', 'README_JA.md'];
-const README_CATALOGS = {
-  'README.md': '**184 patterns** | 37 rewrite-capable + 9 score-only viral-hook per language (46 each across KO/EN/ZH/JA)',
-  'README_KR.md': '**184개 패턴** | 언어별 재작성 가능 37개 + 스코어 전용 바이럴 훅 9개(KO/EN/ZH/JA 각각 46개)',
-  'README_ZH.md': '**184 条模式** | 每种语言 37 条可改写模式 + 9 条仅评分的病毒式钩子模式（KO/EN/ZH/JA 各 46 条）',
-  'README_JA.md': '**184 パターン** | 各言語 37 個の書き換え可能パターン + 9 個のスコア専用 viral-hook（KO/EN/ZH/JA 各 46 個）',
+// The catalog is deliberately asymmetric since #879: pattern 38 is English-only,
+// because the promotion fixture that justifies it is English-only and that issue
+// lists KO/ZH/JA promotion as a non-goal until they have their own fixtures.
+export const CATALOG_TOTAL = 185;
+export const README_CATALOGS = {
+  'README.md': '**185 patterns** | 38 rewrite-capable (EN) / 37 (KO, ZH, JA) + 9 score-only viral-hook per language',
+  'README_KR.md': '**185개 패턴** | 재작성 가능 EN 38개 / KO·ZH·JA 각 37개 + 언어별 스코어 전용 바이럴 훅 9개',
+  'README_ZH.md': '**185 条模式** | 可改写模式 EN 38 条 / KO、ZH、JA 各 37 条 + 每种语言 9 条仅评分的病毒式钩子模式',
+  'README_JA.md': '**185 パターン** | 書き換え可能パターンは EN 38 個 / KO・ZH・JA 各 37 個 + 各言語 9 個のスコア専用 viral-hook',
 };
 
 export function collectReleaseMetadataErrors({ repoRoot = REPO_ROOT, env = process.env } = {}) {
@@ -45,7 +49,7 @@ export function collectReleaseMetadataErrors({ repoRoot = REPO_ROOT, env = proce
     const readme = readFileSync(repoPath(path), 'utf8');
     expect(readme.includes(`badge/version-${version}-blue`), `${path} version badge must match package.json`);
     expect(readme.includes(`version: "${version}"`), `${path} config example version must match package.json`);
-    expect(readme.includes(README_CATALOGS[path]), `${path} catalog must match the canonical 184-pattern breakdown`);
+    expect(readme.includes(README_CATALOGS[path]), `${path} catalog must match the canonical ${CATALOG_TOTAL}-pattern breakdown`);
   }
 
   const playgroundHtml = readFileSync(repoPath('playground/index.html'), 'utf8');

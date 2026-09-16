@@ -714,6 +714,34 @@ test('scoreDeterministicSignals floors a social short reply on a single em dash'
   assert.strictEqual(two.shortFormFloor, 3.3); // Medium severity 2
 });
 
+test('the 2026 cadence combination floors higher than a lone em dash (#879)', () => {
+  const config = { ...loadConfig(), language: 'en', documentType: 'social' };
+  const lone = scoreDeterministicSignals({
+    text: 'The migration shipped on Tuesday — finally, after three weekends of work.',
+    config,
+    patterns: EN_STYLE_PACK,
+  });
+  const cadence = scoreDeterministicSignals({
+    text: 'I notice the tells. Short punchy sentences. Constant set groups. Those dashes — unnecessary little asides.',
+    config,
+    patterns: EN_STYLE_PACK,
+  });
+  assert.ok(lone.shortFormFloor > 0, 'a lone dash still floors as a weak signal');
+  assert.ok(
+    cadence.shortFormFloor > lone.shortFormFloor,
+    `combination (${cadence.shortFormFloor}) must outrank a lone dash (${lone.shortFormFloor})`,
+  );
+});
+
+test('a numeric range dash is not a short-form tell (#879)', () => {
+  const det = scoreDeterministicSignals({
+    text: 'Revenue grew across 2020—2024 and the team doubled in that window.',
+    config: { ...loadConfig(), language: 'en', documentType: 'social' },
+    patterns: EN_STYLE_PACK,
+  });
+  assert.strictEqual(det.shortFormFloor, 0, 'a 2020—2024 range is span punctuation, not an aside');
+});
+
 test('the short-form floor is inert for the default document type', () => {
   const det = scoreDeterministicSignals({
     text: 'built patina for exactly that — keeps your meaning intact.',

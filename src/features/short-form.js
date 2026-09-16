@@ -39,7 +39,52 @@ function removeIgnoredDashContexts(text) {
     // Conservative quoted-dialogue exclusion for paired straight/curly quotes.
     .replace(/["\u201C][^"\u201D\n]*\u2014[^"\u201D\n]*["\u201D]/gu, (span) =>
       span.replace(/\u2014/gu, ' ')
-    );
+    )
+    // Numeric ranges (2020—2024, 10—20%) are span punctuation, not an aside.
+    .replace(/\d\s*\u2014\s*(?=\d)/gu, ' ');
+}
+
+/** 2026 cadence pack (#879, parent #878): short-form phrasings that carry the tell alone. */
+export const CADENCE_PHRASE_RES = Object.freeze([
+  /\bthat matters\b/i,
+  /\byou don't have\b[^.!?]{0,40}[.,]\s*you have\b/i,
+]);
+
+/** A "short punchy sentence" for stack purposes, in whitespace tokens. */
+export const SHORT_STACK_MAX_TOKENS = 8;
+export const SHORT_STACK_MIN_RUN = 4;
+/** A tighter parallel fragment run ("Generic ideas. No point of view."). */
+export const SET_GROUP_MAX_TOKENS = 5;
+export const SET_GROUP_MIN_RUN = 3;
+
+function tokenCount(sentence) {
+  return String(sentence).trim().split(/\s+/u).filter(Boolean).length;
+}
+
+function longestRun(sentences, maxTokens) {
+  let best = 0;
+  let run = 0;
+  for (const sentence of sentences) {
+    if (tokenCount(sentence) <= maxTokens) {
+      run += 1;
+      if (run > best) best = run;
+    } else {
+      run = 0;
+    }
+  }
+  return best;
+}
+
+// An aside that carries neither a number nor a proper noun adds no information.
+// Asides that DO carry one are ordinary punctuation and stay cold.
+function hasInformationlessAside(text) {
+  const asides = [...String(text).matchAll(/\u2014([^\u2014\n.!?]{1,60})/gu)].map((m) => m[1]);
+  return asides.some((aside) => !/\d/u.test(aside) && !/\b[A-Z][a-z]{2,}/u.test(aside));
+}
+
+function hasAllCapsCloser(sentences) {
+  const last = String(sentences[sentences.length - 1] ?? '').trim();
+  return /\b[A-Z]{3,}[.!?]?$/u.test(last);
 }
 
 /**
@@ -75,6 +120,21 @@ export function detectEnglishShortFormTells(
 
   const countable = removeIgnoredDashContexts(normalized);
   const emDashCount = (countable.match(/\u2014/gu) ?? []).length;
+
+  // 2026 cadence combination. Fires only on CO-OCCURRING structural signals, or on
+  // a short-form phrase that carries the tell by itself — a lone dash or a single
+  // short sentence must never be enough (#879 false-positive risk).
+  const cadenceSignals = [];
+  if (longestRun(sentences, SHORT_STACK_MAX_TOKENS) >= SHORT_STACK_MIN_RUN) cadenceSignals.push('short-stack');
+  if (longestRun(sentences, SET_GROUP_MAX_TOKENS) >= SET_GROUP_MIN_RUN) cadenceSignals.push('set-group');
+  if (hasInformationlessAside(countable)) cadenceSignals.push('empty-aside');
+  if (hasAllCapsCloser(sentences)) cadenceSignals.push('all-caps-closer');
+  const phraseHit = CADENCE_PHRASE_RES.some((re) => re.test(normalized));
+  if (phraseHit) cadenceSignals.push('short-form-phrase');
+  const structuralCount = cadenceSignals.filter((name) => name !== 'short-form-phrase').length;
+  const cadenceDetected = eligible && (structuralCount >= 2 || phraseHit);
+  // Always outranks the lone-dash weak signal (severity 1) when it fires at all.
+  const cadenceSeverity = cadenceDetected ? Math.min(3, Math.max(2, structuralCount)) : 0;
   // 1 -> Low, 2 -> Medium, 3+ -> High. Only when eligible; otherwise inert.
   const severity = eligible ? Math.min(3, emDashCount) : 0;
 
@@ -88,6 +148,11 @@ export function detectEnglishShortFormTells(
       count: emDashCount,
       perSentence: sentences.length > 0 ? emDashCount / sentences.length : 0,
       severity,
+    },
+    cadence: {
+      detected: cadenceDetected,
+      severity: cadenceSeverity,
+      signals: cadenceDetected ? cadenceSignals : [],
     },
   };
 }

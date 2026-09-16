@@ -33,9 +33,11 @@ and [examples checklist](EXAMPLES.md#what-patina-is-checking).
 The document-policy axis. It selects purpose, audience, structural conventions,
 domain vocabulary/precision, avoidance rules, and language-scoped pattern
 bounds without changing Persona voice, Register, or meaning thresholds. CLI:
-`--document-type`; config: `document-type`. The historical ids `formal` and
-`casual-conversation` refer to structured-document and chat/message conventions;
-they do not select professional or casual Register.
+`--document-type`; config: `document-type`. The historical id `formal` is
+proposals and official reports (compat); resumes, cover letters/STAR stories,
+and project writeups use `resume`, `personal-statement`, and `project-writeup`.
+`casual-conversation` is chat/message convention. None of these ids select
+professional or casual Register.
 
 ## Fidelity
 

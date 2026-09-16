@@ -127,7 +127,7 @@ These options compose but never imply one another:
 
 | Axis | Input | Runtime asset | Omission |
 |---|---|---|---|
-| Document Type | `--document-type <name>` / `document-type:` | `document-types/<name>.md` or `custom/document-types/<name>.md` | `default` document policy |
+| Document Type | `--document-type <name>` / `document-type:` | `document-types/<name>.md` or `custom/document-types/<name>.md` | `default` document policy. Built-ins include `resume`, `personal-statement`, and `project-writeup`; `formal` is proposals/official reports only. |
 | Persona | `--persona <name>` / `persona:` | `personas/<lang>/<name>.md` or a custom Persona | preserve source voice |
 | Register | `--register casual|professional` / `register:` | delivery directive | preserve source register |
 
@@ -211,8 +211,8 @@ patina --preview --jargon remove https://example.com/  # de-jargonized in-place 
 patina --jargon explain --register casual draft.md     # gloss terms, casual register
 ```
 
-- `--jargon keep` (default) — technical terms untouched.
-- `--jargon explain` — keep terms, add a brief plain-language gloss at first use.
+- `--jargon keep` (default) — copy Latin-letter tech terms, API names, task names, and exam names (`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`) as-is. Do not synonym-swap them into 분류/분할/손실.
+- `--jargon explain` — keep those English terms and add a brief plain-language gloss at first mention only.
 - `--jargon remove` — replace developer/technical jargon with everyday language; product names and proper nouns stay.
 
 ### Variant comparison in the preview

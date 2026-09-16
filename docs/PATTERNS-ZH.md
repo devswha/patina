@@ -220,7 +220,7 @@ Example after:
 - Source: [zh-language.md](../patterns/zh-language.md)
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
-- Fire condition: 同一段落中出现2组以上排比结构，或单组排比中并列3个以上结构高度相似的分句且可以用更简练的方式表达。
+- Fire condition: 同一文档中修辞性三项并列出现 2 次以上，且改成两项或四项同样成立。真实技术三项（classification/segmentation/detection 等）除外。
 - Example files: [failure](../examples/zh-10-failure-01.md) · [success](../examples/zh-10-success-01.md)
 
 Example before:
@@ -598,7 +598,7 @@ Example after:
 - Source: [zh-filler.md](../patterns/zh-filler.md)
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
-- Fire condition: 文章最后一段（或倒数第二段）首句以上述信号词之一开头。或同一文档中此类信号词出现 2 次以上。
+- Fire condition: 最后 1–2 段以结论信号词开头，或没有新数字/名称/决定的教训收束。或同一文档中此类信号词出现 2 次以上。
 - Example files: [failure](../examples/zh-31-failure-01.md) · [success](../examples/zh-31-success-01.md)
 
 Example before:

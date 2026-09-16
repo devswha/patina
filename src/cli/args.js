@@ -128,7 +128,7 @@ export function parseArgs(rawArgs) {
         const value = readOptionValue(args, i, arg);
         i++;
         parsed.jargon = parseTransformList(value, arg, ['keep', 'explain', 'remove'],
-          'keep = leave technical terms (default), explain = add plain-language glosses, remove = replace jargon for a general audience. Comma-separate values with --preview to compare variants.');
+          'keep = copy Latin-letter tech/API/task/exam names as-is (default), explain = keep those terms and add a first-mention gloss, remove = replace jargon for a general audience. Comma-separate values with --preview to compare variants.');
         break;
       }
       case '--preview':
@@ -835,7 +835,8 @@ LOCALIZATION (XLIFF)
 DOCUMENT & VOICE
   --lang <code>           Language: ko, en, zh, ja (default: ko)
   --document-type <name>  Document policy: default, blog, academic, technical,
-                          formal, social, email, legal, medical, marketing,
+                          formal, resume, personal-statement, project-writeup,
+                          social, email, legal, medical, marketing,
                           narrative, instructional, casual-conversation,
                           code-comment, commit-message, release-notes, namuwiki
   --persona <name>        Optional reusable voice for rewrite/preview. Omit it
@@ -847,8 +848,9 @@ DOCUMENT & VOICE
                           --preview compares register variants.
   --jargon <policy[,policy]>
                           Technical-term policy (rewrite/--preview only):
-                          keep (default), explain = add plain-language glosses,
-                          remove = replace jargon for a general audience.
+                          keep (default) = copy Latin-letter tech/API/task
+                          names as-is, explain = keep English + first-mention
+                          gloss, remove = replace jargon for a general audience.
                           Comma list with --preview compares variants in-page
   --rewrite-headings      Allow rewording/adding/removing Markdown headings.
                           By default ATX heading lines (## ...) are preserved

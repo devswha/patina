@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "generatedBy": "node scripts/update-benchmark-ranges.mjs",
-  "generatedAt": "2026-07-02T06:02:27.984Z",
-  "fixtureCount": 49,
+  "generatedAt": "2026-09-16T12:44:16.148Z",
+  "fixtureCount": 53,
   "tolerances": {
     "cv": 0.025,
     "mattr": 0.03,
@@ -226,6 +226,37 @@
       ],
       "lexicon_hits": []
     },
+    "en-ai-08-complete-arc": {
+      "path": "tests/fixtures/suspect-zones/en/ai/en-ai-08-complete-arc.md",
+      "lang": "en",
+      "class": "ai",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
+      },
+      "cv_band": null,
+      "cv_range": [
+        0.1,
+        0.15
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.908,
+        0.968
+      ],
+      "lexicon_density_range": [
+        0,
+        5
+      ],
+      "lexicon_hits": []
+    },
     "en-nat-01": {
       "path": "tests/fixtures/suspect-zones/en/natural/en-nat-01.md",
       "lang": "en",
@@ -405,6 +436,37 @@
       "mattr_range": [
         0.81,
         0.87
+      ],
+      "lexicon_density_range": [
+        0,
+        5
+      ],
+      "lexicon_hits": []
+    },
+    "en-nat-07-headed-notes": {
+      "path": "tests/fixtures/suspect-zones/en/natural/en-nat-07-headed-notes.md",
+      "lang": "en",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
+      },
+      "cv_band": null,
+      "cv_range": [
+        0,
+        0.025
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.97,
+        1.03
       ],
       "lexicon_density_range": [
         0,
@@ -1032,6 +1094,37 @@
       ],
       "lexicon_hits": []
     },
+    "ko-ai-08-complete-arc": {
+      "path": "tests/fixtures/suspect-zones/ko/ai/ko-ai-08-complete-arc.md",
+      "lang": "ko",
+      "class": "ai",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
+      },
+      "cv_band": null,
+      "cv_range": [
+        0.1,
+        0.15
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.97,
+        1.03
+      ],
+      "lexicon_density_range": [
+        0,
+        5
+      ],
+      "lexicon_hits": []
+    },
     "ko-nat-01": {
       "path": "tests/fixtures/suspect-zones/ko/natural/ko-nat-01.md",
       "lang": "ko",
@@ -1180,6 +1273,37 @@
       "mattr_range": [
         0.968,
         1.028
+      ],
+      "lexicon_density_range": [
+        0,
+        5
+      ],
+      "lexicon_hits": []
+    },
+    "ko-nat-06-headed-notes": {
+      "path": "tests/fixtures/suspect-zones/ko/natural/ko-nat-06-headed-notes.md",
+      "lang": "ko",
+      "class": "natural",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "detectors": {
+        "burstiness": false,
+        "koDiagnostics": false,
+        "mattr": false,
+        "lexicon": false,
+        "endingMonotony": false,
+        "candor": false,
+        "thematicBreak": false
+      },
+      "cv_band": null,
+      "cv_range": [
+        0,
+        0.025
+      ],
+      "mattr_band": "high",
+      "mattr_range": [
+        0.97,
+        1.03
       ],
       "lexicon_density_range": [
         0,

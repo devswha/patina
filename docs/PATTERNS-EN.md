@@ -216,7 +216,7 @@ Example after:
 - Source: [en-language.md](../patterns/en-language.md)
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
-- Fire condition: 3-item lists appear 2+ times in the same document, or a triple-part sentence where the count is arbitrary and another count would be equally valid.
+- Fire condition: Rhetorical 3-item lists appear 2+ times, and two or four items would be equally valid. Real technical triads (classification/segmentation/detection, input/process/output) are excluded.
 - Example files: [failure](../examples/en-10-failure-01.md) · [success](../examples/en-10-success-01.md)
 
 Example before:
@@ -595,8 +595,8 @@ Example after:
 
 - Source: [en-filler.md](../patterns/en-filler.md)
 - Type: rewrite-capable pattern
-- Watch words: In conclusion, Ultimately, In summary, To conclude, To sum up, Finally, All in all, In the end, Overall, On the whole
-- Fire condition: The document's final paragraph (or second-to-last) opens with one of the watch words. Or 2+ such conclusion signals appear across paragraphs.
+- Watch words: In conclusion, Ultimately, In summary, To conclude, To sum up, Finally, All in all, In the end, Overall, On the whole, This taught me, I learned that, the takeaway
+- Fire condition: Last 1–2 paragraphs open with a watch word or function as a lesson closer with no new number, name, or decision. Or 2+ such signals appear.
 - Example files: [failure](../examples/en-31-failure-01.md) · [success](../examples/en-31-success-01.md)
 
 Example before:

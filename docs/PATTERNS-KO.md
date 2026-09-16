@@ -210,7 +210,7 @@ Example after:
 - Source: [ko-language.md](../patterns/ko-language.md)
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
-- Fire condition: 같은 문서에 3개 항목 나열이 2회 이상 등장하거나, 셋으로 묶은 근거가 자의적이어서 다른 개수도 동등하게 성립하는 경우.
+- Fire condition: 같은 문서에 수사적 3항 나열이 2회 이상 등장하고, 그 묶음이 2개나 4개여도 동등하게 성립하는 경우. 실제 기술 삼항은 제외.
 - Example files: [failure](../examples/10-failure-01.md) · [success](../examples/10-success-01.md)
 
 Example before:
@@ -564,8 +564,8 @@ Example after:
 
 - Source: [ko-filler.md](../patterns/ko-filler.md)
 - Type: rewrite-capable pattern
-- Watch words: 결론적으로, 결국, 궁극적으로, 요컨대, 종합하면, 종합해보면, 정리하면, 마지막으로
-- Fire condition: 글의 마지막 문단(또는 마지막에서 두 번째 문단) 첫 문장이 위 신호어 중 하나로 시작. 또는 같은 문서에 결론 신호어가 2회 이상 등장.
+- Watch words: 결론적으로, 결국, 궁극적으로, 요컨대, 종합하면, 종합해보면, 정리하면, 마지막으로, 배웠습니다, 깨달았습니다, 의미가 있습니다
+- Fire condition: 마지막 1–2문단이 위 신호어로 시작하거나, 새 숫자·이름·결정 없이 교훈 기능만 하는 경우. 또는 같은 문서에 결론 신호어가 2회 이상 등장.
 - Example files: [failure](../examples/31-failure-01.md) · [success](../examples/31-success-01.md)
 
 Example before:

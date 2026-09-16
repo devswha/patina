@@ -143,6 +143,9 @@ describe('Document Type Loading', () => {
       'social',
       'email',
       'formal',
+      'resume',
+      'personal-statement',
+      'project-writeup',
       'legal',
       'medical',
       'marketing',
@@ -246,7 +249,7 @@ describe('Document Type Loading', () => {
   });
 
   it('should provide zh/ja pattern overrides for multilingual Document Type parity', () => {
-    const names = ['blog', 'casual-conversation', 'formal', 'instructional', 'narrative'];
+    const names = ['blog', 'casual-conversation', 'formal', 'resume', 'personal-statement', 'project-writeup', 'instructional', 'narrative'];
     const documentedValues = new Set(['suppress', 'reduce', 'amplify']);
     for (const name of names) {
       const documentType = loadDocumentType(REPO_ROOT, name);

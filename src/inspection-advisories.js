@@ -2,9 +2,20 @@
 // the deterministic score. Pairwise checks skip when rewrite text is absent.
 
 import { splitParagraphs, splitProseSentences, tokenize } from './features/segment.js';
+import { assessPortability } from './features/portability.js';
 
 export const COMPLETENESS_OMIT_TYPES = Object.freeze(['academic', 'medical', 'technical']);
 export const STAR_EVENNESS_TYPES = Object.freeze(['personal-statement', 'project-writeup']);
+/**
+ * Registers where impersonal, swappable prose is CORRECT rather than a tell: an
+ * academic abstract, a legal clause, or a formal report is supposed to read
+ * without a personal point of view, so the portability probe stays quiet there.
+ */
+export const PORTABILITY_OMIT_TYPES = Object.freeze(['academic', 'medical', 'technical', 'legal', 'formal']);
+
+export function omitsPortabilityAdvisory(documentType) {
+  return PORTABILITY_OMIT_TYPES.includes(String(documentType || ''));
+}
 
 const CODA_RE = /배웠|깨달|의미가 있|그래서 중요한|This taught me|I learned that|\bI learned\b|the takeaway|takeaway is/i;
 const HEADING_RE = /^#{1,6}\s+\S/;
@@ -157,6 +168,21 @@ export function collectInspectionAdvisories(text, {
         shares: star.shares,
       });
     }
+  }
+  // #881: point-of-view absence. Detect only — the rewrite-side version of this
+  // idea failed Study 4 (H-4b not supported, meaning gate violated 50/54), so the
+  // probe reports and never asks the rewriter to invent a missing detail.
+  const portability = omitsPortabilityAdvisory(documentType) ? null : assessPortability(text, { lang: language });
+  if (portability?.trip) {
+    advisories.push({
+      code: 'portable-generic-prose',
+      severity: 'advisory',
+      scope: 'document',
+      message: 'Most sentences would stay true if the product, company, or person were swapped; the draft carries little point of view.',
+      portableCount: portability.portableCount,
+      sentenceCount: portability.sentenceCount,
+      ratio: portability.ratio,
+    });
   }
   return advisories;
 }

@@ -90,7 +90,7 @@ export function fenceReferenceText(text, { lang = 'en', label = '' } = {}) {
  * Single resolution path for every prompt surface: yaml
  * `scoring.severity-points` overrides the documented defaults key-by-key.
  *
- * @param {object} [config] Effective patina config.
+ * @param {import('./config.js').PatinaConfig} [config] Effective patina config.
  * @returns {{high: number, medium: number, low: number}} Effective severity points.
  * @example
  * const points = resolveSeverityPoints(config);
@@ -184,15 +184,15 @@ function buildRegisterDirective(value, lang) {
  * Build the LLM prompt for rewrite, diff, audit, or score mode.
  *
  * @param {object} options Prompt inputs.
- * @param {object} options.config Effective patina config.
- * @param {object[]} options.patterns Loaded pattern packs.
- * @param {object|null} options.documentType Parsed document-type policy.
- * @param {object|null} options.voice Parsed claim-safe voice baseline.
+ * @param {import('./config.js').PatinaConfig} options.config Effective patina config.
+ * @param {import('./loader.js').PatternPack[]} options.patterns Loaded pattern packs.
+ * @param {Record<string, any>|null} options.documentType Parsed document-type policy.
+ * @param {Record<string, any>|null} options.voice Parsed claim-safe voice baseline.
  * @param {object|null} [options.persona] Optional validated voice persona.
- * @param {object|null} options.scoring Parsed scoring guide.
+ * @param {Record<string, any>|null} options.scoring Parsed scoring guide.
  * @param {string} options.text Input text.
  * @param {string} [options.mode=rewrite] Output mode.
- * @param {object|null} [options.register=null] Explicit register metadata.
+ * @param {ReturnType<typeof import('./config.js').resolveRegister>} [options.register=null] Explicit register metadata.
  * @param {'strict'|'minimal'} [options.promptMode=strict] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals=null] Deterministic document
  *   measurements (e.g. dominant Korean register) injected into rewrite prompts
@@ -407,7 +407,7 @@ function buildTransformDirective({ jargon = 'keep', korean = false } = {}) {
  * `PATINA_RHETORIC_POLICY=legacy` restores the pre-2026-09-14 similar-weight
  * sentence. `h-rhetoric` is kept as an alias of the product default.
  *
- * @param {NodeJS.ProcessEnv|object} [env=process.env]
+ * @param {Record<string,string|undefined>} [env=process.env]
  * @returns {'default'|'h-rhetoric'|'legacy'}
  */
 export function resolveRhetoricPolicy(env = process.env) {
@@ -640,10 +640,10 @@ function buildAuditInstructions() {
  * (markdown table for the skill prompt, strict JSON for scoreText), so a
  * single prompt can never carry two contradictory contracts (issue #397).
  *
- * @param {object} config Effective patina config.
+ * @param {import('./config.js').PatinaConfig} config Effective patina config.
  * @param {string} lang Language code.
  * @param {string} [text=''] Input text (drives the short-text boost).
- * @param {object[]} [patterns=[]] Loaded pattern packs.
+ * @param {import('./loader.js').PatternPack[]} [patterns=[]] Loaded pattern packs.
  * @returns {string} Scoring-math instruction block without an output contract.
  * @example
  * const core = buildScoreMathCore(config, 'ko', 'Draft', patterns);

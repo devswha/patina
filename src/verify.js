@@ -88,7 +88,32 @@ const STRICT_RETRY_DIRECTIVE = [
  * routed through the selected backend chain, so verify works with HTTP and local
  * CLI backends alike.
  *
+ * Every option is listed because documenting only some of them would make the
+ * compiler treat those as the entire parameter shape.
+ *
  * @param {object} options
+ * @param {string} options.original Source text the rewrite must preserve.
+ * @param {string} options.rewrite Candidate rewrite to verify.
+ * @param {import('./config.js').PatinaConfig} options.config Effective patina config.
+ * @param {import('./loader.js').PatternPack[]} options.patterns Loaded pattern packs.
+ * @param {Record<string, any>|null} options.documentType Parsed document-type policy.
+ * @param {Record<string, any>|null} options.voice Parsed claim-safe voice baseline.
+ * @param {Record<string, any>|null} [options.persona] Optional validated voice persona.
+ * @param {ReturnType<typeof import('./config.js').resolveRegister>} [options.register] Explicit register metadata.
+ * @param {Record<string, any>|null} options.scoring Parsed scoring guide.
+ * @param {'strict'|'minimal'} [options.promptMode] Prompt catalog detail level.
+ * @param {string[]|null} [options.documentSignals] Deterministic document measurements.
+ * @param {string} [options.jargon] Technical-term policy (keep|explain|remove).
+ * @param {boolean} [options.rewriteHeadings] Allow rewording Markdown headings.
+ * @param {'default'|'h-rhetoric'|'legacy'} [options.rhetoricPolicy] Rhetoric policy forwarded to the prompt builder.
+ * @param {string} [options.apiKey] Backend API key.
+ * @param {string} [options.baseURL] Backend base URL.
+ * @param {string} [options.model] Backend model id.
+ * @param {Function} options.callLLM Injected transport-agnostic LLM client.
+ * @param {AbortSignal} [options.signal] Abort signal.
+ * @param {number} [options.timeout] Per-call timeout in milliseconds.
+ * @param {import('./logger.js').Logger} [options.logger] patina logger.
+ * @param {{scoreMPS?: Function, scoreFidelity?: Function}} [options.scoreFns] Injectable scorers.
  * @returns {Promise<{text: string, mps: number|null, fidelity: number, verified: boolean, retried: boolean, reason: string}>}
  */
 export async function verifyRewrite({

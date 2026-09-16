@@ -6,13 +6,13 @@ import { TRANSLATIONESE_RULES } from './features/translationese.js';
 /**
  * Format a raw backend result for CLI output mode and requested format.
  *
- * @param {string|object} result Backend result or structured mode result.
+ * @param {string|Record<string, any>} result Backend result or structured mode result.
  * @param {string} mode Output mode: rewrite, diff, audit, or score.
- * @param {object} [parsed={}] Parsed CLI options.
+ * @param {Record<string, any>} [parsed={}] Parsed CLI options.
  * @param {object} [opts={}] Formatting options.
  * @param {object|null} [opts.register] Explicit register metadata.
- * @param {object} [opts.logger] Logger for output warnings.
- * @param {object} [opts.env] Environment map for color decisions.
+ * @param {import('./logger.js').Logger} [opts.logger] Logger for output warnings.
+ * @param {Record<string,string|undefined>} [opts.env] Environment map for color decisions.
  * @param {object} [opts.stdout] Stdout-like stream for color decisions.
  * @param {string} [opts.auditBackstop] Deterministic audit-mode section.
  * @param {object|null} [opts.persona] Persona metadata to append.
@@ -104,7 +104,7 @@ function shouldColorDiff({ parsed = {}, env = process.env, stdout = process.stdo
  * Validate that a model-emitted score table used configured category weights.
  *
  * @param {string} output Score-mode markdown output.
- * @param {object} configWeights Expected category weight map.
+ * @param {import('./config.js').PatinaConfig} configWeights Expected category weight map.
  * @returns {string[]} Human-readable warnings for missing, mismatched, or unexpected categories.
  * @example
  * const warnings = validateScoreWeights('| content | 0.4 | 1 | 10 | 4 |', { content: 0.4 });
@@ -220,7 +220,7 @@ function normalizeCategoryName(raw) {
  *
  * @param {string} body Raw model response.
  * @param {object} [options] Strip options.
- * @param {object} [options.logger] Logger for malformed output warnings.
+ * @param {import('./logger.js').Logger} [options.logger] Logger for malformed output warnings.
  * @returns {string} Clean user-facing body text.
  * @example
  * const clean = stripSelfAudit('[BODY]Hello[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]');
@@ -391,7 +391,7 @@ function extractOverall(result, body) {
  * @param {string|object|null} result Structured result whose `overall` field is checked first.
  * @param {string} text Raw output text scanned for embedded JSON, a score table, or inline "overall: N".
  * @param {object} options Extraction options (required).
- * @param {function(*): (number|null)} options.coerce Numeric coercer applied to candidate values.
+ * @param {(value: unknown) => number|null} options.coerce Numeric coercer applied to candidate values.
  * @param {boolean} [options.parseResultFallback=false] When the text yields no JSON, also try parsing `result` itself if it is a string (output.js JSON formatter behavior).
  * @param {boolean} [options.pipeBoundary=false] Accept a `|` table-cell boundary before "overall" in the inline-text regex (score-gate behavior).
  * @returns {number|null} Extracted overall score, or null when none is found.
@@ -401,7 +401,9 @@ export function extractOverallScore(result, text, {
   parseResultFallback = false,
   pipeBoundary = false,
 }) {
-  const direct = coerce(result?.overall);
+  // `result` may be a raw string; probing `.overall` on it yields undefined at
+  // runtime, which is exactly the intent, so the read is cast rather than guarded.
+  const direct = coerce(/** @type {Record<string, any>|null|undefined} */ (result)?.overall);
   if (direct !== null) return direct;
 
   const str = String(text ?? '');
@@ -488,7 +490,7 @@ function toFiniteNumber(value) {
  * Parse the first JSON value found in raw text, a fenced code block, or a brace span.
  *
  * @param {string} text Raw model output that may embed JSON.
- * @returns {object|null} Parsed JSON value, or null when no candidate parses.
+ * @returns {Record<string, any>|null} Parsed JSON value, or null when no candidate parses.
  * @example
  * const data = parseFirstJson('```json\n{"overall": 12}\n```');
  */
@@ -603,7 +605,7 @@ function isCodeFence(line) {
  * @param {object} [opts]
  * @param {string} [opts.lang]
  * @param {string} [opts.repoRoot]
- * @param {object} [opts.config]
+ * @param {import('./config.js').PatinaConfig} [opts.config]
  * @param {{ warn?: Function }} [opts.logger] Optional logger; the structural
  *   model load degrades to a warning here instead of aborting the audit (#443).
  * @returns {string} Markdown section (empty string when nothing fired).

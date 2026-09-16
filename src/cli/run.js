@@ -47,7 +47,9 @@ import { warnIfTooSmooth } from './smoothness-advisory.js';
  * input job (rewrite/diff/audit/score, plus the preview page).
  *
  * @param {object} parsed Parsed CLI arguments from parseArgs.
- * @param {object} logger Patina logger for this invocation.
+ * @param {Required<import('../logger.js').Logger>} logger Patina logger for this
+ *   invocation. The full facade is required, not the minimal one: this path
+ *   calls `logger.closeProgress()` unguarded around the progress spinner.
  * @returns {Promise<void>} Resolves after all job output is written.
  * @throws {Error} For validation, provider, file, or runtime failures.
  */
@@ -759,7 +761,7 @@ export function resolvePromptMode({ backend, model }) {
  *
  * @param {string} documentTypeName Requested document type.
  * @param {string} lang Active language code.
- * @param {object} [logger] Logger with warn(event, payload).
+ * @param {import('../logger.js').Logger} [logger] Logger with warn(event, payload).
  * @returns {string} Effective document type.
  * @example
  * resolveDocumentTypeForLanguage('namuwiki', 'en') // 'default'

@@ -116,7 +116,7 @@ export function isThematicBreakOnly(text) {
 }
 
 /**
- * @returns {{ fakeCandor: object, thematicBreaks: object, hot: boolean }}
+ * @returns {{ fakeCandor: ReturnType<typeof detectFakeCandor>, thematicBreaks: ReturnType<typeof detectThematicBreaks>, hot: boolean }}
  */
 export function detectDiscourseTells(text) {
   const fakeCandor = detectFakeCandor(text);

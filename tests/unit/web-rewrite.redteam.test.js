@@ -34,6 +34,11 @@ function baseRequest(lang = 'en', overrides = {}) {
     model: 'gpt-5.1-redteam',
     baseURL: 'https://llm-proxy.example.test/v1',
     apiKey: 'sk-redteam',
+    // validateRewriteRequest always emits these three, so the fixture carries
+    // them too and cannot drift into a shape the real contract never produces.
+    persona: undefined,
+    documentType: 'default',
+    register: undefined,
     ...overrides,
   };
 }

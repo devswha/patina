@@ -38,6 +38,12 @@ export function splitFrontmatter(content) {
 }
 
 /**
+ * One loaded pattern pack: the source file, its parsed frontmatter, the
+ * markdown body, and the two flags the prompt builder routes on.
+ * @typedef {{file: string, frontmatter: Record<string, any>|null, body: string, isStructure: boolean, isScoreOnly: boolean}} PatternPack
+ */
+
+/**
  * Load language-specific pattern packs from patterns/{lang}-*.md, plus any
  * user or pro packs in custom/patterns/{lang}-*.md. On a filename collision
  * the custom pack wins (same precedence the persona and lexicon loaders give
@@ -46,7 +52,7 @@ export function splitFrontmatter(content) {
  * @param {string} repoRoot Repository root path.
  * @param {string} lang Language code, such as ko, en, zh, or ja.
  * @param {string[]} [skipPatterns=[]] Pack names to omit, without .md.
- * @returns {Array<{file: string, frontmatter: object|null, body: string, isStructure: boolean, isScoreOnly: boolean}>} Pattern packs.
+ * @returns {PatternPack[]} Pattern packs.
  * @throws {Error} When the patterns directory or a pattern file cannot be read.
  * @example
  * const patterns = loadPatterns(getRepoRoot(), 'en');
@@ -189,10 +195,15 @@ function invalidDocumentTypePolicy(name, detail) {
  * `reduce` and `amplify` remain in the structured policy passed to the model;
  * the deterministic layer does not invent unsupported numeric weights.
  *
- * @param {Array<{body: string}>} packs Loaded pattern packs.
- * @param {{frontmatter: object|null}|null} documentType Loaded document type.
+ * Generic in the pack type: the function only rewrites `body` and spreads the
+ * rest through, so it must not narrow a `PatternPack[]` caller down to
+ * `{body: string}[]`.
+ *
+ * @template {{body: string}} T
+ * @param {T[]} packs Loaded pattern packs.
+ * @param {{frontmatter: Record<string, any>|null}|null} documentType Loaded document type.
  * @param {string} lang Active language code.
- * @returns {Array<{body: string}>} Packs with suppressed sections removed.
+ * @returns {T[]} Packs with suppressed sections removed.
  */
 export function applyDocumentTypePatternPolicy(packs, documentType, lang) {
   const overrides = documentType?.frontmatter?.['pattern-overrides']?.[lang];

@@ -9,6 +9,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 
 /**
+ * An effective patina configuration mapping.
+ *
+ * The config is user-editable YAML, so its key set is open and is checked at
+ * runtime by the loaders and by `src/features/*` rather than by a fixed
+ * compile-time shape. Typing it as a mapping states that honestly instead of
+ * pinning a partial shape that would silently drift from `.patina.default.yaml`.
+ * @typedef {Record<string, any>} PatinaConfig
+ */
+
+/**
  * Load default config and merge global/project .patina.yaml overrides.
  *
  * Precedence (low → high): base path → ~/.patina.yaml → ./.patina.yaml → overridePath.
@@ -21,7 +31,7 @@ const REPO_ROOT = resolve(__dirname, '..');
  * @param {object} [opts] Optional load options.
  * @param {string} [opts.overridePath] Explicit `--config` override path.
  * @param {string} [opts.snapshotPath] Internal complete config snapshot; excludes overridePath.
- * @returns {object} Merged patina configuration object.
+ * @returns {PatinaConfig} Merged patina configuration object.
  * @throws {Error} When a config file is missing, invalid YAML, or not a mapping.
  * @example
  * const config = loadConfig();
@@ -170,7 +180,7 @@ function rejectRegister(value, where) {
  * @param {object} options Register inputs.
  * @param {string|null} [options.cliRegister] CLI register override.
  * @param {string|null} [options.configRegister] Configured register value.
- * @returns {object|null} Prompt-ready register metadata, or null when omitted.
+ * @returns {{register: string, register_source: string}|null} Prompt-ready register metadata, or null when omitted.
  * @throws {Error} When either value is unsupported.
  * @example
  * const register = resolveRegister({ cliRegister: 'casual' });

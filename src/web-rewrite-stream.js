@@ -22,6 +22,36 @@ import { evaluateKoreanInvariants } from './features/korean-invariants.js';
  * @typedef {{signal: AbortSignal|null, remainingMs: () => number|undefined, race: (promise: Promise<any>|any) => Promise<any>, dispose: () => void}} DeadlineScope
  */
 
+/**
+ * The small summary `runWebRewriteStream` resolves with. The frames are the
+ * contract; this is what the caller needs after the stream closes.
+ *
+ * Only `ok`, `attempts` and `observed` are always present: a terminal failure
+ * carries `code` (and sometimes `error`/`numberSafety`), while success carries
+ * the rewrite payload. It is one shape with optional members rather than a
+ * union because JSDoc unions in a checked JS file are not narrowed by
+ * `if (result.ok)` — verified on TypeScript 5.4, 5.9 and 7.0.
+ *
+ * @typedef {{
+ *   ok: boolean,
+ *   attempts: {valid: boolean, rewrite: Record<string, any>[], mps: Record<string, any>[], fidelity: Record<string, any>[]},
+ *   observed: unknown,
+ *   code?: string,
+ *   error?: string,
+ *   numberSafety?: Record<string, any>,
+ *   koreanInvariants?: Record<string, any>,
+ *   failed?: any,
+ *   rewrite?: string,
+ *   mps?: number|null,
+ *   fidelity?: number|null,
+ *   signals?: Record<string, any>,
+ *   diff?: Record<string, any>,
+ *   receipt?: Record<string, any>,
+ *   editReview?: Record<string, any>,
+ *   budget?: Record<string, any>
+ * }} WebRewriteStreamResult
+ */
+
 const ATTEMPT_RETRY_REASONS = new Set([
   'initial',
   'transport',
@@ -255,8 +285,8 @@ export function rewriteExtraBody(provider, tier, env = {}) {
  * stream failures and scoring floor failures emit terminal error frames with no success done.
  *
  * @param {object} options
- * @param {object} options.request Validated web rewrite request.
- * @param {object} [options.config] Web-safe config.
+ * @param {import('./web-rewrite-contract.js').WebRewriteRequest} options.request Validated web rewrite request.
+ * @param {import('./config.js').PatinaConfig} [options.config] Web-safe config.
  * @param {string} [options.repoRoot] Bundle root.
  * @param {Function} [options.callLLMStream] Streaming LLM client.
  * @param {{scoreMPS?: Function, scoreFidelity?: Function, scoreDeterministicSignals?: Function}} [options.scoreFns] Injectable scorers.
@@ -269,7 +299,7 @@ export function rewriteExtraBody(provider, tier, env = {}) {
  * @param {() => number} [options.now] Injectable clock.
  * @param {number} [options.numberSafetyRetries] Buffered LLM retries after a number-safety failure (default 1).
  * @param {Record<string,string|undefined>} [options.env] Server env, read only for explicit prompt-budget and reasoning controls.
- * @returns {Promise<object>} Small result summary.
+ * @returns {Promise<WebRewriteStreamResult>} Small result summary.
  */
 async function runWebRewriteStreamUnscoped({
   request,
@@ -719,8 +749,7 @@ function createDeadlineScope(timeout, signal, clock) {
  * TOTAL budget across rewrite attempts and scoring (not per-stage), and every
  * stage aborts together when it runs out. See createDeadlineScope.
  *
- * @param {object} options See runWebRewriteStreamUnscoped.
- * @returns {Promise<object>}
+ * @param {Parameters<typeof runWebRewriteStreamUnscoped>[0]} options See runWebRewriteStreamUnscoped.
  */
 export async function runWebRewriteStream(options) {
   const deadlineNow = options.deadlineNow ?? (() => globalThis.performance.now());

@@ -95,7 +95,8 @@ example). Scores describe the exact graded text, identified by `outputHash`:
 SHA-256 of its UTF-8 bytes, with no whitespace or Unicode normalization. The
 example hash is for `The service retains 12 audit logs.` without a newline.
 An unparseable MPS is `null`. `reason` is `passed`, `passed-on-retry`,
-`floor-not-met`, `retry-error`, `dropped-numbers`, or `output-changed`.
+`floor-not-met`, `retry-error`, `dropped-numbers`, `numeric-claim-changed`, or
+`output-changed`.
 If cleanup changes the graded text, the CLI sets `verified:false`, reports
 `output-changed`, and exits 4. The numeric guard sets `verified:false` and
 `reason:"dropped-numbers"` even if the scorers passed. The draft appears only in

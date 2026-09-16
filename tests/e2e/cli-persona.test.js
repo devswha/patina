@@ -42,7 +42,11 @@ async function captureConsole(fn) {
 
 describe('CLI persona harness', () => {
   before(async () => {
-    mock = await startMockServer('[BODY]\n이 문장은 사람이 쓴 것처럼 자연스럽습니다.\n[/BODY]\n{"mps":95,"fidelity":95}');
+    // No test in this file uses --verify, so no scorer call is ever made and the
+    // canned response must not carry a scorer JSON trailer: the mock serves one
+    // body for every request, so the trailer lands in the rewrite output itself and
+    // makes the rewrite add two numbers the source never had.
+    mock = await startMockServer('[BODY]\n이 문장은 사람이 쓴 것처럼 자연스럽습니다.\n[/BODY]');
     keyDir = mkdtempSync(join(tmpdir(), 'patina-persona-'));
     mockApiKeyPath = resolve(keyDir, 'key.txt');
     inputPath = resolve(keyDir, 'ko.txt');

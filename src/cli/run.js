@@ -24,6 +24,7 @@ import { rmSync, readFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
 import { verifyRewrite, deterministicMeaningGuard, droppedNumbers } from '../verify.js';
+import { evaluateNumberSafety } from '../features/meaning-proxy.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
 import { buildDocumentSignals } from '../features/document-signals.js';
 import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput, writeAtomicUtf8, resolveBatchOutputPath } from './batch.js';
@@ -330,6 +331,21 @@ export async function runDefault(parsed, logger) {
             if (verificationReport) {
               verificationReport.verified = false;
               verificationReport.reason = 'dropped-numbers';
+            }
+          } else if (evaluateNumberSafety(text, finalText, lang).reason === 'numeric_claim_changed') {
+            // The hosted path already fails closed on this (src/web-rewrite-stream.js);
+            // the CLI only ever diffed a Set of digit tokens, so a sign flip, a
+            // word-number swap, an added claim, or a collapsed duplicate kept every
+            // digit and passed. dropped-numbers keeps precedence above so the existing
+            // reason is unchanged when source digits actually vanish.
+            // Only numeric_claim_changed is enforced here: the fail-closed
+            // unsupported_numeric_syntax / unsupported_word_number reasons stay
+            // web-only on purpose, so an identity comparator like p < 0.05 keeps
+            // working on the CLI.
+            meaningSafetyReason = 'numeric-claim-changed';
+            if (verificationReport) {
+              verificationReport.verified = false;
+              verificationReport.reason = 'numeric-claim-changed';
             }
           }
           if (meaningSafetyReason) {

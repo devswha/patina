@@ -127,15 +127,60 @@ test('no upstream token -> 503 before any auth work', async () => {
   assert.equal(validateCalls.length, 0);
 });
 
-test('daily download cap meters per subject and returns 429 over the cap', async () => {
-  const { handler } = makeHandler({ env: { PATINA_PACKS_REQ_PER_DAY: '2' } });
-  const ok1 = mockRes(); await handler(mockReq(), ok1);
-  const ok2 = mockRes(); await handler(mockReq(), ok2);
-  const over = mockRes(); await handler(mockReq(), over);
+const METER_KEY = `packs:dl:subj-hmac:${new Date(FIXED_NOW).toISOString().slice(0, 10)}`;
+
+test('daily download cap meters verified downloads and returns 429 over the cap', async () => {
+  const { handler, kv } = makeHandler({ env: { PATINA_PACKS_REQ_PER_DAY: '2' } });
+  const ok1 = mockRes(); await handler(mockReq({ url: '/api/packs?id=ko-structure' }), ok1);
+  const ok2 = mockRes(); await handler(mockReq({ url: '/api/packs?id=ko-structure' }), ok2);
+  const over = mockRes(); await handler(mockReq({ url: '/api/packs?id=ko-structure' }), over);
   assert.equal(ok1.statusCode, 200);
   assert.equal(ok2.statusCode, 200);
   assert.equal(over.statusCode, 429);
   assert.equal(over.body.reason, PACKS_REASONS.DAILY_DOWNLOADS);
+  // The refused request must not be charged either.
+  assert.equal(Number(await kv.get(METER_KEY)), 2);
+});
+
+test('listing is free: it never charges the daily download cap', async () => {
+  const { handler, kv } = makeHandler({ env: { PATINA_PACKS_REQ_PER_DAY: '1' } });
+  for (let i = 0; i < 3; i++) {
+    const list = mockRes();
+    await handler(mockReq(), list);
+    assert.equal(list.statusCode, 200);
+  }
+  assert.equal(Number(await kv.get(METER_KEY)) || 0, 0);
+  // The single unit is still available for a real download.
+  const download = mockRes(); await handler(mockReq({ url: '/api/packs?id=ko-structure' }), download);
+  assert.equal(download.statusCode, 200);
+  assert.equal(Number(await kv.get(METER_KEY)), 1);
+});
+
+test('failed deliveries do not charge the cap (404 and sha mismatch)', async () => {
+  const notFound = makeHandler({ env: { PATINA_PACKS_REQ_PER_DAY: '1' } });
+  const res404 = mockRes(); await notFound.handler(mockReq({ url: '/api/packs?id=nope' }), res404);
+  assert.equal(res404.statusCode, 404);
+  assert.equal(Number(await notFound.kv.get(METER_KEY)) || 0, 0);
+
+  const tampered = makeHandler({
+    env: { PATINA_PACKS_REQ_PER_DAY: '1' },
+    files: { 'manifest.json': JSON.stringify(MANIFEST), 'patterns/ko-structure.md': PACK_BODY + 'tampered' },
+  });
+  const res503 = mockRes(); await tampered.handler(mockReq({ url: '/api/packs?id=ko-structure' }), res503);
+  assert.equal(res503.statusCode, 503);
+  assert.equal(Number(await tampered.kv.get(METER_KEY)) || 0, 0);
+});
+
+test('patina pack install costs exactly one unit (list then content GET)', async () => {
+  const { handler, kv } = makeHandler({ env: { PATINA_PACKS_REQ_PER_DAY: '1' } });
+  const list = mockRes(); await handler(mockReq(), list);
+  const download = mockRes(); await handler(mockReq({ url: '/api/packs?id=ko-structure' }), download);
+  assert.equal(list.statusCode, 200);
+  assert.equal(download.statusCode, 200);
+  assert.equal(Number(await kv.get(METER_KEY)), 1);
+  // A second install on a one-unit cap is refused.
+  const second = mockRes(); await handler(mockReq({ url: '/api/packs?id=ko-structure' }), second);
+  assert.equal(second.statusCode, 429);
 });
 
 test('upstream responses are KV-cached; failures are not cached', async () => {
@@ -188,6 +233,11 @@ test('isValidPackEntry enforces id/path/kind/sha shape', () => {
   assert.equal(isValidPackEntry({ ...good, id: 'Bad_ID!' }), false);
   assert.equal(isValidPackEntry({ ...good, path: '../../secrets' }), false);
   assert.equal(isValidPackEntry({ ...good, path: '/abs/path' }), false);
+  // Defense in depth: percent-encoded and non-canonical traversal must not slip
+  // past a plain includes('..') check.
+  assert.equal(isValidPackEntry({ ...good, path: 'patterns/%2e%2e/%2e%2e/secrets.md' }), false);
+  assert.equal(isValidPackEntry({ ...good, path: 'patterns/%2E%2E/secrets.md' }), false);
+  assert.equal(isValidPackEntry({ ...good, path: 'patterns\\windows\\evil.md' }), false);
   assert.equal(isValidPackEntry({ ...good, kind: 'exe' }), false);
   assert.equal(isValidPackEntry({ ...good, sha256: 'nothex' }), false);
 });

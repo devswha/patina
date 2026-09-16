@@ -43,6 +43,15 @@ test('Dependabot routes weekly version updates through dev, bounded and unautoma
   });
   assert.equal(config.automerge, undefined);
   assert.doesNotMatch(readFileSync(DEPENDABOT_PATH, 'utf8'), /auto[- ]?(?:merge|approve)|security[^\n]*(?:delay|ignore)/i);
+
+  // Holds are enumerated per dependency and never suppress anything below a
+  // major bump, so patch, minor, and security updates keep arriving.
+  assert.deepEqual(npm.ignore.map((rule) => rule['dependency-name']), ['typescript']);
+  for (const rule of npm.ignore) {
+    assert.deepEqual(rule['update-types'], ['version-update:semver-major']);
+    assert.deepEqual(Object.keys(rule).sort(), ['dependency-name', 'update-types']);
+  }
+  assert.equal(config.updates.find((update) => update['package-ecosystem'] === 'github-actions').ignore, undefined);
 });
 
 test('dataset workflow holds publication, preserves production environment, and uses one immutable source', () => {

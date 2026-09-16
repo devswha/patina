@@ -30,6 +30,7 @@
     "benchmark:ai-tells-baseline": "node scripts/ai-tells-corpus-baseline.mjs",
     "benchmark:detector-candidates": "node scripts/detector-candidate-eval.mjs",
     "benchmark:cadence-fixture": "node scripts/cadence-fixture-eval.mjs",
+    "benchmark:ko-conjunction": "node scripts/ko-conjunction-candidate-eval.mjs",
     "quality:adversarial-mps": "node scripts/adversarial-mps-report.mjs --check",
     "quality:persona-ablation": "node scripts/persona-ablation.mjs",
     "dogfood": "node tests/quality/dogfood.mjs",

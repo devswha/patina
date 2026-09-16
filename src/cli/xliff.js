@@ -268,7 +268,34 @@ function collectUnit(tokens, openIdx) {
   return null;
 }
 
-/** Build a per-unit record, or a skip record with a reason. */
+/**
+ * One parsed `<trans-unit>` record.
+ *
+ * `skip: true` records carry `reason` and nothing else; the rest carry the
+ * target fields. This is one shape with optional members rather than a
+ * discriminated union because JSDoc unions in a checked JS file are not
+ * narrowed by `if (unit.skip)` — verified on TypeScript 5.4, 5.9 and 7.0.
+ *
+ * @typedef {{
+ *   index: number,
+ *   id: string,
+ *   resname: string,
+ *   unitAttrs: Record<string,string>,
+ *   skip: boolean,
+ *   reason?: string,
+ *   state?: string,
+ *   targetAttrs?: Record<string,string>,
+ *   targetInnerXml?: string,
+ *   targetInnerStart?: number,
+ *   targetInnerEnd?: number,
+ *   sourceText?: string
+ * }} XliffUnitRecord
+ */
+
+/**
+ * Build a per-unit record, or a skip record with a reason.
+ * @returns {XliffUnitRecord}
+ */
 function buildUnitRecord(tokens, unit, xml, index) {
   const openTok = tokens[unit.openIdx];
   const { attrs: unitAttrs } = parseAttributesFromTag(openTok.raw);
@@ -319,7 +346,7 @@ function buildUnitRecord(tokens, unit, xml, index) {
  *
  * @param {string} xml
  * @param {{langOverride?:string}} [options]
- * @returns {{targetLang:string, targetLangRaw:string|null, units:Array<object>, ambiguousCount:number, parseableCount:number}}
+ * @returns {{targetLang:string, targetLangRaw:string|null, units:Array<XliffUnitRecord>, ambiguousCount:number, parseableCount:number}}
  */
 export function parseXliffDocument(xml, { langOverride } = {}) {
   const tokens = scanXmlTokens(xml);
@@ -386,7 +413,7 @@ export function isProseLike(text) {
 
 /**
  * Classify one parsed unit record into a selected segment or a skip+reason.
- * @param {object} unit A non-skip record from parseXliffDocument.
+ * @param {XliffUnitRecord} unit A non-skip record from parseXliffDocument.
  * @returns {{select:boolean, reason?:string, index:number, id?:string, resname?:string, dedupKey?:string, sourceText?:string, targetCore?:string, leading?:string, trailing?:string, targetInnerStart?:number, targetInnerEnd?:number}}
  */
 export function classifyXliffSegment(unit) {
@@ -431,7 +458,7 @@ export function classifyXliffSegment(unit) {
  * Classify every unit in a parsed document and produce selection + skip stats,
  * with exact-text dedup (key = decoded core after CRLF→LF; no trim/casefold).
  *
- * @param {{units:Array<object>}} doc
+ * @param {{units:Array<XliffUnitRecord>}} doc
  * @returns {{selected:Array<object>, skipped:Array<object>, skippedByReason:Record<string,number>, uniqueKeys:string[], selectedCount:number, uniqueCount:number}}
  */
 export function selectXliffSegments(doc) {

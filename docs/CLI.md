@@ -2,6 +2,23 @@
 
 patina's CLI is optimized for interactive editing, but a few surfaces are stable enough for automation.
 
+## Commands
+
+This file is the contract for the rewrite pipeline and its flags. The shipped
+subcommands each have their own reference:
+
+| Command | Reference |
+|---|---|
+| `patina inspect [file]` | [editor inspection](integrations/editor-inspection.md) |
+| `patina aside options|rewrite` | [aside](integrations/aside.md) |
+| `patina pack list|install` | [pro packs](PRO-PACKS.md) |
+| `patina persona new|list|show|edit|rm` | [`--persona`](#optional-voice-persona---persona) |
+| `patina auth status|login`, `patina doctor` | [authentication](AUTHENTICATION.md) |
+
+Run `node bin/patina.js --help` for the authoritative flag list; [flag parity](FLAG-PARITY.md)
+records which of those flags the `/patina` skill also exposes.
+
+
 ## Score gate
 
 Use `--score --exit-on <n>` when CI should fail if a text still reads too AI-like.
@@ -250,7 +267,7 @@ transformed text or JSON envelope. `--quiet` suppresses those stderr logs.
 
 `--preview` rewrites prose and renders the rewrites **in place** — each rewritten block highlighted and numbered, a floating bar with the change count, deterministic before/after score, jump chips, a three-state view toggle (rewritten / original / both), and a "patina notes" panel with the Pattern/Removed/Added/Why explanation.
 
-It accepts one input: an http(s) URL or a `.html`/`.htm` file (snapshot pipeline, same as a fetched page). Other extensions are rejected up front — rewrite a markdown/text draft with `patina <file>` or inspect it with `patina --diff <file>`.
+It accepts one input: an http(s) URL or a `.html`/`.htm` file (snapshot pipeline, same as a fetched page). Other extensions are rejected up front — rewrite a markdown/text draft with `patina <file>`, review it pattern by pattern with `patina --diff <file>`, or get offline JSON diagnostics with `patina inspect <file>`.
 
 ```bash
 patina --preview https://example.com/article           # live page, snapshot overlay

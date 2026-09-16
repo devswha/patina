@@ -195,10 +195,15 @@ function invalidDocumentTypePolicy(name, detail) {
  * `reduce` and `amplify` remain in the structured policy passed to the model;
  * the deterministic layer does not invent unsupported numeric weights.
  *
- * @param {Array<{body: string}>} packs Loaded pattern packs.
- * @param {{frontmatter: object|null}|null} documentType Loaded document type.
+ * Generic in the pack type: the function only rewrites `body` and spreads the
+ * rest through, so it must not narrow a `PatternPack[]` caller down to
+ * `{body: string}[]`.
+ *
+ * @template {{body: string}} T
+ * @param {T[]} packs Loaded pattern packs.
+ * @param {{frontmatter: Record<string, any>|null}|null} documentType Loaded document type.
  * @param {string} lang Active language code.
- * @returns {Array<{body: string}>} Packs with suppressed sections removed.
+ * @returns {T[]} Packs with suppressed sections removed.
  */
 export function applyDocumentTypePatternPolicy(packs, documentType, lang) {
   const overrides = documentType?.frontmatter?.['pattern-overrides']?.[lang];

@@ -38,17 +38,17 @@ import { evaluateKoreanInvariants } from './features/korean-invariants.js';
  *   observed: unknown,
  *   code?: string,
  *   error?: string,
- *   numberSafety?: unknown,
- *   koreanInvariants?: unknown,
- *   failed?: unknown,
+ *   numberSafety?: Record<string, any>,
+ *   koreanInvariants?: Record<string, any>,
+ *   failed?: any,
  *   rewrite?: string,
  *   mps?: number|null,
  *   fidelity?: number|null,
- *   signals?: unknown,
- *   diff?: unknown,
- *   receipt?: unknown,
- *   editReview?: unknown,
- *   budget?: unknown
+ *   signals?: Record<string, any>,
+ *   diff?: Record<string, any>,
+ *   receipt?: Record<string, any>,
+ *   editReview?: Record<string, any>,
+ *   budget?: Record<string, any>
  * }} WebRewriteStreamResult
  */
 

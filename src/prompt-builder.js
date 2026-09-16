@@ -407,7 +407,7 @@ function buildTransformDirective({ jargon = 'keep', korean = false } = {}) {
  * `PATINA_RHETORIC_POLICY=legacy` restores the pre-2026-09-14 similar-weight
  * sentence. `h-rhetoric` is kept as an alias of the product default.
  *
- * @param {NodeJS.ProcessEnv|object} [env=process.env]
+ * @param {Record<string,string|undefined>} [env=process.env]
  * @returns {'default'|'h-rhetoric'|'legacy'}
  */
 export function resolveRhetoricPolicy(env = process.env) {

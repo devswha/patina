@@ -15,7 +15,7 @@ import {
   diagnosisStructureGuidance,
 } from './features/korean-diagnosis.js';
 
-/** @type {Map<string, { config: object, patterns: object[], documentType: object, core: object|null, persona: object|null }>} */
+/** @type {Map<string, ReturnType<typeof loadWebAssets>>} */
 const ASSET_CACHE = new Map();
 
 /** @param {unknown} value */
@@ -32,7 +32,7 @@ function cloneConfig(value) {
  * @param {string} options.documentType Document-policy name.
  * @param {string} [options.personaId] Explicit voice persona id.
  * @param {import('./config.js').PatinaConfig} options.config Web-safe baseline config.
- * @returns {{ config: object, patterns: object[], documentType: object, core: object|null, persona: object|null }} Loaded assets.
+ * @returns {{ config: import('./config.js').PatinaConfig, patterns: import('./loader.js').PatternPack[], documentType: Record<string, any>, core: Record<string, any>|null, persona: Record<string, any>|null }} Loaded assets.
  * @throws {import('./errors.js').PatinaCliError} When required bundled assets are missing or empty.
  */
 export function loadWebAssets({ repoRoot = resolveBundleRoot(), lang, documentType = 'default', config, personaId }) {
@@ -179,7 +179,7 @@ export function buildWebRewritePrompt({
  * @param {import('./config.js').PatinaConfig} [options.config] Web-safe config; loaded from baseline when omitted.
  * @param {string} [options.repoRoot] Bundle root.
  * @param {Function} [options.callLLM] Injected LLM client.
- * @param {NodeJS.ProcessEnv|object} [options.env] Environment for research flags.
+ * @param {Record<string,string|undefined>} [options.env] Environment for research flags.
  * @param {AbortSignal} [options.signal] Abort signal.
  * @param {number} [options.timeout] Timeout in milliseconds.
  * @returns {Promise<{ rewrite: string, prompt: string, provider: string, model: string }>} Rewrite result.

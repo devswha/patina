@@ -10,7 +10,8 @@
 //   - the caller presents `Authorization: Bearer <license_key>`;
 //   - the same fail-closed Polar validator used by the rewrite API
 //     turns it into an HMAC subject (the raw key never leaves entitlement.js);
-//   - downloads are metered per subject per UTC day;
+//   - only verified downloads are metered, per subject per UTC day — listing
+//     and failed deliveries (404 / sha mismatch / upstream outage) are free;
 //   - pack ids come from the server-side manifest only — the client never
 //     supplies a path, so there is no traversal surface;
 //   - upstream (GitHub contents API on the private repo) is cached in KV so a
@@ -21,7 +22,7 @@
 //   PATINA_PACKS_REPO          owner/name of the private repo (default devswha/patina-pro-packs)
 //   PATINA_PACKS_REF           git ref to serve (default main)
 //   PATINA_PACKS_CACHE_TTL_MS  upstream cache TTL (default 300000)
-//   PATINA_PACKS_REQ_PER_DAY   per-license daily download cap (default 200)
+//   PATINA_PACKS_REQ_PER_DAY   per-license daily cap on delivered downloads (default 200)
 
 import { createHash } from 'node:crypto';
 
@@ -53,6 +54,24 @@ function readPositiveInt(value, fallback) {
 }
 
 /**
+ * Manifest paths are plain, repo-relative POSIX paths that we publish ourselves.
+ * Anything else — absolute, backslashed, percent-encoded, or carrying a traversal
+ * segment — is refused as defense in depth, so an encoded `%2e%2e` cannot slip
+ * past a literal `..` check even though the client never supplies a path.
+ * @param {string} path
+ * @returns {boolean}
+ */
+function isSafePackPath(path) {
+  if (!path || path.startsWith('/') || path.includes('\\')) return false;
+  let decoded;
+  try { decoded = decodeURIComponent(path); } catch { return false; }
+  // A published path is already canonical, so decoding must be a no-op.
+  if (decoded !== path) return false;
+  if (!/^[A-Za-z0-9._/-]+$/.test(path)) return false;
+  return !path.split('/').includes('..');
+}
+
+/**
  * Validate one manifest entry from the private repo. The manifest is trusted
  * content (we publish it), but validating shape here keeps a malformed commit
  * from turning into a confusing client-side failure.
@@ -63,7 +82,7 @@ export function isValidPackEntry(p) {
   return Boolean(
     p && typeof p === 'object'
     && typeof p.id === 'string' && /^[a-z0-9][a-z0-9-]{1,63}$/.test(p.id)
-    && typeof p.path === 'string' && !p.path.includes('..') && !p.path.startsWith('/')
+    && typeof p.path === 'string' && isSafePackPath(p.path)
     && typeof p.version === 'string'
     && typeof p.lang === 'string'
     && PACK_KINDS.has(p.kind)
@@ -168,16 +187,12 @@ export function createPackHandler({
       return send(res, verdict?.status || 403, { reason: verdict?.reason || QUOTA_REASONS.LICENSE_INVALID });
     }
 
-    // Per-license daily download meter (UTC day bucket). The subject is
-    // already an HMAC — never the raw license.
+    // Per-license daily meter over DELIVERED downloads (UTC day bucket). The
+    // subject is already an HMAC — never the raw license. The counter is read
+    // before serving but charged only after the sha check below passes, so a
+    // listing, a 404, or an integrity failure never costs the caller a unit.
     const day = new Date(now()).toISOString().slice(0, 10);
-    let used;
-    try {
-      used = await kv.incr(`packs:dl:${verdict.subject}:${day}`, { ttlMs: 48 * 60 * 60 * 1000 });
-    } catch {
-      return send(res, 503, { reason: PACKS_REASONS.PACKS_UNAVAILABLE });
-    }
-    if (used > reqPerDay) return send(res, 429, { reason: PACKS_REASONS.DAILY_DOWNLOADS });
+    const meterKey = `packs:dl:${verdict.subject}:${day}`;
 
     const requestUrl = new URL(req.url || '/', 'http://localhost');
     const id = requestUrl.searchParams.get('id');
@@ -185,6 +200,8 @@ export function createPackHandler({
     try {
       const manifest = await loadManifest();
       if (!id) {
+        // Listing delivers no pack content, and `patina pack install` lists before
+        // it downloads, so charging here would bill a single install twice.
         return send(res, 200, {
           ref,
           packs: manifest.packs.map(({ id: packId, version, kind, lang, description, sha256: digest }) => (
@@ -192,6 +209,16 @@ export function createPackHandler({
           )),
         });
       }
+
+      let used;
+      try {
+        const stored = Number(await kv.get(meterKey));
+        used = Number.isFinite(stored) && stored > 0 ? Math.floor(stored) : 0;
+      } catch {
+        // A meter outage stays fail-closed: refuse rather than serve uncounted.
+        return send(res, 503, { reason: PACKS_REASONS.PACKS_UNAVAILABLE });
+      }
+      if (used >= reqPerDay) return send(res, 429, { reason: PACKS_REASONS.DAILY_DOWNLOADS });
 
       const pack = manifest.packs.find((/** @type {any} */ p) => p.id === id);
       if (!pack) return send(res, 404, { reason: PACKS_REASONS.PACK_NOT_FOUND });
@@ -203,6 +230,13 @@ export function createPackHandler({
         // bad commit). Serving it would put an unverifiable file on disk
         // client-side; refuse instead.
         warn('packs: manifest/content sha mismatch', { id, expected: pack.sha256, actual: digest });
+        return send(res, 503, { reason: PACKS_REASONS.PACKS_UNAVAILABLE });
+      }
+      // Charge the cap only now: the id resolved, the blob was fetched, and its
+      // digest matched the manifest — this is a delivery, not an attempt.
+      try {
+        await kv.incr(meterKey, { ttlMs: 48 * 60 * 60 * 1000 });
+      } catch {
         return send(res, 503, { reason: PACKS_REASONS.PACKS_UNAVAILABLE });
       }
       return send(res, 200, {

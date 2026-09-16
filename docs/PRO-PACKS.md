@@ -60,7 +60,8 @@ and two guard-rail violations (docs/research/2026-rewrite-efficacy-study2.md)
   (`ko-structure`), because the id doubles as the discoverable filename.
 - The endpoint (`api/packs.js`) authenticates with the same Polar
   validate-only flow as the rewrite API (`Authorization: Bearer <license>`),
-  meters downloads per license per UTC day, and caches upstream reads in KV.
+  meters delivered downloads per license per UTC day — a listing, a 404, or a
+  failed integrity check costs nothing — and caches upstream reads in KV.
   Env: see the "Pro pack delivery" block in `.env.example`.
 - Fail-closed properties: no GitHub token → 503 (never a per-license verdict
   it can't honor); upstream failures are never cached; manifest entries that

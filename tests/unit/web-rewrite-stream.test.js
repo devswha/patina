@@ -19,6 +19,11 @@ const request = {
   model: 'gpt-5.5',
   baseURL: 'https://api.openai.com/v1',
   apiKey: 'sk-test',
+  // validateRewriteRequest always emits these three, so the fixture carries
+  // them too and cannot drift into a shape the real contract never produces.
+  persona: undefined,
+  documentType: 'default',
+  register: undefined,
 };
 
 const PRIVATE_SENTINELS = new Set([

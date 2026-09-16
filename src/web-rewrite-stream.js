@@ -22,6 +22,36 @@ import { evaluateKoreanInvariants } from './features/korean-invariants.js';
  * @typedef {{signal: AbortSignal|null, remainingMs: () => number|undefined, race: (promise: Promise<any>|any) => Promise<any>, dispose: () => void}} DeadlineScope
  */
 
+/**
+ * The small summary `runWebRewriteStream` resolves with. The frames are the
+ * contract; this is what the caller needs after the stream closes.
+ *
+ * Only `ok`, `attempts` and `observed` are always present: a terminal failure
+ * carries `code` (and sometimes `error`/`numberSafety`), while success carries
+ * the rewrite payload. It is one shape with optional members rather than a
+ * union because JSDoc unions in a checked JS file are not narrowed by
+ * `if (result.ok)` — verified on TypeScript 5.4, 5.9 and 7.0.
+ *
+ * @typedef {{
+ *   ok: boolean,
+ *   attempts: {valid: boolean, rewrite: object[], mps: object[], fidelity: object[]},
+ *   observed: unknown,
+ *   code?: string,
+ *   error?: string,
+ *   numberSafety?: unknown,
+ *   koreanInvariants?: unknown,
+ *   failed?: unknown,
+ *   rewrite?: string,
+ *   mps?: number|null,
+ *   fidelity?: number|null,
+ *   signals?: unknown,
+ *   diff?: unknown,
+ *   receipt?: unknown,
+ *   editReview?: unknown,
+ *   budget?: unknown
+ * }} WebRewriteStreamResult
+ */
+
 const ATTEMPT_RETRY_REASONS = new Set([
   'initial',
   'transport',
@@ -269,8 +299,7 @@ export function rewriteExtraBody(provider, tier, env = {}) {
  * @param {() => number} [options.now] Injectable clock.
  * @param {number} [options.numberSafetyRetries] Buffered LLM retries after a number-safety failure (default 1).
  * @param {Record<string,string|undefined>} [options.env] Server env, read only for explicit prompt-budget and reasoning controls.
- * The small result summary is inferred rather than erased to `object`, so
- * callers keep the `ok`/`code`/`attempts`/`receipt` shape this actually returns.
+ * @returns {Promise<WebRewriteStreamResult>} Small result summary.
  */
 async function runWebRewriteStreamUnscoped({
   request,

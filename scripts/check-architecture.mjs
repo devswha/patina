@@ -118,12 +118,6 @@ export const AUDITED_EXCEPTIONS = Object.freeze([
     target: 'src/edit-controls.js',
     reason: 'Browser protected-span handling uses deterministic text utilities.',
   },
-  {
-    rule: 'runtime-no-research',
-    from: 'src/inspection.js',
-    target: 'scripts/prose-score.mjs',
-    reason: 'Inspection reuses the deterministic prose scorer, not research code.',
-  },
 ]);
 
 const MODEL_NETWORK_BUILTINS = new Set([

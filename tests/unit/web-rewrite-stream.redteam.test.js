@@ -20,6 +20,11 @@ const baseRequest = {
   model: 'gpt-5.5',
   baseURL: 'https://api.openai.com/v1',
   apiKey: 'sk-test-redteam',
+  // validateRewriteRequest always emits these three, so the fixture carries
+  // them too and cannot drift into a shape the real contract never produces.
+  persona: undefined,
+  documentType: 'default',
+  register: undefined,
 };
 
 function streamFrom(chunks) {

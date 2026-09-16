@@ -173,7 +173,6 @@ function sleepWithSignal(sleep, ms, signal) {
  * a paid provider request or its result.
  *
  * @param {Function|undefined} callback
- * @param {object} metadata
  * @returns {void}
  */
 function dispatchMetadata(callback, metadata) {

@@ -31,7 +31,7 @@ function cloneConfig(value) {
  * @param {string} options.lang Language code.
  * @param {string} options.documentType Document-policy name.
  * @param {string} [options.personaId] Explicit voice persona id.
- * @param {object} options.config Web-safe baseline config.
+ * @param {import('./config.js').PatinaConfig} options.config Web-safe baseline config.
  * @returns {{ config: object, patterns: object[], documentType: object, core: object|null, persona: object|null }} Loaded assets.
  * @throws {import('./errors.js').PatinaCliError} When required bundled assets are missing or empty.
  */
@@ -96,8 +96,8 @@ function renderHistory(history = []) {
  * Build a patina rewrite prompt for first-turn or refine web requests.
  *
  * @param {object} options
- * @param {object} options.request Validated web rewrite request.
- * @param {object} options.config Web-safe config.
+ * @param {import('./web-rewrite-contract.js').WebRewriteRequest} options.request Validated web rewrite request.
+ * @param {import('./config.js').PatinaConfig} options.config Web-safe config.
  * @param {{ patterns: object[], documentType: object, core: object|null, persona: object|null }} options.assets Loaded web assets.
  * @param {'strict'|'minimal'} [options.promptMode='strict'] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals=null] Trusted deterministic signals.
@@ -175,8 +175,8 @@ export function buildWebRewritePrompt({
  * Run one web rewrite request using injected LLM transport.
  *
  * @param {object} options
- * @param {object} options.request Validated web rewrite request.
- * @param {object} [options.config] Web-safe config; loaded from baseline when omitted.
+ * @param {import('./web-rewrite-contract.js').WebRewriteRequest} options.request Validated web rewrite request.
+ * @param {import('./config.js').PatinaConfig} [options.config] Web-safe config; loaded from baseline when omitted.
  * @param {string} [options.repoRoot] Bundle root.
  * @param {Function} [options.callLLM] Injected LLM client.
  * @param {NodeJS.ProcessEnv|object} [options.env] Environment for research flags.

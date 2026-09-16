@@ -524,7 +524,6 @@ export function koreanPosDiversityProxy(paragraph, eojeols = koreanEojeols(parag
 
 /**
  * @param {{ sentenceCount?: number, spacing?: object, comma?: object, posDiversity?: object }} [features]
- * @param {object} [bands]
  */
 export function classifyKoreanDiagnostics({
   sentenceCount = 0,

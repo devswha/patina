@@ -11,7 +11,7 @@ import { TRANSLATIONESE_RULES } from './features/translationese.js';
  * @param {object} [parsed={}] Parsed CLI options.
  * @param {object} [opts={}] Formatting options.
  * @param {object|null} [opts.register] Explicit register metadata.
- * @param {object} [opts.logger] Logger for output warnings.
+ * @param {import('./logger.js').Logger} [opts.logger] Logger for output warnings.
  * @param {object} [opts.env] Environment map for color decisions.
  * @param {object} [opts.stdout] Stdout-like stream for color decisions.
  * @param {string} [opts.auditBackstop] Deterministic audit-mode section.
@@ -104,7 +104,7 @@ function shouldColorDiff({ parsed = {}, env = process.env, stdout = process.stdo
  * Validate that a model-emitted score table used configured category weights.
  *
  * @param {string} output Score-mode markdown output.
- * @param {object} configWeights Expected category weight map.
+ * @param {import('./config.js').PatinaConfig} configWeights Expected category weight map.
  * @returns {string[]} Human-readable warnings for missing, mismatched, or unexpected categories.
  * @example
  * const warnings = validateScoreWeights('| content | 0.4 | 1 | 10 | 4 |', { content: 0.4 });
@@ -220,7 +220,7 @@ function normalizeCategoryName(raw) {
  *
  * @param {string} body Raw model response.
  * @param {object} [options] Strip options.
- * @param {object} [options.logger] Logger for malformed output warnings.
+ * @param {import('./logger.js').Logger} [options.logger] Logger for malformed output warnings.
  * @returns {string} Clean user-facing body text.
  * @example
  * const clean = stripSelfAudit('[BODY]Hello[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]');
@@ -603,7 +603,7 @@ function isCodeFence(line) {
  * @param {object} [opts]
  * @param {string} [opts.lang]
  * @param {string} [opts.repoRoot]
- * @param {object} [opts.config]
+ * @param {import('./config.js').PatinaConfig} [opts.config]
  * @param {{ warn?: Function }} [opts.logger] Optional logger; the structural
  *   model load degrades to a warning here instead of aborting the audit (#443).
  * @returns {string} Markdown section (empty string when nothing fired).

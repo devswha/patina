@@ -88,7 +88,6 @@ const STRICT_RETRY_DIRECTIVE = [
  * routed through the selected backend chain, so verify works with HTTP and local
  * CLI backends alike.
  *
- * @param {object} options
  * @returns {Promise<{text: string, mps: number|null, fidelity: number, verified: boolean, retried: boolean, reason: string}>}
  */
 export async function verifyRewrite({

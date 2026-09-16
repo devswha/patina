@@ -7,6 +7,11 @@ const LEVELS = {
 };
 
 /**
+ * The logger facade every patina module accepts as an injected `logger`.
+ * @typedef {{debug: Function, info: Function, warn: Function, error: Function, progress: Function, closeProgress: Function, child: Function}} Logger
+ */
+
+/**
  * Create a small stderr logger with text and progress modes.
  *
  * @param {object} [options] Logger options.

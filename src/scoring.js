@@ -228,7 +228,7 @@ function notifyInvalidAttempt(onAttemptInvalid) {
  *
  * @param {object} options Scoring options.
  * @param {string} options.text Text to score.
- * @param {object} options.config Effective patina config.
+ * @param {import('./config.js').PatinaConfig} options.config Effective patina config.
  * @param {object[]} options.patterns Loaded pattern packs, retained for scorer compatibility.
  * @param {string} [options.apiKey] Provider API key.
  * @param {string} [options.baseURL] Provider base URL.
@@ -237,7 +237,7 @@ function notifyInvalidAttempt(onAttemptInvalid) {
  * @param {AbortSignal} [options.signal] External cancellation signal.
  * @param {number} [options.timeout] Per-attempt backend timeout in milliseconds.
  * @param {Function} [options.callLLM] Injectable LLM implementation.
- * @param {object} [options.logger] patina logger.
+ * @param {import('./logger.js').Logger} [options.logger] patina logger.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
  * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
@@ -379,10 +379,10 @@ function computeShortFormEvidenceFloor({ result, config, lang, patterns = [] }) 
  *
  * @param {object} [options] Deterministic scoring options.
  * @param {string} [options.text] Text to analyze.
- * @param {object} [options.config={}] Effective config.
+ * @param {import('./config.js').PatinaConfig} [options.config={}] Effective config.
  * @param {Array} [options.patterns=[]] Loaded pattern packs; used for short-form category math.
  * @param {string} [options.repoRoot] Repository root for analyzer resources.
- * @param {object} [options.logger] Optional logger for recoverable deterministic warnings.
+ * @param {import('./logger.js').Logger} [options.logger] Optional logger for recoverable deterministic warnings.
  * @param {Function} [options.analyzer] Analyzer implementation.
  * @returns {object|null} Deterministic score payload, skipped payload, or null when disabled.
  * @example
@@ -547,8 +547,8 @@ export function scoreDeterministicSignals({
  * @param {object} parsed Parsed LLM scoring JSON.
  * @param {object} [options] Reconciliation options.
  * @param {object|null} [options.deterministicScore] Deterministic score payload.
- * @param {object} [options.config={}] Effective config.
- * @param {object} [options.logger] Logger for reconciliation warnings.
+ * @param {import('./config.js').PatinaConfig} [options.config={}] Effective config.
+ * @param {import('./logger.js').Logger} [options.logger] Logger for reconciliation warnings.
  * @returns {object} Score payload preserving llmScore and deterministicScore details.
  * @example
  * const score = withShadowScore({ overall: 20 }, { deterministicScore: { overall: 25 } });
@@ -585,8 +585,8 @@ export function withShadowScore(parsed, { deterministicScore, config = {}, logge
  * @param {object} [options] Reconciliation inputs.
  * @param {number|null} [options.llmOverall] LLM overall score.
  * @param {object|null} [options.deterministicScore] Deterministic score payload.
- * @param {object} [options.config={}] Effective config.
- * @param {object} [options.logger] Logger for warnings.
+ * @param {import('./config.js').PatinaConfig} [options.config={}] Effective config.
+ * @param {import('./logger.js').Logger} [options.logger] Logger for warnings.
  * @returns {{overall: number|null, scorePreference: (object|null)}} Reconciled score and preference source.
  * @example
  * const result = reconcileScoreOverall({ llmOverall: 20, deterministicScore: { overall: 60 } });
@@ -667,7 +667,7 @@ export function reconcileScoreOverall({
  * @param {AbortSignal} [options.signal] External cancellation signal.
  * @param {number} [options.timeout] Per-attempt backend timeout in milliseconds.
  * @param {Function} [options.callLLM] Injectable LLM implementation.
- * @param {object} [options.logger] patina logger.
+ * @param {import('./logger.js').Logger} [options.logger] patina logger.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
  * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
@@ -832,7 +832,7 @@ export function lengthRatioPoints(original, rewritten) {
  * @param {AbortSignal} [options.signal] External cancellation signal.
  * @param {number} [options.timeout] Per-attempt backend timeout in milliseconds.
  * @param {Function} [options.callLLM] Injectable LLM implementation.
- * @param {object} [options.logger] patina logger.
+ * @param {import('./logger.js').Logger} [options.logger] patina logger.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
  * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
@@ -972,7 +972,7 @@ function rethrowIfAborted(err, signal) {
  * @param {number} options.aiLikeness AI-likeness score, lower is better.
  * @param {number} options.fidelity Fidelity score, higher is better.
  * @param {string} [options.documentType] Document type for configured weights.
- * @param {object} [options.config] Effective config.
+ * @param {import('./config.js').PatinaConfig} [options.config] Effective config.
  * @param {number|object|null} [options.deterministicScore] Optional deterministic score.
  * @returns {number} Combined score, lower is better.
  * @example

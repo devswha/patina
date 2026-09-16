@@ -90,7 +90,7 @@ export function fenceReferenceText(text, { lang = 'en', label = '' } = {}) {
  * Single resolution path for every prompt surface: yaml
  * `scoring.severity-points` overrides the documented defaults key-by-key.
  *
- * @param {object} [config] Effective patina config.
+ * @param {import('./config.js').PatinaConfig} [config] Effective patina config.
  * @returns {{high: number, medium: number, low: number}} Effective severity points.
  * @example
  * const points = resolveSeverityPoints(config);
@@ -184,7 +184,7 @@ function buildRegisterDirective(value, lang) {
  * Build the LLM prompt for rewrite, diff, audit, or score mode.
  *
  * @param {object} options Prompt inputs.
- * @param {object} options.config Effective patina config.
+ * @param {import('./config.js').PatinaConfig} options.config Effective patina config.
  * @param {object[]} options.patterns Loaded pattern packs.
  * @param {object|null} options.documentType Parsed document-type policy.
  * @param {object|null} options.voice Parsed claim-safe voice baseline.
@@ -640,7 +640,7 @@ function buildAuditInstructions() {
  * (markdown table for the skill prompt, strict JSON for scoreText), so a
  * single prompt can never carry two contradictory contracts (issue #397).
  *
- * @param {object} config Effective patina config.
+ * @param {import('./config.js').PatinaConfig} config Effective patina config.
  * @param {string} lang Language code.
  * @param {string} [text=''] Input text (drives the short-text boost).
  * @param {object[]} [patterns=[]] Loaded pattern packs.

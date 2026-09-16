@@ -255,8 +255,8 @@ export function rewriteExtraBody(provider, tier, env = {}) {
  * stream failures and scoring floor failures emit terminal error frames with no success done.
  *
  * @param {object} options
- * @param {object} options.request Validated web rewrite request.
- * @param {object} [options.config] Web-safe config.
+ * @param {import('./web-rewrite-contract.js').WebRewriteRequest} options.request Validated web rewrite request.
+ * @param {import('./config.js').PatinaConfig} [options.config] Web-safe config.
  * @param {string} [options.repoRoot] Bundle root.
  * @param {Function} [options.callLLMStream] Streaming LLM client.
  * @param {{scoreMPS?: Function, scoreFidelity?: Function, scoreDeterministicSignals?: Function}} [options.scoreFns] Injectable scorers.
@@ -269,7 +269,8 @@ export function rewriteExtraBody(provider, tier, env = {}) {
  * @param {() => number} [options.now] Injectable clock.
  * @param {number} [options.numberSafetyRetries] Buffered LLM retries after a number-safety failure (default 1).
  * @param {Record<string,string|undefined>} [options.env] Server env, read only for explicit prompt-budget and reasoning controls.
- * @returns {Promise<object>} Small result summary.
+ * The small result summary is inferred rather than erased to `object`, so
+ * callers keep the `ok`/`code`/`attempts`/`receipt` shape this actually returns.
  */
 async function runWebRewriteStreamUnscoped({
   request,
@@ -719,8 +720,7 @@ function createDeadlineScope(timeout, signal, clock) {
  * TOTAL budget across rewrite attempts and scoring (not per-stage), and every
  * stage aborts together when it runs out. See createDeadlineScope.
  *
- * @param {object} options See runWebRewriteStreamUnscoped.
- * @returns {Promise<object>}
+ * @param {Parameters<typeof runWebRewriteStreamUnscoped>[0]} options See runWebRewriteStreamUnscoped.
  */
 export async function runWebRewriteStream(options) {
   const deadlineNow = options.deadlineNow ?? (() => globalThis.performance.now());

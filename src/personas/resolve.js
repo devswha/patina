@@ -18,7 +18,7 @@ export const PERSONA_LANGS = new Set(['ko', 'en', 'zh', 'ja']);
  * - omitting persona preserves the source voice.
  * @param {object} [options]
  * @param {object} [options.parsed] Parsed CLI args (web passes `{}`).
- * @param {object} [options.config] Effective config (may carry `persona`).
+ * @param {import('../config.js').PatinaConfig} [options.config] Effective config (may carry `persona`).
  * @param {string} [options.mode] Effective output mode.
  * @param {string} [options.lang] Rewrite language.
  * @param {string} [options.repoRoot] Bundle/repo root for persona lookup.

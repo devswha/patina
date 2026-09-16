@@ -98,7 +98,7 @@ function renderHistory(history = []) {
  * @param {object} options
  * @param {import('./web-rewrite-contract.js').WebRewriteRequest} options.request Validated web rewrite request.
  * @param {import('./config.js').PatinaConfig} options.config Web-safe config.
- * @param {{ patterns: object[], documentType: object, core: object|null, persona: object|null }} options.assets Loaded web assets.
+ * @param {ReturnType<typeof loadWebAssets>} options.assets Loaded web assets.
  * @param {'strict'|'minimal'} [options.promptMode='strict'] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals=null] Trusted deterministic signals.
  * @param {'baseline'|'ko-contextual-v1'} [options.structureGuidance='baseline'] Structure treatment.

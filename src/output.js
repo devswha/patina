@@ -6,9 +6,9 @@ import { TRANSLATIONESE_RULES } from './features/translationese.js';
 /**
  * Format a raw backend result for CLI output mode and requested format.
  *
- * @param {string|object} result Backend result or structured mode result.
+ * @param {string|Record<string, any>} result Backend result or structured mode result.
  * @param {string} mode Output mode: rewrite, diff, audit, or score.
- * @param {object} [parsed={}] Parsed CLI options.
+ * @param {Record<string, any>} [parsed={}] Parsed CLI options.
  * @param {object} [opts={}] Formatting options.
  * @param {object|null} [opts.register] Explicit register metadata.
  * @param {import('./logger.js').Logger} [opts.logger] Logger for output warnings.

@@ -186,10 +186,10 @@ function buildRegisterDirective(value, lang) {
  * @param {object} options Prompt inputs.
  * @param {import('./config.js').PatinaConfig} options.config Effective patina config.
  * @param {import('./loader.js').PatternPack[]} options.patterns Loaded pattern packs.
- * @param {object|null} options.documentType Parsed document-type policy.
- * @param {object|null} options.voice Parsed claim-safe voice baseline.
+ * @param {Record<string, any>|null} options.documentType Parsed document-type policy.
+ * @param {Record<string, any>|null} options.voice Parsed claim-safe voice baseline.
  * @param {object|null} [options.persona] Optional validated voice persona.
- * @param {object|null} options.scoring Parsed scoring guide.
+ * @param {Record<string, any>|null} options.scoring Parsed scoring guide.
  * @param {string} options.text Input text.
  * @param {string} [options.mode=rewrite] Output mode.
  * @param {ReturnType<typeof import('./config.js').resolveRegister>} [options.register=null] Explicit register metadata.

@@ -244,7 +244,7 @@ function notifyInvalidAttempt(onAttemptInvalid) {
  * @param {object} [options.extraBody] Opt-in provider-specific request fields (e.g. reasoning control) spread into the request body.
  * @param {Function} [options.onAttempt] Safe callback for one-based paid-attempt metadata records.
  * @param {Function} [options.onAttemptInvalid] Safe callback when transport evidence is malformed; receives no provider metadata.
- * @param {object|null} [options.deterministicScore] Optional frozen analysis for this exact text/config; omitted callers compute it normally.
+ * @param {Record<string, any>|null} [options.deterministicScore] Optional frozen analysis for this exact text/config; omitted callers compute it normally.
  * @returns {Promise<object>} Score payload with overall, interpretation, llmScore, and deterministicScore.
  * @throws {Error} When the operation is aborted.
  * @example
@@ -546,7 +546,7 @@ export function scoreDeterministicSignals({
  *
  * @param {Record<string, any>} parsed Parsed LLM scoring JSON.
  * @param {object} [options] Reconciliation options.
- * @param {object|null} [options.deterministicScore] Deterministic score payload.
+ * @param {Record<string, any>|null} [options.deterministicScore] Deterministic score payload.
  * @param {import('./config.js').PatinaConfig} [options.config={}] Effective config.
  * @param {import('./logger.js').Logger} [options.logger] Logger for reconciliation warnings.
  * @returns {object} Score payload preserving llmScore and deterministicScore details.
@@ -584,7 +584,7 @@ export function withShadowScore(parsed, { deterministicScore, config = {}, logge
  *
  * @param {object} [options] Reconciliation inputs.
  * @param {number|null} [options.llmOverall] LLM overall score.
- * @param {object|null} [options.deterministicScore] Deterministic score payload.
+ * @param {Record<string, any>|null} [options.deterministicScore] Deterministic score payload.
  * @param {import('./config.js').PatinaConfig} [options.config={}] Effective config.
  * @param {import('./logger.js').Logger} [options.logger] Logger for warnings.
  * @returns {{overall: number|null, scorePreference: (object|null)}} Reconciled score and preference source.

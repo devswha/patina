@@ -152,12 +152,21 @@ export async function verifyRewrite({
       scoreFidelity({ original, rewritten: text, apiKey, baseURL, model, callLLM, signal, timeout, logger }),
     ]);
     const gate = evaluateVerification({ mps: mpsResult, fidelity: fidelityResult }, { mpsFloor, fidelityFloor });
+    // core/scoring.md: zero extracted anchors means "MPS = N/A", which src/scoring.js
+    // renders as 100 because the JSON contract has no N/A and consumers fail closed on
+    // null. The floor is genuinely exempt for claim-free text — but when the source
+    // carries numeric claims, nothing was actually compared, so that 100 is an absence
+    // of evidence and must not certify meaning preservation (a polarity inversion keeps
+    // its digits and would otherwise pass). Anchored results are untouched.
+    const unanchoredNumericSource = Array.isArray(mpsResult?.anchors)
+      && mpsResult.anchors.length === 0
+      && numbersIn(original).size > 0;
     // Keep the existing numeric CLI result and candidate-selection behavior.
     // Invalid evidence is missing, never a coercible or out-of-range score.
     let mps = null, fidelity = 0;
     try { if (mpsResult?.error == null) mps = validateMps(mpsResult).mps; } catch {}
     try { if (fidelityResult?.error == null) fidelity = validateFidelityResult(fidelityResult).fidelity; } catch {}
-    return { mps, fidelity, verified: gate.ok };
+    return { mps, fidelity, verified: gate.ok && !unanchoredNumericSource };
   };
   const passes = (s) => s.verified;
 

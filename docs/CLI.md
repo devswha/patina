@@ -2,6 +2,23 @@
 
 patina's CLI is optimized for interactive editing, but a few surfaces are stable enough for automation.
 
+## Commands
+
+This file is the contract for the rewrite pipeline and its flags. The shipped
+subcommands each have their own reference:
+
+| Command | Reference |
+|---|---|
+| `patina inspect [file]` | [editor inspection](integrations/editor-inspection.md) |
+| `patina aside options|rewrite` | [aside](integrations/aside.md) |
+| `patina pack list|install` | [pro packs](PRO-PACKS.md) |
+| `patina persona new|list|show|edit|rm` | [`--persona`](#optional-voice-persona---persona) |
+| `patina auth status|login`, `patina doctor` | [authentication](AUTHENTICATION.md) |
+
+Run `node bin/patina.js --help` for the authoritative flag list; [flag parity](FLAG-PARITY.md)
+records which of those flags the `/patina` skill also exposes.
+
+
 ## Score gate
 
 Use `--score --exit-on <n>` when CI should fail if a text still reads too AI-like.
@@ -95,7 +112,8 @@ example). Scores describe the exact graded text, identified by `outputHash`:
 SHA-256 of its UTF-8 bytes, with no whitespace or Unicode normalization. The
 example hash is for `The service retains 12 audit logs.` without a newline.
 An unparseable MPS is `null`. `reason` is `passed`, `passed-on-retry`,
-`floor-not-met`, `retry-error`, `dropped-numbers`, or `output-changed`.
+`floor-not-met`, `retry-error`, `dropped-numbers`, `numeric-claim-changed`, or
+`output-changed`.
 If cleanup changes the graded text, the CLI sets `verified:false`, reports
 `output-changed`, and exits 4. The numeric guard sets `verified:false` and
 `reason:"dropped-numbers"` even if the scorers passed. The draft appears only in
@@ -127,7 +145,7 @@ These options compose but never imply one another:
 
 | Axis | Input | Runtime asset | Omission |
 |---|---|---|---|
-| Document Type | `--document-type <name>` / `document-type:` | `document-types/<name>.md` or `custom/document-types/<name>.md` | `default` document policy |
+| Document Type | `--document-type <name>` / `document-type:` | `document-types/<name>.md` or `custom/document-types/<name>.md` | `default` document policy. Built-ins include `resume`, `personal-statement`, and `project-writeup`; `formal` is proposals/official reports only. |
 | Persona | `--persona <name>` / `persona:` | `personas/<lang>/<name>.md` or a custom Persona | preserve source voice |
 | Register | `--register casual|professional` / `register:` | delivery directive | preserve source register |
 
@@ -211,8 +229,8 @@ patina --preview --jargon remove https://example.com/  # de-jargonized in-place 
 patina --jargon explain --register casual draft.md     # gloss terms, casual register
 ```
 
-- `--jargon keep` (default) — technical terms untouched.
-- `--jargon explain` — keep terms, add a brief plain-language gloss at first use.
+- `--jargon keep` (default) — copy Latin-letter tech terms, API names, task names, and exam names (`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`) as-is. Do not synonym-swap them into 분류/분할/손실.
+- `--jargon explain` — keep those English terms and add a brief plain-language gloss at first mention only.
 - `--jargon remove` — replace developer/technical jargon with everyday language; product names and proper nouns stay.
 
 ### Variant comparison in the preview
@@ -249,7 +267,7 @@ transformed text or JSON envelope. `--quiet` suppresses those stderr logs.
 
 `--preview` rewrites prose and renders the rewrites **in place** — each rewritten block highlighted and numbered, a floating bar with the change count, deterministic before/after score, jump chips, a three-state view toggle (rewritten / original / both), and a "patina notes" panel with the Pattern/Removed/Added/Why explanation.
 
-It accepts one input: an http(s) URL or a `.html`/`.htm` file (snapshot pipeline, same as a fetched page). Other extensions are rejected up front — rewrite a markdown/text draft with `patina <file>` or inspect it with `patina --diff <file>`.
+It accepts one input: an http(s) URL or a `.html`/`.htm` file (snapshot pipeline, same as a fetched page). Other extensions are rejected up front — rewrite a markdown/text draft with `patina <file>`, review it pattern by pattern with `patina --diff <file>`, or get offline JSON diagnostics with `patina inspect <file>`.
 
 ```bash
 patina --preview https://example.com/article           # live page, snapshot overlay

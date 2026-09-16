@@ -292,7 +292,17 @@ test('JSON verification metadata is opt-in runtime evidence with no duplicate dr
 });
 
 test('CLI --verify JSON binds scores to graded text and rejects post-verification claim loss', async () => {
-  for (const scenario of ['pass', 'hard-fail', 'malformed', 'dropped-number', 'retry-pass', 'nested-body']) {
+  // claim-swap / claim-safe-reword cover the CLI numeric-claim overlay (#870): the
+  // rewrite keeps every source digit, so droppedNumbers stays empty and only the
+  // claim bag can tell the difference.
+  const REWRITE_ANSWER = {
+    'dropped-number': 'The service retains the audit logs.',
+    // Both candidates are the same length as the source, so the fidelity
+    // length_ratio band stays out of the way and the claim bag is what decides.
+    'claim-swap': 'The service retains 12 of 12 logs.',
+    'claim-safe-reword': 'The service retains 12 audit files.',
+  };
+  for (const scenario of ['pass', 'hard-fail', 'malformed', 'dropped-number', 'retry-pass', 'nested-body', 'claim-swap', 'claim-safe-reword']) {
     const text = scenario === 'nested-body' ? 'The service does not store drafts. It runs locally.\n' : 'The service retains 12 audit logs.';
     const dir = mkdtempSync(join(tmpdir(), 'patina-runtime-json-'));
     writeFileSync(join(dir, 'key'), 'test-key');
@@ -313,7 +323,7 @@ test('CLI --verify JSON binds scores to graded text and rejects post-verificatio
         answer = JSON.stringify({ claims_preserved: 3, no_fabrication: 3, audience_register_match: 3 });
       } else {
         rewriteCount++;
-        answer = scenario === 'dropped-number' ? 'The service retains the audit logs.' : scenario === 'nested-body' ? NESTED_RAW : text;
+        answer = scenario === 'nested-body' ? NESTED_RAW : (REWRITE_ANSWER[scenario] ?? text);
       }
       response.writeHead(200, { 'content-type': 'application/json' });
       response.end(JSON.stringify({ choices: [{ message: { content: answer } }] }));
@@ -325,20 +335,22 @@ test('CLI --verify JSON binds scores to graded text and rejects post-verificatio
         '--api-key-file', join(dir, 'key'), '--base-url', `http://127.0.0.1:${server.address().port}/v1`, join(dir, 'input.txt')],
       { cwd: dir, timeout: 20000, env: { ...process.env, HOME: dir, USERPROFILE: dir, TMPDIR: dir } })
         .then(result => ({ ...result, code: 0 }), error => error);
-      const success = ['pass', 'retry-pass'].includes(scenario);
+      const success = ['pass', 'retry-pass', 'claim-safe-reword'].includes(scenario);
+      const singlePass = ['pass', 'dropped-number', 'nested-body', 'claim-swap', 'claim-safe-reword'].includes(scenario);
       assert.equal(result.code, success ? 0 : 4, result.stderr);
       const payload = JSON.parse(result.stdout);
       assert.equal(payload.mode, 'rewrite');
-      assert.equal(payload.output, scenario === 'dropped-number' ? 'The service retains the audit logs.' : scenario === 'nested-body' ? 'It runs locally.' : text);
+      assert.equal(payload.output, scenario === 'nested-body' ? 'It runs locally.' : (REWRITE_ANSWER[scenario] ?? text));
       assert.deepEqual(payload.verification, {
         verified: success, mps: scenario === 'malformed' ? null : scenario === 'hard-fail' ? 95 : 100,
-        fidelity: 100, retried: !['pass', 'dropped-number', 'nested-body'].includes(scenario),
-        reason: scenario === 'pass' ? 'passed' : scenario === 'retry-pass' ? 'passed-on-retry'
-          : scenario === 'dropped-number' ? 'dropped-numbers' : scenario === 'nested-body' ? 'output-changed' : 'floor-not-met',
+        fidelity: 100, retried: !singlePass,
+        reason: ['pass', 'claim-safe-reword'].includes(scenario) ? 'passed' : scenario === 'retry-pass' ? 'passed-on-retry'
+          : scenario === 'dropped-number' ? 'dropped-numbers' : scenario === 'claim-swap' ? 'numeric-claim-changed'
+          : scenario === 'nested-body' ? 'output-changed' : 'floor-not-met',
         mpsFloor: 95, fidelityFloor: 95,
         outputHash: outputHash(scenario === 'nested-body' ? NESTED_GRADED : payload.output),
       });
-      assert.equal(rewriteCount, ['pass', 'dropped-number', 'nested-body'].includes(scenario) ? 1 : 2);
+      assert.equal(rewriteCount, singlePass ? 1 : 2);
       if (scenario === 'nested-body') {
         assert.doesNotMatch(text, /\d/);
         assert.notEqual(payload.verification.outputHash, outputHash(payload.output));

@@ -102,7 +102,6 @@ export function parsePrSections(markdown) {
  * generated-file exclusions.
  *
  * @param {string} path
- * @param {object} file
  * @returns {boolean}
  */
 export function isProtectedReviewablePath(path, file = {}) {
@@ -373,7 +372,6 @@ function isProductMarkdownPath(path, file = {}) {
  * file metadata produces an invalid report. Invalid reports remain warnings
  * under this pilot and are never classified as docs-only.
  *
- * @param {object} pullRequest
  * @param {{repoRoot?: string, templatePath?: string, templateText?: string}} [options]
  * @returns {object} Warning-mode policy report.
  */

@@ -36,7 +36,7 @@ function mergeOverrides(settings, overrides) {
 
 export function cliVerification(value) {
   const bounded = number => typeof number === 'number' && Number.isFinite(number) && number >= 0 && number <= 100;
-  const reasons = ['passed', 'passed-on-retry', 'floor-not-met', 'retry-error', 'dropped-numbers', 'output-changed'];
+  const reasons = ['passed', 'passed-on-retry', 'floor-not-met', 'retry-error', 'dropped-numbers', 'numeric-claim-changed', 'output-changed'];
   if (!value || typeof value !== 'object' || Array.isArray(value)
     || typeof value.verified !== 'boolean' || typeof value.retried !== 'boolean'
     || !bounded(value.mps) || !bounded(value.fidelity)

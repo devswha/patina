@@ -18,7 +18,8 @@ export const SUPPORTED_LANGS = Object.freeze(['ko', 'en', 'zh', 'ja']);
 
 /** Public document-policy names shared by the CLI and hosted API. */
 export const WEB_DOCUMENT_TYPES = Object.freeze([
-  'default', 'blog', 'academic', 'technical', 'formal', 'social', 'email',
+  'default', 'blog', 'academic', 'technical', 'formal', 'resume',
+  'personal-statement', 'project-writeup', 'social', 'email',
   'legal', 'medical', 'marketing', 'narrative', 'instructional',
   'casual-conversation', 'code-comment', 'commit-message', 'release-notes',
   'namuwiki',
@@ -421,7 +422,10 @@ export function normalizeHistory(history) {
  *   handler has already established (e.g. that a pro license arrived as an
  *   Authorization: Bearer header). Optional — existing 2-arg callers are
  *   unaffected and behave exactly as before.
- * @returns {{ok:true, value:object}|{ok:false, status:number, error:string}}
+ *
+ * The return type is inferred so the normalized value cannot drift from the
+ * object this function actually builds; see the `WebRewriteRequest` typedef
+ * below for the consumer-facing name.
  */
 export function validateRewriteRequest(body, env = {}, options = {}) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -580,6 +584,15 @@ export function validateRewriteRequest(body, env = {}, options = {}) {
     },
   };
 }
+
+/**
+ * The normalized request `validateRewriteRequest` hands to the rewrite paths.
+ * Derived from the function's own return type, so it tracks the contract
+ * automatically instead of being a second copy that can fall out of date.
+ * Discriminated on the presence of `value` rather than on `ok: true`, because
+ * an object literal in a JS file widens `true` to `boolean`.
+ * @typedef {Extract<ReturnType<typeof validateRewriteRequest>, {value: unknown}>['value']} WebRewriteRequest
+ */
 
 /** Serialize one stream frame as an NDJSON line (object + trailing newline). */
 export function encodeStreamFrame(frame) {

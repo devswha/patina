@@ -74,7 +74,7 @@ const COPY = {
 const LABELS = {
   language: { auto: ['자동 감지', 'Auto detect'], ko: ['한국어', 'Korean'], en: ['영어', 'English'], zh: ['중국어', 'Chinese'], ja: ['일본어', 'Japanese'] },
   documentType: {
-    default: ['기본 문서', 'General'], blog: ['블로그 / 에세이', 'Blog / essay'], academic: ['학술 / 연구', 'Academic / research'], technical: ['기술 문서', 'Technical'], formal: ['정형 문서', 'Structured document'],
+    default: ['기본 문서', 'General'], blog: ['블로그 / 에세이', 'Blog / essay'], academic: ['학술 / 연구', 'Academic / research'], technical: ['기술 문서', 'Technical'], formal: ['제안서 / 공식 보고서', 'Proposal / official report'], resume: ['이력서', 'Resume'], 'personal-statement': ['자기소개서 / 커버레터', 'Personal statement / cover letter'], 'project-writeup': ['프로젝트 기록', 'Project writeup'],
     social: ['SNS', 'Social post'], email: ['이메일', 'Email'], legal: ['법률 문서', 'Legal'], medical: ['의학 문서', 'Medical'], marketing: ['마케팅', 'Marketing'], narrative: ['내러티브 / 에세이', 'Narrative / essay'],
     instructional: ['안내 / 사용법', 'How-to / instructions'], 'casual-conversation': ['대화 / 메시지', 'Conversation / message'], 'code-comment': ['코드 주석', 'Code comment'], 'commit-message': ['커밋 메시지', 'Commit message'],
     'release-notes': ['릴리스 노트', 'Release notes'], namuwiki: ['나무위키풍 · 한국어 전용', 'NamuWiki style · Korean only'],

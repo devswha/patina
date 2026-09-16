@@ -1,0 +1,50 @@
+{"id":"hot-01","class":"hot","register":"social","text":"AI slop changed how I read. I notice the tells. Short punchy sentences. Constant set groups.","why":"short stack of four clipped sentences plus a set-group run"}
+{"id":"hot-02","class":"hot","register":"social","text":"Generic ideas. No point of view. Nothing worth saying. Every post reads the same.","why":"set group of three fragments then a flat closer"}
+{"id":"hot-03","class":"hot","register":"social","text":"You don't have a strategy. You have a vibe.","why":"short-form phrase: You don't have X, you have Y"}
+{"id":"hot-04","class":"hot","register":"marketing","text":"Build the product that matters.","why":"short-form phrase: that matters, as landing copy"}
+{"id":"hot-05","class":"hot","register":"social","text":"Most teams miss this — the obvious part. They rush. They guess. They ship.","why":"informationless aside plus a three-fragment stack"}
+{"id":"hot-06","class":"hot","register":"social","text":"It's not about the tools. It's about the thinking. It's about the taste.","why":"anaphoric set group, no anchor anywhere"}
+{"id":"hot-07","class":"hot","register":"marketing","text":"Faster onboarding. Fewer clicks. Happier teams. That's the promise.","why":"landing set group with a flat summary closer"}
+{"id":"hot-08","class":"hot","register":"social","text":"I used to over-engineer. Now I ship. The difference — everything.","why":"stack plus an aside that carries no information"}
+{"id":"hot-09","class":"hot","register":"social","text":"You don't have a hiring problem. You have a clarity problem.","why":"You don't have X you have Y, second register"}
+{"id":"hot-10","class":"hot","register":"marketing","text":"Real results. Real teams. Real impact. RESULTS.","why":"set group with an all-caps mic-drop closer"}
+{"id":"hot-11","class":"hot","register":"social","text":"Everyone talks about focus. Nobody practices it. That's the gap — the whole gap.","why":"stack plus empty aside restating the prior clause"}
+{"id":"hot-12","class":"hot","register":"social","text":"Write less. Think more. Ship anyway. Repeat.","why":"four imperative fragments, pure cadence"}
+{"id":"hot-13","class":"hot","register":"marketing","text":"The work that matters is the work nobody sees.","why":"that matters phrase in landing voice"}
+{"id":"hot-14","class":"hot","register":"social","text":"Good design is invisible. Great design is inevitable. Bad design explains itself.","why":"parallel triad with no concrete referent"}
+{"id":"hot-15","class":"hot","register":"social","text":"I stopped reading threads — all of them. Too polished. Too even. Too safe.","why":"aside plus a three-fragment set group"}
+{"id":"hot-16","class":"hot","register":"marketing","text":"Less process. More output. Zero friction. Simple.","why":"four marketing fragments, no anchor"}
+{"id":"hot-17","class":"hot","register":"social","text":"You don't have a content problem. You have a point-of-view problem.","why":"third variant of the You don't have X frame"}
+{"id":"hot-18","class":"hot","register":"social","text":"Everything is a remix. Nothing is original. Most of it is noise.","why":"aphoristic set group"}
+{"id":"hot-19","class":"hot","register":"marketing","text":"Ship the thing that matters. Skip the rest.","why":"that matters plus an imperative fragment"}
+{"id":"hot-20","class":"hot","register":"social","text":"The best writers cut. The rest explain. The worst apologize. Cut more.","why":"four-part parallel stack"}
+{"id":"hot-21","class":"hot","register":"social","text":"Talent is common. Consistency is rare — that rare.","why":"two fragments plus a self-referential empty aside"}
+{"id":"hot-22","class":"hot","register":"marketing","text":"Move faster. Work smarter. Scale further. TODAY.","why":"marketing triad with an all-caps closer"}
+{"id":"hot-23","class":"hot","register":"social","text":"Nobody cares about your process. They care about the result. Mostly they don't care.","why":"three flat sentences with no anchor"}
+{"id":"hot-24","class":"hot","register":"social","text":"Start small. Stay consistent. Trust the compounding. It works.","why":"advice stack, four fragments"}
+{"id":"hot-25","class":"hot","register":"marketing","text":"You don't have a traffic problem. You have a retention problem.","why":"You don't have X in marketing register"}
+{"id":"cold-01","class":"cold","register":"social","text":"We shipped the parser on Tuesday after three weeks of rewrites, and it finally handles the 4.2MB fixture without choking.","why":"one long anchored sentence with a number"}
+{"id":"cold-02","class":"cold","register":"social","text":"Revenue grew across 2020—2024 while headcount stayed flat.","why":"HARD NEGATIVE: numeric range dash must stay cold"}
+{"id":"cold-03","class":"cold","register":"social","text":"\"I never said that — you did,\" she told the room, and nobody followed up.","why":"HARD NEGATIVE: literary dash inside quoted speech"}
+{"id":"cold-04","class":"cold","register":"social","text":"The migration took three weekends — longer than anyone budgeted for.","why":"HARD NEGATIVE: single aside that carries real information"}
+{"id":"cold-05","class":"cold","register":"social","text":"Kafka rebalancing broke again. Same consumer group. Third time this month.","why":"HARD NEGATIVE: genuinely clipped human status update"}
+{"id":"cold-06","class":"cold","register":"social","text":"Postgres 16 upgrade done. Replicas caught up in 40 minutes. No downtime.","why":"HARD NEGATIVE: terse but fully anchored"}
+{"id":"cold-07","class":"cold","register":"marketing","text":"Patina runs offline and never uploads your draft to a third-party service.","why":"anchored marketing claim with a product name"}
+{"id":"cold-08","class":"cold","register":"social","text":"Spent the morning tracing a leak in the websocket pool and it was a missing clearInterval.","why":"flowing human sentence, one clause"}
+{"id":"cold-09","class":"cold","register":"social","text":"Deploy failed twice. Rolled back. Root cause was a stale TLS cert on the edge node.","why":"HARD NEGATIVE: three short sentences but concretely anchored"}
+{"id":"cold-10","class":"cold","register":"social","text":"The 8.7.1 release notes are up; the keychain probe fix is the one worth reading.","why":"version number anchor"}
+{"id":"cold-11","class":"cold","register":"marketing","text":"Two engineers, one weekend, and a 40% drop in p95 latency.","why":"marketing copy carrying real numbers"}
+{"id":"cold-12","class":"cold","register":"social","text":"I disagree with Simon on this one — his benchmark excludes the cold-start path.","why":"aside naming a person and a concrete objection"}
+{"id":"cold-13","class":"cold","register":"social","text":"Reading the RFC again. Section 4 contradicts the appendix.","why":"two short sentences, both anchored"}
+{"id":"cold-14","class":"cold","register":"social","text":"My coffee went cold while I waited for CI. Again.","why":"human aside, mundane, only two sentences"}
+{"id":"cold-15","class":"cold","register":"marketing","text":"From 12 manual steps to 2. That's the whole pitch.","why":"numbers carry the claim"}
+{"id":"cold-16","class":"cold","register":"social","text":"The team moved to trunk-based development in March and the review queue halved.","why":"single anchored sentence"}
+{"id":"cold-17","class":"cold","register":"social","text":"Vite 6 broke our postcss config. Pinned to 5.4 for now.","why":"HARD NEGATIVE: clipped but versioned"}
+{"id":"cold-18","class":"cold","register":"social","text":"She asked why we kept the old bindings — they were the only record of production behaviour.","why":"aside with substantive content"}
+{"id":"cold-19","class":"cold","register":"marketing","text":"Built for teams that already have a style guide and want to keep it.","why":"one qualified marketing sentence"}
+{"id":"cold-20","class":"cold","register":"social","text":"Three incidents this quarter, all the same DNS timeout, all on the same subnet.","why":"anchored enumeration in one sentence"}
+{"id":"cold-21","class":"cold","register":"social","text":"Honestly the docs were fine. I just didn't read them.","why":"HARD NEGATIVE: two short casual human sentences"}
+{"id":"cold-22","class":"cold","register":"social","text":"Benchmarks ran 2020—2021 on the old corpus, so the numbers aren't comparable.","why":"HARD NEGATIVE: second numeric range dash"}
+{"id":"cold-23","class":"cold","register":"marketing","text":"Patina scores a draft offline in under 200ms on a laptop.","why":"product name plus measurement"}
+{"id":"cold-24","class":"cold","register":"social","text":"Fixed the flaky test. It was ordering, not timing.","why":"HARD NEGATIVE: two clipped sentences, human correction voice"}
+{"id":"cold-25","class":"cold","register":"social","text":"We kept 12 audit logs per tenant after the Polar migration and nobody noticed the cost.","why":"anchored with number and proper noun"}

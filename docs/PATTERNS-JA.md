@@ -218,7 +218,7 @@ Example after:
 - Source: [ja-language.md](../patterns/ja-language.md)
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
-- Fire condition: 同一文書に3項目の列挙が2回以上出現、または3つにまとめた根拠が恣意的で他の数でも同等に成り立つ場合。
+- Fire condition: 同一文書に修辞的な3項目列挙が2回以上出現し、2つでも4つでも同等に成り立つ場合。実在の技術三项は除外。
 - Example files: [failure](../examples/ja-10-failure-01.md) · [success](../examples/ja-10-success-01.md)
 
 Example before:
@@ -582,7 +582,7 @@ Example after:
 - Source: [ja-filler.md](../patterns/ja-filler.md)
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
-- Fire condition: 文書の最終段落（または最後から2番目）の先頭文が上記シグナルワードのいずれかで始まる。または、同じ文書に結論シグナルワードが 2 回以上登場。
+- Fire condition: 最後の1–2段落がシグナルワードで始まるか、新しい数字・固有名・決定のない教訓機能だけを果たす場合。または同じ文書に結論シグナルワードが 2 回以上登場。
 - Example files: [failure](../examples/ja-31-failure-01.md) · [success](../examples/ja-31-success-01.md)
 
 Example before:

@@ -22,4 +22,4 @@ language: en
 
 ## Judgment
 
-**Failure (false positive)** — The exclusion condition applies: this is a naturally occurring triad describing a genuinely three-part process. The experiment literally has three sequential phases, explicitly stated ("three phases"), and each phase is described with distinct concrete details — sensor calibration, 48-hour continuous run, two-week review period. The count is not arbitrary; removing or adding a phase would misrepresent the actual procedure. The triple appears only once in the passage, and no other triple-item lists are present. This is a factual description of methodology, not a rhythmic rhetorical device.
+**Failure (false positive)** — This is a genuine three-part process (setup, measurement, and analysis), the same class as classification/segmentation/detection or input/process/output. The count is not rhetorical; two or four phases would misstate the method. The triad appears once. Pattern 10 fires only on rhetorical triples that could equally be two or four, and only when they appear 2+ times.

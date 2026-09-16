@@ -65,7 +65,7 @@ Required fields:
 | `tier` | `free`, `byok`, or `pro` |
 | `text` | Non-empty string |
 
-Optional style fields are `documentType`, `persona`, and `register`; edit controls are described above. `documentType` defaults to `default`; valid values are `default`, `blog`, `academic`, `technical`, `formal`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes`, and `namuwiki` (`namuwiki` is Korean-only). `register` is `casual` or `professional`. A persona must be one offered for the selected language.
+Optional style fields are `documentType`, `persona`, and `register`; edit controls are described above. `documentType` defaults to `default`; valid values are `default`, `blog`, `academic`, `technical`, `formal`, `resume`, `personal-statement`, `project-writeup`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes`, and `namuwiki` (`namuwiki` is Korean-only). `formal` remains proposals and official reports; resumes, cover letters, and project writeups use the split types. `register` is `casual` or `professional`. A persona must be one offered for the selected language.
 
 For `mode: "refine"`, `original` is required and must be the original source text. `history` is optional; it is an array of `{ "role": "user" | "assistant", "content": "..." }` turns. The server retains at most 6 recent turns and 12 KiB of history text. BYOK additionally requires an allowed `provider`, `model`, and non-empty `apiKey`; free and Pro reject a body `apiKey`.
 

@@ -91,3 +91,70 @@ test('detector never throws on empty or nullish input', () => {
     assert.strictEqual(r.emDash.perSentence, 0);
   }
 });
+
+// ---------- 2026 cadence combination signal (#879, parent #878) ----------
+//
+// Audit/score-visible only: the issue requires an EN 25-hot/25-cold fixture set
+// before any fire condition is tightened or promoted into rewrite, so these
+// assert the emitted signal, never a rewrite behavior change.
+
+// Four sentences: the existing eligibility window is maxProseSentences = 4, so a
+// cadence stack has to fit inside it rather than the window being widened.
+const CADENCE_STACK = [
+  'I notice the tells.',
+  'Short punchy sentences.',
+  'Constant set groups.',
+  'Those dashes — unnecessary little asides.',
+].join(' ');
+
+const LONE_DASH = 'The migration shipped on Tuesday — finally, after three weekends of work.';
+
+const RANGE_DASH = 'Revenue grew across 2020—2024 and the team doubled in that window.';
+
+const LITERARY_DASH = 'She paused. "I never said that — you did," he answered, and the room went quiet.';
+
+test('cadence combination fires on a short stack with set groups and an empty aside', () => {
+  const result = detectEnglishShortFormTells(CADENCE_STACK, { documentType: 'social' });
+  assert.equal(result.cadence.detected, true);
+  assert.ok(result.cadence.signals.length >= 2, 'combination needs 2+ co-occurring signals, got ' + JSON.stringify(result.cadence.signals));
+});
+
+test('the combination signal outranks a single em dash', () => {
+  const combo = detectEnglishShortFormTells(CADENCE_STACK, { documentType: 'social' });
+  const single = detectEnglishShortFormTells(LONE_DASH, { documentType: 'social' });
+  assert.equal(single.emDash.severity, 1, 'a lone dash stays a weak signal');
+  assert.equal(single.cadence.detected, false, 'one dash alone is not a cadence tell');
+  assert.ok(combo.cadence.severity > single.emDash.severity,
+    `combination (${combo.cadence.severity}) must outrank a lone dash (${single.emDash.severity})`);
+});
+
+test('numeric range dashes stay cold', () => {
+  const result = detectEnglishShortFormTells(RANGE_DASH, { documentType: 'social' });
+  assert.equal(result.emDash.count, 0, 'a 2020—2024 range is not a prose aside');
+  assert.equal(result.cadence.detected, false);
+});
+
+test('literary dashes in quoted speech stay cold', () => {
+  const result = detectEnglishShortFormTells(LITERARY_DASH, { documentType: 'social' });
+  assert.equal(result.emDash.count, 0);
+  assert.equal(result.cadence.detected, false);
+});
+
+test('short-form phrases fire on their own', () => {
+  for (const text of ['Ship the thing that matters.', "You don't have a strategy. You have a vibe."]) {
+    const result = detectEnglishShortFormTells(text, { documentType: 'social' });
+    assert.equal(result.cadence.detected, true, text);
+  }
+});
+
+test('cadence stays inert outside short-form document types', () => {
+  const result = detectEnglishShortFormTells(CADENCE_STACK, { documentType: 'blog' });
+  assert.equal(result.eligible, false);
+  assert.equal(result.cadence.detected, false, 'ineligible input must not emit a cadence tell');
+});
+
+test('ordinary varied prose does not fire', () => {
+  const text = 'We moved the bindings into version control in April, which took the better part of a week, and the smoke check has caught two bad configs since then.';
+  const result = detectEnglishShortFormTells(text, { documentType: 'social' });
+  assert.equal(result.cadence.detected, false);
+});

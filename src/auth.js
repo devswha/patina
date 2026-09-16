@@ -52,7 +52,7 @@ export function providerHttpKeyEnvVars(providerApiKeyEnv) {
  * Inspect where an HTTP API key would be read from without exposing the secret.
  *
  * @param {object} [options] Inspection options.
- * @param {object} [options.env=process.env] Environment map to inspect.
+ * @param {Record<string,string|undefined>} [options.env=process.env] Environment map to inspect.
  * @param {Function} [options.readFile] File reader for PATINA_API_KEY_FILE.
  * @param {string[]} [options.envVars=DEFAULT_HTTP_KEY_ENV_VARS] Env vars to check.
  * @returns {{ok: boolean, source: string|null, envVars: string[], filePath: string|null, detail: string}} Source diagnostics.
@@ -91,7 +91,7 @@ export function inspectHttpApiKeySource({
  *
  * @param {object} [options] Resolution options.
  * @param {string} [options.apiKeyFile] Explicit key file path.
- * @param {object} [options.env=process.env] Environment map.
+ * @param {Record<string,string|undefined>} [options.env=process.env] Environment map.
  * @param {Function} [options.readFile] File reader for key files.
  * @param {string[]} [options.envVars=DEFAULT_HTTP_KEY_ENV_VARS] Env var lookup order.
  * @returns {string|undefined} Resolved key value, or undefined when unauthenticated.

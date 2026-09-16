@@ -23,7 +23,7 @@ const DEFAULT_MAX_TOKENS = 8192;
 /**
  * @param {object} options
  * @param {string} [options.baseURL]
- * @param {object} [options.env]
+ * @param {Record<string,string|undefined>} [options.env]
  * @returns {boolean} Whether the native adapter should handle this request.
  */
 export function nativeAnthropicEnabled({ baseURL, env = process.env }) {
@@ -65,7 +65,7 @@ export function nativeHeaders(apiKey) {
  * @param {number} [options.temperature] Sent only when within Anthropic's 0..1 range.
  * @param {number} [options.maxTokens]
  * @param {boolean} [options.stream]
- * @param {object} [options.env] Env source for the thinking opt-out (defaults to process.env).
+ * @param {Record<string,string|undefined>} [options.env] Env source for the thinking opt-out (defaults to process.env).
  * @returns {object}
  */
 export function buildNativeBody({ prompt, model, temperature, maxTokens = DEFAULT_MAX_TOKENS, stream = false, env = process.env }) {

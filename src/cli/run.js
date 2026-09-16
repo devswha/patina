@@ -24,6 +24,7 @@ import { rmSync, readFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
 import { verifyRewrite, deterministicMeaningGuard, droppedNumbers } from '../verify.js';
+import { evaluateNumberSafety } from '../features/meaning-proxy.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
 import { buildDocumentSignals } from '../features/document-signals.js';
 import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput, writeAtomicUtf8, resolveBatchOutputPath } from './batch.js';
@@ -40,6 +41,7 @@ import { pathToFileURL } from 'node:url';
 import { humanizeXliffDocument, resolveUniqueCap } from './xliff.js';
 import { inspectAuditSource } from '../inspection.js';
 import { warnIfTooSmooth } from './smoothness-advisory.js';
+import { warnIfOvercorrected } from './overcorrection-advisory.js';
 
 /**
  * Run the default patina pipeline for an already-parsed CLI invocation:
@@ -47,7 +49,9 @@ import { warnIfTooSmooth } from './smoothness-advisory.js';
  * input job (rewrite/diff/audit/score, plus the preview page).
  *
  * @param {object} parsed Parsed CLI arguments from parseArgs.
- * @param {object} logger Patina logger for this invocation.
+ * @param {Required<import('../logger.js').Logger>} logger Patina logger for this
+ *   invocation. The full facade is required, not the minimal one: this path
+ *   calls `logger.closeProgress()` unguarded around the progress spinner.
  * @returns {Promise<void>} Resolves after all job output is written.
  * @throws {Error} For validation, provider, file, or runtime failures.
  */
@@ -329,12 +333,30 @@ export async function runDefault(parsed, logger) {
               verificationReport.verified = false;
               verificationReport.reason = 'dropped-numbers';
             }
+          } else if (evaluateNumberSafety(text, finalText, lang).reason === 'numeric_claim_changed') {
+            // The hosted path already fails closed on this (src/web-rewrite-stream.js);
+            // the CLI only ever diffed a Set of digit tokens, so a sign flip, a
+            // word-number swap, an added claim, or a collapsed duplicate kept every
+            // digit and passed. dropped-numbers keeps precedence above so the existing
+            // reason is unchanged when source digits actually vanish.
+            // Only numeric_claim_changed is enforced here: the fail-closed
+            // unsupported_numeric_syntax / unsupported_word_number reasons stay
+            // web-only on purpose, so an identity comparator like p < 0.05 keeps
+            // working on the CLI.
+            meaningSafetyReason = 'numeric-claim-changed';
+            if (verificationReport) {
+              verificationReport.verified = false;
+              verificationReport.reason = 'numeric-claim-changed';
+            }
           }
           if (meaningSafetyReason) {
             process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
           }
           // Advisory only — rewrite output, never the source. Does not touch exit codes.
           warnIfTooSmooth({ text: finalText, config, logger, lang });
+          // Advisory only — compares source to output to catch a rewrite that traded
+          // one slop class for another. Does not touch exit codes or the emitted text.
+          warnIfOvercorrected({ original: text, text: finalText, config, logger, lang });
         }
 
         if (mode === 'score') {
@@ -759,7 +781,7 @@ export function resolvePromptMode({ backend, model }) {
  *
  * @param {string} documentTypeName Requested document type.
  * @param {string} lang Active language code.
- * @param {object} [logger] Logger with warn(event, payload).
+ * @param {import('../logger.js').Logger} [logger] Logger with warn(event, payload).
  * @returns {string} Effective document type.
  * @example
  * resolveDocumentTypeForLanguage('namuwiki', 'en') // 'default'

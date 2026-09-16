@@ -84,7 +84,6 @@ export const PROVIDERS = {
  * Resolve a provider preset by name.
  *
  * @param {string|null|undefined} name Provider name; falsy returns null.
- * @returns {object|null} Provider preset or null.
  * @throws {PatinaCliError} When name is unknown.
  * @example
  * const provider = selectProvider('openai');
@@ -106,7 +105,7 @@ export function selectProvider(name) {
  * Resolve effective API key, base URL, and model from explicit values, provider, and env.
  *
  * @param {object} options Provider resolution inputs.
- * @param {object|null} [options.provider] Provider preset from {@link selectProvider}.
+ * @param {ReturnType<typeof selectProvider>|null} [options.provider] Provider preset from {@link selectProvider}.
  * @param {string} [options.apiKey] Explicit API key.
  * @param {string} [options.baseURL] Explicit base URL.
  * @param {string} [options.model] Explicit model id.

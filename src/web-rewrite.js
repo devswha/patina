@@ -15,7 +15,7 @@ import {
   diagnosisStructureGuidance,
 } from './features/korean-diagnosis.js';
 
-/** @type {Map<string, { config: object, patterns: object[], documentType: object, core: object|null, persona: object|null }>} */
+/** @type {Map<string, ReturnType<typeof loadWebAssets>>} */
 const ASSET_CACHE = new Map();
 
 /** @param {unknown} value */
@@ -31,8 +31,8 @@ function cloneConfig(value) {
  * @param {string} options.lang Language code.
  * @param {string} options.documentType Document-policy name.
  * @param {string} [options.personaId] Explicit voice persona id.
- * @param {object} options.config Web-safe baseline config.
- * @returns {{ config: object, patterns: object[], documentType: object, core: object|null, persona: object|null }} Loaded assets.
+ * @param {import('./config.js').PatinaConfig} options.config Web-safe baseline config.
+ * @returns {{ config: import('./config.js').PatinaConfig, patterns: import('./loader.js').PatternPack[], documentType: Record<string, any>, core: Record<string, any>|null, persona: Record<string, any>|null }} Loaded assets.
  * @throws {import('./errors.js').PatinaCliError} When required bundled assets are missing or empty.
  */
 export function loadWebAssets({ repoRoot = resolveBundleRoot(), lang, documentType = 'default', config, personaId }) {
@@ -96,9 +96,9 @@ function renderHistory(history = []) {
  * Build a patina rewrite prompt for first-turn or refine web requests.
  *
  * @param {object} options
- * @param {object} options.request Validated web rewrite request.
- * @param {object} options.config Web-safe config.
- * @param {{ patterns: object[], documentType: object, core: object|null, persona: object|null }} options.assets Loaded web assets.
+ * @param {import('./web-rewrite-contract.js').WebRewriteRequest} options.request Validated web rewrite request.
+ * @param {import('./config.js').PatinaConfig} options.config Web-safe config.
+ * @param {ReturnType<typeof loadWebAssets>} options.assets Loaded web assets.
  * @param {'strict'|'minimal'} [options.promptMode='strict'] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals=null] Trusted deterministic signals.
  * @param {'baseline'|'ko-contextual-v1'} [options.structureGuidance='baseline'] Structure treatment.
@@ -175,11 +175,11 @@ export function buildWebRewritePrompt({
  * Run one web rewrite request using injected LLM transport.
  *
  * @param {object} options
- * @param {object} options.request Validated web rewrite request.
- * @param {object} [options.config] Web-safe config; loaded from baseline when omitted.
+ * @param {import('./web-rewrite-contract.js').WebRewriteRequest} options.request Validated web rewrite request.
+ * @param {import('./config.js').PatinaConfig} [options.config] Web-safe config; loaded from baseline when omitted.
  * @param {string} [options.repoRoot] Bundle root.
  * @param {Function} [options.callLLM] Injected LLM client.
- * @param {NodeJS.ProcessEnv|object} [options.env] Environment for research flags.
+ * @param {Record<string,string|undefined>} [options.env] Environment for research flags.
  * @param {AbortSignal} [options.signal] Abort signal.
  * @param {number} [options.timeout] Timeout in milliseconds.
  * @returns {Promise<{ rewrite: string, prompt: string, provider: string, model: string }>} Rewrite result.

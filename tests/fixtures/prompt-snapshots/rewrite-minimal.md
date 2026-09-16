@@ -6,6 +6,14 @@ Also fix the sentence rhythm. AI text keeps every sentence nearly the same lengt
 
 **Markdown structure — preserve headings (required).** Treat every Markdown ATX heading line (a line starting with one or more `#` followed by a space) as fixed structure, exactly like a fenced code block. Copy each heading line through verbatim — never reword, translate, reformat, reorder, merge, or split it — and never add a heading that was not in the input or remove one that was. Rewrite only the body prose beneath the headings. The set and text of headings in your output must be identical to the input.
 
+**Keep heading-section shape.** If the body under a heading is empty, a phrase, a one-liner, or bullets, keep that shape. Do not expand it into an introduction–body–lesson essay.
+
+**Do not invent why, evaluation, or a lesson.** Do not add rationale, value judgments, "I learned"/"this taught me" closers, or "so the important point is" if the source does not have them. If the source already has a lesson, keep that lesson; do not regenerate a new moral.
+
+## Terminology constraint (--jargon keep)
+
+- **Keep Latin-letter terms (--jargon keep)**: Copy Latin-letter tech terms, API names, task names, and exam names (`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`) as-is. Do not synonym-swap them into 분류/분할/손실 or other translations.
+
 ## AI signal words (reference)
 
 - **en-structure**: firstly, secondly, in conclusion

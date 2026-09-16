@@ -4,9 +4,9 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 
 ## Current run
 
-- Generated at: 2026-09-05T01:00:26.716Z
+- Generated at: 2026-09-16T13:20:50.772Z
 - Fixture source: `tests/fixtures/suspect-zones/**`
-- Fixture count: 49
+- Fixture count: 53
 - Manual third-party input: none
 - Reproduce built-in comparison: `npm run benchmark:compare`
 - Merge manual scores: `node scripts/detector-comparison.mjs --input tests/quality/detectors.manual.example.json`
@@ -15,7 +15,7 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 
 | detector | name | kind | covered | coverage | accuracy | precision | recall | TP | FP | FN | TN |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| patina-deterministic | Patina deterministic suspect-zone analyzer | in-tree | 49/49 | 100.0% | 100.0% | 100.0% | 100.0% | 26 | 0 | 0 | 23 |
+| patina-deterministic | Patina deterministic suspect-zone analyzer | in-tree | 53/53 | 100.0% | 100.0% | 100.0% | 100.0% | 26 | 0 | 0 | 27 |
 
 ## Fixture-level rows
 
@@ -28,12 +28,14 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 | en-ai-05 | en | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | en-ai-06-chat-register | en | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | en-ai-07-discourse-candor | en | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
+| en-ai-08-complete-arc | en | ai | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | en-nat-01 | en | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | en-nat-02 | en | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | en-nat-03 | en | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | en-nat-04 | en | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | en-nat-05 | en | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | en-nat-06-single-opener | en | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
+| en-nat-07-headed-notes | en | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | ja-ai-01 | ja | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ja-ai-02 | ja | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ja-ai-03 | ja | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
@@ -53,11 +55,13 @@ This report is generated offline from the checked-in suspect-zone fixtures. It i
 | ko-ai-05 | ko | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ko-ai-06-chat-register | ko | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | ko-ai-07-ko-diagnostic | ko | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
+| ko-ai-08-complete-arc | ko | ai | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | ko-nat-01 | ko | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | ko-nat-02 | ko | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | ko-nat-03 | ko | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | ko-nat-04 | ko | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | ko-nat-05 | ko | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
+| ko-nat-06-headed-notes | ko | natural | patina-deterministic | cold | cold | ✓ | 0 | tests/quality/benchmark.mjs |
 | zh-ai-01 | zh | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | zh-ai-02 | zh | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |
 | zh-ai-03 | zh | ai | patina-deterministic | hot | hot | ✓ | 1 | tests/quality/benchmark.mjs |

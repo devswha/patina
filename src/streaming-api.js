@@ -141,6 +141,7 @@ export async function callLLMStream({
   // caching, so the paid path issues /v1/messages with a cache_control prefix
   // block instead. Same single-user-message semantics, native SSE parsing.
   const native = nativeAnthropicEnabled({ baseURL });
+  /** @type {Record<string, any>} */
   const payload = native
     ? buildNativeBody({ prompt, model, temperature: modelRejectsTemperature(model) ? undefined : temperature, stream: true })
     : {

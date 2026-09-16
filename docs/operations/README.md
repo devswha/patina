@@ -33,6 +33,7 @@ live, which is terminal, and which must not be edited.
 | `pro-margin-decision-20260729.md` | Pro cap = 100 rewrites/month; cited from `src/web-rewrite-contract.js` |
 | `serving-engine-gemini-3.7-flash-20260813.md` | latest engine decision: 3.7-flash allowlisted opt-in, Pro pin unchanged |
 | `free-tier-deepseek-flip-20260803.md` | 2026-08-03 free-tier flip to deepseek; **superseded** — owner confirmed on 2026-09-02 that the free tier serves on gemini (env `PATINA_FREE_MODEL`) |
+| `repo-maintenance-plan-v2-20260909.md` | **archived plan, not a live rule.** The 2026-09-09 development/operations plan, with a status header recording what landed in `AGENTS.md`/`docs/WORKFLOW.md`/`docs/QA.md` and which items (P22 cadence, P08/P10/P19b, P21b) were later retired. Cite the current documents, not this one |
 
 ## Evidence chains (read the last node first)
 

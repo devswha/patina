@@ -90,7 +90,7 @@ export function fenceReferenceText(text, { lang = 'en', label = '' } = {}) {
  * Single resolution path for every prompt surface: yaml
  * `scoring.severity-points` overrides the documented defaults key-by-key.
  *
- * @param {object} [config] Effective patina config.
+ * @param {import('./config.js').PatinaConfig} [config] Effective patina config.
  * @returns {{high: number, medium: number, low: number}} Effective severity points.
  * @example
  * const points = resolveSeverityPoints(config);
@@ -184,15 +184,15 @@ function buildRegisterDirective(value, lang) {
  * Build the LLM prompt for rewrite, diff, audit, or score mode.
  *
  * @param {object} options Prompt inputs.
- * @param {object} options.config Effective patina config.
- * @param {object[]} options.patterns Loaded pattern packs.
- * @param {object|null} options.documentType Parsed document-type policy.
- * @param {object|null} options.voice Parsed claim-safe voice baseline.
+ * @param {import('./config.js').PatinaConfig} options.config Effective patina config.
+ * @param {import('./loader.js').PatternPack[]} options.patterns Loaded pattern packs.
+ * @param {Record<string, any>|null} options.documentType Parsed document-type policy.
+ * @param {Record<string, any>|null} options.voice Parsed claim-safe voice baseline.
  * @param {object|null} [options.persona] Optional validated voice persona.
- * @param {object|null} options.scoring Parsed scoring guide.
+ * @param {Record<string, any>|null} options.scoring Parsed scoring guide.
  * @param {string} options.text Input text.
  * @param {string} [options.mode=rewrite] Output mode.
- * @param {object|null} [options.register=null] Explicit register metadata.
+ * @param {ReturnType<typeof import('./config.js').resolveRegister>} [options.register=null] Explicit register metadata.
  * @param {'strict'|'minimal'} [options.promptMode=strict] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals=null] Deterministic document
  *   measurements (e.g. dominant Korean register) injected into rewrite prompts
@@ -349,6 +349,7 @@ export function buildPrompt(options) {
       personaActive: Boolean(persona),
       registerActive: Boolean(register),
       rhetoricPolicy,
+      documentTypeName,
     });
     prompt += buildTransformDirective({ jargon, korean: false });
   } else if (mode === 'diff') {
@@ -377,19 +378,29 @@ export function buildPrompt(options) {
   return prompt;
 }
 
-// Opt-in transformation directive (--jargon). Everything else in
-// the rewrite prompt is deliberately conservative — minimal paraphrase, keep
-// each sentence's claim and framing — so when the user explicitly asks for a
-// deeper transformation, the directive must state that it overrides those
-// rules where they conflict. Facts, numbers, names, and causal claims remain
-// non-negotiable in every depth. Returns '' for the defaults so existing
-// prompts (and their golden snapshots) are byte-identical.
-function buildTransformDirective({ jargon = 'keep', korean = false } = {}) {
+const KEEP_JARGON_EN =
+  '**Keep Latin-letter terms (--jargon keep)**: Copy Latin-letter tech terms, API names, task names, and exam names (`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`) as-is. Do not synonym-swap them into 분류/분할/손실 or other translations.';
+const KEEP_JARGON_KO =
+  '**라틴 문자 용어 유지 (--jargon keep)**: 라틴 문자 기술 용어·API·과제명·시험명(`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`)은 원문 그대로 복사해. 분류/분할/손실 같은 번역 동의어로 바꾸지 마.';
+
+/**
+ * Build the `--jargon` terminology directive for rewrite prompts.
+ * `keep` is a conservative constraint (not an opt-in override). `explain` and
+ * `remove` keep the user-requested transformation header.
+ *
+ * @param {{jargon?: string, korean?: boolean}} [options]
+ * @returns {string} Directive block, always non-empty for keep|explain|remove.
+ */
+export function buildTransformDirective({ jargon = 'keep', korean = false } = {}) {
+  if (jargon === 'keep') {
+    const header = korean ? `## 용어 유지 (--jargon keep)\n\n` : `## Terminology constraint (--jargon keep)\n\n`;
+    return `${header}- ${korean ? KEEP_JARGON_KO : KEEP_JARGON_EN}\n\n`;
+  }
   const bullets = [];
   if (jargon === 'explain') {
     bullets.push(korean
-      ? `**용어 설명 병기 (--jargon explain)**: 기술 용어는 유지하되, 처음 나올 때 짧고 쉬운 설명을 괄호로 덧붙여.`
-      : `**Gloss technical terms (--jargon explain)**: Keep technical terms, but add a brief plain-language gloss in parentheses at each term's first use.`);
+      ? `**용어 설명 병기 (--jargon explain)**: 라틴 문자 기술 용어는 그대로 두고, 처음 나올 때만 짧고 쉬운 설명을 괄호로 덧붙여.`
+      : `**Gloss technical terms (--jargon explain)**: Keep Latin-letter technical terms as-is; add a brief plain-language gloss in parentheses at first mention only.`);
   } else if (jargon === 'remove') {
     bullets.push(korean
       ? `**개발 용어 제거 (--jargon remove)**: 개발·기술 용어는 일반 독자가 이해할 일상 표현으로 바꿔. 마땅한 표현이 없으면 풀어서 설명하고, 제품명·고유명사는 그대로 둬.`
@@ -407,7 +418,7 @@ function buildTransformDirective({ jargon = 'keep', korean = false } = {}) {
  * `PATINA_RHETORIC_POLICY=legacy` restores the pre-2026-09-14 similar-weight
  * sentence. `h-rhetoric` is kept as an alias of the product default.
  *
- * @param {NodeJS.ProcessEnv|object} [env=process.env]
+ * @param {Record<string,string|undefined>} [env=process.env]
  * @returns {'default'|'h-rhetoric'|'legacy'}
  */
 export function resolveRhetoricPolicy(env = process.env) {
@@ -460,10 +471,29 @@ function buildHeadingPreservationRule(lang, rewriteHeadings = false) {
     : `**Markdown structure — preserve headings (required).** Treat every Markdown ATX heading line (a line starting with one or more \`#\` followed by a space) as fixed structure, exactly like a fenced code block. Copy each heading line through verbatim — never reword, translate, reformat, reorder, merge, or split it — and never add a heading that was not in the input or remove one that was. Rewrite only the body prose beneath the headings. The set and text of headings in your output must be identical to the input.`;
 }
 
+function buildSectionShapeRule(lang) {
+  return lang === 'ko'
+    ? `**제목 아래 본문 형태 유지.** 제목 아래 본문이 비어 있거나, 짧은 구·한 줄·불릿이면 그 형태를 유지해. 서론-본론-교훈 에세이로 늘리지 마.`
+    : `**Keep heading-section shape.** If the body under a heading is empty, a phrase, a one-liner, or bullets, keep that shape. Do not expand it into an introduction–body–lesson essay.`;
+}
+
+const CAREER_PROJECT_TYPES = new Set(['personal-statement', 'project-writeup']);
+
+function buildNoInventedLessonConstraint(lang, documentTypeName = 'default') {
+  const base = lang === 'ko'
+    ? `**근거·평가·교훈을 만들지 마.** 원문에 없는 이유, 가치 판단, "배웠습니다"식 마무리, "그래서 중요한 점"을 새로 넣지 마. 원문에 이미 교훈이 있으면 그것을 유지하고, 새 교훈으로 다시 쓰지 마.`
+    : `**Do not invent why, evaluation, or a lesson.** Do not add rationale, value judgments, "I learned"/"this taught me" closers, or "so the important point is" if the source does not have them. If the source already has a lesson, keep that lesson; do not regenerate a new moral.`;
+  if (!CAREER_PROJECT_TYPES.has(documentTypeName)) return base;
+  const career = lang === 'ko'
+    ? ` 자소서·프로젝트 기록에서는 장르와 기존 구성을 유지하고, 빠진 도입·요약·교훈이나 문제→위기→교훈 호를 만들지 마.`
+    : ` For career and project writeups, preserve the genre and existing organization. Do not add a generic introduction, summary, or lesson, or manufacture a problem→crisis→lesson arc.`;
+  return `${base}${career}`;
+}
+
 function buildRewriteInstructions(
   structurePacks,
   lexicalPacks,
-  { includeSelfAudit = true, lang = 'ko', includeKoreanAdvisory = true, rewriteHeadings = false, structureGuidance = 'baseline', personaActive = false, registerActive = false, rhetoricPolicy = 'default' } = {}
+  { includeSelfAudit = true, lang = 'ko', includeKoreanAdvisory = true, rewriteHeadings = false, structureGuidance = 'baseline', personaActive = false, registerActive = false, rhetoricPolicy = 'default', documentTypeName = 'default' } = {}
 ) {
   const phaseCount = includeSelfAudit ? 3 : 2;
   let inst = `Follow the ${phaseCount}-Phase pipeline:\n\n`;
@@ -483,6 +513,8 @@ function buildRewriteInstructions(
 
   const headingRule = buildHeadingPreservationRule(lang, rewriteHeadings);
   if (headingRule) inst += `${headingRule}\n\n`;
+  inst += `${buildSectionShapeRule(lang)}\n\n`;
+  inst += `${buildNoInventedLessonConstraint(lang, documentTypeName)}\n\n`;
 
   if (structurePacks.length > 0) {
     inst += `### Phase 1: Structure Scan\n\n`;
@@ -531,8 +563,9 @@ function buildRewriteInstructions(
     inst += `1. Scan for remaining AI tells\n`;
     inst += `2. Verify no polarity inversions (negation → positive or vice versa)\n`;
     inst += `3. Verify nothing was added: every claim, number, and promise in the output must trace back to the input. Delete anything that does not\n`;
-    inst += `4. Ensure Phase 1 corrections were not reverted in Phase 2\n`;
-    inst += `5. Final check: meaning preserved?\n\n`;
+    inst += `4. Verify no invented rationale, lesson closer, or heading-only essay fill\n`;
+    inst += `5. Ensure Phase 1 corrections were not reverted in Phase 2\n`;
+    inst += `6. Final check: meaning preserved?\n\n`;
 
     inst += buildOutputFormatBlock({ registerActive });
   } else {
@@ -640,10 +673,10 @@ function buildAuditInstructions() {
  * (markdown table for the skill prompt, strict JSON for scoreText), so a
  * single prompt can never carry two contradictory contracts (issue #397).
  *
- * @param {object} config Effective patina config.
+ * @param {import('./config.js').PatinaConfig} config Effective patina config.
  * @param {string} lang Language code.
  * @param {string} [text=''] Input text (drives the short-text boost).
- * @param {object[]} [patterns=[]] Loaded pattern packs.
+ * @param {import('./loader.js').PatternPack[]} [patterns=[]] Loaded pattern packs.
  * @returns {string} Scoring-math instruction block without an output contract.
  * @example
  * const core = buildScoreMathCore(config, 'ko', 'Draft', patterns);
@@ -780,6 +813,7 @@ export function isShortText(text) {
 // path because they need precise pattern references.
 function buildMinimalPrompt({ config, patterns, documentType, persona = null, text, register, documentSignals = null, jargon = 'keep', rewriteHeadings = false, minimalStructureGuidance = 'baseline', rhetoricPolicy = 'default' }) {
   const lang = config.language || 'ko';
+  const documentTypeName = config.documentType || 'default';
   const activePatterns = patterns.filter((p) => !p.isScoreOnly);
 
   const watchWords = [];
@@ -833,6 +867,8 @@ function buildMinimalPrompt({ config, patterns, documentType, persona = null, te
   let prompt = `${instruction}\n\n${brief}\n\n${rhythm}\n\n`;
   const headingRule = buildHeadingPreservationRule(lang, rewriteHeadings);
   if (headingRule) prompt += `${headingRule}\n\n`;
+  prompt += `${buildSectionShapeRule(lang)}\n\n`;
+  prompt += `${buildNoInventedLessonConstraint(lang, documentTypeName)}\n\n`;
   prompt += buildTransformDirective({ jargon, korean: lang === 'ko' });
 
   if (Array.isArray(documentSignals) && documentSignals.length > 0) {

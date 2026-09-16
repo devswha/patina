@@ -113,16 +113,22 @@ function loadDenominators() {
     if (existsSync(p)) humans.push({ text: readFileSync(p, 'utf8'), lang: rec.lang || 'ko', expectedHot: false, slice: 'human_controls' });
   }
 
-  // benchmark fixtures: ai = positive, natural = negative.
+  // benchmark fixtures: frontmatter expected_hot is the label. Folder class
+  // is style (ai/natural), not the hot decision — complete-arc lives under
+  // ai/ with expected_hot: false so inspect can see discourse shape without
+  // counting a recall miss.
   const fixtures = [];
   for (const lang of ['ko', 'en', 'zh', 'ja']) {
-    for (const [cls, expectedHot] of [['ai', true], ['natural', false]]) {
+    for (const cls of ['ai', 'natural']) {
       const dir = join(FIXTURES_ROOT, lang, cls);
       if (!existsSync(dir)) continue;
       for (const file of readdirSync(dir).filter((f) => f.endsWith('.md')).sort()) {
-        let body = readFileSync(join(dir, file), 'utf8');
-        const m = /^---\n[\s\S]*?\n---\s*\n([\s\S]*)$/.exec(body);
-        if (m) body = m[1];
+        const raw = readFileSync(join(dir, file), 'utf8');
+        const m = /^---\n([\s\S]*?)\n---\s*\n([\s\S]*)$/.exec(raw);
+        const fm = m ? m[1] : '';
+        const body = m ? m[2] : raw;
+        const hotMatch = /^expected_hot:\s*(true|false)\s*$/m.exec(fm);
+        const expectedHot = hotMatch ? hotMatch[1] === 'true' : cls === 'ai';
         fixtures.push({ text: body, lang, expectedHot, slice: expectedHot ? 'benchmark_ai' : 'benchmark_natural' });
       }
     }

@@ -43,6 +43,18 @@ test('Dependabot routes weekly version updates through dev, bounded and unautoma
   });
   assert.equal(config.automerge, undefined);
   assert.doesNotMatch(readFileSync(DEPENDABOT_PATH, 'utf8'), /auto[- ]?(?:merge|approve)|security[^\n]*(?:delay|ignore)/i);
+
+  // No dependency is held right now: the TypeScript 7 hold was removed with
+  // the bump in #862. The shape rule stays so a future hold cannot quietly
+  // suppress anything below a major bump — patch, minor, and security updates
+  // must keep arriving.
+  for (const rule of npm.ignore ?? []) {
+    assert.deepEqual(rule['update-types'], ['version-update:semver-major']);
+    assert.deepEqual(Object.keys(rule).sort(), ['dependency-name', 'update-types']);
+    assert.equal(typeof rule['dependency-name'], 'string');
+  }
+  assert.deepEqual(npm.ignore ?? [], []);
+  assert.equal(config.updates.find((update) => update['package-ecosystem'] === 'github-actions').ignore, undefined);
 });
 
 test('dataset workflow holds publication, preserves production environment, and uses one immutable source', () => {

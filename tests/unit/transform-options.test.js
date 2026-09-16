@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 
 import { parseArgs, validateTransformRequest, buildTransformVariants } from '../../src/cli/args.js';
-import { buildPrompt } from '../../src/prompt-builder.js';
+import { buildPrompt, buildTransformDirective } from '../../src/prompt-builder.js';
 import { buildPreviewHtml, diffWordSegments } from '../../src/preview.js';
 
 const BASE = {
@@ -41,8 +41,12 @@ test('validateTransformRequest rejects non-rewrite modes only when a transform i
   validateTransformRequest({ jargon: 'explain', preview: true });
 });
 
-test('strict rewrite prompt carries the transformation directive only when opted in', () => {
+test('strict rewrite prompt carries keep as a constraint and explain/remove as opt-in directives', () => {
   const base = buildPrompt({ ...BASE, mode: 'rewrite' });
+  assert.ok(base.includes('Terminology constraint (--jargon keep)'));
+  assert.ok(base.includes('Copy Latin-letter tech terms'));
+  assert.ok(base.includes('classification'));
+  assert.ok(base.includes('Do not synonym-swap'));
   assert.ok(!base.includes('Transformation Directive'));
 
   const explicitDefaults = buildPrompt({ ...BASE, mode: 'rewrite', jargon: 'keep' });
@@ -55,6 +59,8 @@ test('strict rewrite prompt carries the transformation directive only when opted
 
   const explain = buildPrompt({ ...BASE, mode: 'rewrite', jargon: 'explain' });
   assert.ok(explain.includes('Gloss technical terms (--jargon explain)'));
+  assert.ok(explain.includes('Keep Latin-letter technical terms as-is'));
+  assert.ok(explain.includes('first mention'));
   assert.ok(!explain.includes('--restyle'));
 
   // The directive must come after the conservative rewrite instructions it
@@ -88,6 +94,33 @@ test('minimal rewrite prompt carries a localized directive', () => {
 
   const minimalDefault = buildPrompt({ ...BASE, mode: 'rewrite', promptMode: 'minimal' });
   assert.ok(!minimalDefault.includes('Transformation Directive'));
+  assert.ok(minimalDefault.includes('Terminology constraint (--jargon keep)'));
+});
+
+test('rewrite prompt forbids invented lessons and heading-only essay fill', () => {
+  const prompt = buildPrompt({ ...BASE, mode: 'rewrite' });
+  assert.ok(prompt.includes('Do not invent why, evaluation, or a lesson'));
+  assert.ok(prompt.includes('Keep heading-section shape'));
+  assert.ok(prompt.includes('introduction–body–lesson'));
+  assert.ok(!prompt.includes('NOT PROMOTED'));
+  assert.ok(!prompt.includes('koDiagnosis'));
+
+  const career = buildPrompt({
+    ...BASE,
+    config: { language: 'en', documentType: 'project-writeup' },
+    mode: 'rewrite',
+  });
+  assert.ok(career.includes('problem→crisis→lesson'));
+});
+
+test('keep directive string is explicit and not an empty override', () => {
+  const keepEn = buildTransformDirective({ jargon: 'keep', korean: false });
+  const keepKo = buildTransformDirective({ jargon: 'keep', korean: true });
+  assert.ok(keepEn.includes('chest X-ray'));
+  assert.ok(keepEn.includes('CXR'));
+  assert.ok(keepKo.includes('라틴 문자'));
+  assert.ok(keepKo.includes('분류/분할/손실'));
+  assert.ok(!keepEn.includes('THIS DIRECTIVE WINS'));
 });
 
 test('parseArgs accepts comma lists for compare mode and dedupes them', () => {

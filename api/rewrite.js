@@ -286,7 +286,14 @@ function wantsJsonResponse(headers = {}) {
 }
 
 /**
- * @param {{env?: Record<string,string|undefined>, runWebRewriteStreamImpl?: typeof runWebRewriteStream, logger?: {info?: Function, warn?: Function, error?: Function, debug?: Function}, now?: () => number, observabilityKv?: {increment: (key: string, options: {ttlSeconds: number}) => unknown}}} [options]
+ * `runWebRewriteStreamImpl` is typed by what this handler consumes, not by the
+ * full implementation signature: the frames are delivered through `emit`, and
+ * the resolved value is only read for `ok`/`code` (and forwarded to
+ * `beforeResponseEnd`), which is why the reads here are already optional.
+ * Requiring the whole result shape would force every injected stand-in to
+ * fabricate fields this handler never looks at.
+ *
+ * @param {{env?: Record<string,string|undefined>, runWebRewriteStreamImpl?: (options: Parameters<typeof runWebRewriteStream>[0]) => Promise<{ok?: boolean, code?: string}|void>, logger?: {info?: Function, warn?: Function, error?: Function, debug?: Function}, now?: () => number, observabilityKv?: {increment: (key: string, options: {ttlSeconds: number}) => unknown}}} [options]
  */
 export function createRewriteApiHandler({ env = /** @type {Record<string,string|undefined>} */ (process.env), runWebRewriteStreamImpl = runWebRewriteStream, logger = console, now = () => Date.now(), observabilityKv } = {}) {
   const restKv = createRestKv(env);
@@ -340,6 +347,7 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
     runRewrite: async ({ req, res, request, observe, beforeResponseEnd }) => {
       const jsonResponse = wantsJsonResponse(req.headers);
       /** @type {Record<string, unknown>[]} */
+      /** @type {Record<string, any>[]} */
       const bufferedFrames = [];
       /** @type {string|undefined} */
       let bufferedBody;
@@ -436,17 +444,21 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
           observe: observeGuarded,
           now,
         });
-        terminalOutcome = result;
+        // The seam's return type is `void`-tolerant so an injected stand-in
+        // need not fabricate a result this handler never reads; narrow once
+        // here to the two fields it does read.
+        const outcome = /** @type {{ok?: boolean, code?: string}|undefined} */ (result);
+        terminalOutcome = outcome;
         if (!terminalObserved) {
           observeTerminal(
-            result?.ok === false && result.code === 'number_safety_failed' ? 'number_safety_failed'
-              : result?.ok === false ? 'terminal_failed' : 'completed',
+            outcome?.ok === false && outcome.code === 'number_safety_failed' ? 'number_safety_failed'
+              : outcome?.ok === false ? 'terminal_failed' : 'completed',
             res.statusCode,
           );
         }
         if (jsonResponse) {
           const done = [...bufferedFrames].reverse().find((frame) => frame.type === 'done');
-          if (result?.ok !== false && done) {
+          if (outcome?.ok !== false && done) {
             const { type: _type, ...body } = done;
             bufferedBody = JSON.stringify({ ok: true, ...body });
           } else {
@@ -455,8 +467,8 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
             // processed and deliberately rejected — while stream/scoring
             // failures are 500. The stable machine-readable `code` lets API
             // clients branch without parsing prose.
-            const code = result?.ok === false && typeof result.code === 'string'
-              ? result.code
+            const code = outcome?.ok === false && typeof outcome.code === 'string'
+              ? outcome.code
               : ([...bufferedFrames].reverse().find((frame) => frame.type === 'error')?.code ?? 'rewrite_failed');
             const errorFrame = bufferedFrames.find((frame) => frame.type === 'error' && typeof frame.error === 'string');
             res.statusCode = code === 'source_changed' ? 409

@@ -34,7 +34,7 @@ function isPlainObject(value) {
  *
  * @param {object} [options]
  * @param {string} [options.repoRoot] Bundle root containing .patina.default.yaml.
- * @returns {object} Parsed baseline patina config.
+ * @returns {import('./config.js').PatinaConfig} Parsed baseline patina config.
  * @throws {import('./errors.js').PatinaCliError} When the baseline is unreadable, invalid YAML, or not a mapping.
  */
 export function loadWebConfig({ repoRoot = resolveBundleRoot() } = {}) {

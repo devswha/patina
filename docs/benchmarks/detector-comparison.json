@@ -1,8 +1,8 @@
 {
   "reportVersion": 1,
-  "generatedAt": "2026-09-05T01:00:26.716Z",
-  "fixtureCount": 49,
-  "benchmarkGeneratedAt": "2026-09-05T01:00:26.704Z",
+  "generatedAt": "2026-09-16T13:20:50.772Z",
+  "fixtureCount": 53,
+  "benchmarkGeneratedAt": "2026-09-16T13:20:50.759Z",
   "note": "Offline comparison protocol. Built-in Patina row uses deterministic suspect-zone analyzer; third-party rows are manual opt-in only.",
   "manualInput": null,
   "detectors": [
@@ -19,9 +19,9 @@
       "tp": 26,
       "fp": 0,
       "fn": 0,
-      "tn": 23,
-      "total": 49,
-      "fixtureCount": 49,
+      "tn": 27,
+      "total": 53,
+      "fixtureCount": 53,
       "coverage": 1,
       "accuracy": 1,
       "precision": 1,
@@ -115,6 +115,18 @@
       "notes": null
     },
     {
+      "fixture_id": "en-ai-08-complete-arc",
+      "lang": "en",
+      "class": "ai",
+      "detector": "patina-deterministic",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "score": 0,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
       "fixture_id": "en-nat-01",
       "lang": "en",
       "class": "natural",
@@ -176,6 +188,18 @@
     },
     {
       "fixture_id": "en-nat-06-single-opener",
+      "lang": "en",
+      "class": "natural",
+      "detector": "patina-deterministic",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "score": 0,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
+      "fixture_id": "en-nat-07-headed-notes",
       "lang": "en",
       "class": "natural",
       "detector": "patina-deterministic",
@@ -415,6 +439,18 @@
       "notes": null
     },
     {
+      "fixture_id": "ko-ai-08-complete-arc",
+      "lang": "ko",
+      "class": "ai",
+      "detector": "patina-deterministic",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "score": 0,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
       "fixture_id": "ko-nat-01",
       "lang": "ko",
       "class": "natural",
@@ -464,6 +500,18 @@
     },
     {
       "fixture_id": "ko-nat-05",
+      "lang": "ko",
+      "class": "natural",
+      "detector": "patina-deterministic",
+      "expected_hot": false,
+      "predicted_hot": false,
+      "correct": true,
+      "score": 0,
+      "source": "tests/quality/benchmark.mjs",
+      "notes": null
+    },
+    {
+      "fixture_id": "ko-nat-06-headed-notes",
       "lang": "ko",
       "class": "natural",
       "detector": "patina-deterministic",

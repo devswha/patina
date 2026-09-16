@@ -101,7 +101,7 @@ Backend-backed modes use Method P; the rightmost column is the Method-D anchor.
 | `--diff` | `diff` | yes | deterministic pattern/detection report |
 | `--preview [--serve]` | preview job | yes | deterministic prose extraction + word-diff rendering |
 | `--xliff [--dry-run]` | xliff | yes (none with `--dry-run`) | deterministic segment parse/scan/select in `src/cli/xliff.js`; rewrites reuse the rewrite lane |
-| `patina inspect` | — | **no** | deterministic score and source-aligned diagnostics over `analyzeText()` + `scoreDeterministicSignals` (`src/commands/inspect.js` → `src/inspection.js`); provider/backend options are rejected |
+| `patina inspect` | — | **no** | deterministic score and source-aligned diagnostics over `analyzeText()` + `scoreDeterministicSignals` (`src/commands/inspect.js` → `src/inspection.js`); optional `--rewrite` / `--document-type` add inspect-only advisories; provider/backend options are rejected |
 | `patina pack list/install` | — | **no** | licensed pack delivery (`src/commands/pack.js` ↔ `src/pack-handler.js`), entitlement checked server-side |
 | `patina-score` (bin) | — | **no** | hot-paragraph ratio over `analyzeText()` |
 | playground / hosted rewrite | — | yes | shared server-side prompt, analysis, and scoring assets |
@@ -216,9 +216,14 @@ replacement public configuration format. The removed v6 keys `profile`, `tone`,
 and `formality` fail with an input error (exit code 2); they are never aliases or
 silent fallbacks. The deterministic `patina inspect` consumer contract emits
 JSON with `schemaVersion`, `language`, `sourceHash`, `deterministicOnly`,
-`offsetEncoding`, `available`, `score`, and `diagnostics`; consumers must check
-the exit code and validate the shape rather than treating a non-empty string as
-proof.
+`offsetEncoding`, `available`, `score`, `interpretation`, and `diagnostics`.
+Korean runs also include a read-only `structureFingerprint`
+(`koStructureFingerprint.v1`). Additive inspect-only fields `discourseShape`
+and `advisories` never change `score` or `analyzeText().hot`. Completeness
+advisories are omitted for `academic`/`medical`/`technical`; STAR evenness
+advisories run only on `personal-statement` and `project-writeup`. Consumers
+must check the exit code and validate the shape rather than treating a
+non-empty string as proof.
 
 ### Machine-checked dependency boundaries
 

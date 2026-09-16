@@ -228,8 +228,8 @@ function notifyInvalidAttempt(onAttemptInvalid) {
  *
  * @param {object} options Scoring options.
  * @param {string} options.text Text to score.
- * @param {object} options.config Effective patina config.
- * @param {object[]} options.patterns Loaded pattern packs, retained for scorer compatibility.
+ * @param {import('./config.js').PatinaConfig} options.config Effective patina config.
+ * @param {import('./loader.js').PatternPack[]} options.patterns Loaded pattern packs, retained for scorer compatibility.
  * @param {string} [options.apiKey] Provider API key.
  * @param {string} [options.baseURL] Provider base URL.
  * @param {string} [options.model] Model id.
@@ -237,14 +237,14 @@ function notifyInvalidAttempt(onAttemptInvalid) {
  * @param {AbortSignal} [options.signal] External cancellation signal.
  * @param {number} [options.timeout] Per-attempt backend timeout in milliseconds.
  * @param {Function} [options.callLLM] Injectable LLM implementation.
- * @param {object} [options.logger] patina logger.
+ * @param {import('./logger.js').Logger} [options.logger] patina logger.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
  * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
  * @param {object} [options.extraBody] Opt-in provider-specific request fields (e.g. reasoning control) spread into the request body.
  * @param {Function} [options.onAttempt] Safe callback for one-based paid-attempt metadata records.
  * @param {Function} [options.onAttemptInvalid] Safe callback when transport evidence is malformed; receives no provider metadata.
- * @param {object|null} [options.deterministicScore] Optional frozen analysis for this exact text/config; omitted callers compute it normally.
+ * @param {Record<string, any>|null} [options.deterministicScore] Optional frozen analysis for this exact text/config; omitted callers compute it normally.
  * @returns {Promise<object>} Score payload with overall, interpretation, llmScore, and deterministicScore.
  * @throws {Error} When the operation is aborted.
  * @example
@@ -361,7 +361,14 @@ function buildContractExampleCategoryRow(patterns, config) {
 // penalty. Returns 0 when the tell is inert (not eligible / not en / no dash) or
 // when the style pattern count or category weight is unavailable.
 function computeShortFormEvidenceFloor({ result, config, lang, patterns = [] }) {
-  const rawSeverity = Number(result?.shortForm?.emDash?.severity ?? 0);
+  // #879: the 2026 cadence combination (stack + set group + informationless aside,
+  // or a short-form phrase) is a stronger tell than a lone dash, so the floor takes
+  // whichever signal is stronger. Both run through the same short-text boost and the
+  // same `high` cap below, so this raises no ceiling — it only stops a combination
+  // from scoring as if it were a single dash.
+  const dashSeverity = Number(result?.shortForm?.emDash?.severity ?? 0);
+  const cadenceSeverity = Number(result?.shortForm?.cadence?.severity ?? 0);
+  const rawSeverity = Math.max(dashSeverity, cadenceSeverity);
   if (!(rawSeverity > 0)) return 0;
   const severityPoints = resolveSeverityPoints(config);
   const high = severityPoints.high;
@@ -379,10 +386,10 @@ function computeShortFormEvidenceFloor({ result, config, lang, patterns = [] }) 
  *
  * @param {object} [options] Deterministic scoring options.
  * @param {string} [options.text] Text to analyze.
- * @param {object} [options.config={}] Effective config.
+ * @param {import('./config.js').PatinaConfig} [options.config={}] Effective config.
  * @param {Array} [options.patterns=[]] Loaded pattern packs; used for short-form category math.
  * @param {string} [options.repoRoot] Repository root for analyzer resources.
- * @param {object} [options.logger] Optional logger for recoverable deterministic warnings.
+ * @param {import('./logger.js').Logger} [options.logger] Optional logger for recoverable deterministic warnings.
  * @param {Function} [options.analyzer] Analyzer implementation.
  * @returns {object|null} Deterministic score payload, skipped payload, or null when disabled.
  * @example
@@ -544,11 +551,11 @@ export function scoreDeterministicSignals({
 /**
  * Merge an LLM score payload with deterministic shadow-score reconciliation.
  *
- * @param {object} parsed Parsed LLM scoring JSON.
+ * @param {Record<string, any>} parsed Parsed LLM scoring JSON.
  * @param {object} [options] Reconciliation options.
- * @param {object|null} [options.deterministicScore] Deterministic score payload.
- * @param {object} [options.config={}] Effective config.
- * @param {object} [options.logger] Logger for reconciliation warnings.
+ * @param {Record<string, any>|null} [options.deterministicScore] Deterministic score payload.
+ * @param {import('./config.js').PatinaConfig} [options.config={}] Effective config.
+ * @param {import('./logger.js').Logger} [options.logger] Logger for reconciliation warnings.
  * @returns {object} Score payload preserving llmScore and deterministicScore details.
  * @example
  * const score = withShadowScore({ overall: 20 }, { deterministicScore: { overall: 25 } });
@@ -584,9 +591,9 @@ export function withShadowScore(parsed, { deterministicScore, config = {}, logge
  *
  * @param {object} [options] Reconciliation inputs.
  * @param {number|null} [options.llmOverall] LLM overall score.
- * @param {object|null} [options.deterministicScore] Deterministic score payload.
- * @param {object} [options.config={}] Effective config.
- * @param {object} [options.logger] Logger for warnings.
+ * @param {Record<string, any>|null} [options.deterministicScore] Deterministic score payload.
+ * @param {import('./config.js').PatinaConfig} [options.config={}] Effective config.
+ * @param {import('./logger.js').Logger} [options.logger] Logger for warnings.
  * @returns {{overall: number|null, scorePreference: (object|null)}} Reconciled score and preference source.
  * @example
  * const result = reconcileScoreOverall({ llmOverall: 20, deterministicScore: { overall: 60 } });
@@ -667,7 +674,7 @@ export function reconcileScoreOverall({
  * @param {AbortSignal} [options.signal] External cancellation signal.
  * @param {number} [options.timeout] Per-attempt backend timeout in milliseconds.
  * @param {Function} [options.callLLM] Injectable LLM implementation.
- * @param {object} [options.logger] patina logger.
+ * @param {import('./logger.js').Logger} [options.logger] patina logger.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
  * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
@@ -832,7 +839,7 @@ export function lengthRatioPoints(original, rewritten) {
  * @param {AbortSignal} [options.signal] External cancellation signal.
  * @param {number} [options.timeout] Per-attempt backend timeout in milliseconds.
  * @param {Function} [options.callLLM] Injectable LLM implementation.
- * @param {object} [options.logger] patina logger.
+ * @param {import('./logger.js').Logger} [options.logger] patina logger.
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
  * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
@@ -972,7 +979,7 @@ function rethrowIfAborted(err, signal) {
  * @param {number} options.aiLikeness AI-likeness score, lower is better.
  * @param {number} options.fidelity Fidelity score, higher is better.
  * @param {string} [options.documentType] Document type for configured weights.
- * @param {object} [options.config] Effective config.
+ * @param {import('./config.js').PatinaConfig} [options.config] Effective config.
  * @param {number|object|null} [options.deterministicScore] Optional deterministic score.
  * @returns {number} Combined score, lower is better.
  * @example
@@ -983,7 +990,9 @@ export function combinedScore({ aiLikeness, fidelity, documentType, config, dete
   const ai = documentTypeWeights?.['ai-likeness'] ?? 0.6;
   const fid = documentTypeWeights?.fidelity ?? 0.4;
   const deterministicWeight = deterministicScoringOptions(config).combinedWeight;
-  const deterministic = toFiniteScore(deterministicScore?.overall ?? deterministicScore);
+  // Accepts either a score payload or a bare number; probing `.overall` on the
+  // number yields undefined and falls through to the value itself.
+  const deterministic = toFiniteScore(/** @type {Record<string, any>|null|undefined} */ (deterministicScore)?.overall ?? deterministicScore);
   const fidelityInverted = 100 - fidelity;
   if (deterministicWeight > 0 && deterministic !== null) {
     const totalWeight = ai + fid + deterministicWeight;

@@ -1,6 +1,6 @@
 # Hugging Face regression dataset
 
-The export contains the 49 public suspect-zone fixtures and their repository
+The export contains the 53 public suspect-zone fixtures and their repository
 MIT license. It excludes private rebaseline texts and human-panel responses.
 The `ai` and `natural` classes describe fixture style; they do not establish
 authorship.

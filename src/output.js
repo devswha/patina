@@ -12,7 +12,7 @@ import { TRANSLATIONESE_RULES } from './features/translationese.js';
  * @param {object} [opts={}] Formatting options.
  * @param {object|null} [opts.register] Explicit register metadata.
  * @param {import('./logger.js').Logger} [opts.logger] Logger for output warnings.
- * @param {object} [opts.env] Environment map for color decisions.
+ * @param {Record<string,string|undefined>} [opts.env] Environment map for color decisions.
  * @param {object} [opts.stdout] Stdout-like stream for color decisions.
  * @param {string} [opts.auditBackstop] Deterministic audit-mode section.
  * @param {object|null} [opts.persona] Persona metadata to append.

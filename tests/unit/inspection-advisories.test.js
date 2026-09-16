@@ -6,6 +6,7 @@ import {
   detectInventedLessonCoda,
   detectStarEvenness,
   collectInspectionAdvisories,
+  omitsPortabilityAdvisory,
 } from '../../src/inspection-advisories.js';
 
 const completeArc = [
@@ -101,4 +102,24 @@ test('advisories respect document-type suppressions and skip missing rewrite', (
     documentType: 'formal',
   });
   assert.equal(starOnFormal.length, 0);
+});
+
+test('the portability probe stays quiet in impersonal registers (#881)', () => {
+  // A paragraph that is portable by construction: no numbers, no proper nouns.
+  const portable = [
+    'Our platform helps teams move faster and work smarter.',
+    'We believe great products come from listening to users.',
+    'The result is a better experience for everyone involved.',
+  ].join(' ');
+  const flagged = collectInspectionAdvisories(portable, { language: 'en', documentType: 'default' });
+  assert.ok(flagged.some((row) => row.code === 'portable-generic-prose'), 'fires on a default draft');
+
+  for (const documentType of ['academic', 'legal', 'formal', 'medical', 'technical']) {
+    assert.equal(omitsPortabilityAdvisory(documentType), true, documentType);
+    const rows = collectInspectionAdvisories(portable, { language: 'en', documentType });
+    assert.ok(
+      !rows.some((row) => row.code === 'portable-generic-prose'),
+      `${documentType} is an impersonal register; portable prose is correct there`,
+    );
+  }
 });

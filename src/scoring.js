@@ -544,7 +544,7 @@ export function scoreDeterministicSignals({
 /**
  * Merge an LLM score payload with deterministic shadow-score reconciliation.
  *
- * @param {object} parsed Parsed LLM scoring JSON.
+ * @param {Record<string, any>} parsed Parsed LLM scoring JSON.
  * @param {object} [options] Reconciliation options.
  * @param {object|null} [options.deterministicScore] Deterministic score payload.
  * @param {import('./config.js').PatinaConfig} [options.config={}] Effective config.

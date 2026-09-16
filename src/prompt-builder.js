@@ -185,14 +185,14 @@ function buildRegisterDirective(value, lang) {
  *
  * @param {object} options Prompt inputs.
  * @param {import('./config.js').PatinaConfig} options.config Effective patina config.
- * @param {object[]} options.patterns Loaded pattern packs.
+ * @param {import('./loader.js').PatternPack[]} options.patterns Loaded pattern packs.
  * @param {object|null} options.documentType Parsed document-type policy.
  * @param {object|null} options.voice Parsed claim-safe voice baseline.
  * @param {object|null} [options.persona] Optional validated voice persona.
  * @param {object|null} options.scoring Parsed scoring guide.
  * @param {string} options.text Input text.
  * @param {string} [options.mode=rewrite] Output mode.
- * @param {object|null} [options.register=null] Explicit register metadata.
+ * @param {ReturnType<typeof import('./config.js').resolveRegister>} [options.register=null] Explicit register metadata.
  * @param {'strict'|'minimal'} [options.promptMode=strict] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals=null] Deterministic document
  *   measurements (e.g. dominant Korean register) injected into rewrite prompts
@@ -643,7 +643,7 @@ function buildAuditInstructions() {
  * @param {import('./config.js').PatinaConfig} config Effective patina config.
  * @param {string} lang Language code.
  * @param {string} [text=''] Input text (drives the short-text boost).
- * @param {object[]} [patterns=[]] Loaded pattern packs.
+ * @param {import('./loader.js').PatternPack[]} [patterns=[]] Loaded pattern packs.
  * @returns {string} Scoring-math instruction block without an output contract.
  * @example
  * const core = buildScoreMathCore(config, 'ko', 'Draft', patterns);

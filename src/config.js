@@ -180,7 +180,7 @@ function rejectRegister(value, where) {
  * @param {object} options Register inputs.
  * @param {string|null} [options.cliRegister] CLI register override.
  * @param {string|null} [options.configRegister] Configured register value.
- * @returns {object|null} Prompt-ready register metadata, or null when omitted.
+ * @returns {{register: string, register_source: string}|null} Prompt-ready register metadata, or null when omitted.
  * @throws {Error} When either value is unsupported.
  * @example
  * const register = resolveRegister({ cliRegister: 'casual' });

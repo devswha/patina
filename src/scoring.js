@@ -229,7 +229,7 @@ function notifyInvalidAttempt(onAttemptInvalid) {
  * @param {object} options Scoring options.
  * @param {string} options.text Text to score.
  * @param {import('./config.js').PatinaConfig} options.config Effective patina config.
- * @param {object[]} options.patterns Loaded pattern packs, retained for scorer compatibility.
+ * @param {import('./loader.js').PatternPack[]} options.patterns Loaded pattern packs, retained for scorer compatibility.
  * @param {string} [options.apiKey] Provider API key.
  * @param {string} [options.baseURL] Provider base URL.
  * @param {string} [options.model] Model id.

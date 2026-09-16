@@ -34,7 +34,7 @@ import { evaluateKoreanInvariants } from './features/korean-invariants.js';
  *
  * @typedef {{
  *   ok: boolean,
- *   attempts: {valid: boolean, rewrite: object[], mps: object[], fidelity: object[]},
+ *   attempts: {valid: boolean, rewrite: Record<string, any>[], mps: Record<string, any>[], fidelity: Record<string, any>[]},
  *   observed: unknown,
  *   code?: string,
  *   error?: string,

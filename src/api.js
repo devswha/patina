@@ -148,7 +148,8 @@ function throwIfAborted(signal) {
 function sleepWithSignal(sleep, ms, signal) {
   if (ms <= 0) return Promise.resolve();
   if (!signal) return sleep(ms);
-  return new Promise((resolve, reject) => {
+  // `Promise<void>` is spelled out so `resolve()` type-checks with no argument.
+  return /** @type {Promise<void>} */ (new Promise((resolve, reject) => {
     const onAbort = () => {
       cleanup();
       reject(abortError('External abort signal canceled LLM API retry sleep'));
@@ -165,7 +166,7 @@ function sleepWithSignal(sleep, ms, signal) {
         reject(err);
       }
     );
-  });
+  }));
 }
 
 /**
@@ -390,6 +391,7 @@ export async function callLLM({
   // omitted there — schema-retry already covers structured-output parsing.
   const native = nativeAnthropicEnabled({ baseURL });
   const url = native ? nativeEndpoint(baseURL) : `${baseURL}/chat/completions`;
+  /** @type {Record<string, any>} */
   const body = native
     ? buildNativeBody({ prompt, model, temperature: modelRejectsTemperature(model) ? undefined : temperature })
     : {

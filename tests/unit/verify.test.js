@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mpsResult, fidelityResult } from '../fixtures/verification-results.js';
+import { mpsResult, fidelityResult, zeroAnchorMps } from '../fixtures/verification-results.js';
 
 import { deterministicMeaningGuard, verifyRewrite } from '../../src/verify.js';
 import { validateVerifyRequest, parseArgs } from '../../src/cli/args.js';
@@ -175,6 +175,54 @@ test('verifyRewrite keeps persona thresholds isolated from verification floors',
   assert.equal(calls, 0);
   assert.equal(result.verified, true);
   assert.equal(result.retried, false);
+});
+
+// ---------- empty-anchor MPS (core/scoring.md "MPS = N/A") ----------
+
+test('verifyRewrite refuses to certify an empty-anchor MPS when the source carries numeric claims', async () => {
+  // core/scoring.md maps zero extracted anchors to "MPS = N/A", and src/scoring.js
+  // renders that as mps: 100 because the JSON contract has no N/A. A perfect-looking
+  // 100 must not certify a polarity inversion the scorer never actually checked.
+  const result = await verifyRewrite({
+    ...baseArgs,
+    original: 'Revenue increased 20% last year.',
+    rewrite: 'Revenue decreased 20% last year.',
+    callLLM: async () => 'Revenue decreased 20% last year.',
+    scoreFns: { scoreMPS: async () => zeroAnchorMps(), scoreFidelity: async () => fidelityResult(10) },
+  });
+  assert.equal(result.verified, false);
+});
+
+test('verifyRewrite still certifies an empty-anchor MPS when the source has no numeric claims', async () => {
+  // The spec exempts genuinely claim-free text from the MPS floor; the guard must
+  // not turn that exemption into a false failure, and must not spend a retry.
+  let calls = 0;
+  const result = await verifyRewrite({
+    ...baseArgs,
+    original: 'The garden felt quiet that morning.',
+    rewrite: 'The garden was quiet that morning.',
+    callLLM: async () => { calls += 1; return 'retry'; },
+    scoreFns: { scoreMPS: async () => zeroAnchorMps(), scoreFidelity: async () => fidelityResult(10) },
+  });
+  assert.equal(result.verified, true);
+  assert.equal(result.retried, false);
+  assert.equal(calls, 0);
+});
+
+test('verifyRewrite still certifies a numeric source once the scorer extracted anchors', async () => {
+  // Non-empty-anchor paths stay exactly as they were: the guard keys off zero
+  // anchors, never off the presence of numbers alone.
+  let calls = 0;
+  const result = await verifyRewrite({
+    ...baseArgs,
+    original: 'Revenue increased 20% last year.',
+    rewrite: 'Revenue rose 20% last year.',
+    callLLM: async () => { calls += 1; return 'retry'; },
+    scoreFns: { scoreMPS: async () => mpsResult(90), scoreFidelity: async () => fidelityResult(10) },
+  });
+  assert.equal(result.verified, true);
+  assert.equal(result.retried, false);
+  assert.equal(calls, 0);
 });
 
 // ---------- validateVerifyRequest ----------

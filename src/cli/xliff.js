@@ -276,11 +276,14 @@ function collectUnit(tokens, openIdx) {
  * discriminated union because JSDoc unions in a checked JS file are not
  * narrowed by `if (unit.skip)` — verified on TypeScript 5.4, 5.9 and 7.0.
  *
+ * A unit that could not be collected at all is pushed by parseXliffDocument as
+ * `{index, skip, reason}` only, so the attribute-derived fields are optional.
+ *
  * @typedef {{
  *   index: number,
- *   id: string,
- *   resname: string,
- *   unitAttrs: Record<string,string>,
+ *   id?: string,
+ *   resname?: string,
+ *   unitAttrs?: Record<string,string>,
  *   skip: boolean,
  *   reason?: string,
  *   state?: string,
@@ -459,7 +462,7 @@ export function classifyXliffSegment(unit) {
  * with exact-text dedup (key = decoded core after CRLF→LF; no trim/casefold).
  *
  * @param {{units:Array<XliffUnitRecord>}} doc
- * @returns {{selected:Array<object>, skipped:Array<object>, skippedByReason:Record<string,number>, uniqueKeys:string[], selectedCount:number, uniqueCount:number}}
+ * @returns {{selected:Array<ReturnType<typeof classifyXliffSegment>>, skipped:Array<ReturnType<typeof classifyXliffSegment>>, skippedByReason:Record<string,number>, uniqueKeys:string[], selectedCount:number, uniqueCount:number}}
  */
 export function selectXliffSegments(doc) {
   const selected = [];

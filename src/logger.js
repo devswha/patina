@@ -8,7 +8,12 @@ const LEVELS = {
 
 /**
  * The logger facade every patina module accepts as an injected `logger`.
- * @typedef {{debug: Function, info: Function, warn: Function, error: Function, progress: Function, closeProgress: Function, child: Function}} Logger
+ *
+ * Only the four level methods are required. `progress`, `closeProgress` and
+ * `child` belong to the full CLI logger; an injected stand-in that just
+ * records lines does not have to implement them, and no consumer calls them
+ * without checking.
+ * @typedef {{debug: Function, info: Function, warn: Function, error: Function, progress?: Function, closeProgress?: Function, child?: Function}} Logger
  */
 
 /**
@@ -18,7 +23,8 @@ const LEVELS = {
  * @param {string} [options.level=info] Minimum log level.
  * @param {boolean} [options.quiet=false] Suppress all log output.
  * @param {NodeJS.WritableStream} [options.stream=process.stderr] Progress stream.
- * @returns {{debug: Function, info: Function, warn: Function, error: Function, progress: Function, closeProgress: Function, child: Function}} Logger facade.
+ * @returns {Logger} Logger facade. This implementation provides every member,
+ * including the optional progress/child ones.
  * @example
  * const logger = createLogger();
  * logger.info('event', { message: 'ready' });

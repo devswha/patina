@@ -347,6 +347,7 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
     runRewrite: async ({ req, res, request, observe, beforeResponseEnd }) => {
       const jsonResponse = wantsJsonResponse(req.headers);
       /** @type {Record<string, unknown>[]} */
+      /** @type {Record<string, any>[]} */
       const bufferedFrames = [];
       /** @type {string|undefined} */
       let bufferedBody;

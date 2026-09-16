@@ -2,8 +2,8 @@
 pack: en-style
 language: en
 name: Style Patterns
-version: 1.1.0
-patterns: 7
+version: 1.2.0
+patterns: 8
 corpus-snapshot:
   id: bootstrap-patterns-pre-provenance
   status: needs-quarterly-refresh
@@ -181,3 +181,39 @@ The single dash reads as a light AI-polish tell in a promo reply; a period (or c
 > The team shipped the migration in one weekend with zero downtime, using just two engineers.
 
 **Not this pattern:** Em dashes used for the same beat --> Pattern 13 (Em Dash Overuse). Bold "**Label:** explanation" bullets --> Pattern 15 (Inline-Header Vertical Lists). Short-sentence stacking for rhythm --> en-viral-hook #4. Pattern 37 is specifically the colon-staged reveal inside prose.
+
+---
+
+### 38. 2026 Cadence Stack
+
+**Watch words:** that matters, what it all comes down to, which just goes to show, you don't have a strategy you have a vibe
+
+**Fire condition:** The **combination**, not any single element: a run of 4+ consecutive short sentences (≤8 words), OR a run of 3+ parallel fragments (≤5 words), TOGETHER WITH at least one more cadence signal — an aside dash whose content carries no number and no proper noun, or an all-caps final word used as a mic-drop. A short-form phrase above fires on its own when the positive statement alone would carry the claim. Register: social posts, landing copy, newsletters, and blog/X articles.
+
+**Exclusion:**
+- Numeric ranges (`2020—2024`, `10—20%`) — span punctuation, never an aside
+- Em dashes inside quoted dialogue or deliberate literary style
+- Dialogue, legal enumerations, and step lists, where short parallel lines are the format
+- A single short sentence, or a single dash, with no second signal — one clipped line is ordinary writing
+- An aside that does carry a number or a proper noun: it adds information
+
+**Problem:** The 2026 tell is rhythm, not vocabulary. A stack of clipped sentences, a set group of parallel fragments, and an aside dash that adds nothing combine into a voice that sounds decisive while asserting very little. Each element alone is ordinary English — humans write short sentences and use em dashes — so only the combination is evidence.
+
+**Semantic Risk:** MEDIUM
+**Preservation Note:** Merging fragments can drop the emphasis the author intended. Keep every claim, number, name, and polarity. Merge two fragments or attach the concrete reason; do not delete a fragment that carries its own claim, and do not invent a closer the source never had. **Do not strip every dash** — converting an aside into a comma is correct only when the aside adds nothing, and a source that uses dashes deliberately should keep at least one.
+
+**Burstiness note:** The repair is variety, not uniform lengthening. Merging every short sentence into one long one replaces one mechanical rhythm with another; mix a merged clause, a retained short line, and a longer explanatory sentence.
+
+**Before:**
+> AI slop changed how I read. I notice the tells. Short punchy sentences. Constant set groups. Those dashes — unnecessary little asides.
+
+**After:**
+> AI slop changed how I read: I notice the tells now — the stacked short sentences, the set groups of three, the asides that add nothing.
+
+**Before:**
+> Generic ideas. No point of view. Nothing worth saying. That's the problem.
+
+**After:**
+> The problem is generic ideas with no point of view behind them.
+
+**Not this pattern:** A single em dash, or dash density across long-form paragraphs → Pattern 13 (Em Dash Overuse); Pattern 38 requires the rhythm combination and is short-form only. A closer that restates the theme of claims already made → Pattern 31 (Conclusion Signal Words). Empty optimism in the conclusion itself → Pattern 24 (Generic Positive Conclusions).

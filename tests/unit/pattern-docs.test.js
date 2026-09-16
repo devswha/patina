@@ -248,13 +248,18 @@ test('README and PATTERNS selector counts stay aligned with pattern packs', () =
     LANGS.map((lang) => [lang, packs[lang].language + packs[lang].content + packs[lang].style + packs[lang].communication + packs[lang].structure + packs[lang].filler]),
   );
   const viralCounts = Object.fromEntries(LANGS.map((lang) => [lang, packs[lang]['viral-hook']]));
-  const totalPerLang = rewriteCounts.ko + viralCounts.ko;
-  const total = totalPerLang * LANGS.length;
+  // Sum the ACTUAL per-language counts rather than multiplying one language by
+  // four. The catalog is no longer symmetric: #879 promoted a rewrite pattern to
+  // English only, because the promotion fixture that justifies it is English only
+  // and that issue lists KO/ZH/JA promotion as a non-goal until they have their
+  // own fixtures. The old `totalPerLang * LANGS.length` could not express that and
+  // would have reported 184 for a 185-pattern catalog.
+  const total = LANGS.reduce((sum, lang) => sum + rewriteCounts[lang] + viralCounts[lang], 0);
 
   const readme = readFileSync(resolve(REPO_ROOT, 'README.md'), 'utf8');
   assert.match(
     readme,
-    new RegExp(`\\*\\*${total} patterns\\*\\* \\| ${rewriteCounts.ko} rewrite-capable \\+ ${viralCounts.ko} score-only viral-hook per language \\(${totalPerLang} each across KO/EN/ZH/JA\\)`),
+    new RegExp(`\\*\\*${total} patterns\\*\\* \\| ${rewriteCounts.en} rewrite-capable \\(EN\\) / ${rewriteCounts.ko} \\(KO, ZH, JA\\) \\+ ${viralCounts.ko} score-only viral-hook per language`),
   );
   assert.match(readme, new RegExp(`full ${total}-pattern catalog`));
 

@@ -2,7 +2,7 @@
 
 This page expands the English pattern packs into a browsable reference. It is generated from `patterns/en-*.md`, so the numbers, names, watch words, fire conditions, and examples mirror the source pattern files.
 
-- Rewrite-capable patterns: 37
+- Rewrite-capable patterns: 38
 - Score/audit-only viral-hook patterns: 9
 - Main selector: [PATTERNS.md](PATTERNS.md)
 
@@ -34,6 +34,7 @@ The examples are illustrative editing cases, not verified accounts or recorded m
 | 17 | rewrite | Emojis | [en-style.md](../patterns/en-style.md) |
 | 18 | rewrite | Curly Quotation Marks | [en-style.md](../patterns/en-style.md) |
 | 37 | rewrite | Colon Reveal / Plot-Twist Setup | [en-style.md](../patterns/en-style.md) |
+| 38 | Style | 2026 Cadence Stack | [en-style.md](../patterns/en-style.md) |
 | 19 | rewrite | Collaborative Communication Artifacts | [en-communication.md](../patterns/en-communication.md) |
 | 20 | rewrite | Knowledge-Cutoff Disclaimers | [en-communication.md](../patterns/en-communication.md) |
 | 21 | rewrite | Sycophantic/Servile Tone | [en-communication.md](../patterns/en-communication.md) |
@@ -473,6 +474,18 @@ Example before:
 Example after:
 
 > The team shipped the migration in one weekend with zero downtime, using just two engineers.
+
+### 38. 2026 Cadence Stack
+
+**Watch words:** that matters, what it all comes down to, which just goes to show, you don't have a strategy you have a vibe
+
+**Fire condition:** The combination, not any single element: a run of 4+ consecutive short sentences (≤8 words), OR a run of 3+ parallel fragments (≤5 words), together with at least one more cadence signal — an aside dash carrying no number and no proper noun, or an all-caps mic-drop closer. A short-form phrase fires on its own. Social, landing, newsletter, and blog/X register.
+
+**Exclusion:** Numeric ranges and quoted literary dashes stay cold; dialogue, legal enumerations, and step lists use short parallel lines as their format; a single short sentence or a lone dash with no second signal is ordinary writing.
+
+**Semantic Risk:** MEDIUM — merging fragments can drop intended emphasis. Keep every claim, number, name, and polarity; do not strip every dash and do not invent a closer.
+
+**Source:** [en-style.md](../patterns/en-style.md) · examples: [success](../examples/en-38-success-01.md), [failure](../examples/en-38-failure-01.md)
 
 ## Communication Patterns
 

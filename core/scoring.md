@@ -94,12 +94,12 @@ Unknown categories (from custom packs not in the weight config) get default weig
 |----------|--------|----------|-------|
 | content | 0.20 | 6 | |
 | language | 0.20 | 9 | |
-| style | 0.20 | 7 | |
+| style | 0.20 | 8 | |
 | communication | 0.12 | 4 | |
 | filler | 0.08 | 6 | |
 | structure | 0.10 | 5 | |
 | viral-hook | 0.10 | 9 | score-only (no rewrite) |
-| **Total** | **1.00** | **46** | |
+| **Total** | **1.00** | **47** | |
 
 ### Chinese (zh)
 

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, it } from 'node:test';
@@ -164,6 +164,16 @@ describe('architecture import graph', () => {
     assert.equal(classifyModule('scripts/research/study.js'), 'research');
     assert.ok(SAFE_SHARED_MODULES.includes('src/web-rewrite-contract.js'));
     assert.ok(AUDITED_EXCEPTIONS.every((entry) => entry.reason && entry.from && entry.target));
+  });
+
+  it('keeps the product inspect path off scripts/ modules', () => {
+    // #869: inspect reached Lane A's detectLanguage through scripts/prose-score.mjs,
+    // which only re-exports it from src/prose-core.js. scripts/prose-score.mjs sits in
+    // SAFE_SHARED_MODULES, so the boundary checker classifies the edge as safe-shared and
+    // never flags it — the intent is pinned here instead, against the real module.
+    const source = readFileSync(resolve(REPO_ROOT, 'src/inspection.js'), 'utf8');
+    const specifiers = parseModuleImports(source).imports.map(({ specifier }) => specifier);
+    assert.deepEqual(specifiers.filter((specifier) => specifier.includes('scripts/')), []);
   });
 
   it('collects every declared product bin, including the score script and alias bin', () => {

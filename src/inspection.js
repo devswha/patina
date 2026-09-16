@@ -4,7 +4,7 @@ import { fingerprintKoreanStructure } from './features/korean-structure-fingerpr
 import { loadConfig, getRepoRoot } from './config.js';
 import { loadPatterns } from './loader.js';
 import { scoreDeterministicSignals } from './scoring.js';
-import { detectLanguage } from '../scripts/prose-score.mjs';
+import { detectLanguage } from './prose-core.js';
 import { maskInspectionNonProse } from './inspection-masks.js';
 import { classifyDiscourseShape, collectInspectionAdvisories } from './inspection-advisories.js';
 

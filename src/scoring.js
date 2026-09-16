@@ -983,7 +983,9 @@ export function combinedScore({ aiLikeness, fidelity, documentType, config, dete
   const ai = documentTypeWeights?.['ai-likeness'] ?? 0.6;
   const fid = documentTypeWeights?.fidelity ?? 0.4;
   const deterministicWeight = deterministicScoringOptions(config).combinedWeight;
-  const deterministic = toFiniteScore(deterministicScore?.overall ?? deterministicScore);
+  // Accepts either a score payload or a bare number; probing `.overall` on the
+  // number yields undefined and falls through to the value itself.
+  const deterministic = toFiniteScore(/** @type {Record<string, any>|null|undefined} */ (deterministicScore)?.overall ?? deterministicScore);
   const fidelityInverted = 100 - fidelity;
   if (deterministicWeight > 0 && deterministic !== null) {
     const totalWeight = ai + fid + deterministicWeight;

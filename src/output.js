@@ -401,7 +401,9 @@ export function extractOverallScore(result, text, {
   parseResultFallback = false,
   pipeBoundary = false,
 }) {
-  const direct = coerce(result?.overall);
+  // `result` may be a raw string; probing `.overall` on it yields undefined at
+  // runtime, which is exactly the intent, so the read is cast rather than guarded.
+  const direct = coerce(/** @type {Record<string, any>|null|undefined} */ (result)?.overall);
   if (direct !== null) return direct;
 
   const str = String(text ?? '');
@@ -488,7 +490,7 @@ function toFiniteNumber(value) {
  * Parse the first JSON value found in raw text, a fenced code block, or a brace span.
  *
  * @param {string} text Raw model output that may embed JSON.
- * @returns {object|null} Parsed JSON value, or null when no candidate parses.
+ * @returns {Record<string, any>|null} Parsed JSON value, or null when no candidate parses.
  * @example
  * const data = parseFirstJson('```json\n{"overall": 12}\n```');
  */

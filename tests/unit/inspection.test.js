@@ -9,6 +9,30 @@ import { loadConfig } from '../../src/config.js';
 
 const sample = "In today's rapidly evolving landscape, this comprehensive solution unlocks unprecedented opportunities. Furthermore, it fosters seamless collaboration and takes productivity to the next level.";
 
+test('Korean inspect JSON exposes a read-only structure fingerprint without changing score', () => {
+  const text = '헤더 행을 숫자 열로 읽었다. 열 이름을 한 번 더 보는 규칙을 넣었다. 같은 실수는 줄었다.';
+  const first = inspectText(text, { language: 'ko' });
+  const second = inspectText(text, { language: 'ko' });
+  assert.equal(first.available, true);
+  assert.equal(first.score, second.score);
+  assert.equal(first.interpretation, second.interpretation);
+  assert.equal(first.structureFingerprint.schema, 'koStructureFingerprint.v1');
+  assert.equal(first.structureFingerprint.paragraphCount, 1);
+  assert.ok(Array.isArray(first.advisories));
+  assert.equal(inspectText(sample, { language: 'en' }).structureFingerprint, null);
+});
+
+test('inspect advisories do not change score and skip STAR on technical types', () => {
+  const source = '# Problem\n\n- header years read as measurements\n\n# Method\n\n- second pass\n\n# Result\n\n- four pull requests';
+  const rewrite = `${source}\n\nI learned that headers must be split from values.`;
+  const technical = inspectText(source, { language: 'en', rewrite, documentType: 'technical' });
+  const project = inspectText(source, { language: 'en', rewrite, documentType: 'project-writeup' });
+  assert.equal(technical.score, project.score);
+  assert.equal(technical.interpretation, project.interpretation);
+  assert.ok(!technical.advisories.some((row) => row.code === 'invented-lesson-coda'));
+  assert.ok(project.advisories.some((row) => row.code === 'invented-lesson-coda'));
+});
+
 test('inspection is backend-free and agrees with the existing offline CLI score', () => {
   const originalFetch = globalThis.fetch; globalThis.fetch = () => assert.fail('inspection called a provider');
   try {

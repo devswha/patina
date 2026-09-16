@@ -18,7 +18,8 @@ export const SUPPORTED_LANGS = Object.freeze(['ko', 'en', 'zh', 'ja']);
 
 /** Public document-policy names shared by the CLI and hosted API. */
 export const WEB_DOCUMENT_TYPES = Object.freeze([
-  'default', 'blog', 'academic', 'technical', 'formal', 'social', 'email',
+  'default', 'blog', 'academic', 'technical', 'formal', 'resume',
+  'personal-statement', 'project-writeup', 'social', 'email',
   'legal', 'medical', 'marketing', 'narrative', 'instructional',
   'casual-conversation', 'code-comment', 'commit-message', 'release-notes',
   'namuwiki',

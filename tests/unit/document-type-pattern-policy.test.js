@@ -101,3 +101,24 @@ test('integration: legal Document Type suppresses ko patterns 12/18/27 determini
   const def = loadDocumentType(REPO_ROOT, 'default');
   assert.equal(applyDocumentTypePatternPolicy(raw, def, 'ko'), raw);
 });
+
+test('formal keeps #25 suppress; personal-statement and project-writeup amplify it', () => {
+  const raw = loadPatterns(REPO_ROOT, 'ko');
+  const formal = loadDocumentType(REPO_ROOT, 'formal');
+  const resume = loadDocumentType(REPO_ROOT, 'resume');
+  const statement = loadDocumentType(REPO_ROOT, 'personal-statement');
+  const project = loadDocumentType(REPO_ROOT, 'project-writeup');
+
+  assert.equal(formal.frontmatter['pattern-overrides'].ko[25], 'suppress');
+  assert.equal(resume.frontmatter['pattern-overrides'].ko[25], 'suppress');
+  assert.equal(statement.frontmatter['pattern-overrides'].ko[25], 'amplify');
+  assert.equal(project.frontmatter['pattern-overrides'].ko[25], 'amplify');
+
+  const afterFormal = applyDocumentTypePatternPolicy(raw, formal, 'ko').map((pack) => pack.body).join('\n\n');
+  const afterStatement = applyDocumentTypePatternPolicy(raw, statement, 'ko').map((pack) => pack.body).join('\n\n');
+  assert.doesNotMatch(afterFormal, /^### 25\. /m);
+  assert.match(afterStatement, /^### 25\. /m);
+  assert.match(project.body, /classification/);
+  assert.match(formal.frontmatter.scope, /제안서|보고서/);
+  assert.doesNotMatch(formal.frontmatter.scope, /이력서|자기소개서/);
+});

@@ -16,7 +16,7 @@ avoid:
   - "Inferring a Persona, casual/professional Register, or new document genre"
   - "Adding opinions, first-person voice, anecdotes, emotion, or intimacy absent from the source"
 # pattern-overrides 없음 — 모든 패턴을 기본 가중치로 적용한다.
-# 특정 패턴을 강화/억제하려면 적합한 문서 유형(blog/academic/formal 등)을 사용한다.
+# 특정 패턴을 강화/억제하려면 적합한 문서 유형(blog/academic/formal/resume/personal-statement/project-writeup 등)을 사용한다.
 ---
 
 # 기본 문서 유형

@@ -2,7 +2,7 @@
 pack: ja-language
 language: ja
 name: 言語・文法パターン
-version: 1.2.0
+version: 1.2.1
 patterns: 9
 corpus-snapshot:
   id: bootstrap-patterns-pre-provenance
@@ -105,11 +105,12 @@ dedupe-with:
 
 **問題：** AIは包括的に見せるため、アイデアを必ず3つにまとめたがる。
 
-**発火条件：** 同一文書に3項目の列挙が2回以上出現、または3つにまとめた根拠が恣意的で他の数でも同等に成り立つ場合。
+**発火条件：** 同一文書に修辞的な3項目列挙が2回以上出現し、2つでも4つでも同等に成り立つ場合。
 
 **除外条件：**
 - 本質的に三要素の構造（過去/現在/未来、入力/処理/出力、序論/本論/結論）
-- 実際に3つある項目を列挙する場合
+- 実在の技術三项（classification/segmentation/detection、ラベル/表示/検出、input/process/output）
+- 実際に3つある項目を列挙する場合。技術三项が1回だけのときは発火しない。
 
 **Semantic Risk:** MEDIUM
 **Preservation Note:** 3項目列挙を削減する際に、実質的に異なる意味を持つ項目まで省略しないよう注意

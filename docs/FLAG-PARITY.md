@@ -20,7 +20,7 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 | `--outdir <dir>` | ✓ | ✓ | Batch-only output directory. |
 | `--no-interactive` | ✓ | — | CLI input safety for non-TTY automation. |
 | `--lang <code>` | ✓ | ✓ | `ko`, `en`, `zh`, `ja`. |
-| `--document-type <name>` | ✓ | ✓ | Genre, purpose, structural conventions, and pattern policy. |
+| `--document-type <name>` | ✓ | ✓ | Genre, purpose, structural conventions, and pattern policy. Includes `resume`, `personal-statement`, and `project-writeup`; `formal` stays proposals/official reports. |
 | `--persona <name>` | ✓ | ✓ | Optional reusable voice; rewrite/preview only in CLI. |
 | `--register <casual\|professional>` | ✓ | ✓ | Delivery override; omission preserves source register. |
 | `--jargon <policy>` | ✓ | — | CLI rewrite/preview terminology policy. |

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-09-04",
-  "scope": "49 repository regression fixtures only; no private rebaseline corpora or human-panel responses",
+  "reviewedAt": "2026-09-16",
+  "scope": "53 repository regression fixtures only; no private rebaseline corpora or human-panel responses",
   "licensePath": "LICENSE",
   "licenseSha256": "558dbc06a12e4c33f5e042985713f286fce6897c68599ee0fe68e5de4c824df2",
   "entries": [
@@ -48,6 +48,12 @@
       "basis": "Repository MIT license; inspected regression fixture, no external attribution or redistribution restriction in its metadata. Authorship is not independently certified."
     },
     {
+      "path": "tests/fixtures/suspect-zones/en/ai/en-ai-08-complete-arc.md",
+      "sha256": "6233e75846233297c5abd3a262a3839e32ca097eb6027e5ffe3809407844414d",
+      "license": "MIT",
+      "basis": "Repository MIT license; inspected regression fixture, no external attribution or redistribution restriction in its metadata. Authorship is not independently certified."
+    },
+    {
       "path": "tests/fixtures/suspect-zones/en/natural/en-nat-01.md",
       "sha256": "061a84b5d26d22f1196da02a23860fbc3f6e37114a7d09c99777236c21629ecb",
       "license": "MIT",
@@ -80,6 +86,12 @@
     {
       "path": "tests/fixtures/suspect-zones/en/natural/en-nat-06-single-opener.md",
       "sha256": "1030ea9d10b0e5e1b4efac5c3b748a8d3ed6d3b908879c787705035aae175076",
+      "license": "MIT",
+      "basis": "Repository MIT license; inspected regression fixture, no external attribution or redistribution restriction in its metadata. Authorship is not independently certified."
+    },
+    {
+      "path": "tests/fixtures/suspect-zones/en/natural/en-nat-07-headed-notes.md",
+      "sha256": "2f733a12abb6347ab8f05835d425388ccefdde875af17204a6e4276a1fdc29ca",
       "license": "MIT",
       "basis": "Repository MIT license; inspected regression fixture, no external attribution or redistribution restriction in its metadata. Authorship is not independently certified."
     },
@@ -198,6 +210,12 @@
       "basis": "Repository MIT license; inspected regression fixture, no external attribution or redistribution restriction in its metadata. Authorship is not independently certified."
     },
     {
+      "path": "tests/fixtures/suspect-zones/ko/ai/ko-ai-08-complete-arc.md",
+      "sha256": "0d2cdeb2653b5411289be5f651ab711a170e2e2474742515d175334e7a8aedcd",
+      "license": "MIT",
+      "basis": "Repository MIT license; inspected regression fixture, no external attribution or redistribution restriction in its metadata. Authorship is not independently certified."
+    },
+    {
       "path": "tests/fixtures/suspect-zones/ko/natural/ko-nat-01.md",
       "sha256": "cdbe22f0deaa8543d0753d8fac531a0e5356907b441940e8092247b69c1cafc7",
       "license": "MIT",
@@ -224,6 +242,12 @@
     {
       "path": "tests/fixtures/suspect-zones/ko/natural/ko-nat-05.md",
       "sha256": "2313e94cf1ac4f8a790df43ed98faed2abf9c74940ebd007c8cbcb713f283b0b",
+      "license": "MIT",
+      "basis": "Repository MIT license; inspected regression fixture, no external attribution or redistribution restriction in its metadata. Authorship is not independently certified."
+    },
+    {
+      "path": "tests/fixtures/suspect-zones/ko/natural/ko-nat-06-headed-notes.md",
+      "sha256": "38c8337df016d3d05082a92ae0497a2ad801d1e8304711ef54084e96d5f42d1a",
       "license": "MIT",
       "basis": "Repository MIT license; inspected regression fixture, no external attribution or redistribution restriction in its metadata. Authorship is not independently certified."
     },

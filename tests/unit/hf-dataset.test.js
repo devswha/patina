@@ -20,17 +20,17 @@ function fixtureRepository() {
   return { root, git, output: join(root, 'export') };
 }
 
-test('export preserves all 49 reviewed fixtures, labels, licensing and provenance deterministically', () => {
+test('export preserves all 53 reviewed fixtures, labels, licensing and provenance deterministically', () => {
   const f = fixtureRepository();
   try {
     const first = exportDataset({ repoRoot: f.root, output: f.output });
-    assert.equal(first.manifest.rowCount, 49);
-    assert.deepEqual(Object.fromEntries(Object.entries(first.manifest.languages).map(([lang, value]) => [lang, value.total])), { en: 13, ko: 12, zh: 12, ja: 12 });
+    assert.equal(first.manifest.rowCount, 53);
+    assert.deepEqual(Object.fromEntries(Object.entries(first.manifest.languages).map(([lang, value]) => [lang, value.total])), { en: 15, ko: 14, zh: 12, ja: 12 });
     const original = readFileSync(join(f.output, 'data/test.jsonl'), 'utf8');
     exportDataset({ repoRoot: f.root, output: f.output });
     assert.equal(readFileSync(join(f.output, 'data/test.jsonl'), 'utf8'), original);
     const rows = original.trim().split('\n').map(JSON.parse);
-    assert.equal(new Set(rows.map((row) => row.id)).size, 49);
+    assert.equal(new Set(rows.map((row) => row.id)).size, 53);
     for (const row of rows) { assert.equal(row.license, 'MIT'); assert.equal(sha256(row.text), row.text_sha256); }
     assert.match(readFileSync(join(f.output, 'README.md'), 'utf8'), /do not certify who wrote/);
   } finally { rmSync(f.root, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 }); }
@@ -119,7 +119,7 @@ test('publication validates owner, pins parent commit, and uploads only reviewed
       return created ? json({ sha: committed ? current : old }) : json({}, 404);
     };
     const result = await publishDataset({ repoRoot: f.root, directory: f.output, repository: 'devswha/patina-suspect-zones', token: 'test-token', fetchImpl, dryRun: false });
-    assert.equal(result.commit, current); assert.equal(result.rows, 49);
+    assert.equal(result.commit, current); assert.equal(result.rows, 53);
     assert.equal(calls.filter((call) => call.options.method === 'POST').length, 2);
     await assert.rejects(publishDataset({ repoRoot: f.root, directory: f.output, repository: 'someone-else/patina-suspect-zones', token: 'test-token', dryRun: false,
       fetchImpl: async () => json({ name: 'devswha', orgs: [] }) }), /namespace differs/);

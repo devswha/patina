@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto';
 import { analyzeText, splitParagraphs, tokenize, computeDensity, loadLexicon } from './features/index.js';
+import { fingerprintKoreanStructure } from './features/korean-structure-fingerprint.js';
 import { loadConfig, getRepoRoot } from './config.js';
 import { loadPatterns } from './loader.js';
 import { scoreDeterministicSignals } from './scoring.js';
 import { detectLanguage } from '../scripts/prose-score.mjs';
 import { maskInspectionNonProse } from './inspection-masks.js';
+import { classifyDiscourseShape, collectInspectionAdvisories } from './inspection-advisories.js';
 
 export const MAX_INSPECTION_CHARS = 200000;
 export const MAX_INSPECTION_DIAGNOSTICS = 2000;
@@ -50,7 +52,7 @@ function sentenceFindings(paragraph, paragraphStart, masked, lexicon, evidence, 
   return findings;
 }
 
-export function inspectText(text, { language = 'auto', file = '', config, repoRoot = getRepoRoot() } = {}) {
+export function inspectText(text, { language = 'auto', file = '', config, repoRoot = getRepoRoot(), rewrite = null, documentType } = {}) {
   if (typeof text !== 'string' || !text.trim()) throw new TypeError('Inspection requires non-empty text');
   if (text.length > MAX_INSPECTION_CHARS) throw new RangeError(`Inspection supports at most ${MAX_INSPECTION_CHARS} characters; inspect a selection instead`);
   if (!['auto', 'en', 'ko', 'zh', 'ja'].includes(language)) throw new TypeError('Unsupported inspection language');
@@ -88,7 +90,25 @@ export function inspectText(text, { language = 'auto', file = '', config, repoRo
       code: 'ai-like-sentence', scope: 'sentence', severity: 'warning', paragraph: i + 1, evidenceCount: sentence.evidenceCount,
       message: 'This sentence contains lexical cues contributing to the paragraph’s writing signals.', signals: ['ai-lexicon-density'] });
   }
-  return { ...base, available: true, diagnostics, diagnosticsTruncated, skipped: score.skipped, skipReason: score.skipReason };
+  const resolvedType = documentType || settings.documentType || 'default';
+  const structureFingerprint = lang === 'ko' ? fingerprintKoreanStructure(mapping.normalized) : null;
+  const advisories = collectInspectionAdvisories(mapping.normalized, {
+    language: lang,
+    documentType: resolvedType,
+    rewrite,
+  });
+  return {
+    ...base,
+    available: true,
+    diagnostics,
+    diagnosticsTruncated,
+    skipped: score.skipped,
+    skipReason: score.skipReason,
+    documentType: resolvedType,
+    structureFingerprint,
+    discourseShape: classifyDiscourseShape(mapping.normalized),
+    advisories,
+  };
 }
 
 export function inspectAuditSource(text, options = {}) {

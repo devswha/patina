@@ -2,7 +2,7 @@
 pack: en-language
 language: en
 name: Language Patterns
-version: 1.1.0
+version: 1.1.1
 patterns: 9
 corpus-snapshot:
   id: bootstrap-patterns-pre-provenance
@@ -89,9 +89,9 @@ dedupe-with:
 
 ### 10. Rule of Three Overuse
 
-**Fire condition:** 3-item lists appear 2+ times in the same document, or a triple-part sentence where the count is arbitrary and another count would be equally valid.
+**Fire condition:** Rhetorical 3-item lists appear 2+ times in the same document, and the count is arbitrary — two or four items would be equally valid.
 
-**Exclusion:** Naturally occurring triads in genuinely three-part processes (past/present/future; input/process/output; beginning/middle/end) are not this pattern.
+**Exclusion:** Real technical triads are not this pattern (past/present/future; input/process/output; classification/segmentation/detection; beginning/middle/end). A single genuine three-part process does not fire.
 
 **Burstiness note:** When rewriting, use the naturally correct count — one strong point if that is all there is, two contrasting items if that is the real structure, four if there are actually four. Varying list counts across a document signals human authorship.
 

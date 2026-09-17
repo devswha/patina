@@ -566,7 +566,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: 결론적으로, 결국, 궁극적으로, 요컨대, 종합하면, 종합해보면, 정리하면, 마지막으로, 배웠습니다, 깨달았습니다, 의미가 있습니다
 - Fire condition: 마지막 1–2문단이 위 신호어로 시작하거나, 새 숫자·이름·결정 없이 교훈 기능만 하는 경우. 또는 같은 문서에 결론 신호어가 2회 이상 등장.
-- Example files: [failure](../examples/31-failure-01.md) · [success](../examples/31-success-01.md)
+- Example files: [failure](../examples/31-failure-01.md) · [success](../examples/31-success-01.md) · [failure 02](../examples/31-failure-02.md) · [success 02](../examples/31-success-02.md)
 
 Example before:
 

@@ -5,6 +5,7 @@ import { buildPrompt } from './prompt-builder.js';
 import { cleanRewriteOutput } from './output.js';
 import { createLogger } from './logger.js';
 import { evaluateVerification, validateMps, validateFidelityResult } from './verification-schema.js';
+import { evaluateNumberSafety } from './features/meaning-proxy.js';
 
 // Numeric tokens (integers, decimals, grouped numbers). Used by the cheap,
 // LLM-free meaning guard to catch numbers that silently vanish in a rewrite.
@@ -63,6 +64,30 @@ export function deterministicMeaningGuard(original, rewrite) {
   }
 
   return warnings;
+}
+
+/**
+ * CLI meaning-safety overlay. Dropped source digits keep the existing
+ * `dropped-numbers` reason. Claim-bag changes that the web number-safety gate
+ * already rejects (`-5`→`5`, `one`→`two`, added percents, collapsed
+ * duplicates) become `numeric-claim-changed`. Unsupported syntax (`p < 0.05`)
+ * is not a CLI failure — that fail-closed path stays web-only (#870).
+ *
+ * @param {string} original
+ * @param {string} rewrite
+ * @param {string} [lang]
+ * @returns {{ok: boolean, reason: string|null, dropped: string[], numberSafety: ReturnType<typeof evaluateNumberSafety>}}
+ */
+export function assessRewriteMeaningSafety(original, rewrite, lang = 'en') {
+  const dropped = droppedNumbers(original, rewrite);
+  const numberSafety = evaluateNumberSafety(original, rewrite, lang);
+  if (dropped.length > 0) {
+    return { ok: false, reason: 'dropped-numbers', dropped, numberSafety };
+  }
+  if (numberSafety.reason === 'numeric_claim_changed') {
+    return { ok: false, reason: 'numeric-claim-changed', dropped, numberSafety };
+  }
+  return { ok: true, reason: null, dropped, numberSafety };
 }
 
 // Trusted directive appended (outside the input data fence) for the conservative

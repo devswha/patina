@@ -468,7 +468,7 @@ describe('CLI End-to-End with Mock API', () => {
       '[BODY]',
       'First paragraph rewritten by the mock backend for the preview test.',
       '',
-      'Second paragraph rewritten as well, still two paragraphs total.',
+      'Second paragraph rewritten as well, same structure as before.',
       '[/BODY]',
     ].join('\n');
 
@@ -537,6 +537,64 @@ describe('CLI End-to-End with Mock API', () => {
       await new Promise((resolveClose) => pageServer.close(resolveClose));
       await mock.stop();
       mock = await startMockServer('This is the humanized result.');
+    }
+  });
+
+  it('preview exits 4 when a rewrite changes a numeric claim', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'patina-numeric-preview-'));
+    const htmlPath = join(dir, 'page.html');
+    writeFileSync(htmlPath, [
+      '<html><head><title>numeric</title></head><body>',
+      '<div class="hero">',
+      '<p>The balance is -5 this quarter and the audit trail stays intact.</p>',
+      '</div>',
+      '</body></html>',
+    ].join('\n'));
+
+    // Sign flip: every digit token survives, so only the numeric-claim
+    // overlay (not dropped-numbers) can catch it.
+    const rewriteResponse = '[BODY]\nThe balance is 5 this quarter and the audit trail stays intact.\n[/BODY]';
+    const writes = [];
+    setBrowserDiffRuntimeForTests({
+      tmpdir: () => '/tmp',
+      mkdtemp: () => '/tmp/patina-preview-numeric',
+      writeFile: (path, data) => {
+        writes.push({ path, data });
+      },
+      chmod: () => {},
+      now: () => 101,
+      platform: 'linux',
+      spawn: makeFakeSpawn(({ child }) => {
+        process.nextTick(() => child.emit('close', 0));
+      }),
+    });
+
+    mock.callCount = 0;
+    const savedExitCode = process.exitCode;
+    try {
+      await mock.stop();
+      mock = await startMockServer([
+        { responseText: rewriteResponse },
+        { responseText: 'Pattern: 1. Generic polish\nRemoved: old\nAdded: new\nWhy: reason' },
+      ]);
+
+      const previewRun = await captureConsole(() => main([
+        '--preview',
+        '--lang', 'en',
+        '--api-key-file', mockApiKeyPath,
+        '--base-url', `http://127.0.0.1:${mock.port}`,
+        htmlPath,
+      ]));
+
+      // The preview page is still rendered and delivered; only the exit
+      // status records the meaning-safety violation.
+      assert.ok(writes.length > 0, 'preview page must still be written');
+      assert.ok(writes[0].data.includes('ptna-after'));
+      assert.strictEqual(process.exitCode, 4);
+      assert.ok(previewRun.errors.some((line) => line.includes('numeric claims in the source changed'))
+        || previewRun.logs.some((line) => line.includes('numeric claims in the source changed')));
+    } finally {
+      process.exitCode = savedExitCode;
     }
   });
 

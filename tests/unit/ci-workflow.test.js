@@ -46,7 +46,7 @@ test('CI workflow YAML configuration contracts: least privilege, bounds, and PR-
     assert.equal(job.permissions, undefined, `${jobName} must inherit read-only workflow permissions`);
   }
 
-  const lintSetup = workflow.jobs.lint.steps.find((step) => step.uses === 'actions/setup-node@v6');
+  const lintSetup = workflow.jobs.lint.steps.find((step) => step.uses === 'actions/setup-node@v7');
   assert.equal(lintSetup?.with?.['node-version'], 24, 'lint must run on the Node 24 CI host');
 });
 

@@ -32,6 +32,7 @@
     "benchmark:cadence-fixture": "node scripts/cadence-fixture-eval.mjs",
     "benchmark:ko-conjunction": "node scripts/ko-conjunction-candidate-eval.mjs",
     "benchmark:ko-comma-excess": "node scripts/ko-comma-excess-candidate-eval.mjs",
+    "benchmark:ko-agent-tone": "node scripts/ko-agent-tone-candidate-eval.mjs",
     "quality:adversarial-mps": "node scripts/adversarial-mps-report.mjs --check",
     "quality:persona-ablation": "node scripts/persona-ablation.mjs",
     "dogfood": "node tests/quality/dogfood.mjs",

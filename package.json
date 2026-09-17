@@ -228,7 +228,7 @@
     "access": "public"
   },
   "devDependencies": {
-    "@eslint/js": "^8.57.1",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^18.19.130",
     "cspell": "^8.19.4",
     "eslint": "^8.57.1",

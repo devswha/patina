@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   loadManifest,
   evaluateCandidate,
+  candidateFires,
   SCORE_ONLY_FLOOR,
 } from '../../scripts/ko-conjunction-candidate-eval.mjs';
 
@@ -35,8 +36,17 @@ test('the candidate clears the score-only floor on the fixture', () => {
     report.precision >= SCORE_ONLY_FLOOR.precision && report.recall >= SCORE_ONLY_FLOOR.recall,
     `score-only floor: precision ${report.precision}, recall ${report.recall}`,
   );
-  // The rewrite floor (0.80) is deliberately NOT pinned. Measured precision is
-  // 0.83 — barely above it — and the false positives are a known systematic class
-  // rather than noise, so a future fixture addition dropping below 0.80 would be
-  // an informative result, not a regression to block.
+  // The rewrite floor (0.80) is deliberately NOT pinned so a future fixture
+  // addition dropping below it is an informative result, not a regression to
+  // block. Current measured precision is 1.00: the anchor veto below removes
+  // every boundary negative without losing a hot document.
+});
+
+test('the anchor veto keeps anchored chains out and anchor-free chains in', () => {
+  // The decision comment on #880: counting openers alone "cannot distinguish
+  // 남발 from ordinary use". These two shapes are that sentence as fixtures.
+  const anchoredChain = '그리고 한 가지 더 말씀드리면, 이번 계약은 3년입니다. 또한 갱신 조건은 별도 협의입니다. 다만 해지는 6개월 전 통보가 필요합니다.';
+  const anchorFreeChain = '그리고 이러한 노력은 계속되고 있습니다. 또한 이러한 성과는 의미가 있습니다. 따라서 이러한 흐름은 계속될 것입니다.';
+  assert.equal(candidateFires(anchoredChain), false, 'a connective chain around real content must not fire');
+  assert.equal(candidateFires(anchorFreeChain), true, 'a connective chain with no anchors must fire');
 });

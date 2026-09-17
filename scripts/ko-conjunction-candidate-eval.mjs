@@ -52,7 +52,27 @@ export const CANDIDATE = Object.freeze({
   minSentences: 3,
   minOpeners: 3,
   minRatio: 0.6,
+  // The connective run must carry no concrete anchor. The first measured
+  // version (>=3 openers, >=0.6 ratio) fired on five boundary negatives that
+  // chain connectives around real content — contract terms, incident cause,
+  // refund timelines, proposal costs. #880's decision comment named the gap:
+  // counting openers "never asks whether the sentence says anything", so it
+  // cannot tell 남발 from ordinary discourse work. Requiring an anchor-free run
+  // adds that question with the same shape pattern 31 already uses ("새
+  // 숫자·이름·결정 없이"). An anchored opener sentence is ordinary Korean and
+  // must not cost the author a rewrite.
+  maxAnchoredOpeners: 0,
 });
+
+/** Numeric or Latin-entity anchors: the concrete-content signal every boundary
+ * negative carries and every hot document lacks (digits, dates, amounts, units,
+ * product/proper names in Latin script). */
+const NUMERIC_ANCHOR = /\d/;
+const LATIN_ENTITY = /[A-Za-z]{2,}/;
+
+export function sentenceCarriesAnchor(sentence) {
+  return NUMERIC_ANCHOR.test(sentence) || LATIN_ENTITY.test(sentence);
+}
 
 export function countConnectiveOpeners(text) {
   const sentences = splitParagraphs(String(text ?? ''))
@@ -66,9 +86,11 @@ export function countConnectiveOpeners(text) {
 }
 
 export function candidateFires(text) {
-  const { count, total } = countConnectiveOpeners(text);
+  const { count, total, openers } = countConnectiveOpeners(text);
   if (total < CANDIDATE.minSentences) return false;
-  return count >= CANDIDATE.minOpeners && count / total >= CANDIDATE.minRatio;
+  if (count < CANDIDATE.minOpeners || count / total < CANDIDATE.minRatio) return false;
+  const anchored = openers.filter((sentence) => sentenceCarriesAnchor(sentence)).length;
+  return anchored <= CANDIDATE.maxAnchoredOpeners;
 }
 
 function round(n, d = 4) {
@@ -128,7 +150,7 @@ function main() {
   }
   console.log('#880 문두 접속사 candidate — 50-document fixture (NOT wired into the product)');
   console.log(`  documents      ${report.counts.total} (${report.counts.hot} hot / ${report.counts.cold} cold)`);
-  console.log(`  rule           >=${CANDIDATE.minOpeners} connective openers AND >=${CANDIDATE.minRatio} of sentences, min ${CANDIDATE.minSentences} sentences`);
+  console.log(`  rule           >=${CANDIDATE.minOpeners} connective openers AND >=${CANDIDATE.minRatio} of sentences, min ${CANDIDATE.minSentences} sentences, anchor-free run (<=${CANDIDATE.maxAnchoredOpeners} opener sentence(s) with a number or Latin entity)`);
   console.log(`  TP ${report.tp}  FP ${report.fp}  TN ${report.tn}  FN ${report.fn}`);
   console.log(`  precision      ${report.precision}`);
   console.log(`  recall         ${report.recall}`);

@@ -1245,7 +1245,7 @@ async function runOcrStage({ pageHtml, sourceUrl, parsed, backends, resolved, ti
  */
 export function warnIfAlreadyHuman({ text, config = {}, repoRoot, logger, scorer = scoreDeterministicSignals }) {
   if (config['over-editing-guard'] === false) return null;
-  let score = null;
+  let score;
   try {
     score = scorer({ text, config, repoRoot, logger: { warn() {} } });
   } catch {

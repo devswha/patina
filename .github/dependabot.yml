@@ -6,13 +6,6 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 1
-    ignore:
-      # @eslint/js 10's recommended set references rules (no-unassigned-vars)
-      # that the pinned eslint 8.57 core does not implement; adopting it
-      # requires the coordinated eslint 9/10 core migration first (#900).
-      - dependency-name: "@eslint/js"
-        update-types:
-          - version-update:semver-major
     groups:
       devtools:
         dependency-type: development

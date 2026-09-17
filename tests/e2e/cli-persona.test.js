@@ -28,7 +28,7 @@ async function captureConsole(fn) {
   process.exitCode = 0;
   console.log = (...args) => logs.push(args.join(' '));
   console.error = (...args) => errors.push(args.join(' '));
-  let exitCode = 0;
+  let exitCode;
   try {
     await fn();
     exitCode = Number(process.exitCode) || 0;

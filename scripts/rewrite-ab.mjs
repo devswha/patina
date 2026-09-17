@@ -184,9 +184,9 @@ export async function compareRewrites({
     for (const config of configs) {
       let candidateCalls = [];
       let candidate_latency_ms = null;
-      let rewrite = null;
+      let rewrite;
       let invariants = null;
-      let structure = null;
+      let structure;
       const startedAt = now();
       try {
         const produced = await produce(config, fixture);

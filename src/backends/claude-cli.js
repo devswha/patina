@@ -153,7 +153,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       // Runs before the Promise's cleanup; remove the temp dir and surface a
       // backend-shaped error instead of leaking it and escaping a raw fs error (#446).
       try { rmSync(dir, { recursive: true, force: true }); } catch {}
-      throw new Error(`claude-cli backend: failed to stage image input (${err.message})`);
+      throw new Error(`claude-cli backend: failed to stage image input (${err.message})`, { cause: err });
     }
   }
 

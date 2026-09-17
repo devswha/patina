@@ -193,7 +193,7 @@ function main(argv) {
     console.error(usage());
     process.exit(1);
   }
-  let isDir = false;
+  let isDir;
   try {
     isDir = statSync(dir).isDirectory();
   } catch {

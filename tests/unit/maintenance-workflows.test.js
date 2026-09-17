@@ -44,21 +44,16 @@ test('Dependabot routes weekly version updates through dev, bounded and unautoma
   assert.equal(config.automerge, undefined);
   assert.doesNotMatch(readFileSync(DEPENDABOT_PATH, 'utf8'), /auto[- ]?(?:merge|approve)|security[^\n]*(?:delay|ignore)/i);
 
-  // One dependency is held right now: @eslint/js majors need the eslint 9/10
-  // core migration first (#900, held by #903). The shape rule stays so a hold
-  // cannot quietly suppress anything below a major bump — patch, minor, and
-  // security updates must keep arriving.
+  // No dependency is held right now: the @eslint/js hold was lifted with the
+  // eslint 10 core migration in this change. The shape rule stays so a future
+  // hold cannot quietly suppress anything below a major bump — patch, minor,
+  // and security updates must keep arriving.
   for (const rule of npm.ignore ?? []) {
     assert.deepEqual(rule['update-types'], ['version-update:semver-major']);
     assert.deepEqual(Object.keys(rule).sort(), ['dependency-name', 'update-types']);
     assert.equal(typeof rule['dependency-name'], 'string');
   }
-  assert.deepEqual(npm.ignore ?? [], [
-    {
-      'dependency-name': '@eslint/js',
-      'update-types': ['version-update:semver-major'],
-    },
-  ]);
+  assert.deepEqual(npm.ignore ?? [], []);
   assert.equal(config.updates.find((update) => update['package-ecosystem'] === 'github-actions').ignore, undefined);
 });
 

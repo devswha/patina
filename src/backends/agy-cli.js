@@ -74,7 +74,7 @@ export function readAgySettings(file = agySettingsPath()) {
     raw = readFileSync(file, 'utf8');
   } catch (err) {
     if (err?.code === 'ENOENT') return {};
-    throw new Error(`agy-cli backend: cannot read Antigravity settings at ${file} (${err.message}); refusing to run with unknown permissions`);
+    throw new Error(`agy-cli backend: cannot read Antigravity settings at ${file} (${err.message}); refusing to run with unknown permissions`, { cause: err });
   }
   let parsed;
   try {
@@ -190,7 +190,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
     writeFileSync(join(dir, '.agents', 'agents', `${AGY_AGENT_NAME}.md`), AGY_AGENT_DEFINITION, { mode: 0o600 });
   } catch (err) {
     cleanup();
-    throw new Error(`agy-cli backend: failed to write agent definition (${err.message})`);
+    throw new Error(`agy-cli backend: failed to write agent definition (${err.message})`, { cause: err });
   }
 
   // The prompt travels on stdin as one NDJSON user event, not as an argv

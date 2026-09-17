@@ -86,7 +86,7 @@ export async function invokeDetailed({ prompt, model, modelSource, signal, timeo
       ...(includeRawOutput ? { rawOutput: result.stdout } : {}) };
   } catch (err) {
     if (/unknown option|agent.*(?:unsupported|not supported)/i.test(err?.message || '')) {
-      throw new Error('kimi-cli backend: Kimi Code 0.29+ with agent-file tool restrictions is required. Upgrade Kimi Code or select another backend.');
+      throw new Error('kimi-cli backend: Kimi Code 0.29+ with agent-file tool restrictions is required. Upgrade Kimi Code or select another backend.', { cause: err });
     }
     throw err;
   }

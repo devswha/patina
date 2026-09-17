@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mpsResult, fidelityResult, zeroAnchorMps } from '../fixtures/verification-results.js';
 
-import { deterministicMeaningGuard, verifyRewrite } from '../../src/verify.js';
+import { assessRewriteMeaningSafety, deterministicMeaningGuard, verifyRewrite } from '../../src/verify.js';
 import { validateVerifyRequest, parseArgs } from '../../src/cli/args.js';
 
 // ---------- deterministicMeaningGuard (no LLM) ----------
@@ -32,6 +32,49 @@ test('deterministicMeaningGuard preserves non-standard grouping so a dropped 1,2
   // while the rewrite happens to contain 12 must still flag on the enforcing guard.
   const warnings = deterministicMeaningGuard('rated 1,2 overall', 'rated 12 overall');
   assert.ok(warnings.some((w) => /numbers/.test(w)), warnings.join(' | '));
+});
+
+test('assessRewriteMeaningSafety keeps vanished digits as dropped-numbers', () => {
+  const result = assessRewriteMeaningSafety(
+    'The service retains 12 audit logs.',
+    'The service retains the audit logs.',
+    'en',
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'dropped-numbers');
+  assert.deepEqual(result.dropped, ['12']);
+});
+
+test('assessRewriteMeaningSafety flags claim-bag changes that keep digit tokens', () => {
+  const cases = [
+    ['The balance is -5 this quarter.', 'The balance is 5 this quarter.'],
+    ['Choose one option before launch.', 'Choose two options before launch.'],
+    ['Revenue grew after the pricing change.', 'Revenue grew 42% after the pricing change.'],
+    ['We saw 10 and later another 10.', 'We saw 10.'],
+  ];
+  for (const [original, rewrite] of cases) {
+    const result = assessRewriteMeaningSafety(original, rewrite, 'en');
+    assert.equal(result.ok, false, original);
+    assert.equal(result.reason, 'numeric-claim-changed', original);
+    assert.deepEqual(result.dropped, []);
+  }
+});
+
+test('assessRewriteMeaningSafety does not fail identity unsupported numeric syntax', () => {
+  const result = assessRewriteMeaningSafety('The study reported p < 0.05.', 'The study reported p < 0.05.', 'en');
+  assert.equal(result.ok, true);
+  assert.equal(result.reason, null);
+  assert.equal(result.numberSafety.reason, 'unsupported_numeric_syntax');
+});
+
+test('assessRewriteMeaningSafety still treats role-swapped bags as in-scope later work', () => {
+  const result = assessRewriteMeaningSafety(
+    'The team shipped 3 features and fixed 12 bugs.',
+    'The team shipped 12 features and fixed 3 bugs.',
+    'en',
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.reason, null);
 });
 
 // ---------- verifyRewrite (injected scorers + callLLM) ----------

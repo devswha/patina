@@ -8,7 +8,7 @@ patina uses stable exit codes so CI and editor integrations can distinguish cont
 | `1` | Runtime/backend failure: API/auth/backend errors, failed doctor blockers, invalid runtime setup, or unexpected exceptions. |
 | `2` | Input/usage failure: unknown flags, missing required option values, empty stdin, or `--no-interactive` with no input. |
 | `3` | Score gate exceeded. `--score --exit-on <n>` completed, but `overall > n`. |
-| `4` | Meaning-safety failure: verification failed, cleanup changed the verified text, or a source number was dropped. Stdout keeps the candidate for review; unsafe source-file writes are blocked. |
+| `4` | Meaning-safety failure: verification failed, cleanup changed the verified text, a source number was dropped, or a numeric claim changed. Stdout keeps the candidate for review; unsafe source-file writes are blocked. |
 | `130` | Interrupted (SIGINT / Ctrl-C). |
 
 Codes are merged with `Math.max` when more than one applies, so a run that both
@@ -26,6 +26,7 @@ These checks in the rewrite path raise exit `4`:
 | `--verify` floor | after the rewrite and one conservative retry, no candidate reaches `verification.mps-floor` / `verification.fidelity-floor` (defaults 70); stderr shows `[patina] verify: MPS …, fidelity … (below floor)` |
 | verified output changed | cleanup changes the text after verification; the scores no longer cover the emitted candidate |
 | dropped-number guard | a number present in the source is missing from the rewrite (`droppedNumbers`), with or without `--verify` |
+| numeric-claim overlay | the rewrite changes a numeric claim the web number-safety gate rejects — sign flip (`-5`→`5`), word-number drift (`one`→`two`), an added numeric claim, or a collapsed duplicate — while keeping the source digits (`assessRewriteMeaningSafety` → `numeric-claim-changed`). Vanished digits still report `dropped-numbers`. Unsupported scientific syntax (`p < 0.05`) stays web-only and never fails the CLI. Preview candidates (`--preview`, including compare variants) enforce the same overlay while still rendering the page |
 
 With stdout output, patina still prints the candidate and warns on stderr for
 review. With `--batch --in-place`, a failed candidate leaves its source file
@@ -44,7 +45,8 @@ patina --lang ko draft.md; echo "exit=$?"   # exit=4 when a year or figure vanis
 ```
 
 Because MPS/fidelity come from a model call, the `--verify` trigger is not
-deterministic across runs of the same input; the dropped-number guard is.
+deterministic across runs of the same input; the dropped-number guard and the
+numeric-claim overlay are.
 Suppressing stderr with `--quiet` hides the reason but does not change the
 exit code.
 

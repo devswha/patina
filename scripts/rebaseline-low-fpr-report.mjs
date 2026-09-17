@@ -56,7 +56,7 @@ function loadRows(input) {
       try {
         return JSON.parse(line);
       } catch (error) {
-        throw new Error(`line ${index + 1}: invalid JSON (${error.message})`);
+        throw new Error(`line ${index + 1}: invalid JSON (${error.message})`, { cause: error });
       }
     });
 }

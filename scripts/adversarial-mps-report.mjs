@@ -37,7 +37,7 @@ export function loadFixtures(path = DEFAULT_INPUT) {
       try {
         return normalizeFixture(JSON.parse(line));
       } catch (err) {
-        throw new Error(`${path}:${index + 1}: ${err.message}`);
+        throw new Error(`${path}:${index + 1}: ${err.message}`, { cause: err });
       }
     });
 }

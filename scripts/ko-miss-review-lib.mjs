@@ -394,7 +394,7 @@ export function readJsonl(path, repoRoot = REPO_ROOT) {
     try {
       rows.push(JSON.parse(line));
     } catch (error) {
-      throw new Error(`${toRepoRelative(abs, repoRoot)}:${index + 1}: invalid JSON (${error.message})`);
+      throw new Error(`${toRepoRelative(abs, repoRoot)}:${index + 1}: invalid JSON (${error.message})`, { cause: error });
     }
   }
   return { rows, bytes, path: abs, relativePath: toRepoRelative(abs, repoRoot) };

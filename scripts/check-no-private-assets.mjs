@@ -192,7 +192,7 @@ export function collectPackedFiles(cwd, prefix = '', { spawn = spawnSync } = {})
   try {
     parsed = JSON.parse(result.stdout);
   } catch (err) {
-    throw new Error(`could not parse npm pack JSON from ${cwd}: ${err.message}`);
+    throw new Error(`could not parse npm pack JSON from ${cwd}: ${err.message}`, { cause: err });
   }
   const entry = Array.isArray(parsed) ? parsed[0] : parsed;
   const files = Array.isArray(entry?.files) ? entry.files : [];

@@ -36,7 +36,8 @@ function readResults() {
     return results;
   } catch (error) {
     throw new Error(
-      `Cannot read ${relative(REPO_ROOT, RESULTS_PATH)}. Run npm run benchmark first. ${error.message}`
+      `Cannot read ${relative(REPO_ROOT, RESULTS_PATH)}. Run npm run benchmark first. ${error.message}`,
+      { cause: error }
     );
   }
 }

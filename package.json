@@ -228,10 +228,10 @@
     "access": "public"
   },
   "devDependencies": {
-    "@eslint/js": "^8.57.1",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^18.19.130",
     "cspell": "^8.19.4",
-    "eslint": "^8.57.1",
+    "eslint": "^10.10.0",
     "espree": "9.6.1",
     "jsdoc-to-markdown": "^9.1.3",
     "playwright": "1.63.0",

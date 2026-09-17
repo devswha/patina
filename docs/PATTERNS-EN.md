@@ -610,7 +610,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: In conclusion, Ultimately, In summary, To conclude, To sum up, Finally, All in all, In the end, Overall, On the whole, This taught me, I learned that, the takeaway
 - Fire condition: Last 1–2 paragraphs open with a watch word or function as a lesson closer with no new number, name, or decision. Or 2+ such signals appear.
-- Example files: [failure](../examples/en-31-failure-01.md) · [success](../examples/en-31-success-01.md)
+- Example files: [failure](../examples/en-31-failure-01.md) · [success](../examples/en-31-success-01.md) · [failure 02](../examples/en-31-failure-02.md) · [success 02](../examples/en-31-success-02.md)
 
 Example before:
 

@@ -583,7 +583,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 最後の1–2段落がシグナルワードで始まるか、新しい数字・固有名・決定のない教訓機能だけを果たす場合。または同じ文書に結論シグナルワードが 2 回以上登場。
-- Example files: [failure](../examples/ja-31-failure-01.md) · [success](../examples/ja-31-success-01.md)
+- Example files: [failure](../examples/ja-31-failure-01.md) · [success](../examples/ja-31-success-01.md) · [failure 02](../examples/ja-31-failure-02.md) · [success 02](../examples/ja-31-success-02.md)
 
 Example before:
 

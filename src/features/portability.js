@@ -31,6 +31,19 @@ export const PORTABILITY_MIN_SENTENCES = 3;
 export const PORTABILITY_MIN_PORTABLE = 3;
 export const PORTABILITY_MIN_RATIO = 0.6;
 
+/**
+ * Registers where impersonal, swappable prose is CORRECT rather than a tell:
+ * an academic abstract, a legal clause, or a formal report is supposed to
+ * read without a personal point of view, so the portability probe stays quiet
+ * there. Consumers (the inspect advisory and the rewrite hint) share this
+ * list so detection and hinting never disagree.
+ */
+export const PORTABILITY_OMIT_TYPES = Object.freeze(['academic', 'medical', 'technical', 'legal', 'formal']);
+
+export function omitsPortabilityAdvisory(documentType) {
+  return PORTABILITY_OMIT_TYPES.includes(String(documentType || ''));
+}
+
 const CJK_LANGS = new Set(['ko', 'ja', 'zh']);
 
 /**

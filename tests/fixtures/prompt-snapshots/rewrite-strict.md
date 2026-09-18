@@ -74,6 +74,8 @@ Follow the 3-Phase pipeline:
 
 Before any edit, read the whole input and fix in your head: what this document is, who is speaking to whom, and its recurring domain terms. Keep that frame for every edit below. Preserve the source’s dominant voice; do not invent a personality. Preserve and unify the source’s dominant register; register mixing across sentences is itself an AI tell. Reuse the document’s own domain terms instead of generic synonyms.
 
+Keep this document’s own specificity (numbers, proper names, quoted terms) and pull generic sentences back onto it; never invent a fact or detail the source does not contain.
+
 **Markdown structure — preserve headings (required).** Treat every Markdown ATX heading line (a line starting with one or more `#` followed by a space) as fixed structure, exactly like a fenced code block. Copy each heading line through verbatim — never reword, translate, reformat, reorder, merge, or split it — and never add a heading that was not in the input or remove one that was. Rewrite only the body prose beneath the headings. The set and text of headings in your output must be identical to the input.
 
 **Keep heading-section shape.** If the body under a heading is empty, a phrase, a one-liner, or bullets, keep that shape. Do not expand it into an introduction–body–lesson essay.

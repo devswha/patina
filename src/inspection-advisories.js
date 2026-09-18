@@ -2,20 +2,14 @@
 // the deterministic score. Pairwise checks skip when rewrite text is absent.
 
 import { splitParagraphs, splitProseSentences, tokenize } from './features/segment.js';
-import { assessPortability } from './features/portability.js';
+import { assessPortability, PORTABILITY_OMIT_TYPES, omitsPortabilityAdvisory } from './features/portability.js';
 
 export const COMPLETENESS_OMIT_TYPES = Object.freeze(['academic', 'medical', 'technical']);
 export const STAR_EVENNESS_TYPES = Object.freeze(['personal-statement', 'project-writeup']);
-/**
- * Registers where impersonal, swappable prose is CORRECT rather than a tell: an
- * academic abstract, a legal clause, or a formal report is supposed to read
- * without a personal point of view, so the portability probe stays quiet there.
- */
-export const PORTABILITY_OMIT_TYPES = Object.freeze(['academic', 'medical', 'technical', 'legal', 'formal']);
-
-export function omitsPortabilityAdvisory(documentType) {
-  return PORTABILITY_OMIT_TYPES.includes(String(documentType || ''));
-}
+// The portability suppress list lives with the probe it gates
+// (features/portability.js) so the inspect advisory and the rewrite hint share
+// one source of truth; re-exported here for existing importers.
+export { PORTABILITY_OMIT_TYPES, omitsPortabilityAdvisory };
 
 const CODA_RE = /배웠|깨달|의미가 있|그래서 중요한|This taught me|I learned that|\bI learned\b|the takeaway|takeaway is/i;
 const HEADING_RE = /^#{1,6}\s+\S/;

@@ -82,11 +82,11 @@ Unknown categories (from custom packs not in the weight config) get default weig
 | content | 0.18 | 6 | |
 | language | 0.18 | 9 | |
 | style | 0.18 | 7 | |
-| communication | 0.13 | 4 | |
-| filler | 0.08 | 6 | |
-| structure | 0.15 | 5 | |
+| communication | 0.13 | 5 | |
+| filler | 0.08 | 8 | |
+| structure | 0.15 | 6 | |
 | viral-hook | 0.10 | 9 | score-only (no rewrite) |
-| **Total** | **1.00** | **46** | |
+| **Total** | **1.00** | **50** | |
 
 ### English (en)
 

@@ -36,7 +36,7 @@ patina 是一个面向韩文、英文、中文和日文的确定性、基于模�
 
 去掉开场套话，保留“预计”、3个工作日和确认推迟时的顺延条件。完整邮件、周报和产品说明见[中文示例画廊](docs/EXAMPLES_ZH.md)。
 
-- **可审计，不是黑箱** — 185 条有名字的模式驱动每一次修改；`--diff` 展示改了什么、为什么改。
+- **可审计，不是黑箱** — 189 条有名字的模式驱动每一次修改；`--diff` 展示改了什么、为什么改。
 - **含义保留校验** — playground 检查 MPS 和忠实度，拒绝低于门槛或缺少分数的结果。评分也可能误判，仍需核对原文。Node CLI 用 `--verify`、代理技能用 `/patina --strict` 启用保留校验。
 - **三个相互独立的轴** — Document Type 管体裁，Persona 管声音，Register 管语域；省略的轴保持原文。
 - **全渠道可用** — 代理技能（Claude Code · Codex · Cursor · OpenCode）、Node CLI，以及[浏览器 playground](https://patina.vibetip.help/?lang=zh&utm_source=github&utm_campaign=multilingual-20260907)。
@@ -117,7 +117,7 @@ register:                 # casual | professional；省略时保留原文语域
 
 |  |  |
 |---|---|
-| **185 条模式** | 可改写模式 EN 38 条 / KO、ZH、JA 各 37 条 + 每种语言 9 条仅评分的病毒式钩子模式 —— 完整的 185 条模式目录见 [PATTERNS.md](docs/PATTERNS.md) |
+| **189 条模式** | 可改写模式 KO 41 条 / EN 38 条 / ZH、JA 各 37 条 + 每种语言 9 条仅评分的病毒式钩子模式 —— 完整的 189 条模式目录见 [PATTERNS.md](docs/PATTERNS.md) |
 | **模式** | rewrite · verify · audit · score · diff |
 | **校准** | 编辑热点命中率 67.3% [63.5–71.0%]，跨 GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro（n=600，KO+EN）；在 KO+EN 人类对照上误检率 16.0% [11.6–21.7%]（n=200） |
 | **许可证** | MIT |

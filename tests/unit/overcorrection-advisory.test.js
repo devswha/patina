@@ -91,3 +91,34 @@ test('assessOvercorrection is pure and never throws on junk input', () => {
   assert.equal(assessOvercorrection(undefined, 'text'), null);
   assert.equal(assessOvercorrection(DASH_ORIGINAL, DASH_WIPED).trip, true);
 });
+
+test('a new cadence stack in the rewrite warns (en)', () => {
+  const original = 'The migration finished over the weekend with no downtime, because the team rehearsed the cutover twice and kept a rollback runbook ready for the on-call engineer.';
+  const rewrite = 'We shipped it. One weekend. Zero downtime. The team rehearsed twice.';
+  const assessment = assessOvercorrection(original, rewrite, { lang: 'en' });
+  assert.equal(assessment?.trip, true);
+  assert.ok(assessment.reasons.some((reason) => reason.includes('cadence stack')), assessment.reasons.join(' | '));
+  assert.equal(assessment.cadenceIntroduced, true);
+});
+
+test('a cadence stack the source already had is not an addition', () => {
+  const original = 'We shipped it. One weekend. Zero downtime. The team rehearsed twice and kept the runbook open.';
+  const rewrite = 'We shipped it. One weekend. Zero downtime. The runbook stayed open.';
+  const assessment = assessOvercorrection(original, rewrite, { lang: 'en' });
+  assert.equal(assessment?.cadenceIntroduced ?? false, false);
+  if (assessment) assert.ok(!assessment.reasons.some((r) => r.includes('cadence stack')));
+});
+
+test('mixed-length prose does not trip the cadence stack', () => {
+  const original = 'The quarterly review covered three areas. Budget stayed flat.';
+  const rewrite = 'Budget stayed flat this quarter. The review covered hiring, tooling, and vendor costs, with each owner presenting their own numbers for the first time. Hiring paused. Tooling renewed.';
+  const assessment = assessOvercorrection(original, rewrite, { lang: 'en' });
+  assert.equal(assessment?.cadenceIntroduced ?? false, false);
+});
+
+test('ko rewrites never trip the cadence signal (pattern 38 is en-only)', () => {
+  const original = '이번 마이그레이션은 주말 동안 무중단으로 완료되었습니다. 팀이 컷오버를 두 번 리허설했고 롤백 런북을 준비했습니다.';
+  const rewrite = '완료했습니다. 주말이었죠. 무중단이었습니다. 두 번 리허설했습니다.';
+  const assessment = assessOvercorrection(original, rewrite, { lang: 'ko' });
+  assert.equal(assessment?.cadenceIntroduced ?? false, false);
+});

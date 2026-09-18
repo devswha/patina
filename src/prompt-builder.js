@@ -4,6 +4,7 @@
 // module evaluation.
 import { SCORE_INTERPRETATION_BANDS } from './scoring.js';
 import { formatPersonaDirective } from './personas/compose.js';
+import { assessPortability, omitsPortabilityAdvisory } from './features/portability.js';
 
 /**
  * Default per-detection severity points.
@@ -29,6 +30,31 @@ export const DEFAULT_SEVERITY_POINTS = Object.freeze({ high: 3, medium: 2, low: 
 // matters for `--batch` and score modes over third-party documents, where
 // the LLM-judged score is otherwise subvertible by adversarial input.
 const INPUT_DATA_FENCE = '⟦⟦⟦PATINA_INPUT_DATA⟧⟧⟧';
+
+/**
+ * #881 rewrite hint (detect stage: #892). One line, exactly when the source
+ * prose is mostly portable (POV-less) AND the document itself carries at
+ * least one specificity anchor elsewhere — the source's own concreteness is
+ * the only legitimate material to restore onto the generic sentences, so a
+ * fully anchor-free document gets NO hint (inventing detail stays banned by
+ * the MPS/fidelity floors, and this hint never invites it). Registers where
+ * impersonal prose is correct suppress via the probe's own omit list.
+ * Deliberately a hint, not the Study 4 H-4b constraint (NOT supported).
+ *
+ * @param {string} text
+ * @param {{ lang?: string, documentTypeName?: string }} [opts]
+ * @returns {string|null}
+ */
+export function buildPortabilityHint(text, { lang = 'ko', documentTypeName = 'default' } = {}) {
+  if (omitsPortabilityAdvisory(documentTypeName)) return null;
+  const probe = assessPortability(text, { lang });
+  if (!probe?.trip) return null;
+  const anchoredCount = probe.sentenceCount - probe.portableCount;
+  if (anchoredCount < 1) return null;
+  return lang === 'ko'
+    ? '이 문서의 고유 구체성(숫자·고유명·인용)을 그대로 지키고, 뭉뚱그려진 문장을 그 구체성으로 되돌린다. 원문에 없는 사실이나 디테일은 만들지 않는다.'
+    : 'Keep this document’s own specificity (numbers, proper names, quoted terms) and pull generic sentences back onto it; never invent a fact or detail the source does not contain.';
+}
 /**
  * Split a built prompt into a cacheable static prefix and a dynamic tail for
  * provider prompt caching. The prefix is everything before the FIRST input
@@ -350,6 +376,7 @@ export function buildPrompt(options) {
       registerActive: Boolean(register),
       rhetoricPolicy,
       documentTypeName,
+      portabilityHint: buildPortabilityHint(text, { lang, documentTypeName }),
     });
     prompt += buildTransformDirective({ jargon, korean: false });
   } else if (mode === 'diff') {
@@ -493,7 +520,7 @@ function buildNoInventedLessonConstraint(lang, documentTypeName = 'default') {
 function buildRewriteInstructions(
   structurePacks,
   lexicalPacks,
-  { includeSelfAudit = true, lang = 'ko', includeKoreanAdvisory = true, rewriteHeadings = false, structureGuidance = 'baseline', personaActive = false, registerActive = false, rhetoricPolicy = 'default', documentTypeName = 'default' } = {}
+  { includeSelfAudit = true, lang = 'ko', includeKoreanAdvisory = true, rewriteHeadings = false, structureGuidance = 'baseline', personaActive = false, registerActive = false, rhetoricPolicy = 'default', documentTypeName = 'default', portabilityHint = null } = {}
 ) {
   const phaseCount = includeSelfAudit ? 3 : 2;
   let inst = `Follow the ${phaseCount}-Phase pipeline:\n\n`;
@@ -510,6 +537,9 @@ function buildRewriteInstructions(
     ? `Use the explicit Register for casual/professional delivery; do not preserve incompatible source endings merely because they are dominant. `
     : `Preserve and unify the source’s dominant register; register mixing across sentences is itself an AI tell. `;
   inst += `Reuse the document’s own domain terms instead of generic synonyms.\n\n`;
+  // #881: one conditional line in the brief. Fires only for a portable-majority
+  // document that still carries its own anchors — see buildPortabilityHint.
+  if (portabilityHint) inst += `${portabilityHint}\n\n`;
 
   const headingRule = buildHeadingPreservationRule(lang, rewriteHeadings);
   if (headingRule) inst += `${headingRule}\n\n`;

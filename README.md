@@ -58,10 +58,11 @@ patina is a deterministic, pattern-based humanizer for Korean, English, Chinese,
 [Aside blog workflow preview](docs/integrations/aside.md): choose local Patina options, then run a verified CLI rewrite before completing a blog draft. Native Aside desktop acceptance is not planned.
 
 **Agent skill — paste this into Claude Code, Codex CLI, Cursor, or any agent:**
-
 ```text
 Install patina by following https://raw.githubusercontent.com/devswha/patina/main/INSTALLATION.md
 ```
+
+**Agent skill — already using the skills.sh CLI:** `npx skills add devswha/patina` (installs the whole checkout for 75+ agents; entries on [skills.sh](https://skills.sh) come from install telemetry — no listing to submit). patina is a meaning-preserving editor (MPS-verified; KO·EN·ZH·JA), not a detector bypass.
 
 Then use it:
 

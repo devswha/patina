@@ -38,7 +38,7 @@ patina는 한국어·영어·중국어·일본어를 위한 결정론적 패턴 
 
 직접 실행하려면 **[playground](https://patina.vibetip.help/?lang=ko&utm_source=github&utm_campaign=multilingual-20260907)** 에 글을 붙여 넣으세요. 더 많은 [Before/After 예시](docs/EXAMPLES_KR.md)도 볼 수 있습니다.
 
-- **블랙박스가 아닌, 감사 가능한 도구** — 185개의 이름 붙은 패턴이 모든 수정을 결정하고, `--diff`가 무엇이 왜 바뀌었는지 그대로 보여줍니다.
+- **블랙박스가 아닌, 감사 가능한 도구** — 189개의 이름 붙은 패턴이 모든 수정을 결정하고, `--diff`가 무엇이 왜 바뀌었는지 그대로 보여줍니다.
 - **의미는 웹에서 검증됩니다** — playground는 모든 재작성을 MPS·충실도 하한으로 검증하고, 어긋난 결과는 거부합니다. Node CLI는 `--verify`, 에이전트 스킬은 `/patina --strict`로 같은 검사를 켭니다.
 - **서로 독립적인 세 축** — Document Type은 장르를, Persona는 목소리를, Register는 전달 방식을 정합니다. 생략한 축은 원문이 유지됩니다.
 - **모든 채널에서** — 에이전트 스킬(Claude Code · Codex · Cursor · OpenCode), Node CLI, [브라우저 playground](https://patina.vibetip.help/?lang=ko&utm_source=github&utm_campaign=multilingual-20260907).
@@ -121,7 +121,7 @@ register:                 # casual | professional; 생략하면 원문 레지스
 
 |  |  |
 |---|---|
-| **185개 패턴** | 재작성 가능 EN 38개 / KO·ZH·JA 각 37개 + 언어별 스코어 전용 바이럴 훅 9개 — 전체 185개 패턴 카탈로그는 [PATTERNS.md](docs/PATTERNS.md) 참고 |
+| **189개 패턴** | 재작성 가능 KO 41개 / EN 38개 / ZH·JA 각 37개 + 언어별 스코어 전용 바이럴 훅 9개 — 전체 189개 패턴 카탈로그는 [PATTERNS.md](docs/PATTERNS.md) 참고 |
 | **모드** | rewrite · verify · audit · score · diff |
 | **캘리브레이션** | GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro 기준 편집 핫스팟 catch 67.3% [63.5–71.0%] (n=600, KO+EN); KO+EN 사람 글 컨트롤에서 오탐 16.0% [11.6–21.7%] (n=200) |
 | **라이선스** | MIT |

@@ -8,12 +8,12 @@ const README_FILES = ['README.md', 'README_KR.md', 'README_ZH.md', 'README_JA.md
 // The catalog is deliberately asymmetric since #879: pattern 38 is English-only,
 // because the promotion fixture that justifies it is English-only and that issue
 // lists KO/ZH/JA promotion as a non-goal until they have their own fixtures.
-export const CATALOG_TOTAL = 185;
+export const CATALOG_TOTAL = 189;
 export const README_CATALOGS = {
-  'README.md': '**185 patterns** | 38 rewrite-capable (EN) / 37 (KO, ZH, JA) + 9 score-only viral-hook per language',
-  'README_KR.md': '**185개 패턴** | 재작성 가능 EN 38개 / KO·ZH·JA 각 37개 + 언어별 스코어 전용 바이럴 훅 9개',
-  'README_ZH.md': '**185 条模式** | 可改写模式 EN 38 条 / KO、ZH、JA 各 37 条 + 每种语言 9 条仅评分的病毒式钩子模式',
-  'README_JA.md': '**185 パターン** | 書き換え可能パターンは EN 38 個 / KO・ZH・JA 各 37 個 + 各言語 9 個のスコア専用 viral-hook',
+  'README.md': '**189 patterns** | 41 rewrite-capable (KO) / 38 (EN) / 37 (ZH, JA) + 9 score-only viral-hook per language',
+  'README_KR.md': '**189개 패턴** | 재작성 가능 KO 41개 / EN 38개 / ZH·JA 각 37개 + 언어별 스코어 전용 바이럴 훅 9개',
+  'README_ZH.md': '**189 条模式** | 可改写模式 KO 41 条 / EN 38 条 / ZH、JA 各 37 条 + 每种语言 9 条仅评分的病毒式钩子模式',
+  'README_JA.md': '**189 パターン** | 書き換え可能パターンは KO 41 個 / EN 38 個 / ZH・JA 各 37 個 + 各言語 9 個のスコア専用 viral-hook',
 };
 
 export function collectReleaseMetadataErrors({ repoRoot = REPO_ROOT, env = process.env } = {}) {

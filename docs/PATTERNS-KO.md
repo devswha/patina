@@ -2,7 +2,7 @@
 
 This page expands the Korean pattern packs into a browsable reference. It is generated from `patterns/ko-*.md`, so the numbers, names, watch words, fire conditions, and examples mirror the source pattern files. The linked failure and success files are standalone cases, each with its own input and expected output. Examples illustrate editing choices; they are not measured model results or independently verified factual sources.
 
-- Rewrite-capable patterns: 37
+- Rewrite-capable patterns: 41
 - Score/audit-only viral-hook patterns: 9
 - Main selector: [PATTERNS.md](PATTERNS.md)
 
@@ -36,17 +36,21 @@ This page expands the Korean pattern packs into a browsable reference. It is gen
 | 20 | rewrite | 학습 데이터 기한 면책 | [ko-communication.md](../patterns/ko-communication.md) |
 | 21 | rewrite | 아첨하는 말투 | [ko-communication.md](../patterns/ko-communication.md) |
 | 29 | rewrite | 거짓 뉘앙스 (소급적 재해석) | [ko-communication.md](../patterns/ko-communication.md) |
+| 40 | rewrite | 상담원 서비스 톤 | [ko-communication.md](../patterns/ko-communication.md) |
 | 22 | rewrite | 채움 표현 | [ko-filler.md](../patterns/ko-filler.md) |
 | 23 | rewrite | 과도한 헤징 | [ko-filler.md](../patterns/ko-filler.md) |
 | 24 | rewrite | 막연한 긍정적 결론 | [ko-filler.md](../patterns/ko-filler.md) |
 | 31 | rewrite | 결론 신호어 남용 | [ko-filler.md](../patterns/ko-filler.md) |
 | 35 | rewrite | 뜸들이기 서두 | [ko-filler.md](../patterns/ko-filler.md) |
 | 36 | rewrite | 가짜 통찰 셋업 | [ko-filler.md](../patterns/ko-filler.md) |
+| 38 | rewrite | 문두 접속사 남발 | [ko-filler.md](../patterns/ko-filler.md) |
+| 39 | rewrite | 쉼표 병렬 나열·감탄 | [ko-filler.md](../patterns/ko-filler.md) |
 | 25 | rewrite | 구조적 반복 | [ko-structure.md](../patterns/ko-structure.md) |
 | 26 | rewrite | 번역체 | [ko-structure.md](../patterns/ko-structure.md) |
 | 27 | rewrite | 수동태 남용 | [ko-structure.md](../patterns/ko-structure.md) |
 | 28 | rewrite | 불필요한 외래어 남발 | [ko-structure.md](../patterns/ko-structure.md) |
 | 30 | rewrite | 수사적 질문 단락 시작 | [ko-structure.md](../patterns/ko-structure.md) |
+| 41 | rewrite | 잔여 직역 커플링 | [ko-structure.md](../patterns/ko-structure.md) |
 | VH-1 | score/audit only | 숫자 충격 훅 | [ko-viral-hook.md](../patterns/ko-viral-hook.md) |
 | VH-2 | score/audit only | 클릭베이트 미스터리 종결 | [ko-viral-hook.md](../patterns/ko-viral-hook.md) |
 | VH-3 | score/audit only | 검증 회피 단언 | [ko-viral-hook.md](../patterns/ko-viral-hook.md) |
@@ -509,6 +513,22 @@ Example after:
 
 > 재택근무는 상황에 따라 생산성을 높일 수도, 어려움을 줄 수도 있다. 순효과는 조직 문화와 개인 업무 스타일에 따라 달라진다.
 
+### 40. 상담원 서비스 톤
+
+- Source: [ko-communication.md](../patterns/ko-communication.md)
+- Type: rewrite-capable pattern
+- Watch words: 도와드리겠습니다, 안내해 드리겠습니다, 확인해 드리겠습니다, 문의해 주세요, 말씀해 주세요, 감사합니다, ~하실 수 있습니다
+- Fire condition: 서비스 응대 표현이 4회 이상(3종 이상) 문서에 쌓이고, 문서 전체에 숫자·고유명(라틴 문자) 앵커가 없을 때. 같은 어휘라도 실제 사건(주문번호, 환불 금액, 배송 기한)을 다루면 발화하지 않는다 (#908 측정: 50문서 픽스처 정밀도 1.00).
+- Example files: [failure](../examples/40-failure-01.md) · [success](../examples/40-success-01.md)
+
+Example before:
+
+> 안녕하세요, 고객님! 언제든지 편하게 문의해 주세요. 성심성의껏 도와드리겠습니다. 궁금한 점이 있으시면 말씀해 주세요. 항상 최선을 다하겠습니다. 감사합니다!
+
+Example after:
+
+> 안녕하세요. 문의는 언제든 환영합니다. 확인 후 바로 답변드리겠습니다.
+
 ## 채움/완화 패턴
 
 ### 22. 채움 표현
@@ -608,6 +628,38 @@ Example after:
 
 > 투자 유치에서는 소개가 자료보다 중요하다. 대부분은 이를 잘못 알고 있다.
 
+### 38. 문두 접속사 남발
+
+- Source: [ko-filler.md](../patterns/ko-filler.md)
+- Type: rewrite-capable pattern
+- Watch words: 그리고, 그러나, 그런데, 하지만, 또한, 또, 따라서, 그래서, 그러므로, 게다가, 한편, 즉, 물론, 다만, 결국, 그럼에도
+- Fire condition: 3문장 이상인 문서에서 3개 이상의 문장이 접속사로 시작하고 그 비율이 60% 이상이며, 접속사로 시작한 문장들에 숫자·날짜·고유명(라틴 문자) 앵커가 하나도 없을 때 (#905 측정: 앵커 프리 조건 포함 시 50문서 픽스처 정밀도 1.00).
+- Example files: [failure](../examples/38-failure-01.md) · [success](../examples/38-success-01.md)
+
+Example before:
+
+> 그리고 이번 분기 매출은 증가했습니다. 또한 신규 고객도 늘었습니다. 따라서 목표를 달성했습니다. 그러므로 다음 분기도 긍정적입니다.
+
+Example after:
+
+> 이번 분기 매출은 증가했고 신규 고객도 늘었다. 목표를 달성했다. 다음 분기도 전망은 밝다.
+
+### 39. 쉼표 병렬 나열·감탄
+
+- Source: [ko-filler.md](../patterns/ko-filler.md)
+- Type: rewrite-capable pattern
+- Watch words: 친절하게, 정확하게, 신속하게, 꼼꼼하게 (같은 어미의 쉼표 병렬), 최고!, 강추!, 감사합니다!
+- Fire condition: 같은 어미(게/고/로/요/다 등)로 끝나는 병렬 구절 2개 이상이 쉼표로 연결된 문장이 2개 이상(3문장 이상 문서), 또는 그런 문장 1개 + 감탄 부호 1개 이상. 명사·단위 나열("사과, 배, 포도", "200g, 50g")은 내용이므로 발화하지 않는다 (#907 측정: 50문서 픽스처 정밀도 1.00).
+- Example files: [failure](../examples/39-failure-01.md) · [success](../examples/39-success-01.md)
+
+Example before:
+
+> 저희 서비스는 친절하게, 정확하게, 신속하게, 꼼꼼하게 처리해 드립니다! 언제든 편하게, 부담 없이, 자유롭게 문의해 주세요!
+
+Example after:
+
+> 저희 서비스는 정확하고 신속하게 처리합니다. 문의는 언제든 환영합니다.
+
 ## 구조 패턴
 
 ### 25. 구조적 반복
@@ -702,6 +754,22 @@ Example after:
 > 한국 커피 문화가 이렇게 빨리 자란 이유는 의외로 단순하다. 카페가 음료를 파는 곳을 넘어 사람들이 모이는 거점이 됐기 때문이다.
 >
 > 전문가들은 이 흐름이 당분간 이어질 것으로 본다.
+
+### 41. 잔여 직역 커플링
+
+- Source: [ko-structure.md](../patterns/ko-structure.md)
+- Type: rewrite-capable pattern
+- Watch words: A의 B의 C (속격 연쇄), ~을 제공합니다, ~을 가지고 있습니다, 가능성, ~할 수 있습니다, ~적, 다음과 같습니다
+- Fire condition: 속격 연쇄 "A의 B의 C"가 3회 이상 단독, 또는 1회 이상 + 다른 약한 직역 표현 2종 이상 결합할 때. 단일 약신호(법률 문서의 "다음과 같습니다" 1회, 학술 문체의 "~적")는 모국어 격식체이므로 발화하지 않는다 (#909 측정: 50문서 픽스처 정밀도 1.00, 모국어 격식체 25문서에서 속격 연쇄 0회).
+- Example files: [failure](../examples/41-failure-01.md) · [success](../examples/41-success-01.md)
+
+Example before:
+
+> 이 솔루션은 기업의 데이터의 안전한 관리의 효율성을 제공합니다. 사용자는 실시간의 정보의 접근의 가능성을 가지고 있습니다.
+
+Example after:
+
+> 이 솔루션은 기업 데이터를 안전하게 관리해 줍니다. 사용자는 실시간 정보에 바로 접근할 수 있습니다.
 
 ## 바이럴 훅 패턴 (score-only)
 

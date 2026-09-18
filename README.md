@@ -41,7 +41,7 @@ A curated excerpt from [the English email showcase](playground/examples/en.js). 
 
 patina is a deterministic, pattern-based humanizer for Korean, English, Chinese, and Japanese. It finds AI-sounding phrasing and rewrites it **without changing the claim, numbers, polarity, or causation** — built for allowed AI-assisted drafting, not for evading detectors.
 
-- **Auditable, not a black box** — 185 named patterns drive every edit; `--diff` shows exactly what changed and why.
+- **Auditable, not a black box** — 189 named patterns drive every edit; `--diff` shows exactly what changed and why.
 - **Meaning verified on the web** — web gates each rewrite with MPS/fidelity floors, rejecting drift; CLI `--verify` and `/patina --strict` add checks.
 - **Three independent axes** — Document Type owns genre, Persona owns voice, Register owns delivery. Omit any axis to preserve the source.
 - **Every surface** — agent skill (Claude Code · Codex · Cursor · OpenCode), Node CLI, and a [browser playground](https://patina.vibetip.help/?lang=en&utm_source=github&utm_campaign=multilingual-20260907).
@@ -126,7 +126,7 @@ register:                 # casual | professional; omit to preserve source
 
 |  |  |
 |---|---|
-| **185 patterns** | 38 rewrite-capable (EN) / 37 (KO, ZH, JA) + 9 score-only viral-hook per language — see the full 185-pattern catalog in [PATTERNS.md](docs/PATTERNS.md) |
+| **189 patterns** | 41 rewrite-capable (KO) / 38 (EN) / 37 (ZH, JA) + 9 score-only viral-hook per language — see the full 189-pattern catalog in [PATTERNS.md](docs/PATTERNS.md) |
 | **Modes** | rewrite · verify · audit · score · diff |
 | **Calibration** | 67.3% editing-hotspot catch [63.5–71.0%] across GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro (n=600, KO+EN); 16.0% false positives [11.6–21.7%] on KO+EN human controls (n=200) |
 | **License** | MIT |

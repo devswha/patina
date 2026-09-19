@@ -1,6 +1,6 @@
 ---
 name: patina
-version: "8.8.0"
+version: "8.9.0"
 description: Detect and rewrite AI writing patterns in Korean, English, Chinese, and Japanese text so it reads as if a human wrote it. Meaning-preservation (MPS) verified.
 allowed-tools:
   - Read
@@ -680,11 +680,11 @@ AI 유사도 점수를 0-100 척도로 산출한다. `core/scoring.md`를 참조
 | content  | 0.18   | 3/6       | 33.3   | 6.0       |
 | language | 0.18   | 1/9       | 7.4    | 1.3       |
 | style    | 0.18   | 1/7       | 14.3   | 2.6       |
-| communication | 0.13 | 0/4    | 0.0    | 0.0       |
-| filler   | 0.08   | 1/6       | 5.6    | 0.4       |
-| structure | 0.15  | 1/5       | 20.0   | 3.0       |
+| communication | 0.13 | 0/5    | 0.0    | 0.0       |
+| filler   | 0.08   | 1/8       | 12.5   | 1.0       |
+| structure | 0.15  | 1/6       | 16.7   | 2.5       |
 | viral-hook | 0.10 | 0/9       | 0.0    | 0.0       |
-| **전체** |        |           |        | **13.3 (±10)** |
+| **전체** |        |           |        | **13.4 (±10)** |
 
 점수 해석: 0-15 사람다움 / 16-30 거의 사람다움 / 31-50 혼재 / 51-70 AI 느낌 / 71-100 AI 생성
 

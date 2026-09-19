@@ -248,13 +248,18 @@ test('README and PATTERNS selector counts stay aligned with pattern packs', () =
     LANGS.map((lang) => [lang, packs[lang].language + packs[lang].content + packs[lang].style + packs[lang].communication + packs[lang].structure + packs[lang].filler]),
   );
   const viralCounts = Object.fromEntries(LANGS.map((lang) => [lang, packs[lang]['viral-hook']]));
-  const totalPerLang = rewriteCounts.ko + viralCounts.ko;
-  const total = totalPerLang * LANGS.length;
+  // Sum the ACTUAL per-language counts rather than multiplying one language by
+  // four. The catalog is not symmetric in two directions now: #879 promoted a
+  // rewrite pattern to English only, and the four #880 Korean gap candidates
+  // (문두 접속사 / 쉼표 병렬 나열 / 상담원 톤 / 잔여 직역 커플링) promoted to
+  // Korean only. The README expresses the breakdown as
+  // "<KO> rewrite-capable (KO) / <EN> (EN) / <ZH, JA> (ZH, JA)".
+  const total = LANGS.reduce((sum, lang) => sum + rewriteCounts[lang] + viralCounts[lang], 0);
 
   const readme = readFileSync(resolve(REPO_ROOT, 'README.md'), 'utf8');
   assert.match(
     readme,
-    new RegExp(`\\*\\*${total} patterns\\*\\* \\| ${rewriteCounts.ko} rewrite-capable \\+ ${viralCounts.ko} score-only viral-hook per language \\(${totalPerLang} each across KO/EN/ZH/JA\\)`),
+    new RegExp(`\\*\\*${total} patterns\\*\\* \\| ${rewriteCounts.ko} rewrite-capable \\(KO\\) / ${rewriteCounts.en} \\(EN\\) / ${rewriteCounts.zh} \\(ZH, JA\\) \\+ ${viralCounts.ko} score-only viral-hook per language`),
   );
   assert.match(readme, new RegExp(`full ${total}-pattern catalog`));
 

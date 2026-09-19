@@ -33,7 +33,7 @@ patina --lang en --score --exit-on 30 draft.md
 
 ## Exit codes
 
-`0` success · `1` runtime/backend · `2` input/usage · `3` score gate exceeded · `4` meaning-safety exit (`--verify` floor miss or dropped number; rewrite still printed) · `130` interrupted. Full definitions and merge rules: [EXIT-CODES.md](EXIT-CODES.md).
+`0` success · `1` runtime/backend · `2` input/usage · `3` score gate exceeded · `4` meaning-safety exit (`--verify` floor miss, dropped number, or changed numeric claim; rewrite still printed) · `130` interrupted. Full definitions and merge rules: [EXIT-CODES.md](EXIT-CODES.md).
 
 ## Internal configuration snapshots
 
@@ -115,8 +115,12 @@ An unparseable MPS is `null`. `reason` is `passed`, `passed-on-retry`,
 `floor-not-met`, `retry-error`, `dropped-numbers`, `numeric-claim-changed`, or
 `output-changed`.
 If cleanup changes the graded text, the CLI sets `verified:false`, reports
-`output-changed`, and exits 4. The numeric guard sets `verified:false` and
-`reason:"dropped-numbers"` even if the scorers passed. The draft appears only in
+`output-changed`, and exits 4. The numeric overlay sets `verified:false` and
+`reason:"dropped-numbers"` or `reason:"numeric-claim-changed"` even if the
+scorers passed. Vanished source digits keep `dropped-numbers`. Sign flips,
+0–12 word-number drift, added numeric claims, and collapsed duplicates use
+`numeric-claim-changed`. Unsupported scientific syntax (`p < 0.05`) is not a
+CLI failure. The draft appears only in
 the existing `output` field. Plain output retains its existing body;
 JSON without `--verify` has no `verification` field. Automation must check exit
 0, `verification.verified === true`, finite scores meeting its required

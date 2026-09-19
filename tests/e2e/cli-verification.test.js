@@ -372,3 +372,81 @@ test('CLI --verify JSON binds scores to graded text and rejects post-verificatio
     }
   }
 });
+
+test('CLI --verify rejects numeric claim changes that keep the same digit tokens', async () => {
+  const text = 'The balance is -5 this quarter.';
+  const rewrite = 'The balance is 5 this quarter.';
+  const dir = mkdtempSync(join(tmpdir(), 'patina-numeric-claim-'));
+  writeFileSync(join(dir, 'key'), 'test-key');
+  writeFileSync(join(dir, 'input.txt'), text);
+  writeFileSync(join(dir, 'config.json'), JSON.stringify({
+    persona: null,
+    register: null,
+    verification: { 'mps-floor': 70, 'fidelity-floor': 70 },
+  }));
+  const server = createServer(async (request, response) => {
+    let body = '';
+    for await (const chunk of request) body += chunk;
+    const prompt = JSON.parse(body).messages.map((message) => message.content).join('\n');
+    let answer = rewrite;
+    if (prompt.includes('Meaning Preservation evaluator')) answer = JSON.stringify(mpsResult());
+    else if (prompt.includes('Fidelity evaluator')) {
+      answer = JSON.stringify({ claims_preserved: 3, no_fabrication: 3, audience_register_match: 3 });
+    }
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ choices: [{ message: { content: answer } }] }));
+  });
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const result = await run(process.execPath, [join(root, 'bin/patina.js'), '--verify', '--format', 'json', '--lang', 'en',
+      '--config', join(dir, 'config.json'), '--backend', 'openai-http', '--model', 'test-model',
+      '--api-key-file', join(dir, 'key'), '--base-url', `http://127.0.0.1:${server.address().port}/v1`, join(dir, 'input.txt')],
+    { cwd: dir, timeout: 20000, env: { ...process.env, HOME: dir, USERPROFILE: dir, TMPDIR: dir } })
+      .then((result) => ({ ...result, code: 0 }), (error) => error);
+    assert.equal(result.code, 4, result.stderr);
+    const payload = JSON.parse(result.stdout);
+    assert.equal(payload.output, rewrite);
+    assert.equal(payload.verification.verified, false);
+    assert.equal(payload.verification.reason, 'numeric-claim-changed');
+    assert.equal(payload.verification.mps, 100);
+    assert.equal(payload.verification.fidelity, 100);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('CLI meaning overlay does not fail identity unsupported numeric syntax', async () => {
+  const text = 'The study reported p < 0.05.';
+  const dir = mkdtempSync(join(tmpdir(), 'patina-numeric-syntax-'));
+  writeFileSync(join(dir, 'key'), 'test-key');
+  writeFileSync(join(dir, 'input.txt'), text);
+  const server = createServer(async (request, response) => {
+    let body = '';
+    for await (const chunk of request) body += chunk;
+    const prompt = JSON.parse(body).messages.map((message) => message.content).join('\n');
+    let answer = text;
+    if (prompt.includes('Meaning Preservation evaluator')) answer = JSON.stringify(mpsResult());
+    else if (prompt.includes('Fidelity evaluator')) {
+      answer = JSON.stringify({ claims_preserved: 3, no_fabrication: 3, audience_register_match: 3 });
+    }
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ choices: [{ message: { content: answer } }] }));
+  });
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const result = await run(process.execPath, [join(root, 'bin/patina.js'), '--verify', '--format', 'json', '--lang', 'en',
+      '--backend', 'openai-http', '--model', 'test-model',
+      '--api-key-file', join(dir, 'key'), '--base-url', `http://127.0.0.1:${server.address().port}/v1`, join(dir, 'input.txt')],
+    { cwd: dir, timeout: 20000, env: { ...process.env, HOME: dir, USERPROFILE: dir, TMPDIR: dir } })
+      .then((result) => ({ ...result, code: 0 }), (error) => error);
+    assert.equal(result.code, 0, result.stderr);
+    const payload = JSON.parse(result.stdout);
+    assert.equal(payload.output, text);
+    assert.equal(payload.verification.verified, true);
+    assert.equal(payload.verification.reason, 'passed');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

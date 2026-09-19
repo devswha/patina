@@ -500,7 +500,7 @@ function packMeasurementFromResult(result, destination) {
       error: 'npm pack tarball path is outside the fresh pack destination',
     };
   }
-  let actualBytes = null;
+  let actualBytes;
   try {
     const stats = statSync(candidateReal);
     if (!stats.isFile() || stats.size <= 0) {

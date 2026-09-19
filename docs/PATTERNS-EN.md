@@ -2,7 +2,7 @@
 
 This page expands the English pattern packs into a browsable reference. It is generated from `patterns/en-*.md`, so the numbers, names, watch words, fire conditions, and examples mirror the source pattern files.
 
-- Rewrite-capable patterns: 37
+- Rewrite-capable patterns: 38
 - Score/audit-only viral-hook patterns: 9
 - Main selector: [PATTERNS.md](PATTERNS.md)
 
@@ -34,6 +34,7 @@ The examples are illustrative editing cases, not verified accounts or recorded m
 | 17 | rewrite | Emojis | [en-style.md](../patterns/en-style.md) |
 | 18 | rewrite | Curly Quotation Marks | [en-style.md](../patterns/en-style.md) |
 | 37 | rewrite | Colon Reveal / Plot-Twist Setup | [en-style.md](../patterns/en-style.md) |
+| 38 | Style | 2026 Cadence Stack | [en-style.md](../patterns/en-style.md) |
 | 19 | rewrite | Collaborative Communication Artifacts | [en-communication.md](../patterns/en-communication.md) |
 | 20 | rewrite | Knowledge-Cutoff Disclaimers | [en-communication.md](../patterns/en-communication.md) |
 | 21 | rewrite | Sycophantic/Servile Tone | [en-communication.md](../patterns/en-communication.md) |
@@ -474,6 +475,18 @@ Example after:
 
 > The team shipped the migration in one weekend with zero downtime, using just two engineers.
 
+### 38. 2026 Cadence Stack
+
+**Watch words:** that matters, what it all comes down to, which just goes to show, you don't have a strategy you have a vibe
+
+**Fire condition:** The combination, not any single element: a run of 4+ consecutive short sentences (≤8 words), OR a run of 3+ parallel fragments (≤5 words), together with at least one more cadence signal — an aside dash carrying no number and no proper noun, or an all-caps mic-drop closer. A short-form phrase fires on its own. Social, landing, newsletter, and blog/X register.
+
+**Exclusion:** Numeric ranges and quoted literary dashes stay cold; dialogue, legal enumerations, and step lists use short parallel lines as their format; a single short sentence or a lone dash with no second signal is ordinary writing.
+
+**Semantic Risk:** MEDIUM — merging fragments can drop intended emphasis. Keep every claim, number, name, and polarity; do not strip every dash and do not invent a closer.
+
+**Source:** [en-style.md](../patterns/en-style.md) · examples: [success](../examples/en-38-success-01.md), [failure](../examples/en-38-failure-01.md)
+
 ## Communication Patterns
 
 ### 19. Collaborative Communication Artifacts
@@ -597,7 +610,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: In conclusion, Ultimately, In summary, To conclude, To sum up, Finally, All in all, In the end, Overall, On the whole, This taught me, I learned that, the takeaway
 - Fire condition: Last 1–2 paragraphs open with a watch word or function as a lesson closer with no new number, name, or decision. Or 2+ such signals appear.
-- Example files: [failure](../examples/en-31-failure-01.md) · [success](../examples/en-31-success-01.md)
+- Example files: [failure](../examples/en-31-failure-01.md) · [success](../examples/en-31-success-01.md) · [failure 02](../examples/en-31-failure-02.md) · [success 02](../examples/en-31-success-02.md)
 
 Example before:
 

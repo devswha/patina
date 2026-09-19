@@ -154,7 +154,7 @@ function loadJsonl(path, { requireText = false } = {}) {
     try {
       row = JSON.parse(line);
     } catch (error) {
-      throw new Error(`${toRepoRelative(abs)}:${index + 1}: invalid JSON (${error.message})`);
+      throw new Error(`${toRepoRelative(abs)}:${index + 1}: invalid JSON (${error.message})`, { cause: error });
     }
     if (requireText && (typeof row.text !== 'string' || row.text.trim() === '')) {
       throw new Error(`${toRepoRelative(abs)}:${index + 1}: row requires private text`);

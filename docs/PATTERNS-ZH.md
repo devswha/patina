@@ -599,7 +599,7 @@ Example after:
 - Type: rewrite-capable pattern
 - Watch words: Structural pattern; inspect the fire condition rather than a fixed vocabulary list.
 - Fire condition: 最后 1–2 段以结论信号词开头，或没有新数字/名称/决定的教训收束。或同一文档中此类信号词出现 2 次以上。
-- Example files: [failure](../examples/zh-31-failure-01.md) · [success](../examples/zh-31-success-01.md)
+- Example files: [failure](../examples/zh-31-failure-01.md) · [success](../examples/zh-31-success-01.md) · [failure 02](../examples/zh-31-failure-02.md) · [success 02](../examples/zh-31-success-02.md)
 
 Example before:
 

@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#快速开始)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-8.8.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-8.9.0-blue)](CHANGELOG.md)
 
 <p align="center">
   <strong>去掉 AI 味，保留原意。</strong>
@@ -36,7 +36,7 @@ patina 是一个面向韩文、英文、中文和日文的确定性、基于模�
 
 去掉开场套话，保留“预计”、3个工作日和确认推迟时的顺延条件。完整邮件、周报和产品说明见[中文示例画廊](docs/EXAMPLES_ZH.md)。
 
-- **可审计，不是黑箱** — 184 条有名字的模式驱动每一次修改；`--diff` 展示改了什么、为什么改。
+- **可审计，不是黑箱** — 189 条有名字的模式驱动每一次修改；`--diff` 展示改了什么、为什么改。
 - **含义保留校验** — playground 检查 MPS 和忠实度，拒绝低于门槛或缺少分数的结果。评分也可能误判，仍需核对原文。Node CLI 用 `--verify`、代理技能用 `/patina --strict` 启用保留校验。
 - **三个相互独立的轴** — Document Type 管体裁，Persona 管声音，Register 管语域；省略的轴保持原文。
 - **全渠道可用** — 代理技能（Claude Code · Codex · Cursor · OpenCode）、Node CLI，以及[浏览器 playground](https://patina.vibetip.help/?lang=zh&utm_source=github&utm_campaign=multilingual-20260907)。
@@ -106,7 +106,7 @@ patina --batch docs/*.md --outdir cleaned/
 
 ```yaml
 # .patina.default.yaml
-version: "8.8.0"
+version: "8.9.0"
 language: ko              # ko | en | zh | ja
 document-type: default    # 体裁/用途 + 模式策略
 persona:                  # 可选；省略时保留原文声音
@@ -117,7 +117,7 @@ register:                 # casual | professional；省略时保留原文语域
 
 |  |  |
 |---|---|
-| **184 条模式** | 每种语言 37 条可改写模式 + 9 条仅评分的病毒式钩子模式（KO/EN/ZH/JA 各 46 条）—— 完整的 184 条模式目录见 [PATTERNS.md](docs/PATTERNS.md) |
+| **189 条模式** | 可改写模式 KO 41 条 / EN 38 条 / ZH、JA 各 37 条 + 每种语言 9 条仅评分的病毒式钩子模式 —— 完整的 189 条模式目录见 [PATTERNS.md](docs/PATTERNS.md) |
 | **模式** | rewrite · verify · audit · score · diff |
 | **校准** | 编辑热点命中率 67.3% [63.5–71.0%]，跨 GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro（n=600，KO+EN）；在 KO+EN 人类对照上误检率 16.0% [11.6–21.7%]（n=200） |
 | **许可证** | MIT |

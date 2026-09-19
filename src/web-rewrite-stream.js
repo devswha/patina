@@ -415,7 +415,7 @@ async function runWebRewriteStreamUnscoped({
   };
   let attemptsClosed = false;
   let rewrite = '';
-  let numberSafety = null;
+  let numberSafety;
   let koreanInvariants = null;
   const rewriteExtra = rewriteExtraBody(request.provider, request.tier, env);
   // Attempt 1 streams deltas live for UX. If the rewrite fails the

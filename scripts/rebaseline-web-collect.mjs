@@ -136,7 +136,7 @@ function normalizeSource(input, lineNumber) {
     const parsed = new URL(source.url);
     if (parsed.protocol !== 'https:') throw new Error('source url must use https');
   } catch (error) {
-    throw new Error(`invalid url on line ${lineNumber}: ${error.message}`);
+    throw new Error(`invalid url on line ${lineNumber}: ${error.message}`, { cause: error });
   }
   if (source.source_published_at && Number.isNaN(Date.parse(source.source_published_at))) {
     throw new Error('source_published_at must be an ISO-like date when present');

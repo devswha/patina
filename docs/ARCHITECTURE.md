@@ -94,7 +94,7 @@ Backend-backed modes use Method P; the rightmost column is the Method-D anchor.
 
 | Surface | mode | LLM call? | Method-D anchor |
 |---|---|---|---|
-| default | `rewrite` | yes | `deterministicMeaningGuard`; optional Persona match/churn advisory; `verify.js` MPS/fidelity + retry only with `--verify` |
+| default | `rewrite` | yes | `deterministicMeaningGuard` plus `assessRewriteMeaningSafety` (`dropped-numbers` / `numeric-claim-changed`); optional Persona match/churn advisory; `verify.js` MPS/fidelity + retry only with `--verify` |
 | `--audit` | `audit` | yes | `buildDeterministicAuditBackstop` |
 | `--score` | `score` | yes | `withDeterministicScore`; optional `--exit-on` gate |
 | `--score --offline` | `score` | **no** | deterministic signal score |

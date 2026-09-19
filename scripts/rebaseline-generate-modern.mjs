@@ -127,7 +127,7 @@ export function parseModelItems(raw, { expectedIds = [] } = {}) {
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    throw new Error(`model output was not parseable JSON (${error.message})`);
+    throw new Error(`model output was not parseable JSON (${error.message})`, { cause: error });
   }
   if (!Array.isArray(parsed)) throw new Error('model output must be a JSON array');
 
@@ -349,7 +349,7 @@ function parseJsonObject(raw, label) {
   try {
     return JSON.parse(raw);
   } catch (error) {
-    throw new Error(`${label} was not parseable (${error.message})`);
+    throw new Error(`${label} was not parseable (${error.message})`, { cause: error });
   }
 }
 

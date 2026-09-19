@@ -20,7 +20,7 @@
   <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
   <a href="#quick-start"><img alt="Skill: Claude Code | Codex | Cursor | OpenCode" src="https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet"></a>
   <a href="https://github.com/devswha/patina"><img alt="Languages: KO | EN | ZH | JA" src="https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green"></a>
-  <a href="CHANGELOG.md"><img alt="Version 8.8.0" src="https://img.shields.io/badge/version-8.8.0-blue"></a>
+  <a href="CHANGELOG.md"><img alt="Version 8.8.0" src="https://img.shields.io/badge/version-8.9.0-blue"></a>
 </p>
 
 <p align="center">
@@ -41,7 +41,7 @@ A curated excerpt from [the English email showcase](playground/examples/en.js). 
 
 patina is a deterministic, pattern-based humanizer for Korean, English, Chinese, and Japanese. It finds AI-sounding phrasing and rewrites it **without changing the claim, numbers, polarity, or causation** — built for allowed AI-assisted drafting, not for evading detectors.
 
-- **Auditable, not a black box** — 184 named patterns drive every edit; `--diff` shows exactly what changed and why.
+- **Auditable, not a black box** — 189 named patterns drive every edit; `--diff` shows exactly what changed and why.
 - **Meaning verified on the web** — web gates each rewrite with MPS/fidelity floors, rejecting drift; CLI `--verify` and `/patina --strict` add checks.
 - **Three independent axes** — Document Type owns genre, Persona owns voice, Register owns delivery. Omit any axis to preserve the source.
 - **Every surface** — agent skill (Claude Code · Codex · Cursor · OpenCode), Node CLI, and a [browser playground](https://patina.vibetip.help/?lang=en&utm_source=github&utm_campaign=multilingual-20260907).
@@ -49,7 +49,7 @@ patina is a deterministic, pattern-based humanizer for Korean, English, Chinese,
 
 ## Quick Start
 
-**Version: 8.8.0.** npm publication is a separate, explicitly authorized step; the registry currently serves 8.7.1 for both `patina-cli` and `patina-humanizer`. See [release channels](docs/integrations/release.md).
+**Version: 8.9.0.** npm publication is a separate, explicitly authorized step; the registry currently serves 8.8.0 for both `patina-cli` and `patina-humanizer`. See [release channels](docs/integrations/release.md).
 
 **Browser — nothing to install.** Open **[patina.vibetip.help](https://patina.vibetip.help/?lang=en&utm_source=github&utm_campaign=multilingual-20260907)** and paste text. Rewrites run server-side with the MPS/fidelity gates; API mode forwards your own key per request (never stored or logged).
 
@@ -58,10 +58,11 @@ patina is a deterministic, pattern-based humanizer for Korean, English, Chinese,
 [Aside blog workflow preview](docs/integrations/aside.md): choose local Patina options, then run a verified CLI rewrite before completing a blog draft. Native Aside desktop acceptance is not planned.
 
 **Agent skill — paste this into Claude Code, Codex CLI, Cursor, or any agent:**
-
 ```text
 Install patina by following https://raw.githubusercontent.com/devswha/patina/main/INSTALLATION.md
 ```
+
+**Agent skill — already using the skills.sh CLI:** `npx skills add devswha/patina` (installs the whole checkout for 75+ agents; entries on [skills.sh](https://skills.sh) come from install telemetry — no listing to submit). patina is a meaning-preserving editor (MPS-verified; KO·EN·ZH·JA), not a detector bypass.
 
 Then use it:
 
@@ -115,7 +116,7 @@ Model evidence: [writing/scoring guide (Korean)](docs/research/model-guide-20260
 Project config lives in `.patina.yaml`:
 
 ```yaml
-version: "8.8.0"
+version: "8.9.0"
 language: ko              # ko | en | zh | ja
 document-type: default    # genre/purpose + pattern policy
 persona:                  # optional reusable voice; omit to preserve source
@@ -126,7 +127,7 @@ register:                 # casual | professional; omit to preserve source
 
 |  |  |
 |---|---|
-| **184 patterns** | 37 rewrite-capable + 9 score-only viral-hook per language (46 each across KO/EN/ZH/JA) — see the full 184-pattern catalog in [PATTERNS.md](docs/PATTERNS.md) |
+| **189 patterns** | 41 rewrite-capable (KO) / 38 (EN) / 37 (ZH, JA) + 9 score-only viral-hook per language — see the full 189-pattern catalog in [PATTERNS.md](docs/PATTERNS.md) |
 | **Modes** | rewrite · verify · audit · score · diff |
 | **Calibration** | 67.3% editing-hotspot catch [63.5–71.0%] across GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro (n=600, KO+EN); 16.0% false positives [11.6–21.7%] on KO+EN human controls (n=200) |
 | **License** | MIT |

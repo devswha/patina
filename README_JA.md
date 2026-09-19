@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Skill](https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet)](#クイックスタート)
 [![Multi-language](https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green)](https://github.com/devswha/patina)
-[![Version](https://img.shields.io/badge/version-8.8.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-8.9.0-blue)](CHANGELOG.md)
 
 > **AIっぽさだけを落として、意味はそのまま。**
 
@@ -34,7 +34,7 @@ patina は、韓国語・英語・中国語・日本語向けの、決定的で�
 
 ページ数と期限、対応できる場合に確認してほしいという条件を保ち、敬語を短くしました。[日本語の3作例](docs/EXAMPLES_JA.md)には、メール全文、進捗報告、製品案内を掲載しています。自分の文章では **[playground](https://patina.vibetip.help/?lang=ja&utm_source=github&utm_campaign=multilingual-20260907)** で試せます。
 
-- **ブラックボックスではなく、監査可能** — 名前付きの 184 パターンがすべての編集を決め、`--diff` が何をなぜ変えたかをそのまま示します。
+- **ブラックボックスではなく、監査可能** — 名前付きの 189 パターンがすべての編集を決め、`--diff` が何をなぜ変えたかをそのまま示します。
 - **意味はWebで検証されて残る** — playground はすべての書き換えを MPS と忠実度フロアで検証し、逸脱した結果は拒否します。Node CLI は `--verify`、エージェントスキルは `/patina --strict` で同じ検査を有効にします。
 - **互いに独立した3つの軸** — Document Type はジャンル、Persona はボイス、Register は伝え方を担当。省略した軸は原文が保たれます。
 - **あらゆるサーフェスで** — エージェントスキル（Claude Code · Codex · Cursor · OpenCode）、Node CLI、[ブラウザ playground](https://patina.vibetip.help/?lang=ja&utm_source=github&utm_campaign=multilingual-20260907)。
@@ -104,7 +104,7 @@ patina --batch docs/*.md --outdir cleaned/
 
 ```yaml
 # .patina.default.yaml
-version: "8.8.0"
+version: "8.9.0"
 language: ko              # ko | en | zh | ja
 document-type: default    # ジャンル/用途 + パターン方針
 persona:                  # 任意。省略時は原文ボイスを保持
@@ -115,7 +115,7 @@ register:                 # casual | professional。省略時は原文レジス�
 
 |  |  |
 |---|---|
-| **184 パターン** | 各言語 37 個の書き換え可能パターン + 9 個のスコア専用 viral-hook（KO/EN/ZH/JA 各 46 個） — 完全な 184 パターンカタログは [PATTERNS.md](docs/PATTERNS.md) を参照 |
+| **189 パターン** | 書き換え可能パターンは KO 41 個 / EN 38 個 / ZH・JA 各 37 個 + 各言語 9 個のスコア専用 viral-hook — 完全な 189 パターンカタログは [PATTERNS.md](docs/PATTERNS.md) を参照 |
 | **モード** | rewrite · verify · audit · score · diff |
 | **キャリブレーション** | GPT-5.5 / Claude Sonnet 4.6 / Gemini 2.5 Pro で編集ホットスポット再現率 67.3% [63.5–71.0%]（n=600、KO+EN）；KO+EN の人間文章コントロールで誤検出 16.0% [11.6–21.7%]（n=200） |
 | **ライセンス** | MIT |

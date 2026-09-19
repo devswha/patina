@@ -33,6 +33,20 @@ This path installs skill files only. The CLI-first routing in `SKILL.md` also ne
 
 ---
 
+## Path 0.5 — Agent skills CLI (`npx skills add`, skills.sh ecosystem)
+
+If the user already uses the open agent-skills CLI (the [skills.sh](https://skills.sh) ecosystem), patina installs from the public repository in one line — verified against `devswha/patina`; the skill is the repo-root `SKILL.md`, and the CLI copies the whole checkout so the bundled runtime is present:
+
+```text
+npx skills add devswha/patina
+```
+
+The CLI auto-detects the host agents (`claude-code`, `codex`, `cursor`, and 75+ more) and installs to their skill directories; `npx skills add devswha/patina --list` previews without installing. This path is also what the skills.sh directory indexes: entries appear automatically from anonymous install telemetry, so no manual listing exists or is needed.
+
+Like Path 0, this lands skill files plus the repo, not node_modules — start the runtime once with `node <installed-skill-dir>/bin/patina.js --version`, and if it fails run `npm ci --omit=dev --no-audit --no-fund` in that directory (#883). Positioning, fixed: patina is a **meaning-preserving editor** (MPS-verified; KO·EN·ZH·JA) — an editor, not a detector bypass.
+
+---
+
 ## Decision Tree (run this first)
 
 Inspect the host before installing. Pick exactly one of the three paths.

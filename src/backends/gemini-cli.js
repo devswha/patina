@@ -91,7 +91,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
     writeFileSync(policyFile, GEMINI_NO_TOOLS_POLICY, { mode: 0o600 });
   } catch (err) {
     try { rmSync(dir, { recursive: true, force: true }); } catch {}
-    throw new Error(`gemini-cli backend: failed to write tool policy (${err.message})`);
+    throw new Error(`gemini-cli backend: failed to write tool policy (${err.message})`, { cause: err });
   }
   const cliModel = resolveLocalCliModel({ backendName: name, model, modelSource });
   const args = ['-p', '', '--output-format', 'text', '--skip-trust', '--allowed-mcp-server-names', NO_MCP_SERVERS, '--policy', policyFile, '-m', cliModel];
@@ -107,7 +107,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       // Runs before the Promise's cleanup; remove the temp dir and surface a
       // backend-shaped error instead of leaking it and escaping a raw fs error (#446).
       try { rmSync(dir, { recursive: true, force: true }); } catch {}
-      throw new Error(`gemini-cli backend: failed to stage image input (${err.message})`);
+      throw new Error(`gemini-cli backend: failed to stage image input (${err.message})`, { cause: err });
     }
   }
 

@@ -1,6 +1,6 @@
 {
   "name": "patina-cli",
-  "version": "8.8.0",
+  "version": "8.9.0",
   "description": "AI text humanizer CLI — detects and removes AI writing patterns",
   "type": "module",
   "main": "src/cli.js",
@@ -30,6 +30,10 @@
     "benchmark:ai-tells-baseline": "node scripts/ai-tells-corpus-baseline.mjs",
     "benchmark:detector-candidates": "node scripts/detector-candidate-eval.mjs",
     "benchmark:cadence-fixture": "node scripts/cadence-fixture-eval.mjs",
+    "benchmark:ko-conjunction": "node scripts/ko-conjunction-candidate-eval.mjs",
+    "benchmark:ko-comma-excess": "node scripts/ko-comma-excess-candidate-eval.mjs",
+    "benchmark:ko-agent-tone": "node scripts/ko-agent-tone-candidate-eval.mjs",
+    "benchmark:ko-residual-translationese": "node scripts/ko-residual-translationese-candidate-eval.mjs",
     "quality:adversarial-mps": "node scripts/adversarial-mps-report.mjs --check",
     "quality:persona-ablation": "node scripts/persona-ablation.mjs",
     "dogfood": "node tests/quality/dogfood.mjs",
@@ -227,10 +231,10 @@
     "access": "public"
   },
   "devDependencies": {
-    "@eslint/js": "^8.57.1",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^18.19.130",
     "cspell": "^8.19.4",
-    "eslint": "^8.57.1",
+    "eslint": "^10.10.0",
     "espree": "9.6.1",
     "jsdoc-to-markdown": "^9.1.3",
     "playwright": "1.63.0",

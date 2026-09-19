@@ -23,8 +23,7 @@ import { collectImageCandidates, stageOcrImages, ocrStagedImages, describeImage,
 import { rmSync, readFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
-import { verifyRewrite, deterministicMeaningGuard, droppedNumbers } from '../verify.js';
-import { evaluateNumberSafety } from '../features/meaning-proxy.js';
+import { verifyRewrite, deterministicMeaningGuard, assessRewriteMeaningSafety } from '../verify.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
 import { buildDocumentSignals } from '../features/document-signals.js';
 import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput, writeAtomicUtf8, resolveBatchOutputPath } from './batch.js';
@@ -327,26 +326,17 @@ export async function runDefault(parsed, logger) {
           for (const warning of deterministicMeaningGuard(text, finalText)) {
             logger.warn('rewrite.meaning_guard', { message: `[patina] ${warning}` });
           }
-          if (droppedNumbers(text, finalText).length > 0) {
-            meaningSafetyReason = 'dropped-numbers';
-            if (verificationReport) {
-              verificationReport.verified = false;
-              verificationReport.reason = 'dropped-numbers';
+          const meaningSafety = assessRewriteMeaningSafety(text, finalText, lang);
+          if (!meaningSafety.ok) {
+            if (meaningSafety.reason === 'numeric-claim-changed') {
+              logger.warn('rewrite.meaning_guard', {
+                message: '[patina] numeric claims in the source changed in the rewrite',
+              });
             }
-          } else if (evaluateNumberSafety(text, finalText, lang).reason === 'numeric_claim_changed') {
-            // The hosted path already fails closed on this (src/web-rewrite-stream.js);
-            // the CLI only ever diffed a Set of digit tokens, so a sign flip, a
-            // word-number swap, an added claim, or a collapsed duplicate kept every
-            // digit and passed. dropped-numbers keeps precedence above so the existing
-            // reason is unchanged when source digits actually vanish.
-            // Only numeric_claim_changed is enforced here: the fail-closed
-            // unsupported_numeric_syntax / unsupported_word_number reasons stay
-            // web-only on purpose, so an identity comparator like p < 0.05 keeps
-            // working on the CLI.
-            meaningSafetyReason = 'numeric-claim-changed';
+            meaningSafetyReason = meaningSafety.reason;
             if (verificationReport) {
               verificationReport.verified = false;
-              verificationReport.reason = 'numeric-claim-changed';
+              verificationReport.reason = meaningSafety.reason;
             }
           }
           if (meaningSafetyReason) {
@@ -823,6 +813,7 @@ async function runPreviewJob({
   timeoutMs,
   logger,
 }) {
+  const lang = config.language || 'ko';
   const input = parsed.files[0];
   const isUrl = /^https?:\/\//i.test(String(input));
   const cancellation = createCancellationController({ logger });
@@ -1019,10 +1010,13 @@ async function runPreviewJob({
 
     const previewCandidates = compareMode ? variantBodies : [rewrittenBody];
     for (const candidate of previewCandidates) {
-      const dropped = droppedNumbers(rewriteText, candidate);
-      if (dropped.length === 0) continue;
+      const meaningSafety = assessRewriteMeaningSafety(rewriteText, candidate, lang);
+      if (meaningSafety.ok) continue;
+      const dropped = meaningSafety.dropped;
       logger.warn('rewrite.meaning_guard', {
-        message: `[patina] Rewrite dropped source number(s): ${dropped.slice(0, 6).join(', ')}${dropped.length > 6 ? ', …' : ''}`,
+        message: meaningSafety.reason === 'dropped-numbers'
+          ? `[patina] Rewrite dropped source number(s): ${dropped.slice(0, 6).join(', ')}${dropped.length > 6 ? ', …' : ''}`
+          : '[patina] numeric claims in the source changed in the rewrite',
       });
       process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
     }
@@ -1251,7 +1245,7 @@ async function runOcrStage({ pageHtml, sourceUrl, parsed, backends, resolved, ti
  */
 export function warnIfAlreadyHuman({ text, config = {}, repoRoot, logger, scorer = scoreDeterministicSignals }) {
   if (config['over-editing-guard'] === false) return null;
-  let score = null;
+  let score;
   try {
     score = scorer({ text, config, repoRoot, logger: { warn() {} } });
   } catch {

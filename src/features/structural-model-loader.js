@@ -104,7 +104,7 @@ export function loadStructuralModel(config = {}, opts = {}) {
   try {
     parsed = JSON.parse(readFileSync(resolved.path, 'utf8'));
   } catch (err) {
-    throw new Error(`Could not read structural model at ${resolved.path}: ${err.message}`);
+    throw new Error(`Could not read structural model at ${resolved.path}: ${err.message}`, { cause: err });
   }
 
   try {
@@ -120,6 +120,6 @@ export function loadStructuralModel(config = {}, opts = {}) {
     }
     return model;
   } catch (err) {
-    throw new Error(`Invalid structural model at ${resolved.path}: ${err.message}`);
+    throw new Error(`Invalid structural model at ${resolved.path}: ${err.message}`, { cause: err });
   }
 }

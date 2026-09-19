@@ -256,7 +256,7 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       } finally {
         await releaseSlot();
       }
-    } catch (err) {
+    } catch {
       logger.error?.({ code: 'rewrite_handler_failed', stage: 'handler' });
       if (isClientClosed()) return undefined;
       return send(res, 500, { error: 'internal error' });

@@ -74,7 +74,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
       // does not cover it — clean up the temp dir and surface a backend-shaped
       // error instead of leaking the dir and escaping a raw fs error (#446).
       try { rmSync(dir, { recursive: true, force: true }); } catch {}
-      throw new Error(`codex-cli backend: failed to stage image input (${err.message})`);
+      throw new Error(`codex-cli backend: failed to stage image input (${err.message})`, { cause: err });
     }
   }
 

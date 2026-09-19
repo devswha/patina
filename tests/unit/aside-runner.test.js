@@ -8,7 +8,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile } from 
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { hashAsideText, readAsideSettings, saveAsideSettings } from '../../src/aside/options.js';
-import { runAsideRewrite } from '../../src/aside/runner.js';
+import { cliVerification, runAsideRewrite } from '../../src/aside/runner.js';
 import { parseArgs } from '../../src/cli/args.js';
 import { highHardFailMps, mpsResult } from '../fixtures/verification-results.js';
 
@@ -16,6 +16,16 @@ const SOURCE = 'Patina retains 12 audit logs. In conclusion, Patina retains them
 const REWRITE = 'Patina keeps 12 audit logs. Patina retains them.';
 const PROOF = Object.freeze({ verified: true, mps: 100, fidelity: 100, retried: false, reason: 'passed', mpsFloor: 70, fidelityFloor: 70,
   outputHash: hashAsideText(REWRITE) });
+
+test('Aside accepts numeric-claim-changed as a failed verification reason', () => {
+  const proof = cliVerification({
+    ...PROOF,
+    verified: false,
+    reason: 'numeric-claim-changed',
+  });
+  assert.equal(proof?.reason, 'numeric-claim-changed');
+  assert.equal(proof?.verified, false);
+});
 const NESTED_SOURCE = 'The service does not store drafts. It runs locally.\n';
 const NESTED_RAW = '[BODY]The service does not store drafts. [BODY]It runs locally.[/BODY][/BODY]';
 const NESTED_GRADED = 'The service does not store drafts. [BODY]It runs locally.\n\n[/BODY]';

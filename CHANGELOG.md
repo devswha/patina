@@ -2,6 +2,18 @@
 
 All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 
+## 8.9.0 — 2026-09-17
+
+Semver rationale: minor — adds four Korean rewrite patterns, an English cadence pattern, a CLI meaning-safety overlay extension, two advisory notes, and a rewrite-prompt hint. No public surface is removed. Two advisory notes can newly print warnings on rewrites that previously stayed silent; neither changes exit codes or emitted text.
+
+- **Four Korean rewrite patterns** (#910, from #880): `38 문두 접속사 남발` (anchor-free connective run), `39 쉼표 병렬 나열·감탄` (parallel-inflection comma chains; noun and unit lists stay safe), `40 상담원 서비스 톤` (service-marker stack over anchor-free text; real customer-service replies stay protected), and `41 잔여 직역 커플링` (genitive-chain anchored coupling of weak translated constructions; formal register stays safe). Each cleared a 50-document labeled fixture at precision 1.00 with zero boundary false positives before promotion (evidence: `npm run benchmark:ko-conjunction`, `benchmark:ko-comma-excess`, `benchmark:ko-agent-tone`, `benchmark:ko-residual-translationese`).
+- **English rewrite pattern 38: 2026 Cadence Stack** (#898, from #879): promotes the measured cadence tell to the EN catalog.
+- **Numeric-claim overlay enforced in preview** (#901, follow-up to #870): the CLI's `assessRewriteMeaningSafety` overlay consolidates the dropped-numbers and numeric-claim-changed guards, and preview candidates (including compare variants) now exit 4 on a changed numeric claim while still rendering the page. Role-swapped claim bags remain out of scope; a calibration round (#906) measured four binding variants on a 50-pair corpus and concluded local binding cannot separate swaps from faithful reorders at high precision, recorded in `docs/research/2026-number-swap-calibration.md`.
+- **Overcorrection advisory gains the cadence-stack signal** (#911, #882): a rewrite that mints a NEW 2026 cadence stack the source never had now warns, alongside dash-wipe and introduced-slang. Advisory only — exit codes, scores, and text are unchanged.
+- **Rewrite hint restores the source's own specificity** (#912, #881): when the source prose is mostly portable (point-of-view-less) but the document still carries its own anchors, the rewrite brief adds one line telling the model to pull generic sentences back onto that specificity and never to invent a fact. Fully anchor-free documents get no hint.
+- **skills.sh one-line install** (#913): `npx skills add devswha/patina` is verified end-to-end and documented (INSTALLATION.md Path 0.5); the skills.sh directory indexes entries automatically from install telemetry.
+- **Devtools**: adopt eslint 10 (#904), actions/setup-node 7 (#899), hold @eslint/js majors until the core migration (#903).
+
 ## 8.8.0 — 2026-09-17
 
 Semver rationale: minor — adds two `patina inspect` flags, three document types, four inspect JSON fields, a new verification reason, and two advisory notes. No public surface is removed. Two meaning-safety gates are deliberately stricter, so a draft that previously exited 0 can now exit 4; see "Stricter meaning safety" below before upgrading a CI gate.

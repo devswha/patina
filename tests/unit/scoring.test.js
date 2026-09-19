@@ -12,7 +12,9 @@ import {
   reconcileScoreOverall,
   scoreText,
   LEAKAGE_SCORE_FLOOR,
+  SCORE_ERRORS,
 } from '../../src/scoring.js';
+import { HttpError } from '../../src/api.js';
 import { getRepoRoot, loadConfig } from '../../src/config.js';
 import { loadPatterns } from '../../src/loader.js';
 
@@ -1036,6 +1038,33 @@ test('scoreText metadata callback is isolated and does not change legacy result 
   assert.equal(paidCalls, 2, 'each score makes one paid lower-layer call');
   assert.equal(observedAttempts, 1, 'the metadata observer receives the real attempt once');
   assert.deepEqual(observed, legacy);
+});
+
+test('meaning scorers separate a judge that answered badly from one that never answered', async () => {
+  const input = { original: 'We shipped 3 units.', rewritten: 'Three units shipped.', logger: { warn() {} } };
+  // A judge that answered, twice, with something unusable: a schema failure.
+  const malformed = async () => 'not json at all';
+  assert.equal((await scoreMPS({ ...input, callLLM: malformed })).error, SCORE_ERRORS.SCHEMA_FAILURE);
+  assert.equal((await scoreFidelity({ ...input, callLLM: malformed })).error, SCORE_ERRORS.SCHEMA_FAILURE);
+
+  // A judge that was never reached. Nothing about the rewrite was measured, so
+  // this cannot be reported as a bad answer.
+  const transports = [
+    () => { throw new HttpError(429, '{"error":"rate limited"}', '30'); },
+    () => { throw new HttpError(503, 'upstream unavailable', null); },
+    // callLLM converts an exhausted per-attempt budget into a TimeoutError with
+    // no status at all — still a transport failure, never a malformed answer.
+    () => { const err = new Error('LLM API failed after 3 attempts'); err.name = 'TimeoutError'; throw err; },
+  ];
+  for (const throwing of transports) {
+    const callLLM = async () => throwing();
+    const mps = await scoreMPS({ ...input, callLLM });
+    const fidelity = await scoreFidelity({ ...input, callLLM });
+    assert.equal(mps.error, SCORE_ERRORS.TRANSPORT_FAILURE);
+    assert.equal(mps.mps, null);
+    assert.equal(fidelity.error, SCORE_ERRORS.TRANSPORT_FAILURE);
+    assert.equal(fidelity.fidelity, null);
+  }
 });
 
 test('meaning scorers fence untrusted source and rewrite text', async () => {

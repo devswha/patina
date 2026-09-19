@@ -1,6 +1,6 @@
 // @ts-check
 import { callLLMStream as defaultStream } from './streaming-api.js';
-import { scoreDeterministicSignals, scoreFidelity, scoreMPS } from './scoring.js';
+import { scoreDeterministicSignals, scoreFidelity, scoreMPS, SCORE_ERRORS } from './scoring.js';
 import { evaluateNumberSafety } from './features/meaning-proxy.js';
 import { formatRewriteBodyForBrowser } from './output.js';
 import { loadWebConfig, resolveBundleRoot } from './web-config.js';
@@ -575,6 +575,17 @@ async function runWebRewriteStreamUnscoped({
     if (fidelityResult.status === 'rejected') throw fidelityResult.reason;
     mps = mpsResult.value;
     fidelity = fidelityResult.value;
+    // A scorer that never reached its judge produces a null score with a
+    // transport error, not a verdict. Falling through would evaluate the
+    // floors against missing evidence and tell the user the rewrite failed
+    // meaning verification, although it was never scored. That is a scoring
+    // failure, and it stays fail-closed: no done frame, no scores.
+    if ([mps, fidelity].some((score) => /** @type {any} */ (score)?.error === SCORE_ERRORS.TRANSPORT_FAILURE)) {
+      const error = 'scorer transport failure';
+      closeAttempts();
+      emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'scoring_failed', error });
+      return { ok: false, code: 'scoring_failed', error, attempts, observed: observeTerminal('terminal_failed', 500) };
+    }
     signals = {
       before: deterministicScore({ text: original, config: effectiveConfig, repoRoot }),
       after: deterministicScore({ text: rewrite, config: effectiveConfig, repoRoot }),

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mpsResult, fidelityResult, zeroAnchorMps } from '../fixtures/verification-results.js';
 
 import { assessRewriteMeaningSafety, deterministicMeaningGuard, verifyRewrite } from '../../src/verify.js';
+import { SCORE_ERRORS } from '../../src/scoring.js';
 import { validateVerifyRequest, parseArgs } from '../../src/cli/args.js';
 
 // ---------- deterministicMeaningGuard (no LLM) ----------
@@ -182,6 +183,28 @@ test('verifyRewrite treats a null fidelity as a floor miss (fail closed)', async
   assert.equal(result.text, 'retry');
 });
 
+
+test('verifyRewrite refuses to certify a rewrite whose scorers were never reached', async () => {
+  // A scorer that never got a verdict returns a null score carrying
+  // SCORE_ERRORS.TRANSPORT_FAILURE. The gate reads `error != null`, so the new
+  // value fails closed exactly like a schema failure on the CLI lane too: the
+  // caller still gets text, but nothing claims it was verified.
+  const unreached = {
+    scoreMPS: async () => ({ mps: null, error: SCORE_ERRORS.TRANSPORT_FAILURE }),
+    scoreFidelity: async () => ({ fidelity: null, error: SCORE_ERRORS.TRANSPORT_FAILURE }),
+  };
+  const result = await verifyRewrite({
+    ...baseArgs,
+    rewrite: 'first',
+    callLLM: async () => 'retry',
+    scoreFns: unreached,
+  });
+  assert.equal(result.verified, false);
+  assert.equal(result.retried, true);
+  assert.equal(result.reason, 'floor-not-met');
+  assert.equal(result.mps, null);
+  assert.equal(result.fidelity, 0);
+});
 
 test('verifyRewrite honors configured floors', async () => {
   // fidelity 75 passes the default 70 floor but fails an 80 floor → retry.

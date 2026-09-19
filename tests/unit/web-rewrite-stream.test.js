@@ -2,6 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mpsResult, fidelityResult, zeroAnchorMps, highHardFailMps } from '../fixtures/verification-results.js';
+import { HttpError } from '../../src/api.js';
+import { scoreFidelity as realScoreFidelity, scoreMPS as realScoreMPS } from '../../src/scoring.js';
 import { buildDocumentSignals } from '../../src/features/document-signals.js';
 import { rewriteExtraBody, runWebRewriteStream, scoringExtraBody } from '../../src/web-rewrite-stream.js';
 import { buildWebRewriteReceipt, canonicalJson, sha256 } from '../../src/web-rewrite-receipt.js';
@@ -903,6 +905,68 @@ test('runWebRewriteStream waits for a started scorer before returning a scoring 
   assert.deepEqual(result.attempts, attemptsAtReturn);
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
+
+// Drive the REAL scorers so the transport/schema distinction is the production
+// one, not a hand-written error value: only `callLLM` underneath is injected.
+function realScorers(callLLM) {
+  return {
+    scoreMPS: (input) => realScoreMPS({ ...input, callLLM, logger: { warn() {} } }),
+    scoreFidelity: (input) => realScoreFidelity({ ...input, callLLM, logger: { warn() {} } }),
+    scoreDeterministicSignals: ({ text }) => ({ overall: text.length, text }),
+  };
+}
+
+test('runWebRewriteStream reports an unreached scorer as a scoring failure, not a floor failure', async () => {
+  /** @type {Array<[string, () => never]>} */
+  const transports = [
+    ['http 429', () => { throw new HttpError(429, '{"error":"rate limited"}', '30'); }],
+    ['http 503', () => { throw new HttpError(503, 'upstream unavailable', null); }],
+    ['timeout', () => { const err = new Error('LLM API failed after 3 attempts'); err.name = 'TimeoutError'; throw err; }],
+  ];
+  for (const [label, throwing] of transports) {
+    const frames = [];
+    const result = await runWebRewriteStream({
+      request,
+      callLLMStream: async ({ onAttempt }) => {
+        onAttempt(privateAttempt());
+        return { text: 'human text' };
+      },
+      scoreFns: realScorers(async () => throwing()),
+      emit: (frame) => frames.push(frame),
+    });
+
+    assert.equal(result.ok, false, label);
+    // The rewrite was never scored, so it must not be reported as one that
+    // missed the meaning floor — and it must not be accepted either.
+    assert.equal(result.code, 'scoring_failed', label);
+    assert.equal(frames.some((frame) => frame.type === 'done'), false, label);
+    assert.deepEqual(frames.at(-1), { type: 'error', code: 'scoring_failed', error: 'scorer transport failure' }, label);
+    assertFramesDoNotLeakPrivateMetadata(frames);
+  }
+});
+
+test('runWebRewriteStream keeps a genuinely malformed scorer answer on the floor-failure path', async () => {
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request,
+    callLLMStream: async ({ onAttempt }) => {
+      onAttempt(privateAttempt());
+      return { text: 'human text' };
+    },
+    // The judge answered; the answer is unusable. That is evidence about the
+    // rewrite's verification, and it keeps failing the floor with its audit data.
+    scoreFns: realScorers(async () => 'not json at all'),
+    emit: (frame) => frames.push(frame),
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'floor_failed');
+  assert.deepEqual(result.failed, ['mps', 'fidelity']);
+  assert.equal(frames.at(-1).code, 'floor_failed');
+  assert.equal(frames.at(-1).mps.error, 'schema-failure');
+  assertFramesDoNotLeakPrivateMetadata(frames);
+});
+
 test('runWebRewriteStream fails closed for unchanged ambiguous dates before scoring', async () => {
   const frames = [];
   let scorerCalls = 0;

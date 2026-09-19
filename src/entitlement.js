@@ -6,13 +6,16 @@
 // provider; this module owns the shared admission, cache, and security rules.
 //
 // Design invariants (all fail-closed — uncertainty NEVER grants entitlement):
-//   - Missing config, or (in production) a missing secret/shared-KV, a provider
-//     error/timeout/non-2xx/bad-body, a saturated admission bucket, or a held
-//     single-flight lock all DENY access.
+//   - Missing config, or (in production) a missing secret/shared-KV/client IP, a
+//     provider error/timeout/non-2xx/bad-body, a saturated admission bucket, or a
+//     held single-flight lock all DENY access.
+//   - Admission is charged per CLIENT before the shared provider budget, so one
+//     caller can only ever spend a small slice of it; a cached decision charges
+//     neither bucket.
 //   - The raw license key is NEVER written to a log line, an error body, a return
-//     value, or a KV key. Every KV key is an HMAC of the license; every return
-//     value carries only the HMAC "subject"; every log payload is passed through
-//     redactSecrets and only ever carries the subject.
+//     value, or a KV key, and neither is the client IP. Every KV key is an HMAC;
+//     every return value carries only the HMAC "subject"; every log payload is
+//     passed through redactSecrets and only ever carries the subject.
 //
 // It deliberately reuses the quota primitives (quotaKeyHmac / isProductionPosture /
 // createMemoryKv) and the shared redaction/reason contract rather than growing a
@@ -29,12 +32,20 @@ const DEFAULT_NEGATIVE_CACHE_TTL_MS = 60_000; // negative-result cache
 const DEFAULT_TIMEOUT_MS = 2_500; // provider fetch abort deadline
 const LOCK_TTL_MS = 10_000; // single-flight lock self-heal window
 const DEFAULT_LOCK_POLL_INTERVAL_MS = 150; // follower cache-poll cadence while the winner validates
+/**
+ * Provider calls one client may trigger per minute (its slice of the shared
+ * per-minute provider budget). Deliberately a small fraction of `defaultRpm`:
+ * the positive cache means one seat validates about once per cache TTL, so a
+ * real customer never approaches it, while a single caller can no longer drain
+ * the shared budget and lock every other subject out of validation.
+ */
+const DEFAULT_VALIDATE_IP_RPM = 3;
 /** Dev-only HMAC fallback; only ever reached OUTSIDE production (prod requires a real secret). */
 const DEV_FALLBACK_SECRET = 'patina-local-license-secret';
 
 /**
  * @typedef {{ok: true, subject: string, tier: 'pro', status: string, cache: 'hit'|'miss'}} EntitlementAllow
- * @typedef {{ok: false, status: 401|403|503, reason: string}} EntitlementDeny
+ * @typedef {{ok: false, status: 400|401|403|429|503, reason: string}} EntitlementDeny
  * @typedef {EntitlementAllow|EntitlementDeny} EntitlementResult
  * @typedef {{get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, acquireLease?(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease?(registryKey: string, lease: string): Promise<boolean>, __memory?: boolean}} EntitlementKv
  */
@@ -137,8 +148,9 @@ function readCacheEntry(entry, nowMs) {
 
 /**
  * Build a fail-closed, validate-only license validator with a two-layer cache
- * (positive + negative) and an admission guard (per-minute RPM bucket +
- * per-license single-flight lock) that runs BEFORE any provider network call.
+ * (positive + negative) and an admission guard (per-client and shared
+ * per-minute RPM buckets + per-license single-flight lock) that runs BEFORE any
+ * provider network call.
  *
  * The vendor-specific surface is supplied as a `provider` descriptor; this
  * function holds the security machinery that must stay identical across
@@ -153,7 +165,7 @@ function readCacheEntry(entry, nowMs) {
  *   now?: () => number,
  *   logger?: {warn?: (...args: unknown[]) => void, log?: (...args: unknown[]) => void},
  * }} [options]
- * @returns {{validate(input: {licenseKey: string}): Promise<EntitlementResult>}}
+ * @returns {{validate(input: {licenseKey: string, ip?: string|null}): Promise<EntitlementResult>}}
  */
 export function createLicenseValidator({
   provider,
@@ -194,11 +206,16 @@ export function createLicenseValidator({
   );
 
   /**
-   * @param {{licenseKey?: string}} [input]
+   * `ip` is the caller's address as resolved from the platform's trusted
+   * forwarded-for header (never a client-supplied one); it exists only to key
+   * the per-client admission slice below and is HMAC'd before it touches KV.
+   *
+   * @param {{licenseKey?: string, ip?: string|null}} [input]
    * @returns {Promise<EntitlementResult>}
    */
   const validate = async (input = {}) => {
     const licenseKey = input.licenseKey;
+    const ip = typeof input.ip === 'string' && input.ip !== '' ? input.ip : null;
     // 0. Input guard (defense in depth; the handler extracts via extractBearerLicense first).
     if (typeof licenseKey !== 'string' || licenseKey.trim() === '') return required();
 
@@ -335,10 +352,57 @@ export function createLicenseValidator({
         /* treat as a miss */
       }
 
-      // 4c. Per-minute RPM bucket keeps us under the provider's ceiling. Charged
-      //     only by the winner that will actually call the provider.
-      const rpmLimit = readPositiveInt(tunable('VALIDATE_RPM'), provider.defaultRpm);
+      // 4c. Per-CLIENT admission slice, charged BEFORE the shared bucket below.
+      //     Validation used to run ahead of every per-IP limiter, so each
+      //     cache-missing key — entitled or not — spent one token of the single
+      //     global provider budget; a handful of unauthenticated requests per
+      //     minute could therefore saturate it and leave paying customers whose
+      //     positive cache had lapsed with nothing but 503s. Charging the caller
+      //     first caps what any one of them can take out of that shared budget.
+      //
+      //     Only the single-flight WINNER reaches this point, so neither a
+      //     cached decision (steps 3/4b) nor a follower is ever charged: an
+      //     already-validated customer cannot be throttled by this guard.
       const minute = Math.floor(nowMs / 60_000);
+      if (ip === null) {
+        // Production always has a platform-set forwarded-for header, so a
+        // missing address there means we cannot admit this caller — fail closed
+        // rather than fall through to the shared budget unmetered (the free and
+        // BYOK tiers refuse the same way in src/rate-limit.js). Outside
+        // production there is no shared budget worth defending and local callers
+        // legitimately have no forwarded address, so admission continues.
+        if (production) {
+          warnSafe('entitlement: validate admission without a client ip', { provider: provider.id, subject });
+          return /** @type {EntitlementDeny} */ ({ ok: false, status: 400, reason: QUOTA_REASONS.IP_UNAVAILABLE });
+        }
+      } else {
+        const ipRpmLimit = readPositiveInt(tunable('VALIDATE_IP_RPM'), DEFAULT_VALIDATE_IP_RPM);
+        // Own label, so this bucket can never collide with the shared one; the
+        // address is HMAC'd exactly like a license and is never stored raw.
+        const ipRpmKey = quotaKeyHmac(secret, `${provider.id}-validate-ip-rpm`, minute, ip);
+        let ipCount;
+        try {
+          ipCount = await store.incr(ipRpmKey, { ttlMs: 60_000 });
+        } catch {
+          return unavailable();
+        }
+        if (!Number.isSafeInteger(ipCount) || ipCount < 1) return unavailable();
+        if (ipCount > ipRpmLimit) {
+          // A rate-limit verdict about the CALLER, never about the key: the
+          // decision is not cached (a negative entry would turn a throttled
+          // customer's valid license into a 403 for the whole negative TTL), the
+          // shared bucket below is untouched, and the provider is never called.
+          // A same-license follower polling right now finds no cache entry and
+          // ends on its own 503; that costs only a cold-cache burst arriving
+          // from one address within the same minute.
+          warnSafe('entitlement: validate per-client admission saturated', { provider: provider.id, subject, minute, ipCount, ipRpmLimit });
+          return /** @type {EntitlementDeny} */ ({ ok: false, status: 429, reason: QUOTA_REASONS.LICENSE_VALIDATION_BURST });
+        }
+      }
+
+      // 4d. Shared per-minute RPM bucket keeps us under the provider's ceiling.
+      //     Charged only by the winner that will actually call the provider.
+      const rpmLimit = readPositiveInt(tunable('VALIDATE_RPM'), provider.defaultRpm);
       const rpmKey = quotaKeyHmac(secret, `${provider.id}-rpm`, minute);
       let rpmCount;
       try {

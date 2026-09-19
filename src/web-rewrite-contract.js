@@ -143,6 +143,12 @@ export const QUOTA_REASONS = Object.freeze({
   LICENSE_REQUIRED: 'license required',
   LICENSE_INVALID: 'license not entitled',
   LICENSE_UNAVAILABLE: 'license validation unavailable',
+  // 429: this caller asked to validate more uncached licenses in one minute
+  // than its own admission slice allows (src/entitlement.js). It is a
+  // rate-limit verdict about the caller, never a verdict about the key, so it
+  // is never cached and the browser classifier reads it through its generic
+  // 429 branch.
+  LICENSE_VALIDATION_BURST: 'license validation burst exceeded',
   MONTHLY_CHARS: 'monthly character limit reached',
   MONTHLY_REQUESTS: 'monthly rewrite limit reached',
 });

@@ -397,6 +397,7 @@ test('QUOTA_REASONS values stay backward-compatible with the emitted reason stri
     LICENSE_REQUIRED: 'license required',
     LICENSE_INVALID: 'license not entitled',
     LICENSE_UNAVAILABLE: 'license validation unavailable',
+    LICENSE_VALIDATION_BURST: 'license validation burst exceeded',
     MONTHLY_CHARS: 'monthly character limit reached',
     MONTHLY_REQUESTS: 'monthly rewrite limit reached',
   });

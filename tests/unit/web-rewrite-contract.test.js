@@ -64,6 +64,7 @@ test('supported languages and floors match the documented contract', () => {
   assert.equal(FIDELITY_FLOOR, 70);
   assert.equal(CONTEXT_LIMITS.maxTurns, 6);
   assert.equal(CONTEXT_LIMITS.maxBytes, 12 * 1024);
+  assert.equal(CONTEXT_LIMITS.maxInstructionChars, 2000);
   assert.equal(TIER_LIMITS.free.maxChars, 4000);
   assert.equal(TIER_LIMITS.byok.maxChars, 20000);
   assert.equal(TIER_LIMITS.byok.maxConcurrent, 2);
@@ -240,6 +241,54 @@ test('validateRewriteRequest requires original text for refine turns', () => {
   const ok = validateRewriteRequest(freeFirst({ mode: 'refine', original: '원본 문장.' }));
   assert.equal(ok.ok, true);
   assert.equal(ok.value.original, '원본 문장.');
+});
+
+// `instruction` is the follow-up edit request for a refine turn. `text` keeps
+// its one meaning (the text to rewrite) in every mode, so an old client that
+// never sends the field must validate to exactly the request it validated to
+// before the field existed.
+test('validateRewriteRequest accepts an optional refine instruction', () => {
+  const refine = (overrides = {}) => freeFirst({ mode: 'refine', original: '원본 문장.', ...overrides });
+
+  const ok = validateRewriteRequest(refine({ instruction: '더 짧게' }));
+  assert.equal(ok.ok, true);
+  assert.equal(ok.value.instruction, '더 짧게');
+  assert.equal(ok.value.text, freeFirst().text, 'the instruction never displaces the text to rewrite');
+
+  // Absent / null / empty / blank all mean "no instruction": no key at all.
+  assert.equal('instruction' in validateRewriteRequest(refine()).value, false);
+  for (const blank of [null, undefined, '', '   \n ']) {
+    const r = validateRewriteRequest(refine({ instruction: blank }));
+    assert.equal(r.ok, true);
+    assert.equal('instruction' in r.value, false);
+  }
+  // Legacy parity: a body without the field produces the identical request.
+  assert.deepEqual(validateRewriteRequest(refine({ instruction: null })).value, validateRewriteRequest(refine()).value);
+});
+
+test('validateRewriteRequest rejects malformed, over-cap, and out-of-mode instructions', () => {
+  const refine = (overrides = {}) => freeFirst({ mode: 'refine', original: '원본 문장.', ...overrides });
+
+  for (const bad of [42, true, {}, ['더 짧게']]) {
+    assert.equal(validateRewriteRequest(refine({ instruction: bad })).status, 400, String(bad));
+  }
+  assert.equal(validateRewriteRequest(refine({ instruction: '더 \ud800 짧게' })).status, 400, 'lone surrogate');
+
+  const atCap = 'x'.repeat(CONTEXT_LIMITS.maxInstructionChars);
+  assert.equal(validateRewriteRequest(refine({ instruction: atCap })).ok, true);
+  const overCap = validateRewriteRequest(refine({ instruction: `${atCap}x` }));
+  assert.equal(overCap.ok, false);
+  assert.equal(overCap.status, 413);
+
+  // Meaningless outside refine (no draft to edit / no text generated), so it is
+  // rejected rather than silently dropped — as verify rejects history.
+  assert.equal(validateRewriteRequest(freeFirst({ instruction: '더 짧게' })).status, 400);
+  assert.equal(
+    validateRewriteRequest(freeFirst({
+      mode: 'verify', original: '원본 문장.', baseHash: `sha256:${'a'.repeat(64)}`, instruction: '더 짧게',
+    })).status,
+    400,
+  );
 });
 
 test('validateRewriteRequest rejects a key on the free tier and a missing key on byok', () => {

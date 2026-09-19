@@ -9,7 +9,7 @@ that **rewrites** AI-sounding text into something more natural for `ko`, `en`,
 - App shell: [`index.html`](index.html) — the chat page (served at `/`).
 - Styles: [`chatgpt.css`](chatgpt.css).
 - Controller: [`chatgpt.js`](chatgpt.js) — conversation store, streaming, safe DOM rendering.
-- Streaming client: [`rewrite-client.js`](rewrite-client.js) — isomorphic NDJSON client + client-held thread (one-shot → conversational refine).
+- Streaming client: [`rewrite-client.js`](rewrite-client.js) — isomorphic NDJSON client + client-held thread (one-shot → conversational refine). A refine turn sends the latest accepted draft as `text` and the user's follow-up as `instruction`; `history` carries earlier edit preferences only.
 - Conversation settings: [`preferences.js`](preferences.js).
 - Pro recovery, pricing, and settings copy in four languages: [`experience-copy.js`](experience-copy.js).
 - Contract: [`../src/web-rewrite-contract.js`](../src/web-rewrite-contract.js) — the single source of truth shared by the serverless handler, the web runner, the browser client, and the tests.

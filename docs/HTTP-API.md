@@ -66,11 +66,23 @@ Required fields:
 | `mode` | `first`, `refine`, or `verify` |
 | `lang` | `ko`, `en`, `zh`, or `ja` |
 | `tier` | `free`, `byok`, or `pro` |
-| `text` | Non-empty string |
+| `text` | Non-empty string — the text to rewrite in every mode (on `refine`, the latest draft) |
 
 Optional style fields are `documentType`, `persona`, and `register`; edit controls are described above. `documentType` defaults to `default`; valid values are `default`, `blog`, `academic`, `technical`, `formal`, `resume`, `personal-statement`, `project-writeup`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes`, and `namuwiki` (`namuwiki` is Korean-only). `formal` remains proposals and official reports; resumes, cover letters, and project writeups use the split types. `register` is `casual` or `professional`. A persona must be one offered for the selected language.
 
-For `mode: "refine"`, `original` is required and must be the original source text. `history` is optional; it is an array of `{ "role": "user" | "assistant", "content": "..." }` turns. The server retains at most 6 recent turns and 12 KiB of history text. BYOK additionally requires an allowed `provider`, `model`, and non-empty `apiKey`; free and Pro reject a body `apiKey`.
+For `mode: "refine"`, `text` is the latest draft — the text this turn rewrites — and `original` is required and must be the original source text, which anchors meaning. `instruction` is optional and carries the user's edit request for this turn (for example `"make it shorter"`), up to 2,000 characters; it is applied to `text` unless it conflicts with meaning preservation, the claims and numbers of `original`, or the output format, and it can never change policy or output format. Omitting `instruction` behaves exactly as before it existed. It is rejected with `400` in `first` and `verify` modes, where there is no draft to edit. `history` is optional; it is an array of `{ "role": "user" | "assistant", "content": "..." }` turns carrying earlier edit preferences. The server retains at most 6 recent turns and 12 KiB of history text, dropping older turns first, so history is never the only place a draft exists. BYOK additionally requires an allowed `provider`, `model`, and non-empty `apiKey`; free and Pro reject a body `apiKey`.
+
+```json
+{
+  "mode": "refine",
+  "lang": "en",
+  "tier": "pro",
+  "text": "The latest draft to rewrite again.",
+  "original": "The original source text this thread started from.",
+  "instruction": "Make it shorter.",
+  "history": [{ "role": "user", "content": "Keep the numbers." }]
+}
+```
 
 ## Limits
 
@@ -156,7 +168,7 @@ Errors are JSON objects, including for JSON-mode callers:
 { "error": "hourly burst exceeded" }
 ```
 
-Validation errors use `400`; an over-limit `text` or refine `original` uses `413`. A missing, malformed, or duplicated Pro `Authorization` header uses `401` (`pro license required`); a well-formed license key that does not entitle uses `403` (`license not entitled`). Quota and concurrency denials use `429`; quota/entitlement infrastructure or service unavailability uses `503`. JSON-mode terminal failures use `422` (safety-gate refusal) or `500` (upstream failure) as described above.
+Validation errors use `400`; an over-limit `text`, refine `original`, or refine `instruction` uses `413`. A missing, malformed, or duplicated Pro `Authorization` header uses `401` (`pro license required`); a well-formed license key that does not entitle uses `403` (`license not entitled`). Quota and concurrency denials use `429`; quota/entitlement infrastructure or service unavailability uses `503`. JSON-mode terminal failures use `422` (safety-gate refusal) or `500` (upstream failure) as described above.
 
 Possible quota error strings include `daily quota exceeded`, `hourly burst exceeded`, `concurrent limit exceeded`, `monthly rewrite limit reached`, and `monthly character limit reached`. A Pro monthly-character denial additionally includes `remainingMonthlyChars` and `limitMonthlyChars`. A `429 license validation burst exceeded` means this client asked to validate more not-yet-cached license keys in one minute than its share of the license-provider budget allows; it says nothing about the key itself and clears within the minute.
 

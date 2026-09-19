@@ -77,6 +77,13 @@ allowlist: []              # additive merge: 감지에서 제외할 어휘
 # blocks. Set to false to silence.
 over-editing-guard: true
 
+# Star reminder: after the 3rd and the 20th successful run, print one line
+# asking for a GitHub star, then never again. CLI: stderr, terminal sessions
+# only (never when piped, in CI, or with --quiet). Skill: the helper sets
+# `notice: "star"` in its summary. No network call; the counter lives in
+# ~/.patina/star-nudge.json. Set to false (or PATINA_NO_STAR_NUDGE=1) to silence.
+star-nudge: true
+
 # Scoring: LLM score remains canonical, with a deterministic shadow score
 # from src/features/* for reproducible drift checks.
 scoring:

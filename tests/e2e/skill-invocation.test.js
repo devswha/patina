@@ -252,6 +252,52 @@ test('audit, score, diff modes and root skill aliases publish unverified reports
   }
 });
 
+test('summary notice asks for a star on the 3rd verified rewrite only, outside the receipt and the accepted bytes', async t => {
+  const f = await fixture(t);
+  // CI silences the reminder by design; this test owns the flag either way.
+  f.env = { ...f.env, CI: '', PATINA_NO_STAR_NUDGE: '' };
+  await provider(t, f);
+  const args = ['--lang', 'en', '--backend', 'openai-http'];
+  const notices = [];
+  for (let run = 1; run <= 4; run++) {
+    // Reports never count: only verified rewrites move the counter.
+    if (run === 2) assert.equal((await command(f, [...args, '--score']).done).summary.notice, null);
+    const result = await command(f, args).done;
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(result.summary.status, 'verified');
+    notices.push(result.summary.notice);
+    const r = await privateArtifacts(result, ['receipt.json', 'output.txt']);
+    assert.equal(Object.hasOwn(r, 'notice'), false, 'the receipt carries no reminder');
+    assert.equal(await readFile(result.summary.outputPath, 'utf8'), SOURCE, 'accepted bytes are untouched');
+  }
+  assert.deepEqual(notices, [null, null, 'star', null]);
+  const managed = join(f.home, '.patina');
+  assert.deepEqual((await readdir(managed)).sort(), ['runs', 'star-nudge.json']);
+  if (process.platform !== 'win32') assert.equal((await stat(join(managed, 'star-nudge.json'))).mode & 0o777, 0o600);
+
+  const rejected = await command(f, ['--backend', 'kimi-cli']).done;
+  assert.equal(rejected.summary.ok, false);
+  assert.equal(rejected.summary.notice, null, 'failures keep the field and never ask');
+});
+
+test('summary notice stays null under CI, the env opt-out, and star-nudge: false', async t => {
+  for (const [name, env, config] of [
+    ['CI', { CI: 'true' }, {}],
+    ['env opt-out', { CI: '', PATINA_NO_STAR_NUDGE: '1' }, {}],
+    ['config opt-out', { CI: '', PATINA_NO_STAR_NUDGE: '' }, { 'star-nudge': false }],
+  ]) {
+    const f = await fixture(t, config);
+    f.env = { ...f.env, ...env };
+    await provider(t, f);
+    for (let run = 1; run <= 3; run++) {
+      const result = await command(f, ['--lang', 'en', '--backend', 'openai-http']).done;
+      assert.equal(result.summary.status, 'verified', name);
+      assert.equal(result.summary.notice, null, name);
+    }
+    assert.deepEqual(await readdir(join(f.home, '.patina')), ['runs'], `${name}: no counter is kept`);
+  }
+});
+
 // The real version probe is preserved. Only malformed child envelopes use the
 // existing spawn seam; success and ordinary rejection above use the shipped CLI.
 function seam(f, { output = SOURCE, verification, stdout, script, inspect = '', args = [] } = {}) {

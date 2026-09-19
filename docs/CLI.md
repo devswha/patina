@@ -267,6 +267,23 @@ Facts, numbers, names, and causal claims must never be invented, dropped, or rev
 Human-facing status and warnings go to stderr so stdout stays reserved for the
 transformed text or JSON envelope. `--quiet` suppresses those stderr logs.
 
+### Star reminder
+
+After the 3rd and the 20th successful run, the CLI prints one stderr line
+asking for a GitHub star. It never appears again after that. It prints only when
+stderr is a terminal, so pipes, hooks, CI, and `--quiet` runs never see it, and
+those runs are not counted. It makes no network call and does not check whether
+you starred; the only state is a run counter in `~/.patina/star-nudge.json`
+(`PATINA_STATE_DIR` moves it). Exit codes and stdout are unaffected.
+
+Turn it off with `star-nudge: false` in `.patina.yaml` or
+`PATINA_NO_STAR_NUDGE=1`.
+
+The skill helper (`bin/patina-skill.js`) shares the counter but counts verified
+rewrites only. It never prints; it sets `"notice": "star"` in its JSON summary
+and the host agent adds the line after the result, outside the accepted output.
+`notice` is `null` on every other run.
+
 ## In-place preview: `--preview`
 
 `--preview` rewrites prose and renders the rewrites **in place** — each rewritten block highlighted and numbered, a floating bar with the change count, deterministic before/after score, jump chips, a three-state view toggle (rewritten / original / both), and a "patina notes" panel with the Pattern/Removed/Added/Why explanation.

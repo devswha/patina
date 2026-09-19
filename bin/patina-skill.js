@@ -147,7 +147,7 @@ export async function runSkill(argv, { spawnImpl = spawn, signal } = {}) {
     invocationStarted: false, cliExitCode: null, exitCode: null, sourceHash: null, outputHash: null,
     verification: null, floors: null };
   const summary = { schemaVersion: 1, ok: false, status: 'error', code: null, exitCode: 1,
-    receiptPath: null, outputPath: null, reportPath: null, sourceHash: null, outputHash: null };
+    receiptPath: null, outputPath: null, reportPath: null, sourceHash: null, outputHash: null, notice: null };
   let directory;
   let artifact;
   let stage = 'receipt_write_failed';
@@ -287,9 +287,18 @@ export async function runSkill(argv, { spawnImpl = spawn, signal } = {}) {
     receipt.exitCode = 0;
     stage = 'receipt_write_failed';
     await atomicReceipt(directory, receipt);
+    // The run is already final. The star reminder rides the summary only, never
+    // the receipt or the accepted bytes, and cannot fail a verified rewrite.
+    let notice = null;
+    if (selected.mode === 'rewrite') {
+      try {
+        const { skillStarNotice } = await import('../src/star-nudge.js');
+        notice = skillStarNotice({ config, env: process.env, stateDir: managed });
+      } catch {}
+    }
     return { ...summary, ok: true, status: receipt.status, code: null, exitCode: 0,
       outputPath: selected.mode === 'rewrite' ? artifact : null, reportPath: selected.mode === 'rewrite' ? null : artifact,
-      outputHash: receipt.outputHash };
+      outputHash: receipt.outputHash, notice };
   } catch (error) {
     let code = error instanceof SkillError ? error.code
       : ['aborted', 'timeout', 'cli_start_failed', 'cli_output_failed', 'cli_output_limit', 'invalid_cli_json'].includes(error.code) ? error.code : stage;

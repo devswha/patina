@@ -781,9 +781,29 @@ async function runWebRewriteStreamUnscoped({
         outputHash: sha256(rewrite),
         edits: createTextEdits(original, rewrite),
       };
-    } catch {
-      emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'edit_output_too_long' });
-      return { ok: false, code: 'edit_output_too_long', attempts, observed: observeTerminal('terminal_failed', 422) };
+    } catch (err) {
+      // The change review is an optional convenience; the verified rewrite is
+      // the product. createTextEdits caps each text at 20,000 UTF-16 units, so
+      // an accepted rewrite just past that cap used to throw away everything
+      // the three paid calls had already bought — every gate passed — and the
+      // client, which always asks for edits and cannot classify the code,
+      // offered Retry, which deterministically spends three more. Degrade
+      // instead: omit editReview and let the client show its existing
+      // "Change review is unavailable" copy.
+      //
+      // Only a size refusal degrades, and it is never the protected-phrase
+      // guarantee being relaxed: validateProtectedText is the safety gate for
+      // protected spans, it runs much earlier (before scoring), and the same
+      // 20,000-unit cap already fails such a request closed there as
+      // protected_text_failed. Any other createTextEdits code would be
+      // unexpected (both inputs are strings and the original is tier-capped),
+      // so it stays a terminal error rather than being swallowed.
+      const code = /** @type {any} */ (err)?.code;
+      if (typeof code !== 'string' || !code.endsWith('_too_long')) {
+        emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'edit_output_too_long' });
+        return { ok: false, code: 'edit_output_too_long', attempts, observed: observeTerminal('terminal_failed', 422) };
+      }
+      editReview = undefined;
     }
   }
   emit({ type: STREAM_FRAME_TYPES.DONE, rewrite, mps, fidelity, signals, diff, receipt, ...(editReview ? { editReview } : {}) });

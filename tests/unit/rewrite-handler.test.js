@@ -269,6 +269,30 @@ test('400 for invalid JSON', async () => {
   assert.deepEqual(res.json(), { error: 'invalid JSON' });
 });
 
+// Production shape: Vercel's Node helper defines `req.body` as a lazy getter
+// that throws when the JSON is malformed. The string-body test above never
+// reaches that getter, which is how this shipped as a 500.
+test('400 for invalid JSON when the platform body getter throws (Vercel shape)', async () => {
+  const res = makeRes();
+  const errors = [];
+  const handler = createRewriteHandler({
+    rateLimiter: allowedLimiter(),
+    runRewrite() { throw new Error('must not run'); },
+    logger: { error: (entry) => errors.push(entry) },
+  });
+  const req = { method: 'POST', headers: { 'content-type': 'application/json' } };
+  let reads = 0;
+  Object.defineProperty(req, 'body', {
+    enumerable: true,
+    get() { reads += 1; throw Object.assign(new Error('Invalid JSON'), { statusCode: 400 }); },
+  });
+  await handler(req, res);
+  assert.equal(res.statusCode, 400);
+  assert.deepEqual(res.json(), { error: 'invalid JSON' });
+  assert.equal(reads, 1, 'the throwing getter is read once, inside the guard');
+  assert.deepEqual(errors, [], 'a client error must not log rewrite_handler_failed');
+});
+
 test('400 and 413 from validateRewriteRequest are not observed', async () => {
   const events = [];
   const handler = createRewriteHandler({

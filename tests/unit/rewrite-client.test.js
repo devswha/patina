@@ -6,6 +6,7 @@ import {
   classifyRewriteError,
   createRewriteThread,
   REWRITE_ERROR_KINDS,
+  rewriteRecovery,
   streamRewrite,
 } from '../../playground/rewrite-client.js';
 
@@ -245,6 +246,12 @@ test('classifyRewriteError falls back conservatively for unrecognized failures',
   assert.equal(classifyRewriteError({ status: 502 }), K.SERVICE_UNAVAILABLE);
   assert.equal(classifyRewriteError({ status: 500, error: 'internal error' }), K.UNKNOWN);
   assert.equal(classifyRewriteError({ status: 400, error: 'invalid JSON' }), K.UNKNOWN);
+  // A source the server can never certify is a different message from a
+  // rewrite that changed a number; both send the user back to edit the text.
+  assert.equal(classifyRewriteError({ code: 'number_safety_failed' }), K.NUMBER_SAFETY);
+  assert.equal(classifyRewriteError({ code: 'number_safety_failed', scope: 'source' }), K.NUMBER_SOURCE);
+  assert.equal(classifyRewriteError({ code: 'number_safety_failed', scope: 'rewrite' }), K.NUMBER_SAFETY);
+  assert.equal(rewriteRecovery(K.NUMBER_SOURCE), 'edit');
   assert.equal(classifyRewriteError({}), K.UNKNOWN);
   assert.equal(classifyRewriteError(null), K.UNKNOWN);
   assert.equal(classifyRewriteError(undefined), K.UNKNOWN);

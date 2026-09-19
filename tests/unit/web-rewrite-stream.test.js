@@ -903,42 +903,57 @@ test('runWebRewriteStream waits for a started scorer before returning a scoring 
   assert.deepEqual(result.attempts, attemptsAtReturn);
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
-test('runWebRewriteStream fails closed for unchanged ambiguous dates before scoring', async () => {
-  const frames = [];
-  let scorerCalls = 0;
-  const result = await runWebRewriteStream({
-    request: { ...request, original: 'Report date: 01/02/2024.' },
-    callLLMStream: async ({ onAttempt }) => {
-      onAttempt(privateAttempt());
-      return { text: 'Report date: 01/02/2024.' };
-    },
-    scoreFns: {
-      scoreMPS: async () => { scorerCalls += 1; return mpsResult(95); },
-      scoreFidelity: async () => { scorerCalls += 1; return fidelityResult(11); },
-      scoreDeterministicSignals: () => {
-        throw new Error('deterministic scoring must not run after ambiguous date failure');
+test('runWebRewriteStream refuses a source it can never certify before any paid call', async () => {
+  // Each source fails evaluateNumberSafety against ITSELF, so no rewrite could
+  // pass. The old path still paid for a rewrite (and its retry) every time.
+  for (const [lang, original] of [
+    ['en', 'Report date: 01/02/2024.'],
+    ['en', 'Revenue grew 12% in Q3, and the B2B team shipped v2.'],
+    ['en', 'It costs $1,200.'],
+    ['ko', '가격은 $1,200입니다.'],
+  ]) {
+    const frames = [];
+    let paidCalls = 0;
+    const result = await runWebRewriteStream({
+      request: { ...request, lang, original },
+      callLLMStream: async () => { paidCalls += 1; return { text: original }; },
+      scoreFns: {
+        scoreMPS: async () => { paidCalls += 1; return mpsResult(95); },
+        scoreFidelity: async () => { paidCalls += 1; return fidelityResult(11); },
+        scoreDeterministicSignals: () => {
+          throw new Error('deterministic scoring must not run for an uncertifiable source');
+        },
       },
-    },
+      emit: (frame) => frames.push(frame),
+      numberSafetyRetries: 1,
+    });
+
+    assert.equal(result.ok, false, original);
+    assert.equal(result.code, 'number_safety_failed', original);
+    assert.equal(result.numberSafety.ok, false, original);
+    assert.equal(paidCalls, 0, `${original}: no rewrite, retry, or scorer may be paid for`);
+    assert.deepEqual(result.attempts, { valid: true, rewrite: [], mps: [], fidelity: [] }, original);
+    assert.deepEqual(frames, [
+      { type: 'start' },
+      { type: 'error', code: 'number_safety_failed', scope: 'source' },
+    ], original);
+    assertFramesDoNotLeakPrivateMetadata(frames);
+  }
+});
+
+test('runWebRewriteStream keeps the unscoped error when the REWRITE is what broke a number', async () => {
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request: { ...request, lang: 'en', original: 'Revenue grew 12% last quarter.' },
+    callLLMStream: async () => ({ text: 'Revenue grew 21% last quarter.' }),
+    scoreFns: scoring(),
     emit: (frame) => frames.push(frame),
     numberSafetyRetries: 0,
   });
-
-  assert.equal(result.ok, false);
   assert.equal(result.code, 'number_safety_failed');
-  assert.equal(result.numberSafety.ok, false);
-  assert.equal(scorerCalls, 0);
-  assert.deepEqual(result.attempts, {
-    valid: true,
-    rewrite: [privateAttempt()],
-    mps: [],
-    fidelity: [],
-  });
-  assert.deepEqual(frames, [
-    { type: 'start' },
-    { type: 'error', code: 'number_safety_failed' },
-  ]);
-  assertFramesDoNotLeakPrivateMetadata(frames);
+  assert.deepEqual(frames.at(-1), { type: 'error', code: 'number_safety_failed' });
 });
+
 test('terminal observer maps every terminal outcome once without frame leakage', async () => {
   const canary = 'stream-observer-private-canary';
   const scenarios = [

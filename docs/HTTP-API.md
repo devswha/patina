@@ -37,10 +37,13 @@ some edits creates a new draft: previous scores and receipts do not verify it.
 Submit that exact draft with `mode: "verify"` before treating it as approved.
 Its successful response binds fresh scores and a receipt to those exact bytes.
 Protected text is checked before scoring; violations return `422` with
-`protected_text_failed`. Edit review supports up to 20,000 UTF-16 units per
-text; a generated output beyond this bound returns `edit_output_too_long`
-when edits were requested. Source text and protected literals are not added to
-analytics or persisted by these controls.
+`protected_text_failed`, and that includes a generated output beyond the
+20,000 UTF-16 unit bound when protected spans were sent. Edit review supports
+up to 20,000 UTF-16 units per text; when a verified output exceeds that bound
+and no protected spans were sent, the response still succeeds and simply omits
+`editReview`, because the review is a convenience and the verified rewrite is
+not. Source text and protected literals are not added to analytics or
+persisted by these controls.
 
 Set `Content-Type: application/json` and send this body:
 

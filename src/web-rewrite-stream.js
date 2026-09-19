@@ -119,6 +119,41 @@ function safeError(err, secret) {
 }
 
 /**
+ * Provider finish reasons that mean the generation stopped before the rewrite
+ * was complete, normalized across both transports this stream can use: the
+ * OpenAI-compatible `finish_reason` and the native Anthropic `stop_reason`
+ * (src/anthropic-native.js surfaces it under the same field). A clean stop
+ * (`stop`, `end_turn`, `stop_sequence`) and a tool call are deliberately
+ * absent — only reasons that truncate or suppress the text belong here.
+ *
+ * Truncation and filtering are kept apart because they are not the same event
+ * for the person reading the message: a truncated run hit a token ceiling,
+ * while a filtered one was refused and needs different source text.
+ */
+const INCOMPLETE_FINISH_REASONS = Object.freeze({
+  length: 'output_truncated',
+  max_tokens: 'output_truncated',
+  content_filter: 'output_filtered',
+  refusal: 'output_filtered',
+});
+
+/**
+ * Why a streamed generation cannot be used as a rewrite, or undefined when it
+ * is complete. Emptiness is judged AFTER browser-body cleanup, because cleanup
+ * can legitimately reduce a non-empty provider response to nothing (a reply
+ * that was only a self-audit block, say) — which the transport cannot see.
+ *
+ * @param {unknown} finishReason Provider finish/stop reason, when reported.
+ * @param {string} rewrite Rewrite text after cleanup.
+ * @returns {string|undefined} A stable `stream_failed` error value, or undefined.
+ */
+function incompleteOutputReason(finishReason, rewrite) {
+  const reason = typeof finishReason === 'string' ? finishReason.trim().toLowerCase() : '';
+  if (Object.hasOwn(INCOMPLETE_FINISH_REASONS, reason)) return INCOMPLETE_FINISH_REASONS[reason];
+  return rewrite.trim() ? undefined : 'empty_output';
+}
+
+/**
  * Closed vocabulary for the `error` field of a terminal upstream failure frame
  * (`stream_failed` / `scoring_failed`) on the server-paid tiers. Chosen by the
  * provider's response status class only, so the frame carries no provider text:
@@ -577,6 +612,20 @@ async function runWebRewriteStreamUnscoped({
         stageOpen = false;
       }
       rewrite = formatRewriteBodyForBrowser(streamResult.text);
+      // A truncated, filtered or empty generation is not a rewrite. Refuse it
+      // here, before the number-safety gate, so the two paid scorer calls are
+      // never spent on partial text — and so a truncated rewrite of a source
+      // with no numeric anchors cannot score its way to a done frame.
+      //
+      // Deliberately NOT retried: the number-safety retry exists to resample a
+      // sampling-variance habit, while a token ceiling or a content filter
+      // reproduces on the next attempt, so a second paid call buys nothing.
+      const incomplete = incompleteOutputReason(streamResult.finishReason, rewrite);
+      if (incomplete) {
+        closeAttempts();
+        emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'stream_failed', error: incomplete });
+        return { ok: false, code: 'stream_failed', error: incomplete, attempts, observed: observeTerminal('terminal_failed', 500) };
+      }
     } catch (err) {
       const failure = upstreamFailure(err, request);
       closeAttempts();

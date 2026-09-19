@@ -107,6 +107,16 @@ A streaming terminal error is also an NDJSON frame, for example:
 
 Other terminal stream codes are `number_safety_failed` and `scoring_failed`.
 
+A generation that never completed is refused before any scoring, so no `done` frame follows and the request is not charged for meaning verification. These `stream_failed` reasons are stable:
+
+| `error` | Meaning |
+| --- | --- |
+| `output_truncated` | The provider stopped at a token ceiling (`finish_reason: "length"` / `stop_reason: "max_tokens"`). |
+| `output_filtered` | The provider suppressed or refused the generation (`content_filter` / `refusal`). |
+| `empty_output` | Nothing usable remained after output cleanup. |
+
+None of the three is retried: a token ceiling and a content filter reproduce on a second attempt. Shorten or rephrase the source instead.
+
 On the server-paid tiers (`free`, `pro`) the provider and the model are the server's private configuration, so `stream_failed` and `scoring_failed` never forward provider response text. Their `error` field is one of a closed set chosen by the upstream status class:
 
 | `error` | Upstream status |

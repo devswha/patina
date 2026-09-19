@@ -474,7 +474,16 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
             res.statusCode = code === 'source_changed' ? 409
               : code === 'invalid_unicode' ? 400
                 : ['floor_failed', 'number_safety_failed', 'protected_text_failed', 'edit_output_too_long', 'output_invalid_unicode'].includes(code) ? 422 : 500;
-            bufferedBody = JSON.stringify({ ok: false, code, error: errorFrame?.error ?? code });
+            // Mirror the NDJSON frame exactly: the runner already chose a
+            // tier-safe `error` string, and a BYOK frame may also carry the
+            // coarse upstream status.
+            const upstreamStatus = errorFrame?.upstreamStatus;
+            bufferedBody = JSON.stringify({
+              ok: false,
+              code,
+              error: errorFrame?.error ?? code,
+              ...(Number.isInteger(upstreamStatus) ? { upstreamStatus } : {}),
+            });
           }
         }
         streamCompleted = true;

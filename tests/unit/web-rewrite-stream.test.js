@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mpsResult, fidelityResult, zeroAnchorMps, highHardFailMps } from '../fixtures/verification-results.js';
+import { HttpError } from '../../src/api.js';
 import { buildDocumentSignals } from '../../src/features/document-signals.js';
 import { rewriteExtraBody, runWebRewriteStream, scoringExtraBody } from '../../src/web-rewrite-stream.js';
 import { buildWebRewriteReceipt, canonicalJson, sha256 } from '../../src/web-rewrite-receipt.js';
@@ -836,6 +837,105 @@ test('runWebRewriteStream emits stream_failed and no done when transport throws'
     mps: [],
     fidelity: [],
   });
+  assertFramesDoNotLeakPrivateMetadata(frames);
+});
+
+// Realistic provider bodies. HttpError embeds up to 256 characters of these in
+// its message, so every named substring below is something a hosted-tier caller
+// must never see: the server's model id, its quota metric, its organization.
+const GEMINI_429_BODY = JSON.stringify({
+  error: {
+    code: 429,
+    message: "Quota exceeded for quota metric 'generate_content_requests' of model gemini-3.6-flash.",
+    status: 'RESOURCE_EXHAUSTED',
+  },
+});
+const OPENAI_401_BODY = JSON.stringify({
+  error: {
+    message: 'Incorrect API key provided for organization org-A1b2C3d4E5f6 on model gpt-5.5-mini.',
+    type: 'invalid_request_error',
+    code: 'invalid_api_key',
+  },
+});
+const UPSTREAM_BODY_MARKERS = [
+  'gemini-3.6-flash', 'quota metric', 'RESOURCE_EXHAUSTED',
+  'org-A1b2C3d4E5f6', 'invalid_api_key', 'gpt-5.5-mini',
+];
+
+function assertUpstreamBodyStaysPrivate(frames, result, label) {
+  const serialized = JSON.stringify({ frames, result });
+  for (const marker of UPSTREAM_BODY_MARKERS) {
+    assert.equal(serialized.includes(marker), false, `${label}: "${marker}" reached the client`);
+  }
+}
+
+test('runWebRewriteStream answers a provider failure with a closed vocabulary on the server-paid tiers', async () => {
+  /** @type {Array<[number, string, string]>} */
+  const cases = [
+    [429, GEMINI_429_BODY, 'upstream_rate_limited'],
+    [401, OPENAI_401_BODY, 'upstream_rejected'],
+    [503, GEMINI_429_BODY, 'upstream_unavailable'],
+  ];
+  for (const tier of ['free', 'pro']) {
+    for (const [status, body, expected] of cases) {
+      const label = `${tier}/${status}`;
+      const frames = [];
+      const result = await runWebRewriteStream({
+        request: { ...request, tier },
+        // A REAL HttpError: its message carries the truncated provider body.
+        callLLMStream: async ({ onAttempt }) => {
+          onAttempt(privateAttempt({ outcome: 'error', retryReason: 'transport' }));
+          throw new HttpError(status, body, '30');
+        },
+        scoreFns: scoring(),
+        emit: (frame) => frames.push(frame),
+      });
+
+      assert.equal(result.ok, false, label);
+      assert.equal(result.code, 'stream_failed', label);
+      assert.equal(result.error, expected, label);
+      assert.equal(frames.some((frame) => frame.type === 'done'), false, label);
+      assert.deepEqual(frames.at(-1), { type: 'error', code: 'stream_failed', error: expected }, label);
+      assertUpstreamBodyStaysPrivate(frames, result, label);
+      assertFramesDoNotLeakPrivateMetadata(frames);
+    }
+  }
+});
+
+test('runWebRewriteStream keeps redacted provider detail and a coarse status for BYOK', async () => {
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request,
+    callLLMStream: async () => { throw new HttpError(429, GEMINI_429_BODY, '30'); },
+    scoreFns: scoring(),
+    emit: (frame) => frames.push(frame),
+  });
+
+  assert.equal(result.code, 'stream_failed');
+  // The caller owns this provider: the detail is theirs to read, and the coarse
+  // status is what lets a client route auth failures instead of retrying.
+  assert.match(String(result.error), /quota metric/);
+  assert.equal(result.upstreamStatus, 429);
+  assert.deepEqual(frames.at(-1), { type: 'error', code: 'stream_failed', error: result.error, upstreamStatus: 429 });
+  assertFramesDoNotLeakPrivateMetadata(frames);
+});
+
+test('a scorer transport failure reveals nothing about the provider on a server-paid tier', async () => {
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request: { ...request, tier: 'free' },
+    callLLMStream: async ({ onAttempt }) => {
+      onAttempt(privateAttempt());
+      return { text: 'human text' };
+    },
+    scoreFns: { ...scoring(), scoreMPS: async () => { throw new HttpError(429, GEMINI_429_BODY, null); } },
+    emit: (frame) => frames.push(frame),
+  });
+
+  assert.equal(result.code, 'scoring_failed');
+  assert.equal(result.error, 'upstream_rate_limited');
+  assert.equal(frames.some((frame) => frame.type === 'done'), false);
+  assertUpstreamBodyStaysPrivate(frames, result, 'free/scoring');
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
 

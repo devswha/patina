@@ -195,6 +195,32 @@ test('JSON mode maps safety-gate refusals to 422 and upstream failures to 500', 
   }
 });
 
+test('JSON mode mirrors the NDJSON upstream-failure fields, including the BYOK status', async () => {
+  const env = { NODE_ENV: 'test', PATINA_FREE_API_KEY: 'sk-server-free-key' };
+  const cases = [
+    // Server-paid tier: the runner already chose the closed vocabulary, and
+    // JSON mode copies it verbatim with no upstream status attached.
+    [{ code: 'stream_failed', error: 'upstream_rate_limited' }, { ok: false, code: 'stream_failed', error: 'upstream_rate_limited' }],
+    // BYOK: the coarse provider status travels with the redacted detail.
+    [{ code: 'stream_failed', error: 'HTTP 401: invalid api key', upstreamStatus: 401 },
+      { ok: false, code: 'stream_failed', error: 'HTTP 401: invalid api key', upstreamStatus: 401 }],
+  ];
+  for (const [frame, expected] of cases) {
+    const api = createRewriteApiHandler({
+      env,
+      runWebRewriteStreamImpl: async ({ emit }) => {
+        emit({ type: 'start' });
+        emit({ type: 'error', ...frame });
+        return { ok: false, ...frame };
+      },
+    });
+    const res = makeRes();
+    await api(makeReq({ headers: { accept: 'application/json' } }), res);
+    assert.equal(res.statusCode, 500);
+    assert.deepEqual(JSON.parse(res.chunks[0]), expected);
+  }
+});
+
 test('stale source returns HTTP 409 before any runner or stream for every response format', async () => {
   for (const accept of [undefined, 'application/x-ndjson', 'application/json']) {
     let dispatched = false;

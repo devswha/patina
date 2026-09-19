@@ -24,9 +24,10 @@ merging channels or tiers:
 
 The monitor signals are: number safety at one or more 15m events; entitlement only when
 non-ok is at least 5 **and** total is at least 20; synthetic failure after three consecutive
-failures; p95 `>120s` and tail ratio `>5%` only with `n >= 10`; and monitor blindness when
-there is no aggregate in the complete 30m bucket set, logs are unavailable, or
-`monitorDrop >= 3`.
+hourly probe failures, alert window `1h` (the probe cadence, not a log window: the count is
+how many consecutive hourly probes failed); p95 `>120s` and tail ratio `>5%` only with
+`n >= 10`; and monitor blindness when there is no aggregate in the complete 30m bucket set,
+logs are unavailable, or `monitorDrop >= 3`.
 
 ## Cron and synthetic operation
 
@@ -80,10 +81,30 @@ value, a raw synthetic response, or raw error details in browser
 configuration, source control, logs, dashboard annotations, Discord payloads,
 or OBS receipts.
 
-Synthetic failures increment a per-channel, `tier=pro` streak; success resets
-it. At three failures, alert `synthetic_failure`. A synthetic request is an
-operational probe, never customer traffic and never a substitute for
-entitlement or aggregate denominators.
+The probe is budgeted to **one run per hour** by the
+`synthetic-probe-budget` lease, and is skipped entirely while the cheap
+adapters are blind. Synthetic failures increment a per-channel, `tier=pro`
+streak; success resets it; a run that did not probe leaves it unchanged. At
+three failures, alert `synthetic_failure` with window `1h`. The streak key
+carries a **3-hour TTL**: it is written only by a run that actually probed, so
+its TTL has to outlive the worst-case gap between two probes (budget interval
+plus one cron tick plus the whole-run deadline, ~76 minutes) or the streak can
+never reach three. Three hours also keeps it across one skipped probe while
+still expiring after roughly two missed probes, so a stale streak cannot
+contribute to a later alert. A synthetic request is an operational probe, never
+customer traffic and never a substitute for entitlement or aggregate
+denominators.
+
+The probe is a real paid request and is admitted like one: license validation,
+the pro concurrency lease and the daily cap all apply unchanged. Only its
+**monthly** dimensions — monthly requests, monthly characters and the monthly
+processing-attempt budget — are charged to a separate observer namespace rather
+than the licensed seat, because ~24 probes a day would otherwise exhaust the
+seat's monthly allowance within days and every later probe would report its own
+`429` as a Pro outage. The exemption requires **both** the
+`x-patina-synthetic-observer` value and a license the validator accepts; the
+header alone (the free canary), a wrong value, or a request body field never
+obtains it, and the exemption is never logged or echoed.
 
 
 ## Discord alerts, outbox, and recovery

@@ -42,7 +42,11 @@ combine staging with production or one tier with another. Monitor state uses
 only the separate control-key shape
 `patina:monctl:v1:{channel}:{tier}:{suffix}` for synthetic streak,
 pending-alert outbox, active linkage, deduplication, and recovery leases; it is
-likewise never channel- or tier-shared.
+likewise never channel- or tier-shared. Each control key's TTL must exceed the
+interval at which that key is rewritten: the `synthetic-probe-budget` lease is
+1 hour (the probe cadence), so `synthetic-streak` carries 3 hours — it is
+refreshed only by a run that actually probed, and a shorter TTL would expire it
+between two probes and pin the streak at 1.
 
 
 ## Query window and denominator rules
@@ -88,6 +92,7 @@ treating it as zero.
 | Entitlement | `entitlementNonOk` and `entitlementTotal` over 15m | both `entitlementTotal >= 20` and `entitlementNonOk >= 5` |
 | Latency histogram | Sum `completed` counters for each of `<=30s`, `30-60s`, `60-120s`, `>120s` across the 30m overlapping-quarter window | See below; record all four counts and `n` |
 | Monitor delivery | `monitorDrop` from the 30m log aggregate | `monitorDrop >= 3` means `monitor_blind` |
+| Synthetic probe | Consecutive failures of the hourly `tier=pro` probe, from the `synthetic-streak` control key (alert window `1h`, the probe cadence) | `syntheticStreak >= 3` means `synthetic_failure` |
 
 For latency, `n` is the sum of all four buckets. Compute the conservative p95 rank as
 `ceil(0.95 * n)` and select the first bucket whose cumulative count reaches that rank. Its

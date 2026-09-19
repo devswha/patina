@@ -533,10 +533,11 @@ function syncTier() {
 function populateDocumentTypes() {
   const prev = els.documentType.value;
   els.documentType.innerHTML = '';
-  for (const [index, id] of WEB_DOCUMENT_TYPES.entries()) {
+  const labels = experienceCopy(els.lang.value).documents;
+  for (const id of WEB_DOCUMENT_TYPES) {
     if (id === 'namuwiki' && els.lang.value !== 'ko') continue;
-    const label = experienceCopy(els.lang.value).documents[index];
-    els.documentType.appendChild(new Option(label, id));
+    // An id the copy has not caught up with shows as itself, never blank.
+    els.documentType.appendChild(new Option(labels[id] || id, id));
   }
   els.documentType.value = Array.from(els.documentType.options).some((option) => option.value === prev)
     ? prev

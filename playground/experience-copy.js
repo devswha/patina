@@ -1,5 +1,8 @@
 // @ts-check
 // Copy shared by the controller and executable UI recovery tests.
+// `documents` is keyed by document-type id, never by position: a positional list
+// silently mislabels every later option when the contract gains a type (#874
+// inserted three, and "Email" started sending `personal-statement`).
 export const EXPERIENCE_COPY = {
   en: {
     license: 'License key', placeholder: 'License key (kept in memory)', signIn: 'Apply key', signOut: 'Clear key and chats',
@@ -22,7 +25,7 @@ export const EXPERIENCE_COPY = {
     proFeatures: ['Connect patina to your own tools', '100 rewrites / month', 'Up to 20,000 characters each', '50,000 characters / month total'],
     pricingNote: 'The key from your purchase email is the only thing you need — paste it into Pro mode and your first rewrite checks it. We never save it. The monthly count and the monthly character total are separate limits, so either one can stop you first. The limits in place can differ from the ones listed here.',
     labels: ['Language', 'Document type', 'Persona', 'Register', 'Mode'], keepVoice: 'My own voice', keepRegister: 'My own tone', casual: 'Casual', professional: 'Professional',
-    documents: ['Any document', 'Blog', 'Academic', 'Technical', 'Formal', 'Social', 'Email', 'Legal', 'Medical', 'Marketing', 'Narrative', 'Instructional', 'Casual conversation', 'Code comment', 'Commit message', 'Release notes', 'Namuwiki'],
+    documents: { default: 'Any document', blog: 'Blog', academic: 'Academic', technical: 'Technical', formal: 'Formal', resume: 'Resume', 'personal-statement': 'Personal statement', 'project-writeup': 'Project write-up', social: 'Social', email: 'Email', legal: 'Legal', medical: 'Medical', marketing: 'Marketing', narrative: 'Narrative', instructional: 'Instructional', 'casual-conversation': 'Casual conversation', 'code-comment': 'Code comment', 'commit-message': 'Commit message', 'release-notes': 'Release notes', namuwiki: 'Namuwiki' },
     voices: ['Natural', 'Blog / essay', 'Technical explainer', 'Soft professional', 'Pragmatic founder'],
     languageLocked: 'This conversation keeps its original language. Start a new chat to use another language.', send: 'Send',
   },
@@ -47,7 +50,7 @@ export const EXPERIENCE_COPY = {
     proFeatures: ['쓰던 프로그램에 연결해서 사용', '한 달에 100번', '한 번에 최대 20,000자', '한 달에 모두 합쳐 50,000자'],
     pricingNote: '구매 메일로 받은 키 하나면 됩니다. Pro에 붙여넣으면 처음 다듬을 때 확인해요. 키는 저장하지 않습니다. 한 달 횟수와 한 달 글자 수는 따로 세기 때문에, 둘 중 하나가 먼저 찰 수 있어요. 실제로 쓸 수 있는 양은 여기 적힌 것과 다를 수 있어요.',
     labels: ['언어', '문서 유형', '페르소나', '격식', '모드'], keepVoice: '내 문체 그대로', keepRegister: '내 말투 그대로', casual: '편한 말투', professional: '업무 말투',
-    documents: ['문서 유형 없음', '블로그', '학술', '기술', '공식 문서', '소셜', '이메일', '법률', '의료', '마케팅', '서사', '안내문', '일상 대화', '코드 주석', '커밋 메시지', '릴리스 노트', '나무위키'],
+    documents: { default: '문서 유형 없음', blog: '블로그', academic: '학술', technical: '기술', formal: '공식 문서', resume: '이력서', 'personal-statement': '자기소개서', 'project-writeup': '프로젝트 기록', social: '소셜', email: '이메일', legal: '법률', medical: '의료', marketing: '마케팅', narrative: '서사', instructional: '안내문', 'casual-conversation': '일상 대화', 'code-comment': '코드 주석', 'commit-message': '커밋 메시지', 'release-notes': '릴리스 노트', namuwiki: '나무위키' },
     voices: ['자연스러운 문체', '블로그 / 에세이', '기술 해설', '부드러운 업무 문체', '실용적인 창업자'],
     languageLocked: '이 대화는 원문의 언어를 유지합니다. 다른 언어를 쓰려면 새 대화를 시작해 주세요.', send: '보내기',
   },
@@ -72,7 +75,7 @@ export const EXPERIENCE_COPY = {
     proFeatures: ['接进你自己的工具里使用', '每月 100 次', '每次最多 20,000 字符', '每月合计 50,000 字符'],
     pricingNote: '购买邮件里的那把密钥就够了。粘进 Pro，第一次改写时会核对。我们不保存它。每月次数和每月字数是分开算的，哪一项先用完都会停下来。实际的上限可能和这里写的不一样。',
     labels: ['语言', '文档类型', '写作风格', '语体', '模式'], keepVoice: '保留我的风格', keepRegister: '保留我的语气', casual: '日常', professional: '专业',
-    documents: ['不限文档类型', '博客', '学术', '技术', '正式文档', '社交', '电子邮件', '法律', '医疗', '营销', '叙事', '说明', '日常对话', '代码注释', '提交消息', '发行说明', 'Namuwiki'],
+    documents: { default: '不限文档类型', blog: '博客', academic: '学术', technical: '技术', formal: '正式文档', resume: '简历', 'personal-statement': '个人陈述', 'project-writeup': '项目记录', social: '社交', email: '电子邮件', legal: '法律', medical: '医疗', marketing: '营销', narrative: '叙事', instructional: '说明', 'casual-conversation': '日常对话', 'code-comment': '代码注释', 'commit-message': '提交消息', 'release-notes': '发行说明', namuwiki: 'Namuwiki' },
     voices: ['自然', '博客 / 随笔', '技术讲解', '温和专业', '务实创业者'],
     languageLocked: '此对话保留原文语言。请新建对话以使用其他语言。', send: '发送',
   },
@@ -97,7 +100,7 @@ export const EXPERIENCE_COPY = {
     proFeatures: ['お使いのツールにつないで利用', '1 か月 100 回', '1 回あたり最大 20,000 文字', '1 か月で合計 50,000 文字'],
     pricingNote: '購入メールに届いたキーだけで使えます。Pro に貼り付けると、最初の書き換えで確認します。キーは保存しません。1 か月の回数と文字数は別々に数えるので、どちらかが先に上限に達することがあります。実際の上限はここに書いたものと異なる場合があります。',
     labels: ['言語', '文書の種類', 'ペルソナ', '文体', 'モード'], keepVoice: '自分の文体のまま', keepRegister: '自分の語調のまま', casual: 'カジュアル', professional: '業務向け',
-    documents: ['文書の種類なし', 'ブログ', '学術', '技術', '公式文書', 'ソーシャル', 'メール', '法律', '医療', 'マーケティング', '物語', '説明文', '日常会話', 'コードコメント', 'コミットメッセージ', 'リリースノート', 'Namuwiki'],
+    documents: { default: '文書の種類なし', blog: 'ブログ', academic: '学術', technical: '技術', formal: '公式文書', resume: '履歴書', 'personal-statement': '自己紹介書', 'project-writeup': 'プロジェクト記録', social: 'ソーシャル', email: 'メール', legal: '法律', medical: '医療', marketing: 'マーケティング', narrative: '物語', instructional: '説明文', 'casual-conversation': '日常会話', 'code-comment': 'コードコメント', 'commit-message': 'コミットメッセージ', 'release-notes': 'リリースノート', namuwiki: 'Namuwiki' },
     voices: ['自然な文体', 'ブログ / エッセイ', '技術解説', '柔らかな業務文体', '実務的な創業者'],
     languageLocked: 'この会話は原文の言語を保持します。別の言語を使うには新しい会話を始めてください。', send: '送信',
   },

@@ -49,6 +49,40 @@ export const SCORE_INTERPRETATION_BANDS = Object.freeze([
  */
 export const STRUCTURAL_CLASSIFIER_MIN_FLOOR = 70;
 
+/**
+ * Closed set of `error` values a failed scorer result may carry.
+ *
+ * Both mean "no usable verdict", and both are fail-closed for every gate that
+ * reads `error != null`. They are distinguished because they mean different
+ * things about the rewrite: SCHEMA_FAILURE says the judge answered and the
+ * answer was unusable, TRANSPORT_FAILURE says the judge never answered at all
+ * (HTTP 429/5xx, network failure, per-attempt timeout). Only the caller can
+ * decide what to tell a user, and telling someone their rewrite missed the
+ * meaning floor when nothing was ever scored is wrong.
+ *
+ * @type {Readonly<{SCHEMA_FAILURE: string, TRANSPORT_FAILURE: string}>}
+ */
+export const SCORE_ERRORS = Object.freeze({
+  SCHEMA_FAILURE: 'schema-failure',
+  TRANSPORT_FAILURE: 'transport-failure',
+});
+
+/**
+ * Classify a scorer failure. `callAndParseJson` attaches `raw` (the provider's
+ * response text) to a parse/validation error and only to that: a transport
+ * error is rethrown with no response to attach. So the presence of an own
+ * `raw` property is the discriminator, and it stays correct for shapes that
+ * carry no status either — a `callLLM` timeout is a plain `TimeoutError`.
+ *
+ * @param {unknown} error
+ * @returns {string} One of {@link SCORE_ERRORS}.
+ */
+function scoreFailureKind(error) {
+  return Object.hasOwn(Object(error ?? {}), 'raw')
+    ? SCORE_ERRORS.SCHEMA_FAILURE
+    : SCORE_ERRORS.TRANSPORT_FAILURE;
+}
+
 // Call LLM and parse strict JSON. On schema failure, retry once at temperature 0.
 // Attempt indices are one-based across all transport and schema retries in one score.
 async function callAndParseJson({
@@ -779,10 +813,11 @@ ${fenceReferenceText(rewritten, { label: '## Rewritten reference' })}
     return parsed;
   } catch (e) {
     rethrowIfAborted(e, signal);
-    logger.warn('score.mps_schema_failure', {
-      message: `[patina] scoreMPS schema failure after retry: ${redactErrorText(e.message)}`,
+    const kind = scoreFailureKind(e);
+    logger.warn(kind === SCORE_ERRORS.TRANSPORT_FAILURE ? 'score.mps_transport_failure' : 'score.mps_schema_failure', {
+      message: `[patina] scoreMPS ${kind} after retry: ${redactErrorText(e.message)}`,
     });
-    return { mps: null, error: 'schema-failure', raw: e.raw };
+    return { mps: null, error: kind, raw: e.raw };
   }
 }
 
@@ -902,7 +937,8 @@ ${fenceReferenceText(rewritten, { label: '## Rewritten reference' })}
 `;
 
   let parsed = null;
-  let schemaError = null;
+  let scoreError = null;
+  let scoreErrorKind = null;
   try {
     const result = await callAndParseJson({
       prompt,
@@ -925,16 +961,18 @@ ${fenceReferenceText(rewritten, { label: '## Rewritten reference' })}
     parsed = result.parsed;
   } catch (e) {
     rethrowIfAborted(e, signal);
-    logger.warn('score.fidelity_schema_failure', {
-      message: `[patina] scoreFidelity schema failure after retry: ${redactErrorText(e.message)}`,
+    const kind = scoreFailureKind(e);
+    logger.warn(kind === SCORE_ERRORS.TRANSPORT_FAILURE ? 'score.fidelity_transport_failure' : 'score.fidelity_schema_failure', {
+      message: `[patina] scoreFidelity ${kind} after retry: ${redactErrorText(e.message)}`,
     });
-    schemaError = e;
+    scoreError = e;
+    scoreErrorKind = kind;
   }
 
   const claims = parsed?.claims_preserved ?? null;
   const noFab = parsed?.no_fabrication ?? null;
   const registerMatch = parsed?.audience_register_match ?? null;
-  const fidelity = schemaError ? null : ((claims + noFab + registerMatch + lengthPoints) / 12) * 100;
+  const fidelity = scoreError ? null : ((claims + noFab + registerMatch + lengthPoints) / 12) * 100;
 
   return {
     criteria: {
@@ -946,7 +984,7 @@ ${fenceReferenceText(rewritten, { label: '## Rewritten reference' })}
     length_ratio_pct: lengthRatio,
     rationale: parsed?.rationale ?? null,
     fidelity: fidelity === null ? null : Math.round(fidelity * 10) / 10,
-    ...(schemaError ? { error: 'schema-failure', raw: schemaError.raw } : {}),
+    ...(scoreError ? { error: scoreErrorKind, raw: scoreError.raw } : {}),
   };
 }
 

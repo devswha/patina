@@ -270,6 +270,12 @@ export const REWRITE_ERROR_KINDS = Object.freeze({
  * quota copy without inventing a reset time or window, unrecognized
  * 5xx to SERVICE_UNAVAILABLE.
  *
+ * `stream_failed` and `scoring_failed` are the exception: their `error` field
+ * describes the UPSTREAM provider, not patina's own limits, so it is never
+ * reason-matched. Otherwise an upstream body saying "daily quota exceeded"
+ * would be shown as patina's own daily quota refusal, complete with a Pro
+ * upsell, when the caller's quota is untouched.
+ *
  * @param {Record<string, unknown>|null|undefined} frame
  * @returns {string} one of REWRITE_ERROR_KINDS
  */
@@ -278,7 +284,8 @@ export function classifyRewriteError(frame) {
   const R = QUOTA_REASONS;
   const status = Number(frame?.status);
   const code = typeof frame?.code === 'string' ? frame.code : '';
-  const reason = typeof frame?.error === 'string' ? frame.error.toLowerCase() : '';
+  const upstream = code === 'stream_failed' || code === 'scoring_failed';
+  const reason = !upstream && typeof frame?.error === 'string' ? frame.error.toLowerCase() : '';
   if (status === 401) return K.AUTH_REQUIRED;
   if (status === 403) return K.AUTH_DENIED;
   if (code === 'floor_failed') return K.FLOOR_FAILED;

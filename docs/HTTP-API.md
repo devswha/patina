@@ -101,11 +101,21 @@ When `Accept` is absent, `*/*`, or does not request JSON, the response is `200 a
 A streaming terminal error is also an NDJSON frame, for example:
 
 ```ndjson
-{"type":"error","code":"stream_failed","error":"upstream request failed"}
+{"type":"error","code":"stream_failed","error":"upstream_unavailable"}
 {"type":"error","code":"floor_failed","failed":["mps"],"rewrite":"...","mps":{"mps":65},"fidelity":{"fidelity":93},"signals":{"before":{"overall":72},"after":{"overall":18}},"diff":{"beforeChars":39,"afterChars":48}}
 ```
 
 Other terminal stream codes are `number_safety_failed` and `scoring_failed`.
+
+On the server-paid tiers (`free`, `pro`) the provider and the model are the server's private configuration, so `stream_failed` and `scoring_failed` never forward provider response text. Their `error` field is one of a closed set chosen by the upstream status class:
+
+| `error` | Upstream status |
+| --- | --- |
+| `upstream_rate_limited` | 408, 425, 429 |
+| `upstream_unavailable` | 5xx, or no HTTP status (network error, timeout, deadline abort) |
+| `upstream_rejected` | any other non-2xx status |
+
+On `byok` the caller owns the provider and the key, so `error` keeps the redacted provider detail and the frame also carries `upstreamStatus` (the numeric provider status) when the transport recorded one. JSON mode returns the same `error` and `upstreamStatus` values.
 
 ### Non-streaming JSON
 

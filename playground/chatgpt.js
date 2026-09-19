@@ -341,7 +341,10 @@ async function attachReview(convo, message, body, textEl, statusEl) {
             body.appendChild(buildOutputActions(candidate));
           }
         }
-        if ((isAccepted || isOriginal) && convo.thread.currentDraft !== candidate) convo.thread.recordTurn('assistant', candidate);
+        // A review toggle changes which draft the next refine rewrites, not
+        // what the user asked for: update the draft, never append a turn (six
+        // toggles used to evict every real turn from the history).
+        if (isAccepted || isOriginal) convo.thread.currentDraft = candidate;
         updateHeroSend(); updateChatSend(); syncSettingsBusy();
       },
       onVerify: async (candidate, baseHash) => {
@@ -359,6 +362,7 @@ async function attachReview(convo, message, body, textEl, statusEl) {
         Object.assign(reqBody, { mode: REWRITE_MODES.VERIFY, original, text: candidate, baseHash, includeEdits: true,
           protectedSpans });
         delete reqBody.history;
+        delete reqBody.instruction;
         const resultView = buildPatinaMsg();
         const inner = threadInner();
         convo.messages.push({ role: 'user', text: copy.requested });
@@ -1168,8 +1172,13 @@ async function submit(text, source = 'hero') {
   const initialTurn = currentConvo?.thread.original == null;
   const preflightLang = initialTurn && !currentConvo?.thread.languageExplicit ? (detectLang(clean) || els.lang.value) : els.lang.value;
   const preflightMode = initialTurn ? 'first' : 'refine';
-  if (!preflight(clean, source)) {
-    const data = rewriteData(source, clean, preflightMode, preflightLang);
+  // What the request will actually ask the server to rewrite: the source on a
+  // first turn, the latest accepted draft on a refine turn (where the composer
+  // line travels as `instruction`). Length caps and analytics buckets measure
+  // that text, not the follow-up instruction.
+  const target = initialTurn ? clean : (currentConvo?.thread.currentDraft ?? clean);
+  if (!preflight(target, source)) {
+    const data = rewriteData(source, target, preflightMode, preflightLang);
     track('Rewrite Requested', data);
     track('Rewrite Failed', { ...data, latencyBucket: '<5s', outcome: 'preflight' });
     return;
@@ -1205,7 +1214,7 @@ async function submit(text, source = 'hero') {
   });
   reqBody.includeEdits = true;
   reqBody.protectedSpans = protectedInputSpans(convo.thread.original ?? clean, convo.protectedInput || '');
-  const telemetry = rewriteData(source, clean, String(reqBody.mode));
+  const telemetry = rewriteData(source, String(reqBody.text ?? ''), String(reqBody.mode));
   await runAttempt({
     convo, clean, reqBody, body, textEl, statusEl, telemetry,
     authorization: tier === WEB_TIERS.PRO ? `Bearer ${state.license}` : undefined,
@@ -1335,7 +1344,11 @@ async function runAttempt(attempt) {
           editReview: frame.editReview, protectedSpans: reqBody.protectedSpans || [] };
         convo.messages.push(message);
         convo.reviewPending = false;
-        convo.thread.commit({ userText: clean, assistantText: rewrite });
+        // Verification re-checks a draft the user assembled; it is not a turn
+        // the user asked for, so it advances the draft without adding the whole
+        // draft to the conversation history as a user+assistant pair.
+        if (reqBody.mode === REWRITE_MODES.VERIFY) convo.thread.currentDraft = rewrite;
+        else convo.thread.commit({ userText: clean, assistantText: rewrite });
         void attachReview(convo, message, body, textEl, statusEl);
         scrollDown();
       },
@@ -1358,7 +1371,7 @@ async function runAttempt(attempt) {
         textEl.style.display = '';
         textEl.textContent = attemptText || cleanStream(textEl.textContent);
         textEl.classList.add('msg__text--flagged');
-        body.appendChild(buildMeta({ mps: ff.mps, fidelity: ff.fidelity, signals: ff.signals, diff: ff.diff, floorFailed: true }, clean));
+        body.appendChild(buildMeta({ mps: ff.mps, fidelity: ff.fidelity, signals: ff.signals, diff: ff.diff, floorFailed: true }, reqBody.original ?? clean));
         body.appendChild(errorNote(t.floorWarn));
       } else {
         textEl.style.display = 'none';

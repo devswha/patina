@@ -3,11 +3,11 @@
 import { createThreadPreferences } from './preferences.js';
 
 import {
-  CONTEXT_LIMITS,
   QUOTA_REASONS,
   REWRITE_MODES,
   STREAM_FRAME_TYPES,
   WEB_TIERS,
+  normalizeHistory,
   parseStreamFrame,
 } from '../src/web-rewrite-contract.js';
 
@@ -15,8 +15,16 @@ import {
  * @typedef {{role:'user'|'assistant', content:string}} RewriteTurn
  */
 
+// Cap history exactly as the server does — by CALLING the server's own
+// normalizer (recent CONTEXT_LIMITS.maxTurns turns, then oldest-first trimming
+// under CONTEXT_LIMITS.maxBytes) instead of re-implementing half of it here.
+// Both sides then keep the same turns, so a long draft in history can never
+// mean one thing to the client and another to the server. History carries edit
+// preferences only — the draft itself travels as `text` — so a rejected turn
+// shape drops the preferences rather than sending a body the server would 400.
 function capTurns(turns) {
-  return turns.slice(-CONTEXT_LIMITS.maxTurns);
+  const normalized = normalizeHistory(turns);
+  return normalized.ok ? normalized.value : [];
 }
 
 /**
@@ -56,6 +64,12 @@ export function createRewriteThread(options) {
      * Build a request body WITHOUT mutating thread state. State is only
      * committed on an accepted rewrite (see commit), so a failed/floor-rejected
      * turn never poisons the next request's original/history (fail-closed UX).
+     *
+     * `text` is what the user typed. On a FIRST turn that is the source, so it
+     * is sent as the request's `text`. On a REFINE turn it is the follow-up
+     * edit request, so it travels as `instruction` and the request's `text` is
+     * the thread's latest accepted draft: `text` means "the text to rewrite" on
+     * both sides of the wire (see validateRewriteRequest).
      * @param {{text:string, tier:string, provider?:string, model?:string, apiKey?:string, documentType?:string, persona?:string, register?:string}} input
      * @returns {Record<string, unknown>}
      */
@@ -66,7 +80,7 @@ export function createRewriteThread(options) {
         mode: isRefine ? REWRITE_MODES.REFINE : REWRITE_MODES.FIRST,
         lang: preferences.value.lang,
         tier,
-        text: cleanText,
+        text: isRefine ? currentDraft : cleanText,
       };
 
       const settings = { ...preferences.value, ...Object.fromEntries(
@@ -78,6 +92,7 @@ export function createRewriteThread(options) {
 
       if (isRefine) {
         Object.assign(body, { original, history: capTurns(turns) });
+        if (cleanText.trim()) body.instruction = cleanText;
       }
 
       if (tier === WEB_TIERS.BYOK) {
@@ -103,15 +118,6 @@ export function createRewriteThread(options) {
         { role: 'assistant', content: String(assistantText ?? '') },
       ]);
       currentDraft = String(assistantText ?? '');
-    },
-
-    /**
-     * @param {'user'|'assistant'} role
-     * @param {string} content
-     */
-    recordTurn(role, content) {
-      turns = capTurns([...turns, { role, content: String(content ?? '') }]);
-      if (role === 'assistant') currentDraft = String(content ?? '');
     },
 
     reset() {

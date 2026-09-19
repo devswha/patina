@@ -122,8 +122,14 @@ export function resolveTierLimits(env = {}) {
 /**
  * Conversation context caps. The client holds the thread (no-store server); the
  * server re-caps every request to `maxTurns` recent turns and `maxBytes` total.
+ *
+ * `maxInstructionChars` bounds the optional refine `instruction` (see
+ * validateRewriteRequest). An instruction is one composer line ("make it
+ * shorter"), never a document: the document travels as `text`. 2,000 characters
+ * is half the smallest tier text cap (free `maxChars`) and far above any real
+ * follow-up, so it bounds prompt growth without truncating genuine use.
  */
-export const CONTEXT_LIMITS = Object.freeze({ maxTurns: 6, maxBytes: 12 * 1024 });
+export const CONTEXT_LIMITS = Object.freeze({ maxTurns: 6, maxBytes: 12 * 1024, maxInstructionChars: 2000 });
 
 /**
  * Stable quota/service denial reason strings, emitted by the rate limiter
@@ -388,12 +394,12 @@ export function resolveProviderModel({ tier, provider, model } = {}, env = {}) {
  * Returns a trimmed copy; invalid shapes are rejected.
  *
  * @param {unknown} history
- * @returns {{ok:true, value:Array<{role:string,content:string}>}|{ok:false, error:string}}
+ * @returns {{ok:true, value:Array<{role:'user'|'assistant',content:string}>}|{ok:false, error:string}}
  */
 export function normalizeHistory(history) {
   if (history == null) return { ok: true, value: [] };
   if (!Array.isArray(history)) return { ok: false, error: 'history must be an array' };
-  /** @type {Array<{role:string,content:string}>} */
+  /** @type {Array<{role:'user'|'assistant',content:string}>} */
   const turns = [];
   for (const turn of history) {
     if (!turn || typeof turn !== 'object') return { ok: false, error: 'history turn must be an object' };
@@ -502,6 +508,31 @@ export function validateRewriteRequest(body, env = {}, options = {}) {
     }
   }
 
+  // Optional refine instruction: the user's follow-up edit request for this
+  // turn ("make it shorter"). `text` is the text to rewrite in EVERY mode — on
+  // a refine turn that is the latest draft — so the follow-up needs a field of
+  // its own instead of overloading `text`. Absent or blank means exactly the
+  // pre-instruction behavior, so deployed clients and API callers that never
+  // send it are unaffected. It is meaningless outside refine (`first` has no
+  // draft to edit, `verify` generates no text), and is rejected there rather
+  // than silently dropped, like verify's rejection of conversation history.
+  const instructionRaw = /** @type {any} */ (body).instruction;
+  let instruction;
+  const instructionBlank = instructionRaw == null
+    || (typeof instructionRaw === 'string' && instructionRaw.trim().length === 0);
+  if (!instructionBlank) {
+    if (mode !== REWRITE_MODES.REFINE) {
+      return { ok: false, status: 400, error: `${mode} mode does not accept an instruction` };
+    }
+    if (typeof instructionRaw !== 'string' || !isWellFormedText(instructionRaw)) {
+      return { ok: false, status: 400, error: 'instruction must be well-formed Unicode text' };
+    }
+    if (instructionRaw.length > CONTEXT_LIMITS.maxInstructionChars) {
+      return { ok: false, status: 413, error: `instruction exceeds ${CONTEXT_LIMITS.maxInstructionChars} characters` };
+    }
+    instruction = instructionRaw;
+  }
+
   const controls = /** @type {any} */ (body);
   if (!isWellFormedText(text) || !isWellFormedText(mode === REWRITE_MODES.FIRST ? text : original)) {
     return { ok: false, status: 400, error: 'text and original must be well-formed Unicode' };
@@ -578,6 +609,7 @@ export function validateRewriteRequest(body, env = {}, options = {}) {
       persona,
       documentType,
       register,
+      ...(instruction !== undefined ? { instruction } : {}),
       ...(controls.includeEdits !== undefined ? { includeEdits: controls.includeEdits } : {}),
       ...(controls.baseHash !== undefined ? { baseHash: controls.baseHash } : {}),
       ...(protectedSpans !== undefined ? { protectedSpans } : {}),

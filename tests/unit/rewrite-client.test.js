@@ -165,6 +165,7 @@ test('createRewriteThread builds first/refine requests (commit-on-done) and caps
   assert.equal(freeBody.mode, 'first');
   assert.equal(freeBody.lang, 'ko');
   assert.equal(freeBody.text, '원문');
+  assert.equal('instruction' in freeBody, false, 'a first turn has no draft to instruct against');
   assert.equal('apiKey' in freeBody, false);
   // Pure build does not mutate thread state.
   assert.equal(thread.original, undefined);
@@ -193,6 +194,12 @@ test('createRewriteThread builds first/refine requests (commit-on-done) and caps
 
   assert.equal(byokBody.mode, 'refine');
   assert.equal(byokBody.original, '원문');
+  // `text` is the text to rewrite in every mode: on a refine turn that is the
+  // latest accepted draft, and the composer line travels as `instruction`.
+  // (Sending the instruction as `text` is what made the server rewrite the
+  // follow-up instead of the draft.)
+  assert.equal(byokBody.text, thread.currentDraft);
+  assert.equal(byokBody.instruction, '더 짧게');
   assert.deepEqual(byokBody.history, thread.turns);
   assert.equal(byokBody.provider, 'openai');
   assert.equal(byokBody.model, 'gpt-4.1-mini');
@@ -202,6 +209,27 @@ test('createRewriteThread builds first/refine requests (commit-on-done) and caps
   assert.equal(thread.original, undefined);
   assert.equal(thread.currentDraft, '');
   assert.deepEqual(thread.turns, []);
+});
+
+test('client history obeys the server byte cap and an over-cap draft still travels as text', () => {
+  const thread = createRewriteThread({ lang: 'en' });
+  const hugeDraft = 'D'.repeat(CONTEXT_LIMITS.maxBytes + 1);
+  thread.commit({ userText: 'Source paragraph.', assistantText: hugeDraft });
+
+  // The server drops history it cannot fit (normalizeHistory trims oldest-first
+  // under maxBytes); the client now drops exactly the same turns instead of
+  // sending turns the server would discard.
+  assert.deepEqual(thread.turns, []);
+  const body = thread.buildRequest({ text: 'Make it shorter.', tier: WEB_TIERS.FREE });
+  assert.deepEqual(body.history, []);
+  // Losing history loses edit preferences only: the draft is the rewrite target.
+  assert.equal(body.text, hugeDraft);
+  assert.equal(body.instruction, 'Make it shorter.');
+
+  // A blank composer line adds no instruction field; the draft is still the target.
+  const blank = thread.buildRequest({ text: '   ', tier: WEB_TIERS.FREE });
+  assert.equal('instruction' in blank, false);
+  assert.equal(blank.text, hugeDraft);
 });
 
 test('buildRequest carries an opted-in voice persona on every turn and omits it by default', () => {

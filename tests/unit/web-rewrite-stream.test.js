@@ -1,7 +1,7 @@
 // @ts-check
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mpsResult, fidelityResult } from '../fixtures/verification-results.js';
+import { mpsResult, fidelityResult, zeroAnchorMps, highHardFailMps } from '../fixtures/verification-results.js';
 import { buildDocumentSignals } from '../../src/features/document-signals.js';
 import { rewriteExtraBody, runWebRewriteStream, scoringExtraBody } from '../../src/web-rewrite-stream.js';
 import { buildWebRewriteReceipt, canonicalJson, sha256 } from '../../src/web-rewrite-receipt.js';
@@ -1212,4 +1212,71 @@ test('runWebRewriteStream without a timeout keeps legacy per-stage behavior', as
   });
   assert.equal(result.ok, true);
   assert.equal(seenTimeout, undefined);
+});
+
+test('an empty-anchor MPS cannot certify a numeric source on the hosted floor (#871/#872)', async () => {
+  // The #872 hole: identical claim bags with swapped roles pass the
+  // deterministic number-safety gate, so certification must come from
+  // anchors. Zero anchors is "MPS = N/A" rendered as 100 — absence of
+  // evidence — and must fail the hosted floor exactly as verifyRewrite
+  // refuses to certify it on the CLI lane (#871).
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request: { ...request, original: 'The team shipped 3 features and fixed 12 bugs this quarter.' },
+    callLLMStream: async () => ({ text: 'The team shipped 12 features and fixed 3 bugs this quarter.' }),
+    scoreFns: {
+      scoreMPS: async (input) => { input.onAttempt(privateAttempt()); return zeroAnchorMps(); },
+      scoreFidelity: async (input) => { input.onAttempt(privateAttempt()); return fidelityResult(12); },
+      scoreDeterministicSignals: ({ text }) => ({ overall: text.length, text }),
+    },
+    emit: (frame) => frames.push(frame),
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'floor_failed');
+  assert.ok(result.failed.includes('mps'), `failed: ${result.failed.join(',')}`);
+  assert.equal(frames.at(-1).code, 'floor_failed');
+  assert.ok(frames.at(-1).failed.includes('mps'));
+  // The swap itself never trips the deterministic bag gate — that is the hole
+  // this veto closes; the anchored MPS carries the decision from here.
+  assert.equal(result.mps.anchors.length, 0);
+});
+
+test('an empty-anchor MPS still certifies a claim-free source (#871 carve-out)', async () => {
+  // Claim-free text is genuinely exempt from the MPS floor: zero anchors on
+  // a source with no numeric claims is a real N/A, not hidden evidence.
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request: { ...request, original: 'The team shipped the quarterly plan and closed every open thread.' },
+    callLLMStream: async () => ({ text: 'The team delivered the quarterly plan and closed every open thread.' }),
+    scoreFns: {
+      scoreMPS: async (input) => { input.onAttempt(privateAttempt()); return zeroAnchorMps(); },
+      scoreFidelity: async (input) => { input.onAttempt(privateAttempt()); return fidelityResult(12); },
+      scoreDeterministicSignals: ({ text }) => ({ overall: text.length, text }),
+    },
+    emit: (frame) => frames.push(frame),
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(frames.at(-1).type, 'done');
+});
+
+test('a HARD_FAIL MPS rejects the same role swap even above the floor (#872)', async () => {
+  // Swapped roles are MPS HARD_FAIL's responsibility by design (the #906
+  // calibration ruled out deterministic local binding): a schema-consistent
+  // 95 carrying one HARD_FAIL anchor must 422 even though 95 clears the
+  // floor arithmetically.
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request: { ...request, original: 'The team shipped 3 features and fixed 12 bugs this quarter.' },
+    callLLMStream: async () => ({ text: 'The team shipped 12 features and fixed 3 bugs this quarter.' }),
+    scoreFns: {
+      scoreMPS: async (input) => { input.onAttempt(privateAttempt()); return highHardFailMps(); },
+      scoreFidelity: async (input) => { input.onAttempt(privateAttempt()); return fidelityResult(12); },
+      scoreDeterministicSignals: ({ text }) => ({ overall: text.length, text }),
+    },
+    emit: (frame) => frames.push(frame),
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'floor_failed');
+  assert.ok(result.failed.includes('mps'));
+  assert.equal(result.mps.hard_fail_count, 1);
 });

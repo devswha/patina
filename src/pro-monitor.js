@@ -1,4 +1,6 @@
 /** Private, aggregate-only health monitor for the Pro rewrite path. */
+import { timingSafeEqual } from 'node:crypto';
+
 export const MONITOR_KEY_PREFIX = 'patina:mon:v1';
 const CONTROL_KEY_PREFIX = 'patina:monctl:v1';
 export const LATENCY_BUCKETS = Object.freeze(['<=30s', '30-60s', '60-120s', '>120s']);
@@ -12,6 +14,16 @@ const QUARTER_MS = 15 * 60 * 1000;
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const TWO_HOURS_MS = 2 * ONE_HOUR_MS;
+// The paid probe is budgeted to one run per hour; the persisted failure streak
+// must therefore outlive the gap between two probes, or the trigger below can
+// never be reached. Worst case that gap is the budget interval plus one cron
+// tick plus one whole-run deadline (60m + 15m + 55s ~ 76m), so a TTL under
+// that expires the streak between every pair of probes and pins it at 1.
+// Three intervals keeps the streak across a probe the blind-adapter guard
+// skipped (~136m) while still dropping it after two consecutive misses, so a
+// stale streak can never survive into a later incident.
+const SYNTHETIC_PROBE_INTERVAL_MS = ONE_HOUR_MS;
+const SYNTHETIC_STREAK_TTL_MS = 3 * SYNTHETIC_PROBE_INTERVAL_MS;
 const SNAPSHOT_DEADLINE_MS = 30_000;
 // Free and BYOK successful rewrites are emitted once per twenty requests.
 // Failures remain census events, so their observed count is never expanded.
@@ -76,7 +88,12 @@ export function overlappingQuarterBuckets(now = new Date()) {
   for (let start = current - 2 * QUARTER_MS; start <= current; start += QUARTER_MS) if (start + QUARTER_MS > cutoff) buckets.push(utc15mBucket(start));
   return buckets;
 }
-export function isCronAuthorized(authorization, expectedToken) { return typeof expectedToken === 'string' && expectedToken.length > 0 && !Array.isArray(authorization) && authorization === `Bearer ${expectedToken}`; }
+/** Compare the cron bearer in constant time; a length mismatch is rejected before the compare. */
+export function isCronAuthorized(authorization, expectedToken) {
+  if (typeof expectedToken !== 'string' || expectedToken.length === 0 || typeof authorization !== 'string') return false;
+  const provided = Buffer.from(authorization, 'utf8'); const wanted = Buffer.from(`Bearer ${expectedToken}`, 'utf8');
+  return provided.length === wanted.length && timingSafeEqual(provided, wanted);
+}
 export const verifyCronAuthorization = isCronAuthorized;
 function countBand(count) { const n = Math.max(0, Math.floor(Number(count) || 0)); return n === 0 ? '0' : n === 1 ? '1' : n < 5 ? '2-4' : n < 10 ? '5-9' : n < 20 ? '10-19' : '20+'; }
 function safeEvidence(evidence = {}) { const output = {}; for (const [key, value] of Object.entries(evidence)) if (['ratioBand', 'latencyBound', 'rankBand', 'reason'].includes(key) && typeof value === 'string' && /^[a-z0-9><=._-]+$/i.test(value)) output[key] = value; return output; }
@@ -257,9 +274,12 @@ export async function evaluateProMonitor(deps) {
   // probe when blind, and budget it to one per hour otherwise. A skipped
   // probe reports 'failed' (conservative) but neither grows nor resets the
   // persisted streak, so it can never fabricate a synthetic_failure alert.
+  // The budget interval and the streak TTL are one pair: the streak is
+  // persisted only on a run that actually probed, so its TTL must span the gap
+  // this lease creates (see SYNTHETIC_STREAK_TTL_MS).
   const adaptersBlind = !aggregateAvailable || !safetyLogs.available || !dropLogs.available;
   let syntheticTerminal = 'failed'; let syntheticRan = false;
-  if (!adaptersBlind && await acquire(controlStore, controlKey(channel, tier, 'synthetic-probe-budget'), `${now.getTime()}`, ONE_HOUR_MS)) {
+  if (!adaptersBlind && await acquire(controlStore, controlKey(channel, tier, 'synthetic-probe-budget'), `${now.getTime()}`, SYNTHETIC_PROBE_INTERVAL_MS)) {
     syntheticRan = true;
     try { const response = await syntheticRequest({ channel, tier, text: SYNTHETIC_TEXT, timeoutMs: 60_000 }); syntheticTerminal = response?.terminal === 'done' && response?.ok === true ? 'done' : 'failed'; } catch {}
   }
@@ -269,11 +289,14 @@ export async function evaluateProMonitor(deps) {
   const previousStreak = storedStreak;
   if (syntheticRan && syntheticTerminal !== 'done' && previousStreak === Number.MAX_SAFE_INTEGER) throw new Error('synthetic streak overflow');
   const syntheticStreak = syntheticRan ? (syntheticTerminal === 'done' ? 0 : previousStreak + 1) : previousStreak;
-  if (syntheticRan && await requiredControl(controlStore, 'set')(streakKey, syntheticStreak, THIRTY_MINUTES_MS) !== true) throw new Error('synthetic streak persistence failed');
+  if (syntheticRan && await requiredControl(controlStore, 'set')(streakKey, syntheticStreak, SYNTHETIC_STREAK_TTL_MS) !== true) throw new Error('synthetic streak persistence failed');
   const triggers = [];
   if (numberSafety >= 1) triggers.push({ trigger: 'number_safety', count: numberSafety, window: '15m' });
   if (entitlementTotal >= 20 && entitlementNonOk >= 5) triggers.push({ trigger: 'entitlement_pro', count: entitlementNonOk, window: '15m' });
-  if (syntheticStreak >= 3) triggers.push({ trigger: 'synthetic_failure', count: syntheticStreak, window: '30m' });
+  // `window` is the probe cadence, not a log window: the count is how many
+  // consecutive hourly probes failed, so the label stays true at every count
+  // (a streak of 3 and a re-alert at 5 are both hourly probes).
+  if (syntheticStreak >= 3) triggers.push({ trigger: 'synthetic_failure', count: syntheticStreak, window: '1h' });
   if (histogram.n >= 10 && histogram.selectedBucket === '>120s') triggers.push({ trigger: 'p95_latency', count: histogram.n, window: '30m', evidence: { latencyBound: '>120s', rankBand: 'p95' } });
   if (histogram.n >= 10 && histogram.over120Ratio > 0.05) triggers.push({ trigger: 'latency_tail', count: histogram.counts['>120s'], window: '30m', evidence: { ratioBand: '>5pct' } });
   if (!aggregateAvailable || !safetyLogs.available || !dropLogs.available || productionAggregate === 0 || monitorDrop >= 3) {

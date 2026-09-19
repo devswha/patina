@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { createMemoryKv, createRateLimiter } from '../../src/rate-limit.js';
 import { createRewriteHandler } from '../../src/rewrite-handler.js';
-import { TIER_LIMITS } from '../../src/web-rewrite-contract.js';
+import { QUOTA_REASONS, TIER_LIMITS } from '../../src/web-rewrite-contract.js';
 
 function setup(overrides = {}) {
   let time = Date.UTC(2026, 8, 4, 12);
@@ -13,6 +13,33 @@ function setup(overrides = {}) {
   const limiter = createRateLimiter({ kv, hmacSecret: 'test-secret', now, limits });
   const check = (requestId, chars = 100) => limiter.check({ tier: 'pro', subject: 'subject', requestId, chars });
   return { kv, limiter, check, advance(value) { time = value; } };
+}
+
+// The monitor's probe is a real pro request carrying two server-side facts: the
+// trusted observer marker and a license the validator accepts.
+const OBSERVER_SECRET = 'observer-secret-value';
+function probeHeaders(marker) {
+  return { authorization: 'Bearer synthetic-license', 'x-real-ip': '203.0.113.1', ...(marker === undefined ? {} : { 'x-patina-synthetic-observer': marker }) };
+}
+function proRequest(headers, body = {}) {
+  return { method: 'POST', headers, body: { mode: 'first', tier: 'pro', lang: 'en', text: 'Patina monitor health check.', ...body } };
+}
+function capture() { return { statusCode: 200, setHeader() {}, end(value) { this.body = value; }, body: undefined }; }
+function proHandler(limiter, overrides = {}) {
+  const runs = { count: 0 };
+  return { runs, handler: createRewriteHandler({
+    rateLimiter: limiter,
+    env: { PATINA_SYNTHETIC_OBSERVER_SECRET: OBSERVER_SECRET },
+    licenseValidator: { async validate() { return { ok: true, subject: 'subject', tier: 'pro', status: 'active', cache: 'miss' }; } },
+    runRewrite: async () => { runs.count += 1; return { ok: true }; },
+    ...overrides,
+  }) };
+}
+async function spendMonthlyAllowance(limiter) {
+  const first = await limiter.check({ tier: 'pro', subject: 'subject', chars: 100, requestId: 'customer-1' });
+  const second = await limiter.check({ tier: 'pro', subject: 'subject', chars: 100, requestId: 'customer-2' });
+  assert.equal(first.allowed && second.allowed, true);
+  return first.reservation;
 }
 
 test('failed rewrite restores allowance exactly once while attempts remain counted', async () => {
@@ -132,6 +159,87 @@ test('a disconnect during admission does not start a runner or masquerade as a r
   assert.equal(ran, false);
   assert.equal(await kv.get(plan.keys[1]), 1);
   assert.equal(req.listenerCount('aborted'), 0); assert.equal(res.listenerCount('close'), 0);
+});
+
+test('a trusted synthetic probe outlives the monthly cap and leaves the seat allowance untouched', async () => {
+  const { kv, limiter } = setup();
+  const customer = await spendMonthlyAllowance(limiter);
+  const monthlyKeys = customer.keys.slice(1, 4);
+  const spent = await Promise.all(monthlyKeys.map((key) => kv.get(key)));
+  assert.deepEqual(spent, [2, 200, 2]);
+  const exhausted = await limiter.check({ tier: 'pro', subject: 'subject', chars: 100, requestId: 'customer-3' });
+  assert.deepEqual({ allowed: exhausted.allowed, reason: exhausted.reason }, { allowed: false, reason: QUOTA_REASONS.MONTHLY_REQUESTS });
+
+  const plans = [];
+  const check = limiter.check.bind(limiter);
+  limiter.check = async (input) => { const result = await check(input); if (result.reservation) plans.push(result.reservation); return result; };
+  const { handler, runs } = proHandler(limiter);
+  const res = capture();
+  await handler(proRequest(probeHeaders(OBSERVER_SECRET)), res);
+
+  assert.equal(runs.count, 1, 'the probe is admitted after the seat is exhausted');
+  assert.equal(res.body, undefined);
+  // An exemption, not a credit: the seat's monthly counters never move.
+  assert.deepEqual(await Promise.all(monthlyKeys.map((key) => kv.get(key))), spent);
+  // It still ran the real atomic reservation, only against observer-scoped
+  // monthly keys; the daily counter stays the seat's own.
+  const probe = plans.at(-1);
+  assert.equal(probe.keys[0], customer.keys[0]);
+  assert.equal(probe.keys.slice(1, 4).some((key) => monthlyKeys.includes(key)), false);
+  assert.deepEqual(await Promise.all(probe.keys.slice(1, 4).map((key) => kv.get(key))), [1, undefined, 1]);
+  assert.equal(await kv.get(probe.keys[0]), 3);
+});
+
+test('only the exact observer marker exempts a probe, and never a request body field', async () => {
+  const { limiter } = setup();
+  await spendMonthlyAllowance(limiter);
+  const attempts = [
+    ['no marker', proRequest(probeHeaders())],
+    ['marker of equal length', proRequest(probeHeaders('observer-secret-valve'))],
+    ['marker of different length', proRequest(probeHeaders('observer'))],
+    ['body field', proRequest(probeHeaders(), { synthetic: true })],
+    ['body field beside a wrong marker', proRequest(probeHeaders('observer'), { synthetic: true })],
+  ];
+  for (const [label, request] of attempts) {
+    const { handler, runs } = proHandler(limiter);
+    const res = capture();
+    await handler(request, res);
+    assert.equal(runs.count, 0, label);
+    assert.equal(res.statusCode, 429, label);
+    assert.deepEqual(JSON.parse(res.body), { error: QUOTA_REASONS.MONTHLY_REQUESTS }, label);
+  }
+});
+
+test('the probe exemption widens neither the daily cap, the concurrency lease, nor license validation', async () => {
+  const daily = setup({ reqPerDay: 1 });
+  const first = proHandler(daily.limiter);
+  await first.handler(proRequest(probeHeaders(OBSERVER_SECRET)), capture());
+  assert.equal(first.runs.count, 1);
+  const second = proHandler(daily.limiter);
+  const dailyRes = capture();
+  await second.handler(proRequest(probeHeaders(OBSERVER_SECRET)), dailyRes);
+  assert.equal(second.runs.count, 0);
+  assert.equal(dailyRes.statusCode, 429);
+  assert.deepEqual(JSON.parse(dailyRes.body), { error: QUOTA_REASONS.DAILY });
+
+  const busy = setup({ maxConcurrent: 1 });
+  assert.equal((await busy.limiter.acquireConcurrency({ tier: 'pro', subject: 'subject' })).allowed, true);
+  const blocked = proHandler(busy.limiter);
+  const blockedRes = capture();
+  await blocked.handler(proRequest(probeHeaders(OBSERVER_SECRET)), blockedRes);
+  assert.equal(blocked.runs.count, 0);
+  assert.equal(blockedRes.statusCode, 429);
+  assert.deepEqual(JSON.parse(blockedRes.body), { error: QUOTA_REASONS.CONCURRENT });
+
+  const unlicensed = setup();
+  const denied = proHandler(unlicensed.limiter, {
+    licenseValidator: { async validate() { return { ok: false, status: 403, reason: QUOTA_REASONS.LICENSE_INVALID }; } },
+  });
+  const deniedRes = capture();
+  await denied.handler(proRequest(probeHeaders(OBSERVER_SECRET)), deniedRes);
+  assert.equal(denied.runs.count, 0);
+  assert.equal(deniedRes.statusCode, 403);
+  assert.deepEqual(JSON.parse(deniedRes.body), { error: QUOTA_REASONS.LICENSE_INVALID });
 });
 
 test('asynchronous settlement diagnostics cannot escape the response boundary', async () => {

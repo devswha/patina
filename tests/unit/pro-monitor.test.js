@@ -1,27 +1,46 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { aggregateKey, evaluateFreeTierHealth, evaluateProMonitor, overlappingQuarterBuckets, utc15mBucket } from '../../src/pro-monitor.js';
+import { aggregateKey, evaluateFreeTierHealth, evaluateProMonitor, isCronAuthorized, overlappingQuarterBuckets, utc15mBucket } from '../../src/pro-monitor.js';
 
 const NOW = new Date('2026-07-15T12:07:00.000Z');
-function store() {
+const QUARTER_MS = 15 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+// The real control store expires keys, so this double HONORS every TTL it is
+// handed against an injected clock. A double that drops the TTL argument cannot
+// observe a counter that dies between two probes, which is exactly how a streak
+// TTL shorter than the probe interval stayed invisible. `values` remains the raw
+// map so tests can seed or inspect state; a direct seed carries no expiry.
+function store({ clock = () => NOW.getTime() } = {}) {
   const values = new Map();
+  const expiresAt = new Map();
+  const live = (key) => {
+    const expiry = expiresAt.get(key);
+    if (expiry !== undefined && expiry <= clock()) { values.delete(key); expiresAt.delete(key); }
+    return values.has(key);
+  };
+  const write = (key, value, ttl) => {
+    values.set(key, value);
+    if (typeof ttl === 'number' && ttl > 0) expiresAt.set(key, clock() + ttl);
+    else expiresAt.delete(key);
+  };
   return {
     values,
-    async get(key) { return values.get(key); },
-    async set(key, value) { values.set(key, value); return true; },
-    async acquire(key, value) { if (values.has(key)) return false; values.set(key, value); return true; },
-    async release(key, value) { if (values.get(key) !== value) return false; values.delete(key); return true; },
-    async acknowledge(leaseKey, leaseValue, activeKey, receiptId) {
-      if (values.get(leaseKey) !== leaseValue) return false;
-      const active = (values.get(activeKey) ?? []).filter((id) => typeof id === 'string' && /^[a-z0-9._-]+$/i.test(id));
-      values.set(activeKey, Object.freeze([...new Set([...active, receiptId])]));
+    expiresAt,
+    async get(key) { return live(key) ? values.get(key) : undefined; },
+    async set(key, value, ttl) { write(key, value, ttl); return true; },
+    async acquire(key, value, ttl) { if (live(key)) return false; write(key, value, ttl); return true; },
+    async release(key, value) { if (!live(key) || values.get(key) !== value) return false; values.delete(key); expiresAt.delete(key); return true; },
+    async acknowledge(leaseKey, leaseValue, activeKey, receiptId, ttl) {
+      if (!live(leaseKey) || values.get(leaseKey) !== leaseValue) return false;
+      const active = ((live(activeKey) ? values.get(activeKey) : undefined) ?? []).filter((id) => typeof id === 'string' && /^[a-z0-9._-]+$/i.test(id));
+      write(activeKey, Object.freeze([...new Set([...active, receiptId])]), ttl);
       return true;
     },
     async completeRecovery(activeKey, recoveryKey, recoveryValue, expectedActiveIds, recovery) {
-      const active = values.get(activeKey) ?? [];
+      const active = (live(activeKey) ? values.get(activeKey) : undefined) ?? [];
       if (JSON.stringify(active) !== JSON.stringify(expectedActiveIds) || values.get(recoveryKey) !== recoveryValue) return false;
-      values.set(recoveryKey, recovery);
-      values.set(activeKey, Object.freeze([]));
+      write(recoveryKey, recovery);
+      write(activeKey, Object.freeze([]));
       return true;
     },
   };
@@ -37,6 +56,18 @@ test('closed dimensions and real compact quarter buckets are enforced', () => {
   assert.throws(() => aggregateKey({ channel: 'production', tier: 'pro', at: NOW, outcome: 'completed', latencyBucket: 'unknown' }));
   assert.equal(utc15mBucket('20260715T1145Z'), '20260715T1145Z');
   for (const bucket of ['20260715T1146Z', '20260230T1200Z', '20260715T1200']) assert.throws(() => utc15mBucket(bucket));
+});
+
+test('the cron bearer accepts only an exact value, in a length-guarded constant-time compare', () => {
+  assert.equal(isCronAuthorized('Bearer cron-secret', 'cron-secret'), true);
+  // Same length as the expected value, so only the compare itself can reject it.
+  assert.equal(isCronAuthorized('Bearer cron-secrex', 'cron-secret'), false);
+  assert.equal(isCronAuthorized('Bearer cron', 'cron-secret'), false);
+  assert.equal(isCronAuthorized('bearer cron-secret', 'cron-secret'), false);
+  for (const authorization of [['Bearer cron-secret'], undefined, null, 42, { toString: () => 'Bearer cron-secret' }]) {
+    assert.equal(isCronAuthorized(authorization, 'cron-secret'), false, String(authorization));
+  }
+  for (const token of ['', undefined, null, 42]) assert.equal(isCronAuthorized('Bearer cron-secret', token), false, String(token));
 });
 
 test('takes one complete atomic snapshot with only approved latency dimensions', async () => {
@@ -230,12 +261,86 @@ test('new ACKs retain safe active receipts for complete recovery linkage', async
 });
 
 test('synthetic completion requires explicit terminal done', async () => {
-  const control = store(); const common = deps({ controlStore: control, syntheticRequest: async () => ({ status: 204, ok: true, terminal: 'queued' }) });
-  const budgetKey = 'patina:monctl:v1:production:pro:synthetic-probe-budget';
-  await evaluateProMonitor(common); control.values.delete(budgetKey);
-  await evaluateProMonitor(common); control.values.delete(budgetKey);
+  // Let the hourly probe budget lapse on the clock instead of deleting its key:
+  // a hand-deleted lease also hides whether the streak survived the wait.
+  let nowMs = NOW.getTime();
+  const control = store({ clock: () => nowMs });
+  const common = deps({ clock: () => new Date(nowMs), controlStore: control, syntheticRequest: async () => ({ status: 204, ok: true, terminal: 'queued' }) });
+  await evaluateProMonitor(common); nowMs += HOUR_MS;
+  await evaluateProMonitor(common); nowMs += HOUR_MS;
   const third = await evaluateProMonitor(common);
   assert.equal(third.syntheticTerminal, 'failed'); assert.ok(third.triggers.some(({ trigger }) => trigger === 'synthetic_failure'));
+});
+
+test('three consecutive hourly probe failures reach synthetic_failure at the real 15-minute cron cadence', async () => {
+  const start = Date.parse('2026-07-15T12:00:00.000Z');
+  let nowMs = start;
+  let probes = 0;
+  let probeHealthy = false;
+  const control = store({ clock: () => nowMs });
+  const sent = [];
+  const common = deps({
+    clock: () => new Date(nowMs),
+    controlStore: control,
+    // Real paid traffic in every quarter bucket, so the run is never blind and
+    // the probe is allowed to spend.
+    aggregateReader: { async snapshot(keys) { return Object.fromEntries(keys.map((item) => [item, item.endsWith(':completed:<=30s') ? 1 : 0])); } },
+    logQuery: validLogs,
+    syntheticRequest: async () => { probes += 1; return probeHealthy ? { ok: true, terminal: 'done' } : { ok: false, terminal: 'failed' }; },
+    discordSender: async (payload) => { sent.push(payload); return { status: 204, receiptId: `alert-${sent.length}` }; },
+  });
+
+  /** @type {number[]} */
+  const streaks = [];
+  /** @type {Array<{minute: number, sent: boolean, deduped: boolean}>} */
+  const syntheticAlerts = [];
+  for (let minute = 0; minute <= 165; minute += QUARTER_MS / 60_000) {
+    nowMs = start + minute * 60_000;
+    const result = await evaluateProMonitor(common);
+    streaks.push(result.syntheticStreak);
+    for (const alert of result.alerts) {
+      if (alert.trigger === 'synthetic_failure') syntheticAlerts.push({ minute, sent: alert.sent === true, deduped: alert.deduped === true });
+    }
+  }
+
+  assert.equal(probes, 3, 'twelve cron ticks still buy exactly three hourly probes');
+  assert.deepEqual(streaks, [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3], 'the streak must survive the gap between probes');
+  assert.deepEqual(syntheticAlerts.filter(({ sent: delivered }) => delivered).map(({ minute }) => minute), [120]);
+  assert.equal(syntheticAlerts.filter(({ deduped }) => deduped).length, 3, 'the one-hour dedup lease holds the following ticks');
+  assert.equal(sent.filter(({ trigger }) => trigger === 'synthetic_failure').length, 1);
+  assert.equal(sent.find(({ trigger }) => trigger === 'synthetic_failure').window, '1h');
+  assert.equal(sent.find(({ trigger }) => trigger === 'synthetic_failure').countBand, '2-4');
+
+  probeHealthy = true;
+  nowMs = start + 180 * 60_000;
+  const recovered = await evaluateProMonitor(common);
+  assert.equal(probes, 4);
+  assert.equal(recovered.syntheticTerminal, 'done');
+  assert.equal(recovered.syntheticStreak, 0, 'a success resets the streak');
+  assert.equal(recovered.triggers.some(({ trigger }) => trigger === 'synthetic_failure'), false);
+  assert.equal(await control.get('patina:monctl:v1:production:pro:synthetic-streak'), 0);
+  // The healthy tick's own Discord send is the recovery notice, never another
+  // synthetic alert.
+  assert.equal(sent.filter(({ trigger }) => trigger === 'synthetic_failure').length, 1);
+});
+
+test('a gap in probing expires the streak instead of carrying it into a later incident', async () => {
+  const streakKey = 'patina:monctl:v1:production:pro:synthetic-streak';
+  let nowMs = Date.parse('2026-07-15T12:00:00.000Z');
+  const control = store({ clock: () => nowMs });
+  const common = deps({
+    clock: () => new Date(nowMs),
+    controlStore: control,
+    aggregateReader: { async snapshot(keys) { return Object.fromEntries(keys.map((item) => [item, item.endsWith(':completed:<=30s') ? 1 : 0])); } },
+    logQuery: validLogs,
+    syntheticRequest: async () => ({ ok: false, terminal: 'failed' }),
+  });
+  assert.equal((await evaluateProMonitor(common)).syntheticStreak, 1);
+  nowMs += 2 * HOUR_MS; // one probe window skipped: the streak still counts.
+  assert.equal((await evaluateProMonitor(common)).syntheticStreak, 2);
+  nowMs += 3 * HOUR_MS + 1; // probing stopped for longer than the streak TTL.
+  assert.equal(await control.get(streakKey), undefined, 'a streak nobody refreshed must expire');
+  assert.equal((await evaluateProMonitor(common)).syntheticStreak, 1);
 });
 
 test('a budget-skipped probe neither runs, grows, nor resets the synthetic streak', async () => {

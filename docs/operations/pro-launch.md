@@ -62,8 +62,14 @@ malformed, or unavailable required aggregate/log input makes the monitor return
 The cron request is a bodyless `GET` with one exact `Authorization: Bearer
 <CRON_SECRET>` value. The synthetic rewrite adds exactly one
 `x-patina-synthetic-observer` header whose value is
-`PATINA_SYNTHETIC_OBSERVER_SECRET`; the trusted boundary strips that header
-before the rewrite runner. Neither the header nor its value is telemetry.
+`PATINA_SYNTHETIC_OBSERVER_SECRET`; the trusted boundary compares it in
+constant time and strips that header before the rewrite runner. Neither the
+header nor its value is telemetry. Together with a license the validator
+accepts, that header also exempts the probe from **monthly** metering only
+(requests, characters, processing attempts, charged to a separate observer
+namespace); the daily cap, the concurrency lease and license validation stay in
+force, so the hourly probe can no longer exhaust the monitoring seat and report
+its own `429` as a Pro failure.
 
 Aggregate keys have their documented 2-hour TTL in the dedicated observability
 store. Monitor control keys are channel/tier scoped under

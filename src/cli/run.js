@@ -346,7 +346,8 @@ export async function runDefault(parsed, logger) {
           warnIfTooSmooth({ text: finalText, config, logger, lang });
           // Advisory only — compares source to output to catch a rewrite that traded
           // one slop class for another. Does not touch exit codes or the emitted text.
-          warnIfOvercorrected({ original: text, text: finalText, config, logger, lang });
+          // registerRequested exempts flattening the user explicitly asked for (--register/config).
+          warnIfOvercorrected({ original: text, text: finalText, config, logger, lang, registerRequested: Boolean(registerResolution) });
         }
 
         if (mode === 'score') {

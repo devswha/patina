@@ -564,9 +564,10 @@ test('pro path: valid Bearer + valid license runs the rewrite metered by the lic
   }, res);
 
   assert.equal(result, 'ran');
-  // The license is validated exactly once, by its raw value.
+  // The license is validated exactly once, by its raw value, with the client IP
+  // the validator needs to admit an uncached key per caller.
   assert.equal(validator.state.calls, 1);
-  assert.deepEqual(validator.state.lastInput, { licenseKey: RAW });
+  assert.deepEqual(validator.state.lastInput, { licenseKey: RAW, ip: '203.0.113.40' });
   // Metered by the HMAC subject on every limiter call — never the client IP.
   assert.equal(limiter.calls.check[0].tier, WEB_TIERS.PRO);
   assert.equal(limiter.calls.check[0].subject, 'S');
@@ -747,9 +748,10 @@ test('redteam(1): a valid pro request leaks the raw license nowhere (runner requ
   }, res);
 
   assert.equal(result, 'ran');
-  // Only the validator ever sees the raw license, and exactly once.
+  // Only the validator ever sees the raw license, and exactly once; it also
+  // receives the client IP for its per-caller admission slice.
   assert.equal(validator.state.calls, 1);
-  assert.deepEqual(validator.state.lastInput, { licenseKey: PRO_RAW });
+  assert.deepEqual(validator.state.lastInput, { licenseKey: PRO_RAW, ip: '203.0.113.60' });
 
   // (b) Every limiter arg is metered by the HMAC subject and carries NO license material.
   const limiterCalls = [

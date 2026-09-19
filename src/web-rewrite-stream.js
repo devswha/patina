@@ -593,15 +593,27 @@ async function runWebRewriteStreamUnscoped({
   // Verify full evidence before success: high numeric scores alone cannot
   // bypass malformed counts, invalid criteria, or a consistent HARD_FAIL.
   const floors = evaluateVerification({ mps, fidelity }, { mpsFloor: MPS_FLOOR, fidelityFloor: FIDELITY_FLOOR });
-  if (!floors.ok) {
+  // #871/#872: a zero-anchor MPS is "MPS = N/A" rendered as 100 — an absence
+  // of evidence, not a passing grade. When the source carries numeric claims
+  // (the claim-bag gate above passed, so a role swap can still hide inside
+  // identical bags), that 100 must not certify the hosted floor either — the
+  // same refusal verifyRewrite applies on the CLI lane. Swapped roles remain
+  // MPS HARD_FAIL's responsibility; an anchored MPS is untouched.
+  const unanchoredNumericSource = Array.isArray(mps?.anchors)
+    && mps.anchors.length === 0
+    && numberSafety.originalClaims.length > 0;
+  const failed = unanchoredNumericSource && !floors.failed.includes('mps')
+    ? [...floors.failed, 'mps']
+    : floors.failed;
+  if (!floors.ok || unanchoredNumericSource) {
     // Keep the already-computed audit metadata (deterministic signals + length
     // diff) on floor failures so a flagged attempt stays auditable in the UI.
     closeAttempts();
-    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'floor_failed', failed: floors.failed, rewrite, mps, fidelity, signals, diff });
+    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'floor_failed', failed, rewrite, mps, fidelity, signals, diff });
     return {
       ok: false,
       code: 'floor_failed',
-      failed: floors.failed,
+      failed,
       mps,
       fidelity,
       signals,

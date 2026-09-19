@@ -91,6 +91,7 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       if (req.method !== 'POST') return send(res, 405, { error: 'method not allowed' });
 
       const rawBody = await readRawBody(req, maxBodyBytes);
+      if (rawBody === UNPARSEABLE_BODY) return send(res, 400, { error: 'invalid JSON' });
       if (rawBody == null) return send(res, 413, { error: 'request body too large' });
 
       let body;
@@ -354,17 +355,30 @@ export function send(res, status, obj) {
   return undefined;
 }
 
+const UNPARSEABLE_BODY = Symbol('unparseable-body');
+
 /**
- * Read a request body. Returns null when the max byte cap is exceeded.
+ * Read a request body. Returns null when the max byte cap is exceeded, and
+ * UNPARSEABLE_BODY when the platform already rejected the bytes as JSON.
  *
  * @param {RewriteReq} req
  * @param {number} maxBodyBytes
- * @returns {Promise<string|null>}
+ * @returns {Promise<string|null|typeof UNPARSEABLE_BODY>}
  */
 async function readRawBody(req, maxBodyBytes) {
-  if (typeof req.body === 'string') return byteLength(req.body) > maxBodyBytes ? null : req.body;
-  if (req.body != null) {
-    const serialized = JSON.stringify(req.body);
+  // Vercel's Node helper exposes `body` as a lazy getter that parses JSON on
+  // first access and THROWS on malformed input. Unguarded, that throw reached
+  // the handler's outer catch: production answered 500 "internal error" and
+  // logged rewrite_handler_failed for what is a plain client error.
+  let preParsed;
+  try {
+    preParsed = req.body;
+  } catch {
+    return UNPARSEABLE_BODY;
+  }
+  if (typeof preParsed === 'string') return byteLength(preParsed) > maxBodyBytes ? null : preParsed;
+  if (preParsed != null) {
+    const serialized = JSON.stringify(preParsed);
     return byteLength(serialized) > maxBodyBytes ? null : serialized;
   }
 

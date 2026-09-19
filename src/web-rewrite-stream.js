@@ -451,6 +451,18 @@ async function runWebRewriteStreamUnscoped({
     return { ok: false, code: 'source_changed', attempts, observed: observeTerminal('terminal_failed', 409) };
   }
   emit({ type: STREAM_FRAME_TYPES.START });
+  // evaluateNumberSafety fails whenever the SOURCE has numeric syntax it cannot
+  // claim (Q3, B2B, GPT-4, $1,200 ...), whatever the rewrite says. That verdict
+  // is known before any model call, so refuse here: the old path streamed a
+  // rewrite, paid for it and its retry, then discarded both every time.
+  // `scope: 'source'` lets the client say what happened instead of claiming
+  // the result changed a number.
+  const sourceNumberSafety = evaluateNumberSafety(original, original, request.lang);
+  if (!sourceNumberSafety.ok) {
+    closeAttempts();
+    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'number_safety_failed', scope: 'source' });
+    return { ok: false, code: 'number_safety_failed', numberSafety: sourceNumberSafety, attempts, observed: observeTerminal('number_safety_failed', 422) };
+  }
   if (verifyOnly) {
     // Preserve the reviewed text byte-for-byte: this mode never rewrites it.
     rewrite = String(request.text);

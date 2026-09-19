@@ -60,7 +60,7 @@ function failureOutcome(frame, kind, hasScores) {
   const K = REWRITE_ERROR_KINDS;
   const status = Number(frame?.status);
   const code = typeof frame?.code === 'string' ? frame.code : '';
-  if (kind === K.NUMBER_SAFETY) return 'number-safety';
+  if (kind === K.NUMBER_SAFETY || kind === K.NUMBER_SOURCE) return 'number-safety';
   if (kind === K.FLOOR_FAILED) return 'floor';
   if (kind.startsWith('quota_') && kind !== K.QUOTA_CONCURRENT && kind !== K.QUOTA_STORAGE && kind !== K.QUOTA_SECRET) return 'quota';
   if (kind === K.QUOTA_CONCURRENT) return 'concurrency';
@@ -140,6 +140,7 @@ const I18N = {
     reportFp: 'Flagged your own writing? Report a false positive →',
     failNote: 'That did not go through. Try again, or check your plan and key.',
     numberSafetyNote: 'The result changed a number or a time, so we threw it away rather than show it to you. Try again.',
+    numberSourceNote: 'Your text writes a number in a form we cannot check yet, such as Q3, B2B or $1,200. We would rather refuse than guess, so nothing was rewritten. Spell it out (third quarter, 1,200 dollars) and try again.',
     proUpsell: 'Get API access — $9.99/mo',
     proBuy: 'Get API access — $9.99/mo',
     proSoon: 'Pro — coming soon',
@@ -180,6 +181,7 @@ const I18N = {
     reportFp: '직접 쓴 글인데 잡혔나요? 오탐 신고 →',
     failNote: '처리하지 못했어요. 다시 시도하거나 요금제와 키를 확인해 주세요.',
     numberSafetyNote: '결과에서 숫자나 시간이 바뀌어서, 보여드리지 않고 버렸어요. 다시 시도해 주세요.',
+    numberSourceNote: '원문에 아직 저희가 검사하지 못하는 숫자 표기($1,200 같은 기호 금액 등)가 있어요. 짐작으로 넘기지 않으려고 아예 고치지 않았습니다. 1,200달러처럼 풀어 쓴 뒤 다시 시도해 주세요.',
     proUpsell: 'API 액세스 받기 — $9.99/월',
     proBuy: 'API 액세스 받기 — $9.99/월',
     proSoon: 'Pro — 곧 공개',
@@ -220,6 +222,7 @@ const I18N = {
     reportFp: '人工撰写却被标记？反馈误报 →',
     failNote: '没能处理成功。请再试一次，或检查方案和密钥。',
     numberSafetyNote: '结果里的数字或时间变了，所以我们没有拿给你，直接丢掉了。请再试一次。',
+    numberSourceNote: '原文里有我们暂时无法核对的数字写法（比如 $1,200 这类带符号的金额）。我们宁可不改也不猜，所以这次没有改写。请改成“1,200美元”这样的写法后再试。',
     proUpsell: '获取 API 访问权限 — 每月 $9.99',
     proBuy: '获取 API 访问权限 — 每月 $9.99',
     proSoon: 'Pro — 即将推出',
@@ -260,6 +263,7 @@ const I18N = {
     reportFp: '自分で書いた文章なのに検出？誤検出を報告 →',
     failNote: 'うまくいきませんでした。もう一度試すか、プランとキーをご確認ください。',
     numberSafetyNote: '結果の中で数字や時刻が変わってしまったので、お見せせずに破棄しました。もう一度お試しください。',
+    numberSourceNote: '原文に、まだこちらで照合できない数字の書き方（$1,200 のような記号つきの金額など）があります。推測で通すよりはと、今回は書き換えていません。「1,200ドル」のように書き直して、もう一度お試しください。',
     proUpsell: 'APIアクセスを取得 — 月額$9.99',
     proBuy: 'APIアクセスを取得 — 月額$9.99',
     proSoon: 'Pro — 近日公開',
@@ -1423,6 +1427,7 @@ function failureMessage(kind, ff, t) {
     case K.QUOTA_HOURLY: return t.quotaHourly;
     case K.QUOTA_CONCURRENT: return t.quotaConcurrent;
     case K.NUMBER_SAFETY: return t.numberSafetyNote;
+    case K.NUMBER_SOURCE: return t.numberSourceNote;
     case K.IP_UNAVAILABLE:
     case K.QUOTA_STORAGE:
     case K.QUOTA_SECRET:

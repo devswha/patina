@@ -9,7 +9,10 @@
 // Trust model, mirroring src/rewrite-handler.js:
 //   - the caller presents `Authorization: Bearer <license_key>`;
 //   - the same fail-closed Polar validator used by the rewrite API
-//     turns it into an HMAC subject (the raw key never leaves entitlement.js);
+//     turns it into an HMAC subject (the raw key never leaves entitlement.js),
+//     and receives the platform-resolved client IP so an uncached key is
+//     admitted per caller before it can spend the shared provider budget both
+//     endpoints draw on;
 //   - only verified downloads are metered, per subject per UTC day — listing
 //     and failed deliveries (404 / sha mismatch / upstream outage) are free;
 //   - pack ids come from the server-side manifest only — the client never
@@ -27,6 +30,7 @@
 import { createHash } from 'node:crypto';
 
 import { extractBearerLicense } from './entitlement.js';
+import { extractClientIp } from './rate-limit.js';
 import { QUOTA_REASONS } from './web-rewrite-contract.js';
 
 export const DEFAULT_PACKS_REPO = 'devswha/patina-pro-packs';
@@ -94,7 +98,7 @@ export function isValidPackEntry(p) {
  * @param {{
  *   env?: Record<string,string|undefined>,
  *   kv: {get(k:string):Promise<any>, set(k:string,v:any,o?:{ttlMs?:number}):Promise<void>, incr(k:string,o?:{ttlMs?:number}):Promise<number>},
- *   licenseValidator: {validate(i:{licenseKey?:string}):Promise<any>},
+ *   licenseValidator: {validate(i:{licenseKey?:string, ip?:string|null}):Promise<any>},
  *   fetchImpl?: typeof globalThis.fetch,
  *   now?: () => number,
  *   logger?: {warn?: Function, error?: Function},
@@ -182,7 +186,9 @@ export function createPackHandler({
 
     const extracted = extractBearerLicense(req.headers || {});
     if (!extracted.ok) return send(res, 401, { reason: QUOTA_REASONS.LICENSE_REQUIRED });
-    const verdict = await licenseValidator.validate({ licenseKey: extracted.license });
+    // Only trusted platform headers are consulted for the address (a caller
+    // cannot mint itself a fresh admission slice), and the validator HMACs it.
+    const verdict = await licenseValidator.validate({ licenseKey: extracted.license, ip: extractClientIp(req.headers || {}) });
     if (!verdict?.ok) {
       return send(res, verdict?.status || 403, { reason: verdict?.reason || QUOTA_REASONS.LICENSE_INVALID });
     }

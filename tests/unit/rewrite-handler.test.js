@@ -269,6 +269,30 @@ test('400 for invalid JSON', async () => {
   assert.deepEqual(res.json(), { error: 'invalid JSON' });
 });
 
+// Production shape: Vercel's Node helper defines `req.body` as a lazy getter
+// that throws when the JSON is malformed. The string-body test above never
+// reaches that getter, which is how this shipped as a 500.
+test('400 for invalid JSON when the platform body getter throws (Vercel shape)', async () => {
+  const res = makeRes();
+  const errors = [];
+  const handler = createRewriteHandler({
+    rateLimiter: allowedLimiter(),
+    runRewrite() { throw new Error('must not run'); },
+    logger: { error: (entry) => errors.push(entry) },
+  });
+  const req = { method: 'POST', headers: { 'content-type': 'application/json' } };
+  let reads = 0;
+  Object.defineProperty(req, 'body', {
+    enumerable: true,
+    get() { reads += 1; throw Object.assign(new Error('Invalid JSON'), { statusCode: 400 }); },
+  });
+  await handler(req, res);
+  assert.equal(res.statusCode, 400);
+  assert.deepEqual(res.json(), { error: 'invalid JSON' });
+  assert.equal(reads, 1, 'the throwing getter is read once, inside the guard');
+  assert.deepEqual(errors, [], 'a client error must not log rewrite_handler_failed');
+});
+
 test('400 and 413 from validateRewriteRequest are not observed', async () => {
   const events = [];
   const handler = createRewriteHandler({
@@ -564,9 +588,10 @@ test('pro path: valid Bearer + valid license runs the rewrite metered by the lic
   }, res);
 
   assert.equal(result, 'ran');
-  // The license is validated exactly once, by its raw value.
+  // The license is validated exactly once, by its raw value, with the client IP
+  // the validator needs to admit an uncached key per caller.
   assert.equal(validator.state.calls, 1);
-  assert.deepEqual(validator.state.lastInput, { licenseKey: RAW });
+  assert.deepEqual(validator.state.lastInput, { licenseKey: RAW, ip: '203.0.113.40' });
   // Metered by the HMAC subject on every limiter call — never the client IP.
   assert.equal(limiter.calls.check[0].tier, WEB_TIERS.PRO);
   assert.equal(limiter.calls.check[0].subject, 'S');
@@ -747,9 +772,10 @@ test('redteam(1): a valid pro request leaks the raw license nowhere (runner requ
   }, res);
 
   assert.equal(result, 'ran');
-  // Only the validator ever sees the raw license, and exactly once.
+  // Only the validator ever sees the raw license, and exactly once; it also
+  // receives the client IP for its per-caller admission slice.
   assert.equal(validator.state.calls, 1);
-  assert.deepEqual(validator.state.lastInput, { licenseKey: PRO_RAW });
+  assert.deepEqual(validator.state.lastInput, { licenseKey: PRO_RAW, ip: '203.0.113.60' });
 
   // (b) Every limiter arg is metered by the HMAC subject and carries NO license material.
   const limiterCalls = [

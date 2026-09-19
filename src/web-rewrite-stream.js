@@ -38,6 +38,7 @@ import { evaluateKoreanInvariants } from './features/korean-invariants.js';
  *   observed: unknown,
  *   code?: string,
  *   error?: string,
+ *   upstreamStatus?: number,
  *   numberSafety?: Record<string, any>,
  *   koreanInvariants?: Record<string, any>,
  *   failed?: any,
@@ -150,6 +151,66 @@ function incompleteOutputReason(finishReason, rewrite) {
   const reason = typeof finishReason === 'string' ? finishReason.trim().toLowerCase() : '';
   if (Object.hasOwn(INCOMPLETE_FINISH_REASONS, reason)) return INCOMPLETE_FINISH_REASONS[reason];
   return rewrite.trim() ? undefined : 'empty_output';
+}
+
+/**
+ * Closed vocabulary for the `error` field of a terminal upstream failure frame
+ * (`stream_failed` / `scoring_failed`) on the server-paid tiers. Chosen by the
+ * provider's response status class only, so the frame carries no provider text:
+ * - `upstream_rate_limited` — 408 / 425 / 429 (the provider asked us to wait).
+ * - `upstream_unavailable` — 5xx, and every failure with no HTTP status at all
+ *   (network error, per-attempt timeout, deadline abort during the call).
+ * - `upstream_rejected` — any other non-2xx status (auth, quota-by-policy,
+ *   request validation).
+ */
+const UPSTREAM_FAILURES = Object.freeze({
+  RATE_LIMITED: 'upstream_rate_limited',
+  UNAVAILABLE: 'upstream_unavailable',
+  REJECTED: 'upstream_rejected',
+});
+
+/**
+ * @param {unknown} err
+ * @returns {number|undefined} The provider's HTTP status when the transport recorded one.
+ */
+function upstreamStatusOf(err) {
+  const status = /** @type {any} */ (err)?.status;
+  return Number.isInteger(status) && status >= 100 && status <= 599 ? status : undefined;
+}
+
+/**
+ * Terminal-failure fields for an upstream (provider transport or scorer)
+ * error.
+ *
+ * On the server-paid tiers (free, pro) the provider, the model and the
+ * server's own quota are private configuration, but `HttpError` embeds up to
+ * 256 characters of the provider's response body in its message (src/api.js)
+ * and {@link safeError} only strips key-shaped secrets — which leaves model
+ * names, quota-metric ids and organization ids in a frame handed to an
+ * anonymous client. Those tiers therefore get {@link UPSTREAM_FAILURES} and
+ * nothing else. It also keeps an upstream "daily quota exceeded" from reading
+ * like patina's own quota refusal on the client.
+ *
+ * A BYOK caller owns the provider, the model and the key, so the redacted
+ * detail stays useful to them and is kept — plus the coarse numeric upstream
+ * status when one is available, which is what lets a client later route an
+ * auth failure to a credentials prompt instead of a retry.
+ *
+ * @param {unknown} err
+ * @param {import('./web-rewrite-contract.js').WebRewriteRequest} request
+ * @returns {{error: string, upstreamStatus?: number}}
+ */
+function upstreamFailure(err, request) {
+  const status = upstreamStatusOf(err);
+  if (request.tier === WEB_TIERS.BYOK) {
+    return {
+      error: safeError(err, request.apiKey),
+      ...(status === undefined ? {} : { upstreamStatus: status }),
+    };
+  }
+  if (status === undefined) return { error: UPSTREAM_FAILURES.UNAVAILABLE };
+  if (status === 408 || status === 425 || status === 429) return { error: UPSTREAM_FAILURES.RATE_LIMITED };
+  return { error: status >= 500 ? UPSTREAM_FAILURES.UNAVAILABLE : UPSTREAM_FAILURES.REJECTED };
 }
 
 /** @param {unknown} value */
@@ -486,6 +547,18 @@ async function runWebRewriteStreamUnscoped({
     return { ok: false, code: 'source_changed', attempts, observed: observeTerminal('terminal_failed', 409) };
   }
   emit({ type: STREAM_FRAME_TYPES.START });
+  // evaluateNumberSafety fails whenever the SOURCE has numeric syntax it cannot
+  // claim (Q3, B2B, GPT-4, $1,200 ...), whatever the rewrite says. That verdict
+  // is known before any model call, so refuse here: the old path streamed a
+  // rewrite, paid for it and its retry, then discarded both every time.
+  // `scope: 'source'` lets the client say what happened instead of claiming
+  // the result changed a number.
+  const sourceNumberSafety = evaluateNumberSafety(original, original, request.lang);
+  if (!sourceNumberSafety.ok) {
+    closeAttempts();
+    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'number_safety_failed', scope: 'source' });
+    return { ok: false, code: 'number_safety_failed', numberSafety: sourceNumberSafety, attempts, observed: observeTerminal('number_safety_failed', 422) };
+  }
   if (verifyOnly) {
     // Preserve the reviewed text byte-for-byte: this mode never rewrites it.
     rewrite = String(request.text);
@@ -554,10 +627,10 @@ async function runWebRewriteStreamUnscoped({
         return { ok: false, code: 'stream_failed', error: incomplete, attempts, observed: observeTerminal('terminal_failed', 500) };
       }
     } catch (err) {
-      const error = safeError(err, request.apiKey);
+      const failure = upstreamFailure(err, request);
       closeAttempts();
-      emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'stream_failed', error });
-      return { ok: false, code: 'stream_failed', error, attempts, observed: observeTerminal('terminal_failed', 500) };
+      emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'stream_failed', ...failure });
+      return { ok: false, code: 'stream_failed', ...failure, attempts, observed: observeTerminal('terminal_failed', 500) };
     }
     koreanInvariants = koreanResearch
       ? evaluateKoreanInvariants(original, rewrite)
@@ -633,10 +706,10 @@ async function runWebRewriteStreamUnscoped({
     // A scoring failure (including an abort during scoring) must terminate as
     // a clean NDJSON error frame — never bubble to the handler's JSON 500,
     // which would append a non-frame tail to an already-started stream.
-    const error = safeError(err, request.apiKey);
+    const failure = upstreamFailure(err, request);
     closeAttempts();
-    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'scoring_failed', error });
-    return { ok: false, code: 'scoring_failed', error, attempts, observed: observeTerminal('terminal_failed', 500) };
+    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'scoring_failed', ...failure });
+    return { ok: false, code: 'scoring_failed', ...failure, attempts, observed: observeTerminal('terminal_failed', 500) };
   }
 
   // Verify full evidence before success: high numeric scores alone cannot

@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
-import { browserLanguage, initialLanguage, ONBOARDING_COPY } from '../../playground/experience-copy.js';
+import { browserLanguage, experienceCopy, initialLanguage, ONBOARDING_COPY } from '../../playground/experience-copy.js';
+import { WEB_DOCUMENT_TYPES } from '../../playground/src/web-rewrite-contract.js';
 
 const languages = ['ko', 'en', 'zh', 'ja'];
 
@@ -49,6 +50,31 @@ test('all native first-use dictionaries have the same complete shape', () => {
     assert.ok(copy.hint.length > 40, `${lang}.hint must explain the meaning check`);
     assert.ok(copy.meaningLabel.trim(), `${lang}.meaningLabel`);
   }
+});
+
+// #874 added three document types to the contract while the labels were a
+// positional list: the dropdown then sent `personal-statement` for "Email",
+// `project-writeup` for "Legal", and showed three blank options. Labels are
+// keyed by id so the contract can grow without relabelling anything.
+test('every document type the contract accepts has its own label in every language', () => {
+  for (const lang of languages) {
+    const labels = experienceCopy(lang).documents;
+    assert.ok(labels && typeof labels === 'object' && !Array.isArray(labels), `${lang}.documents must be keyed by id, not by position`);
+    assert.deepEqual(Object.keys(labels).sort(), [...WEB_DOCUMENT_TYPES].sort(), `${lang} labels must match the contract ids exactly`);
+    for (const id of WEB_DOCUMENT_TYPES) {
+      assert.ok(typeof labels[id] === 'string' && labels[id].trim(), `${lang}.${id} needs a visible label`);
+    }
+    assert.equal(new Set(Object.values(labels)).size, WEB_DOCUMENT_TYPES.length, `${lang} must not reuse one label for two types`);
+  }
+  const en = experienceCopy('en').documents;
+  assert.deepEqual(
+    [en.email, en.legal, en.medical, en.social, en['commit-message'], en['release-notes'], en.resume],
+    ['Email', 'Legal', 'Medical', 'Social', 'Commit message', 'Release notes', 'Resume'],
+  );
+  // The dropdown looks a label up by id and falls back to the id, never to a blank.
+  const source = readFileSync(new URL('../../playground/chatgpt.js', import.meta.url), 'utf8');
+  assert.match(source, /new Option\(labels\[id\] \|\| id, id\)/);
+  assert.doesNotMatch(source, /\.documents\[index\]/);
 });
 
 test('browser locale negotiation handles regional tags, order, absent and unsupported values', () => {

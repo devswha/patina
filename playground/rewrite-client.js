@@ -257,6 +257,7 @@ export const REWRITE_ERROR_KINDS = Object.freeze({
   SERVICE_UNAVAILABLE: 'service_unavailable',
   TEXT_TOO_LONG: 'text_too_long',
   NUMBER_SAFETY: 'number_safety_failed',
+  NUMBER_SOURCE: 'number_safety_source',
   FLOOR_FAILED: 'floor_failed',
   UNKNOWN: 'unknown',
 });
@@ -270,6 +271,12 @@ export const REWRITE_ERROR_KINDS = Object.freeze({
  * quota copy without inventing a reset time or window, unrecognized
  * 5xx to SERVICE_UNAVAILABLE.
  *
+ * `stream_failed` and `scoring_failed` are the exception: their `error` field
+ * describes the UPSTREAM provider, not patina's own limits, so it is never
+ * reason-matched. Otherwise an upstream body saying "daily quota exceeded"
+ * would be shown as patina's own daily quota refusal, complete with a Pro
+ * upsell, when the caller's quota is untouched.
+ *
  * @param {Record<string, unknown>|null|undefined} frame
  * @returns {string} one of REWRITE_ERROR_KINDS
  */
@@ -278,11 +285,12 @@ export function classifyRewriteError(frame) {
   const R = QUOTA_REASONS;
   const status = Number(frame?.status);
   const code = typeof frame?.code === 'string' ? frame.code : '';
-  const reason = typeof frame?.error === 'string' ? frame.error.toLowerCase() : '';
+  const upstream = code === 'stream_failed' || code === 'scoring_failed';
+  const reason = !upstream && typeof frame?.error === 'string' ? frame.error.toLowerCase() : '';
   if (status === 401) return K.AUTH_REQUIRED;
   if (status === 403) return K.AUTH_DENIED;
   if (code === 'floor_failed') return K.FLOOR_FAILED;
-  if (code === 'number_safety_failed') return K.NUMBER_SAFETY;
+  if (code === 'number_safety_failed') return frame?.scope === 'source' ? K.NUMBER_SOURCE : K.NUMBER_SAFETY;
   if (reason.includes(R.MONTHLY_REQUESTS)) return K.QUOTA_MONTHLY_REQUESTS;
   if (reason.includes(R.MONTHLY_CHARS)) return K.QUOTA_MONTHLY_CHARS;
   if (reason.includes('monthly processing attempt limit reached')) return K.QUOTA_MONTHLY_PROCESSING;
@@ -306,6 +314,6 @@ export function rewriteRecovery(kind) {
   if (kind === K.AUTH_REQUIRED || kind === K.AUTH_DENIED) return 'credentials';
   if ([K.QUOTA_MONTHLY_REQUESTS, K.QUOTA_MONTHLY_CHARS, K.QUOTA_MONTHLY_PROCESSING,
     K.QUOTA_DAILY, K.QUOTA_UNKNOWN].includes(kind)) return 'limits';
-  if ([K.NUMBER_SAFETY, K.FLOOR_FAILED, K.TEXT_TOO_LONG].includes(kind)) return 'edit';
+  if ([K.NUMBER_SAFETY, K.NUMBER_SOURCE, K.FLOOR_FAILED, K.TEXT_TOO_LONG].includes(kind)) return 'edit';
   return 'retry';
 }

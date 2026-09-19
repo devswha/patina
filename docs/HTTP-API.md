@@ -101,7 +101,7 @@ When `Accept` is absent, `*/*`, or does not request JSON, the response is `200 a
 A streaming terminal error is also an NDJSON frame, for example:
 
 ```ndjson
-{"type":"error","code":"stream_failed","error":"upstream request failed"}
+{"type":"error","code":"stream_failed","error":"upstream_unavailable"}
 {"type":"error","code":"floor_failed","failed":["mps"],"rewrite":"...","mps":{"mps":65},"fidelity":{"fidelity":93},"signals":{"before":{"overall":72},"after":{"overall":18}},"diff":{"beforeChars":39,"afterChars":48}}
 ```
 
@@ -116,6 +116,16 @@ A generation that never completed is refused before any scoring, so no `done` fr
 | `empty_output` | Nothing usable remained after output cleanup. |
 
 None of the three is retried: a token ceiling and a content filter reproduce on a second attempt. Shorten or rephrase the source instead.
+
+On the server-paid tiers (`free`, `pro`) the provider and the model are the server's private configuration, so `stream_failed` and `scoring_failed` never forward provider response text. Their `error` field is one of a closed set chosen by the upstream status class:
+
+| `error` | Upstream status |
+| --- | --- |
+| `upstream_rate_limited` | 408, 425, 429 |
+| `upstream_unavailable` | 5xx, or no HTTP status (network error, timeout, deadline abort) |
+| `upstream_rejected` | any other non-2xx status |
+
+On `byok` the caller owns the provider and the key, so `error` keeps the redacted provider detail and the frame also carries `upstreamStatus` (the numeric provider status) when the transport recorded one. JSON mode returns the same `error` and `upstreamStatus` values.
 
 ### Non-streaming JSON
 
@@ -145,7 +155,7 @@ Errors are JSON objects, including for JSON-mode callers:
 
 Validation errors use `400`; an over-limit `text` or refine `original` uses `413`. A missing, malformed, or duplicated Pro `Authorization` header uses `401` (`pro license required`); a well-formed license key that does not entitle uses `403` (`license not entitled`). Quota and concurrency denials use `429`; quota/entitlement infrastructure or service unavailability uses `503`. JSON-mode terminal failures use `422` (safety-gate refusal) or `500` (upstream failure) as described above.
 
-Possible quota error strings include `daily quota exceeded`, `hourly burst exceeded`, `concurrent limit exceeded`, `monthly rewrite limit reached`, and `monthly character limit reached`. A Pro monthly-character denial additionally includes `remainingMonthlyChars` and `limitMonthlyChars`.
+Possible quota error strings include `daily quota exceeded`, `hourly burst exceeded`, `concurrent limit exceeded`, `monthly rewrite limit reached`, and `monthly character limit reached`. A Pro monthly-character denial additionally includes `remainingMonthlyChars` and `limitMonthlyChars`. A `429 license validation burst exceeded` means this client asked to validate more not-yet-cached license keys in one minute than its share of the license-provider budget allows; it says nothing about the key itself and clears within the minute.
 
 ## Examples
 

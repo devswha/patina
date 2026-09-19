@@ -6,6 +6,7 @@ import {
   classifyRewriteError,
   createRewriteThread,
   REWRITE_ERROR_KINDS,
+  rewriteRecovery,
   streamRewrite,
 } from '../../playground/rewrite-client.js';
 
@@ -237,6 +238,23 @@ test('classifyRewriteError maps every server reason string to a stable kind', ()
   assert.equal(classifyRewriteError({ code: 'number_safety_failed' }), K.NUMBER_SAFETY);
 });
 
+test('classifyRewriteError never reads patina quota copy out of an upstream failure', () => {
+  const K = REWRITE_ERROR_KINDS;
+  // stream_failed / scoring_failed describe the UPSTREAM provider. A BYOK
+  // provider body can repeat patina's own reason strings verbatim, so matching
+  // them would show the caller a quota refusal (plus a Pro upsell) for a limit
+  // they never hit.
+  assert.equal(classifyRewriteError({ code: 'stream_failed', error: 'HTTP 429: daily quota exceeded' }), K.UNKNOWN);
+  assert.equal(classifyRewriteError({ code: 'scoring_failed', error: 'HTTP 429: monthly rewrite limit reached' }), K.UNKNOWN);
+  assert.equal(classifyRewriteError({ code: 'stream_failed', error: 'HTTP 503: rewrite service unavailable' }), K.UNKNOWN);
+  // The closed server-paid vocabulary is inert here by construction.
+  assert.equal(classifyRewriteError({ code: 'stream_failed', error: 'upstream_rate_limited' }), K.UNKNOWN);
+  // A real transport status on the frame still classifies.
+  assert.equal(classifyRewriteError({ status: 503, code: 'stream_failed', error: 'upstream_unavailable' }), K.SERVICE_UNAVAILABLE);
+  // patina's own refusals carry no stream code and are unaffected.
+  assert.equal(classifyRewriteError({ status: 429, error: 'daily quota exceeded' }), K.QUOTA_DAILY);
+});
+
 test('classifyRewriteError falls back conservatively for unrecognized failures', () => {
   const K = REWRITE_ERROR_KINDS;
   // Unknown quota reasons must not invent a quota window or reset time.
@@ -245,6 +263,12 @@ test('classifyRewriteError falls back conservatively for unrecognized failures',
   assert.equal(classifyRewriteError({ status: 502 }), K.SERVICE_UNAVAILABLE);
   assert.equal(classifyRewriteError({ status: 500, error: 'internal error' }), K.UNKNOWN);
   assert.equal(classifyRewriteError({ status: 400, error: 'invalid JSON' }), K.UNKNOWN);
+  // A source the server can never certify is a different message from a
+  // rewrite that changed a number; both send the user back to edit the text.
+  assert.equal(classifyRewriteError({ code: 'number_safety_failed' }), K.NUMBER_SAFETY);
+  assert.equal(classifyRewriteError({ code: 'number_safety_failed', scope: 'source' }), K.NUMBER_SOURCE);
+  assert.equal(classifyRewriteError({ code: 'number_safety_failed', scope: 'rewrite' }), K.NUMBER_SAFETY);
+  assert.equal(rewriteRecovery(K.NUMBER_SOURCE), 'edit');
   assert.equal(classifyRewriteError({}), K.UNKNOWN);
   assert.equal(classifyRewriteError(null), K.UNKNOWN);
   assert.equal(classifyRewriteError(undefined), K.UNKNOWN);

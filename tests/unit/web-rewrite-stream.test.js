@@ -522,6 +522,71 @@ test('runWebRewriteStream exhausts number-safety retries and fails closed', asyn
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
 
+test('runWebRewriteStream refuses an incomplete generation before spending a scorer call', async () => {
+  const cases = [
+    // OpenAI-compatible finish_reason.
+    { label: 'length', stream: { text: 'We shipped 3 un', finishReason: 'length' }, error: 'output_truncated' },
+    { label: 'content_filter', stream: { text: 'We shipped', finishReason: 'content_filter' }, error: 'output_filtered' },
+    // Native Anthropic stop_reason, surfaced under the same field.
+    { label: 'max_tokens', stream: { text: 'We shipped 3 un', finishReason: 'MAX_TOKENS' }, error: 'output_truncated' },
+    { label: 'refusal', stream: { text: 'We shipped', finishReason: 'refusal' }, error: 'output_filtered' },
+    // Nothing usable came back at all, with or without a clean finish reason.
+    { label: 'empty', stream: { text: '', finishReason: 'stop' }, error: 'empty_output' },
+    { label: 'whitespace only', stream: { text: '   \n  ' }, error: 'empty_output' },
+  ];
+  for (const { label, stream, error } of cases) {
+    const frames = [];
+    let llmCalls = 0;
+    let scorerCalls = 0;
+    const result = await runWebRewriteStream({
+      request: { ...request, original: 'We shipped 3 units.' },
+      callLLMStream: async ({ onAttempt, onDelta }) => {
+        llmCalls += 1;
+        onAttempt(privateAttempt());
+        onDelta(stream.text);
+        return stream;
+      },
+      scoreFns: {
+        scoreMPS: async () => { scorerCalls += 1; throw new Error('scoring must not run'); },
+        scoreFidelity: async () => { scorerCalls += 1; throw new Error('scoring must not run'); },
+        scoreDeterministicSignals: () => { throw new Error('scoring must not run'); },
+      },
+      emit: (frame) => frames.push(frame),
+    });
+
+    assert.equal(result.ok, false, label);
+    assert.equal(result.code, 'stream_failed', label);
+    assert.equal(result.error, error, label);
+    assert.equal(scorerCalls, 0, `${label}: no paid scorer call on an incomplete rewrite`);
+    // A token ceiling or a content filter reproduces, so the number-safety
+    // retry must not spend a second paid rewrite on it either.
+    assert.equal(llmCalls, 1, `${label}: no retry of an incomplete rewrite`);
+    assert.equal(frames.some((frame) => frame.type === 'done'), false, label);
+    assert.deepEqual(frames.at(-1), { type: 'error', code: 'stream_failed', error }, label);
+    assertFramesDoNotLeakPrivateMetadata(frames);
+  }
+});
+
+test('runWebRewriteStream still accepts a cleanly finished generation', async () => {
+  // Regression guard: only the truncating/filtering reasons are refused.
+  for (const finishReason of ['stop', 'end_turn', 'stop_sequence', undefined]) {
+    const frames = [];
+    const result = await runWebRewriteStream({
+      request,
+      callLLMStream: async ({ onAttempt }) => {
+        onAttempt(privateAttempt());
+        return finishReason === undefined ? { text: 'human text' } : { text: 'human text', finishReason };
+      },
+      scoreFns: scoring(),
+      emit: (frame) => frames.push(frame),
+    });
+
+    assert.equal(result.ok, true, String(finishReason));
+    assert.equal(frames.at(-1).type, 'done', String(finishReason));
+    assert.equal(frames.at(-1).rewrite, 'human text', String(finishReason));
+  }
+});
+
 test('runWebRewriteStream keeps heuristic Korean invariants advisory', async () => {
   // Given: a Korean rewrite that the heuristic flags for polarity.
   const frames = [];

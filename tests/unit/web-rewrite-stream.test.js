@@ -1238,7 +1238,8 @@ test('an empty-anchor MPS cannot certify a numeric source on the hosted floor (#
   assert.ok(frames.at(-1).failed.includes('mps'));
   // The swap itself never trips the deterministic bag gate — that is the hole
   // this veto closes; the anchored MPS carries the decision from here.
-  assert.equal(result.mps.anchors.length, 0);
+  const mpsEvidence = /** @type {{ anchors: unknown[] }} */ (/** @type {unknown} */ (result.mps));
+  assert.equal(mpsEvidence.anchors.length, 0);
 });
 
 test('an empty-anchor MPS still certifies a claim-free source (#871 carve-out)', async () => {
@@ -1278,5 +1279,6 @@ test('a HARD_FAIL MPS rejects the same role swap even above the floor (#872)', a
   assert.equal(result.ok, false);
   assert.equal(result.code, 'floor_failed');
   assert.ok(result.failed.includes('mps'));
-  assert.equal(result.mps.hard_fail_count, 1);
+  const hardFailEvidence = /** @type {{ hard_fail_count: number }} */ (/** @type {unknown} */ (result.mps));
+  assert.equal(hardFailEvidence.hard_fail_count, 1);
 });

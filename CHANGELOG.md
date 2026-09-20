@@ -2,6 +2,23 @@
 
 All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 
+## 8.10.0 — 2026-09-20
+
+Semver rationale: minor — adds an optional refine `instruction` field, a Korean speech-level flattening advisory, a star reminder, and new documented refusals on the hosted stream. No public surface is removed; several hosted failures are reclassified to what actually happened (400 instead of 500, `scoring_failed` instead of `floor_failed`, a degraded success instead of a discarded verified rewrite).
+
+- **Refine turns rewrite the draft** (#929): a follow-up request now sends the latest accepted draft as the rewrite target and carries the composer line in a new optional `instruction` field. Previously the instruction itself could be rewritten (a Korean sample came back as `더 짧게 써줘.`), and a draft past the 12 KiB history cap silently rewrote the original anchor, discarding every edit. Requests without `instruction` build the same prompt as before.
+- **Incomplete generations are refused before scoring** (#926): a run that stopped at a token ceiling, was suppressed by a content filter, or cleaned down to nothing now ends as `stream_failed` with a stable reason (`truncated_output` / `filtered_output` / `empty_output`) and zero scorer calls, instead of possibly shipping as a verified rewrite.
+- **Uncertifiable numeric sources fail before any paid call** (#921): a source carrying syntax the number-safety gate cannot claim (`Q3`, `B2B`, `$1,200`, `第三季度`, …) is refused up front with a scoped `number_safety_failed` frame and four-language copy that says what happened, instead of streaming a rewrite that then fails after ~20 s and a paid retry.
+- **A verified rewrite survives an oversized change review** (#927): when the optional edit review exceeds its 20,000-unit cap, the stream now degrades to `done` without `editReview` instead of discarding a rewrite that had passed every gate. Requests with protected spans still fail closed.
+- **Provider error bodies stay off the hosted tiers** (#923): upstream failures on `free`/`pro` now report a closed vocabulary (`upstream_rate_limited`, `upstream_unavailable`, …) instead of raw provider text that disclosed model ids, quota metrics, and organization ids; BYOK keeps the detail plus a new optional `upstreamStatus`.
+- **Failures say what actually happened** (#925, #920): a scorer that was never reached reports `scoring_failed`, not a meaning-floor failure; malformed JSON on `/api/rewrite` answers 400, not 500.
+- **An empty-anchor MPS cannot certify a numeric source on the web lane** (#917, #872): the hosted 422 floor now enforces the refusal the CLI lane already had, closing the role-swap hole for numeric sources.
+- **Document-type labels follow their ids** (#919): 15 of the 20 playground dropdown options sent the wrong genre id (Email sent `personal-statement`); labels are now keyed by id in all four languages, with the id as fallback so an option can never render blank.
+- **Korean speech-level flattening advisory** (#918, #882 stage 3): a rewrite that collapses a genuinely mixed-register source onto a single ending class now warns. Advisory only — exit codes, scores, and rewrite text are unchanged; `--register` requests are exempt. The 50-pair calibration fixture ships with it (#916).
+- **Star reminder** (#922): after the 3rd and the 20th successful CLI run, one stderr line suggests starring the repo. Never printed on non-terminals, pipes, `--quiet`, or failures; the skill summary carries an additive `notice: "star"` on the same schedule. Opt out with `star-nudge: false` or `PATINA_NO_STAR_NUDGE=1`.
+- **Landing benchmark figures match the report** (#930): the stale figures on the public landing page (95% CI, fixture and sample counts) are corrected to `docs/benchmarks/latest.json`, and a parity test keeps them tied from now on.
+- **Pro and monitoring fixes** (#924, #928): license validation is admitted per client before the shared provider budget, so an uncached key can no longer lock paying customers out with 503s; the synthetic probe's failure streak can actually reach its trigger, and the probe no longer exhausts its own seat's monthly allowance.
+
 ## 8.9.0 — 2026-09-17
 
 Semver rationale: minor — adds four Korean rewrite patterns, an English cadence pattern, a CLI meaning-safety overlay extension, two advisory notes, and a rewrite-prompt hint. No public surface is removed. Two advisory notes can newly print warnings on rewrites that previously stayed silent; neither changes exit codes or emitted text.

@@ -1,5 +1,7 @@
 // @ts-check
 
+import { timingSafeEqual } from 'node:crypto';
+
 import { byteLength, QUOTA_REASONS, validateRewriteRequest, WEB_TIERS } from './web-rewrite-contract.js';
 import { extractClientIp } from './rate-limit.js';
 import { extractBearerLicense } from './entitlement.js';
@@ -14,9 +16,9 @@ import { sha256 } from './web-rewrite-receipt.js';
  *
  * @typedef {{method?: string, aborted?: boolean, headers?: Record<string, string|string[]|undefined>, rawHeaders?: string[], body?: unknown, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, [Symbol.asyncIterator]?: () => AsyncIterator<Buffer|string|Uint8Array>}} RewriteReq
  * @typedef {{statusCode?: number, setHeader?: (name: string, value: string) => void, write?: (chunk: string) => void, end?: (body?: string) => void, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, writableEnded?: boolean, headersSent?: boolean, destroyed?: boolean, destroy?: () => void}} RewriteRes
- * @typedef {{check(input: {tier: string, ip: string|null, subject?: string, chars?: number, requestId?: string}): Promise<{allowed: true, tier: string, reservation?: import('./quota-reservation.js').ReservationPlan}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}>, acquireConcurrency?(input: {tier: string, ip: string|null, subject?: string}): Promise<{allowed: true, tier: string, lease: string}|{allowed: false, status: number, reason: string}>, releaseConcurrency?(input: {tier: string, ip: string|null, subject?: string, lease: string}): Promise<void>, settleReservation?(input: {reservation: import('./quota-reservation.js').ReservationPlan, refund: boolean}): Promise<boolean>}} RateLimiter
+ * @typedef {{check(input: {tier: string, ip: string|null, subject?: string, chars?: number, requestId?: string, synthetic?: boolean}): Promise<{allowed: true, tier: string, reservation?: import('./quota-reservation.js').ReservationPlan}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}>, acquireConcurrency?(input: {tier: string, ip: string|null, subject?: string}): Promise<{allowed: true, tier: string, lease: string}|{allowed: false, status: number, reason: string}>, releaseConcurrency?(input: {tier: string, ip: string|null, subject?: string, lease: string}): Promise<void>, settleReservation?(input: {reservation: import('./quota-reservation.js').ReservationPlan, refund: boolean}): Promise<boolean>}} RateLimiter
  * @typedef {{req: RewriteReq, res: RewriteRes, request: import('./web-rewrite-contract.js').WebRewriteRequest, now: () => number, observe?: Function, beforeResponseEnd?: (outcome?: {ok?: boolean, code?: string}) => Promise<void>}} RewriteRunnerInput
- * @typedef {{validate(input: {licenseKey: string}): Promise<{ok: true, subject: string, tier: string, status: string, cache: string}|{ok: false, status: number, reason: string}>}} LicenseValidator
+ * @typedef {{validate(input: {licenseKey: string, ip?: string|null}): Promise<{ok: true, subject: string, tier: string, status: string, cache: string}|{ok: false, status: number, reason: string}>}} LicenseValidator
  */
 
 // Must exceed the worst valid contract payload: 2 × 20K CJK characters
@@ -59,9 +61,13 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
   /** @param {string} reason */
   const limiterOutcome = (reason) => reason === QUOTA_REASONS.SERVICE_UNAVAILABLE ? 'service_disabled' : 'quota_denied';
   /** @param {number} status @param {string} reason */
-  const entitlementOutcome = (status, reason) => status === 503 || reason === QUOTA_REASONS.LICENSE_UNAVAILABLE
-    ? 'entitlement_unavailable'
-    : 'entitlement_denied';
+  const entitlementOutcome = (status, reason) => {
+    if (status === 503 || reason === QUOTA_REASONS.LICENSE_UNAVAILABLE) return 'entitlement_unavailable';
+    // The validator's own admission guard denies per client, not per license:
+    // report it as the quota denial it is, exactly like the limiter's.
+    if (status === 429 || reason === QUOTA_REASONS.IP_UNAVAILABLE) return 'quota_denied';
+    return 'entitlement_denied';
+  };
 
 
   return async function rewriteHandler(req, res) {
@@ -91,6 +97,7 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       if (req.method !== 'POST') return send(res, 405, { error: 'method not allowed' });
 
       const rawBody = await readRawBody(req, maxBodyBytes);
+      if (rawBody === UNPARSEABLE_BODY) return send(res, 400, { error: 'invalid JSON' });
       if (rawBody == null) return send(res, 413, { error: 'request body too large' });
 
       let body;
@@ -146,7 +153,10 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
 
       // Pro tier: turn the Bearer license into an HMAC subject via LS validate-only.
       // The subject (never the raw license) is what meters pro concurrency/quota.
-      // Fail closed if the validator is unwired, or denies/errors (401/403/503).
+      // The client IP goes along so the validator can admit per caller before it
+      // spends the shared provider budget on an uncached key; it is HMAC'd there
+      // and never stored raw. Fail closed if the validator is unwired, or
+      // denies/errors (400/401/403/429/503).
       let subject;
       if (tier === WEB_TIERS.PRO) {
         if (!licenseValidator || typeof licenseValidator.validate !== 'function') {
@@ -155,7 +165,7 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
         }
         let ent;
         try {
-          ent = await licenseValidator.validate({ licenseKey: /** @type {{ok: true, license: string}} */ (bearer).license });
+          ent = await licenseValidator.validate({ licenseKey: /** @type {{ok: true, license: string}} */ (bearer).license, ip });
         } catch (err) {
           observeClosed(customerObserve, tier, 'entitlement_unavailable', 500, startedAt);
           throw err;
@@ -178,6 +188,14 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       // daily/concurrency caps; pass the request's input length so the limiter
       // can accumulate it. Free/BYOK ignore chars; both meter requests by IP.
       const chars = tier === WEB_TIERS.PRO && typeof request.text === 'string' ? request.text.length : 0;
+      // The monitor's paid probe runs ~24x a day against a monthly request
+      // allowance, so it used to exhaust its own seat within days and then
+      // report the resulting 429 as a pro-path failure. It is exempted from
+      // MONTHLY metering only, and only when BOTH server-side facts hold: the
+      // trusted observer marker (a header the boundary strips, never a body
+      // field) and a license the validator accepted into a subject. Daily cap,
+      // concurrency lease and license validation stay fully in force.
+      const trustedSyntheticProbe = synthetic && tier === WEB_TIERS.PRO && typeof subject === 'string' && subject !== '';
 
       /** @param {{status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} denied */
       const sendQuotaDenied = (denied) => {
@@ -196,7 +214,7 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       }
       if (isClientClosed()) return undefined;
       if (!hasAcquire) {
-        const quota = await rateLimiter.check({ tier, ip, subject, chars });
+        const quota = await rateLimiter.check({ tier, ip, subject, chars, ...(trustedSyntheticProbe ? { synthetic: true } : {}) });
         if (!quota.allowed) return sendQuotaDenied(/** @type {{status: number, reason: string}} */ (quota));
         // await so a runner rejection is caught by the redacted 500 handler below.
         if (isClientClosed()) return undefined;
@@ -225,7 +243,7 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       try {
         if (isClientClosed()) return undefined;
         const refundable = tier === WEB_TIERS.PRO && typeof rateLimiter.settleReservation === 'function';
-        const quota = await rateLimiter.check({ tier, ip, subject, chars, ...(refundable ? { requestId: concurrency.lease } : {}) });
+        const quota = await rateLimiter.check({ tier, ip, subject, chars, ...(refundable ? { requestId: concurrency.lease } : {}), ...(trustedSyntheticProbe ? { synthetic: true } : {}) });
         if (!quota.allowed) {
           await releaseSlot();
           return sendQuotaDenied(/** @type {{status: number, reason: string}} */ (quota));
@@ -282,7 +300,9 @@ function hasExactlyOneAuthorizationHeader(rawHeaders) {
 /**
  * True only for an exact, server-configured internal marker. The marker is
  * removed from every runner request, including invalid attempts, so it cannot
- * reach a provider, stream frame, log, or KV key.
+ * reach a provider, stream frame, log, or KV key. The comparison is constant
+ * time (a length mismatch is rejected before it) because this marker is one of
+ * the two facts that exempt the monitor's probe from monthly metering.
  * @param {Record<string, string|string[]|undefined>} headers
  * @param {Record<string, string|undefined>} env
  */
@@ -290,7 +310,10 @@ function isTrustedSynthetic(headers, env) {
   const secret = env.PATINA_SYNTHETIC_OBSERVER_SECRET;
   if (typeof secret !== 'string' || secret.length === 0) return false;
   const values = Object.entries(headers).filter(([key]) => key.toLowerCase() === 'x-patina-synthetic-observer');
-  return values.length === 1 && typeof values[0][1] === 'string' && values[0][1] === secret;
+  if (values.length !== 1 || typeof values[0][1] !== 'string') return false;
+  const provided = Buffer.from(values[0][1], 'utf8');
+  const wanted = Buffer.from(secret, 'utf8');
+  return provided.length === wanted.length && timingSafeEqual(provided, wanted);
 }
 
 /**
@@ -354,17 +377,30 @@ export function send(res, status, obj) {
   return undefined;
 }
 
+const UNPARSEABLE_BODY = Symbol('unparseable-body');
+
 /**
- * Read a request body. Returns null when the max byte cap is exceeded.
+ * Read a request body. Returns null when the max byte cap is exceeded, and
+ * UNPARSEABLE_BODY when the platform already rejected the bytes as JSON.
  *
  * @param {RewriteReq} req
  * @param {number} maxBodyBytes
- * @returns {Promise<string|null>}
+ * @returns {Promise<string|null|typeof UNPARSEABLE_BODY>}
  */
 async function readRawBody(req, maxBodyBytes) {
-  if (typeof req.body === 'string') return byteLength(req.body) > maxBodyBytes ? null : req.body;
-  if (req.body != null) {
-    const serialized = JSON.stringify(req.body);
+  // Vercel's Node helper exposes `body` as a lazy getter that parses JSON on
+  // first access and THROWS on malformed input. Unguarded, that throw reached
+  // the handler's outer catch: production answered 500 "internal error" and
+  // logged rewrite_handler_failed for what is a plain client error.
+  let preParsed;
+  try {
+    preParsed = req.body;
+  } catch {
+    return UNPARSEABLE_BODY;
+  }
+  if (typeof preParsed === 'string') return byteLength(preParsed) > maxBodyBytes ? null : preParsed;
+  if (preParsed != null) {
+    const serialized = JSON.stringify(preParsed);
     return byteLength(serialized) > maxBodyBytes ? null : serialized;
   }
 

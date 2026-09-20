@@ -397,6 +397,7 @@ test('QUOTA_REASONS values stay backward-compatible with the emitted reason stri
     LICENSE_REQUIRED: 'license required',
     LICENSE_INVALID: 'license not entitled',
     LICENSE_UNAVAILABLE: 'license validation unavailable',
+    LICENSE_VALIDATION_BURST: 'license validation burst exceeded',
     MONTHLY_CHARS: 'monthly character limit reached',
     MONTHLY_REQUESTS: 'monthly rewrite limit reached',
   });
@@ -593,6 +594,19 @@ test('pro monthly request cap bounds spend where the char cap cannot', async () 
     remainingMonthlyRequests: 0,
     limitMonthlyRequests: 3,
   });
+});
+
+test('a trusted synthetic probe skips the monthly dimensions on the reservation-free pro path', async () => {
+  const limits = { free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 }, byok: { maxChars: 20000, maxConcurrent: 2 }, pro: { maxChars: 20000, reqPerDay: 3, maxConcurrent: 3, charsPerMonth: 100, reqPerMonth: 1 } };
+  const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0, limits });
+  const probe = { tier: WEB_TIERS.PRO, subject: 'monitor-seat', chars: 90, synthetic: true };
+
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject: 'monitor-seat', chars: 90 })).allowed, true);
+  // The seat's month is now spent for requests and nearly spent for characters.
+  assert.equal((await limiter.check({ tier: WEB_TIERS.PRO, subject: 'monitor-seat', chars: 90 })).reason, QUOTA_REASONS.MONTHLY_REQUESTS);
+  assert.equal((await limiter.check(probe)).allowed, true, 'the probe is exempt from the monthly dimensions');
+  // The daily cap is not exempt: this is the third request of the day.
+  assert.deepEqual(await limiter.check(probe), { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY });
 });
 
 test('pro monthly request cap counts chars-free requests and is per-subject', async () => {

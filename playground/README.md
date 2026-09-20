@@ -9,7 +9,7 @@ that **rewrites** AI-sounding text into something more natural for `ko`, `en`,
 - App shell: [`index.html`](index.html) — the chat page (served at `/`).
 - Styles: [`chatgpt.css`](chatgpt.css).
 - Controller: [`chatgpt.js`](chatgpt.js) — conversation store, streaming, safe DOM rendering.
-- Streaming client: [`rewrite-client.js`](rewrite-client.js) — isomorphic NDJSON client + client-held thread (one-shot → conversational refine).
+- Streaming client: [`rewrite-client.js`](rewrite-client.js) — isomorphic NDJSON client + client-held thread (one-shot → conversational refine). A refine turn sends the latest accepted draft as `text` and the user's follow-up as `instruction`; `history` carries earlier edit preferences only.
 - Conversation settings: [`preferences.js`](preferences.js).
 - Pro recovery, pricing, and settings copy in four languages: [`experience-copy.js`](experience-copy.js).
 - Contract: [`../src/web-rewrite-contract.js`](../src/web-rewrite-contract.js) — the single source of truth shared by the serverless handler, the web runner, the browser client, and the tests.
@@ -132,7 +132,14 @@ Pro env (see `.env.example` for the full annotated list):
   per-license monthly total-character cap — over it returns 429
   `monthly character limit reached` with `remainingMonthlyChars`/`limitMonthlyChars`).
 - `PATINA_POLAR_CACHE_TTL_MS` (300000) / `PATINA_POLAR_NEGATIVE_CACHE_TTL_MS` (60000) /
-  `PATINA_POLAR_TIMEOUT_MS` (2500) / `PATINA_POLAR_VALIDATE_RPM` (10).
+  `PATINA_POLAR_TIMEOUT_MS` (2500) / `PATINA_POLAR_VALIDATE_RPM` (10) /
+  `PATINA_POLAR_VALIDATE_IP_RPM` (3). `VALIDATE_RPM` is the shared per-minute
+  ceiling on calls to Polar; `VALIDATE_IP_RPM` is one client's slice of it, so no
+  single caller can spend the whole budget on uncached keys and leave other
+  seats unable to validate. Only a cache miss that is about to call Polar is
+  charged — a validated seat inside its cache TTL never is. Over the slice the
+  request is refused with `429 license validation burst exceeded` (a verdict
+  about the caller, never cached against the key).
 
 Validate-only means revocation propagates within the positive-cache TTL (default
 5 min); a hard kill can shorten it by lowering `PATINA_POLAR_CACHE_TTL_MS`.

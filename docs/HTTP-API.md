@@ -37,10 +37,13 @@ some edits creates a new draft: previous scores and receipts do not verify it.
 Submit that exact draft with `mode: "verify"` before treating it as approved.
 Its successful response binds fresh scores and a receipt to those exact bytes.
 Protected text is checked before scoring; violations return `422` with
-`protected_text_failed`. Edit review supports up to 20,000 UTF-16 units per
-text; a generated output beyond this bound returns `edit_output_too_long`
-when edits were requested. Source text and protected literals are not added to
-analytics or persisted by these controls.
+`protected_text_failed`, and that includes a generated output beyond the
+20,000 UTF-16 unit bound when protected spans were sent. Edit review supports
+up to 20,000 UTF-16 units per text; when a verified output exceeds that bound
+and no protected spans were sent, the response still succeeds and simply omits
+`editReview`, because the review is a convenience and the verified rewrite is
+not. Source text and protected literals are not added to analytics or
+persisted by these controls.
 
 Set `Content-Type: application/json` and send this body:
 
@@ -63,11 +66,23 @@ Required fields:
 | `mode` | `first`, `refine`, or `verify` |
 | `lang` | `ko`, `en`, `zh`, or `ja` |
 | `tier` | `free`, `byok`, or `pro` |
-| `text` | Non-empty string |
+| `text` | Non-empty string — the text to rewrite in every mode (on `refine`, the latest draft) |
 
 Optional style fields are `documentType`, `persona`, and `register`; edit controls are described above. `documentType` defaults to `default`; valid values are `default`, `blog`, `academic`, `technical`, `formal`, `resume`, `personal-statement`, `project-writeup`, `social`, `email`, `legal`, `medical`, `marketing`, `narrative`, `instructional`, `casual-conversation`, `code-comment`, `commit-message`, `release-notes`, and `namuwiki` (`namuwiki` is Korean-only). `formal` remains proposals and official reports; resumes, cover letters, and project writeups use the split types. `register` is `casual` or `professional`. A persona must be one offered for the selected language.
 
-For `mode: "refine"`, `original` is required and must be the original source text. `history` is optional; it is an array of `{ "role": "user" | "assistant", "content": "..." }` turns. The server retains at most 6 recent turns and 12 KiB of history text. BYOK additionally requires an allowed `provider`, `model`, and non-empty `apiKey`; free and Pro reject a body `apiKey`.
+For `mode: "refine"`, `text` is the latest draft — the text this turn rewrites — and `original` is required and must be the original source text, which anchors meaning. `instruction` is optional and carries the user's edit request for this turn (for example `"make it shorter"`), up to 2,000 characters; it is applied to `text` unless it conflicts with meaning preservation, the claims and numbers of `original`, or the output format, and it can never change policy or output format. Omitting `instruction` behaves exactly as before it existed. It is rejected with `400` in `first` and `verify` modes, where there is no draft to edit. `history` is optional; it is an array of `{ "role": "user" | "assistant", "content": "..." }` turns carrying earlier edit preferences. The server retains at most 6 recent turns and 12 KiB of history text, dropping older turns first, so history is never the only place a draft exists. BYOK additionally requires an allowed `provider`, `model`, and non-empty `apiKey`; free and Pro reject a body `apiKey`.
+
+```json
+{
+  "mode": "refine",
+  "lang": "en",
+  "tier": "pro",
+  "text": "The latest draft to rewrite again.",
+  "original": "The original source text this thread started from.",
+  "instruction": "Make it shorter.",
+  "history": [{ "role": "user", "content": "Keep the numbers." }]
+}
+```
 
 ## Limits
 
@@ -101,11 +116,31 @@ When `Accept` is absent, `*/*`, or does not request JSON, the response is `200 a
 A streaming terminal error is also an NDJSON frame, for example:
 
 ```ndjson
-{"type":"error","code":"stream_failed","error":"upstream request failed"}
+{"type":"error","code":"stream_failed","error":"upstream_unavailable"}
 {"type":"error","code":"floor_failed","failed":["mps"],"rewrite":"...","mps":{"mps":65},"fidelity":{"fidelity":93},"signals":{"before":{"overall":72},"after":{"overall":18}},"diff":{"beforeChars":39,"afterChars":48}}
 ```
 
 Other terminal stream codes are `number_safety_failed` and `scoring_failed`.
+
+A generation that never completed is refused before any scoring, so no `done` frame follows and the request is not charged for meaning verification. These `stream_failed` reasons are stable:
+
+| `error` | Meaning |
+| --- | --- |
+| `output_truncated` | The provider stopped at a token ceiling (`finish_reason: "length"` / `stop_reason: "max_tokens"`). |
+| `output_filtered` | The provider suppressed or refused the generation (`content_filter` / `refusal`). |
+| `empty_output` | Nothing usable remained after output cleanup. |
+
+None of the three is retried: a token ceiling and a content filter reproduce on a second attempt. Shorten or rephrase the source instead.
+
+On the server-paid tiers (`free`, `pro`) the provider and the model are the server's private configuration, so `stream_failed` and `scoring_failed` never forward provider response text. Their `error` field is one of a closed set chosen by the upstream status class:
+
+| `error` | Upstream status |
+| --- | --- |
+| `upstream_rate_limited` | 408, 425, 429 |
+| `upstream_unavailable` | 5xx, or no HTTP status (network error, timeout, deadline abort) |
+| `upstream_rejected` | any other non-2xx status |
+
+On `byok` the caller owns the provider and the key, so `error` keeps the redacted provider detail and the frame also carries `upstreamStatus` (the numeric provider status) when the transport recorded one. JSON mode returns the same `error` and `upstreamStatus` values.
 
 ### Non-streaming JSON
 
@@ -133,9 +168,9 @@ Errors are JSON objects, including for JSON-mode callers:
 { "error": "hourly burst exceeded" }
 ```
 
-Validation errors use `400`; an over-limit `text` or refine `original` uses `413`. A missing, malformed, or duplicated Pro `Authorization` header uses `401` (`pro license required`); a well-formed license key that does not entitle uses `403` (`license not entitled`). Quota and concurrency denials use `429`; quota/entitlement infrastructure or service unavailability uses `503`. JSON-mode terminal failures use `422` (safety-gate refusal) or `500` (upstream failure) as described above.
+Validation errors use `400`; an over-limit `text`, refine `original`, or refine `instruction` uses `413`. A missing, malformed, or duplicated Pro `Authorization` header uses `401` (`pro license required`); a well-formed license key that does not entitle uses `403` (`license not entitled`). Quota and concurrency denials use `429`; quota/entitlement infrastructure or service unavailability uses `503`. JSON-mode terminal failures use `422` (safety-gate refusal) or `500` (upstream failure) as described above.
 
-Possible quota error strings include `daily quota exceeded`, `hourly burst exceeded`, `concurrent limit exceeded`, `monthly rewrite limit reached`, and `monthly character limit reached`. A Pro monthly-character denial additionally includes `remainingMonthlyChars` and `limitMonthlyChars`.
+Possible quota error strings include `daily quota exceeded`, `hourly burst exceeded`, `concurrent limit exceeded`, `monthly rewrite limit reached`, and `monthly character limit reached`. A Pro monthly-character denial additionally includes `remainingMonthlyChars` and `limitMonthlyChars`. A `429 license validation burst exceeded` means this client asked to validate more not-yet-cached license keys in one minute than its share of the license-provider budget allows; it says nothing about the key itself and clears within the minute.
 
 ## Examples
 

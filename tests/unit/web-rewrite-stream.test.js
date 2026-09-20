@@ -1,7 +1,9 @@
 // @ts-check
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mpsResult, fidelityResult } from '../fixtures/verification-results.js';
+import { mpsResult, fidelityResult, zeroAnchorMps, highHardFailMps } from '../fixtures/verification-results.js';
+import { HttpError } from '../../src/api.js';
+import { scoreFidelity as realScoreFidelity, scoreMPS as realScoreMPS } from '../../src/scoring.js';
 import { buildDocumentSignals } from '../../src/features/document-signals.js';
 import { rewriteExtraBody, runWebRewriteStream, scoringExtraBody } from '../../src/web-rewrite-stream.js';
 import { buildWebRewriteReceipt, canonicalJson, sha256 } from '../../src/web-rewrite-receipt.js';
@@ -522,6 +524,71 @@ test('runWebRewriteStream exhausts number-safety retries and fails closed', asyn
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
 
+test('runWebRewriteStream refuses an incomplete generation before spending a scorer call', async () => {
+  const cases = [
+    // OpenAI-compatible finish_reason.
+    { label: 'length', stream: { text: 'We shipped 3 un', finishReason: 'length' }, error: 'output_truncated' },
+    { label: 'content_filter', stream: { text: 'We shipped', finishReason: 'content_filter' }, error: 'output_filtered' },
+    // Native Anthropic stop_reason, surfaced under the same field.
+    { label: 'max_tokens', stream: { text: 'We shipped 3 un', finishReason: 'MAX_TOKENS' }, error: 'output_truncated' },
+    { label: 'refusal', stream: { text: 'We shipped', finishReason: 'refusal' }, error: 'output_filtered' },
+    // Nothing usable came back at all, with or without a clean finish reason.
+    { label: 'empty', stream: { text: '', finishReason: 'stop' }, error: 'empty_output' },
+    { label: 'whitespace only', stream: { text: '   \n  ' }, error: 'empty_output' },
+  ];
+  for (const { label, stream, error } of cases) {
+    const frames = [];
+    let llmCalls = 0;
+    let scorerCalls = 0;
+    const result = await runWebRewriteStream({
+      request: { ...request, original: 'We shipped 3 units.' },
+      callLLMStream: async ({ onAttempt, onDelta }) => {
+        llmCalls += 1;
+        onAttempt(privateAttempt());
+        onDelta(stream.text);
+        return stream;
+      },
+      scoreFns: {
+        scoreMPS: async () => { scorerCalls += 1; throw new Error('scoring must not run'); },
+        scoreFidelity: async () => { scorerCalls += 1; throw new Error('scoring must not run'); },
+        scoreDeterministicSignals: () => { throw new Error('scoring must not run'); },
+      },
+      emit: (frame) => frames.push(frame),
+    });
+
+    assert.equal(result.ok, false, label);
+    assert.equal(result.code, 'stream_failed', label);
+    assert.equal(result.error, error, label);
+    assert.equal(scorerCalls, 0, `${label}: no paid scorer call on an incomplete rewrite`);
+    // A token ceiling or a content filter reproduces, so the number-safety
+    // retry must not spend a second paid rewrite on it either.
+    assert.equal(llmCalls, 1, `${label}: no retry of an incomplete rewrite`);
+    assert.equal(frames.some((frame) => frame.type === 'done'), false, label);
+    assert.deepEqual(frames.at(-1), { type: 'error', code: 'stream_failed', error }, label);
+    assertFramesDoNotLeakPrivateMetadata(frames);
+  }
+});
+
+test('runWebRewriteStream still accepts a cleanly finished generation', async () => {
+  // Regression guard: only the truncating/filtering reasons are refused.
+  for (const finishReason of ['stop', 'end_turn', 'stop_sequence', undefined]) {
+    const frames = [];
+    const result = await runWebRewriteStream({
+      request,
+      callLLMStream: async ({ onAttempt }) => {
+        onAttempt(privateAttempt());
+        return finishReason === undefined ? { text: 'human text' } : { text: 'human text', finishReason };
+      },
+      scoreFns: scoring(),
+      emit: (frame) => frames.push(frame),
+    });
+
+    assert.equal(result.ok, true, String(finishReason));
+    assert.equal(frames.at(-1).type, 'done', String(finishReason));
+    assert.equal(frames.at(-1).rewrite, 'human text', String(finishReason));
+  }
+});
+
 test('runWebRewriteStream keeps heuristic Korean invariants advisory', async () => {
   // Given: a Korean rewrite that the heuristic flags for polarity.
   const frames = [];
@@ -839,6 +906,105 @@ test('runWebRewriteStream emits stream_failed and no done when transport throws'
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
 
+// Realistic provider bodies. HttpError embeds up to 256 characters of these in
+// its message, so every named substring below is something a hosted-tier caller
+// must never see: the server's model id, its quota metric, its organization.
+const GEMINI_429_BODY = JSON.stringify({
+  error: {
+    code: 429,
+    message: "Quota exceeded for quota metric 'generate_content_requests' of model gemini-3.6-flash.",
+    status: 'RESOURCE_EXHAUSTED',
+  },
+});
+const OPENAI_401_BODY = JSON.stringify({
+  error: {
+    message: 'Incorrect API key provided for organization org-A1b2C3d4E5f6 on model gpt-5.5-mini.',
+    type: 'invalid_request_error',
+    code: 'invalid_api_key',
+  },
+});
+const UPSTREAM_BODY_MARKERS = [
+  'gemini-3.6-flash', 'quota metric', 'RESOURCE_EXHAUSTED',
+  'org-A1b2C3d4E5f6', 'invalid_api_key', 'gpt-5.5-mini',
+];
+
+function assertUpstreamBodyStaysPrivate(frames, result, label) {
+  const serialized = JSON.stringify({ frames, result });
+  for (const marker of UPSTREAM_BODY_MARKERS) {
+    assert.equal(serialized.includes(marker), false, `${label}: "${marker}" reached the client`);
+  }
+}
+
+test('runWebRewriteStream answers a provider failure with a closed vocabulary on the server-paid tiers', async () => {
+  /** @type {Array<[number, string, string]>} */
+  const cases = [
+    [429, GEMINI_429_BODY, 'upstream_rate_limited'],
+    [401, OPENAI_401_BODY, 'upstream_rejected'],
+    [503, GEMINI_429_BODY, 'upstream_unavailable'],
+  ];
+  for (const tier of ['free', 'pro']) {
+    for (const [status, body, expected] of cases) {
+      const label = `${tier}/${status}`;
+      const frames = [];
+      const result = await runWebRewriteStream({
+        request: { ...request, tier },
+        // A REAL HttpError: its message carries the truncated provider body.
+        callLLMStream: async ({ onAttempt }) => {
+          onAttempt(privateAttempt({ outcome: 'error', retryReason: 'transport' }));
+          throw new HttpError(status, body, '30');
+        },
+        scoreFns: scoring(),
+        emit: (frame) => frames.push(frame),
+      });
+
+      assert.equal(result.ok, false, label);
+      assert.equal(result.code, 'stream_failed', label);
+      assert.equal(result.error, expected, label);
+      assert.equal(frames.some((frame) => frame.type === 'done'), false, label);
+      assert.deepEqual(frames.at(-1), { type: 'error', code: 'stream_failed', error: expected }, label);
+      assertUpstreamBodyStaysPrivate(frames, result, label);
+      assertFramesDoNotLeakPrivateMetadata(frames);
+    }
+  }
+});
+
+test('runWebRewriteStream keeps redacted provider detail and a coarse status for BYOK', async () => {
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request,
+    callLLMStream: async () => { throw new HttpError(429, GEMINI_429_BODY, '30'); },
+    scoreFns: scoring(),
+    emit: (frame) => frames.push(frame),
+  });
+
+  assert.equal(result.code, 'stream_failed');
+  // The caller owns this provider: the detail is theirs to read, and the coarse
+  // status is what lets a client route auth failures instead of retrying.
+  assert.match(String(result.error), /quota metric/);
+  assert.equal(result.upstreamStatus, 429);
+  assert.deepEqual(frames.at(-1), { type: 'error', code: 'stream_failed', error: result.error, upstreamStatus: 429 });
+  assertFramesDoNotLeakPrivateMetadata(frames);
+});
+
+test('a scorer transport failure reveals nothing about the provider on a server-paid tier', async () => {
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request: { ...request, tier: 'free' },
+    callLLMStream: async ({ onAttempt }) => {
+      onAttempt(privateAttempt());
+      return { text: 'human text' };
+    },
+    scoreFns: { ...scoring(), scoreMPS: async () => { throw new HttpError(429, GEMINI_429_BODY, null); } },
+    emit: (frame) => frames.push(frame),
+  });
+
+  assert.equal(result.code, 'scoring_failed');
+  assert.equal(result.error, 'upstream_rate_limited');
+  assert.equal(frames.some((frame) => frame.type === 'done'), false);
+  assertUpstreamBodyStaysPrivate(frames, result, 'free/scoring');
+  assertFramesDoNotLeakPrivateMetadata(frames);
+});
+
 test('runWebRewriteStream scores refine against request.original, not latest draft', async () => {
   const frames = [];
   const calls = [];
@@ -903,42 +1069,119 @@ test('runWebRewriteStream waits for a started scorer before returning a scoring 
   assert.deepEqual(result.attempts, attemptsAtReturn);
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
-test('runWebRewriteStream fails closed for unchanged ambiguous dates before scoring', async () => {
+
+// Drive the REAL scorers so the transport/schema distinction is the production
+// one, not a hand-written error value: only `callLLM` underneath is injected.
+function realScorers(callLLM) {
+  return {
+    scoreMPS: (input) => realScoreMPS({ ...input, callLLM, logger: { warn() {} } }),
+    scoreFidelity: (input) => realScoreFidelity({ ...input, callLLM, logger: { warn() {} } }),
+    scoreDeterministicSignals: ({ text }) => ({ overall: text.length, text }),
+  };
+}
+
+test('runWebRewriteStream reports an unreached scorer as a scoring failure, not a floor failure', async () => {
+  /** @type {Array<[string, () => never]>} */
+  const transports = [
+    ['http 429', () => { throw new HttpError(429, '{"error":"rate limited"}', '30'); }],
+    ['http 503', () => { throw new HttpError(503, 'upstream unavailable', null); }],
+    ['timeout', () => { const err = new Error('LLM API failed after 3 attempts'); err.name = 'TimeoutError'; throw err; }],
+  ];
+  for (const [label, throwing] of transports) {
+    const frames = [];
+    const result = await runWebRewriteStream({
+      request,
+      callLLMStream: async ({ onAttempt }) => {
+        onAttempt(privateAttempt());
+        return { text: 'human text' };
+      },
+      scoreFns: realScorers(async () => throwing()),
+      emit: (frame) => frames.push(frame),
+    });
+
+    assert.equal(result.ok, false, label);
+    // The rewrite was never scored, so it must not be reported as one that
+    // missed the meaning floor — and it must not be accepted either.
+    assert.equal(result.code, 'scoring_failed', label);
+    assert.equal(frames.some((frame) => frame.type === 'done'), false, label);
+    assert.deepEqual(frames.at(-1), { type: 'error', code: 'scoring_failed', error: 'scorer transport failure' }, label);
+    assertFramesDoNotLeakPrivateMetadata(frames);
+  }
+});
+
+test('runWebRewriteStream keeps a genuinely malformed scorer answer on the floor-failure path', async () => {
   const frames = [];
-  let scorerCalls = 0;
   const result = await runWebRewriteStream({
-    request: { ...request, original: 'Report date: 01/02/2024.' },
+    request,
     callLLMStream: async ({ onAttempt }) => {
       onAttempt(privateAttempt());
-      return { text: 'Report date: 01/02/2024.' };
+      return { text: 'human text' };
     },
-    scoreFns: {
-      scoreMPS: async () => { scorerCalls += 1; return mpsResult(95); },
-      scoreFidelity: async () => { scorerCalls += 1; return fidelityResult(11); },
-      scoreDeterministicSignals: () => {
-        throw new Error('deterministic scoring must not run after ambiguous date failure');
-      },
-    },
+    // The judge answered; the answer is unusable. That is evidence about the
+    // rewrite's verification, and it keeps failing the floor with its audit data.
+    scoreFns: realScorers(async () => 'not json at all'),
     emit: (frame) => frames.push(frame),
-    numberSafetyRetries: 0,
   });
 
   assert.equal(result.ok, false);
-  assert.equal(result.code, 'number_safety_failed');
-  assert.equal(result.numberSafety.ok, false);
-  assert.equal(scorerCalls, 0);
-  assert.deepEqual(result.attempts, {
-    valid: true,
-    rewrite: [privateAttempt()],
-    mps: [],
-    fidelity: [],
-  });
-  assert.deepEqual(frames, [
-    { type: 'start' },
-    { type: 'error', code: 'number_safety_failed' },
-  ]);
+  assert.equal(result.code, 'floor_failed');
+  assert.deepEqual(result.failed, ['mps', 'fidelity']);
+  assert.equal(frames.at(-1).code, 'floor_failed');
+  assert.equal(frames.at(-1).mps.error, 'schema-failure');
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
+
+test('runWebRewriteStream refuses a source it can never certify before any paid call', async () => {
+  // Each source fails evaluateNumberSafety against ITSELF, so no rewrite could
+  // pass. The old path still paid for a rewrite (and its retry) every time.
+  for (const [lang, original] of [
+    ['en', 'Report date: 01/02/2024.'],
+    ['en', 'Revenue grew 12% in Q3, and the B2B team shipped v2.'],
+    ['en', 'It costs $1,200.'],
+    ['ko', '가격은 $1,200입니다.'],
+  ]) {
+    const frames = [];
+    let paidCalls = 0;
+    const result = await runWebRewriteStream({
+      request: { ...request, lang, original },
+      callLLMStream: async () => { paidCalls += 1; return { text: original }; },
+      scoreFns: {
+        scoreMPS: async () => { paidCalls += 1; return mpsResult(95); },
+        scoreFidelity: async () => { paidCalls += 1; return fidelityResult(11); },
+        scoreDeterministicSignals: () => {
+          throw new Error('deterministic scoring must not run for an uncertifiable source');
+        },
+      },
+      emit: (frame) => frames.push(frame),
+      numberSafetyRetries: 1,
+    });
+
+    assert.equal(result.ok, false, original);
+    assert.equal(result.code, 'number_safety_failed', original);
+    assert.equal(result.numberSafety.ok, false, original);
+    assert.equal(paidCalls, 0, `${original}: no rewrite, retry, or scorer may be paid for`);
+    assert.deepEqual(result.attempts, { valid: true, rewrite: [], mps: [], fidelity: [] }, original);
+    assert.deepEqual(frames, [
+      { type: 'start' },
+      { type: 'error', code: 'number_safety_failed', scope: 'source' },
+    ], original);
+    assertFramesDoNotLeakPrivateMetadata(frames);
+  }
+});
+
+test('runWebRewriteStream keeps the unscoped error when the REWRITE is what broke a number', async () => {
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request: { ...request, lang: 'en', original: 'Revenue grew 12% last quarter.' },
+    callLLMStream: async () => ({ text: 'Revenue grew 21% last quarter.' }),
+    scoreFns: scoring(),
+    emit: (frame) => frames.push(frame),
+    numberSafetyRetries: 0,
+  });
+  assert.equal(result.code, 'number_safety_failed');
+  assert.deepEqual(frames.at(-1), { type: 'error', code: 'number_safety_failed' });
+});
+
 test('terminal observer maps every terminal outcome once without frame leakage', async () => {
   const canary = 'stream-observer-private-canary';
   const scenarios = [
@@ -1212,4 +1455,73 @@ test('runWebRewriteStream without a timeout keeps legacy per-stage behavior', as
   });
   assert.equal(result.ok, true);
   assert.equal(seenTimeout, undefined);
+});
+
+test('an empty-anchor MPS cannot certify a numeric source on the hosted floor (#871/#872)', async () => {
+  // The #872 hole: identical claim bags with swapped roles pass the
+  // deterministic number-safety gate, so certification must come from
+  // anchors. Zero anchors is "MPS = N/A" rendered as 100 — absence of
+  // evidence — and must fail the hosted floor exactly as verifyRewrite
+  // refuses to certify it on the CLI lane (#871).
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request: { ...request, original: 'The team shipped 3 features and fixed 12 bugs this quarter.' },
+    callLLMStream: async () => ({ text: 'The team shipped 12 features and fixed 3 bugs this quarter.' }),
+    scoreFns: {
+      scoreMPS: async (input) => { input.onAttempt(privateAttempt()); return zeroAnchorMps(); },
+      scoreFidelity: async (input) => { input.onAttempt(privateAttempt()); return fidelityResult(12); },
+      scoreDeterministicSignals: ({ text }) => ({ overall: text.length, text }),
+    },
+    emit: (frame) => frames.push(frame),
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'floor_failed');
+  assert.ok(result.failed.includes('mps'), `failed: ${result.failed.join(',')}`);
+  assert.equal(frames.at(-1).code, 'floor_failed');
+  assert.ok(frames.at(-1).failed.includes('mps'));
+  // The swap itself never trips the deterministic bag gate — that is the hole
+  // this veto closes; the anchored MPS carries the decision from here.
+  const mpsEvidence = /** @type {{ anchors: unknown[] }} */ (/** @type {unknown} */ (result.mps));
+  assert.equal(mpsEvidence.anchors.length, 0);
+});
+
+test('an empty-anchor MPS still certifies a claim-free source (#871 carve-out)', async () => {
+  // Claim-free text is genuinely exempt from the MPS floor: zero anchors on
+  // a source with no numeric claims is a real N/A, not hidden evidence.
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request: { ...request, original: 'The team shipped the quarterly plan and closed every open thread.' },
+    callLLMStream: async () => ({ text: 'The team delivered the quarterly plan and closed every open thread.' }),
+    scoreFns: {
+      scoreMPS: async (input) => { input.onAttempt(privateAttempt()); return zeroAnchorMps(); },
+      scoreFidelity: async (input) => { input.onAttempt(privateAttempt()); return fidelityResult(12); },
+      scoreDeterministicSignals: ({ text }) => ({ overall: text.length, text }),
+    },
+    emit: (frame) => frames.push(frame),
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(frames.at(-1).type, 'done');
+});
+
+test('a HARD_FAIL MPS rejects the same role swap even above the floor (#872)', async () => {
+  // Swapped roles are MPS HARD_FAIL's responsibility by design (the #906
+  // calibration ruled out deterministic local binding): a schema-consistent
+  // 95 carrying one HARD_FAIL anchor must 422 even though 95 clears the
+  // floor arithmetically.
+  const frames = [];
+  const result = await runWebRewriteStream({
+    request: { ...request, original: 'The team shipped 3 features and fixed 12 bugs this quarter.' },
+    callLLMStream: async () => ({ text: 'The team shipped 12 features and fixed 3 bugs this quarter.' }),
+    scoreFns: {
+      scoreMPS: async (input) => { input.onAttempt(privateAttempt()); return highHardFailMps(); },
+      scoreFidelity: async (input) => { input.onAttempt(privateAttempt()); return fidelityResult(12); },
+      scoreDeterministicSignals: ({ text }) => ({ overall: text.length, text }),
+    },
+    emit: (frame) => frames.push(frame),
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'floor_failed');
+  assert.ok(result.failed.includes('mps'));
+  const hardFailEvidence = /** @type {{ hard_fail_count: number }} */ (/** @type {unknown} */ (result.mps));
+  assert.equal(hardFailEvidence.hard_fail_count, 1);
 });

@@ -41,6 +41,7 @@ import { humanizeXliffDocument, resolveUniqueCap } from './xliff.js';
 import { inspectAuditSource } from '../inspection.js';
 import { warnIfTooSmooth } from './smoothness-advisory.js';
 import { warnIfOvercorrected } from './overcorrection-advisory.js';
+import { maybeStarNudge } from '../star-nudge.js';
 
 /**
  * Run the default patina pipeline for an already-parsed CLI invocation:
@@ -59,7 +60,15 @@ export async function runDefault(parsed, logger) {
     overridePath: parsed.config ? resolve(process.cwd(), parsed.config) : undefined,
     snapshotPath: parsed.configSnapshot ? resolve(process.cwd(), parsed.configSnapshot) : undefined,
   });
+  await runPipeline(parsed, logger, config);
+  // Reached only when the run did not throw. Advisory only — stderr, terminal
+  // sessions, at most twice ever. Does not touch exit codes or output.
+  maybeStarNudge({ config, logger, quiet: parsed.quiet });
+}
 
+// The pipeline behind runDefault; every mode (offline score, preview, XLIFF,
+// and the per-file job loop) returns through here.
+async function runPipeline(parsed, logger, config) {
   if (parsed.lang) config.language = parsed.lang;
   if (parsed.documentType) config.documentType = parsed.documentType;
 
@@ -346,7 +355,8 @@ export async function runDefault(parsed, logger) {
           warnIfTooSmooth({ text: finalText, config, logger, lang });
           // Advisory only — compares source to output to catch a rewrite that traded
           // one slop class for another. Does not touch exit codes or the emitted text.
-          warnIfOvercorrected({ original: text, text: finalText, config, logger, lang });
+          // registerRequested exempts flattening the user explicitly asked for (--register/config).
+          warnIfOvercorrected({ original: text, text: finalText, config, logger, lang, registerRequested: Boolean(registerResolution) });
         }
 
         if (mode === 'score') {

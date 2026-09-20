@@ -6,6 +6,7 @@ import {
   classifyRewriteError,
   createRewriteThread,
   REWRITE_ERROR_KINDS,
+  rewriteRecovery,
   streamRewrite,
 } from '../../playground/rewrite-client.js';
 
@@ -165,6 +166,7 @@ test('createRewriteThread builds first/refine requests (commit-on-done) and caps
   assert.equal(freeBody.mode, 'first');
   assert.equal(freeBody.lang, 'ko');
   assert.equal(freeBody.text, '원문');
+  assert.equal('instruction' in freeBody, false, 'a first turn has no draft to instruct against');
   assert.equal('apiKey' in freeBody, false);
   // Pure build does not mutate thread state.
   assert.equal(thread.original, undefined);
@@ -193,6 +195,12 @@ test('createRewriteThread builds first/refine requests (commit-on-done) and caps
 
   assert.equal(byokBody.mode, 'refine');
   assert.equal(byokBody.original, '원문');
+  // `text` is the text to rewrite in every mode: on a refine turn that is the
+  // latest accepted draft, and the composer line travels as `instruction`.
+  // (Sending the instruction as `text` is what made the server rewrite the
+  // follow-up instead of the draft.)
+  assert.equal(byokBody.text, thread.currentDraft);
+  assert.equal(byokBody.instruction, '더 짧게');
   assert.deepEqual(byokBody.history, thread.turns);
   assert.equal(byokBody.provider, 'openai');
   assert.equal(byokBody.model, 'gpt-4.1-mini');
@@ -202,6 +210,27 @@ test('createRewriteThread builds first/refine requests (commit-on-done) and caps
   assert.equal(thread.original, undefined);
   assert.equal(thread.currentDraft, '');
   assert.deepEqual(thread.turns, []);
+});
+
+test('client history obeys the server byte cap and an over-cap draft still travels as text', () => {
+  const thread = createRewriteThread({ lang: 'en' });
+  const hugeDraft = 'D'.repeat(CONTEXT_LIMITS.maxBytes + 1);
+  thread.commit({ userText: 'Source paragraph.', assistantText: hugeDraft });
+
+  // The server drops history it cannot fit (normalizeHistory trims oldest-first
+  // under maxBytes); the client now drops exactly the same turns instead of
+  // sending turns the server would discard.
+  assert.deepEqual(thread.turns, []);
+  const body = thread.buildRequest({ text: 'Make it shorter.', tier: WEB_TIERS.FREE });
+  assert.deepEqual(body.history, []);
+  // Losing history loses edit preferences only: the draft is the rewrite target.
+  assert.equal(body.text, hugeDraft);
+  assert.equal(body.instruction, 'Make it shorter.');
+
+  // A blank composer line adds no instruction field; the draft is still the target.
+  const blank = thread.buildRequest({ text: '   ', tier: WEB_TIERS.FREE });
+  assert.equal('instruction' in blank, false);
+  assert.equal(blank.text, hugeDraft);
 });
 
 test('buildRequest carries an opted-in voice persona on every turn and omits it by default', () => {
@@ -237,6 +266,23 @@ test('classifyRewriteError maps every server reason string to a stable kind', ()
   assert.equal(classifyRewriteError({ code: 'number_safety_failed' }), K.NUMBER_SAFETY);
 });
 
+test('classifyRewriteError never reads patina quota copy out of an upstream failure', () => {
+  const K = REWRITE_ERROR_KINDS;
+  // stream_failed / scoring_failed describe the UPSTREAM provider. A BYOK
+  // provider body can repeat patina's own reason strings verbatim, so matching
+  // them would show the caller a quota refusal (plus a Pro upsell) for a limit
+  // they never hit.
+  assert.equal(classifyRewriteError({ code: 'stream_failed', error: 'HTTP 429: daily quota exceeded' }), K.UNKNOWN);
+  assert.equal(classifyRewriteError({ code: 'scoring_failed', error: 'HTTP 429: monthly rewrite limit reached' }), K.UNKNOWN);
+  assert.equal(classifyRewriteError({ code: 'stream_failed', error: 'HTTP 503: rewrite service unavailable' }), K.UNKNOWN);
+  // The closed server-paid vocabulary is inert here by construction.
+  assert.equal(classifyRewriteError({ code: 'stream_failed', error: 'upstream_rate_limited' }), K.UNKNOWN);
+  // A real transport status on the frame still classifies.
+  assert.equal(classifyRewriteError({ status: 503, code: 'stream_failed', error: 'upstream_unavailable' }), K.SERVICE_UNAVAILABLE);
+  // patina's own refusals carry no stream code and are unaffected.
+  assert.equal(classifyRewriteError({ status: 429, error: 'daily quota exceeded' }), K.QUOTA_DAILY);
+});
+
 test('classifyRewriteError falls back conservatively for unrecognized failures', () => {
   const K = REWRITE_ERROR_KINDS;
   // Unknown quota reasons must not invent a quota window or reset time.
@@ -245,6 +291,12 @@ test('classifyRewriteError falls back conservatively for unrecognized failures',
   assert.equal(classifyRewriteError({ status: 502 }), K.SERVICE_UNAVAILABLE);
   assert.equal(classifyRewriteError({ status: 500, error: 'internal error' }), K.UNKNOWN);
   assert.equal(classifyRewriteError({ status: 400, error: 'invalid JSON' }), K.UNKNOWN);
+  // A source the server can never certify is a different message from a
+  // rewrite that changed a number; both send the user back to edit the text.
+  assert.equal(classifyRewriteError({ code: 'number_safety_failed' }), K.NUMBER_SAFETY);
+  assert.equal(classifyRewriteError({ code: 'number_safety_failed', scope: 'source' }), K.NUMBER_SOURCE);
+  assert.equal(classifyRewriteError({ code: 'number_safety_failed', scope: 'rewrite' }), K.NUMBER_SAFETY);
+  assert.equal(rewriteRecovery(K.NUMBER_SOURCE), 'edit');
   assert.equal(classifyRewriteError({}), K.UNKNOWN);
   assert.equal(classifyRewriteError(null), K.UNKNOWN);
   assert.equal(classifyRewriteError(undefined), K.UNKNOWN);

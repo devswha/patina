@@ -1,6 +1,6 @@
 // @ts-check
 import { callLLMStream as defaultStream } from './streaming-api.js';
-import { scoreDeterministicSignals, scoreFidelity, scoreMPS } from './scoring.js';
+import { scoreDeterministicSignals, scoreFidelity, scoreMPS, SCORE_ERRORS } from './scoring.js';
 import { evaluateNumberSafety } from './features/meaning-proxy.js';
 import { formatRewriteBodyForBrowser } from './output.js';
 import { loadWebConfig, resolveBundleRoot } from './web-config.js';
@@ -38,6 +38,7 @@ import { evaluateKoreanInvariants } from './features/korean-invariants.js';
  *   observed: unknown,
  *   code?: string,
  *   error?: string,
+ *   upstreamStatus?: number,
  *   numberSafety?: Record<string, any>,
  *   koreanInvariants?: Record<string, any>,
  *   failed?: any,
@@ -115,6 +116,101 @@ function safeError(err, secret) {
     out = out.split(secret).join('[REDACTED]');
   }
   return out;
+}
+
+/**
+ * Provider finish reasons that mean the generation stopped before the rewrite
+ * was complete, normalized across both transports this stream can use: the
+ * OpenAI-compatible `finish_reason` and the native Anthropic `stop_reason`
+ * (src/anthropic-native.js surfaces it under the same field). A clean stop
+ * (`stop`, `end_turn`, `stop_sequence`) and a tool call are deliberately
+ * absent — only reasons that truncate or suppress the text belong here.
+ *
+ * Truncation and filtering are kept apart because they are not the same event
+ * for the person reading the message: a truncated run hit a token ceiling,
+ * while a filtered one was refused and needs different source text.
+ */
+const INCOMPLETE_FINISH_REASONS = Object.freeze({
+  length: 'output_truncated',
+  max_tokens: 'output_truncated',
+  content_filter: 'output_filtered',
+  refusal: 'output_filtered',
+});
+
+/**
+ * Why a streamed generation cannot be used as a rewrite, or undefined when it
+ * is complete. Emptiness is judged AFTER browser-body cleanup, because cleanup
+ * can legitimately reduce a non-empty provider response to nothing (a reply
+ * that was only a self-audit block, say) — which the transport cannot see.
+ *
+ * @param {unknown} finishReason Provider finish/stop reason, when reported.
+ * @param {string} rewrite Rewrite text after cleanup.
+ * @returns {string|undefined} A stable `stream_failed` error value, or undefined.
+ */
+function incompleteOutputReason(finishReason, rewrite) {
+  const reason = typeof finishReason === 'string' ? finishReason.trim().toLowerCase() : '';
+  if (Object.hasOwn(INCOMPLETE_FINISH_REASONS, reason)) return INCOMPLETE_FINISH_REASONS[reason];
+  return rewrite.trim() ? undefined : 'empty_output';
+}
+
+/**
+ * Closed vocabulary for the `error` field of a terminal upstream failure frame
+ * (`stream_failed` / `scoring_failed`) on the server-paid tiers. Chosen by the
+ * provider's response status class only, so the frame carries no provider text:
+ * - `upstream_rate_limited` — 408 / 425 / 429 (the provider asked us to wait).
+ * - `upstream_unavailable` — 5xx, and every failure with no HTTP status at all
+ *   (network error, per-attempt timeout, deadline abort during the call).
+ * - `upstream_rejected` — any other non-2xx status (auth, quota-by-policy,
+ *   request validation).
+ */
+const UPSTREAM_FAILURES = Object.freeze({
+  RATE_LIMITED: 'upstream_rate_limited',
+  UNAVAILABLE: 'upstream_unavailable',
+  REJECTED: 'upstream_rejected',
+});
+
+/**
+ * @param {unknown} err
+ * @returns {number|undefined} The provider's HTTP status when the transport recorded one.
+ */
+function upstreamStatusOf(err) {
+  const status = /** @type {any} */ (err)?.status;
+  return Number.isInteger(status) && status >= 100 && status <= 599 ? status : undefined;
+}
+
+/**
+ * Terminal-failure fields for an upstream (provider transport or scorer)
+ * error.
+ *
+ * On the server-paid tiers (free, pro) the provider, the model and the
+ * server's own quota are private configuration, but `HttpError` embeds up to
+ * 256 characters of the provider's response body in its message (src/api.js)
+ * and {@link safeError} only strips key-shaped secrets — which leaves model
+ * names, quota-metric ids and organization ids in a frame handed to an
+ * anonymous client. Those tiers therefore get {@link UPSTREAM_FAILURES} and
+ * nothing else. It also keeps an upstream "daily quota exceeded" from reading
+ * like patina's own quota refusal on the client.
+ *
+ * A BYOK caller owns the provider, the model and the key, so the redacted
+ * detail stays useful to them and is kept — plus the coarse numeric upstream
+ * status when one is available, which is what lets a client later route an
+ * auth failure to a credentials prompt instead of a retry.
+ *
+ * @param {unknown} err
+ * @param {import('./web-rewrite-contract.js').WebRewriteRequest} request
+ * @returns {{error: string, upstreamStatus?: number}}
+ */
+function upstreamFailure(err, request) {
+  const status = upstreamStatusOf(err);
+  if (request.tier === WEB_TIERS.BYOK) {
+    return {
+      error: safeError(err, request.apiKey),
+      ...(status === undefined ? {} : { upstreamStatus: status }),
+    };
+  }
+  if (status === undefined) return { error: UPSTREAM_FAILURES.UNAVAILABLE };
+  if (status === 408 || status === 425 || status === 429) return { error: UPSTREAM_FAILURES.RATE_LIMITED };
+  return { error: status >= 500 ? UPSTREAM_FAILURES.UNAVAILABLE : UPSTREAM_FAILURES.REJECTED };
 }
 
 /** @param {unknown} value */
@@ -451,6 +547,18 @@ async function runWebRewriteStreamUnscoped({
     return { ok: false, code: 'source_changed', attempts, observed: observeTerminal('terminal_failed', 409) };
   }
   emit({ type: STREAM_FRAME_TYPES.START });
+  // evaluateNumberSafety fails whenever the SOURCE has numeric syntax it cannot
+  // claim (Q3, B2B, GPT-4, $1,200 ...), whatever the rewrite says. That verdict
+  // is known before any model call, so refuse here: the old path streamed a
+  // rewrite, paid for it and its retry, then discarded both every time.
+  // `scope: 'source'` lets the client say what happened instead of claiming
+  // the result changed a number.
+  const sourceNumberSafety = evaluateNumberSafety(original, original, request.lang);
+  if (!sourceNumberSafety.ok) {
+    closeAttempts();
+    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'number_safety_failed', scope: 'source' });
+    return { ok: false, code: 'number_safety_failed', numberSafety: sourceNumberSafety, attempts, observed: observeTerminal('number_safety_failed', 422) };
+  }
   if (verifyOnly) {
     // Preserve the reviewed text byte-for-byte: this mode never rewrites it.
     rewrite = String(request.text);
@@ -504,11 +612,25 @@ async function runWebRewriteStreamUnscoped({
         stageOpen = false;
       }
       rewrite = formatRewriteBodyForBrowser(streamResult.text);
+      // A truncated, filtered or empty generation is not a rewrite. Refuse it
+      // here, before the number-safety gate, so the two paid scorer calls are
+      // never spent on partial text — and so a truncated rewrite of a source
+      // with no numeric anchors cannot score its way to a done frame.
+      //
+      // Deliberately NOT retried: the number-safety retry exists to resample a
+      // sampling-variance habit, while a token ceiling or a content filter
+      // reproduces on the next attempt, so a second paid call buys nothing.
+      const incomplete = incompleteOutputReason(streamResult.finishReason, rewrite);
+      if (incomplete) {
+        closeAttempts();
+        emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'stream_failed', error: incomplete });
+        return { ok: false, code: 'stream_failed', error: incomplete, attempts, observed: observeTerminal('terminal_failed', 500) };
+      }
     } catch (err) {
-      const error = safeError(err, request.apiKey);
+      const failure = upstreamFailure(err, request);
       closeAttempts();
-      emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'stream_failed', error });
-      return { ok: false, code: 'stream_failed', error, attempts, observed: observeTerminal('terminal_failed', 500) };
+      emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'stream_failed', ...failure });
+      return { ok: false, code: 'stream_failed', ...failure, attempts, observed: observeTerminal('terminal_failed', 500) };
     }
     koreanInvariants = koreanResearch
       ? evaluateKoreanInvariants(original, rewrite)
@@ -575,6 +697,17 @@ async function runWebRewriteStreamUnscoped({
     if (fidelityResult.status === 'rejected') throw fidelityResult.reason;
     mps = mpsResult.value;
     fidelity = fidelityResult.value;
+    // A scorer that never reached its judge produces a null score with a
+    // transport error, not a verdict. Falling through would evaluate the
+    // floors against missing evidence and tell the user the rewrite failed
+    // meaning verification, although it was never scored. That is a scoring
+    // failure, and it stays fail-closed: no done frame, no scores.
+    if ([mps, fidelity].some((score) => /** @type {any} */ (score)?.error === SCORE_ERRORS.TRANSPORT_FAILURE)) {
+      const error = 'scorer transport failure';
+      closeAttempts();
+      emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'scoring_failed', error });
+      return { ok: false, code: 'scoring_failed', error, attempts, observed: observeTerminal('terminal_failed', 500) };
+    }
     signals = {
       before: deterministicScore({ text: original, config: effectiveConfig, repoRoot }),
       after: deterministicScore({ text: rewrite, config: effectiveConfig, repoRoot }),
@@ -584,24 +717,36 @@ async function runWebRewriteStreamUnscoped({
     // A scoring failure (including an abort during scoring) must terminate as
     // a clean NDJSON error frame — never bubble to the handler's JSON 500,
     // which would append a non-frame tail to an already-started stream.
-    const error = safeError(err, request.apiKey);
+    const failure = upstreamFailure(err, request);
     closeAttempts();
-    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'scoring_failed', error });
-    return { ok: false, code: 'scoring_failed', error, attempts, observed: observeTerminal('terminal_failed', 500) };
+    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'scoring_failed', ...failure });
+    return { ok: false, code: 'scoring_failed', ...failure, attempts, observed: observeTerminal('terminal_failed', 500) };
   }
 
   // Verify full evidence before success: high numeric scores alone cannot
   // bypass malformed counts, invalid criteria, or a consistent HARD_FAIL.
   const floors = evaluateVerification({ mps, fidelity }, { mpsFloor: MPS_FLOOR, fidelityFloor: FIDELITY_FLOOR });
-  if (!floors.ok) {
+  // #871/#872: a zero-anchor MPS is "MPS = N/A" rendered as 100 — an absence
+  // of evidence, not a passing grade. When the source carries numeric claims
+  // (the claim-bag gate above passed, so a role swap can still hide inside
+  // identical bags), that 100 must not certify the hosted floor either — the
+  // same refusal verifyRewrite applies on the CLI lane. Swapped roles remain
+  // MPS HARD_FAIL's responsibility; an anchored MPS is untouched.
+  const unanchoredNumericSource = Array.isArray(mps?.anchors)
+    && mps.anchors.length === 0
+    && numberSafety.originalClaims.length > 0;
+  const failed = unanchoredNumericSource && !floors.failed.includes('mps')
+    ? [...floors.failed, 'mps']
+    : floors.failed;
+  if (!floors.ok || unanchoredNumericSource) {
     // Keep the already-computed audit metadata (deterministic signals + length
     // diff) on floor failures so a flagged attempt stays auditable in the UI.
     closeAttempts();
-    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'floor_failed', failed: floors.failed, rewrite, mps, fidelity, signals, diff });
+    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'floor_failed', failed, rewrite, mps, fidelity, signals, diff });
     return {
       ok: false,
       code: 'floor_failed',
-      failed: floors.failed,
+      failed,
       mps,
       fidelity,
       signals,
@@ -636,9 +781,29 @@ async function runWebRewriteStreamUnscoped({
         outputHash: sha256(rewrite),
         edits: createTextEdits(original, rewrite),
       };
-    } catch {
-      emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'edit_output_too_long' });
-      return { ok: false, code: 'edit_output_too_long', attempts, observed: observeTerminal('terminal_failed', 422) };
+    } catch (err) {
+      // The change review is an optional convenience; the verified rewrite is
+      // the product. createTextEdits caps each text at 20,000 UTF-16 units, so
+      // an accepted rewrite just past that cap used to throw away everything
+      // the three paid calls had already bought — every gate passed — and the
+      // client, which always asks for edits and cannot classify the code,
+      // offered Retry, which deterministically spends three more. Degrade
+      // instead: omit editReview and let the client show its existing
+      // "Change review is unavailable" copy.
+      //
+      // Only a size refusal degrades, and it is never the protected-phrase
+      // guarantee being relaxed: validateProtectedText is the safety gate for
+      // protected spans, it runs much earlier (before scoring), and the same
+      // 20,000-unit cap already fails such a request closed there as
+      // protected_text_failed. Any other createTextEdits code would be
+      // unexpected (both inputs are strings and the original is tier-capped),
+      // so it stays a terminal error rather than being swallowed.
+      const code = /** @type {any} */ (err)?.code;
+      if (typeof code !== 'string' || !code.endsWith('_too_long')) {
+        emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'edit_output_too_long' });
+        return { ok: false, code: 'edit_output_too_long', attempts, observed: observeTerminal('terminal_failed', 422) };
+      }
+      editReview = undefined;
     }
   }
   emit({ type: STREAM_FRAME_TYPES.DONE, rewrite, mps, fidelity, signals, diff, receipt, ...(editReview ? { editReview } : {}) });

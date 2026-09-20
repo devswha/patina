@@ -27,6 +27,11 @@ Use `npm run benchmark` for the fast fixture classifier smoke check. Use
 `npm run quality:live` only when you want the opt-in rewrite-quality scaffold;
 by default it does not call a model.
 
+Re-run `npm test` after `npm run benchmark:report`: the landing page restates
+`latest.json` figures, and `tests/unit/playground-benchmark-parity.test.js`
+fails with the exact figure to update in `playground/index.html` and
+`playground/chatgpt.js` whenever the regenerated report moves them.
+
 ## Public-claim rule
 
 Do not copy numbers into README, launch copy, or social posts unless the report

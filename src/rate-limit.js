@@ -7,6 +7,9 @@ import { isProductionPosture, QUOTA_REASONS, TIER_LIMITS, WEB_TIERS } from './we
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
 const DEFAULT_CONCURRENCY_TTL_MS = 5 * 60 * 1000;
+// The monthly dimensions of a trusted synthetic probe are metered, but bounded
+// only by its daily cap; see reservePro.
+const SYNTHETIC_MONTHLY_UNBOUNDED = Number.MAX_SAFE_INTEGER;
 const isPositiveSafeInteger = (value) => Number.isSafeInteger(value) && value > 0;
 
 /**
@@ -173,7 +176,9 @@ export { isProductionPosture };
  * @param {{kv?: QuotaKv|null, hmacSecret?: string, env?: Record<string, string|undefined>, now?: () => number, limits?: typeof TIER_LIMITS, logger?: RateLimitLogger, concurrencyTtlMs?: number, leaseId?: () => string}} options
  *   `concurrencyTtlMs` is the self-healing expiry for a concurrency slot; keep it
  *   >= the maximum stream budget so a slot never expires mid-stream (defaults to 5m).
- * @returns {{check(input: {tier: string, ip?: string|null, subject?: string|null, chars?: number, requestId?: string}): Promise<RateLimitResult>, settleReservation(input: {reservation: import('./quota-reservation.js').ReservationPlan, refund: boolean}): Promise<boolean>, acquireConcurrency(input: {tier: string, ip?: string|null, subject?: string|null}): Promise<ConcurrencyResult>, releaseConcurrency(input: {tier: string, ip?: string|null, subject?: string|null, lease?: string}): Promise<void>}}
+ *   `synthetic` is set by the trusted rewrite boundary only (observer marker plus a
+ *   validated pro license) and exempts that request from MONTHLY metering alone.
+ * @returns {{check(input: {tier: string, ip?: string|null, subject?: string|null, chars?: number, requestId?: string, synthetic?: boolean}): Promise<RateLimitResult>, settleReservation(input: {reservation: import('./quota-reservation.js').ReservationPlan, refund: boolean}): Promise<boolean>, acquireConcurrency(input: {tier: string, ip?: string|null, subject?: string|null}): Promise<ConcurrencyResult>, releaseConcurrency(input: {tier: string, ip?: string|null, subject?: string|null, lease?: string}): Promise<void>}}
  */
 export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.now(), limits = TIER_LIMITS, logger = console, concurrencyTtlMs = DEFAULT_CONCURRENCY_TTL_MS, leaseId = () => randomBytes(32).toString('base64url') }) {
   const productionGuard = () => {
@@ -184,7 +189,15 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
     return null;
   };
 
-  const reservePro = async ({ subject, chars, requestId }) => {
+  // A trusted synthetic probe keeps the whole paid admission path — license
+  // subject, concurrency lease, daily cap and the atomic reserve/settle
+  // receipt — and differs only in which keys carry its MONTHLY dimensions:
+  // request count, character total and processing attempts move to an observer
+  // namespace the paid seat never reads, with no monthly bound of their own.
+  // The probe therefore cannot spend, or be starved by, a seat's allowance.
+  // Only the handler's server-side facts set `synthetic`; no request body
+  // reaches it.
+  const reservePro = async ({ subject, chars, requestId, synthetic }) => {
     const unavailable = /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE });
     const guard = productionGuard(); if (guard) return guard;
     if (typeof subject !== 'string' || !subject) return /** @type {RateLimitResult} */ ({ allowed: false, status: 401, reason: QUOTA_REASONS.LICENSE_REQUIRED });
@@ -199,13 +212,21 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
     const charCap = isPositiveSafeInteger(cap.charsPerMonth) ? cap.charsPerMonth : 0;
     if (!Number.isSafeInteger(chars) || chars < 0) return unavailable;
     const secret = hmacSecret || 'patina-local-quota-secret';
+    const exempt = synthetic === true;
+    // The monthly scope is the only thing the exemption changes: `pro-probe`
+    // keys are distinct from the seat's `pro` keys, so the probe's counters can
+    // neither be read as usage nor collide with it. The day key is shared on
+    // purpose — the daily cap still bounds a runaway cron.
+    const monthlyScope = exempt ? 'pro-probe' : 'pro';
+    const monthlyCharCap = exempt ? 0 : charCap;
     const plan = {
-      keys: [quotaKeyHmac(secret, 'pro', 'day', subject, day), quotaKeyHmac(secret, 'pro', 'req-month', subject, month),
-        quotaKeyHmac(secret, 'pro', 'chars-month', subject, month), quotaKeyHmac(secret, 'pro', 'attempt-month', subject, month),
+      keys: [quotaKeyHmac(secret, 'pro', 'day', subject, day), quotaKeyHmac(secret, monthlyScope, 'req-month', subject, month),
+        quotaKeyHmac(secret, monthlyScope, 'chars-month', subject, month), quotaKeyHmac(secret, monthlyScope, 'attempt-month', subject, month),
         quotaKeyHmac(secret, 'pro', 'reservation', subject, requestId)],
-      caps: [cap.reqPerDay, cap.reqPerMonth, charCap], amounts: [1, 1, charCap ? chars : 0],
+      caps: [cap.reqPerDay, exempt ? SYNTHETIC_MONTHLY_UNBOUNDED : cap.reqPerMonth, monthlyCharCap],
+      amounts: [1, 1, monthlyCharCap ? chars : 0],
       ttlMs: [dayTtl, monthTtl, monthTtl], receiptTtlMs: monthTtl + concurrencyTtlMs,
-      attemptCap: cap.reqPerMonth + Math.min(PRO_RETRY_HEADROOM, cap.reqPerMonth),
+      attemptCap: exempt ? SYNTHETIC_MONTHLY_UNBOUNDED : cap.reqPerMonth + Math.min(PRO_RETRY_HEADROOM, cap.reqPerMonth),
     };
     try {
       validateReservationPlan(plan);
@@ -285,8 +306,8 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
       try { Promise.resolve(logger.warn?.({ code: 'pro_quota_settlement_unavailable' })).catch(() => {}); } catch { /* Preserve the customer response. */ }
       return false;
     },
-    async check({ tier, ip, subject, chars, requestId }) {
-      if (tier === WEB_TIERS.PRO && requestId !== undefined) return reservePro({ subject, chars, requestId });
+    async check({ tier, ip, subject, chars, requestId, synthetic }) {
+      if (tier === WEB_TIERS.PRO && requestId !== undefined) return reservePro({ subject, chars, requestId, synthetic });
       switch (tier) {
         case WEB_TIERS.BYOK:
         case WEB_TIERS.FREE: {
@@ -372,8 +393,11 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
             const monthBucket = monthDate.getUTCFullYear() * 12 + monthDate.getUTCMonth();
             const nextMonthStart = Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() + 1, 1);
             const monthTtlMs = nextMonthStart - timestamp;
+            // A trusted synthetic probe is exempt from the monthly dimensions
+            // here too (see reservePro): this branch has no reservation
+            // receipt, so the exemption is simply not metering them.
             const reqMonthlyCap = proLimits.reqPerMonth;
-            if (Number.isSafeInteger(reqMonthlyCap) && reqMonthlyCap > 0) {
+            if (synthetic !== true && Number.isSafeInteger(reqMonthlyCap) && reqMonthlyCap > 0) {
               const reqMonthKey = quotaKeyHmac(secret, 'pro', 'req-month', subject, monthBucket);
               const reqMonthCount = await kv.incr(reqMonthKey, { ttlMs: monthTtlMs });
               if (!Number.isSafeInteger(reqMonthCount) || reqMonthCount < 1) {
@@ -391,7 +415,7 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
             // month boundary via the key bucket + TTL.
             const monthlyCap = proLimits.charsPerMonth;
             const reqChars = Number.isSafeInteger(chars) && chars > 0 ? chars : 0;
-            if (reqChars > 0 && Number.isSafeInteger(monthlyCap) && monthlyCap > 0) {
+            if (synthetic !== true && reqChars > 0 && Number.isSafeInteger(monthlyCap) && monthlyCap > 0) {
               const monthKey = quotaKeyHmac(secret, 'pro', 'chars-month', subject, monthBucket);
               const monthTotal = await kv.incrBy(monthKey, reqChars, { ttlMs: monthTtlMs });
               if (!Number.isSafeInteger(monthTotal) || monthTotal < 1) {

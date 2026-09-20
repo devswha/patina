@@ -63,6 +63,54 @@ test('successful edit records bind the original and reconstruct the exact accept
   assert.deepEqual(result.receipt.constraints.protectedSpans, spans);
 });
 
+// Just past the 20,000 UTF-16 unit cap createTextEdits enforces, digit-free so
+// the number-safety gate has nothing to object to, and carrying the protected
+// literal so a protected-span run can only fail for the size reason.
+const OVERSIZED = `${original} ${'Lorem ipsum dolor sit amet, consectetur adipiscing elit. '.repeat(400)}`.slice(0, 20_000) + '.';
+assert.equal(OVERSIZED.length, 20_001, 'fixture must sit just past the edit-review cap');
+
+test('an accepted rewrite survives a change review that is too large to build', async () => {
+  const calls = [], frames = [];
+  const result = await runWebRewriteStream({
+    request: request({ includeEdits: true }),
+    callLLMStream: async () => ({ text: OVERSIZED }),
+    scoreFns: scores(calls), emit: (frame) => frames.push(frame),
+  });
+
+  // Every gate passed and three paid calls were already spent. The optional
+  // review is dropped; the verified rewrite is still delivered.
+  assert.equal(result.ok, true);
+  assert.equal(result.code, undefined);
+  assert.equal(result.rewrite, OVERSIZED);
+  assert.equal('editReview' in result, false);
+  assert.equal(calls.length, 2, 'the three paid calls were spent before the review was attempted');
+  const done = frames.at(-1);
+  assert.equal(done.type, 'done');
+  assert.equal(done.rewrite, OVERSIZED);
+  assert.deepEqual(done.mps, mpsResult(100));
+  assert.deepEqual(done.fidelity, fidelityResult(12));
+  assert.equal('editReview' in done, false);
+  assert.equal(done.receipt.hashes.output, sha256(OVERSIZED));
+  assert.equal(frames.some((frame) => frame.type === 'error'), false);
+});
+
+test('an oversized output still fails closed when protected phrases were requested', async () => {
+  // Protected text is a SAFETY gate, not a convenience: it runs before scoring
+  // and refuses the same oversized output outright, so no size degradation can
+  // reach it.
+  const calls = [], frames = [];
+  const result = await runWebRewriteStream({
+    request: request({ includeEdits: true, protectedSpans: [{ start: 0, end: 8 }] }),
+    callLLMStream: async () => ({ text: OVERSIZED }),
+    scoreFns: scores(calls), emit: (frame) => frames.push(frame),
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'protected_text_failed');
+  assert.equal(calls.length, 0, 'the safety gate refuses before any paid scoring');
+  assert.equal(frames.some((frame) => frame.type === 'done'), false);
+});
+
 test('verification scores the exact selected text and never calls the rewrite model', async () => {
   const selected = 'ACME-Pro launches on Monday. Come join us.  ';
   const calls = [], frames = [];

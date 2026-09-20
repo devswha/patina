@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validateMps, validateFidelityCriteria, validateFidelityResult, evaluateVerification } from '../../src/verification-schema.js';
-import { scoreMPS, scoreFidelity } from '../../src/scoring.js';
+import { scoreMPS, scoreFidelity, SCORE_ERRORS } from '../../src/scoring.js';
 import { verifyRewrite } from '../../src/verify.js';
 import { evaluateFloors } from '../../src/web-rewrite-contract.js';
 import { runWebRewriteStream } from '../../src/web-rewrite-stream.js';
@@ -149,6 +149,30 @@ test('web and CLI runtime gates reject forged full results and hard fails, prese
     assert.equal(cli.text, 'A factual draft.');
     assert.equal(cli.retried, true);
     assert.equal(rewriteCalls, 1);
+  }
+});
+
+test('the runtime gate refuses a score whose judge was never reached', async () => {
+  // Same refusal as a schema failure — `error != null` is the rule — but the
+  // web surface separates the two so it never reports a meaning-floor failure
+  // for a rewrite that was never scored.
+  const unreachedMps = { mps: null, error: SCORE_ERRORS.TRANSPORT_FAILURE };
+  const unreachedFidelity = { fidelity: null, error: SCORE_ERRORS.TRANSPORT_FAILURE };
+  assert.deepEqual(evaluateVerification({ mps: unreachedMps, fidelity: fidelityResult() }).failed, ['mps']);
+  assert.deepEqual(evaluateVerification({ mps: mpsResult(), fidelity: unreachedFidelity }).failed, ['fidelity']);
+  assert.deepEqual(evaluateVerification({ mps: unreachedMps, fidelity: unreachedFidelity }).failed, ['mps', 'fidelity']);
+
+  for (const [mps, fidelity] of [[unreachedMps, fidelityResult()], [mpsResult(), unreachedFidelity]]) {
+    const scoreFns = { scoreMPS: async () => mps, scoreFidelity: async () => fidelity, scoreDeterministicSignals: () => ({}) };
+    const frames = [];
+    const web = await runWebRewriteStream({
+      request: { mode: 'first', tier: 'byok', lang: 'en', text: 'A factual draft.', original: 'A factual draft.', history: [] },
+      config: { language: 'en' }, scoreFns, emit: (frame) => frames.push(frame),
+      callLLMStream: async () => ({ text: 'A factual draft.' }),
+    });
+    assert.equal(web.ok, false);
+    assert.equal(web.code, 'scoring_failed');
+    assert.equal(frames.some((frame) => frame.type === 'done'), false);
   }
 });
 

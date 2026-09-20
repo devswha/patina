@@ -488,7 +488,15 @@ for (const [source, id] of [['hero', 'hero-input'], ['chat', 'input']]) {
       assert.equal(enter.defaultPrevented, true);
       assert.equal(a.calls.length, count + 1, 'normal Enter still submits exactly once');
       assert.equal(a.calls.at(-1).body.mode, source === 'chat' ? 'refine' : 'first');
-      assert.equal(a.calls.at(-1).body.text, '한글 中文 日本語');
+      // A first turn rewrites what was typed; a refine turn rewrites the draft
+      // and carries what was typed as the instruction for that draft.
+      if (source === 'chat') {
+        assert.equal(a.calls.at(-1).body.text, a.ui.activeConvo().thread.currentDraft);
+        assert.equal(a.calls.at(-1).body.instruction, '한글 中文 日本語');
+      } else {
+        assert.equal(a.calls.at(-1).body.text, '한글 中文 日本語');
+        assert.equal('instruction' in a.calls.at(-1).body, false);
+      }
       assert.equal(a.get(id).value, '');
     });
   }

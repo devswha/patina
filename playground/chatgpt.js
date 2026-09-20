@@ -60,7 +60,7 @@ function failureOutcome(frame, kind, hasScores) {
   const K = REWRITE_ERROR_KINDS;
   const status = Number(frame?.status);
   const code = typeof frame?.code === 'string' ? frame.code : '';
-  if (kind === K.NUMBER_SAFETY) return 'number-safety';
+  if (kind === K.NUMBER_SAFETY || kind === K.NUMBER_SOURCE) return 'number-safety';
   if (kind === K.FLOOR_FAILED) return 'floor';
   if (kind.startsWith('quota_') && kind !== K.QUOTA_CONCURRENT && kind !== K.QUOTA_STORAGE && kind !== K.QUOTA_SECRET) return 'quota';
   if (kind === K.QUOTA_CONCURRENT) return 'concurrency';
@@ -119,9 +119,9 @@ const I18N = {
     examplesTitle: 'Before and after',
     benchTitle: 'Numbers, in the open',
     benchLede: 'We test patina on a fixed set of writing samples that anyone can open and check. It measures our own accuracy — it does not judge who wrote something.',
-    benchCards: [['overall accuracy', '95% CI 92.7–100%'], ['writing samples', 'samples labeled AI-like and natural'], ['languages', 'KO · EN · ZH · JA'], ['natural writing wrongly flagged', 'at a 1-in-100 false-alarm target, in 23 natural-labeled samples']],
+    benchCards: [['overall accuracy', '95% CI 93.2–100%'], ['writing samples', 'samples labeled AI-like and natural'], ['languages', 'KO · EN · ZH · JA'], ['natural writing wrongly flagged', 'at a 1-in-100 false-alarm target, in 25 natural-labeled samples']],
     benchCols: ['language', 'samples', 'accuracy', '95% confidence range', 'F1 score'],
-    benchNote: 'These numbers come from those 49 samples, and we use them to catch our own mistakes. They do not promise the same result on other kinds of writing, and they never say who wrote your text.',
+    benchNote: 'These numbers come from those 53 samples, and we use them to catch our own mistakes. They do not promise the same result on other kinds of writing, and they never say who wrote your text.',
     benchLink: 'Read the full report →',
     ctaTitle: 'Paste your own and see',
     ctaSub: 'Put your own text in the box above and see what changes. Nothing to install, nothing to sign up for.',
@@ -140,6 +140,7 @@ const I18N = {
     reportFp: 'Flagged your own writing? Report a false positive →',
     failNote: 'That did not go through. Try again, or check your plan and key.',
     numberSafetyNote: 'The result changed a number or a time, so we threw it away rather than show it to you. Try again.',
+    numberSourceNote: 'Your text writes a number in a form we cannot check yet, such as Q3, B2B or $1,200. We would rather refuse than guess, so nothing was rewritten. Spell it out (third quarter, 1,200 dollars) and try again.',
     proUpsell: 'Get API access — $9.99/mo',
     proBuy: 'Get API access — $9.99/mo',
     proSoon: 'Pro — coming soon',
@@ -159,9 +160,9 @@ const I18N = {
     examplesTitle: '이런 문장을, 이렇게',
     benchTitle: '숨김없는 벤치마크',
     benchLede: '누구나 열어볼 수 있는 글 모음으로 patina를 시험해요. 우리 정확도를 재는 것이지, 누가 썼는지 가려내는 게 아니에요.',
-    benchCards: [['전체 정확도', '95% CI 92.7–100%'], ['시험한 글', 'AI 같다고 라벨한 글과 자연스러운 글'], ['지원 언어', 'KO · EN · ZH · JA'], ['자연스러운 글을 잘못 지목한 횟수', '오탐 100분의 1 기준, 자연 라벨 23개에서'], ],
+    benchCards: [['전체 정확도', '95% CI 93.2–100%'], ['시험한 글', 'AI 같다고 라벨한 글과 자연스러운 글'], ['지원 언어', 'KO · EN · ZH · JA'], ['자연스러운 글을 잘못 지목한 횟수', '오탐 100분의 1 기준, 자연 라벨 25개에서'], ],
     benchCols: ['언어', '시험한 글', '정확도', '95% 신뢰 범위', 'F1 점수'],
-    benchNote: '이 숫자는 그 49개 글에서 나온 것이고, 우리 실수를 잡는 데 씁니다. 다른 종류의 글에서도 같은 결과가 나온다고 약속하지 않고, 누가 썼는지도 말하지 않아요.',
+    benchNote: '이 숫자는 그 53개 글에서 나온 것이고, 우리 실수를 잡는 데 씁니다. 다른 종류의 글에서도 같은 결과가 나온다고 약속하지 않고, 누가 썼는지도 말하지 않아요.',
     benchLink: '전체 리포트 보기 →',
     ctaTitle: '직접 붙여넣어 확인해 보세요',
     ctaSub: '위 칸에 직접 쓴 글을 넣고 어떻게 바뀌는지 보세요. 설치할 것도, 가입할 것도 없어요.',
@@ -180,6 +181,7 @@ const I18N = {
     reportFp: '직접 쓴 글인데 잡혔나요? 오탐 신고 →',
     failNote: '처리하지 못했어요. 다시 시도하거나 요금제와 키를 확인해 주세요.',
     numberSafetyNote: '결과에서 숫자나 시간이 바뀌어서, 보여드리지 않고 버렸어요. 다시 시도해 주세요.',
+    numberSourceNote: '원문에 아직 저희가 검사하지 못하는 숫자 표기($1,200 같은 기호 금액 등)가 있어요. 짐작으로 넘기지 않으려고 아예 고치지 않았습니다. 1,200달러처럼 풀어 쓴 뒤 다시 시도해 주세요.',
     proUpsell: 'API 액세스 받기 — $9.99/월',
     proBuy: 'API 액세스 받기 — $9.99/월',
     proSoon: 'Pro — 곧 공개',
@@ -199,9 +201,9 @@ const I18N = {
     examplesTitle: '改写前后',
     benchTitle: '公开的基准',
     benchLede: '我们用一组任何人都能打开查看的文章来测试 patina。它衡量的是我们自己的准确率，不判断文章是谁写的。',
-    benchCards: [['总体准确率', '95% CI 92.7–100%'], ['测试文章', '标为 AI 味和自然的文章'], ['支持语言', 'KO · EN · ZH · JA'], ['把自然文章误判的次数', '按百分之一误报目标，在 23 篇自然标注文章中']],
+    benchCards: [['总体准确率', '95% CI 93.2–100%'], ['测试文章', '标为 AI 味和自然的文章'], ['支持语言', 'KO · EN · ZH · JA'], ['把自然文章误判的次数', '按百分之一误报目标，在 25 篇自然标注文章中']],
     benchCols: ['语言', '测试文章', '准确率', '95% 置信区间', 'F1 分数'],
-    benchNote: '这些数字来自那 49 篇文章，我们用它来发现自己的问题。它不保证换一类文章也是同样结果，也不会说你的文字是谁写的。',
+    benchNote: '这些数字来自那 53 篇文章，我们用它来发现自己的问题。它不保证换一类文章也是同样结果，也不会说你的文字是谁写的。',
     benchLink: '查看完整报告 →',
     ctaTitle: '粘贴你的文字试试',
     ctaSub: '把你自己的文字放进上面的框里，看看会怎么变。不用装什么，也不用注册。',
@@ -220,6 +222,7 @@ const I18N = {
     reportFp: '人工撰写却被标记？反馈误报 →',
     failNote: '没能处理成功。请再试一次，或检查方案和密钥。',
     numberSafetyNote: '结果里的数字或时间变了，所以我们没有拿给你，直接丢掉了。请再试一次。',
+    numberSourceNote: '原文里有我们暂时无法核对的数字写法（比如 $1,200 这类带符号的金额）。我们宁可不改也不猜，所以这次没有改写。请改成“1,200美元”这样的写法后再试。',
     proUpsell: '获取 API 访问权限 — 每月 $9.99',
     proBuy: '获取 API 访问权限 — 每月 $9.99',
     proSoon: 'Pro — 即将推出',
@@ -239,9 +242,9 @@ const I18N = {
     examplesTitle: 'ビフォー・アフター',
     benchTitle: '隠さないベンチマーク',
     benchLede: '誰でも開いて確認できる文章のセットで patina を試しています。測っているのは私たちの精度で、誰が書いたかを判定するものではありません。',
-    benchCards: [['全体精度', '95% CI 92.7–100%'], ['試した文章', 'AI っぽいと分類した文章と自然な文章'], ['対応言語', 'KO · EN · ZH · JA'], ['自然な文章を誤って指摘した数', '100 分の 1 の誤検知目標で、自然と分類した 23 件中']],
+    benchCards: [['全体精度', '95% CI 93.2–100%'], ['試した文章', 'AI っぽいと分類した文章と自然な文章'], ['対応言語', 'KO · EN · ZH · JA'], ['自然な文章を誤って指摘した数', '100 分の 1 の誤検知目標で、自然と分類した 25 件中']],
     benchCols: ['言語', '試した文章', '精度', '95% 信頼区間', 'F1 スコア'],
-    benchNote: 'この数字は先ほどの 49 件から出たもので、私たちの間違いを見つけるために使っています。別の種類の文章でも同じ結果になるとは約束できませんし、誰が書いたかを示すものでもありません。',
+    benchNote: 'この数字は先ほどの 53 件から出たもので、私たちの間違いを見つけるために使っています。別の種類の文章でも同じ結果になるとは約束できませんし、誰が書いたかを示すものでもありません。',
     benchLink: '詳細レポートを見る →',
     ctaTitle: '自分の文章で試す',
     ctaSub: '上の欄にご自分の文章を入れて、どう変わるか見てください。入れるものも、登録も要りません。',
@@ -260,6 +263,7 @@ const I18N = {
     reportFp: '自分で書いた文章なのに検出？誤検出を報告 →',
     failNote: 'うまくいきませんでした。もう一度試すか、プランとキーをご確認ください。',
     numberSafetyNote: '結果の中で数字や時刻が変わってしまったので、お見せせずに破棄しました。もう一度お試しください。',
+    numberSourceNote: '原文に、まだこちらで照合できない数字の書き方（$1,200 のような記号つきの金額など）があります。推測で通すよりはと、今回は書き換えていません。「1,200ドル」のように書き直して、もう一度お試しください。',
     proUpsell: 'APIアクセスを取得 — 月額$9.99',
     proBuy: 'APIアクセスを取得 — 月額$9.99',
     proSoon: 'Pro — 近日公開',
@@ -341,7 +345,10 @@ async function attachReview(convo, message, body, textEl, statusEl) {
             body.appendChild(buildOutputActions(candidate));
           }
         }
-        if ((isAccepted || isOriginal) && convo.thread.currentDraft !== candidate) convo.thread.recordTurn('assistant', candidate);
+        // A review toggle changes which draft the next refine rewrites, not
+        // what the user asked for: update the draft, never append a turn (six
+        // toggles used to evict every real turn from the history).
+        if (isAccepted || isOriginal) convo.thread.currentDraft = candidate;
         updateHeroSend(); updateChatSend(); syncSettingsBusy();
       },
       onVerify: async (candidate, baseHash) => {
@@ -359,6 +366,7 @@ async function attachReview(convo, message, body, textEl, statusEl) {
         Object.assign(reqBody, { mode: REWRITE_MODES.VERIFY, original, text: candidate, baseHash, includeEdits: true,
           protectedSpans });
         delete reqBody.history;
+        delete reqBody.instruction;
         const resultView = buildPatinaMsg();
         const inner = threadInner();
         convo.messages.push({ role: 'user', text: copy.requested });
@@ -533,10 +541,11 @@ function syncTier() {
 function populateDocumentTypes() {
   const prev = els.documentType.value;
   els.documentType.innerHTML = '';
-  for (const [index, id] of WEB_DOCUMENT_TYPES.entries()) {
+  const labels = experienceCopy(els.lang.value).documents;
+  for (const id of WEB_DOCUMENT_TYPES) {
     if (id === 'namuwiki' && els.lang.value !== 'ko') continue;
-    const label = experienceCopy(els.lang.value).documents[index];
-    els.documentType.appendChild(new Option(label, id));
+    // An id the copy has not caught up with shows as itself, never blank.
+    els.documentType.appendChild(new Option(labels[id] || id, id));
   }
   els.documentType.value = Array.from(els.documentType.options).some((option) => option.value === prev)
     ? prev
@@ -1168,8 +1177,13 @@ async function submit(text, source = 'hero') {
   const initialTurn = currentConvo?.thread.original == null;
   const preflightLang = initialTurn && !currentConvo?.thread.languageExplicit ? (detectLang(clean) || els.lang.value) : els.lang.value;
   const preflightMode = initialTurn ? 'first' : 'refine';
-  if (!preflight(clean, source)) {
-    const data = rewriteData(source, clean, preflightMode, preflightLang);
+  // What the request will actually ask the server to rewrite: the source on a
+  // first turn, the latest accepted draft on a refine turn (where the composer
+  // line travels as `instruction`). Length caps and analytics buckets measure
+  // that text, not the follow-up instruction.
+  const target = initialTurn ? clean : (currentConvo?.thread.currentDraft ?? clean);
+  if (!preflight(target, source)) {
+    const data = rewriteData(source, target, preflightMode, preflightLang);
     track('Rewrite Requested', data);
     track('Rewrite Failed', { ...data, latencyBucket: '<5s', outcome: 'preflight' });
     return;
@@ -1205,7 +1219,7 @@ async function submit(text, source = 'hero') {
   });
   reqBody.includeEdits = true;
   reqBody.protectedSpans = protectedInputSpans(convo.thread.original ?? clean, convo.protectedInput || '');
-  const telemetry = rewriteData(source, clean, String(reqBody.mode));
+  const telemetry = rewriteData(source, String(reqBody.text ?? ''), String(reqBody.mode));
   await runAttempt({
     convo, clean, reqBody, body, textEl, statusEl, telemetry,
     authorization: tier === WEB_TIERS.PRO ? `Bearer ${state.license}` : undefined,
@@ -1335,7 +1349,11 @@ async function runAttempt(attempt) {
           editReview: frame.editReview, protectedSpans: reqBody.protectedSpans || [] };
         convo.messages.push(message);
         convo.reviewPending = false;
-        convo.thread.commit({ userText: clean, assistantText: rewrite });
+        // Verification re-checks a draft the user assembled; it is not a turn
+        // the user asked for, so it advances the draft without adding the whole
+        // draft to the conversation history as a user+assistant pair.
+        if (reqBody.mode === REWRITE_MODES.VERIFY) convo.thread.currentDraft = rewrite;
+        else convo.thread.commit({ userText: clean, assistantText: rewrite });
         void attachReview(convo, message, body, textEl, statusEl);
         scrollDown();
       },
@@ -1358,7 +1376,7 @@ async function runAttempt(attempt) {
         textEl.style.display = '';
         textEl.textContent = attemptText || cleanStream(textEl.textContent);
         textEl.classList.add('msg__text--flagged');
-        body.appendChild(buildMeta({ mps: ff.mps, fidelity: ff.fidelity, signals: ff.signals, diff: ff.diff, floorFailed: true }, clean));
+        body.appendChild(buildMeta({ mps: ff.mps, fidelity: ff.fidelity, signals: ff.signals, diff: ff.diff, floorFailed: true }, reqBody.original ?? clean));
         body.appendChild(errorNote(t.floorWarn));
       } else {
         textEl.style.display = 'none';
@@ -1422,6 +1440,7 @@ function failureMessage(kind, ff, t) {
     case K.QUOTA_HOURLY: return t.quotaHourly;
     case K.QUOTA_CONCURRENT: return t.quotaConcurrent;
     case K.NUMBER_SAFETY: return t.numberSafetyNote;
+    case K.NUMBER_SOURCE: return t.numberSourceNote;
     case K.IP_UNAVAILABLE:
     case K.QUOTA_STORAGE:
     case K.QUOTA_SECRET:

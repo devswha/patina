@@ -17,7 +17,7 @@ directory is excluded from the npm tarball (`package.json` `files`:
 | `serving-engine-cost-20260725.md`, `serving-engine-deepseek-0731-correction-20260803.md` | serving-engine cost and quality measurements cited from `src/` and `.env.example` |
 | `serving-engine-gemini-3.7-flash-20260813.md` | latest engine decision: 3.7-flash allowlisted opt-in, Pro pin unchanged |
 | `multilingual-funnel-20260907.md` | funnel measurement runbook; `tests/unit/funnel-query.test.js` runs its query recipe |
-| `backend-compat-kimi-gemini-agy-20260913.json` | current compatibility record for all five local CLI backends, required by `tests/unit/backend-contract.test.js`. Quota behavior, other operating systems and gemini-cli API-key mode are not covered |
+| `backend-compat-kimi-gemini-agy-20260913.json` | current compatibility record for all five local CLI backends. Quota behavior, other operating systems and gemini-cli API-key mode are not covered |
 | `pay-b-binding-polar-20260729.json`, `pay-live-runtime-polar-20260729.json` | Polar checkout evidence read by `scripts/checkout-evidence-bindings.mjs` |
 
 ## Monitor calculation

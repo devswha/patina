@@ -13,7 +13,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { analyzeText } from '../src/features/index.js';
+import { analyzeText, splitParagraphs } from '../src/features/index.js';
 import {
   DEFAULT_BURSTINESS_BANDS,
   DEFAULT_KO_DIAGNOSTIC_BANDS,
@@ -29,7 +29,7 @@ import {
   resolveMinHotMatches,
 } from '../src/features/lexicon.js';
 import { FAKE_CANDOR_MIN, THEMATIC_BREAK_MIN } from '../src/features/discourse-tells.js';
-import { buildKoreanDiagnosis } from '../src/features/korean-diagnosis.js';
+import { detectTranslationese } from '../src/features/translationese.js';
 import { hashText } from './rebaseline-summary.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -256,6 +256,72 @@ export function classifyMissReason(margins) {
   if (isNum(margins.min_deficit) && margins.min_deficit < 1) return 'threshold-far';
   if (margins.advisory?.present) return 'advisory-only-coverage-gap';
   return 'no-modeled-signal';
+}
+
+// ---------------------------------------------------------------------------
+// Per-paragraph signal ids (koDiagnosis.v1). The projection is part of every
+// row's signals_hash, so its output must stay byte-stable.
+
+const DIAGNOSIS_SCHEMA = 'koDiagnosis.v1';
+const MAX_DIAGNOSIS_SIGNALS = 12;
+const MAX_DIAGNOSIS_PARAGRAPHS = 64;
+
+function paragraphSignals(paragraph, analysis) {
+  const signals = [];
+  if (analysis.burstiness?.band === 'low') signals.push('rhythm:burstiness-low');
+  if (analysis.mattr?.band === 'low') signals.push('lexical:mattr-low');
+  if (analysis.lexicon?.hot) signals.push('lexical:lexicon-density');
+  if (analysis.endingMonotonyHot) signals.push('rhythm:ending-monotony');
+  if (analysis.candorHot) signals.push('structure:repeated-candor');
+  if (analysis.thematicBreakHot) signals.push('structure:thematic-break');
+  for (const reason of analysis.koDiagnostics?.reasons ?? []) {
+    signals.push(`rhythm:${reason}`);
+  }
+  const translationese = detectTranslationese(paragraph, { lang: 'ko' });
+  if (translationese.hot) {
+    for (const rule of translationese.byRule) {
+      signals.push(`translationese:${rule.id}`);
+    }
+  }
+  return [...new Set(signals)].sort().slice(0, MAX_DIAGNOSIS_SIGNALS);
+}
+
+function diagnosisRoute(paragraphs) {
+  const categories = new Set();
+  for (const paragraph of paragraphs) {
+    for (const signal of paragraph.signals) {
+      if (signal.startsWith('structure:')) categories.add('structure');
+      else if (signal.startsWith('rhythm:')) categories.add('rhythm');
+      else categories.add('lexical');
+    }
+  }
+  if (categories.size === 0) return 'clean';
+  if (categories.size > 1) return 'mixed';
+  return [...categories][0];
+}
+
+/**
+ * Bounded, source-free per-paragraph signal ids. Runs the analyzer with its
+ * default (tracked) lexicon, independent of the pinned-lexicon analysis.
+ *
+ * @param {string} text
+ * @param {{repoRoot?: string}} [options]
+ */
+export function buildKoreanDiagnosis(text, { repoRoot } = {}) {
+  const sourceParagraphs = splitParagraphs(String(text ?? ''));
+  const analyzed = analyzeText(text, { lang: 'ko', repoRoot });
+  const paragraphs = sourceParagraphs
+    .slice(0, MAX_DIAGNOSIS_PARAGRAPHS)
+    .map((paragraph, index) => {
+      const signals = paragraphSignals(paragraph, analyzed.paragraphs[index] ?? {});
+      return { id: `P${index + 1}`, signals, preserveOnly: signals.length === 0 };
+    });
+  return {
+    schema: DIAGNOSIS_SCHEMA,
+    route: diagnosisRoute(paragraphs),
+    omittedParagraphCount: Math.max(0, sourceParagraphs.length - paragraphs.length),
+    paragraphs,
+  };
 }
 
 // ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { hashText } from '../../scripts/rebaseline-summary.mjs';
 import {
@@ -15,6 +15,7 @@ import {
   andMax,
   blindOrder,
   buildBlindSheet,
+  buildKoreanDiagnosis,
   classifyMissReason,
   collectBannedKeys,
   extractMissReview,
@@ -151,6 +152,51 @@ test('classifyMissReason walks the decision tree in order', () => {
 test('selectPopulation keeps only the frozen KO GPT-family miss cell', () => {
   const rows = [scoredRow('a', 'x'), scoredRow('b', 'y', { predicted_hot: true }), scoredRow('c', 'z', { model_family: 'claude-family' }), scoredRow('d', 'w', { language: 'en' })];
   assert.deepEqual(selectPopulation(rows).map((row) => row.sample_id), ['a']);
+});
+
+test('buildKoreanDiagnosis attributes translationese to its paragraph', () => {
+  const text = [
+    '회의는 내일 오전 열 시에 시작한다. 참석자는 자료를 미리 읽어 온다.',
+    '당신은 커맨드 기둥을 설정한다. 이것은 담당자에 의해 검토된다. 그것은 운영팀에 의해 다시 조정된다.',
+  ].join('\n\n');
+
+  const diagnosis = buildKoreanDiagnosis(text, { repoRoot: resolve('.') });
+
+  assert.equal(diagnosis.schema, 'koDiagnosis.v1');
+  assert.equal(diagnosis.paragraphs.length, 2);
+  assert.equal(diagnosis.paragraphs[0].preserveOnly, true);
+  assert.equal(diagnosis.paragraphs[1].preserveOnly, false);
+  assert.ok(diagnosis.paragraphs[1].signals.some((signal) => signal.startsWith('translationese:')));
+});
+
+test('buildKoreanDiagnosis routes unflagged prose as clean', () => {
+  const diagnosis = buildKoreanDiagnosis('창문을 열자 빗소리가 가까워졌다. 잠시 뒤 골목이 조용해졌다.', { repoRoot: resolve('.') });
+
+  assert.equal(diagnosis.route, 'clean');
+  assert.deepEqual(diagnosis.paragraphs.map((paragraph) => paragraph.preserveOnly), [true]);
+});
+
+test('buildKoreanDiagnosis emits bounded signal identifiers without source text', () => {
+  const secret = '고객비밀문구';
+  const text = `${secret}는 운영팀에 의해 검토된다. ${secret}는 운영팀에 의해 기록된다.`;
+
+  const diagnosis = buildKoreanDiagnosis(text, { repoRoot: resolve('.') });
+
+  assert.equal(JSON.stringify(diagnosis).includes(secret), false);
+  assert.ok(diagnosis.paragraphs.every((paragraph) => paragraph.signals.length <= 12));
+});
+
+test('buildKoreanDiagnosis globally bounds paragraph output', () => {
+  const text = Array.from(
+    { length: 200 },
+    (_, index) => `문단 ${index + 1}의 결과는 담당자에 의해 검토된다.`,
+  ).join('\n\n');
+
+  const diagnosis = buildKoreanDiagnosis(text, { repoRoot: resolve('.') });
+
+  assert.equal(diagnosis.paragraphs.length, 64);
+  assert.equal(diagnosis.omittedParagraphCount, 136);
+  assert.ok(JSON.stringify(diagnosis).length < 30_000);
 });
 
 test('extractMissReview emits hash-only rows, excludes drifted rows, and regenerates byte-identically', () => {

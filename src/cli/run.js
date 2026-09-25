@@ -79,18 +79,15 @@ async function runPipeline(parsed, logger, config) {
     : parsed.score ? 'score'
     : 'rewrite';
 
-  if (mode !== 'rewrite' && (parsed.register || config.register)) {
+  if (mode !== 'rewrite' && config.register) {
     throw inputError(
       `--register cannot be combined with --${mode}`,
       'Register changes rewritten prose; this mode inspects the source as-is.',
       'Remove --register/config register, or run a rewrite.'
     );
   }
-  const firstCliRegister = typeof parsed.register === 'string'
-    ? parsed.register.split(',')[0]
-    : parsed.register;
   const registerResolution = resolveRegister({
-    cliRegister: firstCliRegister,
+    cliRegister: firstCliRegister(parsed),
     configRegister: config.register,
   });
 
@@ -111,7 +108,11 @@ async function runPipeline(parsed, logger, config) {
   }
 
   const provider = selectProvider(parsed.provider ?? config.provider);
-  const apiKey = resolveApiKey(parsed, provider);
+  // Precedence: --api-key-file > PATINA_API_KEY_FILE > provider/default env vars.
+  const apiKey = resolveHttpApiKey({
+    apiKeyFile: parsed.apiKeyFile,
+    envVars: providerHttpKeyEnvVars(provider?.apiKeyEnv),
+  });
   const resolved = resolveProviderConfig({
     provider,
     apiKey,
@@ -129,48 +130,44 @@ async function runPipeline(parsed, logger, config) {
   const inputTexts = parsed.preview ? [] : await loadInputs(parsed, logger);
   const timeoutMs = parsed.timeoutMs ?? DEFAULT_BACKEND_TIMEOUT_MS;
   const backendSelection = selectBackendChain({
-      name: parsed.backend ?? config.backend ?? (resolved.baseURLSource !== 'default' ? 'openai-http' : undefined),
-      model: resolved.model,
-      modelSource: resolved.modelSource,
-    });
-  const backends = backendSelection?.backends || [];
-  const backend = backends[0] || null;
+    name: parsed.backend ?? config.backend ?? (resolved.baseURLSource !== 'default' ? 'openai-http' : undefined),
+    model: resolved.model,
+    modelSource: resolved.modelSource,
+  });
+  const { backends } = backendSelection;
+  const backend = backends[0];
 
-  if (backendSelection) {
-    if (backendSelection.autoSelected) {
-      logger.info('backend.selected', {
-        message: `[patina] Using ${backend.name} backend (${backendSelection.reason}). Run \`patina auth status\` for details.`,
-      });
+  if (backendSelection.autoSelected) {
+    logger.info('backend.selected', {
+      message: `[patina] Using ${backend.name} backend (${backendSelection.reason}). Run \`patina auth status\` for details.`,
+    });
+  }
+  if (backends.length > 1) {
+    logger.info('backend.chain', {
+      message: `[patina] Backend fallback chain: ${backends.map((b) => b.name).join(' → ')}`,
+    });
+  }
+  if (backend.name === 'openai-http' && !resolved.apiKey && !(parsed.xliff && parsed.dryRun)) {
+    const msg = ['No API key found. Set PATINA_API_KEY, PATINA_API_KEY_FILE, OPENAI_API_KEY, or use --api-key-file.'];
+    if (provider) {
+      msg.push(`(--provider ${provider.name} expects ${provider.apiKeyEnv} or PATINA_API_KEY.)`);
     }
-    if (backends.length > 1) {
-      logger.info('backend.chain', {
-        message: `[patina] Backend fallback chain: ${backends.map((b) => b.name).join(' → ')}`,
-      });
+    const codex = listBackends().find((b) => b.name === 'codex-cli');
+    if (codex && codex.available && codex.authenticated) {
+      msg.push('Or pass `--backend codex-cli` to use the codex-cli backend (no key needed).');
+    } else if (codex && codex.available && !codex.authenticated) {
+      msg.push('Or run `codex login`, then pass `--backend codex-cli`.');
+    } else if (codex && !codex.available) {
+      msg.push('Or install `codex` from https://github.com/openai/codex and pass `--backend codex-cli`.');
     }
-    if (backend.name === 'openai-http' && !resolved.apiKey && !(parsed.xliff && parsed.dryRun)) {
-      const msg = ['No API key found. Set PATINA_API_KEY, PATINA_API_KEY_FILE, OPENAI_API_KEY, or use --api-key-file.'];
-      if (provider) {
-        msg.push(`(--provider ${provider.name} expects ${provider.apiKeyEnv} or PATINA_API_KEY.)`);
-      }
-      const codex = listBackends().find((b) => b.name === 'codex-cli');
-      if (codex && codex.available && codex.authenticated) {
-        msg.push('Or pass `--backend codex-cli` to use the codex-cli backend (no key needed).');
-      } else if (codex && codex.available && !codex.authenticated) {
-        msg.push('Or run `codex login`, then pass `--backend codex-cli`.');
-      } else if (codex && !codex.available) {
-        msg.push('Or install `codex` from https://github.com/openai/codex and pass `--backend codex-cli`.');
-      }
-      throw runtimeError(
-        'no API key found',
-        msg[0],
-        msg.slice(1).join(' ') || 'Set PATINA_API_KEY or pass --backend codex-cli after logging in.'
-      );
-    }
+    throw runtimeError(
+      'no API key found',
+      msg[0],
+      msg.slice(1).join(' ') || 'Set PATINA_API_KEY or pass --backend codex-cli after logging in.'
+    );
   }
 
-  const promptMode = backendSelection
-    ? resolvePromptMode({ backend: backend.name, model: resolved.model })
-    : 'strict';
+  const promptMode = resolvePromptMode({ backend: backend.name, model: resolved.model });
 
   if (parsed.preview) {
     await runPreviewJob({
@@ -217,21 +214,18 @@ async function runPipeline(parsed, logger, config) {
       jargon: parsed.jargon,
       rewriteHeadings: parsed.rewriteHeadings,
       persona,
-      // PATINA_RHETORIC_POLICY=legacy restores the pre-2026-09-14 similar-weight rhetoric sentence.
       rhetoricPolicy: resolveRhetoricPolicy(process.env),
     }),
   }));
 
-  if (backendSelection) {
-    logBatchSafetyPlan({
-      jobs,
-      backends,
-      parsed,
-      promptMode,
-      timeoutMs,
-      logger,
-    });
-  }
+  logBatchSafetyPlan({
+    jobs,
+    backends,
+    parsed,
+    promptMode,
+    timeoutMs,
+    logger,
+  });
 
   const cancellation = createCancellationController({ logger });
   const batchState = createBatchCircuitBreaker({ parsed, total: jobs.length });
@@ -406,8 +400,8 @@ async function runPipeline(parsed, logger, config) {
           scoreValidationOutput = formatOutput(result, mode, { ...parsed, format: 'markdown' }, { logger });
         }
 
-        // v3.11 Phase 1.3: surface weight drift between config and the score
-        // table the model emitted. Warnings only — does not alter the output.
+        // Surface weight drift between config and the score table the model
+        // emitted. Warnings only — does not alter the output.
         if (mode === 'score') {
           const configWeights = config.scoring?.['category-weights']?.[lang] || {};
           const warnings = validateScoreWeights(scoreValidationOutput || output, configWeights);
@@ -523,24 +517,25 @@ async function runOfflineScore(parsed, { config, patterns, repoRoot }, logger) {
   }
 }
 
+// Only called with a non-null score whose `overall` is finite (runOfflineScore
+// checks both first).
 function deterministicOnlyScoreResult(score) {
-  const overall = Number.isFinite(score?.overall) ? score.overall : null;
   const lines = [
-    `Overall: ${overall ?? 'unavailable'}`,
-    `Interpretation: ${score?.interpretation ?? 'unavailable'}`,
+    `Overall: ${score.overall}`,
+    `Interpretation: ${score.interpretation ?? 'unavailable'}`,
     'Scoring: deterministic only; LLM-judged categories unavailable.',
-    `Paragraphs: ${score?.paragraphCount ?? 0}`,
-    `Hot paragraphs: ${score?.hotParagraphs ?? 0}`,
-    `Signal score: ${score?.signalScore ?? 0}`,
-    `Evidence floor: ${score?.evidenceFloor ?? 0}`,
+    `Paragraphs: ${score.paragraphCount ?? 0}`,
+    `Hot paragraphs: ${score.hotParagraphs ?? 0}`,
+    `Signal score: ${score.signalScore ?? 0}`,
+    `Evidence floor: ${score.evidenceFloor ?? 0}`,
   ];
-  if (score?.skipped && score?.skipReason) {
+  if (score.skipped && score.skipReason) {
     lines.push(`Skipped signal: ${score.skipReason}`);
   }
   return {
     raw: lines.join('\n'),
-    overall,
-    interpretation: score?.interpretation ?? null,
+    overall: score.overall,
+    interpretation: score.interpretation ?? null,
     llmScore: null,
     deterministicScore: score,
     scorePreference: 'deterministic-only',
@@ -671,7 +666,7 @@ export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
 
 function buildPersonaReport({ rewritten, original, persona, lang, repoRoot, thresholds }) {
   const match = personaMatchScore({ text: rewritten, persona, lang, repoRoot, original });
-  const overEditChurn = match.overEditChurn ?? match.deltas?.overEditChurn ?? match.featureVector?.over_edit_churn ?? 0;
+  const overEditChurn = match.overEditChurn ?? 0;
   const gate = evaluatePersonaGate({
     personaMatch: match.score,
     churn: overEditChurn,
@@ -767,13 +762,15 @@ export function createCancellationController({
 // CLIs use the compact rewrite prompt by default to avoid feeding large pattern
 // packs into batch-oriented agent runtimes.
 export function resolvePromptMode({ backend, model }) {
-  const backendStr = (backend || '').toLowerCase();
-  const modelStr = (model || '').toLowerCase();
-  if (backendStr && backendStr !== 'openai-http') return getBackendSafety(backendStr).promptMode;
-  if (modelStr.includes('gemini')) return 'minimal';
-  if (backendStr) return getBackendSafety(backendStr).promptMode;
-  if (modelStr.includes('kimi') || modelStr.includes('claude') || modelStr.includes('codex') || modelStr === 'agy') return 'minimal';
-  return 'strict';
+  const backendName = String(backend || '').toLowerCase();
+  if (backendName === 'openai-http' && String(model || '').toLowerCase().includes('gemini')) return 'minimal';
+  return getBackendSafety(backendName).promptMode;
+}
+
+// A comma-listed --register (preview variant comparison) resolves the first
+// value for the run-level register.
+function firstCliRegister(parsed) {
+  return typeof parsed.register === 'string' ? parsed.register.split(',')[0] : parsed.register;
 }
 
 /**
@@ -798,15 +795,6 @@ export function resolveDocumentTypeForLanguage(documentTypeName, lang, logger = 
 }
 
 
-// Resolve the API key from file or environment. Precedence: --api-key-file >
-// PATINA_API_KEY_FILE > provider/default env vars.
-function resolveApiKey(parsed, provider) {
-  return resolveHttpApiKey({
-    apiKeyFile: parsed.apiKeyFile,
-    envVars: providerHttpKeyEnvVars(provider?.apiKeyEnv),
-  });
-}
-
 async function runPreviewJob({
   parsed,
   config,
@@ -829,12 +817,8 @@ async function runPreviewJob({
   const cancellation = createCancellationController({ logger });
   cancellation.install();
   try {
-    let pageHtml = null;
-    let blocks = null;
-    let sourceUrl = null;
-    let sourcePath = input;
-    let originalText;
-    let snapshotSource = null;
+    let snapshotSource;
+    let sourceUrl;
 
     if (isUrl) {
       logger.info('preview.fetch', { message: `[patina] Fetching ${input}` });
@@ -853,48 +837,45 @@ async function runPreviewJob({
       sourceUrl = page.finalUrl;
     } else {
       const [loaded] = await loadInputs(parsed, logger);
-      sourcePath = loaded.path;
       // Local files are validated to .html upstream and use the same
       // snapshot pipeline as a fetched page.
       snapshotSource = loaded.text;
-      sourceUrl = pathToFileURL(resolve(process.cwd(), sourcePath)).href;
+      sourceUrl = pathToFileURL(resolve(process.cwd(), loaded.path)).href;
     }
 
-    if (snapshotSource !== null) {
-      pageHtml = prepareSnapshotHtml(snapshotSource);
-      if (isUrl) {
-        // Must happen before extraction: inlining changes offsets, and the
-        // in-place swap later relies on the block offsets captured here.
-        pageHtml = await freezeSnapshotAssets(pageHtml, {
-          baseUrl: sourceUrl,
-          signal: cancellation.signal,
-          logger,
-        });
-        cancellation.throwIfCanceled();
-      }
-      const extracted = extractProseBlocks(pageHtml);
-      blocks = extracted.blocks;
-      // With --ocr, a page whose copy lives entirely in images has no DOM
-      // prose but is exactly the case OCR exists for — defer the no-prose
-      // error until after OCR has had a chance to find image text.
-      if (blocks.length === 0 && !parsed.ocr) {
-        throw runtimeError(
-          'no prose found on the page',
-          'The page has no plain-text prose blocks patina can rewrite in place (often a client-rendered SPA, or text split by inline markup).',
-          'Try a server-rendered page, save the article text to a file, or add --ocr to scan image text.'
-        );
-      }
-      if (extracted.truncated) {
-        logger.warn('preview.truncated', {
-          message: '[patina] Page has more prose blocks than the preview limit; extra blocks are left unchanged.',
-        });
-      }
-      originalText = blocks.map((block) => block.text).join('\n\n');
-      if (blocks.length > 0) {
-        logger.info('preview.blocks', {
-          message: `[patina] Rewriting ${blocks.length} prose block(s) from ${sourceUrl}`,
-        });
-      }
+    let pageHtml = prepareSnapshotHtml(snapshotSource);
+    if (isUrl) {
+      // Must happen before extraction: inlining changes offsets, and the
+      // in-place swap later relies on the block offsets captured here.
+      pageHtml = await freezeSnapshotAssets(pageHtml, {
+        baseUrl: sourceUrl,
+        signal: cancellation.signal,
+        logger,
+      });
+      cancellation.throwIfCanceled();
+    }
+    const extracted = extractProseBlocks(pageHtml);
+    const { blocks } = extracted;
+    // With --ocr, a page whose copy lives entirely in images has no DOM
+    // prose but is exactly the case OCR exists for — defer the no-prose
+    // error until after OCR has had a chance to find image text.
+    if (blocks.length === 0 && !parsed.ocr) {
+      throw runtimeError(
+        'no prose found on the page',
+        'The page has no plain-text prose blocks patina can rewrite in place (often a client-rendered SPA, or text split by inline markup).',
+        'Try a server-rendered page, save the article text to a file, or add --ocr to scan image text.'
+      );
+    }
+    if (extracted.truncated) {
+      logger.warn('preview.truncated', {
+        message: '[patina] Page has more prose blocks than the preview limit; extra blocks are left unchanged.',
+      });
+    }
+    const originalText = blocks.map((block) => block.text).join('\n\n');
+    if (blocks.length > 0) {
+      logger.info('preview.blocks', {
+        message: `[patina] Rewriting ${blocks.length} prose block(s) from ${sourceUrl}`,
+      });
     }
 
     const basePromptInputs = {
@@ -928,26 +909,20 @@ async function runPreviewJob({
     // pixels, so changed findings render as annotations + notes cards.
     let ocrImages = [];
     if (parsed.ocr) {
-      if (pageHtml === null) {
-        logger.warn('ocr.skipped', {
-          message: '[patina] --ocr applies to URL/.html previews; plain-text input has no images.',
-        });
-      } else {
-        ocrImages = await runOcrStage({
-          pageHtml,
-          sourceUrl,
-          parsed,
-          backends,
-          resolved,
-          timeoutMs,
-          cancellation,
-          logger,
-        });
-      }
+      ocrImages = await runOcrStage({
+        pageHtml,
+        sourceUrl,
+        parsed,
+        backends,
+        resolved,
+        timeoutMs,
+        cancellation,
+        logger,
+      });
     }
 
     // A page with no DOM prose AND no image text has nothing to rewrite.
-    if (blocks !== null && blocks.length === 0 && ocrImages.length === 0) {
+    if (blocks.length === 0 && ocrImages.length === 0) {
       throw runtimeError(
         'no prose found on the page',
         'The page has no plain-text prose blocks, and --ocr found no text in its images.',
@@ -958,7 +933,7 @@ async function runPreviewJob({
     const rewriteText = [originalText, ...ocrImages.map((image) => image.text)]
       .filter(Boolean)
       .join('\n\n');
-    const documentContext = buildDocumentSignals({ text: rewriteText, lang: config.language || 'ko' });
+    const documentContext = buildDocumentSignals({ text: rewriteText, lang });
 
     // Variant comparison (--jargon x,y / --register a,b): one rewrite call
     // per variant, all baked into the preview page behind a scriptless toggle.
@@ -966,24 +941,17 @@ async function runPreviewJob({
     // 1-2, and a variant is a whole-document rewrite, not a cheap request.
     const transformVariants = buildTransformVariants(parsed);
     const compareMode = transformVariants.length > 1;
-    if (compareMode && pageHtml === null) {
-      throw runtimeError(
-        'transform-variant comparison needs a page snapshot',
-        'Plain-text file previews render as a single reading document, which cannot hold multiple toggleable variants.',
-        'Run the compare against a URL or .html input, or pick a single --jargon/--register value.'
-      );
-    }
     const variantBodies = [];
     let rewrittenBody;
     if (compareMode) {
-      const firstCliRegister = typeof parsed.register === 'string' ? parsed.register.split(',')[0] : parsed.register;
+      const firstRegister = firstCliRegister(parsed);
       for (const [index, variant] of transformVariants.entries()) {
         logger.info('preview.variant', {
           message: `[patina] Rewriting variant ${variant.label} (${index + 1}/${transformVariants.length})…`,
         });
         // A comma-listed --register resolves independently for each variant.
         let variantRegister = registerResolution;
-        if (variant.register && variant.register !== firstCliRegister) {
+        if (variant.register && variant.register !== firstRegister) {
           variantRegister = resolveRegister({
             cliRegister: variant.register,
             configRegister: config.register,
@@ -1031,8 +999,8 @@ async function runPreviewJob({
       process.exitCode = Math.max(Number(process.exitCode) || 0, 4);
     }
 
-    // Best-effort pattern explanation, same contract as the browser diff
-    // page: one extra call, and a failure never fails the preview. Compare
+    // Best-effort pattern explanation: one extra call, and a failure never
+    // fails the preview. Compare
     // mode skips it: one explanation per variant would multiply the call
     // budget, and the variant toggle itself is the comparison surface.
     let explanationHtml = '';
@@ -1086,67 +1054,61 @@ async function runPreviewJob({
       }
     }
 
-    let built;
-    let stdoutBody = rewrittenBody;
-    if (pageHtml !== null) {
-      // Align each rewrite body against the extracted blocks independently —
-      // models merge/split paragraphs differently per variant.
-      const alignOne = (body, label) => {
-        try {
-          const aligned = alignRewrites([...blocks, ...ocrImages], body);
-          if (aligned.unalignedCount > 0) {
-            logger.warn('preview.partial_alignment', {
-              message: `[patina] ${aligned.unalignedCount} block(s)${label ? ` in variant ${label}` : ''} could not be aligned with the rewrite and keep their original text.`,
-            });
-          }
-          return aligned.rewrites;
-        } catch (err) {
-          throw runtimeError(
-            'preview rewrite could not be aligned',
-            `${err.message}, so the rewrites cannot be swapped back into the page safely.`,
-            'Re-run the command (model output varies), or save the page HTML to a file and run `patina --preview file.html`.'
-          );
+    // Align each rewrite body against the extracted blocks independently —
+    // models merge/split paragraphs differently per variant.
+    const alignOne = (body, label) => {
+      try {
+        const aligned = alignRewrites([...blocks, ...ocrImages], body);
+        if (aligned.unalignedCount > 0) {
+          logger.warn('preview.partial_alignment', {
+            message: `[patina] ${aligned.unalignedCount} block(s)${label ? ` in variant ${label}` : ''} could not be aligned with the rewrite and keep their original text.`,
+          });
         }
-      };
-      const rewrites = alignOne(rewrittenBody, compareMode ? transformVariants[0].label : '');
-      const previewVariants = compareMode
-        ? transformVariants.map((variant, index) => ({
-          label: variant.label,
-          jargon: variant.jargon,
-          register: variant.register,
-          rewrites: (index === 0 ? rewrites : alignOne(variantBodies[index], variant.label)).slice(0, blocks.length),
-        }))
-        : null;
-      const imageFindings = ocrImages.map((image, index) => {
-        const rewritten = rewrites[blocks.length + index];
-        return { ...image, rewritten, changed: rewritten !== image.text };
-      });
-      if (ocrImages.length > 0) {
-        // Keep stdout pipe-safe: only the page's own text, never OCR blocks.
-        stdoutBody = rewrites.slice(0, blocks.length).join('\n\n');
+        return aligned.rewrites;
+      } catch (err) {
+        throw runtimeError(
+          'preview rewrite could not be aligned',
+          `${err.message}, so the rewrites cannot be swapped back into the page safely.`,
+          'Re-run the command (model output varies), or save the page HTML to a file and run `patina --preview file.html`.'
+        );
       }
-      built = buildPreviewHtml({
-        html: pageHtml,
-        blocks,
-        rewrites: rewrites.slice(0, blocks.length),
-        variants: previewVariants,
-        sourceUrl,
-        explanationHtml,
-        scoreChip,
-        imageFindings,
-        contextCardHtml: buildContextCardHtml({
-          sourceRegister: documentContext.register,
-          // A compared register axis has no single global value.
-          register: compareMode && transformVariants.some((v) => v.register !== transformVariants[0].register)
-            ? null
-            : registerResolution,
-        }),
+    };
+    const rewrites = alignOne(rewrittenBody, compareMode ? transformVariants[0].label : '');
+    const previewVariants = compareMode
+      ? transformVariants.map((variant, index) => ({
+        label: variant.label,
+        jargon: variant.jargon,
+        register: variant.register,
+        rewrites: (index === 0 ? rewrites : alignOne(variantBodies[index], variant.label)).slice(0, blocks.length),
+      }))
+      : null;
+    const imageFindings = ocrImages.map((image, index) => {
+      const rewritten = rewrites[blocks.length + index];
+      return { ...image, rewritten, changed: rewritten !== image.text };
+    });
+    // Keep stdout pipe-safe: only the page's own text, never OCR blocks.
+    const stdoutBody = ocrImages.length > 0 ? rewrites.slice(0, blocks.length).join('\n\n') : rewrittenBody;
+    const built = buildPreviewHtml({
+      html: pageHtml,
+      blocks,
+      rewrites: rewrites.slice(0, blocks.length),
+      variants: previewVariants,
+      sourceUrl,
+      explanationHtml,
+      scoreChip,
+      imageFindings,
+      contextCardHtml: buildContextCardHtml({
+        sourceRegister: documentContext.register,
+        // A compared register axis has no single global value.
+        register: compareMode && transformVariants.some((v) => v.register !== transformVariants[0].register)
+          ? null
+          : registerResolution,
+      }),
+    });
+    if (compareMode) {
+      logger.info('preview.variants_ready', {
+        message: `[patina] ${transformVariants.length} variants baked in (${transformVariants.map((v) => v.label).join(', ')}); stdout carries "${transformVariants[0].label}". Toggle variants from the preview bar.`,
       });
-      if (compareMode) {
-        logger.info('preview.variants_ready', {
-          message: `[patina] ${transformVariants.length} variants baked in (${transformVariants.map((v) => v.label).join(', ')}); stdout carries "${transformVariants[0].label}". Toggle variants from the preview bar.`,
-        });
-      }
     }
     // Do the throwing/binding work (temp-file write, serve port bind) BEFORE the
     // large stdout write: process.exit() does not drain a piped stdout, so a
@@ -1245,13 +1207,9 @@ async function runOcrStage({ pageHtml, sourceUrl, parsed, backends, resolved, ti
 }
 
 /**
- * Over-editing guard (Study 1 RQ5b): rewriting text that already reads human
- * measurably nudged it TOWARD AI-likeness (+3.3 judged points on human English
- * documents, docs/research/2026-rewrite-efficacy-study1.md). When the
- * deterministic layer finds nothing to fix, say so before spending a rewrite —
- * advisory only, never blocks, and silent wherever the deterministic score is
- * unavailable or the text is too short to judge (Study 0 Deviation 1).
- * Opt out with `over-editing-guard: false` in config.
+ * Advisory note before rewriting text the deterministic layer already reads as
+ * human, since rewriting such text can add AI-likeness. Never blocks; opt out
+ * with `over-editing-guard: false`.
  */
 export function warnIfAlreadyHuman({ text, config = {}, repoRoot, logger, scorer = scoreDeterministicSignals }) {
   if (config['over-editing-guard'] === false) return null;

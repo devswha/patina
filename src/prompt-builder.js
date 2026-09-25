@@ -229,9 +229,6 @@ function buildRegisterDirective(value, lang) {
  * @param {boolean} [options.rewriteHeadings=false] When false (default),
  *   instruct the model to preserve Markdown ATX heading lines verbatim as
  *   structure (#473); true opts back into rewording/adding/removing them.
- * @param {'baseline'|'ko-contextual-v1'} [options.structureGuidance=baseline]
- *   Strict rewrite structure treatment; ko-contextual-v1 is a research
- *   treatment the web path enables only under PATINA_KO_DIAGNOSIS_RESEARCH=1.
  * @param {'baseline'|'short-safe-v1'} [options.minimalStructureGuidance=baseline]
  *   Research/hosted short-request treatment for the minimal prompt.
  * @param {'default'|'legacy'} [options.rhetoricPolicy]
@@ -261,20 +258,13 @@ export function buildPrompt(options) {
     jargon = 'keep',
     // #473: preserve Markdown ATX headings by default; --rewrite-headings opts in.
     rewriteHeadings = false,
-    structureGuidance = 'baseline',
     minimalStructureGuidance = 'baseline',
     rhetoricPolicy = 'default',
   } = options;
-  if (!['baseline', 'ko-contextual-v1'].includes(structureGuidance)) {
-    throw new Error(`unknown structureGuidance: ${structureGuidance}`);
-  }
   if (!['default', 'legacy'].includes(rhetoricPolicy)) {
     throw new Error(`unknown rhetoricPolicy: ${rhetoricPolicy}`);
   }
   const lang = config.language || 'ko';
-  if (structureGuidance === 'ko-contextual-v1' && lang !== 'ko') {
-    throw new Error('structureGuidance ko-contextual-v1 requires Korean language');
-  }
   if (!['baseline', 'short-safe-v1'].includes(minimalStructureGuidance)) {
     throw new Error(`unknown minimalStructureGuidance: ${minimalStructureGuidance}`);
   }
@@ -369,7 +359,6 @@ export function buildPrompt(options) {
       lang,
       includeSelfAudit,
       rewriteHeadings,
-      structureGuidance,
       personaActive: Boolean(persona),
       registerActive: Boolean(register),
       rhetoricPolicy,
@@ -515,7 +504,7 @@ function buildNoInventedLessonConstraint(lang, documentTypeName = 'default') {
 function buildRewriteInstructions(
   structurePacks,
   lexicalPacks,
-  { includeSelfAudit = true, lang = 'ko', rewriteHeadings = false, structureGuidance = 'baseline', personaActive = false, registerActive = false, rhetoricPolicy = 'default', documentTypeName = 'default', portabilityHint = null } = {}
+  { includeSelfAudit = true, lang = 'ko', rewriteHeadings = false, personaActive = false, registerActive = false, rhetoricPolicy = 'default', documentTypeName = 'default', portabilityHint = null } = {}
 ) {
   const phaseCount = includeSelfAudit ? 3 : 2;
   let inst = `Follow the ${phaseCount}-Phase pipeline:\n\n`;
@@ -550,9 +539,7 @@ function buildRewriteInstructions(
     inst += `\n1. Scan paragraph layout, repetition, translationese, passive patterns\n`;
     inst += `2. Correct structural issues — diversify paragraph structure\n`;
     inst += `3. Verify core claims and logical flow survive structural changes\n`;
-    inst += structureGuidance === 'ko-contextual-v1'
-      ? `4. Korean structure — preserve the genre, purpose, and existing organization unless a detected structural issue requires change. Do not make coverage exhaustive, add a generic introduction, summary, or lesson, or manufacture a problem→crisis→lesson arc. Do not force sentence-length quotas, clipped fragments, or a reusable short-declaration/long-elaboration formula. For each flagged paragraph, fix only the 1–2 highest-impact detected structural issues; make minimal or no edits when it is already natural. Preserve claims, numbers, polarity, and causation.\n\n`
-      : `4. Burstiness — vary sentence LENGTH inside each paragraph, not just paragraph length and sentence count. A paragraph flagged low-burstiness means its sentences are near-identical in token count (CV < 0.30); swapping vocabulary alone never fixes it. In every flagged paragraph mix at least one short sentence (5–8 tokens) with at least one long one (20+ tokens), targeting CV ≥ 0.35: split one long sentence into a blunt declaration plus a longer elaboration, merge two same-length sentences, or drop in a clipped two-word follow-up. After rewriting, eyeball the sentence lengths — a row of 12±2-token sentences means this step was NOT done.\n\n`;
+    inst += `4. Burstiness — vary sentence LENGTH inside each paragraph, not just paragraph length and sentence count. A paragraph flagged low-burstiness means its sentences are near-identical in token count (CV < 0.30); swapping vocabulary alone never fixes it. In every flagged paragraph mix at least one short sentence (5–8 tokens) with at least one long one (20+ tokens), targeting CV ≥ 0.35: split one long sentence into a blunt declaration plus a longer elaboration, merge two same-length sentences, or drop in a clipped two-word follow-up. After rewriting, eyeball the sentence lengths — a row of 12±2-token sentences means this step was NOT done.\n\n`;
     inst += `**Skip if**: text is ≤2 paragraphs OR no structure packs loaded.\n\n`;
   }
 

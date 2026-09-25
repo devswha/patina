@@ -103,7 +103,7 @@ Acceptance criteria:
 
 ### Phase 3 — deterministic feature expansion
 
-Status (2026-09-02): in research. The Korean diagnosis modules (`src/features/korean-diagnosis.js`, `korean-invariants.js`, `korean-structure-fingerprint.js`) landed in 8.1.0 as research infrastructure and are **not** promoted to the shipped verdict (`docs/research/ko-confirmatory-verdict-20260901.md`). The smoothness-floor item is **shipped advisory (CLI rewrite warning); not in analyzeText / benchmark**. Remaining Phase 3 candidates stay research-only.
+Status (2026-09-02): in research. The Korean diagnosis treatment was **not** promoted (`docs/research/ko-confirmatory-verdict-20260901.md`); of its research infrastructure only `src/features/korean-structure-fingerprint.js` ships, as the read-only `patina inspect` structure fingerprint. The smoothness-floor item is **shipped advisory (CLI rewrite warning); not in analyzeText / benchmark**. Remaining Phase 3 candidates stay research-only.
 
 Goal: add signals that are not just sentence length or lexicon hits.
 

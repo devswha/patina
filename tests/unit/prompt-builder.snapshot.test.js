@@ -297,41 +297,6 @@ describe('CJK clause-level rewrite guard', () => {
   });
 });
 
-describe('Korean contextual structure treatment', () => {
-  const koConfig = { ...config, language: 'ko' };
-
-  it('keeps the baseline prompt byte-identical when omitted or explicit', () => {
-    const common = {
-      config: koConfig, patterns, documentType, voice, scoring, text: inputText,
-      mode: 'rewrite', register, promptMode: 'strict',
-    };
-    assert.equal(buildPrompt(common), buildPrompt({ ...common, structureGuidance: 'baseline' }));
-  });
-
-  it('replaces only the rigid burstiness formula with contextual guidance', () => {
-    const prompt = buildPrompt({
-      config: koConfig, patterns, documentType, voice, scoring, text: inputText,
-      mode: 'rewrite', register, promptMode: 'strict', structureGuidance: 'ko-contextual-v1',
-    });
-    assert.match(prompt, /preserve the genre, purpose, and existing organization/);
-    assert.match(prompt, /Do not make coverage exhaustive/);
-    assert.match(prompt, /fix only the 1–2 highest-impact detected structural issues/);
-    assert.match(prompt, /Preserve claims, numbers, polarity, and causation/);
-    assert.doesNotMatch(prompt, /5–8 tokens/);
-    assert.doesNotMatch(prompt, /20\+ tokens/);
-    assert.match(prompt, /Do not force sentence-length quotas, clipped fragments/);
-  });
-
-  it('rejects the Korean-only treatment for non-Korean prompts and unknown treatments', () => {
-    const common = {
-      config, patterns, documentType, voice, scoring, text: inputText,
-      mode: 'rewrite', register, promptMode: 'strict',
-    };
-    assert.throws(() => buildPrompt({ ...common, structureGuidance: 'ko-contextual-v1' }), /requires Korean/);
-    assert.throws(() => buildPrompt({ ...common, structureGuidance: 'unknown' }), /unknown structureGuidance/);
-  });
-});
-
 describe('Korean advisory rewrite metadata wording', () => {
   const koConfig = {
     ...config,

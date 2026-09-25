@@ -135,7 +135,6 @@ function normalizeStringArray(value, source, { required = true } = {}) {
 
 export async function buildPatinaRewritePrompt(fixture, {
   repoRoot = getRepoRoot(),
-  structureGuidance,
   promptMode,
   minimalStructureGuidance,
   documentSignals,
@@ -162,7 +161,6 @@ export async function buildPatinaRewritePrompt(fixture, {
     scoring: null,
     text: fixture.text,
     mode: 'rewrite',
-    ...(structureGuidance === undefined ? {} : { structureGuidance }),
     ...(promptMode === undefined ? {} : { promptMode }),
     ...(minimalStructureGuidance === undefined ? {} : { minimalStructureGuidance }),
     ...(documentSignals === undefined ? {} : { documentSignals }),

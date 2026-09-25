@@ -20,7 +20,7 @@
 //   npm run quality:rewrite-ab -- --json
 
 import { createHash } from 'node:crypto';
-import { readFileSync, realpathSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 
 import { callLLM as defaultCallLLM } from '../src/api.js';
@@ -28,11 +28,7 @@ import { loadConfig, getRepoRoot } from '../src/config.js';
 import { loadCoreFile, loadPatterns, loadDocumentType } from '../src/loader.js';
 import { fenceReferenceText } from '../src/prompt-builder.js';
 import { classifyWebPromptBudget } from '../src/web-prompt-budget.js';
-import {
-  buildKoreanDiagnosis,
-  diagnosisStructureGuidance,
-} from '../src/features/korean-diagnosis.js';
-import { evaluateKoreanInvariants } from '../src/features/korean-invariants.js';
+import { evaluateNumberSafety } from '../src/features/meaning-proxy.js';
 import {
   compareKoreanStructure,
   koreanStructureDistance,
@@ -52,16 +48,12 @@ import {
 } from '../tests/quality/live-quality.mjs';
 import { wilsonInterval } from '../tests/quality/ranking-metrics.mjs';
 
-export const REWRITE_AB_SCHEMA_VERSION = 6;
+export const REWRITE_AB_SCHEMA_VERSION = 7;
 export const DEFAULT_CONFIGS = ['single', 'iterative-baseline'];
-export const CONFIRMATORY_CONFIGS = Object.freeze(['iterative-baseline', 'ko-diagnosis-v1']);
-export const CONFIRMATORY_CORPUS_SHA256 = '23c546abd02fdf34b3df11f0427c116cd184f39ab2e23319f4b4dd2c2ce5fee3';
 export const REWRITE_AB_TEMPERATURE = 0.2;
 export const REWRITE_CONFIGS = Object.freeze([
   'single',
   'iterative-baseline',
-  'ko-contextual-v1',
-  'ko-diagnosis-v1',
   'request-shaped-v1',
 ]);
 export const ITERATIVE_BASELINE_POLICY = Object.freeze({
@@ -94,7 +86,7 @@ export function editChurn(original, rewrite) {
   return denom === 0 ? 0 : Math.round(((denom - 2 * lcs) / denom) * 1000) / 1000;
 }
 
-// Pick the winning config without detector scores. Among invariant-safe configs
+// Pick the winning config without detector scores. Among number-safe configs
 // that meet MPS/fidelity floors, preserve structure and minimize churn.
 // Returns 'none' when no config preserved meaning.
 export function pickWinner(entries, policy = DEFAULT_POLICY) {
@@ -105,7 +97,7 @@ export function pickWinner(entries, policy = DEFAULT_POLICY) {
       typeof e.fidelity === 'number' &&
       e.mps >= policy.mpsFloor &&
       e.fidelity >= policy.fidelityFloor &&
-      e.invariants?.checks.number?.ok !== false,
+      e.numberSafety?.ok !== false,
   );
   if (eligible.length === 0) return 'none';
   eligible.sort(
@@ -186,7 +178,7 @@ export async function compareRewrites({
       let candidateCalls = [];
       let candidate_latency_ms = null;
       let rewrite;
-      let invariants = null;
+      let numberSafety = null;
       let structure;
       const startedAt = now();
       try {
@@ -199,8 +191,8 @@ export async function compareRewrites({
           ? produced.candidateCalls ?? []
           : [];
         rewrite = deliveredRewrite(raw);
-        invariants = fixture.language === 'ko'
-          ? evaluateKoreanInvariants(fixture.text, rewrite)
+        numberSafety = fixture.language === 'ko'
+          ? evaluateNumberSafety(fixture.text, rewrite, 'ko')
           : null;
         structure = fixture.language === 'ko'
           ? compareKoreanStructure(fixture.text, rewrite)
@@ -223,12 +215,7 @@ export async function compareRewrites({
           churn: editChurn(fixture.text, rewrite),
           structure_distance: structure?.fingerprintDistance ?? null,
           untouched_span_ratio: structure?.untouchedSpanRatio ?? null,
-          number_safety_ok: invariants?.checks.number?.ok ?? null,
-          advisory_invariant_failures: invariants
-            ? Object.entries(invariants.checks)
-                .filter(([, check]) => !check.ok)
-                .map(([name]) => name)
-            : [],
+          number_safety_ok: numberSafety?.ok ?? null,
           candidate_latency_ms,
           grading_latency_ms,
           usage,
@@ -236,7 +223,7 @@ export async function compareRewrites({
           status: graded.status ?? null,
           error_count: Array.isArray(graded.errors) ? graded.errors.length : 0,
         };
-        Object.defineProperty(entry, 'invariants', { value: invariants, enumerable: false });
+        Object.defineProperty(entry, 'numberSafety', { value: numberSafety, enumerable: false });
         Object.defineProperty(entry, 'sourceFingerprint', {
           value: structure?.before ?? null,
           enumerable: false,
@@ -263,14 +250,9 @@ export async function compareRewrites({
           candidate_latency_ms,
           usage,
           estimated_cost_usd: usageCost(usage, costRates),
-          number_safety_ok: invariants?.checks.number?.ok ?? null,
-          advisory_invariant_failures: invariants
-            ? Object.entries(invariants.checks)
-                .filter(([, check]) => !check.ok)
-                .map(([name]) => name)
-            : [],
+          number_safety_ok: numberSafety?.ok ?? null,
         };
-        Object.defineProperty(entry, 'invariants', { value: invariants, enumerable: false });
+        Object.defineProperty(entry, 'numberSafety', { value: numberSafety, enumerable: false });
         entries.push(entry);
       }
     }
@@ -280,7 +262,7 @@ export async function compareRewrites({
       typeof entry.fidelity === 'number' &&
       entry.mps >= policy.mpsFloor &&
       entry.fidelity >= policy.fidelityFloor &&
-      entry.invariants?.checks.number?.ok !== false,
+      entry.numberSafety?.ok !== false,
     );
     let preference_winner = 'none';
     let preference_ratings = null;
@@ -535,7 +517,7 @@ function summarize(perFixture, configs, candidateTally, preferenceTally, policy,
     const eligible = successful.filter((entry) =>
       entry.mps >= policy.mpsFloor
       && entry.fidelity >= policy.fidelityFloor
-      && entry.invariants?.checks.number?.ok !== false,
+      && entry.numberSafety?.ok !== false,
     );
     const usageValues = entries.map((entry) => usageTokens(entry.usage)).filter(Number.isFinite);
     const costValues = entries.map((entry) => entry.estimated_cost_usd).filter(Number.isFinite);
@@ -561,7 +543,7 @@ function summarize(perFixture, configs, candidateTally, preferenceTally, policy,
       estimated_cost_usd: meanCost(costValues),
       cost_rows: costValues.length,
       number_safety_failures: entries.filter(
-        (entry) => entry.invariants?.checks.number?.ok === false,
+        (entry) => entry.numberSafety?.ok === false,
       ).length,
       candidate_wins: candidateTally[config] ?? 0,
       preference_wins: preferenceTally[config] ?? 0,
@@ -623,32 +605,6 @@ function summarize(perFixture, configs, candidateTally, preferenceTally, policy,
 async function produceSingle(fixture, { settings, callLLM, repoRoot }) {
   const prompt = await buildPatinaRewritePrompt(fixture, { repoRoot });
   return callLLM({ prompt, apiKey: settings.apiKey, baseURL: settings.baseURL, model: settings.model, temperature: REWRITE_AB_TEMPERATURE });
-}
-
-async function produceKoreanContextual(fixture, { settings, callLLM, repoRoot }) {
-  if (fixture.language !== 'ko') {
-    throw new Error('rewrite config ko-contextual-v1 requires Korean fixtures');
-  }
-  const prompt = await buildPatinaRewritePrompt(fixture, { repoRoot, structureGuidance: 'ko-contextual-v1' });
-  return callLLM({ prompt, apiKey: settings.apiKey, baseURL: settings.baseURL, model: settings.model, temperature: REWRITE_AB_TEMPERATURE });
-}
-
-async function produceKoreanDiagnosis(fixture, { settings, callLLM, repoRoot }) {
-  if (fixture.language !== 'ko') {
-    throw new Error('rewrite config ko-diagnosis-v1 requires Korean fixtures');
-  }
-  const diagnosis = buildKoreanDiagnosis(fixture.text, { repoRoot });
-  const prompt = await buildPatinaRewritePrompt(fixture, {
-    repoRoot,
-    structureGuidance: diagnosisStructureGuidance(diagnosis),
-  });
-  return callLLM({
-    prompt,
-    apiKey: settings.apiKey,
-    baseURL: settings.baseURL,
-    model: settings.model,
-    temperature: REWRITE_AB_TEMPERATURE,
-  });
 }
 
 export function requestShapedPromptMode(fixture) {
@@ -719,8 +675,6 @@ function liveProducer(deps) {
     try {
       if (config === 'single') text = await produceSingle(fixture, trackedDeps);
       else if (config === 'iterative-baseline') text = await produceIterativeBaseline(fixture, trackedDeps);
-      else if (config === 'ko-contextual-v1') text = await produceKoreanContextual(fixture, trackedDeps);
-      else if (config === 'ko-diagnosis-v1') text = await produceKoreanDiagnosis(fixture, trackedDeps);
       else if (config === 'request-shaped-v1') text = await produceRequestShaped(fixture, trackedDeps);
       else throw new Error(`unknown rewrite config: ${config}`);
     } catch (error) {
@@ -732,35 +686,6 @@ function liveProducer(deps) {
       throw trackedError;
     }
     return { text, candidateCalls };
-  };
-}
-
-export function buildConfirmatoryExperiment({
-  repoRoot,
-  configs,
-  fixturePath,
-  language,
-}) {
-  const expectedPath = resolve(repoRoot, 'tests/fixtures/ko-performance/confirmatory.jsonl');
-  if (resolve(fixturePath) !== expectedPath) {
-    throw new Error('confirmatory mode requires the locked Korean corpus path');
-  }
-  const configsMatch = configs.length === CONFIRMATORY_CONFIGS.length
-    && configs.every((config, index) => config === CONFIRMATORY_CONFIGS[index]);
-  if (!configsMatch) {
-    throw new Error(`confirmatory mode requires configs ${CONFIRMATORY_CONFIGS.join(',')}`);
-  }
-  if (language !== 'ko') throw new Error('confirmatory mode requires language ko');
-  const corpusSha256 = createHash('sha256').update(readFileSync(expectedPath)).digest('hex');
-  if (corpusSha256 !== CONFIRMATORY_CORPUS_SHA256) {
-    throw new Error('confirmatory corpus SHA-256 does not match the preregistered artifact');
-  }
-  return {
-    confirmatory: true,
-    corpus_sha256: corpusSha256,
-    corpus_hash_matches: true,
-    configs_match: true,
-    language,
   };
 }
 
@@ -795,17 +720,10 @@ export function parseArgs(argv) {
     const arg = argv[i];
     if (arg === '--json') opts.json = true;
     else if (arg === '--live') opts.live = true;
-    else if (arg === '--confirmatory') opts.confirmatory = true;
-    else if (arg === '--configs') {
-      opts.configs = argv[++i].split(',').map((s) => s.trim()).filter(Boolean);
-      opts.configsProvided = true;
-    }
+    else if (arg === '--configs') opts.configs = argv[++i].split(',').map((s) => s.trim()).filter(Boolean);
     else if (arg === '--fixtures') opts.fixtures = argv[++i];
     else if (arg === '--fixture-id') opts.fixtureId = argv[++i];
-    else if (arg === '--language') {
-      opts.language = argv[++i];
-      opts.languageProvided = true;
-    }
+    else if (arg === '--language') opts.language = argv[++i];
     else if (arg === '--limit') opts.limit = Number(argv[++i]);
     else if (arg === '--backend') opts.backend = argv[++i];
     else if (arg === '--judge-provider') opts.judgeProvider = argv[++i];
@@ -817,7 +735,7 @@ export function parseArgs(argv) {
     else if (arg === '--candidate-output-cost-per-million') opts.candidateOutputCostPerMillion = Number(argv[++i]);
     else if (arg === '--judge-extra-body') opts.judgeExtraBody = argv[++i];
     else if (arg === '--help') {
-      console.log('Usage: quality:rewrite-ab -- [--confirmatory | --configs single,iterative-baseline|ko-contextual-v1|ko-diagnosis-v1|request-shaped-v1 --language ko [--fixture-id ko-blog-01]] --live [--backend codex-cli] [--judge-backend claude-cli] [--candidate-input-cost-per-million N --candidate-output-cost-per-million N]');
+      console.log('Usage: quality:rewrite-ab -- [--configs single,iterative-baseline|request-shaped-v1 --language ko [--fixture-id ko-blog-01]] --live [--backend codex-cli] [--judge-backend claude-cli] [--candidate-input-cost-per-million N --candidate-output-cost-per-million N]');
       process.exit(0);
     }
     else throw new Error(`unknown rewrite-ab option: ${arg}`);
@@ -972,26 +890,9 @@ function renderMarkdown(report) {
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
   const repoRoot = getRepoRoot();
-  let configs = opts.configs;
-  let fixtureSource = opts.fixtures ?? resolve(repoRoot, 'tests/fixtures/live-quality');
-  let language = opts.language;
-  let experiment = null;
-  if (opts.confirmatory) {
-    if (opts.limit !== null) throw new Error('confirmatory mode does not allow --limit');
-    if (opts.fixtureId) throw new Error('confirmatory mode does not allow --fixture-id');
-    if (opts.configsProvided) configs = opts.configs;
-    else configs = [...CONFIRMATORY_CONFIGS];
-    if (opts.languageProvided) language = opts.language;
-    else language = 'ko';
-    fixtureSource = opts.fixtures
-      ?? resolve(repoRoot, 'tests/fixtures/ko-performance/confirmatory.jsonl');
-    experiment = buildConfirmatoryExperiment({
-      repoRoot,
-      configs,
-      fixturePath: fixtureSource,
-      language,
-    });
-  }
+  const configs = opts.configs;
+  const fixtureSource = opts.fixtures ?? resolve(repoRoot, 'tests/fixtures/live-quality');
+  const language = opts.language;
   const invalidConfig = configs.find((config) => !REWRITE_CONFIGS.includes(config));
   if (invalidConfig) throw new Error(`unknown rewrite config: ${invalidConfig}. Accepted configs: ${REWRITE_CONFIGS.join(', ')}`);
   const settings = resolveLiveSettings(opts);
@@ -1065,7 +966,6 @@ async function main() {
     prefer,
     policy,
     costRates,
-    experiment,
   });
   console.log(opts.json ? JSON.stringify(report, null, 2) : renderMarkdown(report));
 }

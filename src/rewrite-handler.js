@@ -16,7 +16,7 @@ import { sha256 } from './web-rewrite-receipt.js';
  *
  * @typedef {{method?: string, aborted?: boolean, headers?: Record<string, string|string[]|undefined>, rawHeaders?: string[], body?: unknown, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, [Symbol.asyncIterator]?: () => AsyncIterator<Buffer|string|Uint8Array>}} RewriteReq
  * @typedef {{statusCode?: number, setHeader?: (name: string, value: string) => void, write?: (chunk: string) => void, end?: (body?: string) => void, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, writableEnded?: boolean, headersSent?: boolean, destroyed?: boolean, destroy?: () => void}} RewriteRes
- * @typedef {{check(input: {tier: string, ip: string|null, subject?: string, chars?: number, requestId?: string, synthetic?: boolean}): Promise<{allowed: true, tier: string, reservation?: import('./quota-reservation.js').ReservationPlan}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}>, acquireConcurrency?(input: {tier: string, ip: string|null, subject?: string}): Promise<{allowed: true, tier: string, lease: string}|{allowed: false, status: number, reason: string}>, releaseConcurrency?(input: {tier: string, ip: string|null, subject?: string, lease: string}): Promise<void>, settleReservation?(input: {reservation: import('./quota-reservation.js').ReservationPlan, refund: boolean}): Promise<boolean>}} RateLimiter
+ * @typedef {{check(input: {tier: string, ip: string|null, subject?: string, chars?: number, requestId?: string, synthetic?: boolean}): Promise<{allowed: true, tier: string, reservation?: import('./quota-reservation.js').ReservationPlan}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}>, acquireConcurrency(input: {tier: string, ip: string|null, subject?: string}): Promise<{allowed: true, tier: string, lease: string}|{allowed: false, status: number, reason: string}>, releaseConcurrency(input: {tier: string, ip: string|null, subject?: string, lease: string}): Promise<void>, settleReservation?(input: {reservation: import('./quota-reservation.js').ReservationPlan, refund: boolean}): Promise<boolean>}} RateLimiter
  * @typedef {{req: RewriteReq, res: RewriteRes, request: import('./web-rewrite-contract.js').WebRewriteRequest, now: () => number, observe?: Function, beforeResponseEnd?: (outcome?: {ok?: boolean, code?: string}) => Promise<void>}} RewriteRunnerInput
  * @typedef {{validate(input: {licenseKey: string, ip?: string|null}): Promise<{ok: true, subject: string, tier: string, status: string, cache: string}|{ok: false, status: number, reason: string}>}} LicenseValidator
  */
@@ -32,7 +32,10 @@ import { sha256 } from './web-rewrite-receipt.js';
  */
 export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = () => Date.now(), logger = console, maxBodyBytes = 256 * 1024, licenseValidator, observe }) {
   if (typeof runRewrite !== 'function') throw new TypeError('runRewrite must be a function');
-  if (!rateLimiter || typeof rateLimiter.check !== 'function') throw new TypeError('rateLimiter.check must be a function');
+  if (!rateLimiter || typeof rateLimiter.check !== 'function'
+    || typeof rateLimiter.acquireConcurrency !== 'function' || typeof rateLimiter.releaseConcurrency !== 'function') {
+    throw new TypeError('rateLimiter must implement check, acquireConcurrency and releaseConcurrency');
+  }
   /**
    * Closed telemetry is best-effort and must never alter a customer response.
    * @param {string} tier
@@ -206,20 +209,7 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
         return send(res, denied.status, body);
       };
 
-      const hasAcquire = typeof rateLimiter.acquireConcurrency === 'function';
-      const hasRelease = typeof rateLimiter.releaseConcurrency === 'function';
-      if (hasAcquire !== hasRelease) {
-        observeClosed(customerObserve, tier, 'quota_denied', 503, startedAt);
-        return send(res, 503, { error: QUOTA_REASONS.STORAGE_UNAVAILABLE });
-      }
       if (isClientClosed()) return undefined;
-      if (!hasAcquire) {
-        const quota = await rateLimiter.check({ tier, ip, subject, chars, ...(trustedSyntheticProbe ? { synthetic: true } : {}) });
-        if (!quota.allowed) return sendQuotaDenied(/** @type {{status: number, reason: string}} */ (quota));
-        // await so a runner rejection is caught by the redacted 500 handler below.
-        if (isClientClosed()) return undefined;
-        return await runRewrite({ req: runnerReq, res, request, now, observe: customerObserve });
-      }
 
       // Reserve concurrency before allowance. Pro uses an atomic charge receipt
       // so a rejected server rewrite can restore usage exactly once.

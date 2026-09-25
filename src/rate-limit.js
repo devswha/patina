@@ -83,7 +83,7 @@ function isLeaseRegistry(value) {
  * Create an in-memory KV store for tests and local development only.
  *
  * @param {{now?: () => number}} [options]
- * @returns {{__memory: true, get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>, acquireLease(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease(registryKey: string, lease: string): Promise<boolean>, reserveQuota(plan: import('./quota-reservation.js').ReservationPlan): Promise<number[]>, settleQuota(plan: import('./quota-reservation.js').ReservationPlan, refund: boolean): Promise<number>}}
+ * @returns {{__memory: true, get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, acquireLease(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease(registryKey: string, lease: string): Promise<boolean>, reserveQuota(plan: import('./quota-reservation.js').ReservationPlan): Promise<number[]>, settleQuota(plan: import('./quota-reservation.js').ReservationPlan, refund: boolean): Promise<number>}}
  */
 export function createMemoryKv({ now = () => Date.now() } = {}) {
   /** @type {Map<string, {value: unknown, expiresAt: number}>} */
@@ -115,20 +115,6 @@ export function createMemoryKv({ now = () => Date.now() } = {}) {
       const current = Number(entries.get(key)?.value ?? 0);
       const next = current + 1;
       entries.set(key, { value: next, expiresAt: expiresAt(ttlMs) });
-      return next;
-    },
-    async incrBy(key, amount, { ttlMs } = {}) {
-      expire();
-      const current = Number(entries.get(key)?.value ?? 0);
-      const next = current + Number(amount);
-      entries.set(key, { value: next, expiresAt: expiresAt(ttlMs) });
-      return next;
-    },
-    async decr(key) {
-      expire();
-      const current = Number(entries.get(key)?.value ?? 0);
-      const next = Math.max(0, current - 1);
-      entries.set(key, { value: next, expiresAt: entries.get(key)?.expiresAt ?? Number.POSITIVE_INFINITY });
       return next;
     },
     async acquireLease(registryKey, lease, maxConcurrent, { ttlMs }) {
@@ -164,7 +150,7 @@ export function createMemoryKv({ now = () => Date.now() } = {}) {
 export { isProductionPosture };
 
 /**
- * @typedef {{get?(key: string): Promise<unknown>, set?(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy?(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr?(key: string): Promise<number>, acquireLease?(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease?(registryKey: string, lease: string): Promise<boolean>, reserveQuota?(plan: import('./quota-reservation.js').ReservationPlan): Promise<number[]>, settleQuota?(plan: import('./quota-reservation.js').ReservationPlan, refund: boolean): Promise<number>, __memory?: boolean}} QuotaKv
+ * @typedef {{get?(key: string): Promise<unknown>, set?(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, acquireLease?(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease?(registryKey: string, lease: string): Promise<boolean>, reserveQuota?(plan: import('./quota-reservation.js').ReservationPlan): Promise<number[]>, settleQuota?(plan: import('./quota-reservation.js').ReservationPlan, refund: boolean): Promise<number>, __memory?: boolean}} QuotaKv
  * @typedef {{allowed: true, tier: string, remainingDay?: number, reservation?: import('./quota-reservation.js').ReservationPlan}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} RateLimitResult
  * @typedef {{allowed: true, tier: string, remainingDay?: number, lease: string}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} ConcurrencyResult
  * @typedef {{warn?: (...args: unknown[]) => void}} RateLimitLogger
@@ -307,7 +293,7 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
       return false;
     },
     async check({ tier, ip, subject, chars, requestId, synthetic }) {
-      if (tier === WEB_TIERS.PRO && requestId !== undefined) return reservePro({ subject, chars, requestId, synthetic });
+      if (tier === WEB_TIERS.PRO) return reservePro({ subject, chars, requestId, synthetic });
       switch (tier) {
         case WEB_TIERS.BYOK:
         case WEB_TIERS.FREE: {
@@ -350,82 +336,6 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
               return { allowed: false, status: 429, reason: QUOTA_REASONS.HOURLY };
             }
             return { allowed: true, tier, remainingDay: Math.max(0, tierLimits.reqPerDay - dayCount) };
-          } catch {
-            return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
-          }
-        }
-        case WEB_TIERS.PRO: {
-          const guard = productionGuard();
-          if (guard) return guard;
-          // Defense-in-depth: the contract already 401s an unauthenticated pro
-          // request, but a subject is REQUIRED here so a mis-wired caller can
-          // never meter pro traffic against a shared/absent identity.
-          if (typeof subject !== 'string' || subject === '') return { allowed: false, status: 401, reason: QUOTA_REASONS.LICENSE_REQUIRED };
-
-          const secret = hmacSecret || 'patina-local-quota-secret';
-          const timestamp = now();
-          const dayBucket = Math.floor(timestamp / DAY_MS);
-          const proLimits = limits.pro;
-          if (!proLimits || !isPositiveSafeInteger(proLimits.reqPerDay)) {
-            return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
-          }
-          // Pro meters a daily cap only (no hourly burst), keyed on the license
-          // subject — never the IP — so usage is counted per license seat.
-          const dayKey = quotaKeyHmac(secret, 'pro', 'day', subject, dayBucket);
-          const dayTtlMs = (dayBucket + 1) * DAY_MS - timestamp;
-
-          try {
-            const dayCount = await kv.incr(dayKey, { ttlMs: dayTtlMs });
-            if (!Number.isSafeInteger(dayCount) || dayCount < 1) {
-              return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
-            }
-            if (dayCount > proLimits.reqPerDay) {
-              return { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY };
-            }
-            // Monthly REQUEST cap (per license subject) — the primary margin
-            // control. Pipeline cost tracks request count, not characters: each
-            // paid rewrite spends three LLM calls behind a ~20k-token prompt, so
-            // the char cap alone lets many tiny requests exceed the plan's
-            // economics. Counted before the char cap so the binding limit is the
-            // one that actually bounds spend, and it engages on EVERY request
-            // (unlike the char counter, which needs a positive char count).
-            const monthDate = new Date(timestamp);
-            const monthBucket = monthDate.getUTCFullYear() * 12 + monthDate.getUTCMonth();
-            const nextMonthStart = Date.UTC(monthDate.getUTCFullYear(), monthDate.getUTCMonth() + 1, 1);
-            const monthTtlMs = nextMonthStart - timestamp;
-            // A trusted synthetic probe is exempt from the monthly dimensions
-            // here too (see reservePro): this branch has no reservation
-            // receipt, so the exemption is simply not metering them.
-            const reqMonthlyCap = proLimits.reqPerMonth;
-            if (synthetic !== true && Number.isSafeInteger(reqMonthlyCap) && reqMonthlyCap > 0) {
-              const reqMonthKey = quotaKeyHmac(secret, 'pro', 'req-month', subject, monthBucket);
-              const reqMonthCount = await kv.incr(reqMonthKey, { ttlMs: monthTtlMs });
-              if (!Number.isSafeInteger(reqMonthCount) || reqMonthCount < 1) {
-                return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
-              }
-              if (reqMonthCount > reqMonthlyCap) {
-                return { allowed: false, status: 429, reason: QUOTA_REASONS.MONTHLY_REQUESTS, remainingMonthlyRequests: 0, limitMonthlyRequests: reqMonthlyCap };
-              }
-            }
-            // Monthly total-character cap (per license subject), the margin
-            // defense against a single seat burning far more than the $9.99/mo
-            // subscription value under the daily/per-request caps. Only engages
-            // when a positive char count is supplied AND a positive cap is
-            // configured; the counter is atomic (incrBy) and resets at the UTC
-            // month boundary via the key bucket + TTL.
-            const monthlyCap = proLimits.charsPerMonth;
-            const reqChars = Number.isSafeInteger(chars) && chars > 0 ? chars : 0;
-            if (synthetic !== true && reqChars > 0 && Number.isSafeInteger(monthlyCap) && monthlyCap > 0) {
-              const monthKey = quotaKeyHmac(secret, 'pro', 'chars-month', subject, monthBucket);
-              const monthTotal = await kv.incrBy(monthKey, reqChars, { ttlMs: monthTtlMs });
-              if (!Number.isSafeInteger(monthTotal) || monthTotal < 1) {
-                return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
-              }
-              if (monthTotal > monthlyCap) {
-                return { allowed: false, status: 429, reason: QUOTA_REASONS.MONTHLY_CHARS, remainingMonthlyChars: 0, limitMonthlyChars: monthlyCap };
-              }
-            }
-            return { allowed: true, tier, remainingDay: Math.max(0, proLimits.reqPerDay - dayCount) };
           } catch {
             return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
           }

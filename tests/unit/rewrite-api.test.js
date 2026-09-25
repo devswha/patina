@@ -474,25 +474,6 @@ test('byok tier forwards the caller key (not the server free key) to the stream 
   assert.equal(seenKey, 'sk-caller-byok-key', 'byok must use the caller key, not the server free key');
 });
 
-test('REST KV adapter calls Upstash decr and parses the numeric result', async () => {
-  const calls = [];
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = /** @type {any} */ (async (url) => {
-    calls.push(String(url));
-    if (String(url).includes('/decr/')) {
-      return { ok: true, async json() { return { result: 4 }; } };
-    }
-    return { ok: true, async json() { return { result: 1 }; } };
-  });
-  try {
-    const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test/', KV_REST_API_TOKEN: 'token' });
-    assert.ok(kv);
-    assert.equal(await kv.decr('slot key'), 4);
-    assert.equal(calls[0], 'https://kv.example.test/decr/slot%20key');
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
 test('REST KV lease commands use one atomic EVAL with opaque capabilities and fail closed on malformed acknowledgements', async () => {
   const posts = [];
   const acknowledgements = ['1', 0, 1, 0];
@@ -586,7 +567,7 @@ test('general REST KV rejects unsafe origins, uses redirect:error, and aborts de
   try {
     const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
     assert.ok(kv);
-    await assert.rejects(() => kv.decr('counter'), /deadline exceeded/);
+    await assert.rejects(() => kv.get('counter'), /deadline exceeded/);
     assert.equal(seen.redirect, 'error');
     assert.equal(seen.signal.aborted, true);
   } finally {
@@ -851,47 +832,6 @@ test('REST KV set without a TTL omits PX; get is undefined for null and verbatim
   }
 });
 
-test('REST KV incrBy with a TTL adds N and applies the expiry in ONE atomic EVAL command', async () => {
-  const gets = [];
-  const posts = [];
-  const results = [];
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = /** @type {any} */ (async (url, init) => {
-    if (init && init.method === 'POST') {
-      posts.push(JSON.parse(String(init.body)));
-      return { ok: true, async json() { return { result: 1200 }; } };
-    }
-    gets.push(String(url));
-    return { ok: true, async json() { return results.shift(); } };
-  });
-  try {
-    const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
-    assert.ok(kv);
-
-    // #605: increment + TTL is a single EVAL(INCRBY+PEXPIRE) round trip — never
-    // an /incrby followed by a separate /expire the process could die before.
-    const total = await kv.incrBy('month key', 400, { ttlMs: 2_500 });
-    assert.equal(total, 1200);
-    assert.equal(posts.length, 1, 'one atomic command, no separate expire call');
-    assert.equal(gets.length, 0, 'the GET path is never used when a TTL is supplied');
-    assert.equal(posts[0][0], 'EVAL');
-    assert.match(posts[0][1], /INCRBY/);
-    assert.match(posts[0][1], /PEXPIRE/);
-    assert.deepEqual(posts[0].slice(2), ['1', 'month key', '400', '2500'], 'one key; amount; ttl in ms');
-
-    // Without a TTL the plain GET-path INCRBY is kept.
-    results.push({ result: 800 });
-    assert.equal(await kv.incrBy('month key', 400), 800);
-    assert.equal(gets[0], 'https://kv.example.test/incrby/month%20key/400');
-
-    // A malformed counter (non-numeric) fails closed by throwing.
-    results.push({ result: 'not-a-number' });
-    await assert.rejects(() => kv.incrBy('k', 5), /invalid counter/);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
-
 /** A globalThis.fetch stub returning a valid Polar customer-portal response. */
 function validPolarFetch() {
   return /** @type {any} */ (async () => ({
@@ -1079,11 +1019,7 @@ test('pro tier: in production, no pro key + present free key + no allow-flag ret
       if (args[0] === 'EVAL') return { ok: true, async json() { return { result: 1 }; } };
       return { ok: true, async json() { return { result: 'OK' }; } };
     }
-    if (u.includes('/incr/')) return { ok: true, async json() { return { result: 1 }; } };
-    if (u.includes('/decr/')) return { ok: true, async json() { return { result: 0 }; } };
-    if (u.includes('/expire/')) return { ok: true, async json() { return { result: 1 }; } };
     if (u.includes('/get/')) return { ok: true, async json() { return { result: null }; } };
-    if (u.includes('/incrby/')) return { ok: true, async json() { return { result: 100 }; } };
     return { ok: true, async json() { return { result: 'OK' }; } }; // command SET
   });
   try {

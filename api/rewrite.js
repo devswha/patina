@@ -89,7 +89,7 @@ export function createObservabilityRestKv(env = {}) {
  * Create a dependency-free Upstash/Vercel KV REST adapter.
  *
  * @param {Record<string,string|undefined>} env
- * @returns {null|{get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>, acquireLease(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease(registryKey: string, lease: string): Promise<boolean>, reserveQuota(plan: import('../src/quota-reservation.js').ReservationPlan): Promise<number[]>, settleQuota(plan: import('../src/quota-reservation.js').ReservationPlan, refund: boolean): Promise<number>}}
+ * @returns {null|{get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options: {ttlMs: number}): Promise<number>, acquireLease(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease(registryKey: string, lease: string): Promise<boolean>, reserveQuota(plan: import('../src/quota-reservation.js').ReservationPlan): Promise<number[]>, settleQuota(plan: import('../src/quota-reservation.js').ReservationPlan, refund: boolean): Promise<number>}}
  */
 export function createRestKv(env = {}) {
   const base = env.KV_REST_API_URL;
@@ -190,9 +190,9 @@ export function createRestKv(env = {}) {
       // Round-trip objects exactly like the in-memory KV: Upstash returns the
       // stored value as a JSON string, so parse it back (object in -> object
       // out) for the entitlement cache. null/missing -> undefined; a non-JSON
-      // string (a legacy/plain value) is returned verbatim; an already-parsed
-      // object passes through. incr/decr never call this, so the counter paths
-      // keep reading the raw numeric REST result via parseKvNumber unchanged.
+      // string (a plain value) is returned verbatim; an already-parsed object
+      // passes through. Counters never read through here; incr parses its own
+      // numeric result.
       if (result == null) return undefined;
       if (typeof result === 'string') {
         try {
@@ -213,27 +213,11 @@ export function createRestKv(env = {}) {
         await command(['SET', key, value]);
       }
     },
-    async incr(key, { ttlMs } = {}) {
-      if (typeof ttlMs === 'number' && ttlMs > 0) return incrByAtomic(key, 1, ttlMs);
-      const data = await read(`/incr/${encodeURIComponent(key)}`);
-      const value = parseKvNumber(data);
-      if (value == null) throw new Error('kv incr returned invalid counter');
-      return value;
-    },
-    async incrBy(key, amount, { ttlMs } = {}) {
-      // Upstash/Vercel KV INCRBY: atomic add-N, returned as the new total. Used
-      // for the pro monthly character counter (add textLength per request).
-      if (typeof ttlMs === 'number' && ttlMs > 0) return incrByAtomic(key, amount, ttlMs);
-      const data = await read(`/incrby/${encodeURIComponent(key)}/${encodeURIComponent(String(amount))}`);
-      const value = parseKvNumber(data);
-      if (value == null) throw new Error('kv incrby returned invalid counter');
-      return value;
-    },
-    async decr(key) {
-      const data = await read(`/decr/${encodeURIComponent(key)}`);
-      const value = parseKvNumber(data);
-      if (value == null) throw new Error('kv decr returned invalid counter');
-      return value;
+    // Every counter is a fixed window, so the increment and its expiry are
+    // one EVAL: a counter without a TTL would never reset.
+    async incr(key, { ttlMs } = /** @type {{ttlMs?: number}} */ ({})) {
+      if (!(typeof ttlMs === 'number' && ttlMs > 0)) throw new Error('kv incr requires a ttl');
+      return incrByAtomic(key, 1, ttlMs);
     },
     async acquireLease(registryKey, lease, maxConcurrent, { ttlMs }) {
       return leaseCommand(ACQUIRE_LEASE_SCRIPT, registryKey, lease, maxConcurrent, ttlMs);

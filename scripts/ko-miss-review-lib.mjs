@@ -68,7 +68,6 @@ export const MISS_REASONS = Object.freeze([
   'advisory-only-coverage-gap',
   'no-modeled-signal',
 ]);
-export const MISS_REASON_RE = /^[a-z][a-z0-9-]{0,63}$/u;
 export const SHA256_RE = /^sha256:[0-9a-f]{64}$/u;
 const HANGUL_RE = /[\u1100-\u11FF\u3130-\u318F\uA960-\uA97F\uAC00-\uD7AF\uD7B0-\uD7FF]/u;
 // Keys that carry source text or matched spans somewhere in the analyzer

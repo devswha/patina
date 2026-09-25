@@ -109,11 +109,6 @@ export function canonicalizeClass(value) {
   return canonicalize(value, CLASS_ALIASES);
 }
 
-export function blocksRedistributableText(redistribution) {
-  const normalized = normalizeToken(redistribution);
-  return TEXT_BLOCKED_REDIS.has(normalized) || !TEXT_ALLOWED_REDIS.has(normalized);
-}
-
 export function parseArgs(argv = process.argv.slice(2)) {
   const args = {
     input: DEFAULT_INPUT,

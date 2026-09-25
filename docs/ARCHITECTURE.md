@@ -173,8 +173,8 @@ private or custom local files never reach a browser bundle.
 - `src/entitlement.js`, `entitlement-polar.js`, `polar-webhook.js`,
   `pack-handler.js` — server-only Pro entitlement (Polar license keys,
   Standard-Webhooks verification) and licensed pack delivery
-- `src/preview/*`, `preview.js`, `browser-diff.js` — `--preview` page presentation
-  over rewrite output (deterministic rendering; optional LLM diff narration)
+- `src/preview/*` — `--preview` page presentation over rewrite output
+  (deterministic rendering; optional LLM diff narration)
 
 ### Shared infrastructure (lane-neutral)
 

@@ -122,15 +122,12 @@ function extractEmbeddedV4(lower) {
  * Validate a provider base URL before sending prompts and bearer tokens.
  *
  * @param {string} baseURL URL to validate.
- * @param {object} [options] Validation opt-ins.
- * @param {boolean} [options.allowInsecure=false] Allow non-loopback HTTP.
- * @param {boolean} [options.allowPrivate=false] Allow private/reserved literal IPs.
  * @returns {void}
  * @throws {PatinaCliError} When the URL is invalid, unsupported, insecure, or private without opt-in.
  * @example
  * validateBaseURL('https://api.openai.com/v1');
  */
-export function validateBaseURL(baseURL, { allowInsecure = false, allowPrivate = false } = {}) {
+export function validateBaseURL(baseURL) {
   let url;
   try {
     url = new URL(baseURL);
@@ -148,11 +145,9 @@ export function validateBaseURL(baseURL, { allowInsecure = false, allowPrivate =
       'Use an https:// URL, or http://127.0.0.1 for local test servers.'
     );
   }
-  // Either an explicit caller opt-in or the env var override is enough to
-  // permit plaintext HTTP. cli.js sets the env when --allow-insecure-base-url
-  // is passed so downstream callLLM calls don't have to plumb the flag.
-  const allowInsec = allowInsecure || shouldAllowInsecureBaseURL();
-  if (url.protocol === 'http:' && !isLoopbackHost(url.hostname) && !allowInsec) {
+  // The CLI sets the env opt-in when --allow-insecure-base-url is passed, so
+  // downstream callLLM calls don't have to plumb the flag.
+  if (url.protocol === 'http:' && !isLoopbackHost(url.hostname) && !shouldAllowInsecureBaseURL()) {
     throw inputError(
       `refusing plaintext HTTP to ${url.hostname}`,
       'patina will not send prompts and API keys over non-loopback HTTP by default.',
@@ -161,11 +156,10 @@ export function validateBaseURL(baseURL, { allowInsecure = false, allowPrivate =
   }
   // SSRF guard: refuse non-loopback private/IMDS literal IPs unless explicitly
   // opted in. Loopback is allowed (covered above) so local proxies still work.
-  const allowPriv = allowPrivate || shouldAllowPrivateBaseURL();
   if (
     !isLoopbackHost(url.hostname) &&
     isPrivateOrSpecialIP(url.hostname) &&
-    !allowPriv
+    !shouldAllowPrivateBaseURL()
   ) {
     throw inputError(
       `refusing private/reserved base URL ${url.hostname}`,
@@ -176,15 +170,11 @@ export function validateBaseURL(baseURL, { allowInsecure = false, allowPrivate =
 }
 
 /**
- * Read CLI/env opt-in for non-loopback HTTP base URLs.
+ * Read the env opt-in (PATINA_ALLOW_INSECURE_BASE_URL) for non-loopback HTTP base URLs.
  *
- * @param {object} [parsed] Parsed CLI options.
  * @returns {boolean} True when insecure base URLs are explicitly allowed.
- * @example
- * const allowed = shouldAllowInsecureBaseURL({ allowInsecureBaseURL: true });
  */
-export function shouldAllowInsecureBaseURL(parsed) {
-  if (parsed && parsed.allowInsecureBaseURL) return true;
+export function shouldAllowInsecureBaseURL() {
   const env = process.env.PATINA_ALLOW_INSECURE_BASE_URL;
   return env === '1' || env === 'true' || env === 'yes';
 }
@@ -204,15 +194,11 @@ export function applyInsecureBaseURLOptIn(parsed) {
 }
 
 /**
- * Read CLI/env opt-in for private or reserved literal IP base URLs.
+ * Read the env opt-in (PATINA_ALLOW_PRIVATE_BASE_URL) for private or reserved literal IP base URLs.
  *
- * @param {object} [parsed] Parsed CLI options.
  * @returns {boolean} True when private base URLs are explicitly allowed.
- * @example
- * const allowed = shouldAllowPrivateBaseURL({ allowPrivateBaseURL: true });
  */
-export function shouldAllowPrivateBaseURL(parsed) {
-  if (parsed && parsed.allowPrivateBaseURL) return true;
+export function shouldAllowPrivateBaseURL() {
   const env = process.env.PATINA_ALLOW_PRIVATE_BASE_URL;
   return env === '1' || env === 'true' || env === 'yes';
 }

@@ -9,7 +9,6 @@ import {
   resolveBackendMaxConcurrency,
   isRetryableBackendError,
   withBackendConcurrencySlot,
-  backendSupportsStructuredOutput,
   spawnOwnedCliProcess,
   TimeoutError,
   isTimeoutError,
@@ -133,15 +132,6 @@ test('resolveBackendMaxConcurrency fails closed on an invalid override (#445)', 
   assert.equal(resolveBackendMaxConcurrency('claude-cli'), 1);
 });
 
-test('backendSupportsStructuredOutput is true only for openai-http (#C2)', () => {
-  assert.equal(backendSupportsStructuredOutput('openai-http'), true);
-  for (const cli of ['codex-cli', 'claude-cli', 'gemini-cli', 'kimi-cli', 'agy-cli']) {
-    assert.equal(backendSupportsStructuredOutput(cli), false);
-  }
-  // Unknown backends fail closed: structured output is never sent.
-  assert.equal(backendSupportsStructuredOutput('mystery-backend'), false);
-});
-
 // Shared shape check for a verified real-invocation compatibility record: the
 // fixture carries the verdict, the dated operations receipt carries the
 // per-scenario evidence, and neither may contain secrets or raw output.
@@ -247,20 +237,20 @@ test('Antigravity CLI compatibility record is a real-invocation verification wit
 });
 
 test('isRetryableBackendError honors message status even when err.status is null (#445)', () => {
-  assert.equal(isRetryableBackendError({ status: null, message: 'HTTP 429 rate limited' }, { attemptIndex: 0 }), true);
-  assert.equal(isRetryableBackendError({ status: null, message: 'HTTP 503 unavailable' }, { attemptIndex: 5 }), true);
+  assert.equal(isRetryableBackendError({ status: null, message: 'HTTP 429 rate limited' }), true);
+  assert.equal(isRetryableBackendError({ status: null, message: 'HTTP 503 unavailable' }), true);
   // a generic error with no rate-limit signal stays non-retryable.
-  assert.equal(isRetryableBackendError({ status: null, message: 'bad request' }, { attemptIndex: 0 }), false);
+  assert.equal(isRetryableBackendError({ status: null, message: 'bad request' }), false);
 });
 
 test('local CLI timeout-shaped errors are retryable/fallbackable (#525)', () => {
   const cliTimeout = new Error('claude-cli backend: timed out after 50ms');
   assert.equal(isTimeoutError(cliTimeout), true);
-  assert.equal(isRetryableBackendError(cliTimeout, { attemptIndex: 0 }), true);
+  assert.equal(isRetryableBackendError(cliTimeout), true);
 
   const slotTimeout = new TimeoutError('claude-cli: timed out waiting for concurrency slot (cap 1)');
   assert.equal(isTimeoutError(slotTimeout), true);
-  assert.equal(isRetryableBackendError(slotTimeout, { attemptIndex: 2 }), true);
+  assert.equal(isRetryableBackendError(slotTimeout), true);
 
   assert.equal(isTimeoutError(new Error('unauthorized')), false);
 });
@@ -301,21 +291,17 @@ test('a concurrency slot held by a dead pid is reclaimed immediately (#445)', as
   }
 });
 
-test('isRetryableBackendError falls through timeout/abort at any non-final hop (#506 defect 2)', () => {
-  // Previously gated to attemptIndex === 0; a per-attempt timeout/abort is now
-  // fallbackable at every hop, exactly like a 429/503. The chain caller stops
-  // at the final hop via `!next`, so the predicate itself carries no gate.
-  assert.equal(isRetryableBackendError({ name: 'TimeoutError' }, { attemptIndex: 1 }), true);
-  assert.equal(isRetryableBackendError({ name: 'TimeoutError' }, { attemptIndex: 2 }), true);
-  assert.equal(isRetryableBackendError({ name: 'AbortError' }, { attemptIndex: 3 }), true);
-  // Regression guard: the original first-hop case still works.
-  assert.equal(isRetryableBackendError({ name: 'AbortError' }, { attemptIndex: 0 }), true);
-  // A user-initiated abort (signal.aborted) must NEVER fall through, at any hop.
+test('isRetryableBackendError falls through timeout/abort unless the caller aborted', () => {
+  // A per-attempt timeout/abort is fallbackable like a 429/503. The chain
+  // caller stops at the final hop via `!next`, so the predicate has no gate.
+  assert.equal(isRetryableBackendError({ name: 'TimeoutError' }), true);
+  assert.equal(isRetryableBackendError({ name: 'AbortError' }), true);
+  // A user-initiated abort (signal.aborted) must NEVER fall through.
   const aborted = { aborted: true }; // isRetryableBackendError only reads signal.aborted
-  assert.equal(isRetryableBackendError({ name: 'TimeoutError' }, { attemptIndex: 1, signal: aborted }), false);
-  assert.equal(isRetryableBackendError({ name: 'AbortError' }, { attemptIndex: 0, signal: aborted }), false);
-  // A plain, non-timeout/abort error stays non-retryable regardless of index.
-  assert.equal(isRetryableBackendError({ name: 'Error', message: 'boom' }, { attemptIndex: 1 }), false);
+  assert.equal(isRetryableBackendError({ name: 'TimeoutError' }, { signal: aborted }), false);
+  assert.equal(isRetryableBackendError({ name: 'AbortError' }, { signal: aborted }), false);
+  // A plain, non-timeout/abort error stays non-retryable.
+  assert.equal(isRetryableBackendError({ name: 'Error', message: 'boom' }), false);
 });
 
 test('withBackendConcurrencySlot threads the remaining shared deadline into the run phase (#506 defect 1)', async () => {

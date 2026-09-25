@@ -89,12 +89,6 @@ describe('validateBaseURL (issue #89)', () => {
     });
   });
 
-  it('allows http:// to non-loopback when allowInsecure is set', () => {
-    withEnv({ PATINA_ALLOW_INSECURE_BASE_URL: undefined }, () => {
-      assert.doesNotThrow(() => validateBaseURL('http://example.com', { allowInsecure: true }));
-    });
-  });
-
   it('allows http:// to non-loopback when env override is set', () => {
     withEnv({ PATINA_ALLOW_INSECURE_BASE_URL: '1' }, () => {
       assert.doesNotThrow(() => validateBaseURL('http://example.com'));
@@ -159,13 +153,6 @@ describe('shouldAllowInsecureBaseURL / applyInsecureBaseURLOptIn', () => {
   it('returns false by default', () => {
     withEnv({ PATINA_ALLOW_INSECURE_BASE_URL: undefined }, () => {
       assert.strictEqual(shouldAllowInsecureBaseURL(), false);
-      assert.strictEqual(shouldAllowInsecureBaseURL({}), false);
-    });
-  });
-
-  it('honors --allow-insecure-base-url flag', () => {
-    withEnv({ PATINA_ALLOW_INSECURE_BASE_URL: undefined }, () => {
-      assert.strictEqual(shouldAllowInsecureBaseURL({ allowInsecureBaseURL: true }), true);
     });
   });
 
@@ -206,13 +193,7 @@ describe('private base URL SSRF guard (issue #167)', () => {
     });
   });
 
-  it('allows private literal IPs with an explicit option or env override', () => {
-    withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: undefined }, () => {
-      assert.doesNotThrow(() =>
-        validateBaseURL('https://10.0.0.1/v1', { allowPrivate: true })
-      );
-    });
-
+  it('allows private literal IPs with the env override', () => {
     withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: '1' }, () => {
       assert.doesNotThrow(() => validateBaseURL('https://10.0.0.1/v1'));
     });
@@ -223,16 +204,6 @@ describe('shouldAllowPrivateBaseURL / applyPrivateBaseURLOptIn', () => {
   it('returns false by default', () => {
     withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: undefined }, () => {
       assert.strictEqual(shouldAllowPrivateBaseURL(), false);
-      assert.strictEqual(shouldAllowPrivateBaseURL({}), false);
-    });
-  });
-
-  it('honors --allow-private-base-url flag', () => {
-    withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: undefined }, () => {
-      assert.strictEqual(
-        shouldAllowPrivateBaseURL({ allowPrivateBaseURL: true }),
-        true
-      );
     });
   });
 

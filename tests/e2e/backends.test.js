@@ -10,14 +10,14 @@ import {
   DEFAULT_BACKEND_TIMEOUT_MS,
   getBackendSafety,
 } from '../../src/backends/contract.js';
-import { isAvailable as codexAvailable, isAuthenticated as codexAuthd } from '../../src/backends/codex-cli.js';
+import { isAvailable as codexAvailable } from '../../src/backends/codex-cli.js';
 import { DEFAULT_BEST_MODELS } from '../../src/model-defaults.js';
 
 describe('Backend Selection', () => {
   it('selects openai-http by default', () => {
-    const { backend, autoSelected } = selectBackend({});
+    const { backend, reason } = selectBackend({});
     assert.strictEqual(backend.name, 'openai-http');
-    assert.strictEqual(autoSelected, false);
+    assert.strictEqual(reason, 'default');
   });
 
   it('selects openai-http for unrelated models', () => {
@@ -26,16 +26,14 @@ describe('Backend Selection', () => {
   });
 
   it('selects codex-cli when --backend codex-cli is explicit', () => {
-    const { backend, autoSelected, reason } = selectBackend({ name: 'codex-cli' });
+    const { backend, reason } = selectBackend({ name: 'codex-cli' });
     assert.strictEqual(backend.name, 'codex-cli');
-    assert.strictEqual(autoSelected, false);
     assert.strictEqual(reason, 'explicit');
   });
 
   it('selects openai-http when --backend openai-http is explicit', () => {
-    const { backend, autoSelected } = selectBackend({ name: 'openai-http' });
+    const { backend } = selectBackend({ name: 'openai-http' });
     assert.strictEqual(backend.name, 'openai-http');
-    assert.strictEqual(autoSelected, false);
   });
 
   it('routes --model codex to codex-cli via heuristic', () => {
@@ -379,27 +377,6 @@ describe('Backend Fallback Chain', () => {
     // the fallback backend a fresh full 5000ms would be caught here.
     assert.ok(secondTimeout <= 5000, `fall-through hop budget ${secondTimeout} exceeded the shared deadline`);
     assert.ok(secondTimeout < 5000 - 40, `fall-through hop saw ${secondTimeout}ms — the first hop's elapsed time was not deducted`);
-  });
-});
-
-describe('Codex auto-fallback removed (issue #88)', () => {
-  it('does NOT auto-select codex-cli even when codex is installed and authenticated', { skip: !(codexAvailable() && codexAuthd()) }, () => {
-    const { backend, autoSelected } = selectBackend({});
-    assert.strictEqual(backend.name, 'openai-http');
-    assert.strictEqual(autoSelected, false);
-  });
-
-  it('selects openai-http by default when nothing is specified', () => {
-    const { backend, autoSelected, reason } = selectBackend({});
-    assert.strictEqual(backend.name, 'openai-http');
-    assert.strictEqual(autoSelected, false);
-    assert.strictEqual(reason, 'default');
-  });
-
-  it('still routes to codex-cli when --backend codex-cli is explicit', () => {
-    const { backend, autoSelected } = selectBackend({ name: 'codex-cli' });
-    assert.strictEqual(backend.name, 'codex-cli');
-    assert.strictEqual(autoSelected, false);
   });
 });
 

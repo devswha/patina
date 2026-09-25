@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { selectProvider, resolveProviderConfig, PROVIDERS } from '../../src/providers.js';
+import { selectProvider, resolveProviderConfig } from '../../src/providers.js';
 
 function withEnv(envOverrides, fn) {
   const original = {};
@@ -35,22 +35,6 @@ describe('Provider Selection', () => {
 
   it('throws on unknown provider', () => {
     assert.throws(() => selectProvider('madeup'), /Unknown provider/);
-  });
-
-  it('lists all eight providers', () => {
-    const names = Object.keys(PROVIDERS).sort();
-    assert.deepStrictEqual(names, ['gemini', 'groq', 'kimi', 'minimax', 'minimax-cn', 'moonshot', 'openai', 'together']);
-  });
-
-  it('marks free-tier providers correctly', () => {
-    assert.strictEqual(PROVIDERS.gemini.freeTier, true);
-    assert.strictEqual(PROVIDERS.groq.freeTier, true);
-    assert.strictEqual(PROVIDERS.together.freeTier, true);
-    assert.strictEqual(PROVIDERS.kimi.freeTier, false);
-    assert.strictEqual(PROVIDERS.moonshot.freeTier, false);
-    assert.strictEqual(PROVIDERS.openai.freeTier, false);
-    assert.strictEqual(PROVIDERS.minimax.freeTier, false);
-    assert.strictEqual(PROVIDERS['minimax-cn'].freeTier, false);
   });
 
   it('resolves both MiniMax regions from the shared key with regional endpoints', () => {

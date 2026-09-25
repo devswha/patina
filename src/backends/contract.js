@@ -102,51 +102,42 @@ export class TimeoutError extends Error {
   }
 }
 
-
-export const BACKEND_SAFETY_DEFAULTS = Object.freeze({
+const BACKEND_SAFETY_DEFAULTS = Object.freeze({
   'openai-http': {
     maxConcurrency: 4,
     maxRetries: DEFAULT_MAX_RETRIES,
     promptMode: 'strict',
     agentRuntime: false,
-    // Only the OpenAI-compatible HTTP backend builds a chat-completions body,
-    // so structured-output request fields (response_format) apply here alone.
-    supportsStructuredOutput: true,
   },
   'codex-cli': {
     maxConcurrency: 2,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
-    supportsStructuredOutput: false,
   },
   'claude-cli': {
     maxConcurrency: 1,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
-    supportsStructuredOutput: false,
   },
   'gemini-cli': {
     maxConcurrency: 2,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
-    supportsStructuredOutput: false,
   },
   'kimi-cli': {
     maxConcurrency: 1,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
-    supportsStructuredOutput: false,
   },
   'agy-cli': {
     maxConcurrency: 1,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
-    supportsStructuredOutput: false,
   },
 });
 
@@ -155,18 +146,10 @@ const UNKNOWN_BACKEND_SAFETY = Object.freeze({
   maxRetries: 0,
   promptMode: 'strict',
   agentRuntime: false,
-  supportsStructuredOutput: false,
 });
 
 export function getBackendSafety(backendName) {
   return BACKEND_SAFETY_DEFAULTS[backendName] || UNKNOWN_BACKEND_SAFETY;
-}
-
-// True only for backends whose request path can carry an OpenAI-compatible
-// structured-output field (response_format). CLI backends spawn an agent and
-// never receive it, so structured output is never sent to a local CLI.
-export function backendSupportsStructuredOutput(backendName) {
-  return getBackendSafety(backendName).supportsStructuredOutput === true;
 }
 
 export function resolveBackendMaxConcurrency(backendName, override) {
@@ -207,12 +190,8 @@ export function stageCliImages(dir, images = [], backendName) {
   }
 }
 
-export function isRetryableBackendError(err, { attemptIndex = 0, signal } = {}) {
+export function isRetryableBackendError(err, { signal } = {}) {
   if (signal?.aborted) return false;
-  // attemptIndex is retained for call-site compatibility but no longer gates
-  // the decision (#506 defect 2): a backend that timed out or aborted on its
-  // own (without the user aborting) is fallbackable at any hop.
-  void attemptIndex;
   const status = extractStatus(err);
   if (status === 429 || status === 503) return true;
   // A per-attempt timeout falls through at ANY non-final hop, exactly like a

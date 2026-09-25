@@ -259,7 +259,6 @@ async function readStreamedCompletion(response, onMetadata) {
  * @param {number} [options.maxRetries=2] Retry count after the first attempt.
  * @param {number} [options.deadline] Absolute epoch-millisecond deadline for all attempts.
  * @param {AbortSignal} [options.signal] External cancellation signal.
- * @param {boolean} [options.allowInsecureBaseURL=false] Allow non-loopback HTTP base URLs.
  * @param {Function} [options.onResponse] Callback receiving successful provider metadata. Its exceptions are ignored.
  * @param {Function} [options.onAttempt] Callback receiving each completed paid transport attempt as `{ attemptIndex, requestedModel, effectiveModel, usage, retryReason, minimumChargeApplied, outcome }`. Attempt indexes are one-based; its exceptions are ignored.
  * @param {Function} [options.sleep] Injectable sleep function for tests.
@@ -290,14 +289,13 @@ export async function callLLM({
   maxRetries = DEFAULT_MAX_RETRIES,
   deadline,
   signal,
-  allowInsecureBaseURL = false,
   onResponse,
   onAttempt,
   // Allows tests to inject a deterministic delay function.
   sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
   now = () => Date.now(),
 }) {
-  validateBaseURL(baseURL, { allowInsecure: allowInsecureBaseURL });
+  validateBaseURL(baseURL);
   // Native Anthropic branch (opt-in): buffered /v1/messages with a cached
   // prompt prefix. seed/response_format have no native equivalent and are
   // omitted there — schema-retry already covers structured-output parsing.

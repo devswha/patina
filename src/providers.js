@@ -9,7 +9,7 @@ import { DEFAULT_BEST_MODELS } from './model-defaults.js';
 /**
  * Built-in OpenAI-compatible provider presets.
  *
- * @type {Record<string, {name: string, baseURL: string, apiKeyEnv: string, defaultModel: string, freeTier: boolean, note: string}>}
+ * @type {Record<string, {name: string, baseURL: string, apiKeyEnv: string, defaultModel: string}>}
  * @example
  * const openaiBaseURL = PROVIDERS.openai.baseURL;
  */
@@ -19,64 +19,48 @@ export const PROVIDERS = {
     baseURL: 'https://api.openai.com/v1',
     apiKeyEnv: 'OPENAI_API_KEY',
     defaultModel: DEFAULT_BEST_MODELS.openai,
-    freeTier: false,
-    note: 'Paid. Default OpenAI Platform API.',
   },
   gemini: {
     name: 'gemini',
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
     apiKeyEnv: 'GEMINI_API_KEY',
     defaultModel: DEFAULT_BEST_MODELS.geminiCli,
-    freeTier: true,
-    note: 'Free tier available. Get a key at https://aistudio.google.com/app/apikey',
   },
   groq: {
     name: 'groq',
     baseURL: 'https://api.groq.com/openai/v1',
     apiKeyEnv: 'GROQ_API_KEY',
     defaultModel: 'llama-3.3-70b-versatile',
-    freeTier: true,
-    note: 'Free tier with rate limits. Get a key at https://console.groq.com/keys',
   },
   kimi: {
     name: 'kimi',
     baseURL: 'https://api.moonshot.ai/v1',
     apiKeyEnv: 'KIMI_API_KEY',
     defaultModel: 'kimi-k2.5',
-    freeTier: false,
-    note: 'Moonshot AI Kimi OpenAI-compatible API. Set KIMI_API_KEY or PATINA_API_KEY.',
   },
   moonshot: {
     name: 'moonshot',
     baseURL: 'https://api.moonshot.ai/v1',
     apiKeyEnv: 'MOONSHOT_API_KEY',
     defaultModel: 'kimi-k2.5',
-    freeTier: false,
-    note: 'Moonshot AI Kimi OpenAI-compatible API. Set MOONSHOT_API_KEY or PATINA_API_KEY.',
   },
   together: {
     name: 'together',
     baseURL: 'https://api.together.xyz/v1',
     apiKeyEnv: 'TOGETHER_API_KEY',
     defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo-Free',
-    freeTier: true,
-    note: 'Free models available (suffix "-Free"). Get a key at https://api.together.xyz/settings/api-keys',
   },
   minimax: {
     name: 'minimax',
     baseURL: 'https://api.minimax.io/v1',
     apiKeyEnv: 'MINIMAX_API_KEY',
     defaultModel: 'MiniMax-M3',
-    freeTier: false,
-    note: 'MiniMax global OpenAI-compatible API. Set MINIMAX_API_KEY or PATINA_API_KEY.',
   },
   'minimax-cn': {
     name: 'minimax-cn',
     baseURL: 'https://api.minimaxi.com/v1',
     apiKeyEnv: 'MINIMAX_API_KEY',
     defaultModel: 'MiniMax-M3',
-    freeTier: false,
-    note: 'MiniMax China OpenAI-compatible API. Set MINIMAX_API_KEY or PATINA_API_KEY.',
   },
 };
 

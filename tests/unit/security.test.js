@@ -64,7 +64,6 @@ test('validateBaseURL rejects private literal IPs unless private URL opt-in is s
       () => validateBaseURL('https://10.0.0.1/v1'),
       /private\/reserved base URL/
     );
-    assert.doesNotThrow(() => validateBaseURL('https://10.0.0.1/v1', { allowPrivate: true }));
   });
 
   withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: '1' }, () => {
@@ -95,7 +94,6 @@ test('validateBaseURL refuses plaintext HTTP to a 127.* DNS name but allows real
 test('shouldAllowPrivateBaseURL and applyPrivateBaseURLOptIn honor flag and env opt-in', () => {
   withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: undefined }, () => {
     assert.equal(shouldAllowPrivateBaseURL(), false);
-    assert.equal(shouldAllowPrivateBaseURL({ allowPrivateBaseURL: true }), true);
     applyPrivateBaseURLOptIn({ allowPrivateBaseURL: true });
     assert.equal(process.env.PATINA_ALLOW_PRIVATE_BASE_URL, '1');
   });

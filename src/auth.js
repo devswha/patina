@@ -23,14 +23,7 @@ export const HTTP_KEY_ENV_VARS = [
 
 // Default openai-http runs against the OpenAI-compatible default endpoint, so
 // only generic/OpenAI keys make it authenticated without an explicit provider.
-/**
- * Default key lookup order for the OpenAI-compatible HTTP provider.
- *
- * @type {string[]}
- * @example
- * const first = DEFAULT_HTTP_KEY_ENV_VARS[0]; // PATINA_API_KEY
- */
-export const DEFAULT_HTTP_KEY_ENV_VARS = [
+const DEFAULT_HTTP_KEY_ENV_VARS = [
   'PATINA_API_KEY',
   'OPENAI_API_KEY',
 ];
@@ -118,11 +111,8 @@ export function resolveHttpApiKey({
     return file.key;
   }
 
-
   const source = inspectHttpApiKeySource({ env, readFile, envVars });
-  return source.ok && source.source !== 'PATINA_API_KEY_FILE'
-    ? env[source.source]
-    : undefined;
+  return source.ok ? env[source.source] : undefined;
 }
 
 function uniqueEnvVars(envVars) {

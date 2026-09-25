@@ -49,7 +49,7 @@ export async function invoke(options = {}) {
 
 // Detail is opt-in for local research accounting; normal callers still receive
 // only text. Session identifiers must remain private.
-export async function invokeDetailed({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS, images, includeRawOutput = false } = {}) {
+export async function invokeDetailed({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS, images } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('kimi-cli backend: prompt must be a non-empty string');
   }
@@ -76,16 +76,15 @@ export async function invokeDetailed({ prompt, model, modelSource, signal, timeo
   const modernArgs = ['--prompt', prompt, '--output-format', 'stream-json'];
   if (cliModel) modernArgs.push('--model', cliModel);
   try {
-    const result = await runKimi(modernArgs, { signal, timeout });
+    const stdout = await runKimi(modernArgs, { signal, timeout });
     let sessionId = null;
-    for (const line of result.stdout.split(/\r?\n/)) {
+    for (const line of stdout.split(/\r?\n/)) {
       try {
         const item = JSON.parse(line);
         if (item.role === 'meta' && /^(?:session_)?[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(item.session_id || '')) sessionId = item.session_id;
       } catch { /* Non-JSON output is handled by the existing text extractor. */ }
     }
-    return { text: extractKimiFinalMessage(result.stdout), sessionId, workDir: result.workDir, modelAlias: cliModel,
-      ...(includeRawOutput ? { rawOutput: result.stdout } : {}) };
+    return { text: extractKimiFinalMessage(stdout), sessionId, modelAlias: cliModel };
   } catch (err) {
     if (/unknown option|agent.*(?:unsupported|not supported)/i.test(err?.message || '')) {
       throw new Error('kimi-cli backend: Kimi Code 0.29+ with agent-file tool restrictions is required. Upgrade Kimi Code or select another backend.', { cause: err });
@@ -146,7 +145,7 @@ to access files, run commands, or contact services. Return only the requested re
       signal,
       notFoundHint: 'Install Kimi Code first.',
     });
-    return { stdout, workDir: dir };
+    return stdout;
   });
 }
 

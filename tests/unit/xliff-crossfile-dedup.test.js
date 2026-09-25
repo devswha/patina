@@ -129,7 +129,7 @@ test('runXliffMode: --batch shares the cache across files (one rewrite for a cro
 
   const calls = [];
   const ctx = { config: { language: 'ko', documentType: 'default' }, repoRoot: process.cwd(), voice: {}, scoring: {}, backends: [], resolved: { model: 'm' }, promptMode: 'strict', timeoutMs: 1000, providerName: 'deepseek' };
-  const logger = { info() {}, warn() {}, error() {}, closeProgress() {} };
+  const logger = { info() {}, warn() {}, error() {} };
 
   await runXliffMode(
     { xliff: true, batch: true, files: [f1, f2] },

@@ -49,9 +49,7 @@ import { maybeStarNudge } from '../star-nudge.js';
  * input job (rewrite/diff/audit/score, plus the preview page).
  *
  * @param {object} parsed Parsed CLI arguments from parseArgs.
- * @param {Required<import('../logger.js').Logger>} logger Patina logger for this
- *   invocation. The full facade is required, not the minimal one: this path
- *   calls `logger.closeProgress()` unguarded around the progress spinner.
+ * @param {import('../logger.js').Logger} logger Patina logger for this invocation.
  * @returns {Promise<void>} Resolves after all job output is written.
  * @throws {Error} For validation, provider, file, or runtime failures.
  */
@@ -454,7 +452,6 @@ async function runPipeline(parsed, logger, config) {
     throw err;
   } finally {
     cancellation.cleanup();
-    logger.closeProgress();
   }
 
 }
@@ -659,7 +656,6 @@ export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
     }
   } finally {
     cancellation.cleanup();
-    logger.closeProgress();
   }
 }
 

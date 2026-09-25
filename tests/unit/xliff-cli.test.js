@@ -15,7 +15,7 @@ const EN_FIXTURE = '<?xml version="1.0"?>\n<xliff version="1.2"><file target-lan
   + '<target state="final">This translated sentence is long enough to count as prose for the humanizer.</target>'
   + '</trans-unit></body></file></xliff>';
 
-const stubLogger = () => ({ info() {}, warn() {}, error() {}, closeProgress() {} });
+const stubLogger = () => ({ info() {}, warn() {}, error() {} });
 const makeCtx = () => ({ config: { language: 'ko', documentType: 'default' }, repoRoot: process.cwd(), voice: {}, scoring: {}, backends: [], resolved: { model: 'm' }, promptMode: 'strict', timeoutMs: 1000, providerName: 'deepseek' });
 const fakeRewrite = async ({ core }) => core + ' [H]';
 const fakeVerify = async ({ candidate }) => ({ verified: true, text: candidate });

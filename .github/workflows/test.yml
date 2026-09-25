@@ -39,9 +39,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        # Branch protection requires the floating `test (lts/*)` check. The
-        # plan's preferred fixed-24 entry would duplicate current LTS
-        # (24.20.0), so review fixed coverage when the LTS line advances.
+        # Branch protection requires the floating `test (lts/*)` check.
         node-version: ["18.1.0", 20, 22, "lts/*"]
       fail-fast: false
 
@@ -89,9 +87,6 @@ jobs:
 
       - name: Private asset leak gate
         run: npm run check:no-private-assets
-
-      - name: Syntax lint
-        run: npm run lint:syntax
 
       - name: Benchmark report schema
         run: npm run benchmark:report

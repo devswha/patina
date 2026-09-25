@@ -197,7 +197,7 @@ function misclassificationSection(fixtures = []) {
   ].join('\n');
 }
 
-// Render the report-only slice tables (B2). One sub-table per metadata
+// Render the report-only slice tables. One sub-table per metadata
 // dimension; below-minimum slices show counts with an `insufficient data`
 // state; absent dimensions collapse to a single `unspecified` value.
 function sliceSection(slices = {}) {

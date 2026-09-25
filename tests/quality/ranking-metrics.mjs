@@ -142,6 +142,17 @@ export function averagePrecision(records = []) {
   return area / positives;
 }
 
+// Wilson score interval (95% by default). Returns the raw bounds; callers
+// round and label them.
+export function wilsonInterval(successes, n, z = 1.959963984540054) {
+  if (!n) return { low: 0, high: 0 };
+  const phat = successes / n;
+  const denom = 1 + (z ** 2) / n;
+  const center = (phat + (z ** 2) / (2 * n)) / denom;
+  const margin = (z * Math.sqrt((phat * (1 - phat) + (z ** 2) / (4 * n)) / n)) / denom;
+  return { low: Math.max(0, center - margin), high: Math.min(1, center + margin) };
+}
+
 function thresholdCandidates(records) {
   const uniqueScores = [...new Set(records.map((record) => record.score))]
     .filter((score) => Number.isFinite(score))

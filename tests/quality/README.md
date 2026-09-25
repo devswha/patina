@@ -490,7 +490,7 @@ diagnostics and a conservative ko-only composite detector.
 zh/ja now include high-precision AI-lexicon fixtures as well as
 burstiness/MATTR regression coverage.
 
-## AI-tells corpus baseline (Phase A, deterministic, measurement-only)
+## AI-tells corpus baseline (deterministic, measurement-only)
 
 `node scripts/ai-tells-corpus-baseline.mjs [--json] [--no-timestamp] [--strict]`
 

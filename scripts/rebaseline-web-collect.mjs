@@ -5,12 +5,11 @@
 // Run scripts/rebaseline-score.mjs afterward to publish only hash/metadata and
 // deterministic outcome fields.
 
-import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { MATRIX } from './rebaseline-summary.mjs';
+import { MATRIX, hashText } from './rebaseline-summary.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -23,7 +22,7 @@ export const DEFAULT_MAX_PER_SOURCE = 8;
 export const DEFAULT_TARGET_PER_REGISTER = 50;
 export const DEFAULT_DELAY_MS = 250;
 
-// Per-language script + boilerplate config (Wave 0.4). Each language requires a
+// Per-language script + boilerplate config. Each language requires a
 // minimum count of its script characters and a minimum script/letter ratio so a
 // paragraph in the wrong script (or boilerplate) is rejected.
 export const LANGUAGE_SCRIPTS = {
@@ -374,10 +373,6 @@ function decodeHtmlEntities(text) {
     .replace(/&#39;/giu, "'")
     .replace(/&#x([0-9a-f]+);/giu, (_, hex) => String.fromCodePoint(Number.parseInt(hex, 16)))
     .replace(/&#([0-9]+);/gu, (_, num) => String.fromCodePoint(Number.parseInt(num, 10)));
-}
-
-function hashText(text) {
-  return `sha256:${createHash('sha256').update(String(text)).digest('hex')}`;
 }
 
 function slugify(value) {

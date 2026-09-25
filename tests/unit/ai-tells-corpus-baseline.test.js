@@ -1,4 +1,4 @@
-// Tests for the deterministic AI-tells corpus baseline harness (Phase A).
+// Tests for the deterministic AI-tells corpus baseline harness.
 // Verifies the exact-count drift guard, byte-stable JSON output, schema shape,
 // and that no raw corpus text leaks into the report.
 
@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildBaseline, EXPECTED_COUNTS } from '../../scripts/ai-tells-corpus-baseline.mjs';
-import { wilsonInterval } from '../../scripts/lib/wilson.mjs';
+import { wilsonInterval } from '../quality/ranking-metrics.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');

@@ -50,6 +50,7 @@ import {
   resolveJudgeSettings,
   resolveLiveSettings,
 } from '../tests/quality/live-quality.mjs';
+import { wilsonInterval } from '../tests/quality/ranking-metrics.mjs';
 
 export const REWRITE_AB_SCHEMA_VERSION = 6;
 export const DEFAULT_CONFIGS = ['single', 'iterative-baseline'];
@@ -415,12 +416,8 @@ function cohortStructureDistance(entries) {
 
 function wilson95(successes, total) {
   if (!Number.isSafeInteger(successes) || !Number.isSafeInteger(total) || total <= 0 || successes < 0 || successes > total) return null;
-  const z = 1.96;
-  const p = successes / total;
-  const denominator = 1 + (z ** 2) / total;
-  const center = (p + (z ** 2) / (2 * total)) / denominator;
-  const margin = (z / denominator) * Math.sqrt((p * (1 - p) / total) + (z ** 2 / (4 * total ** 2)));
-  return [Math.max(0, center - margin), Math.min(1, center + margin)].map((value) => Math.round(value * 1000) / 1000);
+  const { low, high } = wilsonInterval(successes, total, 1.96);
+  return [low, high].map((value) => Math.round(value * 1000) / 1000);
 }
 
 export function evaluatePromotion(summary, configs, observedFixtureCount) {

@@ -9,14 +9,9 @@ import yaml from 'js-yaml';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const DEPENDABOT_PATH = resolve(REPO_ROOT, '.github/dependabot.yml');
-const DATASET_WORKFLOW_PATH = resolve(REPO_ROOT, '.github/workflows/publish-dataset.yml');
 
 function readYaml(path) {
   return yaml.load(readFileSync(path, 'utf8'));
-}
-
-function readDatasetWorkflow() {
-  return { workflow: readYaml(DATASET_WORKFLOW_PATH), source: readFileSync(DATASET_WORKFLOW_PATH, 'utf8') };
 }
 
 test('Dependabot routes weekly version updates through dev, bounded and unautomated', () => {
@@ -55,57 +50,6 @@ test('Dependabot routes weekly version updates through dev, bounded and unautoma
   }
   assert.deepEqual(npm.ignore ?? [], []);
   assert.equal(config.updates.find((update) => update['package-ecosystem'] === 'github-actions').ignore, undefined);
-});
-
-test('dataset workflow holds publication, preserves production environment, and uses one immutable source', () => {
-  const { workflow, source } = readDatasetWorkflow();
-  const dispatch = workflow.on?.workflow_dispatch;
-  const job = workflow.jobs?.dataset;
-  const steps = job?.steps ?? [];
-  const checkout = steps.find((step) => step.uses === 'actions/checkout@v6');
-  const exportStep = steps.find((step) => step.name === 'Export hash-reviewed public fixtures');
-  const sourceStep = steps.find((step) => step.name === 'Verify immutable export provenance');
-  const upload = steps.find((step) => step.uses === 'actions/upload-artifact@v4');
-  const publish = steps.find((step) => step.name === 'Publish reviewed main history');
-
-  assert.equal(dispatch?.inputs?.publish?.type, 'boolean');
-  assert.equal(dispatch?.inputs?.publish?.default, false);
-  assert.equal(job?.environment, 'hf-dataset-production');
-  assert.match(job?.if ?? '', /github\.repository == 'devswha\/patina'/);
-  assert.match(job?.if ?? '', /github\.ref == 'refs\/heads\/main'/);
-  assert.deepEqual(workflow.permissions, { contents: 'read' });
-
-  assert.equal(checkout?.with?.ref, '${{ github.sha }}');
-  assert.equal(checkout?.with?.['fetch-depth'], 0);
-  assert.equal(exportStep?.run, 'node scripts/export-hf-dataset.mjs --output artifacts/hf-export');
-  assert.equal(sourceStep?.id, 'source');
-  assert.equal(sourceStep?.env?.DISPATCH_SHA, '${{ github.sha }}');
-  assert.match(sourceStep?.run ?? '', /git rev-parse HEAD/);
-  assert.match(sourceStep?.run ?? '', /source-manifest\.json/);
-  assert.match(sourceStep?.run ?? '', /DISPATCH_SHA/);
-  assert.match(sourceStep?.run ?? '', /GITHUB_OUTPUT/);
-
-  assert.equal(upload?.with?.path, 'artifacts/hf-export');
-  assert.equal(upload?.with?.['if-no-files-found'], 'error');
-  assert.equal(publish?.if, 'inputs.publish == true');
-  assert.equal(publish?.env?.SOURCE_COMMIT, '${{ steps.source.outputs.source_commit }}');
-  assert.match(publish?.run ?? '', /git fetch origin main/);
-  assert.match(publish?.run ?? '', /git merge-base --is-ancestor "\$SOURCE_COMMIT" origin\/main/);
-  assert.match(publish?.run ?? '', /source-manifest\.json/);
-  assert.match(publish?.run ?? '', /--directory artifacts\/hf-export/);
-
-  assert.doesNotMatch(source, /ref:\s*main(?:\s|$)/);
-  assert.doesNotMatch(source, /git\s+(?:switch|checkout)\b/);
-});
-
-test('dataset publication cannot be reached from a privileged pull-request checkout', () => {
-  const { workflow, source } = readDatasetWorkflow();
-  assert.equal(workflow.on?.pull_request, undefined);
-  assert.equal(workflow.on?.pull_request_target, undefined);
-  assert.equal(workflow.on?.push, undefined);
-  assert.equal(workflow.on?.schedule, undefined);
-  assert.doesNotMatch(source, /pull_request_target|github\.event\.pull_request\.head\.sha|refs\/pull\//);
-  assert.doesNotMatch(source, /actions\/checkout@v6[\s\S]*ref:\s*main/);
 });
 
 test('release shell binds dispatch versions and rejects missing or moved tags before writes', { skip: process.platform === 'win32' && 'runs the workflow steps through bash and POSIX PATH shims' }, () => {

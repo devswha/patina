@@ -7,6 +7,7 @@
 // outside the persona schema.
 
 import { inputError } from '../errors.js';
+import { finiteOr } from '../features/numeric.js';
 
 export const PERSONA_SCHEMA_ID = 'patina.persona.v2';
 export const ACTIVE_BLOCK_TYPES = Object.freeze([
@@ -85,10 +86,6 @@ function asStringArray(value) {
   return value.filter((v) => typeof v === 'string' && v.trim().length > 0).map((v) => v.trim());
 }
 
-function numberOr(value, fallback) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
 function numberPairOr(value, fallback) {
   if (Array.isArray(value) && value.length === 2 && value.every((n) => typeof n === 'number' && Number.isFinite(n))) {
     return [value[0], value[1]];
@@ -119,14 +116,14 @@ function normalizeBlocks(rawBlocks, personaId) {
       allow: asStringArray(pw.allow),
       avoid: asStringArray(pw.avoid),
       density: {
-        targetPer1000Tokens: numberOr(pw.density?.target_per_1000_tokens, null),
-        maxPerParagraph: numberOr(pw.density?.max_per_paragraph, null),
+        targetPer1000Tokens: finiteOr(pw.density?.target_per_1000_tokens, null),
+        maxPerParagraph: finiteOr(pw.density?.max_per_paragraph, null),
       },
     },
     preferredMetaphors: {
       active: asBool(pm.active),
       allow: asStringArray(pm.allow),
-      maxNewMetaphorsPer500Chars: numberOr(pm.max_new_metaphors_per_500_chars, 1),
+      maxNewMetaphorsPer500Chars: finiteOr(pm.max_new_metaphors_per_500_chars, 1),
     },
     explanationHabits: {
       active: asBool(eh.active),
@@ -138,7 +135,7 @@ function normalizeBlocks(rawBlocks, personaId) {
       sentenceLengthCvTarget: numberPairOr(ss.sentence_length_cv_target, null),
       avgSentenceEojeolTarget: numberPairOr(ss.avg_sentence_eojeol_target, null),
       paragraphSentenceCountTarget: numberPairOr(ss.paragraph_sentence_count_target, null),
-      openerDiversityMin: numberOr(ss.opener_diversity_min, null),
+      openerDiversityMin: finiteOr(ss.opener_diversity_min, null),
     },
     worldview: { active: false },
   };
@@ -157,13 +154,13 @@ function normalizeTargetFeatures(raw, personaId) {
   for (const [name, spec] of Object.entries(raw)) {
     if (!spec || typeof spec !== 'object') continue;
     if (name === 'over_edit_churn') {
-      out.overEditChurn = { max: numberOr(spec.max, 0.45), weight: numberOr(spec.weight, 0) };
+      out.overEditChurn = { max: finiteOr(spec.max, 0.45), weight: finiteOr(spec.weight, 0) };
       continue;
     }
     out[name] = {
-      target: numberOr(spec.target, null),
-      tolerance: numberOr(spec.tolerance, null),
-      weight: numberOr(spec.weight, 0),
+      target: finiteOr(spec.target, null),
+      tolerance: finiteOr(spec.tolerance, null),
+      weight: finiteOr(spec.weight, 0),
     };
   }
   return out;

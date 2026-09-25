@@ -1,6 +1,4 @@
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
+import { clamp } from '../features/numeric.js';
 
 function tokens(text) {
   return String(text ?? '').normalize('NFC').match(/[\p{L}\p{N}]+|[^\s\p{L}\p{N}]/gu) ?? [];

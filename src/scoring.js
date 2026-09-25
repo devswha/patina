@@ -1050,18 +1050,18 @@ function isLexiconEnabledForLanguage(config = {}, lang) {
 function deterministicScoringOptions(config = {}) {
   const cfg = config.scoring?.deterministic || {};
   const enabled = cfg.enabled !== false;
-  const divergenceThreshold = Math.max(0, positiveNumber(
-    cfg['divergence-threshold'] ?? cfg.divergenceThreshold,
+  const divergenceThreshold = Math.max(0, numberOr(
+    cfg['divergence-threshold'],
     DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD
   ));
-  const combinedWeight = Math.max(0, positiveNumber(
-    cfg['combined-weight'] ?? cfg.combinedWeight,
+  const combinedWeight = Math.max(0, numberOr(
+    cfg['combined-weight'],
     0
   ));
   return { enabled, divergenceThreshold, combinedWeight };
 }
 
-function positiveNumber(value, fallback) {
+function numberOr(value, fallback) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 }

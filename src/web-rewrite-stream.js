@@ -1,6 +1,6 @@
 // @ts-check
 import { callLLMStream as defaultStream } from './streaming-api.js';
-import { scoreDeterministicSignals, scoreFidelity, scoreMPS, SCORE_ERRORS } from './scoring.js';
+import { isValidAttemptRecord, scoreDeterministicSignals, scoreFidelity, scoreMPS, SCORE_ERRORS } from './scoring.js';
 import { evaluateNumberSafety } from './features/meaning-proxy.js';
 import { cleanRewriteOutput } from './output.js';
 import { loadWebConfig, resolveBundleRoot } from './web-config.js';
@@ -26,15 +26,13 @@ import { evaluateKoreanInvariants } from './features/korean-invariants.js';
  * The small summary `runWebRewriteStream` resolves with. The frames are the
  * contract; this is what the caller needs after the stream closes.
  *
- * Only `ok`, `attempts` and `observed` are always present: a terminal failure
- * carries `code` (and sometimes `error`/`numberSafety`), while success carries
- * the rewrite payload. It is one shape with optional members rather than a
- * union because JSDoc unions in a checked JS file are not narrowed by
- * `if (result.ok)` — verified on TypeScript 5.4, 5.9 and 7.0.
+ * Only `ok` and `observed` are always present: a terminal failure carries
+ * `code` (and sometimes `error`/`numberSafety`), while success carries the
+ * rewrite payload. It is one shape with optional members rather than a union
+ * because JSDoc unions in a checked JS file are not narrowed by `if (result.ok)`.
  *
  * @typedef {{
  *   ok: boolean,
- *   attempts: {valid: boolean, rewrite: Record<string, any>[], mps: Record<string, any>[], fidelity: Record<string, any>[]},
  *   observed: unknown,
  *   code?: string,
  *   error?: string,
@@ -52,56 +50,6 @@ import { evaluateKoreanInvariants } from './features/korean-invariants.js';
  *   budget?: Record<string, any>
  * }} WebRewriteStreamResult
  */
-
-const ATTEMPT_RETRY_REASONS = new Set([
-  'initial',
-  'transport',
-  'network',
-  'timeout',
-  'temperature_schema',
-  'score_schema_parse',
-]);
-
-/**
- * Retain only valid paid-attempt records in private result metadata.
- * @param {{valid: boolean}} attempts
- * @param {object[]} stageAttempts
- * @param {number} expectedAttemptIndex
- * @param {unknown} value
- */
-function collectAttempt(attempts, stageAttempts, expectedAttemptIndex, value) {
-  const fields = [
-    'attemptIndex',
-    'requestedModel',
-    'effectiveModel',
-    'usage',
-    'retryReason',
-    'minimumChargeApplied',
-    'outcome',
-  ];
-  try {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
-    const source = /** @type {any} */ (value);
-    const keys = Reflect.ownKeys(source);
-    if (
-      keys.length !== fields.length
-      || !fields.every((field) => Object.prototype.hasOwnProperty.call(source, field))
-      || keys.some((key) => typeof key !== 'string' || !fields.includes(key))
-      || !Number.isInteger(source.attemptIndex)
-      || source.attemptIndex !== expectedAttemptIndex
-      || source.attemptIndex <= 0
-      || !(typeof source.requestedModel === 'string' || source.requestedModel === null)
-      || !(typeof source.effectiveModel === 'string' || source.effectiveModel === null)
-      || !(source.usage === null || (typeof source.usage === 'object' && !Array.isArray(source.usage)))
-      || !ATTEMPT_RETRY_REASONS.has(source.retryReason)
-      || typeof source.minimumChargeApplied !== 'boolean'
-      || !(source.outcome === 'success' || source.outcome === 'error')
-    ) throw new TypeError();
-    stageAttempts.push(value);
-  } catch {
-    attempts.valid = false;
-  }
-}
 
 /**
  * @param {unknown} err
@@ -235,75 +183,35 @@ function summarizeDiff(before, after) {
   };
 }
 
-/**
- * Sum every paid attempt's token usage into one coarse total for the cost
- * observability buckets. Accepts normalized/OpenAI `total_tokens`, OpenAI
- * prompt+completion, Anthropic input+output+cache, or Gemini token-count
- * fields. Evidence is all-or-unknown: every started stage must have at least
- * one valid attempt and every attempt must contain one complete known usage
- * shape. This prevents plausible undercounts from incomplete provider data.
- * @param {{valid: boolean, rewrite: object[], mps: object[], fidelity: object[]}} attempts
- * @param {Set<'rewrite'|'mps'|'fidelity'>} startedStages
- * @returns {number|undefined}
- */
-function attemptsTotalTokens(attempts, startedStages) {
-  if (attempts?.valid !== true || startedStages.size === 0) return undefined;
-  let total = 0;
-  for (const stage of startedStages) {
-    const records = attempts?.[stage];
-    if (!Array.isArray(records) || records.length === 0) return undefined;
-    for (const record of records) {
-      const usage = /** @type {any} */ (record)?.usage;
-      if (!usage || typeof usage !== 'object' || Array.isArray(usage)) return undefined;
-      const validTokenCount = (/** @type {unknown} */ value) =>
-        typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
-      if (Object.hasOwn(usage, 'total_tokens') || Object.hasOwn(usage, 'totalTokenCount')) {
-        const value = Object.hasOwn(usage, 'total_tokens') ? usage.total_tokens : usage.totalTokenCount;
-        if (!validTokenCount(value)) return undefined;
-        total += value;
-        continue;
-      }
-      const shapes = [
-        { required: ['prompt_tokens', 'completion_tokens'], optional: [] },
-        { required: ['input_tokens', 'output_tokens'], optional: ['cache_read_input_tokens', 'cache_creation_input_tokens'] },
-        { required: ['promptTokenCount', 'candidatesTokenCount'], optional: ['thoughtsTokenCount'] },
-      ];
-      let matched = false;
-      for (const { required, optional } of shapes) {
-        if (!required.every((field) => Object.hasOwn(usage, field))) continue;
-        let shapeTotal = 0;
-        for (const field of [...required, ...optional]) {
-          if (!Object.hasOwn(usage, field)) continue;
-          const value = usage[field];
-          if (!validTokenCount(value)) return undefined;
-          shapeTotal += value;
-        }
-        total += shapeTotal;
-        matched = true;
-        break;
-      }
-      if (!matched || !Number.isSafeInteger(total)) return undefined;
-    }
-  }
-  return total;
-}
+/** Provider usage shapes, each summed over its present fields. */
+const USAGE_SHAPES = [
+  { required: ['prompt_tokens', 'completion_tokens'], optional: [] },
+  { required: ['input_tokens', 'output_tokens'], optional: ['cache_read_input_tokens', 'cache_creation_input_tokens'] },
+  { required: ['promptTokenCount', 'candidatesTokenCount'], optional: ['thoughtsTokenCount'] },
+];
 
 /**
- * Count the paid LLM transport calls a request actually spent (all stages, all
- * attempts). The margin model assumes 3; 4+ means a retry fired.
- * @param {{valid: boolean, rewrite: object[], mps: object[], fidelity: object[]}} attempts
- * @param {Set<'rewrite'|'mps'|'fidelity'>} startedStages
- * @returns {number|undefined}
+ * Token total of one paid attempt's usage: normalized/OpenAI `total_tokens`,
+ * OpenAI prompt+completion, Anthropic input+output+cache, or Gemini
+ * token-count fields. NaN when the usage is missing, has no known shape, or
+ * carries a count that is not a non-negative safe integer, so a partial
+ * record can never produce a plausible undercount.
+ *
+ * @param {unknown} usage
+ * @returns {number}
  */
-function attemptsLlmCalls(attempts, startedStages) {
-  if (attempts?.valid !== true || startedStages.size === 0) return undefined;
-  let count = 0;
-  for (const stage of startedStages) {
-    const records = attempts?.[stage];
-    if (!Array.isArray(records) || records.length === 0) return undefined;
-    count += records.length;
-  }
-  return Number.isSafeInteger(count) && count >= 1 ? count : undefined;
+function usageTokens(usage) {
+  if (!usage || typeof usage !== 'object' || Array.isArray(usage)) return Number.NaN;
+  const fields = /** @type {Record<string, unknown>} */ (usage);
+  const count = (/** @type {unknown} */ value) =>
+    (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : Number.NaN);
+  if (Object.hasOwn(fields, 'total_tokens')) return count(fields.total_tokens);
+  if (Object.hasOwn(fields, 'totalTokenCount')) return count(fields.totalTokenCount);
+  const shape = USAGE_SHAPES.find(({ required }) => required.every((field) => Object.hasOwn(fields, field)));
+  if (!shape) return Number.NaN;
+  return [...shape.required, ...shape.optional]
+    .filter((field) => Object.hasOwn(fields, field))
+    .reduce((sum, field) => sum + count(fields[field]), 0);
 }
 
 /**
@@ -388,8 +296,8 @@ export function rewriteExtraBody(provider, tier, env = {}) {
  * @param {{scoreMPS?: Function, scoreFidelity?: Function, scoreDeterministicSignals?: Function}} [options.scoreFns] Injectable scorers.
  * @param {(frame: object) => void} options.emit Frame sink.
  * @param {AbortSignal} [options.signal] Abort signal (client disconnect); combined with the deadline signal.
- * @param {number} [options.timeout] TOTAL budget in milliseconds for the WHOLE pipeline — every rewrite attempt plus both scorers share it; one abort fires at exhaustion. (Previously each stage received the full timeout, so the worst case ran ~3x over budget.)
- * @param {DeadlineScope} [options.deadline] Internal deadline scope injected by the public wrapper; exported callers never pass it.
+ * @param {number} [options.timeout] TOTAL budget in milliseconds for the WHOLE pipeline — every rewrite attempt plus both scorers share it; one abort fires at exhaustion.
+ * @param {DeadlineScope} options.deadline Deadline scope built from `timeout` and `signal` by the public wrapper.
  * @param {() => number} [options.deadlineNow] Internal/test seam for the monotonic deadline clock.
  * @param {(input: {tier: string, outcome: string, status: number, latencyMs: number, totalTokens?: number, llmCalls?: number}) => unknown} [options.observe] Closed aggregate telemetry sink.
  * @param {() => number} [options.now] Injectable clock.
@@ -404,8 +312,6 @@ async function runWebRewriteStreamUnscoped({
   callLLMStream = defaultStream,
   scoreFns = {},
   emit,
-  signal,
-  timeout,
   observe,
   now = () => Date.now(),
   numberSafetyRetries = 1,
@@ -413,6 +319,38 @@ async function runWebRewriteStreamUnscoped({
   deadline,
 }) {
   if (typeof emit !== 'function') throw new TypeError('emit must be a function');
+  // Paid-attempt accounting for the cost observability buckets. Evidence is
+  // all-or-unknown: one malformed or out-of-order record, or a started stage
+  // without a record, leaves both totals unknown rather than undercounted.
+  const attempts = { valid: true, calls: { rewrite: 0, mps: 0, fidelity: 0 }, tokens: 0 };
+  /** @type {Set<'rewrite'|'mps'|'fidelity'>} */
+  const startedStages = new Set();
+  /**
+   * @param {'rewrite'|'mps'|'fidelity'} stage
+   * @param {unknown} record
+   * @param {number} expectedIndex One-based position of the record within its transport call.
+   */
+  const recordAttempt = (stage, record, expectedIndex) => {
+    if (!isValidAttemptRecord(record, expectedIndex)) {
+      attempts.valid = false;
+      return;
+    }
+    attempts.calls[stage] += 1;
+    attempts.tokens += usageTokens(/** @type {{usage: unknown}} */ (record).usage);
+  };
+  const recordInvalidAttempt = () => {
+    attempts.valid = false;
+  };
+  const attemptTotals = () => {
+    const stages = [...startedStages];
+    if (!attempts.valid || stages.length === 0 || stages.some((stage) => attempts.calls[stage] === 0)) {
+      return { totalTokens: undefined, llmCalls: undefined };
+    }
+    return {
+      totalTokens: Number.isSafeInteger(attempts.tokens) ? attempts.tokens : undefined,
+      llmCalls: stages.reduce((sum, stage) => sum + attempts.calls[stage], 0),
+    };
+  };
   let startedAt;
   if (typeof observe === 'function') {
     try {
@@ -440,11 +378,7 @@ async function runWebRewriteStreamUnscoped({
         outcome,
         status,
         latencyMs: Math.max(0, endedAt - startedAt),
-        // Cost observability: coarse aggregates over the private attempt ledger
-        // (never per-attempt values). `attempts` is initialized below; this
-        // closure only reads it at call time, after initialization.
-        totalTokens: attemptsTotalTokens(attempts, startedStages),
-        llmCalls: attemptsLlmCalls(attempts, startedStages),
+        ...attemptTotals(),
       });
       if (result && typeof /** @type {any} */ (result).catch === 'function') /** @type {any} */ (result).catch(() => {});
     } catch {
@@ -486,30 +420,6 @@ async function runWebRewriteStreamUnscoped({
       + fenceReferenceText(JSON.stringify(literals), { label: 'Protected literals' });
   }
 
-  // This metadata is intentionally return-only: NDJSON frames are customer-safe.
-  /** @type {{valid: boolean, rewrite: object[], mps: object[], fidelity: object[]}} */
-  const attempts = { valid: true, rewrite: [], mps: [], fidelity: [] };
-  /** @type {Set<'rewrite'|'mps'|'fidelity'>} */
-  const startedStages = new Set();
-  /** @type {{rewrite: number, mps: number, fidelity: number}} */
-  const attemptCounts = { rewrite: 0, mps: 0, fidelity: 0 };
-  /**
-   * @param {'rewrite'|'mps'|'fidelity'} stage
-   * @param {unknown} record
-   */
-  const recordAttempt = (stage, record) => {
-    if (attemptsClosed) return;
-    attemptCounts[stage] += 1;
-    collectAttempt(attempts, attempts[stage], attemptCounts[stage], record);
-  };
-  const recordInvalidAttempt = () => {
-    if (attemptsClosed) return;
-    attempts.valid = false;
-  };
-  const closeAttempts = () => {
-    attemptsClosed = true;
-  };
-  let attemptsClosed = false;
   let rewrite = '';
   let numberSafety;
   let koreanInvariants = null;
@@ -522,29 +432,17 @@ async function runWebRewriteStreamUnscoped({
   // so no protocol change is needed). Motivated by live gemini-3.6-flash
   // serving: sampling variance sometimes clears a numeric-drift habit that a
   // first attempt trips (docs/operations/pro-margin-decision-20260729.md).
-  // Every paid attempt is still recorded in the private attempts metadata.
+  // Every paid attempt is still counted for cost observability.
   const maxRuns = 1 + Math.max(0, Number.isSafeInteger(numberSafetyRetries) ? numberSafetyRetries : 1);
-  // Deadline plumbing: the public wrapper turns `timeout` into one absolute
-  // deadline shared by EVERY stage, so sequential rewrite retries and the two
-  // scorers all draw from the same remaining budget instead of each receiving
-  // the full window (worst case was rewrite + rewrite-retry + scorers = 3x).
-  // Without a deadline scope, fall back to the legacy per-stage `timeout`.
-  const stageSignal = deadline?.signal ?? signal;
-  /**
-   * Remaining budget for the next stage, or the legacy timeout when no deadline
-   * scope was injected. `0` means the budget is exhausted.
-   * @returns {number|undefined}
-   */
-  const stageTimeout = () => (deadline ? deadline.remainingMs() : timeout);
+  // The public wrapper turns `timeout` into one absolute deadline shared by
+  // EVERY stage, so sequential rewrite retries and the two scorers all draw
+  // from the same remaining budget. `remainingMs()` is undefined without a
+  // timeout and `0` once the budget is exhausted.
+  const stageSignal = deadline.signal ?? undefined;
+  const stageTimeout = () => deadline.remainingMs();
   if (!isWellFormedText(original) || !isWellFormedText(request.text)) {
-    closeAttempts();
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'invalid_unicode' });
-    return { ok: false, code: 'invalid_unicode', attempts, observed: observeTerminal('terminal_failed', 400) };
-  }
-  if (request.baseHash !== undefined && request.baseHash !== sha256(original)) {
-    closeAttempts();
-    emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'source_changed' });
-    return { ok: false, code: 'source_changed', attempts, observed: observeTerminal('terminal_failed', 409) };
+    return { ok: false, code: 'invalid_unicode', observed: observeTerminal('terminal_failed', 400) };
   }
   emit({ type: STREAM_FRAME_TYPES.START });
   // evaluateNumberSafety fails whenever the SOURCE has numeric syntax it cannot
@@ -555,32 +453,26 @@ async function runWebRewriteStreamUnscoped({
   // the result changed a number.
   const sourceNumberSafety = evaluateNumberSafety(original, original, request.lang);
   if (!sourceNumberSafety.ok) {
-    closeAttempts();
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'number_safety_failed', scope: 'source' });
-    return { ok: false, code: 'number_safety_failed', numberSafety: sourceNumberSafety, attempts, observed: observeTerminal('number_safety_failed', 422) };
+    return { ok: false, code: 'number_safety_failed', numberSafety: sourceNumberSafety, observed: observeTerminal('number_safety_failed', 422) };
   }
   if (verifyOnly) {
     // Preserve the reviewed text byte-for-byte: this mode never rewrites it.
     rewrite = String(request.text);
     numberSafety = evaluateNumberSafety(original, rewrite, request.lang);
     if (!numberSafety.ok) {
-      closeAttempts();
       emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'number_safety_failed' });
-      return { ok: false, code: 'number_safety_failed', numberSafety, attempts, observed: observeTerminal('number_safety_failed', 422) };
+      return { ok: false, code: 'number_safety_failed', numberSafety, observed: observeTerminal('number_safety_failed', 422) };
     }
   }
   for (let run = 1; !verifyOnly && run <= maxRuns; run += 1) {
     const stageRemaining = stageTimeout();
     if (stageRemaining === 0) {
-      closeAttempts();
       emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'stream_failed', error: 'stream budget exhausted' });
-      return { ok: false, code: 'stream_failed', error: 'stream budget exhausted', attempts, observed: observeTerminal('terminal_failed', 500) };
+      return { ok: false, code: 'stream_failed', error: 'stream budget exhausted', observed: observeTerminal('terminal_failed', 500) };
     }
-    // Each callLLMStream invocation numbers its own attempts from 1; offset
-    // retry-run indices so the stage's private attempt ledger stays one-based
-    // and contiguous across runs (the fields and values are otherwise
-    // untouched — every paid attempt is recorded).
-    const indexBase = attemptCounts.rewrite;
+    // Each callLLMStream invocation numbers its own attempts from 1.
+    const runBase = attempts.calls.rewrite;
     try {
       startedStages.add('rewrite');
       let stageOpen = true;
@@ -598,16 +490,10 @@ async function runWebRewriteStreamUnscoped({
             if (stageOpen && run === 1) emit({ type: STREAM_FRAME_TYPES.DELTA, text });
           },
           onAttempt: (record) => {
-            if (!stageOpen) return;
-            recordAttempt('rewrite', Number.isInteger(/** @type {any} */ (record)?.attemptIndex)
-              ? { .../** @type {any} */ (record), attemptIndex: /** @type {any} */ (record).attemptIndex + indexBase }
-              : record);
-          },
-          onAttemptInvalid: () => {
-            if (stageOpen) recordInvalidAttempt();
+            if (stageOpen) recordAttempt('rewrite', record, attempts.calls.rewrite - runBase + 1);
           },
         });
-        streamResult = await (deadline ? deadline.race(pending) : pending);
+        streamResult = await deadline.race(pending);
       } finally {
         stageOpen = false;
       }
@@ -622,15 +508,13 @@ async function runWebRewriteStreamUnscoped({
       // reproduces on the next attempt, so a second paid call buys nothing.
       const incomplete = incompleteOutputReason(streamResult.finishReason, rewrite);
       if (incomplete) {
-        closeAttempts();
         emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'stream_failed', error: incomplete });
-        return { ok: false, code: 'stream_failed', error: incomplete, attempts, observed: observeTerminal('terminal_failed', 500) };
+        return { ok: false, code: 'stream_failed', error: incomplete, observed: observeTerminal('terminal_failed', 500) };
       }
     } catch (err) {
       const failure = upstreamFailure(err, request);
-      closeAttempts();
       emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'stream_failed', ...failure });
-      return { ok: false, code: 'stream_failed', ...failure, attempts, observed: observeTerminal('terminal_failed', 500) };
+      return { ok: false, code: 'stream_failed', ...failure, observed: observeTerminal('terminal_failed', 500) };
     }
     koreanInvariants = koreanResearch
       ? evaluateKoreanInvariants(original, rewrite)
@@ -639,29 +523,25 @@ async function runWebRewriteStreamUnscoped({
     if (numberSafety.ok) break;
     // An externally aborted signal must not spend another paid attempt.
     if (run === maxRuns || stageSignal?.aborted) {
-      closeAttempts();
       emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'number_safety_failed' });
       return {
         ok: false,
         code: 'number_safety_failed',
         numberSafety,
         ...(koreanInvariants ? { koreanInvariants } : {}),
-        attempts,
         observed: observeTerminal('number_safety_failed', 422),
       };
     }
   }
 
   if (!isWellFormedText(rewrite)) {
-    closeAttempts();
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'output_invalid_unicode' });
-    return { ok: false, code: 'output_invalid_unicode', attempts, observed: observeTerminal('terminal_failed', 422) };
+    return { ok: false, code: 'output_invalid_unicode', observed: observeTerminal('terminal_failed', 422) };
   }
   const protection = protectedSpans.length ? validateProtectedText(original, rewrite, protectedSpans) : { ok: true };
   if (!protection.ok) {
-    closeAttempts();
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'protected_text_failed' });
-    return { ok: false, code: 'protected_text_failed', attempts, observed: observeTerminal('terminal_failed', 422) };
+    return { ok: false, code: 'protected_text_failed', observed: observeTerminal('terminal_failed', 422) };
   }
 
   const mpsScore = scoreFns.scoreMPS || scoreMPS;
@@ -675,9 +555,8 @@ async function runWebRewriteStreamUnscoped({
     // at stage start (both run in parallel) and fail fast when it is exhausted.
     const scoringRemaining = stageTimeout();
     if (scoringRemaining === 0) {
-      closeAttempts();
       emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'scoring_failed', error: 'stream budget exhausted' });
-      return { ok: false, code: 'scoring_failed', error: 'stream budget exhausted', attempts, observed: observeTerminal('terminal_failed', 500) };
+      return { ok: false, code: 'scoring_failed', error: 'stream budget exhausted', observed: observeTerminal('terminal_failed', 500) };
     }
     startedStages.add('mps');
     startedStages.add('fidelity');
@@ -685,10 +564,10 @@ async function runWebRewriteStreamUnscoped({
     let scoreResults;
     try {
       const pending = Promise.allSettled([
-        Promise.resolve().then(() => mpsScore({ original, rewritten: rewrite, apiKey: request.apiKey, baseURL: request.baseURL, model: request.model, extraBody: scoringExtra, signal: stageSignal, timeout: scoringRemaining, onAttempt: (record) => { if (scoringOpen) recordAttempt('mps', record); }, onAttemptInvalid: () => { if (scoringOpen) recordInvalidAttempt(); } })),
-        Promise.resolve().then(() => fidelityScore({ original, rewritten: rewrite, apiKey: request.apiKey, baseURL: request.baseURL, model: request.model, extraBody: scoringExtra, signal: stageSignal, timeout: scoringRemaining, onAttempt: (record) => { if (scoringOpen) recordAttempt('fidelity', record); }, onAttemptInvalid: () => { if (scoringOpen) recordInvalidAttempt(); } })),
+        Promise.resolve().then(() => mpsScore({ original, rewritten: rewrite, apiKey: request.apiKey, baseURL: request.baseURL, model: request.model, extraBody: scoringExtra, signal: stageSignal, timeout: scoringRemaining, onAttempt: (record) => { if (scoringOpen) recordAttempt('mps', record, attempts.calls.mps + 1); }, onAttemptInvalid: () => { if (scoringOpen) recordInvalidAttempt(); } })),
+        Promise.resolve().then(() => fidelityScore({ original, rewritten: rewrite, apiKey: request.apiKey, baseURL: request.baseURL, model: request.model, extraBody: scoringExtra, signal: stageSignal, timeout: scoringRemaining, onAttempt: (record) => { if (scoringOpen) recordAttempt('fidelity', record, attempts.calls.fidelity + 1); }, onAttemptInvalid: () => { if (scoringOpen) recordInvalidAttempt(); } })),
       ]);
-      scoreResults = await (deadline ? deadline.race(pending) : pending);
+      scoreResults = await deadline.race(pending);
     } finally {
       scoringOpen = false;
     }
@@ -704,9 +583,8 @@ async function runWebRewriteStreamUnscoped({
     // failure, and it stays fail-closed: no done frame, no scores.
     if ([mps, fidelity].some((score) => /** @type {any} */ (score)?.error === SCORE_ERRORS.TRANSPORT_FAILURE)) {
       const error = 'scorer transport failure';
-      closeAttempts();
       emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'scoring_failed', error });
-      return { ok: false, code: 'scoring_failed', error, attempts, observed: observeTerminal('terminal_failed', 500) };
+      return { ok: false, code: 'scoring_failed', error, observed: observeTerminal('terminal_failed', 500) };
     }
     signals = {
       before: deterministicScore({ text: original, config: effectiveConfig, repoRoot }),
@@ -718,9 +596,8 @@ async function runWebRewriteStreamUnscoped({
     // a clean NDJSON error frame — never bubble to the handler's JSON 500,
     // which would append a non-frame tail to an already-started stream.
     const failure = upstreamFailure(err, request);
-    closeAttempts();
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'scoring_failed', ...failure });
-    return { ok: false, code: 'scoring_failed', ...failure, attempts, observed: observeTerminal('terminal_failed', 500) };
+    return { ok: false, code: 'scoring_failed', ...failure, observed: observeTerminal('terminal_failed', 500) };
   }
 
   // Verify full evidence before success: high numeric scores alone cannot
@@ -741,7 +618,6 @@ async function runWebRewriteStreamUnscoped({
   if (!floors.ok || unanchoredNumericSource) {
     // Keep the already-computed audit metadata (deterministic signals + length
     // diff) on floor failures so a flagged attempt stays auditable in the UI.
-    closeAttempts();
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'floor_failed', failed, rewrite, mps, fidelity, signals, diff });
     return {
       ok: false,
@@ -751,13 +627,11 @@ async function runWebRewriteStreamUnscoped({
       fidelity,
       signals,
       diff,
-      attempts,
       ...(koreanInvariants ? { koreanInvariants } : {}),
       observed: observeTerminal('terminal_failed', 422),
     };
   }
 
-  closeAttempts();
   const receipt = buildWebRewriteReceipt({
     request,
     documentType,
@@ -801,7 +675,7 @@ async function runWebRewriteStreamUnscoped({
       const code = /** @type {any} */ (err)?.code;
       if (typeof code !== 'string' || !code.endsWith('_too_long')) {
         emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'edit_output_too_long' });
-        return { ok: false, code: 'edit_output_too_long', attempts, observed: observeTerminal('terminal_failed', 422) };
+        return { ok: false, code: 'edit_output_too_long', observed: observeTerminal('terminal_failed', 422) };
       }
       editReview = undefined;
     }
@@ -817,7 +691,6 @@ async function runWebRewriteStreamUnscoped({
     receipt,
     ...(editReview ? { editReview } : {}),
     budget,
-    attempts,
     ...(koreanInvariants ? { koreanInvariants } : {}),
     observed: observeTerminal('completed', 200),
   };
@@ -830,7 +703,7 @@ async function runWebRewriteStreamUnscoped({
  * disconnect), and (b) a remaining-time helper each stage uses as its own
  * timeout. `dispose()` clears the timer and listener so no handles leak.
  *
- * @param {number|undefined} timeout Total budget in ms; falsy/invalid disables the deadline (legacy behavior).
+ * @param {number|undefined} timeout Total budget in ms; falsy/invalid disables the deadline.
  * @param {AbortSignal|undefined} signal Caller abort signal (client disconnect).
  * @param {() => number} clock Monotonic injectable deadline clock.
  * @returns {DeadlineScope}
@@ -914,17 +787,13 @@ function createDeadlineScope(timeout, signal, clock) {
  * TOTAL budget across rewrite attempts and scoring (not per-stage), and every
  * stage aborts together when it runs out. See createDeadlineScope.
  *
- * @param {Parameters<typeof runWebRewriteStreamUnscoped>[0]} options See runWebRewriteStreamUnscoped.
+ * @param {Omit<Parameters<typeof runWebRewriteStreamUnscoped>[0], 'deadline'>} options See runWebRewriteStreamUnscoped.
  */
 export async function runWebRewriteStream(options) {
   const deadlineNow = options.deadlineNow ?? (() => globalThis.performance.now());
   const deadline = createDeadlineScope(options.timeout, options.signal, deadlineNow);
   try {
-    return await runWebRewriteStreamUnscoped({
-      ...options,
-      signal: deadline.signal ?? undefined,
-      deadline,
-    });
+    return await runWebRewriteStreamUnscoped({ ...options, deadline });
   } finally {
     deadline.dispose();
   }

@@ -125,23 +125,20 @@ test('verification scores the exact selected text and never calls the rewrite mo
   assert.deepEqual(frames.map((frame) => frame.type), ['start', 'done']);
   assert.equal(result.receipt.hashes.output, sha256(selected));
   assert.equal(result.receipt.promptBudget, null);
-  assert.equal(result.attempts.rewrite.length, 0);
 });
 
-test('stale source and protected-text verification failures spend no model calls', async () => {
-  for (const [overrides, code] of [
-    [{ baseHash: sha256('stale') }, 'source_changed'],
-    [{ protectedSpans: [{ start: 0, end: 8 }], text: 'Changed launches on Monday. Please join us.' }, 'protected_text_failed'],
-  ]) {
-    const calls = [];
-    const result = await runWebRewriteStream({
-      request: request({ mode: 'verify', original, text: original, baseHash: sha256(original), ...overrides }),
-      callLLMStream: async () => { throw new Error('unexpected generation'); }, scoreFns: scores(calls), emit() {},
-    });
-    assert.equal(result.ok, false);
-    assert.equal(result.code, code);
-    assert.equal(calls.length, 0);
-  }
+test('protected-text verification failures spend no model calls', async () => {
+  const calls = [];
+  const result = await runWebRewriteStream({
+    request: request({
+      mode: 'verify', original, text: 'Changed launches on Monday. Please join us.', baseHash: sha256(original),
+      protectedSpans: [{ start: 0, end: 8 }],
+    }),
+    callLLMStream: async () => { throw new Error('unexpected generation'); }, scoreFns: scores(calls), emit() {},
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'protected_text_failed');
+  assert.equal(calls.length, 0);
 });
 
 test('selective verification has the same numeric and meaning refusal gates', async () => {

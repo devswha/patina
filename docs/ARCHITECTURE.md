@@ -169,9 +169,9 @@ private or custom local files never reach a browser bundle.
   `funnel-analytics.js` — hosted request-shaped prompt budgets, downloadable
   audit receipts, aggregate-only Pro health monitor, and privacy-safe funnel
   events (no request content retained)
-- `src/entitlement.js`, `entitlement-polar.js`, `polar-webhook.js`,
-  `pack-handler.js` — server-only Pro entitlement (Polar license keys,
-  Standard-Webhooks verification) and licensed pack delivery
+- `src/entitlement.js`, `entitlement-polar.js`, `pack-handler.js` —
+  server-only Pro entitlement (Polar license-key validation) and licensed pack
+  delivery
 - `src/preview/*` — `--preview` page presentation over rewrite output
   (deterministic rendering; optional LLM diff narration)
 

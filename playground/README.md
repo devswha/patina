@@ -139,17 +139,6 @@ Pro env (see `.env.example` for the full annotated list):
 Validate-only means revocation propagates within the positive-cache TTL (default
 5 min); a hard kill can shorten it by lowering `PATINA_POLAR_CACHE_TTL_MS`.
 
-## Provider-confirmed purchase conversions
-
-Polar sends `order.paid` deliveries to `/api/polar-webhook`. Configure the
-server-only `POLAR_WEBHOOK_SECRET`, `POLAR_ORGANIZATION_ID`, and
-`POLAR_PRO_PRODUCT_ID`, plus the dedicated
-`PATINA_OBSERVABILITY_REST_API_URL` / `PATINA_OBSERVABILITY_REST_API_TOKEN`.
-The endpoint verifies Polar's Standard Webhooks signature before accepting a
-delivery and records only aggregate, provider-confirmed initial paid conversions
-for that exact organization and product. It excludes renewals and subscription
-updates; the browser cannot emit this metric.
-
 ## Verification
 
 ```bash

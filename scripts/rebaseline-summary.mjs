@@ -10,6 +10,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { wilsonInterval } from '../tests/quality/ranking-metrics.mjs';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 
@@ -509,9 +511,9 @@ function summarizeOutcomes(records) {
     f1: round(f1),
     falsePositiveRate: round(falsePositiveRate),
     falseNegativeRate: round(falseNegativeRate),
-    accuracyCi: wilsonInterval(metrics.tp + metrics.tn, metrics.total),
-    recallCi: wilsonInterval(metrics.tp, positiveTotal),
-    falsePositiveRateCi: wilsonInterval(metrics.fp, naturalTotal),
+    accuracyCi: wilsonCi(metrics.tp + metrics.tn, metrics.total),
+    recallCi: wilsonCi(metrics.tp, positiveTotal),
+    falsePositiveRateCi: wilsonCi(metrics.fp, naturalTotal),
   };
 }
 
@@ -545,7 +547,7 @@ function summarizeCatchByLanguageFamily(records) {
           caught,
           missed: group.length - caught,
           catchRate: round(caught / group.length),
-          catchRateCi: wilsonInterval(caught, group.length),
+          catchRateCi: wilsonCi(caught, group.length),
         }];
       })
   );
@@ -565,23 +567,15 @@ function summarizeFalsePositiveByLanguage(records) {
           falsePositives,
           trueNegatives: group.length - falsePositives,
           falsePositiveRate: round(falsePositives / group.length),
-          falsePositiveRateCi: wilsonInterval(falsePositives, group.length),
+          falsePositiveRateCi: wilsonCi(falsePositives, group.length),
         }];
       })
   );
 }
 
-function wilsonInterval(successes, n, z = 1.959963984540054) {
-  if (!n) return { low: 0, high: 0, method: 'Wilson score interval, 95%' };
-  const phat = successes / n;
-  const denom = 1 + (z ** 2) / n;
-  const center = (phat + (z ** 2) / (2 * n)) / denom;
-  const margin = (z * Math.sqrt((phat * (1 - phat) + (z ** 2) / (4 * n)) / n)) / denom;
-  return {
-    low: round(Math.max(0, center - margin)),
-    high: round(Math.min(1, center + margin)),
-    method: 'Wilson score interval, 95%',
-  };
+function wilsonCi(successes, n) {
+  const { low, high } = wilsonInterval(successes, n);
+  return { low: round(low), high: round(high), method: 'Wilson score interval, 95%' };
 }
 
 function countBy(records, fn) {

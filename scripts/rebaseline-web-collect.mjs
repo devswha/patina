@@ -5,12 +5,11 @@
 // Run scripts/rebaseline-score.mjs afterward to publish only hash/metadata and
 // deterministic outcome fields.
 
-import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { MATRIX } from './rebaseline-summary.mjs';
+import { MATRIX, hashText } from './rebaseline-summary.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -374,10 +373,6 @@ function decodeHtmlEntities(text) {
     .replace(/&#39;/giu, "'")
     .replace(/&#x([0-9a-f]+);/giu, (_, hex) => String.fromCodePoint(Number.parseInt(hex, 16)))
     .replace(/&#([0-9]+);/gu, (_, num) => String.fromCodePoint(Number.parseInt(num, 10)));
-}
-
-function hashText(text) {
-  return `sha256:${createHash('sha256').update(String(text)).digest('hex')}`;
 }
 
 function slugify(value) {

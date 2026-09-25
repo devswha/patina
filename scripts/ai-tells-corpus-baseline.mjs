@@ -29,7 +29,7 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { analyzeText } from '../src/features/index.js';
-import { wilsonInterval } from './lib/wilson.mjs';
+import { wilsonInterval } from '../tests/quality/ranking-metrics.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');

@@ -17,7 +17,7 @@ import yaml from 'js-yaml';
 import { analyzeText } from '../../src/features/index.js';
 import { loadLexicon } from '../../src/features/lexicon.js';
 import { summarizeSignalStrength } from '../../src/features/signal-strength.js';
-import { summarizeRanking } from './ranking-metrics.mjs';
+import { summarizeRanking, wilsonInterval } from './ranking-metrics.mjs';
 import { summarizeSlices, lengthBucket } from './slice-metrics.mjs';
 import { resolveSliceFields } from './slice-metadata.mjs';
 
@@ -118,18 +118,6 @@ function summarizeRankingByLanguage(fixtures) {
 
 function round(n, digits = 3) {
   return Math.round(n * 10 ** digits) / 10 ** digits;
-}
-
-function wilsonInterval(successes, n, z = 1.959963984540054) {
-  if (!n) return { low: 0, high: 0 };
-  const phat = successes / n;
-  const denom = 1 + (z ** 2) / n;
-  const center = (phat + (z ** 2) / (2 * n)) / denom;
-  const margin = (z * Math.sqrt((phat * (1 - phat) + (z ** 2) / (4 * n)) / n)) / denom;
-  return {
-    low: Math.max(0, center - margin),
-    high: Math.min(1, center + margin),
-  };
 }
 
 function detectorHot(result) {

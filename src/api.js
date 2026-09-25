@@ -91,7 +91,6 @@ export class HttpError extends Error {
 }
 
 function truncate(text, max = 256) {
-  if (typeof text !== 'string') return '';
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 

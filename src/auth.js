@@ -131,7 +131,7 @@ function readApiKeyFile(filePath, readFile) {
     };
   }
 
-  const key = contents.replace(/[\r\n]+$/, '').trim();
+  const key = contents.trim();
   if (!key) {
     return {
       ok: false,

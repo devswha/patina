@@ -73,8 +73,7 @@ export async function invokeDetailed({ prompt, model, modelSource, signal, timeo
   // Every invocation therefore selects an explicit zero-tool/zero-subagent
   // profile. A client that cannot enforce it fails; there is no unsafe legacy
   // fallback for source text that might contain instructions.
-  const modernArgs = ['--prompt', prompt, '--output-format', 'stream-json'];
-  if (cliModel) modernArgs.push('--model', cliModel);
+  const modernArgs = ['--prompt', prompt, '--output-format', 'stream-json', '--model', cliModel];
   try {
     const stdout = await runKimi(modernArgs, { signal, timeout });
     let sessionId = null;

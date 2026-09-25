@@ -116,7 +116,7 @@ async function runAuthLogin({ backendName, assumeYes }) {
   if (typeof backend.login !== 'function') {
     throw inputError(
       `${backend.name} does not support interactive login`,
-      backend.authHint ? backend.authHint() : 'This backend authenticates outside local CLI OAuth.',
+      backend.authHint(),
       'Set PATINA_API_KEY, PATINA_API_KEY_FILE, or the provider-specific API key env var for HTTP backends.'
     );
   }

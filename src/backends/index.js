@@ -92,13 +92,13 @@ const BACKEND_META = {
 export function listBackends() {
   return Object.keys(REGISTRY).map((key) => {
     const b = REGISTRY[key];
-    const meta = BACKEND_META[key] || { kind: 'unknown', selectWith: `--backend ${key}` };
+    const meta = BACKEND_META[key];
     const safety = getBackendSafety(key);
     return {
       name: key,
       kind: meta.kind,
       selectWith: meta.selectWith,
-      defaultModel: meta.defaultModel || null,
+      defaultModel: meta.defaultModel,
       safety,
       maxConcurrency: safety.maxConcurrency,
       maxRetries: safety.maxRetries,

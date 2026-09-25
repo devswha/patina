@@ -243,9 +243,6 @@ export async function withBackendConcurrencySlot({
   staleMs = Math.max(timeout * 2, 30 * 60_000),
   fn,
 } = {}) {
-  if (typeof fn !== 'function') {
-    throw new Error('backend concurrency slot requires fn');
-  }
   // The run phase gets whatever remains of the shared deadline after the slot
   // wait, so slot-wait + run can never exceed the single budget (#506 defect 1).
   // Callers that pass only `timeout` (no `deadline`) keep their full budget via
@@ -655,10 +652,6 @@ export function runInteractiveCommand({
   platform = process.platform,
   spawnImpl = spawn,
 } = {}) {
-  if (!backendName || !command) {
-    throw new Error('interactive backend command requires backendName and command');
-  }
-
   return new Promise((resolve, reject) => {
     // A failed spawn can emit both 'error' and 'close'; settle once so we never
     // resolve-then-reject (or build a second Error) on the same invocation (#533).

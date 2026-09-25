@@ -168,16 +168,6 @@ Semver rationale: minor — adds CLI inspection and community pattern management
 - **Research records.** Includes the completed KO GPT-family miss review and both languages of rewrite-efficacy Study 4. The treatment did not meet its promotion criteria; production rewrite behavior is unchanged.
 - Synchronize released and integration branch ancestry.
 
-## Release entry template
-
-```md
-## X.Y.Z — YYYY-MM-DD
-
-**Short release title.**
-
-Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
-```
-
 ## 8.1.1 — 2026-09-02
 
 **Docs cleanup, clean package contents, Docker image fix.**

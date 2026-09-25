@@ -12,11 +12,6 @@ import { createTextEdits, normalizeProtectedSpans, validateProtectedText, isWell
 import { fenceReferenceText, resolveRhetoricPolicy } from './prompt-builder.js';
 import { resolveWebPromptBudget } from './web-prompt-budget.js';
 import { buildDocumentSignals } from './features/document-signals.js';
-import {
-  buildKoreanDiagnosis,
-  diagnosisStructureGuidance,
-} from './features/korean-diagnosis.js';
-import { evaluateKoreanInvariants } from './features/korean-invariants.js';
 import { emitTelemetry, startTelemetryClock } from './web-observability.js';
 
 /**
@@ -39,7 +34,6 @@ import { emitTelemetry, startTelemetryClock } from './web-observability.js';
  *   error?: string,
  *   upstreamStatus?: number,
  *   numberSafety?: Record<string, any>,
- *   koreanInvariants?: Record<string, any>,
  *   failed?: any,
  *   rewrite?: string,
  *   mps?: number|null,
@@ -357,11 +351,6 @@ async function runWebRewriteStreamUnscoped({
   const budget = verifyOnly ? null : resolveWebPromptBudget(request, env);
   const original = String(request.original ?? request.text ?? '');
   const protectedSpans = request.protectedSpans?.length ? normalizeProtectedSpans(original, request.protectedSpans) : [];
-  const koreanResearch = request.lang === 'ko' && env.PATINA_KO_DIAGNOSIS_RESEARCH === '1';
-  const diagnosis = koreanResearch
-    ? buildKoreanDiagnosis(request.text, { repoRoot })
-    : null;
-  const structureGuidance = diagnosis ? diagnosisStructureGuidance(diagnosis) : 'baseline';
   const documentSignals = verifyOnly
     ? null
     : buildDocumentSignals({ text: request.text, lang: request.lang }).signals;
@@ -370,7 +359,6 @@ async function runWebRewriteStreamUnscoped({
     config: effectiveConfig,
     assets,
     promptMode: budget?.applied,
-    structureGuidance,
     documentSignals,
     // PATINA_RHETORIC_POLICY=legacy restores the pre-2026-09-14 similar-weight rhetoric sentence.
     rhetoricPolicy: resolveRhetoricPolicy(env),
@@ -384,7 +372,6 @@ async function runWebRewriteStreamUnscoped({
 
   let rewrite = '';
   let numberSafety;
-  let koreanInvariants = null;
   const rewriteExtra = rewriteExtraBody(request.provider, request.tier, env);
   // Attempt 1 streams deltas live for UX. If the rewrite fails the
   // deterministic number-safety gate, retry the LLM call up to
@@ -477,9 +464,6 @@ async function runWebRewriteStreamUnscoped({
       emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'stream_failed', ...failure });
       return { ok: false, code: 'stream_failed', ...failure, observed: observeTerminal('terminal_failed', 500) };
     }
-    koreanInvariants = koreanResearch
-      ? evaluateKoreanInvariants(original, rewrite)
-      : null;
     numberSafety = evaluateNumberSafety(original, rewrite, request.lang);
     if (numberSafety.ok) break;
     // An externally aborted signal must not spend another paid attempt.
@@ -489,7 +473,6 @@ async function runWebRewriteStreamUnscoped({
         ok: false,
         code: 'number_safety_failed',
         numberSafety,
-        ...(koreanInvariants ? { koreanInvariants } : {}),
         observed: observeTerminal('number_safety_failed', 422),
       };
     }
@@ -588,7 +571,6 @@ async function runWebRewriteStreamUnscoped({
       fidelity,
       signals,
       diff,
-      ...(koreanInvariants ? { koreanInvariants } : {}),
       observed: observeTerminal('terminal_failed', 422),
     };
   }
@@ -643,7 +625,6 @@ async function runWebRewriteStreamUnscoped({
     receipt,
     ...(editReview ? { editReview } : {}),
     budget,
-    ...(koreanInvariants ? { koreanInvariants } : {}),
     observed: observeTerminal('completed', 200),
   };
 }

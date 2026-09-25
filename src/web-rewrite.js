@@ -89,7 +89,6 @@ function renderHistory(history = []) {
  * @param {ReturnType<typeof loadWebAssets>} options.assets Loaded web assets.
  * @param {'strict'|'minimal'} [options.promptMode='strict'] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals=null] Trusted deterministic signals.
- * @param {'baseline'|'ko-contextual-v1'} [options.structureGuidance='baseline'] Structure treatment.
  * @param {'default'|'legacy'} [options.rhetoricPolicy='default'] Rhetoric edit policy.
  * @returns {string} Prompt text.
  */
@@ -99,7 +98,6 @@ export function buildWebRewritePrompt({
   assets,
   promptMode = 'strict',
   documentSignals = null,
-  structureGuidance = 'baseline',
   rhetoricPolicy = 'default',
 }) {
   if (request.mode === 'verify') {
@@ -122,7 +120,6 @@ export function buildWebRewritePrompt({
       promptMode === 'minimal' ? 'short-safe-v1' : 'baseline'
     ),
     documentSignals,
-    structureGuidance,
     rhetoricPolicy,
   };
 

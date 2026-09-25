@@ -8,7 +8,6 @@ import { runWebRewriteStream } from '../../src/web-rewrite-stream.js';
 import { mpsResult, fidelityResult } from '../fixtures/verification-results.js';
 import { WEB_PERSONAS } from '../../src/web-rewrite-contract.js';
 import { classifyWebPromptBudget, resolveWebPromptBudget } from '../../src/web-prompt-budget.js';
-import { buildKoreanDiagnosis, serializeKoreanDiagnosis } from '../../src/features/korean-diagnosis.js';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -293,25 +292,4 @@ test('hosted rewrite prompts keep non-Korean documentSignals empty', () => {
     });
     assert.doesNotMatch(prompt, /Document Signals|문서 신호/);
   }
-});
-
-test('Korean web prompt carries the bounded deterministic diagnosis', () => {
-  // Given: a Korean paragraph with a paragraph-attributed translationese signal.
-  const text = '결과는 담당자에 의해 검토된다. 일정은 운영팀에 의해 다시 조정된다.';
-  const request = baseRequest('ko', { text, original: text });
-  const config = configFor('ko');
-  const assets = loadWebAssets({ repoRoot, lang: 'ko', documentType: 'default', config });
-  const diagnosis = buildKoreanDiagnosis(text, { repoRoot });
-
-  // When: the hosted prompt is built with the diagnosis.
-  const prompt = buildWebRewritePrompt({
-    request,
-    config,
-    assets,
-    documentSignals: [serializeKoreanDiagnosis(diagnosis)],
-  });
-
-  // Then: the machine-consumed diagnosis is present without source text.
-  assert.ok(prompt.includes(serializeKoreanDiagnosis(diagnosis)));
-  assert.equal(serializeKoreanDiagnosis(diagnosis).includes('담당자'), false);
 });

@@ -4,7 +4,7 @@ import { EventEmitter } from 'node:events';
 import { createServer } from 'node:http';
 import { main } from '../../src/cli.js';
 import { resolvePromptMode } from '../../src/cli/run.js';
-import { setBrowserDiffRuntimeForTests, resetBrowserDiffRuntimeForTests } from '../../src/browser-diff.js';
+import { setPreviewPageRuntimeForTests, resetPreviewPageRuntimeForTests } from '../../src/preview/page.js';
 import { setOcrRuntimeForTests, resetOcrRuntimeForTests } from '../../src/ocr.js';
 import { startMockServer } from './helpers/mock-server.js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -253,7 +253,7 @@ describe('CLI End-to-End with Mock API', () => {
       '</body></html>',
     ].join('\n'));
 
-    setBrowserDiffRuntimeForTests({
+    setPreviewPageRuntimeForTests({
       tmpdir: () => '/tmp',
       mkdtemp: () => '/tmp/patina-preview-456',
       writeFile: () => {},
@@ -284,10 +284,10 @@ describe('CLI End-to-End with Mock API', () => {
 
       assert.ok(previewRun.logs.join('\n').includes('First paragraph rewritten by the mock backend'));
       assert.strictEqual(mock.callCount, 2);
-      assert.ok(previewRun.errors.some((line) => line.includes(`Preview page saved at ${join('/tmp', 'patina-preview-456', 'browser-diff-456.html')}`)));
+      assert.ok(previewRun.errors.some((line) => line.includes(`Preview page saved at ${join('/tmp', 'patina-preview-456', 'preview-456.html')}`)));
       assert.ok(previewRun.errors.some((line) => line.includes('Browser open failed: browser opener exited with code 1')));
     } finally {
-      resetBrowserDiffRuntimeForTests();
+      resetPreviewPageRuntimeForTests();
       rmSync(dir, { recursive: true, force: true });
       await mock.stop();
       mock = await startMockServer('This is the humanized result.');
@@ -305,7 +305,7 @@ describe('CLI End-to-End with Mock API', () => {
     ].join('\n'));
     const writes = [];
 
-    setBrowserDiffRuntimeForTests({
+    setPreviewPageRuntimeForTests({
       tmpdir: () => '/tmp',
       mkdtemp: () => '/tmp/patina-preview-789',
       writeFile: (_path, data) => {
@@ -346,7 +346,7 @@ describe('CLI End-to-End with Mock API', () => {
       assert.ok(!writes[0].includes('<details class="ptna-notes">'));
       assert.ok(writes[0].includes('<span class="ptna-after">First paragraph rewritten by the mock backend for the preview test.</span>'));
     } finally {
-      resetBrowserDiffRuntimeForTests();
+      resetPreviewPageRuntimeForTests();
       rmSync(dir, { recursive: true, force: true });
       await mock.stop();
       mock = await startMockServer('This is the humanized result.');
@@ -365,7 +365,7 @@ describe('CLI End-to-End with Mock API', () => {
     ].join('\n'));
 
     const spawns = [];
-    setBrowserDiffRuntimeForTests({
+    setPreviewPageRuntimeForTests({
       tmpdir: () => '/tmp',
       mkdtemp: () => '/tmp/patina-preview-serve',
       writeFile: () => {},
@@ -421,14 +421,14 @@ describe('CLI End-to-End with Mock API', () => {
       await mainPromise;
 
       assert.deepStrictEqual(spawns, [], 'serve mode must not spawn a window opener');
-      assert.ok(errors.some((line) => line.includes(`Preview page saved at ${join('/tmp', 'patina-preview-serve', 'browser-diff-999.html')}`)));
+      assert.ok(errors.some((line) => line.includes(`Preview page saved at ${join('/tmp', 'patina-preview-serve', 'preview-999.html')}`)));
       assert.ok(errors.some((line) => line.includes('Stops after 10 idle minutes')));
       assert.ok(logs.join('\n').includes('First paragraph rewritten by the mock backend'));
       assert.strictEqual(mock.callCount, 2);
     } finally {
       console.log = originalLog;
       console.error = originalError;
-      resetBrowserDiffRuntimeForTests();
+      resetPreviewPageRuntimeForTests();
       rmSync(dir, { recursive: true, force: true });
       await mock.stop();
       mock = await startMockServer('This is the humanized result.');
@@ -475,7 +475,7 @@ describe('CLI End-to-End with Mock API', () => {
 
     const writes = [];
     const spawns = [];
-    setBrowserDiffRuntimeForTests({
+    setPreviewPageRuntimeForTests({
       tmpdir: () => '/tmp',
       mkdtemp: (prefix) => {
         assert.match(prefix, /patina-preview-/);
@@ -514,8 +514,8 @@ describe('CLI End-to-End with Mock API', () => {
       // Document-brief stage: the rewrite request primes a global frame.
       assert.ok(mock.requestBodies[0].messages[0].content.includes('Phase 0: Document Brief'));
       assert.ok(previewRun.logs.join('\n').includes('First paragraph rewritten by the mock backend'));
-      assert.ok(previewRun.errors.some((line) => line.includes(`Preview page saved at ${join('/tmp', 'patina-preview-77', 'browser-diff-77.html')} (2 of 2 blocks rewritten)`)));
-      assert.deepStrictEqual(spawns, [{ command: 'xdg-open', args: [resolve(join('/tmp', 'patina-preview-77', 'browser-diff-77.html'))] }]);
+      assert.ok(previewRun.errors.some((line) => line.includes(`Preview page saved at ${join('/tmp', 'patina-preview-77', 'preview-77.html')} (2 of 2 blocks rewritten)`)));
+      assert.deepStrictEqual(spawns, [{ command: 'xdg-open', args: [resolve(join('/tmp', 'patina-preview-77', 'preview-77.html'))] }]);
 
       const page = writes[0].data;
       assert.ok(page.includes('<span class="ptna-after">First paragraph rewritten by the mock backend for the preview test.</span>'));
@@ -534,7 +534,7 @@ describe('CLI End-to-End with Mock API', () => {
       assert.ok(!page.includes('<script'));
       assert.ok(!page.includes('serialized markup'));
     } finally {
-      resetBrowserDiffRuntimeForTests();
+      resetPreviewPageRuntimeForTests();
       await new Promise((resolveClose) => pageServer.close(resolveClose));
       await mock.stop();
       mock = await startMockServer('This is the humanized result.');
@@ -556,7 +556,7 @@ describe('CLI End-to-End with Mock API', () => {
     // overlay (not dropped-numbers) can catch it.
     const rewriteResponse = '[BODY]\nThe balance is 5 this quarter and the audit trail stays intact.\n[/BODY]';
     const writes = [];
-    setBrowserDiffRuntimeForTests({
+    setPreviewPageRuntimeForTests({
       tmpdir: () => '/tmp',
       mkdtemp: () => '/tmp/patina-preview-numeric',
       writeFile: (path, data) => {
@@ -612,7 +612,7 @@ describe('CLI End-to-End with Mock API', () => {
 
     const rewriteResponse = '[BODY]\nFirst paragraph rewritten by the mock backend for the preview test.\n[/BODY]';
     const writes = [];
-    setBrowserDiffRuntimeForTests({
+    setPreviewPageRuntimeForTests({
       tmpdir: () => '/tmp',
       mkdtemp: () => '/tmp/patina-preview-99',
       writeFile: (path, data) => {
@@ -651,7 +651,7 @@ describe('CLI End-to-End with Mock API', () => {
       assert.ok(page.includes('<span class="ptna-after">First paragraph rewritten by the mock backend for the preview test.</span>'));
       assert.ok(page.includes(`<base href="${pathToFileURL(htmlPath).href}">`));
     } finally {
-      resetBrowserDiffRuntimeForTests();
+      resetPreviewPageRuntimeForTests();
       rmSync(dir, { recursive: true, force: true });
       await mock.stop();
       mock = await startMockServer('This is the humanized result.');
@@ -679,7 +679,7 @@ describe('CLI End-to-End with Mock API', () => {
     ].join('\n');
 
     const writes = [];
-    setBrowserDiffRuntimeForTests({
+    setPreviewPageRuntimeForTests({
       tmpdir: () => '/tmp',
       mkdtemp: () => '/tmp/patina-preview-ocr',
       writeFile: (path, data) => {
@@ -733,7 +733,7 @@ describe('CLI End-to-End with Mock API', () => {
       // The notes panel auto-opens so image findings aren't hidden.
       assert.ok(/<details class="ptna-notes" open>/.test(page));
     } finally {
-      resetBrowserDiffRuntimeForTests();
+      resetPreviewPageRuntimeForTests();
       resetOcrRuntimeForTests();
       rmSync(dir, { recursive: true, force: true });
       await mock.stop();

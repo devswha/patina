@@ -12,13 +12,15 @@ import { selectProvider, resolveProviderConfig } from '../providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from '../security.js';
 import { formatOutput, validateScoreWeights, buildDeterministicAuditBackstop, cleanRewriteOutput } from '../output.js';
 import {
-  buildBrowserDiffPromptInput,
+  buildExplanationPromptInput,
   renderExplanationHtml,
-  writeBrowserDiffPage,
-  openBrowserDiffPage,
-  serveBrowserDiffPage,
-} from '../browser-diff.js';
-import { fetchPreviewPage, prepareSnapshotHtml, freezeSnapshotAssets, extractProseBlocks, alignRewrites, buildPreviewHtml, buildContextCardHtml } from '../preview.js';
+  writePreviewPage,
+  openPreviewPage,
+  servePreviewPage,
+} from '../preview/page.js';
+import { fetchPreviewPage, prepareSnapshotHtml, freezeSnapshotAssets } from '../preview/snapshot.js';
+import { extractProseBlocks, alignRewrites } from '../preview/extract.js';
+import { buildPreviewHtml, buildContextCardHtml } from '../preview/render.js';
 import { collectImageCandidates, stageOcrImages, ocrStagedImages, describeImage, hasOcrRunnerOverride } from '../ocr.js';
 import { rmSync, readFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -998,7 +1000,7 @@ async function runPreviewJob({
         ...invokeInputs,
         prompt: buildPrompt({
           ...basePromptInputs,
-          text: buildBrowserDiffPromptInput(rewriteText, rewrittenBody),
+          text: buildExplanationPromptInput(rewriteText, rewrittenBody),
           mode: 'diff',
         }),
       });
@@ -1098,11 +1100,11 @@ async function runPreviewJob({
     // Do the throwing/binding work (temp-file write, serve port bind) BEFORE the
     // large stdout write: process.exit() does not drain a piped stdout, so a
     // throw after console.log(stdoutBody) truncates piped output (#527 H7).
-    const pagePath = writeBrowserDiffPage(built.html, { prefix: 'patina-preview-' });
+    const pagePath = writePreviewPage(built.html);
     const imageSummary = built.imageChangedCount > 0 ? `, ${built.imageChangedCount} image(s) flagged` : '';
     let serveHandle = null;
     if (parsed.serve) {
-      serveHandle = await serveBrowserDiffPage(built.html, { signal: cancellation.signal });
+      serveHandle = await servePreviewPage(built.html, { signal: cancellation.signal });
     }
 
     console.log(stdoutBody);
@@ -1113,7 +1115,7 @@ async function runPreviewJob({
       await serveHandle.done;
     } else {
       try {
-        await openBrowserDiffPage(pagePath);
+        await openPreviewPage(pagePath);
       } catch (err) {
         console.error(`[patina] Browser open failed: ${err.message}`);
       }

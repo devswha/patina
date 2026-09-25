@@ -1,6 +1,5 @@
-import { htmlEscape } from '../browser-diff.js';
 import { describeImage } from '../ocr.js';
-import { stripActiveContent } from './dom.js';
+import { stripActiveContent, htmlEscape } from './dom.js';
 
 const MAX_JUMP_CHIPS = 12;
 
@@ -26,8 +25,7 @@ export function buildContextCardHtml({ sourceRegister = null, register = null } 
 // Models habitually mark identifiers as markdown inline code (`token`) in
 // rewrites. The snapshot swap renders plain text, so the pair would show up
 // as literal backticks on a page that never had them — strip the pair, keep
-// the token. Applied only to the URL/snapshot path; file previews render
-// markdown sources where backticks are the author's own formatting.
+// the token.
 function stripMarkdownInlineCode(text) {
   return String(text).replace(/`([^`\n]+)`/g, '$1');
 }

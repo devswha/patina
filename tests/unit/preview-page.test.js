@@ -3,20 +3,16 @@ import assert from 'node:assert';
 import { EventEmitter } from 'node:events';
 import { join, resolve as resolvePath } from 'node:path';
 import {
-  buildBrowserDiffPromptInput,
-  htmlEscape,
-  writeBrowserDiffPage,
-  openBrowserDiffPage,
-  serveBrowserDiffPage,
-} from '../../src/browser-diff.js';
+  buildExplanationPromptInput,
+  writePreviewPage,
+  openPreviewPage,
+  servePreviewPage,
+} from '../../src/preview/page.js';
+import { htmlEscape } from '../../src/preview/dom.js';
 
-test('buildBrowserDiffPromptInput carries the explicit compare contract', () => {
-  const prompt = buildBrowserDiffPromptInput('before text', 'after text');
-  assert.match(prompt, /Compare BEFORE to AFTER\./);
-  assert.match(prompt, /Do not rewrite either text\./);
-  assert.match(prompt, /Report only changes present in AFTER relative to BEFORE\./);
-  assert.match(prompt, /## BEFORE\nbefore text/);
-  assert.match(prompt, /## AFTER\nafter text/);
+test('buildExplanationPromptInput carries BEFORE then AFTER sections', () => {
+  const prompt = buildExplanationPromptInput('before text', 'after text');
+  assert.match(prompt, /## BEFORE\nbefore text\n\n## AFTER\nafter text$/);
 });
 
 test('htmlEscape escapes markup-significant characters', () => {
@@ -26,14 +22,14 @@ test('htmlEscape escapes markup-significant characters', () => {
   );
 });
 
-test('writeBrowserDiffPage uses a patina-scoped temp dir and restrictive permissions', () => {
+test('writePreviewPage uses a patina-scoped temp dir and restrictive permissions', () => {
   const writes = [];
   const chmods = [];
-  const path = writeBrowserDiffPage('<html/>', {
+  const path = writePreviewPage('<html/>', {
     tmpdir: () => '/tmp',
     mkdtemp: (prefix) => {
-      assert.match(prefix, /patina-browser-diff-/);
-      return '/tmp/patina-browser-diff-abc';
+      assert.match(prefix, /patina-preview-/);
+      return '/tmp/patina-preview-abc';
     },
     writeFile: (filePath, content, encoding) => {
       writes.push({ filePath, content, encoding });
@@ -46,8 +42,8 @@ test('writeBrowserDiffPage uses a patina-scoped temp dir and restrictive permiss
 
   // The dir chmod receives the mkdtemp return value verbatim; only the file
   // path goes through join().
-  const expectedDir = '/tmp/patina-browser-diff-abc';
-  const expectedFile = join(expectedDir, 'browser-diff-42.html');
+  const expectedDir = '/tmp/patina-preview-abc';
+  const expectedFile = join(expectedDir, 'preview-42.html');
   assert.strictEqual(path, expectedFile);
   assert.deepStrictEqual(writes, [{ filePath: expectedFile, content: '<html/>', encoding: 'utf8' }]);
   assert.deepStrictEqual(chmods, [
@@ -56,12 +52,12 @@ test('writeBrowserDiffPage uses a patina-scoped temp dir and restrictive permiss
   ]);
 });
 
-test('writeBrowserDiffPage fails loudly when chmod hardening fails on a POSIX-like platform', () => {
+test('writePreviewPage fails loudly when chmod hardening fails on a POSIX-like platform', () => {
   assert.throws(
     () =>
-      writeBrowserDiffPage('<html/>', {
+      writePreviewPage('<html/>', {
         tmpdir: () => '/tmp',
-        mkdtemp: () => '/tmp/patina-browser-diff-fail',
+        mkdtemp: () => '/tmp/patina-preview-fail',
         writeFile: () => {},
         chmod: () => {
           throw new Error('chmod failed');
@@ -73,7 +69,7 @@ test('writeBrowserDiffPage fails loudly when chmod hardening fails on a POSIX-li
   );
 });
 
-test('openBrowserDiffPage selects the platform opener and propagates close failures', async () => {
+test('openPreviewPage selects the platform opener and propagates close failures', async () => {
   let seen = null;
   let unrefCalled = false;
   const successSpawn = (command, args) => {
@@ -86,12 +82,12 @@ test('openBrowserDiffPage selects the platform opener and propagates close failu
     return child;
   };
 
-  await openBrowserDiffPage('/tmp/demo.html', { platform: 'linux', spawn: successSpawn });
+  await openPreviewPage('/tmp/demo.html', { platform: 'linux', spawn: successSpawn });
   assert.deepStrictEqual(seen, { command: 'xdg-open', args: [resolvePath('/tmp/demo.html')] });
   assert.strictEqual(unrefCalled, false);
 
   await assert.rejects(
-    () => openBrowserDiffPage('/tmp/demo.html', {
+    () => openPreviewPage('/tmp/demo.html', {
       platform: 'darwin',
       spawn: () => {
         const child = new EventEmitter();
@@ -104,9 +100,9 @@ test('openBrowserDiffPage selects the platform opener and propagates close failu
   );
 });
 
-test('serveBrowserDiffPage serves only the token URL on loopback with hardened headers', async () => {
+test('servePreviewPage serves only the token URL on loopback with hardened headers', async () => {
   const html = '<html><body>diff page</body></html>';
-  const { url, close, done } = await serveBrowserDiffPage(html, {
+  const { url, close, done } = await servePreviewPage(html, {
     randomToken: () => 'tok123',
     idleTimeoutMs: 60_000,
   });
@@ -133,8 +129,8 @@ test('serveBrowserDiffPage serves only the token URL on loopback with hardened h
   await done;
 });
 
-test('serveBrowserDiffPage stops on its own after the idle timeout', async () => {
-  const { url, done } = await serveBrowserDiffPage('idle page', {
+test('servePreviewPage stops on its own after the idle timeout', async () => {
+  const { url, done } = await servePreviewPage('idle page', {
     randomToken: () => 'tok',
     idleTimeoutMs: 40,
   });
@@ -142,10 +138,10 @@ test('serveBrowserDiffPage stops on its own after the idle timeout', async () =>
   await assert.rejects(() => fetch(url));
 });
 
-test('serveBrowserDiffPage with an already-aborted signal resolves and closes immediately', async () => {
+test('servePreviewPage with an already-aborted signal resolves and closes immediately', async () => {
   const controller = new AbortController();
   controller.abort();
-  const { url, done } = await serveBrowserDiffPage('pre-aborted', {
+  const { url, done } = await servePreviewPage('pre-aborted', {
     randomToken: () => 'tok',
     idleTimeoutMs: 60_000,
     signal: controller.signal,
@@ -155,9 +151,9 @@ test('serveBrowserDiffPage with an already-aborted signal resolves and closes im
   await assert.rejects(() => fetch(url));
 });
 
-test('serveBrowserDiffPage closes when the abort signal fires', async () => {
+test('servePreviewPage closes when the abort signal fires', async () => {
   const controller = new AbortController();
-  const { url, done } = await serveBrowserDiffPage('abort page', {
+  const { url, done } = await servePreviewPage('abort page', {
     randomToken: () => 'tok',
     idleTimeoutMs: 60_000,
     signal: controller.signal,
@@ -167,7 +163,7 @@ test('serveBrowserDiffPage closes when the abort signal fires', async () => {
   await assert.rejects(() => fetch(url));
 });
 
-test('serveBrowserDiffPage surfaces post-listen socket errors to the logger and shuts down (G9)', async () => {
+test('servePreviewPage surfaces post-listen socket errors to the logger and shuts down (G9)', async () => {
   let serverCloseCalls = 0;
   class FakeServer extends EventEmitter {
     listen(_port, _host, cb) {
@@ -191,7 +187,7 @@ test('serveBrowserDiffPage surfaces post-listen socket errors to the logger and 
   const warnings = [];
   const logger = { warn: (event, fields) => warnings.push({ event, fields }) };
 
-  const { url, done } = await serveBrowserDiffPage('<html/>', {
+  const { url, done } = await servePreviewPage('<html/>', {
     createServer: () => fake,
     randomToken: () => 'tok',
     idleTimeoutMs: 60_000,

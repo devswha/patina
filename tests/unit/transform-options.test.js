@@ -3,7 +3,7 @@ import assert from 'node:assert';
 
 import { parseArgs, validateTransformRequest, buildTransformVariants } from '../../src/cli/args.js';
 import { buildPrompt, buildTransformDirective } from '../../src/prompt-builder.js';
-import { buildPreviewHtml, diffWordSegments } from '../../src/preview.js';
+import { buildPreviewHtml, diffWordSegments } from '../../src/preview/render.js';
 
 const BASE = {
   config: { language: 'en', documentType: 'default' },

@@ -1,7 +1,6 @@
-import { htmlEscape } from '../browser-diff.js';
 import { fetchCappedBytes, readResponseBytesCapped } from '../ocr.js';
 import { isSubresourceFetchAllowed } from '../security.js';
-import { stripActiveContent, fromCodePointSafe } from './dom.js';
+import { stripActiveContent, fromCodePointSafe, htmlEscape } from './dom.js';
 
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 const DEFAULT_FETCH_TIMEOUT_MS = 30000;
@@ -406,8 +405,6 @@ function decodeHtmlEntities(value) {
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/gi, "'")
     .replace(/&amp;/gi, '&');
 }
 

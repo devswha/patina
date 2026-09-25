@@ -146,10 +146,17 @@ export function decodeEntities(text) {
     .replace(/&#(\d+);/g, (m, dec) => fromCodePointSafe(Number(dec), m))
     .replace(/&nbsp;/gi, ' ')
     .replace(/&quot;/gi, '"')
-    .replace(/&#39;/g, "'")
     .replace(/&apos;/gi, "'")
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&amp;/gi, '&');
 }
 
+export function htmlEscape(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}

@@ -10,8 +10,6 @@ import { DEFAULT_BEST_MODELS } from './model-defaults.js';
  * Built-in OpenAI-compatible provider presets.
  *
  * @type {Record<string, {name: string, baseURL: string, apiKeyEnv: string, defaultModel: string}>}
- * @example
- * const openaiBaseURL = PROVIDERS.openai.baseURL;
  */
 export const PROVIDERS = {
   openai: {
@@ -69,8 +67,6 @@ export const PROVIDERS = {
  *
  * @param {string|null|undefined} name Provider name; falsy returns null.
  * @throws {PatinaCliError} When name is unknown.
- * @example
- * const provider = selectProvider('openai');
  */
 export function selectProvider(name) {
   if (!name) return null;
@@ -94,8 +90,6 @@ export function selectProvider(name) {
  * @param {string} [options.baseURL] Explicit base URL.
  * @param {string} [options.model] Explicit model id.
  * @returns {{apiKey: string|null, baseURL: string, model: string, apiKeySource: string|null, baseURLSource: string|null, modelSource: string|null}} Resolved provider config.
- * @example
- * const resolved = resolveProviderConfig({ provider: selectProvider('openai') });
  */
 export function resolveProviderConfig({ provider, apiKey, baseURL, model }) {
   // Explicit args win. Then provider preset. Then PATINA_* env vars.

@@ -220,6 +220,11 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   });
 }
 
+/** agy's --print-timeout value for a Patina timeout in ms; non-finite maps to a year. */
+export function agyPrintTimeout(timeout) {
+  return Number.isFinite(timeout) ? `${Math.max(1, Math.ceil(timeout / 1000))}s` : '8760h';
+}
+
 /**
  * Recover the final response from `--output-format stream-json` NDJSON.
  *
@@ -234,10 +239,6 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
  * @param {string} [stderr] Diagnostics, appended to error messages.
  * @returns {string} Response text.
  */
-export function agyPrintTimeout(timeout) {
-  return Number.isFinite(timeout) ? `${Math.max(1, Math.ceil(timeout / 1000))}s` : '8760h';
-}
-
 export function extractAgyResponse(stdout, stderr = '') {
   const results = [];
   const toolSteps = [];

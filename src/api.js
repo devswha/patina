@@ -77,8 +77,6 @@ const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
  * @param {number} status HTTP status code returned by the provider.
  * @param {string} body Response body text, truncated in the message.
  * @param {string|null} retryAfter Raw Retry-After response header, if present.
- * @example
- * throw new HttpError(429, 'rate limit', '2');
  */
 export class HttpError extends Error {
   constructor(status, body, retryAfter) {
@@ -99,7 +97,7 @@ function truncate(text, max = 256) {
  * params) from provider error text BEFORE it enters an error message, error
  * body, or a log line. The single source of truth for LLM-transport error
  * redaction, reused by the streaming helper and the scoring logger so a BYOK
- * key echoed in a provider error response is never persisted (AC11).
+ * key echoed in a provider error response is never persisted.
  *
  * @param {unknown} text
  * @returns {string}
@@ -151,8 +149,6 @@ function sleepWithSignal(sleep, ms, signal) {
  *
  * @param {Error|Object} err Error thrown by fetch or {@link HttpError}.
  * @returns {boolean} True for retryable HTTP statuses, aborts, and common network failures.
- * @example
- * const retry = isRetryable(new HttpError(429, 'rate limit', '1'));
  */
 export function isRetryable(err) {
   if (!err) return false;
@@ -175,8 +171,6 @@ export function isRetryable(err) {
  * @param {Function} [opts.now] Clock returning epoch milliseconds.
  * @param {Function} [opts.random] Random number provider used for jitter.
  * @returns {number} Delay in milliseconds, capped at opts.max.
- * @example
- * const delay = computeBackoffMs(1, '2'); // 2000
  */
 export function computeBackoffMs(attempt, retryAfter, opts = {}) {
   const {

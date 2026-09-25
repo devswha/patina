@@ -17,12 +17,10 @@ export const supportsImages = true;
 export const loginCommand = 'codex login';
 
 // Codex feature flags that expose agent tools. A rewrite or score is a pure
-// text transform, yet with these enabled `codex exec` behaves as an agent:
-// on the 2026-09-10 P17b pilot it issued 3-13 shell tool calls per prompt
-// inside the read-only sandbox, re-sending the prompt on every turn (one KO
-// rewrite reached 11 turns, ~500k cumulative input tokens). Disabling them
-// removes the tool definitions from the request and leaves a single turn.
-// Images still arrive through `-i`, which is model input, not a tool.
+// text transform, yet with these enabled `codex exec` behaves as an agent,
+// issuing shell tool calls and re-sending the prompt on every turn. Disabling
+// them removes the tool definitions from the request and leaves a single
+// turn. Images still arrive through `-i`, which is model input, not a tool.
 export const CODEX_DISABLED_FEATURES = Object.freeze(['shell_tool', 'unified_exec', 'multi_agent']);
 export const installHint = 'Install it from https://github.com/openai/codex, then run `patina auth login codex-cli` again.';
 

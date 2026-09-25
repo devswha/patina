@@ -33,12 +33,11 @@ function credentialsPath() {
  * Classify the Claude Code credentials file without touching the network.
  *
  * Claude Code keeps the file after a logout or a failed token refresh but
- * blanks the tokens and sets `expiresAt` to 0, so file presence alone reported
- * an expired session as authenticated (observed 2026-09-10 during the P17b
- * pilot). A session is usable when the access token is live, or when a live
- * refresh token lets the CLI mint a new one. Only positive, finite, past
- * timestamps count as expired; 0 or a missing timestamp means "unknown", not
- * "expired". An unrecognised layout keeps the old presence semantics so other
+ * blanks the tokens and sets `expiresAt` to 0, so file presence alone would
+ * report an expired session as authenticated. A session is usable when the
+ * access token is live, or when a live refresh token lets the CLI mint a new
+ * one. Only positive, finite, past timestamps count as expired; 0 or a
+ * missing timestamp means "unknown", not "expired". An unrecognised layout keeps the old presence semantics so other
  * credential stores are not misreported.
  *
  * @param {string} file Credentials file path.
@@ -90,8 +89,7 @@ export function hasMacOsKeychainCredentials({ platform = process.platform, spawn
 /**
  * Classify Claude Code authentication without touching the network. The
  * credentials file and the platform/spawn pair are injectable so tests can
- * classify owned fixtures instead of the host home; every default is the
- * real runtime value, so a no-argument call behaves exactly as before.
+ * classify owned fixtures instead of the host home.
  *
  * @param {{credentialsFile?: string, platform?: string, spawnSyncImpl?: Function}} [deps] Internal test seam.
  * @returns {boolean} Whether a usable Claude Code session exists.

@@ -15,8 +15,6 @@ const DOCUMENT_TYPE_NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_-]*$/;
  * @param {string} name Name supplied by CLI or config.
  * @returns {void}
  * @throws {PatinaCliError} When the name is empty, non-string, or unsafe.
- * @example
- * validateDocumentTypeName('technical');
  */
 export function validateDocumentTypeName(name) {
   if (typeof name !== 'string' || !DOCUMENT_TYPE_NAME_RE.test(name)) {
@@ -33,8 +31,6 @@ export function validateDocumentTypeName(name) {
  *
  * @param {string} hostname Hostname from a URL.
  * @returns {boolean} True for localhost, 127/8, or ::1.
- * @example
- * const local = isLoopbackHost('127.0.0.1');
  */
 export function isLoopbackHost(hostname) {
   if (!hostname) return false;
@@ -58,8 +54,6 @@ export function isLoopbackHost(hostname) {
  *
  * @param {string} hostname Hostname or bracketed IPv6 literal.
  * @returns {boolean} True when the literal IP is private or special-use.
- * @example
- * const blocked = isPrivateOrSpecialIP('169.254.169.254');
  */
 export function isPrivateOrSpecialIP(hostname) {
   if (!hostname) return false;
@@ -124,8 +118,6 @@ function extractEmbeddedV4(lower) {
  * @param {string} baseURL URL to validate.
  * @returns {void}
  * @throws {PatinaCliError} When the URL is invalid, unsupported, insecure, or private without opt-in.
- * @example
- * validateBaseURL('https://api.openai.com/v1');
  */
 export function validateBaseURL(baseURL) {
   let url;
@@ -184,8 +176,6 @@ export function shouldAllowInsecureBaseURL() {
  *
  * @param {object} [parsed] Parsed CLI options.
  * @returns {void}
- * @example
- * applyInsecureBaseURLOptIn({ allowInsecureBaseURL: true });
  */
 export function applyInsecureBaseURLOptIn(parsed) {
   if (parsed && parsed.allowInsecureBaseURL) {
@@ -208,8 +198,6 @@ export function shouldAllowPrivateBaseURL() {
  *
  * @param {object} [parsed] Parsed CLI options.
  * @returns {void}
- * @example
- * applyPrivateBaseURLOptIn({ allowPrivateBaseURL: true });
  */
 export function applyPrivateBaseURLOptIn(parsed) {
   if (parsed && parsed.allowPrivateBaseURL) {

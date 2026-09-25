@@ -14,9 +14,9 @@ const BASE = {
   text: 'Sample body text for prompt construction.',
 };
 
-test('parseArgs rejects the removed --restyle flag and still parses --jargon', () => {
-  assert.throws(() => parseArgs(['--restyle', 'voice', 'draft.md']), /--restyle was removed/);
-  assert.throws(() => parseArgs(['--restyle', 'sentence']), /--restyle was removed/);
+test('parseArgs treats --restyle as an unknown option and still parses --jargon', () => {
+  assert.throws(() => parseArgs(['--restyle', 'voice', 'draft.md']), /unknown option --restyle/);
+  assert.throws(() => parseArgs(['--restyle', 'sentence']), /unknown option --restyle/);
 
   assert.equal(parseArgs(['--jargon', 'remove', 'draft.md']).jargon, 'remove');
   assert.equal(parseArgs(['--jargon', 'explain']).jargon, 'explain');

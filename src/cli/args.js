@@ -116,14 +116,6 @@ export function parseArgs(rawArgs) {
         parsed.persona = readOptionValue(args, i, arg);
         i++;
         break;
-      case '--restyle':
-        // AI-tell cleanup is always conservative. Voice and register changes
-        // are explicit axes; content re-planning remains out of scope.
-        throw inputError(
-          '--restyle was removed',
-          'patina cleans AI tells without changing claims. Voice changes use --persona; casual/professional register uses --register.',
-          'Drop --restyle, or use --persona/--register for an explicit voice change.'
-        );
       case '--jargon': {
         const value = readOptionValue(args, i, arg);
         i++;

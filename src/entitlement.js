@@ -238,16 +238,18 @@ export function createLicenseValidator({
     const subject = quotaKeyHmac(secret, `${provider.id}-license-subject`, licenseKey);
     const cacheKey = quotaKeyHmac(secret, `${provider.id}-license-cache`, licenseKey);
     const nowMs = now();
+    /**
+     * @param {NonNullable<ReturnType<typeof readCacheEntry>>} hit
+     * @returns {EntitlementResult}
+     */
+    const fromCache = (hit) => (hit.decision === 'allow'
+      ? { ok: true, subject, tier: 'pro', status: hit.status, cache: 'hit' }
+      : /** @type {EntitlementDeny} */ ({ ok: false, status: hit.status, reason: hit.reason }));
 
     // 3. Cache lookup. A broken cache read must NOT fail open; fall through to the provider.
     try {
       const hit = readCacheEntry(await store.get(cacheKey), nowMs);
-      if (hit) {
-        if (hit.decision === 'allow') {
-          return { ok: true, subject, tier: 'pro', status: hit.status, cache: 'hit' };
-        }
-        return /** @type {EntitlementDeny} */ ({ ok: false, status: hit.status, reason: hit.reason });
-      }
+      if (hit) return fromCache(hit);
     } catch {
       /* treat as a miss */
     }
@@ -305,12 +307,7 @@ export function createLicenseValidator({
         await sleep(pollIntervalMs);
         try {
           const hit = readCacheEntry(await store.get(cacheKey), now());
-          if (hit) {
-            if (hit.decision === 'allow') {
-              return { ok: true, subject, tier: 'pro', status: hit.status, cache: 'hit' };
-            }
-            return /** @type {EntitlementDeny} */ ({ ok: false, status: hit.status, reason: hit.reason });
-          }
+          if (hit) return fromCache(hit);
         } catch {
           /* a broken cache read never fails open; keep polling */
         }
@@ -343,12 +340,7 @@ export function createLicenseValidator({
       //     that would otherwise make a duplicate provider call.
       try {
         const hit = readCacheEntry(await store.get(cacheKey), nowMs);
-        if (hit) {
-          if (hit.decision === 'allow') {
-            return { ok: true, subject, tier: 'pro', status: hit.status, cache: 'hit' };
-          }
-          return /** @type {EntitlementDeny} */ ({ ok: false, status: hit.status, reason: hit.reason });
-        }
+        if (hit) return fromCache(hit);
       } catch {
         /* treat as a miss */
       }

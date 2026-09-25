@@ -1,7 +1,7 @@
 // @ts-check
 
 import { createHmac, randomBytes } from 'node:crypto';
-import { memoryReservationMethods, PRO_RETRY_HEADROOM, validateReservationPlan } from './quota-reservation.js';
+import { memoryReservationMethods, PRO_RETRY_HEADROOM } from './quota-reservation.js';
 import { isProductionPosture, QUOTA_REASONS, TIER_LIMITS, WEB_TIERS } from './web-rewrite-contract.js';
 
 const DAY_MS = 86_400_000;
@@ -146,6 +146,7 @@ export function createMemoryKv({ now = () => Date.now() } = {}) {
 
 /**
  * @typedef {{get?(key: string): Promise<unknown>, set?(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, acquireLease?(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease?(registryKey: string, lease: string): Promise<boolean>, reserveQuota?(plan: import('./quota-reservation.js').ReservationPlan): Promise<number[]>, settleQuota?(plan: import('./quota-reservation.js').ReservationPlan, refund: boolean): Promise<number>, __memory?: boolean}} QuotaKv
+ * @typedef {{allowed: false, status: number, reason: string}} Denial
  * @typedef {{allowed: true, tier: string, remainingDay?: number, reservation?: import('./quota-reservation.js').ReservationPlan}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} RateLimitResult
  * @typedef {{allowed: true, tier: string, remainingDay?: number, lease: string}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} ConcurrencyResult
  * @typedef {{warn?: (...args: unknown[]) => void}} RateLimitLogger
@@ -164,9 +165,9 @@ export function createMemoryKv({ now = () => Date.now() } = {}) {
 export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.now(), limits = TIER_LIMITS, logger = console, concurrencyTtlMs = DEFAULT_CONCURRENCY_TTL_MS, leaseId = () => randomBytes(32).toString('base64url') }) {
   const productionGuard = () => {
     const production = isProductionPosture(env);
-    if (production && (!kv || kv.__memory)) return /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE });
-    if (production && !hmacSecret) return /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.SECRET_UNAVAILABLE });
-    if (!kv) return /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE });
+    if (production && (!kv || kv.__memory)) return /** @type {Denial} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE });
+    if (production && !hmacSecret) return /** @type {Denial} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.SECRET_UNAVAILABLE });
+    if (!kv) return /** @type {Denial} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE });
     return null;
   };
 
@@ -179,9 +180,9 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
   // Only the handler's server-side facts set `synthetic`; no request body
   // reaches it.
   const reservePro = async ({ subject, chars, requestId, synthetic }) => {
-    const unavailable = /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE });
+    const unavailable = /** @type {Denial} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE });
     const guard = productionGuard(); if (guard) return guard;
-    if (typeof subject !== 'string' || !subject) return /** @type {RateLimitResult} */ ({ allowed: false, status: 401, reason: QUOTA_REASONS.LICENSE_REQUIRED });
+    if (typeof subject !== 'string' || !subject) return /** @type {Denial} */ ({ allowed: false, status: 401, reason: QUOTA_REASONS.LICENSE_REQUIRED });
     if (!requestId || typeof requestId !== 'string' || !kv?.reserveQuota || !kv?.settleQuota) return unavailable;
     const cap = limits.pro;
     if (!isPositiveSafeInteger(cap?.reqPerDay) || !isPositiveSafeInteger(cap?.reqPerMonth)) return unavailable;
@@ -210,7 +211,6 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
       attemptCap: exempt ? SYNTHETIC_MONTHLY_UNBOUNDED : cap.reqPerMonth + Math.min(PRO_RETRY_HEADROOM, cap.reqPerMonth),
     };
     try {
-      validateReservationPlan(plan);
       const result = await kv.reserveQuota(plan);
       if (result.length === 2 && result[0] === 1 && Number.isSafeInteger(result[1]) && result[1] >= 0 && result[1] < cap.reqPerDay) {
         return /** @type {RateLimitResult} */ ({ allowed: true, tier: WEB_TIERS.PRO, remainingDay: result[1], reservation: plan });
@@ -241,26 +241,26 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
       case WEB_TIERS.FREE: {
         const guard = productionGuard();
         if (guard) return { ok: false, result: guard };
-        if (!ip) return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 400, reason: QUOTA_REASONS.IP_UNAVAILABLE }) };
+        if (!ip) return { ok: false, result: /** @type {Denial} */ ({ allowed: false, status: 400, reason: QUOTA_REASONS.IP_UNAVAILABLE }) };
         const secret = hmacSecret || 'patina-local-quota-secret';
         const tierLimits = tier === WEB_TIERS.BYOK ? limits.byok : limits.free;
         if (!tierLimits || !isPositiveSafeInteger(tierLimits.maxConcurrent)) {
-          return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE }) };
+          return { ok: false, result: /** @type {Denial} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE }) };
         }
         return { ok: true, key: quotaKeyHmac(secret, tier, 'concurrent', ip), maxConcurrent: tierLimits.maxConcurrent };
       }
       case WEB_TIERS.PRO: {
         const guard = productionGuard();
         if (guard) return { ok: false, result: guard };
-        if (typeof subject !== 'string' || subject === '') return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 401, reason: QUOTA_REASONS.LICENSE_REQUIRED }) };
+        if (typeof subject !== 'string' || subject === '') return { ok: false, result: /** @type {Denial} */ ({ allowed: false, status: 401, reason: QUOTA_REASONS.LICENSE_REQUIRED }) };
         const secret = hmacSecret || 'patina-local-quota-secret';
         if (!limits.pro || !isPositiveSafeInteger(limits.pro.maxConcurrent)) {
-          return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE }) };
+          return { ok: false, result: /** @type {Denial} */ ({ allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE }) };
         }
         return { ok: true, key: quotaKeyHmac(secret, 'pro', 'concurrent', subject), maxConcurrent: limits.pro.maxConcurrent };
       }
       default:
-        return { ok: false, result: /** @type {RateLimitResult} */ ({ allowed: false, status: 400, reason: 'unsupported tier' }) };
+        return { ok: false, result: /** @type {Denial} */ ({ allowed: false, status: 400, reason: 'unsupported tier' }) };
     }
   };
 
@@ -276,7 +276,6 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
   return {
     async settleReservation({ reservation, refund }) {
       if (!kv?.settleQuota || typeof refund !== 'boolean') return false;
-      try { validateReservationPlan(reservation); } catch { return false; }
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const result = await kv.settleQuota(reservation, refund);
@@ -343,26 +342,7 @@ export function createRateLimiter({ kv, hmacSecret, env = {}, now = () => Date.n
     },
     async acquireConcurrency({ tier, ip, subject }) {
       const resolved = getConcurrencyKey(tier, ip, subject);
-      if (!resolved.ok) {
-        if (!resolved.result.allowed) {
-          if (
-            'status' in resolved.result
-            && Number.isSafeInteger(resolved.result.status)
-            && 'reason' in resolved.result
-            && typeof resolved.result.reason === 'string'
-          ) {
-            return { allowed: false, status: resolved.result.status, reason: resolved.result.reason };
-          }
-          return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
-        }
-        try {
-          const lease = leaseId();
-          if (typeof lease === 'string' && lease !== '') return { allowed: true, tier: resolved.result.tier, lease };
-        } catch {
-          // An unavailable cryptographic token source cannot grant a capability.
-        }
-        return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
-      }
+      if (!resolved.ok) return resolved.result;
       if (!kv || typeof kv.acquireLease !== 'function' || typeof kv.releaseLease !== 'function') {
         return { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
       }

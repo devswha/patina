@@ -58,26 +58,23 @@ export function polarValidateUrl(env = {}) {
 
 /**
  * Build the validate request body. The organization ID is server configuration,
- * never caller-supplied, so a request can never be pointed at another org.
+ * never caller-supplied, so a request can never be pointed at another org. The
+ * entitlement core only calls this with a non-empty license after
+ * POLAR_PROVIDER.configured has confirmed the organization ID.
  *
  * @param {string} license Raw license key from the Authorization header.
  * @param {Record<string, string|undefined>} [env]
- * @returns {{ok: true, body: {key: string, organization_id: string}}|{ok: false, detail: string}}
+ * @returns {{key: string, organization_id: string|undefined}}
  */
 export function buildPolarValidateRequest(license, env = {}) {
-  const organizationId = env.POLAR_ORGANIZATION_ID;
-  if (typeof organizationId !== 'string' || organizationId === '') {
-    return { ok: false, detail: 'organization-not-configured' };
-  }
-  if (typeof license !== 'string' || license === '') {
-    return { ok: false, detail: 'license-missing' };
-  }
-  return { ok: true, body: { key: license, organization_id: organizationId } };
+  return { key: license, organization_id: env.POLAR_ORGANIZATION_ID };
 }
 
 /**
  * Pure allow/deny evaluation of a Polar validate response against the
- * configured organization and benefit.
+ * configured organization and benefit. It reads named fields only: the same
+ * response carries the purchaser's `user` and `customer` objects (email, name,
+ * avatar URL and IDs), which must never reach a log, KV value or result.
  *
  * Like the shared entitlement core, on any failed check
  * the PUBLIC result is a generic 403 LICENSE_INVALID, and the failing check is
@@ -159,19 +156,6 @@ export function isPolarDefinitiveDenial(status, body) {
 }
 
 /**
- * Response fields that carry customer PII and must NEVER reach a log line, an
- * error body, a KV value, or a return value.
- *
- * Measured against a live sandbox validate response (2026-07-29): alongside
- * the entitlement fields, Polar returns `user` and `customer` objects with the
- * purchaser's email, display name, and avatar URL, plus their IDs. This
- * mirrors the provider PII hazard documented in src/entitlement.js, and it
- * is why `evaluatePolarLicenseResponse` reads named fields instead of passing
- * the body through.
- */
-export const POLAR_PII_FIELDS = Object.freeze(['user', 'customer', 'user_id', 'customer_id']);
-
-/**
  * Conservative default for the validate admission bucket, in requests per
  * minute.
  *
@@ -186,7 +170,7 @@ export const POLAR_PII_FIELDS = Object.freeze(['user', 'customer', 'user_id', 'c
  * The LS default was 50/min against a documented 60/min ceiling; Polar's
  * observed tolerance is far tighter, hence 10.
  */
-export const POLAR_DEFAULT_VALIDATE_RPM = 10;
+const POLAR_DEFAULT_VALIDATE_RPM = 10;
 
 /**
  * Polar provider descriptor for the shared entitlement core.
@@ -197,23 +181,16 @@ export const POLAR_PROVIDER = {
   id: 'polar',
   url: (env) => polarValidateUrl(env),
   configured: (env) => Boolean(env.POLAR_ORGANIZATION_ID && env.POLAR_PRO_BENEFIT_ID),
-  request: (license, env) => {
-    const built = buildPolarValidateRequest(license, env);
-    // `configured` already gated the only failure this can hit; throwing here
-    // would surface as a transient 503 from the core's fetch guard, which is
-    // the correct fail-closed direction anyway.
-    if (built.ok !== true) throw new Error(`polar validate request: ${built.detail}`);
-    return {
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-      body: JSON.stringify(built.body),
-    };
-  },
+  request: (license, env) => ({
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(buildPolarValidateRequest(license, env)),
+  }),
   isDefinitiveDenial: isPolarDefinitiveDenial,
   evaluate: evaluatePolarLicenseResponse,
   defaultRpm: POLAR_DEFAULT_VALIDATE_RPM,
   // Polar's error field is a short machine code ("ResourceNotFound"), safe to
-  // log. The rest of the body — user/customer objects — is PII and is never
-  // passed anywhere; see POLAR_PII_FIELDS.
+  // log. The rest of the body carries the purchaser's `user` and `customer`
+  // objects (email, name, avatar URL and IDs) and is never passed anywhere.
   errorText: (data) => (data && typeof data.error === 'string' ? data.error : undefined),
 };
 

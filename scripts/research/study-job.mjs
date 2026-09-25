@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const SELF = fileURLToPath(import.meta.url);
 const ROOT = resolve(dirname(SELF), '../..');
-const ENTRIES = new Set(['tests/quality/live-scorer-benchmark.mjs', 'scripts/research/model-rewrite-benchmark.mjs', 'scripts/research/evaluate-existing-rewrites.mjs']);
+const ENTRIES = new Set(['tests/quality/live-scorer-benchmark.mjs', 'scripts/research/model-rewrite-benchmark.mjs']);
 
 export function processIdentity(pid) {
   if (!Number.isSafeInteger(pid) || pid < 1) return null;

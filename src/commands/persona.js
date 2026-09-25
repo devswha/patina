@@ -11,6 +11,8 @@ import { validatePersona, assertPersonaId, PERSONA_LANGS, PERSONA_SCHEMA_ID } fr
 import { listPersonas, loadPersona, resolvePersonaPath, safePersonaPath } from '../personas/loader.js';
 import { extractPersonaFeatureVector } from '../features/persona-match.js';
 import { selectBackendChain, invokeBackendChain } from '../backends/index.js';
+import { takeValue } from '../cli/args.js';
+import { parseFirstJson } from '../output.js';
 
 function round(value, digits = 3) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return value;
@@ -26,28 +28,6 @@ function assertLang(lang) {
       'Pass a supported --lang.'
     );
   }
-}
-
-// Consume the value after a value-taking flag. A missing value (end of args) or
-// a following flag (`-`/`--`) is an input error, not a silent `undefined` that
-// would build an empty-description persona or crash on readFileSync(undefined).
-function takeValue(args, i, flag) {
-  const v = args[i + 1];
-  if (v === undefined || v.startsWith('-')) {
-    throw inputError(`${flag} requires a value`, `Missing value after ${flag}.`, `Pass ${flag} <value>.`);
-  }
-  return [v, i + 1];
-}
-
-// Extract the first balanced JSON object from an LLM response.
-function parseFirstJson(text) {
-  const raw = String(text || '');
-  const start = raw.indexOf('{');
-  if (start === -1) return null;
-  for (let end = raw.lastIndexOf('}'); end > start; end = raw.lastIndexOf('}', end - 1)) {
-    try { return JSON.parse(raw.slice(start, end + 1)); } catch { /* keep shrinking */ }
-  }
-  return null;
 }
 
 function shortStringArray(value, max = 12) {
@@ -161,17 +141,11 @@ async function deriveVoiceViaLLM({ kind, text, lang, callLLM }) {
   };
 }
 
-function makeCallLLM({ backends } = {}) {
-  const chain = backends ?? selectBackendChain({ name: process.env.PATINA_BACKEND || null });
-  const resolved = Array.isArray(chain) ? chain : chain?.backends;
-  if (!resolved || resolved.length === 0) {
-    throw inputError(
-      'no backend available for persona authoring',
-      'Sample/describe authoring needs an LLM backend to extract voice traits.',
-      'Pass --backend <codex-cli|claude-cli|gemini-cli|kimi-cli|agy-cli|openai-http>, set PATINA_BACKEND, or use `--template`.'
-    );
-  }
-  return ({ prompt, signal, timeout }) => invokeBackendChain({ backends: resolved, prompt, signal, timeout, maxConcurrency: 1, maxRetries: 1 });
+// backendName is --backend or PATINA_BACKEND (the option default); with neither,
+// selectBackendChain falls back to openai-http.
+function makeCallLLM(backendName) {
+  const { backends } = selectBackendChain({ name: backendName });
+  return ({ prompt, signal, timeout }) => invokeBackendChain({ backends, prompt, signal, timeout, maxConcurrency: 1, maxRetries: 1 });
 }
 
 function writePersonaFile({ repoRoot, lang, id, frontmatter, force }) {
@@ -258,7 +232,7 @@ export async function runPersonaNew(args, deps = {}) {
   assertLang(opts.lang);
 
   const interactive = opts.interactive ?? deps.interactive ?? (process.stdin.isTTY === true);
-  const callLLM = deps.callLLM ?? (opts.mode === 'template' ? null : makeCallLLM({ backends: opts.backend ? selectBackendChain({ name: opts.backend }) : undefined }));
+  const callLLM = deps.callLLM ?? (opts.mode === 'template' ? null : makeCallLLM(opts.backend));
 
   let fields;
   if (opts.mode === 'template') {
@@ -271,8 +245,7 @@ export async function runPersonaNew(args, deps = {}) {
     fields = await deriveVoiceViaLLM({ kind: 'describe', text: opts.describe, lang: opts.lang, callLLM });
   } else if (interactive) {
     const ask = deps.ask ?? defaultAsk;
-    const wizardLLM = deps.callLLM ?? makeCallLLM({ backends: opts.backend ? selectBackendChain({ name: opts.backend }) : undefined });
-    ({ fields } = await runWizard({ id: opts.id, lang: opts.lang, ask, callLLM: wizardLLM, repoRoot }));
+    ({ fields } = await runWizard({ id: opts.id, lang: opts.lang, ask, callLLM, repoRoot }));
   } else {
     throw inputError(
       'persona new needs an input mode',
@@ -503,14 +476,13 @@ export async function runPersonaEdit(args, deps = {}) {
     return path;
   }
 
+  const callLLM = deps.callLLM ?? makeCallLLM(opts.backend);
   let fields;
   if (opts.mode === 'sample') {
-    const callLLM = deps.callLLM ?? makeCallLLM({ backends: opts.backend ? selectBackendChain({ name: opts.backend }) : undefined });
     const text = readFileSync(resolve(process.cwd(), opts.sampleFile), 'utf8');
     fields = await deriveVoiceViaLLM({ kind: 'sample', text, lang: opts.lang, callLLM });
     fields.targetFeatures = deterministicTargetsFromSample(text, { lang: opts.lang, repoRoot });
   } else {
-    const callLLM = deps.callLLM ?? makeCallLLM({ backends: opts.backend ? selectBackendChain({ name: opts.backend }) : undefined });
     fields = await deriveVoiceViaLLM({ kind: 'describe', text: opts.describe, lang: opts.lang, callLLM });
   }
 

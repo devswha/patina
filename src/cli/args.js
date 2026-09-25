@@ -693,6 +693,17 @@ export function validateXliffRequest(parsed) {
   }
 }
 
+// Subcommand parsers (persona, pack): consume the value after a value-taking
+// flag, returning [value, nextIndex]. A missing value or a following flag is an
+// input error, not a silent `undefined`.
+export function takeValue(args, i, flag) {
+  const v = args[i + 1];
+  if (v === undefined || v.startsWith('-')) {
+    throw inputError(`${flag} requires a value`, `Missing value after ${flag}.`, `Pass ${flag} <value>.`);
+  }
+  return [v, i + 1];
+}
+
 function readOptionValue(args, index, option, { allowFlagLike = false } = {}) {
   const value = args[index + 1];
   if (value === undefined || (!allowFlagLike && value.startsWith('-'))) {

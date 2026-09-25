@@ -234,10 +234,9 @@ function buildRegisterDirective(value, lang) {
  *   treatment the web path enables only under PATINA_KO_DIAGNOSIS_RESEARCH=1.
  * @param {'baseline'|'short-safe-v1'} [options.minimalStructureGuidance=baseline]
  *   Research/hosted short-request treatment for the minimal prompt.
- * @param {'default'|'h-rhetoric'|'legacy'} [options.rhetoricPolicy]
- *   Rhetoric edit-policy. Default (and `h-rhetoric`) remove empty hype instead
- *   of restocking similar-weight filler. Pass `legacy` for the pre-2026-09-14
- *   similar-weight sentence.
+ * @param {'default'|'legacy'} [options.rhetoricPolicy]
+ *   Rhetoric edit-policy. Default removes empty hype instead of restocking
+ *   similar-weight filler; `legacy` keeps the older similar-weight sentence.
  * @returns {string} Complete prompt text.
  * @throws {TypeError} When register evidence cannot be JSON-serialized.
  * @example
@@ -269,7 +268,7 @@ export function buildPrompt(options) {
   if (!['baseline', 'ko-contextual-v1'].includes(structureGuidance)) {
     throw new Error(`unknown structureGuidance: ${structureGuidance}`);
   }
-  if (!['default', 'h-rhetoric', 'legacy'].includes(rhetoricPolicy)) {
+  if (!['default', 'legacy'].includes(rhetoricPolicy)) {
     throw new Error(`unknown rhetoricPolicy: ${rhetoricPolicy}`);
   }
   const lang = config.language || 'ko';
@@ -441,16 +440,13 @@ export function buildTransformDirective({ jargon = 'keep', korean = false } = {}
 
 /**
  * Resolve the rhetoric edit policy from the environment.
- * `PATINA_RHETORIC_POLICY=legacy` restores the pre-2026-09-14 similar-weight
- * sentence. `h-rhetoric` is kept as an alias of the product default.
+ * `PATINA_RHETORIC_POLICY=legacy` restores the older similar-weight sentence.
  *
  * @param {Record<string,string|undefined>} [env=process.env]
- * @returns {'default'|'h-rhetoric'|'legacy'}
+ * @returns {'default'|'legacy'}
  */
 export function resolveRhetoricPolicy(env = process.env) {
-  if (env?.PATINA_RHETORIC_POLICY === 'legacy') return 'legacy';
-  if (env?.PATINA_RHETORIC_POLICY === 'h-rhetoric') return 'h-rhetoric';
-  return 'default';
+  return env?.PATINA_RHETORIC_POLICY === 'legacy' ? 'legacy' : 'default';
 }
 
 const LEGACY_RHETORIC_STRICT =
@@ -519,7 +515,7 @@ function buildNoInventedLessonConstraint(lang, documentTypeName = 'default') {
 function buildRewriteInstructions(
   structurePacks,
   lexicalPacks,
-  { includeSelfAudit = true, lang = 'ko', includeKoreanAdvisory = true, rewriteHeadings = false, structureGuidance = 'baseline', personaActive = false, registerActive = false, rhetoricPolicy = 'default', documentTypeName = 'default', portabilityHint = null } = {}
+  { includeSelfAudit = true, lang = 'ko', rewriteHeadings = false, structureGuidance = 'baseline', personaActive = false, registerActive = false, rhetoricPolicy = 'default', documentTypeName = 'default', portabilityHint = null } = {}
 ) {
   const phaseCount = includeSelfAudit ? 3 : 2;
   let inst = `Follow the ${phaseCount}-Phase pipeline:\n\n`;
@@ -582,9 +578,7 @@ function buildRewriteInstructions(
     inst += `${cjkGuard}\n`;
   }
 
-  if (includeKoreanAdvisory) {
-    inst += buildKoreanAdvisoryRewriteGuidance(lang);
-  }
+  inst += buildKoreanAdvisoryRewriteGuidance(lang);
 
 
   if (includeSelfAudit) {

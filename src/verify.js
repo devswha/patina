@@ -129,7 +129,7 @@ const STRICT_RETRY_DIRECTIVE = [
  * @param {string[]|null} [options.documentSignals] Deterministic document measurements.
  * @param {string} [options.jargon] Technical-term policy (keep|explain|remove).
  * @param {boolean} [options.rewriteHeadings] Allow rewording Markdown headings.
- * @param {'default'|'h-rhetoric'|'legacy'} [options.rhetoricPolicy] Rhetoric policy forwarded to the prompt builder.
+ * @param {'default'|'legacy'} [options.rhetoricPolicy] Rhetoric policy forwarded to the prompt builder.
  * @param {string} [options.apiKey] Backend API key.
  * @param {string} [options.baseURL] Backend base URL.
  * @param {string} [options.model] Backend model id.

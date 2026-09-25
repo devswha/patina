@@ -44,11 +44,11 @@ function burstinessBlock(prompt) {
 }
 
 describe('resolveRhetoricPolicy', () => {
-  it('defaults unless PATINA_RHETORIC_POLICY is legacy or the h-rhetoric alias', () => {
+  it('defaults unless PATINA_RHETORIC_POLICY is legacy', () => {
     assert.equal(resolveRhetoricPolicy({}), 'default');
     assert.equal(resolveRhetoricPolicy({ PATINA_RHETORIC_POLICY: 'default' }), 'default');
     assert.equal(resolveRhetoricPolicy({ PATINA_RHETORIC_POLICY: 'other' }), 'default');
-    assert.equal(resolveRhetoricPolicy({ PATINA_RHETORIC_POLICY: 'h-rhetoric' }), 'h-rhetoric');
+    assert.equal(resolveRhetoricPolicy({ PATINA_RHETORIC_POLICY: 'h-rhetoric' }), 'default');
     assert.equal(resolveRhetoricPolicy({ PATINA_RHETORIC_POLICY: 'legacy' }), 'legacy');
   });
 });
@@ -57,9 +57,7 @@ describe('buildPrompt rhetoricPolicy', () => {
   it('uses H-RHETORIC text on the default path and keeps the fidelity-length envelope', () => {
     const omitted = buildPrompt(BASE);
     const explicit = buildPrompt({ ...BASE, rhetoricPolicy: 'default' });
-    const alias = buildPrompt({ ...BASE, rhetoricPolicy: 'h-rhetoric' });
     assert.equal(omitted, explicit);
-    assert.equal(omitted, alias);
     assert.match(omitted, new RegExp(FIDELITY_LENGTH));
     assert.match(omitted, H_POLICY);
     assert.match(omitted, /Keep the document purpose and register/);

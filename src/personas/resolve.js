@@ -4,10 +4,8 @@
 // (src/web-rewrite.js) so both surfaces resolve voice ownership identically —
 // the two must not drift.
 import { loadPersona } from './loader.js';
+import { PERSONA_LANGS } from './schema.js';
 import { inputError } from '../errors.js';
-
-// Languages with a bundled persona library (personas/{lang}/).
-export const PERSONA_LANGS = new Set(['ko', 'en', 'zh', 'ja']);
 
 /**
  * Resolve the active persona for a rewrite invocation, or null when none applies.
@@ -29,7 +27,7 @@ export const PERSONA_LANGS = new Set(['ko', 'en', 'zh', 'ja']);
 export function resolvePersonaForRun({ parsed = {}, config = {}, mode = 'rewrite', lang = 'ko', repoRoot = process.cwd() } = {}) {
   const personaId = parsed.persona ?? config.persona ?? null;
   const explicitPersona = typeof personaId === 'string' && personaId.length > 0;
-  const supported = mode === 'rewrite' && PERSONA_LANGS.has(lang);
+  const supported = mode === 'rewrite' && PERSONA_LANGS.includes(lang);
   if (explicitPersona && !supported) {
     throw inputError(
       'persona is only supported for rewrite mode',

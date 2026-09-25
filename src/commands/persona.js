@@ -7,14 +7,10 @@ import { getRepoRoot } from '../config.js';
 import { inputError } from '../errors.js';
 import { createLogger } from '../logger.js';
 import { loadFile, splitFrontmatter } from '../loader.js';
-import { validatePersona, PERSONA_SCHEMA_ID } from '../personas/schema.js';
+import { validatePersona, assertPersonaId, PERSONA_LANGS, PERSONA_SCHEMA_ID } from '../personas/schema.js';
 import { listPersonas, loadPersona, resolvePersonaPath, safePersonaPath } from '../personas/loader.js';
 import { extractPersonaFeatureVector } from '../features/persona-match.js';
 import { selectBackendChain, invokeBackendChain } from '../backends/index.js';
-
-const SUPPORTED_LANGS = Object.freeze(['ko', 'en', 'zh', 'ja']);
-const PERSONA_ID_RE = /^[a-z0-9][a-z0-9-]*$/;
-
 
 function round(value, digits = 3) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return value;
@@ -22,21 +18,11 @@ function round(value, digits = 3) {
   return Math.round(value * factor) / factor;
 }
 
-function assertPersonaId(id) {
-  if (!PERSONA_ID_RE.test(String(id ?? ''))) {
-    throw inputError(
-      `invalid persona id: ${JSON.stringify(id)}`,
-      'A persona id must match /^[a-z0-9][a-z0-9-]*$/ (lowercase letters, digits, hyphens).',
-      'Use an id like my-voice or founder-direct.'
-    );
-  }
-}
-
 function assertLang(lang) {
-  if (!SUPPORTED_LANGS.includes(lang)) {
+  if (!PERSONA_LANGS.includes(lang)) {
     throw inputError(
       `unsupported --lang ${lang}`,
-      `Personas support: ${SUPPORTED_LANGS.join(', ')}.`,
+      `Personas support: ${PERSONA_LANGS.join(', ')}.`,
       'Pass a supported --lang.'
     );
   }
@@ -317,7 +303,7 @@ export function runPersonaList(args, deps = {}) {
     if (args[i] === '--lang' || args[i] === '--language') lang = args[++i];
     else if (args[i] === '--format' && args[i + 1] === 'json') { json = true; i += 1; }
   }
-  const langs = lang ? [lang] : SUPPORTED_LANGS;
+  const langs = lang ? [lang] : PERSONA_LANGS;
   const result = {};
   for (const l of langs) {
     assertLang(l);

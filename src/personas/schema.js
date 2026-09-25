@@ -46,8 +46,19 @@ const FORBIDDEN_KEYS = Object.freeze([
   'blocklist',
 ]);
 
-const ID_RE = /^[a-z0-9][a-z0-9-]*$/;
-const SUPPORTED_LANGS = Object.freeze(['ko', 'en', 'zh', 'ja']);
+export const PERSONA_ID_RE = /^[a-z0-9][a-z0-9-]*$/;
+// Languages with a bundled persona library (personas/{lang}/).
+export const PERSONA_LANGS = Object.freeze(['ko', 'en', 'zh', 'ja']);
+
+export function assertPersonaId(id) {
+  if (!PERSONA_ID_RE.test(String(id ?? ''))) {
+    throw inputError(
+      `invalid persona id: ${JSON.stringify(id)}`,
+      'A persona id must match /^[a-z0-9][a-z0-9-]*$/ (lowercase letters, digits, hyphens).',
+      'Use a lowercase id such as my-voice or pragmatic-founder.'
+    );
+  }
+}
 
 // Recursively assert no forbidden gate-weakening key appears anywhere.
 function assertNoForbiddenKeys(node, personaId, path = '') {
@@ -191,7 +202,7 @@ export function validatePersona(frontmatter, ctx = {}) {
   }
 
   const id = String(frontmatter.id ?? ctx.id ?? '').trim();
-  if (!ID_RE.test(id)) {
+  if (!PERSONA_ID_RE.test(id)) {
     throw inputError(
       `persona has an invalid id ${JSON.stringify(id)}`,
       'Persona id must match /^[a-z0-9][a-z0-9-]*$/ and match its filename.',
@@ -208,10 +219,10 @@ export function validatePersona(frontmatter, ctx = {}) {
 
   const name = typeof frontmatter.name === 'string' && frontmatter.name.trim() ? frontmatter.name.trim() : id;
   const lang = String(frontmatter.lang ?? ctx.lang ?? 'ko').trim();
-  if (!SUPPORTED_LANGS.includes(lang)) {
+  if (!PERSONA_LANGS.includes(lang)) {
     throw inputError(
       `persona "${id}" has unsupported lang "${lang}"`,
-      `Supported languages: ${SUPPORTED_LANGS.join(', ')}.`,
+      `Supported languages: ${PERSONA_LANGS.join(', ')}.`,
       'Set lang to one of the supported languages.'
     );
   }

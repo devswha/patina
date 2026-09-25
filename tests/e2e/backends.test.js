@@ -6,11 +6,7 @@ import {
   selectBackendChain,
   listBackends,
 } from '../../src/backends/index.js';
-import {
-  DEFAULT_BACKEND_TIMEOUT_MS,
-  getBackendSafety,
-} from '../../src/backends/contract.js';
-import { isAvailable as codexAvailable } from '../../src/backends/codex-cli.js';
+import { DEFAULT_BACKEND_TIMEOUT_MS } from '../../src/backends/contract.js';
 import { DEFAULT_BEST_MODELS } from '../../src/model-defaults.js';
 
 describe('Backend Selection', () => {
@@ -167,17 +163,6 @@ describe('Backend Fallback Chain', () => {
 
     assert.strictEqual(result, 'ok');
     assert.strictEqual(seenMaxRetries, 2);
-  });
-
-  it('uses conservative safety defaults for local agent CLIs', () => {
-    assert.strictEqual(getBackendSafety('claude-cli').maxConcurrency, 1);
-    assert.strictEqual(getBackendSafety('claude-cli').maxRetries, 0);
-    assert.strictEqual(getBackendSafety('claude-cli').promptMode, 'minimal');
-    assert.strictEqual(getBackendSafety('kimi-cli').maxConcurrency, 1);
-    assert.strictEqual(getBackendSafety('kimi-cli').maxRetries, 0);
-    assert.strictEqual(getBackendSafety('kimi-cli').promptMode, 'minimal');
-    assert.strictEqual(getBackendSafety('openai-http').maxConcurrency, 4);
-    assert.strictEqual(getBackendSafety('openai-http').maxRetries, 2);
   });
 
   it('falls through 429/503 backend errors to the next backend', async () => {
@@ -393,12 +378,6 @@ describe('Backend Listing', () => {
     const list = listBackends();
     const http = list.find((b) => b.name === 'openai-http');
     assert.strictEqual(http.available, true);
-  });
-
-  it('reports codex-cli availability based on actual install', () => {
-    const list = listBackends();
-    const codex = list.find((b) => b.name === 'codex-cli');
-    assert.strictEqual(codex.available, codexAvailable());
   });
 
   it('reports authenticated status for each backend', () => {

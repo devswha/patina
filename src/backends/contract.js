@@ -23,6 +23,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
+import { DEFAULT_MAX_RETRIES, abortError } from '../llm-transport.js';
 
 /**
  * Resolve how a bare CLI name must be spawned on the current platform.
@@ -93,7 +94,6 @@ export function probeCliAvailability(command, { platform = process.platform, env
   }
 }
 export const DEFAULT_BACKEND_TIMEOUT_MS = 600_000;
-export const DEFAULT_HTTP_MAX_RETRIES = 2;
 export const PROMPT_SIZE_WARNING_CHARS = 20_000;
 export class TimeoutError extends Error {
   constructor(message) {
@@ -106,7 +106,7 @@ export class TimeoutError extends Error {
 export const BACKEND_SAFETY_DEFAULTS = Object.freeze({
   'openai-http': {
     maxConcurrency: 4,
-    maxRetries: DEFAULT_HTTP_MAX_RETRIES,
+    maxRetries: DEFAULT_MAX_RETRIES,
     promptMode: 'strict',
     agentRuntime: false,
     // Only the OpenAI-compatible HTTP backend builds a chat-completions body,
@@ -424,12 +424,6 @@ function sleepWithAbort(ms, signal, backendName) {
 
 export function throwIfAborted(signal, message) {
   if (signal?.aborted) throw abortError(message);
-}
-
-function abortError(message) {
-  const err = new Error(message);
-  err.name = 'AbortError';
-  return err;
 }
 
 function safePathSegment(value) {

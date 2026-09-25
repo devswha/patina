@@ -2,9 +2,21 @@
 import { validateBaseURL } from './security.js';
 import { buildNativeBody, nativeAnthropicEnabled, nativeEndpoint, nativeHeaders, normalizeNativeResponse } from './anthropic-native.js';
 import { DEFAULT_BEST_MODELS } from './model-defaults.js';
+import {
+  DEFAULT_MAX_RETRIES,
+  DEFAULT_TEMPERATURE,
+  DEFAULT_TIMEOUT,
+  SSE_DONE,
+  abortError,
+  bearerHeaders,
+  chatCompletionsBody,
+  dispatchMetadata,
+  newAttemptRecord,
+  parseSseData,
+  readSseLines,
+  responseMetadata,
+} from './llm-transport.js';
 
-const DEFAULT_TIMEOUT = 120000;
-const DEFAULT_MAX_RETRIES = 2;
 const DEFAULT_BASE_BACKOFF_MS = 1000;
 const DEFAULT_MAX_BACKOFF_MS = 30000;
 
@@ -15,17 +27,6 @@ const DEFAULT_MAX_BACKOFF_MS = 30000;
 // switch to SSE streaming, where headers arrive immediately and each token
 // chunk keeps undici's idle `bodyTimeout` alive (#576).
 const UNDICI_HEADERS_TIMEOUT_MS = 300_000;
-// Cap a single un-terminated SSE line so a malformed provider cannot grow the
-// pending buffer without bound (mirrors src/streaming-api.js).
-const MAX_SSE_BUFFER_BYTES = 1024 * 1024;
-/**
- * Default sampling temperature for OpenAI-compatible chat completion calls.
- *
- * @type {number}
- * @example
- * const temperature = DEFAULT_TEMPERATURE; // 0.7
- */
-export const DEFAULT_TEMPERATURE = 0.7;
 
 // Models that rejected the `temperature` field outright (HTTP 400
 // "deprecated" / "not supported" — Anthropic's OpenAI-compat endpoint started
@@ -111,29 +112,6 @@ export function redactErrorText(text) {
     .replace(/([?&](?:api[_-]?key|key|token|access[_-]?token)=)[^&\s"']+/gi, '$1[REDACTED]');
 }
 
-// Surface provider prompt-cache token counts when present, normalized across
-// OpenAI-compatible (usage.prompt_tokens_details.cached_tokens) and Anthropic-
-// style (usage.cache_read_input_tokens / cache_creation_input_tokens) shapes.
-// Absent-safe: returns null when the provider exposes no cache usage, so the
-// cache-friendly prompt layout (C1) can be observed without breaking providers
-// that omit these fields.
-function extractCacheTokens(usage) {
-  if (!usage || typeof usage !== 'object') return null;
-  const cachedRead = usage.prompt_tokens_details?.cached_tokens ?? usage.cache_read_input_tokens ?? null;
-  const cacheCreation = usage.cache_creation_input_tokens ?? null;
-  if (cachedRead == null && cacheCreation == null) return null;
-  return {
-    cachedReadTokens: cachedRead ?? null,
-    cacheCreationTokens: cacheCreation ?? null,
-  };
-}
-
-function abortError(message = 'The operation was aborted') {
-  const err = new Error(message);
-  err.name = 'AbortError';
-  return err;
-}
-
 function remainingBudgetMs(deadline, now) {
   if (deadline === undefined || deadline === null) return Infinity;
   return Math.max(0, deadline - now());
@@ -168,23 +146,6 @@ function sleepWithSignal(sleep, ms, signal) {
     );
   }));
 }
-
-/**
- * Invoke an optional metadata callback without allowing consumer code to affect
- * a paid provider request or its result.
- *
- * @param {Function|undefined} callback
- * @returns {void}
- */
-function dispatchMetadata(callback, metadata) {
-  if (typeof callback !== 'function') return;
-  try {
-    Promise.resolve(callback(metadata)).catch(() => {});
-  } catch {
-    // Metadata observers are best-effort and must not affect provider calls.
-  }
-}
-
 
 /**
  * Decide whether an LLM call failure should be retried.
@@ -254,74 +215,25 @@ export function computeBackoffMs(attempt, retryAfter, opts = {}) {
  * @returns {Promise<{ choices: Array<{ message: { content: string }, finish_reason?: string }>, model?: string, usage?: object }>}
  */
 async function readStreamedCompletion(response, onMetadata) {
-  const body = /** @type {any} */ (response).body;
-  if (!body) throw new Error('Streaming response body is empty');
-  let chunks;
-  if (typeof body.getReader === 'function') {
-    chunks = {
-      async *[Symbol.asyncIterator]() {
-        const reader = body.getReader();
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (value !== undefined) yield value;
-          }
-        } finally {
-          reader.releaseLock?.();
-        }
-      },
-    };
-  } else if (typeof body[Symbol.asyncIterator] === 'function') {
-    chunks = body;
-  } else {
-    throw new Error('Streaming response body is not readable');
-  }
-
-  const decoder = new globalThis.TextDecoder();
-  let buffer = '';
   let content = '';
   let finishReason;
   let model;
   let usage = null;
-  let streamDone = false;
-  /** @param {string} line */
-  const processLine = (line) => {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith('data:')) return;
-    const data = trimmed.slice(5).trim();
-    if (!data) return;
-    if (data === '[DONE]') { streamDone = true; return; }
-    let parsed;
-    try {
-      parsed = JSON.parse(data);
-    } catch {
-      return;
-    }
-    if (typeof parsed?.model === 'string' && !model) model = parsed.model;
+  await readSseLines(/** @type {any} */ (response).body, (line) => {
+    const parsed = parseSseData(line);
+    if (parsed === SSE_DONE) return true;
+    if (parsed === undefined) return false;
+    const event = /** @type {any} */ (parsed);
+    if (typeof event?.model === 'string' && !model) model = event.model;
     // Providers that report usage on a stream do so on the final chunk.
-    if (parsed?.usage && typeof parsed.usage === 'object' && !Array.isArray(parsed.usage)) usage = parsed.usage;
+    if (event?.usage && typeof event.usage === 'object' && !Array.isArray(event.usage)) usage = event.usage;
     onMetadata?.({ effectiveModel: model ?? null, usage });
-    const choice = parsed?.choices?.[0];
+    const choice = event?.choices?.[0];
     if (typeof choice?.finish_reason === 'string') finishReason = choice.finish_reason;
     const delta = choice?.delta?.content;
     if (typeof delta === 'string') content += delta;
-  };
-  for await (const chunk of chunks) {
-    buffer += typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true });
-    const lines = buffer.split(/\r?\n/);
-    buffer = lines.pop() ?? '';
-    if (buffer.length > MAX_SSE_BUFFER_BYTES) throw new Error('SSE response line exceeded the maximum buffer size');
-    for (const line of lines) {
-      processLine(line);
-      if (streamDone) break;
-    }
-    if (streamDone) break; // stop reading after the [DONE] terminal sentinel
-  }
-  if (!streamDone) {
-    buffer += decoder.decode();
-    if (buffer.trim()) processLine(buffer);
-  }
+    return false;
+  });
 
   const choice = /** @type {{ message: { content: string }, finish_reason?: string }} */ ({ message: { content } });
   if (finishReason) choice.finish_reason = finishReason;
@@ -391,19 +303,13 @@ export async function callLLM({
   // omitted there — schema-retry already covers structured-output parsing.
   const native = nativeAnthropicEnabled({ baseURL });
   const url = native ? nativeEndpoint(baseURL) : `${baseURL}/chat/completions`;
-  /** @type {Record<string, any>} */
-  const body = native
-    ? buildNativeBody({ prompt, model, temperature: modelRejectsTemperature(model) ? undefined : temperature })
-    : {
-        // Spread first so callers can never clobber the protocol fields below.
-        ...(extraBody && typeof extraBody === 'object' && !Array.isArray(extraBody) ? extraBody : {}),
-        model,
-        messages: [{ role: 'user', content: prompt }],
-      };
   // Skip `temperature` up front when this process already saw the model
   // reject it (e.g. claude-sonnet-5) — avoids a guaranteed 400 round trip.
-  if (!native && !modelRejectsTemperature(model)) body.temperature = temperature;
-  else if (!native) delete body.temperature;
+  const sendTemperature = modelRejectsTemperature(model) ? undefined : temperature;
+  /** @type {Record<string, any>} */
+  const body = native
+    ? buildNativeBody({ prompt, model, temperature: sendTemperature })
+    : chatCompletionsBody({ prompt, model, temperature: sendTemperature, extraBody });
   if (!native && seed !== undefined && seed !== null) body.seed = seed;
   if (!native && responseFormat) body.response_format = responseFormat;
 
@@ -444,22 +350,11 @@ export async function callLLM({
         signalCleanup = () => signal.removeEventListener('abort', onAbort);
       }
       attemptsMade++;
-      attemptRecord = {
-        attemptIndex: attemptsMade,
-        requestedModel: model,
-        effectiveModel: null,
-        usage: null,
-        retryReason,
-        minimumChargeApplied: false,
-        outcome: 'error',
-      };
+      attemptRecord = newAttemptRecord(attemptsMade, model, retryReason);
 
       const response = await fetch(url, {
         method: 'POST',
-        headers: native ? nativeHeaders(apiKey) : {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
+        headers: native ? nativeHeaders(apiKey) : bearerHeaders(apiKey),
         body: JSON.stringify(useStream ? { ...body, stream: true } : body),
         signal: controller.signal,
       });
@@ -494,18 +389,16 @@ export async function callLLM({
       if (!content) {
         throw new Error('Empty response from LLM API');
       }
-      const metadata = {
-        provider: native ? 'anthropic-native' : 'openai-http',
-        model: effectiveModel,
+      const metadata = responseMetadata({
+        native,
         effectiveModel,
         requestedModel: model,
         temperature: 'temperature' in body ? temperature : null,
         seed: seed ?? null,
         usage,
-        cacheTokens: extractCacheTokens(usage),
         rawResponse: data,
         content,
-      };
+      });
       attemptRecord.outcome = 'success';
       success = { content, metadata };
     } catch (err) {

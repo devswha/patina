@@ -130,6 +130,20 @@ checks remain global. `--serve` is a `--preview` transport option.
   ships an offline audit mirror — it was dropped when the playground became
   rewrite-first.
 
+`src/features/analyzer.js` is the file-free form of the analyzer: callers pass
+the lexicon as data, and `src/features/index.js` stays the Node adapter that
+resolves local lexicon files. `src/prose-core.js` holds the prose preparation,
+language detection, and hot-paragraph ratio shared with
+`scripts/prose-score.mjs`; a browser caller uses
+`scoreProse(text, { lang, lexicon, gate })`, while the Node script adds file
+traversal and pattern-watch diagnostics. Its `score` is the hot-paragraph
+percentage behind the Action/badge gate, and `flooredScore` also keeps
+document-level markup evidence. Both are deterministic editing signals, not the
+LLM-based `patina --score` result or an authorship probability. The browser
+entry graph uses no filesystem, environment variables, provider credentials, or
+network APIs, and its caller bundles the public lexicon at build time, so
+private or custom local files never reach a browser bundle.
+
 ### Lane A asset consumed by Lane B (deterministic, cross-lane)
 
 - `src/features/persona-match.js` — LLM-free persona-match scorer. It lives in

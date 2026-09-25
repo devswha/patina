@@ -94,7 +94,7 @@ Notes: patina passes `--skip-trust` because the prompt runs from a fresh temp di
 
 ## kimi-cli backend
 
-Spawns local [`kimi`](https://moonshotai.github.io/kimi-cli/) in print mode with the patina prompt on stdin. It works with Kimi Code CLI browser login, `KIMI_API_KEY`, or `MOONSHOT_API_KEY`. Kimi Code is an agent runtime, so patina treats it conservatively in batch mode: compact prompt mode, default max concurrency `1`, and default retries `0`. The default local CLI model is `kimi-code/kimi-for-coding`; the CLI display name may differ from Moonshot HTTP model IDs.
+Spawns local [`kimi`](https://moonshotai.github.io/kimi-cli/) in prompt mode (`--prompt <text>`, stream-JSON output). It works with Kimi Code CLI browser login, `KIMI_API_KEY`, or `MOONSHOT_API_KEY`. Kimi Code is an agent runtime, so patina treats it conservatively in batch mode: compact prompt mode, default max concurrency `1`, and default retries `0`. The default local CLI model is `kimi-code/kimi-for-coding`; the CLI display name may differ from Moonshot HTTP model IDs.
 
 ```bash
 kimi login                                  # one-time browser OAuth, OR
@@ -103,6 +103,20 @@ export KIMI_API_KEY="..."                   # optional API key path
 patina --backend kimi-cli --lang ko input.txt
 patina --model kimi --lang ko input.txt     # routes to kimi-cli, uses backend default
 ```
+
+Kimi Code prompt mode can auto-approve tools even without `--yolo` or `--auto`,
+so patina passes an explicit agent profile with `tools: []` and
+`subagents: []`, plus an empty skills directory, on every text request. The
+profile treats source prose as reference data and does not inherit workspace
+instructions, plugins, or a coding agent's tool permissions; global Kimi
+settings are unchanged. This requires Kimi Code 0.29 or newer. Older clients
+without agent-file support fail with an upgrade message instead of falling
+back to an unrestricted print mode. A live check against 0.29.1 requested a
+harmless file write in an isolated directory and confirmed a zero-tool
+request trace with no file created. The restriction covers tool access only,
+not patina's pattern or meaning-preservation rules. Because the text travels
+as a `--prompt` argument, other local users who can list processes may see it.
+See Kimi's [agent customization guide](https://moonshotai.github.io/kimi-code/en/customization/agents).
 
 ## agy-cli backend (Antigravity CLI)
 

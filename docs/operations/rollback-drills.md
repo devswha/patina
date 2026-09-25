@@ -74,9 +74,9 @@ node --test tests/unit/pro-monitor.test.js \
 The first fixture run injects `numberSafety=1` into the 15-minute aggregate
 adapter and asserts a visible `number_safety` trigger plus an acknowledged
 alert. The second run returns zero safety/drop counts and asserts no active
-trigger, a `monitor_recovered` receipt, and consumption of the linked alert
+trigger, a `monitor_recovered` message, and consumption of the linked alert
 state. A pass is code evidence only; it is not a production incident,
-deployment, Discord, or `OBS-ALERT-v1` receipt.
+deployment, or Discord event.
 
 The source authority is
 `src/pro-monitor.js#evaluateProMonitor`; the deployed route, when separately

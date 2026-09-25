@@ -45,18 +45,17 @@ monitor in the production secret manager. It requires dedicated strict Upstash
 observability `PATINA_OBSERVABILITY_REST_API_URL` and
 `PATINA_OBSERVABILITY_REST_API_TOKEN`—never quota/admission `KV_REST_*`—plus
 `CRON_SECRET`, `PATINA_DEPLOYMENT_CHANNEL=production`,
-`PATINA_PUBLIC_BASE_URL`, `PATINA_PUBLIC_BASE_URL_SHA256`,
-`PATINA_SYNTHETIC_PRO_LICENSE`, `PATINA_SYNTHETIC_OBSERVER_SECRET`,
-`PATINA_VERCEL_LOG_QUERY_URL`, `PATINA_VERCEL_LOG_QUERY_URL_SHA256`,
+`PATINA_PUBLIC_BASE_URL`, `PATINA_SYNTHETIC_PRO_LICENSE`,
+`PATINA_SYNTHETIC_OBSERVER_SECRET`, `PATINA_VERCEL_LOG_QUERY_URL`,
 `PATINA_VERCEL_LOG_QUERY_TOKEN`, `PATINA_ALERT_DISCORD_WEBHOOK`, and
 Vercel-provided `VERCEL_GIT_COMMIT_SHA`.
 
-The external aggregate-only log-query service and the exact public base URL are
-mandatory and SHA-256 pinned. The service emits only exact `numberSafety`,
-`entitlementNonOk`, `entitlementTotal`, and `monitorDrop` counts for the
-requested channel/tier/window, never raw Vercel logs. Missing, unpinned,
-malformed, or unavailable required aggregate/log input makes the monitor return
-`503`; leave checkout disabled.
+The external aggregate-only log-query service and the public base URL are
+mandatory. The service emits only exact `numberSafety`, `entitlementNonOk`,
+`entitlementTotal`, and `monitorDrop` counts for the requested
+channel/tier/window, never raw Vercel logs. Missing, malformed, or unavailable
+required aggregate/log input makes the monitor return `503`; leave checkout
+disabled.
 
 `vercel.json` invokes the private `/api/pro-monitor` route every 15 minutes.
 The cron request is a bodyless `GET` with one exact `Authorization: Bearer
@@ -78,17 +77,12 @@ deadline, including every network read, incrementally read response body capped
 at 64 KiB, synthetic work, Discord attempts, and actual 1-second then 2-second
 backoff.
 
-An acknowledged Discord alert atomically creates a pending-alert outbox record,
-2-hour active linkage, and 1-hour dedup lease. Pending records and blind-alert
-ACKs are operationally durable for deduplication and recovery, but are not
-Gate-B OBS receipts. If blindness is unacknowledged, including a required
+An acknowledged Discord alert joins the 2-hour active list and holds a 1-hour
+dedup lease. If blindness is unacknowledged, including a required
 aggregate/log input failure, the endpoint returns `503` and checkout remains
-disabled. Final `OBS-ALERT-v1` evidence is issued only after an ACKed healthy
-recovery atomically consumes linked pending alerts and active linkage, and only
-when the recovered evidence has `realPath: true`; its recovery lease is 1 hour.
-Missing/malformed deployment binding, malformed/incomplete evidence, deadline
-expiry, or append conflict returns `503` with no final receipt. Gate D requires
-only final real-path receipts matching the dashboard contract.
+disabled. Once the triggers clear, one acknowledged `monitor_recovered` message
+atomically clears the active list; its recovery lease is 1 hour. A
+missing/malformed deployment binding or deadline expiry returns `503`.
 
 
 ## Evidence
@@ -145,7 +139,7 @@ remain fail-closed when upstream validation, production KV, HMAC, or Pro
 provider configuration is unavailable. This production-first deployment proves
 the service release before it can accept a new sale. Monitor readiness is part
 of it: verify the scheduled cron route and server-only configuration, then
-record a real-path OBS receipt before Gate D. A monitor configuration failure
+record an authorized cron `200` before Gate D. A monitor configuration failure
 leaves checkout disabled; it is not waived by a browser-only health check.
 
 ## Gate D
@@ -271,8 +265,8 @@ Run and record these drills before Gate D:
   evidence/log output contains no raw key.
 - G003 monitor drill: use the versioned
   [dashboard/drill procedure](dashboards/pro-launch-v1.md) with the
-  [query recipes](queries/pro-launch-v1.md); record a real-path OBS receipt,
-  not seeded counters, mocked delivery, or injected test results. Injected
+  [query recipes](queries/pro-launch-v1.md); record a real cron result, not
+  seeded counters, mocked delivery, or injected test results. Injected
   tests validate code only and are not live evidence.
 
 ## Secret rotation

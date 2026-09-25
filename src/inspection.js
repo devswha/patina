@@ -15,11 +15,16 @@ const MAX_INSPECTION_DIAGNOSTICS = 2000;
 // can shorten decomposed graphemes; map each normalized unit back to its whole
 // original grapheme so diagnostics never split combining marks or surrogate pairs.
 export function normalizedOffsetMap(text) {
-  let normalized = ''; const starts = []; const ends = [];
+  let normalized = '';
+  const starts = [];
+  const ends = [];
   const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
   for (const { segment, index } of segmenter.segment(text)) {
     const value = segment.normalize('NFC');
-    for (let i = 0; i < value.length; i++) { starts.push(index); ends.push(index + segment.length); }
+    for (let i = 0; i < value.length; i++) {
+      starts.push(index);
+      ends.push(index + segment.length);
+    }
     normalized += value;
   }
   return { normalized, starts, ends };
@@ -39,7 +44,8 @@ function paragraphSignals(paragraph) {
 
 function sentenceFindings(paragraph, paragraphStart, masked, lexicon, evidence, lang) {
   if (!evidence.lexicon?.hot || !lexicon) return [];
-  const known = new Set(evidence.lexicon.hits || []), findings = [];
+  const known = new Set(evidence.lexicon.hits || []);
+  const findings = [];
   for (const { segment, index } of new Intl.Segmenter(lang, { granularity: 'sentence' }).segment(paragraph)) {
     const leading = segment.length - segment.trimStart().length;
     const start = paragraphStart + index + leading;
@@ -54,28 +60,73 @@ function sentenceFindings(paragraph, paragraphStart, masked, lexicon, evidence, 
 
 export function inspectText(text, { language = 'auto', file = '', config, repoRoot = getRepoRoot(), rewrite = null, documentType } = {}) {
   if (typeof text !== 'string' || !text.trim()) throw new TypeError('Inspection requires non-empty text');
-  if (text.length > MAX_INSPECTION_CHARS) throw new RangeError(`Inspection supports at most ${MAX_INSPECTION_CHARS} characters; inspect a selection instead`);
+  if (text.length > MAX_INSPECTION_CHARS) {
+    throw new RangeError(`Inspection supports at most ${MAX_INSPECTION_CHARS} characters; inspect a selection instead`);
+  }
   if (!['auto', 'en', 'ko', 'zh', 'ja'].includes(language)) throw new TypeError('Unsupported inspection language');
   const settings = globalThis.structuredClone(config || loadConfig());
-  const lang = detectLanguage(file, text.normalize('NFC'), language); settings.language = lang;
+  const lang = detectLanguage(file, text.normalize('NFC'), language);
+  settings.language = lang;
   const patterns = loadPatterns(repoRoot, lang, settings['skip-patterns'] || []);
-  let analysis, lexicon;
-  const score = scoreDeterministicSignals({ text, config: settings, patterns, repoRoot,
-    logger: { warn() {} }, analyzer: (value, options) => {
+  let analysis;
+  let lexicon;
+  const score = scoreDeterministicSignals({
+    text,
+    config: settings,
+    patterns,
+    repoRoot,
+    logger: { warn() {} },
+    analyzer: (value, options) => {
       lexicon = options.lexicon ?? loadLexicon(lang, repoRoot);
-      analysis = analyzeText(value, { ...options, lexicon }); return analysis;
-    } });
-  const base = { schemaVersion: 1, language: lang, sourceHash: createHash('sha256').update(text).digest('hex'),
-    deterministicOnly: true, offsetEncoding: 'utf-16', score: score?.overall ?? null,
-    interpretation: score?.interpretation ?? null, paragraphCount: score?.paragraphCount ?? 0 };
-  if (!analysis || !Number.isFinite(score?.overall)) return { ...base, available: false, diagnostics: [], reason: score?.skipReason || 'analysis-unavailable' };
+      analysis = analyzeText(value, { ...options, lexicon });
+      return analysis;
+    },
+  });
+  const base = {
+    schemaVersion: 1,
+    language: lang,
+    sourceHash: sha256Hex(text),
+    deterministicOnly: true,
+    offsetEncoding: 'utf-16',
+    score: score?.overall ?? null,
+    interpretation: score?.interpretation ?? null,
+    paragraphCount: score?.paragraphCount ?? 0,
+  };
+  if (!analysis || !Number.isFinite(score?.overall)) {
+    return { ...base, available: false, diagnostics: [], reason: score?.skipReason || 'analysis-unavailable' };
+  }
   const mapping = normalizedOffsetMap(text);
   const masked = maskInspectionNonProse(mapping.normalized).replace(/https?:\/\/\S+/g, (value) => ' '.repeat(value.length));
   const paragraphs = splitParagraphs(mapping.normalized);
-  const diagnostics = []; let cursor = 0, diagnosticsTruncated = false;
-  const add = (row) => { if (diagnostics.length < MAX_INSPECTION_DIAGNOSTICS) diagnostics.push(row); else diagnosticsTruncated = true; };
-  if (analysis.markupLeakage?.leaked) add({ start: 0, end: text.length, code: 'model-output-leakage', scope: 'document', severity: 'warning', message: 'Model-output markup or self-identification is present.', signals: ['model-output-leakage'] });
-  if (analysis.structuralClassifier?.hot) add({ start: 0, end: text.length, code: 'structural-model', scope: 'document', severity: 'warning', message: 'The configured structural model flagged this document.', signals: ['structural-model'] });
+  const diagnostics = [];
+  let cursor = 0;
+  let diagnosticsTruncated = false;
+  const add = (row) => {
+    if (diagnostics.length < MAX_INSPECTION_DIAGNOSTICS) diagnostics.push(row);
+    else diagnosticsTruncated = true;
+  };
+  if (analysis.markupLeakage?.leaked) {
+    add({
+      start: 0,
+      end: text.length,
+      code: 'model-output-leakage',
+      scope: 'document',
+      severity: 'warning',
+      message: 'Model-output markup or self-identification is present.',
+      signals: ['model-output-leakage'],
+    });
+  }
+  if (analysis.structuralClassifier?.hot) {
+    add({
+      start: 0,
+      end: text.length,
+      code: 'structural-model',
+      scope: 'document',
+      severity: 'warning',
+      message: 'The configured structural model flagged this document.',
+      signals: ['structural-model'],
+    });
+  }
   for (let i = 0; i < paragraphs.length; i++) {
     const paragraph = paragraphs[i];
     const start = mapping.normalized.indexOf(paragraph, cursor);
@@ -83,12 +134,30 @@ export function inspectText(text, { language = 'auto', file = '', config, repoRo
     cursor = start + paragraph.length;
     if (!analysis.paragraphs[i]?.hot) continue;
     const sentences = sentenceFindings(paragraph, start, masked, lexicon, analysis.paragraphs[i], lang);
-    add({ start: mapping.starts[start], end: mapping.ends[cursor - 1],
-      code: 'ai-like-paragraph', scope: 'paragraph', localized: sentences.length > 0 && diagnostics.length + 1 < MAX_INSPECTION_DIAGNOSTICS, severity: 'warning', paragraph: i + 1,
-      message: 'This paragraph has AI-like editing signals.', signals: paragraphSignals(analysis.paragraphs[i]) });
-    for (const sentence of sentences) add({ start: mapping.starts[sentence.start], end: mapping.ends[sentence.end - 1],
-      code: 'ai-like-sentence', scope: 'sentence', severity: 'warning', paragraph: i + 1, evidenceCount: sentence.evidenceCount,
-      message: 'This sentence contains lexical cues contributing to the paragraph’s writing signals.', signals: ['ai-lexicon-density'] });
+    add({
+      start: mapping.starts[start],
+      end: mapping.ends[cursor - 1],
+      code: 'ai-like-paragraph',
+      scope: 'paragraph',
+      localized: sentences.length > 0 && diagnostics.length + 1 < MAX_INSPECTION_DIAGNOSTICS,
+      severity: 'warning',
+      paragraph: i + 1,
+      message: 'This paragraph has AI-like editing signals.',
+      signals: paragraphSignals(analysis.paragraphs[i]),
+    });
+    for (const sentence of sentences) {
+      add({
+        start: mapping.starts[sentence.start],
+        end: mapping.ends[sentence.end - 1],
+        code: 'ai-like-sentence',
+        scope: 'sentence',
+        severity: 'warning',
+        paragraph: i + 1,
+        evidenceCount: sentence.evidenceCount,
+        message: 'This sentence contains lexical cues contributing to the paragraph’s writing signals.',
+        signals: ['ai-lexicon-density'],
+      });
+    }
   }
   const resolvedType = documentType || settings.documentType || 'default';
   const structureFingerprint = lang === 'ko' ? fingerprintKoreanStructure(mapping.normalized) : null;
@@ -111,8 +180,27 @@ export function inspectText(text, { language = 'auto', file = '', config, repoRo
   };
 }
 
+// `audit --format json` degrades to an unavailable inspection only for the
+// input errors inspectText documents (empty, oversized, unsupported language).
 export function inspectAuditSource(text, options = {}) {
-  try { return inspectText(text, options); }
-  catch { return { schemaVersion: 1, deterministicOnly: true, sourceHash: createHash('sha256').update(text).digest('hex'),
-    language: options.language, offsetEncoding: 'utf-16', available: false, score: null, diagnostics: [], reason: 'inspection-unavailable' }; }
+  try {
+    return inspectText(text, options);
+  } catch (err) {
+    if (!(err instanceof TypeError || err instanceof RangeError)) throw err;
+    return {
+      schemaVersion: 1,
+      deterministicOnly: true,
+      sourceHash: sha256Hex(text),
+      language: options.language,
+      offsetEncoding: 'utf-16',
+      available: false,
+      score: null,
+      diagnostics: [],
+      reason: 'inspection-unavailable',
+    };
+  }
+}
+
+function sha256Hex(text) {
+  return createHash('sha256').update(text).digest('hex');
 }

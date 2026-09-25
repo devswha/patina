@@ -3,15 +3,27 @@ import assert from 'node:assert/strict';
 import { main } from '../../src/cli.js';
 import { PatinaCliError } from '../../src/errors.js';
 
-test('retired pattern list rejects at the CLI seam without fetching', async (t) => {
+test('retired pattern commands reject at the CLI seam without fetching or output', async (t) => {
   const fetch = t.mock.method(globalThis, 'fetch', () => assert.fail('unexpected fetch'));
-  t.mock.method(console, 'log', () => {});
-  await assert.rejects(main(['pattern', 'list']), (error) => {
-    assert.ok(error instanceof PatinaCliError);
-    assert.equal(error.exitCode, 2);
-    return true;
-  });
+  const log = t.mock.method(console, 'log', () => {});
+  const invocations = [
+    ['pattern'], ['pattern', 'help'], ['pattern', '--help'],
+    ['pattern', 'list'], ['pattern', 'list', '--json'],
+    ['pattern', 'install', 'en-corporate-bizspeak'],
+    ['pattern', 'install', 'https://github.com/example/packs/tree/main/packs/en-corporate-bizspeak', '--json'],
+    ['pattern', 'remove', 'en-corporate-bizspeak'],
+    ['pattern', 'remove', 'en-corporate-bizspeak', '--json'],
+    ['pattern', 'install', '--help'], ['pattern', 'list', '--help'], ['pattern', 'remove', '--help'],
+  ];
+  for (const args of invocations) {
+    await assert.rejects(main(args), (error) => {
+      assert.ok(error instanceof PatinaCliError, args.join(' '));
+      assert.equal(error.exitCode, 2, args.join(' '));
+      return true;
+    });
+  }
   assert.equal(fetch.mock.callCount(), 0);
+  assert.equal(log.mock.callCount(), 0);
 });
 
 test('licensed Pro pack list still dispatches with its license and JSON contract', async (t) => {

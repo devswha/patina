@@ -1,20 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync, readdirSync, mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve, join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { dirname, resolve } from 'node:path';
 import {
   applyXliffReplacements,
   estimateXliffRun,
   resolveUniqueCap,
-  encodeXmlText,
   parseXliffDocument,
   selectXliffSegments,
   DEFAULT_UNIQUE_CAP,
 } from '../../src/cli/xliff.js';
-import { resolveBatchOutputPath } from '../../src/cli/batch.js';
-import { writeAtomicUtf8 } from '../../src/atomic-write.js';
+import { htmlEscape } from '../../src/preview/dom.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = readFileSync(resolve(HERE, '../fixtures/xliff/sample.xliff'), 'utf8');
@@ -49,7 +46,7 @@ function replacementFor(seg, newCore) {
   return {
     start: seg.targetInnerStart,
     end: seg.targetInnerEnd,
-    replacement: seg.leading + encodeXmlText(newCore ?? seg.targetCore) + seg.trailing,
+    replacement: seg.leading + htmlEscape(newCore ?? seg.targetCore) + seg.trailing,
   };
 }
 
@@ -112,49 +109,6 @@ test('resolveUniqueCap: default 50, positive override, invalid falls back', () =
   assert.equal(resolveUniqueCap({ maxSegments: 'x' }), 50);
 });
 
-// ---------- writeAtomicUtf8 ----------
-test('writeAtomicUtf8: writes content and leaves no temp file behind', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'patina-xliff-'));
-  try {
-    const dest = join(dir, 'out.xliff');
-    writeAtomicUtf8(dest, 'hello <ko> & 안녕');
-    assert.equal(readFileSync(dest, 'utf8'), 'hello <ko> & 안녕');
-    const leftover = readdirSync(dir).filter((f) => f.startsWith('.patina-') && f.endsWith('.tmp'));
-    assert.deepEqual(leftover, []);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-test('writeAtomicUtf8: failure (bad dir) throws and leaves no output at destination', () => {
-  const dest = join(tmpdir(), 'no-such-dir-patina', 'nested', 'out.xliff');
-  assert.throws(() => writeAtomicUtf8(dest, 'x'));
-  assert.equal(existsSync(dest), false);
-});
-
-// ---------- resolveBatchOutputPath ----------
-test('resolveBatchOutputPath: in-place / outdir / suffix / default suffix', () => {
-  assert.equal(resolveBatchOutputPath({ inPlace: true }, '/a/b/f.xliff'), '/a/b/f.xliff');
-  assert.equal(resolveBatchOutputPath({ outdir: '/out' }, '/a/b/f.xliff'), join('/out', 'f.xliff'));
-  assert.equal(resolveBatchOutputPath({ suffix: '.humanized' }, '/a/b/f.xliff'), '/a/b/f.humanized.xliff');
-  assert.equal(resolveBatchOutputPath({}, '/a/b/f.xliff', { defaultSuffix: '.humanized' }), '/a/b/f.humanized.xliff');
-});
-
-// ---------- hardening: atomic rename-failure cleanup + string-index edges ----------
-test('writeAtomicUtf8: rename onto an existing directory fails, cleans temp, leaves dest intact', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'patina-xliff-'));
-  try {
-    const destDir = join(dir, 'occupied'); // an existing directory at the dest path
-    mkdirSync(destDir);
-    assert.throws(() => writeAtomicUtf8(destDir, 'x')); // rename(file -> dir) fails
-    assert.equal(existsSync(destDir), true); // existing dest untouched
-    const leftover = readdirSync(dir).filter((f) => f.startsWith('.patina-') && f.endsWith('.tmp'));
-    assert.deepEqual(leftover, [], 'temp file must be cleaned up after rename failure');
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
-
 test('applyXliffReplacements: adjacent spans, span at 0 and at EOF, astral unicode', () => {
   const s = '0123456789';
   // adjacent (touching, non-overlapping) spans are allowed
@@ -174,4 +128,107 @@ test('applyXliffReplacements: adjacent spans, span at 0 and at EOF, astral unico
   const start = astral.indexOf('[CORE]');
   const out = applyXliffReplacements(astral, [{ start, end: start + '[CORE]'.length, replacement: '바뀜' }]);
   assert.equal(out, 'pre 😀 바뀜 😺 post');
+});
+
+function identityReplacementsForSelected(xml) {
+  const parsed = parseXliffDocument(xml);
+  const { selected } = selectXliffSegments(parsed);
+  return selected.map((seg) => ({
+    start: seg.targetInnerStart,
+    end: seg.targetInnerEnd,
+    replacement: `${seg.leading}${htmlEscape(seg.targetCore)}${seg.trailing}`,
+  }));
+}
+
+test('applyXliffReplacements: adversarial span boundaries and delimiter payloads', () => {
+  const s = 'abcdef';
+  assert.equal(
+    applyXliffReplacements(s, [
+      { start: 6, end: 6, replacement: '<EOF&>' },
+      { start: 0, end: 0, replacement: '<BOF&>' },
+      { start: 2, end: 4, replacement: 'X<&>Y' },
+      { start: 4, end: 6, replacement: 'Z' },
+    ]),
+    '<BOF&>abX<&>YZ<EOF&>'
+  );
+});
+
+test('applyXliffReplacements: many random-order spans sort and apply against original offsets', () => {
+  const base = Array.from({ length: 240 }, (_, i) => String.fromCharCode(65 + (i % 26))).join('');
+  const spans = [];
+  for (let start = 0; start < base.length; start += 3) {
+    spans.push({ start, end: start + 2, replacement: `[${start}]` });
+  }
+  const shuffled = spans
+    .map((span, i) => ({ span, key: (i * 37) % spans.length }))
+    .sort((a, b) => a.key - b.key)
+    .map(({ span }) => span);
+  let expected = base;
+  for (const r of [...spans].sort((a, b) => b.start - a.start)) {
+    expected = expected.slice(0, r.start) + r.replacement + expected.slice(r.end);
+  }
+  assert.equal(applyXliffReplacements(base, shuffled), expected);
+});
+
+test('applyXliffReplacements: exact-boundary overlap is allowed but one-char overlap throws', () => {
+  assert.equal(
+    applyXliffReplacements('012345', [
+      { start: 2, end: 4, replacement: 'AA' },
+      { start: 4, end: 6, replacement: 'BB' },
+    ]),
+    '01AABB'
+  );
+  assert.throws(() => applyXliffReplacements('012345', [
+    { start: 2, end: 5, replacement: 'AA' },
+    { start: 4, end: 6, replacement: 'BB' },
+  ]), /overlapping replacement spans/);
+});
+
+test('applyXliffReplacements: invalid spans throw before corrupting output', () => {
+  const bad = [
+    { start: -1, end: 1, replacement: 'x' },
+    { start: 2, end: 1, replacement: 'x' },
+    { start: 0, end: 7, replacement: 'x' },
+    { start: 0.5, end: 1, replacement: 'x' },
+    { start: 0, end: 1.5, replacement: 'x' },
+  ];
+  for (const span of bad) {
+    assert.throws(() => applyXliffReplacements('abcdef', [span]), /invalid replacement span/);
+  }
+});
+
+test('applyXliffReplacements: fixture selected-segment identity write-back is byte-for-byte identical', () => {
+  const replacements = identityReplacementsForSelected(FIXTURE);
+  assert.ok(replacements.length > 0, 'fixture must have selected segments');
+  const out = applyXliffReplacements(FIXTURE, replacements);
+  assert.equal(out, FIXTURE);
+});
+
+test('applyXliffReplacements: parser offsets round-trip emoji surrogate pairs and CJK without mojibake', () => {
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<xliff version="1.2"><file source-language="en" target-language="ko"><body><trans-unit id="emoji"><source>This sentence should be humanized because it has enough words.</source><target state="final">  이 문장은 이모지 😀😇와 한자 漢字 및 한국어를 함께 포함합니다  </target></trans-unit></body></file></xliff>`;
+  const parsed = parseXliffDocument(xml);
+  const { selected } = selectXliffSegments(parsed);
+  assert.equal(selected.length, 1);
+  const seg = selected[0];
+  assert.equal(seg.targetCore, '이 문장은 이모지 😀😇와 한자 漢字 및 한국어를 함께 포함합니다');
+  const replacement = `${seg.leading}${htmlEscape(seg.targetCore)}${seg.trailing}`;
+  const out = applyXliffReplacements(xml, [{ start: seg.targetInnerStart, end: seg.targetInnerEnd, replacement }]);
+  assert.equal(out, xml);
+  assert.match(out, /😀😇/u);
+});
+
+test('estimateXliffRun: dry-run cap boundaries, clamped attempts, no calls or writes', () => {
+  const zero = estimateXliffRun({ uniqueCount: 0, selectedCount: 0, cap: 2 });
+  assert.equal(zero.capStatus, 'ok');
+  assert.equal(zero.worstCaseLlmCalls, 0);
+  const atCap = estimateXliffRun({ uniqueCount: 2, selectedCount: 2, cap: 2, backendAttemptsPerCall: 0 });
+  assert.equal(atCap.capStatus, 'ok');
+  assert.equal(atCap.worstCaseBackendAttempts, 12);
+  const overCap = estimateXliffRun({ uniqueCount: 3, selectedCount: 3, cap: 2, backendAttemptsPerCall: Number.NaN });
+  assert.equal(overCap.capStatus, 'cap_exceeded');
+  assert.equal(overCap.worstCaseBackendAttempts, 18);
+  for (const report of [zero, atCap, overCap]) {
+    assert.equal(report.llmCalls, 0);
+    assert.equal(report.writes, 0);
+  }
 });

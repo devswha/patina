@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-import { createBatchCircuitBreaker } from '../../src/cli/batch.js';
+import { join } from 'node:path';
+
+import { createBatchCircuitBreaker, resolveBatchOutputPath } from '../../src/cli/batch.js';
 
 function breaker({ total = 10, ...parsed } = {}) {
   return createBatchCircuitBreaker({ parsed: { batch: true, ...parsed }, total });
@@ -99,4 +101,20 @@ test('--no-stop-on-retryable-storm disables the storm rule (#440)', () => {
     b.recordFailure({ path: `f${i}.md`, err: new Error('HTTP 429 too many requests') });
   }
   assert.equal(b.shouldStop(), false);
+});
+
+test('resolveBatchOutputPath: in-place / outdir / suffix / default suffix', () => {
+  assert.equal(resolveBatchOutputPath({ inPlace: true }, '/a/b/f.xliff'), '/a/b/f.xliff');
+  assert.equal(resolveBatchOutputPath({ outdir: '/out' }, '/a/b/f.xliff'), join('/out', 'f.xliff'));
+  assert.equal(resolveBatchOutputPath({ suffix: '.humanized' }, '/a/b/f.xliff'), '/a/b/f.humanized.xliff');
+  assert.equal(resolveBatchOutputPath({}, '/a/b/f.xliff', { defaultSuffix: '.humanized' }), '/a/b/f.humanized.xliff');
+});
+
+// ---------- hardening: atomic rename-failure cleanup + string-index edges ----------
+
+test('resolveBatchOutputPath: suffix and outdir edge cases', () => {
+  assert.equal(resolveBatchOutputPath({ suffix: '' }, '/tmp/input.xlf', { defaultSuffix: '' }), '/tmp/input.xlf');
+  assert.equal(resolveBatchOutputPath({ suffix: 'human' }, '/tmp/input.xlf'), '/tmp/inputhuman.xlf');
+  assert.equal(resolveBatchOutputPath({ suffix: '.human' }, '/tmp/README'), '/tmp/README.human');
+  assert.equal(resolveBatchOutputPath({ outdir: '/tmp/nested/out' }, '/tmp/a/b/input.xlf', { defaultSuffix: '.ignored' }), join('/tmp/nested/out', 'input.xlf'));
 });

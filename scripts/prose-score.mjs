@@ -2,17 +2,9 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { analyzeText } from '../src/features/index.js';
 import { loadLexicon } from '../src/features/lexicon.js';
-import {
-  paragraphSignalStrength,
-  summarizeSignalStrength,
-} from '../src/features/signal-strength.js';
 import { loadPatterns } from '../src/loader.js';
-import { stripProse, stripNonProse, detectLanguage, summarizeProseAnalysis } from '../src/prose-core.js';
-export { stripProse, stripNonProse, detectLanguage };
-
-export { paragraphSignalStrength, summarizeSignalStrength };
+import { stripNonProse, detectLanguage, scoreProse } from '../src/prose-core.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_REPO_ROOT = resolve(__dirname, '..');
@@ -20,18 +12,6 @@ export const DEFAULT_PROSE_EXTENSIONS = ['.md', '.mdx', '.txt', '.rst', '.adoc']
 
 const lexiconCache = new Map();
 const patternTermCache = new Map();
-
-export function parseBoolean(value, defaultValue = false) {
-  if (value === undefined || value === null || value === '') return defaultValue;
-  return ['1', 'true', 'yes', 'on'].includes(String(value).trim().toLowerCase());
-}
-
-export function parseFileList(value = '') {
-  return String(value)
-    .split(/[\n,]+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
 
 export function isProsePath(file, extensions = DEFAULT_PROSE_EXTENSIONS) {
   const lower = file.toLowerCase();
@@ -62,40 +42,15 @@ export function scoreText(text, {
 } = {}) {
   const prose = stripNonProse(text, strip);
   const resolvedLang = detectLanguage(file, prose, lang);
-  const result = analyzeText(prose, {
-    lang: resolvedLang,
-    repoRoot,
-    lexicon: getLexicon(resolvedLang, repoRoot),
-  });
-  const patternHits = countPatternWatchHits(prose, getPatternWatchTerms(resolvedLang, repoRoot), resolvedLang);
-  const { paragraphCount, hotCount, score, signalScore, leaked, discourseHot, flooredScore } = summarizeProseAnalysis(result);
-  return {
+  const { leaked: _leaked, discourseHot: _discourseHot, ...scored } = scoreProse(text, {
     file,
     lang: resolvedLang,
-    paragraphCount,
-    hotCount,
-    score,
-    flooredScore,
-    signalScore,
-    patternHits,
     gate,
-    overGate: score > gate,
-    skipped: paragraphCount === 0,
-    // The analyzer's own skip verdict (paragraphs<=2 / sentences<=2): too
-    // little prose to trust a hot/total ratio.
-    analysisSkipped: Boolean(result.skipped),
-    skipReason: result.skipReason ?? null,
-    proseLength: prose.length,
-    markupLeakage: {
-      leaked,
-      hits: Array.isArray(result.markupLeakage?.hits) ? result.markupLeakage.hits.length : 0,
-    },
-    discourseTells: {
-      hot: discourseHot,
-      fakeCandor: result.discourseTells?.fakeCandor?.hot === true,
-      thematicBreaks: result.discourseTells?.thematicBreaks?.hot === true,
-    },
-  };
+    lexicon: getLexicon(resolvedLang, repoRoot),
+    strip,
+  });
+  const patternHits = countPatternWatchHits(prose, getPatternWatchTerms(resolvedLang, repoRoot), resolvedLang);
+  return { file, ...scored, patternHits };
 }
 
 export function extractPatternWatchTerms(patterns = []) {

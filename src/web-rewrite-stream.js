@@ -17,6 +17,7 @@ import {
   diagnosisStructureGuidance,
 } from './features/korean-diagnosis.js';
 import { evaluateKoreanInvariants } from './features/korean-invariants.js';
+import { emitTelemetry, startTelemetryClock } from './web-observability.js';
 
 /**
  * @typedef {{signal: AbortSignal|null, remainingMs: () => number|undefined, race: (promise: Promise<any>|any) => Promise<any>, dispose: () => void}} DeadlineScope
@@ -351,39 +352,15 @@ async function runWebRewriteStreamUnscoped({
       llmCalls: stages.reduce((sum, stage) => sum + attempts.calls[stage], 0),
     };
   };
-  let startedAt;
-  if (typeof observe === 'function') {
-    try {
-      startedAt = Number(now());
-    } catch {
-      // A telemetry clock cannot alter a customer result.
-    }
-  }
+  const elapsed = typeof observe === 'function' ? startTelemetryClock(now) : undefined;
   /**
    * @param {'completed'|'number_safety_failed'|'terminal_failed'} outcome
    * @param {number} status
    */
   const observeTerminal = (outcome, status) => {
-    if (typeof observe !== 'function' || !Number.isFinite(startedAt)) return false;
-    let endedAt;
-    try {
-      endedAt = Number(now());
-    } catch {
-      return false;
-    }
-    if (!Number.isFinite(endedAt)) return false;
-    try {
-      const result = observe({
-        tier: request.tier,
-        outcome,
-        status,
-        latencyMs: Math.max(0, endedAt - startedAt),
-        ...attemptTotals(),
-      });
-      if (result && typeof /** @type {any} */ (result).catch === 'function') /** @type {any} */ (result).catch(() => {});
-    } catch {
-      // Observability is strictly nonblocking and exception-isolated.
-    }
+    const latencyMs = elapsed?.();
+    if (latencyMs === undefined) return false;
+    emitTelemetry(/** @type {Function} */ (observe), { tier: request.tier, outcome, status, latencyMs, ...attemptTotals() });
     return true;
   };
   const effectiveConfig = cloneConfig(config);

@@ -6,6 +6,7 @@ import { byteLength, QUOTA_REASONS, validateRewriteRequest, WEB_TIERS } from './
 import { extractClientIp } from './rate-limit.js';
 import { extractBearerLicense } from './entitlement.js';
 import { sha256 } from './web-rewrite-receipt.js';
+import { emitTelemetry, startTelemetryClock } from './web-observability.js';
 
 /**
  * Cancellation contract: `runRewrite` receives the raw `req`/`res`. Runtimes
@@ -36,31 +37,6 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
     || typeof rateLimiter.acquireConcurrency !== 'function' || typeof rateLimiter.releaseConcurrency !== 'function') {
     throw new TypeError('rateLimiter must implement check, acquireConcurrency and releaseConcurrency');
   }
-  /**
-   * Closed telemetry is best-effort and must never alter a customer response.
-   * @param {string} tier
-   * @param {string} outcome
-   * @param {number} status
-   * @param {number} startedAt
-   */
-  const observeClosed = (observer, tier, outcome, status, startedAt) => {
-    if (typeof observer !== 'function' || !Number.isFinite(startedAt)) return false;
-    let endedAt;
-    try {
-      endedAt = Number(now());
-    } catch {
-      return false;
-    }
-    if (!Number.isFinite(endedAt)) return false;
-    try {
-      const result = observer({ tier, outcome, status, latencyMs: Math.max(0, endedAt - startedAt) });
-      if (result && typeof /** @type {any} */ (result).catch === 'function') /** @type {Promise<unknown>} */ (result).catch(() => {});
-      return true;
-    } catch {
-      // Observability is strictly nonblocking and exception-isolated.
-      return false;
-    }
-  };
   /** @param {string} reason */
   const limiterOutcome = (reason) => reason === QUOTA_REASONS.SERVICE_UNAVAILABLE ? 'service_disabled' : 'quota_denied';
   /** @param {number} status @param {string} reason */
@@ -76,14 +52,12 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
   return async function rewriteHandler(req, res) {
     const synthetic = isTrustedSynthetic(req.headers || {}, env);
     const customerObserve = synthetic ? undefined : observe;
-    let startedAt;
-    if (typeof customerObserve === 'function') {
-      try {
-        startedAt = Number(now());
-      } catch {
-        // A telemetry clock cannot alter a customer response.
-      }
-    }
+    const elapsed = typeof customerObserve === 'function' ? startTelemetryClock(now) : undefined;
+    /** Closed telemetry is best-effort and never alters a customer response. */
+    const observeClosed = (/** @type {string} */ tier, /** @type {string} */ outcome, /** @type {number} */ status) => {
+      const latencyMs = elapsed?.();
+      if (latencyMs !== undefined) emitTelemetry(/** @type {Function} */ (customerObserve), { tier, outcome, status, latencyMs });
+    };
     let clientClosed = req.aborted === true || (res.destroyed === true && !res.writableEnded);
     const isClientClosed = () => clientClosed || req.aborted === true || (res.destroyed === true && !res.writableEnded);
     const onAbort = () => { clientClosed = true; };
@@ -122,12 +96,12 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       let options = {};
       if (bodyTier === WEB_TIERS.PRO) {
         if (Array.isArray(req.rawHeaders) && !hasExactlyOneAuthorizationHeader(req.rawHeaders)) {
-          observeClosed(customerObserve, WEB_TIERS.PRO, 'entitlement_denied', 401, startedAt);
+          observeClosed(WEB_TIERS.PRO, 'entitlement_denied', 401);
           return send(res, 401, { error: QUOTA_REASONS.LICENSE_REQUIRED });
         }
         bearer = extractBearerLicense(req.headers || {});
         if (bearer.ok === false) {
-          observeClosed(customerObserve, WEB_TIERS.PRO, 'entitlement_denied', bearer.status, startedAt);
+          observeClosed(WEB_TIERS.PRO, 'entitlement_denied', bearer.status);
           return send(res, bearer.status, { error: bearer.reason });
         }
         options = { proLicenseSource: 'authorization-bearer' };
@@ -140,7 +114,7 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
           fail.status === 503
           && (bodyTier === WEB_TIERS.FREE || bodyTier === WEB_TIERS.BYOK || bodyTier === WEB_TIERS.PRO)
         ) {
-          observeClosed(customerObserve, bodyTier, 'service_disabled', 503, startedAt);
+          observeClosed(bodyTier, 'service_disabled', 503);
         }
         return send(res, fail.status, { error: fail.error });
       }
@@ -163,19 +137,19 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       let subject;
       if (tier === WEB_TIERS.PRO) {
         if (!licenseValidator || typeof licenseValidator.validate !== 'function') {
-          observeClosed(customerObserve, tier, 'entitlement_unavailable', 503, startedAt);
+          observeClosed(tier, 'entitlement_unavailable', 503);
           return send(res, 503, { error: QUOTA_REASONS.LICENSE_UNAVAILABLE });
         }
         let ent;
         try {
           ent = await licenseValidator.validate({ licenseKey: /** @type {{ok: true, license: string}} */ (bearer).license, ip });
         } catch (err) {
-          observeClosed(customerObserve, tier, 'entitlement_unavailable', 500, startedAt);
+          observeClosed(tier, 'entitlement_unavailable', 500);
           throw err;
         }
         if (!ent.ok) {
           const denied = /** @type {{status: number, reason: string}} */ (ent);
-          observeClosed(customerObserve, tier, entitlementOutcome(denied.status, denied.reason), denied.status, startedAt);
+          observeClosed(tier, entitlementOutcome(denied.status, denied.reason), denied.status);
           return send(res, denied.status, { error: denied.reason });
         }
         subject = ent.subject;
@@ -202,7 +176,7 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
 
       /** @param {{status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} denied */
       const sendQuotaDenied = (denied) => {
-        observeClosed(customerObserve, tier, limiterOutcome(denied.reason), denied.status, startedAt);
+        observeClosed(tier, limiterOutcome(denied.reason), denied.status);
         const body = /** @type {Record<string, unknown>} */ ({ error: denied.reason });
         if (typeof denied.remainingMonthlyChars === 'number') body.remainingMonthlyChars = denied.remainingMonthlyChars;
         if (typeof denied.limitMonthlyChars === 'number') body.limitMonthlyChars = denied.limitMonthlyChars;
@@ -216,11 +190,11 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       const concurrency = await rateLimiter.acquireConcurrency({ tier, ip, subject });
       if (!concurrency.allowed) {
         const denied = /** @type {{status: number, reason: string}} */ (concurrency);
-        observeClosed(customerObserve, tier, limiterOutcome(denied.reason), denied.status, startedAt);
+        observeClosed(tier, limiterOutcome(denied.reason), denied.status);
         return send(res, denied.status, { error: denied.reason });
       }
       if (typeof concurrency.lease !== 'string' || concurrency.lease === '') {
-        observeClosed(customerObserve, tier, 'quota_denied', 503, startedAt);
+        observeClosed(tier, 'quota_denied', 503);
         return send(res, 503, { error: QUOTA_REASONS.STORAGE_UNAVAILABLE });
       }
 

@@ -3,7 +3,7 @@ import { reservationArgs, RESERVE_QUOTA_LUA, settlementArgs, SETTLE_QUOTA_LUA } 
 import { createRateLimiter, createMemoryKv, isProductionPosture } from '../src/rate-limit.js';
 import { createRewriteHandler } from '../src/rewrite-handler.js';
 import { encodeStreamFrame, QUOTA_REASONS, resolveTierLimits, WEB_TIERS } from '../src/web-rewrite-contract.js';
-import { createWebObserver } from '../src/web-observability.js';
+import { createWebObserver, emitTelemetry, startTelemetryClock } from '../src/web-observability.js';
 import { runWebRewriteStream } from '../src/web-rewrite-stream.js';
 import { createPolarLicenseValidator } from '../src/entitlement-polar.js';
 import { INCRBY_PEXPIRE_LUA, upstashFetch, upstashOrigin } from '../src/upstash-rest.js';
@@ -281,48 +281,20 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
       const bufferedFrames = [];
       /** @type {string|undefined} */
       let bufferedBody;
+      // Exactly one terminal event per request: the stream reports its own,
+      // and this runner reports only the paths the stream never reached.
       let terminalObserved = false;
-      let legacyStartedAt;
-      if (typeof observe === 'function') {
-        try {
-          legacyStartedAt = Number(now());
-        } catch {
-          // Do not fabricate an epoch latency when the telemetry clock fails.
-        }
-      }
-      const observeTerminal = (outcome, status) => {
-        if (terminalObserved || typeof observe !== 'function' || !Number.isFinite(legacyStartedAt)) return false;
-        let endedAt;
-        try {
-          endedAt = Number(now());
-        } catch {
-          return false;
-        }
-        if (!Number.isFinite(endedAt)) return false;
+      const elapsed = typeof observe === 'function' ? startTelemetryClock(now) : undefined;
+      const observeTerminal = (/** @type {string} */ outcome, /** @type {number} */ status) => {
+        const latencyMs = terminalObserved ? undefined : elapsed?.();
+        if (latencyMs === undefined) return;
         terminalObserved = true;
-        try {
-          const result = observe({
-            tier: request.tier,
-            outcome,
-            status,
-            latencyMs: Math.max(0, endedAt - legacyStartedAt),
-          });
-          if (result && typeof result.catch === 'function') result.catch(() => {});
-        } catch {
-          // Closed telemetry must not change a customer response.
-        }
-        return true;
+        emitTelemetry(/** @type {Function} */ (observe), { tier: request.tier, outcome, status, latencyMs });
       };
-      const observeGuarded = (input) => {
-        if (terminalObserved || typeof observe !== 'function') return undefined;
+      const observeStream = (/** @type {Record<string, unknown>} */ event) => {
+        if (terminalObserved || typeof observe !== 'function') return;
         terminalObserved = true;
-        try {
-          const result = observe(input);
-          if (result && typeof result.catch === 'function') result.catch(() => {});
-          return result;
-        } catch {
-          return undefined;
-        }
+        emitTelemetry(observe, event);
       };
       // Resolve the effective LLM key server-side, per tier:
       //   - byok → the caller's own key (from the validated request).
@@ -371,7 +343,7 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
           },
           signal: controller.signal,
           timeout: streamTimeoutMs,
-          observe: observeGuarded,
+          observe: observeStream,
           now,
         });
         // The seam's return type is `void`-tolerant so an injected stand-in
@@ -379,13 +351,11 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
         // here to the two fields it does read.
         const outcome = /** @type {{ok?: boolean, code?: string}|undefined} */ (result);
         terminalOutcome = outcome;
-        if (!terminalObserved) {
-          observeTerminal(
-            outcome?.ok === false && outcome.code === 'number_safety_failed' ? 'number_safety_failed'
-              : outcome?.ok === false ? 'terminal_failed' : 'completed',
-            res.statusCode,
-          );
-        }
+        observeTerminal(
+          outcome?.ok === false && outcome.code === 'number_safety_failed' ? 'number_safety_failed'
+            : outcome?.ok === false ? 'terminal_failed' : 'completed',
+          res.statusCode,
+        );
         if (jsonResponse) {
           const done = [...bufferedFrames].reverse().find((frame) => frame.type === 'done');
           if (outcome?.ok !== false && done) {

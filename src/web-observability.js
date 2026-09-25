@@ -39,6 +39,47 @@ const OBSERVER_BUDGET_MS = 50;
 const AGGREGATE_TIER_SET = new Set(values.tier.filter((tier) => tier !== 'unknown'));
 const AGGREGATE_LATENCY_BUCKET_SET = new Set(values.latencyBucket.filter((bucket) => bucket !== 'unknown'));
 
+/**
+ * Start a stopwatch on an injectable telemetry clock. The returned function
+ * gives the elapsed milliseconds, or undefined when a clock read fails, so a
+ * broken clock never reports an epoch-sized latency.
+ *
+ * @param {() => unknown} now
+ * @returns {() => number|undefined}
+ */
+export function startTelemetryClock(now) {
+  const read = () => {
+    try {
+      const value = Number(now());
+      return Number.isFinite(value) ? value : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const startedAt = read();
+  return () => {
+    if (startedAt === undefined) return undefined;
+    const endedAt = read();
+    return endedAt === undefined ? undefined : Math.max(0, endedAt - startedAt);
+  };
+}
+
+/**
+ * Hand one event to a telemetry sink. Telemetry must never alter a customer
+ * response, so a throw or a rejected promise from the sink is absorbed.
+ *
+ * @param {Function} observe
+ * @param {Record<string, unknown>} event
+ */
+export function emitTelemetry(observe, event) {
+  try {
+    const result = observe(event);
+    if (result && typeof result.catch === 'function') result.catch(() => {});
+  } catch {
+    // Absorbed: see above.
+  }
+}
+
 /** @param {unknown} ms */
 function monitorLatencyBucket(ms) {
   const n = Number(ms);

@@ -22,7 +22,7 @@ import { getRepoRoot, loadConfig } from '../config.js';
 import { inputError, runtimeError } from '../errors.js';
 
 
-export const DEFAULT_PACKS_URL = 'https://patina.vibetip.help/api/packs';
+const DEFAULT_PACKS_URL = 'https://patina.vibetip.help/api/packs';
 const PACK_ID_RE = /^[a-z0-9][a-z0-9-]{1,63}$/;
 const KNOWN_KINDS = new Set(['pattern', 'persona', 'lexicon']);
 

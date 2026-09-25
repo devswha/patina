@@ -17,16 +17,17 @@
  *   helper reports the reminder as a `notice` field in its summary instead.
  */
 
-import { lstatSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { lstatSync, mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { writeAtomicUtf8 } from './atomic-write.js';
 
 export const STAR_URL = 'https://github.com/devswha/patina';
 /** `gh` has no `repo star` subcommand; the REST call is the terminal one-liner. */
 export const STAR_COMMAND = 'gh api -X PUT user/starred/devswha/patina';
 /** Successful-run counts at which the reminder is shown; one showing per entry. */
 export const STAR_NUDGE_AT = Object.freeze([3, 20]);
-export const STAR_NOTICE = 'star';
+const STAR_NOTICE = 'star';
 
 const STATE_FILE = 'star-nudge.json';
 
@@ -50,7 +51,7 @@ export function starNudgeEnabled({ config = {}, env = process.env } = {}) {
  * @param {Record<string, string|undefined>} [env]
  * @returns {string}
  */
-export function defaultStateDir(env = process.env) {
+function defaultStateDir(env = process.env) {
   return env?.PATINA_STATE_DIR || join(homedir(), '.patina');
 }
 
@@ -68,12 +69,12 @@ export function recordSuccessfulRun({ stateDir, now = () => new Date() }) {
     if (state.shown >= STAR_NUDGE_AT.length) return { due: false, successes: state.successes, shown: state.shown };
     ensurePrivateDirectory(stateDir);
     state.successes += 1;
-    const due = state.shown < STAR_NUDGE_AT.length && state.successes >= STAR_NUDGE_AT[state.shown];
+    const due = state.successes >= STAR_NUDGE_AT[state.shown];
     if (due) {
       state.shown += 1;
       state.lastShownAt = now().toISOString();
     }
-    writeState(stateDir, path, state);
+    writeAtomicUtf8(path, `${JSON.stringify(state)}\n`, { mode: 0o600 });
     return { due, successes: state.successes, shown: state.shown };
   } catch {
     return { due: false, successes: 0, shown: 0 };
@@ -161,16 +162,4 @@ function readState(path) {
 
 function countOrZero(value) {
   return Number.isSafeInteger(value) && value >= 0 ? value : 0;
-}
-
-function writeState(dir, path, state) {
-  const tmp = join(dir, `.star-nudge-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`);
-  // Exclusive create: never follow or clobber a preexisting temp path.
-  writeFileSync(tmp, `${JSON.stringify(state)}\n`, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
-  try {
-    renameSync(tmp, path);
-  } catch (err) {
-    try { unlinkSync(tmp); } catch { /* best-effort cleanup */ }
-    throw err;
-  }
 }

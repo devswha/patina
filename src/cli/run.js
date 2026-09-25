@@ -26,7 +26,8 @@ import { createHash } from 'node:crypto';
 import { verifyRewrite, deterministicMeaningGuard, assessRewriteMeaningSafety } from '../verify.js';
 import { interpretScore, reconcileScoreOverall, scoreDeterministicSignals } from '../scoring.js';
 import { buildDocumentSignals } from '../features/document-signals.js';
-import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput, writeAtomicUtf8, resolveBatchOutputPath } from './batch.js';
+import { logBatchSafetyPlan, createBatchCircuitBreaker, shouldHandleBatchFailure, writeBatchOutput, resolveBatchOutputPath } from './batch.js';
+import { writeAtomicUtf8 } from '../atomic-write.js';
 import { applyScoreGate, extractScoreOverall } from './score-gate.js';
 import { loadInputs } from './input.js';
 import { PatinaCliError, inputError, runtimeError } from '../errors.js';
@@ -125,7 +126,7 @@ async function runPipeline(parsed, logger, config) {
   const scoring = loadCoreFile(repoRoot, 'scoring.md');
   const persona = resolvePersonaForRun({ parsed, config, mode, lang, repoRoot });
 
-  const inputTexts = parsed.preview ? [] : await loadInputs(parsed, logger);
+  const inputTexts = parsed.preview ? [] : await loadInputs(parsed);
   const timeoutMs = parsed.timeoutMs ?? DEFAULT_BACKEND_TIMEOUT_MS;
   const backendSelection = selectBackendChain({
     name: parsed.backend ?? config.backend ?? (resolved.baseURLSource !== 'default' ? 'openai-http' : undefined),
@@ -457,7 +458,7 @@ async function runPipeline(parsed, logger, config) {
 }
 
 async function runOfflineScore(parsed, { config, patterns, repoRoot }, logger) {
-  const inputs = await loadInputs(parsed, logger);
+  const inputs = await loadInputs(parsed);
   const batchState = createBatchCircuitBreaker({ parsed, total: inputs.length });
 
   for (const { path, text, readError } of inputs) {
@@ -832,7 +833,7 @@ async function runPreviewJob({
       snapshotSource = page.html;
       sourceUrl = page.finalUrl;
     } else {
-      const [loaded] = await loadInputs(parsed, logger);
+      const [loaded] = await loadInputs(parsed);
       // Local files are validated to .html upstream and use the same
       // snapshot pipeline as a fetched page.
       snapshotSource = loaded.text;

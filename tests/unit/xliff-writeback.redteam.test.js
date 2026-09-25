@@ -19,7 +19,8 @@ import {
   parseXliffDocument,
   selectXliffSegments,
 } from '../../src/cli/xliff.js';
-import { resolveBatchOutputPath, writeAtomicUtf8 } from '../../src/cli/batch.js';
+import { resolveBatchOutputPath } from '../../src/cli/batch.js';
+import { writeAtomicUtf8 } from '../../src/atomic-write.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = readFileSync(resolve(HERE, '../fixtures/xliff/sample.xliff'), 'utf8');
@@ -39,7 +40,7 @@ function makeTempDir(prefix) {
 }
 
 function tempNames(dir) {
-  return readdirSync(dir).filter((name) => name.startsWith('.patina-xliff-') && name.endsWith('.tmp'));
+  return readdirSync(dir).filter((name) => name.startsWith('.patina-') && name.endsWith('.tmp'));
 }
 
 function identityReplacementsForSelected(xml) {
@@ -167,7 +168,7 @@ test('writeAtomicUtf8: missing parent throws without destination or temp leftove
   assert.equal(existsSync(dest), false);
   assert.deepEqual(tempNames(dir), []);
   assert.equal(existsSync(missingParent), false);
-  record('writeAtomicUtf8 missing parent failure', 'throws, no dest, no .patina-xliff tmp in existing dir', 'matched');
+  record('writeAtomicUtf8 missing parent failure', 'throws, no dest, no .patina tmp in existing dir', 'matched');
 });
 
 test('estimateXliffRun: dry-run cap boundaries, clamped attempts, no calls or writes', () => {

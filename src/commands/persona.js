@@ -525,7 +525,7 @@ export async function runPersonaEdit(args, deps = {}) {
   return path;
 }
 
-export function printPersonaHelp() {
+function printPersonaHelp() {
   console.log([
     'Usage: patina persona <command>',
     '',

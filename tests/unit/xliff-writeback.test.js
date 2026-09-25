@@ -13,7 +13,8 @@ import {
   selectXliffSegments,
   DEFAULT_UNIQUE_CAP,
 } from '../../src/cli/xliff.js';
-import { writeAtomicUtf8, resolveBatchOutputPath } from '../../src/cli/batch.js';
+import { resolveBatchOutputPath } from '../../src/cli/batch.js';
+import { writeAtomicUtf8 } from '../../src/atomic-write.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = readFileSync(resolve(HERE, '../fixtures/xliff/sample.xliff'), 'utf8');
@@ -118,7 +119,7 @@ test('writeAtomicUtf8: writes content and leaves no temp file behind', () => {
     const dest = join(dir, 'out.xliff');
     writeAtomicUtf8(dest, 'hello <ko> & 안녕');
     assert.equal(readFileSync(dest, 'utf8'), 'hello <ko> & 안녕');
-    const leftover = readdirSync(dir).filter((f) => f.includes('.patina-xliff-') && f.endsWith('.tmp'));
+    const leftover = readdirSync(dir).filter((f) => f.startsWith('.patina-') && f.endsWith('.tmp'));
     assert.deepEqual(leftover, []);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -147,7 +148,7 @@ test('writeAtomicUtf8: rename onto an existing directory fails, cleans temp, lea
     mkdirSync(destDir);
     assert.throws(() => writeAtomicUtf8(destDir, 'x')); // rename(file -> dir) fails
     assert.equal(existsSync(destDir), true); // existing dest untouched
-    const leftover = readdirSync(dir).filter((f) => f.includes('.patina-xliff-') && f.endsWith('.tmp'));
+    const leftover = readdirSync(dir).filter((f) => f.startsWith('.patina-') && f.endsWith('.tmp'));
     assert.deepEqual(leftover, [], 'temp file must be cleaned up after rename failure');
   } finally {
     rmSync(dir, { recursive: true, force: true });

@@ -419,7 +419,7 @@ function splitTransformValues(value, fallback) {
 // Expand --jargon/--register into the rewrite variants a run executes.
 // A single combination is the normal one-call path; comma lists become
 // --preview comparison variants, one rewrite call each.
-export const MAX_TRANSFORM_VARIANTS = 4;
+const MAX_TRANSFORM_VARIANTS = 4;
 
 export function buildTransformVariants(parsed) {
   const jargons = splitTransformValues(parsed.jargon, 'keep');

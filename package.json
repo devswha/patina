@@ -49,7 +49,6 @@
     "lint:eslint": "eslint .",
     "typecheck": "tsc -p .",
     "spellcheck": "cspell \"patterns/**/*.md\" \"lexicon/**/*.md\" --gitignore-root .",
-    "docs:api": "node scripts/generate-api-docs.mjs",
     "qa:mdx": "node scripts/qa/mdx-score.mjs",
     "quality:live": "node tests/quality/live-quality.mjs",
     "benchmark:scorer:live": "node tests/quality/live-scorer-benchmark.mjs",
@@ -233,7 +232,6 @@
     "cspell": "^8.19.4",
     "eslint": "^10.10.0",
     "espree": "9.6.1",
-    "jsdoc-to-markdown": "^9.1.3",
     "playwright": "1.63.0",
     "semver": "7.8.5",
     "typescript": "^7.0.2"

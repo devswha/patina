@@ -156,7 +156,3 @@ updates; the browser cannot emit this metric.
 node --test tests/unit/web-rewrite-contract.test.js tests/unit/web-deploy-invariants.test.js
 npm run lint:syntax
 ```
-
-## See also
-
-- [`AI-SLOP-TAXONOMY.md`](AI-SLOP-TAXONOMY.md) — the negative dictionary of AI-looking UI clichés that `DESIGN.md` is written against.

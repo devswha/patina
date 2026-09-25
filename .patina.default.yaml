@@ -169,7 +169,6 @@ verification:
 # paragraph, marks suspect zones, and feeds them into 5a/5b as internal memory.
 # See core/stylometry.md for the full algorithm reference.
 stylometry:
-  enabled: true              # set false to bypass 4.6단계 entirely
   languages: [ko, en, zh, ja] # zh/ja use deterministic character-token fallback
   # Optional private local structural classifier. Public releases ship the
   # loader and feature extractor only; trained model files stay outside git/npm.
@@ -200,13 +199,6 @@ stylometry:
       posProxy:
         minMatchedCount: 10
         maxClassDiversity: 0.26
-    spacing:
-      metric: eojeol_length_cv # dependency-free Korean spacing regularity proxy
-    comma:
-      metric: per_sentence_and_per_100_chars
-    pos_proxy:
-      metric: suffix_class_diversity
-      dependency: none         # no runtime morphology analyzer
   skip:
     min_paragraphs: 2
     min_sentences: 2

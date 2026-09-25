@@ -149,3 +149,13 @@ from that branch (see [docker.md](docker.md)):
 ```bash
 gh workflow run release.yml --ref main -f publish=false -f publish_ghcr=true
 ```
+
+## Changelog entry
+
+```md
+## X.Y.Z — YYYY-MM-DD
+
+**Short release title.**
+
+Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
+```

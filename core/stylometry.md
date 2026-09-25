@@ -493,32 +493,6 @@ The tool is scalable. The tool is essential.
 
 ---
 
-## 11. Roadmap (v2+)
-
-현재 기본 경로에서 의도적으로 제외했거나 ship 이후 후속 검토만 남은 항목.
-
-**zh/ja decision:** 기본 경로는 char-token fallback으로 확정한다. go 조건은 "무의존성,
-Node 18 호환, 문장 길이 CV/MATTR가 공백 없는 zh/ja 문장에서 0-token으로 붕괴하지 않음"이다.
-jieba/sudachi/mecab 같은 형태소 의존성은 no-go다. go 조건을 다시 열려면 (1) pure JS 또는
-optional dependency로 설치 실패가 없는 경로, (2) ko/en/zh/ja benchmark에서 false positive
-증가가 허용 범위 내라는 근거, (3) 패키지 크기/속도 회귀가 문서화되어야 한다.
-
-| 항목 | 설명 | 도입 후보 시점 |
-|------|------|----------------|
-| ~~n-gram redundancy~~ | ~~bi/trigram 반복도~~ — **dropped, §15 negative finding** | — |
-| ~~AI-lexicon overlap~~ | ~~28-패턴 외 AI 특유 어구 사전 매칭~~ — **shipped v3.7, §16** | v3.7 |
-| ~~zh/ja character fallback~~ | ~~Han/Kana character-token burstiness/TTR~~ — **shipped for 4.6** | current |
-| ~~ko diagnostic composite~~ | ~~spacing/comma/suffix proxy~~ — **shipped as conservative AND signal, §5.1** | current |
-| Perplexity proxy | small LM 또는 cloze prompt 기반 token-level surprise | v4 후보 |
-| Broader function-word distribution | en/zh/ja 포함 기능어 빈도 분포 차이 | v4 후보 |
-| GPTZero / Originality 연동 | 외부 detector API 결과를 hot 신호로 합산 | v4+ 후보 |
-| 형태소 분석 기반 ko 토큰화 | 어절 → 형태소 단위로 정밀화 | v2+ |
-| zh/ja 형태소 분석 통합 | 단어 경계 처리; 위 go/no-go 충족 시에만 재검토 | v4+ 후보 |
-| 사용자 idiolect 학습 | 개인 작성 스타일 학습 후 false positive 억제 | 별도 트랙 |
-| 정량 라벨 데이터셋 | 언어별 50+ 라벨 데이터 기반 임계값 튜닝 | v1 결과 후 검토 |
-
----
-
 ## 12. Known Limitations
 
 - **Korean morphology coarseness**: 어절 단위 토큰화는 morpheme-level 분석과 다르다.
@@ -540,6 +514,10 @@ optional dependency로 설치 실패가 없는 경로, (2) ko/en/zh/ja benchmark
 - **Language scope**: 4.6 stylometry는 ko/en/zh/ja를 지원한다. zh/ja는 형태소가 아니라
   character-token fallback이므로 MATTR 해석은 보수적으로만 사용한다. 4.7 lexicon도
   en/ko/zh/ja 기본 사전을 제공한다.
+- **zh/ja 토큰화 결정**: 기본 경로는 char-token fallback으로 확정한다. jieba/sudachi/mecab
+  같은 형태소 의존성은 no-go다. 다시 열려면 (1) pure JS 또는 optional dependency로 설치
+  실패가 없는 경로, (2) ko/en/zh/ja benchmark에서 false positive 증가가 허용 범위 내라는
+  근거, (3) 패키지 크기/속도 회귀 문서화가 모두 필요하다.
 
 ---
 
@@ -590,7 +568,7 @@ v3.5.1 은 advisory marker 로 사용하라. 패턴 카탈로그가 명명한 28
 
 ### 외부 검증 재현
 
-`.omc/research/eval_external_v2.py` 로 측정, `.omc/research/threshold_sweep.py` 로 sweep 수행. raw 결과는 `.omc/research/external_results_v2.json`. 재실행 시 HuggingFace `Hello-SimpleAI/HC3` + `wikimedia/wikipedia` 20231101.en 다운로드 발생.
+측정 데이터는 HuggingFace `Hello-SimpleAI/HC3` + `wikimedia/wikipedia` 20231101.en 이다. 측정 스크립트와 raw 결과는 저장소에 포함되지 않는다.
 
 ---
 
@@ -614,7 +592,7 @@ MATTR median 0.941 — 영어 자연 텍스트(0.77~0.79) 보다 훨씬 높다. 
 
 ### 한국어 AI 텍스트 측정 (post-v3.7.0)
 
-자유 배포 한국어 AI 코퍼스가 없어 NamuWiki 100 토픽을 시드로 Claude (claude -p, opus) 에 paired 한국어 단락 100건을 자가 생성한 뒤 측정했다 (`.omc/research/ko_ai_robust.py`).
+자유 배포 한국어 AI 코퍼스가 없어 NamuWiki 100 토픽을 시드로 Claude (claude -p, opus) 에 paired 한국어 단락 100건을 자가 생성한 뒤 측정했다.
 
 | 지표 | ko/AI (Claude 생성, n=100) | ko/human (NamuWiki, n=100) | gap |
 |------|---------------------------|----------------------------|-----|
@@ -666,7 +644,7 @@ n-gram 반복도를 ship 하지 않는다. v3.5.1 상태 유지. roadmap 에서 
 
 ### 재현
 
-`.omc/research/v3_6_ngram_probe.py` 로 측정, raw 결과는 `.omc/research/v3_6_results.json`. HuggingFace `Hello-SimpleAI/HC3` + `wikimedia/wikipedia` + `heegyu/namuwiki` 다운로드 발생.
+측정 데이터는 HuggingFace `Hello-SimpleAI/HC3` + `wikimedia/wikipedia` + `heegyu/namuwiki` 이다. 측정 스크립트와 raw 결과는 저장소에 포함되지 않는다.
 
 ---
 
@@ -778,7 +756,7 @@ Pareto frontier (3-signal OR, threshold sweep):
 - Strict (drop): `intersection`, `principles`, `mindset`, `iterative`, `responsible`, `methodologies`, `redefine`, `accessible`, `equitable`
 - Phrases (drop): `one of the most`, `in conjunction with`, `the power of`
 
-이 entry 들은 학술/전문 prose 에서 자연스럽게 등장하는 단어로, AI 의 promotional 어휘가 아니라 register 의 일부였다. 재추가 시 반드시 `.omc/research/v3_7_lexicon_eval.py` 로 회귀 측정.
+이 entry 들은 학술/전문 prose 에서 자연스럽게 등장하는 단어로, AI 의 promotional 어휘가 아니라 register 의 일부였다. 재추가 시 반드시 회귀 측정한다 (`docs/benchmarks/lexicon-candidates.md`의 corpus gate).
 
 ### 28-패턴 카탈로그와의 분리
 
@@ -807,7 +785,7 @@ zh/ja 모두 false positive 0/4, AI catch 4/4를 유지한다. 더 큰 외부 co
 
 **v3.8.0 (102 entries) 재큐레이션**:
 
-ko/AI 코퍼스 vs NamuWiki human 차별 빈도 마이닝(`.omc/research/v3_8_ko_lexicon_mine.py`) 으로 AI 측 doc-freq ≥4×, ratio ≥4.0 인 phrase 발굴. 도메인 아티팩트(`가면라이더`, `한국`, `시리즈` 등) 제외하고 register marker 12개 추가:
+ko/AI 코퍼스 vs NamuWiki human 차별 빈도 마이닝으로 AI 측 doc-freq ≥4×, ratio ≥4.0 인 phrase 발굴. 도메인 아티팩트(`가면라이더`, `한국`, `시리즈` 등) 제외하고 register marker 12개 추가:
 
 - Strict (8개): `평가된다`, `꼽힌다`, `가리킨다`, `사례로`, `다수의`, `알려져`, `일컬어진다`, `평가받다`
 - Phrases (4개): `가운데 하나로`, `자리 잡았다`, `알려져 있다`, `~의 사례로`
@@ -815,7 +793,7 @@ ko/AI 코퍼스 vs NamuWiki human 차별 빈도 마이닝(`.omc/research/v3_8_ko
 **v3.12.x false-positive pruning (96 entries)**:
 `환경`, `기반`, `흐름`, `측면`, `토대`, `가리킨다`는 기술 문서의 구체적 용례(`환경 변수`, `이벤트 기반`, `인증 흐름` 등)에서 짧은 단락을 과열시키는 bare strict entry라 기본 lexicon에서 제외했다. 같은 register 과잉은 더 구체적인 phrase나 retained marker(`자리매김`, `중요한 의미`, `생태계`, `양상` 등)로 잡는다.
 
-**v3.8.0 결과** (동일 코퍼스 재측정, `.omc/research/v3_8_remeasure.py`):
+**v3.8.0 결과** (동일 코퍼스 재측정):
 
 | Source | n | v3.7.0 hot | v3.8.0 hot | Δ | lex fires |
 |--------|---|-----------:|-----------:|---:|---------:|
@@ -839,4 +817,4 @@ v3.7 도 advisory marker 다. 28-패턴 카탈로그의 보조 입력이며, 단
 
 ### 재현
 
-`.omc/research/v3_7_lexicon_eval.py` 로 측정. raw 결과는 `.omc/research/v3_7_results.json` (paragraph-level: text + cv + mattr + lex_density + lex_hits). 재실행 시 HuggingFace `Hello-SimpleAI/HC3` + `wikimedia/wikipedia` 20231101.en + `heegyu/namuwiki` 다운로드 발생.
+측정 데이터는 HuggingFace `Hello-SimpleAI/HC3` + `wikimedia/wikipedia` 20231101.en + `heegyu/namuwiki` 이다. 측정 스크립트와 raw 결과는 저장소에 포함되지 않는다.

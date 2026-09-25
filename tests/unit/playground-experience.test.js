@@ -535,7 +535,6 @@ for (const lang of contract.SUPPORTED_LANGS) {
     assert.equal(a.get('license-status').textContent, t.licenseStates.validated);
     assert.equal(a.ui.activeConvo().thread.original, 'A source 70%', '70/70 is accepted');
     assert.equal(a.storage.size, 0, 'no license, source or transcript may reach browser storage');
-    assert.equal(a.get('pro-portal').hidden, true, 'unconfigured portal stays hidden');
     assert.equal(a.document.querySelector('.price__badge').textContent, t.proBadge);
     assert.equal(a.document.querySelectorAll('.price')[1].querySelector('.price__name').textContent, t.byokName);
   });
@@ -639,15 +638,6 @@ test('license status cannot report success on apply, network failure or infrastr
   assert.equal(copy.licenseStatusAfter(status, 'denied'), 'rejected');
   assert.equal(copy.licenseStatusAfter(status, 'accepted'), 'validated');
 });
-
-test('portal links require an explicit safe Polar customer portal; no checkout-derived URL', () => {
-  for (const config of [null, {}, { checkoutOrigin: 'https://polar.sh', checkoutPath: '/checkout/test' },
-    ...['https://evil.invalid/org/portal', 'javascript:alert(1)', 'https://polar.sh.evil.invalid/org/portal', 'https://user@polar.sh/org/portal', 'https://polar.sh/org/portal?key=secret', 'https://polar.sh/org/checkout'].map((portalUrl) => ({ portalUrl }))]) {
-    assert.equal(copy.configuredPortalHref(config), '');
-  }
-  assert.equal(copy.configuredPortalHref({ portalUrl: 'https://polar.sh/configured-org/portal' }), 'https://polar.sh/configured-org/portal');
-});
-
 
 for (const [locale, lang] of [['ko-KR', 'ko'], ['en-US', 'en'], ['zh-Hant-TW', 'zh'], ['ja-JP', 'ja']]) {
   test(`${locale}: first screen is native and Free can send without setup`, async () => {
@@ -794,7 +784,8 @@ for (const lang of ['ko', 'zh', 'ja']) {
     const a = app({ response: (options) => {
       const frame = { type: 'done', rewrite: 'Accepted 70%', mps: 91, fidelity: 87,
         signals: { before: { signalScore: 40 }, after: { signalScore: 0 } },
-        diff: { beforeChars: 10, afterChars: 8, charDelta: -2, beforeWords: 2, afterWords: 2, wordDelta: 0 } };
+        diff: { beforeChars: 10, afterChars: 8, charDelta: -2, beforeWords: 2, afterWords: 2, wordDelta: 0 },
+        receipt: { receiptHash: 'sha256:test' } };
       options.onDone(frame); return { ok: true, finalFrame: frame };
     } });
     change(a, 'lang', lang);
@@ -802,10 +793,12 @@ for (const lang of ['ko', 'zh', 'ja']) {
     await a.settle();
     const thread = a.get('thread').textContent;
     // The English literals must not survive into a non-English render.
-    for (const english of ['Meaning kept', 'Close to your text', 'Length (before', 'AI-sounding paragraphs', 'Audit JSON', 'Download']) {
+    for (const english of ['Meaning kept', 'Close to your text', 'Length (before', 'AI-sounding paragraphs', 'Audit JSON', 'Download', EN_STATUS.approved]) {
       assert.ok(!thread.includes(english), `${lang} rendered the English literal "${english}"`);
     }
     assert.ok(thread.includes('91') && thread.includes('87'), 'the real scores still render');
+    assert.ok(statusOf(a).text, 'the approval status is announced in the selected language');
+    assert.equal(a.document.querySelectorAll('.output-action').length, 4, 'copy, download, export and audit actions');
   });
 }
 
@@ -837,6 +830,13 @@ function statusOf(a) {
   return node && { text: node.textContent, state: node.dataset.outputStatus };
 }
 
+// The output text the status line describes, and whether it is marked invalid.
+function outputOf(a) {
+  const status = a.document.querySelector('.output-status');
+  const text = status && a.document.querySelectorAll('.msg__text').find((node) => node.getAttribute('aria-describedby') === status.id);
+  return { status, text, invalid: text?.getAttribute('aria-invalid') ?? null };
+}
+
 test('the approval status is silent in flight and states every terminal outcome', async () => {
   const t = EN_STATUS;
 
@@ -853,11 +853,17 @@ test('the approval status is silent in flight and states every terminal outcome'
   const streaming = pending.ui.submit('Source 70%');
   assert.deepEqual(statusOf(pending), { text: '', state: 'streaming' },
     'a running rewrite must not be announced as a failed check');
+  const inFlight = outputOf(pending);
+  assert.ok(inFlight.text, 'the status line describes the output it belongs to');
+  assert.equal(inFlight.status.getAttribute('role'), 'status');
+  assert.equal(inFlight.status.getAttribute('aria-live'), 'polite');
+  assert.equal(inFlight.invalid, 'true', 'streamed text is unapproved from the first byte');
   assert.equal(pending.document.querySelector('.output-action'), null);
   release();
   await streaming;
   await pending.settle();
   assert.deepEqual(statusOf(pending), { text: t.approved, state: 'approved' });
+  assert.equal(outputOf(pending).invalid, null);
   assert.ok(pending.document.querySelectorAll('.output-action').length > 0);
 
   // Below the meaning floor: rejected, announced, and no actions offered.
@@ -869,6 +875,7 @@ test('the approval status is silent in flight and states every terminal outcome'
   await floor.ui.submit('Source 70%');
   await floor.settle();
   assert.deepEqual(statusOf(floor), { text: t.unapproved, state: 'unapproved' });
+  assert.equal(outputOf(floor).invalid, 'true');
   assert.equal(floor.document.querySelector('.output-action'), null);
   assert.equal(floor.ui.activeConvo().thread.original, undefined);
 

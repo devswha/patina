@@ -17,14 +17,15 @@
 //     every return value carries only the HMAC "subject"; every log payload is
 //     passed through redactSecrets and only ever carries the subject.
 //
-// It deliberately reuses the quota primitives (quotaKeyHmac / isProductionPosture /
-// createMemoryKv) and the shared redaction/reason contract rather than growing a
-// parallel convention. No new runtime dependency: HMAC comes from rate-limit.js,
-// fetch from globalThis.fetch (injectable), timeouts from AbortController.
+// It deliberately reuses the quota primitives (quotaKeyHmac / createMemoryKv),
+// the shared production posture, and the shared redaction/reason contract
+// rather than growing a parallel convention. No new runtime dependency: HMAC
+// comes from rate-limit.js, fetch from globalThis.fetch (injectable), timeouts
+// from AbortController.
 
 import { randomBytes } from 'node:crypto';
-import { createMemoryKv, isProductionPosture, quotaKeyHmac } from './rate-limit.js';
-import { QUOTA_REASONS, redactSecrets } from './web-rewrite-contract.js';
+import { createMemoryKv, quotaKeyHmac } from './rate-limit.js';
+import { isProductionPosture, QUOTA_REASONS, redactSecrets } from './web-rewrite-contract.js';
 
 /** Default tunables (each overridable via env). */
 const DEFAULT_CACHE_TTL_MS = 300_000; // positive-result cache
@@ -56,7 +57,7 @@ const DEV_FALLBACK_SECRET = 'patina-local-license-secret';
  * @param {number} fallback
  * @returns {number}
  */
-function readPositiveInt(value, fallback) {
+export function readPositiveInt(value, fallback) {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 }
@@ -237,16 +238,18 @@ export function createLicenseValidator({
     const subject = quotaKeyHmac(secret, `${provider.id}-license-subject`, licenseKey);
     const cacheKey = quotaKeyHmac(secret, `${provider.id}-license-cache`, licenseKey);
     const nowMs = now();
+    /**
+     * @param {NonNullable<ReturnType<typeof readCacheEntry>>} hit
+     * @returns {EntitlementResult}
+     */
+    const fromCache = (hit) => (hit.decision === 'allow'
+      ? { ok: true, subject, tier: 'pro', status: hit.status, cache: 'hit' }
+      : /** @type {EntitlementDeny} */ ({ ok: false, status: hit.status, reason: hit.reason }));
 
     // 3. Cache lookup. A broken cache read must NOT fail open; fall through to the provider.
     try {
       const hit = readCacheEntry(await store.get(cacheKey), nowMs);
-      if (hit) {
-        if (hit.decision === 'allow') {
-          return { ok: true, subject, tier: 'pro', status: hit.status, cache: 'hit' };
-        }
-        return /** @type {EntitlementDeny} */ ({ ok: false, status: hit.status, reason: hit.reason });
-      }
+      if (hit) return fromCache(hit);
     } catch {
       /* treat as a miss */
     }
@@ -266,15 +269,11 @@ export function createLicenseValidator({
     // and let a second instance call the provider. Floor at LOCK_TTL_MS; extend past the
     // fetch deadline when a longer timeout is configured.
     const lockTtlMs = Math.max(LOCK_TTL_MS, timeoutMs + 5_000);
-    // Owner-token single-flight lease (2026-09-01, Pro review P0). The previous
-    // counter lock incr'd on EVERY follower, and each incr re-armed PEXPIRE, so
-    // sustained retries kept a crashed winner's lock alive forever — the TTL
-    // self-heal was broken and the license wedged at 503 until traffic stopped.
-    // A 1-slot ZSET lease restores the promise with existing KV primitives: the
-    // lease token IS the owner, only the owner's member can be released, and a
-    // follower NEVER touches the registry — per-member expiry heals after
-    // lockTtlMs no matter how many followers pile up. New key suffix (-sflight)
-    // because the old (-lock) key holds a plain counter (WRONGTYPE on ZADD).
+    // A 1-slot ZSET lease, never a counter: followers must not touch the
+    // registry, or their retries would keep re-arming a crashed winner's
+    // expiry and wedge the license at 503. The lease token is the owner, only
+    // the owner's member can be released, and per-member expiry self-heals
+    // after lockTtlMs. The -sflight suffix keeps it off the old counter key.
     const lockRegistry = quotaKeyHmac(secret, `${provider.id}-sflight`, licenseKey);
     const lockOwner = randomBytes(32).toString('base64url');
     if (typeof store.acquireLease !== 'function' || typeof store.releaseLease !== 'function') return unavailable();
@@ -292,7 +291,7 @@ export function createLicenseValidator({
       // writes the cache when it finishes (typically well under timeoutMs). An
       // instant 503 here would break the advertised concurrency for a license's
       // first burst — right after purchase, or whenever the positive cache TTL
-      // lapses — so followers briefly poll the cache instead (#606). The loop
+      // lapses — so followers briefly poll the cache instead. The loop
       // is bounded by ITERATION COUNT, never the wall clock, so an injected or
       // frozen `now` cannot spin it forever; when the winner crashed or the provider is
       // down, nothing gets cached and this stays fail-closed 503. The follower
@@ -304,12 +303,7 @@ export function createLicenseValidator({
         await sleep(pollIntervalMs);
         try {
           const hit = readCacheEntry(await store.get(cacheKey), now());
-          if (hit) {
-            if (hit.decision === 'allow') {
-              return { ok: true, subject, tier: 'pro', status: hit.status, cache: 'hit' };
-            }
-            return /** @type {EntitlementDeny} */ ({ ok: false, status: hit.status, reason: hit.reason });
-          }
+          if (hit) return fromCache(hit);
         } catch {
           /* a broken cache read never fails open; keep polling */
         }
@@ -342,23 +336,17 @@ export function createLicenseValidator({
       //     that would otherwise make a duplicate provider call.
       try {
         const hit = readCacheEntry(await store.get(cacheKey), nowMs);
-        if (hit) {
-          if (hit.decision === 'allow') {
-            return { ok: true, subject, tier: 'pro', status: hit.status, cache: 'hit' };
-          }
-          return /** @type {EntitlementDeny} */ ({ ok: false, status: hit.status, reason: hit.reason });
-        }
+        if (hit) return fromCache(hit);
       } catch {
         /* treat as a miss */
       }
 
       // 4c. Per-CLIENT admission slice, charged BEFORE the shared bucket below.
-      //     Validation used to run ahead of every per-IP limiter, so each
-      //     cache-missing key — entitled or not — spent one token of the single
-      //     global provider budget; a handful of unauthenticated requests per
-      //     minute could therefore saturate it and leave paying customers whose
-      //     positive cache had lapsed with nothing but 503s. Charging the caller
-      //     first caps what any one of them can take out of that shared budget.
+      //     Every cache-missing key, entitled or not, would otherwise spend a
+      //     token of the single global provider budget, so a handful of
+      //     unauthenticated requests could leave paying customers whose cache
+      //     lapsed with nothing but 503s. Charging the caller first caps what
+      //     any one of them can take out of that shared budget.
       //
       //     Only the single-flight WINNER reaches this point, so neither a
       //     cached decision (steps 3/4b) nor a follower is ever charged: an

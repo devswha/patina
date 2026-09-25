@@ -61,11 +61,6 @@ Monthly request, character, and processing-attempt limits have separate messages
 and do not promise a reset date or offer immediate replay. See the
 [Hosted API contract](../docs/HTTP-API.md) for limits and authentication.
 
-The subscription-management link is hidden unless the public launch config
-explicitly supplies a safe Polar `portalUrl`. No URL is derived from checkout.
-The current launch-config generator does not emit that optional field, so the
-public documentation link remains the available recovery reference.
-
 ## Local preview
 
 The static entry (`index.html`) loads `/chatgpt.css` and `/chatgpt.js` via
@@ -161,7 +156,3 @@ updates; the browser cannot emit this metric.
 node --test tests/unit/web-rewrite-contract.test.js tests/unit/web-deploy-invariants.test.js
 npm run lint:syntax
 ```
-
-## See also
-
-- [`AI-SLOP-TAXONOMY.md`](AI-SLOP-TAXONOMY.md) — the negative dictionary of AI-looking UI clichés that `DESIGN.md` is written against.

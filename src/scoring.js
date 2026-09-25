@@ -166,25 +166,58 @@ const ATTEMPT_RETRY_REASONS = new Set([
   'temperature_schema',
   'score_schema_parse',
 ]);
+const ATTEMPT_FIELDS = [
+  'attemptIndex',
+  'requestedModel',
+  'effectiveModel',
+  'usage',
+  'retryReason',
+  'minimumChargeApplied',
+  'outcome',
+];
+
+/**
+ * Whether `value` is exactly one paid-attempt record as the transports emit
+ * it: the seven known fields and no others, with a one-based `attemptIndex`
+ * equal to `expectedIndex`.
+ *
+ * @param {unknown} value
+ * @param {number} expectedIndex
+ * @returns {boolean}
+ */
+export function isValidAttemptRecord(value, expectedIndex) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const source = /** @type {any} */ (value);
+  const keys = Reflect.ownKeys(source);
+  return keys.length === ATTEMPT_FIELDS.length
+    && keys.every((key) => typeof key === 'string' && ATTEMPT_FIELDS.includes(key))
+    && Number.isInteger(source.attemptIndex)
+    && source.attemptIndex > 0
+    && source.attemptIndex === expectedIndex
+    && (typeof source.requestedModel === 'string' || source.requestedModel === null)
+    && (typeof source.effectiveModel === 'string' || source.effectiveModel === null)
+    && (source.usage === null || (typeof source.usage === 'object' && !Array.isArray(source.usage)))
+    && ATTEMPT_RETRY_REASONS.has(source.retryReason)
+    && typeof source.minimumChargeApplied === 'boolean'
+    && (source.outcome === 'success' || source.outcome === 'error');
+}
 
 function dispatchAttempts(onAttempt, onAttemptInvalid, records, { attemptIndex, scoreSchemaFailure = false }) {
   // Transport owns paid-attempt evidence. A scoring parse failure without a
   // transport record is not proof that a paid request occurred.
   if (records.length === 0) return;
 
-  const sources = records.map(validateAttemptRecord);
   // A lower transport invocation owns one local attempt sequence. Do not
   // reinterpret a malformed sequence as a new global sequence: that would
   // fabricate provenance for an attempt whose local position is unknown.
-  if (sources.some((source, index) => !source || source.attemptIndex !== index + 1)) {
+  if (!records.every((record, index) => isValidAttemptRecord(record, index + 1))) {
     notifyInvalidAttempt(onAttemptInvalid);
     return;
   }
 
-  const lastValidIndex = sources.length - 1;
-  for (let i = 0; i < sources.length; i++) {
-    const source = sources[i];
-    if (!source) continue;
+  const lastValidIndex = records.length - 1;
+  for (let i = 0; i < records.length; i++) {
+    const source = records[i];
     const schemaFailure = scoreSchemaFailure && i === lastValidIndex;
     const record = {
       attemptIndex: attemptIndex(),
@@ -201,40 +234,6 @@ function dispatchAttempts(onAttempt, onAttemptInvalid, records, { attemptIndex, 
     } catch {
       // Observability must never alter paid requests or score results.
     }
-  }
-}
-
-/** @param {unknown} value */
-function validateAttemptRecord(value) {
-  const fields = [
-    'attemptIndex',
-    'requestedModel',
-    'effectiveModel',
-    'usage',
-    'retryReason',
-    'minimumChargeApplied',
-    'outcome',
-  ];
-  try {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const source = /** @type {any} */ (value);
-    const keys = Reflect.ownKeys(source);
-    if (
-      keys.length !== fields.length
-      || !fields.every((field) => Object.prototype.hasOwnProperty.call(source, field))
-      || keys.some((key) => typeof key !== 'string' || !fields.includes(key))
-      || !Number.isInteger(source.attemptIndex)
-      || source.attemptIndex <= 0
-      || !(typeof source.requestedModel === 'string' || source.requestedModel === null)
-      || !(typeof source.effectiveModel === 'string' || source.effectiveModel === null)
-      || !(source.usage === null || (typeof source.usage === 'object' && !Array.isArray(source.usage)))
-      || !ATTEMPT_RETRY_REASONS.has(source.retryReason)
-      || typeof source.minimumChargeApplied !== 'boolean'
-      || !(source.outcome === 'success' || source.outcome === 'error')
-    ) return null;
-    return source;
-  } catch {
-    return null;
   }
 }
 

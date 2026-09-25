@@ -106,6 +106,17 @@ function scoring({ mps = 95, fidelity = 92, calls = [] } = {}) {
   };
 }
 
+/**
+ * Run the stream with a recording observer and return the result plus the
+ * cost totals of its single terminal observation.
+ */
+async function withCostTotals(options) {
+  const events = [];
+  const result = await runWebRewriteStream({ ...options, now: () => 0, observe: (event) => { events.push(event); } });
+  assert.equal(events.length, 1);
+  return { result, totals: { totalTokens: events[0].totalTokens, llmCalls: events[0].llmCalls } };
+}
+
 test('runWebRewriteStream emits start, deltas, and done with scores/signals/diff', async () => {
   const frames = [];
   const scoreFns = scoring();
@@ -290,45 +301,47 @@ test('rewrite receipt canonically binds exact source inputs without exposing the
     assert.notEqual(buildWebRewriteReceipt({ ...input, [field]: value }).receiptHash, receipt.receiptHash, field);
   }
 });
-test('runWebRewriteStream privately aggregates exact one-based attempts for every paid stage', async () => {
+test('runWebRewriteStream counts one paid attempt per stage and sums only complete token usage', async () => {
   const frames = [];
-  const attempt = privateAttempt({
-    requestedModel: 'requested-model',
-    effectiveModel: null,
-    usage: null,
-  });
+  const attempt = privateAttempt({ requestedModel: 'requested-model', effectiveModel: null });
   const scoreFns = {
     scoreMPS: async ({ onAttempt }) => {
       onAttempt(attempt);
       return mpsResult(95);
     },
     scoreFidelity: async ({ onAttempt }) => {
-      onAttempt({ ...attempt, effectiveModel: 'fidelity-model', usage: { prompt_tokens: 4 } });
+      onAttempt({ ...attempt, effectiveModel: 'fidelity-model', usage: { input_tokens: 5, output_tokens: 2, cache_read_input_tokens: 1 } });
       return fidelityResult(11);
     },
     scoreDeterministicSignals: () => ({}),
   };
+  const callLLMStream = async ({ onAttempt }) => {
+    onAttempt({ ...attempt, usage: { total_tokens: 30 } });
+    return { text: 'We shipped 3 units.' };
+  };
 
-  const result = await runWebRewriteStream({
+  const complete = await withCostTotals({
+    request: { ...request, original: 'We shipped 3 units.' },
+    callLLMStream,
+    scoreFns,
+    emit: (frame) => frames.push(frame),
+  });
+  assert.equal(complete.result.ok, true);
+  assert.deepEqual(complete.totals, { totalTokens: 30 + 4 + 8, llmCalls: 3 });
+
+  const unknownUsage = await withCostTotals({
     request: { ...request, original: 'We shipped 3 units.' },
     callLLMStream: async ({ onAttempt }) => {
-      onAttempt(attempt);
+      onAttempt({ ...attempt, usage: null });
       return { text: 'We shipped 3 units.' };
     },
     scoreFns,
     emit: (frame) => frames.push(frame),
   });
-
-  assert.equal(result.ok, true);
-  assert.deepEqual(result.attempts, {
-    valid: true,
-    rewrite: [{ ...attempt, effectiveModel: null, usage: null }],
-    mps: [{ ...attempt, effectiveModel: null, usage: null }],
-    fidelity: [{ ...attempt, effectiveModel: 'fidelity-model', usage: { prompt_tokens: 4 } }],
-  });
+  assert.deepEqual(unknownUsage.totals, { totalTokens: undefined, llmCalls: 3 });
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
-test('runWebRewriteStream drops malformed attempts without fabricating defaults', async () => {
+test('runWebRewriteStream leaves cost totals unknown for a malformed attempt instead of fabricating defaults', async () => {
   const frames = [];
   const malformedAttempts = [
     privateAttempt({ attemptIndex: 0 }),
@@ -338,21 +351,20 @@ test('runWebRewriteStream drops malformed attempts without fabricating defaults'
     privateAttempt({ attemptIndex: 5, outcome: 'failed' }),
     { ...privateAttempt({ attemptIndex: 6 }), extra: true },
   ];
-  const result = await runWebRewriteStream({
-    request,
-    callLLMStream: async ({ onAttempt }) => {
-      for (const attempt of malformedAttempts) onAttempt(attempt);
-      return { text: 'human text' };
-    },
-    scoreFns: scoring(),
-    emit: (frame) => frames.push(frame),
-  });
+  for (const malformed of malformedAttempts) {
+    const { result, totals } = await withCostTotals({
+      request,
+      callLLMStream: async ({ onAttempt }) => {
+        onAttempt(malformed);
+        return { text: 'human text' };
+      },
+      scoreFns: scoring(),
+      emit: (frame) => frames.push(frame),
+    });
 
-  assert.equal(result.ok, true);
-  assert.equal(result.attempts.valid, false);
-  assert.deepEqual(result.attempts.rewrite, []);
-  assert.deepEqual(result.attempts.mps, [privateAttempt()]);
-  assert.deepEqual(result.attempts.fidelity, [privateAttempt()]);
+    assert.equal(result.ok, true);
+    assert.deepEqual(totals, { totalTokens: undefined, llmCalls: undefined }, JSON.stringify(malformed));
+  }
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
 test('runWebRewriteStream marks local attempt index starts, gaps, and reordering invalid', async () => {
@@ -365,7 +377,7 @@ test('runWebRewriteStream marks local attempt index starts, gaps, and reordering
 
   for (const sequence of sequences) {
     const frames = [];
-    const result = await runWebRewriteStream({
+    const { result, totals } = await withCostTotals({
       request,
       callLLMStream: async ({ onAttempt }) => {
         onAttempt(privateAttempt());
@@ -386,7 +398,7 @@ test('runWebRewriteStream marks local attempt index starts, gaps, and reordering
     });
 
     assert.equal(result.ok, true);
-    assert.equal(result.attempts.valid, false);
+    assert.deepEqual(totals, { totalTokens: undefined, llmCalls: undefined });
     assertFramesDoNotLeakPrivateMetadata(frames);
   }
 });
@@ -404,7 +416,7 @@ test('runWebRewriteStream marks isolated invalid score evidence without exposing
     },
     scoreDeterministicSignals: ({ text }) => ({ text }),
   };
-  const result = await runWebRewriteStream({
+  const { result, totals } = await withCostTotals({
     request,
     callLLMStream: async ({ onAttempt }) => {
       onAttempt(privateAttempt());
@@ -415,8 +427,7 @@ test('runWebRewriteStream marks isolated invalid score evidence without exposing
   });
 
   assert.equal(result.ok, true);
-  assert.equal(result.attempts.valid, false);
-  assert.deepEqual(result.attempts.mps, [privateAttempt()]);
+  assert.deepEqual(totals, { totalTokens: undefined, llmCalls: undefined });
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
 
@@ -432,7 +443,7 @@ test('runWebRewriteStream rejects changed numeric claims before paid scoring', a
     },
   };
 
-  const result = await runWebRewriteStream({
+  const { result, totals } = await withCostTotals({
     request: { ...request, original: 'We shipped 3 units.' },
     callLLMStream: async ({ onAttempt }) => {
       onAttempt(privateAttempt());
@@ -447,12 +458,7 @@ test('runWebRewriteStream rejects changed numeric claims before paid scoring', a
   assert.equal(result.code, 'number_safety_failed');
   assert.equal(result.numberSafety.ok, false);
   assert.equal(scorerCalls, 0);
-  assert.deepEqual(result.attempts, {
-    valid: true,
-    rewrite: [privateAttempt()],
-    mps: [],
-    fidelity: [],
-  });
+  assert.deepEqual(totals, { totalTokens: 4, llmCalls: 1 });
   assert.deepEqual(frames, [
     { type: 'start' },
     { type: 'error', code: 'number_safety_failed' },
@@ -462,7 +468,7 @@ test('runWebRewriteStream rejects changed numeric claims before paid scoring', a
 test('runWebRewriteStream retries a number-safety failure without re-emitting deltas', async () => {
   const frames = [];
   let llmCalls = 0;
-  const result = await runWebRewriteStream({
+  const { result, totals } = await withCostTotals({
     request: { ...request, original: 'We shipped 3 units.' },
     callLLMStream: async ({ onDelta, onAttempt }) => {
       llmCalls += 1;
@@ -474,11 +480,7 @@ test('runWebRewriteStream retries a number-safety failure without re-emitting de
       onDelta('We shipped 3 units, done.');
       return { text: 'We shipped 3 units, done.' };
     },
-    scoreFns: {
-      scoreMPS: async () => (mpsResult(95)),
-      scoreFidelity: async () => (fidelityResult(11)),
-      scoreDeterministicSignals: () => ({ signalScore: 0 }),
-    },
+    scoreFns: scoring(),
     emit: (frame) => frames.push(frame),
   });
 
@@ -490,16 +492,15 @@ test('runWebRewriteStream retries a number-safety failure without re-emitting de
   assert.deepEqual(frames.filter((f) => f.type === 'delta'), [{ type: 'delta', text: 'We shipped 4 units.' }]);
   assert.equal(frames.at(-1).type, 'done');
   assert.equal(frames.at(-1).rewrite, 'We shipped 3 units, done.');
-  // Both paid attempts are ledgered with contiguous one-based indices.
-  assert.equal(result.attempts.valid, true);
-  assert.deepEqual(result.attempts.rewrite.map((a) => a.attemptIndex), [1, 2]);
+  // Each run numbers its own attempts from 1; both paid rewrites are counted.
+  assert.deepEqual(totals, { totalTokens: 16, llmCalls: 4 });
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
 
 test('runWebRewriteStream exhausts number-safety retries and fails closed', async () => {
   const frames = [];
   let llmCalls = 0;
-  const result = await runWebRewriteStream({
+  const { result, totals } = await withCostTotals({
     request: { ...request, original: 'We shipped 3 units.' },
     callLLMStream: async ({ onAttempt }) => {
       llmCalls += 1;
@@ -518,8 +519,7 @@ test('runWebRewriteStream exhausts number-safety retries and fails closed', asyn
   assert.equal(llmCalls, 2);
   assert.equal(result.ok, false);
   assert.equal(result.code, 'number_safety_failed');
-  assert.equal(result.attempts.valid, true);
-  assert.deepEqual(result.attempts.rewrite.map((a) => a.attemptIndex), [1, 2]);
+  assert.deepEqual(totals, { totalTokens: 8, llmCalls: 2 });
   assert.deepEqual(frames.at(-1), { type: 'error', code: 'number_safety_failed' });
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
@@ -769,7 +769,7 @@ test('runWebRewriteStream fail-closes floor failures with error and no done', as
     return { text: 'bad rewrite' };
   };
 
-  const result = await runWebRewriteStream({
+  const { result, totals } = await withCostTotals({
     request,
     callLLMStream,
     scoreFns: scoring({ mps: 50, fidelity: 95 }),
@@ -794,12 +794,7 @@ test('runWebRewriteStream fail-closes floor failures with error and no done', as
   assert.equal(terminal.diff.afterChars, 'bad rewrite'.length);
   assert.equal(result.signals.after.text, 'bad rewrite');
   assert.equal(result.diff.afterChars, 'bad rewrite'.length);
-  assert.deepEqual(result.attempts, {
-    valid: true,
-    rewrite: [privateAttempt()],
-    mps: [privateAttempt()],
-    fidelity: [privateAttempt()],
-  });
+  assert.deepEqual(totals, { totalTokens: 12, llmCalls: 3 });
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
 
@@ -873,12 +868,6 @@ test('runWebRewriteStream forwards the abort signal and timeout to the LLM strea
     assert.equal(scorer.signal.aborted, false);
     assert.equal(scorer.timeout, 4321);
   }
-  assert.deepEqual(result.attempts, {
-    valid: true,
-    rewrite: [privateAttempt()],
-    mps: [privateAttempt()],
-    fidelity: [privateAttempt()],
-  });
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
 
@@ -889,7 +878,7 @@ test('runWebRewriteStream emits stream_failed and no done when transport throws'
     throw new Error('upstream exploded sk-secret1234567890');
   };
 
-  const result = await runWebRewriteStream({ request, callLLMStream, scoreFns: scoring(), emit: (frame) => frames.push(frame) });
+  const { result, totals } = await withCostTotals({ request, callLLMStream, scoreFns: scoring(), emit: (frame) => frames.push(frame) });
 
   assert.equal(result.ok, false);
   assert.equal(result.code, 'stream_failed');
@@ -897,12 +886,7 @@ test('runWebRewriteStream emits stream_failed and no done when transport throws'
   assert.equal(frames.at(-1).type, 'error');
   assert.equal(frames.at(-1).code, 'stream_failed');
   assert.doesNotMatch(frames.at(-1).error, /sk-secret/);
-  assert.deepEqual(result.attempts, {
-    valid: true,
-    rewrite: [privateAttempt({ outcome: 'error', retryReason: 'transport' })],
-    mps: [],
-    fidelity: [],
-  });
+  assert.deepEqual(totals, { totalTokens: 4, llmCalls: 1 }, 'the failed paid attempt is still counted');
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
 
@@ -1050,7 +1034,7 @@ test('runWebRewriteStream waits for a started scorer before returning a scoring 
     scoreDeterministicSignals: ({ text }) => ({ text }),
   };
 
-  const result = await runWebRewriteStream({ request, callLLMStream, scoreFns, emit: (frame) => frames.push(frame) });
+  const { result, totals } = await withCostTotals({ request, callLLMStream, scoreFns, emit: (frame) => frames.push(frame) });
 
   assert.equal(fidelityFinished, true);
   assert.equal(result.ok, false);
@@ -1058,15 +1042,8 @@ test('runWebRewriteStream waits for a started scorer before returning a scoring 
   assert.equal(frames.filter((frame) => frame.type === 'error').length, 1);
   assert.equal(frames.some((frame) => frame.type === 'done'), false);
   assert.doesNotMatch(frames.at(-1).error, /sk-secret/);
-  const attemptsAtReturn = globalThis.structuredClone(result.attempts);
-  assert.deepEqual(result.attempts, {
-    valid: true,
-    rewrite: [privateAttempt()],
-    mps: [privateAttempt({ outcome: 'error', retryReason: 'score_schema_parse' })],
-    fidelity: [privateAttempt({ effectiveModel: 'delayed-fidelity-model' })],
-  });
-  await new Promise((resolve) => setTimeout(resolve, 20));
-  assert.deepEqual(result.attempts, attemptsAtReturn);
+  // The delayed scorer's paid attempt is counted before the failure is observed.
+  assert.deepEqual(totals, { totalTokens: 12, llmCalls: 3 });
   assertFramesDoNotLeakPrivateMetadata(frames);
 });
 
@@ -1160,7 +1137,6 @@ test('runWebRewriteStream refuses a source it can never certify before any paid 
     assert.equal(result.code, 'number_safety_failed', original);
     assert.equal(result.numberSafety.ok, false, original);
     assert.equal(paidCalls, 0, `${original}: no rewrite, retry, or scorer may be paid for`);
-    assert.deepEqual(result.attempts, { valid: true, rewrite: [], mps: [], fidelity: [] }, original);
     assert.deepEqual(frames, [
       { type: 'start' },
       { type: 'error', code: 'number_safety_failed', scope: 'source' },

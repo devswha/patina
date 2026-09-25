@@ -4,7 +4,7 @@
 // renders via safe DOM APIs.
 import { createRewriteThread, streamRewrite, classifyRewriteError, rewriteRecovery, REWRITE_ERROR_KINDS } from './rewrite-client.js';
 import { normalizePreferences } from './preferences.js';
-import { EXPERIENCE_COPY, experienceCopy, initialLanguage, onboardingCopy, licenseStatusAfter, configuredPortalHref } from './experience-copy.js';
+import { EXPERIENCE_COPY, experienceCopy, initialLanguage, onboardingCopy, licenseStatusAfter } from './experience-copy.js';
 // @ts-expect-error Served from the same public root in development and production.
 import { EXAMPLES } from '/examples/index.js';
 import { createEditReview } from './edit-review.js';
@@ -346,8 +346,8 @@ async function attachReview(convo, message, body, textEl, statusEl) {
           }
         }
         // A review toggle changes which draft the next refine rewrites, not
-        // what the user asked for: update the draft, never append a turn (six
-        // toggles used to evict every real turn from the history).
+        // what the user asked for: update the draft, never append a turn, or
+        // a few toggles would evict every real turn from the capped history.
         if (isAccepted || isOriginal) convo.thread.currentDraft = candidate;
         updateHeroSend(); updateChatSend(); syncSettingsBusy();
       },
@@ -491,8 +491,6 @@ function quotaUpsell() {
 
 function wirePricingCtas() {
   $('#pro-existing')?.addEventListener('click', openLicenseControls);
-  const portal = configuredPortalHref(launchConfig);
-  if (portal) { $('#pro-portal').setAttribute('href', portal); $('#pro-portal').hidden = false; }
   const free = $('#price-free');
   if (free) free.addEventListener('click', () => {
     track('Tier Selected', { tier: 'free', surface: 'pricing' });
@@ -967,11 +965,11 @@ function buildMeta(meta, original) {
   return wrap;
 }
 
-// False-positive report affordance (restores the pre-#560 audit-playground
-// loop). Shown only when the BEFORE signal flagged at least one paragraph, so
-// a user whose own writing was marked hot can file a prefilled GitHub issue
-// (.github/ISSUE_TEMPLATE/false_positive.yml). User-initiated navigation only —
-// nothing is sent anywhere until they submit the form on GitHub.
+// False-positive report affordance. Shown only when the BEFORE signal flagged
+// at least one paragraph, so a user whose own writing was marked hot can file a
+// prefilled GitHub issue (.github/ISSUE_TEMPLATE/false_positive.yml).
+// User-initiated navigation only — nothing is sent anywhere until they submit
+// the form on GitHub.
 function buildReportLink(meta, original) {
   const b = meta?.signals?.before;
   if (!b || !(Number(b.hotParagraphs) > 0) || !original) return null;
@@ -1653,7 +1651,7 @@ function applyExperienceCopy(lang, set) {
   set('.price__badge', copy.proBadge);
   set('.pricing .sec__title', copy.pricingTitle); set('.pricing .sec__lede', copy.pricingLede);
   set('.pricing__note', copy.pricingNote); set('#price-byok', copy.byokCta);
-  set('#pro-existing', copy.already); set('#pro-docs', copy.docs); set('#pro-portal', copy.portal);
+  set('#pro-existing', copy.already); set('#pro-docs', copy.docs);
   for (const [i, id] of ['lang', 'document-type', 'persona', 'register', 'tier'].entries()) {
     const label = $(`#${id}`).parentElement.querySelector('.ctl__label');
     if (label) label.textContent = copy.labels[i];

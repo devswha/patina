@@ -363,11 +363,15 @@ const apiEnv = {
 
 // Real handler shell + REAL contract validation, but with an allow-all rate
 // limiter so frontend iteration is not throttled by the production free-tier
-// quota (5/hour). Production (api/rewrite.js) keeps the fail-closed KV+HMAC
-// quota — this relaxation is local-test-only.
+// quota. Production (api/rewrite.js) keeps the fail-closed KV+HMAC quota —
+// this relaxation is local-test-only.
 const rewriteApi = createRewriteHandler({
   env: apiEnv,
-  rateLimiter: { check: async ({ tier }) => ({ allowed: true, tier }) },
+  rateLimiter: {
+    check: async ({ tier }) => ({ allowed: true, tier }),
+    acquireConcurrency: async ({ tier }) => ({ allowed: true, tier, lease: 'dev-lease' }),
+    releaseConcurrency: async () => {},
+  },
   logger: { error: console.error },
   runRewrite: async ({ res, request }) => {
     res.statusCode = 200;

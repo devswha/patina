@@ -7,5 +7,4 @@ const launchConfig = Object.freeze({
   "evidence": null
 });
 
-export { launchConfig };
 export default launchConfig;

@@ -1,11 +1,12 @@
 // @ts-check
 import { reservationArgs, RESERVE_QUOTA_LUA, settlementArgs, SETTLE_QUOTA_LUA } from '../src/quota-reservation.js';
-import { createRateLimiter, createMemoryKv, isProductionPosture } from '../src/rate-limit.js';
+import { createRateLimiter, createMemoryKv } from '../src/rate-limit.js';
 import { createRewriteHandler } from '../src/rewrite-handler.js';
-import { encodeStreamFrame, QUOTA_REASONS, resolveTierLimits, WEB_TIERS } from '../src/web-rewrite-contract.js';
-import { createWebObserver } from '../src/web-observability.js';
+import { encodeStreamFrame, isProductionPosture, QUOTA_REASONS, resolveTierLimits, WEB_TIERS } from '../src/web-rewrite-contract.js';
+import { createWebObserver, emitTelemetry, startTelemetryClock } from '../src/web-observability.js';
 import { runWebRewriteStream } from '../src/web-rewrite-stream.js';
 import { createPolarLicenseValidator } from '../src/entitlement-polar.js';
+import { INCRBY_PEXPIRE_LUA, upstashFetch, upstashOrigin } from '../src/upstash-rest.js';
 
 /**
  * @param {unknown} value
@@ -31,55 +32,22 @@ function parseKvNumber(value) {
  * @returns {null|{increment(key: string, options: {ttlSeconds: number}): Promise<void>}}
  */
 export function createObservabilityRestKv(env = {}) {
-  const base = env.PATINA_OBSERVABILITY_REST_API_URL;
+  const origin = upstashOrigin(env.PATINA_OBSERVABILITY_REST_API_URL);
   const token = env.PATINA_OBSERVABILITY_REST_API_TOKEN;
-  if (!base || !token) return null;
-
-  let url;
-  try {
-    url = new URL(base);
-  } catch {
-    return null;
-  }
-  if (url.protocol !== 'https:' || url.username || url.password || url.port
-    || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.upstash\.io$/i.test(url.hostname)
-    || url.pathname !== '/' || url.search || url.hash) return null;
-
-  const INCREMENT_WITH_TTL = "local v = redis.call('INCRBY', KEYS[1], ARGV[1]) redis.call('PEXPIRE', KEYS[1], ARGV[2]) return v";
-  const root = url.origin;
+  if (!origin || !token) return null;
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   return {
     async increment(key, { ttlSeconds }) {
       const ttlMs = Math.max(1, Math.ceil(Number(ttlSeconds) * 1000));
       if (!Number.isSafeInteger(ttlMs)) throw new Error('invalid observability ttl');
-
-      const controller = new AbortController();
-      let timer;
-      const deadline = new Promise((_, reject) => {
-        timer = setTimeout(() => {
-          controller.abort();
-          reject(new Error('observability deadline exceeded'));
-        }, 45);
-      });
-      const request = (async () => {
-        const response = await globalThis.fetch(root, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(['EVAL', INCREMENT_WITH_TTL, '1', key, '1', String(ttlMs)]),
-          redirect: 'error',
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error('observability request failed');
-        const data = await response.json();
-        if (!Number.isSafeInteger(data?.result) || data.result <= 0) {
-          throw new Error('observability increment returned invalid counter');
-        }
-      })();
-      try {
-        await Promise.race([request, deadline]);
-      } finally {
-        clearTimeout(timer);
+      const data = await upstashFetch(origin, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(['EVAL', INCRBY_PEXPIRE_LUA, '1', key, '1', String(ttlMs)]),
+      }, { failureMessage: 'observability request failed', deadlineMs: 45, deadlineMessage: 'observability deadline exceeded' });
+      if (!Number.isSafeInteger(data?.result) || data.result <= 0) {
+        throw new Error('observability increment returned invalid counter');
       }
     },
   };
@@ -89,7 +57,7 @@ export function createObservabilityRestKv(env = {}) {
  * Create a dependency-free Upstash/Vercel KV REST adapter.
  *
  * @param {Record<string,string|undefined>} env
- * @returns {null|{get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, incrBy(key: string, amount: number, options?: {ttlMs?: number}): Promise<number>, decr(key: string): Promise<number>, acquireLease(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease(registryKey: string, lease: string): Promise<boolean>, reserveQuota(plan: import('../src/quota-reservation.js').ReservationPlan): Promise<number[]>, settleQuota(plan: import('../src/quota-reservation.js').ReservationPlan, refund: boolean): Promise<number>}}
+ * @returns {null|{get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, acquireLease(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease(registryKey: string, lease: string): Promise<boolean>, reserveQuota(plan: import('../src/quota-reservation.js').ReservationPlan): Promise<number[]>, settleQuota(plan: import('../src/quota-reservation.js').ReservationPlan, refund: boolean): Promise<number>}}
  */
 export function createRestKv(env = {}) {
   const base = env.KV_REST_API_URL;
@@ -107,27 +75,14 @@ export function createRestKv(env = {}) {
 
   const root = url.toString().replace(/\/+$/, '');
   const headers = { Authorization: `Bearer ${token}` };
-  const deadlineMs = 2_000;
 
-  async function request(url, init, failureMessage) {
-    const controller = new AbortController();
-    let timer;
-    const deadline = new Promise((_, reject) => {
-      timer = setTimeout(() => {
-        controller.abort();
-        reject(new Error('kv request deadline exceeded'));
-      }, deadlineMs);
-    });
-    const response = (async () => {
-      const result = await globalThis.fetch(url, { ...init, redirect: 'error', signal: controller.signal });
-      if (!result.ok) throw new Error(failureMessage);
-      return result.json();
-    })();
-    try {
-      return await Promise.race([response, deadline]);
-    } finally {
-      clearTimeout(timer);
-    }
+  /**
+   * @param {string} target
+   * @param {{method?: string, headers?: Record<string, string>, body?: string}} init
+   * @param {string} failureMessage
+   */
+  function request(target, init, failureMessage) {
+    return upstashFetch(target, init, { failureMessage, deadlineMs: 2_000, deadlineMessage: 'kv request deadline exceeded' });
   }
 
   async function read(path) {
@@ -149,7 +104,6 @@ export function createRestKv(env = {}) {
   // Quota identities use one sorted-set registry: scores are server-time expiry
   // instants and members are opaque lease capabilities.  Both operations are one
   // EVAL so no crash or client-clock window can create phantom occupancy.
-  const INCRBY_PEXPIRE_SCRIPT = "local v = redis.call('INCRBY', KEYS[1], ARGV[1]) redis.call('PEXPIRE', KEYS[1], ARGV[2]) return v";
   const ACQUIRE_LEASE_SCRIPT = "local t = redis.call('TIME') local now = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000) local ttl = tonumber(ARGV[1]) redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now) if redis.call('ZCARD', KEYS[1]) >= tonumber(ARGV[2]) then return 0 end redis.call('ZADD', KEYS[1], now + ttl, ARGV[3]) redis.call('PEXPIRE', KEYS[1], ttl) return 1";
   const RELEASE_LEASE_SCRIPT = "local t = redis.call('TIME') local now = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000) local expiry = redis.call('ZSCORE', KEYS[1], ARGV[1]) if not expiry or tonumber(expiry) <= now then return 0 end return redis.call('ZREM', KEYS[1], ARGV[1])";
 
@@ -160,16 +114,6 @@ export function createRestKv(env = {}) {
     const value = parseKvNumber(await command(args));
     if (value !== 0 && value !== 1) throw new Error('kv lease command returned invalid result');
     return value === 1;
-  }
-
-  async function incrByAtomic(key, amount, ttlMs) {
-    const data = await command([
-      'EVAL', INCRBY_PEXPIRE_SCRIPT, '1', key,
-      String(amount), String(Math.max(1, Math.ceil(ttlMs))),
-    ]);
-    const value = parseKvNumber(data);
-    if (value == null) throw new Error('kv incr returned invalid counter');
-    return value;
   }
 
   return {
@@ -190,9 +134,9 @@ export function createRestKv(env = {}) {
       // Round-trip objects exactly like the in-memory KV: Upstash returns the
       // stored value as a JSON string, so parse it back (object in -> object
       // out) for the entitlement cache. null/missing -> undefined; a non-JSON
-      // string (a legacy/plain value) is returned verbatim; an already-parsed
-      // object passes through. incr/decr never call this, so the counter paths
-      // keep reading the raw numeric REST result via parseKvNumber unchanged.
+      // string (a plain value) is returned verbatim; an already-parsed object
+      // passes through. Counters never read through here; incr parses its own
+      // numeric result.
       if (result == null) return undefined;
       if (typeof result === 'string') {
         try {
@@ -213,26 +157,12 @@ export function createRestKv(env = {}) {
         await command(['SET', key, value]);
       }
     },
+    // Every counter is a fixed window, so the increment and its expiry are
+    // one EVAL: a counter without a TTL would never reset.
     async incr(key, { ttlMs } = {}) {
-      if (typeof ttlMs === 'number' && ttlMs > 0) return incrByAtomic(key, 1, ttlMs);
-      const data = await read(`/incr/${encodeURIComponent(key)}`);
-      const value = parseKvNumber(data);
+      if (!(typeof ttlMs === 'number' && ttlMs > 0)) throw new Error('kv incr requires a ttl');
+      const value = parseKvNumber(await command(['EVAL', INCRBY_PEXPIRE_LUA, '1', key, '1', String(Math.max(1, Math.ceil(ttlMs)))]));
       if (value == null) throw new Error('kv incr returned invalid counter');
-      return value;
-    },
-    async incrBy(key, amount, { ttlMs } = {}) {
-      // Upstash/Vercel KV INCRBY: atomic add-N, returned as the new total. Used
-      // for the pro monthly character counter (add textLength per request).
-      if (typeof ttlMs === 'number' && ttlMs > 0) return incrByAtomic(key, amount, ttlMs);
-      const data = await read(`/incrby/${encodeURIComponent(key)}/${encodeURIComponent(String(amount))}`);
-      const value = parseKvNumber(data);
-      if (value == null) throw new Error('kv incrby returned invalid counter');
-      return value;
-    },
-    async decr(key) {
-      const data = await read(`/decr/${encodeURIComponent(key)}`);
-      const value = parseKvNumber(data);
-      if (value == null) throw new Error('kv decr returned invalid counter');
       return value;
     },
     async acquireLease(registryKey, lease, maxConcurrent, { ttlMs }) {
@@ -248,11 +178,10 @@ export function createRestKv(env = {}) {
  * Default server-side budget for one rewrite stream — the TOTAL across the
  * rewrite attempt(s) AND both scorers, enforced as one absolute deadline inside
  * runWebRewriteStream (each stage draws from the same remaining budget and a
- * single abort fires at exhaustion; previously every stage received the full
- * window, so the worst case ran ~3x over). Bounds upstream work even when the
- * client stays connected; override with env.PATINA_WEB_REWRITE_TIMEOUT_MS up
- * to 240s, retaining at least 60s for response finalization and lease cleanup
- * beneath Vercel's 300s function ceiling.
+ * single abort fires at exhaustion). Bounds upstream work even when the client
+ * stays connected; override with env.PATINA_WEB_REWRITE_TIMEOUT_MS up to 240s,
+ * retaining at least 60s for response finalization and lease cleanup beneath
+ * Vercel's 300s function ceiling.
  */
 const WEB_REWRITE_TIMEOUT_MS = 180_000;
 const WEB_REWRITE_MAX_TIMEOUT_MS = 240_000;
@@ -286,12 +215,8 @@ function wantsJsonResponse(headers = {}) {
 }
 
 /**
- * `runWebRewriteStreamImpl` is typed by what this handler consumes, not by the
- * full implementation signature: the frames are delivered through `emit`, and
- * the resolved value is only read for `ok`/`code` (and forwarded to
- * `beforeResponseEnd`), which is why the reads here are already optional.
- * Requiring the whole result shape would force every injected stand-in to
- * fabricate fields this handler never looks at.
+ * `runWebRewriteStreamImpl` is typed by what this handler reads from its
+ * result (`ok`/`code`), so an injected stand-in need not build the rest.
  *
  * @param {{env?: Record<string,string|undefined>, runWebRewriteStreamImpl?: (options: Parameters<typeof runWebRewriteStream>[0]) => Promise<{ok?: boolean, code?: string}|void>, logger?: {info?: Function, warn?: Function, error?: Function, debug?: Function}, now?: () => number, observabilityKv?: {increment: (key: string, options: {ttlSeconds: number}) => unknown}}} [options]
  */
@@ -346,53 +271,24 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
     licenseValidator,
     runRewrite: async ({ req, res, request, observe, beforeResponseEnd }) => {
       const jsonResponse = wantsJsonResponse(req.headers);
-      /** @type {Record<string, unknown>[]} */
       /** @type {Record<string, any>[]} */
       const bufferedFrames = [];
       /** @type {string|undefined} */
       let bufferedBody;
+      // Exactly one terminal event per request: the stream reports its own,
+      // and this runner reports only the paths the stream never reached.
       let terminalObserved = false;
-      let legacyStartedAt;
-      if (typeof observe === 'function') {
-        try {
-          legacyStartedAt = Number(now());
-        } catch {
-          // Do not fabricate an epoch latency when the telemetry clock fails.
-        }
-      }
-      const observeTerminal = (outcome, status) => {
-        if (terminalObserved || typeof observe !== 'function' || !Number.isFinite(legacyStartedAt)) return false;
-        let endedAt;
-        try {
-          endedAt = Number(now());
-        } catch {
-          return false;
-        }
-        if (!Number.isFinite(endedAt)) return false;
+      const elapsed = typeof observe === 'function' ? startTelemetryClock(now) : undefined;
+      const observeTerminal = (/** @type {string} */ outcome, /** @type {number} */ status) => {
+        const latencyMs = terminalObserved ? undefined : elapsed?.();
+        if (latencyMs === undefined) return;
         terminalObserved = true;
-        try {
-          const result = observe({
-            tier: request.tier,
-            outcome,
-            status,
-            latencyMs: Math.max(0, endedAt - legacyStartedAt),
-          });
-          if (result && typeof result.catch === 'function') result.catch(() => {});
-        } catch {
-          // Closed telemetry must not change a customer response.
-        }
-        return true;
+        emitTelemetry(/** @type {Function} */ (observe), { tier: request.tier, outcome, status, latencyMs });
       };
-      const observeGuarded = (input) => {
-        if (terminalObserved || typeof observe !== 'function') return undefined;
+      const observeStream = (/** @type {Record<string, unknown>} */ event) => {
+        if (terminalObserved || typeof observe !== 'function') return;
         terminalObserved = true;
-        try {
-          const result = observe(input);
-          if (result && typeof result.catch === 'function') result.catch(() => {});
-          return result;
-        } catch {
-          return undefined;
-        }
+        emitTelemetry(observe, event);
       };
       // Resolve the effective LLM key server-side, per tier:
       //   - byok → the caller's own key (from the validated request).
@@ -441,7 +337,7 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
           },
           signal: controller.signal,
           timeout: streamTimeoutMs,
-          observe: observeGuarded,
+          observe: observeStream,
           now,
         });
         // The seam's return type is `void`-tolerant so an injected stand-in
@@ -449,13 +345,11 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
         // here to the two fields it does read.
         const outcome = /** @type {{ok?: boolean, code?: string}|undefined} */ (result);
         terminalOutcome = outcome;
-        if (!terminalObserved) {
-          observeTerminal(
-            outcome?.ok === false && outcome.code === 'number_safety_failed' ? 'number_safety_failed'
-              : outcome?.ok === false ? 'terminal_failed' : 'completed',
-            res.statusCode,
-          );
-        }
+        observeTerminal(
+          outcome?.ok === false && outcome.code === 'number_safety_failed' ? 'number_safety_failed'
+            : outcome?.ok === false ? 'terminal_failed' : 'completed',
+          res.statusCode,
+        );
         if (jsonResponse) {
           const done = [...bufferedFrames].reverse().find((frame) => frame.type === 'done');
           if (outcome?.ok !== false && done) {
@@ -471,9 +365,8 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
               ? outcome.code
               : ([...bufferedFrames].reverse().find((frame) => frame.type === 'error')?.code ?? 'rewrite_failed');
             const errorFrame = bufferedFrames.find((frame) => frame.type === 'error' && typeof frame.error === 'string');
-            res.statusCode = code === 'source_changed' ? 409
-              : code === 'invalid_unicode' ? 400
-                : ['floor_failed', 'number_safety_failed', 'protected_text_failed', 'edit_output_too_long', 'output_invalid_unicode'].includes(code) ? 422 : 500;
+            res.statusCode = code === 'invalid_unicode' ? 400
+              : ['floor_failed', 'number_safety_failed', 'protected_text_failed', 'edit_output_too_long', 'output_invalid_unicode'].includes(code) ? 422 : 500;
             // Mirror the NDJSON frame exactly: the runner already chose a
             // tier-safe `error` string, and a BYOK frame may also carry the
             // coarse upstream status.

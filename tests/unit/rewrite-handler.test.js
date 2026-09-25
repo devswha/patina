@@ -33,8 +33,20 @@ function validBody(overrides = {}) {
   };
 }
 
+/**
+ * Give a check-only test limiter the always-granted concurrency lease the
+ * handler requires, so each case exercises its own admission verdict.
+ */
+function withLease(limiter) {
+  return {
+    async acquireConcurrency({ tier }) { return { allowed: true, tier, lease: 'test-lease' }; },
+    async releaseConcurrency() {},
+    ...limiter,
+  };
+}
+
 function allowedLimiter() {
-  return { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } };
+  return withLease({ async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } });
 }
 
 function deferred() {
@@ -78,23 +90,34 @@ function proBody(overrides = {}) {
 }
 
 
-test('factory throws without runRewrite or rateLimiter.check', () => {
+test('factory throws without runRewrite or a complete rate limiter', () => {
+  const check = async () => ({ allowed: true, tier: WEB_TIERS.FREE });
   assert.throws(() => createRewriteHandler({ rateLimiter: allowedLimiter() }), TypeError);
-  assert.throws(() => createRewriteHandler({ rateLimiter: {}, runRewrite() {} }), TypeError);
-});
-test('factory fails closed when concurrency acquire and release capabilities are malformed', async () => {
   for (const rateLimiter of [
-    { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; }, async acquireConcurrency() { return { allowed: true, tier: WEB_TIERS.FREE, lease: 'x' }; } },
-    { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; }, async releaseConcurrency() {} },
-    { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; }, async acquireConcurrency() { return { allowed: true, tier: WEB_TIERS.FREE }; }, async releaseConcurrency() {} },
+    {},
+    { check },
+    { check, async acquireConcurrency() { return { allowed: true, tier: WEB_TIERS.FREE, lease: 'x' }; } },
+    { check, async releaseConcurrency() {} },
   ]) {
-    const res = makeRes();
-    let ran = false;
-    const handler = createRewriteHandler({ rateLimiter, runRewrite() { ran = true; } });
-    await handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.1' }, body: validBody() }, res);
-    assert.equal(res.statusCode, 503);
-    assert.equal(ran, false);
+    assert.throws(() => createRewriteHandler({ rateLimiter, runRewrite() {} }), TypeError);
   }
+});
+test('a concurrency grant without a lease fails closed before admission', async () => {
+  const res = makeRes();
+  let ran = false;
+  let checked = false;
+  const handler = createRewriteHandler({
+    rateLimiter: {
+      async check() { checked = true; return { allowed: true, tier: WEB_TIERS.FREE }; },
+      async acquireConcurrency() { return { allowed: true, tier: WEB_TIERS.FREE }; },
+      async releaseConcurrency() {},
+    },
+    runRewrite() { ran = true; },
+  });
+  await handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.1' }, body: validBody() }, res);
+  assert.equal(res.statusCode, 503);
+  assert.equal(checked, false);
+  assert.equal(ran, false);
 });
 
 test('405 for non-POST and no-store header is always set', async () => {
@@ -355,7 +378,7 @@ test('429 denial from limiter does not call runRewrite', async () => {
   let calls = 0;
   const res = makeRes();
   const handler = createRewriteHandler({
-    rateLimiter: { async check() { return { allowed: false, status: 429, reason: 'daily quota exceeded' }; } },
+    rateLimiter: withLease({ async check() { return { allowed: false, status: 429, reason: 'daily quota exceeded' }; } }),
     runRewrite() { calls += 1; },
   });
   await handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.20' }, body: validBody() }, res);
@@ -368,7 +391,7 @@ test('503 fail-closed limiter result does not call runRewrite', async () => {
   let calls = 0;
   const res = makeRes();
   const handler = createRewriteHandler({
-    rateLimiter: { async check() { return { allowed: false, status: 503, reason: 'quota storage unavailable' }; } },
+    rateLimiter: withLease({ async check() { return { allowed: false, status: 503, reason: 'quota storage unavailable' }; } }),
     runRewrite() { calls += 1; },
   });
   await handler({ method: 'POST', headers: { 'x-real-ip': '203.0.113.21' }, body: validBody() }, res);
@@ -382,13 +405,13 @@ test('happy path calls runRewrite once with validated request value and tier', a
   let observed;
   const res = makeRes();
   const handler = createRewriteHandler({
-    rateLimiter: {
+    rateLimiter: withLease({
       async check({ tier, ip }) {
         assert.equal(tier, WEB_TIERS.FREE);
         assert.equal(ip, '203.0.113.22');
         return { allowed: true, tier };
       },
-    },
+    }),
     runRewrite(args) {
       calls += 1;
       observed = args.request;
@@ -1366,11 +1389,11 @@ test('pro path forwards the monthly-char 429 with remaining/limit guidance and n
   const res = makeRes();
   let ran = false;
   const handler = createRewriteHandler({
-    rateLimiter: {
+    rateLimiter: withLease({
       async check() {
         return { allowed: false, status: 429, reason: QUOTA_REASONS.MONTHLY_CHARS, remainingMonthlyChars: 0, limitMonthlyChars: 1000 };
       },
-    },
+    }),
     licenseValidator: makeValidator({ ok: true, subject: 'SUBJ-over', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' }),
     runRewrite() { ran = true; },
   });
@@ -1408,7 +1431,7 @@ test('closed observer records real entitlement, quota, and service denial paths 
       name: 'monthly quota',
       headers: { authorization: `Bearer ${canary}` },
       body: proBody(),
-      limiter: { async check() { return { allowed: false, status: 429, reason: QUOTA_REASONS.MONTHLY_CHARS }; } },
+      limiter: withLease({ async check() { return { allowed: false, status: 429, reason: QUOTA_REASONS.MONTHLY_CHARS }; } }),
       validator: makeValidator({ ok: true, subject: 'private-subject', tier: WEB_TIERS.PRO, status: 'active', cache: 'miss' }),
       expected: { tier: WEB_TIERS.PRO, outcome: 'quota_denied', status: 429 },
     },
@@ -1416,7 +1439,7 @@ test('closed observer records real entitlement, quota, and service denial paths 
       name: 'service disabled',
       headers: {},
       body: validBody(),
-      limiter: { async check() { return { allowed: false, status: 503, reason: QUOTA_REASONS.SERVICE_UNAVAILABLE }; } },
+      limiter: withLease({ async check() { return { allowed: false, status: 503, reason: QUOTA_REASONS.SERVICE_UNAVAILABLE }; } }),
       expected: { tier: WEB_TIERS.FREE, outcome: 'service_disabled', status: 503 },
     },
   ];
@@ -1440,7 +1463,7 @@ test('closed observer records real entitlement, quota, and service denial paths 
 test('closed observer failures cannot alter a denied response', async () => {
   const res = makeRes();
   const handler = createRewriteHandler({
-    rateLimiter: { async check() { return { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY }; } },
+    rateLimiter: withLease({ async check() { return { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY }; } }),
     runRewrite() { throw new Error('runner must not run'); },
     observe() { throw new Error('observer failure'); },
   });
@@ -1451,7 +1474,7 @@ test('closed observer failures cannot alter a denied response', async () => {
 test('a failed telemetry clock does not emit an epoch-latency denial event', async () => {
   const events = [];
   const handler = createRewriteHandler({
-    rateLimiter: { async check() { return { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY }; } },
+    rateLimiter: withLease({ async check() { return { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY }; } }),
     runRewrite() { throw new Error('runner must not run'); },
     now() { throw new Error('clock unavailable'); },
     observe(event) { events.push(event); },

@@ -4,7 +4,8 @@
 // mirroring api/rewrite.js.
 
 import { createRestKv } from './rewrite.js';
-import { createMemoryKv, isProductionPosture } from '../src/rate-limit.js';
+import { createMemoryKv } from '../src/rate-limit.js';
+import { isProductionPosture } from '../src/web-rewrite-contract.js';
 import { createPolarLicenseValidator } from '../src/entitlement-polar.js';
 import { createPackHandler } from '../src/pack-handler.js';
 

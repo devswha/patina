@@ -8,8 +8,6 @@ import {
   buildPolarValidateRequest,
   evaluatePolarLicenseResponse,
   isPolarDefinitiveDenial,
-  POLAR_DEFAULT_VALIDATE_RPM,
-  POLAR_PII_FIELDS,
   polarValidateUrl,
   createPolarLicenseValidator,
 } from '../../src/entitlement-polar.js';
@@ -98,15 +96,8 @@ test('missing server configuration fails closed rather than skipping a gate', ()
 
 test('the validate request pins the server-configured organization, never a caller value', () => {
   const built = buildPolarValidateRequest('LICENSE-ABC', env);
-  assert.deepEqual(built, { ok: true, body: { key: 'LICENSE-ABC', organization_id: ORG } });
   // No secret is sent: the customer-portal endpoint is unauthenticated.
-  assert.deepEqual(Object.keys(built.ok === true ? built.body : {}).sort(), ['key', 'organization_id']);
-});
-
-test('the validate request fails closed without configuration or a license', () => {
-  assert.deepEqual(buildPolarValidateRequest('LICENSE-ABC', {}), { ok: false, detail: 'organization-not-configured' });
-  assert.deepEqual(buildPolarValidateRequest('', env), { ok: false, detail: 'license-missing' });
-  assert.deepEqual(buildPolarValidateRequest(/** @type {any} */ (undefined), env), { ok: false, detail: 'license-missing' });
+  assert.deepEqual(built, { key: 'LICENSE-ABC', organization_id: ORG });
 });
 
 test('the sandbox endpoint is opt-in and production is the default', () => {
@@ -175,7 +166,7 @@ test('the evaluator reads named fields and never carries the PII Polar returns a
   const allowed = evaluatePolarLicenseResponse(withPii, env);
   assert.equal(allowed.ok, true);
   const serialized = JSON.stringify(allowed);
-  for (const field of POLAR_PII_FIELDS) {
+  for (const field of ['user', 'customer', 'user_id', 'customer_id']) {
     assert.equal(serialized.includes(field), false, `${field} must not survive into the result`);
   }
   assert.equal(serialized.includes('buyer@example.com'), false, 'the purchaser email must never survive');
@@ -185,14 +176,6 @@ test('the evaluator reads named fields and never carries the PII Polar returns a
   const denied = evaluatePolarLicenseResponse({ ...withPii, status: 'revoked' }, env);
   assert.equal(denied.ok, false);
   assert.equal(JSON.stringify(denied).includes('buyer@example.com'), false);
-});
-
-test('the validate admission ceiling stays well under the observed 429 threshold', () => {
-  // Five rapid sandbox calls drew 429 with retry-after 21s, so the shipped
-  // ceiling is deliberately conservative rather than a documented maximum.
-  assert.equal(POLAR_DEFAULT_VALIDATE_RPM, 10);
-  assert.ok(POLAR_DEFAULT_VALIDATE_RPM > 0 && Number.isSafeInteger(POLAR_DEFAULT_VALIDATE_RPM));
-  assert.ok(POLAR_DEFAULT_VALIDATE_RPM < 50, 'must stay below the endpoint threshold');
 });
 
 // --- validator integration (mocked transport) -------------------------------
@@ -308,6 +291,21 @@ test('missing provider configuration fails closed without any network call', asy
   assert.equal(result.ok, false);
   assert.equal(result.ok === false && result.status, 503);
   assert.equal(calls, 0, 'an unconfigured provider must never reach the network');
+});
+
+test('an empty license is refused before any validate request is built', async () => {
+  let calls = 0;
+  const validator = createPolarLicenseValidator({
+    kv: memoryKv(),
+    env: validatorEnv,
+    logger: { warn() {} },
+    fetchImpl: (async () => { calls += 1; return jsonResponse(200, grantedResponse()); }),
+  });
+  for (const licenseKey of ['', '   ', /** @type {any} */ (undefined)]) {
+    const result = await validator.validate({ licenseKey });
+    assert.equal(result.ok === false && result.status, 401);
+  }
+  assert.equal(calls, 0);
 });
 
 test('the validator leaks neither the license nor the PII Polar returns', async () => {

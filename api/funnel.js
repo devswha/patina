@@ -1,5 +1,6 @@
 // @ts-check
 import { funnelCounterKey, validateFunnelEvent } from '../src/funnel-analytics.js';
+import { upstashFetch, upstashOrigin } from '../src/upstash-rest.js';
 
 export const config = { api: { bodyParser: false } };
 
@@ -107,16 +108,9 @@ async function requestBody(req) {
  * @param {typeof fetch} fetchImpl
  */
 export function createFunnelAggregateStore(env = process.env, fetchImpl = globalThis.fetch) {
-  const base = env.PATINA_OBSERVABILITY_REST_API_URL;
+  const origin = upstashOrigin(env.PATINA_OBSERVABILITY_REST_API_URL);
   const token = env.PATINA_OBSERVABILITY_REST_API_TOKEN;
-  if (!base || !token || typeof fetchImpl !== 'function') return null;
-  let url;
-  try {
-    url = new URL(base);
-  } catch {
-    return null;
-  }
-  if (url.protocol !== 'https:' || url.username || url.password || url.port || url.pathname !== '/' || url.search || url.hash || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.upstash\.io$/i.test(url.hostname)) return null;
+  if (!origin || !token || typeof fetchImpl !== 'function') return null;
   const configuredLimit = Number(env.PATINA_FUNNEL_EVENTS_PER_DAY || DEFAULT_EVENTS_PER_DAY);
   if (!Number.isSafeInteger(configuredLimit) || configuredLimit < 1 || configuredLimit > 1_000_000) return null;
 
@@ -127,14 +121,11 @@ export function createFunnelAggregateStore(env = process.env, fetchImpl = global
       const parts = key.split(':');
       if (parts.length < 5 || parts[0] !== 'patina' || parts[1] !== 'funnel' || parts[2] !== 'v1') throw new Error('invalid aggregate key');
       const budgetKey = `${parts.slice(0, 4).join(':')}:budget`;
-      const response = await fetchImpl(url.origin, {
+      const result = await upstashFetch(origin, {
         method: 'POST',
-        redirect: 'error',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(['EVAL', INCREMENT_WITH_DAILY_LIMIT, '2', budgetKey, key, '1', String(ttlMs), String(configuredLimit)]),
-      });
-      if (!response?.ok) throw new Error('aggregate storage unavailable');
-      const result = await response.json();
+      }, { failureMessage: 'aggregate storage unavailable', fetchImpl });
       if (result?.result === -1) {
         const error = /** @type {Error & {code: string}} */ (new Error('aggregate daily limit reached'));
         error.code = DAILY_LIMIT_CODE;

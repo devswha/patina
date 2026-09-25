@@ -27,3 +27,7 @@ tests/quality/scorer-results.json
 assets/demo/*.mp4
 assets/demo/*.webp
 assets/demo/*.html
+
+# Playground notes stay in the repository; outputDirectory would serve them.
+playground/README.md
+playground/DESIGN.md

@@ -30,8 +30,8 @@ export const WEB_REGISTERS = Object.freeze(['casual', 'professional']);
 
 /**
  * Whether the env describes a production deployment. Shared by the rate
- * limiter, the entitlement layer (both via rate-limit.js's re-export), and the
- * pro provider resolution below, so "production" means one thing everywhere.
+ * limiter, the entitlement layer, the API entry points and the pro provider
+ * resolution below, so "production" means one thing everywhere.
  * @param {Record<string, string|undefined>} [env]
  * @returns {boolean}
  */
@@ -39,7 +39,7 @@ export function isProductionPosture(env = {}) {
   return env.NODE_ENV === 'production' || env.VERCEL_ENV === 'production' || env.VERCEL === '1';
 }
 
-/** Service tiers. `free` is the abuse-bounded shared proxy; `byok` uses the user's own key; `pro` is the licensed hosted tier (server key, LS validate-only gated). */
+/** Service tiers. `free` is the abuse-bounded shared proxy; `byok` uses the user's own key; `pro` is the licensed hosted tier (server key, gated by Polar license validation). */
 export const WEB_TIERS = Object.freeze({ FREE: 'free', BYOK: 'byok', PRO: 'pro' });
 
 /** Turn kinds. `first` is the one-shot rewrite; `refine` is a conversational follow-up. */
@@ -49,7 +49,7 @@ export const REWRITE_MODES = Object.freeze({ FIRST: 'first', REFINE: 'refine', V
  * Meaning-verification floors, hard-coded at 70/70 to mirror
  * `.patina.default.yaml` (`verification.mps-floor` / `verification.fidelity-floor`). A rewrite that scores
  * below either floor — or whose score is missing/unparseable — is rejected
- * fail-closed (see evaluateFloors).
+ * fail-closed (see evaluateVerification in src/verification-schema.js).
  */
 export const MPS_FLOOR = 70;
 export const FIDELITY_FLOOR = 70;
@@ -59,33 +59,17 @@ export const FIDELITY_FLOOR = 70;
  * enforcer.
  */
 export const TIER_LIMITS = Object.freeze({
-  // Launch-window free caps (2026-07-23): 5/day + 2/hour choked a first visit
-  // (sample + own text + one refine already hit the burst). 20/day at ~$0.01
-  // per free rewrite bounds worst-case spend at ~$0.20/IP/day while a session
-  // can actually explore. Still abuse-bounded — never unlimited: the free tier
-  // spends the server key.
+  // Free spends the server key, so it is abuse-bounded, never unlimited. At
+  // ~$0.01 per free rewrite, 20/day bounds spend at ~$0.20 per IP per day while
+  // leaving room for a sample, the visitor's own text and a refine.
   free: Object.freeze({ maxChars: 4000, maxConcurrent: 1, reqPerDay: 20, burstPerHour: 10 }),
   // BYOK spends the caller's own key, so caps only bound patina's
   // function/connection/egress usage, not user cost.
   byok: Object.freeze({ maxChars: 20000, maxConcurrent: 2, burstPerHour: 120, reqPerDay: 480 }),
-  // Pro caps rest on a measured fact: pipeline cost is driven by REQUEST COUNT,
-  // not text length. Every paid rewrite spends three LLM calls (rewrite + MPS +
-  // fidelity) behind a ~20k-token prompt, so a 100-char request costs nearly as
-  // much as a 1,000-char one. Measured 2026-07-29 on the shipped gemini-3.6-flash
-  // serving pin: $0.035-0.075 per request (81% prompt-cache hit included).
-  //
-  // reqPerMonth 100 (owner-approved 2026-07-29) is the PRIMARY cost bound, set
-  // against net revenue of $8.49/mo ($9.99 less fee and refund reserve): ~$4.5
-  // COGS, ~47% margin at the measured blended cost. That is below the 60% floor
-  // the PAY-B-COST spec pins, which is a deliberate pricing choice — BYOK lets
-  // heavy users spend their own provider quota behind modest Patina admission
-  // caps, so Pro sells key management and needs a credible allowance more than
-  // a maximal margin.
-  //
-  // charsPerMonth 50,000 is retained as a SECONDARY bound only: on its own it is
-  // not a cost control (500 x 100-char requests satisfy it while costing ~$17.5).
-  // reqPerDay 200 likewise bounds burst, not spend.
-  // See docs/operations/pro-margin-decision-20260729.md.
+  // Pro cost tracks REQUEST COUNT, not text length: every paid rewrite spends
+  // three LLM calls (rewrite + MPS + fidelity) behind a ~20k-token prompt. So
+  // reqPerMonth is the primary cost bound; charsPerMonth and reqPerDay bound
+  // size and burst only. Pricing and margin: docs/operations/pro-margin-decision-20260729.md.
   pro: Object.freeze({ maxChars: 20000, reqPerDay: 200, reqPerMonth: 100, maxConcurrent: 3, charsPerMonth: 50_000 }),
 });
 
@@ -174,7 +158,7 @@ export const STREAM_FRAME_TYPES = Object.freeze({
 });
 
 /** The closed set of valid stream frame type values (for fail-closed parsing). */
-export const STREAM_FRAME_VALUES = new Set(Object.values(STREAM_FRAME_TYPES));
+const STREAM_FRAME_VALUES = new Set(Object.values(STREAM_FRAME_TYPES));
 
 /**
  * OpenAI-compatible provider presets. The base URL is fixed per provider here so
@@ -182,30 +166,11 @@ export const STREAM_FRAME_VALUES = new Set(Object.values(STREAM_FRAME_TYPES));
  * be exfiltrated to an attacker-chosen host). BYOK requests may only select a
  * provider+model from this allowlist; free requests are pinned by env.
  */
-// Model refresh policy (2026-07-23): additions are opt-in choices appended
-// after the pinned default at index 0. Defaults stay exactly at the Gate-C
-// held values (openai gpt-5.5; gemini gemini-2.5-pro with the 3.1 preview
-// offered strictly under its opt_in_only ceiling). New entries mirror the CLI
-// provider presets (src/providers.js / src/model-defaults.js) so the web BYOK
-// surface never lags the models the CLI already documents.
-//
-// 2026-07-26: gemini-3.6-flash added as an opt-in entry. Measured on 22
-// live-quality fixtures with a fixed judge (docs/operations/
-// serving-engine-cost-20260725.md): AI-score improvement 13.0 vs 11.8 for the
-// current Pro pin claude-sonnet-5, 7 meaning-loss fixtures vs 10, at $0.030
-// per rewrite vs $0.156 and 8.3s vs 27.7s. Allowlisting only makes it
-// selectable for BYOK and available to PATINA_PRO_MODEL / PATINA_FREE_MODEL;
-// every held default, including the Pro pin, is untouched here.
-//
-// 2026-08-13: gemini-3.7-flash added as an opt-in entry. Same 22 fixtures,
-// fixed judge deepseek-chat (thinking off), against gemini-3.6-flash on the
-// identical apparatus (docs/operations/
-// serving-engine-gemini-3.7-flash-20260813.md): 19 pass / 2 warn / 1 error vs
-// 18 pass / 4 warn / 0 error, half the ai_not_improved warns (2 vs 4), ~2x
-// faster (4.2s vs 8.9s per rewrite), identical published pricing. Its one
-// regression is en-social-01, where 2 of 4 samples scored MPS 50 (3.6 floor
-// on the same judge: 75). Opt-in only; the serving pin stays gemini-3.6-flash
-// until the en-social meaning loss is understood.
+// Additions are opt-in entries after the default at index 0 and mirror the CLI
+// presets (src/providers.js, src/model-defaults.js). Allowlisting a model never
+// changes a default or a serving pin; the gemini flash measurements are in
+// docs/operations/serving-engine-cost-20260725.md and
+// docs/operations/serving-engine-gemini-3.7-flash-20260813.md.
 export const PROVIDER_PRESETS = Object.freeze({
   openai: Object.freeze({
     baseURL: 'https://api.openai.com/v1',
@@ -291,7 +256,7 @@ function isSecretKey(key) {
 /**
  * Inline secret shapes inside free-form strings (Bearer tokens, OpenAI keys),
  * plus labelled secrets (`apiKey=...`, `x-api-key: ...`, `token=...`, `license_key=...`) that
- * upstream provider error messages embed regardless of key format (#565).
+ * upstream provider error messages embed regardless of key format.
  * The value part is bounded (no nested quantifiers) so a hostile error string
  * cannot trigger catastrophic backtracking; over-redacting is the safe
  * failure for a log boundary.
@@ -483,9 +448,9 @@ export function validateRewriteRequest(body, env = {}, options = {}) {
   // Pro tier gates on the license credential BEFORE char caps or provider/model
   // resolution, so an unauthenticated pro request always fails closed with 401
   // LICENSE_REQUIRED and never leaks limit/config state ahead of the auth
-  // boundary. The license is an entitlement (the handler verifies it via LS
-  // validate-only from an Authorization: Bearer header), never a provider key
-  // and never a body field.
+  // boundary. The license is an entitlement (the handler validates it with
+  // Polar from an Authorization: Bearer header), never a provider key and
+  // never a body field.
   if (tier === WEB_TIERS.PRO) {
     if (/** @type {any} */ (body).apiKey != null) {
       return { ok: false, status: 400, error: 'pro tier must not include an apiKey; the license is sent as Authorization: Bearer' };
@@ -663,19 +628,4 @@ export function parseStreamFrame(line) {
     return { type: STREAM_FRAME_TYPES.ERROR, error: 'unknown stream frame type' };
   }
   return parsed;
-}
-
-/**
- * Fail-closed floor check for a completed rewrite. A score that is missing,
- * non-finite, outside 0–100, or below its floor fails. This numeric helper does
- * not certify semantic evidence; runtime callers use evaluateVerification.
- *
- * @param {{mps?:unknown, fidelity?:unknown}} scores
- * @returns {{ok:boolean, failed:string[]}}
- */
-export function evaluateFloors({ mps, fidelity } = {}) {
-  const failed = [];
-  if (!Number.isFinite(mps) || /** @type {number} */ (mps) < MPS_FLOOR || /** @type {number} */ (mps) > 100) failed.push('mps');
-  if (!Number.isFinite(fidelity) || /** @type {number} */ (fidelity) < FIDELITY_FLOOR || /** @type {number} */ (fidelity) > 100) failed.push('fidelity');
-  return { ok: failed.length === 0, failed };
 }

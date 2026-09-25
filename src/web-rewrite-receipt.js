@@ -80,29 +80,15 @@ function publicChoice(value) {
   return value === null || value === undefined || value === '' ? null : String(value);
 }
 
-/** @param {unknown} value */
-function publicPromptBudget(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const budget = /** @type {Record<string, unknown>} */ (value);
-  const policies = new Set(['off', 'shadow', 'active']);
-  const profiles = new Set(['strict', 'minimal']);
-  const reasons = new Set([
-    'invalid_request', 'not_first_turn', 'unsupported_language', 'invalid_text',
-    'multiple_blocks', 'text_too_long', 'non_default_document_type',
-    'persona_or_register', 'transformation_options', 'unexpected_context',
-    'number_date_or_percent', 'negation_or_polarity',
-    'causation', 'multiple_claims', 'eligible',
-  ]);
-  if (!policies.has(/** @type {string} */ (budget.policy))
-    || !profiles.has(/** @type {string} */ (budget.selected))
-    || !profiles.has(/** @type {string} */ (budget.applied))
-    || !reasons.has(/** @type {string} */ (budget.reason))) return null;
-  return {
-    policy: budget.policy,
-    selected: budget.selected,
-    applied: budget.applied,
-    reason: budget.reason,
-  };
+/**
+ * The closed budget decision from resolveWebPromptBudget, copied field by
+ * field so nothing else on the object can reach the receipt.
+ * @param {{policy: string, selected: string, applied: string, reason: string}|null|undefined} budget
+ */
+function publicPromptBudget(budget) {
+  if (!budget) return null;
+  const { policy, selected, applied, reason } = budget;
+  return { policy, selected, applied, reason };
 }
 
 /**
@@ -119,7 +105,7 @@ function publicPromptBudget(value) {
  * @param {unknown} input.fidelity
  * @param {unknown} input.signals
  * @param {unknown} input.diff
- * @param {unknown} [input.budget]
+ * @param {{policy: string, selected: string, applied: string, reason: string}|null} [input.budget]
  */
 export function buildWebRewriteReceipt({
   request,

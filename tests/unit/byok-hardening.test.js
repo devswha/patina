@@ -58,7 +58,11 @@ test('a thrown error carrying the BYOK key is redacted before logging and never 
   const KEY = 'sk-byok-PHASE5-secret-key';
   const logs = [];
   const handler = createRewriteHandler({
-    rateLimiter: { check: async () => ({ allowed: true, tier: 'byok' }) },
+    rateLimiter: {
+      check: async () => ({ allowed: true, tier: 'byok' }),
+      acquireConcurrency: async () => ({ allowed: true, tier: 'byok', lease: 'test-lease' }),
+      releaseConcurrency: async () => {},
+    },
     runRewrite: async () => { throw new Error(`provider rejected Authorization: Bearer ${KEY}`); },
     env: {},
     logger: { error: (m) => logs.push(m) },

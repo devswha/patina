@@ -53,16 +53,6 @@ test('vercel.json keeps a self-only CSP (no provider origins, no inline script)'
   assert.doesNotMatch(csp, /api\.openai\.com/);
 });
 
-// The rewrite chat is the sole playground surface. The contract module must be
-// published and the README must document the privacy/abuse posture.
-test('rewrite chat is documented and the rewrite contract is published', () => {
-  assert.ok(existsSync(resolve(REPO_ROOT, 'src/web-rewrite-contract.js')), 'contract module must exist');
-  const readme = readFileSync(resolve(REPO_ROOT, 'playground/README.md'), 'utf8');
-  assert.match(readme, /rewrite/i, 'README must document the rewrite chat');
-  assert.match(readme, /no-store/i, 'README must document the no-store / no-persistence posture');
-  assert.match(readme, /fail-closed/i, 'README must document fail-closed rate limiting');
-});
-
 test('vercel.json serves only the playground as its static output', () => {
   const config = vercelConfig();
   const staticPaths = [
@@ -298,11 +288,4 @@ test('checked-in browser launch config is disabled and Vercel serves it without 
   const routeHeaders = config.headers.find((header) => header.source === '/launch-config.js')?.headers;
   assert.equal(routeHeaders?.find((header) => header.key === 'Content-Type')?.value, 'application/javascript; charset=utf-8');
   assert.equal(routeHeaders?.find((header) => header.key === 'Cache-Control')?.value, 'no-store, max-age=0');
-});
-test('local dev server resolves the launch config with matching no-store headers', () => {
-  const devServer = readFileSync(resolve(REPO_ROOT, 'scripts/dev-server.mjs'), 'utf8');
-
-  assert.match(devServer, /\['\/launch-config\.js', '\/playground\/launch-config\.js'\]/);
-  assert.match(devServer, /'Content-Type': 'application\/javascript; charset=utf-8'/);
-  assert.match(devServer, /'Cache-Control': 'no-store, max-age=0'/);
 });

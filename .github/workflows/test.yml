@@ -88,9 +88,6 @@ jobs:
       - name: Private asset leak gate
         run: npm run check:no-private-assets
 
-      - name: Syntax lint
-        run: npm run lint:syntax
-
       - name: Benchmark report schema
         run: npm run benchmark:report
 

@@ -469,7 +469,6 @@ export function scoreDeterministicSignals({
     const result = analyzer(String(text || ''), {
       lang,
       documentType: config.documentType,
-      register: config.register ?? null,
       repoRoot,
       burstinessBands: config.stylometry?.burstiness?.bands,
       mattrBands: config.stylometry?.ttr?.bands,

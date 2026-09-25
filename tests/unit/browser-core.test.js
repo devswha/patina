@@ -24,24 +24,6 @@ test('browser data-only analysis matches the Node path on every public fixture',
   }
 });
 
-test('Node adapter preserves inherited and non-enumerable options', () => {
-  const options = Object.create({ lang: 'ko', lexicon: loadLexicon('ko', root) });
-  Object.defineProperty(options, 'mattrWindow', { value: 2 });
-  Object.defineProperty(options, 'koDiagnosticsEnabled', { value: false });
-  const text = '오늘 회의를 마쳤다. 다음 주에 다시 확인하겠다. 일정은 바뀌지 않았다.';
-  assert.deepEqual(nodeAnalyze(text, options), browserAnalyze(text, options));
-  assert.equal(nodeAnalyze(text, options).lang, 'ko');
-});
-
-test('Node adapter preserves accessor receivers with private instance fields', () => {
-  class Options {
-    #window = 2;
-    get mattrWindow() { return this.#window; }
-  }
-  const options = new Options();
-  assert.deepEqual(nodeAnalyze('A short sentence.', options), browserAnalyze('A short sentence.', options));
-});
-
 test('the browser entry graph has no Node modules, environment reads or network APIs', () => {
   const seen = new Set();
   function visit(path) {

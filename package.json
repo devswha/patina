@@ -41,7 +41,6 @@
     "release:check": "node scripts/check-release-metadata.mjs && node scripts/check-retired-concepts.mjs",
     "release:sync-plugin-versions": "node scripts/check-release-metadata.mjs --sync-plugin-versions",
     "check:architecture": "node scripts/check-architecture.mjs",
-    "pr:check": "node scripts/check-pr-policy.mjs",
     "check:no-private-assets": "node scripts/check-no-private-assets.mjs",
     "prepublishOnly": "npm run release:check && npm run check:no-private-assets && npm run lint && npm test && npm run benchmark:report && npm run dogfood",
     "benchmark:ranges": "node scripts/update-benchmark-ranges.mjs",

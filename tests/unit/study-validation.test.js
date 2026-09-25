@@ -182,21 +182,13 @@ test('a pre-call deadline produces a terminal not-started receipt, not phantom i
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('resolved config is frozen and external private model contents are fingerprinted', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'patina-private-model-'));
-  const model = join(dir, 'weights.json');
-  try {
-    writeFileSync(model, '{"invalid":1}');
-    const config = { documentType: 'default', scoring: { deterministic: { enabled: true } } };
-    const first = createStudyInputs(ROOT, { config, env: { PATINA_STRUCTURAL_MODEL: model } });
-    config.scoring.deterministic.enabled = false;
-    assert.equal(first.config().scoring.deterministic.enabled, true);
-    writeFileSync(model, '{"invalid":2}');
-    const second = createStudyInputs(ROOT, { config, env: { PATINA_STRUCTURAL_MODEL: model } });
-    assert.notEqual(first.fingerprint.configuration, second.fingerprint.configuration);
-    assert.notEqual(first.fingerprint.structuralModels.en.contentHash, second.fingerprint.structuralModels.en.contentHash);
-    assert.doesNotMatch(JSON.stringify(first.fingerprint), /weights\.json|patina-private-model/);
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+test('resolved config is frozen and fingerprinted', () => {
+  const config = { documentType: 'default', scoring: { deterministic: { enabled: true } } };
+  const first = createStudyInputs(ROOT, { config });
+  config.scoring.deterministic.enabled = false;
+  assert.equal(first.config().scoring.deterministic.enabled, true);
+  const second = createStudyInputs(ROOT, { config });
+  assert.notEqual(first.fingerprint.configuration, second.fingerprint.configuration);
 });
 
 test('generation rows preserve successful retry attempts and the production success enum', async () => {

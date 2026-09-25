@@ -88,7 +88,7 @@ test('analyzeText attributes gated fake-candor to the carrying paragraphs (#391)
   assert.equal(r.hot, true);
   assert.equal(
     r.hot,
-    r.markupLeakage.leaked || r.structuralClassifier.hot === true || r.paragraphs.some((p) => p.hot),
+    r.markupLeakage.leaked || r.paragraphs.some((p) => p.hot),
   );
 });
 
@@ -123,7 +123,6 @@ test('analyzeText attributes gated thematic breaks and they alone carry the docu
     [false, true, false, true, false, true],
   );
   assert.equal(r.markupLeakage.leaked, false);
-  assert.notEqual(r.structuralClassifier.hot, true);
   assert.equal(r.hot, true);
 });
 

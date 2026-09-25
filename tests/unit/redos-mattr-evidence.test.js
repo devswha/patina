@@ -6,7 +6,6 @@ import {
   koreanPostEditeseFeatures,
   DEFAULT_MATTR_WINDOW,
 } from '../../src/features/stylometry.js';
-import { extractStructuralFeatures } from '../../src/features/structural-features.js';
 import { detectTranslationese } from '../../src/features/translationese.js';
 import { scoreText } from '../../src/scoring.js';
 import { loadConfig } from '../../src/config.js';
@@ -44,17 +43,6 @@ test('#507 mattr clamps a non-positive / non-integer window to the default', () 
     const got = mattr(tokens, bad);
     assert.equal(got, expected, `window=${bad} should fall back to the default`);
     assert.ok(Number.isFinite(got) && got >= 0, `window=${bad} must stay finite/non-negative`);
-  }
-});
-
-// #507 Defect 2 — token-less text used to emit a literal null at the mattr slot,
-// which the classifier silently coerced to 0; coalesce it to 0 at the source so
-// prediction and the logging path agree.
-test('#507 extractStructuralFeatures emits 0 (not null) at the mattr slot for token-less text', () => {
-  for (const empty of ['', '   ', '...', '。']) {
-    const vector = extractStructuralFeatures(empty, { lang: 'ko' });
-    assert.equal(vector[4], 0, `mattr slot for ${JSON.stringify(empty)} must be 0, not null`);
-    assert.notEqual(vector[4], null);
   }
 });
 

@@ -9,7 +9,6 @@ import {
   classifyMattr,
 } from '../../src/features/stylometry.js';
 import { analyzeText } from '../../src/features/index.js';
-import { extractStructuralFeatures } from '../../src/features/structural-features.js';
 
 test('splitParagraphs returns trimmed non-empty paragraphs', () => {
   assert.deepEqual(splitParagraphs(''), []);
@@ -288,38 +287,4 @@ test('mattr rolling implementation is bit-identical to slice+Set reference', () 
   // Empty / degenerate inputs.
   assert.equal(mattr([]), null);
   assert.equal(mattr('not-an-array'), null);
-});
-
-test('extractStructuralFeatures vectors unchanged after rolling mattr (parity)', () => {
-  // Captured from the pre-refactor (slice+Set) implementation; the rolling
-  // version must reproduce the full structural vector for every language.
-  const STRUCTURAL_BASELINE = {
-    en: [0.4065457283638481, 7.25, 2.947456530637899, 0.8275862068965517, 0.7931034482758621, 0.7916666666666666, 5.896551724137931, 0.25, 0.028409090909090908, 1, 0, 0],
-    ko: [0.5160156871153361, 6.5, 3.3541019662496847, 0.8846153846153846, 0.8846153846153846, 0.9130434782608695, 2.769230769230769, 0, 0.05263157894736842, 0.75, 0.11538461538461539, 0],
-    zh: [0.3197799481205415, 9.666666666666666, 3.0912061651652345, 0.8275862068965517, 0.8275862068965517, 0.7916666666666666, 1, 0, 0, 1, 0, 0],
-    ja: [0.23022081247934104, 14.333333333333334, 3.2998316455372216, 0.7209302325581395, 0.75625, 0.7096774193548387, 1, 0, 0, 1, 0, 0],
-  };
-  const texts = {
-    en: 'The tool is innovative. The tool is efficient and reliable. Teams adopt it quickly because it scales.\n\nMoreover, the platform delivers measurable value across diverse organizational contexts and workflows.',
-    ko: '이 도구는 혁신적이다. 이 도구는 효율적이고 신뢰할 수 있다. 팀은 확장성 때문에 빠르게 채택한다.\n\n또한 이 플랫폼은 다양한 조직 맥락과 업무 흐름에서 측정 가능한 가치를 제공한다.',
-    zh: '这个工具很创新。这个工具高效可靠。团队因为可扩展性而迅速采用它。',
-    ja: 'このツールは革新的だ。このツールは効率的で信頼できる。チームは拡張性のために素早く採用する。',
-  };
-  for (const [lang, t] of Object.entries(texts)) {
-    assert.deepEqual(extractStructuralFeatures(t, { lang }), STRUCTURAL_BASELINE[lang]);
-  }
-});
-
-// extractStructuralFeatures default MATTR window is 40; analyzer default is 50.
-// The exhaustive mattr≡refMattr test above covers both windows on the rolling
-// path, so the integration result is identical for every possible token array.
-test('extractStructuralFeatures mattr element matches reference at window 40', () => {
-  const long = `${'alpha beta gamma delta epsilon zeta eta theta iota kappa '.repeat(8)}lambda mu nu.`;
-  const vec = extractStructuralFeatures(long, { lang: 'en', mattrWindow: 40 });
-  // Replicate the structural-features tokenization pipeline exactly.
-  const normalized = long.normalize('NFC');
-  const sentences = splitParagraphs(normalized).flatMap((p) => splitProseSentences(p));
-  const tokens = sentences.flatMap((s) => tokenize(s, { lang: 'en' }));
-  assert.ok(tokens.length > 40, 'expected the long input to exercise the rolling path');
-  assert.ok(Object.is(vec[4], refMattr(tokens, 40)));
 });

@@ -1,6 +1,6 @@
 // @ts-check
 import { createLogger } from './logger.js';
-import { analyzeText, loadStructuralModel } from './features/index.js';
+import { analyzeText } from './features/index.js';
 import { TRANSLATIONESE_RULES } from './features/translationese.js';
 
 /**
@@ -577,9 +577,6 @@ function isCodeFence(line) {
  * @param {object} [opts]
  * @param {string} [opts.lang]
  * @param {string} [opts.repoRoot]
- * @param {import('./config.js').PatinaConfig} [opts.config]
- * @param {{ warn?: Function }} [opts.logger] Optional logger; the structural
- *   model load degrades to a warning here instead of aborting the audit (#443).
  * @returns {string} Markdown section (empty string when nothing fired).
  */
 export function buildDeterministicAuditBackstop(text, opts = {}) {
@@ -609,18 +606,7 @@ export function buildDeterministicAuditBackstop(text, opts = {}) {
   }
 
   // markup leakage (near-proof) + density-gated discourse tells — language-agnostic.
-  // The structural classifier is an advisory backstop: a configured-but-missing
-  // or corrupt model must degrade to a warning here, exactly as the --score path
-  // does (scoring.js), instead of aborting `patina --audit` (#443).
-  let structuralModel = null;
-  try {
-    structuralModel = loadStructuralModel(opts.config ?? {}, { lang });
-  } catch (err) {
-    opts.logger?.warn?.('audit.structural_model_load_failure', {
-      message: `[patina] structural model load failed; continuing without structural classifier: ${err?.message || err}`,
-    });
-  }
-  const a = analyzeText(str, { lang, repoRoot: opts.repoRoot, structuralModel });
+  const a = analyzeText(str, { lang, repoRoot: opts.repoRoot });
   for (const h of a.markupLeakage?.hits ?? []) {
     rows.push({ signal: 'markup-leakage', label: h.label, severity: 'HIGH', location: (h.samples ?? []).join(', ') });
   }
@@ -629,9 +615,6 @@ export function buildDeterministicAuditBackstop(text, opts = {}) {
   }
   if (a.discourseTells?.thematicBreaks?.hot) {
     rows.push({ signal: 'discourse: thematic-breaks', label: '장식용 구분선 남용', severity: 'LOW', location: `${a.discourseTells.thematicBreaks.count}개` });
-  }
-  if (a.structuralClassifier?.hot) {
-    rows.push({ signal: 'structural-classifier', label: '문서 단위 구조 분류기', severity: 'HIGH', location: `score ${a.structuralClassifier.score}` });
   }
 
   const koPostEditeseRows = buildKoPostEditeseAdvisoryRows(a.koPostEditese);

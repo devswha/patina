@@ -33,7 +33,6 @@ import {
   isThematicBreakOnly,
 } from './discourse-tells.js';
 import { detectTranslationese } from './translationese.js';
-import { structuralModelVerdict } from './structural-classifier.js';
 import { detectEnglishShortFormTells } from './short-form.js';
 
 export function analyzeText(text, opts = {}) {
@@ -49,7 +48,6 @@ export function analyzeText(text, opts = {}) {
     lexiconDensityThreshold = DEFAULT_LEXICON_DENSITY_THRESHOLD,
     lexiconMinHotMatches = DEFAULT_LEXICON_MIN_HOT_MATCHES,
     lexicon: providedLexicon,
-    structuralModel = null,
     documentType = 'default',
   } = opts;
 
@@ -76,7 +74,6 @@ export function analyzeText(text, opts = {}) {
   // constructions appear in good Korean too; gating hot would regress FP).
   const translationese = detectTranslationese(normalized, { lang });
   const koPostEditese = koreanPostEditeseFeatures(normalized, { lang });
-  const structuralClassifier = structuralModelVerdict(normalized, { lang, model: structuralModel });
   const lexicon = providedLexicon ?? { strict: [], phrases: [] };
 
   // Short-form social/marketing punctuation tell: em-dash count/density on
@@ -187,7 +184,6 @@ export function analyzeText(text, opts = {}) {
     // gate fires, at least one paragraph carries the tell (candor regexes cannot
     // span paragraph breaks; thematic breaks are whole lines), so the
     // per-paragraph attribution above already makes some paragraph hot.
-    hot: markupLeakage.leaked || structuralClassifier.hot === true || analyzed.some((p) => p.hot),
-    structuralClassifier,
+    hot: markupLeakage.leaked || analyzed.some((p) => p.hot),
   };
 }

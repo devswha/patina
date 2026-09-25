@@ -170,11 +170,6 @@ verification:
 # See core/stylometry.md for the full algorithm reference.
 stylometry:
   languages: [ko, en, zh, ja] # zh/ja use deterministic character-token fallback
-  # Optional private local structural classifier. Public releases ship the
-  # loader and feature extractor only; trained model files stay outside git/npm.
-  # You can also set PATINA_STRUCTURAL_MODEL=/path/to/model-ko.json.
-  # structural_model:
-  #   path: .patina/models/model-ko.json
   burstiness:
     bands:
       low: 0.30              # CV < 0.30 → low (suspect). Calibrated v3.5.1 from

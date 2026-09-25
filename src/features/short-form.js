@@ -9,9 +9,7 @@
 // This module surfaces that WEAK signal without claiming the author is AI: it
 // only activates for the `social`/`marketing` Document Type on short English input,
 // records the em-dash count and per-sentence density, and maps 1/2/3+ dashes to
-// Low/Medium/High severity. It is intentionally kept OUT of the structural
-// feature vector (src/features/structural-features.js) so it cannot shift the
-// dimensions of an already-trained private structural model.
+// Low/Medium/High severity.
 //
 // Kept separate from the coarse per-paragraph hot ratio: the scorer routes this
 // through a small calibrated evidence floor (src/scoring.js

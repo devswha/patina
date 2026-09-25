@@ -118,8 +118,7 @@ checks remain global. `--serve` is a `--preview` transport option.
 
 - `src/features/index.js` — `analyzeText()`, the engine
 - `src/features/stylometry.js`, `translationese.js`, `discourse-tells.js`,
-  `markup-leakage.js`, `segment.js`, `structural-features.js`,
-  `structural-model-loader.js`, `lexicon.js`, `lexicon-core.js`,
+  `markup-leakage.js`, `segment.js`, `lexicon.js`, `lexicon-core.js`,
   `document-signals.js`, `catalog/*`
 - `src/output.js#buildDeterministicAuditBackstop`,
   `src/cli/run.js#withDeterministicScore` — audit/score backstops
@@ -269,8 +268,8 @@ Deterministic shared modules are classified rather than blanket-banned:
 `src/edit-controls.js`, `src/errors.js`, `src/logger.js`,
 `src/model-defaults.js`, `src/web-rewrite-contract.js`,
 `src/personas/gates.js`, and `scripts/prose-score.mjs` are the reviewed
-examples. The current audited exceptions are the lexicon and structural model
-loaders' local `fs`/`path`/`os` reads, browser use of the shared
+examples. The current audited exceptions are the lexicon loader's local
+`fs`/`path` reads, browser use of the shared
 `web-rewrite-contract`/`edit-controls` utilities, and inspection's reuse of
 the deterministic prose scorer. Each exception is exact-path and reason
 annotated in the checker; it is not a broad baseline whitelist.

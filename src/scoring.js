@@ -1,7 +1,7 @@
 // @ts-check
 import { callLLM as defaultCallLLM, redactErrorText } from './api.js';
 import { getRepoRoot } from './config.js';
-import { analyzeText, loadStructuralModel } from './features/index.js';
+import { analyzeText } from './features/index.js';
 import { LEAKAGE_SCORE_FLOOR } from './features/markup-leakage.js';
 import { summarizeSignalStrength } from './features/signal-strength.js';
 import { buildScoreMathCore, fenceReferenceText, resolveSeverityPoints } from './prompt-builder.js';
@@ -39,15 +39,6 @@ export const SCORE_INTERPRETATION_BANDS = Object.freeze([
   Object.freeze({ max: 70, label: 'AI-like' }),
   Object.freeze({ max: 100, label: 'heavily AI' }),
 ]);
-
-/**
- * Structural classifier score is a calibrated probability-like document signal.
- * It only affects the deterministic score when a private local model is loaded
- * and the model verdict is hot; absent model means baseline behavior.
- *
- * @type {number}
- */
-export const STRUCTURAL_CLASSIFIER_MIN_FLOOR = 70;
 
 /**
  * Closed set of `error` values a failed scorer result may carry.
@@ -304,7 +295,7 @@ export async function scoreText({
 }) {
   const lang = config.language || 'ko';
   const deterministicScore = preparedDeterministicScore === undefined
-    ? scoreDeterministicSignals({ text, config, patterns, logger }) : preparedDeterministicScore;
+    ? scoreDeterministicSignals({ text, config, patterns }) : preparedDeterministicScore;
 
   // buildScoreMathCore carries the shared scoring math (weights, severity
   // scale, denominators, catalog digest) but no output contract; the strict
@@ -422,7 +413,6 @@ function computeShortFormEvidenceFloor({ result, config, lang, patterns = [] }) 
  * @param {import('./config.js').PatinaConfig} [options.config={}] Effective config.
  * @param {Array} [options.patterns=[]] Loaded pattern packs; used for short-form category math.
  * @param {string} [options.repoRoot] Repository root for analyzer resources.
- * @param {import('./logger.js').Logger} [options.logger] Optional logger for recoverable deterministic warnings.
  * @param {Function} [options.analyzer] Analyzer implementation.
  * @returns {object|null} Deterministic score payload, skipped payload, or null when disabled.
  * @example
@@ -434,7 +424,6 @@ export function scoreDeterministicSignals({
   patterns = [],
   repoRoot = getRepoRoot(),
   analyzer = analyzeText,
-  logger = createLogger(),
 } = {}) {
   const options = deterministicScoringOptions(config);
   if (!options.enabled) return null;
@@ -457,14 +446,6 @@ export function scoreDeterministicSignals({
 
   try {
     const lexiconAllowed = isLexiconEnabledForLanguage(config, lang);
-    let structuralModel = null;
-    try {
-      structuralModel = loadStructuralModel(config, { lang });
-    } catch (err) {
-      logger?.warn?.('score.structural_model_load_failure', {
-        message: `[patina] structural model load failed; continuing without structural classifier: ${err?.message || err}`,
-      });
-    }
     const result = analyzer(String(text || ''), {
       lang,
       documentType: config.documentType,
@@ -475,7 +456,6 @@ export function scoreDeterministicSignals({
       koDiagnosticsEnabled: config.stylometry?.ko_diagnostics?.enabled !== false,
       koDiagnosticBands: config.stylometry?.ko_diagnostics?.bands,
       lexiconDensityThreshold: config.lexicon?.density_threshold,
-      structuralModel,
       ...(lexiconAllowed ? {} : { lexicon: { lang, path: null, strict: [], phrases: [] } }),
     });
     const paragraphs = Array.isArray(result?.paragraphs) ? result.paragraphs : [];
@@ -489,22 +469,14 @@ export function scoreDeterministicSignals({
     // attributes them to the paragraphs that carry the tell, so they reach the
     // score through the hot ratio like every other per-paragraph signal.
     const discourseTells = result?.discourseTells ?? null;
-    const structuralClassifier = result?.structuralClassifier ?? { available: false, hot: null, score: null };
-    const structuralFloor =
-      structuralClassifier.hot === true && typeof structuralClassifier.score === 'number'
-        ? Math.max(STRUCTURAL_CLASSIFIER_MIN_FLOOR, roundScore(structuralClassifier.score * 100))
-        : 0;
-    // Hard, document-level evidence floors: near-proof markup leakage (#332)
-    // and the trained structural classifier. Each is decisive on its own, so it
-    // must survive even when the text is too short for the stylometry meta-block
-    // (skipped=true): reconcileScoreOverall applies this floor before deferring
-    // to the LLM. The coarse per-paragraph hot ratio (1/1 = 100 on a single
-    // paragraph) is deliberately NOT part of this floor — only calibrated hard
-    // signals are — so short prose cannot manufacture a false positive.
-    const hardEvidenceFloor = Math.max(
-      leaked ? LEAKAGE_SCORE_FLOOR : 0,
-      structuralFloor,
-    );
+    // Hard, document-level evidence floor: near-proof markup leakage (#332) is
+    // decisive on its own, so it must survive even when the text is too short
+    // for the stylometry meta-block (skipped=true): reconcileScoreOverall
+    // applies this floor before deferring to the LLM. The coarse per-paragraph
+    // hot ratio (1/1 = 100 on a single paragraph) is deliberately NOT part of
+    // this floor — only calibrated hard signals are — so short prose cannot
+    // manufacture a false positive.
+    const hardEvidenceFloor = leaked ? LEAKAGE_SCORE_FLOOR : 0;
     // Calibrated weak short-form (social/marketing) punctuation floor (#13
     // short-form branch). Register-gated and Low-severity by design, so it only
     // nudges eligible SNS text off an exact 0 and is inert for the default
@@ -550,12 +522,6 @@ export function scoreDeterministicSignals({
           hot: discourseTells?.hot ?? null,
           fakeCandor: discourseTells?.fakeCandor ?? null,
           thematicBreaks: discourseTells?.thematicBreaks ?? null,
-        },
-        structuralClassifier: {
-          available: Boolean(structuralClassifier.available),
-          hot: structuralClassifier.hot ?? null,
-          score: structuralClassifier.score ?? null,
-          floor: structuralClassifier.hot === true ? structuralFloor : 0,
         },
       },
     };
@@ -636,14 +602,13 @@ export function reconcileScoreOverall({
   if (llm === null) return { overall: null, scorePreference: null };
   if (deterministic === null) return { overall: llm, scorePreference: null };
   // Hard evidence floor applies in EVERY posture. Near-proof markup leakage
-  // (#332), the trained structural classifier, and the calibrated short-form
-  // tell are each decisive on their own, so the final score must never sit
-  // below them — not even when the text is short (skipped) OR when the LLM
-  // lands within the divergence threshold of the deterministic score. The
-  // coarse per-paragraph hot ratio is deliberately excluded from evidenceFloor
-  // (see scoreDeterministicSignals), so this cannot false-positive on ordinary
-  // prose. Applied before the skip/divergence branches, which only decide the
-  // score when no hard floor binds.
+  // (#332) and the calibrated short-form tell are each decisive on their own,
+  // so the final score must never sit below them — not even when the text is
+  // short (skipped) OR when the LLM lands within the divergence threshold of
+  // the deterministic score. The coarse per-paragraph hot ratio is deliberately
+  // excluded from evidenceFloor (see scoreDeterministicSignals), so this cannot
+  // false-positive on ordinary prose. Applied before the skip/divergence
+  // branches, which only decide the score when no hard floor binds.
   const evidenceFloor = toFiniteScore(deterministicScore?.evidenceFloor);
   if (evidenceFloor !== null && evidenceFloor > 0 && llm < evidenceFloor) {
     return {
@@ -1061,7 +1026,6 @@ function emptyDeterministicBands() {
     koDiagnostics: { hot: 0, thresholds: null },
     markupLeakage: { leaked: false, hits: 0, floor: LEAKAGE_SCORE_FLOOR },
     discourseTells: { hot: null, fakeCandor: null, thematicBreaks: null },
-    structuralClassifier: { available: false, hot: null, score: null, floor: 0 },
   };
 }
 

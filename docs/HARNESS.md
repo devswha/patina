@@ -49,7 +49,7 @@ INPUT          ENGINE (deterministic, LLM-free)                 SURFACES
 
 Hot decision = OR of the per-paragraph signals (`burstiness_low`, `mattr_low`,
 `lexicon_hot`, `ko_diagnostics`, `candor`, `thematic_break`, `ko_ending_monotony`)
-plus the document-level `markup_leakage` / `structural_model`. The signal-impact
+plus the document-level `markup_leakage`. The signal-impact
 analysis below ablates each one to report its marginal contribution.
 
 ## Quality & regression (deterministic, CI-safe)

@@ -1,8 +1,7 @@
 // @ts-check
 // Copy shared by the controller and executable UI recovery tests.
 // `documents` is keyed by document-type id, never by position: a positional list
-// silently mislabels every later option when the contract gains a type (#874
-// inserted three, and "Email" started sending `personal-statement`).
+// silently mislabels every later option when the contract gains a type.
 export const EXPERIENCE_COPY = {
   en: {
     license: 'License key', placeholder: 'License key (kept in memory)', signIn: 'Apply key', signOut: 'Clear key and chats',

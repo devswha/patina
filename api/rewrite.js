@@ -178,11 +178,10 @@ export function createRestKv(env = {}) {
  * Default server-side budget for one rewrite stream — the TOTAL across the
  * rewrite attempt(s) AND both scorers, enforced as one absolute deadline inside
  * runWebRewriteStream (each stage draws from the same remaining budget and a
- * single abort fires at exhaustion; previously every stage received the full
- * window, so the worst case ran ~3x over). Bounds upstream work even when the
- * client stays connected; override with env.PATINA_WEB_REWRITE_TIMEOUT_MS up
- * to 240s, retaining at least 60s for response finalization and lease cleanup
- * beneath Vercel's 300s function ceiling.
+ * single abort fires at exhaustion). Bounds upstream work even when the client
+ * stays connected; override with env.PATINA_WEB_REWRITE_TIMEOUT_MS up to 240s,
+ * retaining at least 60s for response finalization and lease cleanup beneath
+ * Vercel's 300s function ceiling.
  */
 const WEB_REWRITE_TIMEOUT_MS = 180_000;
 const WEB_REWRITE_MAX_TIMEOUT_MS = 240_000;
@@ -216,12 +215,8 @@ function wantsJsonResponse(headers = {}) {
 }
 
 /**
- * `runWebRewriteStreamImpl` is typed by what this handler consumes, not by the
- * full implementation signature: the frames are delivered through `emit`, and
- * the resolved value is only read for `ok`/`code` (and forwarded to
- * `beforeResponseEnd`), which is why the reads here are already optional.
- * Requiring the whole result shape would force every injected stand-in to
- * fabricate fields this handler never looks at.
+ * `runWebRewriteStreamImpl` is typed by what this handler reads from its
+ * result (`ok`/`code`), so an injected stand-in need not build the rest.
  *
  * @param {{env?: Record<string,string|undefined>, runWebRewriteStreamImpl?: (options: Parameters<typeof runWebRewriteStream>[0]) => Promise<{ok?: boolean, code?: string}|void>, logger?: {info?: Function, warn?: Function, error?: Function, debug?: Function}, now?: () => number, observabilityKv?: {increment: (key: string, options: {ttlSeconds: number}) => unknown}}} [options]
  */
@@ -276,7 +271,6 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
     licenseValidator,
     runRewrite: async ({ req, res, request, observe, beforeResponseEnd }) => {
       const jsonResponse = wantsJsonResponse(req.headers);
-      /** @type {Record<string, unknown>[]} */
       /** @type {Record<string, any>[]} */
       const bufferedFrames = [];
       /** @type {string|undefined} */

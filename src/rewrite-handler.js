@@ -22,11 +22,13 @@ import { emitTelemetry, startTelemetryClock } from './web-observability.js';
  * @typedef {{validate(input: {licenseKey: string, ip?: string|null}): Promise<{ok: true, subject: string, tier: string, status: string, cache: string}|{ok: false, status: number, reason: string}>}} LicenseValidator
  */
 
-// Must exceed the worst valid contract payload: 2 × 20K CJK characters
-// (~120 KiB), 12 KiB history, and JSON overhead. Field caps remain enforced
-// by validateRewriteRequest; this envelope only bounds abusive requests.
 /**
- * Create the /api/rewrite handler shell. The LLM runner is injected by later phases.
+ * Create the /api/rewrite handler shell around an injected rewrite runner.
+ *
+ * The default `maxBodyBytes` (256 KiB) must exceed the worst valid contract
+ * payload: 2 × 20K CJK characters (~120 KiB), 12 KiB history, and JSON
+ * overhead. Field caps remain enforced by validateRewriteRequest; this
+ * envelope only bounds abusive requests.
  *
  * @param {{rateLimiter: RateLimiter, runRewrite: (input: RewriteRunnerInput) => unknown, env?: Record<string, string|undefined>, now?: () => number, logger?: {error?: (...args: unknown[]) => void}, maxBodyBytes?: number, licenseValidator?: LicenseValidator, observe?: (input: {tier: string, outcome: string, status: number, latencyMs: number, totalTokens?: number, llmCalls?: number}) => unknown}} options
  * @returns {(req: RewriteReq, res: RewriteRes) => Promise<unknown>}
@@ -128,7 +130,7 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       const tier = typeof request.tier === 'string' ? request.tier : '';
       const ip = extractClientIp(req.headers || {});
 
-      // Pro tier: turn the Bearer license into an HMAC subject via LS validate-only.
+      // Pro tier: turn the Bearer license into an HMAC subject via Polar license validation.
       // The subject (never the raw license) is what meters pro concurrency/quota.
       // The client IP goes along so the validator can admit per caller before it
       // spends the shared provider budget on an uncached key; it is HMAC'd there
@@ -165,12 +167,11 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       // daily/concurrency caps; pass the request's input length so the limiter
       // can accumulate it. Free/BYOK ignore chars; both meter requests by IP.
       const chars = tier === WEB_TIERS.PRO && typeof request.text === 'string' ? request.text.length : 0;
-      // The monitor's paid probe runs ~24x a day against a monthly request
-      // allowance, so it used to exhaust its own seat within days and then
-      // report the resulting 429 as a pro-path failure. It is exempted from
-      // MONTHLY metering only, and only when BOTH server-side facts hold: the
-      // trusted observer marker (a header the boundary strips, never a body
-      // field) and a license the validator accepted into a subject. Daily cap,
+      // The monitor's paid probe runs ~24x a day, which would exhaust a seat's
+      // monthly request allowance within days. It is exempted from MONTHLY
+      // metering only, and only when BOTH server-side facts hold: the trusted
+      // observer marker (a header the boundary strips, never a body field) and
+      // a license the validator accepted into a subject. Daily cap,
       // concurrency lease and license validation stay fully in force.
       const trustedSyntheticProbe = synthetic && tier === WEB_TIERS.PRO && typeof subject === 'string' && subject !== '';
 

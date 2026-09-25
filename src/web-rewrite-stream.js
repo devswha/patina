@@ -218,30 +218,16 @@ function usageTokens(usage) {
 /**
  * Provider-specific request fields for the two scoring calls.
  *
- * The MPS and fidelity judges are rubric-application tasks, and on
- * gemini-3.6-flash their thinking tokens dominate the bill: measured
- * 2026-07-29, thinking is ~57% of a request's cost and the two scorers
- * together cost more than the rewrite itself. `reasoning_effort: 'low'` cuts
- * scoring thinking sharply (measured 0-493 tokens per scorer against a
- * 700-1,900 baseline) for a ~55% cut in scoring cost.
- *
- * Safety was the deciding question — a cheaper gate that stops rejecting bad
- * rewrites would be worse than no saving. Verified across
- * tests/fixtures/meaning-proxy/pairs.json (3 preserving + 3 broken, KO+EN):
- * 6/6 verdicts identical to the default and 6/6 matching the expected verdict.
- *
- * Scoped to the providers it was measured on: gemini (2026-07-29, above) and
- * deepseek (2026-08-03 — deepseek-v4-flash accepts `reasoning_effort` and its
- * default thinking runs ~11.5k tokens per call, so uncut scorers would
- * dominate both latency and cost;
- * docs/operations/serving-engine-deepseek-0731-correction-20260803.md). The
- * same field is rejected outright by some providers (gemini itself returns
- * HTTP 400 for `reasoning_effort: 'none'`), so it is never sent blind to a
- * BYOK caller's provider. `PATINA_SCORING_REASONING=off` disables it.
- *
- * The rewrite call carries no scoring reasoning control: reduced thinking on
- * gemini rewrites was previously measured to amputate content. The free-tier
- * deepseek rewrite has its own, separately measured control below.
+ * The MPS and fidelity judges are rubric-application tasks whose thinking
+ * tokens dominate the bill; `reasoning_effort: 'low'` cuts that cost while
+ * the meaning-gate verdicts on tests/fixtures/meaning-proxy/pairs.json stay
+ * identical. It is sent only to the providers it was measured on (gemini and
+ * deepseek): others may reject the field with a 400, so a BYOK caller's
+ * provider never gets it blind. `PATINA_SCORING_REASONING=off` disables it.
+ * The rewrite call gets no scoring control: reduced thinking on gemini
+ * rewrites was measured to amputate content. Measurements:
+ * docs/operations/pro-margin-decision-20260729.md and
+ * docs/operations/serving-engine-deepseek-0731-correction-20260803.md.
  *
  * @param {string|undefined} provider
  * @param {Record<string,string|undefined>} [env]
@@ -258,13 +244,12 @@ const FREE_REWRITE_REASONING_LEVELS = ['low', 'medium', 'high'];
 /**
  * Provider-specific request fields for the REWRITE call, free tier only.
  *
- * deepseek-v4-flash spends ~11.5k thinking tokens (~60-94s) per rewrite at
- * its default; `reasoning_effort: 'low'` halves that (~5.3k, ~44s) and held
- * 20/22 on the live-quality gate (2026-08-03, repeat-validated before the
- * production flip; docs/operations/serving-engine-deepseek-0731-correction-20260803.md).
- * That latency point is what makes deepseek serviceable as the free-tier
- * engine, so the cut applies ONLY when the server is paying for a free-tier
- * request on deepseek:
+ * `reasoning_effort: 'low'` roughly halves deepseek's rewrite thinking and
+ * latency while holding the live-quality gate
+ * (docs/operations/serving-engine-deepseek-0731-correction-20260803.md). That
+ * latency point is what makes deepseek serviceable as the free-tier engine, so
+ * the cut applies ONLY when the server is paying for a free-tier request on
+ * deepseek:
  * - BYOK callers keep their provider's default thinking — quality is theirs
  *   to configure, and unknown providers may reject the field with a 400.
  * - Pro requests keep full thinking: a paid rewrite never trades quality for
@@ -406,9 +391,9 @@ async function runWebRewriteStreamUnscoped({
   // `numberSafetyRetries` more times WITHOUT emitting deltas (the client has
   // already rendered attempt 1's text; the done frame carries the full
   // accepted rewrite and the playground replaces the bubble content with it,
-  // so no protocol change is needed). Motivated by live gemini-3.6-flash
-  // serving: sampling variance sometimes clears a numeric-drift habit that a
-  // first attempt trips (docs/operations/pro-margin-decision-20260729.md).
+  // so no protocol change is needed). Sampling variance sometimes clears a
+  // numeric-drift habit that a first attempt trips
+  // (docs/operations/pro-margin-decision-20260729.md).
   // Every paid attempt is still counted for cost observability.
   const maxRuns = 1 + Math.max(0, Number.isSafeInteger(numberSafetyRetries) ? numberSafetyRetries : 1);
   // The public wrapper turns `timeout` into one absolute deadline shared by
@@ -424,10 +409,9 @@ async function runWebRewriteStreamUnscoped({
   emit({ type: STREAM_FRAME_TYPES.START });
   // evaluateNumberSafety fails whenever the SOURCE has numeric syntax it cannot
   // claim (Q3, B2B, GPT-4, $1,200 ...), whatever the rewrite says. That verdict
-  // is known before any model call, so refuse here: the old path streamed a
-  // rewrite, paid for it and its retry, then discarded both every time.
-  // `scope: 'source'` lets the client say what happened instead of claiming
-  // the result changed a number.
+  // is known before any model call, so refuse here rather than pay for a
+  // rewrite and its retry that can never pass. `scope: 'source'` lets the
+  // client say what happened instead of claiming the result changed a number.
   const sourceNumberSafety = evaluateNumberSafety(original, original, request.lang);
   if (!sourceNumberSafety.ok) {
     emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'number_safety_failed', scope: 'source' });
@@ -580,7 +564,7 @@ async function runWebRewriteStreamUnscoped({
   // Verify full evidence before success: high numeric scores alone cannot
   // bypass malformed counts, invalid criteria, or a consistent HARD_FAIL.
   const floors = evaluateVerification({ mps, fidelity }, { mpsFloor: MPS_FLOOR, fidelityFloor: FIDELITY_FLOOR });
-  // #871/#872: a zero-anchor MPS is "MPS = N/A" rendered as 100 — an absence
+  // A zero-anchor MPS is "MPS = N/A" rendered as 100 — an absence
   // of evidence, not a passing grade. When the source carries numeric claims
   // (the claim-bag gate above passed, so a role swap can still hide inside
   // identical bags), that 100 must not certify the hosted floor either — the
@@ -635,20 +619,11 @@ async function runWebRewriteStreamUnscoped({
     } catch (err) {
       // The change review is an optional convenience; the verified rewrite is
       // the product. createTextEdits caps each text at 20,000 UTF-16 units, so
-      // an accepted rewrite just past that cap used to throw away everything
-      // the three paid calls had already bought — every gate passed — and the
-      // client, which always asks for edits and cannot classify the code,
-      // offered Retry, which deterministically spends three more. Degrade
-      // instead: omit editReview and let the client show its existing
-      // "Change review is unavailable" copy.
-      //
-      // Only a size refusal degrades, and it is never the protected-phrase
-      // guarantee being relaxed: validateProtectedText is the safety gate for
-      // protected spans, it runs much earlier (before scoring), and the same
-      // 20,000-unit cap already fails such a request closed there as
-      // protected_text_failed. Any other createTextEdits code would be
-      // unexpected (both inputs are strings and the original is tier-capped),
-      // so it stays a terminal error rather than being swallowed.
+      // a size refusal omits editReview (the client shows "Change review is
+      // unavailable") instead of discarding a rewrite whose paid gates all
+      // passed; a retry would only spend three more calls. This never relaxes
+      // protected spans: validateProtectedText enforces them before scoring
+      // under the same cap. Any other createTextEdits code stays terminal.
       const code = /** @type {any} */ (err)?.code;
       if (typeof code !== 'string' || !code.endsWith('_too_long')) {
         emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'edit_output_too_long' });

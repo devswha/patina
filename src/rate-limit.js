@@ -32,7 +32,7 @@ export function quotaKeyHmac(secret, ...parts) {
  * platform-set on a direct Vercel deployment, but its trustworthiness depends
  * on that topology staying true — behind a future fronting proxy/CDN or a
  * verified-proxy setup a client-supplied value could survive, which on this
- * boundary would mint fresh per-IP free-tier quota per spoofed header (#607).
+ * boundary would mint fresh per-IP free-tier quota per spoofed header.
  *
  * @param {Record<string, string|string[]|undefined>} headers
  * @param {{trustedHeaders?: string[]}} [options]

@@ -269,15 +269,11 @@ export function createLicenseValidator({
     // and let a second instance call the provider. Floor at LOCK_TTL_MS; extend past the
     // fetch deadline when a longer timeout is configured.
     const lockTtlMs = Math.max(LOCK_TTL_MS, timeoutMs + 5_000);
-    // Owner-token single-flight lease (2026-09-01, Pro review P0). The previous
-    // counter lock incr'd on EVERY follower, and each incr re-armed PEXPIRE, so
-    // sustained retries kept a crashed winner's lock alive forever — the TTL
-    // self-heal was broken and the license wedged at 503 until traffic stopped.
-    // A 1-slot ZSET lease restores the promise with existing KV primitives: the
-    // lease token IS the owner, only the owner's member can be released, and a
-    // follower NEVER touches the registry — per-member expiry heals after
-    // lockTtlMs no matter how many followers pile up. New key suffix (-sflight)
-    // because the old (-lock) key holds a plain counter (WRONGTYPE on ZADD).
+    // A 1-slot ZSET lease, never a counter: followers must not touch the
+    // registry, or their retries would keep re-arming a crashed winner's
+    // expiry and wedge the license at 503. The lease token is the owner, only
+    // the owner's member can be released, and per-member expiry self-heals
+    // after lockTtlMs. The -sflight suffix keeps it off the old counter key.
     const lockRegistry = quotaKeyHmac(secret, `${provider.id}-sflight`, licenseKey);
     const lockOwner = randomBytes(32).toString('base64url');
     if (typeof store.acquireLease !== 'function' || typeof store.releaseLease !== 'function') return unavailable();
@@ -295,7 +291,7 @@ export function createLicenseValidator({
       // writes the cache when it finishes (typically well under timeoutMs). An
       // instant 503 here would break the advertised concurrency for a license's
       // first burst — right after purchase, or whenever the positive cache TTL
-      // lapses — so followers briefly poll the cache instead (#606). The loop
+      // lapses — so followers briefly poll the cache instead. The loop
       // is bounded by ITERATION COUNT, never the wall clock, so an injected or
       // frozen `now` cannot spin it forever; when the winner crashed or the provider is
       // down, nothing gets cached and this stays fail-closed 503. The follower
@@ -346,12 +342,11 @@ export function createLicenseValidator({
       }
 
       // 4c. Per-CLIENT admission slice, charged BEFORE the shared bucket below.
-      //     Validation used to run ahead of every per-IP limiter, so each
-      //     cache-missing key — entitled or not — spent one token of the single
-      //     global provider budget; a handful of unauthenticated requests per
-      //     minute could therefore saturate it and leave paying customers whose
-      //     positive cache had lapsed with nothing but 503s. Charging the caller
-      //     first caps what any one of them can take out of that shared budget.
+      //     Every cache-missing key, entitled or not, would otherwise spend a
+      //     token of the single global provider budget, so a handful of
+      //     unauthenticated requests could leave paying customers whose cache
+      //     lapsed with nothing but 503s. Charging the caller first caps what
+      //     any one of them can take out of that shared budget.
       //
       //     Only the single-flight WINNER reaches this point, so neither a
       //     cached decision (steps 3/4b) nor a follower is ever charged: an

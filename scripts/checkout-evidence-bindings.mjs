@@ -16,12 +16,8 @@ export function checkoutEvidenceBindingKey({ channel, evidence, origin, path }) 
 // (docs/operations/pay-b-binding-polar-20260729.json) and the production
 // zero-amount purchase runtime evidence
 // (docs/operations/pay-live-runtime-polar-20260729.json); enabling checkout
-// still requires the full Gate-B/Gate-D env-side sequence.
-//
-// The retired Lemon Squeezy tuples were removed on 2026-08-03: Lemon Squeezy
-// declined the account (docs/operations/payment-provider-reset-20260729.md),
-// so retaining them would have kept a dead checkout route authorizable. The
-// LS evidence artifacts remain on disk, hash-frozen, as history.
+// still requires PATINA_PRO_CHECKOUT_ENABLED, a matching PATINA_PRO_CHECKOUT_URL
+// and PATINA_PRO_GATE_EVIDENCE_ID in the build environment.
 export const CHECKOUT_EVIDENCE_BINDINGS = deepFreeze({
   [checkoutEvidenceBindingKey({
     channel: 'production',

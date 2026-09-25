@@ -6,8 +6,8 @@
 // building the validate request and judging the response. The
 // provider-independent half (HMAC subjects, positive/negative caching,
 // single-flight locking, RPM admission, redaction, fail-closed defaults) lives
-// in src/entitlement.js and is reused rather than duplicated; wiring the two
-// together lands with sandbox access, which is what makes it testable.
+// in src/entitlement.js and is reused rather than duplicated;
+// createPolarLicenseValidator wires the two together.
 //
 // Provider notes that shaped this file (Polar docs, retrieved 2026-07-29):
 //   - The validate endpoint is on the customer portal and takes no server
@@ -166,9 +166,6 @@ export function isPolarDefinitiveDenial(status, body) {
  * validates roughly once per cache TTL rather than once per rewrite, so a low
  * ceiling costs nothing in practice and prevents a burst from turning every
  * paying customer's request into a 503.
- *
- * The LS default was 50/min against a documented 60/min ceiling; Polar's
- * observed tolerance is far tighter, hence 10.
  */
 const POLAR_DEFAULT_VALIDATE_RPM = 10;
 

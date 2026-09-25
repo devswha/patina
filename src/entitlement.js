@@ -17,14 +17,15 @@
 //     every return value carries only the HMAC "subject"; every log payload is
 //     passed through redactSecrets and only ever carries the subject.
 //
-// It deliberately reuses the quota primitives (quotaKeyHmac / isProductionPosture /
-// createMemoryKv) and the shared redaction/reason contract rather than growing a
-// parallel convention. No new runtime dependency: HMAC comes from rate-limit.js,
-// fetch from globalThis.fetch (injectable), timeouts from AbortController.
+// It deliberately reuses the quota primitives (quotaKeyHmac / createMemoryKv),
+// the shared production posture, and the shared redaction/reason contract
+// rather than growing a parallel convention. No new runtime dependency: HMAC
+// comes from rate-limit.js, fetch from globalThis.fetch (injectable), timeouts
+// from AbortController.
 
 import { randomBytes } from 'node:crypto';
-import { createMemoryKv, isProductionPosture, quotaKeyHmac } from './rate-limit.js';
-import { QUOTA_REASONS, redactSecrets } from './web-rewrite-contract.js';
+import { createMemoryKv, quotaKeyHmac } from './rate-limit.js';
+import { isProductionPosture, QUOTA_REASONS, redactSecrets } from './web-rewrite-contract.js';
 
 /** Default tunables (each overridable via env). */
 const DEFAULT_CACHE_TTL_MS = 300_000; // positive-result cache

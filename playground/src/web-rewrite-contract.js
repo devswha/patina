@@ -30,8 +30,8 @@ export const WEB_REGISTERS = Object.freeze(['casual', 'professional']);
 
 /**
  * Whether the env describes a production deployment. Shared by the rate
- * limiter, the entitlement layer (both via rate-limit.js's re-export), and the
- * pro provider resolution below, so "production" means one thing everywhere.
+ * limiter, the entitlement layer, the API entry points and the pro provider
+ * resolution below, so "production" means one thing everywhere.
  * @param {Record<string, string|undefined>} [env]
  * @returns {boolean}
  */
@@ -49,7 +49,7 @@ export const REWRITE_MODES = Object.freeze({ FIRST: 'first', REFINE: 'refine', V
  * Meaning-verification floors, hard-coded at 70/70 to mirror
  * `.patina.default.yaml` (`verification.mps-floor` / `verification.fidelity-floor`). A rewrite that scores
  * below either floor — or whose score is missing/unparseable — is rejected
- * fail-closed (see evaluateFloors).
+ * fail-closed (see evaluateVerification in src/verification-schema.js).
  */
 export const MPS_FLOOR = 70;
 export const FIDELITY_FLOOR = 70;
@@ -174,7 +174,7 @@ export const STREAM_FRAME_TYPES = Object.freeze({
 });
 
 /** The closed set of valid stream frame type values (for fail-closed parsing). */
-export const STREAM_FRAME_VALUES = new Set(Object.values(STREAM_FRAME_TYPES));
+const STREAM_FRAME_VALUES = new Set(Object.values(STREAM_FRAME_TYPES));
 
 /**
  * OpenAI-compatible provider presets. The base URL is fixed per provider here so
@@ -663,19 +663,4 @@ export function parseStreamFrame(line) {
     return { type: STREAM_FRAME_TYPES.ERROR, error: 'unknown stream frame type' };
   }
   return parsed;
-}
-
-/**
- * Fail-closed floor check for a completed rewrite. A score that is missing,
- * non-finite, outside 0–100, or below its floor fails. This numeric helper does
- * not certify semantic evidence; runtime callers use evaluateVerification.
- *
- * @param {{mps?:unknown, fidelity?:unknown}} scores
- * @returns {{ok:boolean, failed:string[]}}
- */
-export function evaluateFloors({ mps, fidelity } = {}) {
-  const failed = [];
-  if (!Number.isFinite(mps) || /** @type {number} */ (mps) < MPS_FLOOR || /** @type {number} */ (mps) > 100) failed.push('mps');
-  if (!Number.isFinite(fidelity) || /** @type {number} */ (fidelity) < FIDELITY_FLOOR || /** @type {number} */ (fidelity) > 100) failed.push('fidelity');
-  return { ok: failed.length === 0, failed };
 }

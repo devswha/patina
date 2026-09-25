@@ -10,7 +10,6 @@ import {
   TIER_LIMITS,
   WEB_TIERS,
   encodeStreamFrame,
-  evaluateFloors,
   normalizeHistory,
   parseStreamFrame,
   redactSecrets,
@@ -129,27 +128,6 @@ test('redteam: redaction survives casing, nesting, inline tokens, deep structure
   }
   assert.equal(serialized.includes('[REDACTED]'), true);
   assert.equal(JSON.stringify(input), before, 'redactSecrets must not mutate caller input');
-});
-
-test('redteam: evaluateFloors fails closed for missing, non-finite, strings, negative, and below-floor scores', () => {
-  const failingCases = [
-    {},
-    { mps: Number.NaN, fidelity: 70 },
-    { mps: 70, fidelity: Number.POSITIVE_INFINITY },
-    { mps: '70', fidelity: 70 },
-    { mps: 70, fidelity: '70' },
-    { mps: -1, fidelity: 70 },
-    { mps: 70, fidelity: 69 },
-    { mps: 69, fidelity: 70 },
-  ];
-
-  for (const scores of failingCases) {
-    const result = evaluateFloors(scores);
-    assert.equal(result.ok, false, `unexpected pass for ${JSON.stringify(scores)}`);
-    assert.ok(result.failed.length > 0);
-  }
-
-  assert.deepEqual(evaluateFloors({ mps: 70, fidelity: 70 }), { ok: true, failed: [] });
 });
 
 test('redteam: corrupt stream frames are terminal errors and newline-bearing deltas round-trip safely', () => {

@@ -22,7 +22,6 @@ import {
   validateRewriteRequest,
   encodeStreamFrame,
   parseStreamFrame,
-  evaluateFloors,
 } from '../../src/web-rewrite-contract.js';
 
 // The contract module is the single source of truth shared by the serverless
@@ -389,20 +388,6 @@ test('parseStreamFrame fails closed on unknown frame types', () => {
   for (const t of ['start', 'delta', 'done', 'error']) {
     assert.equal(parseStreamFrame(JSON.stringify({ type: t })).type, t);
   }
-});
-
-// --- floors (premortem: missing/below-floor score must fail closed) ---------
-test('evaluateFloors passes only when both scores are finite and >= floor', () => {
-  assert.deepEqual(evaluateFloors({ mps: 90, fidelity: 85 }), { ok: true, failed: [] });
-  assert.deepEqual(evaluateFloors({ mps: 69, fidelity: 99 }).failed, ['mps']);
-  assert.deepEqual(evaluateFloors({ mps: 99, fidelity: 10 }).failed, ['fidelity']);
-});
-
-test('evaluateFloors fails closed on missing or non-numeric scores', () => {
-  assert.equal(evaluateFloors({}).ok, false);
-  assert.equal(evaluateFloors({ mps: NaN, fidelity: NaN }).ok, false);
-  assert.equal(evaluateFloors({ mps: '90', fidelity: '90' }).ok, false); // strings are not finite numbers
-  assert.equal(evaluateFloors(undefined).ok, false);
 });
 
 test('REWRITE_MODES and WEB_TIERS expose the documented values', () => {

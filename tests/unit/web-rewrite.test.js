@@ -59,7 +59,6 @@ test('web prompt budget only classifies an explicit low-risk first turn as minim
     [{ ...lowRisk, jargon: 'remove' }, 'transformation_options'],
     [{ ...lowRisk, rewriteHeadings: true }, 'transformation_options'],
     [{ ...lowRisk, rewriteHeadings: 'keep' }, 'transformation_options'],
-    [{ ...lowRisk, tone: 'keep' }, 'transformation_options'],
     [{ ...lowRisk, history: [{ role: 'user', content: 'change it' }] }, 'unexpected_context'],
     [{ ...lowRisk, history: 'invalid' }, 'unexpected_context'],
     [{ ...lowRisk, original: 'Different anchor.' }, 'unexpected_context'],

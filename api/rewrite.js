@@ -1,8 +1,8 @@
 // @ts-check
 import { reservationArgs, RESERVE_QUOTA_LUA, settlementArgs, SETTLE_QUOTA_LUA } from '../src/quota-reservation.js';
-import { createRateLimiter, createMemoryKv, isProductionPosture } from '../src/rate-limit.js';
+import { createRateLimiter, createMemoryKv } from '../src/rate-limit.js';
 import { createRewriteHandler } from '../src/rewrite-handler.js';
-import { encodeStreamFrame, QUOTA_REASONS, resolveTierLimits, WEB_TIERS } from '../src/web-rewrite-contract.js';
+import { encodeStreamFrame, isProductionPosture, QUOTA_REASONS, resolveTierLimits, WEB_TIERS } from '../src/web-rewrite-contract.js';
 import { createWebObserver, emitTelemetry, startTelemetryClock } from '../src/web-observability.js';
 import { runWebRewriteStream } from '../src/web-rewrite-stream.js';
 import { createPolarLicenseValidator } from '../src/entitlement-polar.js';

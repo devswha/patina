@@ -144,11 +144,6 @@ export function createMemoryKv({ now = () => Date.now() } = {}) {
   };
 }
 
-// isProductionPosture's definition lives in web-rewrite-contract.js (the shared
-// base module) so the contract's provider resolution can use it without an
-// import cycle; re-exported here for existing importers.
-export { isProductionPosture };
-
 /**
  * @typedef {{get?(key: string): Promise<unknown>, set?(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, acquireLease?(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease?(registryKey: string, lease: string): Promise<boolean>, reserveQuota?(plan: import('./quota-reservation.js').ReservationPlan): Promise<number[]>, settleQuota?(plan: import('./quota-reservation.js').ReservationPlan, refund: boolean): Promise<number>, __memory?: boolean}} QuotaKv
  * @typedef {{allowed: true, tier: string, remainingDay?: number, reservation?: import('./quota-reservation.js').ReservationPlan}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} RateLimitResult

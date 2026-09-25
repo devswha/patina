@@ -68,14 +68,6 @@ export function loadWebConfig({ repoRoot = resolveBundleRoot() } = {}) {
       'A patina config must be a YAML mapping (key: value pairs), not a list or scalar.'
     );
   }
-
-  if (['profile', 'tone', 'formality'].some((key) => Object.prototype.hasOwnProperty.call(parsed, key))) {
-    throw inputError(
-      'web baseline config uses a removed axis key',
-      'v7 accepts document-type, persona, and register; profile, tone, and formality are invalid.',
-      'Use document-type for document policy and register for casual/professional delivery.'
-    );
-  }
   parsed.documentType = parsed['document-type'] || 'default';
   delete parsed['document-type'];
   return parsed;

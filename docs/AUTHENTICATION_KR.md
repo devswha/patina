@@ -95,7 +95,7 @@ patina --model gemini-3-flash-preview --lang ko input.txt   # auto-routes
 
 ## kimi-cli backend
 
-로컬 [`kimi`](https://moonshotai.github.io/kimi-cli/)를 print mode로 실행하고 patina 프롬프트를 stdin으로 넘깁니다. Kimi Code CLI 브라우저 로그인이나 `KIMI_API_KEY`, `MOONSHOT_API_KEY` 중 하나로 인증할 수 있습니다. Kimi Code는 agent runtime이므로 batch 모드에서는 보수적으로 다룹니다: compact prompt mode, 기본 동시성 `1`, 기본 retry `0`. 로컬 CLI 기본 모델은 `kimi-code/kimi-for-coding`이며, CLI 표시 이름은 Moonshot HTTP 모델 ID와 다를 수 있습니다.
+로컬 [`kimi`](https://moonshotai.github.io/kimi-cli/)를 prompt mode(`--prompt <text>`, stream-JSON 출력)로 실행합니다. Kimi Code CLI 브라우저 로그인이나 `KIMI_API_KEY`, `MOONSHOT_API_KEY` 중 하나로 인증할 수 있습니다. Kimi Code는 agent runtime이므로 batch 모드에서는 보수적으로 다룹니다: compact prompt mode, 기본 동시성 `1`, 기본 retry `0`. 로컬 CLI 기본 모델은 `kimi-code/kimi-for-coding`이며, CLI 표시 이름은 Moonshot HTTP 모델 ID와 다를 수 있습니다.
 
 ```bash
 kimi login                                  # one-time browser OAuth, OR

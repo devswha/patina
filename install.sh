@@ -278,7 +278,7 @@ if [ "${INSTALL_OPCODE}" = "true" ]; then
   fi
 
   ensure_patina_repo
-  # OpenCode uses AGENTS.md + standalone-prompt.md as the skill interface
+  # OpenCode loads the linked checkout's SKILL.md as the skill interface
   ln -snf "${PATINA_DIR}" "${OPCODE_SKILLS_DIR}/patina"
   success "OpenCode: skill linked to ${OPCODE_SKILLS_DIR}/patina"
 else
@@ -312,7 +312,7 @@ fi
 if [ "${INSTALL_OPCODE}" = "true" ]; then
   printf "  OpenCode / Sisyphus:\n"
   printf "    Skill loaded from ~/.config/opencode/skills/patina\n"
-  printf "    Use AGENTS.md + core/standalone-prompt.md\n"
+  printf "    Instructions: SKILL.md\n"
 fi
 printf "\n"
 info "Environment variables to control installation:"

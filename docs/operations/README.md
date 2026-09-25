@@ -27,11 +27,12 @@ The low-tier monitor is computed in
 aggregate observer in `src/web-observability.js`. Free/BYOK successes are
 `sampled_1_of_20` and failures are full-census events, so a rate uses the
 sampled-success estimate (observed successes × 20) plus full-census failures,
-never the raw success counter as a census denominator. Unknown outcomes or
-monitor-drop counts make that rate unavailable rather than silently treating
-missing data as zero. The paid monitor likewise excludes those
-classifications from its known production denominator and raises monitor
-blindness when they are the only aggregate evidence.
+never the raw success counter as a census denominator. Unknown outcomes make
+that rate unavailable rather than silently treating missing data as zero. The
+paid monitor likewise excludes unknown outcomes from its known production
+denominator and raises monitor blindness when they are the only aggregate
+evidence. `monitor_drop` is never an aggregate counter: the observer only logs
+it, and the paid monitor reads it from the log-query service.
 
 Windows are 15 and 30 minutes. Latency uses coarse buckets and a
 no-interpolation p95, aggregates expire after 7,200 seconds, and only
@@ -42,8 +43,8 @@ never a zero-valued latency observation.
 
 The offline recovery fixture and its no-publication boundary are documented in
 [`rollback-drills.md`](rollback-drills.md). It is code evidence only: no
-production incident, deployment, provider, Discord, registry, or
-`OBS-ALERT-v1` receipt is claimed. npm partial-registry recovery is a separate
+production incident, deployment, provider, Discord, or registry event is
+claimed. npm partial-registry recovery is a separate
 lane owned by
 [`scripts/release-artifacts.mjs`](../../scripts/release-artifacts.mjs) and
 [`tests/unit/release-artifacts.test.js`](../../tests/unit/release-artifacts.test.js),
@@ -57,12 +58,6 @@ from `dev`.
 
 ## Standing decisions
 
-- First healthy `OBS-ALERT-v1` receipt after live-open: **not required.**
-  Owner decision 2026-09-14 (`not_planned`). No record was found, and none
-  will be queued. Ordinary cron 200 is enough to treat the monitor as
-  running; do not fetch Sensitive observability tokens or manufacture an
-  alert/recovery cycle for this receipt. The 8.1.3 Discord envelope and
-  log-query repair stay. See `pro-monitor-endpoint-repair-20260904.md` (private).
 - Trusted server-side rewrite failures now restore Pro request/character
   allowance once (8.1.3). This is usage allowance restoration, not a payment
   refund. Client cancellations after admission remain charged.
@@ -80,9 +75,15 @@ from `dev`.
 ### OBS-ALERT receipt dropped (2026-09-14)
 
 Owner decision: the first eligible `OBS-ALERT-v1` alert/recovery receipt is
-`not_planned`. Cron 200 stands as “monitor is running.” Do not open
-Sensitive observability credentials or synthesize an incident for this
-item.
+`not_planned`, and none will be queued. Cron 200 stands as “monitor is
+running.” Do not open Sensitive observability credentials or synthesize an
+incident for this item. The 8.1.3 Discord envelope and the log-query repair
+stay (`pro-monitor-endpoint-repair-20260904.md`, private).
+
+The monitor issues no receipts and no longer reads
+`PATINA_PUBLIC_BASE_URL_SHA256` or `PATINA_VERCEL_LOG_QUERY_URL_SHA256`; both
+Vercel env vars can be deleted. It keeps the Discord alert, the dedup lease,
+the active list and the recovery message.
 
 ### Polar checkout already live; sales-count dropped (2026-09-14)
 

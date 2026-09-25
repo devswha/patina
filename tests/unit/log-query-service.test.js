@@ -19,7 +19,8 @@ import {
 } from '../../services/log-query/lib/log-aggregate.js';
 import { createIngestHandler } from '../../services/log-query/api/ingest.js';
 import { createQueryHandler } from '../../services/log-query/api/query.js';
-import { OBSERVED_OUTCOMES, overlappingQuarterBuckets, utc15mBucket as monitorBucket } from '../../src/pro-monitor.js';
+import { overlappingQuarterBuckets, utc15mBucket as monitorBucket } from '../../src/pro-monitor.js';
+import { WEB_OBSERVABILITY_SCHEMA } from '../../src/web-observability.js';
 
 const NOW = Date.UTC(2026, 6, 17, 12, 7, 0);
 
@@ -96,8 +97,8 @@ function fakeReq({ method = 'POST', url = '/api/ingest', headers = {}, body = Bu
 
 function sign(secret, body) { return createHmac('sha1', secret).update(body).digest('hex'); }
 
-test('closed outcome list stays in parity with the monitor OBSERVED_OUTCOMES', () => {
-  assert.deepEqual([...LOGQ_OUTCOMES], OBSERVED_OUTCOMES.filter((outcome) => outcome !== 'unknown'));
+test('closed outcome list stays in parity with the web observer outcome schema', () => {
+  assert.deepEqual([...LOGQ_OUTCOMES], WEB_OBSERVABILITY_SCHEMA.values.outcome.filter((outcome) => outcome !== 'unknown'));
 });
 
 test('extractWebEvents reads console-inspect and JSON renderings with closed dimensions only', () => {

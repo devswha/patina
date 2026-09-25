@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import { HTTP_KEY_ENV_VARS, inspectHttpApiKeySource, providerHttpKeyEnvVars, resolveHttpApiKey } from '../auth.js';
 import { listBackends } from '../backends/index.js';
 import { loadConfig } from '../config.js';
@@ -45,8 +44,7 @@ const API_KEY_PROBE_TIMEOUT_MS = 3000;
  * accepted, and fold the answer into the report.
  *
  * `api-key-env` only proves a key is present. A revoked or mistyped key
- * still reads `authenticated=yes` and fails on the first real call
- * (observed 2026-09-10: OPENAI_API_KEY set, provider answering 401). The
+ * still reads `authenticated=yes` and fails on the first real call. The
  * probe is one `GET {baseURL}/models` with the same bearer header a rewrite
  * would send, resolved exactly the way a rewrite resolves it (config file
  * provider/base URL, provider key env order, PATINA_* env) and gated by the
@@ -105,25 +103,22 @@ export async function appendApiKeyProbe(report, { fetchImpl = globalThis.fetch, 
 
   let status = null;
   let error = null;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetchImpl(url, {
-      method: 'GET',
-      signal: controller.signal,
-      headers: { ...authHeaders, accept: 'application/json' },
+    await withTimeout(timeoutMs, async (signal) => {
+      const response = await fetchImpl(url, {
+        method: 'GET',
+        signal,
+        headers: { ...authHeaders, accept: 'application/json' },
+      });
+      status = Number(response.status) || null;
+      // fetch resolves at headers; only the status matters, so drop the body
+      // instead of leaving a streaming catalog response open past the budget.
+      try { await response.body?.cancel?.(); } catch {}
     });
-    status = Number(response.status) || null;
-    // fetch resolves at headers; only the status matters, so drop the body
-    // instead of leaving a streaming catalog response open past the budget.
-    try { await response.body?.cancel?.(); } catch {}
   } catch (err) {
     error = err?.name === 'AbortError'
       ? `timed out after ${timeoutMs}ms`
       : redactSecrets(String(err?.message ?? err), apiKey);
-  } finally {
-    controller.abort();
-    clearTimeout(timer);
   }
 
   const accepted = status !== null && status >= 200 && status < 300;
@@ -168,15 +163,8 @@ export function redactSecrets(text, apiKey) {
 }
 
 function recountUsableBackends(report) {
-  const usable = report.backends.filter((b) => b.available && b.authenticated);
   const check = report.checks.find((c) => c.name === 'usable-backend');
-  if (check) {
-    check.status = usable.length > 0 ? 'ok' : 'blocker';
-    check.summary = usable.length > 0 ? `${usable.length} authenticated backend(s)` : 'no authenticated backend';
-    check.detail = usable.length > 0
-      ? usable.map((b) => b.name).join(', ')
-      : 'Set a working API key or authenticate one local backend (`codex login`, `claude`, `gemini`, or `agy`).';
-  }
+  if (check) Object.assign(check, usableBackendCheck(report.backends));
   const blockers = report.checks.filter((c) => c.status === 'blocker');
   report.ok = blockers.length === 0;
   report.blockers = blockers.map((c) => ({ name: c.name, summary: c.summary, detail: c.detail }));
@@ -206,19 +194,17 @@ export function compareSemver(a, b) {
 export async function appendUpdateCheck(report, { version, fetchImpl = globalThis.fetch, timeoutMs = UPDATE_CHECK_TIMEOUT_MS } = {}) {
   let latest = null;
   let error = null;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetchImpl(NPM_LATEST_URL, {
-      signal: controller.signal,
-      headers: { accept: 'application/json' },
+    await withTimeout(timeoutMs, async (signal) => {
+      const response = await fetchImpl(NPM_LATEST_URL, {
+        signal,
+        headers: { accept: 'application/json' },
+      });
+      if (!response.ok) error = `registry answered ${response.status}`;
+      else latest = String((await response.json())?.version || '') || null;
     });
-    if (!response.ok) error = `registry answered ${response.status}`;
-    else latest = String((await response.json())?.version || '') || null;
   } catch (err) {
     error = err?.name === 'AbortError' ? `timed out after ${timeoutMs}ms` : String(err?.message ?? err);
-  } finally {
-    clearTimeout(timer);
   }
 
   const cmp = latest ? compareSemver(latest, version) : null;
@@ -262,16 +248,6 @@ export function buildDoctorReport({ version } = {}) {
     detail: 'read from package metadata',
   });
 
-  const tmux = checkCommand('tmux', ['-V']);
-  checks.push({
-    name: 'tmux',
-    status: tmux.ok ? 'ok' : 'warning',
-    summary: tmux.ok ? tmux.stdout.trim() : 'tmux not found',
-    detail: tmux.ok
-      ? 'available when you want tmux-based parallel workflows outside patina itself'
-      : 'optional; patina no longer requires tmux for any built-in mode',
-  });
-
   const apiKeySource = inspectHttpApiKeySource();
   const apiKeys = HTTP_KEY_ENV_VARS.map((name) => ({
     name,
@@ -297,17 +273,7 @@ export function buildDoctorReport({ version } = {}) {
     defaultModel: provider.defaultModel,
   }));
 
-  const usableBackends = backends.filter((b) => b.available && b.authenticated);
-  checks.push({
-    name: 'usable-backend',
-    status: usableBackends.length > 0 ? 'ok' : 'blocker',
-    summary: usableBackends.length > 0
-      ? `${usableBackends.length} authenticated backend(s)`
-      : 'no authenticated backend',
-    detail: usableBackends.length > 0
-      ? usableBackends.map((b) => b.name).join(', ')
-      : 'Set an API key or authenticate one local backend (`codex login`, `claude`, or `gemini`).',
-  });
+  checks.push(usableBackendCheck(backends));
 
   const blockers = checks.filter((check) => check.status === 'blocker');
   return {
@@ -378,18 +344,28 @@ function parseDoctorArgs(args) {
   return parsed;
 }
 
-function checkCommand(cmd, args) {
+function usableBackendCheck(backends) {
+  const usable = backends.filter((b) => b.available && b.authenticated);
+  return {
+    name: 'usable-backend',
+    status: usable.length > 0 ? 'ok' : 'blocker',
+    summary: usable.length > 0 ? `${usable.length} authenticated backend(s)` : 'no authenticated backend',
+    detail: usable.length > 0
+      ? usable.map((b) => b.name).join(', ')
+      : 'Set a working API key or authenticate one local backend (`codex login`, `claude`, `gemini`, or `agy`).',
+  };
+}
+
+// Run `work(signal)` with an abort deadline; the signal is aborted afterwards
+// either way so nothing outlives the check's time budget.
+async function withTimeout(timeoutMs, work) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    // timeout so a hung shim on PATH (e.g. a wedged `tmux`) can't block
-    // `patina doctor` indefinitely; fixed argv + no shell means no injection (#448).
-    const result = spawnSync(cmd, args, { encoding: 'utf8', timeout: 5000 });
-    return {
-      ok: result.status === 0,
-      stdout: result.stdout || '',
-      stderr: result.stderr || '',
-    };
-  } catch (err) {
-    return { ok: false, stdout: '', stderr: err.message };
+    return await work(controller.signal);
+  } finally {
+    controller.abort();
+    clearTimeout(timer);
   }
 }
 
@@ -451,7 +427,7 @@ function printDoctorHelp() {
 Usage: patina doctor [--json] [--no-update-check] [--no-probe] [--offline]
 
 Checks Node version, patina CLI version, backend availability/authentication,
-tmux, PATINA/provider API key environment variables, whether the default HTTP
+PATINA/provider API key environment variables, whether the default HTTP
 key is actually accepted (one GET /models against the configured base URL;
 skip with --no-probe), and whether a newer patina-cli is on npm (skip with
 --no-update-check). --offline skips both network checks. Network failures are

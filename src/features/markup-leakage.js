@@ -11,18 +11,8 @@
 // them); callers scanning the repo's own meta-content should expect hits.
 
 /**
- * Score floor applied when deterministic markup-leakage is detected.
- *
- * Model-output leakage (issue #332) is near-proof-grade: a single token that
- * LLM tooling injects and humans never type. Unlike the stylometric/lexical
- * signals it is decisive on its own, so any hit short-circuits the deterministic
- * `overall` into the 'heavily AI' band (>70) regardless of the per-paragraph
- * hot ratio. It is a floor, not a hard 100, because the surrounding prose may
- * still be genuinely human and we avoid claiming absolute proof.
- *
- * Lives here — the browser-pure module that owns leakage detection — so
- * src/scoring.js re-exports the same constant
- * (threshold parity gate: tests/unit/threshold-parity.test.js).
+ * Score floor for any leakage hit: it lifts `overall` into the 'heavily AI' band
+ * but stays below 100 because the surrounding prose may still be human.
  *
  * @type {number}
  */
@@ -117,5 +107,3 @@ export function detectMarkupLeakage(text) {
   if (hasIndependentHit) hits.push(...corroborated);
   return { leaked: hits.length > 0, hits };
 }
-
-export { MARKUP_RULES, OBJECT_REPLACEMENT_CHAR };

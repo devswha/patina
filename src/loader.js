@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { resolve, sep } from 'node:path';
+import { resolve } from 'node:path';
 import yaml from 'js-yaml';
 import { validateDocumentTypeName } from './security.js';
-import { inputError, runtimeError } from './errors.js';
+import { inputError } from './errors.js';
 
 /**
  * Read a UTF-8 text file.
@@ -106,19 +106,10 @@ export function loadPatterns(repoRoot, lang, skipPatterns = []) {
  */
 export function loadDocumentType(repoRoot, documentTypeName) {
   validateDocumentTypeName(documentTypeName);
-  const builtInDir = resolve(repoRoot, 'document-types');
-  const customDir = resolve(repoRoot, 'custom', 'document-types');
-  const builtInPath = resolve(builtInDir, `${documentTypeName}.md`);
-  const customPath = resolve(customDir, `${documentTypeName}.md`);
-  for (const [dir, path] of [[builtInDir, builtInPath], [customDir, customPath]]) {
-    if (!path.startsWith(dir + sep)) {
-      throw runtimeError(
-        'document type path escaped its policy directory',
-        `${path} is outside ${dir}.`,
-        'This is an internal guard; report it if you see it with a normal --document-type value.'
-      );
-    }
-  }
+  // validateDocumentTypeName admits only [A-Za-z0-9_-], so these stay inside
+  // their directories.
+  const builtInPath = resolve(repoRoot, 'document-types', `${documentTypeName}.md`);
+  const customPath = resolve(repoRoot, 'custom', 'document-types', `${documentTypeName}.md`);
   const path = existsSync(customPath) ? customPath : builtInPath;
   const documentType = splitFrontmatter(loadFile(path));
   validateDocumentTypePolicy(documentType, documentTypeName);

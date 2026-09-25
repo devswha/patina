@@ -1,6 +1,7 @@
 import { FAKE_CANDOR_MIN, THEMATIC_BREAK_MIN } from './discourse-tells.js';
 import { DEFAULT_LEXICON_DENSITY_THRESHOLD } from './lexicon-core.js';
 import { DEFAULT_BURSTINESS_BANDS, DEFAULT_MATTR_BANDS } from './stylometry.js';
+import { clamp, finiteOr } from './numeric.js';
 
 /**
  * Average the strongest deterministic signal for each paragraph.
@@ -41,7 +42,7 @@ export function paragraphSignalStrength(paragraph = {}, options = {}) {
   );
   const lexicon = highThresholdStrength(
     paragraph.lexicon?.density,
-    resolveThreshold(
+    finiteOr(
       options.lexiconDensityThreshold,
       DEFAULT_LEXICON_DENSITY_THRESHOLD
     ),
@@ -83,11 +84,7 @@ function discourseTellStrength(isHot, count, docThreshold) {
 }
 
 function resolveLowThreshold(bands, fallback) {
-  return resolveThreshold(bands?.low, fallback);
-}
-
-function resolveThreshold(value, fallback) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  return finiteOr(bands?.low, fallback);
 }
 
 function lowBandStrength(value, threshold, band) {
@@ -103,6 +100,5 @@ function highThresholdStrength(value, threshold, isHot) {
 }
 
 function clampPercent(value) {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(100, value));
+  return Number.isFinite(value) ? clamp(value, 0, 100) : 0;
 }

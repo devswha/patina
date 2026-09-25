@@ -1,5 +1,4 @@
-// patina-lane: A asset for Lane B — deterministic persona-match scorer; LLM-free
-// by construction, consumed by the Lane B persona gate. See docs/ARCHITECTURE.md.
+// Deterministic persona-match scorer; LLM-free by construction.
 import {
   analyzeText,
   splitProseSentences,
@@ -10,10 +9,7 @@ import {
   detectKoreanRegister,
 } from './index.js';
 import { editChurn } from '../personas/gates.js';
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
+import { clamp, finiteOr } from './numeric.js';
 
 function mean(values) {
   const nums = values.filter((value) => typeof value === 'number' && Number.isFinite(value));
@@ -73,11 +69,6 @@ function registerRatios(text, sentences) {
   return localRegisterRatios(sentences);
 }
 
-function featureValue(vector, key) {
-  const value = vector[key];
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
-}
-
 function cosineWeighted(vector, targets) {
   let dot = 0;
   let magX = 0;
@@ -86,7 +77,7 @@ function cosineWeighted(vector, targets) {
     if (name === 'overEditChurn' || spec?.target == null) continue;
     const weight = spec.weight ?? 0;
     if (weight <= 0) continue;
-    const wx = featureValue(vector, name) * weight;
+    const wx = finiteOr(vector[name], 0) * weight;
     const wt = spec.target * weight;
     dot += wx * wt;
     magX += wx * wx;
@@ -146,7 +137,7 @@ export function personaMatchScore({ text, persona, lang = 'ko', repoRoot, origin
   for (const [name, spec] of Object.entries(targets)) {
     if (name === 'overEditChurn') continue;
     if (spec?.target == null || spec?.tolerance == null || spec.tolerance <= 0 || (spec.weight ?? 0) <= 0) continue;
-    const x = featureValue(featureVector, name);
+    const x = finiteOr(featureVector[name], 0);
     const z = clamp((x - spec.target) / spec.tolerance, -3, 3);
     deltas[name] = { value: x, target: spec.target, z };
     weightedDistance += spec.weight * z * z;

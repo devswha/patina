@@ -83,6 +83,14 @@ export function splitProseSentences(paragraph) {
   return splitSentences(stripListBlocks(paragraph));
 }
 
+// Every trimmed prose sentence of a multi-paragraph text.
+export function splitTextSentences(text) {
+  return splitParagraphs(String(text ?? ''))
+    .flatMap((paragraph) => splitProseSentences(paragraph))
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
 function tokenizeCjk(text) {
   const tokens = [];
   for (const match of text.matchAll(CJK_TOKEN_RE)) {

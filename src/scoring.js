@@ -263,7 +263,7 @@ function notifyInvalidAttempt(onAttemptInvalid) {
  * @param {object} options Scoring options.
  * @param {string} options.text Text to score.
  * @param {import('./config.js').PatinaConfig} options.config Effective patina config.
- * @param {import('./loader.js').PatternPack[]} options.patterns Loaded pattern packs, retained for scorer compatibility.
+ * @param {import('./loader.js').PatternPack[]} options.patterns Loaded pattern packs for the score math and contract example row.
  * @param {string} [options.apiKey] Provider API key.
  * @param {string} [options.baseURL] Provider base URL.
  * @param {string} [options.model] Model id.
@@ -275,7 +275,6 @@ function notifyInvalidAttempt(onAttemptInvalid) {
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
  * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
- * @param {object} [options.extraBody] Opt-in provider-specific request fields (e.g. reasoning control) spread into the request body.
  * @param {Function} [options.onAttempt] Safe callback for one-based paid-attempt metadata records.
  * @param {Function} [options.onAttemptInvalid] Safe callback when transport evidence is malformed; receives no provider metadata.
  * @param {Record<string, any>|null} [options.deterministicScore] Optional frozen analysis for this exact text/config; omitted callers compute it normally.
@@ -469,7 +468,6 @@ export function scoreDeterministicSignals({
     const result = analyzer(String(text || ''), {
       lang,
       documentType: config.documentType,
-      register: config.register ?? null,
       repoRoot,
       burstinessBands: config.stylometry?.burstiness?.bands,
       mattrBands: config.stylometry?.ttr?.bands,
@@ -496,11 +494,6 @@ export function scoreDeterministicSignals({
       structuralClassifier.hot === true && typeof structuralClassifier.score === 'number'
         ? Math.max(STRUCTURAL_CLASSIFIER_MIN_FLOOR, roundScore(structuralClassifier.score * 100))
         : 0;
-    // All floors apply together. Previously leakage and the structural-classifier
-    // floor were mutually exclusive, so a document that BOTH leaked and scored a
-    // high structural floor was capped at the (lower) leakage floor — a near-proof
-    // leakage token could LOWER the overall score. Take the max of every signal so
-    // a floor can only ever raise the score (#527 H5).
     // Hard, document-level evidence floors: near-proof markup leakage (#332)
     // and the trained structural classifier. Each is decisive on its own, so it
     // must survive even when the text is too short for the stylometry meta-block
@@ -988,22 +981,6 @@ ${fenceReferenceText(rewritten, { label: '## Rewritten reference' })}
   };
 }
 
-/**
- * Clamp and round a value into the inclusive 0-3 scoring range.
- *
- * @param {number|string} v Value to clamp.
- * @returns {number} Integer from 0 to 3.
- * @example
- * const value = clamp03(4.2); // 3
- */
-export function clamp03(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return 0;
-  if (n < 0) return 0;
-  if (n > 3) return 3;
-  return Math.round(n);
-}
-
 function rethrowIfAborted(err, signal) {
   if (signal?.aborted || err?.name === 'AbortError') throw err;
 }
@@ -1051,18 +1028,18 @@ function isLexiconEnabledForLanguage(config = {}, lang) {
 function deterministicScoringOptions(config = {}) {
   const cfg = config.scoring?.deterministic || {};
   const enabled = cfg.enabled !== false;
-  const divergenceThreshold = Math.max(0, positiveNumber(
-    cfg['divergence-threshold'] ?? cfg.divergenceThreshold,
+  const divergenceThreshold = Math.max(0, numberOr(
+    cfg['divergence-threshold'],
     DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD
   ));
-  const combinedWeight = Math.max(0, positiveNumber(
-    cfg['combined-weight'] ?? cfg.combinedWeight,
+  const combinedWeight = Math.max(0, numberOr(
+    cfg['combined-weight'],
     0
   ));
   return { enabled, divergenceThreshold, combinedWeight };
 }
 
-function positiveNumber(value, fallback) {
+function numberOr(value, fallback) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 }

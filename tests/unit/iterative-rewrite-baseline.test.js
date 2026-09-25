@@ -183,8 +183,6 @@ test('iterative baseline logs per-iteration score progress and latency', async (
       records.push({ event, ...fields });
     },
     warn() {},
-    progress() {},
-    closeProgress() {},
   };
   let currentTime = 1_000;
 

@@ -63,12 +63,11 @@ const DIRECTIVE_LABELS = {
  * @param {object} persona Normalized persona object from validatePersona().
  * @param {object} [options] Formatting options.
  * @param {string} [options.lang] Directive language (defaults to persona.lang, then ko).
- * @param {boolean} [options.korean] Deprecated localization alias.
  * @returns {string} Persona prompt directive.
  */
-export function formatPersonaDirective(persona, { lang, korean } = {}) {
+export function formatPersonaDirective(persona, { lang } = {}) {
   if (!persona) return '';
-  const resolvedLang = lang ?? persona.lang ?? (korean === false ? 'en' : 'ko');
+  const resolvedLang = lang ?? persona.lang ?? 'ko';
   const L = DIRECTIVE_LABELS[resolvedLang] ?? DIRECTIVE_LABELS.en;
 
   const lines = [
@@ -124,29 +123,4 @@ export function formatPersonaDirective(persona, { lang, korean } = {}) {
   }).join(', ');
   lines.push(`${L.active}: ${activeBlocks || L.none}`);
   return lines.join('\n');
-}
-
-/**
- * Whether a persona injects active voice traits.
- *
- * @param {object} persona Normalized persona object.
- * @returns {boolean} True if at least one voice block is active.
- */
-export function personaHasVoiceTraits(persona) {
-  if (!persona) return false;
-  const blocks = persona.blocks ?? {};
-  return ACTIVE_BLOCK_TYPES.some((type) => {
-    const camel = type.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-    return blocks[camel]?.active === true;
-  });
-}
-
-/**
- * Return deterministic persona target features for scoring.
- *
- * @param {object} persona Normalized persona object.
- * @returns {object} Target feature mapping.
- */
-export function personaTargetFeatures(persona) {
-  return persona?.targetFeatures ?? {};
 }

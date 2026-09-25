@@ -1,4 +1,3 @@
-// patina-lane: A (deterministic substrate) — LLM-free. See docs/ARCHITECTURE.md.
 // Top-level analyzer: runs the deterministic stylometry + lexicon signals
 // described in core/stylometry.md and returns a per-paragraph result. This
 // is the in-tree port of the algorithm previously delegated to the LLM via
@@ -52,7 +51,6 @@ export function analyzeText(text, opts = {}) {
     lexicon: providedLexicon,
     structuralModel = null,
     documentType = 'default',
-    shortFormLimits,
   } = opts;
 
   // Normalize to NFC at the boundary so downstream tokenization and lexicon
@@ -85,11 +83,7 @@ export function analyzeText(text, opts = {}) {
   // short English input. Advisory + Document-Type-gated — it never enters the
   // `hot` verdict below (that would let one dash in one paragraph read as
   // 100). The scorer routes it through a small calibrated evidence floor.
-  const shortForm = detectEnglishShortFormTells(normalized, {
-    lang,
-    documentType,
-    limits: shortFormLimits,
-  });
+  const shortForm = detectEnglishShortFormTells(normalized, { lang, documentType });
 
   // §8 skip conditions are advisory only — production callers (SKILL.md 4.6/4.7)
   // can suppress meta-block emission, but the benchmark wants raw signals on

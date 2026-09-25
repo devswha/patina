@@ -1,4 +1,3 @@
-import { diffBlockPairs } from '../browser-diff.js';
 import { scanTagAt, decodeEntities } from './dom.js';
 
 const DEFAULT_MIN_BLOCK_LENGTH = 20;
@@ -421,4 +420,94 @@ function collectExcludedRanges(html) {
   return ranges;
 }
 
+const MAX_LCS_MATRIX_CELLS = 20000;
 
+// Walk both block sequences against the LCS alignment and pair them up:
+// matched blocks come through as {type:'same'}, and the unmatched runs
+// between two matches pair as one {type:'change'} hunk (either side may be
+// empty for pure insertions/deletions). This lets alignRewrites map a rewrite
+// back onto the page blocks without requiring the model to preserve
+// paragraph counts.
+function diffBlockPairs(original, rewritten) {
+  const beforeBlocks = splitTextIntoBlocks(original);
+  const afterBlocks = splitTextIntoBlocks(rewritten);
+  const matcher = beforeBlocks.length * afterBlocks.length > MAX_LCS_MATRIX_CELLS
+    ? matchBlocksByIndex
+    : matchCommonBlocks;
+  const { leftMatched, rightMatched } = matcher(beforeBlocks, afterBlocks);
+
+  const pairs = [];
+  let i = 0;
+  let j = 0;
+  while (i < beforeBlocks.length || j < afterBlocks.length) {
+    const before = [];
+    const after = [];
+    while (i < beforeBlocks.length && !leftMatched.has(i)) before.push(beforeBlocks[i++]);
+    while (j < afterBlocks.length && !rightMatched.has(j)) after.push(afterBlocks[j++]);
+    if (before.length || after.length) {
+      pairs.push({ type: 'change', before: before.join('\n\n'), after: after.join('\n\n') });
+      continue;
+    }
+    if (i < beforeBlocks.length && j < afterBlocks.length) {
+      pairs.push({ type: 'same', text: afterBlocks[j] });
+      i += 1;
+      j += 1;
+      continue;
+    }
+    // One side exhausted with only matched blocks left on the other — cannot
+    // happen with a consistent alignment, but never hang on bad input.
+    if (j < afterBlocks.length) pairs.push({ type: 'same', text: afterBlocks[j] });
+    i += 1;
+    j += 1;
+  }
+  return pairs;
+}
+
+function splitTextIntoBlocks(text) {
+  const normalized = String(text ?? '').replace(/\r\n/g, '\n');
+  if (normalized.length === 0) return [''];
+  if (/\n{2,}/.test(normalized)) return normalized.split(/\n{2,}/);
+  if (/\n/.test(normalized)) return normalized.split('\n');
+  return [normalized];
+}
+
+function matchCommonBlocks(left, right) {
+  const table = Array.from({ length: left.length + 1 }, () => new Array(right.length + 1).fill(0));
+  for (let i = left.length - 1; i >= 0; i--) {
+    for (let j = right.length - 1; j >= 0; j--) {
+      if (left[i] === right[j]) table[i][j] = table[i + 1][j + 1] + 1;
+      else table[i][j] = Math.max(table[i + 1][j], table[i][j + 1]);
+    }
+  }
+
+  const leftMatched = new Set();
+  const rightMatched = new Set();
+  let i = 0;
+  let j = 0;
+  while (i < left.length && j < right.length) {
+    if (left[i] === right[j]) {
+      leftMatched.add(i);
+      rightMatched.add(j);
+      i++;
+      j++;
+      continue;
+    }
+    if (table[i + 1][j] >= table[i][j + 1]) i++;
+    else j++;
+  }
+
+  return { leftMatched, rightMatched };
+}
+
+function matchBlocksByIndex(left, right) {
+  const leftMatched = new Set();
+  const rightMatched = new Set();
+  const count = Math.min(left.length, right.length);
+  for (let i = 0; i < count; i++) {
+    if (left[i] === right[i]) {
+      leftMatched.add(i);
+      rightMatched.add(i);
+    }
+  }
+  return { leftMatched, rightMatched };
+}

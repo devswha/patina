@@ -26,7 +26,7 @@ function stateDir(t) {
 function collectLogger() {
   const events = [];
   const record = (level) => (event, fields) => events.push({ level, event, message: fields?.message });
-  return { events, debug: record('debug'), info: record('info'), warn: record('warn'), error: record('error'), progress() {}, closeProgress() {} };
+  return { events, debug: record('debug'), info: record('info'), warn: record('warn'), error: record('error') };
 }
 
 const TTY = { isTTY: true };

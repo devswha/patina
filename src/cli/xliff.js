@@ -5,28 +5,26 @@
 // quote/comment/PI/CDATA-aware forward scanner, isolates each trans-unit's
 // direct <target> inner span unambiguously (rejecting anything it cannot
 // isolate safely), and classifies which targets are safe prose to humanize.
-// It never mutates src/features/* and adds no runtime dependencies.
-//
-// Write-back, dry-run/cost estimation, caps, atomic writes, and the CLI wiring
-// live in later stories (applyXliffReplacements/estimateXliffRun in this file's
-// G002 additions, and runXliffMode/CLI in G003). This story ships the analysis
-// core + tests only.
+// It never mutates src/features/* and adds no runtime dependencies. It also
+// holds the byte-preserving write-back and dry-run estimate; runXliffMode in
+// src/cli/run.js wires it to the CLI.
 
 import { SUPPORTED_LANGS } from '../web-rewrite-contract.js';
+import { htmlEscape } from '../preview/dom.js';
 
 /** Named XML entities patina decodes/encodes. Unknown names are treated as unsafe. */
-const NAMED_ENTITIES = Object.freeze({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" });
+const NAMED_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
 
 /** target `state` values considered "already translated" and safe to polish. */
-export const TARGET_STATE_ALLOWLIST = Object.freeze(['translated', 'final', 'signed-off', 'needs-review-translation']);
+const TARGET_STATE_ALLOWLIST = ['translated', 'final', 'signed-off', 'needs-review-translation'];
 
 /** Language-tag normalization onto patina's supported set. */
-const LANG_ALIASES = Object.freeze({
+const LANG_ALIASES = {
   ko: 'ko', 'ko-kr': 'ko',
   en: 'en', 'en-us': 'en', 'en-gb': 'en',
   zh: 'zh', 'zh-cn': 'zh', 'zh-tw': 'zh', 'zh-hans': 'zh', 'zh-hant': 'zh',
   ja: 'ja', 'ja-jp': 'ja',
-});
+};
 
 /** Prose thresholds (below these, patina abstains anyway → skip as non-prose). */
 const MIN_WORDS = 5;
@@ -196,20 +194,6 @@ export function hasUnsupportedEntity(s) {
     if (!Object.prototype.hasOwnProperty.call(NAMED_ENTITIES, name)) return true;
   }
   return false;
-}
-
-/**
- * Encode replacement text for an XML text node.
- * @param {string} s
- * @returns {string}
- */
-export function encodeXmlText(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 /**
@@ -419,7 +403,7 @@ export function isProseLike(text) {
  * @param {XliffUnitRecord} unit A non-skip record from parseXliffDocument.
  * @returns {{select:boolean, reason?:string, index:number, id?:string, resname?:string, dedupKey?:string, sourceText?:string, targetCore?:string, leading?:string, trailing?:string, targetInnerStart?:number, targetInnerEnd?:number}}
  */
-export function classifyXliffSegment(unit) {
+function classifyXliffSegment(unit) {
   const base = { index: unit.index, id: unit.id, resname: unit.resname };
   if (unit.skip) return { select: false, reason: unit.reason || 'ambiguous_unit', ...base };
   if (isLocked(unit.unitAttrs)) return { select: false, reason: 'locked', ...base };
@@ -727,7 +711,7 @@ export async function humanizeXliffDocument({
     replacements.push({
       start: s.targetInnerStart,
       end: s.targetInnerEnd,
-      replacement: s.leading + encodeXmlText(newCore) + s.trailing,
+      replacement: s.leading + htmlEscape(newCore) + s.trailing,
     });
   }
   const outputXml = applyXliffReplacements(xml, replacements);

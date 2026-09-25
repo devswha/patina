@@ -6,8 +6,8 @@ import {
   resolveBackendMaxRetries,
 } from '../backends/contract.js';
 import { runtimeError } from '../errors.js';
-import { writeFileSync, mkdirSync, renameSync, unlinkSync, statSync } from 'node:fs';
-import { resolve, basename, extname, dirname, join } from 'node:path';
+import { writeFileSync, mkdirSync, statSync } from 'node:fs';
+import { resolve, basename, extname, join } from 'node:path';
 
 export function logBatchSafetyPlan({ jobs, backends, parsed, promptMode, timeoutMs, logger }) {
   if (!parsed.batch || jobs.length <= 1) return;
@@ -144,29 +144,20 @@ function classifyRetryableStorm(err) {
 }
 
 export async function writeBatchOutput(parsed, inputPath, output, { meaningSafetyError = null } = {}) {
-  if (inputPath === '-') {
+  // validateOutputRouting (#504) rejects empty and combined destinations, so
+  // at most one of these is set, and a set one is never an empty string.
+  if (inputPath === '-' || !(parsed.inPlace || parsed.suffix || parsed.outdir)) {
     console.log(output);
     return;
   }
 
-  // suffix/outdir are gated on truthiness below. validateOutputRouting (#504)
-  // rejects empty-string suffix/outdir before we get here, so an empty value
-  // can never reach the silent stdout fallback — the two layers agree.
   let outPath;
   if (parsed.inPlace) {
     if (meaningSafetyError) throw meaningSafetyError;
     outPath = inputPath;
-  } else if (parsed.suffix) {
-    const ext = extname(inputPath);
-    const base = basename(inputPath, ext);
-    const dir = inputPath.slice(0, -basename(inputPath).length);
-    outPath = resolve(dir, `${base}${parsed.suffix}${ext}`);
-  } else if (parsed.outdir) {
-    mkdirSync(parsed.outdir, { recursive: true });
-    outPath = resolve(parsed.outdir, basename(inputPath));
   } else {
-    console.log(output);
-    return;
+    if (parsed.outdir) mkdirSync(parsed.outdir, { recursive: true });
+    outPath = resolve(resolveBatchOutputPath(parsed, inputPath));
   }
 
   if (meaningSafetyError) {
@@ -189,38 +180,6 @@ export async function writeBatchOutput(parsed, inputPath, output, { meaningSafet
 
   writeFileSync(outPath, output, 'utf8');
   console.log(`Written: ${outPath}`);
-}
-
-/**
- * Atomically write UTF-8 text: write a unique temp file in the destination
- * directory, then rename onto the final path (rename is atomic on the same
- * filesystem). On any failure the temp file is removed and the original/final
- * path is left untouched — a mid-run failure never yields a partial output.
- * @param {string} destPath
- * @param {string} contents
- * @returns {string} the destination path
- */
-export function writeAtomicUtf8(destPath, contents) {
-  const dir = dirname(destPath);
-  let lastErr;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const tmp = join(dir, `.patina-xliff-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`);
-    try {
-      // Exclusive create ('wx'): never clobber a preexisting temp path or symlink.
-      writeFileSync(tmp, contents, { encoding: 'utf8', flag: 'wx' });
-    } catch (err) {
-      if (err && err.code === 'EEXIST') { lastErr = err; continue; } // name collision → retry
-      throw err; // e.g. missing directory → propagate; no temp was created
-    }
-    try {
-      renameSync(tmp, destPath);
-    } catch (err) {
-      try { unlinkSync(tmp); } catch { /* best-effort cleanup; original/dest untouched */ }
-      throw err;
-    }
-    return destPath;
-  }
-  throw lastErr || new Error('xliff: could not create a unique temp file');
 }
 
 /**

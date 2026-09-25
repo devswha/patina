@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import { join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isSubresourceFetchAllowed } from './security.js';
+import { fetchCappedBytes } from './capped-fetch.js';
+import { decodeEntities } from './preview/dom.js';
 
 const DEFAULT_MAX_IMAGES = 8;
 const DEFAULT_MAX_IMAGE_BYTES = 6 * 1024 * 1024; // tall detail images can be a few MB
@@ -125,7 +127,7 @@ export function collectImageCandidates(html, baseUrl, options = {}) {
   for (const css of collectCssText(source)) {
     cssUrlRe.lastIndex = 0;
     while ((match = cssUrlRe.exec(css)) !== null) {
-      const rawUrl = decodeHtmlAttr((match[1] ?? match[2] ?? match[3] ?? '').trim());
+      const rawUrl = decodeEntities((match[1] ?? match[2] ?? match[3] ?? '').trim());
       // Fragment refs (#gradient) and CSS functions (var(--x)) are not images.
       if (!rawUrl || rawUrl.startsWith('data:') || rawUrl.startsWith('#') || /^[a-z-]+\(/i.test(rawUrl)) continue;
       let resolved;
@@ -197,7 +199,7 @@ function rawAttr(tag, name) {
 
 function attrValue(tag, name) {
   const raw = rawAttr(tag, name);
-  return raw === null ? null : decodeHtmlAttr(raw);
+  return raw === null ? null : decodeEntities(raw);
 }
 
 function pickImageUrl(tag, baseUrl, allowFileImages) {
@@ -235,15 +237,6 @@ function pickFromSrcset(srcset) {
   const sorted = entries.sort((a, b) => a.width - b.width);
   const preferred = sorted.find((entry) => entry.width >= 480 && entry.width <= 1200);
   return (preferred ?? sorted[Math.floor(sorted.length / 2)]).url;
-}
-
-function decodeHtmlAttr(value) {
-  return String(value)
-    .replace(/&amp;/gi, '&')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>');
 }
 
 function extensionOf(url) {
@@ -369,80 +362,7 @@ function sniffImageType(bytes) {
   return null;
 }
 
-// Fetch with a hard timeout and a streaming byte cap. The body is read
-// chunk by chunk so a chunked/Content-Length-less response cannot buffer
-// unbounded data into memory before the size check. Shared with the
-// snapshot asset freezer (preview.js), which fetches page-derived CSS and
-// font URLs under the same containment rules.
-export async function fetchCappedBytes(fetchImpl, url, { signal, maxBytes, fetchTimeoutMs, tooBig = 'response too large', guardHop } = {}) {
-  const controller = new AbortController();
-  const onOuterAbort = () => controller.abort(signal.reason);
-  if (signal) {
-    if (signal.aborted) controller.abort(signal.reason);
-    else signal.addEventListener('abort', onOuterAbort, { once: true });
-  }
-  const timer = setTimeout(() => controller.abort(new Error('image fetch timed out')), fetchTimeoutMs);
-  try {
-    let response;
-    if (guardHop) {
-      // Manually follow redirects so each hop is SSRF-guarded; a public image
-      // URL must not be able to bounce into private space mid-redirect.
-      let current = url;
-      for (let hop = 0; ; hop++) {
-        response = await fetchImpl(current, { signal: controller.signal, redirect: 'manual' });
-        const location = response.status >= 300 && response.status < 400
-          ? response.headers.get('location')
-          : null;
-        if (!location) break;
-        if (hop >= 5) throw new Error('too many redirects');
-        const next = new URL(location, current).href;
-        if (!(await guardHop(next))) throw new Error('redirect to a private/internal address blocked');
-        current = next;
-      }
-    } else {
-      response = await fetchImpl(url, { signal: controller.signal, redirect: 'follow' });
-    }
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return await readResponseBytesCapped(response, {
-      maxBytes,
-      tooBig,
-      onOverflow: () => controller.abort(new Error(tooBig)),
-    });
-  } finally {
-    clearTimeout(timer);
-    signal?.removeEventListener?.('abort', onOuterAbort);
-  }
-}
-
-// Read a response body chunk by chunk under a hard byte cap, so a chunked /
-// Content-Length-less response cannot buffer unbounded data into memory before
-// the size check. Shared by fetchCappedBytes and the preview page fetch (#447).
-export async function readResponseBytesCapped(response, { maxBytes, tooBig = 'response too large', onOverflow } = {}) {
-  const declared = Number(response.headers.get('content-length'));
-  if (Number.isFinite(declared) && declared > maxBytes) throw new Error(tooBig);
-  if (!response.body || typeof response.body.getReader !== 'function') {
-    const buf = Buffer.from(await response.arrayBuffer());
-    if (buf.length > maxBytes) throw new Error(tooBig);
-    return buf;
-  }
-  const reader = response.body.getReader();
-  const chunks = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.length;
-    if (total > maxBytes) {
-      if (onOverflow) onOverflow();
-      else { try { await reader.cancel(); } catch {} }
-      throw new Error(tooBig);
-    }
-    chunks.push(value);
-  }
-  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
-}
-
-export const OCR_PROMPT = [
+const OCR_PROMPT = [
   'Extract every piece of legible text visible in the attached image, exactly as written, preserving reading order and line breaks.',
   'Output only the extracted text — no commentary, no translation, no formatting marks.',
   'If the image contains no legible text, output exactly: NO_TEXT',

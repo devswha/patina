@@ -1,4 +1,3 @@
-// patina-lane: B (persona / LLM rewrite) — persona config SSOT. See docs/ARCHITECTURE.md.
 // Persona frontmatter schema + validation (patina.persona.v2).
 //
 // A persona is a reusable voice definition. Its YAML frontmatter is the
@@ -7,6 +6,7 @@
 // outside the persona schema.
 
 import { inputError } from '../errors.js';
+import { finiteOr } from '../features/numeric.js';
 
 export const PERSONA_SCHEMA_ID = 'patina.persona.v2';
 export const ACTIVE_BLOCK_TYPES = Object.freeze([
@@ -15,8 +15,6 @@ export const ACTIVE_BLOCK_TYPES = Object.freeze([
   'explanation_habits',
   'sentence_structure',
 ]);
-export const RESERVED_BLOCK_TYPES = Object.freeze(['worldview']);
-export const ALL_BLOCK_TYPES = Object.freeze([...ACTIVE_BLOCK_TYPES, ...RESERVED_BLOCK_TYPES]);
 
 // Keys owned by another axis. Rejecting them makes responsibility overlap
 // visible instead of silently accepting a persona that changes safety,
@@ -48,11 +46,18 @@ const FORBIDDEN_KEYS = Object.freeze([
   'blocklist',
 ]);
 
-const ID_RE = /^[a-z0-9][a-z0-9-]*$/;
-const SUPPORTED_LANGS = Object.freeze(['ko', 'en', 'zh', 'ja']);
+export const PERSONA_ID_RE = /^[a-z0-9][a-z0-9-]*$/;
+// Languages with a bundled persona library (personas/{lang}/).
+export const PERSONA_LANGS = Object.freeze(['ko', 'en', 'zh', 'ja']);
 
-function fail(what, why, action) {
-  return inputError(what, why, action);
+export function assertPersonaId(id) {
+  if (!PERSONA_ID_RE.test(String(id ?? ''))) {
+    throw inputError(
+      `invalid persona id: ${JSON.stringify(id)}`,
+      'A persona id must match /^[a-z0-9][a-z0-9-]*$/ (lowercase letters, digits, hyphens).',
+      'Use a lowercase id such as my-voice or pragmatic-founder.'
+    );
+  }
 }
 
 // Recursively assert no forbidden gate-weakening key appears anywhere.
@@ -64,7 +69,7 @@ function assertNoForbiddenKeys(node, personaId, path = '') {
   }
   for (const [key, value] of Object.entries(node)) {
     if (FORBIDDEN_KEYS.includes(key)) {
-      throw fail(
+      throw inputError(
         `persona "${personaId}" sets out-of-scope key "${key}"`,
         `Persona files define voice only (found "${key}" at ${path || '<root>'}.${key}).`,
         'Move safety to verification, document rules to document-type, and casual/professional register to --register.'
@@ -85,10 +90,6 @@ function asStringArray(value) {
   return value.filter((v) => typeof v === 'string' && v.trim().length > 0).map((v) => v.trim());
 }
 
-function numberOr(value, fallback) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
 function numberPairOr(value, fallback) {
   if (Array.isArray(value) && value.length === 2 && value.every((n) => typeof n === 'number' && Number.isFinite(n))) {
     return [value[0], value[1]];
@@ -101,7 +102,7 @@ function normalizeBlocks(rawBlocks, personaId) {
 
   const worldview = blocks.worldview ?? {};
   if (asBool(worldview.active, false)) {
-    throw fail(
+    throw inputError(
       `persona "${personaId}" activates worldview block`,
       'The worldview block is reserved but inactive (content-risk: it can change a text\'s stance/framing).',
       'Set blocks.worldview.active: false. Persona v2 is strictly voice-only.'
@@ -119,14 +120,14 @@ function normalizeBlocks(rawBlocks, personaId) {
       allow: asStringArray(pw.allow),
       avoid: asStringArray(pw.avoid),
       density: {
-        targetPer1000Tokens: numberOr(pw.density?.target_per_1000_tokens, null),
-        maxPerParagraph: numberOr(pw.density?.max_per_paragraph, null),
+        targetPer1000Tokens: finiteOr(pw.density?.target_per_1000_tokens, null),
+        maxPerParagraph: finiteOr(pw.density?.max_per_paragraph, null),
       },
     },
     preferredMetaphors: {
       active: asBool(pm.active),
       allow: asStringArray(pm.allow),
-      maxNewMetaphorsPer500Chars: numberOr(pm.max_new_metaphors_per_500_chars, 1),
+      maxNewMetaphorsPer500Chars: finiteOr(pm.max_new_metaphors_per_500_chars, 1),
     },
     explanationHabits: {
       active: asBool(eh.active),
@@ -138,7 +139,7 @@ function normalizeBlocks(rawBlocks, personaId) {
       sentenceLengthCvTarget: numberPairOr(ss.sentence_length_cv_target, null),
       avgSentenceEojeolTarget: numberPairOr(ss.avg_sentence_eojeol_target, null),
       paragraphSentenceCountTarget: numberPairOr(ss.paragraph_sentence_count_target, null),
-      openerDiversityMin: numberOr(ss.opener_diversity_min, null),
+      openerDiversityMin: finiteOr(ss.opener_diversity_min, null),
     },
     worldview: { active: false },
   };
@@ -147,7 +148,7 @@ function normalizeBlocks(rawBlocks, personaId) {
 function normalizeTargetFeatures(raw, personaId) {
   if (raw === undefined || raw === null) return {};
   if (typeof raw !== 'object' || Array.isArray(raw)) {
-    throw fail(
+    throw inputError(
       `persona "${personaId}" has a malformed target_features block`,
       'target_features must be a mapping of feature name -> { target, tolerance, weight } (or over_edit_churn -> { max, weight }).',
       'Fix the YAML shape of target_features.'
@@ -157,13 +158,13 @@ function normalizeTargetFeatures(raw, personaId) {
   for (const [name, spec] of Object.entries(raw)) {
     if (!spec || typeof spec !== 'object') continue;
     if (name === 'over_edit_churn') {
-      out.overEditChurn = { max: numberOr(spec.max, 0.45), weight: numberOr(spec.weight, 0) };
+      out.overEditChurn = { max: finiteOr(spec.max, 0.45), weight: finiteOr(spec.weight, 0) };
       continue;
     }
     out[name] = {
-      target: numberOr(spec.target, null),
-      tolerance: numberOr(spec.tolerance, null),
-      weight: numberOr(spec.weight, 0),
+      target: finiteOr(spec.target, null),
+      tolerance: finiteOr(spec.tolerance, null),
+      weight: finiteOr(spec.weight, 0),
     };
   }
   return out;
@@ -183,7 +184,7 @@ export function validatePersona(frontmatter, ctx = {}) {
   const fileId = ctx.id ?? (frontmatter && frontmatter.id) ?? '<unknown>';
 
   if (!frontmatter || typeof frontmatter !== 'object' || Array.isArray(frontmatter)) {
-    throw fail(
+    throw inputError(
       `persona "${fileId}" has no valid frontmatter`,
       'A persona file must start with a YAML frontmatter block (--- ... ---) holding the persona definition.',
       'Add a frontmatter block; the Markdown body is docs-only and is ignored at runtime.'
@@ -193,7 +194,7 @@ export function validatePersona(frontmatter, ctx = {}) {
   assertNoForbiddenKeys(frontmatter, fileId);
 
   if (frontmatter.schema !== PERSONA_SCHEMA_ID) {
-    throw fail(
+    throw inputError(
       `persona "${fileId}" has an unsupported schema`,
       `Expected schema: ${PERSONA_SCHEMA_ID} but got ${JSON.stringify(frontmatter.schema)}.`,
       `Set "schema: ${PERSONA_SCHEMA_ID}" in the persona frontmatter.`
@@ -201,15 +202,15 @@ export function validatePersona(frontmatter, ctx = {}) {
   }
 
   const id = String(frontmatter.id ?? ctx.id ?? '').trim();
-  if (!ID_RE.test(id)) {
-    throw fail(
+  if (!PERSONA_ID_RE.test(id)) {
+    throw inputError(
       `persona has an invalid id ${JSON.stringify(id)}`,
       'Persona id must match /^[a-z0-9][a-z0-9-]*$/ and match its filename.',
       'Rename the persona id, e.g. "pragmatic-founder".'
     );
   }
   if (ctx.id && ctx.id !== id) {
-    throw fail(
+    throw inputError(
       `persona id "${id}" does not match filename "${ctx.id}"`,
       'The frontmatter id and the persona filename must agree so the library is unambiguous.',
       `Set id: ${ctx.id} or rename the file to ${id}.md.`
@@ -218,11 +219,11 @@ export function validatePersona(frontmatter, ctx = {}) {
 
   const name = typeof frontmatter.name === 'string' && frontmatter.name.trim() ? frontmatter.name.trim() : id;
   const lang = String(frontmatter.lang ?? ctx.lang ?? 'ko').trim();
-  if (!SUPPORTED_LANGS.includes(lang)) {
-    throw fail(
+  if (!PERSONA_LANGS.includes(lang)) {
+    throw inputError(
       `persona "${id}" has unsupported lang "${lang}"`,
-      `Supported languages: ${SUPPORTED_LANGS.join(', ')}.`,
-      'Set a supported lang. v1 ships KO personas; EN/ZH/JA are structurally reserved.'
+      `Supported languages: ${PERSONA_LANGS.join(', ')}.`,
+      'Set lang to one of the supported languages.'
     );
   }
 

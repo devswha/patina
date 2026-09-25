@@ -2,7 +2,7 @@
 import { callLLMStream as defaultStream } from './streaming-api.js';
 import { scoreDeterministicSignals, scoreFidelity, scoreMPS, SCORE_ERRORS } from './scoring.js';
 import { evaluateNumberSafety } from './features/meaning-proxy.js';
-import { formatRewriteBodyForBrowser } from './output.js';
+import { cleanRewriteOutput } from './output.js';
 import { loadWebConfig, resolveBundleRoot } from './web-config.js';
 import { buildWebRewritePrompt, loadWebAssets } from './web-rewrite.js';
 import { MPS_FLOOR, FIDELITY_FLOOR, redactSecrets, REWRITE_MODES, STREAM_FRAME_TYPES, WEB_TIERS } from './web-rewrite-contract.js';
@@ -611,7 +611,7 @@ async function runWebRewriteStreamUnscoped({
       } finally {
         stageOpen = false;
       }
-      rewrite = formatRewriteBodyForBrowser(streamResult.text);
+      rewrite = cleanRewriteOutput(streamResult.text);
       // A truncated, filtered or empty generation is not a rewrite. Refuse it
       // here, before the number-safety gate, so the two paid scorer calls are
       // never spent on partial text — and so a truncated rewrite of a source

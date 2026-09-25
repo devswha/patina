@@ -20,21 +20,14 @@ import { resolve, sep } from 'node:path';
 
 import { getRepoRoot, loadConfig } from '../config.js';
 import { inputError, runtimeError } from '../errors.js';
+import { takeValue } from '../cli/args.js';
 
 
-export const DEFAULT_PACKS_URL = 'https://patina.vibetip.help/api/packs';
+const DEFAULT_PACKS_URL = 'https://patina.vibetip.help/api/packs';
 const PACK_ID_RE = /^[a-z0-9][a-z0-9-]{1,63}$/;
 const KNOWN_KINDS = new Set(['pattern', 'persona', 'lexicon']);
 
 const sha256 = (s) => createHash('sha256').update(s, 'utf8').digest('hex');
-
-function takeValue(args, i, flag) {
-  const v = args[i + 1];
-  if (v === undefined || v.startsWith('-')) {
-    throw inputError(`${flag} requires a value`, `Missing value after ${flag}.`, `Pass ${flag} <value>.`);
-  }
-  return [v, i + 1];
-}
 
 function parsePackArgs(args) {
   const parsed = { sub: null, ids: [], all: false, json: false, force: false, url: null, license: null };

@@ -1,6 +1,7 @@
 // Burstiness CV, MATTR, and dependency-free KO diagnostics per core/stylometry.md.
 // Pure functions over token arrays; no I/O.
 import { splitParagraphs, splitProseSentences } from './segment.js';
+import { clamp, finiteOr } from './numeric.js';
 // Interference regexes are owned by catalog/ko-interference.js — never inline
 // a copy here; the catalog-consumption test pins these call sites.
 import { buildKoInterferenceRegex } from './catalog/ko-interference.js';
@@ -121,13 +122,7 @@ function koreanLength(token) {
 // Coefficient of variation of sentence token counts.
 // Returns null when the paragraph has fewer than 2 sentences or mean is 0.
 export function burstinessCV(sentenceTokenCounts) {
-  if (!Array.isArray(sentenceTokenCounts) || sentenceTokenCounts.length < 2) return null;
-  const n = sentenceTokenCounts.length;
-  const mean = sentenceTokenCounts.reduce((a, b) => a + b, 0) / n;
-  if (mean === 0) return null;
-  const variance =
-    sentenceTokenCounts.reduce((acc, x) => acc + (x - mean) ** 2, 0) / n;
-  return Math.sqrt(variance) / mean;
+  return coefficientOfVariation(sentenceTokenCounts);
 }
 
 // Moving Average Type-Token Ratio (window default 50).
@@ -282,7 +277,7 @@ function buildKoPostEditeseMetrics(text, sentences = splitProseSentences(text)) 
   const lengths = eojeols.map(koreanLength).filter((length) => length > 0);
   const endings = sentences.map(extractSentenceEnding).filter(Boolean);
   const endingTypeCount = new Set(endings).size;
-  const suffixStats = koPostEditeseSuffixStats(eojeols);
+  const suffixStats = koreanPosDiversityProxy(null, eojeols);
   const comma = commaDensity(text, sentences.length);
   const sentenceEojeolCounts = sentences
     .map((sentence) => koreanEojeols(sentence).length)
@@ -381,24 +376,6 @@ function maxDeclarativeDaStreak(endings) {
     }
   }
   return max;
-}
-
-function koPostEditeseSuffixStats(eojeols) {
-  const matches = [];
-  for (const token of eojeols) {
-    const match = KO_SUFFIX_MATCHERS.find(
-      (candidate) => token.length > candidate.suffix.length && token.endsWith(candidate.suffix)
-    );
-    if (match) matches.push({ className: match.className, suffix: match.suffix });
-  }
-  const matchedCount = matches.length;
-  const classCount = new Set(matches.map((match) => match.className)).size;
-  const suffixCount = new Set(matches.map((match) => match.suffix)).size;
-  return {
-    matchedCount,
-    classDiversity: matchedCount > 0 ? classCount / matchedCount : null,
-    suffixDiversity: matchedCount > 0 ? suffixCount / matchedCount : null,
-  };
 }
 
 function countPattern(text, pattern) {
@@ -575,10 +552,8 @@ export function classifyKoreanDiagnostics({
 }
 
 // Single-pass Korean per-paragraph diagnostics: tokenize eojeols ONCE and reuse
-// them for the spacing and POS-diversity proxies (previously each recomputed
-// koreanEojeols), then derive comma density and the composite classification.
-// Output is identical to calling koreanSpacingFeatures/commaDensity/
-// koreanPosDiversityProxy/classifyKoreanDiagnostics separately.
+// them for the spacing and POS-diversity proxies, then derive comma density and
+// the composite classification.
 export function koreanDiagnostics(
   paragraph,
   sentenceCount,
@@ -610,26 +585,26 @@ export function classifyMattr(value, bands = DEFAULT_MATTR_BANDS) {
 
 function mergeKoreanDiagnosticBands(bands = {}) {
   return {
-    minSentences: resolveNumber(bands.minSentences, DEFAULT_KO_DIAGNOSTIC_BANDS.minSentences),
-    minEojeols: resolveNumber(bands.minEojeols, DEFAULT_KO_DIAGNOSTIC_BANDS.minEojeols),
+    minSentences: finiteOr(bands.minSentences, DEFAULT_KO_DIAGNOSTIC_BANDS.minSentences),
+    minEojeols: finiteOr(bands.minEojeols, DEFAULT_KO_DIAGNOSTIC_BANDS.minEojeols),
     spacing: {
-      maxEojeolLengthCV: resolveNumber(
+      maxEojeolLengthCV: finiteOr(
         bands.spacing?.maxEojeolLengthCV,
         DEFAULT_KO_DIAGNOSTIC_BANDS.spacing.maxEojeolLengthCV
       ),
     },
     comma: {
-      maxPerSentence: resolveNumber(
+      maxPerSentence: finiteOr(
         bands.comma?.maxPerSentence,
         DEFAULT_KO_DIAGNOSTIC_BANDS.comma.maxPerSentence
       ),
     },
     posProxy: {
-      minMatchedCount: resolveNumber(
+      minMatchedCount: finiteOr(
         bands.posProxy?.minMatchedCount,
         DEFAULT_KO_DIAGNOSTIC_BANDS.posProxy.minMatchedCount
       ),
-      maxClassDiversity: resolveNumber(
+      maxClassDiversity: finiteOr(
         bands.posProxy?.maxClassDiversity,
         DEFAULT_KO_DIAGNOSTIC_BANDS.posProxy.maxClassDiversity
       ),
@@ -637,13 +612,9 @@ function mergeKoreanDiagnosticBands(bands = {}) {
   };
 }
 
-function resolveNumber(value, fallback) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
 function lowThresholdStrength(value, threshold) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
   if (threshold === 0) return value <= 0 ? 100 : 0;
   if (!threshold || threshold < 0 || value > threshold) return 0;
-  return Math.max(0, Math.min(100, (1 - value / threshold) * 100));
+  return clamp((1 - value / threshold) * 100, 0, 100);
 }

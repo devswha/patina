@@ -2,7 +2,6 @@ import { mpsResult, zeroAnchorMps } from '../fixtures/verification-results.js';
 import test from 'node:test';
 import assert from 'node:assert';
 import {
-  clamp03,
   combinedScore,
   interpretScore,
   lengthRatioPoints,
@@ -67,23 +66,6 @@ test('lengthRatioPoints scores bucket boundaries and empty original text', () =>
   }
 
   assert.strictEqual(lengthRatioPoints('', 'rewritten'), 3);
-});
-
-test('clamp03 clamps out-of-range values and rounds fractions', () => {
-  const cases = [
-    [-1, 0],
-    [0, 0],
-    [1.4, 1],
-    [1.5, 2],
-    [2.6, 3],
-    [3, 3],
-    [4, 3],
-    [Number.NaN, 0],
-  ];
-
-  for (const [value, expected] of cases) {
-    assert.strictEqual(clamp03(value), expected, String(value));
-  }
 });
 
 test('combinedScore uses default and document-type-specific config weights', () => {

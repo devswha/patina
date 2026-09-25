@@ -1,35 +1,19 @@
-// Portability probe (#881, parent #878) — deterministic, LLM-free.
+// Portability probe, deterministic and LLM-free: a sentence that would stay
+// equally true if the product, company, or person were swapped carries no point
+// of view. It only reports; it never supplies a detail the source lacks.
 //
-// The field notes record slop's definition moving from vocabulary to ABSENCE OF
-// POINT OF VIEW: text that is not badly written, just text anyone could have
-// written. The portability test is the cheap version of that — if swapping the
-// product, company, or person would leave a sentence equally true, it carries no
-// point of view.
-//
-// DETECT ONLY, on purpose. docs/research/2026-rewrite-efficacy-study4.md tested
-// the rewrite-side version of this idea (H-4b: a specificity-preservation block
-// on the rewrite prompt) and the verdict was NOT supported — the constrained
-// rewrite read *more* AI-like, the model obeyed the length floor in only 56% of
-// documents, and guard rail 1 (the meaning gate) was violated at 50/54. Nothing
-// shipped from that study. So this module reports; it never rewrites, and it
-// never supplies a detail the source lacks.
-//
-// A sentence counts as ANCHORED when it carries at least one specificity anchor:
-// a number, inline code, a quoted term, or a proper noun (a non-opening
-// capitalized token in Latin script; a Latin-script run inside CJK prose, where
-// product and API names are the usual carriers). Everything else is portable.
-//
-// False-positive control is the whole reason this fires on a RUN rather than a
-// sentence. A genuine one-line summary — a README intro, an abstract opener — is
-// portable by nature and must stay cold, so the probe needs several portable
-// sentences AND a portable majority before it says anything.
+// A sentence is ANCHORED when it carries a number, inline code, a quoted term, or
+// a proper noun (a non-opening capitalized Latin token, or a Latin-script run
+// inside CJK prose). The probe fires on a run, not a sentence: a one-line summary
+// such as a README intro is portable by nature, so it needs several portable
+// sentences AND a portable majority.
 
 import { splitProseSentences, splitParagraphs } from './segment.js';
 
 /** A single generic line is not a pattern; the probe needs a run. */
-export const PORTABILITY_MIN_SENTENCES = 3;
-export const PORTABILITY_MIN_PORTABLE = 3;
-export const PORTABILITY_MIN_RATIO = 0.6;
+const PORTABILITY_MIN_SENTENCES = 3;
+const PORTABILITY_MIN_PORTABLE = 3;
+const PORTABILITY_MIN_RATIO = 0.6;
 
 /**
  * Registers where impersonal, swappable prose is CORRECT rather than a tell:
@@ -38,7 +22,7 @@ export const PORTABILITY_MIN_RATIO = 0.6;
  * there. Consumers (the inspect advisory and the rewrite hint) share this
  * list so detection and hinting never disagree.
  */
-export const PORTABILITY_OMIT_TYPES = Object.freeze(['academic', 'medical', 'technical', 'legal', 'formal']);
+const PORTABILITY_OMIT_TYPES = Object.freeze(['academic', 'medical', 'technical', 'legal', 'formal']);
 
 export function omitsPortabilityAdvisory(documentType) {
   return PORTABILITY_OMIT_TYPES.includes(String(documentType || ''));
@@ -53,7 +37,7 @@ const CJK_LANGS = new Set(['ko', 'ja', 'zh']);
  * @param {string} lang
  * @returns {boolean}
  */
-export function hasSpecificityAnchor(sentence, lang = 'en') {
+function hasSpecificityAnchor(sentence, lang = 'en') {
   const text = String(sentence ?? '');
   if (!text.trim()) return false;
   // Numbers, inline code, and quoted terms anchor in every language.

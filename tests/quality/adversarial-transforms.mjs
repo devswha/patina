@@ -1,4 +1,4 @@
-// Deterministic adversarial transforms for detection-robustness measurement (B3).
+// Deterministic adversarial transforms for detection-robustness measurement.
 //
 // Each transform is a pure, deterministic, Node-version-stable text -> text
 // function (no randomness, no Date, fixed substitution maps). They are applied

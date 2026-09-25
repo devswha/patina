@@ -9,8 +9,8 @@
 //
 // AI-positive rows (sycophancy + lexical/structural tells) have expected_hot
 // = true; human-controls have expected_hot = false. We run analyzeText() on
-// each and compute confusion metrics + Wilson intervals so Phase B detector
-// deltas and Phase D gates have a fixed, reproducible reference.
+// each and compute confusion metrics + Wilson intervals so detector changes
+// have a fixed, reproducible reference.
 //
 // Privacy: output contains only stable row hashes, ids, and aggregate metrics.
 // Raw corpus phrases and human-control body text are NEVER emitted.

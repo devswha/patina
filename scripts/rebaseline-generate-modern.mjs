@@ -19,8 +19,7 @@ export const DEFAULT_PER_CELL = 100;
 export const DEFAULT_BATCH_SIZE = 50;
 export const DEFAULT_TIMEOUT_MS = 15 * 60 * 1000;
 export const REGISTERS = ['blog', 'academic-summary', 'product-doc', 'chat-update', 'technical-how-to'];
-// Wave 0.5: supported generation languages + per-language prompt name/length
-// rule. zh/ja added for the corpus-expansion plan; ko/en defaults unchanged.
+// Supported generation languages + per-language prompt name/length rule.
 export const LANGUAGE_PROMPTS = {
   ko: { name: 'Korean', lengthRule: '140-230 Korean characters, 2-4 complete sentences' },
   en: { name: 'English', lengthRule: '55-85 English words, 2-4 complete sentences' },

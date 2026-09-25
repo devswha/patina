@@ -266,13 +266,13 @@ function main() {
       detectors,
       ...observed,
       expected_metrics: meta.expected_metrics ?? null,
-      // Slice dimensions (B2, report-only). language/class/length_bucket are
+      // Slice dimensions (report-only). language/class/length_bucket are
       // always derivable; the rest default to `unspecified` until the corpus
       // carries that metadata.
       length_bucket: lengthBucket([...body].length),
-      // generator/edited resolved via the tested B2 reconciliation mapper
-      // (Wave 0.1): explicit B2-native fields win; model_family/edit_depth
-      // aliases and class defaults fill the rest. register/domain pass through.
+      // generator/edited resolved via the slice-metadata mapper: explicit
+      // fields win; model_family/edit_depth aliases and class defaults fill
+      // the rest. register/domain pass through.
       ...resolveSliceFields(meta),
     });
   }

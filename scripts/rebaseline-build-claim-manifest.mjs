@@ -58,7 +58,7 @@ export function buildClaimManifest(options = {}) {
   const generatedScored = scorePrivateRows(generatedRows, { scoredAt: options.scoredAt || localDate() });
 
   // Use ?? so an EXPLICIT 0 control total is honored (zero controls) instead of
-  // silently falling back to the default (Wave 0.6).
+  // silently falling back to the default.
   const koControls = selectKoControls(options.koControls || DEFAULT_KO_CONTROLS, options.koControlTotal ?? DEFAULT_KO_CONTROL_TOTAL);
   const enControlPrivateRows = selectHapeEnglishControls(options.hape || DEFAULT_HAPE, options.enControlTotal ?? DEFAULT_EN_CONTROL_TOTAL);
   const enControlScored = scorePrivateRows(enControlPrivateRows, { scoredAt: options.scoredAt || localDate() });

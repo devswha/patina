@@ -126,9 +126,9 @@ function slugify(value) {
 }
 
 export function buildFixtureFile(record, fixtureId) {
-  // B2 slice metadata (Wave 0.2): retain register/domain when present and
-  // always record the mapper-resolved generator/edited so exported fixtures
-  // populate B2 slices instead of collapsing to `unspecified`. model_family /
+  // Slice metadata: retain register/domain when present and always record
+  // the mapper-resolved generator/edited so exported fixtures populate the
+  // benchmark slices instead of collapsing to `unspecified`. model_family /
   // edit_depth are kept as provenance aliases when present.
   const slice = resolveSliceFields(record);
   const meta = {

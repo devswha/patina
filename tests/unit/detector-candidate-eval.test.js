@@ -1,4 +1,4 @@
-// Phase B: tests for the attributable detector-candidate evaluation harness.
+// Tests for the attributable detector-candidate evaluation harness.
 // Verifies the promotion rule, the current-evidence "no promotion" outcome, and
 // the advisory boundary (translationese is NOT folded into the hot decision).
 

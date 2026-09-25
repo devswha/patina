@@ -22,7 +22,7 @@ export const DEFAULT_MAX_PER_SOURCE = 8;
 export const DEFAULT_TARGET_PER_REGISTER = 50;
 export const DEFAULT_DELAY_MS = 250;
 
-// Per-language script + boilerplate config (Wave 0.4). Each language requires a
+// Per-language script + boilerplate config. Each language requires a
 // minimum count of its script characters and a minimum script/letter ratio so a
 // paragraph in the wrong script (or boilerplate) is rejected.
 export const LANGUAGE_SCRIPTS = {

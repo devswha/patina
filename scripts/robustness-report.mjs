@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Adversarial detection-robustness report (B3).
+// Adversarial detection-robustness report.
 //
 // Applies deterministic adversarial transforms (tests/quality/adversarial-
 // transforms.mjs) to every checked-in suspect-zone fixture, re-runs the

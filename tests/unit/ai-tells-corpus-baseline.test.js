@@ -1,4 +1,4 @@
-// Tests for the deterministic AI-tells corpus baseline harness (Phase A).
+// Tests for the deterministic AI-tells corpus baseline harness.
 // Verifies the exact-count drift guard, byte-stable JSON output, schema shape,
 // and that no raw corpus text leaks into the report.
 

@@ -89,7 +89,9 @@ item.
 Polar Pro checkout opened on production on 2026-08-04
 (`live-open-20260804.md`, private). That is the payment system. A later “first paid
 sale / order count” check is `not_planned`. Do not query Polar or treat
-empty webhook logs as unfinished checkout work.
+empty webhook logs as unfinished checkout work. The `/api/polar-webhook`
+purchase counter is gone (the endpoint returns 404), so its registration in
+the Polar dashboard can be deleted.
 
 ## Private records
 

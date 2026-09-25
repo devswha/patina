@@ -772,7 +772,7 @@ Usage: patina [command] [options] [file...]
 
 COMMANDS
   patina inspect [file]   Offline JSON score and source-aligned editing diagnostics
-  patina doctor [--json]  Check Node, backends, tmux, and auth setup
+  patina doctor [--json]  Check Node, backends, and auth setup
   patina auth status      Show backend availability and authentication status
   patina auth login       Print per-backend authentication instructions
   patina auth login <backend> [--yes]

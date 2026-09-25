@@ -111,7 +111,7 @@ read.
 
 1. **`/skill:deep-interview`** — turn the open maintainer decisions above
    (B2 schema/min-count, B4 operating policy + allowed deltas + messaging) into a
-   spec under `.gjc/specs/`. This is requirements-only; it must not touch product
+   local spec (not committed). This is requirements-only; it must not touch product
    code or thresholds.
 2. **`/skill:ralplan`** — plan the collection itself: per-language/per-source
    waves, intake order, and the verification gate. Stop at pending approval.

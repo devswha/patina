@@ -108,8 +108,8 @@ its diagnostic and counterfactual observations.
 
 ```bash
 node scripts/research/scorer-path-corpus.mjs \
-  /home/devswha/workspace/patina-cohort-evaluation \
-  /home/devswha/workspace/patina/artifacts/rebaseline-2025 \
+  /path/to/patina-cohort-evaluation \
+  /path/to/patina/artifacts/rebaseline-2025 \
   /tmp/patina-scorer-path-corpus-20260905/reproduction
 
 node scripts/research/scorer-path-corpus.mjs --verify \

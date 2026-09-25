@@ -248,7 +248,8 @@ The checker enforces only three reachability rules:
 2. `playground/**` cannot reach server-secret modules, API handlers, or Node
    built-ins.
 3. `src/**`, `api/**`, `bin/**`, and every declared published package bin
-   cannot reach packaged research modules.
+   cannot reach research modules (`scripts/research/`, `tests/quality/`, and
+   `scripts/iterative-rewrite-baseline.mjs`).
 
 Deterministic shared modules are classified rather than blanket-banned:
 `src/edit-controls.js`, `src/errors.js`, `src/logger.js`,
@@ -273,10 +274,6 @@ async contract error (for example, a missing `await`). This is evidence for
 that test module only, not a claim that all JavaScript is type-checked and not
 a reason to add a second project-wide TypeScript configuration.
 
-### Packaged research comparator (unsupported)
-
-- `scripts/iterative-rewrite-baseline.mjs` — `iterative-baseline`, a packaged
-  research comparator outside the product API, CLI help, and configuration surface. The package has no `exports` map, so the module remains deep-importable but unsupported.
 ---
 
 ## Seams: resolved and remaining

@@ -1,7 +1,8 @@
 # H-RHETORIC confirmation-experiment decision (2026-09-15)
 
 Status: decision record. No product code change. No experiment was run for this
-record; it decides whether and when the PLAN.md v2 §7.B/§7.C experiments run.
+record; it decides whether and when the PLAN v2 §7.B/§7.C experiments run
+(plan archived as [`rewrite-quality-plan-v2-20260909.md`](rewrite-quality-plan-v2-20260909.md)).
 
 ## Decision
 
@@ -47,7 +48,7 @@ evidence gate; ZH/JA remain exploration-only on existing data.
   model-backed checks need explicit authorization with a recorded profile.
 - **Building new experiment infrastructure before reusing existing pieces.**
   The pilot must first inventory what #817 (`tests/quality/rhetoric-contract.mjs`),
-  the #828 A/B scripts (local-only under `.omo/research/`), and the existing
+  the #828 A/B scripts (local-only, never committed), and the existing
   quality runners already provide.
 
 ## Next action

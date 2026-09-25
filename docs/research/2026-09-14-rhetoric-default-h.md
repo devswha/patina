@@ -1,8 +1,8 @@
 # Live rhetoric A/B and default flip (2026-09-14)
 
-Status: PLAN.md v2 leftover-rhetoric question, now with first-draft **and** `--verify`. Product default rhetoric text flipped to H-RHETORIC after this run.
+Status: the PLAN v2 leftover-rhetoric question (plan archived as [`rewrite-quality-plan-v2-20260909.md`](rewrite-quality-plan-v2-20260909.md)), now with first-draft **and** `--verify`. Product default rhetoric text flipped to H-RHETORIC after this run.
 Tree: `bot/rhetoric-default-live-20260914` from `d3fa6b6f0ead3d77e982b752272c40c49b9727c9` (`origin/dev`).
-Raw stdout JSON is local-only under `.omo/research/rhetoric-ab-20260914/` (gitignored).
+Raw stdout JSON stayed local-only and was not committed.
 
 This is a same-model A/B, not a language-wide quality claim, not §7.B 288-call scale, and not §7.C confirmation.
 

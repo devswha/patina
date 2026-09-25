@@ -2,24 +2,18 @@
 // backend. The `patina auth` subcommand lives in src/commands/auth.js.
 import { readFileSync } from 'node:fs';
 import { inputError } from './errors.js';
+import { PROVIDERS } from './providers.js';
 
 /**
- * Environment variable names checked for HTTP provider authentication.
+ * Environment variable names checked for HTTP provider authentication:
+ * PATINA_API_KEY plus each provider preset's key variable.
  *
  * @type {string[]}
- * @example
- * const supported = HTTP_KEY_ENV_VARS.includes('OPENAI_API_KEY');
  */
-export const HTTP_KEY_ENV_VARS = [
+export const HTTP_KEY_ENV_VARS = uniqueEnvVars([
   'PATINA_API_KEY',
-  'OPENAI_API_KEY',
-  'GEMINI_API_KEY',
-  'GROQ_API_KEY',
-  'TOGETHER_API_KEY',
-  'KIMI_API_KEY',
-  'MOONSHOT_API_KEY',
-  'MINIMAX_API_KEY',
-];
+  ...Object.values(PROVIDERS).map((provider) => provider.apiKeyEnv),
+]);
 
 // Default openai-http runs against the OpenAI-compatible default endpoint, so
 // only generic/OpenAI keys make it authenticated without an explicit provider.

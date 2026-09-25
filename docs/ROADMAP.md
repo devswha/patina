@@ -188,7 +188,7 @@ Acceptance criteria:
 
 ### Phase 3 — integrations
 
-Status (2026-09-02): shipped for the first-class paths — Claude Code / Codex / Cursor / OpenCode skill install, `devswha/patina-action`, pre-commit and static-site recipes under `docs/integrations/`. Subagent strict flow: `docs/agents.md`.
+Status (2026-09-02): shipped for the first-class paths — Claude Code / Codex / Cursor / OpenCode skill install, `devswha/patina-action`, and the pre-commit recipe under `docs/integrations/`. Subagent strict flow: `docs/agents.md`.
 
 Goal: make patina show up where AI-writing pain happens.
 

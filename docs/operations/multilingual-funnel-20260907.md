@@ -1,7 +1,6 @@
 # Multilingual funnel measurement — September 7, 2026
 
-The browser sends category-only milestones after initialization. KO/EN/ZH/JA
-introduction drafts are in `docs/social/multilingual-examples.md`; prepared links
+The browser sends category-only milestones after initialization. Prepared links
 select the matching UI language. The implementation tests used local stores,
 and this record does not claim production counts or external publication.
 

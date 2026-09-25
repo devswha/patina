@@ -1,6 +1,6 @@
 # OpenAI and Anthropic provider research — 2026-09-05
 
-Verified on **September 5, 2026 (Asia/Seoul)**. This report covers public documentation for Patina rewrite, audit, and model-assisted scoring. It contains no new model calls, experimental ranking, human ratings, private inputs, or usage receipts. The [matching JSON](provider-openai-anthropic-20260905.json) records sources, prices, capabilities, and each manifest mapping.
+Verified on **September 5, 2026 (Asia/Seoul)**. This report covers public documentation for Patina rewrite, audit, and model-assisted scoring. It contains no new model calls, experimental ranking, human ratings, private inputs, or usage receipts. The matching JSON record (not kept in the repository) listed sources, prices, capabilities, and each manifest mapping.
 
 The fetched sources document GPT-6 Astra, GPT-5.6 Sol/Terra/Luna, Claude Fable 5.1, Opus 5, Sonnet 5, and Haiku 4.5. GPT-5.5, GPT-5.4 Mini, and Sonnet 4.6 remain in this comparison because the existing studies name them. This is a scoped inventory, not proof of exhaustive vendor or account coverage. [O-CATALOG], [O-ASTRA], [O-SOL], [O-TERRA], [O-LUNA], [A-CATALOG], [A-FABLE]; local manifests M and I below.
 

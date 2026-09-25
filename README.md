@@ -107,7 +107,7 @@ patina --persona my-voice draft.md
 patina --batch docs/*.md --outdir cleaned/
 ```
 
-`patina --help` prints the full flag list. CI wrapper for GitHub Actions: [devswha/patina-action](https://github.com/devswha/patina-action) — plus [pre-commit, static-site, Docker, and release integrations](docs/integrations/pre-commit.md).
+`patina --help` prints the full flag list. CI wrapper for GitHub Actions: [devswha/patina-action](https://github.com/devswha/patina-action) — plus [pre-commit](docs/integrations/pre-commit.md), [Docker](docs/integrations/docker.md), and [release](docs/integrations/release.md) guides.
 
 Editor clients: the VS Code, Obsidian and Gmail preview clients are retired. See the [historical record](docs/integrations/editors.md).
 

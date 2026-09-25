@@ -116,13 +116,12 @@ The `examples/en-*-success-*.md` and `examples/en-*-failure-*.md` files are stan
 
 ## More gallery material
 
-This page shows the canonical short examples. The repo also contains longer examples and historical case studies:
+This page shows the canonical short examples. The repo also contains longer examples and case studies:
 
 - **`examples/short/`** — four short Korean fixtures (marketing, tutorial, essay, email) with paired `*-rewritten.md` files.
 - **`examples/genres/`** — three longer Korean genres (technical, academic, narrative) with paired rewrites.
 - **`examples/rewrite-axes/`** — v7 axis fixtures. `casual`/`professional` demonstrate Register; `academic`/`narrative`/`marketing`/`instructional` demonstrate Document Type. Their outputs should be checked against their own inputs; this English-lane review does not validate every linked file.
-- **`examples/viral-hook/`** — historical case studies (`case-01` through `case-09`) recording the iterative improvement workflow: viral-hook detection, codex/claude/gemini comparisons, Persona voice, and multi-Document-Type validation.
-- **`examples/sample-rewritten-*.md`** — historical model outputs for the same long-form Korean SNS marketing post, used in `case-03` for cross-model comparison. These records are not curated expected rewrites.
+- **`examples/viral-hook/`** — detection case studies (`case-01`, `case-02`) for the score-only viral-hook pack.
 
 ## What patina is checking
 

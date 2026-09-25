@@ -6,6 +6,7 @@ import { encodeStreamFrame, QUOTA_REASONS, resolveTierLimits, WEB_TIERS } from '
 import { createWebObserver } from '../src/web-observability.js';
 import { runWebRewriteStream } from '../src/web-rewrite-stream.js';
 import { createPolarLicenseValidator } from '../src/entitlement-polar.js';
+import { INCRBY_PEXPIRE_LUA, upstashFetch, upstashOrigin } from '../src/upstash-rest.js';
 
 /**
  * @param {unknown} value
@@ -31,55 +32,22 @@ function parseKvNumber(value) {
  * @returns {null|{increment(key: string, options: {ttlSeconds: number}): Promise<void>}}
  */
 export function createObservabilityRestKv(env = {}) {
-  const base = env.PATINA_OBSERVABILITY_REST_API_URL;
+  const origin = upstashOrigin(env.PATINA_OBSERVABILITY_REST_API_URL);
   const token = env.PATINA_OBSERVABILITY_REST_API_TOKEN;
-  if (!base || !token) return null;
-
-  let url;
-  try {
-    url = new URL(base);
-  } catch {
-    return null;
-  }
-  if (url.protocol !== 'https:' || url.username || url.password || url.port
-    || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.upstash\.io$/i.test(url.hostname)
-    || url.pathname !== '/' || url.search || url.hash) return null;
-
-  const INCREMENT_WITH_TTL = "local v = redis.call('INCRBY', KEYS[1], ARGV[1]) redis.call('PEXPIRE', KEYS[1], ARGV[2]) return v";
-  const root = url.origin;
+  if (!origin || !token) return null;
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   return {
     async increment(key, { ttlSeconds }) {
       const ttlMs = Math.max(1, Math.ceil(Number(ttlSeconds) * 1000));
       if (!Number.isSafeInteger(ttlMs)) throw new Error('invalid observability ttl');
-
-      const controller = new AbortController();
-      let timer;
-      const deadline = new Promise((_, reject) => {
-        timer = setTimeout(() => {
-          controller.abort();
-          reject(new Error('observability deadline exceeded'));
-        }, 45);
-      });
-      const request = (async () => {
-        const response = await globalThis.fetch(root, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(['EVAL', INCREMENT_WITH_TTL, '1', key, '1', String(ttlMs)]),
-          redirect: 'error',
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error('observability request failed');
-        const data = await response.json();
-        if (!Number.isSafeInteger(data?.result) || data.result <= 0) {
-          throw new Error('observability increment returned invalid counter');
-        }
-      })();
-      try {
-        await Promise.race([request, deadline]);
-      } finally {
-        clearTimeout(timer);
+      const data = await upstashFetch(origin, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(['EVAL', INCRBY_PEXPIRE_LUA, '1', key, '1', String(ttlMs)]),
+      }, { failureMessage: 'observability request failed', deadlineMs: 45, deadlineMessage: 'observability deadline exceeded' });
+      if (!Number.isSafeInteger(data?.result) || data.result <= 0) {
+        throw new Error('observability increment returned invalid counter');
       }
     },
   };
@@ -89,7 +57,7 @@ export function createObservabilityRestKv(env = {}) {
  * Create a dependency-free Upstash/Vercel KV REST adapter.
  *
  * @param {Record<string,string|undefined>} env
- * @returns {null|{get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options: {ttlMs: number}): Promise<number>, acquireLease(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease(registryKey: string, lease: string): Promise<boolean>, reserveQuota(plan: import('../src/quota-reservation.js').ReservationPlan): Promise<number[]>, settleQuota(plan: import('../src/quota-reservation.js').ReservationPlan, refund: boolean): Promise<number>}}
+ * @returns {null|{get(key: string): Promise<unknown>, set(key: string, val: unknown, options?: {ttlMs?: number}): Promise<void>, incr(key: string, options?: {ttlMs?: number}): Promise<number>, acquireLease(registryKey: string, lease: string, maxConcurrent: number, options: {ttlMs: number}): Promise<boolean>, releaseLease(registryKey: string, lease: string): Promise<boolean>, reserveQuota(plan: import('../src/quota-reservation.js').ReservationPlan): Promise<number[]>, settleQuota(plan: import('../src/quota-reservation.js').ReservationPlan, refund: boolean): Promise<number>}}
  */
 export function createRestKv(env = {}) {
   const base = env.KV_REST_API_URL;
@@ -107,27 +75,14 @@ export function createRestKv(env = {}) {
 
   const root = url.toString().replace(/\/+$/, '');
   const headers = { Authorization: `Bearer ${token}` };
-  const deadlineMs = 2_000;
 
-  async function request(url, init, failureMessage) {
-    const controller = new AbortController();
-    let timer;
-    const deadline = new Promise((_, reject) => {
-      timer = setTimeout(() => {
-        controller.abort();
-        reject(new Error('kv request deadline exceeded'));
-      }, deadlineMs);
-    });
-    const response = (async () => {
-      const result = await globalThis.fetch(url, { ...init, redirect: 'error', signal: controller.signal });
-      if (!result.ok) throw new Error(failureMessage);
-      return result.json();
-    })();
-    try {
-      return await Promise.race([response, deadline]);
-    } finally {
-      clearTimeout(timer);
-    }
+  /**
+   * @param {string} target
+   * @param {{method?: string, headers?: Record<string, string>, body?: string}} init
+   * @param {string} failureMessage
+   */
+  function request(target, init, failureMessage) {
+    return upstashFetch(target, init, { failureMessage, deadlineMs: 2_000, deadlineMessage: 'kv request deadline exceeded' });
   }
 
   async function read(path) {
@@ -149,7 +104,6 @@ export function createRestKv(env = {}) {
   // Quota identities use one sorted-set registry: scores are server-time expiry
   // instants and members are opaque lease capabilities.  Both operations are one
   // EVAL so no crash or client-clock window can create phantom occupancy.
-  const INCRBY_PEXPIRE_SCRIPT = "local v = redis.call('INCRBY', KEYS[1], ARGV[1]) redis.call('PEXPIRE', KEYS[1], ARGV[2]) return v";
   const ACQUIRE_LEASE_SCRIPT = "local t = redis.call('TIME') local now = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000) local ttl = tonumber(ARGV[1]) redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now) if redis.call('ZCARD', KEYS[1]) >= tonumber(ARGV[2]) then return 0 end redis.call('ZADD', KEYS[1], now + ttl, ARGV[3]) redis.call('PEXPIRE', KEYS[1], ttl) return 1";
   const RELEASE_LEASE_SCRIPT = "local t = redis.call('TIME') local now = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000) local expiry = redis.call('ZSCORE', KEYS[1], ARGV[1]) if not expiry or tonumber(expiry) <= now then return 0 end return redis.call('ZREM', KEYS[1], ARGV[1])";
 
@@ -160,16 +114,6 @@ export function createRestKv(env = {}) {
     const value = parseKvNumber(await command(args));
     if (value !== 0 && value !== 1) throw new Error('kv lease command returned invalid result');
     return value === 1;
-  }
-
-  async function incrByAtomic(key, amount, ttlMs) {
-    const data = await command([
-      'EVAL', INCRBY_PEXPIRE_SCRIPT, '1', key,
-      String(amount), String(Math.max(1, Math.ceil(ttlMs))),
-    ]);
-    const value = parseKvNumber(data);
-    if (value == null) throw new Error('kv incr returned invalid counter');
-    return value;
   }
 
   return {
@@ -215,9 +159,11 @@ export function createRestKv(env = {}) {
     },
     // Every counter is a fixed window, so the increment and its expiry are
     // one EVAL: a counter without a TTL would never reset.
-    async incr(key, { ttlMs } = /** @type {{ttlMs?: number}} */ ({})) {
+    async incr(key, { ttlMs } = {}) {
       if (!(typeof ttlMs === 'number' && ttlMs > 0)) throw new Error('kv incr requires a ttl');
-      return incrByAtomic(key, 1, ttlMs);
+      const value = parseKvNumber(await command(['EVAL', INCRBY_PEXPIRE_LUA, '1', key, '1', String(Math.max(1, Math.ceil(ttlMs)))]));
+      if (value == null) throw new Error('kv incr returned invalid counter');
+      return value;
     },
     async acquireLease(registryKey, lease, maxConcurrent, { ttlMs }) {
       return leaseCommand(ACQUIRE_LEASE_SCRIPT, registryKey, lease, maxConcurrent, ttlMs);

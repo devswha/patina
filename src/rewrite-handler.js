@@ -322,7 +322,7 @@ function setCorsHeaders(res) {
  * @param {unknown} obj
  * @returns {undefined}
  */
-export function send(res, status, obj) {
+function send(res, status, obj) {
   // If the response is already committed (an exception escaped after a stream
   // started writing frames), re-setting status/headers would throw
   // ERR_HTTP_HEADERS_SENT inside the caller's catch and reject the handler

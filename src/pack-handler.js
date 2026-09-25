@@ -29,16 +29,16 @@
 
 import { createHash } from 'node:crypto';
 
-import { extractBearerLicense } from './entitlement.js';
+import { extractBearerLicense, readPositiveInt } from './entitlement.js';
 import { extractClientIp } from './rate-limit.js';
 import { QUOTA_REASONS } from './web-rewrite-contract.js';
 
-export const DEFAULT_PACKS_REPO = 'devswha/patina-pro-packs';
-export const DEFAULT_PACKS_REF = 'main';
-export const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000;
-export const DEFAULT_REQ_PER_DAY = 200;
+const DEFAULT_PACKS_REPO = 'devswha/patina-pro-packs';
+const DEFAULT_PACKS_REF = 'main';
+const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000;
+const DEFAULT_REQ_PER_DAY = 200;
 /** Pack kinds the CLI knows how to install; anything else is rejected here. */
-export const PACK_KINDS = new Set(['pattern', 'persona', 'lexicon']);
+const PACK_KINDS = new Set(['pattern', 'persona', 'lexicon']);
 export const PACKS_REASONS = Object.freeze({
   PACKS_UNAVAILABLE: 'PACKS_UNAVAILABLE',
   PACK_NOT_FOUND: 'PACK_NOT_FOUND',
@@ -46,16 +46,6 @@ export const PACKS_REASONS = Object.freeze({
 });
 
 const sha256 = (/** @type {string} */ s) => createHash('sha256').update(s, 'utf8').digest('hex');
-
-/**
- * @param {unknown} value
- * @param {number} fallback
- * @returns {number}
- */
-function readPositiveInt(value, fallback) {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
-}
 
 /**
  * Manifest paths are plain, repo-relative POSIX paths that we publish ourselves.

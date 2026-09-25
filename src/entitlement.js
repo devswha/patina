@@ -57,7 +57,7 @@ const DEV_FALLBACK_SECRET = 'patina-local-license-secret';
  * @param {number} fallback
  * @returns {number}
  */
-function readPositiveInt(value, fallback) {
+export function readPositiveInt(value, fallback) {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 }

@@ -11,18 +11,18 @@ export const FUNNEL_PROGRESS_SCHEMA = Object.freeze({
   stage: Object.freeze(['arrival', 'first-success', 'reuse']),
 });
 
-const eventSchemas = Object.freeze({
+const eventSchemas = {
   'Funnel Progress': FUNNEL_PROGRESS_SCHEMA,
-  'Input Started': Object.freeze({ surface: ['hero', 'chat'], lang: ['en', 'ko', 'zh', 'ja'] }),
-  'Rewrite Requested': Object.freeze({ surface: ['hero', 'chat'], lang: ['en', 'ko', 'zh', 'ja'], tier: ['free', 'pro', 'byok'], mode: ['first', 'refine', 'verify'], inputBucket: ['0-99', '100-499', '500-1999', '2000+'] }),
-  'Rewrite Completed': Object.freeze({ surface: ['hero', 'chat'], lang: ['en', 'ko', 'zh', 'ja'], tier: ['free', 'pro', 'byok'], mode: ['first', 'refine', 'verify'], inputBucket: ['0-99', '100-499', '500-1999', '2000+'], latencyBucket: ['<5s', '5-10s', '10-30s', '30s+'], mpsBand: ['failed', '70-79', '80-89', '90-100'], fidelityBand: ['failed', '70-79', '80-89', '90-100'] }),
-  'Rewrite Failed': Object.freeze({ surface: ['hero', 'chat'], lang: ['en', 'ko', 'zh', 'ja'], tier: ['free', 'pro', 'byok'], mode: ['first', 'refine', 'verify'], inputBucket: ['0-99', '100-499', '500-1999', '2000+'], latencyBucket: ['<5s', '5-10s', '10-30s', '30s+'], outcome: ['preflight', 'stream', 'number-safety', 'scoring', 'floor', 'cancelled', 'quota', 'concurrency', 'service', 'input', 'auth', 'unknown'] }),
-  'Result Action': Object.freeze({ action: ['copy', 'download', 'export', 'audit'] }),
-  'Checkout Started': Object.freeze({ surface: ['pricing', 'quota'], lang: ['en', 'ko', 'zh', 'ja'] }),
-  'Tier Selected': Object.freeze({ tier: ['free', 'pro', 'byok'], surface: ['pricing', 'controls'] }),
-});
+  'Input Started': { surface: ['hero', 'chat'], lang: ['en', 'ko', 'zh', 'ja'] },
+  'Rewrite Requested': { surface: ['hero', 'chat'], lang: ['en', 'ko', 'zh', 'ja'], tier: ['free', 'pro', 'byok'], mode: ['first', 'refine', 'verify'], inputBucket: ['0-99', '100-499', '500-1999', '2000+'] },
+  'Rewrite Completed': { surface: ['hero', 'chat'], lang: ['en', 'ko', 'zh', 'ja'], tier: ['free', 'pro', 'byok'], mode: ['first', 'refine', 'verify'], inputBucket: ['0-99', '100-499', '500-1999', '2000+'], latencyBucket: ['<5s', '5-10s', '10-30s', '30s+'], mpsBand: ['failed', '70-79', '80-89', '90-100'], fidelityBand: ['failed', '70-79', '80-89', '90-100'] },
+  'Rewrite Failed': { surface: ['hero', 'chat'], lang: ['en', 'ko', 'zh', 'ja'], tier: ['free', 'pro', 'byok'], mode: ['first', 'refine', 'verify'], inputBucket: ['0-99', '100-499', '500-1999', '2000+'], latencyBucket: ['<5s', '5-10s', '10-30s', '30s+'], outcome: ['preflight', 'stream', 'number-safety', 'scoring', 'floor', 'cancelled', 'quota', 'concurrency', 'service', 'input', 'auth', 'unknown'] },
+  'Result Action': { action: ['copy', 'download', 'export', 'audit'] },
+  'Checkout Started': { surface: ['pricing', 'quota'], lang: ['en', 'ko', 'zh', 'ja'] },
+  'Tier Selected': { tier: ['free', 'pro', 'byok'], surface: ['pricing', 'controls'] },
+};
 
-const eventSlugs = Object.freeze({
+const eventSlugs = {
   'Funnel Progress': 'funnel-progress',
   'Input Started': 'input-started',
   'Rewrite Requested': 'rewrite-requested',
@@ -31,7 +31,7 @@ const eventSlugs = Object.freeze({
   'Result Action': 'result-action',
   'Checkout Started': 'checkout-started',
   'Tier Selected': 'tier-selected',
-});
+};
 
 /** @param {unknown} value */
 function isPlainObject(value) {

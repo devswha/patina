@@ -79,12 +79,12 @@ function safeError(err, secret) {
  * for the person reading the message: a truncated run hit a token ceiling,
  * while a filtered one was refused and needs different source text.
  */
-const INCOMPLETE_FINISH_REASONS = Object.freeze({
+const INCOMPLETE_FINISH_REASONS = {
   length: 'output_truncated',
   max_tokens: 'output_truncated',
   content_filter: 'output_filtered',
   refusal: 'output_filtered',
-});
+};
 
 /**
  * Why a streamed generation cannot be used as a rewrite, or undefined when it
@@ -112,11 +112,11 @@ function incompleteOutputReason(finishReason, rewrite) {
  * - `upstream_rejected` — any other non-2xx status (auth, quota-by-policy,
  *   request validation).
  */
-const UPSTREAM_FAILURES = Object.freeze({
+const UPSTREAM_FAILURES = {
   RATE_LIMITED: 'upstream_rate_limited',
   UNAVAILABLE: 'upstream_unavailable',
   REJECTED: 'upstream_rejected',
-});
+};
 
 /**
  * @param {unknown} err
@@ -253,7 +253,7 @@ export function scoringExtraBody(provider, env = {}) {
 }
 
 /** Reasoning levels the free-tier rewrite control may request. */
-const FREE_REWRITE_REASONING_LEVELS = Object.freeze(['low', 'medium', 'high']);
+const FREE_REWRITE_REASONING_LEVELS = ['low', 'medium', 'high'];
 
 /**
  * Provider-specific request fields for the REWRITE call, free tier only.

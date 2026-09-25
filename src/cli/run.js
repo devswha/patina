@@ -193,6 +193,8 @@ async function runPipeline(parsed, logger, config) {
     return;
   }
 
+  const assets = promptAssets({ voice, scoring });
+  const callArgs = backendCallArgs({ parsed, backends, resolved, timeoutMs, logger });
   const jobs = inputTexts.map(({ path, text, readError }) => ({
     path,
     text,
@@ -203,8 +205,7 @@ async function runPipeline(parsed, logger, config) {
       config,
       patterns,
       documentType,
-      voice: voice.body ? voice : null,
-      scoring: scoring.body ? scoring : null,
+      ...assets,
       text,
       mode,
       register: registerResolution,
@@ -213,7 +214,6 @@ async function runPipeline(parsed, logger, config) {
       jargon: parsed.jargon,
       rewriteHeadings: parsed.rewriteHeadings,
       persona,
-      rhetoricPolicy: resolveRhetoricPolicy(process.env),
     }),
   }));
 
@@ -242,19 +242,7 @@ async function runPipeline(parsed, logger, config) {
         let verificationReport = null;
         let meaningSafetyReason = null;
 
-        result = await invokeBackendChain({
-          backends,
-          prompt,
-          apiKey: resolved.apiKey,
-          baseURL: resolved.baseURL,
-          model: resolved.model,
-          modelSource: resolved.modelSource,
-          signal: cancellation.signal,
-          timeout: timeoutMs,
-          maxConcurrency: parsed.maxConcurrency,
-          maxRetries: parsed.maxRetries,
-          logger,
-        });
+        result = await invokeBackendChain({ ...callArgs, prompt, signal: cancellation.signal });
         cancellation.throwIfCanceled();
 
         // Meaning preservation belongs to the global rewrite contract. Persona
@@ -263,39 +251,23 @@ async function runPipeline(parsed, logger, config) {
           const stripQuiet = { warn() {} };
           if (parsed.verify) {
             const cleanRewrite = cleanRewriteOutput(result, { logger: stripQuiet });
-            const verifyCallLLM = ({ prompt: verifyPrompt, signal: verifySignal, timeout: verifyTimeout }) =>
-              invokeBackendChain({
-                backends,
-                prompt: verifyPrompt,
-                apiKey: resolved.apiKey,
-                baseURL: resolved.baseURL,
-                model: resolved.model,
-                modelSource: resolved.modelSource,
-                signal: verifySignal ?? cancellation.signal,
-                timeout: verifyTimeout ?? timeoutMs,
-                maxConcurrency: 1,
-                maxRetries: 0,
-                logger,
-              });
             const verification = await verifyRewrite({
               original: text,
               rewrite: cleanRewrite,
               config,
               patterns,
               documentType,
-              voice: voice.body ? voice : null,
+              ...assets,
               persona,
               register: registerResolution,
-              scoring: scoring.body ? scoring : null,
               promptMode,
               documentSignals: buildDocumentSignals({ text, lang }).signals,
               jargon: parsed.jargon,
               rewriteHeadings: parsed.rewriteHeadings,
-              rhetoricPolicy: resolveRhetoricPolicy(process.env),
               apiKey: resolved.apiKey,
               baseURL: resolved.baseURL,
               model: resolved.model,
-              callLLM: verifyCallLLM,
+              callLLM: verifyCallLLM(callArgs, cancellation.signal),
               signal: cancellation.signal,
               timeout: timeoutMs,
               logger,
@@ -550,6 +522,8 @@ function deterministicOnlyScoreResult(score) {
 export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
   const { config, repoRoot, voice, scoring, backends, resolved, promptMode, timeoutMs, providerName } = ctx;
   const cancellation = createCancellationController({ logger });
+  const assets = promptAssets({ voice, scoring });
+  const callArgs = backendCallArgs({ parsed, backends, resolved, timeoutMs, logger });
   const assetCache = new Map();
   const getAssets = (lang) => {
     if (assetCache.has(lang)) return assetCache.get(lang);
@@ -565,37 +539,23 @@ export async function runXliffMode(parsed, ctx, logger, overrides = {}) {
     const prompt = buildPrompt({
       config: { ...config, language: lang }, patterns,
       documentType,
-      voice: voice.body ? voice : null,
-      scoring: scoring.body ? scoring : null,
+      ...assets,
       text: core, mode: 'rewrite',
       register: null,
       promptMode, documentSignals: null,
-      rhetoricPolicy: resolveRhetoricPolicy(process.env),
     });
-    const raw = await invokeBackendChain({
-      backends, prompt, apiKey: resolved.apiKey, baseURL: resolved.baseURL,
-      model: resolved.model, modelSource: resolved.modelSource,
-      signal: cancellation.signal, timeout: timeoutMs,
-      maxConcurrency: parsed.maxConcurrency, maxRetries: parsed.maxRetries, logger,
-    });
+    const raw = await invokeBackendChain({ ...callArgs, prompt, signal: cancellation.signal });
     return cleanRewriteOutput(raw, { logger: { warn() {} } });
   });
   const verifySegment = overrides.verifySegment || (async ({ core, candidate, lang }) => {
     const { patterns, documentType } = getAssets(lang);
-    const callLLM = ({ prompt, signal, timeout }) => invokeBackendChain({
-      backends, prompt, apiKey: resolved.apiKey, baseURL: resolved.baseURL,
-      model: resolved.model, modelSource: resolved.modelSource,
-      signal: signal ?? cancellation.signal, timeout: timeout ?? timeoutMs,
-      maxConcurrency: 1, maxRetries: 0, logger,
-    });
     const v = await verifyRewrite({
       original: core, rewrite: candidate, config: { ...config, language: lang }, patterns,
       documentType,
-      voice: voice.body ? voice : null,
-      scoring: scoring.body ? scoring : null, promptMode, register: null,
-      rhetoricPolicy: resolveRhetoricPolicy(process.env),
+      ...assets,
+      promptMode, register: null,
       apiKey: resolved.apiKey, baseURL: resolved.baseURL, model: resolved.model,
-      callLLM, signal: cancellation.signal, timeout: timeoutMs, logger,
+      callLLM: verifyCallLLM(callArgs, cancellation.signal), signal: cancellation.signal, timeout: timeoutMs, logger,
     });
     return { verified: v.verified, text: v.text, mps: v.mps, fidelity: v.fidelity };
   });
@@ -764,6 +724,44 @@ export function resolvePromptMode({ backend, model }) {
   return getBackendSafety(backendName).promptMode;
 }
 
+// Transport arguments every text backend call in a run shares; each call adds
+// its prompt and abort signal.
+function backendCallArgs({ parsed, backends, resolved, timeoutMs, logger }) {
+  return {
+    backends,
+    apiKey: resolved.apiKey,
+    baseURL: resolved.baseURL,
+    model: resolved.model,
+    modelSource: resolved.modelSource,
+    timeout: timeoutMs,
+    maxConcurrency: parsed.maxConcurrency,
+    maxRetries: parsed.maxRetries,
+    logger,
+  };
+}
+
+// The injected LLM client for verifyRewrite: the run's backend chain with one
+// attempt and no concurrency, bound to the run's cancellation signal.
+function verifyCallLLM(callArgs, runSignal) {
+  return ({ prompt, signal, timeout }) => invokeBackendChain({
+    ...callArgs,
+    prompt,
+    signal: signal ?? runSignal,
+    timeout: timeout ?? callArgs.timeout,
+    maxConcurrency: 1,
+    maxRetries: 0,
+  });
+}
+
+// Prompt inputs shared by every rewrite and verify prompt in a run.
+function promptAssets({ voice, scoring }) {
+  return {
+    voice: voice.body ? voice : null,
+    scoring: scoring.body ? scoring : null,
+    rhetoricPolicy: resolveRhetoricPolicy(process.env),
+  };
+}
+
 // A comma-listed --register (preview variant comparison) resolves the first
 // value for the run-level register.
 function firstCliRegister(parsed) {
@@ -879,26 +877,16 @@ async function runPreviewJob({
       config,
       patterns,
       documentType,
-      voice: voice.body ? voice : null,
-      scoring: scoring.body ? scoring : null,
+      ...promptAssets({ voice, scoring }),
       persona,
       register: registerResolution,
       promptMode,
       jargon: parsed.jargon,
       rewriteHeadings: parsed.rewriteHeadings,
-      rhetoricPolicy: resolveRhetoricPolicy(process.env),
     };
     const invokeInputs = {
-      backends,
-      apiKey: resolved.apiKey,
-      baseURL: resolved.baseURL,
-      model: resolved.model,
-      modelSource: resolved.modelSource,
+      ...backendCallArgs({ parsed, backends, resolved, timeoutMs, logger }),
       signal: cancellation.signal,
-      timeout: timeoutMs,
-      maxConcurrency: parsed.maxConcurrency,
-      maxRetries: parsed.maxRetries,
-      logger,
     };
 
     // --ocr: extract text from page images and let it ride the same rewrite

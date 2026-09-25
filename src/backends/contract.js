@@ -20,7 +20,7 @@
 // Defaults are intentionally stable; changing a retry path means changing its
 // single owner here or in the file named above, never adding a parallel one.
 import { spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 
@@ -194,13 +194,17 @@ export function formatLimit(value) {
 // vision-capable CLI can read them from its own (otherwise empty) cwd. This
 // preserves the prompt-injection containment of the empty-cwd spawn: the CLI
 // never needs access to the caller's paths. Returns the staged filenames.
-export function stageCliImages(dir, images = []) {
-  return images.map((imagePath, index) => {
-    const ext = (/\.([a-z0-9]{1,5})$/i.exec(String(imagePath))?.[1] || 'png').toLowerCase();
-    const staged = `ocr-image-${index}.${ext}`;
-    copyFileSync(imagePath, join(dir, staged));
-    return staged;
-  });
+export function stageCliImages(dir, images = [], backendName) {
+  try {
+    return images.map((imagePath, index) => {
+      const ext = (/\.([a-z0-9]{1,5})$/i.exec(String(imagePath))?.[1] || 'png').toLowerCase();
+      const staged = `ocr-image-${index}.${ext}`;
+      copyFileSync(imagePath, join(dir, staged));
+      return staged;
+    });
+  } catch (err) {
+    throw new Error(`${backendName} backend: failed to stage image input (${err.message})`, { cause: err });
+  }
 }
 
 export function isRetryableBackendError(err, { attemptIndex = 0, signal } = {}) {
@@ -418,7 +422,7 @@ function sleepWithAbort(ms, signal, backendName) {
   });
 }
 
-function throwIfAborted(signal, message) {
+export function throwIfAborted(signal, message) {
   if (signal?.aborted) throw abortError(message);
 }
 
@@ -530,6 +534,141 @@ export function spawnOwnedCliProcess(command, args = [], options = {}, {
       return closeResult ? Promise.resolve(closeResult) : closePromise;
     },
   };
+}
+
+/**
+ * Run `fn(dir)` with a fresh temp directory that is removed once `fn`
+ * settles. CLI backends spawn from it so a prompt injection in user text
+ * cannot read or write inside the caller's repo.
+ *
+ * @template T
+ * @param {string} prefix Directory name prefix, e.g. 'patina-claude-'.
+ * @param {(dir: string) => Promise<T>} fn
+ * @returns {Promise<T>}
+ */
+export async function withCliTempDir(prefix, fn) {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  try {
+    return await fn(dir);
+  } finally {
+    try { rmSync(dir, { recursive: true, force: true }); } catch {}
+  }
+}
+
+/**
+ * Run a non-interactive CLI backend to completion and capture its output.
+ *
+ * Settles exactly once. A timeout, an abort, or a non-EPIPE stdin error kills
+ * the owned process group; every rejection waits for the child's `close` so
+ * the caller's temp-dir cleanup never races a live process.
+ *
+ * @param {object} options
+ * @param {string} options.backendName Error-message prefix, e.g. 'claude-cli'.
+ * @param {string} options.command CLI binary name.
+ * @param {string[]} options.args
+ * @param {string} options.cwd
+ * @param {NodeJS.ProcessEnv} [options.env] Child environment; inherited when omitted.
+ * @param {string} [options.stdinText] Written to stdin before it is closed.
+ * @param {boolean} [options.captureStdout=true] false discards stdout instead of piping it.
+ * @param {number} options.timeout Milliseconds; a non-finite value means no timeout.
+ * @param {AbortSignal} [options.signal]
+ * @param {string} options.notFoundHint Appended to the "CLI not found" error.
+ * @returns {Promise<{ stdout: string, stderr: string }>}
+ */
+export function runOwnedCliCapture({
+  backendName,
+  command,
+  args,
+  cwd,
+  env,
+  stdinText,
+  captureStdout = true,
+  timeout,
+  signal,
+  notFoundHint,
+}) {
+  const prefix = `${backendName} backend`;
+  return new Promise((resolve, reject) => {
+    const { proc, terminate, waitForClose } = spawnOwnedCliProcess(
+      command,
+      args,
+      { stdio: ['pipe', captureStdout ? 'pipe' : 'ignore', 'pipe'], cwd, ...(env ? { env } : {}) },
+    );
+
+    let stdout = '';
+    let stderr = '';
+    // Decode with a streaming UTF-8 decoder so multi-byte CJK characters split
+    // across pipe-read boundaries are not corrupted into U+FFFD.
+    if (captureStdout) {
+      proc.stdout.setEncoding('utf8');
+      proc.stdout.on('data', (chunk) => { stdout += chunk; });
+    }
+    proc.stderr.setEncoding('utf8');
+    proc.stderr.on('data', (chunk) => { stderr += chunk; });
+
+    let settled = false;
+    let cleanupSignal = () => {};
+    // A non-finite timeout means "no timeout": Node clamps setTimeout(fn,
+    // Infinity) to 1ms, which would SIGKILL the child almost immediately.
+    const timer = Number.isFinite(timeout)
+      ? setTimeout(() => {
+        finishReject(new Error(`${prefix}: timed out after ${timeout}ms`), { kill: true });
+      }, timeout)
+      : null;
+    if (signal) {
+      const onAbort = () => finishReject(abortError(`${prefix}: aborted`), { kill: true });
+      signal.addEventListener('abort', onAbort, { once: true });
+      cleanupSignal = () => signal.removeEventListener('abort', onAbort);
+    }
+
+    proc.on('error', (err) => {
+      if (err.code === 'ENOENT') {
+        finishReject(new Error(`${prefix}: \`${command}\` CLI not found. ${notFoundHint}`));
+      } else {
+        finishReject(new Error(`${prefix}: failed to spawn ${command} (${err.message})`));
+      }
+    });
+
+    proc.on('close', (code, sig) => {
+      if (settled) return;
+      if (code !== 0) {
+        // Signal death (OOM kill, external SIGTERM) closes with code === null.
+        const how = code === null && sig ? `terminated by ${sig}` : `exited with code ${code}`;
+        finishReject(new Error(`${prefix}: ${command} ${how}\n${stderr}`));
+        return;
+      }
+      finishResolve();
+    });
+
+    // A child that exits before draining a large prompt makes the buffered
+    // stdin write fail with EPIPE; without a handler that becomes an unhandled
+    // 'error' event that crashes the process. Ignore EPIPE (the 'close' handler
+    // surfaces the real exit code + stderr); reject on anything else.
+    proc.stdin.on('error', (err) => {
+      if (err && err.code !== 'EPIPE') {
+        finishReject(new Error(`${prefix}: stdin error (${err.message})`), { kill: true });
+      }
+    });
+    if (typeof stdinText === 'string') proc.stdin.write(stdinText);
+    proc.stdin.end();
+
+    function finishReject(err, { kill = false } = {}) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanupSignal();
+      if (kill) terminate('SIGKILL');
+      waitForClose().then(() => reject(err));
+    }
+
+    function finishResolve() {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanupSignal();
+      resolve({ stdout, stderr });
+    }
+  });
 }
 
 export function runInteractiveCommand({

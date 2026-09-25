@@ -2,7 +2,7 @@ import { splitParagraphs, splitProseSentences, tokenize } from './segment.js';
 import { detectTranslationese } from './translationese.js';
 import { koreanPostEditeseFeatures } from './stylometry.js';
 
-export const KOREAN_STRUCTURE_FINGERPRINT_SCHEMA = 'koStructureFingerprint.v1';
+const KOREAN_STRUCTURE_FINGERPRINT_SCHEMA = 'koStructureFingerprint.v1';
 
 const BULLET_RE = /^\s*(?:[-*+]|\d+[.)]|[가-힣][.)])\s+/;
 const PROBLEM_RE = /문제|과제|어려움|지연|오류|장애/;

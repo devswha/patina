@@ -8,7 +8,7 @@
 // Surface forms of a passive predicate (되다/받다/당하다/-어지다 families). Listed
 // as composed NFC syllables because the passive marker fuses into the stem
 // syllable (된다 = 되+ㄴ다), which a jamo alternation cannot match.
-export const BY_PASSIVE_PREDICATE_SOURCE =
+const BY_PASSIVE_PREDICATE_SOURCE =
   '(?:된다|된|될|됨|됐다|됐|돼|되었|되어|되는|되며|되고|됩니다|됩|받는다|받았다|받은|받을|받는|받습니다|받아|당한다|당했다|당하다|당하는|당해|(?:어|아|여)(?:진다|졌다|진|질|지는|집니다|져))';
 
 export const KO_INTERFERENCE_TRANSLATIONESE_RULES = [

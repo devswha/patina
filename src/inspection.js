@@ -8,8 +8,8 @@ import { detectLanguage } from './prose-core.js';
 import { maskInspectionNonProse } from './inspection-masks.js';
 import { classifyDiscourseShape, collectInspectionAdvisories } from './inspection-advisories.js';
 
-export const MAX_INSPECTION_CHARS = 200000;
-export const MAX_INSPECTION_DIAGNOSTICS = 2000;
+const MAX_INSPECTION_CHARS = 200000;
+const MAX_INSPECTION_DIAGNOSTICS = 2000;
 
 // Offsets are UTF-16, matching VS Code and JavaScript editor APIs. NFC analysis
 // can shorten decomposed graphemes; map each normalized unit back to its whole

@@ -981,22 +981,6 @@ ${fenceReferenceText(rewritten, { label: '## Rewritten reference' })}
   };
 }
 
-/**
- * Clamp and round a value into the inclusive 0-3 scoring range.
- *
- * @param {number|string} v Value to clamp.
- * @returns {number} Integer from 0 to 3.
- * @example
- * const value = clamp03(4.2); // 3
- */
-export function clamp03(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return 0;
-  if (n < 0) return 0;
-  if (n > 3) return 3;
-  return Math.round(n);
-}
-
 function rethrowIfAborted(err, signal) {
   if (signal?.aborted || err?.name === 'AbortError') throw err;
 }

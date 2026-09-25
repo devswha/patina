@@ -107,5 +107,3 @@ export function detectMarkupLeakage(text) {
   if (hasIndependentHit) hits.push(...corroborated);
   return { leaked: hits.length > 0, hits };
 }
-
-export { MARKUP_RULES, OBJECT_REPLACEMENT_CHAR };

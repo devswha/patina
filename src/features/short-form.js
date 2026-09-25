@@ -45,17 +45,17 @@ function removeIgnoredDashContexts(text) {
 }
 
 /** 2026 cadence pack (#879, parent #878): short-form phrasings that carry the tell alone. */
-export const CADENCE_PHRASE_RES = Object.freeze([
+const CADENCE_PHRASE_RES = Object.freeze([
   /\bthat matters\b/i,
   /\byou don't have\b[^.!?]{0,40}[.,]\s*you have\b/i,
 ]);
 
 /** A "short punchy sentence" for stack purposes, in whitespace tokens. */
-export const SHORT_STACK_MAX_TOKENS = 8;
-export const SHORT_STACK_MIN_RUN = 4;
+const SHORT_STACK_MAX_TOKENS = 8;
+const SHORT_STACK_MIN_RUN = 4;
 /** A tighter parallel fragment run ("Generic ideas. No point of view."). */
-export const SET_GROUP_MAX_TOKENS = 5;
-export const SET_GROUP_MIN_RUN = 3;
+const SET_GROUP_MAX_TOKENS = 5;
+const SET_GROUP_MIN_RUN = 3;
 
 function tokenCount(sentence) {
   return String(sentence).trim().split(/\s+/u).filter(Boolean).length;

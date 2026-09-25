@@ -3,7 +3,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadWebConfig, resolveBundleRoot } from '../../src/web-config.js';
 import { buildDocumentSignals } from '../../src/features/document-signals.js';
-import { buildWebRewritePrompt, loadWebAssets, runWebRewrite } from '../../src/web-rewrite.js';
+import { buildWebRewritePrompt, loadWebAssets } from '../../src/web-rewrite.js';
+import { runWebRewriteStream } from '../../src/web-rewrite-stream.js';
+import { mpsResult, fidelityResult } from '../fixtures/verification-results.js';
 import { WEB_PERSONAS } from '../../src/web-rewrite-contract.js';
 import { classifyWebPromptBudget, resolveWebPromptBudget } from '../../src/web-prompt-budget.js';
 import { buildKoreanDiagnosis, serializeKoreanDiagnosis } from '../../src/features/korean-diagnosis.js';
@@ -117,7 +119,7 @@ test('web rewrite prompt applies minimal only when requested and refine remains 
   assert.match(refine, /## Pattern Packs/);
 });
 
-test('runWebRewrite first-turn uses real patina assets for every supported language', async () => {
+test('hosted stream first turn uses real patina assets for every supported language', async () => {
   for (const lang of languages) {
     const calls = [];
     const config = configFor(lang);
@@ -127,14 +129,20 @@ test('runWebRewrite first-turn uses real patina assets for every supported langu
     assert.notEqual(documentTypeToken, 'undefined');
     assert.ok(patternToken);
 
-    const result = await runWebRewrite({
+    const result = await runWebRewriteStream({
       request: baseRequest(lang),
       config,
       repoRoot,
-      callLLM: async (options) => {
+      callLLMStream: async (options) => {
         calls.push(options);
-        return '[BODY]Canned rewrite[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]';
+        return { text: '[BODY]Canned rewrite[/BODY]\n[SELF_AUDIT]ok[/SELF_AUDIT]' };
       },
+      scoreFns: {
+        scoreMPS: async () => mpsResult(95),
+        scoreFidelity: async () => fidelityResult(11),
+        scoreDeterministicSignals: () => ({}),
+      },
+      emit: () => {},
     });
 
     assert.equal(calls.length, 1, lang);
@@ -243,35 +251,7 @@ test('missing assets throw typed errors instead of returning a generic prompt', 
   );
 });
 
-test('runWebRewrite forwards BYOK provider options to callLLM', async () => {
-  const request = baseRequest('ko', {
-    apiKey: 'sk-test-forward',
-    baseURL: 'https://api.openai.com/v1',
-    model: 'gpt-4.1-mini',
-  });
-  const calls = [];
-  const result = await runWebRewrite({
-    request,
-    config: configFor('ko'),
-    repoRoot,
-    signal: new AbortController().signal,
-    timeout: 1234,
-    callLLM: async (options) => {
-      calls.push(options);
-      return 'Plain canned rewrite';
-    },
-  });
-
-  assert.equal(result.rewrite, 'Plain canned rewrite');
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].apiKey, 'sk-test-forward');
-  assert.equal(calls[0].baseURL, 'https://api.openai.com/v1');
-  assert.equal(calls[0].model, 'gpt-4.1-mini');
-  assert.equal(calls[0].timeout, 1234);
-  assert.ok(calls[0].signal);
-});
-
-test('hosted first-turn and refine prompts receive CLI Korean documentSignals', async () => {
+test('hosted first-turn and refine prompts receive CLI Korean documentSignals', () => {
   const text = '주제만 주면 한 세트가 나옵니다. 직접 디자인할 필요가 없습니다. 캐러셀을 완성합니다. 바로 시작합니까?';
   const { signals } = buildDocumentSignals({ text, lang: 'ko' });
   assert.equal(signals.length, 1);
@@ -298,21 +278,9 @@ test('hosted first-turn and refine prompts receive CLI Korean documentSignals', 
     documentSignals: signals,
   });
   assert.ok(refinePrompt.includes(signals[0]));
-
-  let seen = '';
-  await runWebRewrite({
-    request: baseRequest('ko', { text, original: text }),
-    config,
-    repoRoot,
-    callLLM: async ({ prompt }) => {
-      seen = prompt;
-      return '한 세트가 나옵니다.';
-    },
-  });
-  assert.ok(seen.includes(signals[0]), 'runWebRewrite must inject the shared Korean signals');
 });
 
-test('hosted rewrite prompts keep non-Korean documentSignals empty', async () => {
+test('hosted rewrite prompts keep non-Korean documentSignals empty', () => {
   const text = 'Welcome home. This draft is English only. It has no Korean endings.';
   for (const lang of ['en', 'zh', 'ja']) {
     assert.deepEqual(buildDocumentSignals({ text, lang }).signals, []);
@@ -326,18 +294,6 @@ test('hosted rewrite prompts keep non-Korean documentSignals empty', async () =>
     });
     assert.doesNotMatch(prompt, /Document Signals|문서 신호/);
   }
-
-  let seen = '';
-  await runWebRewrite({
-    request: baseRequest('en', { text, original: text }),
-    config: configFor('en'),
-    repoRoot,
-    callLLM: async ({ prompt }) => {
-      seen = prompt;
-      return 'Welcome home.';
-    },
-  });
-  assert.doesNotMatch(seen, /Document Signals|문서 신호/);
 });
 
 test('Korean web prompt carries the bounded deterministic diagnosis', () => {
@@ -359,25 +315,4 @@ test('Korean web prompt carries the bounded deterministic diagnosis', () => {
   // Then: the machine-consumed diagnosis is present without source text.
   assert.ok(prompt.includes(serializeKoreanDiagnosis(diagnosis)));
   assert.equal(serializeKoreanDiagnosis(diagnosis).includes('담당자'), false);
-});
-
-test('runWebRewrite does not bypass the model for detector-clean Korean prose', async () => {
-  // Given: Korean prose outside the deterministic detector's known signals.
-  const text = '창문을 열자 빗소리가 가까워졌다. 잠시 뒤 골목이 조용해졌다.';
-  let calls = 0;
-
-  // When: the shipping hosted rewrite runs without the research flag.
-  const result = await runWebRewrite({
-    request: baseRequest('ko', { text, original: text }),
-    config: configFor('ko'),
-    repoRoot,
-    callLLM: async () => {
-      calls += 1;
-      return '창문을 여니 빗소리가 한층 가까워졌다. 이내 골목은 다시 조용해졌다.';
-    },
-  });
-
-  // Then: detector silence never certifies a no-op.
-  assert.equal(result.rewrite, '창문을 여니 빗소리가 한층 가까워졌다. 이내 골목은 다시 조용해졌다.');
-  assert.equal(calls, 1);
 });

@@ -10,7 +10,7 @@ import { buildTransformVariants } from './args.js';
 import { invokeBackendChain, selectBackendChain, selectOcrBackends, listBackends } from '../backends/index.js';
 import { selectProvider, resolveProviderConfig } from '../providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from '../security.js';
-import { formatOutput, formatRewriteBodyForBrowser, validateScoreWeights, buildDeterministicAuditBackstop, cleanRewriteOutput } from '../output.js';
+import { formatOutput, validateScoreWeights, buildDeterministicAuditBackstop, cleanRewriteOutput } from '../output.js';
 import {
   buildBrowserDiffPromptInput,
   renderExplanationHtml,
@@ -965,7 +965,7 @@ async function runPreviewJob({
           }),
         });
         cancellation.throwIfCanceled();
-        variantBodies.push(formatRewriteBodyForBrowser(variantRaw, { logger }));
+        variantBodies.push(cleanRewriteOutput(variantRaw, { logger }));
       }
       rewrittenBody = variantBodies[0];
     } else {
@@ -979,7 +979,7 @@ async function runPreviewJob({
         }),
       });
       cancellation.throwIfCanceled();
-      rewrittenBody = formatRewriteBodyForBrowser(rawResult, { logger });
+      rewrittenBody = cleanRewriteOutput(rawResult, { logger });
     }
 
     const previewCandidates = compareMode ? variantBodies : [rewrittenBody];

@@ -9,7 +9,6 @@ import {
   openBrowserDiffPage,
   serveBrowserDiffPage,
 } from '../../src/browser-diff.js';
-import { formatRewriteBodyForBrowser } from '../../src/output.js';
 
 test('buildBrowserDiffPromptInput carries the explicit compare contract', () => {
   const prompt = buildBrowserDiffPromptInput('before text', 'after text');
@@ -25,26 +24,6 @@ test('htmlEscape escapes markup-significant characters', () => {
     htmlEscape(`<tag attr="x">'&`),
     '&lt;tag attr=&quot;x&quot;&gt;&#39;&amp;',
   );
-});
-
-test('formatRewriteBodyForBrowser strips self-audit blocks and register footer', () => {
-  const raw = [
-    '[BODY]',
-    'Human result.',
-    '[/BODY]',
-    '',
-    '[SELF_AUDIT]',
-    '- note',
-    '[/SELF_AUDIT]',
-    '',
-    '---',
-    'register: professional',
-    'register_source: command',
-    'register_evidence: ["user-specified"]',
-    'register_confidence: high',
-    '---',
-  ].join('\n');
-  assert.strictEqual(formatRewriteBodyForBrowser(raw), 'Human result.');
 });
 
 test('writeBrowserDiffPage uses a patina-scoped temp dir and restrictive permissions', () => {

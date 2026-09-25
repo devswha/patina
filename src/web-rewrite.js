@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { callLLM as defaultCallLLM } from './api.js';
 import { inputError } from './errors.js';
 import { loadCoreFile, loadPatterns, loadDocumentType, applyDocumentTypePatternPolicy } from './loader.js';
-import { formatRewriteBodyForBrowser } from './output.js';
+import { cleanRewriteOutput } from './output.js';
 import { buildPrompt, fenceReferenceText, resolveRhetoricPolicy } from './prompt-builder.js';
 import { resolvePersonaForRun } from './personas/resolve.js';
 import { loadWebConfig, resolveBundleRoot } from './web-config.js';
@@ -240,7 +240,7 @@ export async function runWebRewrite({
   });
 
   return {
-    rewrite: formatRewriteBodyForBrowser(raw),
+    rewrite: cleanRewriteOutput(raw),
     prompt,
     provider: request.provider,
     model: request.model,

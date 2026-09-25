@@ -228,10 +228,6 @@ Checked 2026-09-08 against the issue records and the [editor client record](inte
   planned, and the issue was closed as not planned on 2026-09-08.
 - #212: no Hugging Face dataset was published; the issue was closed as
   `not_planned`.
-- The [Aside integration](integrations/aside.md#validation-boundary) is available
-  in the source checkout. Native macOS/Aside desktop acceptance was abandoned
-  by the owner on 2026-09-14 (`not_planned`); Linux CLI evidence is not a
-  desktop proof.
 - #772 (CLI-first skill execution with execution evidence) has source
   implementation present in this non-npm change, including the helper,
   installer runtime checks and default skill routing. Existing targeted tests

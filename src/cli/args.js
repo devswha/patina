@@ -886,8 +886,6 @@ EXAMPLES
   patina --score --exit-on 30 --format json draft.md
   patina --score --offline --exit-on 30 --format json draft.md
   patina doctor --json
-  patina aside options --workspace .
-  patina aside rewrite --workspace . --input draft.md --output verified.md
 
 ENVIRONMENT
   PATINA_API_KEY, PATINA_API_KEY_FILE, PATINA_API_BASE, PATINA_MODEL

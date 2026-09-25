@@ -49,7 +49,6 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 | `-h`, `--help` | ✓ | — | CLI help. |
 | `-v`, `--version` | ✓ | — | CLI version. |
 | `patina inspect [file]` | ✓ | — | CLI-only offline JSON score and source-aligned editing diagnostics ([`docs/integrations/editor-inspection.md`](integrations/editor-inspection.md)). The skill has no inspect surface. |
-| `patina aside options/rewrite` | ✓ | — | CLI-only workspace agent surface ([`docs/integrations/aside.md`](integrations/aside.md)); printed under `--help` EXAMPLES. |
 | `patina doctor` | ✓ | — | CLI environment diagnostic. |
 | `patina auth status/login` | ✓ | — | CLI authentication guidance. |
 | `patina persona new/list/show/edit/rm` | ✓ | — | CLI custom Persona lifecycle. |

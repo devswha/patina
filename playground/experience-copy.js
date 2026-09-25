@@ -8,7 +8,7 @@ export const EXPERIENCE_COPY = {
     license: 'License key', placeholder: 'License key (kept in memory)', signIn: 'Apply key', signOut: 'Clear key and chats',
     missing: 'Enter and apply your Pro license key first.',
     licenseStates: { empty: 'Use the license key from your purchase email. It stays in memory for this session.', pending: 'Key applied locally. Your first rewrite request will validate it.', checking: 'Checking the key with your rewrite request…', validated: 'Key accepted for this request. Each request checks Pro access.', unconfirmed: 'Key validation was not confirmed. Check the request error before trying again.', rejected: 'Key not accepted. Check your purchase email and subscription, then apply the correct key.' },
-    already: 'Already purchased? Apply your license key', docs: 'Docs and usage limits', portal: 'Manage subscription in Polar',
+    already: 'Already purchased? Apply your license key', docs: 'Docs and usage limits',
     authRequired: 'This request needs valid credentials (401). Apply your license key again in Pro mode, or check your AI-company key in Own key mode.',
     authDenied: 'Access was denied (403). Check the key and your subscription or AI-company access. This response does not identify the exact cause.',
     monthlyRequests: 'The monthly rewrite allowance has been reached. Check the plan limits before making another request.',
@@ -33,7 +33,7 @@ export const EXPERIENCE_COPY = {
     license: '라이선스 키', placeholder: '라이선스 키 (메모리에만 보관)', signIn: '키 적용', signOut: '키와 대화 지우기',
     missing: 'Pro 라이선스 키를 입력하고 적용해 주세요.',
     licenseStates: { empty: '구매 이메일의 라이선스 키를 입력하세요. 이번 세션의 메모리에만 보관합니다.', pending: '키를 적용했습니다. 첫 리라이트 요청에서 유효성을 확인합니다.', checking: '리라이트 요청과 함께 키를 확인하고 있습니다…', validated: '이번 요청에서 키가 승인됐습니다. 요청마다 Pro 이용 권한을 확인합니다.', unconfirmed: '키 유효성을 확인하지 못했습니다. 요청 오류를 확인한 뒤 다시 시도해 주세요.', rejected: '키가 승인되지 않았습니다. 구매 이메일과 구독 상태를 확인한 뒤 올바른 키를 적용해 주세요.' },
-    already: '이미 구매하셨나요? 라이선스 키 적용', docs: '문서와 사용 한도', portal: 'Polar에서 구독 관리',
+    already: '이미 구매하셨나요? 라이선스 키 적용', docs: '문서와 사용 한도',
     authRequired: '유효한 인증 정보가 필요합니다(401). Pro 모드에서 라이선스 키를 다시 적용하거나 내 키 모드의 AI 회사 키를 확인해 주세요.',
     authDenied: '접근이 거부됐습니다(403). 키와 구독 또는 AI 회사 이용 권한을 확인해 주세요. 이 응답만으로 정확한 원인을 알 수는 없습니다.',
     monthlyRequests: '월간 리라이트 횟수 한도에 도달했습니다. 다음 요청 전에 요금제 한도를 확인해 주세요.',
@@ -58,7 +58,7 @@ export const EXPERIENCE_COPY = {
     license: '许可证密钥', placeholder: '许可证密钥（仅保存在内存中）', signIn: '应用密钥', signOut: '清除密钥和对话',
     missing: '请先输入并应用 Pro 许可证密钥。',
     licenseStates: { empty: '使用购买邮件中的许可证密钥。它仅保留在本次会话的内存中。', pending: '密钥已在本地应用。首次改写请求将验证密钥。', checking: '正在随改写请求验证密钥…', validated: '本次请求的密钥已获准。每次请求都会检查 Pro 访问权限。', unconfirmed: '未能确认密钥有效性。请先查看请求错误，再重试。', rejected: '密钥未获准。请检查购买邮件和订阅状态，再应用正确的密钥。' },
-    already: '已经购买？应用许可证密钥', docs: '文档和使用限额', portal: '在 Polar 管理订阅',
+    already: '已经购买？应用许可证密钥', docs: '文档和使用限额',
     authRequired: '此请求需要有效凭据（401）。请在 Pro 模式重新应用许可证密钥，或检查自己的密钥模式中 AI 公司的密钥。',
     authDenied: '访问被拒绝（403）。请检查密钥及订阅或 AI 公司的权限。此响应无法说明确切原因。',
     monthlyRequests: '已达到每月改写次数限额。再次请求前请查看套餐限额。',
@@ -83,7 +83,7 @@ export const EXPERIENCE_COPY = {
     license: 'ライセンスキー', placeholder: 'ライセンスキー（メモリ内のみ保持）', signIn: 'キーを適用', signOut: 'キーと会話を消去',
     missing: '先に Pro ライセンスキーを入力して適用してください。',
     licenseStates: { empty: '購入メールのライセンスキーを使用してください。このセッションのメモリにのみ保持します。', pending: 'キーを適用しました。最初の書き換えリクエストで検証します。', checking: '書き換えリクエストとともにキーを確認中です…', validated: '今回のリクエストでキーが承認されました。各リクエストで Pro の利用権限を確認します。', unconfirmed: 'キーの有効性を確認できませんでした。リクエストのエラーを確認してから再試行してください。', rejected: 'キーが承認されませんでした。購入メールと契約状態を確認し、正しいキーを適用してください。' },
-    already: '購入済みの方：ライセンスキーを適用', docs: 'ドキュメントと利用上限', portal: 'Polar で契約を管理',
+    already: '購入済みの方：ライセンスキーを適用', docs: 'ドキュメントと利用上限',
     authRequired: '有効な認証情報が必要です（401）。Pro モードでライセンスキーを再適用するか、自分のキーモードの AI 会社のキーを確認してください。',
     authDenied: 'アクセスが拒否されました（403）。キーと契約、または AI 会社の利用権限を確認してください。この応答だけでは正確な原因は分かりません。',
     monthlyRequests: '月間書き換え回数の上限に達しました。次のリクエスト前にプランの上限を確認してください。',
@@ -116,18 +116,6 @@ export function licenseStatusAfter(status, event) {
   if (event === 'denied') return 'rejected';
   if (event === 'end' && status === 'checking') return 'unconfirmed';
   return status;
-}
-
-// Never derive a customer portal from a checkout organization name.
-export function configuredPortalHref(config) {
-  try {
-    if (typeof config?.portalUrl !== 'string') return '';
-    const url = new globalThis.URL(config.portalUrl);
-    if (url.protocol !== 'https:' || !['polar.sh', 'sandbox.polar.sh'].includes(url.hostname)
-      || url.username || url.password || url.port || url.search || url.hash
-      || !/^\/[A-Za-z0-9_-]+\/portal\/?$/.test(url.pathname)) return '';
-    return url.href;
-  } catch { return ''; }
 }
 
 // First-use copy stays separate from safety/error evidence shown after a request.

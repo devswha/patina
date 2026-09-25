@@ -535,7 +535,6 @@ for (const lang of contract.SUPPORTED_LANGS) {
     assert.equal(a.get('license-status').textContent, t.licenseStates.validated);
     assert.equal(a.ui.activeConvo().thread.original, 'A source 70%', '70/70 is accepted');
     assert.equal(a.storage.size, 0, 'no license, source or transcript may reach browser storage');
-    assert.equal(a.get('pro-portal').hidden, true, 'unconfigured portal stays hidden');
     assert.equal(a.document.querySelector('.price__badge').textContent, t.proBadge);
     assert.equal(a.document.querySelectorAll('.price')[1].querySelector('.price__name').textContent, t.byokName);
   });
@@ -639,15 +638,6 @@ test('license status cannot report success on apply, network failure or infrastr
   assert.equal(copy.licenseStatusAfter(status, 'denied'), 'rejected');
   assert.equal(copy.licenseStatusAfter(status, 'accepted'), 'validated');
 });
-
-test('portal links require an explicit safe Polar customer portal; no checkout-derived URL', () => {
-  for (const config of [null, {}, { checkoutOrigin: 'https://polar.sh', checkoutPath: '/checkout/test' },
-    ...['https://evil.invalid/org/portal', 'javascript:alert(1)', 'https://polar.sh.evil.invalid/org/portal', 'https://user@polar.sh/org/portal', 'https://polar.sh/org/portal?key=secret', 'https://polar.sh/org/checkout'].map((portalUrl) => ({ portalUrl }))]) {
-    assert.equal(copy.configuredPortalHref(config), '');
-  }
-  assert.equal(copy.configuredPortalHref({ portalUrl: 'https://polar.sh/configured-org/portal' }), 'https://polar.sh/configured-org/portal');
-});
-
 
 for (const [locale, lang] of [['ko-KR', 'ko'], ['en-US', 'en'], ['zh-Hant-TW', 'zh'], ['ja-JP', 'ja']]) {
   test(`${locale}: first screen is native and Free can send without setup`, async () => {

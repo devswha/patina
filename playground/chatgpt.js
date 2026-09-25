@@ -4,7 +4,7 @@
 // renders via safe DOM APIs.
 import { createRewriteThread, streamRewrite, classifyRewriteError, rewriteRecovery, REWRITE_ERROR_KINDS } from './rewrite-client.js';
 import { normalizePreferences } from './preferences.js';
-import { EXPERIENCE_COPY, experienceCopy, initialLanguage, onboardingCopy, licenseStatusAfter, configuredPortalHref } from './experience-copy.js';
+import { EXPERIENCE_COPY, experienceCopy, initialLanguage, onboardingCopy, licenseStatusAfter } from './experience-copy.js';
 // @ts-expect-error Served from the same public root in development and production.
 import { EXAMPLES } from '/examples/index.js';
 import { createEditReview } from './edit-review.js';
@@ -491,8 +491,6 @@ function quotaUpsell() {
 
 function wirePricingCtas() {
   $('#pro-existing')?.addEventListener('click', openLicenseControls);
-  const portal = configuredPortalHref(launchConfig);
-  if (portal) { $('#pro-portal').setAttribute('href', portal); $('#pro-portal').hidden = false; }
   const free = $('#price-free');
   if (free) free.addEventListener('click', () => {
     track('Tier Selected', { tier: 'free', surface: 'pricing' });
@@ -1653,7 +1651,7 @@ function applyExperienceCopy(lang, set) {
   set('.price__badge', copy.proBadge);
   set('.pricing .sec__title', copy.pricingTitle); set('.pricing .sec__lede', copy.pricingLede);
   set('.pricing__note', copy.pricingNote); set('#price-byok', copy.byokCta);
-  set('#pro-existing', copy.already); set('#pro-docs', copy.docs); set('#pro-portal', copy.portal);
+  set('#pro-existing', copy.already); set('#pro-docs', copy.docs);
   for (const [i, id] of ['lang', 'document-type', 'persona', 'register', 'tier'].entries()) {
     const label = $(`#${id}`).parentElement.querySelector('.ctl__label');
     if (label) label.textContent = copy.labels[i];

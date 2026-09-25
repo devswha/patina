@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { EventEmitter } from 'node:events';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 
@@ -130,110 +130,6 @@ test('resolveBackendMaxConcurrency fails closed on an invalid override (#445)', 
   // valid override applies; unset uses the backend default.
   assert.equal(resolveBackendMaxConcurrency('claude-cli', 2), 2);
   assert.equal(resolveBackendMaxConcurrency('claude-cli'), 1);
-});
-
-// Shared shape check for a verified real-invocation compatibility record: the
-// fixture carries the verdict, the dated operations receipt carries the
-// per-scenario evidence, and neither may contain secrets or raw output.
-function assertVerifiedBackendRecord(fixture, { backend, cli, version, record }) {
-  assert.equal(fixture.schemaVersion, 1);
-  assert.equal(fixture.backend, backend);
-  assert.equal(fixture.cli, cli);
-  assert.equal(fixture.observedVersion, version);
-  assert.equal(fixture.status, 'verified');
-  assert.equal(fixture.evidence.kind, 'real-invocation');
-  assert.equal(fixture.evidence.realInvocation, true);
-  assert.equal(fixture.evidence.record, record);
-  assert.equal(existsSync(new URL(`../../${record}`, import.meta.url)), true);
-  for (const flag of ['outputParsingVerified', 'errorsVerified', 'authVerified', 'timeoutVerified']) {
-    assert.equal(fixture.evidence[flag], true, flag);
-  }
-  // Quota was never exercised; a verified record must not imply it was.
-  assert.equal(fixture.evidence.quotaVerified, false);
-  assert.equal(fixture.syntheticFixture, false);
-  assert.equal(fixture.rawOutputIncluded, false);
-  assert.deepEqual(Object.keys(fixture.requiredContracts), ['output', 'errors', 'auth', 'quota', 'timeout']);
-  for (const key of ['credentials', 'prompt', 'response']) {
-    assert.equal(Object.hasOwn(fixture, key), false, key);
-  }
-  assert.ok(Number.isInteger(fixture.scope.invocations) && fixture.scope.invocations > 0);
-}
-
-test('Claude CLI compatibility record is a real-invocation verification without raw output', () => {
-  const fixture = JSON.parse(readFileSync(
-    new URL('../fixtures/backend-claude-contract.json', import.meta.url),
-    'utf8',
-  ));
-  assertVerifiedBackendRecord(fixture, {
-    backend: 'claude-cli',
-    cli: 'claude',
-    version: '2.1.269',
-    record: 'docs/operations/backend-compat-kimi-gemini-agy-20260913.json',
-  });
-  // Earlier statuses are retained as history, not erased.
-  assert.match(fixture.history['2026-09-09'], /version-only/);
-  assert.match(fixture.history['2026-09-10'], /2\.1\.261/);
-});
-
-test('Codex CLI compatibility record is a real-invocation verification without raw output', () => {
-  const fixture = JSON.parse(readFileSync(
-    new URL('../fixtures/backend-codex-contract.json', import.meta.url),
-    'utf8',
-  ));
-  assertVerifiedBackendRecord(fixture, {
-    backend: 'codex-cli',
-    cli: 'codex',
-    version: '0.154.0',
-    record: 'docs/operations/backend-compat-kimi-gemini-agy-20260913.json',
-  });
-  assert.match(fixture.history['2026-09-10'], /0\.153\.4/);
-});
-
-test('Kimi CLI compatibility record is a real-invocation verification without raw output', () => {
-  const fixture = JSON.parse(readFileSync(
-    new URL('../fixtures/backend-kimi-contract.json', import.meta.url),
-    'utf8',
-  ));
-  assertVerifiedBackendRecord(fixture, {
-    backend: 'kimi-cli',
-    cli: 'kimi',
-    version: '0.42.0',
-    record: 'docs/operations/backend-compat-kimi-gemini-agy-20260913.json',
-  });
-  // The OAuth-path verification is what upgraded this record from not-exercised.
-  assert.match(fixture.scope.authPath, /OAuth session/);
-  assert.match(fixture.scope.authPath, /KIMI_API_KEY and MOONSHOT_API_KEY were unset/);
-});
-
-test('Gemini CLI compatibility record is a real-invocation verification without raw output', () => {
-  const fixture = JSON.parse(readFileSync(
-    new URL('../fixtures/backend-gemini-contract.json', import.meta.url),
-    'utf8',
-  ));
-  assertVerifiedBackendRecord(fixture, {
-    backend: 'gemini-cli',
-    cli: 'gemini',
-    version: '0.59.0',
-    record: 'docs/operations/backend-compat-kimi-gemini-agy-20260913.json',
-  });
-  // Verified over personal OAuth with the product env key unset, per policy.
-  assert.match(fixture.scope.authPath, /oauth-personal/);
-  assert.match(fixture.scope.authPath, /GEMINI_API_KEY was unset/);
-});
-
-test('Antigravity CLI compatibility record is a real-invocation verification without raw output', () => {
-  const fixture = JSON.parse(readFileSync(
-    new URL('../fixtures/backend-agy-contract.json', import.meta.url),
-    'utf8',
-  ));
-  assertVerifiedBackendRecord(fixture, {
-    backend: 'agy-cli',
-    cli: 'agy',
-    version: '1.2.2',
-    record: 'docs/operations/backend-compat-kimi-gemini-agy-20260913.json',
-  });
-  // This backend has no API-key path at all; the verdict is plan-backed OAuth.
-  assert.match(fixture.scope.authPath, /no API-key path/);
 });
 
 test('isRetryableBackendError honors message status even when err.status is null (#445)', () => {

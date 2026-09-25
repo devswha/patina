@@ -175,7 +175,7 @@ export async function runSkill(argv, { spawnImpl = spawn, signal } = {}) {
     const [{ invokeCli, cliVerification }, { loadConfig }, { selectBackendChain },
       { selectProvider, resolveProviderConfig }, { resolveHttpApiKey, providerHttpKeyEnvVars },
       { droppedNumbers }, { isWellFormedText }, { resolveLocalCliModel }] = await Promise.all([
-      import('../src/aside/runner.js'), import('../src/config.js'), import('../src/backends/index.js'),
+      import('../src/cli-child.js'), import('../src/config.js'), import('../src/backends/index.js'),
       import('../src/providers.js'), import('../src/auth.js'), import('../src/verify.js'), import('../src/edit-controls.js'), import('../src/model-defaults.js'),
     ]);
     const invoke = args => invokeCli(args, { cwd: process.cwd(), env: process.env, signal, timeoutMs: remaining(),

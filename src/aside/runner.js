@@ -2,18 +2,15 @@ import { spawn } from 'node:child_process';
 import { link, lstat, mkdtemp, open, realpath, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { fileURLToPath } from 'node:url';
-import { TextDecoder } from 'node:util';
 import { createTextEdits, isWellFormedText, normalizeProtectedSpans, validateProtectedText } from '../edit-controls.js';
 import { detectLanguage } from '../prose-core.js';
 import { droppedNumbers } from '../verify.js';
 import { MPS_FLOOR, FIDELITY_FLOOR, isWebPersonaAllowed } from '../web-rewrite-contract.js';
+import { CliChildError, cliVerification, invokeCli } from '../cli-child.js';
 import { AsideError, hashAsideText, normalizeAsideSettings, readAsideSettings, readAsideUtf8, resolveAsideWorkspace } from './options.js';
 
-const CLI_PATH = fileURLToPath(new URL('../../bin/patina.js', import.meta.url));
 const MAX_TEXT_LENGTH = 20_000;
 const MAX_TEXT_BYTES = MAX_TEXT_LENGTH * 4;
-const MAX_STDOUT_BYTES = 256 * 1024;
 export const ASIDE_REWRITE_TIMEOUT_MS = 180_000;
 
 function checkAbort(signal, deadline) {
@@ -32,21 +29,6 @@ function mergeOverrides(settings, overrides) {
   // An omitted CLI flag is undefined; it must not reset a saved selection.
   const selected = Object.fromEntries(Object.entries(overrides).filter(([, value]) => value !== undefined));
   return normalizeAsideSettings({ ...settings, ...selected });
-}
-
-export function cliVerification(value) {
-  const bounded = number => typeof number === 'number' && Number.isFinite(number) && number >= 0 && number <= 100;
-  const reasons = ['passed', 'passed-on-retry', 'floor-not-met', 'retry-error', 'dropped-numbers', 'numeric-claim-changed', 'output-changed'];
-  if (!value || typeof value !== 'object' || Array.isArray(value)
-    || typeof value.verified !== 'boolean' || typeof value.retried !== 'boolean'
-    || !bounded(value.mps) || !bounded(value.fidelity)
-    || !bounded(value.mpsFloor) || !bounded(value.fidelityFloor) || !reasons.includes(value.reason)
-    || typeof value.outputHash !== 'string' || !/^[a-f0-9]{64}$/.test(value.outputHash)) return null;
-  if (value.verified && value.reason !== (value.retried ? 'passed-on-retry' : 'passed')) return null;
-  // Whitelist scalar evidence only; never reflect arbitrary child JSON or text.
-  return { verified: value.verified, mps: value.mps, fidelity: value.fidelity,
-    retried: value.retried, reason: value.reason, mpsFloor: value.mpsFloor, fidelityFloor: value.fidelityFloor,
-    outputHash: value.outputHash };
 }
 
 function bindTerms(original, terms) {
@@ -87,59 +69,6 @@ async function requireMissingOutput(path) {
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
   }
-}
-
-/** Spawn the shipped CLI only. Drafts travel in a private snapshot file. */
-export function invokeCli(args, { cwd, env, signal, timeoutMs, spawnImpl }) {
-  return new Promise((resolveResult, reject) => {
-    let child;
-    let timer;
-    let settled = false;
-    const chunks = [];
-    let bytes = 0;
-    const finish = (error, exitCode = null) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-      if (error) {
-        // A separate POSIX process group includes the backend's children.
-        // Windows can only guarantee termination of the direct CLI process.
-        try { if (process.platform !== 'win32' && child?.pid) process.kill(-child.pid, 'SIGKILL'); } catch {}
-        try { child?.kill('SIGKILL'); } catch {}
-        child?.stdout?.destroy();
-        child?.unref();
-        reject(error);
-      } else {
-        try {
-          resolveResult({ exitCode, stdout: exitCode === 0 || exitCode === 4 ? new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks)) : '' });
-        } catch {
-          if (exitCode === 4) resolveResult({ exitCode, stdout: '' });
-          else reject(new AsideError('invalid_cli_json'));
-        }
-      }
-    };
-    const onAbort = () => finish(new AsideError('aborted'));
-    try {
-      if (signal?.aborted) return onAbort();
-      child = spawnImpl(process.execPath, [CLI_PATH, ...args], {
-        cwd, env, shell: false, windowsHide: true, detached: process.platform !== 'win32',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      });
-      child.on('error', () => finish(new AsideError('cli_start_failed')));
-      child.on('close', code => finish(null, code));
-      child.stdout.on('error', () => finish(new AsideError('cli_output_failed')));
-      child.stdout.on('data', chunk => {
-        const buffer = Buffer.from(chunk);
-        bytes += buffer.length;
-        if (bytes > MAX_STDOUT_BYTES) return finish(new AsideError('cli_output_limit'));
-        chunks.push(buffer);
-      });
-      signal?.addEventListener('abort', onAbort, { once: true });
-      timer = setTimeout(() => finish(new AsideError('timeout')), timeoutMs);
-      if (signal?.aborted) onAbort();
-    } catch { finish(new AsideError('cli_start_failed')); }
-  });
 }
 
 /**
@@ -262,7 +191,7 @@ export async function runAsideRewrite({
       verification: { ...result.verification, verified: true, protectedTermsVerified: true },
     };
   } catch (error) {
-    const code = error instanceof AsideError ? error.code : 'rewrite_failed';
+    const code = error instanceof AsideError || error instanceof CliChildError ? error.code : 'rewrite_failed';
     const rejection = ['input_changed', 'invalid_cli_json', 'invalid_cli_output', 'invalid_cli_verification', 'cli_output_limit'].includes(code);
     return { ...result, status: rejection ? 'rejected' : 'error', code,
       exitCode: rejection ? 4 : code.startsWith('invalid_') ? 2 : 1 };

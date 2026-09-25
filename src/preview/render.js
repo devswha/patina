@@ -230,9 +230,7 @@ function groupTransformVariants(variants) {
       group = { key, label: key === 'keep' ? 'cleanup' : key, options: [] };
       groups.push(group);
     }
-    const parts = [];
-    if (variant.register) parts.push(variant.register);
-    group.options.push({ label: parts.join('·') || 'default', variantIndex: index + 1 });
+    group.options.push({ label: variant.register || 'default', variantIndex: index + 1 });
   });
   return groups;
 }

@@ -1,4 +1,5 @@
 import { listBackendNames } from '../backends/index.js';
+import { DEFAULT_BEST_MODELS } from '../model-defaults.js';
 import { inputError } from '../errors.js';
 import { basename } from 'node:path';
 
@@ -429,9 +430,7 @@ export function buildTransformVariants(parsed) {
   const variants = [];
   for (const jargon of jargons) {
     for (const register of registerList) {
-      const parts = [];
-      if (jargon !== 'keep') parts.push(jargon);
-      let label = parts.join('+');
+      let label = jargon !== 'keep' ? jargon : '';
       if (compareRegister) label = label ? `${label}·${register}` : register;
       variants.push({ jargon, register, label: label || 'cleanup' });
     }
@@ -647,7 +646,7 @@ export function validateOutputRouting(parsed) {
 // Run this before the generic validators so errors are XLIFF-specific.
 export function validateXliffRequest(parsed) {
   if (!parsed.xliff) {
-    // --dry-run and --max-segments are XLIFF-only in this MVP.
+    // --dry-run and --max-segments are XLIFF-only.
     if (parsed.dryRun) {
       throw inputError('--dry-run requires --xliff',
         '--dry-run only reports an XLIFF humanize plan; it has no meaning for the normal rewrite modes.',
@@ -672,7 +671,7 @@ export function validateXliffRequest(parsed) {
   for (const [key, flag] of incompatible) {
     if (parsed[key] !== undefined && parsed[key] !== false) {
       throw inputError(`${flag} cannot be combined with --xliff`,
-        `--xliff is a meaning-preserving localization pass over translated <target> segments; ${flag} is not part of that surface in this MVP.`,
+        `--xliff is a meaning-preserving localization pass over translated <target> segments; ${flag} is not part of that surface.`,
         `Drop ${flag}, or run it separately without --xliff.`);
     }
   }
@@ -777,6 +776,7 @@ function parseFailureRateOption(value, option) {
 
 export function printHelp() {
   const backendChoices = listBackendNames().join(', ');
+  const models = DEFAULT_BEST_MODELS;
   console.log(`patina — AI text humanizer CLI
 
 Usage: patina [command] [options] [file...]
@@ -861,9 +861,9 @@ DOCUMENT & VOICE
 
 MODEL & AUTH
   --model <id>            Single model ID. Defaults use the strongest
-                          documented model per backend: openai/codex gpt-5.5,
-                          claude-sonnet-4-6, gemini-2.5-pro,
-                          kimi-code/kimi-for-coding, agy gemini-3.7-flash-medium.
+                          documented model per backend: openai/codex ${models.codexCli},
+                          ${models.claudeCli}, ${models.geminiCli},
+                          ${models.kimiCli}, agy ${models.agyCli}.
   --api-key-file <path>   Read API key from file (recommended)
   --base-url <url>        API base URL (or PATINA_API_BASE env)
   --backend <name[,name]> Backend or explicit fallback chain:
@@ -898,7 +898,6 @@ EXIT CODES
   0 success · 1 runtime/backend · 2 input/usage · 3 score gate exceeded · 4 verify floor / dropped number · 130 interrupted
 
 LLM-backed modes require an API key or a logged-in local CLI backend. Use
---score --offline for deterministic scoring with no backend call. Auto-fallback
-was removed in v3.9 to keep agent-mode backends opt-in (issue #88).
+--score --offline for deterministic scoring with no backend call.
 `);
 }

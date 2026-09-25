@@ -1,28 +1,12 @@
-// Portability probe (#881, parent #878) — deterministic, LLM-free.
+// Portability probe, deterministic and LLM-free: a sentence that would stay
+// equally true if the product, company, or person were swapped carries no point
+// of view. It only reports; it never supplies a detail the source lacks.
 //
-// The field notes record slop's definition moving from vocabulary to ABSENCE OF
-// POINT OF VIEW: text that is not badly written, just text anyone could have
-// written. The portability test is the cheap version of that — if swapping the
-// product, company, or person would leave a sentence equally true, it carries no
-// point of view.
-//
-// DETECT ONLY, on purpose. docs/research/2026-rewrite-efficacy-study4.md tested
-// the rewrite-side version of this idea (H-4b: a specificity-preservation block
-// on the rewrite prompt) and the verdict was NOT supported — the constrained
-// rewrite read *more* AI-like, the model obeyed the length floor in only 56% of
-// documents, and guard rail 1 (the meaning gate) was violated at 50/54. Nothing
-// shipped from that study. So this module reports; it never rewrites, and it
-// never supplies a detail the source lacks.
-//
-// A sentence counts as ANCHORED when it carries at least one specificity anchor:
-// a number, inline code, a quoted term, or a proper noun (a non-opening
-// capitalized token in Latin script; a Latin-script run inside CJK prose, where
-// product and API names are the usual carriers). Everything else is portable.
-//
-// False-positive control is the whole reason this fires on a RUN rather than a
-// sentence. A genuine one-line summary — a README intro, an abstract opener — is
-// portable by nature and must stay cold, so the probe needs several portable
-// sentences AND a portable majority before it says anything.
+// A sentence is ANCHORED when it carries a number, inline code, a quoted term, or
+// a proper noun (a non-opening capitalized Latin token, or a Latin-script run
+// inside CJK prose). The probe fires on a run, not a sentence: a one-line summary
+// such as a README intro is portable by nature, so it needs several portable
+// sentences AND a portable majority.
 
 import { splitProseSentences, splitParagraphs } from './segment.js';
 

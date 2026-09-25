@@ -163,9 +163,8 @@ export function collectInspectionAdvisories(text, {
       });
     }
   }
-  // #881: point-of-view absence. Detect only — the rewrite-side version of this
-  // idea failed Study 4 (H-4b not supported, meaning gate violated 50/54), so the
-  // probe reports and never asks the rewriter to invent a missing detail.
+  // Point-of-view absence. Detect only: the probe never asks the rewriter to
+  // invent a missing detail.
   const portability = omitsPortabilityAdvisory(documentType) ? null : assessPortability(text, { lang: language });
   if (portability?.trip) {
     advisories.push({

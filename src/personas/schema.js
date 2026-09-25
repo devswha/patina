@@ -1,4 +1,3 @@
-// patina-lane: B (persona / LLM rewrite) — persona config SSOT. See docs/ARCHITECTURE.md.
 // Persona frontmatter schema + validation (patina.persona.v2).
 //
 // A persona is a reusable voice definition. Its YAML frontmatter is the

@@ -18,8 +18,6 @@ COPY patterns ./patterns
 COPY document-types ./document-types
 COPY personas ./personas
 COPY lexicon ./lexicon
-COPY assets/aside ./assets/aside
-COPY integrations/aside ./integrations/aside
 COPY .patina.default.yaml README.md LICENSE ./
 RUN chmod +x bin/patina.js \
   && ln -s /app/bin/patina.js /usr/local/bin/patina \

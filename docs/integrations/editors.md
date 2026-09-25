@@ -29,10 +29,6 @@ shipped.
 
 ## What remains supported
 
-- The [Aside CLI integration](aside.md) preview: load the bundled skill
-  through Aside's custom-skill creator and open `patina aside options`.
-  Native Aside desktop acceptance is not planned (owner decision,
-  2026-09-14).
 - The offline [editor inspection](editor-inspection.md) contract: `patina
   inspect` returns a deterministic local score and source-aligned diagnostics
   without invoking a model or reading provider credentials. Any editor can

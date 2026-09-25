@@ -26,6 +26,20 @@ test('retired pattern commands reject at the CLI seam without fetching or output
   assert.equal(log.mock.callCount(), 0);
 });
 
+test('removed aside command rejects as a usage error without output', async (t) => {
+  const log = t.mock.method(console, 'log', () => {});
+  for (const args of [['aside'], ['aside', '--help'], ['aside', 'options', '--workspace', '.'], ['aside', 'skill'],
+    ['aside', 'rewrite', '--input', 'draft.md', '--output', 'verified.md']]) {
+    await assert.rejects(main(args), (error) => {
+      assert.ok(error instanceof PatinaCliError, args.join(' '));
+      assert.equal(error.exitCode, 2, args.join(' '));
+      assert.equal(error.what, 'patina aside was removed');
+      return true;
+    });
+  }
+  assert.equal(log.mock.callCount(), 0);
+});
+
 test('licensed Pro pack list still dispatches with its license and JSON contract', async (t) => {
   const output = [];
   t.mock.method(console, 'log', (text) => output.push(JSON.parse(text)));

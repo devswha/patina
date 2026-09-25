@@ -528,7 +528,7 @@ calls, no API key — CI-safe.
 Gates (non-zero exit on any violation, even under `--quiet`):
 
 - `positive_zero_score_rate` — hard-evidence positives (near-proof markup
-  leakage / structural) whose final score is 0. Must be 0. This catches the
+  leakage) whose final score is 0. Must be 0. This catches the
   regression where a short AI-leaked snippet scored 0 because `skipped=true`
   discarded the hard evidence floor.
 - `false_positive_rate` — clean controls whose final score is > 0 at LLM 0.

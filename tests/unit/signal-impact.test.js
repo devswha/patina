@@ -74,7 +74,6 @@ test('ALL_SIGNALS lists every hot disjunct used by analyzeText', () => {
     'thematic_break',
     'ko_ending_monotony',
     'markup_leakage',
-    'structural_model',
   ]) {
     assert.ok(ALL_SIGNALS.includes(name), `${name} should be a known signal`);
   }

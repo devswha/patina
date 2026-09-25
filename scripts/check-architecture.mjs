@@ -71,24 +71,6 @@ export const AUDITED_EXCEPTIONS = Object.freeze([
     reason: 'Resolves the bundled lexicon path deterministically.',
   },
   {
-    rule: 'features-no-model-network',
-    from: 'src/features/structural-model-loader.js',
-    target: 'node:fs',
-    reason: 'Reads an explicitly configured local structural classifier artifact.',
-  },
-  {
-    rule: 'features-no-model-network',
-    from: 'src/features/structural-model-loader.js',
-    target: 'node:path',
-    reason: 'Resolves a local structural classifier artifact.',
-  },
-  {
-    rule: 'features-no-model-network',
-    from: 'src/features/structural-model-loader.js',
-    target: 'node:os',
-    reason: 'Uses the local home directory only for an explicit model-path fallback.',
-  },
-  {
     rule: 'browser-no-server-secret',
     from: 'playground/chatgpt.js',
     target: 'src/web-rewrite-contract.js',

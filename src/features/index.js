@@ -15,10 +15,4 @@ export {
   koreanPostEditeseFeatures, koreanEndingMonotony, detectKoreanRegister,
 } from './stylometry.js';
 export { loadLexicon, computeDensity } from './lexicon.js';
-export { extractStructuralFeatures, structuralFeatureRecord, STRUCTURAL_FEATURE_NAMES } from './structural-features.js';
-export {
-  applyScaler, fitScaler, normalizeStructuralModel, predictStructuralScore,
-  structuralModelVerdict, thresholdForMaxFpr, trainLogReg,
-} from './structural-classifier.js';
-export { loadStructuralModel, resolveStructuralModelPath } from './structural-model-loader.js';
 export { buildDocumentSignals } from './document-signals.js';

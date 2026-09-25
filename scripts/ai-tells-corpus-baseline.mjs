@@ -101,13 +101,12 @@ function detectorSignals(result) {
     thematicBreak: paras.some((p) => p.thematicBreakHot),
     endingMonotony: paras.some((p) => p.endingMonotonyHot),
     markupLeakage: Boolean(result.markupLeakage?.leaked),
-    structuralClassifier: result.structuralClassifier?.hot === true,
   };
 }
 
 const SIGNAL_NAMES = [
   'burstiness', 'mattr', 'lexicon', 'koDiagnostics', 'candor',
-  'thematicBreak', 'endingMonotony', 'markupLeakage', 'structuralClassifier',
+  'thematicBreak', 'endingMonotony', 'markupLeakage',
 ];
 
 function emptyConfusion() {

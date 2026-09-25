@@ -75,7 +75,6 @@ export function inspectText(text, { language = 'auto', file = '', config, repoRo
     config: settings,
     patterns,
     repoRoot,
-    logger: { warn() {} },
     analyzer: (value, options) => {
       lexicon = options.lexicon ?? loadLexicon(lang, repoRoot);
       analysis = analyzeText(value, { ...options, lexicon });
@@ -114,17 +113,6 @@ export function inspectText(text, { language = 'auto', file = '', config, repoRo
       severity: 'warning',
       message: 'Model-output markup or self-identification is present.',
       signals: ['model-output-leakage'],
-    });
-  }
-  if (analysis.structuralClassifier?.hot) {
-    add({
-      start: 0,
-      end: text.length,
-      code: 'structural-model',
-      scope: 'document',
-      severity: 'warning',
-      message: 'The configured structural model flagged this document.',
-      signals: ['structural-model'],
     });
   }
   for (let i = 0; i < paragraphs.length; i++) {

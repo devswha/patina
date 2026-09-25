@@ -339,28 +339,17 @@ test('deterministic markup-leakage short-circuits the score into the heavily-AI 
   assert.strictEqual(clean.bands.markupLeakage.leaked, false);
   assert.ok(clean.overall < 90, `clean prose should not hit the leakage floor, got ${clean.overall}`);
 });
-test('configured structural-model load failure warns and preserves deterministic leakage floor', () => {
-  const warnings = [];
-  const leaked = scoreDeterministicSignals({
-    text: [
-      'I rewrote the parser this morning and it finally handles nested quotes without choking on them.',
-      'According to turn0search1 the phrasing still needs work, yet the overall structure holds together fine.',
-      'We shipped it behind a flag and watched the logs over lunch. Nothing broke.',
-    ].join('\n\n'),
-    config: {
-      ...loadConfig(),
-      stylometry: {
-        ...loadConfig().stylometry,
-        structural_model: { path: './does-not-exist-structural-model.json' },
-      },
-    },
-    logger: { warn: (event, fields) => warnings.push({ event, ...fields }) },
+test('deterministic band payload carries only the shipped signals', () => {
+  const keys = ['burstiness', 'mattr', 'lexicon', 'koDiagnostics', 'markupLeakage', 'discourseTells'];
+  const scored = scoreDeterministicSignals({ text: '오늘은 날씨가 좋았다. 점심을 먹었다.', config: loadConfig() });
+  assert.deepStrictEqual(Object.keys(scored.bands), keys);
+  const config = loadConfig();
+  const disabled = scoreDeterministicSignals({
+    text: 'A short note.',
+    config: { ...config, language: 'en', stylometry: { ...config.stylometry, languages: ['ko'] } },
   });
-
-  assert.strictEqual(leaked.bands.markupLeakage.leaked, true);
-  assert.ok(leaked.overall >= 90, `expected leakage floor, got ${leaked.overall}`);
-  assert.notStrictEqual(leaked.skipReason, 'deterministic-failure');
-  assert.ok(warnings.some((entry) => entry.event === 'score.structural_model_load_failure'));
+  assert.strictEqual(disabled.skipReason, 'language-disabled');
+  assert.deepStrictEqual(Object.keys(disabled.bands), keys);
 });
 
 test('discourse tells are attributed to the paragraphs that carry them (#391)', () => {
@@ -518,7 +507,7 @@ test('reconcileScoreOverall enforces the hard evidence floor on skipped short te
 });
 
 // --- P0 follow-up: hard evidence floor also binds NON-skipped text ----------
-// A near-proof leakage/structural floor must hold even for normal-length text
+// A near-proof leakage floor must hold even for normal-length text
 // when the LLM lands within the divergence threshold below it. Previously the
 // floor only applied to skipped text, so a leaked long document could be
 // undercut to just under the floor by an LLM inside the threshold band.
@@ -612,7 +601,7 @@ test('scoreText floors a short AI-leaked snippet even when the LLM returns 0', a
   assert.strictEqual(clean.scorePreference, undefined);
 });
 
-// Producer-side locks (injected analyzer, no private model / no lexicon reliance):
+// Producer-side locks (injected analyzer, no lexicon reliance):
 // pin that evidenceFloor carries ONLY the hard document-level floors and that a
 // short hot-ratio-only paragraph never manufactures a floor. Guards against a
 // future regression to evidenceFloor = Math.max(hotRatioOverall, ...).
@@ -621,7 +610,6 @@ test('scoreDeterministicSignals keeps the coarse hot ratio OUT of evidenceFloor 
     paragraphs: [{ hot: true }, { hot: true }],
     markupLeakage: { leaked: false, hits: [] },
     discourseTells: null,
-    structuralClassifier: { available: false, hot: null, score: null },
     skipped: true,
     skipReason: 'sentences<=2',
   });
@@ -642,34 +630,6 @@ test('scoreDeterministicSignals keeps the coarse hot ratio OUT of evidenceFloor 
   });
   assert.strictEqual(reconciled.overall, 0);
   assert.strictEqual(reconciled.scorePreference, null);
-});
-
-test('scoreDeterministicSignals floors skipped text on a structural-only verdict', () => {
-  const structuralOnly = () => ({
-    paragraphs: [{ hot: false }],
-    markupLeakage: { leaked: false, hits: [] },
-    discourseTells: null,
-    structuralClassifier: { available: true, hot: true, score: 0.8 },
-    skipped: true,
-    skipReason: 'paragraphs<=2',
-  });
-  const det = scoreDeterministicSignals({
-    text: 'x',
-    config: loadConfig(),
-    analyzer: structuralOnly,
-  });
-  assert.strictEqual(det.skipped, true);
-  // max(STRUCTURAL_CLASSIFIER_MIN_FLOOR 70, round(0.8*100) 80) = 80, no leakage.
-  assert.strictEqual(det.evidenceFloor, 80);
-  assert.strictEqual(det.overall, 80);
-
-  const reconciled = reconcileScoreOverall({
-    llmOverall: 0,
-    deterministicScore: det,
-    config: loadConfig(),
-  });
-  assert.strictEqual(reconciled.overall, 80);
-  assert.strictEqual(reconciled.scorePreference?.reason, 'deterministic-evidence-floor');
 });
 
 // --- P1: short-form (social/marketing) em-dash evidence floor ---------------

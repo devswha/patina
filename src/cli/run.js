@@ -330,7 +330,7 @@ async function runPipeline(parsed, logger, config) {
         }
         const auditBackstop =
           mode === 'audit' && (parsed.format ?? 'markdown') !== 'json' && !parsed.batch
-            ? buildDeterministicAuditBackstop(text, { lang, repoRoot, config, logger })
+            ? buildDeterministicAuditBackstop(text, { lang, repoRoot })
             : '';
         let personaReport = null;
         if (persona && mode === 'rewrite') {
@@ -437,7 +437,6 @@ async function runOfflineScore(parsed, { config, patterns, repoRoot }, logger) {
         config,
         patterns,
         repoRoot,
-        logger,
       });
       if (!deterministicScore) {
         throw inputError(
@@ -1016,19 +1015,19 @@ async function runPreviewJob({
     // text, so the "before" must too (rewriteText), or the chip would compare
     // unequal scopes and misreport the change. Compare mode scores every
     // variant so the chip shows where each one lands.
-    const beforeScore = scoreDeterministicSignals({ text: rewriteText, config, repoRoot, logger });
+    const beforeScore = scoreDeterministicSignals({ text: rewriteText, config, repoRoot });
     let scoreChip = null;
     if (!beforeScore?.skipped && beforeScore?.overall !== null && beforeScore?.overall !== undefined) {
       if (compareMode) {
         const parts = transformVariants.map((variant, index) => {
-          const variantScore = scoreDeterministicSignals({ text: variantBodies[index], config, repoRoot, logger });
+          const variantScore = scoreDeterministicSignals({ text: variantBodies[index], config, repoRoot });
           return !variantScore?.skipped && variantScore?.overall !== null && variantScore?.overall !== undefined
             ? `${variant.label} ${variantScore.overall}`
             : null;
         }).filter(Boolean);
         scoreChip = parts.length > 0 ? `score ${beforeScore.overall} → ${parts.join(' · ')}` : null;
       } else {
-        const afterScore = scoreDeterministicSignals({ text: rewrittenBody, config, repoRoot, logger });
+        const afterScore = scoreDeterministicSignals({ text: rewrittenBody, config, repoRoot });
         scoreChip = !afterScore?.skipped && afterScore?.overall !== null && afterScore?.overall !== undefined
           ? `score ${beforeScore.overall} → ${afterScore.overall}`
           : null;
@@ -1216,7 +1215,7 @@ export function warnIfAlreadyHuman({ text, config = {}, repoRoot, logger, scorer
 }
 
 function withDeterministicScore(rawResult, { text, config, repoRoot, logger }) {
-  const deterministicScore = scoreDeterministicSignals({ text, config, repoRoot, logger });
+  const deterministicScore = scoreDeterministicSignals({ text, config, repoRoot });
   const llmOverall = extractScoreOverall(rawResult, rawResult);
   const reconciliation = reconcileScoreOverall({
     llmOverall,

@@ -1,28 +1,13 @@
-// Backend resilience contract — single owner per concern (C3).
-//
-// To avoid duplicated or compounding retries, each resilience concern has
-// exactly ONE owner:
-//
-//   * Transport retry (same provider, same request) — src/api.js `callLLM`.
-//     Retries up to `maxRetries` times on retryable HTTP/network errors with
-//     exponential backoff + jitter, bounded by the deadline. CLI backends pass
-//     maxRetries=0 (see BACKEND_SAFETY_DEFAULTS) so they never transport-retry.
-//   * Backend fallback (different backend) — src/backends/index.js
-//     `invokeBackendChain`. On a retryable error it advances to the NEXT backend
-//     in the chain; it NEVER re-invokes the same backend (that is transport
-//     retry's job). `isRetryableBackendError` (here) is the shared predicate.
-//   * Schema retry (re-ask for valid JSON) — src/scoring.js `callAndParseJson`.
-//     Exactly one extra attempt at temperature 0 on a JSON-parse/schema failure.
-//   * Timeout & concurrency — this module: `DEFAULT_BACKEND_TIMEOUT_MS`,
-//     `resolveBackendMaxConcurrency`, `withBackendConcurrencySlot`,
-//     `resolveBackendMaxRetries`.
-//
-// Defaults are intentionally stable; changing a retry path means changing its
-// single owner here or in the file named above, never adding a parallel one.
+// Shared backend contract: per-backend safety defaults, the cross-process
+// concurrency slot, the fallback predicate, and the local CLI process runner.
+// Each retry has one owner: transport retry in callLLM (api.js; CLI backends
+// get maxRetries=0), backend fallback in invokeBackendChain (it never
+// re-invokes the same backend), schema retry in scoring.js.
 import { spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
+import { DEFAULT_MAX_RETRIES, abortError } from '../llm-transport.js';
 
 /**
  * Resolve how a bare CLI name must be spawned on the current platform.
@@ -93,7 +78,6 @@ export function probeCliAvailability(command, { platform = process.platform, env
   }
 }
 export const DEFAULT_BACKEND_TIMEOUT_MS = 600_000;
-export const DEFAULT_HTTP_MAX_RETRIES = 2;
 export const PROMPT_SIZE_WARNING_CHARS = 20_000;
 export class TimeoutError extends Error {
   constructor(message) {
@@ -102,51 +86,42 @@ export class TimeoutError extends Error {
   }
 }
 
-
-export const BACKEND_SAFETY_DEFAULTS = Object.freeze({
+const BACKEND_SAFETY_DEFAULTS = Object.freeze({
   'openai-http': {
     maxConcurrency: 4,
-    maxRetries: DEFAULT_HTTP_MAX_RETRIES,
+    maxRetries: DEFAULT_MAX_RETRIES,
     promptMode: 'strict',
     agentRuntime: false,
-    // Only the OpenAI-compatible HTTP backend builds a chat-completions body,
-    // so structured-output request fields (response_format) apply here alone.
-    supportsStructuredOutput: true,
   },
   'codex-cli': {
     maxConcurrency: 2,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
-    supportsStructuredOutput: false,
   },
   'claude-cli': {
     maxConcurrency: 1,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
-    supportsStructuredOutput: false,
   },
   'gemini-cli': {
     maxConcurrency: 2,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
-    supportsStructuredOutput: false,
   },
   'kimi-cli': {
     maxConcurrency: 1,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
-    supportsStructuredOutput: false,
   },
   'agy-cli': {
     maxConcurrency: 1,
     maxRetries: 0,
     promptMode: 'minimal',
     agentRuntime: true,
-    supportsStructuredOutput: false,
   },
 });
 
@@ -155,18 +130,10 @@ const UNKNOWN_BACKEND_SAFETY = Object.freeze({
   maxRetries: 0,
   promptMode: 'strict',
   agentRuntime: false,
-  supportsStructuredOutput: false,
 });
 
 export function getBackendSafety(backendName) {
   return BACKEND_SAFETY_DEFAULTS[backendName] || UNKNOWN_BACKEND_SAFETY;
-}
-
-// True only for backends whose request path can carry an OpenAI-compatible
-// structured-output field (response_format). CLI backends spawn an agent and
-// never receive it, so structured output is never sent to a local CLI.
-export function backendSupportsStructuredOutput(backendName) {
-  return getBackendSafety(backendName).supportsStructuredOutput === true;
 }
 
 export function resolveBackendMaxConcurrency(backendName, override) {
@@ -194,21 +161,21 @@ export function formatLimit(value) {
 // vision-capable CLI can read them from its own (otherwise empty) cwd. This
 // preserves the prompt-injection containment of the empty-cwd spawn: the CLI
 // never needs access to the caller's paths. Returns the staged filenames.
-export function stageCliImages(dir, images = []) {
-  return images.map((imagePath, index) => {
-    const ext = (/\.([a-z0-9]{1,5})$/i.exec(String(imagePath))?.[1] || 'png').toLowerCase();
-    const staged = `ocr-image-${index}.${ext}`;
-    copyFileSync(imagePath, join(dir, staged));
-    return staged;
-  });
+export function stageCliImages(dir, images = [], backendName) {
+  try {
+    return images.map((imagePath, index) => {
+      const ext = (/\.([a-z0-9]{1,5})$/i.exec(String(imagePath))?.[1] || 'png').toLowerCase();
+      const staged = `ocr-image-${index}.${ext}`;
+      copyFileSync(imagePath, join(dir, staged));
+      return staged;
+    });
+  } catch (err) {
+    throw new Error(`${backendName} backend: failed to stage image input (${err.message})`, { cause: err });
+  }
 }
 
-export function isRetryableBackendError(err, { attemptIndex = 0, signal } = {}) {
+export function isRetryableBackendError(err, { signal } = {}) {
   if (signal?.aborted) return false;
-  // attemptIndex is retained for call-site compatibility but no longer gates
-  // the decision (#506 defect 2): a backend that timed out or aborted on its
-  // own (without the user aborting) is fallbackable at any hop.
-  void attemptIndex;
   const status = extractStatus(err);
   if (status === 429 || status === 503) return true;
   // A per-attempt timeout falls through at ANY non-final hop, exactly like a
@@ -260,9 +227,6 @@ export async function withBackendConcurrencySlot({
   staleMs = Math.max(timeout * 2, 30 * 60_000),
   fn,
 } = {}) {
-  if (typeof fn !== 'function') {
-    throw new Error('backend concurrency slot requires fn');
-  }
   // The run phase gets whatever remains of the shared deadline after the slot
   // wait, so slot-wait + run can never exceed the single budget (#506 defect 1).
   // Callers that pass only `timeout` (no `deadline`) keep their full budget via
@@ -418,14 +382,8 @@ function sleepWithAbort(ms, signal, backendName) {
   });
 }
 
-function throwIfAborted(signal, message) {
+export function throwIfAborted(signal, message) {
   if (signal?.aborted) throw abortError(message);
-}
-
-function abortError(message) {
-  const err = new Error(message);
-  err.name = 'AbortError';
-  return err;
 }
 
 function safePathSegment(value) {
@@ -532,6 +490,141 @@ export function spawnOwnedCliProcess(command, args = [], options = {}, {
   };
 }
 
+/**
+ * Run `fn(dir)` with a fresh temp directory that is removed once `fn`
+ * settles. CLI backends spawn from it so a prompt injection in user text
+ * cannot read or write inside the caller's repo.
+ *
+ * @template T
+ * @param {string} prefix Directory name prefix, e.g. 'patina-claude-'.
+ * @param {(dir: string) => Promise<T>} fn
+ * @returns {Promise<T>}
+ */
+export async function withCliTempDir(prefix, fn) {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  try {
+    return await fn(dir);
+  } finally {
+    try { rmSync(dir, { recursive: true, force: true }); } catch {}
+  }
+}
+
+/**
+ * Run a non-interactive CLI backend to completion and capture its output.
+ *
+ * Settles exactly once. A timeout, an abort, or a non-EPIPE stdin error kills
+ * the owned process group; every rejection waits for the child's `close` so
+ * the caller's temp-dir cleanup never races a live process.
+ *
+ * @param {object} options
+ * @param {string} options.backendName Error-message prefix, e.g. 'claude-cli'.
+ * @param {string} options.command CLI binary name.
+ * @param {string[]} options.args
+ * @param {string} options.cwd
+ * @param {NodeJS.ProcessEnv} [options.env] Child environment; inherited when omitted.
+ * @param {string} [options.stdinText] Written to stdin before it is closed.
+ * @param {boolean} [options.captureStdout=true] false discards stdout instead of piping it.
+ * @param {number} options.timeout Milliseconds; a non-finite value means no timeout.
+ * @param {AbortSignal} [options.signal]
+ * @param {string} options.notFoundHint Appended to the "CLI not found" error.
+ * @returns {Promise<{ stdout: string, stderr: string }>}
+ */
+export function runOwnedCliCapture({
+  backendName,
+  command,
+  args,
+  cwd,
+  env,
+  stdinText,
+  captureStdout = true,
+  timeout,
+  signal,
+  notFoundHint,
+}) {
+  const prefix = `${backendName} backend`;
+  return new Promise((resolve, reject) => {
+    const { proc, terminate, waitForClose } = spawnOwnedCliProcess(
+      command,
+      args,
+      { stdio: ['pipe', captureStdout ? 'pipe' : 'ignore', 'pipe'], cwd, ...(env ? { env } : {}) },
+    );
+
+    let stdout = '';
+    let stderr = '';
+    // Decode with a streaming UTF-8 decoder so multi-byte CJK characters split
+    // across pipe-read boundaries are not corrupted into U+FFFD.
+    if (captureStdout) {
+      proc.stdout.setEncoding('utf8');
+      proc.stdout.on('data', (chunk) => { stdout += chunk; });
+    }
+    proc.stderr.setEncoding('utf8');
+    proc.stderr.on('data', (chunk) => { stderr += chunk; });
+
+    let settled = false;
+    let cleanupSignal = () => {};
+    // A non-finite timeout means "no timeout": Node clamps setTimeout(fn,
+    // Infinity) to 1ms, which would SIGKILL the child almost immediately.
+    const timer = Number.isFinite(timeout)
+      ? setTimeout(() => {
+        finishReject(new Error(`${prefix}: timed out after ${timeout}ms`), { kill: true });
+      }, timeout)
+      : null;
+    if (signal) {
+      const onAbort = () => finishReject(abortError(`${prefix}: aborted`), { kill: true });
+      signal.addEventListener('abort', onAbort, { once: true });
+      cleanupSignal = () => signal.removeEventListener('abort', onAbort);
+    }
+
+    proc.on('error', (err) => {
+      if (err.code === 'ENOENT') {
+        finishReject(new Error(`${prefix}: \`${command}\` CLI not found. ${notFoundHint}`));
+      } else {
+        finishReject(new Error(`${prefix}: failed to spawn ${command} (${err.message})`));
+      }
+    });
+
+    proc.on('close', (code, sig) => {
+      if (settled) return;
+      if (code !== 0) {
+        // Signal death (OOM kill, external SIGTERM) closes with code === null.
+        const how = code === null && sig ? `terminated by ${sig}` : `exited with code ${code}`;
+        finishReject(new Error(`${prefix}: ${command} ${how}\n${stderr}`));
+        return;
+      }
+      finishResolve();
+    });
+
+    // A child that exits before draining a large prompt makes the buffered
+    // stdin write fail with EPIPE; without a handler that becomes an unhandled
+    // 'error' event that crashes the process. Ignore EPIPE (the 'close' handler
+    // surfaces the real exit code + stderr); reject on anything else.
+    proc.stdin.on('error', (err) => {
+      if (err && err.code !== 'EPIPE') {
+        finishReject(new Error(`${prefix}: stdin error (${err.message})`), { kill: true });
+      }
+    });
+    if (typeof stdinText === 'string') proc.stdin.write(stdinText);
+    proc.stdin.end();
+
+    function finishReject(err, { kill = false } = {}) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanupSignal();
+      if (kill) terminate('SIGKILL');
+      waitForClose().then(() => reject(err));
+    }
+
+    function finishResolve() {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanupSignal();
+      resolve({ stdout, stderr });
+    }
+  });
+}
+
 export function runInteractiveCommand({
   backendName,
   command,
@@ -543,10 +636,6 @@ export function runInteractiveCommand({
   platform = process.platform,
   spawnImpl = spawn,
 } = {}) {
-  if (!backendName || !command) {
-    throw new Error('interactive backend command requires backendName and command');
-  }
-
   return new Promise((resolve, reject) => {
     // A failed spawn can emit both 'error' and 'close'; settle once so we never
     // resolve-then-reject (or build a second Error) on the same invocation (#533).

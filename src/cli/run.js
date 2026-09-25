@@ -130,19 +130,13 @@ async function runPipeline(parsed, logger, config) {
 
   const inputTexts = parsed.preview ? [] : await loadInputs(parsed);
   const timeoutMs = parsed.timeoutMs ?? DEFAULT_BACKEND_TIMEOUT_MS;
-  const backendSelection = selectBackendChain({
+  const { backends } = selectBackendChain({
     name: parsed.backend ?? config.backend ?? (resolved.baseURLSource !== 'default' ? 'openai-http' : undefined),
     model: resolved.model,
     modelSource: resolved.modelSource,
   });
-  const { backends } = backendSelection;
   const backend = backends[0];
 
-  if (backendSelection.autoSelected) {
-    logger.info('backend.selected', {
-      message: `[patina] Using ${backend.name} backend (${backendSelection.reason}). Run \`patina auth status\` for details.`,
-    });
-  }
   if (backends.length > 1) {
     logger.info('backend.chain', {
       message: `[patina] Backend fallback chain: ${backends.map((b) => b.name).join(' → ')}`,

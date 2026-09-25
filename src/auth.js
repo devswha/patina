@@ -2,35 +2,22 @@
 // backend. The `patina auth` subcommand lives in src/commands/auth.js.
 import { readFileSync } from 'node:fs';
 import { inputError } from './errors.js';
+import { PROVIDERS } from './providers.js';
 
 /**
- * Environment variable names checked for HTTP provider authentication.
+ * Environment variable names checked for HTTP provider authentication:
+ * PATINA_API_KEY plus each provider preset's key variable.
  *
  * @type {string[]}
- * @example
- * const supported = HTTP_KEY_ENV_VARS.includes('OPENAI_API_KEY');
  */
-export const HTTP_KEY_ENV_VARS = [
+export const HTTP_KEY_ENV_VARS = uniqueEnvVars([
   'PATINA_API_KEY',
-  'OPENAI_API_KEY',
-  'GEMINI_API_KEY',
-  'GROQ_API_KEY',
-  'TOGETHER_API_KEY',
-  'KIMI_API_KEY',
-  'MOONSHOT_API_KEY',
-  'MINIMAX_API_KEY',
-];
+  ...Object.values(PROVIDERS).map((provider) => provider.apiKeyEnv),
+]);
 
 // Default openai-http runs against the OpenAI-compatible default endpoint, so
 // only generic/OpenAI keys make it authenticated without an explicit provider.
-/**
- * Default key lookup order for the OpenAI-compatible HTTP provider.
- *
- * @type {string[]}
- * @example
- * const first = DEFAULT_HTTP_KEY_ENV_VARS[0]; // PATINA_API_KEY
- */
-export const DEFAULT_HTTP_KEY_ENV_VARS = [
+const DEFAULT_HTTP_KEY_ENV_VARS = [
   'PATINA_API_KEY',
   'OPENAI_API_KEY',
 ];
@@ -40,8 +27,6 @@ export const DEFAULT_HTTP_KEY_ENV_VARS = [
  *
  * @param {string} [providerApiKeyEnv] Provider-specific key env var, such as GEMINI_API_KEY.
  * @returns {string[]} Unique env var names in lookup order.
- * @example
- * const vars = providerHttpKeyEnvVars('GEMINI_API_KEY');
  */
 export function providerHttpKeyEnvVars(providerApiKeyEnv) {
   if (!providerApiKeyEnv) return DEFAULT_HTTP_KEY_ENV_VARS;
@@ -56,8 +41,6 @@ export function providerHttpKeyEnvVars(providerApiKeyEnv) {
  * @param {Function} [options.readFile] File reader for PATINA_API_KEY_FILE.
  * @param {string[]} [options.envVars=DEFAULT_HTTP_KEY_ENV_VARS] Env vars to check.
  * @returns {{ok: boolean, source: string|null, envVars: string[], filePath: string|null, detail: string}} Source diagnostics.
- * @example
- * const source = inspectHttpApiKeySource({ env: { PATINA_API_KEY: 'sk-...' } });
  */
 export function inspectHttpApiKeySource({
   env = process.env,
@@ -96,8 +79,6 @@ export function inspectHttpApiKeySource({
  * @param {string[]} [options.envVars=DEFAULT_HTTP_KEY_ENV_VARS] Env var lookup order.
  * @returns {string|undefined} Resolved key value, or undefined when unauthenticated.
  * @throws {PatinaCliError} When the configured key file cannot be read or is empty.
- * @example
- * const key = resolveHttpApiKey({ env: process.env });
  */
 export function resolveHttpApiKey({
   apiKeyFile,
@@ -118,11 +99,8 @@ export function resolveHttpApiKey({
     return file.key;
   }
 
-
   const source = inspectHttpApiKeySource({ env, readFile, envVars });
-  return source.ok && source.source !== 'PATINA_API_KEY_FILE'
-    ? env[source.source]
-    : undefined;
+  return source.ok ? env[source.source] : undefined;
 }
 
 function uniqueEnvVars(envVars) {
@@ -141,7 +119,7 @@ function readApiKeyFile(filePath, readFile) {
     };
   }
 
-  const key = contents.replace(/[\r\n]+$/, '').trim();
+  const key = contents.trim();
   if (!key) {
     return {
       ok: false,

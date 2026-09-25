@@ -1,52 +1,20 @@
 // @ts-check
-import { HttpError, redactErrorText, isTemperatureRejectedError, markTemperatureRejected, modelRejectsTemperature } from './api.js';
+import { HttpError, isTemperatureRejectedError, markTemperatureRejected, modelRejectsTemperature } from './api.js';
 import { buildNativeBody, createNativeStreamParser, nativeAnthropicEnabled, nativeEndpoint, nativeHeaders } from './anthropic-native.js';
-
-const DEFAULT_TIMEOUT = 120000;
-// Cap a single un-terminated SSE line so a malformed provider cannot grow the
-// pending buffer without bound (memory-DoS guard on a public proxy boundary).
-const MAX_SSE_BUFFER_BYTES = 1024 * 1024;
-
-// Single source of truth for LLM-transport error redaction lives in api.js.
-const redact = redactErrorText;
-/**
- * Invoke optional metadata callbacks without allowing observers to affect a
- * provider request or its result.
- *
- * @param {Function|undefined} callback
- * @param {unknown} metadata
- * @returns {void}
- */
-function dispatchMetadata(callback, metadata) {
-  if (typeof callback !== 'function') return;
-  try {
-    Promise.resolve(callback(metadata)).catch(() => {});
-  } catch {
-    // Metadata observers are best-effort.
-  }
-}
-/**
- * @param {object|null} usage
- * @returns {{ cachedReadTokens: unknown, cacheCreationTokens: unknown }|null}
- */
-function extractCacheTokens(usage) {
-  if (!usage) return null;
-  const cachedRead = /** @type {any} */ (usage).prompt_tokens_details?.cached_tokens
-    ?? /** @type {any} */ (usage).cache_read_input_tokens
-    ?? null;
-  const cacheCreation = /** @type {any} */ (usage).cache_creation_input_tokens ?? null;
-  return cachedRead === null && cacheCreation === null
-    ? null
-    : { cachedReadTokens: cachedRead, cacheCreationTokens: cacheCreation };
-}
-
-
-/** @param {string} [message] */
-function abortError(message = 'The operation was aborted') {
-  const err = new Error(message);
-  err.name = 'AbortError';
-  return err;
-}
+import {
+  DEFAULT_TEMPERATURE,
+  DEFAULT_TIMEOUT,
+  SSE_DONE,
+  abortError,
+  bearerHeaders,
+  chatCompletionsBody,
+  dispatchMetadata,
+  newAttemptRecord,
+  parseSseData,
+  readSseLines,
+  responseMetadata,
+} from './llm-transport.js';
+import { DEFAULT_BEST_MODELS } from './model-defaults.js';
 
 /**
  * @param {AbortSignal|undefined} signal
@@ -54,34 +22,6 @@ function abortError(message = 'The operation was aborted') {
  */
 function throwIfAborted(signal) {
   if (signal?.aborted) throw abortError('External abort signal canceled LLM stream');
-}
-
-/**
- * @param {unknown} body
- * @returns {AsyncIterable<Uint8Array|string>}
- */
-function streamChunks(body) {
-  if (!body) throw new Error('Streaming response body is empty');
-  if (typeof /** @type {any} */ (body).getReader === 'function') {
-    return {
-      async *[Symbol.asyncIterator]() {
-        const reader = /** @type {ReadableStream<Uint8Array>} */ (body).getReader();
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (value !== undefined) yield value;
-          }
-        } finally {
-          reader.releaseLock?.();
-        }
-      },
-    };
-  }
-  if (typeof /** @type {any} */ (body)[Symbol.asyncIterator] === 'function') {
-    return /** @type {AsyncIterable<Uint8Array|string>} */ (body);
-  }
-  throw new Error('Streaming response body is not readable');
 }
 
 /**
@@ -99,7 +39,6 @@ function streamChunks(body) {
  * @param {Function} [options.onResponse] Called with metadata from a successful provider response.
  * @param {Function} [options.onAttempt] Called once for every issued provider request.
  * @param {object} [options.extraBody] Optional provider-specific fields spread into the OpenAI-compat request body (protocol fields cannot be overridden; ignored on the native Anthropic path).
- * @param {() => number} [options.now] Injectable clock retained for API symmetry.
  * @param {Function} [options.fetchImpl] Injectable fetch implementation.
  * @returns {Promise<{ text: string, finishReason?: string }>}
  */
@@ -107,8 +46,8 @@ export async function callLLMStream({
   prompt,
   apiKey,
   baseURL = 'https://api.openai.com/v1',
-  model = 'gpt-5.5',
-  temperature = 0.7,
+  model = DEFAULT_BEST_MODELS.openai,
+  temperature = DEFAULT_TEMPERATURE,
   signal,
   timeout = DEFAULT_TIMEOUT,
   onDelta,
@@ -116,11 +55,8 @@ export async function callLLMStream({
   onAttempt,
   extraBody,
   fetchImpl = globalThis.fetch,
-  now: _now,
 }) {
-  void _now;
   throwIfAborted(signal);
-  if (typeof fetchImpl !== 'function') throw new TypeError('fetchImpl must be a function');
 
   const controller = new AbortController();
   let timer;
@@ -135,40 +71,23 @@ export async function callLLMStream({
     cleanupSignal = () => signal.removeEventListener('abort', onAbort);
   }
 
-  // Skip `temperature` up front when this process already saw the model
-  // reject it (e.g. claude-sonnet-5) — avoids a guaranteed 400 round trip.
   // Native Anthropic branch (opt-in): the compat endpoint ignores prompt
   // caching, so the paid path issues /v1/messages with a cache_control prefix
   // block instead. Same single-user-message semantics, native SSE parsing.
   const native = nativeAnthropicEnabled({ baseURL });
+  // Skip `temperature` up front when this process already saw the model
+  // reject it (e.g. claude-sonnet-5) — avoids a guaranteed 400 round trip.
+  // The body builder also drops a copy passed through extraBody, which would
+  // replay the known-invalid request.
+  const sendTemperature = modelRejectsTemperature(model) ? undefined : temperature;
   /** @type {Record<string, any>} */
   const payload = native
-    ? buildNativeBody({ prompt, model, temperature: modelRejectsTemperature(model) ? undefined : temperature, stream: true })
-    : {
-        // Spread first so callers can never clobber the protocol fields below.
-        ...(extraBody && typeof extraBody === 'object' && !Array.isArray(extraBody) ? extraBody : {}),
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        stream: true,
-        // Without include_usage, OpenAI-compatible streams omit the usage frame
-        // entirely, so successful streamed attempts recorded usage: null — which
-        // blinds cost observability and made PAY-B-COST billing evidence
-        // unassemblable for the rewrite stage (2026-07-24). Verified supported by
-        // the Anthropic compat endpoint; the #576 buffered fallback still covers
-        // servers that ignore streaming options.
-        stream_options: { include_usage: true },
-      };
-  if (!native && !modelRejectsTemperature(model)) payload.temperature = temperature;
-  // A cached temperature-rejecting model must not recover the field from
-  // extraBody either — that would replay the known-invalid request.
-  else if (!native) delete payload.temperature;
+    ? buildNativeBody({ prompt, model, temperature: sendTemperature, stream: true })
+    : chatCompletionsBody({ prompt, model, temperature: sendTemperature, extraBody, stream: true });
 
   const issue = () => fetchImpl(native ? nativeEndpoint(baseURL) : `${baseURL}/chat/completions`, {
     method: 'POST',
-    headers: native ? nativeHeaders(apiKey) : {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
+    headers: native ? nativeHeaders(apiKey) : bearerHeaders(apiKey),
     body: JSON.stringify(payload),
     signal: controller.signal,
   });
@@ -178,104 +97,66 @@ export async function callLLMStream({
    * @param {'initial'|'temperature_schema'} retryReason
    */
   const runAttempt = async (retryReason) => {
-    const attempt = {
-      attemptIndex: ++attemptsMade,
-      requestedModel: model,
-      effectiveModel: null,
-      usage: null,
-      retryReason,
-      minimumChargeApplied: false,
-      outcome: 'error',
-    };
+    const attempt = newAttemptRecord(++attemptsMade, model, retryReason);
     try {
       const response = await issue();
       throwIfAborted(signal);
       if (!response.ok) {
         const body = typeof response.text === 'function' ? await response.text() : '';
-        throw new HttpError(response.status, redact(body), response.headers?.get?.('retry-after'));
+        throw new HttpError(response.status, body, response.headers?.get?.('retry-after'));
       }
 
-      const decoder = new globalThis.TextDecoder();
-      let buffer = '';
       let text = '';
       let finishReason;
-      let streamDone = false;
       let rawResponse = null;
       const nativeParser = native ? createNativeStreamParser() : null;
-      const processLine = (line) => {
+      await readSseLines(response.body, (line) => {
         if (nativeParser) {
           const delta = nativeParser.feed(line);
           const state = nativeParser.state();
           if (state.model && attempt.effectiveModel === null) attempt.effectiveModel = state.model;
           if (state.usage) attempt.usage = state.usage;
           if (state.stopReason) finishReason = state.stopReason;
-          if (state.done) streamDone = true;
           if (delta) {
             text += delta;
             dispatchMetadata(onDelta, delta);
           }
-          return;
+          return state.done;
         }
-        const trimmed = line.trim();
-        if (!trimmed.startsWith('data:')) return;
-        const data = trimmed.slice(5).trim();
-        if (!data) return;
-        if (data === '[DONE]') { streamDone = true; return; }
-        let parsed;
-        try {
-          parsed = JSON.parse(data);
-        } catch {
-          return;
+        const parsed = parseSseData(line);
+        if (parsed === SSE_DONE) return true;
+        if (parsed === undefined) return false;
+        const event = /** @type {any} */ (parsed);
+        rawResponse = event;
+        if (typeof event?.model === 'string' && attempt.effectiveModel === null) {
+          attempt.effectiveModel = event.model;
         }
-        rawResponse = parsed;
-        if (typeof parsed?.model === 'string' && attempt.effectiveModel === null) {
-          attempt.effectiveModel = parsed.model;
+        if (event?.usage && typeof event.usage === 'object' && !Array.isArray(event.usage)) {
+          attempt.usage = event.usage;
         }
-        if (parsed?.usage && typeof parsed.usage === 'object' && !Array.isArray(parsed.usage)) {
-          attempt.usage = parsed.usage;
-        }
-        const choice = parsed?.choices?.[0];
+        const choice = event?.choices?.[0];
         const chunk = choice?.delta?.content;
         if (typeof choice?.finish_reason === 'string') finishReason = choice.finish_reason;
         if (typeof chunk === 'string' && chunk.length > 0) {
           text += chunk;
           dispatchMetadata(onDelta, chunk);
         }
-      };
-
-      for await (const chunk of streamChunks(response.body)) {
-        throwIfAborted(signal);
-        buffer += typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true });
-        const lines = buffer.split(/\r?\n/);
-        buffer = lines.pop() ?? '';
-        // A single un-terminated line over the cap = malformed/abusive provider.
-        if (buffer.length > MAX_SSE_BUFFER_BYTES) throw new Error('SSE response line exceeded the maximum buffer size');
-        for (const line of lines) {
-          processLine(line);
-          if (streamDone) break;
-        }
-        if (streamDone) break;
-      }
-      if (!streamDone) {
-        buffer += decoder.decode();
-        if (buffer.trim()) processLine(buffer);
-      }
+        return false;
+      }, { beforeChunk: () => throwIfAborted(signal) });
 
       attempt.outcome = 'success';
       const result = finishReason ? { text, finishReason } : { text };
       return {
         result,
-        metadata: {
-          provider: native ? 'anthropic-native' : 'openai-http',
-          model: attempt.effectiveModel,
+        metadata: responseMetadata({
+          native,
           effectiveModel: attempt.effectiveModel,
           requestedModel: model,
           temperature: 'temperature' in payload ? temperature : null,
           usage: attempt.usage,
-          cacheTokens: extractCacheTokens(attempt.usage),
           rawResponse,
           content: text,
-        },
+        }),
       };
     } finally {
       dispatchMetadata(onAttempt, attempt);

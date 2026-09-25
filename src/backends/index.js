@@ -92,13 +92,13 @@ const BACKEND_META = {
 export function listBackends() {
   return Object.keys(REGISTRY).map((key) => {
     const b = REGISTRY[key];
-    const meta = BACKEND_META[key] || { kind: 'unknown', selectWith: `--backend ${key}` };
+    const meta = BACKEND_META[key];
     const safety = getBackendSafety(key);
     return {
       name: key,
       kind: meta.kind,
       selectWith: meta.selectWith,
-      defaultModel: meta.defaultModel || null,
+      defaultModel: meta.defaultModel,
       safety,
       maxConcurrency: safety.maxConcurrency,
       maxRetries: safety.maxRetries,
@@ -121,32 +121,32 @@ export function listBackendNames() {
 export function selectBackend({ name, model, modelSource } = {}) {
   if (name) {
     const backend = resolveBackend(name);
-    return { backend, autoSelected: false, reason: 'explicit' };
+    return { backend, reason: 'explicit' };
   }
 
   const useModelHeuristic = model && (modelSource === undefined || modelSource === 'flag');
 
   if (useModelHeuristic && /^codex(-|$)/i.test(model)) {
-    return { backend: REGISTRY['codex-cli'], autoSelected: false, reason: 'model heuristic' };
+    return { backend: REGISTRY['codex-cli'], reason: 'model heuristic' };
   }
   if (useModelHeuristic && /^claude(-|$)/i.test(model)) {
-    return { backend: REGISTRY['claude-cli'], autoSelected: false, reason: 'model heuristic' };
+    return { backend: REGISTRY['claude-cli'], reason: 'model heuristic' };
   }
   if (useModelHeuristic && /^gemini(-|$)/i.test(model)) {
-    return { backend: REGISTRY['gemini-cli'], autoSelected: false, reason: 'model heuristic' };
+    return { backend: REGISTRY['gemini-cli'], reason: 'model heuristic' };
   }
   if (useModelHeuristic && /^kimi(-|$)/i.test(model)) {
-    return { backend: REGISTRY['kimi-cli'], autoSelected: false, reason: 'model heuristic' };
+    return { backend: REGISTRY['kimi-cli'], reason: 'model heuristic' };
   }
   if (useModelHeuristic && /^agy$/i.test(model)) {
-    return { backend: REGISTRY['agy-cli'], autoSelected: false, reason: 'model heuristic' };
+    return { backend: REGISTRY['agy-cli'], reason: 'model heuristic' };
   }
 
   // No silent auto-fallback to any CLI backend. Sending arbitrary text to a
   // coding agent is a higher-trust action than calling a plain completion
   // API, so require an explicit `--backend <name>` (or `--model <prefix>`).
   // See issue #88.
-  return { backend: REGISTRY['openai-http'], autoSelected: false, reason: 'default' };
+  return { backend: REGISTRY['openai-http'], reason: 'default' };
 }
 
 export function selectBackendChain({ name, model, modelSource } = {}) {
@@ -164,7 +164,6 @@ export function selectBackendChain({ name, model, modelSource } = {}) {
     }
     return {
       backends: names.map(resolveBackend),
-      autoSelected: false,
       reason: names.length > 1 ? 'explicit chain' : 'explicit',
     };
   }
@@ -172,7 +171,6 @@ export function selectBackendChain({ name, model, modelSource } = {}) {
   const selected = selectBackend({ model, modelSource });
   return {
     backends: [selected.backend],
-    autoSelected: selected.autoSelected,
     reason: selected.reason,
   };
 }
@@ -227,7 +225,6 @@ export async function invokeBackendChain({
     );
   }
 
-  let lastError = null;
   // One shared deadline across both phases (slot-wait + run budget) so the
   // combined wall-clock can never reach 2x `timeout` under cap saturation
   // (#506 defect 1). withBackendConcurrencySlot hands the run phase whatever
@@ -265,9 +262,8 @@ export async function invokeBackendChain({
         }),
       });
     } catch (err) {
-      lastError = err;
       const next = backends[attemptIndex + 1];
-      if (!next || !isRetryableBackendError(err, { attemptIndex, signal })) {
+      if (!next || !isRetryableBackendError(err, { signal })) {
         throw err;
       }
       logger?.warn?.('backend.fallback', {
@@ -275,8 +271,6 @@ export async function invokeBackendChain({
       });
     }
   }
-
-  throw lastError || new Error('backend fallback chain failed without an error');
 }
 
 export function resolveBackend(name) {

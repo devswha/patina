@@ -102,7 +102,7 @@ function renderHistory(history = []) {
  * @param {'strict'|'minimal'} [options.promptMode='strict'] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals=null] Trusted deterministic signals.
  * @param {'baseline'|'ko-contextual-v1'} [options.structureGuidance='baseline'] Structure treatment.
- * @param {'default'|'h-rhetoric'|'legacy'} [options.rhetoricPolicy='default'] Rhetoric edit policy.
+ * @param {'default'|'legacy'} [options.rhetoricPolicy='default'] Rhetoric edit policy.
  * @returns {string} Prompt text.
  */
 export function buildWebRewritePrompt({

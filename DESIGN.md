@@ -51,9 +51,9 @@
 
 ## Components
 - Existing components to reuse: `assets/brand/*.svg`, `assets/social/*.svg`, `assets/demo/patina-preview-en.png`.
-- New/changed components: optional AI concept references under `.omx/artifacts/visual-ralph/` before SVG reconstruction; production assets remain hand-authored SVG.
-- Variants and states: square pure-mark icon, horizontal logo lockup, social preview, preview GIF states (Rewritten / Original / Both / Diff).
-- Token/component ownership: brand assets stay under `assets/brand/`; social cards under `assets/social/`; README preview animation stays under `assets/demo/`. Re-render the GIF from a real `patina --preview` page and keep it under 10 MB.
+- New/changed components: production assets are hand-authored SVG.
+- Variants and states: square pure-mark icon, horizontal logo lockup, social preview, preview image states (Rewritten / Original / Both / Diff).
+- Token/component ownership: brand assets stay under `assets/brand/`; social cards under `assets/social/`; preview images stay under `assets/demo/`. Capture them from a real `patina --preview` page.
 
 ## Accessibility
 - Target standard: readable on GitHub light/dark backgrounds and package pages.

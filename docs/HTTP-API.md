@@ -168,7 +168,7 @@ Errors are JSON objects, including for JSON-mode callers:
 { "error": "hourly burst exceeded" }
 ```
 
-Validation errors use `400`; an over-limit `text`, refine `original`, or refine `instruction` uses `413`. A missing, malformed, or duplicated Pro `Authorization` header uses `401` (`pro license required`); a well-formed license key that does not entitle uses `403` (`license not entitled`). Quota and concurrency denials use `429`; quota/entitlement infrastructure or service unavailability uses `503`. JSON-mode terminal failures use `422` (safety-gate refusal) or `500` (upstream failure) as described above.
+Validation errors use `400`; an over-limit `text`, refine `original`, or refine `instruction` uses `413`. A missing, malformed, or duplicated Pro `Authorization` header uses `401` (`license required`); a well-formed license key that does not entitle uses `403` (`license not entitled`). Quota and concurrency denials use `429`; quota/entitlement infrastructure or service unavailability uses `503`. JSON-mode terminal failures use `422` (safety-gate refusal) or `500` (upstream failure) as described above.
 
 Possible quota error strings include `daily quota exceeded`, `hourly burst exceeded`, `concurrent limit exceeded`, `monthly rewrite limit reached`, and `monthly character limit reached`. A Pro monthly-character denial additionally includes `remainingMonthlyChars` and `limitMonthlyChars`. A `429 license validation burst exceeded` means this client asked to validate more not-yet-cached license keys in one minute than its share of the license-provider budget allows; it says nothing about the key itself and clears within the minute.
 

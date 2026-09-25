@@ -8,7 +8,6 @@ import {
   buildPreferenceJudgePrompt,
   compareRewrites,
   createPreferenceJudge,
-  evaluatePromotion,
   assertIndependentJudge,
   assertTrustedLocalFixtures,
   DEFAULT_CONFIGS,
@@ -96,7 +95,6 @@ test('compareRewrites grades both configs, picks winners, and aggregates (inject
   assert.equal(report.summary.byConfig['iterative-baseline'].attempted, 2);
   assert.equal(report.summary.byConfig['iterative-baseline'].successful, 2);
   assert.equal(report.summary.paired.n, 2);
-  assert.equal(report.summary.decision, 'advisory_only');
   // both entries present per fixture
   assert.equal(report.results[0].entries.length, 2);
 });
@@ -422,88 +420,6 @@ test('local-agent runs accept only repo-owned repo-ok fixtures', () => {
     rmSync(fakeRoot, { recursive: true, force: true });
     rmSync(outside, { force: true });
   }
-});
-
-test('evaluatePromotion applies every preregistered gate', () => {
-  const summary = {
-    experiment: {
-      confirmatory: true,
-      corpus_hash_matches: true,
-      configs_match: true,
-      language: 'ko',
-    },
-    byConfig: {
-      baseline: {
-        attempted: 120,
-        successful: 118,
-        failures: 2,
-        p10_mps: 82,
-        p10_fidelity: 84,
-        cohort_structure_distance: 0.3,
-        number_safety_failures: 0,
-        p95_latency_ms: 1000,
-        latency_rows: 120,
-        mean_reported_tokens: 1000,
-        estimated_cost_usd: 1,
-        reported_token_rows: 120,
-        cost_rows: 120,
-      },
-      treatment: {
-        attempted: 120,
-        successful: 118,
-        failures: 2,
-        p10_mps: 81,
-        p10_fidelity: 83,
-        cohort_structure_distance: 0.32,
-        number_safety_failures: 0,
-        p95_latency_ms: 1100,
-        latency_rows: 120,
-        mean_reported_tokens: 1100,
-        estimated_cost_usd: 1.1,
-        reported_token_rows: 120,
-        cost_rows: 120,
-      },
-    },
-    preference: {
-      byConfig: {
-        treatment: { judged: 100, ci95: [0.55, 0.72] },
-      },
-    },
-    ratings: {
-      byConfig: {
-        baseline: { cohesion: 3.8, p10_cohesion: 3.5 },
-        treatment: { cohesion: 4.1, p10_cohesion: 3.3 },
-      },
-    },
-    outcomes: { judged: 100, inconsistent: 10, error: 2, none: 0, ineligible: 8 },
-  };
-
-  const result = evaluatePromotion(summary, ['baseline', 'treatment'], 120);
-
-  assert.equal(result.ready, true);
-  assert.deepEqual(result.failures, []);
-
-  const tooUniform = evaluatePromotion({
-    ...summary,
-    byConfig: {
-      ...summary.byConfig,
-      treatment: {
-        ...summary.byConfig.treatment,
-        cohort_structure_distance: 0.2,
-      },
-    },
-  }, ['baseline', 'treatment'], 120);
-  assert.ok(tooUniform.failures.includes('cohort-structure'));
-
-  const zeroCost = evaluatePromotion({
-    ...summary,
-    byConfig: {
-      baseline: { ...summary.byConfig.baseline, estimated_cost_usd: 0 },
-      treatment: { ...summary.byConfig.treatment, estimated_cost_usd: 0 },
-    },
-  }, ['baseline', 'treatment'], 120);
-  assert.equal(zeroCost.cost_evidence_available, false);
-  assert.ok(zeroCost.failures.includes('cost-budget'));
 });
 
 test('compareRewrites separates candidate timing, grading timing, usage, and cost', async () => {

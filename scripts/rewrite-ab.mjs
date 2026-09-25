@@ -402,102 +402,6 @@ function wilson95(successes, total) {
   return [low, high].map((value) => Math.round(value * 1000) / 1000);
 }
 
-export function evaluatePromotion(summary, configs, observedFixtureCount) {
-  const [baselineName, treatmentName] = configs;
-  const baseline = summary.byConfig?.[baselineName] ?? {};
-  const treatment = summary.byConfig?.[treatmentName] ?? {};
-  const preference = summary.preference?.byConfig?.[treatmentName] ?? {};
-  const baselineRatings = summary.ratings?.byConfig?.[baselineName] ?? {};
-  const treatmentRatings = summary.ratings?.byConfig?.[treatmentName] ?? {};
-  const failures = [];
-  const requireGate = (condition, name) => {
-    if (!condition) failures.push(name);
-  };
-  const outcomeCount = Object.values(summary.outcomes ?? {})
-    .reduce((sum, value) => sum + Number(value || 0), 0);
-  const baselineFailureRate = baseline.attempted ? baseline.failures / baseline.attempted : 1;
-  const treatmentFailureRate = treatment.attempted ? treatment.failures / treatment.attempted : 1;
-
-  requireGate(
-    summary.experiment?.confirmatory === true
-      && summary.experiment.corpus_hash_matches === true
-      && summary.experiment.configs_match === true
-      && summary.experiment.language === 'ko',
-    'confirmatory-binding',
-  );
-  requireGate(observedFixtureCount === 120, 'fixture-count');
-  requireGate(outcomeCount === observedFixtureCount, 'outcome-accounting');
-  requireGate(preference.judged >= 80, 'consistent-judgments');
-  requireGate(preference.ci95?.[0] > 0.5, 'preference-ci');
-  requireGate(treatment.p10_mps >= baseline.p10_mps - 2, 'p10-mps');
-  requireGate(treatment.p10_fidelity >= baseline.p10_fidelity - 2, 'p10-fidelity');
-  requireGate(treatmentRatings.cohesion >= baselineRatings.cohesion + 0.2, 'cohesion-rating');
-  requireGate(
-    treatmentRatings.p10_cohesion >= baselineRatings.p10_cohesion - 0.3,
-    'p10-cohesion',
-  );
-  requireGate(
-    Number.isFinite(treatment.cohort_structure_distance)
-      && treatment.cohort_structure_distance >= baseline.cohort_structure_distance,
-    'cohort-structure',
-  );
-  requireGate(
-    Number.isFinite(treatment.p95_latency_ms)
-      && treatment.p95_latency_ms <= baseline.p95_latency_ms * 1.25,
-    'latency-budget',
-  );
-  requireGate(
-    Number.isFinite(treatment.mean_reported_tokens)
-      && treatment.mean_reported_tokens <= baseline.mean_reported_tokens * 1.2,
-    'token-budget',
-  );
-  requireGate(
-    Number.isFinite(baseline.estimated_cost_usd)
-      && baseline.estimated_cost_usd > 0
-      && Number.isFinite(treatment.estimated_cost_usd)
-      && treatment.estimated_cost_usd > 0
-      && treatment.estimated_cost_usd <= baseline.estimated_cost_usd * 1.2,
-    'cost-budget',
-  );
-  requireGate(
-    baselineFailureRate <= 0.05
-      && treatmentFailureRate <= 0.05
-      && Math.abs(treatmentFailureRate - baselineFailureRate) <= 0.02,
-    'failure-rate',
-  );
-  requireGate(
-    treatment.number_safety_failures <= baseline.number_safety_failures,
-    'number-safety-non-regression',
-  );
-  requireGate(
-    baseline.reported_token_rows === baseline.attempted
-      && treatment.reported_token_rows === treatment.attempted,
-    'token-evidence-coverage',
-  );
-  requireGate(
-    baseline.cost_rows === baseline.attempted
-      && treatment.cost_rows === treatment.attempted,
-    'cost-evidence-coverage',
-  );
-  requireGate(
-    baseline.latency_rows === baseline.attempted
-      && treatment.latency_rows === treatment.attempted,
-    'latency-evidence-coverage',
-  );
-
-  return {
-    preregistered_fixture_count: 120,
-    observed_fixture_count: observedFixtureCount,
-    all_outcomes_accounted: outcomeCount === observedFixtureCount,
-    cost_evidence_available: Number.isFinite(baseline.estimated_cost_usd)
-      && baseline.estimated_cost_usd > 0
-      && Number.isFinite(treatment.estimated_cost_usd)
-      && treatment.estimated_cost_usd > 0,
-    ready: failures.length === 0,
-    failures,
-  };
-}
-
 function summarize(perFixture, configs, candidateTally, preferenceTally, policy, experiment) {
   const outcomes = Object.fromEntries(
     ['judged', 'inconsistent', 'error', 'none'].map((outcome) => [
@@ -595,8 +499,6 @@ function summarize(perFixture, configs, candidateTally, preferenceTally, policy,
     outcomes,
     ratings: { byConfig: ratingsByConfig },
   };
-  summary.promotion = evaluatePromotion(summary, configs, perFixture.length);
-  summary.decision = summary.promotion.ready ? 'promote' : 'advisory_only';
   return summary;
 }
 
@@ -853,7 +755,7 @@ function renderMarkdown(report) {
   const lines = [
     '# Rewrite A/B',
     '',
-    `configs: ${report.configs.join(' vs ')} | fixtures: ${report.results.length} | decision: ${report.summary.decision}`,
+    `configs: ${report.configs.join(' vs ')} | fixtures: ${report.results.length}`,
     '',
     '## Per-config aggregate',
     '',
@@ -881,7 +783,6 @@ function renderMarkdown(report) {
       return `${config} structure/ops: candidate distance=${configSummary.mean_structure_distance} · cohort distance=${configSummary.cohort_structure_distance} · p95 latency=${configSummary.p95_latency_ms}ms · reported tokens=${configSummary.mean_reported_tokens} · estimated cost=${configSummary.estimated_cost_usd ?? 'n/a'}`;
     }),
     `outcomes: ${Object.entries(report.summary.outcomes).map(([key, value]) => `${key}=${value}`).join(' · ')}`,
-    `promotion ready: ${report.summary.promotion.ready} · observed=${report.summary.promotion.observed_fixture_count}/${report.summary.promotion.preregistered_fixture_count} · cost evidence=${report.summary.promotion.cost_evidence_available}`,
     '',
   ];
   return lines.join('\n');

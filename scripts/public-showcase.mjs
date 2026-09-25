@@ -9,16 +9,16 @@ import { renderShareCard, wrapSnippetLines } from './share-card.mjs';
 export const SHOWCASE_LANGUAGES = ['ko', 'en', 'zh', 'ja'];
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const COPY = {
-  ko: { name: '한국어', title: '문장은 자연스럽게, 사실은 그대로', before: '다듬기 전', after: '다듬은 예시',
+  ko: { name: '한국어', before: '다듬기 전', after: '다듬은 예시',
     intro: '딱딱한 초안을 읽기 편하게 다듬습니다. 아래는 원문의 사실과 수치를 유지한 설명용 예시이며 실시간 실행 결과가 아닙니다.',
     action: '내 글로 확인하기' },
-  en: { name: 'English', title: 'Clearer writing. The same facts.', before: 'Before', after: 'Prepared example',
+  en: { name: 'English', before: 'Before', after: 'Prepared example',
     intro: 'Turn a stiff draft into clearer writing. This illustrative pair keeps the source facts and numbers; it is not a live model result.',
     action: 'Try your own draft' },
-  zh: { name: '中文', title: '表达更自然，事实不变', before: '改写前', after: '改写示例',
+  zh: { name: '中文', before: '改写前', after: '改写示例',
     intro: '把生硬的草稿改得清楚好读。下面的说明性示例保留原文事实和数字，并非实时生成结果。',
     action: '用自己的草稿试试' },
-  ja: { name: '日本語', title: '文章を自然に。事実はそのまま。', before: '整える前', after: '整えた例',
+  ja: { name: '日本語', before: '整える前', after: '整えた例',
     intro: '堅い下書きを読みやすい文章に整えます。以下は原文の事実や数字を保った説明用の例で、実行結果ではありません。',
     action: '自分の下書きで試す' },
 };
@@ -71,8 +71,6 @@ export function buildShowcaseArtifacts(rows) {
   const demo = ['# Examples in four languages', '',
     'These are prepared editorial examples, not transcripts or promises of a particular model output. The same source pairs appear in the playground. Numbers and names stay with their original claims; model-based checks and editorial review do not guarantee that every future rewrite will pass.', '',
     'Run a rewrite on your own text to inspect its actual approval status and meaning scores. For CLI verification, use `patina --verify --lang <ko|en|zh|ja> input.txt`; the source checkout is required for changes awaiting npm publication.', ''];
-  const drafts = ['# Multilingual introduction drafts', '',
-    'Prepared for review and sharing; no external post has been published by this file. Examples are illustrative and contain no invented score claims. Tagged links use the fixed campaign and channel allowlists described in [the funnel runbook](../operations/multilingual-funnel-20260907.md).', ''];
   const artifacts = new Map();
   for (const lang of SHOWCASE_LANGUAGES) {
     const copy = COPY[lang];
@@ -86,15 +84,11 @@ export function buildShowcaseArtifacts(rows) {
     artifacts.set(`assets/social/patina-before-after-${lang}.svg`, svg);
     if (lang === 'en') artifacts.set('assets/social/patina-before-after.svg', svg);
     demo.push(`[${copy.action}](${link(lang, 'github')}) · [Share card](../assets/social/patina-before-after-${lang}.svg)`, '');
-    drafts.push(`## ${copy.name}`, '', `**${copy.title}**`, '', copy.intro, '',
-      `**${copy.before}**`, '', quote(row.before), '', `**${copy.after}**`, '', quote(row.after), '', row.caption, '',
-      `[${copy.action}](${link(lang, 'community')})`, '', `[SVG card](../../assets/social/patina-before-after-${lang}.svg)`, '');
   }
   demo.push('## Recorded demonstrations', '',
     'Older GIFs remain available in [the recording archive](../assets/demo/README.md). Their pixels and score labels describe those captures only; they do not verify the examples above.', '',
     'To refresh these pages and SVG cards after editing the shared examples, run `node scripts/public-showcase.mjs --write`. Use `--check` to detect stale artifacts without rewriting them.', '');
   artifacts.set('docs/DEMO.md', demo.join('\n'));
-  artifacts.set('docs/social/multilingual-examples.md', drafts.join('\n'));
   return artifacts;
 }
 

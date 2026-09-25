@@ -12,11 +12,13 @@ Tree: `bot/rhetoric-pilot-7b` from `origin/dev`
 `75bcf7f37147fa4d54ab7b0fb62d46eb4e065c89`; runner
 `scripts/research/rhetoric-pilot-7b.mjs`, analysis
 `scripts/research/rhetoric-pilot-7b-analyze.mjs` (both committed with this
-record). Raw sources, drafts, and judge rows stay in gitignored
+record). Raw sources, drafts, and judge rows stay in the local-only, gitignored
 `artifacts/rhetoric-pilot-20260916/` (hash-only manifest included there);
 committed evidence is aggregate-only per the private-text policy.
 
-## Protocol as run (PLAN.md v2 §7.B)
+## Protocol as run (PLAN v2 §7.B)
+
+PLAN v2 is the rewrite-quality plan archived as [`rewrite-quality-plan-v2-20260909.md`](rewrite-quality-plan-v2-20260909.md).
 
 - **Sources:** 24 unique originals, KO 16 (T8/C4/N4), EN 8 (T4/C2/N2), fixed
   purpose/register per case, source clusters recorded (samsung-s25 spans

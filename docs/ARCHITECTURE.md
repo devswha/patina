@@ -130,6 +130,20 @@ checks remain global. `--serve` is a `--preview` transport option.
   ships an offline audit mirror — it was dropped when the playground became
   rewrite-first.
 
+`src/features/analyzer.js` is the file-free form of the analyzer: callers pass
+the lexicon as data, and `src/features/index.js` stays the Node adapter that
+resolves local lexicon files. `src/prose-core.js` holds the prose preparation,
+language detection, and hot-paragraph ratio shared with
+`scripts/prose-score.mjs`; a browser caller uses
+`scoreProse(text, { lang, lexicon, gate })`, while the Node script adds file
+traversal and pattern-watch diagnostics. Its `score` is the hot-paragraph
+percentage behind the Action/badge gate, and `flooredScore` also keeps
+document-level markup evidence. Both are deterministic editing signals, not the
+LLM-based `patina --score` result or an authorship probability. The browser
+entry graph uses no filesystem, environment variables, provider credentials, or
+network APIs, and its caller bundles the public lexicon at build time, so
+private or custom local files never reach a browser bundle.
+
 ### Lane A asset consumed by Lane B (deterministic, cross-lane)
 
 - `src/features/persona-match.js` — LLM-free persona-match scorer. It lives in
@@ -248,7 +262,8 @@ The checker enforces only three reachability rules:
 2. `playground/**` cannot reach server-secret modules, API handlers, or Node
    built-ins.
 3. `src/**`, `api/**`, `bin/**`, and every declared published package bin
-   cannot reach packaged research modules.
+   cannot reach research modules (`scripts/research/`, `tests/quality/`, and
+   `scripts/iterative-rewrite-baseline.mjs`).
 
 Deterministic shared modules are classified rather than blanket-banned:
 `src/edit-controls.js`, `src/errors.js`, `src/logger.js`,
@@ -273,10 +288,6 @@ async contract error (for example, a missing `await`). This is evidence for
 that test module only, not a claim that all JavaScript is type-checked and not
 a reason to add a second project-wide TypeScript configuration.
 
-### Packaged research comparator (unsupported)
-
-- `scripts/iterative-rewrite-baseline.mjs` — `iterative-baseline`, a packaged
-  research comparator outside the product API, CLI help, and configuration surface. The package has no `exports` map, so the module remains deep-importable but unsupported.
 ---
 
 ## Seams: resolved and remaining

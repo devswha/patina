@@ -1,232 +1,81 @@
 # docs/operations — maintainer records
 
-Dated records of the Pro launch: payment provider, serving engines, cost and
-margin, secrets, rollback, monitoring. They are evidence and decision records
-for maintainers, not user documentation; nothing under this directory is
-needed to run patina. This index (written 2026-09-02) says which file is
-live, which is terminal, and which must not be edited.
+Runbooks and decision records for the hosted playground and the Pro service:
+payment, serving engines, cost and margin, secrets, rollback and monitoring.
+They are for maintainers. Nothing here is needed to run patina, and the
+directory is excluded from the npm tarball (`package.json` `files`:
+`!docs/operations/**`).
 
-## Rules
-
-- **The v6.4 preflight hold was retired on 2026-09-02** (owner decision):
-  `v6.4-preflight-hold.json`, `scripts/check-v6.4-preflight-hold.mjs`,
-  `scripts/check-v6.4-release-ready.mjs` and their tests were removed, so no
-  file in this directory is hash-frozen any more. `pro-launch.md` and the
-  `pay-*.json` evidence files are ordinary tracked records now.
-- **Append-only by their own header:** `dep-prod-disabled-20260803.md` (private),
-  `polar-approval-20260803.md`, `secret-manager-record-20260803.md`. Add a
-  dated section; never rewrite the body.
-- The retired hold still listed its nine human blockers as `evidence: null`
-  even though checkout opened on 2026-08-04; the exit records that actually
-  closed them are the chain below (`live-open-20260804.md` is the terminal
-  node). Its last state is in git history (removed in the 2026-09-02
-  retirement commit).
-
-## Live documents (start here)
+## Runbooks and live records
 
 | file | role |
 |---|---|
-| `pro-launch.md` | sale-close / service-kill / key-rotation runbook (v6.4 framing; no longer hash-frozen) |
-| `live-open-20260804.md` | terminal record: checkout enabled on production via Polar |
-| `rollback-drills.md` | measured sale-close drill used by live-open |
+| `pro-launch.md` | sale-close, service-kill and key-rotation runbook |
+| `rollback-drills.md` | measured sale-close drill and the offline recovery fixture |
 | `dashboards/pro-launch-v1.md`, `queries/pro-launch-v1.md` | private monitor operating procedure and queries (`services/log-query/`) |
 | `pro-margin-decision-20260729.md` | Pro cap = 100 rewrites/month; cited from `src/web-rewrite-contract.js` |
+| `serving-engine-cost-20260725.md`, `serving-engine-deepseek-0731-correction-20260803.md` | serving-engine cost and quality measurements cited from `src/` and `.env.example` |
 | `serving-engine-gemini-3.7-flash-20260813.md` | latest engine decision: 3.7-flash allowlisted opt-in, Pro pin unchanged |
-| `free-tier-deepseek-flip-20260803.md` | 2026-08-03 free-tier flip to deepseek; **superseded** — owner confirmed on 2026-09-02 that the free tier serves on gemini (env `PATINA_FREE_MODEL`) |
-| `repo-maintenance-plan-v2-20260909.md` | **archived plan, not a live rule.** The 2026-09-09 development/operations plan, with a status header recording what landed in `AGENTS.md`/`docs/WORKFLOW.md`/`docs/QA.md` and which items (P22 cadence, P08/P10/P19b, P21b) were later retired. Cite the current documents, not this one |
+| `multilingual-funnel-20260907.md` | funnel measurement runbook; `tests/unit/funnel-query.test.js` runs its query recipe |
+| `backend-compat-kimi-gemini-agy-20260913.json` | current compatibility record for all five local CLI backends, required by `tests/unit/backend-contract.test.js`. Quota behavior, other operating systems and gemini-cli API-key mode are not covered |
+| `pay-b-binding-polar-20260729.json`, `pay-live-runtime-polar-20260729.json` | Polar checkout evidence read by `scripts/checkout-evidence-bindings.mjs` |
 
-## Evidence chains (read the last node first)
+## Monitor calculation
 
-1. **Payment:** `payment-provider-reset-20260729.md` (private) (Lemon Squeezy declined)
-   → `polar-application-prep.md` (private) → `polar-onboarding-steps.md` →
-   `polar-integration-evidence-20260729.md` → `polar-binding-migration.md` →
-   {`polar-approval-20260803.md`, `secret-manager-record-20260803.md`,
-   `dep-prod-disabled-20260803.md`} → `gate-b-readiness-20260803.md` →
-   `synthetic-license-20260804.md` (private) → **`live-open-20260804.md`**.
-   The Lemon Squeezy-era `owner-actions-go-live.md` and
-   `production-go-live-checklist.md` were TERMINAL and were removed on
-   2026-09-02 (git history keeps them).
-2. **Cost and margin:** `g002-collector-redesign.md` → `pay-b-cost-v1.md`
-   → **`pro-margin-decision-20260729.md`**; `number-safety-failure-rate-20260730.md` (private)
-  is a corrected side measurement; its failure-allowance follow-up shipped in
-  8.1.3 (`pro-failure-recovery-20260904.md`).
-3. **Serving engine:** `serving-engine-cost-20260725.md` →
-   `register-failure-handoff-20260726.md` (research, closed 2026-07-27) →
-   `serving-engine-deepseek-0731-20260803.md` (retracted) →
-   **`serving-engine-deepseek-0731-correction-20260803.md`** →
-   **`free-tier-deepseek-flip-20260803.md`**; `serving-engine-gemini-3.7-flash-20260813.md`
-   is a self-contained branch.
-4. **Secrets (names only, never values):** `secret-manager-record-20260803.md`
-   → **key rotation 2026-09-04**: the owner replaced `PATINA_FREE_API_KEY` and
-   `PATINA_PRO_API_KEY` (Vercel Production, Sensitive) with product-only Gemini
-   keys in the dashboard; production was redeployed
-   (`patina-ihkxs0l2g`, alias `patina.vibetip.help`), the free tier was
-   verified by one live `/api/rewrite` call, and the pro tier by the synthetic
-   monitor's next scheduled run. Research jobs use a separate local key.
+The low-tier monitor is computed in
+`src/pro-monitor.js#evaluateFreeTierHealth`; events come from the closed
+aggregate observer in `src/web-observability.js`. Free/BYOK successes are
+`sampled_1_of_20` and failures are full-census events, so a rate uses the
+sampled-success estimate (observed successes × 20) plus full-census failures,
+never the raw success counter as a census denominator. Unknown outcomes or
+monitor-drop counts make that rate unavailable rather than silently treating
+missing data as zero. The paid monitor likewise excludes those
+classifications from its known production denominator and raises monitor
+blindness when they are the only aggregate evidence.
 
-## Known open loops (recorded, not resolved here)
+Windows are 15 and 30 minutes. Latency uses coarse buckets and a
+no-interpolation p95, aggregates expire after 7,200 seconds, and only
+aggregates are kept. An `unknown` latency bucket is aggregate-ineligible,
+never a zero-valued latency observation.
+
+## Rollback and deployment
+
+The offline recovery fixture and its no-publication boundary are documented in
+[`rollback-drills.md`](rollback-drills.md). It is code evidence only: no
+production incident, deployment, provider, Discord, registry, or
+`OBS-ALERT-v1` receipt is claimed. npm partial-registry recovery is a separate
+lane owned by
+[`scripts/release-artifacts.mjs`](../../scripts/release-artifacts.mjs) and
+[`tests/unit/release-artifacts.test.js`](../../tests/unit/release-artifacts.test.js),
+with the procedure in [`docs/integrations/release.md`](../integrations/release.md).
+
+Production deployment follows one contract: approved `main` SHA → same-SHA
+preview → application smoke → maintainer-approved promotion, keeping the prior
+deployment ID as the rollback target. Build from `main` through the Vercel Git
+integration or run `vercel --prod` from a clean `main` checkout; never upload
+from `dev`.
+
+## Standing decisions
 
 - First healthy `OBS-ALERT-v1` receipt after live-open: **not required.**
   Owner decision 2026-09-14 (`not_planned`). No record was found, and none
   will be queued. Ordinary cron 200 is enough to treat the monitor as
   running; do not fetch Sensitive observability tokens or manufacture an
   alert/recovery cycle for this receipt. The 8.1.3 Discord envelope and
-  log-query repair stay. See `pro-monitor-endpoint-repair-20260904.md`.
+  log-query repair stay. See `pro-monitor-endpoint-repair-20260904.md` (private).
 - Trusted server-side rewrite failures now restore Pro request/character
   allowance once (8.1.3). This is usage allowance restoration, not a payment
   refund. Client cancellations after admission remain charged.
-- Free-tier engine: resolved 2026-09-02 — owner confirmed gemini; no record
-  in this directory documents the flip back from deepseek, so the env value on
-  the deployment stays the source of truth.
-- `secret-manager-record-20260803.md` predates 8.0.0, which removed
-  `PATINA_LICENSE_PROVIDER` as a vendor selector.
-
-## 2026-09-09 maintenance evidence (P21/P22)
-
-The calculation source for the low-tier monitor is
-`src/pro-monitor.js#evaluateFreeTierHealth`; event collection remains the
-closed aggregate observer in `src/web-observability.js`. Free/BYOK successful
-events are `sampled_1_of_20` and failures are full-census events. A rate must
-therefore use the sampled-success estimate (observed successes × 20) plus
-full-census failures, never the raw success counter as a census denominator.
-Unknown outcomes or monitor-drop counts make that rate unavailable rather than
-silently treating missing data as zero; the paid monitor likewise excludes
-those classifications from its known production denominator and raises
-monitor blindness when they are the only aggregate evidence. The existing
-15-minute/30-minute windows, coarse latency buckets, no-interpolation p95 rule,
-7,200-second aggregate TTL, and aggregate-only/privacy boundary remain
-unchanged. An `unknown` latency bucket is aggregate-ineligible, never a
-zero-valued latency observation.
-
-The offline recovery fixture and its no-publication boundary are documented in
-[`rollback-drills.md`](rollback-drills.md). It is code evidence only: no
-production incident, deployment, provider, Discord, registry, or
-`OBS-ALERT-v1` receipt is claimed. The separate npm partial-registry recovery
-lane is owned by
-[`scripts/release-artifacts.mjs`](../../scripts/release-artifacts.mjs) and
-[`tests/unit/release-artifacts.test.js`](../../tests/unit/release-artifacts.test.js),
-with procedure in
-[`docs/integrations/release.md`](../integrations/release.md); this web lane
-does not unblock npm publication.
-
-### P13a deployment evidence (read-only, promotion still gated)
-
-The contract remains **approved main SHA → same-SHA preview/deployment →
-application smoke → maintainer-approved promotion → retained prior deployment
-rollback ID**. Read-only Vercel REST showed `productionBranch=main` and
-`gitForkProtection=true`; ready deployment
-`dpl_9mLY4716GsCKWrGiomn8hKxZLEzN` has source
-`b9fff3e44037ea05818311b894b57ca89d0ce595`, `sourceRef=dev`, and was created
-`2026-09-09T19:15:06.183+09:00`. Prior ready production
-`dpl_H56Atjg5KJ7YdNPUjCPSs16exshy` has source
-`d7a4741ed9f767bd22a39255e10acf159351fb7a`. The b9 SHA is a main ancestor and
-both deployment/release trees are
-`7cd7f924d1b2228a9692b64842b69918beaf2a21`, so the source-ref discrepancy is
-not a proven content mismatch; the maintainer must reconcile the `sourceRef=dev`
-exception. A public GET rendered the `8.6.0` title (basic read smoke only).
-Environment metadata exposed counts `production=34` and `preview=31` with
-`decrypt=false`; no values were read. Required checks/settings remain
-**unknown**; account confirmation is human-blocked, and promotion/rollback are
-unexecuted, unapproved, and human-blocked. The earlier
-GitHub deployment `6347382527` (source
-`d7a4741ed9f767bd22a39255e10acf159351fb7a`) reported success but was neither
-application smoke nor Vercel account evidence.
-
-**P13a closed as a recorded exception (2026-09-10, maintainer decision).**
-Read-only `vercel inspect` on 2026-09-10 observed, for both 2026-09-09
-production deployments, `sourceRef=dev` and build logs that begin with
-"Retrieving list of deployment files" / "Extracting deployment files" rather
-than a Git clone step. The most likely reading is that they were CLI uploads
-(`vercel --prod`) from a local `dev` checkout; the invoking client and
-checkout were not directly recorded, so this is an inference, not a verified
-provenance. `dpl_…eycb5nmuq` (19:14:25 KST) errored at file extraction after 797 ms;
-`dpl_9mLY4716GsCKWrGiomn8hKxZLEzN` (19:15:06 KST) succeeded 41 s later and
-still serves `patina.vibetip.help`. Because its tree is byte-identical to
-main `d7a4741` (8.6.0), the maintainer accepted it as production for 8.6.0
-rather than redeploying the same bytes. The contract for future releases is
-unchanged: promote from a main SHA, and prefer the Git integration or an
-explicit `vercel --prod` from a main checkout over uploading from `dev`. The
-prior production `dpl_H56Atjg5KJ7YdNPUjCPSs16exshy` remains the rollback
-target. Required-check settings and a live promote/rollback drill are still
-not exercised; they are release-time items, not open maintenance work.
-
-### P01 client acceptance (2026-09-10)
-
-`cursor-acceptance-20260910.json` supersedes the P01 `inconclusive` row in
-`maintenance-delivery-20260910.json`. The real Cursor Agent CLI
-(2026.09.08, Linux) loaded the always-applied project rule and resolved
-`@AGENTS.md` both in the maintainer checkout and in a fresh `--depth=1` clone
-of `dev` with no local files, exposed the generated `~/.cursor/rules/patina.mdc` adapter as
-agent-requestable, fetched the canonical `SKILL.md` from the adapter's absolute
-path, ran `bin/patina-skill.js`, refused to write output on two backend
-authentication failures, and wrote the result only after a `verified` receipt
-(mps 100 / fidelity 100, codex-cli). Cursor IDE desktop loading and other
-operating systems remain uncovered.
-
-### P17b backend compatibility pilot (2026-09-10)
-
-`backend-compat-codex-20260910.json` supersedes the P17b `inconclusive` row in
-`maintenance-delivery-20260910.json` for **codex-cli only**. Ten live
-invocations of codex 0.153.4 (gpt-5.5, ChatGPT OAuth, no provider API key
-read) verified score parsing, `--verify` retry, a 1.5 s timeout kill with
-process and temp-directory cleanup, the foreign-model fallback, and the
-invalid-model error path. The verdict lives in
-`tests/fixtures/backend-codex-contract.json`.
-
-`backend-compat-claude-gemini-20260910.json` (same day, after #798 removed
-agent tools) adds **claude-cli 2.1.261** (7 invocations, subscription OAuth,
-0 tool calls / 0 MCP references in the session log) and **openai-http over the
-loopback OpenCodex proxy** with `google-antigravity/gemini-3.7-flash` (6
-requests, placeholder key, no provider key). `backend-claude-contract.json`
-moves from version-only to verified. Still not exercised: gemini-cli
-(api-key mode would spend the product key), kimi-cli, `agy` (no adapter),
-quota behavior, other operating systems.
-
-### P17b completion: every local CLI backend verified on current versions (2026-09-13)
-
-`backend-compat-kimi-gemini-agy-20260913.json` closes the P17b remainder of
-the 2026-09-10 record above. The maintainer first refreshed the CLIs (kimi
-0.29.1→0.42.0 via the official installer, agy 1.2.0→1.2.2, codex
-0.153.4→0.154.0, claude 2.1.267→2.1.269; gemini 0.59.0 was already latest) and
-resolved the two open auth decisions: kimi verifies over the Kimi Code OAuth
-session with `KIMI_API_KEY`/`MOONSHOT_API_KEY` unset, and gemini-cli over
-personal Google OAuth (`selectedAuthType=oauth-personal`) with `GEMINI_API_KEY`
-unset, so the product key was never read and the loopback OpenCodex fallback
-was not needed. All five local CLI backends then passed the same surface —
-auth ping, strict scoring JSON parse, `--verify` rewrite with
-`verification.verified=true`, a 1500 ms timeout kill with clean owned-process
-and temp-workspace checks, and the invalid in-family model error paths — plus
-a live codex foreign-model fallback re-check on 0.154.0. New fixtures:
-`backend-kimi-contract.json`, `backend-gemini-contract.json`,
-`backend-agy-contract.json`; the codex and claude fixtures re-point at the new
-record with their 2026-09-10 verdicts retained as history. Still not covered:
-quota/rate-limit behavior, other operating systems (P16b), other CLI
-versions/models, and gemini-cli's API-key mode (deliberately unexercised:
-product-key policy).
-
-P09 was closed on 2026-09-10 by maintainer decision: native Codex GitHub
-review is not used (a repository-wide search for `chatgpt-codex-connector[bot]`
-comments and a five-PR spot check found no evidence of use; no workflow
-requests one; account-side settings were not inspected);
-the review lane is the independent read-only pass plus full CI described in
-[`docs/WORKFLOW.md`](../WORKFLOW.md#independent-review-lane). Unexposed web
-account configuration remains unknown; no automation is inferred from a
-deployment result. The recurring
-maintenance owner is the repository maintainer. Repeated alerts for one
-repository/channel/tier/deployment/trigger/window are deduplicated into one
-incident record with a next-review date; retries are bounded and do not create
-unlimited Issues. Credentials, tokens, raw logs, request text, and provider
-responses are never collected in these records.
-
-### P22 weekly/monthly observation (2026-09-14)
-
-`maintenance-p22-20260914.json` is the 2026-09-14 inventory on dest SHA
-`a9b2c64` (P17b #809 merged). Open issues at writing: #810, #807, #783.
-Open PRs: none. npm stay on 8.3.0; publication remains ON HOLD. #807 item 1
-(libuv teardown abort) is still open after #808 closed item 2. P08/P10/P19b
-remain conditional-deferred; P12b/P21b remain unverified on a real
-registry/production path; Cursor desktop rule loading remains inconclusive.
-No `OBS-ALERT-v1` or paid-conversion claim. #783 stays open.
+- The free tier serves on gemini (owner-confirmed 2026-09-02). The deployment
+  env value `PATINA_FREE_MODEL` is the source of truth for the live engine.
+- Records name secrets, never values. Production `PATINA_FREE_API_KEY` and
+  `PATINA_PRO_API_KEY` (Vercel Production, Sensitive) are product-only Gemini
+  keys, rotated 2026-09-04. Research jobs use a separate local key.
+- The repository maintainer owns recurring maintenance. Repeated alerts for one
+  repository/channel/tier/deployment/trigger/window are deduplicated into one
+  incident record with a next-review date; retries are bounded and do not
+  create unlimited Issues. Credentials, tokens, raw logs, request text, and
+  provider responses are never collected in these records.
 
 ### OBS-ALERT receipt dropped (2026-09-14)
 
@@ -238,25 +87,14 @@ item.
 ### Polar checkout already live; sales-count dropped (2026-09-14)
 
 Polar Pro checkout opened on production on 2026-08-04
-(`live-open-20260804.md`). That is the payment system. A later “first paid
+(`live-open-20260804.md`, private). That is the payment system. A later “first paid
 sale / order count” check is `not_planned`. Do not query Polar or treat
 empty webhook logs as unfinished checkout work.
 
-### P04 first-ten warning window (2026-09-14)
+## Private records
 
-`maintenance-p04-observation-20260914.json` replays
-`scripts/check-pr-policy.mjs` on PRs #793–#802 (the first ten after #792) and
-on later control #821. Enforcement stays `warning`. Nine of the first ten are
-`inconclusive` because the PR body omitted the current template sections;
-only #802 crossed the 600-line review warning (706 reviewable lines). #821
-used the template and passed. This is not a reason to turn size checks into
-required gates or to start P08 selective CI. Next review: 2026-10-14.
-
-## Publishing
-
-This directory is excluded from the npm tarball (`package.json` `files`:
-`!docs/operations/**`). Records marked (private) above carried processor correspondence, operator
-identities, an internal deployment URL, or raw cost figures; on 2026-09-02
-they were moved to the gitignored `docs/internal/` (also
-`polar-form-answers.txt`). They stay on the maintainer's disk and in git
-history, and the chains above still name them so the trail stays readable.
+Records marked (private) carried processor correspondence, operator
+identities, an internal deployment URL or raw cost figures, or they closed an
+evidence chain (Polar onboarding and approval, Gate-B readiness, serving-engine
+retractions) or a dated plan or audit. They live in the gitignored
+`docs/internal/` on the maintainer's disk, not in this repository.

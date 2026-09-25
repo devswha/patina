@@ -23,4 +23,4 @@ Model judges can miss details. These checks support the editorial audit, whose
 criteria also cover conditions, uncertainty, attribution and negation, but do not
 establish reader preference. Editing a pair invalidates its recorded hash binding.
 
-The common voice and skill illustrations were checked separately: six pairs passed MPS 100 and fidelity 91.7–100 in 12 model calls. That maintainer record is under `docs/operations/public-core-examples-verification-20260907.json`.
+The common voice and skill illustrations were checked separately: six pairs passed MPS 100 and fidelity 91.7–100 in 12 model calls.

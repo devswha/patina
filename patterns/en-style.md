@@ -41,7 +41,7 @@ corpus-snapshot:
 >
 > Early feedback was positive. The team still needs retention data before expanding.
 
-**Short-form before / after (`--profile social`):**
+**Short-form before / after (`--document-type social`):**
 > Before: built patina for exactly that — it keeps your meaning intact.
 >
 > After: built patina for exactly that. it keeps your meaning intact.

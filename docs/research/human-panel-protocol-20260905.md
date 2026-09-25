@@ -61,8 +61,7 @@ Krippendorff coincidence formulation; the repository's prior research analysis
 and the primary reference implementation at `grrrr/krippendorff-alpha` provide
 independent comparison points. No external implementation dependency is added.
 
-The preparation selection is frozen in
-`human-pilot-selection-20260905.json`: 22 EN/KO live-quality sources, followed by
+The preparation selection was frozen at 22 EN/KO live-quality sources, followed by
 four unused AI-style fixture IDs per language. These are curated style controls,
 not claims of actual AI authorship. Astra supplies the paired outputs and GPT-5.5
 the fixed primary score; deterministic signals stay separate. Existing audited

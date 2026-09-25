@@ -21,9 +21,8 @@ sync with the resulting `main` history and verify the production version and
 rewrite flow after deployment. Production deployments must originate from a
 `main` SHA: let the Vercel Git integration build the merge commit, or run
 `vercel --prod` from a clean `main` checkout. Do not upload from a `dev`
-working tree; the 2026-09-09 exception is recorded in
-[`docs/operations/README.md`](../operations/README.md#p13a-deployment-evidence-read-only-promotion-still-gated)
-and keeps the previous production deployment ID as the rollback target.
+working tree. Keep the previous production deployment ID as the rollback
+target.
 
 Release tags start the npm publication job; push a tag only for an intended
 release. The GitHub Release remains coupled to successful npm publication.

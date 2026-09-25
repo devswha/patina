@@ -9,7 +9,7 @@ Kimi Code cohort has separate access, defaults and accounting.
 This review made no model calls, inventory probes or credential reads. It used
 public documentation retrieved on September 5, 2026, and repository snapshot
 `722d814925312c8859f1c6499860597d8ce41482`. The
-[JSON companion](provider-gemini-kimi-deepseek-20260905.json) records source
+JSON companion (not kept in the repository) recorded source
 dates, direct-response hashes where available, exact candidate mappings and
 evidence limits. Parent-owned studies and their private receipts were not read.
 

@@ -10,10 +10,7 @@ Patina uses lightweight maintainer governance until the contributor base grows.
 
 ## Change-proposal flow
 
-1. Open an issue first for pattern, scoring, benchmark, installer, provider, or release changes.
-2. Include the risk class: user-visible behavior, benchmark claim, security/install path, or docs-only.
-3. Link verification evidence in the PR: tests, benchmark report, screenshots, or manual command output.
-4. Prefer follow-up issues over expanding a PR after review starts.
+Follow the [PR process in CONTRIBUTING.md](CONTRIBUTING.md#pr-process). Prefer follow-up issues over expanding a PR after review starts.
 
 ## Main branch protection
 
@@ -25,7 +22,7 @@ Patina uses lightweight maintainer governance until the contributor base grows.
 - one approving review is required for non-admin merges;
 - required checks must pass before merging, and branches must be up to date:
   - `lint`
-  - `test (18.0.0)`
+  - `test (18.1.0)`
   - `test (20)`
   - `test (22)`
   - `test (lts/*)`

@@ -1,8 +1,8 @@
 # Live current-path rewrite diagnostic (2026-09-14)
 
-Status: PLAN.md v2 §7.A reproduction on the current dest rewrite path. No product prompt, threshold, or version change.
+Status: PLAN v2 §7.A reproduction on the current dest rewrite path. No product prompt, threshold, or version change.
 Tree: `bot/plan-live-diagnostic-20260914` @ `142b2eb5a0db9ad75c8e1efb5f77359c3a6148de` (`origin/dev` at branch creation).
-Plan source: `/home/devswha/workspace/patina/PLAN.md` §4 and §7.A (read-only sibling checkout; not copied here).
+Plan source (PLAN): the v2 rewrite-quality plan, §4 and §7.A, archived as [`rewrite-quality-plan-v2-20260909.md`](rewrite-quality-plan-v2-20260909.md).
 
 This note records first-available stage outputs for eight synthetic KO cases from PLAN §2.3. It is a path reproduction, not a quality claim, not a language-wide result, and not permission to ship H-RHETORIC.
 
@@ -45,7 +45,7 @@ No `--verify`, `--model`, `--document-type`, `--persona`, or `--register`. Ambie
 
 ## Cases
 
-Public synthetic fixtures: `tests/fixtures/rhetoric-live-diagnostic/`. Raw stdout JSON is local-only under `.omo/research/rhetoric-live-diagnostic-20260914/` (gitignored). All eight CLI exits were 0. All eight JSON payloads had `mode: rewrite`, `verification` absent, `gateResult: null`, `overall: null`. Stderr was empty (no `verify.*`, no `rewrite.meaning_guard`, no `backend.fallback`).
+Public synthetic fixtures: `tests/fixtures/rhetoric-live-diagnostic/`. Raw stdout JSON stayed local-only and was not committed. All eight CLI exits were 0. All eight JSON payloads had `mode: rewrite`, `verification` absent, `gateResult: null`, `overall: null`. Stderr was empty (no `verify.*`, no `rewrite.meaning_guard`, no `backend.fallback`).
 
 `decorative_problem_remained` is yes only when PLAN treats the wording as removable packaging **and** that packaging is still in the returned text. Keeping intensity, possibility, a quote, a technical degree, or a requested slogan on C / C/T is not counted as a leftover.
 

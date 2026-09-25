@@ -26,7 +26,8 @@ Security-sensitive areas include:
 - backend/provider invocation;
 - prompt construction with untrusted text;
 - install scripts;
-- automation under `ops/`;
+- the hosted API (`api/`, `src/web-*`) and Pro license keys;
+- the log-query service (`services/log-query/`);
 - any path that may expose local files, API keys, tokens, or private drafts.
 
 ## Non-security issues

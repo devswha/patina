@@ -4,7 +4,7 @@ Checked **September 5, 2026 (Asia/Seoul)**. Access and funded inputs for all thr
 
 Repository evidence is from `722d814925312c8859f1c6499860597d8ce41482`. The assigned worktree has no physical AGENTS.md; the supplied instructions and the main worktree's AGENTS.md were read, along with G1 context. The scope stays with hosted text-model selection and the path to a viable paid product. Runtime, shared branches, and active study worktrees were left untouched.
 
-The [matching JSON](provider-groq-together-minimax-20260905.json) stores source dates, exact IDs, proposed settings, limits, conflicts, and admission requirements. Its top-level `candidates` is deliberately empty. The existing harness does not enforce an arbitrary `admissionStatus` field; putting blocked rows in that executable list would be misleading. Candidate descriptions live under `documentedCandidates`.
+The matching JSON record (not kept in the repository) stored source dates, exact IDs, proposed settings, limits, conflicts, and admission requirements. Its top-level `candidates` is deliberately empty. The existing harness does not enforce an arbitrary `admissionStatus` field; putting blocked rows in that executable list would be misleading. Candidate descriptions live under `documentedCandidates`.
 
 **Catalog shortlist**
 

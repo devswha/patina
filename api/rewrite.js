@@ -404,6 +404,13 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
   });
 }
 
+/** @type {ReturnType<typeof createRewriteApiHandler>|undefined} */
+let defaultHandler;
+
+// Built once per process so the local in-memory KV keeps quotas and
+// concurrency leases across requests. A construction error is not cached:
+// every request rethrows it until the configuration is fixed.
 export default async function handler(req, res) {
-  return createRewriteApiHandler()(req, res);
+  defaultHandler ??= createRewriteApiHandler();
+  return defaultHandler(req, res);
 }

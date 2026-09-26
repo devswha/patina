@@ -6,7 +6,8 @@ import { validateBaseURL } from '../security.js';
 import { nativeAnthropicEnabled, nativeHeaders } from '../anthropic-native.js';
 import { inputError } from '../errors.js';
 
-const MIN_NODE_MAJOR = 18;
+// Must equal the package.json engines.node floor.
+const MIN_NODE_VERSION = '18.1.0';
 
 export async function runDoctor(args = [], { version, fetchImpl } = {}) {
   const parsed = parseDoctorArgs(args);
@@ -225,20 +226,19 @@ export async function appendUpdateCheck(report, { version, fetchImpl = globalThi
   return report;
 }
 
-export function buildDoctorReport({ version } = {}) {
+export function buildDoctorReport({ version, nodeVersion = process.versions.node } = {}) {
   const checks = [];
   const backends = listBackends();
-  const nodeVersion = process.versions.node;
-  const nodeMajor = Number(nodeVersion.split('.')[0]);
-  const nodeOk = Number.isFinite(nodeMajor) && nodeMajor >= MIN_NODE_MAJOR;
+  const nodeComparison = compareSemver(nodeVersion, MIN_NODE_VERSION);
+  const nodeOk = nodeComparison !== null && nodeComparison >= 0;
 
   checks.push({
     name: 'node',
     status: nodeOk ? 'ok' : 'blocker',
     summary: `Node ${nodeVersion}`,
     detail: nodeOk
-      ? `meets package engine >=${MIN_NODE_MAJOR}`
-      : `requires Node >=${MIN_NODE_MAJOR}`,
+      ? `meets package engine >=${MIN_NODE_VERSION}`
+      : `requires Node >=${MIN_NODE_VERSION}`,
   });
 
   checks.push({
@@ -281,7 +281,7 @@ export function buildDoctorReport({ version } = {}) {
     version: version || null,
     node: {
       version: nodeVersion,
-      required: `>=${MIN_NODE_MAJOR}.0.0`,
+      required: `>=${MIN_NODE_VERSION}`,
       ok: nodeOk,
     },
     checks,

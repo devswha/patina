@@ -345,14 +345,15 @@ ${fenceReferenceText(text, { label: '## Text to Score' })}
     return withShadowScore(parsed, { deterministicScore, config, logger });
   } catch (e) {
     rethrowIfAborted(e, signal);
-    logger.warn('score.text_schema_failure', {
-      message: `[patina] scoreText schema failure after retry: ${e.message}`,
+    const kind = scoreFailureKind(e);
+    logger.warn(kind === SCORE_ERRORS.TRANSPORT_FAILURE ? 'score.text_transport_failure' : 'score.text_schema_failure', {
+      message: `[patina] scoreText ${kind} after retry: ${redactErrorText(e.message)}`,
     });
     return {
       overall: null,
-      llmScore: { overall: null, interpretation: null, error: 'schema-failure' },
+      llmScore: { overall: null, interpretation: null, error: kind },
       deterministicScore,
-      error: 'schema-failure',
+      error: kind,
       raw: e.raw,
     };
   }

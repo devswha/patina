@@ -156,7 +156,6 @@ const SERVER_SECRET_MODULES = Object.freeze([
 ]);
 
 const RESEARCH_MODULES = Object.freeze([
-  'scripts/iterative-rewrite-baseline.mjs',
   'scripts/research/',
   'tests/quality/',
 ]);

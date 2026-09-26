@@ -75,11 +75,7 @@ The Action finds changed Markdown files with `dorny/paths-filter@v4`, runs patin
 
 ### README score badge
 
-`npm run badge` writes a [Shields.io endpoint](https://shields.io/endpoint) JSON file from the same deterministic prose score. It reports the highest scored file (`maxScore`) as an editing-hotspot percentage, not an authorship verdict.
-
-```bash
-npm run badge -- README.md docs/FAQ.md > patina-badge.json
-```
+The Action's `patina-badge.json` is a [Shields.io endpoint](https://shields.io/endpoint) file built from the same deterministic prose score. It reports the highest scored file (`maxScore`) as an editing-hotspot percentage, not an authorship verdict.
 
 ```json
 { "schemaVersion": 1, "label": "patina", "message": "25% · human-ish", "color": "brightgreen" }

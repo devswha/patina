@@ -116,7 +116,7 @@ export function summarizeProseAnalysis(result) {
   const signalScore = summarizeSignalStrength(proseParagraphs);
   const leaked = Boolean(result.markupLeakage?.leaked);
   const discourseHot = result.discourseTells?.hot === true;
-  // Ranking semantics (`flooredScore`, used by scripts/qa/mdx-score.mjs rows):
+  // Ranking semantics (`flooredScore`):
   // detection scope stays wider than the gate. The attributed ratio over ALL
   // analyzer paragraphs (divider pseudo-paragraphs included) can only raise the
   // ranking, so `---`-spam documents still surface as editing hotspots, and the

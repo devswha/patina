@@ -252,8 +252,7 @@ The checker enforces only three reachability rules:
 2. `playground/**` cannot reach server-secret modules, API handlers, or Node
    built-ins.
 3. `src/**`, `api/**`, `bin/**`, and every declared published package bin
-   cannot reach research modules (`scripts/research/`, `tests/quality/`, and
-   `scripts/iterative-rewrite-baseline.mjs`).
+   cannot reach research modules (`scripts/research/` and `tests/quality/`).
 
 Deterministic shared modules are classified rather than blanket-banned:
 `src/edit-controls.js`, `src/errors.js`, `src/logger.js`,

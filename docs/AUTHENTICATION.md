@@ -68,11 +68,10 @@ patina --model claude-sonnet-4-6 --lang ko input.txt   # auto-routes
 ```
 
 Notes: patina passes `--tools ""` and `--strict-mcp-config`, so the call carries
-no built-in tools and starts none of your configured MCP servers. The `--ocr`
-image route is the only exception and keeps `Read` for the staged image files.
+no built-in tools and starts none of your configured MCP servers.
 
 Auth file: `~/.claude/.credentials.json` (created by the OAuth flow). `patina
-doctor`, `patina auth status`, and automatic `--ocr` backend selection read
+doctor` and `patina auth status` read
 its `claudeAiOauth` tokens and expiry timestamps: a file that Claude Code emptied after logout or a failed refresh
 reports `authenticated=no` with a hint to run `claude auth login` again. No
 network call is made; a token that is present but revoked server-side is only

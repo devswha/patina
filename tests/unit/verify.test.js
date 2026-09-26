@@ -293,8 +293,8 @@ test('verifyRewrite still certifies a numeric source once the scorer extracted a
 
 // ---------- validateVerifyRequest ----------
 
-test('validateVerifyRequest rejects non-rewrite and preview surfaces', () => {
-  for (const flag of ['score', 'audit', 'diff', 'preview']) {
+test('validateVerifyRequest rejects non-rewrite modes', () => {
+  for (const flag of ['score', 'audit', 'diff']) {
     assert.throws(
       () => validateVerifyRequest({ verify: true, [flag]: true }),
       /--verify cannot be combined/,

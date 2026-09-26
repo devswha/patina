@@ -12,10 +12,6 @@ import {
 import { resolveLocalCliModel } from '../model-defaults.js';
 
 export const name = 'agy-cli';
-// Images: agy could read staged files through view_file, but that is exactly
-// the tool surface this adapter refuses to rely on. OCR stays on the CLIs whose
-// image path is native input (codex -i) or a single allow-listed tool (claude).
-export const supportsImages = false;
 export const loginCommand = 'agy';
 export const installHint = 'Install Antigravity CLI (https://antigravity.google/docs/cli/install), run `agy` once to sign in, then run `patina auth login agy-cli` again.';
 
@@ -164,12 +160,9 @@ export function login(options = {}) {
   });
 }
 
-export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS, images } = {}) {
+export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('agy-cli backend: prompt must be a non-empty string');
-  }
-  if (Array.isArray(images) && images.length > 0) {
-    throw new Error('agy-cli backend: image input is not supported');
   }
   throwIfAborted(signal, 'agy-cli backend: aborted');
 

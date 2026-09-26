@@ -7,14 +7,12 @@ import {
   runInteractiveCommand,
   probeCliAvailability,
   runOwnedCliCapture,
-  stageCliImages,
   throwIfAborted,
   withCliTempDir,
 } from './contract.js';
 import { resolveLocalCliModel } from '../model-defaults.js';
 
 export const name = 'claude-cli';
-export const supportsImages = true;
 export const loginCommand = 'claude auth login';
 export const installHint = 'Install Claude Code first, then run `patina auth login claude-cli` again.';
 
@@ -119,7 +117,7 @@ export function login(options = {}) {
   });
 }
 
-export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS, images } = {}) {
+export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('claude-cli backend: prompt must be a non-empty string');
   }
@@ -130,31 +128,17 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   // claude -p prints to stdout, so no output file plumbing is needed (unlike
   // codex-cli).
   return withCliTempDir('patina-claude-', async (dir) => {
-    // Vision input: images are staged INTO the temp cwd — claude's in-cwd Read
-    // tool is auto-allowed in print mode, while paths outside cwd would be
-    // permission-denied (and granting them would weaken the empty-cwd
-    // containment).
-    //
     // A rewrite or score is a pure text transform, so the built-in tool set is
     // emptied (`--tools ""`) and the user's configured MCP servers are skipped
     // (`--strict-mcp-config` with no --mcp-config): source text that contains
     // instructions gets no tool to act on, no third-party MCP process starts
-    // per call, and the request carries no tool definitions. Only the image
-    // route keeps the Read tool, which is how claude ingests staged files.
-    let effectivePrompt = prompt;
-    const hasImages = Array.isArray(images) && images.length > 0;
-    const tools = hasImages ? 'Read' : '';
-    if (hasImages) {
-      const staged = stageCliImages(dir, images, name);
-      effectivePrompt = `${prompt}\n\nAttached image file(s) in the working directory: ${staged.map((f) => `./${f}`).join(', ')} — read them before answering.`;
-    }
-
+    // per call, and the request carries no tool definitions.
     const { stdout } = await runOwnedCliCapture({
       backendName: name,
       command: 'claude',
-      args: ['-p', '--model', cliModel, '--tools', tools, '--strict-mcp-config'],
+      args: ['-p', '--model', cliModel, '--tools', '', '--strict-mcp-config'],
       cwd: dir,
-      stdinText: effectivePrompt,
+      stdinText: prompt,
       timeout,
       signal,
       notFoundHint: 'Install Claude Code first.',

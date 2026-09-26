@@ -17,14 +17,14 @@ Recorded assets:
   - expected visual contract: English UI ("Make it sound human"), Free mode nav, the 30-templates fact preserved in the rewrite, MPS 100 / Fidelity 75 badges, hot-paragraph ratio 100 → 0.
   - rendered at 1640px wide, 5 frames, 256-color shared palette; keep under 1 MB.
 - `patina-playground-en.png` — expanded-result still used where PNG is required.
-- `patina-preview-en.png` — still of the historical CLI `--preview` page (Rewritten view), used for directory submissions that require a PNG.
-  - source: a styled local HTML page with Notion-template-pack prose.
-  - generated with: `node bin/patina.js --preview --lang en --document-type marketing --backend codex-cli <sample>.html`
+- `patina-preview-en.png` — still of the retired CLI `--preview` page (Rewritten view), used for directory submissions that require a PNG.
+  - source: a styled local HTML page with Notion-template-pack prose, rendered by the `--preview` mode that shipped in 4.x–9.0.0 and was removed afterwards.
   - visual contract: prose blocks are numbered; the bar shows `4 OF 5 BLOCKS REWRITTEN` and `SCORE 60 → 0`.
+  - it cannot be regenerated with the current CLI; replace it with a playground capture when it is next refreshed.
 
 Requirements for new runtime recordings:
 
-- use a real `--preview` output page, not a hand-drawn mock
+- use a real playground run, not a hand-drawn mock
 - keep headings, CTA, and layout visible in the first viewport
 - keep animation slow enough to read the toggle labels
 - avoid animated SVG for GitHub README motion because sanitization can strip animation
@@ -36,15 +36,7 @@ described as a captured model result.
 
 ## Regeneration outline
 
-1. Create a local HTML page with AI-sounding prose and clear product-page layout.
-2. Run:
-
-```bash
-node bin/patina.js --preview --lang en --document-type marketing --backend codex-cli /tmp/patina-preview-sample.html
-```
-
-3. Open the saved preview HTML from stderr.
-4. Capture the first viewport in the four view states: Rewritten, Original, Both, Diff.
-5. Assemble a compact GIF from those captures.
-
-The checked-in still is 960×617.
+1. Start the local playground with a real backend: `node scripts/dev-server.mjs` with `PATINA_DEV_LLM_*` and `PATINA_DEV_LLM_SCORE=real`.
+2. Paste an AI-sounding English sample on the landing and run one rewrite.
+3. Capture the landing, the streaming rewrite, and the result with the MPS/Fidelity badges expanded.
+4. Assemble a compact GIF from those captures and keep it under 1 MB.

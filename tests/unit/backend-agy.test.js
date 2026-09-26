@@ -154,10 +154,8 @@ test('agy-cli maps a non-finite timeout to an effectively unlimited --print-time
   assert.strictEqual(agyCli.agyPrintTimeout(NaN), '8760h');
 });
 
-test('agy-cli rejects images and empty prompts before spawning', async () => {
-  await assert.rejects(agyCli.invoke({ prompt: 'x', images: ['/tmp/a.png'] }), /image input is not supported/);
+test('agy-cli rejects empty prompts before spawning', async () => {
   await assert.rejects(agyCli.invoke({ prompt: '' }), /prompt must be a non-empty string/);
-  assert.strictEqual(agyCli.supportsImages, false);
 });
 
 test('agy-cli refuses to launch unless Antigravity settings keep the headless defaults', () => {

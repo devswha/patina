@@ -6,21 +6,19 @@ import {
   runInteractiveCommand,
   probeCliAvailability,
   runOwnedCliCapture,
-  stageCliImages,
   throwIfAborted,
   withCliTempDir,
 } from './contract.js';
 import { resolveLocalCliModel } from '../model-defaults.js';
 
 export const name = 'codex-cli';
-export const supportsImages = true;
 export const loginCommand = 'codex login';
 
 // Codex feature flags that expose agent tools. A rewrite or score is a pure
 // text transform, yet with these enabled `codex exec` behaves as an agent,
 // issuing shell tool calls and re-sending the prompt on every turn. Disabling
 // them removes the tool definitions from the request and leaves a single
-// turn. Images still arrive through `-i`, which is model input, not a tool.
+// turn.
 export const CODEX_DISABLED_FEATURES = Object.freeze(['shell_tool', 'unified_exec', 'multi_agent']);
 export const installHint = 'Install it from https://github.com/openai/codex, then run `patina auth login codex-cli` again.';
 
@@ -46,7 +44,7 @@ export function login(options = {}) {
   });
 }
 
-export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS, images } = {}) {
+export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('codex-cli backend: prompt must be a non-empty string');
   }
@@ -60,15 +58,6 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   return withCliTempDir('patina-codex-', async (dir) => {
     const outFile = join(dir, 'last-message.txt');
 
-    // Vision input: codex exec attaches images natively via -i; staging them
-    // into the temp cwd keeps the read-only sandbox + empty-cwd containment.
-    const imageArgs = [];
-    if (Array.isArray(images) && images.length > 0) {
-      for (const staged of stageCliImages(dir, images, name)) {
-        imageArgs.push('-i', join(dir, staged));
-      }
-    }
-
     await runOwnedCliCapture({
       backendName: name,
       command: 'codex',
@@ -80,7 +69,6 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
         '--model', cliModel,
         ...CODEX_DISABLED_FEATURES.flatMap((feature) => ['--disable', feature]),
         '--output-last-message', outFile,
-        ...imageArgs,
       ],
       cwd: dir,
       stdinText: prompt,

@@ -5,7 +5,6 @@
 // filesystem or network boundaries and must be validated before use.
 import { inputError } from './errors.js';
 import { isIP } from 'node:net';
-import { lookup } from 'node:dns/promises';
 
 const DOCUMENT_TYPE_NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_-]*$/;
 
@@ -203,61 +202,4 @@ export function applyPrivateBaseURLOptIn(parsed) {
   if (parsed && parsed.allowPrivateBaseURL) {
     process.env.PATINA_ALLOW_PRIVATE_BASE_URL = '1';
   }
-}
-
-/**
- * Decide whether a page-derived sub-resource (an <iframe src>, a CSS/<img>
- * image URL) may be fetched. Unlike the user-typed preview URL — which is
- * trusted and may point at localhost dev servers — these URLs come from page
- * CONTENT, so a hostile page could aim them at cloud metadata (169.254.169.254)
- * or internal RFC 1918 / loopback services (SSRF). The hostname is resolved
- * (DNS rebinding aside, this catches names that map to private space) and any
- * private/loopback/link-local result is refused UNLESS it shares the previewed
- * page's host — a page may load its own internal assets, but an arbitrary
- * public page may not reach into the local network.
- *
- * @param {string} rawUrl Absolute http(s) sub-resource URL.
- * @param {object} [options]
- * @param {string} [options.baseUrl] The previewed page's URL.
- * @param {Function} [options.lookupImpl] DNS resolver (injectable for tests);
- *   defaults to node:dns/promises lookup with {all:true}.
- * @returns {Promise<boolean>} True when the fetch is allowed.
- */
-export async function isSubresourceFetchAllowed(rawUrl, { baseUrl, lookupImpl = lookup } = {}) {
-  let url;
-  try {
-    url = new URL(rawUrl);
-  } catch {
-    return false;
-  }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
-
-  const sameHostAsPage = (() => {
-    if (!baseUrl) return false;
-    try {
-      return new URL(baseUrl).host === url.host;
-    } catch {
-      return false;
-    }
-  })();
-
-  const host = url.hostname.startsWith('[') && url.hostname.endsWith(']')
-    ? url.hostname.slice(1, -1)
-    : url.hostname;
-
-  if (isIP(host)) {
-    const priv = isLoopbackHost(url.hostname) || isPrivateOrSpecialIP(url.hostname);
-    return priv ? sameHostAsPage : true;
-  }
-
-  let addresses;
-  try {
-    addresses = await lookupImpl(host, { all: true });
-  } catch {
-    return false;
-  }
-  const resolvesPrivate = addresses.some(
-    (a) => isLoopbackHost(a.address) || isPrivateOrSpecialIP(a.address),
-  );
-  return resolvesPrivate ? sameHostAsPage : true;
 }

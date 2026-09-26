@@ -6,14 +6,12 @@ import {
   runInteractiveCommand,
   probeCliAvailability,
   runOwnedCliCapture,
-  stageCliImages,
   throwIfAborted,
   withCliTempDir,
 } from './contract.js';
 import { resolveLocalCliModel } from '../model-defaults.js';
 
 export const name = 'gemini-cli';
-export const supportsImages = true;
 export const loginCommand = 'gemini';
 export const installHint = 'Install Gemini CLI first, then run `patina auth login gemini-cli` again.';
 
@@ -57,7 +55,7 @@ export function login(options = {}) {
   });
 }
 
-export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS, images } = {}) {
+export async function invoke({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('gemini-cli backend: prompt must be a non-empty string');
   }
@@ -69,8 +67,7 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
   // MCP servers are disabled by allow-listing a name that cannot exist (a
   // wedged server can hang the call until the backend timeout), and a
   // deny-all policy drops every built-in tool definition from the request so
-  // source text that contains instructions has nothing to act on. Image input
-  // uses @-includes, which the CLI resolves before the model runs.
+  // source text that contains instructions has nothing to act on.
   return withCliTempDir('patina-gemini-', async (dir) => {
     const policyFile = join(dir, 'patina-no-tools.toml');
     try {
@@ -81,20 +78,12 @@ export async function invoke({ prompt, model, modelSource, signal, timeout = DEF
     const cliModel = resolveLocalCliModel({ backendName: name, model, modelSource });
     const args = ['-p', '', '--output-format', 'text', '--skip-trust', '--allowed-mcp-server-names', NO_MCP_SERVERS, '--policy', policyFile, '-m', cliModel];
 
-    // Vision input: gemini's @-includes are confined to the workspace root, so
-    // images are staged into the temp cwd and referenced as @<filename>.
-    let effectivePrompt = prompt;
-    if (Array.isArray(images) && images.length > 0) {
-      const staged = stageCliImages(dir, images, name);
-      effectivePrompt = `${staged.map((f) => `@${f}`).join(' ')}\n${prompt}`;
-    }
-
     const { stdout } = await runOwnedCliCapture({
       backendName: name,
       command: 'gemini',
       args,
       cwd: dir,
-      stdinText: effectivePrompt,
+      stdinText: prompt,
       timeout,
       signal,
       notFoundHint: 'Install Gemini CLI first.',

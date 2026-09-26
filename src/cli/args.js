@@ -505,7 +505,7 @@ export function validateOutputRouting(parsed) {
   }
 }
 
-// Subcommand parsers (persona, pack): consume the value after a value-taking
+// Subcommand parsers (persona): consume the value after a value-taking
 // flag, returning [value, nextIndex]. A missing value or a following flag is an
 // input error, not a silent `undefined`.
 export function takeValue(args, i, flag) {
@@ -607,8 +607,6 @@ COMMANDS
   patina persona show <id> Print normalized Persona voice metadata
   patina persona edit <id> Copy-on-edit a Persona into custom/personas/
   patina persona rm <id>   Remove a custom Persona (built-ins are protected)
-  patina pack list         List licensed pro packs (needs PATINA_LICENSE_KEY)
-  patina pack install <id> Install a pro pack into custom/
 
 MODES
   --diff                  Show changes pattern by pattern

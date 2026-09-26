@@ -45,7 +45,6 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 | `patina doctor` | ✓ | — | CLI environment diagnostic. |
 | `patina auth status/login` | ✓ | — | CLI authentication guidance. |
 | `patina persona new/list/show/edit/rm` | ✓ | — | CLI custom Persona lifecycle. |
-| `patina pack list/install` | ✓ | — | Licensed Pro pack delivery into `custom/` (`docs/PRO-PACKS.md`). |
 
 ## Audit notes
 

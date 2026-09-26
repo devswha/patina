@@ -23,7 +23,7 @@ file with the same name. Follow the existing frontmatter format and include
 fire conditions, exclusions, meaning-preservation notes, and before/after examples.
 Keep a separate copy of custom files before reinstalling the CLI.
 
-The CLI does not load `custom/community-packs/`; to keep a pattern from an old community pack, copy it into `custom/patterns/` (licensed Pro packs still use `patina pack`).
+The CLI does not load `custom/community-packs/`; to keep a pattern from an old community pack, copy it into `custom/patterns/`.
 
 ## Supporting References
 

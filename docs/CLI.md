@@ -10,7 +10,6 @@ subcommands each have their own reference:
 | Command | Reference |
 |---|---|
 | `patina inspect [file]` | [editor inspection](integrations/editor-inspection.md) |
-| `patina pack list|install` | [pro packs](PRO-PACKS.md) |
 | `patina persona new|list|show|edit|rm` | [`--persona`](#optional-voice-persona---persona) |
 | `patina auth status|login`, `patina doctor` | [authentication](AUTHENTICATION.md) |
 

@@ -6,7 +6,7 @@ import { basename } from 'node:path';
 // Options that consume the next token as their value. Drives --name=value
 // expansion and the --suffix flag-collision backstop (#440).
 const VALUE_OPTIONS = new Set([
-  '--lang', '--document-type', '--register', '--persona', '--jargon', '--format', '--exit-on',
+  '--lang', '--document-type', '--register', '--persona', '--format', '--exit-on',
   '--profile', '--tone', '--formality',
   '--suffix', '--outdir', '--model', '--api-key-file', '--base-url',
   '--backend', '--timeout-ms', '--max-concurrency', '--max-retries',
@@ -105,7 +105,7 @@ export function parseArgs(rawArgs) {
       case '--register': {
         const value = readOptionValue(args, i, arg);
         i++;
-        parsed.register = parseTransformValue(
+        parsed.register = parseRegisterValue(
           value,
           arg,
           ['casual', 'professional'],
@@ -117,13 +117,6 @@ export function parseArgs(rawArgs) {
         parsed.persona = readOptionValue(args, i, arg);
         i++;
         break;
-      case '--jargon': {
-        const value = readOptionValue(args, i, arg);
-        i++;
-        parsed.jargon = parseTransformValue(value, arg, ['keep', 'explain', 'remove'],
-          'keep = copy Latin-letter tech/API/task/exam names as-is (default), explain = keep those terms and add a first-mention gloss, remove = replace jargon for a general audience.');
-        break;
-      }
       case '--diff':
         parsed.diff = true;
         break;
@@ -368,10 +361,8 @@ export function validateOfflineScoreRequest(parsed) {
   }
 }
 
-// Shared parser for --jargon/--register: exactly one value from the allowed set.
-const TRANSFORM_OPTION_NOUNS = { '--jargon': 'jargon policy', '--register': 'register' };
-
-function parseTransformValue(value, option, valid, hint) {
+// --register parser: exactly one value from the allowed set.
+function parseRegisterValue(value, option, valid, hint) {
   const token = String(value ?? '').trim();
   if (token.length === 0) {
     throw inputError(`${option} expects a value`, `Valid values are: ${valid.join(', ')}.`, hint);
@@ -385,7 +376,7 @@ function parseTransformValue(value, option, valid, hint) {
   }
   if (!valid.includes(token)) {
     throw inputError(
-      `unknown ${TRANSFORM_OPTION_NOUNS[option] ?? 'value'} ${token}`,
+      `unknown register ${token}`,
       `Valid values are: ${valid.join(', ')}.`,
       hint
     );
@@ -393,15 +384,11 @@ function parseTransformValue(value, option, valid, hint) {
   return token;
 }
 
-// --jargon and --register alter rewritten prose. Score/audit/diff inspect the
-// source as-is, so reject these controls instead of silently ignoring them.
-export function validateTransformRequest(parsed) {
-  const jargonActive = Boolean(parsed.jargon) && parsed.jargon !== 'keep';
-  const registerActive = Boolean(parsed.register);
-  if (!jargonActive && !registerActive) return;
-  const flag = jargonActive && registerActive
-    ? '--jargon/--register'
-    : jargonActive ? '--jargon' : '--register';
+// --register alters rewritten prose. Score/audit/diff inspect the source
+// as-is, so reject it instead of silently ignoring it.
+export function validateRegisterRequest(parsed) {
+  if (!parsed.register) return;
+  const flag = '--register';
   const blocked = [
     ['score', '--score', 'does not rewrite text'],
     ['audit', '--audit', 'does not rewrite text'],
@@ -660,10 +647,6 @@ DOCUMENT & VOICE
                           score/audit/diff
   --register <name>       Explicit casual or professional register. Omit it
                           to preserve the source register.
-  --jargon <policy>       Technical-term policy (rewrite only):
-                          keep (default) = copy Latin-letter tech/API/task
-                          names as-is, explain = keep English + first-mention
-                          gloss, remove = replace jargon for a general audience
   --rewrite-headings      Allow rewording/adding/removing Markdown headings.
                           By default ATX heading lines (## ...) are preserved
                           verbatim as structure so the TOC and #anchors survive

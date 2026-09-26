@@ -89,7 +89,6 @@ function renderHistory(history = []) {
  * @param {ReturnType<typeof loadWebAssets>} options.assets Loaded web assets.
  * @param {'strict'|'minimal'} [options.promptMode='strict'] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals=null] Trusted deterministic signals.
- * @param {'default'|'legacy'} [options.rhetoricPolicy='default'] Rhetoric edit policy.
  * @returns {string} Prompt text.
  */
 export function buildWebRewritePrompt({
@@ -98,7 +97,6 @@ export function buildWebRewritePrompt({
   assets,
   promptMode = 'strict',
   documentSignals = null,
-  rhetoricPolicy = 'default',
 }) {
   if (request.mode === 'verify') {
     throw inputError('Verification does not generate text', 'Use the hosted verification pipeline for a reviewed draft.', 'Send mode "verify" to /api/rewrite.');
@@ -120,7 +118,6 @@ export function buildWebRewritePrompt({
       promptMode === 'minimal' ? 'short-safe-v1' : 'baseline'
     ),
     documentSignals,
-    rhetoricPolicy,
   };
 
   if (request.mode === 'refine') {

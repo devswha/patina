@@ -180,8 +180,6 @@ stylometry:
     bands:
       low: 0.55              # MATTR < 0.55 → low (suspect)
       high: 0.70             # MATTR > 0.70 → high
-  sentence_zoom:
-    similarity_threshold: 0.20  # adjacent sentences within ±20% token count → grouped as sub-flag
   ko_diagnostics:
     enabled: true              # conservative ko-only composite; requires all bands below
     bands:
@@ -194,9 +192,6 @@ stylometry:
       posProxy:
         minMatchedCount: 10
         maxClassDiversity: 0.26
-  skip:
-    min_paragraphs: 2
-    min_sentences: 2
 
 # AI-Lexicon Overlap (SKILL.md Step 4.7)
 # Matches paragraphs against an AI-favored phrase dictionary not covered
@@ -212,6 +207,3 @@ lexicon:
   # en/ko use the calibrated baseline from HC3 + Wikipedia + NamuWiki:
   # AI catch 66% → 76% with Wikipedia FP staying at 25% boundary.
   # zh/ja are starter, local-gate lexicons; expand only after a larger corpus pass.
-  skip:
-    min_paragraphs: 2
-    min_sentences: 2

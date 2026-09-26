@@ -123,9 +123,9 @@ Produce output in this exact order, with no other text outside the tagged blocks
 
 1. The rewritten text wrapped in `[BODY]`/`[/BODY]` tags. The body must contain only the user-facing rewrite — no phase labels or preamble.
 2. Brief self-audit notes wrapped in `[SELF_AUDIT]`/`[/SELF_AUDIT]` tags. Patina strips this block before showing the user.
-## Terminology constraint (--jargon keep)
+## Terminology constraint
 
-- **Keep Latin-letter terms (--jargon keep)**: Copy Latin-letter tech terms, API names, task names, and exam names (`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`) as-is. Do not synonym-swap them into 분류/분할/손실 or other translations.
+- **Keep Latin-letter terms**: Copy Latin-letter tech terms, API names, task names, and exam names (`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`) as-is. Do not synonym-swap them into 분류/분할/손실 or other translations.
 
 ## Document Signals (deterministic measurements)
 

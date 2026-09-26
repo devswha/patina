@@ -5,7 +5,7 @@ import {
   loadDocumentType,
   loadCoreFile,
 } from '../loader.js';
-import { buildPrompt, resolveRhetoricPolicy } from '../prompt-builder.js';
+import { buildPrompt } from '../prompt-builder.js';
 import { invokeBackendChain, selectBackendChain, listBackends } from '../backends/index.js';
 import { selectProvider, resolveProviderConfig } from '../providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from '../security.js';
@@ -166,7 +166,6 @@ async function runPipeline(parsed, logger, config) {
       register: registerResolution,
       promptMode,
       documentSignals: mode === 'rewrite' ? buildDocumentSignals({ text, lang }).signals : null,
-      jargon: parsed.jargon,
       rewriteHeadings: parsed.rewriteHeadings,
       persona,
     }),
@@ -217,7 +216,6 @@ async function runPipeline(parsed, logger, config) {
               register: registerResolution,
               promptMode,
               documentSignals: buildDocumentSignals({ text, lang }).signals,
-              jargon: parsed.jargon,
               rewriteHeadings: parsed.rewriteHeadings,
               apiKey: resolved.apiKey,
               baseURL: resolved.baseURL,
@@ -603,7 +601,6 @@ function promptAssets({ voice, scoring }) {
   return {
     voice: voice.body ? voice : null,
     scoring: scoring.body ? scoring : null,
-    rhetoricPolicy: resolveRhetoricPolicy(process.env),
   };
 }
 

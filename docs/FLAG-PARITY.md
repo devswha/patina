@@ -1,6 +1,6 @@
 # CLI / Skill Flag Parity
 
-Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed on 2026-09-26 (after the 9.0.0 release; `--preview`/`--ocr`/`--serve` and `--xliff`/`--dry-run`/`--max-segments` retired). This table separates the standalone CLI surface from the prompt-based `/patina` skill; a missing check is not always a bug when the flag is backend-, auth-, or CLI-automation-only.
+Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed on 2026-09-26 (after the 9.0.0 release; `--preview`/`--ocr`/`--serve`, `--xliff`/`--dry-run`/`--max-segments` and `--jargon` retired). This table separates the standalone CLI surface from the prompt-based `/patina` skill; a missing check is not always a bug when the flag is backend-, auth-, or CLI-automation-only.
 
 | Flag / command | Standalone CLI | `/patina` (`SKILL.md`) | Notes |
 |---|:---:|:---:|---|
@@ -23,7 +23,6 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 | `--document-type <name>` | ✓ | ✓ | Genre, purpose, structural conventions, and pattern policy. Includes `resume`, `personal-statement`, and `project-writeup`; `formal` stays proposals/official reports. |
 | `--persona <name>` | ✓ | ✓ | Optional reusable voice; rewrite only in CLI. |
 | `--register <casual\|professional>` | ✓ | ✓ | Delivery override; omission preserves source register. |
-| `--jargon <policy>` | ✓ | — | CLI rewrite terminology policy. |
 | `--model <id>` | ✓ | — | CLI single-backend model selection. |
 | `--api-key-file <path>` | ✓ | — | CLI auth. |
 | `--base-url <url>` | ✓ | — | CLI provider/backend config. |

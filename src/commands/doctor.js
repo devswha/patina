@@ -391,10 +391,9 @@ function formatDoctorText(report) {
   lines.push('', 'Backends:');
   for (const backend of report.backends) {
     const ok = backend.available && backend.authenticated;
-    const images = backend.supportsImages ? ', images=yes' : '';
     const probe = backend.keyProbe ? `, key=${backend.keyProbe}` : '';
     lines.push(
-      `  ${ok ? '✓' : '!'} ${backend.name}: available=${yesNo(backend.available)}, authenticated=${yesNo(backend.authenticated)}${probe}${images}`
+      `  ${ok ? '✓' : '!'} ${backend.name}: available=${yesNo(backend.available)}, authenticated=${yesNo(backend.authenticated)}${probe}`
     );
     if (!ok && backend.authHint) lines.push(`    → ${backend.authHint}`);
   }

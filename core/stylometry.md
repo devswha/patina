@@ -1,14 +1,13 @@
 ---
 name: Stylometric Suspect-Zone Detection
 version: 2.2.0
-description: Deterministic statistical preprocessing that flags suspect paragraphs and sentence groups before pattern scanning, used by SKILL.md Step 4.6 (burstiness + MATTR) and Step 4.7 (AI-lexicon overlap)
+description: Deterministic statistical preprocessing that flags suspect paragraphs before pattern scanning, used by SKILL.md Step 4.6 (burstiness + MATTR) and Step 4.7 (AI-lexicon overlap)
 ---
 
 # Stylometric Suspect-Zone Detection
 
 결정론적 통계 분석으로 패턴 카탈로그가 놓치는 "이름 없는 AI다움"을 표시하는 전처리 단계.
-패턴 스캔 이전에 단락 단위 burstiness와 어휘 다양성(MATTR)을 계산하고, 의심 단락 내부에서
-문장 단위로 zoom-in 한다. 결과는 LLM에게 내부 작업 메모리로 전달되며 사용자 출력에는 노출하지 않는다.
+패턴 스캔 이전에 단락 단위 burstiness와 어휘 다양성(MATTR)을 계산한다. 결과는 LLM에게 내부 작업 메모리로 전달되며 사용자 출력에는 노출하지 않는다.
 
 ---
 
@@ -271,38 +270,6 @@ ko composite는 `stylometry.ko_diagnostics.bands`에서 조정한다.
 
 ---
 
-## 7. Sentence Zoom Rule
-
-hot 단락 내부에서 문장 수준 sub-flag 을 생성한다. 단락 전체를 재작성 대상으로
-지정하지 않고, 가장 의심스러운 인접 문장 그룹만 가리키는 것이 목적이다.
-
-### 규칙
-
-```
-similarity_threshold = 0.20   # ±20% token count
-
-FOR each pair of adjacent sentences (S_i, S_{i+1}) in hot paragraph:
-    smaller = min(len(S_i.tokens), len(S_{i+1}.tokens))
-    larger  = max(len(S_i.tokens), len(S_{i+1}.tokens))
-    IF smaller == 0:
-        continue
-    IF (larger - smaller) / smaller < similarity_threshold:
-        mark (S_i, S_{i+1}) as adjacent-similar pair
-
-merge overlapping pairs into contiguous groups
-emit groups of length ≥ 2 as sub-flags
-```
-
-- 기준은 토큰 수 차이 < 20% (i.e., 길이 비가 대략 1.0 ~ 1.20 범위)
-- 단일 문장은 sub-flag 으로 emit 하지 않는다 (인접 유사 페어 필요)
-- 임계값은 `stylometry.sentence_zoom.similarity_threshold` 에서 조정 가능
-
-### 출력
-
-각 sub-flag 은 `P{n}.S{m..k}` 범위로 표기한다. 예: `P2.S1-S3`.
-
----
-
 ## 8. Skip Conditions
 
 오버헤드 회피를 위해 짧은 텍스트는 통째로 skip 한다.
@@ -332,7 +299,6 @@ emit groups of length ≥ 2 as sub-flags
 ```
 <suspect-zones lang="{ko|en}">
 - P{n}: burstiness={float} ({low|mid|high}), MATTR={float} ({low|mid|high}) — {short reason}
-- P{n}.S{m}: {short reason}
 </suspect-zones>
 ```
 
@@ -340,7 +306,6 @@ emit groups of length ≥ 2 as sub-flags
 - hot 단락만 entry 로 emit (mid/high 단락은 생략)
 - burstiness 와 MATTR 은 소수 둘째 자리까지 표기
 - short reason 은 한국어 한 줄 (예: `문장 길이 균질`, `어휘 반복 다수`)
-- 문장 sub-flag 은 별도 entry 로 추가
 - meta block 전체는 사용자 출력에 노출하지 않는다 (anchor 와 동일 정책)
 
 ### Body Prefix
@@ -418,16 +383,11 @@ band = mid (0.55 ≤ 0.69 ≤ 0.70)
 
 burstiness=low → **SUSPECT** (OR 조건 충족).
 
-**Sentence Zoom**
-
-모든 인접 문장이 동일한 토큰 수(5) → 차이 0% < 20% → S1-S5 전체가 한 그룹.
-
 **Meta Block 출력**
 
 ```
 <suspect-zones lang="ko">
 - P1: burstiness=0.00 (low), MATTR=0.69 (mid) — 문장 길이 균질
-- P1.S1-S5: 인접 문장 토큰 수 동일
 </suspect-zones>
 ```
 
@@ -480,7 +440,6 @@ burstiness=low AND MATTR=low → **SUSPECT** (둘 다 충족).
 ```
 <suspect-zones lang="en">
 - P1: burstiness=0.00 (low), MATTR=0.40 (low) — uniform sentence length, low lexical diversity
-- P1.S1-S5: identical token counts
 </suspect-zones>
 ```
 

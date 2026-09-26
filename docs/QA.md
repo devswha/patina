@@ -37,11 +37,10 @@ result `inconclusive` until an approved command exists.
 | `performance-package-size` | `npm run benchmark:perf -- --costmetrics` | Explicit report-only tarball size, cold-process CLI timing, and warm analyzer measurements; no rebaseline or latency gate |
 | `dogfood` | `npm run dogfood` | Configured public-document checks |
 | `release-safety` | `npm run release:check` and `npm run check:no-private-assets` | Release metadata and private-asset boundary |
-| `mock-quality` | `npm run qa:mdx` | Existing MDX QA script, when its scope applies |
 | `live-model` | `npm run quality:live` | Opt-in model-backed quality; approval and budget required |
 
 Other package scripts may fit the changed boundary (for example,
-`benchmark:robustness`, `quality:adversarial-mps`, or `quality:rewrite-ab`).
+`benchmark:robustness` or `quality:adversarial-mps`).
 Record the exact command and arguments rather than assuming a similarly named
 script exists. `benchmark:rebaseline*` and other research commands are not
 routine acceptance profiles.

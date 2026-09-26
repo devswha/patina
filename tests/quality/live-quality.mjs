@@ -400,8 +400,8 @@ export function createLiveCallLLM(callLLM, settings, record) {
 }
 
 /**
- * Adapt a local subscription CLI backend (codex-cli, claude-cli, gemini-cli,
- * kimi-cli) into the callLLM shape the scoring functions consume, so the
+ * Adapt a local subscription CLI backend (codex-cli, claude-cli, gemini-cli)
+ * into the callLLM shape the scoring functions consume, so the
  * fixed judge can run on a logged-in seat without an API key. CLI backends
  * report no token usage; the usage capture records calls and wall time only.
  */
@@ -574,7 +574,7 @@ export function resolveLiveSettings(options = {}) {
   const extraBody = parseExtraBody(options.extraBody ?? env.PATINA_LIVE_EXTRA_BODY, 'PATINA_LIVE_EXTRA_BODY');
   const backend = options.backend ?? env.PATINA_LIVE_BACKEND ?? null;
 
-  // A subscription CLI seat (codex-cli, claude-cli, gemini-cli, kimi-cli) is
+  // A subscription CLI seat (codex-cli, claude-cli, gemini-cli) is
   // the credential, so no API key is required and no endpoint applies.
   if (backend) {
     return {
@@ -975,11 +975,11 @@ Options:
                           different host needs its own PATINA_LIVE_JUDGE_API_KEY
   --judge-timeout-ms <ms> Judge scoring timeout budget (or PATINA_LIVE_JUDGE_TIMEOUT_MS)
   --backend <name>        Run the rewrite on a local subscription CLI backend
-                          (codex-cli, claude-cli, gemini-cli, kimi-cli — or
+                          (codex-cli, claude-cli, gemini-cli — or
                           PATINA_LIVE_BACKEND); no API key needed. Pair with
                           --judge-backend for a sweep that spends nothing.
   --judge-backend <name>  Run the judge on a local subscription CLI backend
-                          (codex-cli, claude-cli, gemini-cli, kimi-cli — or
+                          (codex-cli, claude-cli, gemini-cli — or
                           PATINA_LIVE_JUDGE_BACKEND); no API key needed
   --extra-body <json>     Provider-specific request fields for the candidate
                           (or PATINA_LIVE_EXTRA_BODY), e.g. '{"reasoning_effort":"low"}'

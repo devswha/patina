@@ -1,6 +1,6 @@
 # CLI / Skill Flag Parity
 
-Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed on 2026-09-16 (patina 8.7.1). This table separates the standalone CLI surface from the prompt-based `/patina` skill; a missing check is not always a bug when the flag is backend-, auth-, or CLI-automation-only.
+Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed on 2026-09-26 (after the 9.0.0 release; `--preview`/`--ocr`/`--serve`, `--xliff`/`--dry-run`/`--max-segments` and `--jargon` retired). This table separates the standalone CLI surface from the prompt-based `/patina` skill; a missing check is not always a bug when the flag is backend-, auth-, or CLI-automation-only.
 
 | Flag / command | Standalone CLI | `/patina` (`SKILL.md`) | Notes |
 |---|:---:|:---:|---|
@@ -21,26 +21,19 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 | `--no-interactive` | ✓ | — | CLI input safety for non-TTY automation. |
 | `--lang <code>` | ✓ | ✓ | `ko`, `en`, `zh`, `ja`. |
 | `--document-type <name>` | ✓ | ✓ | Genre, purpose, structural conventions, and pattern policy. Includes `resume`, `personal-statement`, and `project-writeup`; `formal` stays proposals/official reports. |
-| `--persona <name>` | ✓ | ✓ | Optional reusable voice; rewrite/preview only in CLI. |
+| `--persona <name>` | ✓ | ✓ | Optional reusable voice; rewrite only in CLI. |
 | `--register <casual\|professional>` | ✓ | ✓ | Delivery override; omission preserves source register. |
-| `--jargon <policy>` | ✓ | — | CLI rewrite/preview terminology policy. |
-| `--preview` | ✓ | — | CLI URL/local-HTML in-place preview. |
 | `--model <id>` | ✓ | — | CLI single-backend model selection. |
 | `--api-key-file <path>` | ✓ | — | CLI auth. |
 | `--base-url <url>` | ✓ | — | CLI provider/backend config. |
-| `--backend <name[,name]>` | ✓ | — | CLI backend selection and explicit fallback chains (`openai-http`, `codex-cli`, `claude-cli`, `gemini-cli`, `kimi-cli`, `agy-cli`). |
+| `--backend <name[,name]>` | ✓ | — | CLI backend selection and explicit fallback chains (`openai-http`, `codex-cli`, `claude-cli`, `gemini-cli`, `agy-cli`). |
 | `--list-backends` | ✓ | — | CLI diagnostics with selectors and auth state. |
 | `--provider <name>` | ✓ | — | CLI provider preset. |
 | `--config <path>` | ✓ | — | CLI config override. |
 | `--allow-insecure-base-url` | ✓ | — | CLI network safety override. |
 | `--allow-private-base-url` | ✓ | — | CLI SSRF/metadata-address safety override. |
 | `--no-color` | ✓ | — | Disable ANSI colors in `--diff` output. |
-| `--ocr` | ✓ | — | With `--preview`: extract text inside page images. |
-| `--serve` | ✓ | — | With `--preview`: serve the page at a token URL on 127.0.0.1. |
 | `--rewrite-headings` | ✓ | — | Allow rewording/adding/removing Markdown headings; the skill keeps headings fixed (SKILL.md #473 note). |
-| `--xliff` | ✓ | — | Humanize translated `<target>` segments in an XLIFF 1.2 file. |
-| `--dry-run` | ✓ | — | With `--xliff`: plan + cost estimate, no LLM calls or writes. |
-| `--max-segments <n>` | ✓ | — | With `--xliff`: cap unique segments per run (default 50). |
 | `--timeout-ms <n>` | ✓ | — | Per-request/backend timeout. |
 | `--max-concurrency <n>` | ✓ | — | Cross-process backend cap. |
 | `--max-retries <n>` | ✓ | — | Retry budget per backend. |
@@ -52,7 +45,6 @@ Basis: local checkout plus `node bin/patina.js --help` and `SKILL.md` reviewed o
 | `patina doctor` | ✓ | — | CLI environment diagnostic. |
 | `patina auth status/login` | ✓ | — | CLI authentication guidance. |
 | `patina persona new/list/show/edit/rm` | ✓ | — | CLI custom Persona lifecycle. |
-| `patina pack list/install` | ✓ | — | Licensed Pro pack delivery into `custom/` (`docs/PRO-PACKS.md`). |
 
 ## Audit notes
 

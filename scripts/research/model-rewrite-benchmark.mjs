@@ -78,7 +78,7 @@ export async function generateRewrite(fixture, candidate, prompt, { complete = s
     const rewrite = deliveredRewrite(raw);
     if (!rewrite) throw new Error('Empty delivered rewrite');
     const safety = evaluateNumberSafety(fixture.text, rewrite, fixture.language);
-    return { ...base, status: acceptedStudyIdentity(response, candidate) ? 'ok' : 'error', error: acceptedStudyIdentity(response, candidate) ? null : 'model-identity-unverified', rewrite, rewrite_hash: textHash(rewrite),
+    return { ...base, status: acceptedStudyIdentity(response) ? 'ok' : 'error', error: acceptedStudyIdentity(response) ? null : 'model-identity-unverified', rewrite, rewrite_hash: textHash(rewrite),
       source_chars: fixture.text.length, rewrite_chars: rewrite.length,
       number_safety: { ok: safety.ok, version: safety.version, reason: safety.reason },
       duration_ms: response.durationMs, effective_models: response.effectiveModels, usage: response.usage,

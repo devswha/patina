@@ -60,10 +60,10 @@ describe('Backend Selection', () => {
     assert.strictEqual(reason, 'model heuristic');
   });
 
-  it('routes --model kimi-* to kimi-cli via heuristic', () => {
+  it('leaves --model kimi-* on the HTTP default now that kimi-cli is removed', () => {
     const { backend, reason } = selectBackend({ model: 'kimi-code/kimi-for-coding' });
-    assert.strictEqual(backend.name, 'kimi-cli');
-    assert.strictEqual(reason, 'model heuristic');
+    assert.strictEqual(backend.name, 'openai-http');
+    assert.strictEqual(reason, 'default');
   });
 
   it('does not route provider/default model sources into local CLI heuristics', () => {
@@ -77,16 +77,18 @@ describe('Backend Selection', () => {
     );
   });
 
-  it('does not match `claudette`, `gemininet`, `kimiko`, or other false positives', () => {
+  it('does not match `claudette`, `gemininet`, or other false positives', () => {
     assert.strictEqual(selectBackend({ model: 'claudette-1' }).backend.name, 'openai-http');
     assert.strictEqual(selectBackend({ model: 'gemininet' }).backend.name, 'openai-http');
-    assert.strictEqual(selectBackend({ model: 'kimiko' }).backend.name, 'openai-http');
   });
 
-  it('selects claude-cli / gemini-cli / kimi-cli when --backend is explicit', () => {
+  it('selects claude-cli / gemini-cli when --backend is explicit', () => {
     assert.strictEqual(selectBackend({ name: 'claude-cli' }).backend.name, 'claude-cli');
     assert.strictEqual(selectBackend({ name: 'gemini-cli' }).backend.name, 'gemini-cli');
-    assert.strictEqual(selectBackend({ name: 'kimi-cli' }).backend.name, 'kimi-cli');
+  });
+
+  it('rejects the removed kimi-cli backend by name', () => {
+    assert.throws(() => selectBackend({ name: 'kimi-cli' }), /Unknown backend: kimi-cli/);
   });
 
   it('parses an explicit comma-separated backend fallback chain', () => {
@@ -105,7 +107,7 @@ describe('Backend Selection', () => {
   it('suggests every backend when no fallback chain remains', async () => {
     await assert.rejects(
       invokeBackendChain({ backends: [], prompt: 'rewrite this' }),
-      /openai-http, codex-cli, claude-cli, gemini-cli, kimi-cli, or agy-cli/
+      /openai-http, codex-cli, claude-cli, gemini-cli, or agy-cli/
     );
   });
 
@@ -366,10 +368,10 @@ describe('Backend Fallback Chain', () => {
 });
 
 describe('Backend Listing', () => {
-  it('returns at least openai-http, codex-cli, claude-cli, gemini-cli, kimi-cli', () => {
+  it('returns at least openai-http, codex-cli, claude-cli, gemini-cli', () => {
     const list = listBackends();
     const names = list.map((b) => b.name);
-    for (const expected of ['openai-http', 'codex-cli', 'claude-cli', 'gemini-cli', 'kimi-cli']) {
+    for (const expected of ['openai-http', 'codex-cli', 'claude-cli', 'gemini-cli']) {
       assert.ok(names.includes(expected), `expected backend ${expected}`);
     }
   });
@@ -394,6 +396,5 @@ describe('Backend Listing', () => {
     assert.strictEqual(byName.get('codex-cli'), DEFAULT_BEST_MODELS.codexCli);
     assert.strictEqual(byName.get('claude-cli'), DEFAULT_BEST_MODELS.claudeCli);
     assert.strictEqual(byName.get('gemini-cli'), DEFAULT_BEST_MODELS.geminiCli);
-    assert.strictEqual(byName.get('kimi-cli'), DEFAULT_BEST_MODELS.kimiCli);
   });
 });

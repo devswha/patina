@@ -40,15 +40,18 @@ test('removed aside command rejects as a usage error without output', async (t) 
   assert.equal(log.mock.callCount(), 0);
 });
 
-test('licensed Pro pack list still dispatches with its license and JSON contract', async (t) => {
-  const output = [];
-  t.mock.method(console, 'log', (text) => output.push(JSON.parse(text)));
-  const fetch = t.mock.method(globalThis, 'fetch', async (url, options) => {
-    assert.equal(url, 'https://packs.test/api/packs');
-    assert.equal(options.headers.authorization, 'Bearer test-license');
-    return new Response(JSON.stringify({ packs: [] }));
-  });
-  await main(['pack', 'list', '--license', 'test-license', '--url', 'https://packs.test/api/packs', '--json']);
-  assert.equal(fetch.mock.callCount(), 1);
-  assert.deepEqual(output, [{ packs: [] }]);
+test('removed pack command rejects as a usage error without fetching or output', async (t) => {
+  const fetch = t.mock.method(globalThis, 'fetch', () => assert.fail('unexpected fetch'));
+  const log = t.mock.method(console, 'log', () => {});
+  for (const args of [['pack'], ['pack', '--help'], ['pack', 'list'], ['pack', 'list', '--json'],
+    ['pack', 'install', 'ko-structure'], ['pack', 'install', '--all']]) {
+    await assert.rejects(main(args), (error) => {
+      assert.ok(error instanceof PatinaCliError, args.join(' '));
+      assert.equal(error.exitCode, 2, args.join(' '));
+      assert.equal(error.what, 'patina pack was removed');
+      return true;
+    });
+  }
+  assert.equal(fetch.mock.callCount(), 0);
+  assert.equal(log.mock.callCount(), 0);
 });

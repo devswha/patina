@@ -146,8 +146,6 @@ const SERVER_SECRET_MODULES = Object.freeze([
   'src/config.js',
   'src/entitlement.js',
   'src/entitlement-polar.js',
-  'src/funnel-analytics.js',
-  'src/pack-handler.js',
   'src/quota-reservation.js',
   'src/rate-limit.js',
   'src/security.js',
@@ -157,7 +155,6 @@ const SERVER_SECRET_MODULES = Object.freeze([
 ]);
 
 const RESEARCH_MODULES = Object.freeze([
-  'scripts/iterative-rewrite-baseline.mjs',
   'scripts/research/',
   'tests/quality/',
 ]);

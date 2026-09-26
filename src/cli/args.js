@@ -6,22 +6,22 @@ import { basename } from 'node:path';
 // Options that consume the next token as their value. Drives --name=value
 // expansion and the --suffix flag-collision backstop (#440).
 const VALUE_OPTIONS = new Set([
-  '--lang', '--document-type', '--register', '--persona', '--jargon', '--format', '--exit-on',
+  '--lang', '--document-type', '--register', '--persona', '--format', '--exit-on',
   '--profile', '--tone', '--formality',
   '--suffix', '--outdir', '--model', '--api-key-file', '--base-url',
   '--backend', '--timeout-ms', '--max-concurrency', '--max-retries',
-  '--max-failures', '--max-failure-rate', '--provider', '--config', '--config-snapshot', '--max-segments',
+  '--max-failures', '--max-failure-rate', '--provider', '--config', '--config-snapshot',
 ]);
 
 // Boolean switches. Used to reject `--quiet=1`-style values explicitly and to
 // catch a flag name swallowed as another option's value.
 const FLAG_OPTIONS = new Set([
-  '--help', '-h', '--version', '-v', '--preview', '--ocr',
-  '--serve', '--diff', '--no-color', '--audit', '--score', '--offline', '--quiet',
+  '--help', '-h', '--version', '-v',
+  '--diff', '--no-color', '--audit', '--score', '--offline', '--quiet',
   '--batch', '--in-place', '--allow-private-base-url',
   '--stop-on-retryable-storm', '--no-stop-on-retryable-storm',
   '--list-backends', '--allow-insecure-base-url', '--no-interactive',
-  '--rewrite-headings', '--verify', '--xliff', '--dry-run',
+  '--rewrite-headings', '--verify',
 ]);
 
 // Expand `--name=value` into two tokens for known value-taking options and
@@ -105,33 +105,17 @@ export function parseArgs(rawArgs) {
       case '--register': {
         const value = readOptionValue(args, i, arg);
         i++;
-        parsed.register = parseTransformList(
+        parsed.register = parseRegisterValue(
           value,
           arg,
           ['casual', 'professional'],
-          'Omit --register to preserve the source register. Comma-separate values with --preview to compare variants.'
+          'Omit --register to preserve the source register.'
         );
         break;
       }
       case '--persona':
         parsed.persona = readOptionValue(args, i, arg);
         i++;
-        break;
-      case '--jargon': {
-        const value = readOptionValue(args, i, arg);
-        i++;
-        parsed.jargon = parseTransformList(value, arg, ['keep', 'explain', 'remove'],
-          'keep = copy Latin-letter tech/API/task/exam names as-is (default), explain = keep those terms and add a first-mention gloss, remove = replace jargon for a general audience. Comma-separate values with --preview to compare variants.');
-        break;
-      }
-      case '--preview':
-        parsed.preview = true;
-        break;
-      case '--ocr':
-        parsed.ocr = true;
-        break;
-      case '--serve':
-        parsed.serve = true;
         break;
       case '--diff':
         parsed.diff = true;
@@ -296,18 +280,6 @@ export function parseArgs(rawArgs) {
       case '--no-interactive':
         parsed.noInteractive = true;
         break;
-      case '--xliff':
-        parsed.xliff = true;
-        break;
-      case '--dry-run':
-        parsed.dryRun = true;
-        break;
-      case '--max-segments': {
-        const value = readOptionValue(args, i, arg, { allowFlagLike: true });
-        i++;
-        parsed.maxSegments = parsePositiveIntegerOption(value, arg);
-        break;
-      }
       default:
         if (!arg.startsWith('-')) {
           parsed.files.push(arg);
@@ -389,88 +361,34 @@ export function validateOfflineScoreRequest(parsed) {
   }
 }
 
-// Shared parser for --jargon/--register: a single value, or a comma-separated
-// list for --preview variant comparison. Tokens are validated individually and
-// deduplicated while preserving order.
-const TRANSFORM_OPTION_NOUNS = { '--jargon': 'jargon policy', '--register': 'register' };
-
-function parseTransformList(value, option, valid, hint) {
-  const tokens = String(value ?? '').split(',').map((t) => t.trim()).filter(Boolean);
-  if (tokens.length === 0) {
+// --register parser: exactly one value from the allowed set.
+function parseRegisterValue(value, option, valid, hint) {
+  const token = String(value ?? '').trim();
+  if (token.length === 0) {
     throw inputError(`${option} expects a value`, `Valid values are: ${valid.join(', ')}.`, hint);
   }
-  const seen = [];
-  for (const token of tokens) {
-    if (!valid.includes(token)) {
-      throw inputError(
-        `unknown ${TRANSFORM_OPTION_NOUNS[option] ?? 'value'} ${token}`,
-        `Valid values are: ${valid.join(', ')}.`,
-        hint
-      );
-    }
-    if (!seen.includes(token)) seen.push(token);
-  }
-  return seen.join(',');
-}
-
-function splitTransformValues(value, fallback) {
-  return String(value ?? fallback).split(',').map((t) => t.trim()).filter(Boolean);
-}
-
-// Expand --jargon/--register into the rewrite variants a run executes.
-// A single combination is the normal one-call path; comma lists become
-// --preview comparison variants, one rewrite call each.
-const MAX_TRANSFORM_VARIANTS = 4;
-
-export function buildTransformVariants(parsed) {
-  const jargons = splitTransformValues(parsed.jargon, 'keep');
-  const registers = splitTransformValues(parsed.register, '');
-  const registerList = registers.length > 0 ? registers : [null];
-  const compareRegister = registerList.length > 1;
-  const variants = [];
-  for (const jargon of jargons) {
-    for (const register of registerList) {
-      let label = jargon !== 'keep' ? jargon : '';
-      if (compareRegister) label = label ? `${label}·${register}` : register;
-      variants.push({ jargon, register, label: label || 'cleanup' });
-    }
-  }
-  if (variants.length > MAX_TRANSFORM_VARIANTS) {
+  if (token.includes(',')) {
     throw inputError(
-      `too many transform variants (${variants.length})`,
-      `--jargon × --register combinations are capped at ${MAX_TRANSFORM_VARIANTS}; each variant is a full rewrite call.`,
-      'Drop values from one list, e.g. `--jargon keep,remove` with one --register value.'
+      `${option} takes one value`,
+      `Received "${token}"; comma-separated lists are not supported.`,
+      `Pick one of: ${valid.join(', ')}.`
     );
   }
-  return variants;
+  if (!valid.includes(token)) {
+    throw inputError(
+      `unknown register ${token}`,
+      `Valid values are: ${valid.join(', ')}.`,
+      hint
+    );
+  }
+  return token;
 }
 
-// --jargon and --register alter rewritten prose. Score/audit/diff inspect the
-// source as-is, so reject these controls instead of silently ignoring them.
-export function validateTransformRequest(parsed) {
-  const variants = buildTransformVariants(parsed);
-  if (variants.length > 1) {
-    if (!parsed.preview) {
-      throw inputError(
-        'comparing transform variants requires --preview',
-        'Comma-separated --jargon/--register values need the preview toggle UI; plain rewrite has one stdout.',
-        'Run `patina --preview --jargon keep,remove <url>` or pick one value.'
-      );
-    }
-    if (parsed.ocr) {
-      throw inputError(
-        '--ocr cannot be combined with transform-variant comparison',
-        'OCR findings ride a single rewrite call; per-variant image cards are not supported.',
-        'Drop --ocr, or compare variants without it.'
-      );
-    }
-  }
-  const jargonActive = variants.some((variant) => variant.jargon !== 'keep');
-  const registerActive = Boolean(parsed.register);
-  if (!jargonActive && !registerActive) return;
-  const flag = jargonActive && registerActive
-    ? '--jargon/--register'
-    : jargonActive ? '--jargon' : '--register';
+// --register alters rewritten prose. Score/audit/diff inspect the source
+// as-is, so reject it instead of silently ignoring it.
+export function validateRegisterRequest(parsed) {
+  if (!parsed.register) return;
+  const flag = '--register';
   const blocked = [
     ['score', '--score', 'does not rewrite text'],
     ['audit', '--audit', 'does not rewrite text'],
@@ -481,7 +399,7 @@ export function validateTransformRequest(parsed) {
       throw inputError(
         `${flag} cannot be combined with ${name}`,
         `${flag} changes how text is rewritten; ${name} ${why}.`,
-        `Use a plain rewrite or \`patina --preview ${flag} ...\` instead.`
+        `Run a plain rewrite instead, e.g. \`patina ${flag} <value> draft.md\`.`
       );
     }
   }
@@ -515,67 +433,15 @@ export function validateVerifyRequest(parsed) {
     ['score', '--score'],
     ['audit', '--audit'],
     ['diff', '--diff'],
-    ['preview', '--preview'],
   ];
   for (const [key, flag] of blocked) {
     if (parsed[key]) {
       throw inputError(
         `--verify cannot be combined with ${flag}`,
-        '--verify is a rewrite-mode meaning check; it does not apply to non-rewrite or preview surfaces.',
+        '--verify is a rewrite-mode meaning check; it does not apply to non-rewrite modes.',
         'Run `patina --verify <file>` for a verified rewrite, or drop --verify.'
       );
     }
-  }
-}
-
-export function validatePreviewRequest(parsed) {
-  if (parsed.ocr && !parsed.preview) {
-    throw inputError(
-      '--ocr requires --preview',
-      'OCR scans the images of a preview page for text.',
-      'Run `patina --preview --ocr <url>`.'
-    );
-  }
-  if (!parsed.preview) return;
-  if (parsed.batch) {
-    throw inputError(
-      '--preview does not support --batch',
-      'The preview page renders one URL at a time.',
-      'Run `patina --preview <url>` with a single URL.'
-    );
-  }
-  if (parsed.diff || parsed.audit || parsed.score) {
-    throw inputError(
-      '--preview only works in rewrite mode',
-      'The preview page is an additive rewrite surface, not a diff/audit/score mode.',
-      'Use `patina --preview <url>` by itself, without --diff, --audit, or --score.'
-    );
-  }
-  if (parsed.files.length !== 1) {
-    throw inputError(
-      '--preview requires exactly one input',
-      'Pass one http(s) URL or one local file; stdin and multiple inputs are not supported.',
-      'Run `patina --preview https://example.com/article` or `patina --preview export.html`.'
-    );
-  }
-  const input = String(parsed.files[0] || '');
-  if (!/^https?:\/\//i.test(input) && !/\.html?$/i.test(input)) {
-    throw inputError(
-      '--preview supports http(s) URLs and local .html files only',
-      `"${input}" is not an http(s) URL or a .html/.htm file.`,
-      'Pass a URL or an .html file, or run `patina <file>` / `patina --diff <file>` to rewrite a markdown/text draft.'
-    );
-  }
-}
-
-// --serve only makes sense alongside --preview; guard it on its own.
-export function validateServeRequest(parsed) {
-  if (parsed.serve && !parsed.preview) {
-    throw inputError(
-      '--serve requires --preview',
-      '--serve replaces the local window opener for the generated page.',
-      'Run `patina --preview --serve <url-or-file>`.'
-    );
   }
 }
 
@@ -590,7 +456,7 @@ export function validateOutputRouting(parsed) {
     parsed.outdir !== undefined ? '--outdir' : null,
   ].filter(Boolean);
   if (destinations.length === 0) return;
-  if (!parsed.batch && !parsed.xliff) {
+  if (!parsed.batch) {
     throw inputError(
       `${destinations[0]} requires --batch`,
       'Output routing flags only apply to batch mode; without --batch the result goes to stdout.',
@@ -639,60 +505,7 @@ export function validateOutputRouting(parsed) {
   }
 }
 
-// XLIFF mode is an explicit, file-to-file localization pass: it humanizes
-// already-translated <target> segments through the normal rewrite+verify path,
-// so it rejects non-rewrite modes, voice/register/document-policy controls,
-// and stdin — anything that would make byte-preserving localization unsafe.
-// Run this before the generic validators so errors are XLIFF-specific.
-export function validateXliffRequest(parsed) {
-  if (!parsed.xliff) {
-    // --dry-run and --max-segments are XLIFF-only.
-    if (parsed.dryRun) {
-      throw inputError('--dry-run requires --xliff',
-        '--dry-run only reports an XLIFF humanize plan; it has no meaning for the normal rewrite modes.',
-        'Run `patina --xliff --dry-run <file.xliff>`.');
-    }
-    if (parsed.maxSegments !== undefined) {
-      throw inputError('--max-segments requires --xliff',
-        '--max-segments only caps the XLIFF humanize segment count.',
-        'Run `patina --xliff --max-segments <n> <file.xliff>`.');
-    }
-    return;
-  }
-
-  /** @type {[string, string][]} incompatible mode/flag pairs (parsed key, flag). */
-  const incompatible = [
-    ['audit', '--audit'], ['score', '--score'], ['diff', '--diff'],
-    ['preview', '--preview'], ['ocr', '--ocr'], ['serve', '--serve'],
-    ['gate', '--exit-on'], ['persona', '--persona'], ['jargon', '--jargon'],
-    ['register', '--register'], ['documentType', '--document-type'], ['rewriteHeadings', '--rewrite-headings'],
-    ['offline', '--offline'],
-  ];
-  for (const [key, flag] of incompatible) {
-    if (parsed[key] !== undefined && parsed[key] !== false) {
-      throw inputError(`${flag} cannot be combined with --xliff`,
-        `--xliff is a meaning-preserving localization pass over translated <target> segments; ${flag} is not part of that surface.`,
-        `Drop ${flag}, or run it separately without --xliff.`);
-    }
-  }
-  if (parsed.verify) {
-    throw inputError('--verify cannot be combined with --xliff',
-      'XLIFF mode always verifies each rewritten segment against the MPS/fidelity floors; verification cannot be disabled or toggled.',
-      'Drop --verify — it is implied by --xliff.');
-  }
-  if (!parsed.files || parsed.files.length === 0) {
-    throw inputError('--xliff requires file paths, not stdin',
-      'XLIFF humanize reads and rewrites structured files in place, so it needs at least one .xliff file argument.',
-      'Run `patina --xliff <file.xliff>`.');
-  }
-  if (parsed.files.length > 1 && !parsed.batch) {
-    throw inputError('--xliff with multiple files requires --batch',
-      'Each XLIFF run writes one output file; processing several inputs at once is batch mode.',
-      'Run `patina --batch --xliff <file1.xliff> <file2.xliff>`.');
-  }
-}
-
-// Subcommand parsers (persona, pack): consume the value after a value-taking
+// Subcommand parsers (persona): consume the value after a value-taking
 // flag, returning [value, nextIndex]. A missing value or a following flag is an
 // input error, not a silent `undefined`.
 export function takeValue(args, i, flag) {
@@ -794,8 +607,6 @@ COMMANDS
   patina persona show <id> Print normalized Persona voice metadata
   patina persona edit <id> Copy-on-edit a Persona into custom/personas/
   patina persona rm <id>   Remove a custom Persona (built-ins are protected)
-  patina pack list         List licensed pro packs (needs PATINA_LICENSE_KEY)
-  patina pack install <id> Install a pro pack into custom/
 
 MODES
   --diff                  Show changes pattern by pattern
@@ -807,13 +618,6 @@ MODES
                           signals only; LLM-judged categories are unavailable
   --verify                Rewrite, then verify global meaning/fidelity floors with
                           one conservative retry; exit 4 if no candidate passes
-  --preview               Rewrite one http(s) URL or local .html file in place on a snapshot
-                          of the page (adds one explanation call)
-  --ocr                   With --preview (URL/.html): extract text inside page images via an
-                          image-capable local CLI (claude/gemini/codex) and include it in
-                          detection — one extra backend call per image
-  --serve                 With --preview: serve the page at a token URL on 127.0.0.1
-                          instead of opening a window (headless/SSH; stops after 10 idle minutes)
 
 OUTPUT & BATCH
   --format <fmt>          Stdout format: markdown (default), text, json
@@ -829,12 +633,6 @@ OUTPUT & BATCH
                           storms (storm stopping is on by default in batch mode)
   --no-interactive        Do not wait for TTY stdin; exit 2 when no input is given
 
-LOCALIZATION (XLIFF)
-  --xliff                 Humanize translated <target> segments in an XLIFF 1.2 file
-                          (writes {name}.humanized.xliff by default; never clobbers the original)
-  --dry-run               With --xliff: report the plan + cost estimate; make no LLM calls or writes
-  --max-segments <n>      With --xliff: cap unique segments processed per run (default 50)
-
 DOCUMENT & VOICE
   --lang <code>           Language: ko, en, zh, ja (default: ko)
   --document-type <name>  Document policy: default, blog, academic, technical,
@@ -842,19 +640,11 @@ DOCUMENT & VOICE
                           social, email, legal, medical, marketing,
                           narrative, instructional, casual-conversation,
                           code-comment, commit-message, release-notes, namuwiki
-  --persona <name>        Optional reusable voice for rewrite/preview. Omit it
-                          to preserve the source voice. Incompatible with
+  --persona <name>        Optional reusable voice for rewrite. Omit it to
+                          preserve the source voice. Incompatible with
                           score/audit/diff
-  --register <name[,name]>
-                          Explicit casual or professional register. Omit it
-                          to preserve the source register. A comma list with
-                          --preview compares register variants.
-  --jargon <policy[,policy]>
-                          Technical-term policy (rewrite/--preview only):
-                          keep (default) = copy Latin-letter tech/API/task
-                          names as-is, explain = keep English + first-mention
-                          gloss, remove = replace jargon for a general audience.
-                          Comma list with --preview compares variants in-page
+  --register <name>       Explicit casual or professional register. Omit it
+                          to preserve the source register.
   --rewrite-headings      Allow rewording/adding/removing Markdown headings.
                           By default ATX heading lines (## ...) are preserved
                           verbatim as structure so the TOC and #anchors survive
@@ -863,7 +653,7 @@ MODEL & AUTH
   --model <id>            Single model ID. Defaults use the strongest
                           documented model per backend: openai/codex ${models.codexCli},
                           ${models.claudeCli}, ${models.geminiCli},
-                          ${models.kimiCli}, agy ${models.agyCli}.
+                          agy ${models.agyCli}.
   --api-key-file <path>   Read API key from file (recommended)
   --base-url <url>        API base URL (or PATINA_API_BASE env)
   --backend <name[,name]> Backend or explicit fallback chain:

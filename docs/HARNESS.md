@@ -36,9 +36,9 @@ INPUT          ENGINE (deterministic, LLM-free)                 SURFACES
   │ HARNESS                                                                    │
   │  (1) regression (det.)   benchmark · benchmark:ranges · benchmark:report   │
   │  (2) calibration (det.)  signal-impact · rebaseline:score/report ·         │
-  │                          low-fpr · katfish-ko · lexicon:freshness          │
+  │                          low-fpr · lexicon:freshness                       │
   │  (3) robustness/perf     robustness · perf                                 │
-  │  (4) LLM quality (opt-in) quality:live · quality:rewrite-ab · adversarial-mps │
+  │  (4) LLM quality (opt-in) quality:live · adversarial-mps                   │
   │  (5) comparison (det.)   detector-comparison                               │
   └──────────────────────────────────────────────────────────────────────────┘
                        │  enforced by
@@ -72,7 +72,6 @@ analysis below ablates each one to report its marginal contribution.
 | Rebaseline summary | `npm run benchmark:rebaseline` / `:report` | Validates the public manifest + computes the headline catch/FP claim | [tests/quality/README.md](../tests/quality/README.md) |
 | Rebaseline score | `npm run benchmark:rebaseline:score` | Re-runs the analyzer over private rows → public scored manifest (predicted_hot + trigger_counts) | [tests/quality/README.md](../tests/quality/README.md) |
 | Low-FPR metrics | `npm run benchmark:rebaseline:low-fpr` | TPR@1%/5%FPR operating points | `scripts/rebaseline-low-fpr-report.mjs` |
-| KatFish calibration | `npm run benchmark:katfish-ko` | KO diagnostic catch/FP deltas (aggregate-only) | [tests/quality/README.md](../tests/quality/README.md) |
 | Lexicon freshness | `npm run lexicon:freshness` | AI-lexicon provenance sidecar check | `scripts/lexicon-freshness.mjs` |
 | FP fixture export | `node scripts/fp-fixture-export.mjs` | Turns FP reports into suspect-zone fixtures | `scripts/fp-fixture-export.mjs` |
 
@@ -82,7 +81,6 @@ analysis below ablates each one to report its marginal contribution.
 |---|---|---|---|
 | Live rewrite quality | `npm run quality:live` (`PATINA_LIVE=1` to call a model) | before/after AI score, MPS, fidelity on rewrites | [tests/quality/README.md](../tests/quality/README.md) |
 | Adversarial MPS | `npm run quality:adversarial-mps` | Guards against MPS hiding unchanged AI style | [tests/quality/README.md](../tests/quality/README.md) |
-| Rewrite A/B | `npm run quality:rewrite-ab` (`--live`) | Compares two rewrite configs (default `single` vs `iterative-baseline`) on the same fixtures: after-AI/MPS/fidelity/edit-churn + per-fixture winner. Answers whether the baseline comparison flow produces a better rewrite. | [tests/quality/README.md](../tests/quality/README.md) |
 
 ## Gates (deterministic, run in CI / pre-publish)
 
@@ -92,7 +90,7 @@ analysis below ablates each one to report its marginal contribution.
 | Tests | `npm test` | unit + e2e (`node --test`) |
 | Release metadata | `npm run release:check` | version sync across all version-bearing surfaces |
 | Private-asset leak | `npm run check:no-private-assets` | no private/vendor text in the npm tarball or tree |
-| Prose score gate | `patina-score` / `npm run badge` | hot-paragraph ratio CI gate (default 30) |
+| Prose score gate | `patina-score` | hot-paragraph ratio CI gate (default 30) |
 
 ## Signal impact harness (`scripts/signal-impact.mjs`)
 

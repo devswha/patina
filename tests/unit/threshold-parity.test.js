@@ -48,7 +48,6 @@ const scoringDoc = readFileSync(resolve(REPO_ROOT, 'core/scoring.md'), 'utf8');
 const stylometryDoc = readFileSync(resolve(REPO_ROOT, 'core/stylometry.md'), 'utf8');
 const skillDoc = readFileSync(resolve(REPO_ROOT, 'SKILL.md'), 'utf8');
 const translationeseDoc = readFileSync(resolve(REPO_ROOT, 'docs/TRANSLATIONESE-KO.md'), 'utf8');
-const featuresIndexSource = readFileSync(resolve(REPO_ROOT, 'src/features/analyzer.js'), 'utf8');
 const scoringSource = readFileSync(resolve(REPO_ROOT, 'src/scoring.js'), 'utf8');
 
 // Extract a single capture group and fail loudly when the anchor is missing.
@@ -86,30 +85,6 @@ test('yaml stylometry defaults match src/features/stylometry.js constants', () =
     defaultConfig.stylometry.ko_diagnostics.bands,
     DEFAULT_KO_DIAGNOSTIC_BANDS,
     'stylometry.ko_diagnostics.bands drifted from DEFAULT_KO_DIAGNOSTIC_BANDS'
-  );
-});
-
-test('yaml skip thresholds match the hardcoded analyzer skip gates', () => {
-  // NOTE: yaml `stylometry.skip.min_sentences` (document-level skip, ==2) and
-  // DEFAULT_MIN_BURSTINESS_SENTENCES (per-paragraph CV banding gate, ==3) are
-  // different knobs — do not equate them. The yaml skip numbers are consumed
-  // nowhere; they document the advisory gate hardcoded in src/features/analyzer.js.
-  const paragraphGate = extractNumber(
-    featuresIndexSource,
-    /paragraphs\.length <= (\d+) \? 'paragraphs<=\d+'/,
-    'features/analyzer.js paragraph skip gate'
-  );
-  const sentenceGate = extractNumber(
-    featuresIndexSource,
-    /totalSentences <= (\d+) \? 'sentences<=\d+'/,
-    'features/analyzer.js sentence skip gate'
-  );
-  assert.equal(defaultConfig.stylometry.skip.min_paragraphs, paragraphGate);
-  assert.equal(defaultConfig.stylometry.skip.min_sentences, sentenceGate);
-  assert.deepEqual(
-    defaultConfig.lexicon.skip,
-    defaultConfig.stylometry.skip,
-    'lexicon.skip must mirror stylometry.skip (same analyzer pass)'
   );
 });
 

@@ -26,50 +26,6 @@ import {
 // the same globalThis convention — e.g. rewrite-client.js).
 const { document, Option } = globalThis;
 const $ = (sel) => /** @type {HTMLElement} */ (document.querySelector(sel));
-const track = (eventName, data) => {
-  try {
-    if (typeof globalThis.patinaTrack === 'function') globalThis.patinaTrack(eventName, data);
-  } catch { /* analytics is optional */ }
-};
-
-function inputBucket(length) {
-  if (length < 100) return '0-99';
-  if (length < 500) return '100-499';
-  if (length < 2000) return '500-1999';
-  return '2000+';
-}
-function latencyBucket(startedAt) {
-  const elapsed = Math.max(0, Date.now() - startedAt);
-  if (elapsed < 5000) return '<5s';
-  if (elapsed < 10000) return '5-10s';
-  if (elapsed < 30000) return '10-30s';
-  return '30s+';
-}
-function scoreBand(score) {
-  const value = Number(score);
-  if (!Number.isFinite(value) || value < 70 || value > 100) return 'failed';
-  if (value < 80) return '70-79';
-  if (value < 90) return '80-89';
-  return '90-100';
-}
-function rewriteData(source, clean, mode, lang = els.lang.value) {
-  const tier = els.tier.value;
-  return { surface: source, lang, tier, mode, inputBucket: inputBucket(clean.length) };
-}
-function failureOutcome(frame, kind, hasScores) {
-  const K = REWRITE_ERROR_KINDS;
-  const status = Number(frame?.status);
-  const code = typeof frame?.code === 'string' ? frame.code : '';
-  if (kind === K.NUMBER_SAFETY || kind === K.NUMBER_SOURCE) return 'number-safety';
-  if (kind === K.FLOOR_FAILED) return 'floor';
-  if (kind.startsWith('quota_') && kind !== K.QUOTA_CONCURRENT && kind !== K.QUOTA_STORAGE && kind !== K.QUOTA_SECRET) return 'quota';
-  if (kind === K.QUOTA_CONCURRENT) return 'concurrency';
-  if (kind === K.TEXT_TOO_LONG) return 'input';
-  if (status === 401 || status === 403) return 'auth';
-  if ([K.IP_UNAVAILABLE, K.QUOTA_STORAGE, K.QUOTA_SECRET, K.SERVICE_UNAVAILABLE].includes(kind)) return 'service';
-  if (code === 'stream_failed') return 'stream';
-  return hasScores ? 'scoring' : 'unknown';
-}
 
 const els = {
   app: $('#app'),
@@ -373,7 +329,6 @@ async function attachReview(convo, message, body, textEl, statusEl) {
         inner.appendChild(buildUserMsg(copy.requested));
         inner.appendChild(resultView.node);
         const result = await runAttempt({ convo, clean: candidate, reqBody, ...resultView,
-          telemetry: rewriteData('chat', candidate, REWRITE_MODES.VERIFY, convo.thread.preferences.lang),
           authorization: tier === WEB_TIERS.PRO ? `Bearer ${state.license}` : undefined, epoch });
         if (result?.ok && state.sessionEpoch === epoch && activeConvo() === convo) {
           message.reviewSelection = undefined; message.reviewCandidate = undefined;
@@ -460,10 +415,6 @@ function wireProCta() {
     btn.removeAttribute('aria-disabled');
     btn.classList.remove('is-soon');
     btn.textContent = i18n().proBuy;
-    btn.addEventListener('click', () => {
-      track('Tier Selected', { tier: 'pro', surface: 'pricing' });
-      track('Checkout Started', { surface: 'pricing', lang: els.lang.value });
-    });
   } else {
     btn.removeAttribute('href');
     btn.removeAttribute('target');
@@ -480,7 +431,6 @@ function quotaUpsell() {
     a.href = href;
     a.target = '_blank';
     a.rel = 'noreferrer';
-    a.addEventListener('click', () => track('Checkout Started', { surface: 'quota', lang: els.lang.value }));
   } else {
     a.removeAttribute('href');
     a.setAttribute('aria-disabled', 'true');
@@ -493,14 +443,12 @@ function wirePricingCtas() {
   $('#pro-existing')?.addEventListener('click', openLicenseControls);
   const free = $('#price-free');
   if (free) free.addEventListener('click', () => {
-    track('Tier Selected', { tier: 'free', surface: 'pricing' });
     els.tier.value = WEB_TIERS.FREE; syncTier(); updateHeroSend(); updateChatSend();
     showLanding();
     globalThis.scrollTo({ top: 0, behavior: 'smooth' }); els.heroInput?.focus();
   });
   const byok = $('#price-byok');
   if (byok) byok.addEventListener('click', () => {
-    track('Tier Selected', { tier: 'byok', surface: 'pricing' });
     els.tier.value = WEB_TIERS.BYOK;
     syncTier();
     updateHeroSend();
@@ -996,7 +944,6 @@ function buildOutputActions(text, receipt = null) {
   const copy = el('button', 'output-action', i18n().actCopy);
   copy.type = 'button';
   copy.addEventListener('click', async () => {
-    track('Result Action', { action: 'copy' });
     try { await globalThis.navigator.clipboard?.writeText(text); copy.textContent = i18n().actCopied; } catch { copy.textContent = i18n().actCopyFailed; }
   });
   const download = el('button', 'output-action', i18n().actDownload);
@@ -1006,16 +953,15 @@ function buildOutputActions(text, receipt = null) {
     const anchor = el('a'); anchor.href = href; anchor.download = name; anchor.click();
     globalThis.URL.revokeObjectURL(href);
   };
-  download.addEventListener('click', () => { track('Result Action', { action: 'download' }); save('patina-rewrite.txt'); });
+  download.addEventListener('click', () => save('patina-rewrite.txt'));
   const exportFile = el('button', 'output-action', i18n().actExport);
   exportFile.type = 'button';
-  exportFile.addEventListener('click', () => { track('Result Action', { action: 'export' }); save('patina-rewrite-export.txt'); });
+  exportFile.addEventListener('click', () => save('patina-rewrite-export.txt'));
   actions.append(copy, download, exportFile);
   if (receipt) {
     const audit = el('button', 'output-action', i18n().actAudit);
     audit.type = 'button';
     audit.addEventListener('click', () => {
-      track('Result Action', { action: 'audit' });
       const sortKeys = (value) => {
         if (Array.isArray(value)) return value.map(sortKeys);
         if (!value || typeof value !== 'object') return value;
@@ -1071,7 +1017,7 @@ function stopActive() {
 }
 function signOutLicense() {
   state.sessionEpoch += 1;
-  if (active) { active.trackCancelled?.(); active.cancelled = true; active.controller.abort(); active = null; }
+  if (active) { active.cancelled = true; active.controller.abort(); active = null; }
   state.busy = false;
   state.license = '';
   state.licenseStatus = licenseStatusAfter(state.licenseStatus, 'clear');
@@ -1173,19 +1119,12 @@ async function submit(text, source = 'hero') {
   clearInlineErrors();
   const currentConvo = activeConvo();
   const initialTurn = currentConvo?.thread.original == null;
-  const preflightLang = initialTurn && !currentConvo?.thread.languageExplicit ? (detectLang(clean) || els.lang.value) : els.lang.value;
-  const preflightMode = initialTurn ? 'first' : 'refine';
   // What the request will actually ask the server to rewrite: the source on a
   // first turn, the latest accepted draft on a refine turn (where the composer
-  // line travels as `instruction`). Length caps and analytics buckets measure
-  // that text, not the follow-up instruction.
+  // line travels as `instruction`). Length caps measure that text, not the
+  // follow-up instruction.
   const target = initialTurn ? clean : (currentConvo?.thread.currentDraft ?? clean);
-  if (!preflight(target, source)) {
-    const data = rewriteData(source, target, preflightMode, preflightLang);
-    track('Rewrite Requested', data);
-    track('Rewrite Failed', { ...data, latencyBucket: '<5s', outcome: 'preflight' });
-    return;
-  }
+  if (!preflight(target, source)) return;
 
   let convo = activeConvo();
   if (!convo) { newConvo(); convo = activeConvo(); }
@@ -1217,9 +1156,8 @@ async function submit(text, source = 'hero') {
   });
   reqBody.includeEdits = true;
   reqBody.protectedSpans = protectedInputSpans(convo.thread.original ?? clean, convo.protectedInput || '');
-  const telemetry = rewriteData(source, String(reqBody.text ?? ''), String(reqBody.mode));
   await runAttempt({
-    convo, clean, reqBody, body, textEl, statusEl, telemetry,
+    convo, clean, reqBody, body, textEl, statusEl,
     authorization: tier === WEB_TIERS.PRO ? `Bearer ${state.license}` : undefined,
     epoch: state.sessionEpoch,
   });
@@ -1228,26 +1166,8 @@ async function submit(text, source = 'hero') {
 // One streaming attempt against /api/rewrite. The thread only commits on a
 // done frame, so a failed or cancelled attempt never poisons conversation state.
 async function runAttempt(attempt) {
-  const { convo, clean, reqBody, body, textEl, statusEl, authorization, epoch, telemetry } = attempt;
-  const startedAt = Date.now();
+  const { convo, clean, reqBody, body, textEl, statusEl, authorization, epoch } = attempt;
   let approved = false;
-  track('Rewrite Requested', telemetry);
-  let terminalTracked = false;
-  const trackFailed = (outcome) => {
-    if (terminalTracked) return;
-    terminalTracked = true;
-    track('Rewrite Failed', { ...telemetry, latencyBucket: latencyBucket(startedAt), outcome });
-  };
-  const trackCompleted = (mps, fidelity) => {
-    if (terminalTracked) return;
-    terminalTracked = true;
-    track('Rewrite Completed', {
-      ...telemetry,
-      latencyBucket: latencyBucket(startedAt),
-      mpsBand: scoreBand(mps),
-      fidelityBand: scoreBand(fidelity),
-    });
-  };
   state.busy = true;
   for (const controller of reviewControllers) controller.setBusy(true);
   if (reqBody.tier === WEB_TIERS.PRO) {
@@ -1272,9 +1192,7 @@ async function runAttempt(attempt) {
   const run = {
     controller,
     cancelled: false,
-    trackCancelled: () => trackFailed('cancelled'),
     stop: () => {
-      trackFailed('cancelled');
       if (typing.parentElement) typing.remove();
       textEl.style.display = '';
       textEl.classList.remove('streaming');
@@ -1333,7 +1251,6 @@ async function runAttempt(attempt) {
         audit.dataset.verificationMeta = 'true';
         body.appendChild(audit);
         if (rejected) {
-          trackFailed(Number.isFinite(mps) && Number.isFinite(fidelity) ? 'floor' : 'scoring');
           textEl.classList.add('msg__text--flagged');
           markOutputUnapproved(textEl, statusEl);
           body.appendChild(errorNote(i18n().floorWarn));
@@ -1341,7 +1258,6 @@ async function runAttempt(attempt) {
         }
         approveOutput(textEl, statusEl);
         approved = true;
-        trackCompleted(mps, fidelity);
         body.appendChild(buildOutputActions(rewrite, frame.receipt));
         const message = { role: 'assistant', text: rewrite, meta, original, receipt: frame.receipt,
           editReview: frame.editReview, protectedSpans: reqBody.protectedSpans || [] };
@@ -1368,8 +1284,6 @@ async function runAttempt(attempt) {
       const hasScores = ff.mps != null || ff.fidelity != null;
       const kind = classifyRewriteError(ff);
       const K = REWRITE_ERROR_KINDS;
-      const outcome = failureOutcome(ff, kind, hasScores);
-      trackFailed(outcome);
       if (attemptText || hasScores) {
         textEl.style.display = '';
         textEl.textContent = attemptText || cleanStream(textEl.textContent);
@@ -1398,7 +1312,6 @@ async function runAttempt(attempt) {
     markOutputUnapproved(textEl, statusEl);
     const t = i18n();
     const msg = run.cancelled ? t.stopNote : timedOut ? t.timeoutNote : tfmt(t.netNote, { msg: String(e?.message || e) });
-    trackFailed(run.cancelled ? 'cancelled' : 'stream');
     body.appendChild(errorNote(msg));
     if (!run.cancelled) addRetry(body, attempt);
   } finally {
@@ -1676,13 +1589,6 @@ document.addEventListener('mousedown', (event) => {
   if (withinSettings(event.target)) return;
   closeSettings();
 });
-const inputStarted = new Set();
-function trackInputStarted(surface, input) {
-  if (inputStarted.has(surface) || input.value.length === 0) return;
-  inputStarted.add(surface);
-  track('Input Started', { surface, lang: els.lang.value });
-}
-
 function submitOnEnter(e, input, source) {
   // 229 also covers IME boundary keydowns whose isComposing flag is false.
   if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229) return;
@@ -1691,11 +1597,11 @@ function submitOnEnter(e, input, source) {
 }
 
 els.heroForm.addEventListener('submit', (e) => { e.preventDefault(); if (state.busy) { stopActive(); return; } submit(els.heroInput.value, 'hero'); });
-els.heroInput.addEventListener('input', () => { trackInputStarted('hero', els.heroInput); autoGrow(els.heroInput); updateHeroSend(); });
+els.heroInput.addEventListener('input', () => { autoGrow(els.heroInput); updateHeroSend(); });
 els.heroInput.addEventListener('keydown', (e) => submitOnEnter(e, els.heroInput, 'hero'));
 
 els.composer.addEventListener('submit', (e) => { e.preventDefault(); if (state.busy) { stopActive(); return; } submit(els.input.value, 'chat'); });
-els.input.addEventListener('input', () => { trackInputStarted('chat', els.input); autoGrow(els.input); updateChatSend(); });
+els.input.addEventListener('input', () => { autoGrow(els.input); updateChatSend(); });
 els.input.addEventListener('keydown', (e) => submitOnEnter(e, els.input, 'chat'));
 
 els.newChat.addEventListener('click', () => { if (state.busy) stopActive(); newConvo(); showChat(); els.input.value = ''; autoGrow(els.input); updateChatSend(); closeMobileSidebar(); els.input.focus(); });
@@ -1709,7 +1615,6 @@ els.ctaStart && els.ctaStart.addEventListener('click', () => { globalThis.scroll
 els.lang.addEventListener('change', onLangChange);
 for (const control of [els.documentType, els.persona, els.register]) control.addEventListener('change', onPreferencesChange);
 els.tier.addEventListener('change', () => {
-  track('Tier Selected', { tier: els.tier.value, surface: 'controls' });
   syncTier(); clearInlineErrors(); updateHeroSend(); updateChatSend();
 });
 els.apiKey.addEventListener('input', () => {
@@ -1733,6 +1638,3 @@ newConvo();
 showLanding();
 updateHeroSend();
 updateChatSend();
-
-// Arrival uses the initialized browser locale; analytics owns success/reuse counting.
-try { globalThis.patinaFunnelReady?.(els.lang.value); } catch { /* optional analytics */ }

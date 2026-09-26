@@ -253,7 +253,7 @@ test('scoreText keeps the prose gate on prose while dividers stay visible to ran
   assert.equal(row.score, 0);
   assert.equal(row.overGate, false);
   // The gated dividers still rank: the attributed ratio over all analyzer
-  // paragraphs (3 hot of 6) reaches flooredScore so mdx-score surfaces the doc.
+  // paragraphs (3 hot of 6) reaches flooredScore, so the doc still ranks.
   assert.ok(Math.abs(row.flooredScore - 50) < 0.01);
   assert.equal(row.discourseTells.hot, true);
   assert.equal(row.discourseTells.thematicBreaks, true);

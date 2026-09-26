@@ -19,20 +19,6 @@ const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const ORIGINAL = 'It is important to note that we retain 12 audit logs.';
 const REWRITTEN = 'We retain 12 audit logs.';
 
-test('preview validates same-origin funnel milestones without production storage', async (t) => {
-  const base = await startPreview(t);
-  const event = { name: 'Funnel Progress', data: { lang: 'ko', channel: 'community', campaign: 'multilingual-20260907', stage: 'arrival' } };
-  const send = (body, origin = new URL(base).origin) => fetch(new URL('/api/funnel', base), {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin, 'Sec-Fetch-Site': 'same-origin' },
-    body: JSON.stringify(body),
-  });
-  const accepted = await send(event);
-  assert.equal(accepted.status, 204);
-  assert.equal(accepted.headers.get('x-patina-mock'), '1');
-  assert.equal((await send({ ...event, data: { ...event.data, text: 'must not be accepted' } })).status, 400);
-  assert.equal((await send(event, 'https://example.invalid')).status, 403);
-});
-
 async function startPreview(t, { root = ROOT, env = {} } = {}) {
   const child = spawn(process.execPath, [path.join(root, 'scripts/dev-server.mjs'), '--host', '127.0.0.1', '--port', '0'], {
     cwd: root,
@@ -236,8 +222,6 @@ test('public-root symlinks cannot expose private or hidden files', { timeout: 15
   try {
     await mkdir(path.join(root, 'scripts'));
   await cp(path.join(ROOT, 'scripts/dev-server.mjs'), path.join(root, 'scripts/dev-server.mjs'));
-  await mkdir(path.join(root, 'api'));
-  await cp(path.join(ROOT, 'api/funnel.js'), path.join(root, 'api/funnel.js'));
   await cp(path.join(ROOT, 'playground'), path.join(root, 'playground'), { recursive: true });
   await symlink(path.join(ROOT, 'src'), path.join(root, 'src'), 'dir');
   await mkdir(path.join(root, 'playground-private'));

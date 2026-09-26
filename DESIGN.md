@@ -53,7 +53,7 @@
 - Existing components to reuse: `assets/brand/*.svg`, `assets/social/*.svg`, `assets/demo/patina-preview-en.png`.
 - New/changed components: production assets are hand-authored SVG.
 - Variants and states: square pure-mark icon, horizontal logo lockup, social preview, preview image states (Rewritten / Original / Both / Diff).
-- Token/component ownership: brand assets stay under `assets/brand/`; social cards under `assets/social/`; preview images stay under `assets/demo/`. Capture them from a real `patina --preview` page.
+- Token/component ownership: brand assets stay under `assets/brand/`; social cards under `assets/social/`; demo stills and recordings stay under `assets/demo/`. Capture them from a real playground run.
 
 ## Accessibility
 - Target standard: readable on GitHub light/dark backgrounds and package pages.

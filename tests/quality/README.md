@@ -149,8 +149,8 @@ npm run quality:live -- --language ko --limit 3
 - `PATINA_LIVE_JUDGE_TIMEOUT_MS` / `--judge-timeout-ms` — scoring budget
   (defaults to the primary timeout).
 - `PATINA_LIVE_JUDGE_BACKEND` / `--judge-backend` — run the judge on a local
-  **subscription CLI seat** (`codex-cli`, `claude-cli`, `gemini-cli`,
-  `kimi-cli`) instead of a paid HTTP API; no judge API key required. Pair
+  **subscription CLI seat** (`codex-cli`, `claude-cli`, `gemini-cli`)
+  instead of a paid HTTP API; no judge API key required. Pair
   with `--judge-model` or let the backend use its documented default. CLI
   backends report no token usage, so cost accounting shows calls and wall
   time only.
@@ -222,31 +222,6 @@ nonzero; AI-score target misses remain `warn` so the report is still usable.
 Keep this out of mandatory CI unless the live model path is deliberately
 allowed, because LLM output is non-deterministic and may incur provider cost.
 
-## Rewrite A/B (default vs iterative-baseline)
-
-`npm run quality:rewrite-ab` compares two rewrite configurations on the same
-fixtures so multi-pass / pipeline questions are answered with data. This is
-unsupported research tooling, not a product API, and it is not published to npm. The
-default comparison is `single` (one-shot rewrite) vs `iterative-baseline` (the
-baseline comparison arm with verification floors for MPS and fidelity).
-
-```bash
-PATINA_LIVE=1 PATINA_LIVE_PROVIDER=gemini PATINA_LIVE_API_KEY=... \
-  npm run quality:rewrite-ab -- --configs single,iterative-baseline --language ko --limit 3
-npm run quality:rewrite-ab -- --json
-```
-
-For each fixture it produces a rewrite per config, model-grades both
-(before/after AI score, MPS, fidelity via `scoreText`/`scoreMPS`/`scoreFidelity`),
-measures edit churn (word-level change ratio), and picks a per-fixture winner:
-among configs that meet `verification.mps-floor`, `verification.fidelity-floor`
-and (for Korean fixtures) number safety, the one with the lowest Korean
-structure distance, with ties broken on lower churn. The summary reports per-config means and head-to-head
-wins. Like `quality:live` it is LLM-backed and opt-in (non-deterministic, may
-incur cost); the comparison/aggregation core is unit-tested with injected
-producers. Use this to decide whether a multi-pass/multi-agent pipeline earns
-its cost before keeping it.
-
 ## Adversarial MPS fixtures
 
 `npm run quality:adversarial-mps` validates a small, repo-owned fixture set
@@ -266,7 +241,7 @@ written to `docs/research/adversarial-mps.md`. The gate is:
 - no private or scraped source text.
 
 If this gate passes, the case is intentionally adversarial: meaning survived,
-the iterative-baseline arm should prefer candidates that pass MPS and lower the AI
+a candidate selector should prefer candidates that pass MPS and lower the AI
 score, rather than letting high MPS hide recurring AI markers.
 
 ## 2025+ rebaseline manifest
@@ -463,14 +438,9 @@ in `.patina.default.yaml` (`stylometry.burstiness.bands`,
 classification. Sweep against this benchmark + your own corpus and
 update thresholds; the shipped values come from the v3.5.1 / v3.7
 calibration documented in `core/stylometry.md` §13 §16.
-`stylometry.ko_diagnostics.bands` controls the ko-only composite. The private
-KatFish calibration command below reports aggregate catch-rate and FP deltas
-without committing external raw text:
-
-```bash
-npm run benchmark:katfish-ko -- --write --basename katfish-ko-latest
-```
-
+`stylometry.ko_diagnostics.bands` controls the ko-only composite. Its last
+calibration is the frozen, aggregate-only KatFish report
+(`docs/benchmarks/katfish-ko-latest.md`, 2026-05-21); its runner is retired.
 Treat that report as a KO diagnostic calibration artifact, not as a broad public
 performance claim.
 

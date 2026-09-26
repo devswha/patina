@@ -1,10 +1,9 @@
 import { getRepoRoot } from './config.js';
 import { runDoctor } from './commands/doctor.js';
 import { runPersona } from './commands/persona.js';
-import { runPack } from './commands/pack.js';
 import { runInspect } from './commands/inspect.js';
 import { handleAuth, printBackendStatus } from './commands/auth.js';
-import { parseArgs, validateModeExclusivity, validateOfflineScoreRequest, validateServeRequest, validatePreviewRequest, validateOutputRouting, validateTransformRequest, validatePersonaRequest, validateVerifyRequest, validateXliffRequest, printHelp } from './cli/args.js';
+import { parseArgs, validateModeExclusivity, validateOfflineScoreRequest, validateOutputRouting, validateRegisterRequest, validatePersonaRequest, validateVerifyRequest, printHelp } from './cli/args.js';
 import { runDefault } from './cli/run.js';
 import { inputError } from './errors.js';
 import { createLogger } from './logger.js';
@@ -36,7 +35,11 @@ export async function main(args) {
     return runPersona(args.slice(1));
   }
   if (args[0] === 'pack') {
-    return runPack(args.slice(1));
+    throw inputError(
+      'patina pack was removed',
+      'Licensed Pro pack delivery is no longer supported.',
+      'Add hand-written patterns to custom/patterns/ instead.'
+    );
   }
   if (args[0] === 'pattern') {
     throw inputError(
@@ -70,12 +73,6 @@ export async function main(args) {
     return;
   }
 
-
-  // XLIFF-specific validation runs before the generic mode guards so combos
-  // like `--xliff --exit-on` get the XLIFF-specific rejection, not a misleading
-  // score-mode error.
-  validateXliffRequest(parsed);
-
   if (parsed.gate !== undefined && !parsed.score) {
     throw inputError(
       '--exit-on can only be used with --score',
@@ -91,11 +88,9 @@ export async function main(args) {
   }
 
   validateModeExclusivity(parsed);
-  validateTransformRequest(parsed);
+  validateRegisterRequest(parsed);
   validatePersonaRequest(parsed);
   validateVerifyRequest(parsed);
-  validatePreviewRequest(parsed);
-  validateServeRequest(parsed);
   validateOutputRouting(parsed);
 
   return runDefault(parsed, logger);

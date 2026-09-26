@@ -183,10 +183,8 @@ describe('CLI adoption commands', () => {
       assert.match(output, /default, --backend openai-http, --provider <name>/);
       assert.match(output, /--model codex-\*/);
       assert.match(output, /--model gemini-\*/);
-      assert.match(output, /--model kimi-\*/);
       assert.match(output, /gpt-5\.5/);
       assert.match(output, /gemini-2\.5-pro/);
-      assert.match(output, /kimi-code\/kimi-for-coding/);
       assert.match(output, /PATINA_API_KEY/);
     });
   });

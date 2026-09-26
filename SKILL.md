@@ -1,6 +1,6 @@
 ---
 name: patina
-version: "9.0.0"
+version: "9.1.0"
 description: Detect and rewrite AI writing patterns in Korean, English, Chinese, and Japanese text so it reads as if a human wrote it. Meaning-preservation (MPS) verified.
 allowed-tools:
   - Read
@@ -57,7 +57,7 @@ node <skill-directory>/bin/patina-skill.js --input <source-file> [--lang ko] [--
 
 백엔드와 한계:
 
-- 헬퍼는 선택된 백엔드 하나의 준비 상태만 검사한다. 선택은 플래그나 설정 파일 어디서든 올 수 있다. `patina doctor`가 다른 백엔드를 통과시킨 사실은 선택된 백엔드의 준비 증거가 아니고, 백엔드 대체 체인도 없다. 선택된 백엔드가 실패하면 다른 백엔드로 몰래 바꾸지 않고 실패로 보고한다. 명시적으로 선택된 `kimi-cli`는 `backend_argv_exposes_input`으로 거부된다.
+- 헬퍼는 선택된 백엔드 하나의 준비 상태만 검사한다. 선택은 플래그나 설정 파일 어디서든 올 수 있다. `patina doctor`가 다른 백엔드를 통과시킨 사실은 선택된 백엔드의 준비 증거가 아니고, 백엔드 대체 체인도 없다. 선택된 백엔드가 실패하면 다른 백엔드로 몰래 바꾸지 않고 실패로 보고한다.
 - 입력은 20,000자·80,000바이트 상한이고, 설정과 실행을 합한 전체 예산은 180초다.
 - 파일이 여러 개면 파일마다 헬퍼를 따로 호출한다. 실패한 파일은 코드를 기록하고 원본을 바꾸지 않은 채 다음 파일로 넘어간다. 실패한 파일을 인라인으로 재작성하지 않는다.
 
@@ -260,10 +260,6 @@ paragraph is SUSPECT iff burstiness_band == "low" OR MATTR_band == "low"
 
 > **주의:** 위 2신호는 4.6단계가 단독으로 계산하는 부분 규칙이다. 최종 hot 판정은 4.7단계의 **통합 OR 규칙**(lexicon, KO 진단 복합, discourse tells, ending monotony, 문서 레벨 신호 포함)으로 결정된다.
 
-**Sentence Zoom**
-
-hot 단락 내부에서 인접 문장 토큰 수 차이 < 20% 인 연속 문장을 그룹으로 묶어 sub-flag 으로 표기한다.
-
 ### LLM 전달 형식
 
 원문 텍스트 상단에 meta block 을 삽입하고, hot 단락 본문 첫머리에 prefix 토큰을 부착한다.
@@ -273,7 +269,6 @@ hot 단락 내부에서 인접 문장 토큰 수 차이 < 20% 인 연속 문장�
 ```
 <suspect-zones lang="ko">
 - P2: burstiness=0.18 (low), MATTR=0.48 (low) — 문장 길이 균질, 어휘 반복 다수
-- P2.S2-S4: 인접 문장 토큰 수 동일
 </suspect-zones>
 ```
 
@@ -286,7 +281,7 @@ hot 단락 내부에서 인접 문장 토큰 수 차이 < 20% 인 연속 문장�
 ### 파이프라인 결합
 
 - **5a 단계**: 입력에 meta block + prefix 가 포함된 상태로 전달된다. hot 단락이 우선 검토 대상이다.
-- **5b 단계**: 동일 입력을 받는다. hot 문장 그룹이 우선 재작성 대상이다.
+- **5b 단계**: 동일 입력을 받는다. hot 단락이 우선 재작성 대상이다.
 - **5c 단계**: 최종 출력에서 meta block 과 prefix 가 모두 제거되었는지 확인한다. 처리되지 않은 hot zone 이 있으면 경고한다 (강제 재처리는 v1 범위 밖).
 
 > **주의:** suspect zone 정보는 사용자 대면 출력에 노출하지 않는다. 4.5단계 anchor 와 동일한 "내부 작업 메모리" 정책이다.
@@ -599,7 +594,7 @@ FOR each anchor IN anchor_list:
 
 나머지 패턴 팩(2단계에서 로드된 팩 중 `phase: structure`가 아닌 모든 팩)을 적용한다.
 
-0. **Suspect zone 활용** — 4.6단계의 hot 문장 그룹(`P{n}.S{m}-S{k}`)을 우선 재작성 대상으로 처리. meta block 의 sub-flag 정보를 사용해 패턴 스캔 우선순위를 결정한다. 4.7단계의 lexicon hit 인용("AI-lexicon hits: ..." 부분) 도 우선 재작성 신호로 사용 — 인용된 AI 어구가 등장하는 문장을 패턴 스캔 우선순위 상단에 둔다
+0. **Suspect zone 활용** — 4.6단계의 hot 단락(`«P{n} SUSPECT»`)을 우선 재작성 대상으로 처리. meta block 의 단락 entry 를 사용해 패턴 스캔 우선순위를 결정한다. 4.7단계의 lexicon hit 인용("AI-lexicon hits: ..." 부분) 도 우선 재작성 신호로 사용 — 인용된 AI 어구가 등장하는 문장을 패턴 스캔 우선순위 상단에 둔다
 1. **AI 패턴 식별** - 로드된 문장/어휘 패턴 팩의 모든 패턴을 스캔
 2. **문제 구간 다시 쓰기** - AI스러운 표현을 토큰 단위로 치환하지 말고, 문맥을 읽은 뒤 절/문장 단위로 자연스럽게 다시 쓴다
 3. **의미 보존** - 핵심 메시지를 유지

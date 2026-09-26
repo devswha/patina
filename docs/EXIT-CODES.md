@@ -26,7 +26,7 @@ These checks in the rewrite path raise exit `4`:
 | `--verify` floor | after the rewrite and one conservative retry, no candidate reaches `verification.mps-floor` / `verification.fidelity-floor` (defaults 70); stderr shows `[patina] verify: MPS …, fidelity … (below floor)` |
 | verified output changed | cleanup changes the text after verification; the scores no longer cover the emitted candidate |
 | dropped-number guard | a number present in the source is missing from the rewrite (`droppedNumbers`), with or without `--verify` |
-| numeric-claim overlay | the rewrite changes a numeric claim the web number-safety gate rejects — sign flip (`-5`→`5`), word-number drift (`one`→`two`), an added numeric claim, or a collapsed duplicate — while keeping the source digits (`assessRewriteMeaningSafety` → `numeric-claim-changed`). Vanished digits still report `dropped-numbers`. Unsupported scientific syntax (`p < 0.05`) stays web-only and never fails the CLI. Preview candidates (`--preview`, including compare variants) enforce the same overlay while still rendering the page |
+| numeric-claim overlay | the rewrite changes a numeric claim the web number-safety gate rejects — sign flip (`-5`→`5`), word-number drift (`one`→`two`), an added numeric claim, or a collapsed duplicate — while keeping the source digits (`assessRewriteMeaningSafety` → `numeric-claim-changed`). Vanished digits still report `dropped-numbers`. Unsupported scientific syntax (`p < 0.05`) stays web-only and never fails the CLI. |
 
 With stdout output, patina still prints the candidate and warns on stderr for
 review. With `--batch --in-place`, a failed candidate leaves its source file

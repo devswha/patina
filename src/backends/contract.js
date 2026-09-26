@@ -4,7 +4,7 @@
 // get maxRetries=0), backend fallback in invokeBackendChain (it never
 // re-invokes the same backend), schema retry in scoring.js.
 import { spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { DEFAULT_MAX_RETRIES, abortError } from '../llm-transport.js';
@@ -111,12 +111,6 @@ const BACKEND_SAFETY_DEFAULTS = Object.freeze({
     promptMode: 'minimal',
     agentRuntime: true,
   },
-  'kimi-cli': {
-    maxConcurrency: 1,
-    maxRetries: 0,
-    promptMode: 'minimal',
-    agentRuntime: true,
-  },
   'agy-cli': {
     maxConcurrency: 1,
     maxRetries: 0,
@@ -155,23 +149,6 @@ export function resolveBackendMaxRetries(backendName, override) {
 
 export function formatLimit(value) {
   return Number.isFinite(value) ? String(value) : 'unbounded';
-}
-
-// Copy image attachments into a CLI backend's per-invocation temp dir so a
-// vision-capable CLI can read them from its own (otherwise empty) cwd. This
-// preserves the prompt-injection containment of the empty-cwd spawn: the CLI
-// never needs access to the caller's paths. Returns the staged filenames.
-export function stageCliImages(dir, images = [], backendName) {
-  try {
-    return images.map((imagePath, index) => {
-      const ext = (/\.([a-z0-9]{1,5})$/i.exec(String(imagePath))?.[1] || 'png').toLowerCase();
-      const staged = `ocr-image-${index}.${ext}`;
-      copyFileSync(imagePath, join(dir, staged));
-      return staged;
-    });
-  } catch (err) {
-    throw new Error(`${backendName} backend: failed to stage image input (${err.message})`, { cause: err });
-  }
 }
 
 export function isRetryableBackendError(err, { signal } = {}) {
@@ -314,7 +291,7 @@ async function acquireBackendSlot({
 function cleanupStaleSlot(slot, staleMs) {
   try {
     // A crashed owner (its pid no longer alive) must release the slot
-    // immediately, not after staleMs — otherwise a cap-1 backend (claude/kimi)
+    // immediately, not after staleMs — otherwise a cap-1 backend (claude/agy)
     // is blocked for up to 30 minutes by a dead run (#445).
     if (!isSlotOwnerAlive(slot)) {
       rmSync(slot, { recursive: true, force: true });

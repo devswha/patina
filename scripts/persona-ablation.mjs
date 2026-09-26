@@ -310,7 +310,7 @@ function createBackendRunner({ repoRoot, lang, config, backendName }) {
   const useHttp = process.env.PATINA_API_KEY || process.env.OPENAI_API_KEY;
   const name = backendName || (useHttp ? 'openai-http' : null);
   if (!name) {
-    throw new Error('live calibration needs a backend: pass --backend <codex-cli|claude-cli|gemini-cli|kimi-cli|openai-http> or set PATINA_API_KEY');
+    throw new Error('live calibration needs a backend: pass --backend <codex-cli|claude-cli|gemini-cli|openai-http> or set PATINA_API_KEY');
   }
   const { backends } = selectBackendChain({ name });
   const callLLM = ({ prompt, signal, timeout }) => invokeBackendChain({ backends, prompt, signal, timeout, maxConcurrency: 1, maxRetries: 1 });

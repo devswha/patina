@@ -120,7 +120,7 @@ A streaming terminal error is also an NDJSON frame, for example:
 {"type":"error","code":"floor_failed","failed":["mps"],"rewrite":"...","mps":{"mps":65},"fidelity":{"fidelity":93},"signals":{"before":{"overall":72},"after":{"overall":18}},"diff":{"beforeChars":39,"afterChars":48}}
 ```
 
-Other terminal stream codes are `number_safety_failed` and `scoring_failed`.
+Other terminal stream codes are `number_safety_failed`, `scoring_failed`, and `rewrite_failed` (an unexpected server-side failure; `500` in JSON mode).
 
 A generation that never completed is refused before any scoring, so no `done` frame follows and the request is not charged for meaning verification. These `stream_failed` reasons are stable:
 

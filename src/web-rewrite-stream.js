@@ -274,6 +274,7 @@ export function rewriteExtraBody(provider, tier, env = {}) {
  * @param {string} [options.repoRoot] Bundle root.
  * @param {Function} [options.callLLMStream] Streaming LLM client.
  * @param {{scoreMPS?: Function, scoreFidelity?: Function, scoreDeterministicSignals?: Function}} [options.scoreFns] Injectable scorers.
+ * @param {typeof createTextEdits} [options.createEdits] Internal/test seam for the change-review builder.
  * @param {(frame: object) => void} options.emit Frame sink.
  * @param {AbortSignal} [options.signal] Abort signal (client disconnect); combined with the deadline signal.
  * @param {number} [options.timeout] TOTAL budget in milliseconds for the WHOLE pipeline — every rewrite attempt plus both scorers share it; one abort fires at exhaustion.
@@ -291,6 +292,7 @@ async function runWebRewriteStreamUnscoped({
   config = loadWebConfig({ repoRoot }),
   callLLMStream = defaultStream,
   scoreFns = {},
+  createEdits = createTextEdits,
   emit,
   observe,
   now = () => Date.now(),
@@ -596,7 +598,7 @@ async function runWebRewriteStreamUnscoped({
         offsetEncoding: 'utf-16',
         baseHash: sha256(original),
         outputHash: sha256(rewrite),
-        edits: createTextEdits(original, rewrite),
+        edits: createEdits(original, rewrite),
       };
     } catch (err) {
       // The change review is an optional convenience; the verified rewrite is
@@ -605,11 +607,12 @@ async function runWebRewriteStreamUnscoped({
       // unavailable") instead of discarding a rewrite whose paid gates all
       // passed; a retry would only spend three more calls. This never relaxes
       // protected spans: validateProtectedText enforces them before scoring
-      // under the same cap. Any other createTextEdits code stays terminal.
+      // under the same cap. Any other failure is unexpected and stays terminal
+      // as an internal rewrite_failed, not as a size refusal.
       const code = /** @type {any} */ (err)?.code;
       if (typeof code !== 'string' || !code.endsWith('_too_long')) {
-        emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'edit_output_too_long' });
-        return { ok: false, code: 'edit_output_too_long', observed: observeTerminal('terminal_failed', 422) };
+        emit({ type: STREAM_FRAME_TYPES.ERROR, code: 'rewrite_failed' });
+        return { ok: false, code: 'rewrite_failed', observed: observeTerminal('terminal_failed', 500) };
       }
       editReview = undefined;
     }

@@ -141,7 +141,7 @@ test('JSON accept buffers a completed rewrite into one JSON response', async () 
 test('JSON mode maps safety-gate refusals to 422 and upstream failures to 500', async () => {
   const env = { NODE_ENV: 'test', PATINA_FREE_API_KEY: 'sk-server-free-key' };
   const cases = [
-    .../** @type {Array<[string, number]>} */ ([['protected_text_failed', 422], ['edit_output_too_long', 422]]).map(([code, expectedStatus]) => ({
+    .../** @type {Array<[string, number]>} */ ([['protected_text_failed', 422], ['edit_output_too_long', 422], ['rewrite_failed', 500]]).map(([code, expectedStatus]) => ({
       code, expectedStatus,
       runner: async ({ emit }) => { emit({ type: 'start' }); emit({ type: 'error', code }); return { ok: false, code }; },
     })),

@@ -2,6 +2,20 @@
 
 All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 
+## 9.1.0 — 2026-09-26
+
+**Dead-feature sweep: page preview, XLIFF, `--jargon`, Pro packs, the `kimi-cli` backend and playground analytics are gone; detection is unchanged.**
+
+Semver rationale: minor by owner decision. Strict semver would make this 10.0.0, because it removes public surfaces that 9.0.0 shipped: the CLI flags `--preview`, `--ocr`, `--serve`, `--xliff`, `--dry-run`, `--max-segments` and `--jargon`, the `patina pack` subcommand and its `/api/packs` endpoint, the `kimi-cli` backend, and the `PATINA_RHETORIC_POLICY=legacy` switch. 9.0.0 shipped earlier the same day, and the owner chose not to spend another major number on a same-day cleanup release. Every removed flag and command fails with exit 2 instead of being reinterpreted. Detection and the benchmark are unchanged; the default rewrite prompt differs from 9.0.0 only in the terminology section's header and bullet label.
+
+- **Breaking — page preview and XLIFF are removed from the CLI** (#951). `--preview`, `--ocr`, `--serve`, `--xliff`, `--dry-run` and `--max-segments` are now unknown options (exit 2); 9.0.0 is the last release that carries them. `--register` takes exactly one value, so a comma list is an input error. The OCR-only image plumbing left the backends.
+- **Breaking — `--jargon` and the legacy rhetoric switch are removed** (#952). Rewrites still keep Latin-letter terms as-is through a fixed prompt section; only its `(--jargon keep)` label is gone. `PATINA_RHETORIC_POLICY=legacy` no longer exists, so the H-RHETORIC text is the only rhetoric guidance. The skill drops the Sentence Zoom rule, which the CLI never implemented, and `.patina.default.yaml` drops keys nothing read (`stylometry.sentence_zoom.*`, `stylometry.skip.*`, `lexicon.skip.*`).
+- **Breaking — Pro pack delivery is removed** (#953). The pack repository has published no packs since 2026-07-12. `patina pack …` exits 2 with a removal message. `/api/packs`, `docs/PRO-PACKS.md`, the CLI variables `PATINA_LICENSE_KEY` and `PATINA_PACKS_URL`, and the server variables `PATINA_PACKS_*` are gone; the `license-key` and `packs-url` config keys are ignored. Hosted Pro license validation is unchanged.
+- **Breaking — the `kimi-cli` backend is removed** (#954). Kimi Code received the text as a `--prompt` argument visible in the process list, which is why the skill helper already refused it. `--backend kimi-cli` exits 2 and `--model kimi-*` stays on the HTTP default; `--provider kimi` and `--provider moonshot` are unchanged.
+- **The playground no longer sends analytics** (#956). The funnel events and the internal `/api/funnel` endpoint are removed. Pro monitoring, checkout links and audit receipts are unchanged.
+- **Repository tooling** (#955): removed the retired KatFish calibration runner, `qa/pattern-overlap`, `npm run qa:mdx`, `npm run badge` (patina-action publishes the same badge) and the parked `quality:rewrite-ab` harness with `iterative-rewrite-baseline`. None of these shipped in the npm package.
+- **Dependencies** (#933, #934): `actions/checkout` 7 and the eslint devtools group.
+
 ## 9.0.0 — 2026-09-26
 
 **Leaner patina: three unused integrations removed, a runtime-only npm package, and a repo-wide cleanup with unchanged detection and prompts.**

@@ -4,7 +4,6 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { isAuthenticated as kimiAuthenticated } from '../../src/backends/kimi-cli.js';
 import {
   hasMacOsKeychainCredentials,
   isAuthenticated as claudeAuthenticated,
@@ -177,47 +176,7 @@ test('claude isAuthenticated on darwin keeps file-first order with Keychain fall
   });
 });
 
-const KIMI_ENV = ['KIMI_API_KEY', 'MOONSHOT_API_KEY', 'KIMI_SHARE_DIR'];
 const GEMINI_ENV = ['GEMINI_API_KEY'];
-
-test('kimi isAuthenticated rejects a missing or zero-byte config.toml, accepts a populated one (#508 G8)', () => {
-  withEnv(KIMI_ENV, () => {
-    const dir = mkdtempSync(join(tmpdir(), 'patina-kimi-auth-'));
-    try {
-      // Neutralize the env-key and credentials-dir paths so config.toml decides.
-      delete process.env.KIMI_API_KEY;
-      delete process.env.MOONSHOT_API_KEY;
-      process.env.KIMI_SHARE_DIR = dir;
-
-      // No config file at all → not authenticated.
-      assert.equal(kimiAuthenticated(), false);
-
-      // Zero-byte config — the previously-broken "exists ⇒ authenticated" case.
-      writeFileSync(join(dir, 'config.toml'), '');
-      assert.equal(kimiAuthenticated(), false);
-
-      // A populated config → authenticated.
-      writeFileSync(join(dir, 'config.toml'), 'api_key = "sk-test"\n');
-      assert.equal(kimiAuthenticated(), true);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-});
-
-test('kimi isAuthenticated still honors an env key with no config file', () => {
-  withEnv(KIMI_ENV, () => {
-    const dir = mkdtempSync(join(tmpdir(), 'patina-kimi-auth-'));
-    try {
-      process.env.KIMI_SHARE_DIR = dir; // empty: no config, no credentials dir
-      delete process.env.MOONSHOT_API_KEY;
-      process.env.KIMI_API_KEY = 'sk-env';
-      assert.equal(kimiAuthenticated(), true);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-});
 
 // authHint() reads only the env var, so it is already deterministic and
 // host-independent; the trim guard is pinned here.

@@ -653,7 +653,7 @@ MODEL & AUTH
   --model <id>            Single model ID. Defaults use the strongest
                           documented model per backend: openai/codex ${models.codexCli},
                           ${models.claudeCli}, ${models.geminiCli},
-                          ${models.kimiCli}, agy ${models.agyCli}.
+                          agy ${models.agyCli}.
   --api-key-file <path>   Read API key from file (recommended)
   --base-url <url>        API base URL (or PATINA_API_BASE env)
   --backend <name[,name]> Backend or explicit fallback chain:

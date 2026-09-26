@@ -105,7 +105,6 @@ describe('CLI End-to-End with Mock API', () => {
 
   it('uses compact prompt mode for local agent CLI backends', () => {
     assert.strictEqual(resolvePromptMode({ backend: 'claude-cli' }), 'minimal');
-    assert.strictEqual(resolvePromptMode({ backend: 'kimi-cli' }), 'minimal');
     assert.strictEqual(resolvePromptMode({ backend: 'gemini-cli' }), 'minimal');
     assert.strictEqual(resolvePromptMode({ backend: 'openai-http', model: 'gpt-5' }), 'strict');
   });
@@ -251,7 +250,7 @@ describe('CLI End-to-End with Mock API', () => {
     assert.ok(!help.includes('--xliff'), 'help should not document the removed XLIFF mode');
     assert.ok(!help.includes('--browser'), 'help should not document the removed browser alias');
     assert.ok(
-      help.includes('openai-http, codex-cli, claude-cli, gemini-cli, kimi-cli'),
+      help.includes('openai-http, codex-cli, claude-cli, gemini-cli, agy-cli'),
       'help should list every backend name'
     );
   });

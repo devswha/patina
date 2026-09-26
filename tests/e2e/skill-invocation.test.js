@@ -86,16 +86,6 @@ async function provider(t, f, { mps = 100, fidelity = 3, onRequest, output = SOU
   return requests;
 }
 
-test('public helper rejects selected Kimi without exposing prose or invoking a rewrite', async t => {
-  const f = await fixture(t);
-  const result = await command(f, ['--lang', 'ko', '--backend', 'kimi-cli']).done;
-  assert.equal(result.summary.code, 'backend_argv_exposes_input');
-  assert.equal(result.exitCode, 1);
-  const r = await privateArtifacts(result, ['receipt.json']);
-  assert.equal(r.invocationStarted, false);
-  assert.equal(result.summary.outputPath, null);
-});
-
 test('real helper -> shipped CLI -> loopback provider accepts exact bytes with private proof', async t => {
   const f = await fixture(t);
   const requests = await provider(t, f);
@@ -275,7 +265,7 @@ test('summary notice asks for a star on the 3rd verified rewrite only, outside t
   assert.deepEqual((await readdir(managed)).sort(), ['runs', 'star-nudge.json']);
   if (process.platform !== 'win32') assert.equal((await stat(join(managed, 'star-nudge.json'))).mode & 0o777, 0o600);
 
-  const rejected = await command(f, ['--backend', 'kimi-cli']).done;
+  const rejected = await command(f, ['--backend', 'not-a-backend']).done;
   assert.equal(rejected.summary.ok, false);
   assert.equal(rejected.summary.notice, null, 'failures keep the field and never ask');
 });

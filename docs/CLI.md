@@ -248,9 +248,8 @@ All backends share the same invocation contract:
 `invoke({ prompt, model, modelSource, signal, timeout, maxRetries }): Promise<string>`.
 Local CLI backends honor `AbortSignal` by killing their child process. When no
 explicit model is set, local backends pass the strongest documented default to
-their CLI (`gpt-5.5`, `claude-sonnet-4-6`, `gemini-2.5-pro`, or
-`kimi-code/kimi-for-coding`); the HTTP backend bridges the same signal into
-fetch.
+their CLI (`gpt-5.5`, `claude-sonnet-4-6`, or `gemini-2.5-pro`); the HTTP
+backend bridges the same signal into fetch.
 
 ## Batch safety controls
 
@@ -266,7 +265,6 @@ Defaults are intentionally conservative:
 | `codex-cli` | minimal | 2 | 0 |
 | `claude-cli` | minimal | 1 | 0 |
 | `gemini-cli` | minimal | 2 | 0 |
-| `kimi-cli` | minimal | 1 | 0 |
 | `agy-cli` | minimal | 1 | 0 |
 
 Local CLIs are agent runtimes, not stateless completion APIs. For large rewrite
@@ -275,7 +273,7 @@ when you have measured the backend:
 
 ```bash
 patina --batch --backend openai-http --max-concurrency 4 --max-retries 2 docs/*.md
-patina --batch --backend kimi-cli --max-concurrency 1 --max-retries 0 docs/*.md
+patina --batch --backend claude-cli --max-concurrency 1 --max-retries 0 docs/*.md
 ```
 
 Circuit breakers stop batch mode after repeated failure instead of burning quota:

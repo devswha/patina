@@ -111,12 +111,6 @@ const BACKEND_SAFETY_DEFAULTS = Object.freeze({
     promptMode: 'minimal',
     agentRuntime: true,
   },
-  'kimi-cli': {
-    maxConcurrency: 1,
-    maxRetries: 0,
-    promptMode: 'minimal',
-    agentRuntime: true,
-  },
   'agy-cli': {
     maxConcurrency: 1,
     maxRetries: 0,
@@ -297,7 +291,7 @@ async function acquireBackendSlot({
 function cleanupStaleSlot(slot, staleMs) {
   try {
     // A crashed owner (its pid no longer alive) must release the slot
-    // immediately, not after staleMs — otherwise a cap-1 backend (claude/kimi)
+    // immediately, not after staleMs — otherwise a cap-1 backend (claude/agy)
     // is blocked for up to 30 minutes by a dead run (#445).
     if (!isSlotOwnerAlive(slot)) {
       rmSync(slot, { recursive: true, force: true });

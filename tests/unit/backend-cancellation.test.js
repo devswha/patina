@@ -17,7 +17,6 @@ import * as claudeCli from '../../src/backends/claude-cli.js';
 import * as codexCli from '../../src/backends/codex-cli.js';
 import { isTimeoutError, withBackendConcurrencySlot } from '../../src/backends/contract.js';
 import * as geminiCli from '../../src/backends/gemini-cli.js';
-import * as kimiCli from '../../src/backends/kimi-cli.js';
 import * as agyCli from '../../src/backends/agy-cli.js';
 
 // agy-cli refuses to launch when the host's Antigravity settings auto-allow
@@ -30,7 +29,6 @@ const BACKENDS = [
   { command: 'claude', backend: claudeCli },
   { command: 'codex', backend: codexCli },
   { command: 'gemini', backend: geminiCli },
-  { command: 'kimi', backend: kimiCli },
   ...(agyLaunchable() ? [{ command: 'agy', backend: agyCli }] : []),
 ];
 
@@ -123,8 +121,6 @@ const FAKE_CLI_SOURCE = [
   '        return;',
   '      }',
   '      writeFileSync(args[index + 1], output);',
-  '    } else if (command === "kimi") {',
-  '      process.stdout.write(`${JSON.stringify({ role: "assistant", content: output })}\\n`);',
   '    } else if (command === "agy") {',
   '      process.stdout.write(`${JSON.stringify({ event: "init", conversation_id: "c", init: { cwd: process.cwd(), tools: [], permission_mode: "request-review" } })}\\n`);',
   '      process.stdout.write(`${JSON.stringify({ event: "result", result: { conversation_id: "c", status: "SUCCESS", response: output, num_turns: 1 } })}\\n`);',

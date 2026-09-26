@@ -89,7 +89,7 @@ test('generic exit-1 failures no longer count as a retryable storm (#440)', () =
 test('EX_TEMPFAIL exits still trip the retryable-storm breaker', () => {
   const b = breaker({ maxFailures: Infinity, maxFailureRate: 1 });
   for (let i = 0; i < 3; i++) {
-    b.recordFailure({ path: `f${i}.md`, err: new Error('kimi-cli backend: kimi exited with code 75') });
+    b.recordFailure({ path: `f${i}.md`, err: new Error('claude-cli backend: claude exited with code 75') });
   }
   assert.equal(b.shouldStop(), true);
   assert.match(b.toError().message, /retryable storm detected \(3 × exit 75\)/);

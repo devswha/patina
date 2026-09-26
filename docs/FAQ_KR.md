@@ -49,7 +49,7 @@ score는 0부터 100까지의 대략적인 편집 신호입니다. 낮을수록 
 
 네. `--score --offline`과 `patina-score` precommit gate에는 backend가
 필요하지 않습니다. LLM 기반 모드는 API key 대신 로그인된 Codex, Claude,
-Gemini, Kimi CLI를 사용할 수 있습니다. [Authentication](AUTHENTICATION.md)을
+Gemini CLI를 사용할 수 있습니다. [Authentication](AUTHENTICATION.md)을
 참고하세요.
 
 ## 입력한 텍스트가 외부로 전송되나요?

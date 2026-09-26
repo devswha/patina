@@ -75,7 +75,6 @@ export function safeCallRecord(record, candidate) {
   return { durationMs: Number.isFinite(response?.durationMs) ? response.durationMs : record.durationMs || 0,
     effectiveModels: identities.filter((model) => model === candidate.model),
     modelIdentityVerified: response?.identityEvidence !== 'cli-request-trace' && distinct.length === 1 && distinct[0] === candidate.model,
-    profileIdentityVerified: candidate.transport === 'kimi-cli' && response?.identityEvidence === 'cli-request-trace' && distinct.length === 1 && distinct[0] === candidate.model,
     identityEvidence: ['cli-request-trace', 'assistant-message'].includes(response?.identityEvidence) ? response.identityEvidence : 'response-metadata',
     usageEvidence: ['cli-session-trace', 'cli-model-usage'].includes(response?.usageEvidence) ? response.usageEvidence : 'response-metadata',
     mixedOrUnexpectedModel: distinct.length > 1 || distinct.some((model) => model !== candidate.model),
@@ -92,14 +91,12 @@ export function safeCallRecord(record, candidate) {
     status: record.state === 'completed' ? 'ok' : 'error',
     error: record.error || null, schema_valid: record.schemaValid ?? null,
     temperature: record.temperature ?? null,
-    temperature_control: ['claude-cli', 'kimi-cli'].includes(candidate.transport) ? 'unsupported-by-cli' : 'requested',
+    temperature_control: candidate.transport === 'claude-cli' ? 'unsupported-by-cli' : 'requested',
     recovered_from_journal: record.replayed === true };
 }
 
-export function acceptedStudyIdentity(call, candidate) {
-  return candidate.transport === 'kimi-cli'
-    ? call?.identityEvidence === 'cli-request-trace' && call?.profileIdentityVerified === true
-    : call?.modelIdentityVerified === true;
+export function acceptedStudyIdentity(call) {
+  return call?.modelIdentityVerified === true;
 }
 
 export function createCallJournal({ directory, logicalId, candidate, complete = studyCompletion, envFile, validate, record = () => {}, persist = atomicJson }) {

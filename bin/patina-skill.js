@@ -209,7 +209,6 @@ export async function runSkill(argv, { spawnImpl = spawn, signal } = {}) {
       model: resolveLocalCliModel({ backendName: backend.name, model: resolved.model, modelSource: resolved.modelSource }),
       modelSource: selected.model ? 'flag' : config.model ? 'config' : resolved.modelSource,
     };
-    if (backend.name === 'kimi-cli') fail('backend_argv_exposes_input');
     if (backend.name === 'openai-http') {
       if (!resolved.apiKey) fail('backend_auth_missing');
     } else {

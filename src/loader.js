@@ -45,9 +45,9 @@ export function splitFrontmatter(content) {
 
 /**
  * Load language-specific pattern packs from patterns/{lang}-*.md, plus any
- * user or pro packs in custom/patterns/{lang}-*.md. On a filename collision
+ * user packs in custom/patterns/{lang}-*.md. On a filename collision
  * the custom pack wins (same precedence the persona and lexicon loaders give
- * custom/), so an installed pack can also override a built-in one.
+ * custom/), so a user pack can also override a built-in one.
  *
  * @param {string} repoRoot Repository root path.
  * @param {string} lang Language code, such as ko, en, zh, or ja.

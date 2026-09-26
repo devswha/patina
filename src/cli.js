@@ -1,7 +1,6 @@
 import { getRepoRoot } from './config.js';
 import { runDoctor } from './commands/doctor.js';
 import { runPersona } from './commands/persona.js';
-import { runPack } from './commands/pack.js';
 import { runInspect } from './commands/inspect.js';
 import { handleAuth, printBackendStatus } from './commands/auth.js';
 import { parseArgs, validateModeExclusivity, validateOfflineScoreRequest, validateOutputRouting, validateRegisterRequest, validatePersonaRequest, validateVerifyRequest, printHelp } from './cli/args.js';
@@ -36,7 +35,11 @@ export async function main(args) {
     return runPersona(args.slice(1));
   }
   if (args[0] === 'pack') {
-    return runPack(args.slice(1));
+    throw inputError(
+      'patina pack was removed',
+      'Licensed Pro pack delivery is no longer supported.',
+      'Add hand-written patterns to custom/patterns/ instead.'
+    );
   }
   if (args[0] === 'pattern') {
     throw inputError(

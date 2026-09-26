@@ -10,7 +10,7 @@
 //
 // These tests drive the production wiring rather than a stub: the real
 // validator over a shared (non-memory) KV in production posture, the real rate
-// limiter, and both real handlers (/api/rewrite and /api/packs). They pin that
+// limiter, and the real /api/rewrite handler. They pin that
 // one caller can spend at most its own slice, that every other caller keeps
 // validating, that a cached subject is never charged, and that each fail-closed
 // edge (no address in production, a broken meter) denies without calling the
@@ -21,7 +21,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createLicenseValidator } from '../../src/entitlement.js';
-import { createPackHandler } from '../../src/pack-handler.js';
 import { createMemoryKv, createRateLimiter, quotaKeyHmac } from '../../src/rate-limit.js';
 import { createRewriteHandler } from '../../src/rewrite-handler.js';
 import { QUOTA_REASONS, WEB_TIERS } from '../../src/web-rewrite-contract.js';
@@ -249,64 +248,6 @@ test('rewrite: a throttled caller is refused with a quota verdict, not a license
   assert.equal(stillDenied.statusCode, 403);
   assert.equal(calls.length, 2);
   assert.equal(await sharedBudgetSpent(kv, Math.floor(clock / 60_000)), 1, 'only the fresh validation charged the shared budget');
-});
-
-// ---------------------------------------------------------------------------
-// /api/packs, end to end (same validator, same shared budget)
-// ---------------------------------------------------------------------------
-
-const PACK_MANIFEST = JSON.stringify({ packs: [] });
-
-function makePacksHandler({ kv, validator }) {
-  return createPackHandler({
-    env: { PATINA_PACKS_GITHUB_TOKEN: 'tok' },
-    kv,
-    licenseValidator: validator,
-    fetchImpl: async () => ({ ok: true, status: 200, text: async () => PACK_MANIFEST }),
-    now: () => FIXED_NOW,
-    logger: { warn() {} },
-  });
-}
-
-function packsRequest({ license, ip }) {
-  return { method: 'GET', url: '/api/packs', headers: { 'x-vercel-forwarded-for': ip, authorization: `Bearer ${license}` } };
-}
-
-test('packs: one caller cannot spend the shared provider budget on uncached keys', async () => {
-  const kv = sharedKv();
-  const calls = [];
-  const validator = makeValidator({ kv, fetchImpl: providerFetch(calls) });
-  const handler = makePacksHandler({ kv, validator });
-
-  const warm = makeRes();
-  await handler(packsRequest({ license: `${ENTITLED_PREFIX}warm`, ip: FLOOD_IP }), warm);
-  assert.equal(warm.statusCode, 200);
-
-  const answers = [];
-  for (let index = 0; index < 6; index += 1) {
-    const res = makeRes();
-    await handler(packsRequest({ license: `LK-unknown-${index}`, ip: FLOOD_IP }), res);
-    answers.push([res.statusCode, res.json().reason]);
-  }
-
-  assert.equal(calls.length, 3, `provider calls: ${calls.join(', ')}`);
-  assert.equal(await sharedBudgetSpent(kv), 3);
-  assert.deepEqual(answers.map(([status]) => status), [403, 403, 429, 429, 429, 429]);
-  assert.deepEqual(answers.slice(2).map(([, reason]) => reason), Array(4).fill(QUOTA_REASONS.LICENSE_VALIDATION_BURST));
-
-  // Another caller's seat, and the warm seat behind the throttled address, are
-  // both still served.
-  const otherSeat = makeRes();
-  await handler(packsRequest({ license: `${ENTITLED_PREFIX}other`, ip: OTHER_IP }), otherSeat);
-  assert.equal(otherSeat.statusCode, 200);
-  assert.equal(calls.length, 4);
-
-  const warmAgain = makeRes();
-  await handler(packsRequest({ license: `${ENTITLED_PREFIX}warm`, ip: FLOOD_IP }), warmAgain);
-  assert.equal(warmAgain.statusCode, 200);
-  assert.equal(calls.length, 4);
-  assert.equal(await sharedBudgetSpent(kv), 4);
-  assert.ok(!kv._keys.join('|').includes(FLOOD_IP), 'KV keys must never carry a raw address');
 });
 
 // ---------------------------------------------------------------------------

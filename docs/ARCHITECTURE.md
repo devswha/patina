@@ -51,8 +51,7 @@ rewrite is the LLM one" picture: **every backend-backed CLI mode calls the
 backend** (`invokeBackendChain` in `src/cli/run.js`) — including `--audit`,
 `--score`, and `--diff`, whose names alone suggest they are model-free.
 Backend-free surfaces stay backend-free and make no backend call:
-`patina inspect`, `--score --offline`,
-`patina pack list/install`, and the `patina-score` bin. What differs across
+`patina inspect`, `--score --offline`, and the `patina-score` bin. What differs across
 the backend-backed surfaces is the *strength of the Method-D anchor* — see the
 table below and [Seams: resolved and remaining](#seams-resolved-and-remaining).
 
@@ -100,7 +99,6 @@ Backend-backed modes use Method P; the rightmost column is the Method-D anchor.
 | `--score --offline` | `score` | **no** | deterministic signal score |
 | `--diff` | `diff` | yes | deterministic pattern/detection report |
 | `patina inspect` | — | **no** | deterministic score and source-aligned diagnostics over `analyzeText()` + `scoreDeterministicSignals` (`src/commands/inspect.js` → `src/inspection.js`); optional `--rewrite` / `--document-type` add inspect-only advisories; provider/backend options are rejected |
-| `patina pack list/install` | — | **no** | licensed pack delivery (`src/commands/pack.js` ↔ `src/pack-handler.js`), entitlement checked server-side |
 | `patina-score` (bin) | — | **no** | hot-paragraph ratio over `analyzeText()` |
 | playground / hosted rewrite | — | yes | shared server-side prompt, analysis, and scoring assets |
 
@@ -167,14 +165,12 @@ private or custom local files never reach a browser bundle.
   `funnel-analytics.js` — hosted request-shaped prompt budgets, downloadable
   audit receipts, aggregate-only Pro health monitor, and privacy-safe funnel
   events (no request content retained)
-- `src/entitlement.js`, `entitlement-polar.js`, `pack-handler.js` —
-  server-only Pro entitlement (Polar license-key validation) and licensed pack
-  delivery
+- `src/entitlement.js`, `entitlement-polar.js` — server-only Pro entitlement
+  (Polar license-key validation)
 
 ### Shared infrastructure (lane-neutral)
 
 - `src/cli.js`, `cli/args.js`, `cli/run.js` (dispatcher), `cli/input.js`, `cli/batch.js`, `cli/teardown.js` (drain leftover fetch/stdin handles before CLI exit)
-- `src/commands/pack.js` — client half of `patina pack`
 - `src/config.js`, `errors.js`, `logger.js`, `loader.js`, `model-defaults.js`, `output.js`
 - `src/api.js`, `providers.js`, `backends/*`, `anthropic-native.js` (opt-in native
   Anthropic Messages adapter) — LLM transport (used only by Lane B, kept as

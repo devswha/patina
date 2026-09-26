@@ -2,14 +2,10 @@
 // the deterministic score. Pairwise checks skip when rewrite text is absent.
 
 import { splitParagraphs, splitProseSentences, tokenize } from './features/segment.js';
-import { assessPortability, PORTABILITY_OMIT_TYPES, omitsPortabilityAdvisory } from './features/portability.js';
+import { assessPortability, omitsPortabilityAdvisory } from './features/portability.js';
 
-export const COMPLETENESS_OMIT_TYPES = Object.freeze(['academic', 'medical', 'technical']);
-export const STAR_EVENNESS_TYPES = Object.freeze(['personal-statement', 'project-writeup']);
-// The portability suppress list lives with the probe it gates
-// (features/portability.js) so the inspect advisory and the rewrite hint share
-// one source of truth; re-exported here for existing importers.
-export { PORTABILITY_OMIT_TYPES, omitsPortabilityAdvisory };
+const COMPLETENESS_OMIT_TYPES = Object.freeze(['academic', 'medical', 'technical']);
+const STAR_EVENNESS_TYPES = Object.freeze(['personal-statement', 'project-writeup']);
 
 const CODA_RE = /배웠|깨달|의미가 있|그래서 중요한|This taught me|I learned that|\bI learned\b|the takeaway|takeaway is/i;
 const HEADING_RE = /^#{1,6}\s+\S/;
@@ -23,15 +19,15 @@ const STAR_CUES = Object.freeze({
   lesson: /배웠|깨달|교훈|\bI learned\b|This taught|takeaway|\blesson\b/i,
 });
 
-export function omitsCompletenessAdvisories(documentType) {
+function omitsCompletenessAdvisories(documentType) {
   return COMPLETENESS_OMIT_TYPES.includes(String(documentType || ''));
 }
 
-export function allowsStarEvenness(documentType) {
+function allowsStarEvenness(documentType) {
   return STAR_EVENNESS_TYPES.includes(String(documentType || ''));
 }
 
-export function isLessonCoda(sentence) {
+function isLessonCoda(sentence) {
   return CODA_RE.test(String(sentence || ''));
 }
 
@@ -163,9 +159,8 @@ export function collectInspectionAdvisories(text, {
       });
     }
   }
-  // #881: point-of-view absence. Detect only — the rewrite-side version of this
-  // idea failed Study 4 (H-4b not supported, meaning gate violated 50/54), so the
-  // probe reports and never asks the rewriter to invent a missing detail.
+  // Point-of-view absence. Detect only: the probe never asks the rewriter to
+  // invent a missing detail.
   const portability = omitsPortabilityAdvisory(documentType) ? null : assessPortability(text, { lang: language });
   if (portability?.trip) {
     advisories.push({

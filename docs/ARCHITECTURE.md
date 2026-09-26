@@ -118,8 +118,7 @@ checks remain global. `--serve` is a `--preview` transport option.
 
 - `src/features/index.js` — `analyzeText()`, the engine
 - `src/features/stylometry.js`, `translationese.js`, `discourse-tells.js`,
-  `markup-leakage.js`, `segment.js`, `structural-features.js`,
-  `structural-model-loader.js`, `lexicon.js`, `lexicon-core.js`,
+  `markup-leakage.js`, `segment.js`, `lexicon.js`, `lexicon-core.js`,
   `document-signals.js`, `catalog/*`
 - `src/output.js#buildDeterministicAuditBackstop`,
   `src/cli/run.js#withDeterministicScore` — audit/score backstops
@@ -129,6 +128,20 @@ checks remain global. `--serve` is a `--preview` transport option.
   layer call `analyzeText()` with no model. The browser playground no longer
   ships an offline audit mirror — it was dropped when the playground became
   rewrite-first.
+
+`src/features/analyzer.js` is the file-free form of the analyzer: callers pass
+the lexicon as data, and `src/features/index.js` stays the Node adapter that
+resolves local lexicon files. `src/prose-core.js` holds the prose preparation,
+language detection, and hot-paragraph ratio shared with
+`scripts/prose-score.mjs`; a browser caller uses
+`scoreProse(text, { lang, lexicon, gate })`, while the Node script adds file
+traversal and pattern-watch diagnostics. Its `score` is the hot-paragraph
+percentage behind the Action/badge gate, and `flooredScore` also keeps
+document-level markup evidence. Both are deterministic editing signals, not the
+LLM-based `patina --score` result or an authorship probability. The browser
+entry graph uses no filesystem, environment variables, provider credentials, or
+network APIs, and its caller bundles the public lexicon at build time, so
+private or custom local files never reach a browser bundle.
 
 ### Lane A asset consumed by Lane B (deterministic, cross-lane)
 
@@ -156,11 +169,11 @@ checks remain global. `--serve` is a `--preview` transport option.
   `funnel-analytics.js` — hosted request-shaped prompt budgets, downloadable
   audit receipts, aggregate-only Pro health monitor, and privacy-safe funnel
   events (no request content retained)
-- `src/entitlement.js`, `entitlement-polar.js`, `polar-webhook.js`,
-  `pack-handler.js` — server-only Pro entitlement (Polar license keys,
-  Standard-Webhooks verification) and licensed pack delivery
-- `src/preview/*`, `preview.js`, `browser-diff.js` — `--preview` page presentation
-  over rewrite output (deterministic rendering; optional LLM diff narration)
+- `src/entitlement.js`, `entitlement-polar.js`, `pack-handler.js` —
+  server-only Pro entitlement (Polar license-key validation) and licensed pack
+  delivery
+- `src/preview/*` — `--preview` page presentation over rewrite output
+  (deterministic rendering; optional LLM diff narration)
 
 ### Shared infrastructure (lane-neutral)
 
@@ -248,14 +261,15 @@ The checker enforces only three reachability rules:
 2. `playground/**` cannot reach server-secret modules, API handlers, or Node
    built-ins.
 3. `src/**`, `api/**`, `bin/**`, and every declared published package bin
-   cannot reach packaged research modules.
+   cannot reach research modules (`scripts/research/`, `tests/quality/`, and
+   `scripts/iterative-rewrite-baseline.mjs`).
 
 Deterministic shared modules are classified rather than blanket-banned:
 `src/edit-controls.js`, `src/errors.js`, `src/logger.js`,
 `src/model-defaults.js`, `src/web-rewrite-contract.js`,
 `src/personas/gates.js`, and `scripts/prose-score.mjs` are the reviewed
-examples. The current audited exceptions are the lexicon and structural model
-loaders' local `fs`/`path`/`os` reads, browser use of the shared
+examples. The current audited exceptions are the lexicon loader's local
+`fs`/`path` reads, browser use of the shared
 `web-rewrite-contract`/`edit-controls` utilities, and inspection's reuse of
 the deterministic prose scorer. Each exception is exact-path and reason
 annotated in the checker; it is not a broad baseline whitelist.
@@ -273,10 +287,6 @@ async contract error (for example, a missing `await`). This is evidence for
 that test module only, not a claim that all JavaScript is type-checked and not
 a reason to add a second project-wide TypeScript configuration.
 
-### Packaged research comparator (unsupported)
-
-- `scripts/iterative-rewrite-baseline.mjs` — `iterative-baseline`, a packaged
-  research comparator outside the product API, CLI help, and configuration surface. The package has no `exports` map, so the module remains deep-importable but unsupported.
 ---
 
 ## Seams: resolved and remaining

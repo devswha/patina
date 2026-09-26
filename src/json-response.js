@@ -54,13 +54,13 @@ export function parseStrictJson(text) {
 
   // Otherwise scan every balanced {...} span and keep the RICHEST object. A
   // naive indexOf('{')..lastIndexOf('}') slice breaks when prose carries stray
-  // braces, e.g. "result for {A}: {\"overall\":20}" slices from `{A}` (#508 G2).
+  // braces, e.g. "result for {A}: {\"overall\":20}" slices from `{A}`.
   // Returning the FIRST parseable object is also wrong when a chatty model
   // emits a stray/echoed object (or an empty `{}`) before the real score —
-  // that nulls a valid score without a retry (#527 H8). And a lone unbalanced
-  // '{' must skip, not abandon the scan, or a later valid object is missed
-  // (#527 H9). Picking the object with the most keys favors the score object
-  // (many keys) over a small echo while leaving the single-object case exact.
+  // that nulls a valid score without a retry. And a lone unbalanced '{' must
+  // skip, not abandon the scan, or a later valid object is missed. Picking the
+  // object with the most keys favors the score object (many keys) over a small
+  // echo while leaving the single-object case exact.
   let best = null;
   let bestKeys = -1;
   for (let i = 0; i < body.length; i++) {

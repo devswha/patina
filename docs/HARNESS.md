@@ -49,7 +49,7 @@ INPUT          ENGINE (deterministic, LLM-free)                 SURFACES
 
 Hot decision = OR of the per-paragraph signals (`burstiness_low`, `mattr_low`,
 `lexicon_hot`, `ko_diagnostics`, `candor`, `thematic_break`, `ko_ending_monotony`)
-plus the document-level `markup_leakage` / `structural_model`. The signal-impact
+plus the document-level `markup_leakage`. The signal-impact
 analysis below ablates each one to report its marginal contribution.
 
 ## Quality & regression (deterministic, CI-safe)
@@ -128,6 +128,7 @@ added or removed (a unit test pins the signal list).
 - **Tool:** `scripts/ai-tells-corpus-baseline.mjs`
 - **Kind:** deterministic, measurement-only (no LLM, no analyzer mutation).
 - **Command:** `node scripts/ai-tells-corpus-baseline.mjs --json --no-timestamp --strict`
+  (report-only form: `npm run benchmark:ai-tells-baseline`)
 - **What:** runs `analyzeText()` over the persona-calibration corpus
   (sycophancy 298 / tells 85 / human-controls 7) and reports confusion metrics,
   Wilson intervals, detector-signal fires, and `term_family_coverage`.
@@ -152,7 +153,7 @@ added or removed (a unit test pins the signal list).
   `not_evaluated`. A hard FP threshold / public FPR claim requires a separately
   reviewed, expanded negative set — not this smoke set.
 
-## Detector candidate evaluation (Phase B, deterministic)
+## Detector candidate evaluation (deterministic)
 
 - **Tool:** `scripts/detector-candidate-eval.mjs` (+ `tests/unit/detector-candidate-eval.test.js`).
 - **Kind:** deterministic, measurement-only. Evaluates CANDIDATE structural/density
@@ -171,14 +172,9 @@ added or removed (a unit test pins the signal list).
 - **Advisory boundary:** `translationese`/`koPostEditese` remain advisory and are
   not folded into `hot`; a regression test pins this.
 - **Command:** `node scripts/detector-candidate-eval.mjs --json --no-timestamp`
+  (report-only form: `npm run benchmark:detector-candidates`)
 
-## Phase D: packaging + report-only corpus scripts
-
-- **Packaging fix:** `personas/` is now in package `files`, so built-in personas
-  (incl. `personas/ko/natural-ko.md`) ship in the npm artifact. `npm pack`
-  includes all five KO personas; `tests/unit/persona-packaging.test.js` guards it.
-- **Report-only scripts:** `npm run benchmark:ai-tells-baseline` and
-  `npm run benchmark:detector-candidates` expose the Phase A/B harnesses. They
-  are measurement-only and read the (unpublished, git-tracked) calibration
-  corpus; they are not wired into any blocking CI gate. A hard detector/FP
-  threshold stays deferred until the negative controls are expanded (Phase A2).
+Both harnesses above are measurement-only and read the unpublished calibration
+corpus that is tracked in the repository; neither is wired into a blocking CI
+gate. A hard detector/FP threshold stays deferred until the negative controls
+are expanded.

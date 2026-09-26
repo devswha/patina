@@ -1,10 +1,7 @@
 import { loadInputText, MAX_INPUT_BYTES } from '../loader.js';
 import { inputError } from '../errors.js';
 
-// The second parameter used to be a logger for the stdin prompt; the prompt
-// now writes straight to stderr (#440). Kept as `_logger` so existing callers
-// passing a logger stay source-compatible.
-export async function loadInputs(parsed, _logger) {
+export async function loadInputs(parsed) {
   if (parsed.files.length === 0) {
     if (process.stdin.isTTY) {
       if (parsed.noInteractive) {

@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url';
 import { canonicalTextHash, distribution, evaluateScorerFixture, loadScorerFixtures, loadScorerManifest, renderScorerReport, summarizeScorerRows, textHash } from '../quality/live-scorer-benchmark.mjs';
 import { readCredential, safeStudyError, validateTransport } from '../../scripts/research/model-evaluation-transport.mjs';
 import { createStudyInputs } from '../../scripts/research/study-inputs.mjs';
-import { STRUCTURAL_FEATURE_NAMES } from '../../src/features/index.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const candidate = { id: 'test', provider: 'gemini', transport: 'opencodex', model: 'google-antigravity/gemini-test', baseURL: 'http://127.0.0.1:10100/v1' };
@@ -137,7 +136,7 @@ test('exact manifest bytes reach the production prompt and changed bytes never d
     writeFileSync(manifest, JSON.stringify({ sample_id: 'exact', language: 'en', text_hash: textHash(text) }));
     const [fixture] = loadScorerManifest(manifest, texts);
     assert.equal(fixture.text, text);
-    const preparedInputs = createStudyInputs(ROOT, { config: { documentType: 'default' }, env: {}, cwd: dir }).fixture(fixture);
+    const preparedInputs = createStudyInputs(ROOT, { config: { documentType: 'default' } }).fixture(fixture);
     const complete = async (_candidate, prompt) => {
       calls++;
       assert.ok(prompt.includes(text), 'the provider receives the same bytes bound by text_hash');
@@ -204,43 +203,33 @@ test('document type reaches prepared scoreText inputs and analyzer hot remains n
   assert.equal(unknown.analyzer_hot, null);
 });
 
-test('analyzer hot uses frozen model inputs and remains unknown when the language is disabled', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'patina-live-frozen-analysis-'));
-  const modelPath = join(dir, 'model.json');
-  const text = 'The train leaves at noon.';
+test('analyzer hot uses frozen inputs and remains unknown when the language is disabled', async () => {
+  const text = 'The train leaves at noon. According to turn0search1 it runs on time.';
   const fixture = { fixture_id: 'frozen', language: 'en', register: 'social', text, text_hash: textHash(text) };
-  const model = { lang: 'en', weights: STRUCTURAL_FEATURE_NAMES.map(() => 0), bias: 10, threshold: 0.5,
-    scaler: { mu: STRUCTURAL_FEATURE_NAMES.map(() => 0), sigma: STRUCTURAL_FEATURE_NAMES.map(() => 1) }, featureNames: STRUCTURAL_FEATURE_NAMES };
-  const config = { documentType: 'default', register: 'professional',
-    stylometry: { languages: ['en'], structural_model: { path: modelPath } } };
+  const config = { documentType: 'default', register: 'professional', stylometry: { languages: ['en'] } };
   const complete = async () => ({
     text: JSON.stringify({ categories: { content: { detected: 0, sum: 0, max: 18, score: 0, weighted: 0 } }, overall: 0 }),
     durationMs: 1, effectiveModels: [candidate.model], attempts: 1,
   });
-  try {
-    writeFileSync(modelPath, JSON.stringify(model));
-    const frozen = createStudyInputs(ROOT, { config, env: {}, cwd: dir });
-    writeFileSync(modelPath, JSON.stringify({ ...model, bias: -10 }));
-    const current = createStudyInputs(ROOT, { config, env: {}, cwd: dir }).fixture(fixture);
-    const prepared = frozen.fixture(fixture);
-    assert.equal(current.analyzerHot, false);
-    assert.equal(prepared.analyzerHot, true);
-    assert.equal(prepared.config.register, 'professional', 'dataset genre must not replace the delivery register');
-    assert.equal(prepared.config.documentType, 'default', 'dataset genre must not imply a document type');
-    assert.equal(prepared.deterministicScore.bands.structuralClassifier.hot, true);
-    const result = await evaluateScorerFixture(fixture, candidate, { preparedInputs: prepared, complete });
-    assert.equal(result.status, 'ok');
-    assert.equal(result.analyzer_hot, true);
-    assert.equal(result.overall, prepared.deterministicScore.evidenceFloor);
-    assert.equal(Object.hasOwn(result, 'analysis'), false);
-    assert.ok(!JSON.stringify(result).includes(text));
+  const frozen = createStudyInputs(ROOT, { config });
+  config.stylometry.languages = ['ko'];
+  const prepared = frozen.fixture(fixture);
+  assert.equal(prepared.analyzerHot, true);
+  assert.equal(prepared.config.register, 'professional', 'dataset genre must not replace the delivery register');
+  assert.equal(prepared.config.documentType, 'default', 'dataset genre must not imply a document type');
+  assert.equal(prepared.deterministicScore.bands.markupLeakage.leaked, true);
+  const result = await evaluateScorerFixture(fixture, candidate, { preparedInputs: prepared, complete });
+  assert.equal(result.status, 'ok');
+  assert.equal(result.analyzer_hot, true);
+  assert.equal(result.overall, prepared.deterministicScore.evidenceFloor);
+  assert.equal(Object.hasOwn(result, 'analysis'), false);
+  assert.ok(!JSON.stringify(result).includes(text));
 
-    const disabled = createStudyInputs(ROOT, { config: { ...config, stylometry: { ...config.stylometry, languages: ['ko'] } }, env: {}, cwd: dir }).fixture(fixture);
-    assert.equal(disabled.deterministicScore.skipReason, 'language-disabled');
-    const skipped = await evaluateScorerFixture(fixture, candidate, { preparedInputs: disabled, complete });
-    assert.equal(skipped.status, 'ok');
-    assert.equal(skipped.analyzer_hot, null);
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  const disabled = createStudyInputs(ROOT, { config }).fixture(fixture);
+  assert.equal(disabled.deterministicScore.skipReason, 'language-disabled');
+  const skipped = await evaluateScorerFixture(fixture, candidate, { preparedInputs: disabled, complete });
+  assert.equal(skipped.status, 'ok');
+  assert.equal(skipped.analyzer_hot, null);
 });
 
 test('unlabeled manifest social scoring keeps the short-form floor without affecting default prose', async () => {
@@ -263,9 +252,9 @@ test('unlabeled manifest social scoring keeps the short-form floor without affec
     const [social, defaultProse, configured] = loadScorerManifest(manifest, texts);
     assert.equal(social.expected_hot, null);
     assert.equal(configured.documentType, undefined);
-    const config = createStudyInputs(ROOT, { env: {}, cwd: dir }).config();
+    const config = createStudyInputs(ROOT).config();
     config.documentType = 'social';
-    const inputs = createStudyInputs(ROOT, { config, env: {}, cwd: dir });
+    const inputs = createStudyInputs(ROOT, { config });
     assert.equal(inputs.fixture(configured).config.documentType, 'social');
     const socialResult = await evaluateScorerFixture(social, candidate, { complete, preparedInputs: inputs.fixture(social) });
     const defaultResult = await evaluateScorerFixture(defaultProse, candidate, { complete, preparedInputs: inputs.fixture(defaultProse) });

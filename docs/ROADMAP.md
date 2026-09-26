@@ -21,7 +21,7 @@ This roadmap focuses on two things:
   - per-cell results: `docs/benchmarks/rebaseline-latest.md`
 - Current distribution:
   - npm package `patina-cli` is the public distribution channel; repo metadata (package.json / SKILL.md / README) is version-synced and verified with `npm run release:check` before publishing.
-  - hosted surface: browser playground + Pro HTTP API at `patina.vibetip.help` (`docs/HTTP-API.md`); Pro checkout via Polar since 2026-08-04 (`docs/operations/live-open-20260804.md`); container image `ghcr.io/devswha/patina:latest` (`docs/integrations/docker.md`)
+  - hosted surface: browser playground + Pro HTTP API at `patina.vibetip.help` (`docs/HTTP-API.md`); Pro checkout via Polar since 2026-08-04; container image `ghcr.io/devswha/patina:latest` (`docs/integrations/docker.md`)
 
 ## 0. Positioning principles
 
@@ -54,27 +54,24 @@ Avoid overclaiming:
 - guaranteed undetectable
 - bypass detector
 
+### Launch rule
+
+Do not lead with “bypass AI detectors.” Lead with:
+
+> AI-assisted writing often sounds packaged. patina removes that packaging and checks that the meaning survived.
+
+## Shipped
+
+- **Benchmark credibility (quality phase 1).** `docs/benchmarks/latest.md` carries Wilson CIs, ROC-AUC / PR-AUC and threshold diagnostics; the register split is `docs/benchmarks/register-stratified-latest.md`; the adversarial MPS gate is `docs/research/adversarial-mps.md`. `katfish-ko-latest` (2026-05-21) is frozen as historical evidence: regenerating it needs the private KatFish inputs, which the owner retired on 2026-09-15, so it is not pending work.
+- **Try-it-now experience.** Hosted playground at <https://patina.vibetip.help/> (server-side rewrite, `docs/HTTP-API.md`); brand assets in `assets/brand/` (`docs/BRANDING.md`).
+- **Packaging and distribution.** npm `patina-cli` and `patina-humanizer` publish through npm Trusted Publishing (OIDC); every publication still needs separate, explicit external-write authorization. GitHub Releases follow a successful npm publication on tag push (`docs/integrations/release.md`). The public image `ghcr.io/devswha/patina:latest` has its own manual release path (`docs/integrations/docker.md`). The README Quick Start states the current source and npm versions. Homebrew has not started.
+- **Integrations.** Claude Code / Codex / Cursor / OpenCode skill install, `devswha/patina-action`, and the pre-commit recipe under `docs/integrations/`. Subagent strict flow: `docs/agents.md`.
+- **Custom Persona authoring (7.0.0).** Document Type owns genre, purpose, structural conventions, and pattern policy; Persona v2 is optional and owns only reusable voice; Register owns only `casual` or `professional` delivery; meaning preservation and verification are global. `patina persona new|list|show|edit|rm` covers the lifecycle in ko/en/zh/ja. Omitting `--persona` preserves the source voice, and the v7 CLI rejects `--profile`, `--tone`, and `--formality` with migration errors rather than aliases.
+- **Community health.** Issue forms for bugs, features, pattern proposals, false positives, benchmark corpora, calibration concerns and research proposals; `SECURITY.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, `GOVERNANCE.md`, `MAINTAINERS.md` and the PR template.
+- **Contribution path.** A “submit a pattern” path from README and FAQ, [`docs/community/pattern-of-the-week.md`](community/pattern-of-the-week.md), and the starter labels `good first issue`, `patterns`, `benchmark`, and `docs`. Pattern PR requirements stay in `CONTRIBUTING.md`.
+- **Public launch and Pro checkout** (Polar, 2026-08-04).
+
 ## 1. Quality roadmap
-
-### Phase 1 — benchmark credibility
-
-Status (2026-09-15): shipped. `docs/benchmarks/latest.md` carries Wilson CIs, ROC-AUC / PR-AUC and threshold diagnostics; register split lives in `docs/benchmarks/register-stratified-latest.md`; the adversarial MPS gate is `docs/research/adversarial-mps.md`. All public `-latest` reports were regenerated against 8.7.0 on 2026-09-15 (metrics unchanged — deterministic verdicts are unchanged by the research modules). `katfish-ko-latest` (2026-05-21) is frozen as historical evidence: its regeneration needed the private KatFish inputs and is retired by owner decision 2026-09-15, so it must not be tracked or re-attempted as pending work.
-
-Goal: make claims easier to verify and harder to dismiss.
-
-- Publish a short benchmark report generated from `tests/quality/results.json`.
-- Keep ROC-AUC / PR-AUC and threshold sweep diagnostics current in the deterministic benchmark report.
-- Split reports by language, class, and register.
-- Add a visible warning that scores measure AI-likeness, not authorship.
-- Link [`docs/research/ai-human-metrics.md`](research/ai-human-metrics.md) from README.
-- Keep the adversarial MPS report current so high meaning preservation cannot hide unchanged AI-like style.
-
-Acceptance criteria:
-
-- `npm run benchmark` still passes.
-- `npm run quality:adversarial-mps` still passes.
-- Benchmark output includes current binary metrics plus ranked/threshold metrics.
-- README claims are traceable to a specific benchmark report or spec section.
 
 ### Phase 2 — corpus expansion
 
@@ -106,7 +103,7 @@ Acceptance criteria:
 
 ### Phase 3 — deterministic feature expansion
 
-Status (2026-09-02): in research. The Korean diagnosis modules (`src/features/korean-diagnosis.js`, `korean-invariants.js`, `korean-structure-fingerprint.js`) landed in 8.1.0 as research infrastructure and are **not** promoted to the shipped verdict (`docs/research/ko-confirmatory-verdict-20260901.md`). The smoothness-floor item is **shipped advisory (CLI rewrite warning); not in analyzeText / benchmark**. Remaining Phase 3 candidates stay research-only.
+Status (2026-09-02): in research. The Korean diagnosis treatment was **not** promoted (`docs/research/ko-confirmatory-verdict-20260901.md`); of its research infrastructure only `src/features/korean-structure-fingerprint.js` ships, as the read-only `patina inspect` structure fingerprint. The smoothness-floor item is **shipped advisory (CLI rewrite warning); not in analyzeText / benchmark**. Remaining Phase 3 candidates stay research-only.
 
 Goal: add signals that are not just sentence length or lexicon hits.
 
@@ -146,74 +143,7 @@ Acceptance criteria:
 
 ## 2. Product roadmap
 
-### Phase 1 — try-it-now experience
-
-Status (2026-09-02): shipped. Hosted playground at <https://patina.vibetip.help/> (server-side rewrite, `docs/HTTP-API.md`), preview GIF hero in every README, brand assets in `assets/brand/` (`docs/BRANDING.md`).
-
-Goal: reduce the time from landing on README to seeing value.
-
-- Maintain the recognizable patina logo / app icon now in `assets/brand/`.
-  It should stay dark, faceted, tactile, and simple enough to work at favicon size,
-  without copying Obsidian's trade dress.
-- Add an animated terminal demo or short GIF.
-- Add copy-paste sample commands for the 4 most likely users:
-  - writer/blogger
-  - engineer writing docs
-  - Korean marketer/social writer
-  - researcher/academic writer
-- Add a `--sample` or documented sample file flow if not already available.
-
-Acceptance criteria:
-
-- A new user can run one command and see before/after output in under 2 minutes.
-- README demo covers both CLI and skill usage.
-- Logo assets exist in repo-friendly formats (`svg` source plus social preview export) and render clearly on GitHub dark/light backgrounds.
-
-### Phase 2 — packaging and distribution
-
-Status (2026-09-15): the source release is 8.7.0; npm `patina-cli` and `patina-humanizer` are published at 8.7.0 through npm Trusted Publishing (OIDC), verified on 2026-09-15 (`docs/integrations/release.md`). The earlier publication hold has ended; publishing still requires separate explicit external-write authorization. GitHub Releases follow successful npm publication on tag push (`docs/integrations/release.md`). The public image `ghcr.io/devswha/patina:latest` has a separate manual release path (`docs/integrations/docker.md`). Homebrew has not started.
-
-Goal: make patina installable from the channels users expect.
-
-- Publish npm package if the project is ready for package support.
-- Add signed GitHub releases and changelog highlights.
-- Consider Homebrew only after npm and releases are stable.
-- Add package badges only after packages exist.
-
-Acceptance criteria:
-
-- Install instructions work from a clean environment.
-- Release artifacts match README claims.
-- Version-bearing files stay synchronized.
-
-### Phase 3 — integrations
-
-Status (2026-09-02): shipped for the first-class paths — Claude Code / Codex / Cursor / OpenCode skill install, `devswha/patina-action`, pre-commit and static-site recipes under `docs/integrations/`. Subagent strict flow: `docs/agents.md`.
-
-Goal: make patina show up where AI-writing pain happens.
-
-- Claude Code / Codex / Cursor / OpenCode install path stays first-class.
-- Add examples for docs cleanup, blog rewrite, and launch-copy cleanup.
-- Consider editor snippets or action recipes after CLI packaging is stable.
-
-Acceptance criteria:
-
-- Integration docs are tested manually before public launch posts.
-- Each integration has one minimal example and one realistic example.
-
-### Phase 4 — custom Persona authoring (shipped in 7.0.0)
-
-The shipped axis contract is explicit:
-
-- Document Type owns genre, purpose, structural conventions, and pattern policy.
-- Persona v2 is optional and owns only reusable voice.
-- Register owns only `casual` or `professional` delivery.
-- Meaning preservation and verification are global; no axis can weaken them.
-
-`patina persona new|list|show|edit|rm` covers the custom Persona lifecycle in
-ko/en/zh/ja. Omitting `--persona` preserves the source voice. The v7 CLI rejects
-the retired `--profile`, `--tone`, and `--formality` inputs with migration
-errors rather than aliases.
+### Persona personalization
 
 Later work, not shipped behavior:
 
@@ -228,85 +158,7 @@ Later work, not shipped behavior:
 These larger personalization paths remain gated behind payment stabilization
 and separate approval.
 
-## 3. Community roadmap
-
-### Phase 1 — community health basics
-
-Status (2026-09-02): shipped. `.github/ISSUE_TEMPLATE/` holds bug, feature, pattern-proposal, false-positive, benchmark-corpus, calibration-concern and research-proposal forms; `SECURITY.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, `GOVERNANCE.md`, `MAINTAINERS.md` and the PR template exist.
-
-Goal: make the project safe and easy to contribute to.
-
-- Add issue templates:
-  - bug report
-  - pattern proposal
-  - false positive report
-  - benchmark/corpus proposal
-- Add PR template.
-- Add `SECURITY.md`.
-- Add `SUPPORT.md`.
-- Add `CODE_OF_CONDUCT.md`.
-
-Acceptance criteria:
-
-- GitHub community profile is no longer missing basic files.
-- Pattern proposals ask for examples, language, false-positive risk, and expected rewrite.
-
-### Phase 2 — contribution flywheel
-
-Status (2026-09-14): submit path shipped in README/FAQ (#813). First
-pattern-of-the-week note is [`docs/community/pattern-of-the-week.md`](community/pattern-of-the-week.md).
-Labels `good first issue`, `patterns`, `benchmark`, and `docs` already exist;
-new starter issues should use them. Pattern PR requirements stay in
-`CONTRIBUTING.md`.
-
-Goal: turn users into pattern contributors.
-
-- Label starter issues:
-  - `good first issue`
-  - `patterns`
-  - `benchmark`
-  - `docs`
-- Add a “submit a pattern” path from README and FAQ.
-- Publish small “pattern of the week” examples.
-
-Acceptance criteria:
-
-- A contributor can add a pattern by following docs without asking the maintainer.
-- Pattern PRs include success/failure examples.
-
-## 4. Launch roadmap
-
-Status (2026-09-02): the public launch and the Pro checkout opening (2026-08-04) are complete; the checklist and surface table below are kept as the standing rule for any future launch post. Operational evidence: `docs/operations/pro-launch.md`, `docs/operations/live-open-20260804.md`. Launch copy drafts were removed from the public tree on 2026-09-02; only `docs/social/signs-of-ai-writing.md` (dogfooded checklist) remains.
-
-### Pre-launch checklist
-
-- README has a crisp one-line promise.
-- Patina logo / icon exists and appears in README/social preview surfaces.
-- Demo GIF or terminal recording exists.
-- Benchmark report is linked.
-- Install path is tested.
-- Issue templates are ready.
-- At least 3 polished real-world examples exist.
-
-### Launch surfaces
-
-Use one clear story per surface.
-
-| Surface | Angle |
-|---|---|
-| Hacker News / Show HN | Auditable AI-writing humanizer with benchmarked meaning preservation |
-| Reddit writing communities | Remove AI packaging without changing your claims |
-| Korean developer/writer communities | Korean-first AI prose cleanup, not just English detector talk |
-| GitHub social/X | Pattern catalog + before/after demos |
-| AI coding communities | Works as Claude Code/Codex/Cursor/OpenCode skill |
-
-### Launch rule
-
-Do not lead with “bypass AI detectors.” Lead with:
-
-> AI-assisted writing often sounds packaged. patina removes that packaging and checks that the meaning survived.
-
-## 5. Current state and next actions
+## 3. Current state and next actions
 
 Last refreshed: 2026-09-08. GitHub issues are the source of truth for open
 work; this section records only standing decisions and where their evidence
@@ -315,23 +167,20 @@ lives, so nobody re-triages from a stale snapshot.
 ### Standing decisions
 
 - **Payment: Polar only.** Lemon Squeezy declined the store application (a
-  risk-underwriting decision, not a policy breach) (`docs/internal/payment-provider-reset-20260729.md` (maintainer-private)); Pro
-  checkout opened on production via Polar on 2026-08-04
-  (`docs/operations/live-open-20260804.md`); 8.0.0 removed the Lemon Squeezy
+  risk-underwriting decision, not a policy breach); Pro checkout opened on
+  production via Polar on 2026-08-04; 8.0.0 removed the Lemon Squeezy
   code paths (CHANGELOG). Rollback: `docs/operations/rollback-drills.md`.
 - **Serving engines.** Pro tier pin: `gemini-3.6-flash`; `gemini-3.7-flash`
   allowlisted opt-in after the 2026-08-13 head-to-head
   (`docs/operations/serving-engine-gemini-3.7-flash-20260813.md`,
   `src/web-rewrite-contract.js`). Free tier: **gemini** (owner-confirmed 2026-09-02); the 2026-08-03
-  deepseek flip (`docs/operations/free-tier-deepseek-flip-20260803.md`,
-  CHANGELOG 7.0.0) is superseded, and the live engines remain deployment env
+  deepseek flip (CHANGELOG 7.0.0) is superseded, and the live engines remain deployment env
   values (`PATINA_FREE_MODEL`, `PATINA_PRO_MODEL`). Cost evidence chain:
   `serving-engine-cost-20260725.md` → `serving-engine-deepseek-0731-correction-20260803.md`.
 - **Register-failure diagnosis (closed 2026-07-27):** the apparent
   cross-engine register failures were measurement-apparatus bugs (fidelity
   rubric, persona-less harness prompt); fixing both took the same engine from
-  9/22 to 20/22 fixtures (`docs/operations/register-failure-handoff-20260726.md`).
-  Still recorded as open there: `en-marketing-01` (AI 35.6 → 5.7 but MPS 60)
+  9/22 to 20/22 fixtures. Still open: `en-marketing-01` (AI 35.6 → 5.7 but MPS 60)
   and `en-public-docs-01` (meaning kept, AI 15.6 → 16.5) — add a second
   fixture per register before treating either as a register-wide pattern.
 
@@ -339,9 +188,9 @@ lives, so nobody re-triages from a stale snapshot.
 
 - Performance-only order frozen 2026-09-01 in
   `docs/research/humanization-data-backlog.md`. Step 1 (KO GPT-family
-  miss-review manifest) is complete per the September 7 ledger
-  (`docs/operations/remaining-work-20260905.md`); its session handoff stays
-  maintainer-private (`docs/internal/ko-gpt-miss-review-handoff-20260902.md`).
+  miss-review manifest) is complete
+  (`docs/research/ko-gpt-miss-review-step1-decision-20260902.md`,
+  `docs/benchmarks/ko-gpt-miss-review-v1.md`).
   The registered downstream sequence is not an active execution queue.
   The owner cancelled the previously deferred human panel (#159) and
   human-labeled short-form corpus (#643) on 2026-09-08. Both issues are closed
@@ -377,13 +226,8 @@ Checked 2026-09-08 against the issue records and the [editor client record](inte
 - #284: the Gmail preview was released and retired on 2026-09-08. Signed-in
   Gmail acceptance, Chrome Web Store, Notion and LinkedIn are classified not
   planned, and the issue was closed as not planned on 2026-09-08.
-- #212: export and licensing tools are implemented, but publication was deferred
-  and the issue was closed as `not_planned`. Closure is not evidence of a public
-  Hugging Face upload.
-- The [Aside integration](integrations/aside.md#validation-boundary) is available
-  in the source checkout. Native macOS/Aside desktop acceptance was abandoned
-  by the owner on 2026-09-14 (`not_planned`); Linux CLI evidence is not a
-  desktop proof.
+- #212: no Hugging Face dataset was published; the issue was closed as
+  `not_planned`.
 - #772 (CLI-first skill execution with execution evidence) has source
   implementation present in this non-npm change, including the helper,
   installer runtime checks and default skill routing. Existing targeted tests

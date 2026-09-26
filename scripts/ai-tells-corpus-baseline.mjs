@@ -9,8 +9,8 @@
 //
 // AI-positive rows (sycophancy + lexical/structural tells) have expected_hot
 // = true; human-controls have expected_hot = false. We run analyzeText() on
-// each and compute confusion metrics + Wilson intervals so Phase B detector
-// deltas and Phase D gates have a fixed, reproducible reference.
+// each and compute confusion metrics + Wilson intervals so detector changes
+// have a fixed, reproducible reference.
 //
 // Privacy: output contains only stable row hashes, ids, and aggregate metrics.
 // Raw corpus phrases and human-control body text are NEVER emitted.
@@ -29,7 +29,7 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { analyzeText } from '../src/features/index.js';
-import { wilsonInterval } from './lib/wilson.mjs';
+import { wilsonInterval } from '../tests/quality/ranking-metrics.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -101,13 +101,12 @@ function detectorSignals(result) {
     thematicBreak: paras.some((p) => p.thematicBreakHot),
     endingMonotony: paras.some((p) => p.endingMonotonyHot),
     markupLeakage: Boolean(result.markupLeakage?.leaked),
-    structuralClassifier: result.structuralClassifier?.hot === true,
   };
 }
 
 const SIGNAL_NAMES = [
   'burstiness', 'mattr', 'lexicon', 'koDiagnostics', 'candor',
-  'thematicBreak', 'endingMonotony', 'markupLeakage', 'structuralClassifier',
+  'thematicBreak', 'endingMonotony', 'markupLeakage',
 ];
 
 function emptyConfusion() {

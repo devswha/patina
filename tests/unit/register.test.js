@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
 import { resolveRegister } from '../../src/config.js';
-import { formatOutput } from '../../src/output.js';
+import { cleanRewriteOutput, formatOutput } from '../../src/output.js';
 
 // --- resolveRegister ---
 
@@ -153,7 +153,27 @@ test('formatOutput: JSON score contract retains score fields and register metada
   assert.equal(parsed.register.register_source, 'command');
 });
 
-// --- stripSelfAudit (v3.11) ---
+// --- stripSelfAudit ---
+
+test('cleanRewriteOutput strips self-audit blocks and the register footer', () => {
+  const raw = [
+    '[BODY]',
+    'Human result.',
+    '[/BODY]',
+    '',
+    '[SELF_AUDIT]',
+    '- note',
+    '[/SELF_AUDIT]',
+    '',
+    '---',
+    'register: professional',
+    'register_source: command',
+    'register_evidence: ["user-specified"]',
+    'register_confidence: high',
+    '---',
+  ].join('\n');
+  assert.strictEqual(cleanRewriteOutput(raw), 'Human result.');
+});
 
 test('stripSelfAudit: extracts [BODY] block and drops [SELF_AUDIT]', () => {
   const raw = '[BODY]\nHello world\n[/BODY]\n\n[SELF_AUDIT]\n- residual signal: foo\n[/SELF_AUDIT]';
@@ -203,7 +223,7 @@ test('stripSelfAudit: only applied to raw rewrite output', () => {
   assert.ok(audit.includes('[SELF_AUDIT]'));
 });
 
-// --- validateScoreWeights (v3.11 Phase 1.3) ---
+// --- validateScoreWeights ---
 import { validateScoreWeights } from '../../src/output.js';
 
 test('validateScoreWeights: matches → no warnings', () => {
@@ -296,7 +316,7 @@ test('validateScoreWeights: empty config → no-op', () => {
 });
 
 
-// --- isShortText (v3.11 Phase 3.2) ---
+// --- isShortText ---
 
 import { isShortText } from '../../src/prompt-builder.js';
 

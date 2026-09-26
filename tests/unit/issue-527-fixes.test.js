@@ -7,7 +7,8 @@ import assert from 'node:assert/strict';
 
 import { parseFirstJson } from '../../src/output.js';
 import { phraseToRegex } from '../../src/features/lexicon-core.js';
-import { prepareSnapshotHtml, extractProseBlocks } from '../../src/preview.js';
+import { prepareSnapshotHtml } from '../../src/preview/snapshot.js';
+import { extractProseBlocks } from '../../src/preview/extract.js';
 import { buildPrompt } from '../../src/prompt-builder.js';
 import * as kimi from '../../src/backends/kimi-cli.js';
 

@@ -74,7 +74,7 @@ export function renderCliError(err) {
  * @example
  * const code = getExitCode(inputError('bad', 'why', 'fix')); // 2
  */
-export function getExitCode(err, fallback = 1) {
+function getExitCode(err, fallback = 1) {
   const n = Number(err ? /** @type {any} */ (err).exitCode : undefined);
   // Reject exitCode 0 on a thrown error: a fatal catch must never exit 0 after
   // printing an error. Only a positive integer overrides the fallback (#449).

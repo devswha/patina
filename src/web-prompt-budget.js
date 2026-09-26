@@ -55,11 +55,6 @@ export function classifyWebPromptBudget(request) {
   if (Object.hasOwn(candidate, 'rewriteHeadings') && !isAbsentChoice(candidate.rewriteHeadings) && candidate.rewriteHeadings !== false) {
     return { selected: 'strict', reason: 'transformation_options' };
   }
-  for (const field of ['transform', 'tone', 'formality', 'profile']) {
-    if (Object.hasOwn(candidate, field) && !isAbsentChoice(candidate[field])) {
-      return { selected: 'strict', reason: 'transformation_options' };
-    }
-  }
   if (NUMBER_DATE_PERCENT.test(candidate.text)) return { selected: 'strict', reason: 'number_date_or_percent' };
   if (NEGATION_POLARITY.test(candidate.text)) return { selected: 'strict', reason: 'negation_or_polarity' };
   if (CAUSATION.test(candidate.text)) return { selected: 'strict', reason: 'causation' };

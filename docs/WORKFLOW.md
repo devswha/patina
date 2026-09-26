@@ -1,37 +1,28 @@
-# Branching, Parallel Work & Release Workflow
+# Branching, PR & Release Workflow
 
-A portable git workflow for solo + AI-agent development. This file is
-**repo-agnostic** — copy it into any project and adjust only the "Repo specifics"
-box below. Agents and humans both follow it.
+How work moves from a feature branch to a release in this repository. Agents
+and humans both follow it. The step-by-step PR checklist lives in
+[`CONTRIBUTING.md`](../CONTRIBUTING.md#pr-process); QA profiles and result
+statuses live in [`docs/QA.md`](QA.md).
 
-> **Repo specifics** (edit per project)
-> - Default branch: `main`
-> - Integration branch: `dev`
-> - Feature branch prefix: `bot/*` (agent/automation work), `feat/*` (larger features)
-> - Version-bearing files to bump on release: `package.json`, `SKILL.md`, `.patina.default.yaml`, the README version badge, `.claude-plugin/plugin.json`, and the CHANGELOG entry (`npm run release:check` verifies they agree)
-> - CI: runs on pull requests to `main` (and `dev` if configured)
+- Default branch: `main`
+- Integration branch: `dev`
+- Feature branch prefixes: `bot/*` (agent/automation work), `feat/*` (larger features)
+- Version-bearing files: `package.json`, `SKILL.md`, `.patina.default.yaml`,
+  the README version badge, `.claude-plugin/plugin.json`, and the CHANGELOG
+  entry. `npm run release:check` verifies that they agree.
 
-`docs/WORKFLOW.md` is the single source of truth for branching, PR/Issue,
-review, authority, release, and maintenance policy. The PR template collects
-only the fields needed to apply this policy and links back here; it must not
-create a second set of thresholds or checker configuration. QA profiles,
-status meanings, evidence schema, and cleanup details belong in
-[`docs/QA.md`](QA.md).
-
-
-## CI execution
+## CI
 
 `.github/workflows/test.yml` grants read-only repository access and bounds each
-job to 15 minutes. Pull-request runs share a workflow/PR concurrency group, so
-new commits cancel only superseded PR runs; non-PR runs include their unique
-`run_id`, so manual dispatches and `dev`/`main` integration pushes remain
-independent. Lint and quality use the CI host's Node 24; the test matrix keeps
-the Node 18.1.0 smoke check plus full tests on Node 20, Node 22, and floating
-`lts/*`. The floating LTS check is retained because protected checks require
-the exact `test (lts/*)` name; a fixed Node 24 entry would duplicate the
-current LTS (24.20.0), so review fixed coverage when LTS advances. This host
-choice does not change the product engine requirement (`>=18.1.0`).
-
+job to 15 minutes. Pull-request runs share one concurrency group per PR, so a
+new commit cancels only the superseded run; pushes and manual dispatches run
+independently. Lint and quality run on the CI host's Node 24. The test matrix
+runs a Node 18.1.0 smoke check plus full tests on Node 20, 22, and floating
+`lts/*`. Branch protection requires the exact `test (lts/*)` name, so the
+matrix keeps the floating entry rather than a fixed 24; review fixed coverage
+when LTS advances. None of this changes the product engine requirement
+(`>=18.1.0`).
 
 ## The branch model
 
@@ -45,362 +36,198 @@ bot/<feature>  ──PR──▶  dev  ──release PR──▶  main  ──�
 - **`bot/<feature>` / `feat/<feature>`** — one independently verifiable and
   revertible behavior or contract unit, branched **from `dev`**.
 
-Every PR contains exactly one such unit. Keep implementation, its regression
-test, and the contract documentation needed to understand it together. Split
-unrelated cleanup, version changes, and generated-file maintenance unless they
-are inseparable from that unit. A unit that cannot be tested and reverted on
-its own must be re-scoped or receive the explicit exception described below.
+Every PR carries exactly one such unit, together with its regression test and
+the contract documentation needed to understand it. Split out unrelated
+cleanup, version changes, and generated-file maintenance unless they are
+inseparable from the unit.
 
-`dev` MUST always be at or ahead of `main`. If a hotfix lands directly on `main`,
-immediately merge `main` → `dev` so `dev` never drifts behind (a stale `dev` is
-the #1 way this workflow rots).
+`dev` MUST always be at or ahead of `main`. If a hotfix lands directly on
+`main`, merge `main` → `dev` immediately; a stale `dev` is the most common way
+this workflow rots.
 
-
-## Feature workflow (single line of work)
+## Feature workflow
 
 ```bash
 git switch dev && git pull            # start from the latest integration state
 git switch -c bot/my-feature          # branch off dev
 # ...edit, commit in small logical commits...
-# Local preparation ends here. Without separate external-write authority
-# naming the actor, channel, scope, and allowed operation, stop here.
-# The following branch/PR writes are not implied by an implementation request:
-# With that authority recorded, and only then:
-git push -u origin bot/my-feature
-gh pr create --base dev               # open a PR into dev (CI + review run here)
-# after separate merge/deletion authority, approval, and green CI: merge;
-# delete the feature branch
+git push -u origin bot/my-feature     # external write: needs explicit authority
+gh pr create --base dev               # CI + review run here
 ```
 
-Rules:
 - Commit in small, self-contained commits with clear messages.
-- Open the PR as **Draft** while the unit and acceptance criteria are being
-  established. Run the cheapest relevant local checks and the normal
-  deterministic CI before requesting Ready.
-- Keep the branch focused; if it grows beyond one behavior unit, split it.
-- Do not treat opening or merging a PR as permission to publish, deploy,
-  change account settings, or write to another external system.
-- `git push`, `gh pr create`, merge, and remote branch deletion in the example
-  require separate explicit external-write authority. Without it, keep the
-  branch, commits, and checks local and record the intended command only.
+- Open the PR as **Draft** while scope and acceptance criteria settle. Run the
+  cheapest relevant local checks and the normal CI before marking it Ready.
+- If the branch grows beyond one behavior unit, split it.
+- Opening or merging a PR never grants permission to publish, deploy, change
+  account settings, or write to another external system.
 
+## Parallel work
 
-## Parallel work (multiple sessions at once)
-
-The hazard: two sessions sharing **one working directory** or **one branch**
-clobber each other's uncommitted changes and interleave commits. The fix is
-**git worktrees** — separate folders, separate branches, one shared `.git`.
+Two sessions sharing **one working directory** or **one branch** clobber each
+other's uncommitted changes and interleave commits. Use **git worktrees**:
+separate folders and branches over one shared `.git`.
 
 ```bash
-# From the primary checkout, spin up an isolated workspace for a parallel task:
 git worktree add ../<repo>-featureX -b bot/featureX dev
-#   → work in ../<repo>-featureX on bot/featureX, fully isolated on disk
-
-git worktree list          # see all active worktrees
-git worktree remove ../<repo>-featureX   # tear down when done; push only with separate authority
+git worktree list
+git worktree remove ../<repo>-featureX
 ```
 
-Rules for parallel work:
-1. **One worktree + one branch per parallel session.** Never run two sessions in
-   the same directory on the same branch.
-2. **Branch each parallel effort from the latest `dev`.** For long-running work,
-   periodically `git merge dev` (or rebase) to limit divergence.
-3. **Split scope by files.** Parallel efforts touching disjoint file sets almost
-   never conflict; overlapping file sets conflict at the `dev` merge.
+1. **One worktree and one branch per session.** Never run two sessions in the
+   same directory on the same branch.
+2. **Branch from the latest `dev`**, and merge `dev` periodically into
+   long-running work.
+3. **Split scope by files.** Disjoint file sets almost never conflict.
 4. **`dev` is the single convergence point.** Resolve conflicts once, when each
-   branch merges into `dev`.
+   branch merges into it.
 
-Worktrees isolate checked-out files and branches, not all external state. Before
-running a parallel session, identify its worktree/branch and use dedicated
-home, `XDG_CONFIG_HOME`, cache, temporary/output directories, ports, and
-processes where the tools support them. Reuse an existing injection point
-instead of changing shared configuration. Use only approved test credentials;
-never copy a personal home or login session into a worktree.
+Worktrees isolate files and branches, not external state. Give each session its
+own home, `XDG_CONFIG_HOME`, cache, temp/output directories, ports, and
+processes where the tools allow it, and use only approved test credentials;
+never copy a personal home or login session into a worktree. Shared quotas,
+rate limits, and concurrency caps stay shared, so a per-session home must not
+be used to bypass them. On exit, clean up only what your session owns (by
+ownership token or recorded PID). Never use broad `pkill`, `git clean`,
+`git reset`, or config edits on another session's state. The owner serializes
+changes to shared files such as `package.json`, lockfiles, and orchestration
+modules.
 
-Service-wide quotas, rate limits, and concurrency limits remain intentionally
-shared. A per-session home must not be used to bypass them. On exit, remove
-only temporary files, ports, and processes owned by the session (for example by
-an ownership token or PID recorded at start). Never use broad `pkill`,
-`git clean`, `git reset`, or config edits to “clean up” another session.
-Changes to shared files such as `package.json`, lockfiles, or orchestration
-modules are serialized by the owner and integrated from the latest `dev`.
+## Issues, PR size, and review
 
-
-## PR and Issue policy (P02a)
-
-### Issue requirement and change unit
-
-An Issue is required before work that changes user-observable behavior, a
+**Open an Issue first** for anything that changes user-observable behavior, a
 CLI/API/configuration/installation contract, security or privacy, payment,
-deployment or release behavior, a risky design choice, or a behavior change
-that needs multiple PRs. Link the Issue with `Refs #...` (or the existing
-repository form) and keep one acceptance-criteria list for the whole unit.
-Search for an existing Issue or PR before creating another one.
+deployment or release behavior, a risky design choice, or work that needs
+several PRs. Search for an existing Issue before creating one, and link it
+with `Refs #...`. A one-PR typo, documentation fix, or test-only change may
+skip the Issue if the PR says why and still states its acceptance criteria and
+rollback. Security reports go through the private channel in
+[`SECURITY.md`](../SECURITY.md), not a public Issue.
 
-Low-risk exemptions are allowed for a one-PR typo, documentation correction,
-or test-only change that does not alter behavior. The PR must state why the
-Issue is omitted and still include observable acceptance criteria and a
-rollback description. A risky or multi-PR behavior change is never made
-Issue-free merely because its diff is small. Security reports and private
-source material use an approved private channel, not a public Issue.
+**PR size.** Aim for 200-400 reviewable lines (additions plus deletions).
+Split the unit when the reviewable diff passes 600 lines or 15 files. These
+are warnings, not an automatic gate. Report generated output, lockfiles,
+renames, and pure moves separately from handwritten changes. A size exception
+needs the reason the unit cannot be split, its validation and rollback plan,
+and owner approval; a label alone is not approval.
 
-### Review budget and evidence
+**Evidence.** List the commands you ran and their results. When the head or
+base changes, rerun the affected checks instead of reusing an old result.
+Automatic review or QA retries stop after two; keep the first failure and its
+reason, and never turn a timeout, authentication failure, or cancellation into
+a pass.
 
-The initial reviewable-diff target is **200-400 lines** of additions plus
-deletions. Split the unit when the reviewable diff exceeds **600 lines** or
-the reviewable file count exceeds **15 files**. These are review signals, not
-an excuse to hide work: report both the raw diff and the reviewable diff, and
-list generated output, lockfiles, renames, and pure moves separately while
-retaining their raw cost.
+**Review.** A `bot/*` PR gets one independent, read-only review pass (a
+reviewer that did not write the change) plus the full deterministic CI: lint,
+unit/e2e, quality, and architecture boundaries. Native Codex GitHub review is
+not used in this repository. The `vercel` bot only builds a preview; it reads
+no code and is not a review. Record the review verdict and findings in the PR,
+fix findings on the same PR, and never run two reviewers against the same
+diff. A review never replaces required CI, QA, or the maintainer's merge
+decision.
 
-These thresholds stay **warnings only**. The first-ten-PR observation window is
-closed: the 2026-09-14 replay
-(`docs/operations/maintenance-p04-observation-20260914.json`) concluded that
-enforcement stays `warning`, and the recurring observation cadence was retired
-by owner decision on 2026-09-15 (#783). Do not open a new observation window,
-and do not promote these numbers into an automatic blocking or approving gate
-without an explicit owner decision. A size exception needs the reason it cannot
-be split, its validation and rollback plan, and owner approval; a label by
-itself is not approval.
-Generated evidence includes the source inputs, generator command and version,
-reproducibility result, and artifact path or hash. Handwritten Markdown/JSON,
-prompts, patterns, and fixtures remain reviewable even when generated files
-are present.
-
-Run `npm run pr:check -- --input <fixture.json> --json` for offline evidence,
-or `npm run pr:check -- --pr <number> --repo devswha/patina --json` for a
-read-only GitHub lookup. Valid size warnings exit 0; incomplete, renamed,
-truncated, or otherwise invalid metadata exits 1 and is not docs-only evidence.
-Neither command approves a PR, grants a size exception, or replaces required CI.
-
-For every PR, connect evidence to the repository and PR/Issue, the exact
-**diff**, **head SHA**, **base SHA**, tested merge SHA (when applicable), and
-the tested **tree/build** or artifact. Include the policy/QA profile version,
-environment and tool versions, commands, expected and actual results, exit
-codes, and any omitted checks. CI-provided evidence may be linked by run ID
-instead of copied into the PR, but it must identify the same tree.
-
-Evidence is stale when the head or relevant base changes, when the tested tree
-or build differs, or when the policy/profile used for the result changes. Mark
-it `stale` and rerun the required checks against the new tree; do not reuse an
-old integration result as proof for a new base. Automatic review or QA retries
-are bounded to **at most 2 retries** after the initial attempt. Preserve the
-first failure and its reason; do not retry indefinitely or turn timeout,
-authentication failure, cancellation, or missing evidence into success.
-
-### Draft, Ready, review, and QA
-
-Use this order:
-
-```text
-scope + acceptance criteria + isolated worktree
-  → Draft PR + cheap targeted checks and normal deterministic CI
-  → current size, risk, rollback, and SHA/tree evidence
-  → Ready
-  → independent read-only review lane and/or browser/execution QA
-  → maintainer decision and merge
-```
-
-Draft is for collaboration and cheap checks: focused tests, documentation
-links, static checks, and the normal CI path appropriate to the change. A PR
-becomes Ready only after the unit is independently verifiable/revertible,
-required low-cost checks have results, the diff budget or approved exception
-is recorded, and head/base/tree evidence is current. Do not spend an
-expensive review or QA run on every Draft update.
-
-An author may have at most **2 Ready PRs** open at once. Run at most **1
-expensive QA** job/worker concurrently; queue or leave it explicitly
-unavailable rather than claiming a pass. QA is required only for the profiles
-that the changed surface calls for. Profiles, evidence fields, status values,
-flaky-test handling, and resource cleanup are defined in
-[`docs/QA.md`](QA.md); do not duplicate those details in a PR.
-The sole `not run` result is a documented non-applicability decision with a
-specific reason. If an applicable profile is unavailable, record
-`inconclusive`; `not run` is never a waiver.
-
-### Independent review lane
-
-**Decision (P09, 2026-09-10, maintainer):** native Codex GitHub review is not
-used for this repository. A repository-wide GitHub search for
-`chatgpt-codex-connector[bot]` comments and a check of five recent PRs found
-no evidence of native Codex review use, no workflow requests one, and the
-maintainer chose not to enable it. Account-side settings were not inspected. The required review lane for a `bot/*` PR is one independent,
-read-only review pass (the session's `architect` agent or an equivalent
-reviewer that did not write the change) plus the full deterministic CI
-(lint, unit/e2e, quality, architecture boundaries). The `vercel` bot only
-builds a preview; it reads no code and is not a review.
-
-Use at most **one independent review per PR/head/diff** and record its
-verdict and findings in the PR body. Do not invent a label, Action, trigger,
-or external configuration and do not report one as enabled. Re-enabling native
-Codex review is a maintainer decision and would replace, not add to, the
-independent pass; never run two reviewers against the same diff.
-
-After a finding is fixed, keep it on the same PR and update the evidence.
-Automatic fix/review cycles stop after 2 retries; the owner then re-scopes the
-unit or decides with the recorded unresolved risk. A review conclusion never
-replaces required CI, current SHA evidence, QA, or owner merge authority.
-
-### External-write authority
-
-External writes include creating or editing Issues/PRs/comments/labels,
-changing branches or protection, merging, tagging or creating releases,
-publishing npm/web/dataset artifacts, deploying, and changing accounts,
-settings, credentials, or production data. Each such action requires explicit
-authority naming the actor, channel, scope, and allowed operation. An
-implementation request, plan approval, or review approval does not imply any
-of those permissions. Agents must not create an Issue/PR flood, alter native
-settings, or publish/deploy without that authority.
-
+**External writes** include creating or editing Issues, PRs, comments or
+labels, pushing or deleting branches, changing protection, merging, tagging,
+releasing, publishing to npm or other registries, deploying, and changing
+accounts, settings, credentials, or production data. Each needs explicit
+authority that names the actor, channel, scope, and operation. An
+implementation request, plan approval, or review approval grants none of them.
 
 ## Release workflow (`dev` → `main`)
 
 ```bash
 git switch dev && git pull
-# 1) confirm the integrated dev tree, included PRs, and current evidence
-# 2) bump version in every version-bearing file (see Repo specifics), once
-#    in this release preparation change; feature PRs do not bump versions
-# 3) run the release verification profile against the release tree
-# Local release preparation ends here without separate external-write
-# authority naming the actor, channel, scope, and allowed operation.
-# With that authority recorded, and only then, create the release PR:
-gh pr create --base main --head dev        # release PR: full CI matrix runs
-# 4) on green and with explicit merge authority: MERGE (not squash)
-# 5) tag or publish only through an explicitly approved channel procedure
-git switch dev && git merge main           # keep dev in sync after the release
+# 1) confirm the integrated dev tree and the PRs it includes
+# 2) bump every version-bearing file once, in this release change
+# 3) run the release checks against the release tree
+gh pr create --base main --head dev        # release PR (external write)
+# 4) on green CI and with merge authority: MERGE (not squash)
+# 5) tag or publish only through an approved channel procedure
+git switch dev && git merge main           # keep dev in sync
 ```
 
-- `dev` is the integration/staging result; a successful merge there closes an
-  Issue only when the owner explicitly confirms its acceptance criteria. It
-  does **not** mean that users received a release. Do not rely on a `Closes #...`
-  keyword in a `dev` PR as that confirmation; record the explicit AC closure
-  separately.
-- The `dev` → `main` release PR is the documented aggregation exception to the
-  one-unit review budget: it must add no new behavior, list the included
-  already-reviewed PRs, and carry fresh release-tree and rollback evidence.
-- Version changes are **release-only**. Feature and maintenance PRs record
-  their semver impact, but the coordinated version-bearing-file bump happens
-  once in the release preparation PR after the integrated tree is selected.
-  The explicit `npm run release:sync-plugin-versions` pilot copies the root
-  package version only into `.claude-plugin/plugin.json` and the matching
-  marketplace entry. It does not bump the source version or synchronize the
-  other mirrors; `npm run release:check` still validates their agreement.
-- **Merge, do not squash, for `dev` → `main`** so a release keeps per-feature
-  history. Squash is the default for a small, single-unit `feature → dev` PR;
-  use merge when preserving a meaningful commit series is the safer rollback.
-- Delivery is reported per channel only after the exact main SHA, artifact or
-  deployment identifier, and smoke/evidence are recorded. Integration and
-  delivery status are never collapsed into one “done” label.
-- npm publication is **possible but never automatic**. The former hold ended
-  with the 8.7.0 release: publication runs through npm Trusted Publishing
-  (OIDC) from `release.yml`, verified end-to-end for `patina-cli` and
-  `patina-humanizer` on 2026-09-15 ([`docs/integrations/release.md`](integrations/release.md)).
-  Capability is not authority. This document does not authorize a publish or
-  grant registry credentials, and no session may publish, tag, or deploy on its
-  own initiative; each publication still requires a separate, explicit
-  external-write authorization and its channel evidence. A release may be
-  integrated and verified without being published.
-
+- A merge into `dev` does not mean users received a release. It closes an
+  Issue only when the owner confirms its acceptance criteria; a `Closes #...`
+  keyword in a `dev` PR is not that confirmation.
+- The release PR is the one aggregation exception to the size guidance. It adds
+  no new behavior, lists the already-reviewed PRs it includes, and carries
+  release-tree and rollback evidence.
+- Version changes are release-only. Feature PRs record their semver impact;
+  the release PR bumps the version-bearing files once.
+  `npm run release:sync-plugin-versions` copies the root package version into
+  `.claude-plugin/plugin.json` and the matching marketplace entry only;
+  `npm run release:check` still validates every mirror.
+- **Merge, do not squash, for `dev` → `main`**, so a release keeps per-feature
+  history. Squash is the default for a small `feature → dev` PR; merge when a
+  meaningful commit series is the safer rollback.
+- Report delivery per channel (npm, web, container) only after the exact
+  `main` SHA, artifact or deployment ID, and smoke result are recorded.
+- npm publication runs through Trusted Publishing (OIDC) from `release.yml`
+  ([`docs/integrations/release.md`](integrations/release.md)). It is possible
+  but never automatic: no session may publish, tag, or deploy on its own
+  initiative, and each publication needs its own explicit authorization. A
+  release may be integrated and verified without being published.
 
 ## External tools and dependency updates
 
-Treat an external CLI/API as a separate compatibility boundary. Record its
-identifier, observed version, required capability/output shape, verification
-date, evidence, and status (`verified`, `unverified`, `incompatible`, or
-`unavailable`). Authentication failure, quota, timeout, network failure, and
-malformed output are reported as such; none is silently converted into a
-product-quality pass or an `accepted` result.
+Treat an external CLI or API as a separate compatibility boundary. Record its
+identifier, observed version, the capability or output shape patina needs, the
+verification date, and a status: `verified`, `unverified`, `incompatible`, or
+`unavailable`. Report authentication failure, quota, timeout, network failure,
+and malformed output as what they are, never as a quality pass.
 
-Use fixed fixtures for ordinary PR checks. A real external tool or model call
-is a separately authorized profile with an explicit tool/model ID, version,
-timeout, call limit, cost boundary, and credential path. Do not make it a
-hidden prerequisite of deterministic CI, and do not turn a connection check
-into a quality claim or a cancelled study. Reuse the existing backend
-retry/timeout owner rather than adding a second retry layer.
+Ordinary PR checks use fixed fixtures. A real tool or model call is a
+separately authorized run with an explicit model ID, version, timeout, call
+limit, cost bound, and credential path; it must not become a hidden
+prerequisite of deterministic CI. Reuse the existing backend retry/timeout
+owner rather than adding a second retry layer.
 
-Review dependency updates as behavior changes: inspect lifecycle scripts,
-runtime impact, lockfile installation, and the relevant contract smoke. Keep
-general update PRs to at most 2 open at once; security updates are triaged
-separately and are never auto-merged solely because they are automated.
+Review dependency updates as behavior changes: lifecycle scripts, runtime
+impact, lockfile installation, and the relevant contract smoke. Keep at most
+two general update PRs open; triage security updates separately and never
+auto-merge them just because a bot opened them. `.github/dependabot.yml`
+targets `dev` for npm and github-actions version updates. GitHub raises
+security updates against the default branch (`main`); when one lands there,
+merge `main` → `dev` immediately. GitHub reads `dependabot.yml` from `main`,
+so a change to it takes effect only after it reaches `main`.
 
-Routine updates follow the same branch model as everything else.
-`.github/dependabot.yml` sets `target-branch: dev` for both the npm and
-github-actions entries, so ordinary **version** update PRs open against the
-integration branch instead of landing directly on `main`. **Security** updates
-keep GitHub's own contract: Dependabot raises them against the repository
-default branch (`main`), so a security fix can still arrive there. When it
-does, the rule in the branch model applies unchanged — merge `main` → `dev`
-immediately so `dev` never drifts behind. Changing this file on `dev`
-integrates the configuration but does not activate it: GitHub reads
-`.github/dependabot.yml` from the **default branch**, so the routing becomes
-operational only after the normal `dev` → `main` delivery path carries it to
-`main`.
+## Exceptions
 
+Every exception (size, flaky test, compatibility gap, unverified tool, or
+deferred check) names an owner, a next-review date, the condition that closes
+it, and its tracking record. Review it when that condition appears; there is no
+fixed review cadence. An exception without an owner or date stays unresolved,
+not approved, and a missed review goes to the owner rather than authorizing a
+new tool, a weaker gate, or a burst of automatic Issues or PRs.
 
 ## Safety rules (you are not alone in the repo)
 
 - Treat unexpected changes as another session's work. **Never revert, stash,
   reset, or force-push over changes you did not make.**
-- **Before pushing a shared branch** (`dev`/`main`), `git fetch` and confirm your
-  push only *adds* commits (fast-forward or a clean merge) — never a history
-  rewrite. Verify with `git merge-base --is-ancestor origin/<branch> HEAD`.
-- Prefer PRs over direct pushes to shared branches so CI + review run.
+- **Before pushing a shared branch** (`dev`/`main`), `git fetch` and confirm the
+  push only *adds* commits (fast-forward or a clean merge), never a history
+  rewrite: `git merge-base --is-ancestor origin/<branch> HEAD`.
+- Prefer PRs over direct pushes to shared branches so CI and review run.
 - Commit or stash before switching branches in a shared working directory.
-
-
-## Recurring maintenance and ownership (P22)
-
-These are review triggers, not an instruction to register an external scheduler
-or open a PR automatically. Every exception (size, flaky test, compatibility
-gap, unverified tool, or deferred check) has a named owner, a next-review date,
-the condition that closes it, and a link to its existing tracking record.
-
-**The fixed weekly/monthly observation cadence is retired** (owner decision,
-2026-09-15, #783). The 2026-09-14 inventory
-(`docs/operations/maintenance-p22-20260914.json`) was the last scheduled one,
-and no future session owes a recurring observation or its receipt. The rows
-below remain prompts to apply **when the listed condition actually appears** —
-they are not scheduled work, and their absence is not an outstanding obligation.
-
-| Trigger | Owner review | Required record |
-|---|---|---|
-| Dependency and tooling drift | General dependency updates, due flaky-test isolation, external CLI/API versions, repeated CI/review failures, and the Ready/QA queue | Update or close the existing Issue/PR; keep general update PRs within the limit and preserve first failures |
-| Accumulated repository state | Temporary branches/flags and document status, old unverified backends, performance trend evidence, stale size/check exceptions, and ownership coverage | Record the decision and next date in the existing tracking record; do not silently extend, delete, or mass-create Issues |
-| Before release | Contract/support smoke, exact source/artifact SHA, channel hold or delivery state, and rollback evidence | Release record distinguishes integrated, delivered, held, failed, and unknown channels |
-
-If an owner or review date is missing, the item remains unresolved rather than
-becoming an implicit approval. A missed trigger is escalated to the owner; it
-does not authorize a new tool, a weaker gate, an unbounded retry, or an
-automatic Issue/PR burst.
-
 
 ## Cleanup
 
-- After a branch is merged, delete it (local + remote) only with explicit
-  branch-deletion authority. Stale merged branches pile up and hide the
-  branches that still matter.
-  ```bash
-  git branch -d bot/my-feature                 # safe: refuses if not merged
-  git push origin --delete bot/my-feature     # requires branch-deletion authority
-  git fetch --prune                            # drop stale remote-tracking refs
-  ```
-- Keep permanent branches only: `main`, `dev`, and genuinely in-flight feature
-  branches.
+Delete a merged branch, local and remote, only with branch-deletion authority.
+Keep only `main`, `dev`, and branches still in flight.
 
+```bash
+git branch -d bot/my-feature                 # refuses if not merged
+git push origin --delete bot/my-feature      # needs deletion authority
+git fetch --prune                            # drop stale remote-tracking refs
+```
 
 ## Quick reference
-
-| Concept | What it is |
-|---|---|
-| **Branch** | A named line of commit history (a logical timeline / bookmark). |
-| **Worktree** | A separate on-disk folder with its own checked-out branch, sharing one `.git`. Enables true parallel work. |
-| **PR (Pull Request)** | A GitHub request to merge one branch into another, with review + CI before merging. |
 
 | Task | Command |
 |---|---|
 | New feature | `git switch dev && git switch -c bot/x` |
 | Parallel session | `git worktree add ../repo-x -b bot/x dev` |
 | Open PR into dev | external-write authority → `gh pr create --base dev` |
-| Release | integrate/verify → release-only version bump → external-write authority → PR to `main` → merge → approved channel step |
+| Release | integrate/verify → version bump → external-write authority → PR to `main` → merge → approved channel step |
 | Keep dev synced | `git switch dev && git merge main` |
 | Clean merged branch | deletion authority → `git branch -d bot/x && git push origin --delete bot/x` |

@@ -58,6 +58,18 @@ async function callHandler(handler, req) {
   return res;
 }
 
+/**
+ * Give a check-only test limiter the always-granted concurrency lease the
+ * handler requires, so each case exercises its own admission verdict.
+ */
+function withLease(limiter) {
+  return {
+    async acquireConcurrency({ tier }) { return { allowed: true, tier, lease: 'test-lease' }; },
+    async releaseConcurrency() {},
+    ...limiter,
+  };
+}
+
 test('category 1 fail-open hunt: production degraded quota paths all deny with 503 and never allow', async () => {
   const envs = [{ NODE_ENV: 'production' }, { VERCEL: '1' }, { VERCEL_ENV: 'production' }];
   const degradedFactories = [
@@ -105,14 +117,14 @@ test('category 2 IP spoof: untrusted forwarding headers produce no quota identit
 
   const observed = [];
   const handler = createRewriteHandler({
-    rateLimiter: {
+    rateLimiter: withLease({
       async check({ tier, ip }) {
         observed.push({ tier, ip });
         return ip == null
           ? { allowed: false, status: 400, reason: 'client ip unavailable' }
           : { allowed: true, tier };
       },
-    },
+    }),
     runRewrite() {
       throw new Error('runRewrite must not be called for spoof-only headers');
     },
@@ -180,7 +192,7 @@ test('category 4 BYOK fails closed on shared quota degradation while handler sti
   let checks = 0;
   let runs = 0;
   const handler = createRewriteHandler({
-    rateLimiter: { async check(input) { checks += 1; return limiter.check(input); } },
+    rateLimiter: withLease({ async check(input) { checks += 1; return limiter.check(input); } }),
     runRewrite() { runs += 1; },
     env: { NODE_ENV: 'production' },
   });
@@ -201,7 +213,7 @@ test('category 5 handler abuse: rejects abusive inputs, avoids runner on denial,
 
   {
     let calls = 0;
-    const res = await callHandler(createRewriteHandler({ rateLimiter: { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } }, runRewrite() { calls += 1; } }), {
+    const res = await callHandler(createRewriteHandler({ rateLimiter: withLease({ async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } }), runRewrite() { calls += 1; } }), {
       method: 'GET', headers: {}, body: freeBody(),
     });
     assert.equal(res.statusCode, 405);
@@ -211,7 +223,7 @@ test('category 5 handler abuse: rejects abusive inputs, avoids runner on denial,
 
   {
     let calls = 0;
-    const res = await callHandler(createRewriteHandler({ rateLimiter: { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } }, runRewrite() { calls += 1; }, maxBodyBytes: 10 }), {
+    const res = await callHandler(createRewriteHandler({ rateLimiter: withLease({ async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } }), runRewrite() { calls += 1; }, maxBodyBytes: 10 }), {
       method: 'POST', headers: {}, body: JSON.stringify(freeBody()),
     });
     assert.equal(res.statusCode, 413);
@@ -220,7 +232,7 @@ test('category 5 handler abuse: rejects abusive inputs, avoids runner on denial,
   }
 
   {
-    const res = await callHandler(createRewriteHandler({ rateLimiter: { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } }, runRewrite() {} }), {
+    const res = await callHandler(createRewriteHandler({ rateLimiter: withLease({ async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } }), runRewrite() {} }), {
       method: 'POST', headers: {}, body: '{bad json',
     });
     assert.equal(res.statusCode, 400);
@@ -229,7 +241,7 @@ test('category 5 handler abuse: rejects abusive inputs, avoids runner on denial,
 
   {
     let calls = 0;
-    const res = await callHandler(createRewriteHandler({ rateLimiter: { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } }, runRewrite() { calls += 1; } }), {
+    const res = await callHandler(createRewriteHandler({ rateLimiter: withLease({ async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } }), runRewrite() { calls += 1; } }), {
       method: 'POST', headers: {}, body: freeBody({ text: 'x'.repeat(4001) }),
     });
     assert.equal(res.statusCode, 413);
@@ -239,7 +251,7 @@ test('category 5 handler abuse: rejects abusive inputs, avoids runner on denial,
 
   {
     let calls = 0;
-    const res = await callHandler(createRewriteHandler({ rateLimiter: { async check() { return { allowed: false, status: 429, reason: 'daily quota exceeded' }; } }, runRewrite() { calls += 1; } }), {
+    const res = await callHandler(createRewriteHandler({ rateLimiter: withLease({ async check() { return { allowed: false, status: 429, reason: 'daily quota exceeded' }; } }), runRewrite() { calls += 1; } }), {
       method: 'POST', headers: { 'x-real-ip': '203.0.113.40' }, body: freeBody(),
     });
     assert.equal(res.statusCode, 429);
@@ -250,7 +262,7 @@ test('category 5 handler abuse: rejects abusive inputs, avoids runner on denial,
   {
     const logs = [];
     const res = await callHandler(createRewriteHandler({
-      rateLimiter: { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } },
+      rateLimiter: withLease({ async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } }),
       async runRewrite() { throw new Error('upstream exploded sk-secret-LEAK123456789'); },
       logger: { error(value) { logs.push(value); } },
     }), {
@@ -269,13 +281,13 @@ test('category 5 handler abuse: rejects abusive inputs, avoids runner on denial,
 });
 
 test('category 6 header tamper: no-store is present on 405, 413, 400, 429, 503, and 500 errors', async () => {
-  const allowed = { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } };
+  const allowed = withLease({ async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } });
   const cases = [
     { want: 405, handler: createRewriteHandler({ rateLimiter: allowed, runRewrite() {} }), req: { method: 'GET', headers: {}, body: freeBody() } },
     { want: 413, handler: createRewriteHandler({ rateLimiter: allowed, runRewrite() {}, maxBodyBytes: 1 }), req: { method: 'POST', headers: {}, body: JSON.stringify(freeBody()) } },
     { want: 400, handler: createRewriteHandler({ rateLimiter: allowed, runRewrite() {} }), req: { method: 'POST', headers: {}, body: '{' } },
-    { want: 429, handler: createRewriteHandler({ rateLimiter: { async check() { return { allowed: false, status: 429, reason: 'daily quota exceeded' }; } }, runRewrite() {} }), req: { method: 'POST', headers: { 'x-real-ip': '203.0.113.50' }, body: freeBody() } },
-    { want: 503, handler: createRewriteHandler({ rateLimiter: { async check() { return { allowed: false, status: 503, reason: 'quota storage unavailable' }; } }, runRewrite() {} }), req: { method: 'POST', headers: { 'x-real-ip': '203.0.113.51' }, body: freeBody() } },
+    { want: 429, handler: createRewriteHandler({ rateLimiter: withLease({ async check() { return { allowed: false, status: 429, reason: 'daily quota exceeded' }; } }), runRewrite() {} }), req: { method: 'POST', headers: { 'x-real-ip': '203.0.113.50' }, body: freeBody() } },
+    { want: 503, handler: createRewriteHandler({ rateLimiter: withLease({ async check() { return { allowed: false, status: 503, reason: 'quota storage unavailable' }; } }), runRewrite() {} }), req: { method: 'POST', headers: { 'x-real-ip': '203.0.113.51' }, body: freeBody() } },
     { want: 500, handler: createRewriteHandler({ rateLimiter: allowed, runRewrite() { throw new Error('boom'); }, logger: { error() {} } }), req: { method: 'POST', headers: { 'x-real-ip': '203.0.113.52' }, body: freeBody() } },
   ];
 
@@ -300,7 +312,7 @@ test('category 7 stream body DoS: async body over maxBodyBytes aborts at 413 bef
     },
   };
   const handler = createRewriteHandler({
-    rateLimiter: { async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } },
+    rateLimiter: withLease({ async check() { return { allowed: true, tier: WEB_TIERS.FREE }; } }),
     runRewrite() { calls += 1; },
     maxBodyBytes: 16,
   });
@@ -313,10 +325,8 @@ test('category 7 stream body DoS: async body over maxBodyBytes aborts at 413 bef
 });
 
 // ---------------------------------------------------------------------------
-// G003 red-team: pro subject metering (src/rate-limit.js switch(tier)) +
-// createRestKv atomicity/coercion (api/rewrite.js). These probe gaps beyond the
-// existing unit suite. Product code is frozen; tests assert the OBSERVED
-// contract and any deviation from the expected security contract is a FINDING.
+// Pro subject metering (src/rate-limit.js) and createRestKv atomicity and
+// coercion (api/rewrite.js).
 // ---------------------------------------------------------------------------
 
 const PRO = WEB_TIERS.PRO;
@@ -406,18 +416,19 @@ test('category 8 pro subject injection: falsy AND truthy non-string subjects bot
 });
 
 test('category 9 pro is subject-keyed and never IP-keyed: same subject/diff IP shares a bucket, diff subject/same IP does not', async () => {
-  const limits = {
-    free: { maxChars: 4000, maxConcurrent: 1, reqPerDay: 5, burstPerHour: 2 },
-    byok: { maxChars: 20000, maxConcurrent: 2 },
-    pro: { maxChars: 20000, reqPerDay: 1, maxConcurrent: 3 },
-  };
+  const limits = { ...TIER_LIMITS, pro: { ...TIER_LIMITS.pro, reqPerDay: 1 } };
   const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0, limits });
+  let requests = 0;
+  const reserve = (input) => {
+    requests += 1;
+    return limiter.check({ tier: PRO, chars: 0, requestId: `request-${requests}`, ...input });
+  };
   // Same subject, different IPs (and a missing IP) all hit the SAME bucket.
-  assert.equal((await limiter.check({ tier: PRO, subject: 'seat-1', ip: '203.0.113.1' })).allowed, true);
-  assert.deepEqual(await limiter.check({ tier: PRO, subject: 'seat-1', ip: '198.51.100.9' }), { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY });
-  assert.deepEqual(await limiter.check({ tier: PRO, subject: 'seat-1' }), { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY });
+  assert.equal((await reserve({ subject: 'seat-1', ip: '203.0.113.1' })).allowed, true);
+  assert.deepEqual(await reserve({ subject: 'seat-1', ip: '198.51.100.9' }), { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY });
+  assert.deepEqual(await reserve({ subject: 'seat-1' }), { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY });
   // A DIFFERENT subject on the SAME IP is a fresh bucket (the IP is irrelevant).
-  assert.equal((await limiter.check({ tier: PRO, subject: 'seat-2', ip: '203.0.113.1' })).allowed, true);
+  assert.equal((await reserve({ subject: 'seat-2', ip: '203.0.113.1' })).allowed, true);
 
   // The pro keys are derived from the subject only and never leak the raw
   // subject/IP; adding an IP can never change the day key.
@@ -430,15 +441,16 @@ test('category 9 pro is subject-keyed and never IP-keyed: same subject/diff IP s
 test('category 10 pro daily boundary: the request AT the cap is allowed with remainingDay 0 and the next crosses to 429 DAILY', async () => {
   assert.equal(TIER_LIMITS.pro.reqPerDay, 200, 'boundary pinned to the frozen default (200)');
   const cap = TIER_LIMITS.pro.reqPerDay;
-  // The monthly request cap (60) would gate first under the shipped defaults;
+  // The monthly request cap would gate first under the shipped defaults;
   // lift it so this test exercises the DAILY boundary it is named for.
   const limits = { ...TIER_LIMITS, pro: { ...TIER_LIMITS.pro, reqPerMonth: 1_000_000 } };
   const limiter = createRateLimiter({ kv: createMemoryKv(), hmacSecret: 'secret', now: () => 0, limits });
   const subject = 'seat-boundary';
   let last;
-  for (let i = 0; i < cap; i += 1) last = await limiter.check({ tier: PRO, subject });
-  assert.deepEqual(last, { allowed: true, tier: PRO, remainingDay: 0 }, 'the 200th (== cap) is allowed with 0 remaining');
-  assert.deepEqual(await limiter.check({ tier: PRO, subject }), { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY }, 'the 201st crosses the cap');
+  for (let i = 0; i < cap; i += 1) last = await limiter.check({ tier: PRO, subject, chars: 0, requestId: `request-${i}` });
+  assert.equal(last.allowed, true, 'the 200th (== cap) is allowed');
+  assert.equal(last.remainingDay, 0, 'the 200th leaves 0 remaining');
+  assert.deepEqual(await limiter.check({ tier: PRO, subject, chars: 0, requestId: 'request-over' }), { allowed: false, status: 429, reason: QUOTA_REASONS.DAILY }, 'the 201st crosses the cap');
 });
 
 test('category 11 pro concurrency boundary: N opaque leases acquire, the (N+1)th denies, and exact release re-admits', async () => {
@@ -473,17 +485,25 @@ test('category 11 pro concurrency boundary: N opaque leases acquire, the (N+1)th
   assertOpaqueLease(readmitted, PRO, [subject, 'secret']);
 });
 
-test('category 12 pro degraded KV never fails open: NaN/negative/zero/object/undefined/throwing incr all deny with 503 on check and acquire', async () => {
+test('category 12 pro degraded KV never fails open: malformed or throwing reservation and lease storage deny with 503', async () => {
   const fail503 = { allowed: false, status: 503, reason: QUOTA_REASONS.STORAGE_UNAVAILABLE };
-  const badReturns = [Number.NaN, -1, -999, 0, {}, undefined];
+  const reserve = (limiter) => limiter.check({ tier: PRO, subject: 'seat', chars: 0, requestId: 'request-1' });
+  const badReturns = [Number.NaN, -1, 0, {}, undefined, [1], [1, -1], [1, 1.5], [0, 9], [-1]];
   for (const bad of badReturns) {
-    const limiter = createRateLimiter({ kv: { async incr() { return /** @type {any} */ (bad); }, async decr() { return 0; } }, hmacSecret: 'secret', now: () => 0 });
-    assert.deepEqual(await limiter.check({ tier: PRO, subject: 'seat' }), fail503, `check incr->${String(bad)}`);
-    assert.deepEqual(await limiter.acquireConcurrency({ tier: PRO, subject: 'seat' }), fail503, `acquire incr->${String(bad)}`);
+    const kv = {
+      async reserveQuota() { return /** @type {any} */ (bad); },
+      async settleQuota() { return 1; },
+      async acquireLease() { return /** @type {any} */ (bad); },
+      async releaseLease() { return true; },
+    };
+    const limiter = createRateLimiter({ kv, hmacSecret: 'secret', now: () => 0 });
+    assert.deepEqual(await reserve(limiter), fail503, `reserve -> ${JSON.stringify(bad)}`);
+    assert.deepEqual(await limiter.acquireConcurrency({ tier: PRO, subject: 'seat' }), fail503, `acquire -> ${JSON.stringify(bad)}`);
   }
-  const thrower = createRateLimiter({ kv: { async incr() { throw new Error('kv down'); }, async decr() {} }, hmacSecret: 'secret', now: () => 0 });
-  assert.deepEqual(await thrower.check({ tier: PRO, subject: 'seat' }), fail503, 'check incr throws');
-  assert.deepEqual(await thrower.acquireConcurrency({ tier: PRO, subject: 'seat' }), fail503, 'acquire incr throws');
+  const down = async () => { throw new Error('kv down'); };
+  const thrower = createRateLimiter({ kv: { reserveQuota: down, settleQuota: down, acquireLease: down, releaseLease: down }, hmacSecret: 'secret', now: () => 0 });
+  assert.deepEqual(await reserve(thrower), fail503, 'reserve throws');
+  assert.deepEqual(await thrower.acquireConcurrency({ tier: PRO, subject: 'seat' }), fail503, 'acquire throws');
 });
 
 test('category 13 free tier no-regression: IP-keyed metering ignores subject, fails closed, and never embeds the raw IP in a key', async () => {
@@ -537,7 +557,6 @@ test('category 14 BYOK is IP-admitted: missing identity and hostile storage fail
     async get() { throw new Error('storage unavailable'); },
     async set() { throw new Error('storage unavailable'); },
     async incr() { throw new Error('storage unavailable'); },
-    async decr() { throw new Error('storage unavailable'); },
     async acquireLease() { throw new Error('storage unavailable'); },
     async releaseLease() { throw new Error('storage unavailable'); },
   };
@@ -648,12 +667,11 @@ test('category 15 createRestKv set/get: atomic single-command SET(+PX) round-tri
   });
 });
 
-test('category 16 createRestKv incr/decr: numeric REST path is parsed independently of get and fails closed on an invalid counter', async () => {
+test('category 16 createRestKv incr: one atomic EVAL, parsed independently of get, and fail-closed on an invalid counter or a missing ttl', async () => {
   // A TTL'd incr is ONE atomic root-POST EVAL(INCRBY+PEXPIRE) — never an /incr
-  // followed by a separate /expire the process could die before issuing (#605:
-  // a lost expire on the stable concurrency key would pin that identity near
-  // its cap until manual cleanup). No-ttl incr keeps the plain GET path. Both
-  // parse number|numeric-string|nested {result} via parseKvNumber.
+  // followed by a separate /expire the process could die before issuing: a
+  // lost expire on the stable concurrency key would pin that identity near its
+  // cap until manual cleanup. It parses number|numeric-string|nested {result}.
   {
     const calls = [];
     const posts = [];
@@ -662,10 +680,7 @@ test('category 16 createRestKv incr/decr: numeric REST path is parsed independen
         posts.push(JSON.parse(String(init.body)));
         return { ok: true, async json() { return { result: '7' }; } };
       }
-      const u = String(url);
-      calls.push(u);
-      if (u.includes('/incr/')) return { ok: true, async json() { return { result: '7' }; } };
-      if (u.includes('/decr/')) return { ok: true, async json() { return { result: { result: 3 } }; } };
+      calls.push(String(url));
       return { ok: true, async json() { return { result: null }; } };
     }, async () => {
       const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
@@ -676,25 +691,19 @@ test('category 16 createRestKv incr/decr: numeric REST path is parsed independen
       assert.match(posts[0][1], /INCRBY/);
       assert.match(posts[0][1], /PEXPIRE/);
       assert.deepEqual(posts[0].slice(2), ['1', 'c', '1', '60000'], 'one key; amount 1; ttl in ms');
-      posts.length = 0;
-      assert.equal(await kv.incr('c'), 7, 'incr without a ttl issues no expire');
-      assert.deepEqual(calls, ['https://kv.example.test/incr/c']);
-      assert.equal(posts.length, 0, 'no-ttl incr stays on the GET path');
-      assert.equal(await kv.decr('c'), 3, 'nested {result} decr result parses to a number');
+      // A counter without an expiry would never reset, so incr refuses it.
+      await assert.rejects(() => kv.incr('c'), /kv incr requires a ttl/);
+      await assert.rejects(() => kv.incr('c', { ttlMs: 0 }), /kv incr requires a ttl/);
+      assert.equal(posts.length, 1, 'a refused incr issues no command');
     });
   }
 
   // A malformed counter (non-numeric, null, non-integer, object) fails closed by
-  // THROWING -- never silently returns a bogus count the limiter would trust
-  // (the limiter converts that throw into a 503, verified in category 12).
-  // Checked on the GET path (no ttl) AND the atomic EVAL path (ttl).
+  // THROWING -- never silently returns a bogus count the limiter would trust.
   for (const bad of [{ result: 'not-a-number' }, { result: null }, { result: 1.5 }, { result: {} }, {}]) {
     await withMockFetch(async () => ({ ok: true, async json() { return bad; } }), async () => {
       const kv = createRestKv({ KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'token' });
-      await assert.rejects(() => kv.incr('c'), /kv incr returned invalid counter/, `incr rejects ${JSON.stringify(bad)}`);
       await assert.rejects(() => kv.incr('c', { ttlMs: 1_000 }), /kv incr returned invalid counter/, `ttl incr rejects ${JSON.stringify(bad)}`);
-      await assert.rejects(() => kv.incrBy('c', 5, { ttlMs: 1_000 }), /kv incr returned invalid counter/, `ttl incrBy rejects ${JSON.stringify(bad)}`);
-      await assert.rejects(() => kv.decr('c'), /kv decr returned invalid counter/, `decr rejects ${JSON.stringify(bad)}`);
     });
   }
 

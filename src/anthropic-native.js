@@ -1,20 +1,9 @@
 // @ts-check
 // Native Anthropic Messages API adapter (opt-in via PATINA_ANTHROPIC_NATIVE_CACHE).
-//
-// Why it exists: the OpenAI-compatibility endpoint silently ignores prompt
-// caching in every form (verified empirically 2026-07-24: cache_control on
-// content blocks AND at the top level both produce full-price prompt_tokens
-// on repeat calls). Caching is the difference between ~$0.16 and ~$0.07 per
-// pro rewrite, so the paid path needs the first-party /v1/messages API.
-//
-// Design constraints:
-// - Zero caller-surface change: api.js/streaming-api.js branch internally.
-// - Zero prompt-semantics change: the prompt stays ONE user message; the
-//   static prefix and dynamic tail become two text blocks of the same message,
-//   with cache_control on the prefix block only.
-// - Usage objects keep Anthropic's native field names (input_tokens,
-//   output_tokens, cache_read_input_tokens, cache_creation_input_tokens):
-//   the cache-token extractor and the G002 usage adapter accept that shape.
+// Anthropic's OpenAI-compatibility endpoint ignores prompt caching, so the
+// paid path uses /v1/messages with cache_control on the static prompt prefix.
+// The prompt stays one user message (prefix and tail become two text blocks),
+// and usage keeps Anthropic's native field names.
 import { splitPromptForCaching } from './prompt-builder.js';
 
 const ANTHROPIC_VERSION = '2023-06-01';

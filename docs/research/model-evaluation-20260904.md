@@ -61,8 +61,9 @@ access is not zero marginal cost evidence and cannot establish hosted API cost.
 
 Measurement amendment, before any valid rewrite collection: the initial scorer
 pilot was invalidated after independent review found raw-schema and journal
-defects. `artifacts/model-evaluation-20260904/pilot-invalidated.json` records the
-stop; those rows cannot select finalists or support recommendations. Validated
+defects. A local-only record
+(`artifacts/model-evaluation-20260904/pilot-invalidated.json`, not committed)
+records the stop; those rows cannot select finalists or support recommendations. Validated
 runs use a new output directory after the corrected harness passes review.
 
 Raw scores must have numeric bounded values and only known pattern-pack keys.

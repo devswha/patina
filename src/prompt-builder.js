@@ -32,14 +32,12 @@ export const DEFAULT_SEVERITY_POINTS = Object.freeze({ high: 3, medium: 2, low: 
 const INPUT_DATA_FENCE = '⟦⟦⟦PATINA_INPUT_DATA⟧⟧⟧';
 
 /**
- * #881 rewrite hint (detect stage: #892). One line, exactly when the source
- * prose is mostly portable (POV-less) AND the document itself carries at
- * least one specificity anchor elsewhere — the source's own concreteness is
- * the only legitimate material to restore onto the generic sentences, so a
- * fully anchor-free document gets NO hint (inventing detail stays banned by
- * the MPS/fidelity floors, and this hint never invites it). Registers where
- * impersonal prose is correct suppress via the probe's own omit list.
- * Deliberately a hint, not the Study 4 H-4b constraint (NOT supported).
+ * One-line rewrite hint, emitted only when the source prose is mostly portable
+ * (point-of-view-less) AND the document carries at least one specificity anchor
+ * elsewhere: the source's own concreteness is the only legitimate material to
+ * restore onto the generic sentences, so an anchor-free document gets no hint.
+ * Registers where impersonal prose is correct suppress it via the probe's own
+ * omit list.
  *
  * @param {string} text
  * @param {{ lang?: string, documentTypeName?: string }} [opts]
@@ -231,14 +229,11 @@ function buildRegisterDirective(value, lang) {
  * @param {boolean} [options.rewriteHeadings=false] When false (default),
  *   instruct the model to preserve Markdown ATX heading lines verbatim as
  *   structure (#473); true opts back into rewording/adding/removing them.
- * @param {'baseline'|'ko-contextual-v1'} [options.structureGuidance=baseline]
- *   Research-only strict rewrite structure treatment.
  * @param {'baseline'|'short-safe-v1'} [options.minimalStructureGuidance=baseline]
  *   Research/hosted short-request treatment for the minimal prompt.
- * @param {'default'|'h-rhetoric'|'legacy'} [options.rhetoricPolicy]
- *   Rhetoric edit-policy. Default (and `h-rhetoric`) remove empty hype instead
- *   of restocking similar-weight filler. Pass `legacy` for the pre-2026-09-14
- *   similar-weight sentence.
+ * @param {'default'|'legacy'} [options.rhetoricPolicy]
+ *   Rhetoric edit-policy. Default removes empty hype instead of restocking
+ *   similar-weight filler; `legacy` keeps the older similar-weight sentence.
  * @returns {string} Complete prompt text.
  * @throws {TypeError} When register evidence cannot be JSON-serialized.
  * @example
@@ -263,20 +258,13 @@ export function buildPrompt(options) {
     jargon = 'keep',
     // #473: preserve Markdown ATX headings by default; --rewrite-headings opts in.
     rewriteHeadings = false,
-    structureGuidance = 'baseline',
     minimalStructureGuidance = 'baseline',
     rhetoricPolicy = 'default',
   } = options;
-  if (!['baseline', 'ko-contextual-v1'].includes(structureGuidance)) {
-    throw new Error(`unknown structureGuidance: ${structureGuidance}`);
-  }
-  if (!['default', 'h-rhetoric', 'legacy'].includes(rhetoricPolicy)) {
+  if (!['default', 'legacy'].includes(rhetoricPolicy)) {
     throw new Error(`unknown rhetoricPolicy: ${rhetoricPolicy}`);
   }
   const lang = config.language || 'ko';
-  if (structureGuidance === 'ko-contextual-v1' && lang !== 'ko') {
-    throw new Error('structureGuidance ko-contextual-v1 requires Korean language');
-  }
   if (!['baseline', 'short-safe-v1'].includes(minimalStructureGuidance)) {
     throw new Error(`unknown minimalStructureGuidance: ${minimalStructureGuidance}`);
   }
@@ -371,7 +359,6 @@ export function buildPrompt(options) {
       lang,
       includeSelfAudit,
       rewriteHeadings,
-      structureGuidance,
       personaActive: Boolean(persona),
       registerActive: Boolean(register),
       rhetoricPolicy,
@@ -442,16 +429,13 @@ export function buildTransformDirective({ jargon = 'keep', korean = false } = {}
 
 /**
  * Resolve the rhetoric edit policy from the environment.
- * `PATINA_RHETORIC_POLICY=legacy` restores the pre-2026-09-14 similar-weight
- * sentence. `h-rhetoric` is kept as an alias of the product default.
+ * `PATINA_RHETORIC_POLICY=legacy` restores the older similar-weight sentence.
  *
  * @param {Record<string,string|undefined>} [env=process.env]
- * @returns {'default'|'h-rhetoric'|'legacy'}
+ * @returns {'default'|'legacy'}
  */
 export function resolveRhetoricPolicy(env = process.env) {
-  if (env?.PATINA_RHETORIC_POLICY === 'legacy') return 'legacy';
-  if (env?.PATINA_RHETORIC_POLICY === 'h-rhetoric') return 'h-rhetoric';
-  return 'default';
+  return env?.PATINA_RHETORIC_POLICY === 'legacy' ? 'legacy' : 'default';
 }
 
 const LEGACY_RHETORIC_STRICT =
@@ -520,7 +504,7 @@ function buildNoInventedLessonConstraint(lang, documentTypeName = 'default') {
 function buildRewriteInstructions(
   structurePacks,
   lexicalPacks,
-  { includeSelfAudit = true, lang = 'ko', includeKoreanAdvisory = true, rewriteHeadings = false, structureGuidance = 'baseline', personaActive = false, registerActive = false, rhetoricPolicy = 'default', documentTypeName = 'default', portabilityHint = null } = {}
+  { includeSelfAudit = true, lang = 'ko', rewriteHeadings = false, personaActive = false, registerActive = false, rhetoricPolicy = 'default', documentTypeName = 'default', portabilityHint = null } = {}
 ) {
   const phaseCount = includeSelfAudit ? 3 : 2;
   let inst = `Follow the ${phaseCount}-Phase pipeline:\n\n`;
@@ -555,9 +539,7 @@ function buildRewriteInstructions(
     inst += `\n1. Scan paragraph layout, repetition, translationese, passive patterns\n`;
     inst += `2. Correct structural issues — diversify paragraph structure\n`;
     inst += `3. Verify core claims and logical flow survive structural changes\n`;
-    inst += structureGuidance === 'ko-contextual-v1'
-      ? `4. Korean structure — preserve the genre, purpose, and existing organization unless a detected structural issue requires change. Do not make coverage exhaustive, add a generic introduction, summary, or lesson, or manufacture a problem→crisis→lesson arc. Do not force sentence-length quotas, clipped fragments, or a reusable short-declaration/long-elaboration formula. For each flagged paragraph, fix only the 1–2 highest-impact detected structural issues; make minimal or no edits when it is already natural. Preserve claims, numbers, polarity, and causation.\n\n`
-      : `4. Burstiness — vary sentence LENGTH inside each paragraph, not just paragraph length and sentence count. A paragraph flagged low-burstiness means its sentences are near-identical in token count (CV < 0.30); swapping vocabulary alone never fixes it. In every flagged paragraph mix at least one short sentence (5–8 tokens) with at least one long one (20+ tokens), targeting CV ≥ 0.35: split one long sentence into a blunt declaration plus a longer elaboration, merge two same-length sentences, or drop in a clipped two-word follow-up. After rewriting, eyeball the sentence lengths — a row of 12±2-token sentences means this step was NOT done.\n\n`;
+    inst += `4. Burstiness — vary sentence LENGTH inside each paragraph, not just paragraph length and sentence count. A paragraph flagged low-burstiness means its sentences are near-identical in token count (CV < 0.30); swapping vocabulary alone never fixes it. In every flagged paragraph mix at least one short sentence (5–8 tokens) with at least one long one (20+ tokens), targeting CV ≥ 0.35: split one long sentence into a blunt declaration plus a longer elaboration, merge two same-length sentences, or drop in a clipped two-word follow-up. After rewriting, eyeball the sentence lengths — a row of 12±2-token sentences means this step was NOT done.\n\n`;
     inst += `**Skip if**: text is ≤2 paragraphs OR no structure packs loaded.\n\n`;
   }
 
@@ -583,9 +565,7 @@ function buildRewriteInstructions(
     inst += `${cjkGuard}\n`;
   }
 
-  if (includeKoreanAdvisory) {
-    inst += buildKoreanAdvisoryRewriteGuidance(lang);
-  }
+  inst += buildKoreanAdvisoryRewriteGuidance(lang);
 
 
   if (includeSelfAudit) {
@@ -744,11 +724,9 @@ export function buildScoreMathCore(config, lang, text = '', patterns = []) {
     inst += `\n`;
   }
 
-  // v3.11 Phase 3.2: short text (~200 chars or ≤3 paragraphs) often shows
-  // clear voice/register shifts that the standard formula barely registers
-  // because so few pattern instances accumulate. Tell the model to apply a
-  // 1.5x severity multiplier to register-sensitive categories (language,
-  // style, viral-hook) in this regime, capped at 3 (High) per detection.
+  // Short text (~200 chars or ≤3 paragraphs) often shows clear voice/register
+  // shifts that the standard formula barely registers because so few pattern
+  // instances accumulate, so register-sensitive categories get a 1.5x boost.
   const isShort = isShortText(text);
   if (isShort) {
     inst += `**Short-text boost (input ≤200 chars OR ≤3 paragraphs):** for `;
@@ -818,8 +796,6 @@ function buildPatternCatalogDigest(patterns = []) {
   return lines;
 }
 
-// v3.11 Phase 3.2 helper: classify a text as "short" for scoring boost.
-// Threshold: ≤200 non-whitespace chars OR ≤3 non-empty paragraphs.
 /**
  * Classify whether text should use the short-text scoring boost.
  *
@@ -836,11 +812,10 @@ export function isShortText(text) {
   return paragraphs.length <= 3;
 }
 
-// v3.11 minimal prompt — case-04 hypothesis test.
-// Strips pattern definitions/examples and uses a casual instruction so the
-// model's natural voice prior isn't overridden by analytical framing. Only
-// invoked for rewrite mode; score/audit/diff stay on the strict
-// path because they need precise pattern references.
+// Compact rewrite prompt: strips pattern definitions/examples and uses a casual
+// instruction so the model's natural voice prior isn't overridden by analytical
+// framing. Rewrite mode only; score/audit/diff stay on the strict path because
+// they need precise pattern references.
 function buildMinimalPrompt({ config, patterns, documentType, persona = null, text, register, documentSignals = null, jargon = 'keep', rewriteHeadings = false, minimalStructureGuidance = 'baseline', rhetoricPolicy = 'default' }) {
   const lang = config.language || 'ko';
   const documentTypeName = config.documentType || 'default';
@@ -954,27 +929,9 @@ function buildMinimalPrompt({ config, patterns, documentType, persona = null, te
   return prompt;
 }
 
-// Extract the comma-separated values that follow a watch-word label in a pattern
-// pack body. Used by buildMinimalPrompt to compress packs from full
-// definitions+examples down to just the trigger vocab.
-//
-// The packs label this field in their own language, and the labels have drifted:
-// eleven distinct forms are in use, across both ASCII and full-width colons, and
-// one carries a parenthetical qualifier. A KO/EN-only pattern therefore extracted
-// NOTHING from zh and ja — before this list they contributed 0 packs of watch
-// words to the minimal prompt where en and ko contributed 6 (#888), so Chinese
-// and Japanese minimal-mode rewrites shipped with no trigger vocabulary at all.
-//
-// Counts in patterns/ at the time of writing:
-//   Watch words 37 · 주의 어휘 31 · 注意語彙 25+7 · 高频词汇 21 · 关注词汇 9 ·
-//   注意词汇 2(+1 qualified) · 注意語 2 · 高頻度語彙 1 · 注意词 1
-//
-// Longer labels MUST precede their prefixes (注意語彙 before 注意語, 注意词汇
-// before 注意词): alternation is leftmost-first, so a prefix would match and leave
-// the rest of the word sitting where the colon is expected.
-//
-// tests/unit/watch-word-labels.test.js scans patterns/ for any vocabulary-like
-// label this list cannot read, so the drift cannot silently grow again.
+// Every watch-word label the packs use, in any language, so buildMinimalPrompt
+// can compress each pack to its trigger vocabulary. Longer labels MUST precede
+// their prefixes (注意語彙 before 注意語): alternation is leftmost-first.
 export const WATCH_WORD_LABEL_SOURCE =
   String.raw`\*\*(?:주의 어휘|Watch words|注意語彙|高頻度語彙|注意語|高频词汇|关注词汇|注意词汇|注意词)(?:（[^）]*）)?[:：]\*\*`;
 

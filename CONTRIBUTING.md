@@ -21,8 +21,8 @@ The tracked tree is public by default. Keep these roles distinct:
 
 Private runbooks, raw user or model text, review/run logs, credentials, tokens,
 personal profiles, and local QA workspaces belong outside the public tree.
-`docs/internal/`, `.gjc/`, `.omo/`, `.omc/`, `.insane-review/`, and ignored
-scoped agent files are guards for private material, not publication targets.
+`docs/internal/` and other gitignored directories and scoped agent files are
+guards for private material, not publication targets.
 Never copy a private parent `AGENTS.md` or its contents into this repository.
 Do not put private material in issues, telemetry, package tarballs, or examples.
 
@@ -234,12 +234,17 @@ Be helpful. Don't be a jerk. AI writing patterns are not moral failings — we'r
 
 ## PR Process
 
-1. Branch from `dev` and make the smallest independently reviewable change.
-2. Explain the problem, scope, non-goals, public-contract impact, risk, and
+1. Open or find an Issue first when the change affects user-visible behavior,
+   a public contract, security, payment, or release; a small docs or
+   test-only fix may skip it and say why. Scoring, pattern, benchmark,
+   installer and provider changes also need explicit maintainer approval
+   ([`GOVERNANCE.md`](GOVERNANCE.md)).
+2. Branch from `dev` and make the smallest independently reviewable change.
+3. Explain the problem, scope, non-goals, public-contract impact, risk, and
    rollback. Include the relevant test or fixture and its evidence.
-3. Keep implementation, regression coverage, and required public documentation
+4. Keep implementation, regression coverage, and required public documentation
    together; separate unrelated cleanup, generated output, and release bumps.
-4. Open the PR into `dev` with a clear description. Use the release workflow
+5. Open the PR into `dev` with a clear description. Use the release workflow
    for the later `dev` → `main` merge; a feature PR is not a release.
-5. Include before/after examples for pattern changes and state any check that
+6. Include before/after examples for pattern changes and state any check that
    was not run or is blocked. Do not treat an unrun or stale check as passing.

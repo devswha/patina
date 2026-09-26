@@ -1,27 +1,15 @@
 // @ts-check
 // patina-lane: B (persona / LLM rewrite) — web/hosted rewrite path. See docs/ARCHITECTURE.md.
 import { resolve } from 'node:path';
-import { callLLM as defaultCallLLM } from './api.js';
 import { inputError } from './errors.js';
 import { loadCoreFile, loadPatterns, loadDocumentType, applyDocumentTypePatternPolicy } from './loader.js';
-import { formatRewriteBodyForBrowser } from './output.js';
-import { buildPrompt, fenceReferenceText, resolveRhetoricPolicy } from './prompt-builder.js';
+import { buildPrompt, fenceReferenceText } from './prompt-builder.js';
 import { resolvePersonaForRun } from './personas/resolve.js';
-import { loadWebConfig, resolveBundleRoot } from './web-config.js';
+import { resolveBundleRoot } from './web-config.js';
 import { resolveRegister } from './config.js';
-import { buildDocumentSignals } from './features/document-signals.js';
-import {
-  buildKoreanDiagnosis,
-  diagnosisStructureGuidance,
-} from './features/korean-diagnosis.js';
 
 /** @type {Map<string, ReturnType<typeof loadWebAssets>>} */
 const ASSET_CACHE = new Map();
-
-/** @param {unknown} value */
-function cloneConfig(value) {
-  return JSON.parse(JSON.stringify(value));
-}
 
 /**
  * Load and cache bundled patina assets for the web rewrite path.
@@ -101,8 +89,7 @@ function renderHistory(history = []) {
  * @param {ReturnType<typeof loadWebAssets>} options.assets Loaded web assets.
  * @param {'strict'|'minimal'} [options.promptMode='strict'] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals=null] Trusted deterministic signals.
- * @param {'baseline'|'ko-contextual-v1'} [options.structureGuidance='baseline'] Structure treatment.
- * @param {'default'|'h-rhetoric'|'legacy'} [options.rhetoricPolicy='default'] Rhetoric edit policy.
+ * @param {'default'|'legacy'} [options.rhetoricPolicy='default'] Rhetoric edit policy.
  * @returns {string} Prompt text.
  */
 export function buildWebRewritePrompt({
@@ -111,7 +98,6 @@ export function buildWebRewritePrompt({
   assets,
   promptMode = 'strict',
   documentSignals = null,
-  structureGuidance = 'baseline',
   rhetoricPolicy = 'default',
 }) {
   if (request.mode === 'verify') {
@@ -134,7 +120,6 @@ export function buildWebRewritePrompt({
       promptMode === 'minimal' ? 'short-safe-v1' : 'baseline'
     ),
     documentSignals,
-    structureGuidance,
     rhetoricPolicy,
   };
 
@@ -184,65 +169,4 @@ export function buildWebRewritePrompt({
   }
 
   return buildPrompt(baseOptions);
-}
-
-/**
- * Run one web rewrite request using injected LLM transport.
- *
- * @param {object} options
- * @param {import('./web-rewrite-contract.js').WebRewriteRequest} options.request Validated web rewrite request.
- * @param {import('./config.js').PatinaConfig} [options.config] Web-safe config; loaded from baseline when omitted.
- * @param {string} [options.repoRoot] Bundle root.
- * @param {Function} [options.callLLM] Injected LLM client.
- * @param {Record<string,string|undefined>} [options.env] Environment for research flags.
- * @param {AbortSignal} [options.signal] Abort signal.
- * @param {number} [options.timeout] Timeout in milliseconds.
- * @returns {Promise<{ rewrite: string, prompt: string, provider: string, model: string }>} Rewrite result.
- */
-export async function runWebRewrite({
-  request,
-  repoRoot = resolveBundleRoot(),
-  config = loadWebConfig({ repoRoot }),
-  callLLM = defaultCallLLM,
-  env = process.env,
-  signal,
-  timeout,
-}) {
-  const effectiveConfig = cloneConfig(config);
-  effectiveConfig.language = request.lang;
-  effectiveConfig.documentType = request.documentType || effectiveConfig.documentType || 'default';
-  const documentType = effectiveConfig.documentType;
-  const assets = loadWebAssets({ repoRoot, lang: request.lang, documentType, config: effectiveConfig, personaId: request.persona });
-  const diagnosis = request.lang === 'ko' && env.PATINA_KO_DIAGNOSIS_RESEARCH === '1'
-    ? buildKoreanDiagnosis(request.text, { repoRoot })
-    : null;
-  const structureGuidance = diagnosis ? diagnosisStructureGuidance(diagnosis) : 'baseline';
-  const documentSignals = buildDocumentSignals({
-    text: request.text,
-    lang: request.lang,
-  }).signals;
-  const prompt = buildWebRewritePrompt({
-    request,
-    config: effectiveConfig,
-    assets,
-    structureGuidance,
-    documentSignals,
-    // PATINA_RHETORIC_POLICY=legacy restores the pre-2026-09-14 similar-weight rhetoric sentence.
-    rhetoricPolicy: resolveRhetoricPolicy(env),
-  });
-  const raw = await callLLM({
-    prompt,
-    apiKey: request.apiKey,
-    baseURL: request.baseURL,
-    model: request.model,
-    signal,
-    timeout,
-  });
-
-  return {
-    rewrite: formatRewriteBodyForBrowser(raw),
-    prompt,
-    provider: request.provider,
-    model: request.model,
-  };
 }

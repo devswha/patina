@@ -13,14 +13,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json ./
 COPY bin ./bin
 COPY src ./src
-COPY scripts ./scripts
 COPY core ./core
 COPY patterns ./patterns
 COPY document-types ./document-types
 COPY personas ./personas
 COPY lexicon ./lexicon
-COPY assets/aside ./assets/aside
-COPY integrations/aside ./integrations/aside
 COPY .patina.default.yaml README.md LICENSE ./
 RUN chmod +x bin/patina.js \
   && ln -s /app/bin/patina.js /usr/local/bin/patina \

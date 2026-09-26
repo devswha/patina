@@ -6,23 +6,15 @@ import { resolve } from 'node:path';
 
 import {
   countPatternWatchHits,
-  detectLanguage,
   extractPatternWatchTerms,
   formatMarkdownReport,
-  paragraphSignalStrength,
-  parseFileList,
   scoreFiles,
   scoreText,
-  stripNonProse,
-  stripProse,
-  summarizeSignalStrength,
 } from '../../scripts/prose-score.mjs';
+import { detectLanguage, stripNonProse, stripProse } from '../../src/prose-core.js';
+import { paragraphSignalStrength, summarizeSignalStrength } from '../../src/features/signal-strength.js';
 import { analyzeText } from '../../src/features/index.js';
 import { LEAKAGE_SCORE_FLOOR } from '../../src/scoring.js';
-
-test('parseFileList accepts newline and comma separated paths', () => {
-  assert.deepEqual(parseFileList('README.md, docs/a.md\nnotes.mdx'), ['README.md', 'docs/a.md', 'notes.mdx']);
-});
 
 test('stripNonProse keeps prose while removing code and tables', () => {
   const stripped = stripNonProse('# Title\n\nReal prose stays.\n\n```js\nconst x = 1;\n```\n\n| a | b |\n|---|---|');

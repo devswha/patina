@@ -6,9 +6,7 @@ grant in the materials inspected. SynthBio has an explicit grant, but its
 released JSON does not supply the pre-edit drafts needed to form pairs.
 
 This is a completed, bounded source audit. It adds no extraction framework,
-human ratings, or CI gate. The [JSON record](human-edit-evidence-20260905.json)
-contains source URLs, retrieval times, hashes, counts and unresolved gates.
-Downloaded source text remains private.
+human ratings, or CI gate. Downloaded source text remains private.
 
 | Dataset | Human-edit evidence | Rights found | Intake decision |
 | --- | --- | --- | --- |

@@ -5,9 +5,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveStudyFamily, generationFamily, independentJudgeMetadata, validateJudgmentFamilies } from '../../scripts/research/study-family.mjs';
 import { generateRewrite, judgeCandidates, judgeRewrite, main, summarizeRewrites } from '../../scripts/research/model-rewrite-benchmark.mjs';
-import { evaluateExisting } from '../../scripts/research/evaluate-existing-rewrites.mjs';
-import { auditParentReceipts } from '../../scripts/research/parent-cohort-audit.mjs';
-import { joinEvaluations } from '../../scripts/research/join-model-evaluations.mjs';
 import { studySemantics } from '../../scripts/research/study-validation.mjs';
 import { textHash } from '../quality/live-scorer-benchmark.mjs';
 import { fileURLToPath } from 'node:url';
@@ -148,53 +145,6 @@ test('summary guards reject self-family and contradictory generator/judge metada
   });
   assert.equal(summarizeRewrites([legacy], judges)[openai.id].safe, 1);
   assert.equal(summarizeRewrites([source], [good, judgment(source, anthropic)])[hosted.id].provider, 'groq');
-});
-
-test('existing evaluation rejects hosted self-family and unresolved definitions before opening an output', async (t) => {
-  const root = mkdtempSync(join(tmpdir(), 'patina-family-eval-')); t.after(() => rmSync(root, { recursive: true, force: true }));
-  let calls = 0; const evaluate = async () => { calls++; };
-  const parent = { candidates: [hosted], generations: [generation()], privateRows: [generation()], judgments: [] };
-  await assert.rejects(evaluateExisting({ parent, judge: openai, output: join(root, 'blocked'), live: true, evaluate }), /own family/);
-  await assert.rejects(evaluateExisting({ parent: { ...parent, candidates: [{ ...hosted, model: 'opaque' }] }, judge: google,
-    output: join(root, 'blocked'), live: true, evaluate }), /Missing upstream family/);
-  assert.equal(calls, 0); assert.equal(existsSync(join(root, 'blocked')), false);
-});
-
-test('existing evaluation validates every saved judgment before output or injected evaluator calls', async (t) => {
-  const root = mkdtempSync(join(tmpdir(), 'patina-family-parent-')); t.after(() => rmSync(root, { recursive: true, force: true }));
-  const source = { ...generation(), protocol_hash: textHash('parent-protocol') };
-  const { rewrite: _rewrite, ...publicSource } = source;
-  const good = judgment(source, anthropic);
-  const bad = { ...good, judge_id: openai.id, judge_provider: openai.provider, judge_model: openai.model,
-    judge_transport: openai.transport, judge_upstream_family: 'openai' };
-  const cases = [
-    ['same-family', [good, bad], /same-family/],
-    ['generator-family', [{ ...good, generator_upstream_family: 'qwen' }], /generator family/],
-    ['judge-family', [{ ...good, judge_upstream_family: 'qwen' }], /Contradictory/],
-    ['opaque-evidence', [{ ...good, judge_provider: 'together', judge_model: 'opaque', judge_upstream_family: 'qwen' }], /model-id.*evidence/],
-    ['source-hash', [{ ...good, rewrite_hash: textHash('different rewrite') }], /Unbound/],
-    ['orphan', [{ ...good, fixture_id: 'missing' }], /Unbound/],
-    ['duplicate', [good, good], /Duplicate/],
-  ];
-  for (const [name, judgments, error] of cases) await t.test(name, async () => {
-    let calls = 0;
-    const output = join(root, name), parent = { candidates: [hosted], generations: [publicSource], privateRows: [source], judgments,
-      fixtures: [fixture], snapshotHash: textHash('parent-snapshot'), provenance: { parentProtocolHashes: [source.protocol_hash] },
-      expectedKeys: [`${hosted.id}/${fixture.fixture_id}/0`] };
-    await assert.rejects(evaluateExisting({ parent, judge: google, output, protocolHash: textHash('evaluation-protocol'), live: true,
-      evaluate: async () => { calls++; throw new Error('Injected evaluator reached'); } }), error);
-    assert.equal(calls, 0); assert.equal(existsSync(output), false);
-  });
-});
-
-test('exported receipt audit and join reject self-family parent rows even without evaluation directories', async () => {
-  const source = generation();
-  const { rewrite: _rewrite, ...publicSource } = source;
-  const bad = { ...judgment(source, google), judge_id: openai.id, judge_provider: openai.provider, judge_model: openai.model,
-    judge_upstream_family: 'openai' };
-  const parent = { generations: [publicSource], privateRows: [source], candidates: [hosted], judgments: [bad] };
-  await assert.rejects(auditParentReceipts({ ...parent, protocol, fixtures: [fixture], directory: '/unused', hashes: {} }), /same-family/);
-  await assert.rejects(joinEvaluations({ parent, protocol, fixtures: [fixture], directories: [], evaluationSemantics: {} }), /same-family/);
 });
 
 test('benchmark preflight rejects a later unknown family before the first candidate is called', async (t) => {

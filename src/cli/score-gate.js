@@ -1,8 +1,7 @@
 import { extractOverallScore } from '../output.js';
 import { runtimeError } from '../errors.js';
-import { createLogger } from '../logger.js';
 
-export function applyScoreGate(result, output, gate, logger = createLogger()) {
+export function applyScoreGate(result, output, gate, logger) {
   const overall = extractScoreOverall(result, output);
   if (overall === null) {
     throw runtimeError(
@@ -18,20 +17,5 @@ export function applyScoreGate(result, output, gate, logger = createLogger()) {
 }
 
 export function extractScoreOverall(result, output) {
-  return extractOverallScore(result, String(output ?? result ?? ''), {
-    coerce: toFiniteScore,
-    pipeBoundary: true,
-  });
-}
-
-// Strict numeric coercer for the score gate: accepts a value that is already a
-// plain number (Number()), and rejects anything else. output.js toFiniteNumber
-// (#505) parses strictly too; the two agree on every value the scoring pipeline
-// actually emits (a number, or null). They can still differ on non-string,
-// non-number junk (e.g. [] -> 0 here vs null there) that the pipeline never
-// produces, so the divergence is unreachable end-to-end (#527 H14).
-function toFiniteScore(value) {
-  if (value === null || value === undefined || value === '') return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
+  return extractOverallScore(result, String(output ?? result ?? ''), { pipeBoundary: true });
 }

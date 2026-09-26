@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Phase B: attributable detector-signal evaluation.
+// Attributable detector-signal evaluation.
 //
 // Evaluates CANDIDATE structural/density hot signals against pre-registered
 // denominators WITHOUT wiring them into the analyzer. For each candidate it
@@ -10,7 +10,7 @@
 //   attributable_FP = negatives the current detector currently passes (TN) that
 //                     the candidate would newly flag hot (new false positives).
 //
-// Promotion rule (matches the approved plan): a candidate may be promoted to a
+// Promotion rule: a candidate may be promoted to a
 // real hot disjunct ONLY if, across the evaluated denominators,
 //   attributable_TP > attributable_FP, AND
 //   it introduces 0 new benchmark-natural false positives (no benchmark
@@ -207,7 +207,7 @@ function main() {
     process.stdout.write(JSON.stringify(report, null, 2) + '\n');
     return;
   }
-  process.stdout.write('# Detector candidate evaluation (Phase B, measurement-only)\n\n');
+  process.stdout.write('# Detector candidate evaluation (measurement-only)\n\n');
   process.stdout.write('promotion rule: ' + report.promotionRule + '\n\n');
   for (const [name, c] of Object.entries(report.candidates)) {
     process.stdout.write(`${name.padEnd(20)} attrTP=${c.attributableTP} attrFP=${c.attributableFP} newBenchNatFP=${c.newBenchmarkNaturalFP} newHumanFP=${c.newHumanControlFP} -> ${c.decision}\n`);

@@ -1,162 +1,426 @@
 // @ts-check
-import { createHash } from 'node:crypto';
 import { TextDecoder } from 'node:util';
-import { evaluateFreeTierHealth, evaluateProMonitor, isCronAuthorized, SYNTHETIC_TEXT, LATENCY_BUCKETS } from '../src/pro-monitor.js';
-import { WEB_OBSERVABILITY_SCHEMA } from '../src/web-observability.js';
+import { evaluateFreeTierHealth, evaluateProMonitor, isCronAuthorized, SYNTHETIC_TEXT } from '../src/pro-monitor.js';
+import { upstashOrigin } from '../src/upstash-rest.js';
 
 const DEADLINE_MS = 55_000;
 const BODY_READ_TIMEOUT_MS = 1_000;
 const BODY_LIMIT = 64 * 1024;
 const SAFE_ID = /^[a-z0-9._-]{1,128}$/i;
 const DEPLOYMENT_ID = /^[a-f0-9]{40}$/;
-const RULE_VERSION = 'pro-monitor.histogram.v1';
-const NAMESPACE = 'patina:mon:v1';
-const CONTROL = 'patina:monctl:v1';
-const TRIGGERS = new Set(['number_safety', 'entitlement_pro', 'synthetic_failure', 'p95_latency', 'latency_tail', 'monitor_blind']);
+const CHANNELS = ['production', 'staging'];
 const DISCORD_HOSTS = new Set(['discord.com', 'discordapp.com', 'canary.discord.com', 'ptb.discord.com']);
-const PENDING_KEYS = ['version', 'receiptId', 'receiptEligible', 'trigger', 'triggerFact', 'alert', 'channel', 'tier', 'buckets', 'histogram', 'denominators', 'logWindows', 'adapters', 'syntheticTerminal', 'syntheticStreak', 'realPath', 'deploymentId', 'configHash', 'eventSchema', 'eventSchemaVersion', 'eventSchemaHash', 'ruleVersion'];
-const DENOMINATOR_KEYS = ['productionAggregate', 'entitlementTotal', 'entitlementNonOk', 'histogram', 'numberSafety', 'monitorDrop'];
-const HISTOGRAM_KEYS = ['counts', 'n', 'rank', 'selectedBucket', 'upperBound', 'over120Ratio'];
-const FINAL_KEYS = ['schemaVersion', 'receiptId', 'issuedAt', 'issuer', 'deploymentId', 'channel', 'tier', 'realPath', 'namespace', 'eventSchema', 'eventSchemaVersion', 'eventSchemaHash', 'configHash', 'ruleVersion', 'trigger', 'window', 'countBand', 'denominators', 'latency', 'cronAuthorized', 'syntheticTerminal', 'syntheticStreak', 'discord', 'dedupControlKey', 'pendingAlertKey', 'recoveryId', 'artifactHash'];
 
-function canonical(value) { return Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])])) : value; }
-function hash(value) { return createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex'); }
-function textHash(value) { return createHash('sha256').update(value).digest('hex'); }
-function empty(body) { return body === undefined || body === null || body === '' || (body instanceof Uint8Array && body.length === 0); }
-function send(res, statusCode, body) { res.statusCode = statusCode; res.setHeader?.('Content-Type', 'application/json; charset=utf-8'); res.setHeader?.('Cache-Control', 'no-store'); res.end?.(JSON.stringify(body)); }
-function authorized(req, secret) { const value = typeof req?.headers?.get === 'function' ? req.headers.get('authorization') : req?.headers?.authorization; const raw = req?.rawHeaders; return !(Array.isArray(raw) && raw.filter((_, i) => i % 2 === 0 && String(raw[i]).toLowerCase() === 'authorization').length !== 1) && isCronAuthorized(value, secret); }
-function required(value) { return typeof value === 'string' && value.length > 0; }
-function result(value) { return value && typeof value === 'object' && 'result' in value ? value.result : value; }
-function decode(value) { if (typeof value !== 'string') return value; try { return JSON.parse(value); } catch { return value; } }
-function safeHttps(value, host) { try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password && (!host || host(url.hostname)) ? url : null; } catch { return null; } }
-function publicServiceUrl(value) { const url = safeHttps(value); if (!url || url.port || url.search || url.hash) return null; const host = url.hostname.toLowerCase(); return host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || host.includes(':') ? null : url; }
-function deadline(start) { return Math.max(0, start + DEADLINE_MS - Date.now()); }
+// Delete a lease only while the caller still owns it.
+const RELEASE_LUA = "if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) else return 0 end";
+// While the caller still owns the dedup lease (KEYS[1]), add the delivered
+// alert id to the active list (KEYS[2]) and refresh the list's TTL.
+const ACKNOWLEDGE_LUA = [
+  "if redis.call('GET',KEYS[1])~=ARGV[1] then return 0 end",
+  "local a=redis.call('GET',KEYS[2])",
+  'local ids=a and cjson.decode(a) or {}',
+  "for _,id in ipairs(ids) do if id==ARGV[2] then redis.call('PEXPIRE',KEYS[2],ARGV[3]) return 1 end end",
+  'table.insert(ids,ARGV[2])',
+  "redis.call('SET',KEYS[2],cjson.encode(ids),'PX',ARGV[3])",
+  'return 1',
+].join(' ');
+// Clear the active list (KEYS[1]) and the recovery lease (KEYS[2]) only if the
+// caller still owns the lease and the list is exactly the one it announced.
+const COMPLETE_RECOVERY_LUA = [
+  "if redis.call('GET',KEYS[2])~=ARGV[1] or redis.call('GET',KEYS[1])~=ARGV[2] then return 0 end",
+  "redis.call('DEL',KEYS[1],KEYS[2])",
+  'return 1',
+].join(' ');
+
+function empty(body) {
+  return body === undefined || body === null || body === '' || (body instanceof Uint8Array && body.length === 0);
+}
+
+function send(res, statusCode, body) {
+  res.statusCode = statusCode;
+  res.setHeader?.('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader?.('Cache-Control', 'no-store');
+  res.end?.(JSON.stringify(body));
+}
+
+/** Exactly one Authorization header, matching the cron secret. */
+function authorized(req, secret) {
+  const value = typeof req?.headers?.get === 'function' ? req.headers.get('authorization') : req?.headers?.authorization;
+  const raw = req?.rawHeaders;
+  if (Array.isArray(raw)) {
+    const count = raw.filter((_, i) => i % 2 === 0 && String(raw[i]).toLowerCase() === 'authorization').length;
+    if (count !== 1) return false;
+  }
+  return isCronAuthorized(value, secret);
+}
+
+function required(value) {
+  return typeof value === 'string' && value.length > 0;
+}
+
+function decode(value) {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function safeHttps(value, host) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password && (!host || host(url.hostname)) ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A public HTTPS service URL: no port, query, fragment, credentials, or local/IP host. */
+function publicServiceUrl(value) {
+  const url = safeHttps(value);
+  if (!url || url.port || url.search || url.hash) return null;
+  const host = url.hostname.toLowerCase();
+  const local = host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')
+    || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host) || host.includes(':');
+  return local ? null : url;
+}
+
+function deadline(start) {
+  return Math.max(0, start + DEADLINE_MS - Date.now());
+}
+
+async function race(promise, ms, controller) {
+  if (ms < 1) throw new Error('deadline');
+  let timer;
+  try {
+    return await Promise.race([promise, new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        controller?.abort();
+        reject(new Error('deadline'));
+      }, ms);
+    })]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Every request shares the run deadline; the controller stays attached to the
+// response so a stalled body read can still be aborted.
 const responseControllers = new WeakMap();
-async function race(promise, ms, controller) { if (ms < 1) throw new Error('deadline'); let timer; try { return await Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => { controller?.abort(); reject(new Error('deadline')); }, ms); })]); } finally { clearTimeout(timer); } }
-async function fetchBounded(fetchImpl, start, url, options) { const controller = new AbortController(); const response = await race(fetchImpl(url, { ...options, signal: controller.signal }), deadline(start), controller); if (response && typeof response === 'object') responseControllers.set(response, controller); return response; }
+
+async function fetchBounded(fetchImpl, start, url, options) {
+  const controller = new AbortController();
+  const response = await race(fetchImpl(url, { ...options, signal: controller.signal }), deadline(start), controller);
+  if (response && typeof response === 'object') responseControllers.set(response, controller);
+  return response;
+}
+
+/** Read a response body incrementally, capped at BODY_LIMIT bytes and the run deadline. */
 async function bodyText(response, start) {
-  const length = Number(response.headers?.get?.('content-length') ?? response.headers?.['content-length']); const controller = responseControllers.get(response);
-  if (Number.isFinite(length) && length > BODY_LIMIT) { controller?.abort(); throw new Error('body_large'); }
+  const length = Number(response.headers?.get?.('content-length') ?? response.headers?.['content-length']);
+  const controller = responseControllers.get(response);
+  if (Number.isFinite(length) && length > BODY_LIMIT) {
+    controller?.abort();
+    throw new Error('body_large');
+  }
   const reader = response.body?.getReader?.();
   if (reader) {
-    const chunks = []; let size = 0;
-    try { for (;;) { const part = await race(reader.read(), Math.min(deadline(start), BODY_READ_TIMEOUT_MS), controller); if (part.done) break; const bytes = part.value instanceof Uint8Array ? part.value : new Uint8Array(part.value); size += bytes.byteLength; if (size > BODY_LIMIT) { controller?.abort(); throw new Error('body_large'); } chunks.push(bytes); } } finally { reader.releaseLock?.(); }
+    const chunks = [];
+    let size = 0;
+    try {
+      for (;;) {
+        const part = await race(reader.read(), Math.min(deadline(start), BODY_READ_TIMEOUT_MS), controller);
+        if (part.done) break;
+        const bytes = part.value instanceof Uint8Array ? part.value : new Uint8Array(part.value);
+        size += bytes.byteLength;
+        if (size > BODY_LIMIT) {
+          controller?.abort();
+          throw new Error('body_large');
+        }
+        chunks.push(bytes);
+      }
+    } finally {
+      reader.releaseLock?.();
+    }
     return new TextDecoder().decode(Buffer.concat(chunks));
   }
-  const text = await race(typeof response.text === 'function' ? response.text() : Promise.reject(new Error('body')), Math.min(deadline(start), BODY_READ_TIMEOUT_MS), controller);
-  if (typeof text !== 'string' || Buffer.byteLength(text) > BODY_LIMIT) throw new Error('body_large'); return text;
+  const text = await race(
+    typeof response.text === 'function' ? response.text() : Promise.reject(new Error('body')),
+    Math.min(deadline(start), BODY_READ_TIMEOUT_MS),
+    controller,
+  );
+  if (typeof text !== 'string' || Buffer.byteLength(text) > BODY_LIMIT) throw new Error('body_large');
+  return text;
 }
-async function bodyJson(response, start) { return JSON.parse(await bodyText(response, start)); }
-function responseJson(response, start) { return bodyJson(response, start).then(result); }
+
+async function bodyJson(response, start) {
+  return JSON.parse(await bodyText(response, start));
+}
+
+/** Aggregate reader and control store over the dedicated observability Upstash REST KV. */
 function createKv(env, fetchImpl, start) {
-  const base = safeHttps(env.PATINA_OBSERVABILITY_REST_API_URL, (host) => host.endsWith('.upstash.io')); const token = env.PATINA_OBSERVABILITY_REST_API_TOKEN;
-  if (!base || !required(token)) return null; const root = base.toString().replace(/\/$/, '');
-  const command = async (args) => { const response = await fetchBounded(fetchImpl, start, root, { method: 'POST', redirect: 'error', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(args) }); if (!response.ok) throw new Error('kv'); return responseJson(response, start); };
+  const origin = upstashOrigin(env.PATINA_OBSERVABILITY_REST_API_URL);
+  const token = env.PATINA_OBSERVABILITY_REST_API_TOKEN;
+  if (!origin || !required(token)) return null;
+  const command = async (args) => {
+    const response = await fetchBounded(fetchImpl, start, origin, {
+      method: 'POST',
+      redirect: 'error',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(args),
+    });
+    if (!response.ok) throw new Error('kv');
+    const value = await bodyJson(response, start);
+    return value && typeof value === 'object' && 'result' in value ? value.result : value;
+  };
   const evalCommand = (script, keys, args) => command(['EVAL', script, String(keys.length), ...keys, ...args]);
-  return { snapshot: async (keys) => { const values = await command(['MGET', ...keys]); if (!Array.isArray(values) || values.length !== keys.length) throw new Error('snapshot'); return values; }, get: async (key) => decode(await command(['GET', key])), set: async (key, value, ttl) => (await command(['SET', key, JSON.stringify(value), 'PX', String(ttl)])) === 'OK', acquire: async (key, value, ttl) => (await command(['SET', key, value, 'PX', String(ttl), 'NX'])) === 'OK', release: async (key, value) => (await evalCommand("if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) else return 0 end", [key], [value])) === 1,
-    acknowledge: async (lease, owner, active, receiptId, ttl, prepared) => { const pending = `${CONTROL}:${prepared.channel}:pro:pending:${receiptId}`; const script = "if redis.call('GET',KEYS[1])~=ARGV[1] then return 0 end; local old=redis.call('GET',KEYS[3]); if old and old~=ARGV[2] then return 0 end; if not old then redis.call('SET',KEYS[3],ARGV[2],'PX',ARGV[4]) end; local a=redis.call('GET',KEYS[2]); local ids=a and cjson.decode(a) or {}; for _,id in ipairs(ids) do if id==ARGV[3] then redis.call('PEXPIRE',KEYS[2],ARGV[4]); return 1 end end; table.insert(ids,ARGV[3]); redis.call('SET',KEYS[2],cjson.encode(ids),'PX',ARGV[4]); return 1"; return (await evalCommand(script, [lease, active, pending], [owner, JSON.stringify(prepared), receiptId, String(ttl)])) === 1; },
-    completeRecovery: async (active, lease, owner, ids, recovery, ttl, prepared) => { const pending = ids.map((id) => `${CONTROL}:${prepared.channel}:pro:pending:${id}`); const finals = prepared.finals.map((item) => `${CONTROL}:${prepared.channel}:pro:obs:${item.receiptId}`); const record = `${CONTROL}:${prepared.channel}:pro:recovery:${recovery.receiptId}`; const script = "if redis.call('GET',KEYS[2])~=ARGV[1] or redis.call('GET',KEYS[1])~=ARGV[2] then return 0 end; local n=tonumber(ARGV[3]); for i=1,n do if redis.call('GET',KEYS[2+i])~=ARGV[3+i] then return 0 end end; local offset=4+n; for i=3+n,#KEYS do local old=redis.call('GET',KEYS[i]); if old and old~=ARGV[offset] then return 0 end; offset=offset+1 end; for i=1,n do redis.call('DEL',KEYS[2+i]) end; offset=4+n; for i=3+n,#KEYS do if not redis.call('GET',KEYS[i]) then redis.call('SET',KEYS[i],ARGV[offset],'NX') end; offset=offset+1 end; redis.call('DEL',KEYS[1]); redis.call('DEL',KEYS[2]); return 1"; const records = [...prepared.finals, prepared.recovery].map((item) => JSON.stringify(item)); return (await evalCommand(script, [active, lease, ...pending, ...finals, record], [owner, JSON.stringify(ids), String(pending.length), ...prepared.originals, ...records])) === 1; },
+  return {
+    async snapshot(keys) {
+      const values = await command(['MGET', ...keys]);
+      if (!Array.isArray(values) || values.length !== keys.length) throw new Error('snapshot');
+      return values;
+    },
+    get: async (key) => decode(await command(['GET', key])),
+    set: async (key, value, ttl) => (await command(['SET', key, JSON.stringify(value), 'PX', String(ttl)])) === 'OK',
+    acquire: async (key, value, ttl) => (await command(['SET', key, value, 'PX', String(ttl), 'NX'])) === 'OK',
+    release: async (key, value) => (await evalCommand(RELEASE_LUA, [key], [value])) === 1,
+    acknowledge: async (leaseKey, owner, activeKey, id, ttl) => (
+      await evalCommand(ACKNOWLEDGE_LUA, [leaseKey, activeKey], [owner, id, String(ttl)])
+    ) === 1,
+    completeRecovery: async (activeKey, leaseKey, owner, ids) => (
+      await evalCommand(COMPLETE_RECOVERY_LUA, [activeKey, leaseKey], [owner, JSON.stringify(ids)])
+    ) === 1,
   };
 }
-function parseAggregate(payload, window) { const value = payload?.data && typeof payload.data === 'object' ? payload.data : payload; const keys = window === '15m' ? ['numberSafety', 'entitlementNonOk', 'entitlementTotal'] : ['monitorDrop']; if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== keys.length || keys.some((key) => !Number.isSafeInteger(value[key]) || value[key] < 0)) throw new Error('log_shape'); return value; }
-function createLogQuery(env, fetchImpl, start) { const endpoint = publicServiceUrl(env.PATINA_VERCEL_LOG_QUERY_URL); const token = env.PATINA_VERCEL_LOG_QUERY_TOKEN; if (!endpoint || !required(token) || !/^[a-f0-9]{64}$/.test(env.PATINA_VERCEL_LOG_QUERY_URL_SHA256 || '') || textHash(endpoint.toString()) !== env.PATINA_VERCEL_LOG_QUERY_URL_SHA256) return null; return async ({ channel, tier, window, aggregateOnly, readOnly }) => { if (!['production', 'staging'].includes(channel) || tier !== 'pro' || !['15m', '30m'].includes(window) || !aggregateOnly || !readOnly) throw new Error('scope'); const url = new URL(endpoint); url.searchParams.set('channel', channel); url.searchParams.set('tier', tier); url.searchParams.set('window', window); url.searchParams.set('aggregate_only', 'true'); const response = await fetchBounded(fetchImpl, start, url, { method: 'GET', redirect: 'error', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }); if (!response.ok) throw new Error('logs'); return parseAggregate(await bodyJson(response, start), window); }; }
-function parseSynthetic(text) { const lines = text.split(/\r?\n/).filter(Boolean); let started = false; let done = null; for (const line of lines) { let frame; try { frame = JSON.parse(line); } catch { return false; } if (!frame || typeof frame !== 'object' || Array.isArray(frame) || done) return false; if (frame.type === 'start' && !started && Object.keys(frame).length === 1) started = true; else if (frame.type === 'delta' && started && typeof frame.text === 'string' && Object.keys(frame).every((key) => key === 'type' || key === 'text')) { continue; } else if (frame.type === 'done' && started && typeof frame.rewrite === 'string' && frame.rewrite.length > 0) done = frame; else return false; } return Boolean(started && done); }
-function createSynthetic(env, fetchImpl, start) { const origin = publicServiceUrl(env.PATINA_PUBLIC_BASE_URL); if (!origin || origin.pathname !== '/' || !required(env.PATINA_PUBLIC_BASE_URL_SHA256) || !/^[a-f0-9]{64}$/.test(env.PATINA_PUBLIC_BASE_URL_SHA256) || textHash(origin.toString()) !== env.PATINA_PUBLIC_BASE_URL_SHA256 || !required(env.PATINA_SYNTHETIC_PRO_LICENSE) || !required(env.PATINA_SYNTHETIC_OBSERVER_SECRET)) return null; return async () => { try { const response = await fetchBounded(fetchImpl, start, new URL('/api/rewrite', origin), { method: 'POST', redirect: 'error', headers: { Authorization: `Bearer ${env.PATINA_SYNTHETIC_PRO_LICENSE}`, 'Content-Type': 'application/json', Accept: 'application/x-ndjson', 'x-patina-synthetic-observer': env.PATINA_SYNTHETIC_OBSERVER_SECRET }, body: JSON.stringify({ mode: 'first', lang: 'en', tier: 'pro', text: SYNTHETIC_TEXT }) }); return response.ok && /^application\/x-ndjson(?:;|\s|$)/i.test(response.headers?.get?.('content-type') ?? '') && parseSynthetic(await bodyText(response, start)) ? { ok: true, terminal: 'done' } : { ok: false, terminal: 'failed' }; } catch { return { ok: false, terminal: 'failed' }; } }; }
-// Same probe as the pro synthetic, minus the license, so it exercises the tier
-// real users are on. The observer header keeps the probe out of the aggregate
-// it watches; it does NOT exempt the request from the free IP quota — the
-// monthly exemption the trusted boundary grants needs a valid pro license too,
-// which this probe deliberately does not carry — so evaluateFreeTierHealth
-// budgets how often this may run.
-function createFreeCanary(env, fetchImpl, start) { const origin = publicServiceUrl(env.PATINA_PUBLIC_BASE_URL); if (!origin || origin.pathname !== '/' || !required(env.PATINA_PUBLIC_BASE_URL_SHA256) || !/^[a-f0-9]{64}$/.test(env.PATINA_PUBLIC_BASE_URL_SHA256) || textHash(origin.toString()) !== env.PATINA_PUBLIC_BASE_URL_SHA256 || !required(env.PATINA_SYNTHETIC_OBSERVER_SECRET)) return null; return async () => { try { const response = await fetchBounded(fetchImpl, start, new URL('/api/rewrite', origin), { method: 'POST', redirect: 'error', headers: { 'Content-Type': 'application/json', Accept: 'application/x-ndjson', 'x-patina-synthetic-observer': env.PATINA_SYNTHETIC_OBSERVER_SECRET }, body: JSON.stringify({ mode: 'first', lang: 'en', tier: 'free', text: SYNTHETIC_TEXT }) }); return response.ok && /^application\/x-ndjson(?:;|\s|$)/i.test(response.headers?.get?.('content-type') ?? '') && parseSynthetic(await bodyText(response, start)) ? { ok: true, terminal: 'done' } : { ok: false, terminal: 'failed' }; } catch { return { ok: false, terminal: 'failed' }; } }; }
+
+/** The log-query service answers with exactly these integer counts per window. */
+function parseAggregate(payload, window) {
+  const value = payload?.data && typeof payload.data === 'object' ? payload.data : payload;
+  const keys = window === '15m' ? ['numberSafety', 'entitlementNonOk', 'entitlementTotal'] : ['monitorDrop'];
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== keys.length
+    || keys.some((key) => !Number.isSafeInteger(value[key]) || value[key] < 0)) throw new Error('log_shape');
+  return value;
+}
+
+/** Read-only client for the separate log-query service (`services/log-query/`). */
+function createLogQuery(env, fetchImpl, start) {
+  const endpoint = publicServiceUrl(env.PATINA_VERCEL_LOG_QUERY_URL);
+  const token = env.PATINA_VERCEL_LOG_QUERY_TOKEN;
+  if (!endpoint || !required(token)) return null;
+  return async ({ channel, tier, window, aggregateOnly, readOnly }) => {
+    if (!CHANNELS.includes(channel) || tier !== 'pro' || !['15m', '30m'].includes(window) || !aggregateOnly || !readOnly) {
+      throw new Error('scope');
+    }
+    const url = new URL(endpoint);
+    url.searchParams.set('channel', channel);
+    url.searchParams.set('tier', tier);
+    url.searchParams.set('window', window);
+    url.searchParams.set('aggregate_only', 'true');
+    const response = await fetchBounded(fetchImpl, start, url, {
+      method: 'GET',
+      redirect: 'error',
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error('logs');
+    return parseAggregate(await bodyJson(response, start), window);
+  };
+}
+
+/** A complete NDJSON rewrite stream: one start, any text deltas, then one non-empty done. */
+function parseSynthetic(text) {
+  let started = false;
+  let done = null;
+  for (const line of text.split(/\r?\n/).filter(Boolean)) {
+    let frame;
+    try {
+      frame = JSON.parse(line);
+    } catch {
+      return false;
+    }
+    if (!frame || typeof frame !== 'object' || Array.isArray(frame) || done) return false;
+    if (frame.type === 'start' && !started && Object.keys(frame).length === 1) started = true;
+    else if (frame.type === 'delta' && started && typeof frame.text === 'string'
+      && Object.keys(frame).every((key) => key === 'type' || key === 'text')) continue;
+    else if (frame.type === 'done' && started && typeof frame.rewrite === 'string' && frame.rewrite.length > 0) done = frame;
+    else return false;
+  }
+  return Boolean(started && done);
+}
+
+/**
+ * A real rewrite against the public deployment. The Pro probe carries the
+ * synthetic license; the free canary carries none, so it exercises the tier
+ * real users are on. The observer header keeps either probe out of the
+ * aggregate it watches, but does not exempt the free canary from the free IP
+ * quota, so evaluateFreeTierHealth budgets how often it runs.
+ *
+ * @param {'pro'|'free'} tier
+ */
+function createRewriteProbe(env, fetchImpl, start, tier) {
+  const origin = publicServiceUrl(env.PATINA_PUBLIC_BASE_URL);
+  const license = tier === 'pro' ? env.PATINA_SYNTHETIC_PRO_LICENSE : undefined;
+  if (!origin || origin.pathname !== '/' || (tier === 'pro' && !required(license))
+    || !required(env.PATINA_SYNTHETIC_OBSERVER_SECRET)) return null;
+  const headers = {
+    ...(license ? { Authorization: `Bearer ${license}` } : {}),
+    'Content-Type': 'application/json',
+    Accept: 'application/x-ndjson',
+    'x-patina-synthetic-observer': env.PATINA_SYNTHETIC_OBSERVER_SECRET,
+  };
+  return async () => {
+    try {
+      const response = await fetchBounded(fetchImpl, start, new URL('/api/rewrite', origin), {
+        method: 'POST',
+        redirect: 'error',
+        headers,
+        body: JSON.stringify({ mode: 'first', lang: 'en', tier, text: SYNTHETIC_TEXT }),
+      });
+      const ndjson = /^application\/x-ndjson(?:;|\s|$)/i.test(response.headers?.get?.('content-type') ?? '');
+      return response.ok && ndjson && parseSynthetic(await bodyText(response, start))
+        ? { ok: true, terminal: 'done' }
+        : { ok: false, terminal: 'failed' };
+    } catch {
+      return { ok: false, terminal: 'failed' };
+    }
+  };
+}
+
 function createDiscord(env, fetchImpl, start) {
   const url = safeHttps(env.PATINA_ALERT_DISCORD_WEBHOOK, (host) => DISCORD_HOSTS.has(host));
   if (!url || !/^\/api\/webhooks\/\d+\/[A-Za-z0-9._-]+$/.test(url.pathname)) return null;
+  // `wait=true` makes Discord return the created message, whose id is the delivery acknowledgement.
   url.searchParams.set('wait', 'true');
   return async (payload) => {
     const content = JSON.stringify(payload);
     if (typeof content !== 'string' || !content.length || content.length > 2000) throw new Error('invalid Discord message');
     const response = await fetchBounded(fetchImpl, start, url, {
-      method: 'POST', redirect: 'error', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      method: 'POST',
+      redirect: 'error',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
     });
     if (!response.ok) return { status: response.status };
     try {
       const data = await bodyJson(response, start);
       return { status: response.status, receiptId: SAFE_ID.test(data?.id || '') ? data.id : undefined };
-    } catch { return { status: response.status }; }
+    } catch {
+      return { status: response.status };
+    }
   };
 }
 
-function int(value) { return Number.isSafeInteger(value) && value >= 0 ? value : null; }
-function plain(value) { return value !== null && typeof value === 'object' && !Array.isArray(value) && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null); }
-function exact(value, keys) { return plain(value) && Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key)); }
-function iso(value) { return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) && !Number.isNaN(Date.parse(value)) && new Date(value).toISOString() === value; }
-function configHash(env, channel) { return hash({ schemaVersion: 'OBS-ALERT-v1', namespace: NAMESPACE, channel, tier: 'pro', ruleVersion: RULE_VERSION, aggregate: env.PATINA_OBSERVABILITY_REST_API_URL, logs: env.PATINA_VERCEL_LOG_QUERY_URL, publicBase: env.PATINA_PUBLIC_BASE_URL }); }
-function predicate(fact, trigger) { const d = fact.denominators; const h = fact.histogram; return trigger === 'number_safety' ? d.numberSafety >= 1 : trigger === 'entitlement_pro' ? d.entitlementTotal >= 20 && d.entitlementNonOk >= 5 : trigger === 'synthetic_failure' ? fact.syntheticStreak >= 3 : trigger === 'p95_latency' ? h.n >= 10 && h.selectedBucket === '>120s' : trigger === 'latency_tail' ? h.n >= 10 && h.over120Ratio > .05 : trigger === 'monitor_blind' ? !fact.adapters.aggregate || !fact.adapters.safetyEntitlementLogs || !fact.adapters.monitorDropLogs || d.productionAggregate === 0 || d.monitorDrop >= 3 : false; }
-function triggerFact(fact, trigger, value) { const count = trigger === 'number_safety' ? fact.denominators.numberSafety : trigger === 'entitlement_pro' ? fact.denominators.entitlementNonOk : trigger === 'synthetic_failure' ? fact.syntheticStreak : trigger === 'p95_latency' ? fact.histogram.n : trigger === 'latency_tail' ? fact.histogram.counts['>120s'] : !fact.adapters.aggregate || !fact.adapters.safetyEntitlementLogs || !fact.adapters.monitorDropLogs ? 1 : fact.denominators.monitorDrop; const window = trigger === 'number_safety' || trigger === 'entitlement_pro' ? '15m' : trigger === 'synthetic_failure' ? '1h' : '30m'; return value.trigger === trigger && value.count === count && value.window === window; }
-function validFact(fact) {
-  if (!plain(fact) || !['production', 'staging'].includes(fact.channel) || fact.tier !== 'pro' || !Array.isArray(fact.buckets) || !fact.buckets.length || !fact.buckets.every((x) => /^\d{8}T\d{4}Z$/.test(x) && iso(`${x.slice(0, 4)}-${x.slice(4, 6)}-${x.slice(6, 8)}T${x.slice(9, 11)}:${x.slice(11, 13)}:00.000Z`)) || !exact(fact.histogram, HISTOGRAM_KEYS) || !exact(fact.histogram.counts, LATENCY_BUCKETS) || !exact(fact.denominators, DENOMINATOR_KEYS) || !exact(fact.adapters, ['aggregate', 'safetyEntitlementLogs', 'monitorDropLogs']) || !exact(fact.logWindows, ['safetyEntitlement', 'monitorDrop']) || !exact(fact.logWindows.safetyEntitlement, ['window', 'available', 'denominator']) || !exact(fact.logWindows.monitorDrop, ['window', 'available', 'denominator']) || !['done', 'failed'].includes(fact.syntheticTerminal) || int(fact.syntheticStreak) === null || typeof fact.realPath !== 'boolean') return false;
-  const h = fact.histogram; const counts = h.counts; if (!LATENCY_BUCKETS.every((key) => int(counts[key]) !== null)) return false; const n = LATENCY_BUCKETS.reduce((sum, key) => sum + counts[key], 0); const selected = n ? LATENCY_BUCKETS.find((key) => LATENCY_BUCKETS.slice(0, LATENCY_BUCKETS.indexOf(key) + 1).reduce((sum, bucket) => sum + counts[bucket], 0) >= Math.ceil(n * .95)) : null; const bound = selected === '<=30s' ? '30s' : selected === '30-60s' ? '60s' : selected === '60-120s' ? '120s' : selected === '>120s' ? '>120s' : null;
-  return n >= 0 && h.n === n && h.rank === (n ? Math.ceil(n * .95) : 0) && h.selectedBucket === selected && h.upperBound === bound && h.over120Ratio === (n ? counts['>120s'] / n : 0) && fact.denominators.histogram === n && DENOMINATOR_KEYS.every((key) => int(fact.denominators[key]) !== null) && Object.values(fact.adapters).every((value) => typeof value === 'boolean') && fact.logWindows.safetyEntitlement.window === '15m' && fact.logWindows.safetyEntitlement.available === fact.adapters.safetyEntitlementLogs && fact.logWindows.safetyEntitlement.denominator === fact.denominators.entitlementTotal && fact.logWindows.monitorDrop.window === '30m' && fact.logWindows.monitorDrop.available === fact.adapters.monitorDropLogs && fact.logWindows.monitorDrop.denominator === fact.denominators.productionAggregate && fact.realPath === (fact.adapters.aggregate && fact.denominators.productionAggregate > 0) && (fact.syntheticTerminal !== 'done' || fact.syntheticStreak === 0);
+function summary(value) {
+  return {
+    channel: value.channel,
+    tier: 'pro',
+    windows: value.buckets?.length || 0,
+    histogram: value.histogram,
+    syntheticStreak: value.syntheticStreak,
+    signals: value.triggers?.map((x) => x.trigger) || [],
+    alerts: value.alerts?.map(({ trigger, sent, deduped }) => ({ trigger, sent: sent === true, deduped: deduped === true })) || [],
+  };
 }
-function pending(env, fact, alert) { if (!validFact(fact) || !plain(fact.trigger) || ![3, 4].includes(Object.keys(fact.trigger).length) || !['trigger', 'count', 'window'].every((key) => Object.hasOwn(fact.trigger, key)) || (Object.hasOwn(fact.trigger, 'evidence') && (!exact(fact.trigger.evidence, Object.keys(fact.trigger.evidence)) || !Object.values(fact.trigger.evidence).every((value) => typeof value === 'string' && /^[a-z0-9><=._-]+$/i.test(value)))) || !TRIGGERS.has(fact.trigger.trigger) || !triggerFact(fact, fact.trigger.trigger, fact.trigger) || !SAFE_ID.test(alert?.receiptId || '') || !exact(alert, ['receiptId', 'attempts']) || !Number.isInteger(alert.attempts) || alert.attempts < 1 || alert.attempts > 3 || !predicate(fact, fact.trigger.trigger)) throw new Error('evidence'); const receiptEligible = fact.realPath && fact.trigger.trigger !== 'monitor_blind'; return { version: 'pending-v1', receiptId: alert.receiptId, receiptEligible, trigger: fact.trigger.trigger, triggerFact: { trigger: fact.trigger.trigger, count: fact.trigger.count, window: fact.trigger.window }, alert: { receiptId: alert.receiptId, attempts: alert.attempts }, channel: fact.channel, tier: fact.tier, buckets: fact.buckets, histogram: fact.histogram, denominators: fact.denominators, logWindows: fact.logWindows, adapters: fact.adapters, syntheticTerminal: fact.syntheticTerminal, syntheticStreak: fact.syntheticStreak, realPath: fact.realPath, deploymentId: env.VERCEL_GIT_COMMIT_SHA, configHash: configHash(env, fact.channel), eventSchema: 'patina.web.v2', eventSchemaVersion: 'v2', eventSchemaHash: hash(WEB_OBSERVABILITY_SCHEMA), ruleVersion: RULE_VERSION }; }
-function validPending(env, item, id, channel) { return exact(item, PENDING_KEYS) && item.version === 'pending-v1' && item.receiptId === id && SAFE_ID.test(id) && item.channel === channel && item.tier === 'pro' && item.deploymentId === env.VERCEL_GIT_COMMIT_SHA && item.configHash === configHash(env, channel) && item.eventSchema === 'patina.web.v2' && item.eventSchemaVersion === 'v2' && item.eventSchemaHash === hash(WEB_OBSERVABILITY_SCHEMA) && item.ruleVersion === RULE_VERSION && typeof item.receiptEligible === 'boolean' && item.receiptEligible === (item.realPath && item.trigger !== 'monitor_blind') && exact(item.triggerFact, ['trigger', 'count', 'window']) && exact(item.alert, ['receiptId', 'attempts']) && item.alert.receiptId === id && SAFE_ID.test(item.alert.receiptId) && Number.isInteger(item.alert.attempts) && item.alert.attempts >= 1 && item.alert.attempts <= 3 && TRIGGERS.has(item.trigger) && item.triggerFact.trigger === item.trigger && validFact(item) && triggerFact(item, item.trigger, item.triggerFact) && predicate(item, item.trigger); }
-function band(count) { return count === 1 ? '1' : count < 5 ? '2-4' : count < 10 ? '5-9' : count < 20 ? '10-19' : '20+'; }
-function receipt(item, recovery) { const payload = { schemaVersion: 'OBS-ALERT-v1', receiptId: item.receiptId, issuedAt: recovery.issuedAt, issuer: 'patina.pro-monitor', deploymentId: item.deploymentId, channel: item.channel, tier: 'pro', realPath: true, namespace: NAMESPACE, eventSchema: item.eventSchema, eventSchemaVersion: item.eventSchemaVersion, eventSchemaHash: item.eventSchemaHash, configHash: item.configHash, ruleVersion: item.ruleVersion, trigger: item.trigger, window: item.triggerFact.window, countBand: band(item.triggerFact.count), denominators: item.denominators, latency: { counts: item.histogram.counts, n: item.histogram.n, p95Rank: item.histogram.rank, over120Ratio: item.histogram.over120Ratio, ruleVersion: item.ruleVersion }, cronAuthorized: true, syntheticTerminal: item.syntheticTerminal, syntheticStreak: item.syntheticStreak, discord: { status: '2xx', attempts: item.alert.attempts }, dedupControlKey: `${CONTROL}:${item.channel}:pro:dedup:${item.trigger}`, pendingAlertKey: `${CONTROL}:${item.channel}:pro:pending:${item.receiptId}`, recoveryId: recovery.receiptId }; const final = { ...payload, artifactHash: hash(payload) }; if (!exact(final, FINAL_KEYS)) throw new Error('receipt'); return final; }
-function summary(value) { return { channel: value.channel, tier: 'pro', windows: value.buckets?.length || 0, histogram: value.histogram, syntheticStreak: value.syntheticStreak, signals: value.triggers?.map((x) => x.trigger) || [], alerts: value.alerts?.map(({ trigger, sent, deduped }) => ({ trigger, sent: sent === true, deduped: deduped === true })) || [] }; }
+
 // A free-monitor result is reported, never fatal: the cron's status code
-// speaks for the pro evidence run only.
-function freeSummary(value) { if (!value || value.error) return { available: false }; return { available: true, tier: value.tier, total: value.denominators?.total ?? 0, failed: value.denominators?.failed ?? 0, canary: value.canaryTerminal, signals: value.triggers?.map((x) => x.trigger) ?? [] }; }
-export function createProMonitorApiHandler({ env = process.env, fetchImpl = globalThis.fetch, evaluateProMonitorImpl = evaluateProMonitor, evaluateFreeTierHealthImpl = evaluateFreeTierHealth, logger = /** @type {{warn?: (...args: unknown[]) => unknown}} */ (console) } = {}) {
+// speaks for the Pro run only.
+function freeSummary(value) {
+  if (!value || value.error) return { available: false };
+  return {
+    available: true,
+    tier: value.tier,
+    total: value.denominators?.total ?? 0,
+    failed: value.denominators?.failed ?? 0,
+    canary: value.canaryTerminal,
+    signals: value.triggers?.map((x) => x.trigger) ?? [],
+  };
+}
+
+export function createProMonitorApiHandler({
+  env = process.env,
+  fetchImpl = globalThis.fetch,
+  evaluateProMonitorImpl = evaluateProMonitor,
+  evaluateFreeTierHealthImpl = evaluateFreeTierHealth,
+  logger = /** @type {{warn?: (...args: unknown[]) => unknown}} */ (console),
+} = {}) {
   // Closed booleans and stage labels diagnose a blind monitor without exposing
   // upstream bodies, endpoint URLs, deployment secrets or customer traffic.
   const unavailable = (res, stage, adapters = {}) => {
-    try { Promise.resolve(logger.warn?.({ code: 'pro_monitor_unavailable', stage, adapters })).catch(() => {}); } catch { /* Logging cannot change the response. */ }
+    try {
+      Promise.resolve(logger.warn?.({ code: 'pro_monitor_unavailable', stage, adapters })).catch(() => {});
+    } catch {
+      // Logging cannot change the response.
+    }
     return send(res, 503, { error: 'monitor_unavailable' });
   };
+
   return async (req, res) => {
     if (req?.method !== 'GET' || !empty(req?.body)) return send(res, 405, { error: 'method_not_allowed' });
     if (!authorized(req, env.CRON_SECRET)) return send(res, 401, { error: 'unauthorized' });
-    const start = Date.now(); const kv = createKv(env, fetchImpl, start); const logs = createLogQuery(env, fetchImpl, start); const synthetic = createSynthetic(env, fetchImpl, start); const freeCanary = createFreeCanary(env, fetchImpl, start); const discord = createDiscord(env, fetchImpl, start);
+    const start = Date.now();
+    const kv = createKv(env, fetchImpl, start);
+    const logs = createLogQuery(env, fetchImpl, start);
+    const synthetic = createRewriteProbe(env, fetchImpl, start, 'pro');
+    const freeCanary = createRewriteProbe(env, fetchImpl, start, 'free');
+    const discord = createDiscord(env, fetchImpl, start);
     const configuration = {
-      channel: ['production', 'staging'].includes(env.PATINA_DEPLOYMENT_CHANNEL),
+      channel: CHANNELS.includes(env.PATINA_DEPLOYMENT_CHANNEL),
       deployment: DEPLOYMENT_ID.test(env.VERCEL_GIT_COMMIT_SHA || ''),
-      aggregate: Boolean(kv), logs: Boolean(logs), synthetic: Boolean(synthetic), discord: Boolean(discord),
+      aggregate: Boolean(kv),
+      logs: Boolean(logs),
+      synthetic: Boolean(synthetic),
+      discord: Boolean(discord),
     };
     if (Object.values(configuration).some((ready) => !ready)) return unavailable(res, 'configuration', configuration);
+    const channel = /** @type {'production'|'staging'} */ (env.PATINA_DEPLOYMENT_CHANNEL);
+
     try {
-      const sleep = async (ms) => { if (ms > deadline(start)) throw new Error('deadline'); await race(new Promise((resolve) => setTimeout(resolve, ms)), deadline(start)); };
-      const prepareAlertEvidence = async (fact) => pending(env, fact, fact.alert);
-      const prepareRecoveryEvidence = async (fact) => {
-        if (!validFact(fact) || fact.trigger || !exact(fact.recovery, ['receiptId', 'attempts', 'linkedAlertReceiptIds']) || !SAFE_ID.test(fact.recovery.receiptId) || !Number.isInteger(fact.recovery.attempts) || fact.recovery.attempts < 1 || fact.recovery.attempts > 3 || !Array.isArray(fact.recovery.linkedAlertReceiptIds) || !fact.recovery.linkedAlertReceiptIds.length || new Set(fact.recovery.linkedAlertReceiptIds).size !== fact.recovery.linkedAlertReceiptIds.length || !fact.recovery.linkedAlertReceiptIds.every((id) => SAFE_ID.test(id))) throw new Error('recovery');
-        const originals = []; const finals = []; const recovery = { receiptId: fact.recovery.receiptId, issuedAt: new Date().toISOString() };
-        for (const id of fact.recovery.linkedAlertReceiptIds) {
-          const item = await kv.get(`${CONTROL}:${fact.channel}:pro:pending:${id}`);
-          if (!validPending(env, item, id, fact.channel)) throw new Error('pending');
-          originals.push(JSON.stringify(item));
-          if (item.receiptEligible && item.realPath) finals.push(receipt(item, recovery));
-        }
-        return { channel: fact.channel, originals, finals, recovery };
+      const sleep = async (ms) => {
+        if (ms > deadline(start)) throw new Error('deadline');
+        await race(new Promise((resolve) => setTimeout(resolve, ms)), deadline(start));
       };
-      const value = await race(evaluateProMonitorImpl({ channel: env.PATINA_DEPLOYMENT_CHANNEL, tier: 'pro', aggregateReader: kv, controlStore: kv, logQuery: logs, syntheticRequest: synthetic, discordSender: discord, prepareAlertEvidence, prepareRecoveryEvidence, sleep, deadlineMs: Math.min(30_000, deadline(start)) }), deadline(start));
-      // The free tier is where the users are while checkout is disabled, and
-      // on 2026-07-27 it failed three times without alerting because nothing
-      // read its counters. Evaluated after the paid path and never allowed to
-      // fail the cron: a canary problem must not mask the pro evidence run.
+      const value = await race(evaluateProMonitorImpl({
+        channel,
+        tier: 'pro',
+        aggregateReader: kv,
+        controlStore: kv,
+        logQuery: logs,
+        syntheticRequest: synthetic,
+        discordSender: discord,
+        sleep,
+        deadlineMs: Math.min(30_000, deadline(start)),
+      }), deadline(start));
+      // Evaluated after the paid path and never allowed to fail the cron: a
+      // canary problem must not mask the Pro run.
       let free = null;
       try {
-        free = await race(evaluateFreeTierHealthImpl({ channel: /** @type {'production'|'staging'} */ (env.PATINA_DEPLOYMENT_CHANNEL), tier: 'free', aggregateReader: kv, controlStore: kv, canaryRequest: freeCanary ?? undefined, discordSender: discord, sleep, deadlineMs: Math.min(10_000, deadline(start)) }), deadline(start));
-      } catch { free = { error: 'free_monitor_unavailable' }; }
+        free = await race(evaluateFreeTierHealthImpl({
+          channel,
+          tier: 'free',
+          aggregateReader: kv,
+          controlStore: kv,
+          canaryRequest: freeCanary ?? undefined,
+          discordSender: discord,
+          sleep,
+          deadlineMs: Math.min(10_000, deadline(start)),
+        }), deadline(start));
+      } catch {
+        free = { error: 'free_monitor_unavailable' };
+      }
       const blindUnacked = value.alerts?.some((item) => item.trigger === 'monitor_blind' && !item.deduped && !item.sent);
-      if (!value.adapters?.aggregate || !value.adapters?.safetyEntitlementLogs || !value.adapters?.monitorDropLogs || blindUnacked) return unavailable(res, 'inputs', {
-        aggregate: value.adapters?.aggregate === true,
-        safetyEntitlementLogs: value.adapters?.safetyEntitlementLogs === true,
-        monitorDropLogs: value.adapters?.monitorDropLogs === true,
-        blindnessAcknowledged: !blindUnacked,
-      });
+      if (!value.adapters?.aggregate || !value.adapters?.safetyEntitlementLogs || !value.adapters?.monitorDropLogs || blindUnacked) {
+        return unavailable(res, 'inputs', {
+          aggregate: value.adapters?.aggregate === true,
+          safetyEntitlementLogs: value.adapters?.safetyEntitlementLogs === true,
+          monitorDropLogs: value.adapters?.monitorDropLogs === true,
+          blindnessAcknowledged: !blindUnacked,
+        });
+      }
       return send(res, 200, { ...summary(value), free: freeSummary(free) });
-    } catch { return unavailable(res, 'evaluation'); }
+    } catch {
+      return unavailable(res, 'evaluation');
+    }
   };
 }
+
 export default createProMonitorApiHandler();

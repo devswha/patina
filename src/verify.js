@@ -1,5 +1,4 @@
 // @ts-check
-// patina-lane: B (persona / LLM rewrite) — post-rewrite meaning verification. See docs/ARCHITECTURE.md.
 import { scoreMPS as defaultScoreMPS, scoreFidelity as defaultScoreFidelity } from './scoring.js';
 import { buildPrompt } from './prompt-builder.js';
 import { cleanRewriteOutput } from './output.js';
@@ -29,17 +28,6 @@ function numbersIn(text) {
 }
 
 /**
- * Cheap, LLM-free meaning-drift heuristic for the default rewrite path. Returns
- * human-readable warning strings (never throws, never blocks output). Kept
- * deliberately conservative — only source numbers that vanish from the rewrite —
- * so the default path stays fast and free of false positives (a humanizer
- * legitimately changes length, so length is not a reliable drift signal here).
- *
- * @param {string} original
- * @param {string} rewrite
- * @returns {string[]}
- */
-/**
  * Source numbers that vanish from the rewrite. Deterministic, LLM-free — the raw
  * signal behind {@link deterministicMeaningGuard} and the persona safety gate's
  * dropped-numbers check.
@@ -54,6 +42,17 @@ export function droppedNumbers(original, rewrite) {
   return [...oNums].filter((n) => !rNums.has(n));
 }
 
+/**
+ * Cheap, LLM-free meaning-drift heuristic for the default rewrite path. Returns
+ * human-readable warning strings (never throws, never blocks output). Kept
+ * deliberately conservative — only source numbers that vanish from the rewrite —
+ * so the default path stays fast and free of false positives (a humanizer
+ * legitimately changes length, so length is not a reliable drift signal here).
+ *
+ * @param {string} original
+ * @param {string} rewrite
+ * @returns {string[]}
+ */
 export function deterministicMeaningGuard(original, rewrite) {
   const warnings = [];
   const dropped = droppedNumbers(original, rewrite);
@@ -130,7 +129,7 @@ const STRICT_RETRY_DIRECTIVE = [
  * @param {string[]|null} [options.documentSignals] Deterministic document measurements.
  * @param {string} [options.jargon] Technical-term policy (keep|explain|remove).
  * @param {boolean} [options.rewriteHeadings] Allow rewording Markdown headings.
- * @param {'default'|'h-rhetoric'|'legacy'} [options.rhetoricPolicy] Rhetoric policy forwarded to the prompt builder.
+ * @param {'default'|'legacy'} [options.rhetoricPolicy] Rhetoric policy forwarded to the prompt builder.
  * @param {string} [options.apiKey] Backend API key.
  * @param {string} [options.baseURL] Backend base URL.
  * @param {string} [options.model] Backend model id.

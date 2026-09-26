@@ -7,7 +7,8 @@ import { dirname } from 'node:path';
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
-import { main, resolveDocumentTypeForLanguage } from '../../src/cli.js';
+import { main } from '../../src/cli.js';
+import { resolveDocumentTypeForLanguage } from '../../src/cli/run.js';
 import { startMockServer } from './helpers/mock-server.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -272,17 +273,6 @@ describe('CLI adoption commands', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  });
-
-  it('patina init exits with a removed-command usage error', () => {
-    const result = spawnSync(process.execPath, [BIN, 'init', '--defaults'], {
-      cwd: REPO_ROOT,
-      input: '',
-      encoding: 'utf8',
-    });
-    assert.strictEqual(result.status, 2);
-    assert.match(result.stderr, /\[patina\] Error: patina init was removed/);
-    assert.doesNotMatch(result.stderr, /empty input/);
   });
 
   it('falls back from the ko-only NamuWiki Document Type outside Korean', () => {

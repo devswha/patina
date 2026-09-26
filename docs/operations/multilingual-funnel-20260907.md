@@ -1,7 +1,6 @@
 # Multilingual funnel measurement — September 7, 2026
 
-The browser sends category-only milestones after initialization. KO/EN/ZH/JA
-introduction drafts are in `docs/social/multilingual-examples.md`; prepared links
+The browser sends category-only milestones after initialization. Prepared links
 select the matching UI language. The implementation tests used local stores,
 and this record does not claim production counts or external publication.
 
@@ -238,11 +237,10 @@ milestones from request logs or infer their missing denominators.
 ## Verification
 
 Run `node --test tests/unit/funnel-analytics.test.js
-tests/unit/playground-analytics.test.js tests/unit/funnel-query.test.js` as
-one command. Tests cover all 120 client/server combinations, once-per-page
-progress, language changes, failures, unknown/duplicate UTMs, sensitive-data
-canaries, unchanged legacy contracts, UTC boundaries, budget sharing,
-storage failures, and the bounded query recipe without real credentials.
+tests/unit/playground-analytics.test.js` as one command. Tests cover all 120
+client/server combinations, once-per-page progress, language changes,
+failures, unknown/duplicate UTMs, sensitive-data canaries, unchanged legacy
+contracts, UTC boundaries, budget sharing, and storage failures.
 The integrated UI must pass its browser checks before deployment.
 
 Local verification on September 7: the 30 focused tests passed, and `npm test`

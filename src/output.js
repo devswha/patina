@@ -1,6 +1,6 @@
 // @ts-check
 import { createLogger } from './logger.js';
-import { analyzeText, loadStructuralModel } from './features/index.js';
+import { analyzeText } from './features/index.js';
 import { TRANSLATIONESE_RULES } from './features/translationese.js';
 
 /**
@@ -27,7 +27,7 @@ export function formatOutput(result, mode, parsed = {}, opts = {}) {
   const rewriteOutput = mode === 'rewrite'
     ? splitRewriteOutput(result, { logger: opts.logger })
     : null;
-  const register = resolveOutputRegister(opts.register || null, rewriteOutput?.register || null);
+  const register = opts.register || rewriteOutput?.register || null;
   const persona = opts.persona || null;
   const format = parsed.format || 'markdown';
   let body = rewriteOutput?.body ?? renderFormattedBody(result, mode, parsed, opts);
@@ -39,7 +39,7 @@ export function formatOutput(result, mode, parsed = {}, opts = {}) {
     return formatJsonOutput({ result, mode, body, register, gate: parsed.gate, persona, inspection: opts.inspection,
       verification: mode === 'rewrite' && parsed.verify ? opts.verification : null });
   }
-  return formatTextOutput(body);
+  return body.trim();
 }
 
 function renderFormattedBody(result, mode, parsed = {}, opts = {}) {
@@ -50,10 +50,6 @@ function renderFormattedBody(result, mode, parsed = {}, opts = {}) {
     body = colorizeDiff(body, { parsed, env: opts.env, stdout: opts.stdout });
   }
   return body;
-}
-
-function resolveOutputRegister(requested, emitted) {
-  return requested || emitted || null;
 }
 
 const ANSI = {
@@ -93,15 +89,10 @@ function shouldColorDiff({ parsed = {}, env = process.env, stdout = process.stdo
 }
 
 
-// v3.11 Phase 1.3: parse the model's score table and check that the Weight
-// column matches the config-supplied category-weights. case-02 found that
-// the model often invents weights or extra categories (e.g., "discord");
-// this surfaces those drifts as warnings rather than silently accepting them.
-//
-// Returns an array of human-readable warning strings (empty if everything
-// matches). Caller is responsible for emitting to stderr.
 /**
  * Validate that a model-emitted score table used configured category weights.
+ * Models sometimes invent weights or extra categories; the caller emits the
+ * warnings instead of silently accepting the drift.
  *
  * @param {string} output Score-mode markdown output.
  * @param {import('./config.js').PatinaConfig} configWeights Expected category weight map.
@@ -210,13 +201,10 @@ function normalizeCategoryName(raw) {
   return CATEGORY_ALIASES.get(cleaned) || CATEGORY_ALIASES.get(compact) || compact;
 }
 
-// v3.11: rewrite/diff prompts ask the model to wrap user-facing
-// text in [BODY]...[/BODY] and put audit notes in [SELF_AUDIT]...[/SELF_AUDIT].
-// We extract the body block and drop the audit so callers get clean text.
-// If the model didn't honor the tags (older runs, mocked tests, etc.), we
-// fall back to returning the full output untouched.
 /**
  * Remove SELF_AUDIT blocks and unwrap the BODY block from rewrite output.
+ * Output without [BODY] tags is returned as-is apart from stripped
+ * SELF_AUDIT blocks.
  *
  * @param {string} body Raw model response.
  * @param {object} [options] Strip options.
@@ -257,10 +245,6 @@ function splitRewriteOutput(result, { logger = createLogger() } = {}) {
 
 export function cleanRewriteOutput(result, { logger = createLogger() } = {}) {
   return splitRewriteOutput(result, { logger }).body;
-}
-
-export function formatRewriteBodyForBrowser(result, { logger = createLogger() } = {}) {
-  return cleanRewriteOutput(result, { logger });
 }
 
 function removeSelfAuditBlocks(body) {
@@ -327,10 +311,6 @@ function extractScoreDetails(result) {
   };
 }
 
-function formatTextOutput(body) {
-  return body.trim();
-}
-
 function formatJsonOutput({ result, mode, body, register, gate, persona, inspection, verification }) {
   const overall = extractOverall(result, body);
   const scoreDetails = extractScoreDetails(result);
@@ -373,43 +353,35 @@ function buildGateResult(overall, gate) {
 }
 
 function extractOverall(result, body) {
-  return extractOverallScore(result, body, {
-    coerce: toFiniteNumber,
-    parseResultFallback: true,
-  });
+  return extractOverallScore(result, body, { parseResultFallback: true });
 }
 
 /**
  * Shared overall-score traversal: structured result field → embedded JSON →
  * markdown score table → inline "overall: N" text. Used by extractOverall
- * above and by the CLI score gate (src/cli/score-gate.js). Both call sites now
- * use strict numeric coercers (toFiniteNumber here, toFiniteScore in the score
- * gate) that accept a plain numeric token and reject anything else (#505); the
- * coercer stays a parameter so each site keeps its own small differences (e.g.
- * the gate's empty-string handling).
+ * above and by the CLI score gate (src/cli/score-gate.js). Candidate values
+ * are parsed strictly: a plain numeric token or nothing (#505).
  *
  * @param {string|object|null} result Structured result whose `overall` field is checked first.
  * @param {string} text Raw output text scanned for embedded JSON, a score table, or inline "overall: N".
- * @param {object} options Extraction options (required).
- * @param {(value: unknown) => number|null} options.coerce Numeric coercer applied to candidate values.
+ * @param {object} [options] Extraction options.
  * @param {boolean} [options.parseResultFallback=false] When the text yields no JSON, also try parsing `result` itself if it is a string (output.js JSON formatter behavior).
  * @param {boolean} [options.pipeBoundary=false] Accept a `|` table-cell boundary before "overall" in the inline-text regex (score-gate behavior).
  * @returns {number|null} Extracted overall score, or null when none is found.
  */
 export function extractOverallScore(result, text, {
-  coerce,
   parseResultFallback = false,
   pipeBoundary = false,
-}) {
+} = {}) {
   // `result` may be a raw string; probing `.overall` on it yields undefined at
   // runtime, which is exactly the intent, so the read is cast rather than guarded.
-  const direct = coerce(/** @type {Record<string, any>|null|undefined} */ (result)?.overall);
+  const direct = toFiniteNumber(/** @type {Record<string, any>|null|undefined} */ (result)?.overall);
   if (direct !== null) return direct;
 
   const str = String(text ?? '');
   const parsed = parseFirstJson(str)
     || (parseResultFallback && typeof result === 'string' ? parseFirstJson(result) : null);
-  const parsedOverall = coerce(parsed?.overall);
+  const parsedOverall = toFiniteNumber(parsed?.overall);
   if (parsedOverall !== null) return parsedOverall;
 
   const overallFromTable = str.match(/(?:^|\n)\|\s*(?:\*\*)?Overall(?:\*\*)?\s*\|[^|]*\|[^|]*\|[^|]*\|\s*(?:\*\*)?([0-9]+(?:\.[0-9]+)?)/i);
@@ -605,9 +577,6 @@ function isCodeFence(line) {
  * @param {object} [opts]
  * @param {string} [opts.lang]
  * @param {string} [opts.repoRoot]
- * @param {import('./config.js').PatinaConfig} [opts.config]
- * @param {{ warn?: Function }} [opts.logger] Optional logger; the structural
- *   model load degrades to a warning here instead of aborting the audit (#443).
  * @returns {string} Markdown section (empty string when nothing fired).
  */
 export function buildDeterministicAuditBackstop(text, opts = {}) {
@@ -637,18 +606,7 @@ export function buildDeterministicAuditBackstop(text, opts = {}) {
   }
 
   // markup leakage (near-proof) + density-gated discourse tells — language-agnostic.
-  // The structural classifier is an advisory backstop: a configured-but-missing
-  // or corrupt model must degrade to a warning here, exactly as the --score path
-  // does (scoring.js), instead of aborting `patina --audit` (#443).
-  let structuralModel = null;
-  try {
-    structuralModel = loadStructuralModel(opts.config ?? {}, { lang });
-  } catch (err) {
-    opts.logger?.warn?.('audit.structural_model_load_failure', {
-      message: `[patina] structural model load failed; continuing without structural classifier: ${err?.message || err}`,
-    });
-  }
-  const a = analyzeText(str, { lang, repoRoot: opts.repoRoot, structuralModel });
+  const a = analyzeText(str, { lang, repoRoot: opts.repoRoot });
   for (const h of a.markupLeakage?.hits ?? []) {
     rows.push({ signal: 'markup-leakage', label: h.label, severity: 'HIGH', location: (h.samples ?? []).join(', ') });
   }
@@ -657,9 +615,6 @@ export function buildDeterministicAuditBackstop(text, opts = {}) {
   }
   if (a.discourseTells?.thematicBreaks?.hot) {
     rows.push({ signal: 'discourse: thematic-breaks', label: '장식용 구분선 남용', severity: 'LOW', location: `${a.discourseTells.thematicBreaks.count}개` });
-  }
-  if (a.structuralClassifier?.hot) {
-    rows.push({ signal: 'structural-classifier', label: '문서 단위 구조 분류기', severity: 'HIGH', location: `score ${a.structuralClassifier.score}` });
   }
 
   const koPostEditeseRows = buildKoPostEditeseAdvisoryRows(a.koPostEditese);

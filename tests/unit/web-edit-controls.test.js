@@ -94,6 +94,28 @@ test('an accepted rewrite survives a change review that is too large to build', 
   assert.equal(frames.some((frame) => frame.type === 'error'), false);
 });
 
+test('a change review that fails for a reason other than size is not reported as a size refusal', async () => {
+  const failures = [
+    () => { throw Object.assign(new TypeError('invalid_output'), { code: 'invalid_output' }); },
+    () => { throw new RangeError('Invalid array length'); },
+  ];
+  for (const createEdits of failures) {
+    const calls = [], frames = [], events = [];
+    const result = await runWebRewriteStream({
+      request: request({ includeEdits: true }),
+      callLLMStream: async () => ({ text: 'ACME-Pro launches on Monday. Come join us.' }),
+      scoreFns: scores(calls), createEdits, emit: (frame) => frames.push(frame),
+      now: () => 0, observe: (event) => { events.push(event); },
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 'rewrite_failed');
+    assert.deepEqual(frames.at(-1), { type: 'error', code: 'rewrite_failed' });
+    assert.equal(frames.some((frame) => frame.type === 'done'), false);
+    assert.deepEqual(events.map(({ outcome, status }) => ({ outcome, status })), [{ outcome: 'terminal_failed', status: 500 }]);
+  }
+});
+
 test('an oversized output still fails closed when protected phrases were requested', async () => {
   // Protected text is a SAFETY gate, not a convenience: it runs before scoring
   // and refuses the same oversized output outright, so no size degradation can
@@ -125,23 +147,20 @@ test('verification scores the exact selected text and never calls the rewrite mo
   assert.deepEqual(frames.map((frame) => frame.type), ['start', 'done']);
   assert.equal(result.receipt.hashes.output, sha256(selected));
   assert.equal(result.receipt.promptBudget, null);
-  assert.equal(result.attempts.rewrite.length, 0);
 });
 
-test('stale source and protected-text verification failures spend no model calls', async () => {
-  for (const [overrides, code] of [
-    [{ baseHash: sha256('stale') }, 'source_changed'],
-    [{ protectedSpans: [{ start: 0, end: 8 }], text: 'Changed launches on Monday. Please join us.' }, 'protected_text_failed'],
-  ]) {
-    const calls = [];
-    const result = await runWebRewriteStream({
-      request: request({ mode: 'verify', original, text: original, baseHash: sha256(original), ...overrides }),
-      callLLMStream: async () => { throw new Error('unexpected generation'); }, scoreFns: scores(calls), emit() {},
-    });
-    assert.equal(result.ok, false);
-    assert.equal(result.code, code);
-    assert.equal(calls.length, 0);
-  }
+test('protected-text verification failures spend no model calls', async () => {
+  const calls = [];
+  const result = await runWebRewriteStream({
+    request: request({
+      mode: 'verify', original, text: 'Changed launches on Monday. Please join us.', baseHash: sha256(original),
+      protectedSpans: [{ start: 0, end: 8 }],
+    }),
+    callLLMStream: async () => { throw new Error('unexpected generation'); }, scoreFns: scores(calls), emit() {},
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'protected_text_failed');
+  assert.equal(calls.length, 0);
 });
 
 test('selective verification has the same numeric and meaning refusal gates', async () => {

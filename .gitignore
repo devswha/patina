@@ -6,10 +6,6 @@
 # User customizations
 custom/
 .patina.yaml
-.patina/aside.json
-.patina/.aside-*
-.patina/.aside.lock
-.patina-aside-output-*/
 
 # OS / editor
 .DS_Store

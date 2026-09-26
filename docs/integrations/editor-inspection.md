@@ -19,8 +19,7 @@ the sentences contributing those cues. They do not assert an independent
 sentence-level or authorship verdict. Inline/fenced code, URLs and HTML tags
 are masked for these local hints. A localized paragraph retains its aggregate
 record with `localized: true`, allowing editors to prefer the narrower ranges.
-Document-level leakage and
-private structural-model findings are marked separately. NFC analysis is mapped
+Document-level leakage findings are marked separately. NFC analysis is mapped
 back to whole original graphemes, including decomposed accents and emoji.
 
 The command honors resolved local configuration. Disabled or unavailable

@@ -6,8 +6,8 @@ import {
   detectInventedLessonCoda,
   detectStarEvenness,
   collectInspectionAdvisories,
-  omitsPortabilityAdvisory,
 } from '../../src/inspection-advisories.js';
+import { omitsPortabilityAdvisory } from '../../src/features/portability.js';
 
 const completeArc = [
   'I built a small open-source table classifier last spring.',

@@ -20,7 +20,7 @@
   <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
   <a href="#quick-start"><img alt="Skill: Claude Code | Codex | Cursor | OpenCode" src="https://img.shields.io/badge/Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20OpenCode-blueviolet"></a>
   <a href="https://github.com/devswha/patina"><img alt="Languages: KO | EN | ZH | JA" src="https://img.shields.io/badge/Languages-KO%20%7C%20EN%20%7C%20ZH%20%7C%20JA-green"></a>
-  <a href="CHANGELOG.md"><img alt="Version 8.8.0" src="https://img.shields.io/badge/version-8.10.0-blue"></a>
+  <a href="CHANGELOG.md"><img alt="Version" src="https://img.shields.io/badge/version-9.0.0-blue"></a>
 </p>
 
 <p align="center">
@@ -49,13 +49,11 @@ patina is a deterministic, pattern-based humanizer for Korean, English, Chinese,
 
 ## Quick Start
 
-**Version: 8.10.0.** npm publication is a separate, explicitly authorized step; the registry currently serves 8.9.0 for both `patina-cli` and `patina-humanizer`. See [release channels](docs/integrations/release.md).
+**Version: 9.0.0.** npm publication is a separate, explicitly authorized step. See [release channels](docs/integrations/release.md).
 
 **Browser — nothing to install.** Open **[patina.vibetip.help](https://patina.vibetip.help/?lang=en&utm_source=github&utm_campaign=multilingual-20260907)** and paste text. Rewrites run server-side with the MPS/fidelity gates; API mode forwards your own key per request (never stored or logged).
 
 [Hosted API (Pro)](docs/HTTP-API.md)
-
-[Aside blog workflow preview](docs/integrations/aside.md): choose local Patina options, then run a verified CLI rewrite before completing a blog draft. Native Aside desktop acceptance is not planned.
 
 **Agent skill — paste this into Claude Code, Codex CLI, Cursor, or any agent:**
 ```text
@@ -107,7 +105,7 @@ patina --persona my-voice draft.md
 patina --batch docs/*.md --outdir cleaned/
 ```
 
-`patina --help` prints the full flag list. CI wrapper for GitHub Actions: [devswha/patina-action](https://github.com/devswha/patina-action) — plus [pre-commit, static-site, Docker, and release integrations](docs/integrations/pre-commit.md).
+`patina --help` prints the full flag list. CI wrapper for GitHub Actions: [devswha/patina-action](https://github.com/devswha/patina-action) — plus [pre-commit](docs/integrations/pre-commit.md), [Docker](docs/integrations/docker.md), and [release](docs/integrations/release.md) guides.
 
 Editor clients: the VS Code, Obsidian and Gmail preview clients are retired. See the [historical record](docs/integrations/editors.md).
 
@@ -116,7 +114,7 @@ Model evidence: [writing/scoring guide (Korean)](docs/research/model-guide-20260
 Project config lives in `.patina.yaml`:
 
 ```yaml
-version: "8.10.0"
+version: "9.0.0"
 language: ko              # ko | en | zh | ja
 document-type: default    # genre/purpose + pattern policy
 persona:                  # optional reusable voice; omit to preserve source

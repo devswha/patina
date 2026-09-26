@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-import { createCancellationController } from '../../src/cli.js';
+import { createCancellationController } from '../../src/cli/run.js';
 
 test('createCancellationController aborts on first SIGINT and exits 130 on second', () => {
   const processObj = new EventEmitter();

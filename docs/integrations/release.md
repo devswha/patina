@@ -9,8 +9,7 @@ npm publication uses Trusted Publishing (OIDC), verified end-to-end for both
 
 ## Source and web deployment
 
-The npm publication hold ended with the 8.7.0 release: the registry serves
-8.7.1 for both `patina-cli` and `patina-humanizer`. The npm package version
+The npm publication hold ended with the 8.7.0 release. The npm package version
 does not establish which version is deployed on the website; verify the
 production version after each web deployment.
 
@@ -21,9 +20,8 @@ sync with the resulting `main` history and verify the production version and
 rewrite flow after deployment. Production deployments must originate from a
 `main` SHA: let the Vercel Git integration build the merge commit, or run
 `vercel --prod` from a clean `main` checkout. Do not upload from a `dev`
-working tree; the 2026-09-09 exception is recorded in
-[`docs/operations/README.md`](../operations/README.md#p13a-deployment-evidence-read-only-promotion-still-gated)
-and keeps the previous production deployment ID as the rollback target.
+working tree. Keep the previous production deployment ID as the rollback
+target.
 
 Release tags start the npm publication job; push a tag only for an intended
 release. The GitHub Release remains coupled to successful npm publication.
@@ -148,4 +146,14 @@ from that branch (see [docker.md](docker.md)):
 
 ```bash
 gh workflow run release.yml --ref main -f publish=false -f publish_ghcr=true
+```
+
+## Changelog entry
+
+```md
+## X.Y.Z — YYYY-MM-DD
+
+**Short release title.**
+
+Semver rationale: patch | minor | major — explain whether this changes patterns, schemas, CLI behavior, or docs only.
 ```

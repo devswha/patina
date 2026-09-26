@@ -2,19 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { inputError } from '../errors.js';
 import { loadFile, splitFrontmatter } from '../loader.js';
-import { validatePersona } from './schema.js';
-
-const PERSONA_ID_RE = /^[a-z0-9][a-z0-9-]*$/;
-
-function assertPersonaId(id) {
-  if (!PERSONA_ID_RE.test(String(id ?? ''))) {
-    throw inputError(
-      `invalid persona id: ${JSON.stringify(id)}`,
-      'Persona id must match /^[a-z0-9][a-z0-9-]*$/.',
-      'Use a lowercase persona id such as preserve or pragmatic-founder.'
-    );
-  }
-}
+import { assertPersonaId, validatePersona } from './schema.js';
 
 export function safePersonaPath(baseDir, id) {
   const path = resolve(baseDir, `${id}.md`);

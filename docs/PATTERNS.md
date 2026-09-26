@@ -23,18 +23,7 @@ file with the same name. Follow the existing frontmatter format and include
 fire conditions, exclusions, meaning-preservation notes, and before/after examples.
 Keep a separate copy of custom files before reinstalling the CLI.
 
-### Retired community packs
-
-Community-pack support was retired from the source checkout on 2026-09-08.
-The `patina pattern` command no longer installs, lists, or removes packs, and
-the CLI no longer loads `custom/community-packs/`. Existing files there are
-left untouched.
-
-To keep an old pack, review its Markdown files and copy only the patterns you
-want into `custom/patterns/`. Check filenames first: a same-name file overrides
-a built-in pattern or replaces an existing custom file. The old `pack.yaml`
-and `installed.json` files are not used by the custom-pattern loader.
-The separate `patina pack` command for licensed Pro packs remains available.
+The CLI does not load `custom/community-packs/`; to keep a pattern from an old community pack, copy it into `custom/patterns/` (licensed Pro packs still use `patina pack`).
 
 ## Supporting References
 

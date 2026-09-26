@@ -226,8 +226,7 @@ allowed, because LLM output is non-deterministic and may incur provider cost.
 
 `npm run quality:rewrite-ab` compares two rewrite configurations on the same
 fixtures so multi-pass / pipeline questions are answered with data. This is
-packaged, unsupported research. The module remains technically deep-importable
-because the package has no `exports` map, but it is not a product API. The
+unsupported research tooling, not a product API, and it is not published to npm. The
 default comparison is `single` (one-shot rewrite) vs `iterative-baseline` (the
 baseline comparison arm with verification floors for MPS and fidelity).
 
@@ -240,9 +239,9 @@ npm run quality:rewrite-ab -- --json
 For each fixture it produces a rewrite per config, model-grades both
 (before/after AI score, MPS, fidelity via `scoreText`/`scoreMPS`/`scoreFidelity`),
 measures edit churn (word-level change ratio), and picks a per-fixture winner:
-the lowest after-AI-score among configs that meet `verification.mps-floor` and
-`verification.fidelity-floor`, with ties
-broken on lower churn. The summary reports per-config means and head-to-head
+among configs that meet `verification.mps-floor`, `verification.fidelity-floor`
+and (for Korean fixtures) number safety, the one with the lowest Korean
+structure distance, with ties broken on lower churn. The summary reports per-config means and head-to-head
 wins. Like `quality:live` it is LLM-backed and opt-in (non-deterministic, may
 incur cost); the comparison/aggregation core is unit-tested with injected
 producers. Use this to decide whether a multi-pass/multi-agent pipeline earns
@@ -490,7 +489,7 @@ diagnostics and a conservative ko-only composite detector.
 zh/ja now include high-precision AI-lexicon fixtures as well as
 burstiness/MATTR regression coverage.
 
-## AI-tells corpus baseline (Phase A, deterministic, measurement-only)
+## AI-tells corpus baseline (deterministic, measurement-only)
 
 `node scripts/ai-tells-corpus-baseline.mjs [--json] [--no-timestamp] [--strict]`
 
@@ -528,7 +527,7 @@ calls, no API key — CI-safe.
 Gates (non-zero exit on any violation, even under `--quiet`):
 
 - `positive_zero_score_rate` — hard-evidence positives (near-proof markup
-  leakage / structural) whose final score is 0. Must be 0. This catches the
+  leakage) whose final score is 0. Must be 0. This catches the
   regression where a short AI-leaked snippet scored 0 because `skipped=true`
   discarded the hard evidence floor.
 - `false_positive_rate` — clean controls whose final score is > 0 at LLM 0.

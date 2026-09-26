@@ -95,7 +95,7 @@ test('loadInputs in batch mode collects a read error instead of aborting the loo
     writeFileSync(okA, 'A', 'utf8');
     writeFileSync(okB, 'B', 'utf8');
 
-    const inputs = await loadInputs({ files: [okA, missing, okB], batch: true }, null);
+    const inputs = await loadInputs({ files: [okA, missing, okB], batch: true });
 
     // All three files still produce an entry — the bad one did not abort the run.
     assert.equal(inputs.length, 3);
@@ -122,7 +122,7 @@ test('loadInputs in non-batch mode fails fast on the first unreadable file', asy
     writeFileSync(okB, 'B', 'utf8');
 
     await assert.rejects(
-      () => loadInputs({ files: [okA, missing, okB], batch: false }, null),
+      () => loadInputs({ files: [okA, missing, okB], batch: false }),
       (err) => {
         assert.ok(err instanceof PatinaCliError);
         assert.equal(err.exitCode, 2);
@@ -144,7 +144,7 @@ test('a batch read failure counts against the budget and lets readable files pro
     writeFileSync(okB, 'B', 'utf8');
 
     const parsed = { files: [okA, missing, okB], batch: true, maxFailures: 5, maxFailureRate: 1 };
-    const inputs = await loadInputs(parsed, null);
+    const inputs = await loadInputs(parsed);
     const breaker = createBatchCircuitBreaker({ parsed, total: inputs.length });
 
     // Mirror run.js's per-file loop: replay readError as a recorded failure.
@@ -172,7 +172,7 @@ test('a batch read failure trips --max-failures 1 like any other per-file failur
     writeFileSync(okA, 'A', 'utf8');
 
     const parsed = { files: [okA, missing], batch: true, maxFailures: 1 };
-    const inputs = await loadInputs(parsed, null);
+    const inputs = await loadInputs(parsed);
     const breaker = createBatchCircuitBreaker({ parsed, total: inputs.length });
 
     const failed = inputs.find((entry) => entry.readError);

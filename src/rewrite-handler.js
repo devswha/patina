@@ -6,6 +6,7 @@ import { byteLength, QUOTA_REASONS, validateRewriteRequest, WEB_TIERS } from './
 import { extractClientIp } from './rate-limit.js';
 import { extractBearerLicense } from './entitlement.js';
 import { sha256 } from './web-rewrite-receipt.js';
+import { emitTelemetry, startTelemetryClock } from './web-observability.js';
 
 /**
  * Cancellation contract: `runRewrite` receives the raw `req`/`res`. Runtimes
@@ -16,48 +17,28 @@ import { sha256 } from './web-rewrite-receipt.js';
  *
  * @typedef {{method?: string, aborted?: boolean, headers?: Record<string, string|string[]|undefined>, rawHeaders?: string[], body?: unknown, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, [Symbol.asyncIterator]?: () => AsyncIterator<Buffer|string|Uint8Array>}} RewriteReq
  * @typedef {{statusCode?: number, setHeader?: (name: string, value: string) => void, write?: (chunk: string) => void, end?: (body?: string) => void, on?: (event: string, listener: (...args: unknown[]) => void) => unknown, off?: (event: string, listener: (...args: unknown[]) => void) => unknown, writableEnded?: boolean, headersSent?: boolean, destroyed?: boolean, destroy?: () => void}} RewriteRes
- * @typedef {{check(input: {tier: string, ip: string|null, subject?: string, chars?: number, requestId?: string, synthetic?: boolean}): Promise<{allowed: true, tier: string, reservation?: import('./quota-reservation.js').ReservationPlan}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}>, acquireConcurrency?(input: {tier: string, ip: string|null, subject?: string}): Promise<{allowed: true, tier: string, lease: string}|{allowed: false, status: number, reason: string}>, releaseConcurrency?(input: {tier: string, ip: string|null, subject?: string, lease: string}): Promise<void>, settleReservation?(input: {reservation: import('./quota-reservation.js').ReservationPlan, refund: boolean}): Promise<boolean>}} RateLimiter
+ * @typedef {{check(input: {tier: string, ip: string|null, subject?: string, chars?: number, requestId?: string, synthetic?: boolean}): Promise<{allowed: true, tier: string, reservation?: import('./quota-reservation.js').ReservationPlan}|{allowed: false, status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}>, acquireConcurrency(input: {tier: string, ip: string|null, subject?: string}): Promise<{allowed: true, tier: string, lease: string}|{allowed: false, status: number, reason: string}>, releaseConcurrency(input: {tier: string, ip: string|null, subject?: string, lease: string}): Promise<void>, settleReservation?(input: {reservation: import('./quota-reservation.js').ReservationPlan, refund: boolean}): Promise<boolean>}} RateLimiter
  * @typedef {{req: RewriteReq, res: RewriteRes, request: import('./web-rewrite-contract.js').WebRewriteRequest, now: () => number, observe?: Function, beforeResponseEnd?: (outcome?: {ok?: boolean, code?: string}) => Promise<void>}} RewriteRunnerInput
  * @typedef {{validate(input: {licenseKey: string, ip?: string|null}): Promise<{ok: true, subject: string, tier: string, status: string, cache: string}|{ok: false, status: number, reason: string}>}} LicenseValidator
  */
 
-// Must exceed the worst valid contract payload: 2 × 20K CJK characters
-// (~120 KiB), 12 KiB history, and JSON overhead. Field caps remain enforced
-// by validateRewriteRequest; this envelope only bounds abusive requests.
 /**
- * Create the /api/rewrite handler shell. The LLM runner is injected by later phases.
+ * Create the /api/rewrite handler shell around an injected rewrite runner.
+ *
+ * The default `maxBodyBytes` (256 KiB) must exceed the worst valid contract
+ * payload: 2 × 20K CJK characters (~120 KiB), 12 KiB history, and JSON
+ * overhead. Field caps remain enforced by validateRewriteRequest; this
+ * envelope only bounds abusive requests.
  *
  * @param {{rateLimiter: RateLimiter, runRewrite: (input: RewriteRunnerInput) => unknown, env?: Record<string, string|undefined>, now?: () => number, logger?: {error?: (...args: unknown[]) => void}, maxBodyBytes?: number, licenseValidator?: LicenseValidator, observe?: (input: {tier: string, outcome: string, status: number, latencyMs: number, totalTokens?: number, llmCalls?: number}) => unknown}} options
  * @returns {(req: RewriteReq, res: RewriteRes) => Promise<unknown>}
  */
 export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = () => Date.now(), logger = console, maxBodyBytes = 256 * 1024, licenseValidator, observe }) {
   if (typeof runRewrite !== 'function') throw new TypeError('runRewrite must be a function');
-  if (!rateLimiter || typeof rateLimiter.check !== 'function') throw new TypeError('rateLimiter.check must be a function');
-  /**
-   * Closed telemetry is best-effort and must never alter a customer response.
-   * @param {string} tier
-   * @param {string} outcome
-   * @param {number} status
-   * @param {number} startedAt
-   */
-  const observeClosed = (observer, tier, outcome, status, startedAt) => {
-    if (typeof observer !== 'function' || !Number.isFinite(startedAt)) return false;
-    let endedAt;
-    try {
-      endedAt = Number(now());
-    } catch {
-      return false;
-    }
-    if (!Number.isFinite(endedAt)) return false;
-    try {
-      const result = observer({ tier, outcome, status, latencyMs: Math.max(0, endedAt - startedAt) });
-      if (result && typeof /** @type {any} */ (result).catch === 'function') /** @type {Promise<unknown>} */ (result).catch(() => {});
-      return true;
-    } catch {
-      // Observability is strictly nonblocking and exception-isolated.
-      return false;
-    }
-  };
+  if (!rateLimiter || typeof rateLimiter.check !== 'function'
+    || typeof rateLimiter.acquireConcurrency !== 'function' || typeof rateLimiter.releaseConcurrency !== 'function') {
+    throw new TypeError('rateLimiter must implement check, acquireConcurrency and releaseConcurrency');
+  }
   /** @param {string} reason */
   const limiterOutcome = (reason) => reason === QUOTA_REASONS.SERVICE_UNAVAILABLE ? 'service_disabled' : 'quota_denied';
   /** @param {number} status @param {string} reason */
@@ -73,14 +54,12 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
   return async function rewriteHandler(req, res) {
     const synthetic = isTrustedSynthetic(req.headers || {}, env);
     const customerObserve = synthetic ? undefined : observe;
-    let startedAt;
-    if (typeof customerObserve === 'function') {
-      try {
-        startedAt = Number(now());
-      } catch {
-        // A telemetry clock cannot alter a customer response.
-      }
-    }
+    const elapsed = typeof customerObserve === 'function' ? startTelemetryClock(now) : undefined;
+    /** Closed telemetry is best-effort and never alters a customer response. */
+    const observeClosed = (/** @type {string} */ tier, /** @type {string} */ outcome, /** @type {number} */ status) => {
+      const latencyMs = elapsed?.();
+      if (latencyMs !== undefined) emitTelemetry(/** @type {Function} */ (customerObserve), { tier, outcome, status, latencyMs });
+    };
     let clientClosed = req.aborted === true || (res.destroyed === true && !res.writableEnded);
     const isClientClosed = () => clientClosed || req.aborted === true || (res.destroyed === true && !res.writableEnded);
     const onAbort = () => { clientClosed = true; };
@@ -119,12 +98,12 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       let options = {};
       if (bodyTier === WEB_TIERS.PRO) {
         if (Array.isArray(req.rawHeaders) && !hasExactlyOneAuthorizationHeader(req.rawHeaders)) {
-          observeClosed(customerObserve, WEB_TIERS.PRO, 'entitlement_denied', 401, startedAt);
+          observeClosed(WEB_TIERS.PRO, 'entitlement_denied', 401);
           return send(res, 401, { error: QUOTA_REASONS.LICENSE_REQUIRED });
         }
         bearer = extractBearerLicense(req.headers || {});
         if (bearer.ok === false) {
-          observeClosed(customerObserve, WEB_TIERS.PRO, 'entitlement_denied', bearer.status, startedAt);
+          observeClosed(WEB_TIERS.PRO, 'entitlement_denied', bearer.status);
           return send(res, bearer.status, { error: bearer.reason });
         }
         options = { proLicenseSource: 'authorization-bearer' };
@@ -137,7 +116,7 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
           fail.status === 503
           && (bodyTier === WEB_TIERS.FREE || bodyTier === WEB_TIERS.BYOK || bodyTier === WEB_TIERS.PRO)
         ) {
-          observeClosed(customerObserve, bodyTier, 'service_disabled', 503, startedAt);
+          observeClosed(bodyTier, 'service_disabled', 503);
         }
         return send(res, fail.status, { error: fail.error });
       }
@@ -151,7 +130,7 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       const tier = typeof request.tier === 'string' ? request.tier : '';
       const ip = extractClientIp(req.headers || {});
 
-      // Pro tier: turn the Bearer license into an HMAC subject via LS validate-only.
+      // Pro tier: turn the Bearer license into an HMAC subject via Polar license validation.
       // The subject (never the raw license) is what meters pro concurrency/quota.
       // The client IP goes along so the validator can admit per caller before it
       // spends the shared provider budget on an uncached key; it is HMAC'd there
@@ -160,19 +139,19 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       let subject;
       if (tier === WEB_TIERS.PRO) {
         if (!licenseValidator || typeof licenseValidator.validate !== 'function') {
-          observeClosed(customerObserve, tier, 'entitlement_unavailable', 503, startedAt);
+          observeClosed(tier, 'entitlement_unavailable', 503);
           return send(res, 503, { error: QUOTA_REASONS.LICENSE_UNAVAILABLE });
         }
         let ent;
         try {
           ent = await licenseValidator.validate({ licenseKey: /** @type {{ok: true, license: string}} */ (bearer).license, ip });
         } catch (err) {
-          observeClosed(customerObserve, tier, 'entitlement_unavailable', 500, startedAt);
+          observeClosed(tier, 'entitlement_unavailable', 500);
           throw err;
         }
         if (!ent.ok) {
           const denied = /** @type {{status: number, reason: string}} */ (ent);
-          observeClosed(customerObserve, tier, entitlementOutcome(denied.status, denied.reason), denied.status, startedAt);
+          observeClosed(tier, entitlementOutcome(denied.status, denied.reason), denied.status);
           return send(res, denied.status, { error: denied.reason });
         }
         subject = ent.subject;
@@ -188,49 +167,35 @@ export function createRewriteHandler({ rateLimiter, runRewrite, env = {}, now = 
       // daily/concurrency caps; pass the request's input length so the limiter
       // can accumulate it. Free/BYOK ignore chars; both meter requests by IP.
       const chars = tier === WEB_TIERS.PRO && typeof request.text === 'string' ? request.text.length : 0;
-      // The monitor's paid probe runs ~24x a day against a monthly request
-      // allowance, so it used to exhaust its own seat within days and then
-      // report the resulting 429 as a pro-path failure. It is exempted from
-      // MONTHLY metering only, and only when BOTH server-side facts hold: the
-      // trusted observer marker (a header the boundary strips, never a body
-      // field) and a license the validator accepted into a subject. Daily cap,
+      // The monitor's paid probe runs ~24x a day, which would exhaust a seat's
+      // monthly request allowance within days. It is exempted from MONTHLY
+      // metering only, and only when BOTH server-side facts hold: the trusted
+      // observer marker (a header the boundary strips, never a body field) and
+      // a license the validator accepted into a subject. Daily cap,
       // concurrency lease and license validation stay fully in force.
       const trustedSyntheticProbe = synthetic && tier === WEB_TIERS.PRO && typeof subject === 'string' && subject !== '';
 
       /** @param {{status: number, reason: string, remainingMonthlyChars?: number, limitMonthlyChars?: number}} denied */
       const sendQuotaDenied = (denied) => {
-        observeClosed(customerObserve, tier, limiterOutcome(denied.reason), denied.status, startedAt);
+        observeClosed(tier, limiterOutcome(denied.reason), denied.status);
         const body = /** @type {Record<string, unknown>} */ ({ error: denied.reason });
         if (typeof denied.remainingMonthlyChars === 'number') body.remainingMonthlyChars = denied.remainingMonthlyChars;
         if (typeof denied.limitMonthlyChars === 'number') body.limitMonthlyChars = denied.limitMonthlyChars;
         return send(res, denied.status, body);
       };
 
-      const hasAcquire = typeof rateLimiter.acquireConcurrency === 'function';
-      const hasRelease = typeof rateLimiter.releaseConcurrency === 'function';
-      if (hasAcquire !== hasRelease) {
-        observeClosed(customerObserve, tier, 'quota_denied', 503, startedAt);
-        return send(res, 503, { error: QUOTA_REASONS.STORAGE_UNAVAILABLE });
-      }
       if (isClientClosed()) return undefined;
-      if (!hasAcquire) {
-        const quota = await rateLimiter.check({ tier, ip, subject, chars, ...(trustedSyntheticProbe ? { synthetic: true } : {}) });
-        if (!quota.allowed) return sendQuotaDenied(/** @type {{status: number, reason: string}} */ (quota));
-        // await so a runner rejection is caught by the redacted 500 handler below.
-        if (isClientClosed()) return undefined;
-        return await runRewrite({ req: runnerReq, res, request, now, observe: customerObserve });
-      }
 
       // Reserve concurrency before allowance. Pro uses an atomic charge receipt
       // so a rejected server rewrite can restore usage exactly once.
       const concurrency = await rateLimiter.acquireConcurrency({ tier, ip, subject });
       if (!concurrency.allowed) {
         const denied = /** @type {{status: number, reason: string}} */ (concurrency);
-        observeClosed(customerObserve, tier, limiterOutcome(denied.reason), denied.status, startedAt);
+        observeClosed(tier, limiterOutcome(denied.reason), denied.status);
         return send(res, denied.status, { error: denied.reason });
       }
       if (typeof concurrency.lease !== 'string' || concurrency.lease === '') {
-        observeClosed(customerObserve, tier, 'quota_denied', 503, startedAt);
+        observeClosed(tier, 'quota_denied', 503);
         return send(res, 503, { error: QUOTA_REASONS.STORAGE_UNAVAILABLE });
       }
 
@@ -358,7 +323,7 @@ function setCorsHeaders(res) {
  * @param {unknown} obj
  * @returns {undefined}
  */
-export function send(res, status, obj) {
+function send(res, status, obj) {
   // If the response is already committed (an exception escaped after a stream
   // started writing frames), re-setting status/headers would throw
   // ERR_HTTP_HEADERS_SENT inside the caller's catch and reject the handler

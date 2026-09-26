@@ -61,11 +61,6 @@ Monthly request, character, and processing-attempt limits have separate messages
 and do not promise a reset date or offer immediate replay. See the
 [Hosted API contract](../docs/HTTP-API.md) for limits and authentication.
 
-The subscription-management link is hidden unless the public launch config
-explicitly supplies a safe Polar `portalUrl`. No URL is derived from checkout.
-The current launch-config generator does not emit that optional field, so the
-public documentation link remains the available recovery reference.
-
 ## Local preview
 
 The static entry (`index.html`) loads `/chatgpt.css` and `/chatgpt.js` via
@@ -144,24 +139,9 @@ Pro env (see `.env.example` for the full annotated list):
 Validate-only means revocation propagates within the positive-cache TTL (default
 5 min); a hard kill can shorten it by lowering `PATINA_POLAR_CACHE_TTL_MS`.
 
-## Provider-confirmed purchase conversions
-
-Polar sends `order.paid` deliveries to `/api/polar-webhook`. Configure the
-server-only `POLAR_WEBHOOK_SECRET`, `POLAR_ORGANIZATION_ID`, and
-`POLAR_PRO_PRODUCT_ID`, plus the dedicated
-`PATINA_OBSERVABILITY_REST_API_URL` / `PATINA_OBSERVABILITY_REST_API_TOKEN`.
-The endpoint verifies Polar's Standard Webhooks signature before accepting a
-delivery and records only aggregate, provider-confirmed initial paid conversions
-for that exact organization and product. It excludes renewals and subscription
-updates; the browser cannot emit this metric.
-
 ## Verification
 
 ```bash
 node --test tests/unit/web-rewrite-contract.test.js tests/unit/web-deploy-invariants.test.js
 npm run lint:syntax
 ```
-
-## See also
-
-- [`AI-SLOP-TAXONOMY.md`](AI-SLOP-TAXONOMY.md) — the negative dictionary of AI-looking UI clichés that `DESIGN.md` is written against.

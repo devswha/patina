@@ -15,7 +15,7 @@ const EN_FIXTURE = '<?xml version="1.0"?>\n<xliff version="1.2"><file target-lan
   + '<target state="final">This translated sentence is long enough to count as prose for the humanizer.</target>'
   + '</trans-unit></body></file></xliff>';
 
-const stubLogger = () => ({ info() {}, warn() {}, error() {}, closeProgress() {} });
+const stubLogger = () => ({ info() {}, warn() {}, error() {} });
 const makeCtx = () => ({ config: { language: 'ko', documentType: 'default' }, repoRoot: process.cwd(), voice: {}, scoring: {}, backends: [], resolved: { model: 'm' }, promptMode: 'strict', timeoutMs: 1000, providerName: 'deepseek' });
 const fakeRewrite = async ({ core }) => core + ' [H]';
 const fakeVerify = async ({ candidate }) => ({ verified: true, text: candidate });
@@ -100,7 +100,7 @@ test('humanize: dry-run makes zero calls and returns byte-identical xml', async 
   assert.equal(r.report.llmCalls, 0);
 });
 
-test('humanize: dedup rewrites each unique key once and applies to ALL duplicates (AC6)', async () => {
+test('humanize: dedup rewrites each unique key once and applies to ALL duplicates', async () => {
   let rewriteCalls = 0;
   const r = await humanizeXliffDocument({
     xml: FIXTURE,
@@ -116,7 +116,7 @@ test('humanize: dedup rewrites each unique key once and applies to ALL duplicate
   assert.equal(occurrences, 3);
 });
 
-test('humanize: verify floor miss keeps the original bytes (AC5, fail-closed)', async () => {
+test('humanize: verify floor miss keeps the original bytes (fail-closed)', async () => {
   const r = await humanizeXliffDocument({
     xml: FIXTURE,
     rewriteSegment: async ({ core }) => core + ' CHANGED',
@@ -127,7 +127,7 @@ test('humanize: verify floor miss keeps the original bytes (AC5, fail-closed)', 
   for (const s of Object.values(r.report.perKey)) assert.equal(s.status, 'floor_failed');
 });
 
-test('humanize: verified-but-identical rewrite is a no-op (byte-identical, AC7)', async () => {
+test('humanize: verified-but-identical rewrite is a no-op (byte-identical)', async () => {
   const r = await humanizeXliffDocument({
     xml: FIXTURE,
     rewriteSegment: async ({ core }) => core, // returns the same core
@@ -256,4 +256,116 @@ test('CLI: --xliff --dry-run on the fixture succeeds with zero calls/writes (rea
   assert.equal(json.targetLang, 'ko');
   assert.equal(json.selectedCount, 3);
   assert.equal(json.uniqueCount, 2);
+});
+
+const KO_A = '첫 번째 문장은 사람이 읽기 좋게 다듬을 수 있는 충분히 긴 번역문입니다.';
+const KO_B = '두 번째 문장도 검증 경계값을 확인하기에 충분한 한국어 번역문입니다.';
+const KO_C = '세 번째 문장은 변경하지 않는 경로를 확인하기 위해 준비한 문장입니다.';
+const xml = (units) => `<xliff version="1.2"><file target-language="ko"><body>${units}</body></file></xliff>`;
+const unit = (id, target) => `<trans-unit id="${id}"><source>Source text ${id}</source><target state="translated">${target}</target></trans-unit>`;
+
+test('parseArgs/validateXliffRequest: fail closed for XLIFF-only flags and does not interfere with normal score', () => {
+  for (const argv of [
+    ['--xliff', '--audit', 'f.xliff'],
+    ['--xliff', '--verify', 'f.xliff'],
+    ['--xliff', '--register', 'casual', 'f.xliff'],
+    ['--xliff', '--persona', 'x', 'f.xliff'],
+    ['--xliff', '--jargon', 'remove', 'f.xliff'],
+    ['--xliff', '--score', 'f.xliff'],
+    ['--xliff', '--preview', 'f.xliff'],
+  ]) {
+    assert.throws(() => validateXliffRequest(parseArgs(argv)), /cannot be combined with --xliff/);
+  }
+
+  assert.throws(() => validateXliffRequest(parseArgs(['--xliff'])), /requires file paths, not stdin/);
+  assert.throws(() => validateXliffRequest(parseArgs(['--xliff', 'a.xliff', 'b.xliff'])), /requires --batch/);
+  assert.throws(() => validateXliffRequest(parseArgs(['--dry-run', 'a.md'])), /--dry-run requires --xliff/);
+  assert.throws(() => validateXliffRequest(parseArgs(['--max-segments', '5', 'a.md'])), /--max-segments requires --xliff/);
+
+  for (const argv of [
+    ['--xliff', '--max-segments', '0', 'f.xliff'],
+    ['--xliff', '--max-segments', '-1', 'f.xliff'],
+    ['--xliff', '--max-segments', 'NaN', 'f.xliff'],
+  ]) {
+    assert.throws(() => parseArgs(argv), /positive integer/);
+  }
+
+  const normal = parseArgs(['--score']);
+  assert.equal(normal.score, true);
+  assert.doesNotThrow(() => validateXliffRequest(normal));
+});
+
+test('humanize orchestration: mixed rewritten, floor-failed, and unchanged keys preserve byte integrity', async () => {
+  const doc = xml(unit('rewrite', KO_A) + unit('floor', KO_B) + unit('unchanged', KO_C));
+  const originalFloor = `<target state="translated">${KO_B}</target>`;
+  const originalUnchanged = `<target state="translated">${KO_C}</target>`;
+
+  const result = await humanizeXliffDocument({
+    xml: doc,
+    rewriteSegment: async ({ core }) => {
+      if (core === KO_A) return `${core} 자연스럽게`;
+      if (core === KO_B) return `${core} 망가짐`;
+      return core;
+    },
+    verifySegment: async ({ core, candidate }) => {
+      if (core === KO_B) return { verified: false, text: candidate, mps: 20, fidelity: 30 };
+      return { verified: true, text: candidate };
+    },
+  });
+
+  assert.equal(result.report.changedUniqueKeys, 1);
+  assert.equal(result.report.changedSegments, 1);
+  assert.equal(result.outputXml.includes('자연스럽게'), true);
+  assert.equal(result.outputXml.includes(originalFloor), true);
+  assert.equal(result.outputXml.includes(originalUnchanged), true);
+  assert.equal(result.outputXml.includes('망가짐'), false);
+  assert.equal(result.report.perKey[KO_B].status, 'floor_failed');
+  assert.equal(result.report.perKey[KO_C].status, 'unchanged');
+});
+
+test('humanize orchestration: breaker stop throws typed breaker error and leaves caller without partial output', async () => {
+  const failures = [];
+  const breakerError = new Error('breaker open');
+  breakerError.code = 'breaker_open';
+  const breaker = {
+    recordSuccess() {},
+    recordFailure(failure) { failures.push(failure); },
+    shouldStop() { return true; },
+    toError() { return breakerError; },
+  };
+
+  await assert.rejects(
+    () => humanizeXliffDocument({
+      xml: FIXTURE,
+      breaker,
+      rewriteSegment: async () => { throw new Error('backend down'); },
+      verifySegment: async ({ candidate }) => ({ verified: true, text: candidate }),
+    }),
+    (err) => err.code === 'breaker_open'
+  );
+  assert.equal(failures.length, 1);
+});
+
+test('humanize orchestration: cap boundary allows exactly capped unique count and rejects one below before calls', async () => {
+  let calls = 0;
+  const ok = await humanizeXliffDocument({
+    xml: FIXTURE,
+    cap: 2,
+    rewriteSegment: async ({ core }) => { calls++; return `${core} 통과`; },
+    verifySegment: async ({ candidate }) => ({ verified: true, text: candidate }),
+  });
+  assert.equal(ok.report.changedUniqueKeys, 2);
+  assert.equal(calls, 2);
+
+  calls = 0;
+  await assert.rejects(
+    () => humanizeXliffDocument({
+      xml: FIXTURE,
+      cap: 1,
+      rewriteSegment: async ({ core }) => { calls++; return `${core} 안됨`; },
+      verifySegment: async ({ candidate }) => ({ verified: true, text: candidate }),
+    }),
+    (err) => err.code === 'xliff_cap_exceeded'
+  );
+  assert.equal(calls, 0);
 });

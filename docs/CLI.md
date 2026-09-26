@@ -10,7 +10,6 @@ subcommands each have their own reference:
 | Command | Reference |
 |---|---|
 | `patina inspect [file]` | [editor inspection](integrations/editor-inspection.md) |
-| `patina aside options|rewrite` | [aside](integrations/aside.md) |
 | `patina pack list|install` | [pro packs](PRO-PACKS.md) |
 | `patina persona new|list|show|edit|rm` | [`--persona`](#optional-voice-persona---persona) |
 | `patina auth status|login`, `patina doctor` | [authentication](AUTHENTICATION.md) |
@@ -126,14 +125,6 @@ JSON without `--verify` has no `verification` field. Automation must check exit
 0, `verification.verified === true`, finite scores meeting its required
 floors, and `verification.outputHash` matching the exact `output` bytes.
 A nonempty `output` or the envelope's legacy `mps` field is not proof.
-
-The Aside adapter requires matching output hashes, valid verification metadata,
-and at least 70 for both scores. It retains stricter configured floors. Its optional programmatic
-`overrides` object uses the saved settings field names, validates the merged
-selection, and applies it to one rewrite. `settings` and `settingsHash` identify
-the saved preferences; `effectiveOptions` records the merged invocation and
-resolved language. Overrides do not save preferences or accept credentials,
-base URLs, or verification thresholds.
 
 The Node CLI keeps Persona quality and verification separate. `--verify` uses
 `verification.{mps-floor,fidelity-floor}`; `personas.thresholds` contains only

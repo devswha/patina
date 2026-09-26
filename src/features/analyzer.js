@@ -1,4 +1,3 @@
-// patina-lane: A (deterministic substrate) — LLM-free. See docs/ARCHITECTURE.md.
 // Top-level analyzer: runs the deterministic stylometry + lexicon signals
 // described in core/stylometry.md and returns a per-paragraph result. This
 // is the in-tree port of the algorithm previously delegated to the LLM via
@@ -34,7 +33,6 @@ import {
   isThematicBreakOnly,
 } from './discourse-tells.js';
 import { detectTranslationese } from './translationese.js';
-import { structuralModelVerdict } from './structural-classifier.js';
 import { detectEnglishShortFormTells } from './short-form.js';
 
 export function analyzeText(text, opts = {}) {
@@ -50,9 +48,7 @@ export function analyzeText(text, opts = {}) {
     lexiconDensityThreshold = DEFAULT_LEXICON_DENSITY_THRESHOLD,
     lexiconMinHotMatches = DEFAULT_LEXICON_MIN_HOT_MATCHES,
     lexicon: providedLexicon,
-    structuralModel = null,
     documentType = 'default',
-    shortFormLimits,
   } = opts;
 
   // Normalize to NFC at the boundary so downstream tokenization and lexicon
@@ -78,18 +74,13 @@ export function analyzeText(text, opts = {}) {
   // constructions appear in good Korean too; gating hot would regress FP).
   const translationese = detectTranslationese(normalized, { lang });
   const koPostEditese = koreanPostEditeseFeatures(normalized, { lang });
-  const structuralClassifier = structuralModelVerdict(normalized, { lang, model: structuralModel });
   const lexicon = providedLexicon ?? { strict: [], phrases: [] };
 
   // Short-form social/marketing punctuation tell: em-dash count/density on
   // short English input. Advisory + Document-Type-gated — it never enters the
   // `hot` verdict below (that would let one dash in one paragraph read as
   // 100). The scorer routes it through a small calibrated evidence floor.
-  const shortForm = detectEnglishShortFormTells(normalized, {
-    lang,
-    documentType,
-    limits: shortFormLimits,
-  });
+  const shortForm = detectEnglishShortFormTells(normalized, { lang, documentType });
 
   // §8 skip conditions are advisory only — production callers (SKILL.md 4.6/4.7)
   // can suppress meta-block emission, but the benchmark wants raw signals on
@@ -193,7 +184,6 @@ export function analyzeText(text, opts = {}) {
     // gate fires, at least one paragraph carries the tell (candor regexes cannot
     // span paragraph breaks; thematic breaks are whole lines), so the
     // per-paragraph attribution above already makes some paragraph hot.
-    hot: markupLeakage.leaked || structuralClassifier.hot === true || analyzed.some((p) => p.hot),
-    structuralClassifier,
+    hot: markupLeakage.leaked || analyzed.some((p) => p.hot),
   };
 }

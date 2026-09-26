@@ -77,7 +77,7 @@ test('localized READMEs have no broken local image references', () => {
 });
 
 test('README demo GIFs stay small enough for GitHub rendering', () => {
-  const files = ['assets/demo/patina-demo-live-en.gif', 'assets/demo/patina-playground-en.gif', 'assets/demo/patina-preview-en.gif', 'assets/demo/patina-preview-ko.gif'];
+  const files = ['assets/demo/patina-demo-live-en.gif', 'assets/demo/patina-playground-en.gif'];
   for (const file of files) {
     const size = statSync(resolve(REPO_ROOT, file)).size;
     assert.ok(size > 0, `${file}: empty asset`);

@@ -1,10 +1,9 @@
 # Correction: the deepseek-0731 failures were a measurement artifact (2026-08-03)
 
-> Corrects the verdict in
-> [`serving-engine-deepseek-0731-20260803.md`](serving-engine-deepseek-0731-20260803.md)
-> and its root-cause addendum. Those documents stand as history; this one
-> supersedes their conclusions. Pattern note: this is the same failure class as
-> the July register-failure saga — the apparatus, not the engine.
+> Corrects the verdict of the first 2026-08-03 deepseek-0731 run and its
+> root-cause addendum; this record supersedes their conclusions. Pattern
+> note: this is the same failure class as the July register-failure saga —
+> the apparatus, not the engine.
 
 ## What was wrong with the first run
 

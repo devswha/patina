@@ -115,7 +115,7 @@ export function createLaunchConfigForTest(env, bindings, options) {
 }
 
 function render(config) {
-  return `const launchConfig = Object.freeze(${JSON.stringify(config, null, 2)});\n\nexport { launchConfig };\nexport default launchConfig;\n`;
+  return `const launchConfig = Object.freeze(${JSON.stringify(config, null, 2)});\n\nexport default launchConfig;\n`;
 }
 
 export function writeLaunchConfig(config, outputPath = OUTPUT_PATH) {

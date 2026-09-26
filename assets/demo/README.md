@@ -17,13 +17,10 @@ Recorded assets:
   - expected visual contract: English UI ("Make it sound human"), Free mode nav, the 30-templates fact preserved in the rewrite, MPS 100 / Fidelity 75 badges, hot-paragraph ratio 100 → 0.
   - rendered at 1640px wide, 5 frames, 256-color shared palette; keep under 1 MB.
 - `patina-playground-en.png` — expanded-result still used where PNG is required.
-- `patina-preview-en.gif` — historical CLI `--preview` animation, formerly used by the READMEs.
+- `patina-preview-en.png` — still of the historical CLI `--preview` page (Rewritten view), used for directory submissions that require a PNG.
   - source: a styled local HTML page with Notion-template-pack prose.
   - generated with: `node bin/patina.js --preview --lang en --document-type marketing --backend codex-cli <sample>.html`
-  - captured views: Rewritten → Diff → Original → Both → Diff.
-  - expected visual contract: page layout stays fixed; prose blocks are numbered; the bar shows `4 OF 5 BLOCKS REWRITTEN` and `SCORE 60 → 0`; Diff view uses red strikethrough removals and green insertions.
-  - size target: keep the GIF under 10 MB so GitHub renders it reliably; current target is under 1 MB.
-- `patina-preview-en.png` — first-frame still used for directory submission previews that require PNG.
+  - visual contract: prose blocks are numbered; the bar shows `4 OF 5 BLOCKS REWRITTEN` and `SCORE 60 → 0`.
 
 Requirements for new runtime recordings:
 
@@ -50,4 +47,4 @@ node bin/patina.js --preview --lang en --document-type marketing --backend codex
 4. Capture the first viewport in the four view states: Rewritten, Original, Both, Diff.
 5. Assemble a compact GIF from those captures.
 
-The checked-in asset was rendered at 960×617 with five frames and a 128-color palette.
+The checked-in still is 960×617.

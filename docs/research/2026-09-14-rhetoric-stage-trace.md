@@ -2,7 +2,7 @@
 
 Status: static / offline trace only. No product prompt, threshold, or version change.
 Inspected tree: `bot/rhetoric-stage-trace` @ `a9b2c6483d3f553ae70a1b3b08c09d2428fdf2f7` (`origin/dev`).
-Plan source: PLAN.md v2 in the sibling checkout `/home/devswha/workspace/patina/PLAN.md` (read-only, untracked there; not copied or committed here).
+Plan source (PLAN v2): the v2 rewrite-quality plan, archived as [`rewrite-quality-plan-v2-20260909.md`](rewrite-quality-plan-v2-20260909.md).
 
 This note answers PLAN v2 §4 before any H-RHETORIC experiment: where would a leftover like the PLAN §2.3 synthetic adverb survive on the current rewrite path, and do existing tools already record stage outputs?
 
@@ -25,10 +25,10 @@ Evidence is insufficient to name a single observed failure stage. PLAN v2 §4: i
 
 ### Run (deterministic / offline)
 
-- Read PLAN.md v2 (sibling path, read-only).
+- Read PLAN v2 (read-only).
 - Read `src/cli/run.js`, `src/cli/args.js`, `src/cli/score-gate.js`, `src/prompt-builder.js`, `src/verify.js`, `src/output.js`, `src/scoring.js` (MPS/fidelity prompts), `src/logger.js`, `src/backends/contract.js`, `.patina.default.yaml`.
 - Repo-wide search: the syllable `폭발` does not appear in tracked `patterns/`, `lexicon/`, `core/`, `document-types/`, or `personas/`.
-- Offline `buildPrompt` + `analyzeText` + `scoreDeterministicSignals` + `cleanRewriteOutput` + `droppedNumbers` against a **synthetic** PLAN §2.3 sentence. Worktree has no `node_modules`; the same SHA was imported from `/home/devswha/workspace/patina` with default-config snapshot only (`loadConfig(..., { snapshotPath: .patina.default.yaml })`). No user `.patina.yaml` overlay. No model call.
+- Offline `buildPrompt` + `analyzeText` + `scoreDeterministicSignals` + `cleanRewriteOutput` + `droppedNumbers` against a **synthetic** PLAN §2.3 sentence. Worktree has no `node_modules`; the same SHA was imported from the main checkout with default-config snapshot only (`loadConfig(..., { snapshotPath: .patina.default.yaml })`). No user `.patina.yaml` overlay. No model call.
 - Binary presence check: `claude`, `codex`, `gemini`, `kimi` are on `PATH`. Home dirs `~/.claude`, `~/.codex`, `~/.gemini` exist. `PATINA_API_KEY` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` were unset in this shell.
 
 ### Not run

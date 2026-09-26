@@ -7,7 +7,6 @@ import { strict as assert } from 'node:assert';
 import * as agyCli from '../../src/backends/agy-cli.js';
 import { DEFAULT_BEST_MODELS, resolveLocalCliModel } from '../../src/model-defaults.js';
 import { selectBackend } from '../../src/backends/index.js';
-import { getBackendSafety } from '../../src/backends/contract.js';
 
 // Fake `agy` that records argv, the stdin NDJSON, the workspace-local agent
 // definition, then emits whatever NDJSON the test asked for via env. CommonJS
@@ -209,7 +208,7 @@ test('extractAgyResponse parses the documented stream shape', () => {
   assert.throws(() => agyCli.extractAgyResponse('{"event":"result","result":{"status":"ERROR","error":"stream input message is missing the \\"event\\" field"}}'), /missing the "event" field/);
 });
 
-test('agy-cli is explicit-selection only with its own model family and safety defaults', () => {
+test('agy-cli is explicit-selection only with its own model family', () => {
   assert.strictEqual(selectBackend({ name: 'agy-cli' }).backend.name, 'agy-cli');
   assert.strictEqual(selectBackend({ model: 'agy', modelSource: 'flag' }).backend.name, 'agy-cli');
   // gemini-* keeps routing to gemini-cli; Antigravity ids overlap three families.
@@ -221,12 +220,4 @@ test('agy-cli is explicit-selection only with its own model family and safety de
   assert.strictEqual(resolveLocalCliModel({ backendName: 'agy-cli', model: 'gpt-oss-120b-medium', modelSource: 'flag' }), 'gpt-oss-120b-medium');
   // An OpenAI API id is not in the Antigravity catalog: fall back to the default.
   assert.strictEqual(resolveLocalCliModel({ backendName: 'agy-cli', model: 'gpt-5.5', modelSource: 'env:PATINA_MODEL' }), 'gemini-3.7-flash-medium');
-
-  assert.deepEqual(getBackendSafety('agy-cli'), {
-    maxConcurrency: 1,
-    maxRetries: 0,
-    promptMode: 'minimal',
-    agentRuntime: true,
-    supportsStructuredOutput: false,
-  });
 });

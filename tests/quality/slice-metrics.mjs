@@ -1,4 +1,4 @@
-// Additive slice aggregation for the deterministic benchmark (B2).
+// Additive slice aggregation for the deterministic benchmark.
 //
 // Groups the per-fixture confusion outcomes by metadata dimension and reports
 // counts + accuracy/precision/recall/F1, or an explicit insufficient-data state

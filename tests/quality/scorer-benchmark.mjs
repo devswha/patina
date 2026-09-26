@@ -37,9 +37,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const RESULTS_PATH = resolve(__dirname, 'scorer-results.json');
 
 // Fixture classes:
-//   hard-evidence-positive  near-proof deterministic evidence (markup leakage /
-//                           structural). Final must stay >= evidenceFloor even
-//                           when the LLM says 0 — short OR long.
+//   hard-evidence-positive  near-proof deterministic evidence (markup leakage).
+//                           Final must stay >= evidenceFloor even when the LLM
+//                           says 0 — short OR long.
 //   clean-control           ordinary human prose, no hard floor. Final must be 0
 //                           at LLM 0 (the deterministic layer must not invent a
 //                           score; the LLM owns the verdict).

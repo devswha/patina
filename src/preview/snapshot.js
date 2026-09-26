@@ -1,11 +1,9 @@
-import { htmlEscape } from '../browser-diff.js';
-import { fetchCappedBytes, readResponseBytesCapped } from '../ocr.js';
+import { fetchCappedBytes, fetchFollowingGuardedRedirects, readResponseBytesCapped } from '../capped-fetch.js';
 import { isSubresourceFetchAllowed } from '../security.js';
-import { stripActiveContent, fromCodePointSafe } from './dom.js';
+import { stripActiveContent, fromCodePointSafe, htmlEscape } from './dom.js';
 
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 const DEFAULT_FETCH_TIMEOUT_MS = 30000;
-const MAX_PAGE_REDIRECTS = 5;
 
 export async function fetchPreviewPage(url, options = {}) {
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -23,34 +21,18 @@ export async function fetchPreviewPage(url, options = {}) {
   }
 
   try {
-    // Follow redirects manually so every hop is SSRF-guarded. The user-typed
-    // URL is trusted (it may legitimately point at a localhost dev server),
-    // but redirect Location headers are server-controlled content: a hostile
-    // public page must not be able to 30x the preview into cloud metadata or
-    // an internal host — especially since the final hop becomes baseUrl,
-    // which the subresource guard then treats as "the page's own host"
-    // (same containment rule as fetchCappedBytes in ocr.js).
-    let current = url;
-    let response;
-    for (let hop = 0; ; hop++) {
-      response = await fetchImpl(current, {
-        signal: controller.signal,
-        redirect: 'manual',
-        headers: { accept: 'text/html,application/xhtml+xml' },
-      });
-      const location = response.status >= 300 && response.status < 400
-        ? response.headers.get('location')
-        : null;
-      if (!location) break;
-      if (hop >= MAX_PAGE_REDIRECTS) {
-        throw new Error('the page redirected too many times');
-      }
-      const next = new URL(location, current).href;
-      if (!(await isSubresourceFetchAllowed(next, { baseUrl: url, lookupImpl }))) {
-        throw new Error('the page redirected to a private/internal address');
-      }
-      current = next;
-    }
+    // The user-typed URL is trusted (it may legitimately point at a localhost
+    // dev server), but every redirect hop is SSRF-guarded: a hostile public
+    // page must not be able to 30x the preview into cloud metadata or an
+    // internal host, especially since the final hop becomes baseUrl, which the
+    // subresource guard then treats as "the page's own host".
+    const { response, url: current } = await fetchFollowingGuardedRedirects(fetchImpl, url, {
+      signal: controller.signal,
+      headers: { accept: 'text/html,application/xhtml+xml' },
+      guardHop: (next) => isSubresourceFetchAllowed(next, { baseUrl: url, lookupImpl }),
+      tooManyMessage: 'the page redirected too many times',
+      blockedMessage: 'the page redirected to a private/internal address',
+    });
     if (!response.ok) {
       throw new Error(`the page returned HTTP ${response.status}`);
     }
@@ -406,8 +388,6 @@ function decodeHtmlEntities(value) {
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/gi, "'")
     .replace(/&amp;/gi, '&');
 }
 

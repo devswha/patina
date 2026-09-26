@@ -6,7 +6,9 @@ import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
 import { loadWebConfig, resolveBundleRoot } from '../../src/web-config.js';
-import { buildWebRewritePrompt, loadWebAssets, runWebRewrite } from '../../src/web-rewrite.js';
+import { buildWebRewritePrompt, loadWebAssets } from '../../src/web-rewrite.js';
+import { runWebRewriteStream } from '../../src/web-rewrite-stream.js';
+import { mpsResult, fidelityResult } from '../fixtures/verification-results.js';
 
 const repoRoot = resolveBundleRoot();
 const INPUT_DATA_FENCE = '⟦⟦⟦PATINA_INPUT_DATA⟧⟧⟧';
@@ -55,6 +57,14 @@ function countOccurrences(haystack, needle) {
   return haystack.split(needle).length - 1;
 }
 
+function stubScorers() {
+  return {
+    scoreMPS: async () => mpsResult(95),
+    scoreFidelity: async () => fidelityResult(11),
+    scoreDeterministicSignals: () => ({}),
+  };
+}
+
 test('redteam ambient config leak: loadWebConfig ignores cwd and HOME poison files', () => {
   const tempRoot = mkdtempSync(join(tmpdir(), 'patina-web-config-redteam-'));
   const cwdPoison = join(tempRoot, '.patina.yaml');
@@ -98,19 +108,23 @@ test('redteam asset fail-closed: missing language/Document Type throw typed erro
   );
 
   let calls = 0;
+  const frames = [];
   await assert.rejects(
-    () => runWebRewrite({
+    () => runWebRewriteStream({
       request: baseRequest('xx'),
       config: configFor('xx'),
       repoRoot,
-      callLLM: async () => {
+      callLLMStream: async () => {
         calls += 1;
-        return 'should not be called';
+        return { text: 'should not be called' };
       },
+      scoreFns: stubScorers(),
+      emit: (frame) => frames.push(frame),
     }),
     (/** @type {any} */ err) => err?.name === 'PatinaCliError' && /pattern assets/.test(err.message),
   );
-  assert.equal(calls, 0, 'runWebRewrite must not call LLM when assets are missing');
+  assert.equal(calls, 0, 'the stream must not call the LLM when assets are missing');
+  assert.deepEqual(frames, [], 'the stream must not start when assets are missing');
 });
 
 test('redteam prompt injection via first-turn request.text remains fenced data', () => {
@@ -232,7 +246,7 @@ test('redteam cache isolation: language/Document Type keys isolate assets and sa
   assert.equal(skippedSameKey, koAssets, 'known nuance: cache key is language::Document Type, not skip-patterns config');
 });
 
-test('redteam provider/transport forwarding: BYOK credentials and cancellation controls reach callLLM', async () => {
+test('redteam provider/transport forwarding: BYOK credentials reach the rewrite stream and both scorers', async () => {
   const controller = new AbortController();
   const calls = [];
   const request = baseRequest('en', {
@@ -241,46 +255,51 @@ test('redteam provider/transport forwarding: BYOK credentials and cancellation c
     model: 'provider/model-redteam',
     provider: 'openrouter',
   });
-  const result = await runWebRewrite({
+  const scorer = (stage, result) => async (options) => {
+    calls.push({ stage, ...options });
+    return result;
+  };
+  const result = await runWebRewriteStream({
     request,
     config: configFor('en'),
     repoRoot,
     signal: controller.signal,
     timeout: 9876,
-    callLLM: async (options) => {
-      calls.push(options);
-      return '[BODY]Forwarded transport rewrite[/BODY]';
+    deadlineNow: () => 0,
+    callLLMStream: async (options) => {
+      calls.push({ stage: 'rewrite', ...options });
+      return { text: '[BODY]Forwarded transport rewrite[/BODY]' };
     },
+    scoreFns: {
+      scoreMPS: scorer('mps', mpsResult(95)),
+      scoreFidelity: scorer('fidelity', fidelityResult(11)),
+      scoreDeterministicSignals: () => ({}),
+    },
+    emit: () => {},
   });
 
   assert.equal(result.rewrite, 'Forwarded transport rewrite');
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].apiKey, 'sk-live-byok-forwarding-test');
-  assert.equal(calls[0].baseURL, 'https://proxy.example.test/v1/redteam');
-  assert.equal(calls[0].model, 'provider/model-redteam');
-  assert.equal(calls[0].signal, controller.signal);
-  assert.equal(calls[0].timeout, 9876);
+  assert.deepEqual(calls.map((call) => call.stage), ['rewrite', 'mps', 'fidelity']);
+  for (const call of calls) {
+    assert.equal(call.apiKey, 'sk-live-byok-forwarding-test', call.stage);
+    assert.equal(call.baseURL, 'https://proxy.example.test/v1/redteam', call.stage);
+    assert.equal(call.model, 'provider/model-redteam', call.stage);
+    assert.equal(call.timeout, 9876, call.stage);
+    assert.equal(call.signal.aborted, false, call.stage);
+  }
 });
 
-test('redteam output integrity: body wrappers are cleaned and LLM failures reject', async () => {
-  const clean = await runWebRewrite({
+test('redteam output integrity: body wrappers are cleaned before the done frame', async () => {
+  const frames = [];
+  const clean = await runWebRewriteStream({
     request: baseRequest('en'),
     config: configFor('en'),
     repoRoot,
-    callLLM: async () => 'leading junk\n[BODY]\nOnly this rewrite body.\n[/BODY]\ntrailing junk\n[SELF_AUDIT]hidden[/SELF_AUDIT]',
+    callLLMStream: async () => ({ text: 'leading junk\n[BODY]\nOnly this rewrite body.\n[/BODY]\ntrailing junk\n[SELF_AUDIT]hidden[/SELF_AUDIT]' }),
+    scoreFns: stubScorers(),
+    emit: (frame) => frames.push(frame),
   });
   assert.equal(clean.rewrite, 'Only this rewrite body.\n\ntrailing junk');
-
-  await assert.rejects(
-    () => runWebRewrite({
-      request: baseRequest('en'),
-      config: configFor('en'),
-      repoRoot,
-      callLLM: async () => {
-        throw new Error('upstream transport exploded');
-      },
-    }),
-    /upstream transport exploded/,
-    'runWebRewrite must not swallow transport failures into empty rewrites',
-  );
+  assert.equal(frames.at(-1).type, 'done');
+  assert.equal(frames.at(-1).rewrite, 'Only this rewrite body.\n\ntrailing junk');
 });

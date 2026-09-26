@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { validateMps, validateFidelityCriteria, validateFidelityResult, evaluateVerification } from '../../src/verification-schema.js';
 import { scoreMPS, scoreFidelity, SCORE_ERRORS } from '../../src/scoring.js';
 import { verifyRewrite } from '../../src/verify.js';
-import { evaluateFloors } from '../../src/web-rewrite-contract.js';
 import { runWebRewriteStream } from '../../src/web-rewrite-stream.js';
 import { validateRawMps, validateRawFidelity } from '../../scripts/research/study-validation.mjs';
 import { mpsResult, fidelityResult, zeroAnchorMps, highHardFailMps } from '../fixtures/verification-results.js';
@@ -52,8 +51,6 @@ test('fidelity result arithmetic, criteria ranges and numeric floor upper bounds
     assert.throws(() => validateFidelityCriteria(raw), /invalid-fidelity-schema/);
     assert.throws(() => validateRawFidelity(JSON.stringify(raw)), /invalid-fidelity-schema/);
   }
-  assert.deepEqual(evaluateFloors({ mps: 70, fidelity: 70 }), { ok: true, failed: [] });
-  assert.deepEqual(evaluateFloors({ mps: 101, fidelity: 101 }), { ok: false, failed: ['mps', 'fidelity'] });
   assert.deepEqual(evaluateVerification({ mps: { mps: 100 }, fidelity: { fidelity: 100 } }), { ok: false, failed: ['mps', 'fidelity'] });
 });
 

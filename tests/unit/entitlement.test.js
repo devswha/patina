@@ -112,7 +112,6 @@ function spyKv() {
     async get(key) { keys.push(key); return inner.get(key); },
     async set(key, val, opts) { keys.push(key); values.push(val); return inner.set(key, val, opts); },
     async incr(key, opts) { keys.push(key); return inner.incr(key, opts); },
-    async decr(key) { keys.push(key); return inner.decr(key); },
     async acquireLease(registryKey, lease, maxConcurrent, opts) { keys.push(registryKey); return inner.acquireLease(registryKey, lease, maxConcurrent, opts); },
     async releaseLease(registryKey, lease) { keys.push(registryKey); return inner.releaseLease(registryKey, lease); },
   };
@@ -661,7 +660,6 @@ test('regression(B1): re-read after acquiring the single-flight lock serves a wi
     },
     async set(key, val, opts) { return inner.set(key, val, opts); },
     async incr(key, opts) { return inner.incr(key, opts); },
-    async decr(key) { return inner.decr(key); },
     async acquireLease(registryKey, lease, maxConcurrent, opts) { return inner.acquireLease(registryKey, lease, maxConcurrent, opts); },
     async releaseLease(registryKey, lease) { return inner.releaseLease(registryKey, lease); },
   };

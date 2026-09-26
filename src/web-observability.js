@@ -1,15 +1,6 @@
 // @ts-check
-// Private, aggregate-only observability for the web rewrite surface. The legacy
-// metric helpers below remain for existing callers; new observers only emit a
-// closed schema and never receive request content or credentials.
-
-/** The complete set of fields a legacy rewrite metric may contain. */
-export const METRIC_FIELDS = Object.freeze([
-  'route', 'tier', 'provider', 'model', 'status', 'latencyBucket', 'quotaDecision', 'charBucket', 'outcome',
-]);
-
-/** Closed set of legacy stream outcomes. */
-const OUTCOME_VALUES = Object.freeze(new Set(['ok', 'stream_failed', 'scoring_failed', 'floor_failed']));
+// Private, aggregate-only observability for the web rewrite surface. Observers
+// emit only a closed schema and never receive request content or credentials.
 
 /** Canonical closed descriptor for every patina.web.v2 event. */
 export const WEB_OBSERVABILITY_SCHEMA = Object.freeze({
@@ -30,84 +21,67 @@ export const WEB_OBSERVABILITY_SCHEMA = Object.freeze({
     latencyBucket: Object.freeze(['<=30s', '30-60s', '60-120s', '>120s', 'unknown']),
     statusClass: Object.freeze(['1xx', '2xx', '3xx', '4xx', '5xx', 'unknown']),
     sampling: Object.freeze(['full', 'sampled_1_of_20']),
-    // Cost observability (2026-09-01, Pro review P1): the margin model assumes
-    // 3 LLM calls per paid request ($0.035-0.075, ~47% margin) but number-safety
-    // retries can push a request to 4 stage calls and transport/schema retries
-    // can go higher; token totals identify when that happens and at what prompt
-    // weight. Coarse buckets only — never raw tokens per call.
+    // Cost buckets: the margin model assumes 3 LLM calls per paid request, and
+    // number-safety, transport or schema retries push a request above that.
+    // Coarse buckets only — never raw tokens per call.
     tokenBucket: Object.freeze(['0', '1-2k', '2k-10k', '10k-30k', '30k-60k', '>60k', 'unknown']),
     llmCalls: Object.freeze(['1', '2', '3', '4', '5+', 'unknown']),
   }),
 });
 
-/** Ordered fields used by patina.web.v2. */
-export const WEB_OBSERVABILITY_FIELDS = WEB_OBSERVABILITY_SCHEMA.fields;
-export const WEB_OUTCOMES = WEB_OBSERVABILITY_SCHEMA.values.outcome;
-export const WEB_CHANNELS = Object.freeze(WEB_OBSERVABILITY_SCHEMA.values.channel.filter((channel) => channel !== 'unknown'));
-export const WEB_TIERS = WEB_OBSERVABILITY_SCHEMA.values.tier;
-const WEB_LATENCY_BUCKETS = WEB_OBSERVABILITY_SCHEMA.values.latencyBucket;
-const WEB_SAMPLING_VALUES = WEB_OBSERVABILITY_SCHEMA.values.sampling;
-const WEB_OUTCOME_SET = new Set(WEB_OUTCOMES);
-const WEB_CHANNEL_SET = new Set(WEB_CHANNELS);
-const WEB_TIER_SET = new Set(WEB_TIERS);
+const { values } = WEB_OBSERVABILITY_SCHEMA;
+const WEB_SAMPLING_VALUES = values.sampling;
+const WEB_OUTCOME_SET = new Set(values.outcome);
+const WEB_CHANNEL_SET = new Set(values.channel.filter((channel) => channel !== 'unknown'));
+const WEB_TIER_SET = new Set(values.tier);
 export const AGGREGATE_TTL_SECONDS = 7200;
-export const OBSERVER_BUDGET_MS = 50;
-const AGGREGATE_TIER_SET = new Set(WEB_TIERS.filter((tier) => tier !== 'unknown'));
-const AGGREGATE_LATENCY_BUCKET_SET = new Set(WEB_LATENCY_BUCKETS.filter((bucket) => bucket !== 'unknown'));
-
-/** Bucket a legacy latency (ms) into a coarse band. */
-export function latencyBucket(ms) {
-  const n = Number(ms);
-  if (!Number.isFinite(n) || n < 0) return 'unknown';
-  if (n < 250) return '<250ms';
-  if (n < 1000) return '250ms-1s';
-  if (n < 3000) return '1s-3s';
-  if (n < 10000) return '3s-10s';
-  return '>10s';
-}
-
-/** Bucket a character count so input size is coarse, never the text itself. */
-export function charBucket(count) {
-  const n = Number(count);
-  if (!Number.isFinite(n) || n < 0) return 'unknown';
-  if (n < 500) return '<500';
-  if (n < 2000) return '500-2k';
-  if (n < 4000) return '2k-4k';
-  if (n < 20000) return '4k-20k';
-  return '>20k';
-}
+const OBSERVER_BUDGET_MS = 50;
+const AGGREGATE_TIER_SET = new Set(values.tier.filter((tier) => tier !== 'unknown'));
+const AGGREGATE_LATENCY_BUCKET_SET = new Set(values.latencyBucket.filter((bucket) => bucket !== 'unknown'));
 
 /**
- * Build a sanitized legacy rewrite metric. Extra keys are deliberately ignored.
- * @param {{route?:string, tier?:string, provider?:string, model?:string, status?:number, latencyMs?:number, quotaDecision?:string, charCount?:number, outcome?:string}} [input]
+ * Start a stopwatch on an injectable telemetry clock. The returned function
+ * gives the elapsed milliseconds, or undefined when a clock read fails, so a
+ * broken clock never reports an epoch-sized latency.
+ *
+ * @param {() => unknown} now
+ * @returns {() => number|undefined}
  */
-export function buildRewriteMetric({ route = '/api/rewrite', tier, provider, model, status, latencyMs, quotaDecision, charCount, outcome } = {}) {
-  return {
-    route: String(route),
-    tier: tier === 'free' || tier === 'byok' || tier === 'pro' ? tier : 'unknown',
-    provider: provider ? String(provider) : 'unknown',
-    model: model ? String(model) : 'unknown',
-    status: Number.isFinite(Number(status)) ? Number(status) : 0,
-    latencyBucket: latencyBucket(latencyMs),
-    quotaDecision: quotaDecision ? String(quotaDecision) : 'n/a',
-    charBucket: charBucket(charCount),
-    outcome: OUTCOME_VALUES.has(String(outcome)) ? String(outcome) : 'n/a',
+export function startTelemetryClock(now) {
+  const read = () => {
+    try {
+      const value = Number(now());
+      return Number.isFinite(value) ? value : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const startedAt = read();
+  return () => {
+    if (startedAt === undefined) return undefined;
+    const endedAt = read();
+    return endedAt === undefined ? undefined : Math.max(0, endedAt - startedAt);
   };
 }
 
-/** Defense-in-depth sanitizer for the legacy metric shape. */
-export function sanitizeMetric(metric) {
-  /** @type {Record<string, unknown>} */
-  const out = {};
-  const src = metric && typeof metric === 'object' ? metric : {};
-  for (const key of METRIC_FIELDS) {
-    if (key in src) out[key] = /** @type {any} */ (src)[key];
+/**
+ * Hand one event to a telemetry sink. Telemetry must never alter a customer
+ * response, so a throw or a rejected promise from the sink is absorbed.
+ *
+ * @param {Function} observe
+ * @param {Record<string, unknown>} event
+ */
+export function emitTelemetry(observe, event) {
+  try {
+    const result = observe(event);
+    if (result && typeof result.catch === 'function') result.catch(() => {});
+  } catch {
+    // Absorbed: see above.
   }
-  return out;
 }
 
 /** @param {unknown} ms */
-export function monitorLatencyBucket(ms) {
+function monitorLatencyBucket(ms) {
   const n = Number(ms);
   if (!Number.isFinite(n) || n < 0) return 'unknown';
   if (n <= 30_000) return '<=30s';
@@ -117,7 +91,7 @@ export function monitorLatencyBucket(ms) {
 }
 
 /** @param {unknown} status */
-export function statusClass(status) {
+function statusClass(status) {
   const n = Number(status);
   if (!Number.isInteger(n) || n < 100 || n > 599) return 'unknown';
   return `${Math.floor(n / 100)}xx`;
@@ -129,7 +103,7 @@ export function statusClass(status) {
  * carries per-call tokens or any content.
  * @param {unknown} totalTokens
  */
-export function tokenBucket(totalTokens) {
+function tokenBucket(totalTokens) {
   if (typeof totalTokens !== 'number' || !Number.isSafeInteger(totalTokens) || totalTokens < 0) return 'unknown';
   const n = totalTokens;
   if (n === 0) return '0';
@@ -146,7 +120,7 @@ export function tokenBucket(totalTokens) {
  * number-safety, schema, or transport retry fired.
  * @param {unknown} calls
  */
-export function llmCallsBucket(calls) {
+function llmCallsBucket(calls) {
   if (typeof calls !== 'number' || !Number.isSafeInteger(calls) || calls < 1) return 'unknown';
   const n = calls;
   return n >= 5 ? '5+' : String(n);
@@ -197,11 +171,6 @@ export function buildWebObservabilityEvent(input = {}) {
   };
 }
 
-/** @param {Record<string, unknown>} event */
-export function sanitizeWebObservabilityEvent(event) {
-  return buildWebObservabilityEvent(event);
-}
-
 /**
  * Produce the sole aggregate namespace. Invalid channels are rejected rather
  * than silently mixing staging and production counters.
@@ -218,15 +187,12 @@ export function buildAggregateKey(event, now = new Date()) {
   return `patina:mon:v1:${channel}:${tier}:${quarter}:${outcome}:${bucket}`;
 }
 
-/** Creates an injectable process-local monotonic sampler. */
-export function createSamplingCounter() {
-  let count = 0;
-  return () => {
-    count += 1;
-    return count % 20 === 0;
-  };
+/** Process-local 1-in-20 sampler for low-tier successes. */
+let sampleCount = 0;
+function defaultSample() {
+  sampleCount += 1;
+  return sampleCount % 20 === 0;
 }
-const defaultSample = createSamplingCounter();
 
 /** @param {unknown} logger @param {Record<string, unknown>} event */
 function emitLog(logger, event) {
@@ -306,5 +272,5 @@ export function createWebObserver(options) {
     return emitted;
   }
 
-  return Object.freeze({ observe });
+  return { observe };
 }

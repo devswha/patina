@@ -9,9 +9,7 @@
 // This module surfaces that WEAK signal without claiming the author is AI: it
 // only activates for the `social`/`marketing` Document Type on short English input,
 // records the em-dash count and per-sentence density, and maps 1/2/3+ dashes to
-// Low/Medium/High severity. It is intentionally kept OUT of the structural
-// feature vector (src/features/structural-features.js) so it cannot shift the
-// dimensions of an already-trained private structural model.
+// Low/Medium/High severity.
 //
 // Kept separate from the coarse per-paragraph hot ratio: the scorer routes this
 // through a small calibrated evidence floor (src/scoring.js
@@ -45,17 +43,17 @@ function removeIgnoredDashContexts(text) {
 }
 
 /** 2026 cadence pack (#879, parent #878): short-form phrasings that carry the tell alone. */
-export const CADENCE_PHRASE_RES = Object.freeze([
+const CADENCE_PHRASE_RES = Object.freeze([
   /\bthat matters\b/i,
   /\byou don't have\b[^.!?]{0,40}[.,]\s*you have\b/i,
 ]);
 
 /** A "short punchy sentence" for stack purposes, in whitespace tokens. */
-export const SHORT_STACK_MAX_TOKENS = 8;
-export const SHORT_STACK_MIN_RUN = 4;
+const SHORT_STACK_MAX_TOKENS = 8;
+const SHORT_STACK_MIN_RUN = 4;
 /** A tighter parallel fragment run ("Generic ideas. No point of view."). */
-export const SET_GROUP_MAX_TOKENS = 5;
-export const SET_GROUP_MIN_RUN = 3;
+const SET_GROUP_MAX_TOKENS = 5;
+const SET_GROUP_MIN_RUN = 3;
 
 function tokenCount(sentence) {
   return String(sentence).trim().split(/\s+/u).filter(Boolean).length;

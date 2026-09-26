@@ -2,16 +2,13 @@
 // Browser-pure: consumed by translationese detection, ko post-editese metrics,
 // and the playground through direct ESM imports.
 //
-// SINGLE OWNER. These six regex families used to exist as four hand-synced
-// copies and drifted (issue #383/#395). Do not copy a pattern into a consumer —
-// import getKoInterferenceRule()/buildKoInterferenceRegex() instead. A test
-// (tests/unit/translationese.test.js, 'ko interference catalog drives…') fails
-// on object-identity breaks and verbatim copies in the consumers.
+// SINGLE OWNER. Do not copy a pattern into a consumer; import
+// getKoInterferenceRule()/buildKoInterferenceRegex() instead.
 
 // Surface forms of a passive predicate (되다/받다/당하다/-어지다 families). Listed
 // as composed NFC syllables because the passive marker fuses into the stem
 // syllable (된다 = 되+ㄴ다), which a jamo alternation cannot match.
-export const BY_PASSIVE_PREDICATE_SOURCE =
+const BY_PASSIVE_PREDICATE_SOURCE =
   '(?:된다|된|될|됨|됐다|됐|돼|되었|되어|되는|되며|되고|됩니다|됩|받는다|받았다|받은|받을|받는|받습니다|받아|당한다|당했다|당하다|당하는|당해|(?:어|아|여)(?:진다|졌다|진|질|지는|집니다|져))';
 
 export const KO_INTERFERENCE_TRANSLATIONESE_RULES = [

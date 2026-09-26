@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Cross-platform smoke for maintenance item P16b: run the representative
+// Cross-platform smoke: run the representative
 // install / start / non-ASCII-path / cancellation / suite checks on one
 // machine and write two files:
 //

@@ -1,6 +1,6 @@
 # Serving-engine cost and quality measurements (2026-07-25)
 
-> **Status note (2026-09-02, index pass):** the deepseek verdict here was superseded by `serving-engine-deepseek-0731-correction-20260803.md`; the free tier ran on deepseek from 2026-08-03 (`free-tier-deepseek-flip-20260803.md`) and is back on gemini as of the owner's 2026-09-02 confirmation. The Pro-tier pin is unchanged.
+> **Status note (2026-09-02, index pass):** the deepseek verdict here was superseded by `serving-engine-deepseek-0731-correction-20260803.md`; the free tier ran on deepseek from 2026-08-03 and is back on gemini as of the owner's 2026-09-02 confirmation. The Pro-tier pin is unchanged.
 
 Measured to answer one question: what should serve the Pro tier and the free
 trial, given that the incumbent (`claude-sonnet-5`) consumes essentially the

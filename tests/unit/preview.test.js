@@ -4,16 +4,14 @@ import { performance } from 'node:perf_hooks';
 
 import {
   fetchPreviewPage,
-  extractProseBlocks,
-  alignRewrites,
-  buildPreviewHtml,
   harvestStreamOps,
   resolveStreamedHtml,
   prepareSnapshotHtml,
   inlineSrcdocIframes,
-  buildContextCardHtml,
   freezeSnapshotAssets,
-} from '../../src/preview.js';
+} from '../../src/preview/snapshot.js';
+import { extractProseBlocks, alignRewrites } from '../../src/preview/extract.js';
+import { buildPreviewHtml, buildContextCardHtml } from '../../src/preview/render.js';
 
 const LONG_KO = '이 문장은 미리보기 추출 테스트를 위한 충분히 긴 한국어 단락입니다.';
 const LONG_EN = 'This paragraph is comfortably long enough to pass the prose threshold.';

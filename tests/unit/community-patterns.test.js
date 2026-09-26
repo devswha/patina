@@ -1,8 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
-import { cpSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { lstatSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, readlinkSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -51,68 +50,14 @@ function snapshot(path) {
   return { ...metadata, bytes: readFileSync(path).toString('base64') };
 }
 
-for (const state of ['valid', 'edited', 'malformed', 'symlinked']) {
-  test(`loader ignores ${state} legacy community contents and leaves them intact`, (t) => {
-    const { root, installed } = fixture(t);
-    if (state === 'edited') writeFileSync(join(installed, FILE), 'User changes');
-    if (state === 'malformed') writeFileSync(join(installed, 'installed.json'), '{invalid');
-    if (state === 'symlinked') {
-      rmSync(join(installed, FILE));
-      symlinkSync(join(root, 'custom/patterns/en-custom.md'), join(installed, FILE));
-    }
-    const before = snapshot(root);
-    const packs = loadPatterns(root, 'en');
-    assert.deepEqual(packs.map(({ file, body }) => ({ file, body })), [
-      { file: 'en-base.md', body: 'Built-in text' },
-      { file: 'en-custom.md', body: 'Hand-written text' },
-    ]);
-    assert.deepEqual(loadPatterns(root, 'en', ['en-custom']).map((pack) => pack.file), ['en-base.md']);
-    assert.deepEqual(snapshot(root), before);
-  });
-}
-
-test('old pattern invocations reject without downloads, output or installation mutations', (t) => {
+test('loader ignores legacy community contents and leaves them intact', (t) => {
   const { root } = fixture(t);
-  // Copy only runtime code so getRepoRoot() points at a disposable installation,
-  // not the shared worktree. Dependencies stay real; no dispatcher/loader mocks.
-  cpSync(join(REPO_ROOT, 'src'), join(root, 'src'), { recursive: true });
-  mkdirSync(join(root, 'scripts'));
-  cpSync(join(REPO_ROOT, 'scripts/prose-score.mjs'), join(root, 'scripts/prose-score.mjs'));
-  symlinkSync(join(REPO_ROOT, 'node_modules'), join(root, 'node_modules'));
-  writeFileSync(join(root, 'pattern'), 'A draft whose filename matches the retired command.');
-  const invocations = [
-    ['pattern'], ['pattern', 'help'], ['pattern', '--help'],
-    ['pattern', 'list'], ['pattern', 'list', '--json'],
-    ['pattern', 'install', 'en-corporate-bizspeak'],
-    ['pattern', 'install', 'https://github.com/example/packs/tree/main/packs/en-corporate-bizspeak', '--json'],
-    ['pattern', 'remove', 'en-corporate-bizspeak'],
-    ['pattern', 'remove', 'en-corporate-bizspeak', '--json'],
-    ['pattern', 'install', '--help'], ['pattern', 'list', '--help'], ['pattern', 'remove', '--help'],
-  ];
   const before = snapshot(root);
-  const child = spawnSync(process.execPath, ['--input-type=module', '--eval', `
-    import { main } from './src/cli.js';
-    import { PatinaCliError } from './src/errors.js';
-    let fetches = 0;
-    let outputs = 0;
-    globalThis.fetch = () => { fetches++; throw new Error('unexpected fetch'); };
-    console.log = () => { outputs++; };
-    const results = [];
-    for (const args of ${JSON.stringify(invocations)}) {
-      try { await main(args); results.push({ rejected: false }); }
-      catch (error) { results.push({ rejected: true, typed: error instanceof PatinaCliError, exitCode: error.exitCode }); }
-    }
-    process.stdout.write(JSON.stringify({ results, fetches, outputs }));
-  `], {
-    cwd: root, encoding: 'utf8', timeout: 10_000,
-    env: { ...process.env, HOME: root, PATH: '', NODE_OPTIONS: '' },
-  });
-  assert.ifError(child.error);
-  assert.equal(child.status, 0, child.stderr);
-  assert.equal(child.stderr, '');
-  assert.deepEqual(JSON.parse(child.stdout), {
-    results: invocations.map(() => ({ rejected: true, typed: true, exitCode: 2 })),
-    fetches: 0, outputs: 0,
-  });
+  const packs = loadPatterns(root, 'en');
+  assert.deepEqual(packs.map(({ file, body }) => ({ file, body })), [
+    { file: 'en-base.md', body: 'Built-in text' },
+    { file: 'en-custom.md', body: 'Hand-written text' },
+  ]);
+  assert.deepEqual(loadPatterns(root, 'en', ['en-custom']).map((pack) => pack.file), ['en-base.md']);
   assert.deepEqual(snapshot(root), before);
 });

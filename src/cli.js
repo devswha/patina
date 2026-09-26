@@ -3,20 +3,13 @@ import { runDoctor } from './commands/doctor.js';
 import { runPersona } from './commands/persona.js';
 import { runPack } from './commands/pack.js';
 import { runInspect } from './commands/inspect.js';
-import { runAside } from './commands/aside.js';
 import { handleAuth, printBackendStatus } from './commands/auth.js';
 import { parseArgs, validateModeExclusivity, validateOfflineScoreRequest, validateServeRequest, validatePreviewRequest, validateOutputRouting, validateTransformRequest, validatePersonaRequest, validateVerifyRequest, validateXliffRequest, printHelp } from './cli/args.js';
 import { runDefault } from './cli/run.js';
-import { inputError, renderCliError } from './errors.js';
-import { runCliProcess } from './cli/teardown.js';
+import { inputError } from './errors.js';
 import { createLogger } from './logger.js';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-// The default-run pipeline and its helpers moved to src/cli/run.js (#411).
-// Re-exported so existing imports from src/cli.js keep working unchanged.
-export { createCancellationController, resolvePromptMode, resolveDocumentTypeForLanguage } from './cli/run.js';
 
 const PACKAGE_VERSION = JSON.parse(
   readFileSync(resolve(getRepoRoot(), 'package.json'), 'utf8')
@@ -32,7 +25,6 @@ const PACKAGE_VERSION = JSON.parse(
  * await main(['--help']);
  */
 export async function main(args) {
-  if (args[0] === 'aside') return runAside(args.slice(1));
   if (args[0] === 'inspect') return runInspect(args.slice(1));
   if (args[0] === 'auth') {
     return handleAuth(args.slice(1));
@@ -53,11 +45,11 @@ export async function main(args) {
       'Add hand-written patterns to custom/patterns/ instead.'
     );
   }
-  if (args[0] === 'init') {
+  if (args[0] === 'aside') {
     throw inputError(
-      'patina init was removed',
-      'patina is zero-config; use CLI flags for one-off runs or add .patina.yaml only when project defaults are needed.',
-      'Copy .patina.default.yaml to .patina.yaml and edit it manually, or pass --config <path>.'
+      'patina aside was removed',
+      'The Aside integration is no longer supported.',
+      'Run patina --verify <file> for a verified rewrite.'
     );
   }
   if (args[0] === 'help') {
@@ -107,16 +99,4 @@ export async function main(args) {
   validateOutputRouting(parsed);
 
   return runDefault(parsed, logger);
-}
-
-// Self-invocation guard (#113): when run directly via `node src/cli.js ...`,
-// run main(). When imported (e.g. by bin/patina.js or tests), just expose
-// the exports.
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  runCliProcess(process.argv.slice(2), {
-    mainFn: main,
-    onError: (err) => {
-      createLogger().error('cli.error', { message: renderCliError(err) });
-    },
-  });
 }

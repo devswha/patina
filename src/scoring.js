@@ -1,7 +1,7 @@
 // @ts-check
 import { callLLM as defaultCallLLM, redactErrorText } from './api.js';
 import { getRepoRoot } from './config.js';
-import { analyzeText, loadStructuralModel } from './features/index.js';
+import { analyzeText } from './features/index.js';
 import { LEAKAGE_SCORE_FLOOR } from './features/markup-leakage.js';
 import { summarizeSignalStrength } from './features/signal-strength.js';
 import { buildScoreMathCore, fenceReferenceText, resolveSeverityPoints } from './prompt-builder.js';
@@ -39,15 +39,6 @@ export const SCORE_INTERPRETATION_BANDS = Object.freeze([
   Object.freeze({ max: 70, label: 'AI-like' }),
   Object.freeze({ max: 100, label: 'heavily AI' }),
 ]);
-
-/**
- * Structural classifier score is a calibrated probability-like document signal.
- * It only affects the deterministic score when a private local model is loaded
- * and the model verdict is hot; absent model means baseline behavior.
- *
- * @type {number}
- */
-export const STRUCTURAL_CLASSIFIER_MIN_FLOOR = 70;
 
 /**
  * Closed set of `error` values a failed scorer result may carry.
@@ -175,25 +166,58 @@ const ATTEMPT_RETRY_REASONS = new Set([
   'temperature_schema',
   'score_schema_parse',
 ]);
+const ATTEMPT_FIELDS = [
+  'attemptIndex',
+  'requestedModel',
+  'effectiveModel',
+  'usage',
+  'retryReason',
+  'minimumChargeApplied',
+  'outcome',
+];
+
+/**
+ * Whether `value` is exactly one paid-attempt record as the transports emit
+ * it: the seven known fields and no others, with a one-based `attemptIndex`
+ * equal to `expectedIndex`.
+ *
+ * @param {unknown} value
+ * @param {number} expectedIndex
+ * @returns {boolean}
+ */
+export function isValidAttemptRecord(value, expectedIndex) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const source = /** @type {any} */ (value);
+  const keys = Reflect.ownKeys(source);
+  return keys.length === ATTEMPT_FIELDS.length
+    && keys.every((key) => typeof key === 'string' && ATTEMPT_FIELDS.includes(key))
+    && Number.isInteger(source.attemptIndex)
+    && source.attemptIndex > 0
+    && source.attemptIndex === expectedIndex
+    && (typeof source.requestedModel === 'string' || source.requestedModel === null)
+    && (typeof source.effectiveModel === 'string' || source.effectiveModel === null)
+    && (source.usage === null || (typeof source.usage === 'object' && !Array.isArray(source.usage)))
+    && ATTEMPT_RETRY_REASONS.has(source.retryReason)
+    && typeof source.minimumChargeApplied === 'boolean'
+    && (source.outcome === 'success' || source.outcome === 'error');
+}
 
 function dispatchAttempts(onAttempt, onAttemptInvalid, records, { attemptIndex, scoreSchemaFailure = false }) {
   // Transport owns paid-attempt evidence. A scoring parse failure without a
   // transport record is not proof that a paid request occurred.
   if (records.length === 0) return;
 
-  const sources = records.map(validateAttemptRecord);
   // A lower transport invocation owns one local attempt sequence. Do not
   // reinterpret a malformed sequence as a new global sequence: that would
   // fabricate provenance for an attempt whose local position is unknown.
-  if (sources.some((source, index) => !source || source.attemptIndex !== index + 1)) {
+  if (!records.every((record, index) => isValidAttemptRecord(record, index + 1))) {
     notifyInvalidAttempt(onAttemptInvalid);
     return;
   }
 
-  const lastValidIndex = sources.length - 1;
-  for (let i = 0; i < sources.length; i++) {
-    const source = sources[i];
-    if (!source) continue;
+  const lastValidIndex = records.length - 1;
+  for (let i = 0; i < records.length; i++) {
+    const source = records[i];
     const schemaFailure = scoreSchemaFailure && i === lastValidIndex;
     const record = {
       attemptIndex: attemptIndex(),
@@ -213,40 +237,6 @@ function dispatchAttempts(onAttempt, onAttemptInvalid, records, { attemptIndex, 
   }
 }
 
-/** @param {unknown} value */
-function validateAttemptRecord(value) {
-  const fields = [
-    'attemptIndex',
-    'requestedModel',
-    'effectiveModel',
-    'usage',
-    'retryReason',
-    'minimumChargeApplied',
-    'outcome',
-  ];
-  try {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const source = /** @type {any} */ (value);
-    const keys = Reflect.ownKeys(source);
-    if (
-      keys.length !== fields.length
-      || !fields.every((field) => Object.prototype.hasOwnProperty.call(source, field))
-      || keys.some((key) => typeof key !== 'string' || !fields.includes(key))
-      || !Number.isInteger(source.attemptIndex)
-      || source.attemptIndex <= 0
-      || !(typeof source.requestedModel === 'string' || source.requestedModel === null)
-      || !(typeof source.effectiveModel === 'string' || source.effectiveModel === null)
-      || !(source.usage === null || (typeof source.usage === 'object' && !Array.isArray(source.usage)))
-      || !ATTEMPT_RETRY_REASONS.has(source.retryReason)
-      || typeof source.minimumChargeApplied !== 'boolean'
-      || !(source.outcome === 'success' || source.outcome === 'error')
-    ) return null;
-    return source;
-  } catch {
-    return null;
-  }
-}
-
 /** @param {Function|undefined} onAttemptInvalid */
 function notifyInvalidAttempt(onAttemptInvalid) {
   try {
@@ -263,7 +253,7 @@ function notifyInvalidAttempt(onAttemptInvalid) {
  * @param {object} options Scoring options.
  * @param {string} options.text Text to score.
  * @param {import('./config.js').PatinaConfig} options.config Effective patina config.
- * @param {import('./loader.js').PatternPack[]} options.patterns Loaded pattern packs, retained for scorer compatibility.
+ * @param {import('./loader.js').PatternPack[]} options.patterns Loaded pattern packs for the score math and contract example row.
  * @param {string} [options.apiKey] Provider API key.
  * @param {string} [options.baseURL] Provider base URL.
  * @param {string} [options.model] Model id.
@@ -275,7 +265,6 @@ function notifyInvalidAttempt(onAttemptInvalid) {
  * @param {Function} [options.now] Clock returning epoch milliseconds.
  * @param {Function} [options.sleep] Sleep helper for tests.
  * @param {object} [options.responseFormat] Opt-in OpenAI-compatible structured-output request field forwarded to callLLM.
- * @param {object} [options.extraBody] Opt-in provider-specific request fields (e.g. reasoning control) spread into the request body.
  * @param {Function} [options.onAttempt] Safe callback for one-based paid-attempt metadata records.
  * @param {Function} [options.onAttemptInvalid] Safe callback when transport evidence is malformed; receives no provider metadata.
  * @param {Record<string, any>|null} [options.deterministicScore] Optional frozen analysis for this exact text/config; omitted callers compute it normally.
@@ -305,7 +294,7 @@ export async function scoreText({
 }) {
   const lang = config.language || 'ko';
   const deterministicScore = preparedDeterministicScore === undefined
-    ? scoreDeterministicSignals({ text, config, patterns, logger }) : preparedDeterministicScore;
+    ? scoreDeterministicSignals({ text, config, patterns }) : preparedDeterministicScore;
 
   // buildScoreMathCore carries the shared scoring math (weights, severity
   // scale, denominators, catalog digest) but no output contract; the strict
@@ -356,14 +345,15 @@ ${fenceReferenceText(text, { label: '## Text to Score' })}
     return withShadowScore(parsed, { deterministicScore, config, logger });
   } catch (e) {
     rethrowIfAborted(e, signal);
-    logger.warn('score.text_schema_failure', {
-      message: `[patina] scoreText schema failure after retry: ${e.message}`,
+    const kind = scoreFailureKind(e);
+    logger.warn(kind === SCORE_ERRORS.TRANSPORT_FAILURE ? 'score.text_transport_failure' : 'score.text_schema_failure', {
+      message: `[patina] scoreText ${kind} after retry: ${redactErrorText(e.message)}`,
     });
     return {
       overall: null,
-      llmScore: { overall: null, interpretation: null, error: 'schema-failure' },
+      llmScore: { overall: null, interpretation: null, error: kind },
       deterministicScore,
-      error: 'schema-failure',
+      error: kind,
       raw: e.raw,
     };
   }
@@ -423,7 +413,6 @@ function computeShortFormEvidenceFloor({ result, config, lang, patterns = [] }) 
  * @param {import('./config.js').PatinaConfig} [options.config={}] Effective config.
  * @param {Array} [options.patterns=[]] Loaded pattern packs; used for short-form category math.
  * @param {string} [options.repoRoot] Repository root for analyzer resources.
- * @param {import('./logger.js').Logger} [options.logger] Optional logger for recoverable deterministic warnings.
  * @param {Function} [options.analyzer] Analyzer implementation.
  * @returns {object|null} Deterministic score payload, skipped payload, or null when disabled.
  * @example
@@ -435,7 +424,6 @@ export function scoreDeterministicSignals({
   patterns = [],
   repoRoot = getRepoRoot(),
   analyzer = analyzeText,
-  logger = createLogger(),
 } = {}) {
   const options = deterministicScoringOptions(config);
   if (!options.enabled) return null;
@@ -458,18 +446,9 @@ export function scoreDeterministicSignals({
 
   try {
     const lexiconAllowed = isLexiconEnabledForLanguage(config, lang);
-    let structuralModel = null;
-    try {
-      structuralModel = loadStructuralModel(config, { lang });
-    } catch (err) {
-      logger?.warn?.('score.structural_model_load_failure', {
-        message: `[patina] structural model load failed; continuing without structural classifier: ${err?.message || err}`,
-      });
-    }
     const result = analyzer(String(text || ''), {
       lang,
       documentType: config.documentType,
-      register: config.register ?? null,
       repoRoot,
       burstinessBands: config.stylometry?.burstiness?.bands,
       mattrBands: config.stylometry?.ttr?.bands,
@@ -477,7 +456,6 @@ export function scoreDeterministicSignals({
       koDiagnosticsEnabled: config.stylometry?.ko_diagnostics?.enabled !== false,
       koDiagnosticBands: config.stylometry?.ko_diagnostics?.bands,
       lexiconDensityThreshold: config.lexicon?.density_threshold,
-      structuralModel,
       ...(lexiconAllowed ? {} : { lexicon: { lang, path: null, strict: [], phrases: [] } }),
     });
     const paragraphs = Array.isArray(result?.paragraphs) ? result.paragraphs : [];
@@ -491,27 +469,14 @@ export function scoreDeterministicSignals({
     // attributes them to the paragraphs that carry the tell, so they reach the
     // score through the hot ratio like every other per-paragraph signal.
     const discourseTells = result?.discourseTells ?? null;
-    const structuralClassifier = result?.structuralClassifier ?? { available: false, hot: null, score: null };
-    const structuralFloor =
-      structuralClassifier.hot === true && typeof structuralClassifier.score === 'number'
-        ? Math.max(STRUCTURAL_CLASSIFIER_MIN_FLOOR, roundScore(structuralClassifier.score * 100))
-        : 0;
-    // All floors apply together. Previously leakage and the structural-classifier
-    // floor were mutually exclusive, so a document that BOTH leaked and scored a
-    // high structural floor was capped at the (lower) leakage floor — a near-proof
-    // leakage token could LOWER the overall score. Take the max of every signal so
-    // a floor can only ever raise the score (#527 H5).
-    // Hard, document-level evidence floors: near-proof markup leakage (#332)
-    // and the trained structural classifier. Each is decisive on its own, so it
-    // must survive even when the text is too short for the stylometry meta-block
-    // (skipped=true): reconcileScoreOverall applies this floor before deferring
-    // to the LLM. The coarse per-paragraph hot ratio (1/1 = 100 on a single
-    // paragraph) is deliberately NOT part of this floor — only calibrated hard
-    // signals are — so short prose cannot manufacture a false positive.
-    const hardEvidenceFloor = Math.max(
-      leaked ? LEAKAGE_SCORE_FLOOR : 0,
-      structuralFloor,
-    );
+    // Hard, document-level evidence floor: near-proof markup leakage (#332) is
+    // decisive on its own, so it must survive even when the text is too short
+    // for the stylometry meta-block (skipped=true): reconcileScoreOverall
+    // applies this floor before deferring to the LLM. The coarse per-paragraph
+    // hot ratio (1/1 = 100 on a single paragraph) is deliberately NOT part of
+    // this floor — only calibrated hard signals are — so short prose cannot
+    // manufacture a false positive.
+    const hardEvidenceFloor = leaked ? LEAKAGE_SCORE_FLOOR : 0;
     // Calibrated weak short-form (social/marketing) punctuation floor (#13
     // short-form branch). Register-gated and Low-severity by design, so it only
     // nudges eligible SNS text off an exact 0 and is inert for the default
@@ -557,12 +522,6 @@ export function scoreDeterministicSignals({
           hot: discourseTells?.hot ?? null,
           fakeCandor: discourseTells?.fakeCandor ?? null,
           thematicBreaks: discourseTells?.thematicBreaks ?? null,
-        },
-        structuralClassifier: {
-          available: Boolean(structuralClassifier.available),
-          hot: structuralClassifier.hot ?? null,
-          score: structuralClassifier.score ?? null,
-          floor: structuralClassifier.hot === true ? structuralFloor : 0,
         },
       },
     };
@@ -643,14 +602,13 @@ export function reconcileScoreOverall({
   if (llm === null) return { overall: null, scorePreference: null };
   if (deterministic === null) return { overall: llm, scorePreference: null };
   // Hard evidence floor applies in EVERY posture. Near-proof markup leakage
-  // (#332), the trained structural classifier, and the calibrated short-form
-  // tell are each decisive on their own, so the final score must never sit
-  // below them — not even when the text is short (skipped) OR when the LLM
-  // lands within the divergence threshold of the deterministic score. The
-  // coarse per-paragraph hot ratio is deliberately excluded from evidenceFloor
-  // (see scoreDeterministicSignals), so this cannot false-positive on ordinary
-  // prose. Applied before the skip/divergence branches, which only decide the
-  // score when no hard floor binds.
+  // (#332) and the calibrated short-form tell are each decisive on their own,
+  // so the final score must never sit below them — not even when the text is
+  // short (skipped) OR when the LLM lands within the divergence threshold of
+  // the deterministic score. The coarse per-paragraph hot ratio is deliberately
+  // excluded from evidenceFloor (see scoreDeterministicSignals), so this cannot
+  // false-positive on ordinary prose. Applied before the skip/divergence
+  // branches, which only decide the score when no hard floor binds.
   const evidenceFloor = toFiniteScore(deterministicScore?.evidenceFloor);
   if (evidenceFloor !== null && evidenceFloor > 0 && llm < evidenceFloor) {
     return {
@@ -988,22 +946,6 @@ ${fenceReferenceText(rewritten, { label: '## Rewritten reference' })}
   };
 }
 
-/**
- * Clamp and round a value into the inclusive 0-3 scoring range.
- *
- * @param {number|string} v Value to clamp.
- * @returns {number} Integer from 0 to 3.
- * @example
- * const value = clamp03(4.2); // 3
- */
-export function clamp03(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return 0;
-  if (n < 0) return 0;
-  if (n > 3) return 3;
-  return Math.round(n);
-}
-
 function rethrowIfAborted(err, signal) {
   if (signal?.aborted || err?.name === 'AbortError') throw err;
 }
@@ -1051,18 +993,18 @@ function isLexiconEnabledForLanguage(config = {}, lang) {
 function deterministicScoringOptions(config = {}) {
   const cfg = config.scoring?.deterministic || {};
   const enabled = cfg.enabled !== false;
-  const divergenceThreshold = Math.max(0, positiveNumber(
-    cfg['divergence-threshold'] ?? cfg.divergenceThreshold,
+  const divergenceThreshold = Math.max(0, numberOr(
+    cfg['divergence-threshold'],
     DEFAULT_DETERMINISTIC_DIVERGENCE_THRESHOLD
   ));
-  const combinedWeight = Math.max(0, positiveNumber(
-    cfg['combined-weight'] ?? cfg.combinedWeight,
+  const combinedWeight = Math.max(0, numberOr(
+    cfg['combined-weight'],
     0
   ));
   return { enabled, divergenceThreshold, combinedWeight };
 }
 
-function positiveNumber(value, fallback) {
+function numberOr(value, fallback) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 }
@@ -1084,7 +1026,6 @@ function emptyDeterministicBands() {
     koDiagnostics: { hot: 0, thresholds: null },
     markupLeakage: { leaked: false, hits: 0, floor: LEAKAGE_SCORE_FLOOR },
     discourseTells: { hot: null, fakeCandor: null, thematicBreaks: null },
-    structuralClassifier: { available: false, hot: null, score: null, floor: 0 },
   };
 }
 

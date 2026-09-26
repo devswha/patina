@@ -47,8 +47,7 @@ bucket-end rule.
 ## Wiring (patina production)
 
 Set `PATINA_VERCEL_LOG_QUERY_URL` to the exact deployed
-`https://<project>.vercel.app/api/query` URL, pin its lowercase-hex SHA-256 in
-`PATINA_VERCEL_LOG_QUERY_URL_SHA256`, and set
+`https://<project>.vercel.app/api/query` URL and set
 `PATINA_VERCEL_LOG_QUERY_TOKEN=LOGQ_QUERY_TOKEN`. Create the team log drain
 (sources `lambda`, format `json`, the patina project only) pointing at
 `/api/ingest` with `LOGQ_DRAIN_SECRET` as its custom secret.

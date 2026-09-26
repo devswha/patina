@@ -1,5 +1,5 @@
 // @ts-check
-// patina-lane: A — deterministic document-brief signals. LLM-free.
+// Deterministic document-brief signals. LLM-free.
 import { detectKoreanRegister } from './stylometry.js';
 
 /**

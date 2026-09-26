@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Manifest-based low-FPR (TPR@1%/5%FPR) report (Wave 0.3) — the B4 measure-only
-// deliverable. Reads a scored rebaseline manifest JSONL and reports, per
-// overall / language / language x register group, the strict operating point at
-// each target FPR. REPORT-ONLY: it never changes a detector threshold and never
-// mutates src/features. Reuses the B1 lowFprMetric core from ranking-metrics.
+// Manifest-based low-FPR (TPR@1%/5%FPR) report. Reads a scored rebaseline
+// manifest JSONL and reports, per overall / language / language x register
+// group, the strict operating point at each target FPR. REPORT-ONLY: it never
+// changes a detector threshold and never mutates src/features. Reuses the
+// lowFprMetric core from ranking-metrics.
 //
 // Status values per group/target:
 //   supported                      - a meaningful TPR@FPR operating point exists
@@ -61,7 +61,7 @@ function loadRows(input) {
     });
 }
 
-// Layer the plan's extended status onto the B1 lowFprMetric result.
+// Layer the extended status onto the lowFprMetric result.
 function withStatus(metric) {
   if (!metric.supported) return { ...metric, status: metric.reason };
   if (metric.target_fpr <= 0.01 && metric.max_false_positives === 0) {

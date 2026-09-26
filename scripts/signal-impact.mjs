@@ -41,7 +41,6 @@ export const PARAGRAPH_SIGNALS = [
 // Document-level hot disjuncts.
 export const DOCUMENT_SIGNALS = [
   ['markup_leakage', (a) => Boolean(a.markupLeakage?.leaked)],
-  ['structural_model', (a) => a.structuralClassifier?.hot === true],
 ];
 
 export const ALL_SIGNALS = [

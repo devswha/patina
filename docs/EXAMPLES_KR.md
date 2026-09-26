@@ -117,8 +117,7 @@
 - **`examples/short/`** — 네 개의 짧은 Korean fixture(marketing, tutorial, essay, email)와 짝을 이루는 `*-rewritten.md` 파일.
 - **`examples/genres/`** — 세 개의 긴 Korean genre(technical, academic, narrative)와 짝을 이루는 rewrite.
 - **`examples/rewrite-axes/`** — v7 축 fixture. `casual`/`professional`은 Register를, `academic`/`narrative`/`marketing`/`instructional`은 Document Type을 보여 줍니다. 해당 자료는 별도 검토 범위이며, 이 페이지의 편집 검토가 모든 출력의 의미 보존을 보증하지는 않습니다.
-- **`examples/viral-hook/`** — iterative improvement workflow를 다루는 case study(`case-01`부터 `case-09`): viral-hook detection, codex/claude/gemini comparison, Persona voice, multi-Document-Type validation.
-- **`examples/sample-rewritten-*.md`** — 같은 장문의 Korean SNS marketing post를 Codex / Claude / Gemini-3로 rewrite한 결과. `case-03`에서 cross-model comparison에 사용합니다.
+- **`examples/viral-hook/`** — 스코어 전용 viral-hook 팩의 탐지 case study(`case-01`, `case-02`).
 
 ## patina가 확인하는 것
 

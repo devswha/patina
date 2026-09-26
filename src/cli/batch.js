@@ -183,19 +183,18 @@ export async function writeBatchOutput(parsed, inputPath, output, { meaningSafet
 }
 
 /**
- * Resolve a batch/XLIFF output path from the routing flags. Precedence:
+ * Resolve a batch output path from the routing flags. Precedence:
  * --in-place (overwrite original) > --outdir (basename into dir) > --suffix
- * (inserted before the extension) > defaultSuffix. With none set and no
- * default, returns the input path unchanged (caller decides).
+ * (inserted before the extension). With none set, returns the input path
+ * unchanged (caller decides).
  * @param {{inPlace?:boolean, outdir?:string, suffix?:string}} parsed
  * @param {string} inputPath
- * @param {{defaultSuffix?:string}} [options]
  * @returns {string}
  */
-export function resolveBatchOutputPath(parsed, inputPath, { defaultSuffix = '' } = {}) {
+export function resolveBatchOutputPath(parsed, inputPath) {
   if (parsed.inPlace) return inputPath;
   if (parsed.outdir) return join(parsed.outdir, basename(inputPath));
-  const suffix = parsed.suffix ?? defaultSuffix;
+  const suffix = parsed.suffix;
   if (suffix) {
     const ext = extname(inputPath);
     return `${inputPath.slice(0, inputPath.length - ext.length)}${suffix}${ext}`;

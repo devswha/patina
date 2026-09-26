@@ -8,7 +8,6 @@ import {
   applyPrivateBaseURLOptIn,
   isLoopbackHost,
   isPrivateOrSpecialIP,
-  isSubresourceFetchAllowed,
   shouldAllowInsecureBaseURL,
   shouldAllowPrivateBaseURL,
   validateBaseURL,
@@ -207,29 +206,4 @@ test('shouldAllowPrivateBaseURL and applyPrivateBaseURLOptIn honor flag and env 
   withEnv({ PATINA_ALLOW_PRIVATE_BASE_URL: 'no' }, () => {
     assert.equal(shouldAllowPrivateBaseURL(), false);
   });
-});
-
-test('isSubresourceFetchAllowed blocks page-derived fetches into private space', async () => {
-  const publicIp = async () => [{ address: '93.184.216.34', family: 4 }];
-  const privateIp = async () => [{ address: '10.0.0.7', family: 4 }];
-  const metadataIp = async () => [{ address: '169.254.169.254', family: 4 }];
-
-  // Public host → allowed.
-  assert.equal(await isSubresourceFetchAllowed('https://cdn.test/x.png', { baseUrl: 'https://page.test/', lookupImpl: publicIp }), true);
-  // A hostname that resolves into private space, from a different host → blocked.
-  assert.equal(await isSubresourceFetchAllowed('http://internal.svc/x', { baseUrl: 'https://page.test/', lookupImpl: privateIp }), false);
-  // Same private resource, but the previewed page is itself served from that
-  // host (a localhost dev preview loading its own assets) → allowed.
-  assert.equal(await isSubresourceFetchAllowed('http://internal.svc/x', { baseUrl: 'http://internal.svc/', lookupImpl: privateIp }), true);
-  // A name that resolves to cloud metadata, cross-host → blocked.
-  assert.equal(await isSubresourceFetchAllowed('http://meta.evil/latest', { baseUrl: 'https://page.test/', lookupImpl: metadataIp }), false);
-  // Literal metadata IP, no DNS needed → blocked.
-  assert.equal(await isSubresourceFetchAllowed('http://169.254.169.254/latest', { baseUrl: 'https://page.test/' }), false);
-  // IPv4-mapped IPv6 written in dotted form (the URL parser normalizes it to
-  // the hex form before the guard sees it) → still blocked.
-  assert.equal(await isSubresourceFetchAllowed('http://[::ffff:169.254.169.254]/latest', { baseUrl: 'https://page.test/' }), false);
-  assert.equal(await isSubresourceFetchAllowed('http://[::ffff:7f00:1]/', { baseUrl: 'https://page.test/' }), false);
-  // Non-http(s) and unresolvable hosts → blocked.
-  assert.equal(await isSubresourceFetchAllowed('ftp://cdn.test/x', { baseUrl: 'https://page.test/' }), false);
-  assert.equal(await isSubresourceFetchAllowed('https://nope.test/x', { baseUrl: 'https://page.test/', lookupImpl: async () => { throw new Error('ENOTFOUND'); } }), false);
 });

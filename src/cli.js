@@ -4,7 +4,7 @@ import { runPersona } from './commands/persona.js';
 import { runPack } from './commands/pack.js';
 import { runInspect } from './commands/inspect.js';
 import { handleAuth, printBackendStatus } from './commands/auth.js';
-import { parseArgs, validateModeExclusivity, validateOfflineScoreRequest, validateServeRequest, validatePreviewRequest, validateOutputRouting, validateTransformRequest, validatePersonaRequest, validateVerifyRequest, validateXliffRequest, printHelp } from './cli/args.js';
+import { parseArgs, validateModeExclusivity, validateOfflineScoreRequest, validateOutputRouting, validateTransformRequest, validatePersonaRequest, validateVerifyRequest, printHelp } from './cli/args.js';
 import { runDefault } from './cli/run.js';
 import { inputError } from './errors.js';
 import { createLogger } from './logger.js';
@@ -70,12 +70,6 @@ export async function main(args) {
     return;
   }
 
-
-  // XLIFF-specific validation runs before the generic mode guards so combos
-  // like `--xliff --exit-on` get the XLIFF-specific rejection, not a misleading
-  // score-mode error.
-  validateXliffRequest(parsed);
-
   if (parsed.gate !== undefined && !parsed.score) {
     throw inputError(
       '--exit-on can only be used with --score',
@@ -94,8 +88,6 @@ export async function main(args) {
   validateTransformRequest(parsed);
   validatePersonaRequest(parsed);
   validateVerifyRequest(parsed);
-  validatePreviewRequest(parsed);
-  validateServeRequest(parsed);
   validateOutputRouting(parsed);
 
   return runDefault(parsed, logger);

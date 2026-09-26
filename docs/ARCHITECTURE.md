@@ -51,7 +51,7 @@ rewrite is the LLM one" picture: **every backend-backed CLI mode calls the
 backend** (`invokeBackendChain` in `src/cli/run.js`) — including `--audit`,
 `--score`, and `--diff`, whose names alone suggest they are model-free.
 Backend-free surfaces stay backend-free and make no backend call:
-`patina inspect`, `--score --offline`, `--xliff --dry-run`,
+`patina inspect`, `--score --offline`,
 `patina pack list/install`, and the `patina-score` bin. What differs across
 the backend-backed surfaces is the *strength of the Method-D anchor* — see the
 table below and [Seams: resolved and remaining](#seams-resolved-and-remaining).
@@ -99,16 +99,14 @@ Backend-backed modes use Method P; the rightmost column is the Method-D anchor.
 | `--score` | `score` | yes | `withDeterministicScore`; optional `--exit-on` gate |
 | `--score --offline` | `score` | **no** | deterministic signal score |
 | `--diff` | `diff` | yes | deterministic pattern/detection report |
-| `--preview [--serve]` | preview job | yes | deterministic prose extraction + word-diff rendering |
-| `--xliff [--dry-run]` | xliff | yes (none with `--dry-run`) | deterministic segment parse/scan/select in `src/cli/xliff.js`; rewrites reuse the rewrite lane |
 | `patina inspect` | — | **no** | deterministic score and source-aligned diagnostics over `analyzeText()` + `scoreDeterministicSignals` (`src/commands/inspect.js` → `src/inspection.js`); optional `--rewrite` / `--document-type` add inspect-only advisories; provider/backend options are rejected |
 | `patina pack list/install` | — | **no** | licensed pack delivery (`src/commands/pack.js` ↔ `src/pack-handler.js`), entitlement checked server-side |
 | `patina-score` (bin) | — | **no** | hot-paragraph ratio over `analyzeText()` |
 | playground / hosted rewrite | — | yes | shared server-side prompt, analysis, and scoring assets |
 
-Notes: Persona is opt-in for rewrite/preview in ko/en/zh/ja. Omission preserves
+Notes: Persona is opt-in for rewrite in ko/en/zh/ja. Omission preserves
 the source voice. Persona match and churn are advisory; meaning and number
-checks remain global. `--serve` is a `--preview` transport option.
+checks remain global.
 
 ---
 
@@ -172,19 +170,16 @@ private or custom local files never reach a browser bundle.
 - `src/entitlement.js`, `entitlement-polar.js`, `pack-handler.js` —
   server-only Pro entitlement (Polar license-key validation) and licensed pack
   delivery
-- `src/preview/*` — `--preview` page presentation over rewrite output
-  (deterministic rendering; optional LLM diff narration)
 
 ### Shared infrastructure (lane-neutral)
 
-- `src/cli.js`, `cli/args.js`, `cli/run.js` (dispatcher), `cli/input.js`, `cli/batch.js`, `cli/xliff.js`, `cli/teardown.js` (drain leftover fetch/stdin handles before CLI exit)
+- `src/cli.js`, `cli/args.js`, `cli/run.js` (dispatcher), `cli/input.js`, `cli/batch.js`, `cli/teardown.js` (drain leftover fetch/stdin handles before CLI exit)
 - `src/commands/pack.js` — client half of `patina pack`
 - `src/config.js`, `errors.js`, `logger.js`, `loader.js`, `model-defaults.js`, `output.js`
 - `src/api.js`, `providers.js`, `backends/*`, `anthropic-native.js` (opt-in native
   Anthropic Messages adapter) — LLM transport (used only by Lane B, kept as
   shared transport)
 - `src/auth.js`, `commands/auth.js`, `commands/doctor.js`
-- `src/ocr.js` — image → text input extraction
 - `scoring`, `verification`, and `personas.thresholds` are separate
   configuration namespaces. Persona thresholds cover advisory voice quality;
   verification owns MPS/fidelity floors.

@@ -103,18 +103,18 @@ test('--no-stop-on-retryable-storm disables the storm rule (#440)', () => {
   assert.equal(b.shouldStop(), false);
 });
 
-test('resolveBatchOutputPath: in-place / outdir / suffix / default suffix', () => {
-  assert.equal(resolveBatchOutputPath({ inPlace: true }, '/a/b/f.xliff'), '/a/b/f.xliff');
-  assert.equal(resolveBatchOutputPath({ outdir: '/out' }, '/a/b/f.xliff'), join('/out', 'f.xliff'));
-  assert.equal(resolveBatchOutputPath({ suffix: '.humanized' }, '/a/b/f.xliff'), '/a/b/f.humanized.xliff');
-  assert.equal(resolveBatchOutputPath({}, '/a/b/f.xliff', { defaultSuffix: '.humanized' }), '/a/b/f.humanized.xliff');
+test('resolveBatchOutputPath: in-place / outdir / suffix / unchanged', () => {
+  assert.equal(resolveBatchOutputPath({ inPlace: true }, '/a/b/f.md'), '/a/b/f.md');
+  assert.equal(resolveBatchOutputPath({ outdir: '/out' }, '/a/b/f.md'), join('/out', 'f.md'));
+  assert.equal(resolveBatchOutputPath({ suffix: '.humanized' }, '/a/b/f.md'), '/a/b/f.humanized.md');
+  assert.equal(resolveBatchOutputPath({}, '/a/b/f.md'), '/a/b/f.md');
 });
 
 // ---------- hardening: atomic rename-failure cleanup + string-index edges ----------
 
 test('resolveBatchOutputPath: suffix and outdir edge cases', () => {
-  assert.equal(resolveBatchOutputPath({ suffix: '' }, '/tmp/input.xlf', { defaultSuffix: '' }), '/tmp/input.xlf');
+  assert.equal(resolveBatchOutputPath({ suffix: '' }, '/tmp/input.xlf'), '/tmp/input.xlf');
   assert.equal(resolveBatchOutputPath({ suffix: 'human' }, '/tmp/input.xlf'), '/tmp/inputhuman.xlf');
   assert.equal(resolveBatchOutputPath({ suffix: '.human' }, '/tmp/README'), '/tmp/README.human');
-  assert.equal(resolveBatchOutputPath({ outdir: '/tmp/nested/out' }, '/tmp/a/b/input.xlf', { defaultSuffix: '.ignored' }), join('/tmp/nested/out', 'input.xlf'));
+  assert.equal(resolveBatchOutputPath({ outdir: '/tmp/nested/out' }, '/tmp/a/b/input.xlf'), join('/tmp/nested/out', 'input.xlf'));
 });

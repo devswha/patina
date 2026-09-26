@@ -31,7 +31,7 @@ export function resolvePersonaForRun({ parsed = {}, config = {}, mode = 'rewrite
   if (explicitPersona && !supported) {
     throw inputError(
       'persona is only supported for rewrite mode',
-      'A persona runs only for rewrite/preview in ko, en, zh, or ja.',
+      'A persona runs only for rewrite in ko, en, zh, or ja.',
       'Use `patina --persona <name> <file>` on a rewrite, or remove the persona setting.'
     );
   }

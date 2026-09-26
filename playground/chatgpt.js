@@ -1425,7 +1425,6 @@ async function runAttempt(attempt) {
 function failureMessage(kind, ff, t) {
   if (ff.code === 'protected_text_failed') return reviewCopy(els.lang.value).protected;
   if (ff.code === 'source_changed') return reviewCopy(els.lang.value).stale;
-  if (ff.code === 'edit_output_too_long') return reviewCopy(els.lang.value).unavailable;
   const K = REWRITE_ERROR_KINDS;
   switch (kind) {
     case K.AUTH_REQUIRED: return t.authRequired;

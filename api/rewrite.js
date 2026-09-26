@@ -366,7 +366,7 @@ export function createRewriteApiHandler({ env = /** @type {Record<string,string|
               : ([...bufferedFrames].reverse().find((frame) => frame.type === 'error')?.code ?? 'rewrite_failed');
             const errorFrame = bufferedFrames.find((frame) => frame.type === 'error' && typeof frame.error === 'string');
             res.statusCode = code === 'invalid_unicode' ? 400
-              : ['floor_failed', 'number_safety_failed', 'protected_text_failed', 'edit_output_too_long', 'output_invalid_unicode'].includes(code) ? 422 : 500;
+              : ['floor_failed', 'number_safety_failed', 'protected_text_failed', 'output_invalid_unicode'].includes(code) ? 422 : 500;
             // Mirror the NDJSON frame exactly: the runner already chose a
             // tier-safe `error` string, and a BYOK frame may also carry the
             // coarse upstream status.

@@ -22,7 +22,6 @@ import { fileURLToPath } from 'node:url';
 import { createRewriteHandler } from '../src/rewrite-handler.js';
 import { encodeStreamFrame } from '../src/web-rewrite-contract.js';
 import { runWebRewriteStream } from '../src/web-rewrite-stream.js';
-import { createFunnelApiHandler } from '../api/funnel.js';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_ROOT = await realpath(path.join(REPO_ROOT, 'playground'));
@@ -60,7 +59,6 @@ const REWRITES = new Map([
   ['/chatgpt.js', '/playground/chatgpt.js'],
   ['/chatgpt.css', '/playground/chatgpt.css'],
   ['/rewrite-client.js', '/playground/rewrite-client.js'],
-  ['/analytics.js', '/playground/analytics.js'],
   ['/launch-config.js', '/playground/launch-config.js'],
 ]);
 
@@ -388,26 +386,9 @@ const rewriteApi = createRewriteHandler({
 // ---------- server ----------
 const { port, host } = parseArgs(process.argv.slice(2));
 
-// Validate browser telemetry with the real contract; preview events are discarded.
-const funnelApi = createFunnelApiHandler({
-  env: { NODE_ENV: 'development' },
-  aggregateStore: { async increment() {} },
-});
-
 const server = http.createServer((req, res) => {
   const urlPath = requestPath(req, res);
   if (urlPath === undefined) return;
-
-  if (urlPath === '/api/funnel') {
-    req.headers['x-forwarded-proto'] = 'http';
-    req.headers['x-forwarded-host'] = req.headers.host;
-    res.setHeader('X-Patina-Mock', '1');
-    funnelApi(req, res).catch(() => {
-      if (!res.headersSent) res.writeHead(500);
-      res.end();
-    });
-    return;
-  }
 
   if (urlPath === '/api/rewrite') {
     // The fail-closed rate limiter needs a client IP from a trusted header; a

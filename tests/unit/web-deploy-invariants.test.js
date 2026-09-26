@@ -60,7 +60,6 @@ test('vercel.json serves only the playground as its static output', () => {
     'chatgpt.js',
     'chatgpt.css',
     'rewrite-client.js',
-    'analytics.js',
     'launch-config.js',
   ];
 

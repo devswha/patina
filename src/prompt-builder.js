@@ -228,9 +228,6 @@ function buildRegisterDirective(value, lang) {
  *   structure (#473); true opts back into rewording/adding/removing them.
  * @param {'baseline'|'short-safe-v1'} [options.minimalStructureGuidance=baseline]
  *   Research/hosted short-request treatment for the minimal prompt.
- * @param {'default'|'legacy'} [options.rhetoricPolicy]
- *   Rhetoric edit-policy. Default removes empty hype instead of restocking
- *   similar-weight filler; `legacy` keeps the older similar-weight sentence.
  * @returns {string} Complete prompt text.
  * @throws {TypeError} When register evidence cannot be JSON-serialized.
  * @example
@@ -255,11 +252,7 @@ export function buildPrompt(options) {
     // #473: preserve Markdown ATX headings by default; --rewrite-headings opts in.
     rewriteHeadings = false,
     minimalStructureGuidance = 'baseline',
-    rhetoricPolicy = 'default',
   } = options;
-  if (!['default', 'legacy'].includes(rhetoricPolicy)) {
-    throw new Error(`unknown rhetoricPolicy: ${rhetoricPolicy}`);
-  }
   const lang = config.language || 'ko';
   if (!['baseline', 'short-safe-v1'].includes(minimalStructureGuidance)) {
     throw new Error(`unknown minimalStructureGuidance: ${minimalStructureGuidance}`);
@@ -270,7 +263,7 @@ export function buildPrompt(options) {
   if (promptMode === 'minimal' && mode === 'rewrite') {
     return buildMinimalPrompt({
       config, patterns, documentType, persona, text, register,
-      documentSignals, rewriteHeadings, minimalStructureGuidance, rhetoricPolicy,
+      documentSignals, rewriteHeadings, minimalStructureGuidance,
     });
   }
 
@@ -357,7 +350,6 @@ export function buildPrompt(options) {
       rewriteHeadings,
       personaActive: Boolean(persona),
       registerActive: Boolean(register),
-      rhetoricPolicy,
       documentTypeName,
       portabilityHint: buildPortabilityHint(text, { lang, documentTypeName }),
     });
@@ -405,46 +397,19 @@ export function buildTerminologyConstraint({ korean = false } = {}) {
   return `${header}- ${korean ? KEEP_TERMS_KO : KEEP_TERMS_EN}\n\n`;
 }
 
-/**
- * Resolve the rhetoric edit policy from the environment.
- * `PATINA_RHETORIC_POLICY=legacy` restores the older similar-weight sentence.
- *
- * @param {Record<string,string|undefined>} [env=process.env]
- * @returns {'default'|'legacy'}
- */
-export function resolveRhetoricPolicy(env = process.env) {
-  return env?.PATINA_RHETORIC_POLICY === 'legacy' ? 'legacy' : 'default';
-}
-
-const LEGACY_RHETORIC_STRICT =
-  'Cut filler and hype freely, but replace it with natural phrasing of similar weight; never compress the text into a summary';
-const DEFAULT_RHETORIC_STRICT =
+const RHETORIC_STRICT =
   'Keep the document purpose and register. Actually remove or tighten empty hype, stock openings, and redundancy; do not keep those phrases just because they appear in the source. Preserve numbers, agents, conditions, negation, uncertainty, causation, obligation, risk, important intensity, and attributed evaluations. If numbers and time spans already convey scale, you may drop redundant emphasis. If a phrase is the only carrier of intensity, do not delete that intensity — keep the force while tightening the wording. Do not change direct quotations, requested slogans, or already-natural sentences without need. Do not change claims or stance the document purpose does not authorize.';
-
-const LEGACY_RHETORIC_MINIMAL_EN =
-  'cut the filler and hype, but replace them with natural phrasing of similar weight instead of compressing the text into a summary';
-const DEFAULT_RHETORIC_MINIMAL_EN =
+const RHETORIC_MINIMAL_EN =
   'while keeping the document purpose and register, actually remove or tighten empty hype, stock openings, and redundancy. Do not keep those phrases just because they appear in the source. Preserve numbers, agents, conditions, negation, uncertainty, causation, obligation, risk, important intensity, and attributed evaluations. If numbers and time spans already convey scale, you may drop redundant emphasis. If a phrase is the only carrier of intensity, do not delete that intensity — keep the force while tightening the wording. Do not change direct quotations, requested slogans, or already-natural sentences without need. Do not change claims or stance the document purpose does not authorize';
-
-const LEGACY_RHETORIC_MINIMAL_KO =
-  '군더더기는 걷어내되 그 자리를 비슷한 무게의 자연스러운 표현으로 채우고, 요약문으로 줄여 버리지는 마';
-const DEFAULT_RHETORIC_MINIMAL_KO =
+const RHETORIC_MINIMAL_KO =
   '문서 목적과 말투를 유지하면서 정보가 없는 과장·상투적 도입·중복은 실제로 제거하거나 간결하게 고쳐. 원문에 있다는 이유만으로 그런 표현을 남기지 마. 단, 수치·주체·조건·부정·불확실성·인과관계·의무·위험·중요한 강도와 귀속된 평가는 보존해. 수치와 기간이 규모를 이미 전달하면 중복 강조는 덜어내도 돼. 표현이 강도 정보를 유일하게 담고 있으면 그 강도를 지우지 말고 유지한 채 다듬어. 직접 인용·요청된 슬로건·이미 자연스러운 문장은 필요 없이 고치지 마. 문서 목적상 허용되지 않은 주장·입장 변경은 하지 마';
 
-function usesLegacyRhetoric(rhetoricPolicy = 'default') {
-  return rhetoricPolicy === 'legacy';
+function buildStrictRhetoricItem() {
+  return `5. Keep overall length close to the original — the fidelity gate measures character length and full marks require staying within 50-130% of the input. ${RHETORIC_STRICT}\n`;
 }
 
-function buildStrictRhetoricItem(rhetoricPolicy = 'default') {
-  const rhetoric = usesLegacyRhetoric(rhetoricPolicy) ? LEGACY_RHETORIC_STRICT : DEFAULT_RHETORIC_STRICT;
-  return `5. Keep overall length close to the original — the fidelity gate measures character length and full marks require staying within 50-130% of the input. ${rhetoric}\n`;
-}
-
-function buildMinimalRhetoricClause(lang, rhetoricPolicy = 'default') {
-  if (lang === 'ko') {
-    return usesLegacyRhetoric(rhetoricPolicy) ? LEGACY_RHETORIC_MINIMAL_KO : DEFAULT_RHETORIC_MINIMAL_KO;
-  }
-  return usesLegacyRhetoric(rhetoricPolicy) ? LEGACY_RHETORIC_MINIMAL_EN : DEFAULT_RHETORIC_MINIMAL_EN;
+function buildMinimalRhetoricClause(lang) {
+  return lang === 'ko' ? RHETORIC_MINIMAL_KO : RHETORIC_MINIMAL_EN;
 }
 
 // Markdown ATX heading lines (`## ...`) are document structure — they drive the
@@ -482,7 +447,7 @@ function buildNoInventedLessonConstraint(lang, documentTypeName = 'default') {
 function buildRewriteInstructions(
   structurePacks,
   lexicalPacks,
-  { includeSelfAudit = true, lang = 'ko', rewriteHeadings = false, personaActive = false, registerActive = false, rhetoricPolicy = 'default', documentTypeName = 'default', portabilityHint = null } = {}
+  { includeSelfAudit = true, lang = 'ko', rewriteHeadings = false, personaActive = false, registerActive = false, documentTypeName = 'default', portabilityHint = null } = {}
 ) {
   const phaseCount = includeSelfAudit ? 3 : 2;
   let inst = `Follow the ${phaseCount}-Phase pipeline:\n\n`;
@@ -530,7 +495,7 @@ function buildRewriteInstructions(
   inst += `2. Rewrite AI-sounding expressions into natural alternatives\n`;
   inst += `3. Preserve core meaning, claims, polarity, causation, numbers. Numbers are frozen tokens: render every numeral exactly as the source writes it (digits stay digits, grouping and units unchanged) and exactly as many times as the source states it — never repeat a number into a sentence that did not carry it, and never move one earlier or later in the text\n`;
   inst += `4. Never add a claim, fact, number, guarantee, or commitment the source does not state. When a pattern asks for specificity the source does not supply — a concrete CTA, a named authority, a mechanism, a benefit — cut the vague sentence instead of inventing a replacement. Invented commitments ("cancel anytime", "no hidden fees", "saves you time every day") are the worst case: they publish false promises in the author's name\n`;
-  inst += buildStrictRhetoricItem(rhetoricPolicy);
+  inst += buildStrictRhetoricItem();
   inst += personaActive
     ? `6. Apply the active persona's voice traits\n`
     : `6. Preserve the source voice; do not invent a personality\n`;
@@ -794,7 +759,7 @@ export function isShortText(text) {
 // instruction so the model's natural voice prior isn't overridden by analytical
 // framing. Rewrite mode only; score/audit/diff stay on the strict path because
 // they need precise pattern references.
-function buildMinimalPrompt({ config, patterns, documentType, persona = null, text, register, documentSignals = null, rewriteHeadings = false, minimalStructureGuidance = 'baseline', rhetoricPolicy = 'default' }) {
+function buildMinimalPrompt({ config, patterns, documentType, persona = null, text, register, documentSignals = null, rewriteHeadings = false, minimalStructureGuidance = 'baseline' }) {
   const lang = config.language || 'ko';
   const documentTypeName = config.documentType || 'default';
   const activePatterns = patterns.filter((p) => !p.isScoreOnly);
@@ -808,7 +773,7 @@ function buildMinimalPrompt({ config, patterns, documentType, persona = null, te
     }
   }
 
-  const rhetoricClause = buildMinimalRhetoricClause(lang, rhetoricPolicy);
+  const rhetoricClause = buildMinimalRhetoricClause(lang);
   const instruction = lang === 'ko'
     ? `이 글이 AI가 쓴 것 같아 보여서 사람이 쓴 것처럼 자연스럽게 다듬어줘. 아래 어휘들이 보이면 자연스러운 한국어로 풀어줘. 무리하게 의역하지 말고 의미·숫자·인과관계는 그대로 보존해. 분량도 원문과 비슷하게 유지해(대략 ±30% 이내) — ${rhetoricClause}.`
     : `This text reads like AI. Rewrite it so it sounds like a real person wrote it. If you spot any of the phrases below, swap them out for something natural. Don't over-paraphrase — keep the meaning, numbers, and causation intact. Keep the rewrite about the same length as the original (within roughly ±30%): ${rhetoricClause}.`;

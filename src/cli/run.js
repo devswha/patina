@@ -5,7 +5,7 @@ import {
   loadDocumentType,
   loadCoreFile,
 } from '../loader.js';
-import { buildPrompt, resolveRhetoricPolicy } from '../prompt-builder.js';
+import { buildPrompt } from '../prompt-builder.js';
 import { invokeBackendChain, selectBackendChain, listBackends } from '../backends/index.js';
 import { selectProvider, resolveProviderConfig } from '../providers.js';
 import { validateBaseURL, applyInsecureBaseURLOptIn, applyPrivateBaseURLOptIn } from '../security.js';
@@ -601,7 +601,6 @@ function promptAssets({ voice, scoring }) {
   return {
     voice: voice.body ? voice : null,
     scoring: scoring.body ? scoring : null,
-    rhetoricPolicy: resolveRhetoricPolicy(process.env),
   };
 }
 

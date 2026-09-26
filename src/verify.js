@@ -128,7 +128,6 @@ const STRICT_RETRY_DIRECTIVE = [
  * @param {'strict'|'minimal'} [options.promptMode] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals] Deterministic document measurements.
  * @param {boolean} [options.rewriteHeadings] Allow rewording Markdown headings.
- * @param {'default'|'legacy'} [options.rhetoricPolicy] Rhetoric policy forwarded to the prompt builder.
  * @param {string} [options.apiKey] Backend API key.
  * @param {string} [options.baseURL] Backend base URL.
  * @param {string} [options.model] Backend model id.
@@ -152,7 +151,6 @@ export async function verifyRewrite({
   promptMode = 'strict',
   documentSignals = null,
   rewriteHeadings = false,
-  rhetoricPolicy = 'default',
   apiKey,
   baseURL,
   model,
@@ -211,7 +209,6 @@ export async function verifyRewrite({
     promptMode,
     documentSignals,
     rewriteHeadings,
-    rhetoricPolicy,
     text: original,
     mode: 'rewrite',
     includeSelfAudit: false,

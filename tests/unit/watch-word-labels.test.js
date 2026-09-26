@@ -16,7 +16,7 @@ function minimalRewritePrompt(lang) {
     patterns: loadPatterns(REPO_ROOT, lang),
     documentType: null, voice: null, persona: null, register: null, scoring: null,
     promptMode: 'minimal', documentSignals: null, rewriteHeadings: false,
-    rhetoricPolicy: 'default', text: 'sample', mode: 'rewrite', includeSelfAudit: false,
+    text: 'sample', mode: 'rewrite', includeSelfAudit: false,
   });
 }
 

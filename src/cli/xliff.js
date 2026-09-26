@@ -39,9 +39,9 @@ export function normalizeLang(tag) {
   if (typeof tag !== 'string') return null;
   const key = tag.trim().toLowerCase();
   if (!key) return null;
-  if (LANG_ALIASES[key]) return LANG_ALIASES[key];
+  if (Object.hasOwn(LANG_ALIASES, key)) return LANG_ALIASES[key];
   const base = key.split(/[-_]/)[0];
-  const mapped = LANG_ALIASES[base];
+  const mapped = Object.hasOwn(LANG_ALIASES, base) ? LANG_ALIASES[base] : undefined;
   return mapped && SUPPORTED_LANGS.includes(mapped) ? mapped : null;
 }
 

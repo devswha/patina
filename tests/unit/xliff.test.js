@@ -91,6 +91,13 @@ test('normalizeLang: maps regional tags to supported base; rejects unsupported',
   assert.equal(normalizeLang(''), null);
 });
 
+test('normalizeLang: Object.prototype member names are not language tags', () => {
+  for (const tag of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'valueOf',
+    'constructor-kr', '__proto__-x', 'toString_en']) {
+    assert.equal(normalizeLang(tag), null, tag);
+  }
+});
+
 test('splitTargetInnerWhitespace: preserves leading/trailing without overlap', () => {
   assert.deepEqual(splitTargetInnerWhitespace('  hi there  '), { leading: '  ', core: 'hi there', trailing: '  ' });
   assert.deepEqual(splitTargetInnerWhitespace('\n\t x \t'), { leading: '\n\t ', core: 'x', trailing: ' \t' });
@@ -124,6 +131,17 @@ test('parseXliffDocument: detects + normalizes target-language', () => {
 test('parseXliffDocument: throws on unsupported target-language', () => {
   const bad = '<xliff version="1.2"><file target-language="fr"><body><trans-unit id="a"><source>x</source><target>y</target></trans-unit></body></file></xliff>';
   assert.throws(() => parseXliffDocument(bad), /unsupported or missing target-language/);
+});
+
+test('parseXliffDocument: an Object.prototype member name is rejected like any unknown language', () => {
+  const doc = (lang) => `<xliff version="1.2"><file target-language="${lang}"><body><trans-unit id="a"><source>x</source><target>y</target></trans-unit></body></file></xliff>`;
+  const unsupported = (lang) => ({ code: 'xliff_unsupported_language', message: `xliff: unsupported or missing target-language: ${lang}` });
+  assert.throws(() => parseXliffDocument(doc('xx')), unsupported('xx'));
+  for (const lang of ['constructor', 'toString', 'hasOwnProperty', '__proto__']) {
+    assert.throws(() => parseXliffDocument(doc(lang)), unsupported(lang), lang);
+  }
+  // --lang reaches the same lookup through langOverride.
+  assert.throws(() => parseXliffDocument(doc('ko'), { langOverride: 'constructor' }), { code: 'xliff_unsupported_language' });
 });
 
 test('parseXliffDocument: no units throws fail-closed', () => {

@@ -127,7 +127,7 @@ export async function evaluateScorerFixture(fixture, candidate, { repoRoot = ROO
     logger: quietLogger, callLLM,
   });
   const validScore = calls.at(-1)?.schema_valid === true && Number.isFinite(rawScore?.overall)
-    && acceptedStudyIdentity(calls.at(-1), candidate)
+    && acceptedStudyIdentity(calls.at(-1))
     && Number.isFinite(result.overall) && result.overall >= 0 && result.overall <= 100 && !result.error;
   // Do not retain raw provider text, matched phrases, anchors, or private inputs.
   const allowedPacks = new Set(patterns.map((pack) => pack.frontmatter.pack.replace(/^[a-z]{2}-/, '')));

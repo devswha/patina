@@ -2,7 +2,6 @@ import { callLLM } from '../api.js';
 import * as codexCli from './codex-cli.js';
 import * as claudeCli from './claude-cli.js';
 import * as geminiCli from './gemini-cli.js';
-import * as kimiCli from './kimi-cli.js';
 import * as agyCli from './agy-cli.js';
 import { inspectHttpApiKeySource } from '../auth.js';
 import { inputError } from '../errors.js';
@@ -42,7 +41,6 @@ const REGISTRY = {
   'codex-cli': codexCli,
   'claude-cli': claudeCli,
   'gemini-cli': geminiCli,
-  'kimi-cli': kimiCli,
   'agy-cli': agyCli,
 };
 
@@ -66,11 +64,6 @@ const BACKEND_META = {
     kind: 'local-cli',
     selectWith: '--backend gemini-cli, --model gemini-*',
     defaultModel: DEFAULT_BEST_MODELS.geminiCli,
-  },
-  'kimi-cli': {
-    kind: 'local-cli',
-    selectWith: '--backend kimi-cli, --model kimi-*',
-    defaultModel: DEFAULT_BEST_MODELS.kimiCli,
   },
   'agy-cli': {
     kind: 'local-cli',
@@ -125,9 +118,6 @@ export function selectBackend({ name, model, modelSource } = {}) {
   }
   if (useModelHeuristic && /^gemini(-|$)/i.test(model)) {
     return { backend: REGISTRY['gemini-cli'], reason: 'model heuristic' };
-  }
-  if (useModelHeuristic && /^kimi(-|$)/i.test(model)) {
-    return { backend: REGISTRY['kimi-cli'], reason: 'model heuristic' };
   }
   if (useModelHeuristic && /^agy$/i.test(model)) {
     return { backend: REGISTRY['agy-cli'], reason: 'model heuristic' };
@@ -186,7 +176,7 @@ export async function invokeBackendChain({
     throw inputError(
       'no backend selected',
       'patina could not resolve a backend to run.',
-      'Pass --backend openai-http, codex-cli, claude-cli, gemini-cli, kimi-cli, or agy-cli.'
+      'Pass --backend openai-http, codex-cli, claude-cli, gemini-cli, or agy-cli.'
     );
   }
 

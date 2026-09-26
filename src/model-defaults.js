@@ -10,7 +10,6 @@ export const DEFAULT_BEST_MODELS = Object.freeze({
   codexCli: 'gpt-5.5',
   claudeCli: 'claude-sonnet-4-6',
   geminiCli: 'gemini-2.5-pro',
-  kimiCli: 'kimi-code/kimi-for-coding',
   // Antigravity CLI catalog id; the suffix is the reasoning-effort tier.
   agyCli: 'gemini-3.7-flash-medium',
 });
@@ -19,7 +18,6 @@ const BACKEND_MODEL_KEYS = Object.freeze({
   'codex-cli': 'codexCli',
   'claude-cli': 'claudeCli',
   'gemini-cli': 'geminiCli',
-  'kimi-cli': 'kimiCli',
   'agy-cli': 'agyCli',
 });
 
@@ -27,7 +25,6 @@ const BACKEND_SELECTOR_ALIASES = Object.freeze({
   'codex-cli': 'codex',
   'claude-cli': 'claude',
   'gemini-cli': 'gemini',
-  'kimi-cli': 'kimi',
   'agy-cli': 'agy',
 });
 
@@ -40,7 +37,6 @@ const BACKEND_MODEL_FAMILY = Object.freeze({
   'codex-cli': /^(?:codex|gpt|o\d)(-|$|\.)/i,
   'claude-cli': /^claude(-|$)/i,
   'gemini-cli': /^gemini(-|$)/i,
-  'kimi-cli': /^kimi(-|$)/i,
   // Antigravity exposes Gemini, Claude and GPT-OSS ids from one catalog.
   'agy-cli': /^(?:gemini|claude|gpt-oss)(-|$)/i,
 });

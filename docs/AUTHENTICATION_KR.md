@@ -67,11 +67,10 @@ patina --model claude-sonnet-4-6 --lang ko input.txt   # auto-routes
 ```
 
 참고: patina는 `--tools ""`과 `--strict-mcp-config`를 넘기므로 호출에 내장 도구가 실리지
-않고 사용자가 설정한 MCP 서버도 시작하지 않습니다. `--ocr` 이미지 경로만 예외로, 스테이징된
-이미지 파일을 읽기 위해 `Read`를 유지합니다.
+않고 사용자가 설정한 MCP 서버도 시작하지 않습니다.
 
 인증 파일: `~/.claude/.credentials.json` (OAuth 로그인 뒤 생성됩니다). `patina
-doctor`, `patina auth status`, 그리고 `--ocr`의 자동 백엔드 선택은 이 파일의 `claudeAiOauth` 토큰과 만료 시각을 읽습니다.
+doctor`와 `patina auth status`는 이 파일의 `claudeAiOauth` 토큰과 만료 시각을 읽습니다.
 로그아웃이나 토큰 갱신 실패로 Claude Code가 비워 둔 파일은 `authenticated=no`로
 보고되고 `claude auth login` 재실행 안내가 붙습니다. 네트워크 호출은 하지 않으므로
 서버에서 폐기된 토큰은 실제 백엔드 호출 때에만 드러납니다.

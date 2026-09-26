@@ -49,15 +49,9 @@ export async function invoke(options = {}) {
 
 // Detail is opt-in for local research accounting; normal callers still receive
 // only text. Session identifiers must remain private.
-export async function invokeDetailed({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS, images } = {}) {
+export async function invokeDetailed({ prompt, model, modelSource, signal, timeout = DEFAULT_BACKEND_TIMEOUT_MS } = {}) {
   if (!prompt || typeof prompt !== 'string') {
     throw new Error('kimi-cli backend: prompt must be a non-empty string');
-  }
-  if (Array.isArray(images) && images.length > 0) {
-    // Non-interactive prompt mode runs with tools unapprovable by design (see
-    // the security comment below) — there is no safe way for it to open an
-    // image file.
-    throw new Error('kimi-cli backend: image input is not supported');
   }
   throwIfAborted(signal, 'kimi-cli backend: aborted');
 

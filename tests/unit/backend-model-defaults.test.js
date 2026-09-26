@@ -182,25 +182,6 @@ test('local CLI backends strip agent tools from every text invocation', { skip: 
   }, FAKE_CLI_WITH_POLICY);
 });
 
-test('claude keeps only the Read tool when images are attached; gemini stays tool-free', { skip: FAKE_CLI_SKIP }, async () => {
-  const imageDir = mkdtempSync(join(tmpdir(), 'patina-tool-image-'));
-  const image = join(imageDir, 'shot.png');
-  writeFileSync(image, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
-  try {
-    await withFakeCli(async () => {
-      const claude = JSON.parse(await claudeCli.invoke({ prompt: 'read the image', images: [image] }));
-      assertArgValue(claude.args, '--tools', 'Read');
-      assert.ok(claude.args.includes('--strict-mcp-config'));
-
-      const gemini = JSON.parse(await geminiCli.invoke({ prompt: 'read the image', images: [image] }));
-      assert.strictEqual(gemini.policy, geminiCli.GEMINI_NO_TOOLS_POLICY);
-      assert.match(gemini.stdin, /^@ocr-image-0\.png\n/);
-    }, FAKE_CLI_WITH_POLICY);
-  } finally {
-    rmSync(imageDir, { recursive: true, force: true });
-  }
-});
-
 test('local CLI backends pass explicit non-alias model ids', { skip: FAKE_CLI_SKIP }, async () => {
   await withFakeCli(async () => {
     const codex = JSON.parse(await codexCli.invoke({

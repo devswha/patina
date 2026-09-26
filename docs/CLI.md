@@ -185,7 +185,6 @@ Contract:
 | `--score/--audit/--diff --persona p` | input error; Persona is rewrite-only |
 | `--persona p --register casual|professional` | allowed; independent axes |
 | `--persona p --document-type blog` | allowed; independent axes |
-| `--persona p --jargon explain|remove` | allowed in rewrite |
 
 Persona v2 files are frontmatter-only at runtime. Markdown bodies are
 documentation and never enter prompts. Persona fields may define vocabulary,
@@ -212,21 +211,6 @@ only when a Persona is active:
   }
 }
 ```
-
-## Transformations beyond cleanup: `--jargon`
-
-By default patina is a conservative humanizer: it removes AI tells without changing a sentence's claim or framing. `--jargon` is an explicit opt-in for adjusting terminology for a different audience. It applies to the default rewrite only; combining it with `--score`, `--audit`, or `--diff` is an input error (those modes do not rewrite). A voice or delivery override uses `--persona` or `--register`; neither changes rewrite depth.
-
-```bash
-patina --jargon remove draft.md                        # de-jargonized rewrite
-patina --jargon explain --register casual draft.md     # gloss terms, casual register
-```
-
-- `--jargon keep` (default) — copy Latin-letter tech terms, API names, task names, and exam names (`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`) as-is. Do not synonym-swap them into 분류/분할/손실.
-- `--jargon explain` — keep those English terms and add a brief plain-language gloss at first mention only.
-- `--jargon remove` — replace developer/technical jargon with everyday language; product names and proper nouns stay.
-
-Facts, numbers, names, and causal claims must never be invented, dropped, or reversed. Transform options change terminology or delivery, not truth.
 
 ## Stderr logs
 

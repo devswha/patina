@@ -25,11 +25,9 @@ test('--persona rejects unsupported options at parse time', () => {
   assertPersonaInputError(['--persona', 'preserve', '--unsupported-option', 'draft.md']);
 });
 
-test('--persona composes with rewrite transformations', () => {
-  assertPersonaAllowed(['--persona', 'natural-ko', '--jargon', 'keep', 'draft.md']);
+test('--persona composes with an explicit register', () => {
   assertPersonaAllowed(['--persona', 'natural-ko', '--register', 'professional', 'draft.md']);
-  assertPersonaAllowed(['--persona', 'natural-ko', '--jargon', 'explain', 'draft.md']);
-  assertPersonaAllowed(['--persona', 'natural-ko', '--jargon', 'remove', 'draft.md']);
+  assertPersonaAllowed(['--persona', 'natural-ko', '--register', 'casual', 'draft.md']);
 });
 
 test('--persona now allows all supported languages (multilingual)', () => {

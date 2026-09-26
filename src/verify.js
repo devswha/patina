@@ -127,7 +127,6 @@ const STRICT_RETRY_DIRECTIVE = [
  * @param {Record<string, any>|null} options.scoring Parsed scoring guide.
  * @param {'strict'|'minimal'} [options.promptMode] Prompt catalog detail level.
  * @param {string[]|null} [options.documentSignals] Deterministic document measurements.
- * @param {string} [options.jargon] Technical-term policy (keep|explain|remove).
  * @param {boolean} [options.rewriteHeadings] Allow rewording Markdown headings.
  * @param {'default'|'legacy'} [options.rhetoricPolicy] Rhetoric policy forwarded to the prompt builder.
  * @param {string} [options.apiKey] Backend API key.
@@ -152,7 +151,6 @@ export async function verifyRewrite({
   scoring,
   promptMode = 'strict',
   documentSignals = null,
-  jargon = 'keep',
   rewriteHeadings = false,
   rhetoricPolicy = 'default',
   apiKey,
@@ -212,7 +210,6 @@ export async function verifyRewrite({
     scoring,
     promptMode,
     documentSignals,
-    jargon,
     rewriteHeadings,
     rhetoricPolicy,
     text: original,

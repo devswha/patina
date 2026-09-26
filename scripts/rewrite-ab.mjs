@@ -517,7 +517,6 @@ export function requestShapedPromptMode(fixture) {
     documentType: fixture.documentType || 'default',
     persona: fixture.persona,
     register: fixture.requestRegister,
-    jargon: fixture.jargon,
     rewriteHeadings: fixture.rewriteHeadings,
     original: fixture.original ?? fixture.text,
     history: fixture.history ?? [],

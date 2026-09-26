@@ -10,9 +10,9 @@ Also fix the sentence rhythm. AI text keeps every sentence nearly the same lengt
 
 **Do not invent why, evaluation, or a lesson.** Do not add rationale, value judgments, "I learned"/"this taught me" closers, or "so the important point is" if the source does not have them. If the source already has a lesson, keep that lesson; do not regenerate a new moral.
 
-## Terminology constraint (--jargon keep)
+## Terminology constraint
 
-- **Keep Latin-letter terms (--jargon keep)**: Copy Latin-letter tech terms, API names, task names, and exam names (`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`) as-is. Do not synonym-swap them into 분류/분할/손실 or other translations.
+- **Keep Latin-letter terms**: Copy Latin-letter tech terms, API names, task names, and exam names (`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`) as-is. Do not synonym-swap them into 분류/분할/손실 or other translations.
 
 ## AI signal words (reference)
 

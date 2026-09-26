@@ -49,9 +49,6 @@ export function classifyWebPromptBudget(request) {
   if (!isAbsentChoice(candidate.persona) || !isAbsentChoice(candidate.register)) {
     return { selected: 'strict', reason: 'persona_or_register' };
   }
-  if (Object.hasOwn(candidate, 'jargon') && !isAbsentChoice(candidate.jargon) && candidate.jargon !== 'keep') {
-    return { selected: 'strict', reason: 'transformation_options' };
-  }
   if (Object.hasOwn(candidate, 'rewriteHeadings') && !isAbsentChoice(candidate.rewriteHeadings) && candidate.rewriteHeadings !== false) {
     return { selected: 'strict', reason: 'transformation_options' };
   }

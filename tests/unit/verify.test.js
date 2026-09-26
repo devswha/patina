@@ -304,7 +304,7 @@ test('validateVerifyRequest rejects non-rewrite modes', () => {
 });
 
 test('validateVerifyRequest allows a plain verified rewrite and is a no-op without --verify', () => {
-  assert.doesNotThrow(() => validateVerifyRequest({ verify: true, jargon: 'remove' }));
+  assert.doesNotThrow(() => validateVerifyRequest({ verify: true, register: 'casual' }));
   assert.doesNotThrow(() => validateVerifyRequest({}));
 });
 

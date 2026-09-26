@@ -223,9 +223,6 @@ function buildRegisterDirective(value, lang) {
  *   as ground truth for the Phase 0 document brief.
  * @param {boolean} [options.includeSelfAudit=true] Include the Phase 3 self-audit
  *   in rewrite instructions; the rewrite loop passes false to skip the token cost (#444).
- * @param {string} [options.jargon=keep] Technical-term policy
- *   (keep|explain|remove); non-default values add the opt-in
- *   transformation directive to rewrite prompts.
  * @param {boolean} [options.rewriteHeadings=false] When false (default),
  *   instruct the model to preserve Markdown ATX heading lines verbatim as
  *   structure (#473); true opts back into rewording/adding/removing them.
@@ -255,7 +252,6 @@ export function buildPrompt(options) {
     // tokens it strips anyway; external scorers perform the AI-tell/meaning
     // checks (#444). Default true keeps the standalone rewrite contract unchanged.
     includeSelfAudit = true,
-    jargon = 'keep',
     // #473: preserve Markdown ATX headings by default; --rewrite-headings opts in.
     rewriteHeadings = false,
     minimalStructureGuidance = 'baseline',
@@ -274,7 +270,7 @@ export function buildPrompt(options) {
   if (promptMode === 'minimal' && mode === 'rewrite') {
     return buildMinimalPrompt({
       config, patterns, documentType, persona, text, register,
-      documentSignals, jargon, rewriteHeadings, minimalStructureGuidance, rhetoricPolicy,
+      documentSignals, rewriteHeadings, minimalStructureGuidance, rhetoricPolicy,
     });
   }
 
@@ -365,7 +361,7 @@ export function buildPrompt(options) {
       documentTypeName,
       portabilityHint: buildPortabilityHint(text, { lang, documentTypeName }),
     });
-    prompt += buildTransformDirective({ jargon, korean: false });
+    prompt += buildTerminologyConstraint({ korean: false });
   } else if (mode === 'diff') {
     prompt += buildDiffInstructions();
   } else if (mode === 'audit') {
@@ -392,39 +388,21 @@ export function buildPrompt(options) {
   return prompt;
 }
 
-const KEEP_JARGON_EN =
-  '**Keep Latin-letter terms (--jargon keep)**: Copy Latin-letter tech terms, API names, task names, and exam names (`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`) as-is. Do not synonym-swap them into 분류/분할/손실 or other translations.';
-const KEEP_JARGON_KO =
-  '**라틴 문자 용어 유지 (--jargon keep)**: 라틴 문자 기술 용어·API·과제명·시험명(`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`)은 원문 그대로 복사해. 분류/분할/손실 같은 번역 동의어로 바꾸지 마.';
+const KEEP_TERMS_EN =
+  '**Keep Latin-letter terms**: Copy Latin-letter tech terms, API names, task names, and exam names (`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`) as-is. Do not synonym-swap them into 분류/분할/손실 or other translations.';
+const KEEP_TERMS_KO =
+  '**라틴 문자 용어 유지**: 라틴 문자 기술 용어·API·과제명·시험명(`classification`, `segmentation`, `loss`, `chest X-ray`, `CXR`)은 원문 그대로 복사해. 분류/분할/손실 같은 번역 동의어로 바꾸지 마.';
 
 /**
- * Build the `--jargon` terminology directive for rewrite prompts.
- * `keep` is a conservative constraint (not an opt-in override). `explain` and
- * `remove` keep the user-requested transformation header.
+ * Build the fixed terminology constraint for rewrite prompts: Latin-letter
+ * technical terms are copied as-is, never translated into synonyms.
  *
- * @param {{jargon?: string, korean?: boolean}} [options]
- * @returns {string} Directive block, always non-empty for keep|explain|remove.
+ * @param {{korean?: boolean}} [options]
+ * @returns {string} Constraint block, always non-empty.
  */
-export function buildTransformDirective({ jargon = 'keep', korean = false } = {}) {
-  if (jargon === 'keep') {
-    const header = korean ? `## 용어 유지 (--jargon keep)\n\n` : `## Terminology constraint (--jargon keep)\n\n`;
-    return `${header}- ${korean ? KEEP_JARGON_KO : KEEP_JARGON_EN}\n\n`;
-  }
-  const bullets = [];
-  if (jargon === 'explain') {
-    bullets.push(korean
-      ? `**용어 설명 병기 (--jargon explain)**: 라틴 문자 기술 용어는 그대로 두고, 처음 나올 때만 짧고 쉬운 설명을 괄호로 덧붙여.`
-      : `**Gloss technical terms (--jargon explain)**: Keep Latin-letter technical terms as-is; add a brief plain-language gloss in parentheses at first mention only.`);
-  } else if (jargon === 'remove') {
-    bullets.push(korean
-      ? `**개발 용어 제거 (--jargon remove)**: 개발·기술 용어는 일반 독자가 이해할 일상 표현으로 바꿔. 마땅한 표현이 없으면 풀어서 설명하고, 제품명·고유명사는 그대로 둬.`
-      : `**Remove jargon (--jargon remove)**: Replace developer/technical jargon with everyday language a non-technical reader understands. Paraphrase concepts that have no simple equivalent; keep product names and proper nouns as-is.`);
-  }
-  if (bullets.length === 0) return '';
-  const header = korean
-    ? `## 변환 지시 (사용자 요청)\n\n사용자가 AI 패턴 교정을 넘어선 변환을 명시적으로 요청했어. 아래 지시가 위의 보수적인 편집 규칙(최소 의역, 문장 틀 유지)과 충돌하면 **아래 지시가 우선**이야. 단, 사실·숫자·이름·인과관계는 어떤 깊이에서도 만들거나 빼거나 뒤집으면 안 돼.\n\n`
-    : `## Transformation Directive (user-requested)\n\nThe user explicitly opted into a transformation beyond AI-pattern cleanup. Where this directive conflicts with the conservative editing rules above (minimal paraphrase, keep sentence framing), THIS DIRECTIVE WINS. Facts, numbers, names, and causal claims must still never be invented, dropped, or reversed.\n\n`;
-  return `${header}${bullets.map((b) => `- ${b}`).join('\n')}\n\n`;
+export function buildTerminologyConstraint({ korean = false } = {}) {
+  const header = korean ? `## 용어 유지\n\n` : `## Terminology constraint\n\n`;
+  return `${header}- ${korean ? KEEP_TERMS_KO : KEEP_TERMS_EN}\n\n`;
 }
 
 /**
@@ -816,7 +794,7 @@ export function isShortText(text) {
 // instruction so the model's natural voice prior isn't overridden by analytical
 // framing. Rewrite mode only; score/audit/diff stay on the strict path because
 // they need precise pattern references.
-function buildMinimalPrompt({ config, patterns, documentType, persona = null, text, register, documentSignals = null, jargon = 'keep', rewriteHeadings = false, minimalStructureGuidance = 'baseline', rhetoricPolicy = 'default' }) {
+function buildMinimalPrompt({ config, patterns, documentType, persona = null, text, register, documentSignals = null, rewriteHeadings = false, minimalStructureGuidance = 'baseline', rhetoricPolicy = 'default' }) {
   const lang = config.language || 'ko';
   const documentTypeName = config.documentType || 'default';
   const activePatterns = patterns.filter((p) => !p.isScoreOnly);
@@ -874,7 +852,7 @@ function buildMinimalPrompt({ config, patterns, documentType, persona = null, te
   if (headingRule) prompt += `${headingRule}\n\n`;
   prompt += `${buildSectionShapeRule(lang)}\n\n`;
   prompt += `${buildNoInventedLessonConstraint(lang, documentTypeName)}\n\n`;
-  prompt += buildTransformDirective({ jargon, korean: lang === 'ko' });
+  prompt += buildTerminologyConstraint({ korean: lang === 'ko' });
 
   if (Array.isArray(documentSignals) && documentSignals.length > 0) {
     prompt += lang === 'ko' ? `## 문서 신호 (결정론 측정값)\n\n` : `## Document signals (measured)\n\n`;

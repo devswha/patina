@@ -52,8 +52,8 @@ See [ETHICS.md](ETHICS.md) for the intended-use position statement.
 ## Does it work without an API key?
 
 Yes. `--score --offline` and the `patina-score` precommit gate need no backend.
-LLM-backed modes can use a logged-in local Codex, Claude, Gemini, or Kimi CLI
-instead of an API key. See [Authentication](AUTHENTICATION.md).
+LLM-backed modes can use a logged-in local Codex, Claude, or Gemini CLI instead
+of an API key. See [Authentication](AUTHENTICATION.md).
 
 ## Does patina send my text anywhere?
 

@@ -295,7 +295,7 @@ emit groups of length ≥ 2 as sub-flags
 
 - 기준은 토큰 수 차이 < 20% (i.e., 길이 비가 대략 1.0 ~ 1.20 범위)
 - 단일 문장은 sub-flag 으로 emit 하지 않는다 (인접 유사 페어 필요)
-- 임계값은 `stylometry.sentence_zoom.similarity_threshold` 에서 조정 가능
+- 임계값 20%는 규칙 상수다. 설정 키는 없다
 
 ### 출력
 

@@ -132,7 +132,7 @@ function documentFixture() {
   return document;
 }
 
-function app({ response, storage = new Map(), languages = [], language, search = '', funnel } = {}) {
+function app({ response, storage = new Map(), languages = [], language, search = '', funnel, track } = {}) {
   const document = documentFixture();
   const calls = [];
   const reviews = [];
@@ -141,6 +141,7 @@ function app({ response, storage = new Map(), languages = [], language, search =
     navigator: { languages, language },
     location: { search },
     patinaFunnelReady: funnel,
+    patinaTrack: track,
     createEditReview: (options) => {
       const pending = createEditReview({ ...options, document });
       reviews.push(pending);
@@ -1025,16 +1026,15 @@ test('optional controls open for credentials, close with Escape, and Free restor
 });
 
 
-test('funnel arrival runs once after locale/UI initialization and never blocks first use', async () => {
-  const arrivals = [];
-  const a = app({ languages: ['zh-CN'], funnel: (lang) => arrivals.push(lang) });
-  assert.deepEqual(arrivals, ['zh']);
-  change(a, 'lang', 'ja');
+test('the playground calls no analytics hook during initialization, input, or a rewrite', async () => {
+  const hooks = [];
+  const a = app({ languages: ['zh-CN'], funnel: (lang) => hooks.push(['ready', lang]), track: (name) => hooks.push(['track', name]) });
+  type(a, 'hero-input', 'Source 70%');
+  change(a, 'tier', 'byok');
+  change(a, 'tier', 'free');
   await a.ui.submit('English source 70%');
-  assert.deepEqual(arrivals, ['zh']);
-  const b = app({ languages: ['ko-KR'], funnel: () => { throw new Error('analytics unavailable'); } });
-  type(b, 'hero-input', 'Source 70%');
-  assert.equal(b.get('hero-send').disabled, false);
+  await a.settle();
+  assert.deepEqual(hooks, []);
 });
 
 
@@ -1057,17 +1057,14 @@ test('optional settings for a new hero source do not mutate the preceding conver
 
 
 for (const lang of ['ko', 'en', 'zh', 'ja']) {
-  test(`${lang}: allowlisted URL locale overrides the browser and initializes the funnel`, async () => {
-    const arrivals = [];
-    const a = app({ search: `?lang=${lang}&utm_source=github`, languages: ['ja-JP', 'ko-KR'], funnel: (value) => arrivals.push(value) });
+  test(`${lang}: allowlisted URL locale overrides the browser`, async () => {
+    const a = app({ search: `?lang=${lang}&utm_source=github`, languages: ['ja-JP', 'ko-KR'] });
     assert.equal(a.get('lang').value, lang);
     assert.equal(a.document.documentElement.lang, lang);
-    assert.deepEqual(arrivals, [lang]);
     assert.equal(a.get('example-choice').value, `${lang}-fixture-0`);
     change(a, 'lang', 'ko');
     await a.ui.submit('English source 70%');
     assert.equal(a.calls[0].body.lang, 'ko', 'manual selection survives both arrival locale and source detection');
-    assert.deepEqual(arrivals, [lang]);
   });
 }
 

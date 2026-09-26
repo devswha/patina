@@ -161,10 +161,9 @@ private or custom local files never reach a browser bundle.
   `rewrite-handler.js`, `streaming-api.js` — web / hosted rewrite path
 - `src/web-config.js`, `web-observability.js`, `rate-limit.js`, `security.js` —
   web rewrite serving infrastructure
-- `src/web-prompt-budget.js`, `web-rewrite-receipt.js`, `pro-monitor.js`,
-  `funnel-analytics.js` — hosted request-shaped prompt budgets, downloadable
-  audit receipts, aggregate-only Pro health monitor, and privacy-safe funnel
-  events (no request content retained)
+- `src/web-prompt-budget.js`, `web-rewrite-receipt.js`, `pro-monitor.js` —
+  hosted request-shaped prompt budgets, downloadable audit receipts, and the
+  aggregate-only Pro health monitor (no request content retained)
 - `src/entitlement.js`, `entitlement-polar.js` — server-only Pro entitlement
   (Polar license-key validation)
 

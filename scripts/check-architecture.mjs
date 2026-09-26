@@ -146,7 +146,6 @@ const SERVER_SECRET_MODULES = Object.freeze([
   'src/config.js',
   'src/entitlement.js',
   'src/entitlement-polar.js',
-  'src/funnel-analytics.js',
   'src/quota-reservation.js',
   'src/rate-limit.js',
   'src/security.js',

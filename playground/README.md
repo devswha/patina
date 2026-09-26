@@ -14,7 +14,6 @@ that **rewrites** AI-sounding text into something more natural for `ko`, `en`,
 - Pro recovery, pricing, and settings copy in four languages: [`experience-copy.js`](experience-copy.js).
 - Contract: [`../src/web-rewrite-contract.js`](../src/web-rewrite-contract.js) — the single source of truth shared by the serverless handler, the web runner, the browser client, and the tests.
 - Vercel routes: [`../vercel.json`](../vercel.json).
-- Analytics shim: [`analytics.js`](analytics.js).
 
 ## Rewrite contract + deployment invariants
 

@@ -347,7 +347,7 @@ ${fenceReferenceText(text, { label: '## Text to Score' })}
     rethrowIfAborted(e, signal);
     const kind = scoreFailureKind(e);
     logger.warn(kind === SCORE_ERRORS.TRANSPORT_FAILURE ? 'score.text_transport_failure' : 'score.text_schema_failure', {
-      message: `[patina] scoreText ${kind} after retry: ${e.message}`,
+      message: `[patina] scoreText ${kind} after retry: ${redactErrorText(e.message)}`,
     });
     return {
       overall: null,

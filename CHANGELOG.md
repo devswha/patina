@@ -2,6 +2,22 @@
 
 All notable changes to patina. Dates are release dates (YYYY-MM-DD).
 
+## 9.0.0 — 2026-09-26
+
+**Leaner patina: three unused integrations removed, a runtime-only npm package, and a repo-wide cleanup with unchanged detection and prompts.**
+
+Semver rationale: major — retires the `patina aside` subcommand, the never-active structural classifier (its JSON fields, config key and environment variables), and the hosted `/api/polar-webhook` endpoint. Detection results and every prompt sent to a model are unchanged: the benchmark output is identical to 8.10.0, and prompt text was compared by hash across roughly 64,000 cases.
+
+- **Breaking — `patina aside` is removed** (#940). The Aside desktop integration was never exercised inside Aside, and `bin/patina-skill.js` already gives any agent host a verified, receipt-backed rewrite. `patina aside …` now exits 2 and points to `patina --verify <file>`. The `assets/aside/` and `integrations/aside/` package files are gone.
+- **Breaking — the optional structural classifier is removed** (#941). No model ever shipped, so it always reported "absent" and never changed a score. Removed: `scores.deterministic.bands.structuralClassifier` in JSON output (and the matching hosted stream field), `analyzeText().structuralClassifier`, the inspect code `structural-model`, the config key `stylometry.structural_model.path`, and `PATINA_STRUCTURAL_MODEL`/`PATINA_MODEL_PATH`.
+- **Breaking — `/api/polar-webhook` is removed** (#945). It only counted purchases into a key nothing read; Pro access is decided by license-key validation, which is unchanged.
+- **The npm package ships the runtime only** (#937): 515 → 253 files, 5.9 MB → 2.6 MB unpacked. `scripts/` now carries only the two files behind `patina-score`; research tooling, `tests/`, `artifacts/`, the hosted playground and research/benchmark JSON stay in the repository. The container image no longer copies `scripts/`.
+- **Research treatment retired** (#943): the unpromoted Korean diagnosis treatment behind `PATINA_KO_DIAGNOSIS_RESEARCH` is removed (the variable is now a no-op); the 2026-09-01 verdict and its evidence stay in `docs/research`.
+- **Smaller CLI changes** (#938): `patina doctor` no longer checks for tmux; `patina init` and `--restyle` get the generic errors instead of custom retirement messages; preview pages are saved as `preview-<ts>.html`; `stylometry.enabled` and `ko_diagnostics.*.{metric,dependency}` leave the default config (nothing read them). `audit --format json` now surfaces unexpected inspection errors instead of reporting `inspection-unavailable`, and the score gate rejects a non-numeric `overall`.
+- **Pro monitor** (#944): the OBS-ALERT-v1 receipt records (dropped as `not_planned` on 2026-09-14) and the `PATINA_*_URL_SHA256` pins are removed; alerting, dedup and recovery are unchanged, and the monitor code is readable again.
+- **Internal cleanup** (#935–#939, #942, #946): one process runner for the five local CLI backends and one HTTP/SSE transport core; dead hosted paths (the non-streaming runner, the legacy Pro quota branch) removed; duplicated helpers merged; about 40 finished-research scripts, 19k lines of one-time operations evidence and several off-mission documents deleted.
+- **Fixes** (#947, #948): XLIFF `target-language` values such as `constructor` or `__proto__` are rejected like any unsupported language; `scoreText` reports provider failures as `transport-failure` instead of `schema-failure`; `patina doctor` enforces the real `>=18.1.0` Node floor; a non-size change-review failure on the hosted stream ends as `rewrite_failed` instead of a size error; the hosted rewrite handler is built once per process, so local quotas and leases hold across requests.
+
 ## 8.10.0 — 2026-09-20
 
 Semver rationale: minor — adds an optional refine `instruction` field, a Korean speech-level flattening advisory, a star reminder, and new documented refusals on the hosted stream. No public surface is removed; several hosted failures are reclassified to what actually happened (400 instead of 500, `scoring_failed` instead of `floor_failed`, a degraded success instead of a discarded verified rewrite).

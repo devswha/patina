@@ -579,7 +579,7 @@ test('conversation settings are never persisted to browser storage', async () =>
 });
 
 for (const [status, error, kind] of [
-  [401, 'pro license required', 'AUTH_REQUIRED'], [403, 'license not entitled', 'AUTH_DENIED'],
+  [401, contract.QUOTA_REASONS.LICENSE_REQUIRED, 'AUTH_REQUIRED'], [403, 'license not entitled', 'AUTH_DENIED'],
   [429, 'monthly rewrite limit reached', 'QUOTA_MONTHLY_REQUESTS'],
   [429, 'monthly character limit reached', 'QUOTA_MONTHLY_CHARS'],
   [429, 'monthly processing attempt limit reached', 'QUOTA_MONTHLY_PROCESSING'],
@@ -587,6 +587,7 @@ for (const [status, error, kind] of [
 ]) {
   for (const lang of contract.SUPPORTED_LANGS) {
     test(`${lang}: ${status} ${error} renders distinct recovery and never replays the failed request`, async () => {
+      if (status === 401 || status === 403) assert.ok(Object.values(contract.QUOTA_REASONS).includes(error), `${error} is not a server reason`);
       const a = app({ response: () => ({ ok: false, finalFrame: { status, error } }) });
       change(a, 'lang', lang); a.get('pro-existing').emit('click');
       a.get('license-key').value = 'private-license'; a.get('license-sign-in').emit('click');

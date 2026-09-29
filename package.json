@@ -65,7 +65,7 @@
     "benchmark:ko-miss-review:report": "node scripts/ko-miss-review-report.mjs"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^5.4.2"
   },
   "engines": {
     "node": ">=18.1.0"

@@ -6,7 +6,7 @@ import yaml from 'js-yaml';
 import test from 'node:test';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const POLICY_URL = 'https://github.com/devswha/patina/blob/dev/docs/WORKFLOW.md';
+const POLICY_URL = 'https://github.com/devswha/patina/blob/main/docs/WORKFLOW.md';
 const FORM_PATHS = [
   '.github/ISSUE_TEMPLATE/bug_report.yml',
   '.github/ISSUE_TEMPLATE/feature_request.yml',

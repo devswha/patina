@@ -9,7 +9,7 @@ body:
         Thanks for helping calibrate patina. Please share only text you are allowed to publish in a GitHub issue.
 
         Good reports include the exact paragraph that fired, the score output, and enough context to tell whether the text should become an allowlist/fixture case.
-        See the [Issue/PR workflow](https://github.com/devswha/patina/blob/dev/docs/WORKFLOW.md) for scope, acceptance, verification, and ownership.
+        See the [Issue/PR workflow](https://github.com/devswha/patina/blob/main/docs/WORKFLOW.md) for scope, acceptance, verification, and ownership.
   - type: dropdown
     id: language
     attributes:
@@ -99,7 +99,7 @@ body:
     id: acceptance
     attributes:
       label: Scope and acceptance
-      description: See the [Issue/PR workflow](https://github.com/devswha/patina/blob/dev/docs/WORKFLOW.md) for scope, non-goals, acceptance, verification, risk, and ownership.
+      description: See the [Issue/PR workflow](https://github.com/devswha/patina/blob/main/docs/WORKFLOW.md) for scope, non-goals, acceptance, verification, risk, and ownership.
       placeholder: |
         Scope:
         Non-goals:

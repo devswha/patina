@@ -80,11 +80,24 @@ describe('leak gate: forbidden pattern set', () => {
 });
 
 describe('leak gate: source-specific development instructions', () => {
+  it('rejects private configuration, credentials, and maintainer paths in either source', () => {
+    for (const path of ['src/GEMINI.md', 'GEMINI.md', 'docs/internal/review.md',
+      'src/.env.local', '.env', 'src/credentials.json', 'src/key.pem',
+      'src/credentials/key.json', 'src/.aws/config', 'src/.ssh/id_rsa']) {
+      for (const source of ['packedFiles', 'trackedFiles']) {
+        const result = runGate({ [source]: [path] });
+        assert.equal(result.ok, false, `${source}: ${path}`);
+        assert.equal(result.violations.length, 1);
+      }
+    }
+    assert.equal(runGate({ trackedFiles: ['AGENTS.md', '.env.example'] }).ok, true);
+  });
+
   it('keeps the baseline matcher separate from development-only paths', () => {
     assert.deepStrictEqual(matchForbidden(['src/AGENTS.md', 'src/CLAUDE.md']), []);
     assert.ok(PACKED_FORBIDDEN_GLOBS.includes('**/AGENTS.md'));
     assert.ok(TRACKED_FORBIDDEN_GLOBS.includes('**/AGENTS.md'));
-    assert.deepStrictEqual(TRACKED_ALLOWED_PATHS, ['AGENTS.md']);
+    assert.deepStrictEqual(TRACKED_ALLOWED_PATHS, ['AGENTS.md', '.env.example']);
   });
 
   it('allows the approved public root rule in git but rejects scoped rules in both sources', () => {

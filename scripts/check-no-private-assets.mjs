@@ -30,6 +30,17 @@ export const FORBIDDEN_GLOBS = Object.freeze([
   '**/reinforced/**', // any `reinforced/` directory (reinforced assets)
   '**/corpus/**', // private corpus directories
   'server/**', // private service/server implementation
+  'docs/internal/**',
+  '**/.env',
+  '**/.env.*',
+  '**/*.key',
+  '**/*.pem',
+  '**/credentials.json',
+  '**/.credentials.json',
+  '**/credentials/**',
+  '**/secrets/**',
+  '**/.aws/**',
+  '**/.ssh/**',
 ]);
 
 // Agent instructions and runtime workspaces are development-only. They are
@@ -39,6 +50,7 @@ export const FORBIDDEN_GLOBS = Object.freeze([
 const DEVELOPMENT_ONLY_GLOBS = Object.freeze([
   '**/AGENTS.md',
   '**/CLAUDE.md',
+  '**/GEMINI.md',
   '**/BOOTSTRAP.md',
   '**/IDENTITY.md',
   '**/USER.md',
@@ -58,11 +70,11 @@ const DEVELOPMENT_ONLY_GLOBS = Object.freeze([
 ]);
 
 // Keep package and git checks explicit: the package may never contain
-// development-only instructions, while git tracking allows exactly the
-// approved public root rule below.
+// development-only instructions, while git tracking allows the
+// approved public root rule and sanitized environment template below.
 export const PACKED_FORBIDDEN_GLOBS = Object.freeze([...FORBIDDEN_GLOBS, ...DEVELOPMENT_ONLY_GLOBS]);
 export const TRACKED_FORBIDDEN_GLOBS = Object.freeze([...FORBIDDEN_GLOBS, ...DEVELOPMENT_ONLY_GLOBS]);
-export const TRACKED_ALLOWED_PATHS = Object.freeze(['AGENTS.md']);
+export const TRACKED_ALLOWED_PATHS = Object.freeze(['AGENTS.md', '.env.example']);
 
 /**
  * Compile a path glob into an anchored RegExp.
@@ -142,7 +154,7 @@ export function matchForbidden(paths, globs = FORBIDDEN_GLOBS, allowedPaths = []
  * @param {string[]} [sources.packedFiles=[]] Files that npm would publish (repo-relative).
  * @param {string[]} [sources.trackedFiles=[]] Git-tracked files.
  * The packed list rejects development-only instructions and runtime workspaces.
- * The tracked list allows only the approved public root `AGENTS.md` exception.
+ * The tracked list allows the approved root rule and sanitized environment template.
  * @returns {{ok: boolean, violations: Array<{path: string, pattern: string, source: string}>, counts: {packed: number, tracked: number}}} Gate result.
  * @example
  * runGate({ packedFiles: ['src/index.js'], trackedFiles: ['src/index.js'] }).ok; // true

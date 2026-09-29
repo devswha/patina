@@ -39,6 +39,12 @@ result `inconclusive` until an approved command exists.
 | `release-safety` | `npm run release:check` and `npm run check:no-private-assets` | Release metadata and private-asset boundary |
 | `live-model` | `npm run quality:live` | Opt-in model-backed quality; approval and budget required |
 
+The private-asset gate checks tracked and packaged paths, including `.env` and `.env.*`,
+credentials, key files, `docs/internal/`, and client-specific agent rules.
+Only root `AGENTS.md` and the sanitized root `.env.example` are tracking
+exceptions. This is a path boundary, not a secret-content scanner; inspect
+public fixture contents before committing them.
+
 Other package scripts may fit the changed boundary (for example,
 `benchmark:robustness` or `quality:adversarial-mps`).
 Record the exact command and arguments rather than assuming a similarly named

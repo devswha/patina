@@ -1,9 +1,8 @@
 # patina architecture: the two engine lanes
 
 patina produces every output through one of two methods, and binds them together
-with a single rule. This document is the **canonical contract** for which method
-governs each surface, which module belongs to which lane, and the invariants each
-lane must uphold.
+with a single rule. This document describes the current implementation: which
+method serves each surface, where modules live, and how outputs are checked.
 
 The v7 boundary also defines three independent rewrite axes: Document Type owns
 document policy, Persona v2 optionally owns reusable voice, and Register owns
@@ -14,9 +13,8 @@ constraints, Persona resolves idiolect and rhythm, and Register resolves only
 casual/professional markers. No active axis supplies a missing axis.
 
 
-See also: [`CONTRIBUTING.md`](../CONTRIBUTING.md) (the determinism rule —
-"Adding a Deterministic Detection Signal"), [`docs/HARNESS.md`](HARNESS.md) (the
-measurement/quality **tooling** map — a different axis),
+See also: [`CONTRIBUTING.md`](../CONTRIBUTING.md) ("Detection signals"),
+[`docs/HARNESS.md`](HARNESS.md) (the measurement/quality **tooling** map — a different axis),
 [`docs/GLOSSARY.md`](GLOSSARY.md).
 
 ---
@@ -57,33 +55,31 @@ table below and [Seams: resolved and remaining](#seams-resolved-and-remaining).
 
 ---
 
-## Lane invariants (the contract)
+## Current lane responsibilities
 
-**Lane A (Method D) MUST:**
-- stay LLM-free, deterministic, network-free, and key-free. This is the hard rule
-  (CONTRIBUTING.md) on `src/features/*` and the deterministic scoring layer.
-- only *measure*; it never emits a meaning-changed rewrite.
-- not import or depend on Lane B. The dependency direction **A → B is forbidden**.
+**Lane A (Method D):**
+- computes locally without models, network, or keys in `src/features/*` and
+  the deterministic scoring layer.
+- measures text; it does not produce rewrites.
+- has no dependency on Lane B; `npm run check:architecture` checks this boundary.
 
-**Lane B (Method P) MUST:**
-- anchor every shipped output to a Method-D computation (reconcile, backstop, or
+**Lane B (Method P):**
+- anchors every shipped output to a Method-D computation (reconcile, backstop, or
   gate).
-- enforce global meaning preservation independently of every rewrite axis.
+- enforces global meaning preservation independently of every rewrite axis.
   `--verify` owns the configurable MPS/fidelity floors and retry path; no
   Document Type, Persona, or Register may weaken them.
-- treat Persona v2 as **voice composition only**. It may shape vocabulary,
+- treats Persona v2 as **voice composition only**. It may shape vocabulary,
   explanation habits, rhythm, and other voice targets, but never document
   policy, register, claims, safety thresholds, or worldview.
-- keep its own deterministic assets (`src/features/persona-match.js`,
+- keeps its own deterministic assets (`src/features/persona-match.js`,
   `src/verify.js#deterministicMeaningGuard`) auditable and LLM-free even though
   they serve Lane B.
-- **never add an LLM call into `src/features/*`** — the determinism rule binds the
-  whole analysis layer, not just the modules that happen to live in Lane A today.
 
 **Cross-lane:**
-- Lane B MAY consume Lane A measurements. **B → A is allowed and expected**:
+- Lane B consumes Lane A measurements. **B → A**:
   `persona-match` and `buildDocumentSignals` reuse `analyzeText()`.
-- The reverse (A → B) is forbidden.
+- The current import graph has no reverse (A → B) dependency.
 
 ---
 

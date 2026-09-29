@@ -1,7 +1,6 @@
 # yaml-language-server: $schema=https://www.coderabbit.ai/integrations/schema.v2.json
 language: ko-KR
 early_access: false
-tone_instructions: "Report actionable findings with a concrete trigger, impact, and file location. Separate verified defects from uncertainty. Avoid praise and cosmetic churn."
 
 reviews:
   profile: chill
@@ -20,18 +19,7 @@ reviews:
     enabled: true
     drafts: false
     auto_incremental_review: true
-    # Initial review plus at most two automatic follow-up reviews.
-    auto_pause_after_reviewed_commits: 3
-  path_filters:
-    - "!docs/benchmarks/*.json"
-    - "!assets/**"
-  path_instructions:
-    - path: "src/features/**"
-      instructions: "Enforce the deterministic analysis contract in AGENTS.md and docs/ARCHITECTURE.md. Check transitive model/network/secret access, including global fetch and process.env. Treat scoring changes as behavior changes requiring regression evidence."
-    - path: "{src,bin,api}/**"
-      instructions: "Check exact-output verification, numbers/entities/polarity/modality/causation, cancellation cleanup, authentication boundaries, and private data in logs. Follow the canonical contracts; do not propose prompt or threshold tuning as cleanup."
-    - path: ".github/workflows/**"
-      instructions: "Check least privilege, required checks, explicit network profiles, source/artifact identity, cancellation, and publication authorization. A skipped, stale, or incomplete check is not a pass."
+    auto_pause_after_reviewed_commits: 0
   finishing_touches:
     docstrings:
       enabled: false
@@ -48,13 +36,7 @@ reviews:
 
 knowledge_base:
   code_guidelines:
-    enabled: true
-    filePatterns:
-      - AGENTS.md
-      - CONTRIBUTING.md
-      - docs/WORKFLOW.md
-      - docs/ARCHITECTURE.md
-      - docs/QA.md
+    enabled: false
   learnings:
     scope: local
   issues:

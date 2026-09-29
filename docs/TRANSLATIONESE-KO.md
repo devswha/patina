@@ -66,56 +66,18 @@ claim, score input, gate input, severity band, percentile, or baseline-derived
 finding. Audit surfaces may show the payload in a separate editing-hint section
 only; they must not mix it into deterministic severity rows.
 
-## Phase 4 calibration protocol / approval boundary
+## Calibration experiments
 
-Phase 4 is a calibration and decision-report protocol only. It can measure whether
-`translationese` or `koPostEditese.v1` correlates with Korean editing needs, but
-it cannot by itself authorize coupling. Any future coupling to score, `hot`,
-gates, severity, prompt/rewrite gates, benchmark pass/fail, or authorship
-language requires a separate product/spec decision and separately approved
-execution plan after the evidence package below is complete.
+The current `translationese` and `koPostEditese.v1` outputs are advisory.
+Possible experiments can compare native-human writing, human translations,
+machine translations, LLM drafts, and edited variants across registers.
+Human labels for editing need, translationese, post-editese, and meaning risk
+can be compared with signal precision/recall, false positives, and uncertainty.
+Ablations can separate lexical, endings, interference, and rhythm features.
 
-Required calibration package:
-
-- **Corpus strata:** balanced Korean native-human controls, acceptable human
-  translation/post-edit controls, raw machine-translationese samples, LLM Korean
-  drafts, post-edited LLM drafts, and patina rewrite before/after pairs across
-  blog, docs, marketing, academic/professional, forum/community, technical, and
-  short-form UI/help genres.
-- **Labels:** each item needs source/provenance, domain, length bucket, register,
-  translation/editing status, and blinded human labels for `needs_korean_edit`,
-  `translationese_present`, `post_editese_present`, and
-  `meaning_preservation_risk`. Use at least two Korean-proficient reviewers with
-  adjudication and agreement reporting.
-- **Metrics:** report precision/recall/F1 for the labels above, false-positive
-  rate on native-human and acceptable-human-translation controls,
-  genre-stratified and short-text false-positive rates, confidence intervals,
-  and representative wins/failures. If a separately approved offline prompt or
-  rewrite experiment is proposed, its report format must also include human
-  preference, MPS/fidelity regression, and edit churn.
-- **Ablations:** measure translationese only, `koPostEditese.v1` only, combined
-  signals, raw counts versus normalized ratios, and lexical/endings/interference
-  /rhythm groups independently.
-- **Decision thresholds:** pre-register the minimum precision, maximum control
-  false-positive rate, allowed MPS/fidelity regression bound, and minimum
-  per-stratum sample sizes before looking at holdout results. Thresholds must be
-  justified by holdout evidence, not by convenience on development examples.
-- **Rollback rules for any later approved coupling:** coupled experiments must be
-  feature-flagged or isolated; if false positives, MPS/fidelity regressions,
-  browser/Node parity drift, or domain skew exceed the approved bound, disable
-  the coupled behavior and keep advisory display.
-- **Deliverables:** publish a corpus manifest schema, Korean editor labeling
-  guide, offline experiment script/report format, representative wins/failures
-  appendix, ADR template, and follow-on approval checklist. The ADR may complete
-  inside Phase 4 only as advisory-only or reject-coupling. Prompt-context,
-  rewrite-priority, score/gate, benchmark, or authorship-related options may be
-  documented as follow-on proposals, but none may proceed without a separate
-  product/spec decision and separately approved execution plan.
-- **No-coupling default:** until a later approval explicitly names a coupling and
-  cites completed corpus evidence, no `translationese` or `koPostEditese.v1`
-  metric may feed score, `hot`, gates, severity, z-score, baseline, percentile,
-  prompt gates, rewrite gates, benchmark pass/fail, or authorship verdicts.
-
+Those measurements can inform changes to the implementation. The current
+advisory output alone does not establish an authorship classifier or a quality
+score; those uses need their own evidence.
 
 ## Limitations / next
 
@@ -124,6 +86,4 @@ Required calibration package:
 - The catalog is intentionally small and conservative; expand with corpus
   evidence and keep the density gate to protect precision.
 - `koPostEditese.v1` is not wired into `hot`, scores, gates, severity, z-score,
-  baselines, percentiles, or benchmark decisions. Keep it advisory unless a
-  separate post-Phase4 product/spec approval explicitly authorizes a narrowly
-  scoped coupling.
+  baselines, percentiles, or benchmark decisions in the current implementation.

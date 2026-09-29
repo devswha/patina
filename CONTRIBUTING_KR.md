@@ -1,116 +1,65 @@
 # Patina에 기여하기
 
-기여를 검토해 주셔서 감사합니다. Patina는 패턴 기반 도구이므로 가장 큰 도움이 되는 기여는 새 패턴, 더 나은 예시, Document Type 정책, Persona 개선인 경우가 많습니다.
+CLI 수정, 감지 신호, 패턴, 예시, Document Type, Persona, 통합 기능,
+문서 등 다양한 형태로 기여할 수 있습니다.
 
-패턴을 제출하려면 먼저 [패턴 제안 이슈 폼](.github/ISSUE_TEMPLATE/pattern_proposal.yml)을 여세요. 팩 템플릿과 PR 체크리스트는 [새 패턴 추가](#새-패턴-추가)에 있습니다. 성공/오탐 한 쌍을 짧게 풀어 둔 글은 [pattern of the week](docs/community/pattern-of-the-week.md)에 있습니다.
+## 저장소 구성
 
-## 문서 경계
+- `src/`, `api/`, `playground/`에는 실행되는 제품 코드가 있습니다.
+- `SKILL.md`와 `core/`는 제품의 텍스트 처리 흐름을 설명합니다.
+- `patterns/`, `document-types/`, `personas/`, `examples/`에는 제품 자산이 있습니다.
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md)는 현재 모듈 구조를 설명합니다.
+- [QA.md](docs/QA.md)는 테스트 명령과 검증 범위를 정리합니다.
+- [WORKFLOW.md](docs/WORKFLOW.md)에는 Git, CI, 릴리스 명령 예시가 있습니다.
+- `docs/research/`에는 날짜별 연구와 제안이, `docs/operations/`에는
+  운영 방법과 과거 기록이 있습니다.
 
-추적되는 트리는 기본적으로 공개됩니다. 다음 역할을 구분해 유지합니다.
+## 로컬 개발
 
-- **개발 정책:** `AGENTS.md`, 이 문서, 그리고 연결된
-  `docs/WORKFLOW.md`, `docs/ARCHITECTURE.md`, `docs/QA.md`.
-- **제품 문서와 자산:** `README*.md`, `SKILL.md`, `core/`, `patterns/`,
-  `document-types/`, `personas/`, `examples/`, 그리고 `docs/` 아래의
-  사용자용 자료.
-- **검토된 운영 증거:** 위생 처리하고 명시적으로 승인한 기록만
-  `docs/operations/` 아래에 둘 수 있습니다. 이는 사용자 문서를 대신하지
-  않습니다.
-- **역사적 증거:** 날짜가 있는 계획, 연구, benchmark 기록은 날짜, 조건,
-  소스 revision을 표시한 채 유지합니다. 역사적 결과를 현재의 주장으로
-  조용히 바꾸지 않습니다.
+개발 검사는 Node 24를 사용합니다. 배포된 CLI의 최소 Node 버전은
+`package.json`에 기록돼 있습니다.
 
-비공개 런북, 가공하지 않은 사용자 또는 모델 텍스트, 리뷰/실행 로그,
-자격 증명, 토큰, 개인 프로필, 로컬 QA 작업공간은 공개 트리 밖에 둡니다.
-`docs/internal/`, `.gjc/`, `.omo/`, `.omc/`, `.insane-review/`와 무시되는
-scoped agent 파일은 비공개 자료를 지키는 장치이지 공개 대상이 아닙니다.
-비공개 상위 `AGENTS.md`나 그 내용을 이 저장소에 복사하지 않습니다. 비공개
-자료를 issue, telemetry, package tarball, 예시에 넣지 않습니다.
+```bash
+npm ci
+npm test
+npm run lint
+```
 
-루트 `AGENTS.md`는 공개 저장소 개발 진입점이며, 제품 지침은 그곳에 두지
-않습니다. 이 저장소는 외부 공개, registry, 배포, 계정 또는 release 권한을
-부여하지 않습니다. 모든 외부 쓰기에는 유지보수자 승인과 문서화된 release
-절차가 필요합니다. 공개 루트 문서를 옮길 때는 `README.md`에서 링크하고,
-비공개 자료는 저장소로 옮기지 않습니다.
-
-## 개발 워크플로우와 정본 문서 링크
-
-세션마다 하나의 브랜치와 worktree를 사용하며, 일반적으로 `main`에서
-분기합니다. 각 PR은 하나의 동작, 계약 또는 책임 변경으로 유지합니다.
-브랜치, PR/Issue, review, merge, release의 전체 정책은
-[`docs/WORKFLOW.md`](docs/WORKFLOW.md)를 따릅니다. 모듈 소유권과 공개
-계약은 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)에서, 검증 프로필,
-증거와 격리는 [`docs/QA.md`](docs/QA.md)에서 확인합니다. 이 문서들의
-내용을 여기 복제하지 않습니다.
-
-## 한국어 번역 정책
-
-설치, 지원, 기여, 예시, 문제 해결을 설명하는 주요 사용자 문서는 한국어 쌍을 유지해야 합니다. 필수 쌍은 다음과 같습니다.
-
-- `README.md` → `README_KR.md`
-- `CONTRIBUTING.md` → `CONTRIBUTING_KR.md`
-- `docs/FAQ.md` → `docs/FAQ_KR.md`
-- `docs/AUTHENTICATION.md` → `docs/AUTHENTICATION_KR.md`
-- `docs/EXAMPLES.md` → `docs/EXAMPLES_KR.md`
-
-PR에서 위 영어 문서를 바꾸면 같은 PR에서 한국어 쌍도 갱신하거나, 번역이 잠시 뒤처져도 안전한 이유를 설명하세요. 명령어, 경로, 설정 키, 이슈 번호, 코드 펜스는 원문이 바뀌지 않는 한 그대로 둡니다.
+구현 중에는 관련 테스트만 실행할 수 있습니다. `npm run test:browser`는
+Chromium fixture로 playground를 검사합니다. 다른 명령은 `package.json`과
+[하네스 안내](docs/HARNESS.md)에 있습니다.
 
 ## 새 패턴 추가
 
-새 tell을 제안한다면 먼저 [패턴 제안 이슈](.github/ISSUE_TEMPLATE/pattern_proposal.yml)를 엽니다. 폼은 언어, 예시, rewrite, 오탐 위험, 50문서 평가 fixture 또는 수집 계획을 받습니다.
+패턴은 `patterns/{lang}-{category}.md`에 있습니다. 카테고리는 content,
+language, style, structure, communication, filler, score 전용 viral-hook입니다.
+기존 팩의 frontmatter와 번호가 붙은 `### N.` 항목에서 형식을 볼 수 있습니다.
 
-1. **올바른 팩을 고릅니다.** 패턴은 `patterns/{lang}-{category}.md`에 있습니다. 카테고리: content, language, style, structure, communication, filler, 그리고 score 전용 `viral-hook` 팩입니다. 그 팩 파일이 템플릿입니다. frontmatter와 번호가 붙은 `### N.` 섹션을 복사하세요.
+- Watch words와 감지 조건
+- 제외 조건과 오탐 예시
+- 편집하려는 문제의 설명
+- 원래 의미를 유지한 before/after 텍스트
 
-2. **템플릿을 따릅니다.** 각 패턴에는 다음이 필요합니다.
-   - 번호(다음 번호, 예: #30)
-   - Watch words
-   - Fire condition(언제 감지해야 하는가?)
-   - Exclusion condition(언제 감지하지 않아야 하는가?)
-   - 문제 설명
-   - before/after 예시
+언어 팩은 한국어, 영어, 중국어, 일본어입니다. 한 언어부터 기여할 수 있습니다.
+[패턴 제안 폼](.github/ISSUE_TEMPLATE/pattern_proposal.yml)과
+[pattern of the week](docs/community/pattern-of-the-week.md)는 아이디어를
+정리할 때 참고할 수 있습니다.
 
-3. **가능한 언어에 추가합니다.** 현재 언어 팩은 4개(ko, en, zh, ja)입니다. 한 언어만 알아도 괜찮습니다. 해당 언어 PR을 만들고 나머지는 번역이 필요하다고 적어 주세요.
+팩 frontmatter는 `patterns:` 수를 기록합니다. 카탈로그는
+`docs/PATTERNS.md`와 `docs/PATTERNS-{lang}.md`에, 예시는 `examples/`에 있습니다.
+패턴 수가 달라지면 README와 SKILL 메타데이터에도 영향을 줄 수 있습니다.
 
-4. **카운트를 맞춥니다.** 패턴을 추가한 뒤:
-   - 팩 헤더의 `patterns:` 수를 올립니다.
-   - `docs/PATTERNS.md`와 `docs/PATTERNS-{lang}.md`의 카탈로그를 재생성하고, README `Facts` 행의 총계를 갱신합니다.
-   - SKILL.md 설명에 하드코딩된 총계가 있으면 갱신합니다.
+근거가 달라지면 패턴을 추가, 수정, 약화하거나 삭제할 수 있습니다.
+[패턴 최신성 안내](process/pattern-freshness.md)는 관련 도구와 출처 필드를 설명합니다.
 
-5. **예시를 추가합니다.** 가능하면 `examples/{lang}-{number}-success-01.md`와 `examples/{lang}-{number}-failure-01.md`(오탐 사례)를 추가합니다.
+## 오탐과 fixture
 
-## 기존 패턴 개선
+오탐 보고에는 언어, 글의 맥락, 관찰한 신호, 공유 가능한 작은 재현 사례가
+도움이 됩니다. 제외 조건, 감지 로직, Document Type override를 바꾸거나
+신뢰하기 어려운 패턴을 제거하는 방법 등을 검토할 수 있습니다.
 
-가장 흔한 개선은 더 나은 before/after 예시입니다. "after" 텍스트는 원래 의미를 보존해야 하며, 다른 내용으로 바꾸면 안 됩니다.
-
-간단한 확인법: 누군가 "after"만 읽어도 "before"와 같은 핵심 내용을 이해할 수 있나요? 감정 방향이 뒤집히면 나쁜 예시입니다.
-
-## 패턴 평가 체크리스트
-
-패턴 PR을 열기 전에 확인하세요.
-
-- **Fire condition:** 실제 AI 생성 예시 2-3개 이상에서 감지될 수 있나요?
-- **Exclusion condition:** 사람이 쓴, 해당 장르에 자연스러운 예시가 감지를 피할 수 있나요?
-- **Semantic risk:** rewrite가 손상할 수 있는 사실, 숫자, 극성, 인과, 도메인 용어는 무엇인가요?
-- **Before/after pair:** after가 단순 동의어 교체가 아니라 같은 주장을 보존하나요?
-- **Freshness evidence:** 새 모델 시대의 tell을 제안한다면 50문서 hot/cold fixture, manifest, 또는 수집 계획을 연결했나요?
-- **Count sync:** 팩 frontmatter의 `patterns:`가 번호가 붙은 `### N.` 패턴 heading 수와 같아야 합니다.
-
-## 오탐 분류 절차
-
-학술, 백과사전식, 법률, 기업, 강하게 편집된 문체에서는 오탐이 생길 수 있습니다. 오탐을 보고하려면:
-
-1. false-positive 이슈 템플릿을 사용합니다.
-2. 언어, 장르/문체, score/audit excerpt, 과하게 감지된 패턴을 포함합니다.
-3. 비공개 텍스트를 제거하거나 재배포 가능한 최소 발췌로 바꿉니다.
-4. 수정 방향이 exclusion rule, 낮은 severity, Document Type `pattern-overrides` 변경, benchmark fixture 중 무엇인지 제안합니다.
-
-유지보수자는 패턴을 바로 삭제하기보다 exclusion을 좁히는 쪽을 우선해야 합니다.
-
-## 벤치마크 fixture 추가
-
-Suspect-zone fixture는 `tests/fixtures/suspect-zones/{lang}/{ai|natural}/` 아래에 둡니다.
-
-각 fixture에는 YAML frontmatter가 필요합니다.
+Suspect-zone fixture는 `tests/fixtures/suspect-zones/{lang}/{ai|natural}/`에
+있습니다. Frontmatter는 fixture와 예상 측정값을 설명합니다.
 
 ```yaml
 ---
@@ -119,96 +68,57 @@ language: en
 class: ai
 expected_hot: true
 why_designed_this_way: |
-  Explain which deterministic signal should fire and why.
+  이 fixture가 검사하는 결정론적 신호를 설명합니다.
 expected_metrics:
   cv_band: low
 ---
 ```
 
-그다음 실행합니다.
+`npm run benchmark:report`는 `tests/quality/results.json`,
+`docs/benchmarks/latest.json`, `docs/benchmarks/latest.md`를 재생성합니다.
 
-```bash
-npm run benchmark:report
-```
+## 감지 신호
 
-이 명령은 `tests/quality/results.json`, `docs/benchmarks/latest.json`, `docs/benchmarks/latest.md`를 다시 생성합니다.
+현재 `src/features/`의 분석기는 모델이나 네트워크 없이 로컬에서 신호를
+계산합니다. `src/features/index.js`는 이를 문단과 문서 결과로 합칩니다.
+[ARCHITECTURE.md](docs/ARCHITECTURE.md)는 호출 경로와 공개 출력을,
+`core/stylometry.md`는 현재 점수 계산을 설명합니다.
 
-## 결정론 검출 신호 추가
+`npm run benchmark:signal-impact`는 신호별 기여와 오탐을 비교합니다.
+조건을 맞춘 사람 글, 감지하지 못한 예시, 언어·register별 결과는 새 감지기를
+평가하는 데 도움이 됩니다. 같은 도구로 새로운 접근이나 기존 방식의 수정도
+실험할 수 있습니다.
 
-위의 패턴은 LLM이 실행하는 카탈로그 항목입니다. **검출 신호(detection signal)**는 다릅니다 — `src/features/*`에서 계산되어 단락 단위 hot OR 규칙에 합류하는 결정론적 hot/cold 입력입니다(burstiness, MATTR, lexicon density, 한국어 진단 composite, ending-monotony 신호 등). 분석 레이어는 LLM-free를 유지하므로, 새 신호는 보정 기준을 갖춘 실제 엔지니어링입니다. 다음 루프를 따르세요:
+## Document Type과 Persona
 
-1. **근거로 누락을 진단합니다.** 직관이 아니라 라벨드 매니페스트에서 검출이 실패하는 지점을 찾습니다. scored 매니페스트의 `score_review.trigger_counts`가 어떤 신호가 어떤 행에서 발동하는지 보여주고, `npm run benchmark:signal-impact`가 각 기존 신호의 한계 catch/FP를 알려줘 공백을 드러냅니다.
-2. **오탐-안전한 판별자를 찾습니다.** AI 누락을 **길이/레지스터가 매칭된** 사람 대조군과 비교합니다(짧은 길이 교란은 AI tell이 아닙니다). 판별자는 *같은 표면 특징을 공유하는 사람 레지스터*와 AI를 갈라야 합니다 — 예: 평서형 `-다` AI vs 격식 사람 `-다`는 `-다` 단독이 아니라 burstiness 결합 조건이 필요했습니다.
-3. **advisory 페이로드를 끌어쓰지 말고 1급 신호로 구현합니다.** advisory 신호(`translationese`, `koPostEditese.v1`)는 hot 판정에 들어가면 안 됩니다([docs/TRANSLATIONESE-KO.md](docs/TRANSLATIONESE-KO.md)). `src/features/stylometry.js`에 전용 계산을 추가하고 `src/features/index.js`의 hot OR에 연결하며, 짧은/코너케이스 텍스트에 과발동하면 정밀도 게이트(길이/횟수 하한)를 둡니다.
-4. **런타임 표면을 일치시킵니다.** 다음이 일치해야 신호가 완성됩니다: `src/features/index.js` 및 `src/web-rewrite-stream.js` 같은 서버측 feature 호출부, `scripts/rebaseline-score.mjs`의 `trigger_counts`, `core/stylometry.md`·`SKILL.md`의 hot 규칙 산문, 그리고 유닛 테스트(정밀도 가드 포함). 브라우저 playground는 `playground/chatgpt.js` UI이며, 탐지/채점은 별도 브라우저 미러가 아니라 서버측 `src/features/*` 경유로 수행합니다.
-5. **손이 아니라 하네스로 측정합니다.** `npm run benchmark:signal-impact`로 한계 before/after를, `npm run benchmark`로 49-fixture(자연 fixture가 hot으로 뒤집히면 안 됨 — 100% 유지)를 확인하고, 사람 대조군 오탐율이 `docs/benchmarks/rebaseline-latest.md`의 공개 CI 내에 머무는지 확인합니다. 측정값은 changelog에 기록합니다. 동결된 공개 claim 매니페스트는 신호 PR이 아니라 별도 rebaseline pass에서 갱신합니다.
-6. **release 영향을 기록합니다.** 새 검출 신호는 hot 동작을 바꾸므로
-   일반적으로 **minor** release가 필요합니다(제거가 아닌 추가). PR에
-   해당 영향과 측정한 catch/FP 델타를 기록하되, package와 mirror 갱신은
-   release 절차에서 처리합니다.
+Document Type은 `document-types/{name}.md`에 있습니다. Frontmatter에는
+`document-type`, `scope`, `purpose`, `audience`, `structure`, `style`, `avoid`,
+언어별 `pattern-overrides`가 들어갑니다. 현재 `suppress`는 결정론적 분석에
+영향을 주고, `reduce`/`amplify`는 런타임 가중치 변경 없이 정책 의도를 표현합니다.
 
-수용 기준(로드맵의 deterministic-feature-expansion 기준과 동일): 라벨드 매니페스트에서 재현율 또는 정밀도가 개선되고, 사람 대조군 오탐율이 공개 허용치 내에 머물며, 신호가 문서화된 실패 모드와 before/after 예시를 함께 제공합니다.
+`patina persona new`는 재사용할 수 있는 목소리 메타데이터를 만듭니다.
+현재 Persona 검증기는 목소리 필드와 Document Type, Register, 안전성 필드를
+구분합니다.
 
-전체 측정 도구 지도는 [docs/HARNESS.md](docs/HARNESS.md)를 참고하세요.
+## 번역
 
-## 예시 번역
+영어·한국어 문서 쌍에는 `README`, `CONTRIBUTING`, `docs/FAQ`,
+`docs/AUTHENTICATION`, `docs/EXAMPLES`가 있습니다. 두 버전을 함께 살펴보면
+명령과 설명을 맞추는 데 도움이 됩니다. 패턴은 영어 표현을 그대로 옮기기보다
+대상 언어에서 자연스러운 예시로 설명할 수 있습니다.
 
-- 숫자, 엔티티, 부정, 인과, 양태 같은 원문의 semantic anchor를 보존합니다.
-- 영어 AI tell을 대상 언어에서 tell이 아닌데 직역하지 않습니다.
-- 어떤 표현이 해당 문체에서는 정상이라면 대상 언어의 오탐 메모를 추가합니다.
-- 예시는 재배포 가능해야 합니다. 비공개 사용자 텍스트를 붙여 넣지 마세요.
+## 버전과 릴리스
 
-## Document Type 추가
-
-Document Type은 `document-types/{name}.md`에 있습니다. 기존 정책(예:
-`blog.md`)을 복사하고 `document-type:`을 파일명 stem과 맞춘 뒤 `scope`,
-`purpose`, `audience`, `structure`, `style`, `avoid`, 언어별
-`pattern-overrides`를 정의합니다. `suppress`는 결정론적으로 적용되며
-`reduce`/`amplify`는 현재 정책 의도만 기록합니다. Persona 목소리,
-casual/professional Register 표지, 검증 하한은 이 축에 넣지 않습니다.
-
-재사용 voice는 `patina persona new`로 Persona v2를 만드세요. schema는
-document policy, Register, safety field가 Persona에 들어오면 거부합니다.
-
-## 패턴 노후화
-
-AI 문체 패턴은 모델이 미세 조정되면서 바뀝니다. 어떤 패턴은 약해지고(예: "delve"가 밈이 된 뒤), 새 패턴이 나타나기도 합니다.
-
-처리 방식:
-- **커뮤니티 보고:** 더 이상 reliable signal이 아닌 패턴을 발견하면 이슈를 엽니다.
-- **새 패턴 제안:** 새 AI tell을 발견하면 [패턴 제안 이슈](.github/ISSUE_TEMPLATE/pattern_proposal.yml)에 실제 예시 3개 이상과 50문서 평가 fixture 또는 수집 계획을 넣어 엽니다.
-- **분기별 리뷰:** 유지보수자는 [`process/pattern-freshness.md`](process/pattern-freshness.md)의 corpus freeze window, promotion threshold, frontmatter metadata 규칙을 따릅니다.
-- **Lexicon provenance:** 새로 마이닝하거나 다시 마이닝한 lexicon 항목은 동작을 바꾸기 전에 `added`, `source`, `last_validated` provenance를 기록해야 하며, `npm run lexicon:freshness`로 sidecar가 실제 shipped entry와 맞는지 확인합니다.
-- **버전 메모:** 각 패턴 팩에는 `version` 필드가 있습니다. 패턴이 바뀌면
-  호환성 영향을 기록하고, package와 mirror 버전 갱신은 문서화된 release
-  절차에서 처리합니다.
-- **대체 없는 삭제 금지:** 패턴을 바로 제거하지 않습니다. `low` severity로 낮추거나 Document Type에서 `reduce`로 옮깁니다.
-
-## 버전 관리와 release
-
-기능 또는 문서 PR에는 예상 semver 영향을 기록하되 package 버전은 올리지
-않습니다. 버전 변경은 release에서만 합니다. release PR에서 `package.json`을
-정본으로 삼아 문서에 명시된 mirror와 해당 `CHANGELOG.md` 항목을 한 번
-갱신합니다. [`docs/WORKFLOW.md`](docs/WORKFLOW.md)의 검사와
-version-bearing 파일 목록을 사용하며, `npm run release:check`를 최종
-metadata 검사로 유지합니다. 각 release 항목에는 짧은 semver rationale을
-포함합니다. 패턴 팩과 Document Type metadata에는 별도의 호환성 규칙이
-있을 수 있지만 package release 버전을 조용히 바꾸면 안 됩니다.
-
-## 행동 강령
-
-도움이 되게 행동하세요. 불필요하게 날을 세우지 마세요. AI 문체 패턴은 도덕적 결함이 아닙니다. 우리는 도구를 만드는 것이지 재판을 여는 것이 아닙니다.
+`package.json`이 패키지 버전의 기준입니다. `npm run release:check`는
+연결된 버전 정보와 CHANGELOG를 검사하며, `npm run release:sync-plugin-versions`는
+플러그인 버전 정보를 갱신합니다. [릴리스 안내](docs/integrations/release.md)는
+산출물 생성, npm 공개, 컨테이너 배포를 설명합니다.
 
 ## PR 절차
 
-1. `main`에서 branch를 만들고 독립적으로 review할 수 있는 가장 작은
-   변경을 합니다.
-2. 문제, 범위, 비목표, 공개 계약 영향, 위험, rollback을 설명하고 관련
-   테스트 또는 fixture와 그 증거를 포함합니다.
-3. 구현, 회귀 범위, 필요한 공개 문서를 함께 두되 무관한 정리, 생성물,
-   release bump는 분리합니다.
-4. 명확한 설명과 함께 `main`을 대상으로 PR을 엽니다. 이후 버전 준비 PR과 태그에는 release 절차를 사용하며,
-   기능 PR 병합은 npm release가 아닙니다.
-5. 패턴 변경에는 before/after 예시를 포함하고 실행하지 않았거나 막힌
-   검사를 명시합니다. 실행하지 않았거나 오래된 검사를 통과한 것으로
-   취급하지 않습니다.
+변경은 보통 PR을 통해 `main`에 반영합니다. 동작, 판단 근거, 관련 검사 결과를
+설명하면 검토에 도움이 됩니다. 논의나 추적이 필요할 때 Issue를 사용할 수
+있습니다. 리뷰 중 다른 대안을 검토하거나 새로운 근거에 따라 접근을 바꿀 수 있습니다.
+
+저장소는 공개돼 있습니다. 합성 예시와 정리된 요약을 사용하면 자격 증명이나
+개인 텍스트를 공개하지 않고도 비공개 입력의 문제를 논의할 수 있습니다.

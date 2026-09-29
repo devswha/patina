@@ -64,7 +64,7 @@ Do not lead with “bypass AI detectors.” Lead with:
 
 - **Benchmark credibility (quality phase 1).** `docs/benchmarks/latest.md` carries Wilson CIs, ROC-AUC / PR-AUC and threshold diagnostics; the register split is `docs/benchmarks/register-stratified-latest.md`; the adversarial MPS gate is `docs/research/adversarial-mps.md`. `katfish-ko-latest` (2026-05-21) is frozen as historical evidence: regenerating it needs the private KatFish inputs, which the owner retired on 2026-09-15, so it is not pending work.
 - **Try-it-now experience.** Hosted playground at <https://patina.vibetip.help/> (server-side rewrite, `docs/HTTP-API.md`); brand assets in `assets/brand/` (`docs/BRANDING.md`).
-- **Packaging and distribution.** npm `patina-cli` and `patina-humanizer` publish through npm Trusted Publishing (OIDC); every publication still needs separate, explicit external-write authorization. GitHub Releases follow a successful npm publication on tag push (`docs/integrations/release.md`). The public image `ghcr.io/devswha/patina:latest` has its own manual release path (`docs/integrations/docker.md`). The README Quick Start states the current source and npm versions. Homebrew has not started.
+- **Packaging and distribution.** npm `patina-cli` and `patina-humanizer` publish through npm Trusted Publishing (OIDC). GitHub Releases follow a successful npm publication on tag push (`docs/integrations/release.md`). The public image `ghcr.io/devswha/patina:latest` has its own manual release path (`docs/integrations/docker.md`). The README Quick Start states the current source and npm versions. Homebrew has not started.
 - **Integrations.** Claude Code / Codex / Cursor / OpenCode skill install, `devswha/patina-action`, and the pre-commit recipe under `docs/integrations/`. Subagent strict flow: `docs/agents.md`.
 - **Custom Persona authoring (7.0.0).** Document Type owns genre, purpose, structural conventions, and pattern policy; Persona v2 is optional and owns only reusable voice; Register owns only `casual` or `professional` delivery; meaning preservation and verification are global. `patina persona new|list|show|edit|rm` covers the lifecycle in ko/en/zh/ja. Omitting `--persona` preserves the source voice, and the v7 CLI rejects `--profile`, `--tone`, and `--formality` with migration errors rather than aliases.
 - **Community health.** Issue forms for bugs, features, pattern proposals, false positives, benchmark corpora, calibration concerns and research proposals; `SECURITY.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, `GOVERNANCE.md`, `MAINTAINERS.md` and the PR template.
@@ -75,7 +75,7 @@ Do not lead with “bypass AI detectors.” Lead with:
 
 ### Phase 2 — corpus expansion
 
-Status (2026-09-02): partial. KO/EN reached the 2026 rebaseline gate (`docs/research/2026-rebaseline.md`); ZH/JA public coverage and the edited-AI class are still empty — tracked as steps 2 and 8 of the frozen order in `docs/research/humanization-data-backlog.md`.
+Status (2026-09-02): partial. KO/EN reached the 2026 rebaseline gate (`docs/research/2026-rebaseline.md`); ZH/JA public coverage and the edited-AI class are still empty — tracked as steps 2 and 8 of the dated plan in `docs/research/humanization-data-backlog.md`.
 
 Goal: reduce synthetic-fixture overfitting.
 
@@ -147,7 +147,7 @@ Acceptance criteria:
 
 Later work, not shipped behavior:
 
-- **Corpus-distilled quantitative bands**: a separately approved
+- **Corpus-distilled quantitative bands**: a possible
   `persona new --from-corpus <dir>` path could derive per-metric allow-bands from
   the user's own corpus using LLM-free stylometry.
 - **Personalized avoided lexicon**: derive a Persona's avoid list from terms
@@ -155,8 +155,7 @@ Later work, not shipped behavior:
 - **Holdout validation**: reserve part of the user's corpus to verify that a
   derived voice fingerprint generalizes before offering it.
 
-These larger personalization paths remain gated behind payment stabilization
-and separate approval.
+These personalization paths are ideas for future development.
 
 ## 3. Current state and next actions
 
@@ -186,7 +185,7 @@ lives, so nobody re-triages from a stale snapshot.
 
 ### Research programme
 
-- Performance-only order frozen 2026-09-01 in
+- Performance-only order recorded 2026-09-01 in
   `docs/research/humanization-data-backlog.md`. Step 1 (KO GPT-family
   miss-review manifest) is complete
   (`docs/research/ko-gpt-miss-review-step1-decision-20260902.md`,
@@ -203,7 +202,7 @@ lives, so nobody re-triages from a stale snapshot.
   `2026-panel-v2-design.md`. Korean program verdict:
   `ko-confirmatory-verdict-20260901.md`. External literature survey:
   `humanization-literature-2026-09.md`.
-- #159 blinded human panel, formerly step 3 of the frozen order, was cancelled
+- #159 blinded human panel, formerly step 3 of that plan, was cancelled
   without running the panel. Its design is retained as history
   (`docs/research/human-eval-panel.md`). #158 cross-judge matrix was closed
   2026-07-12 as answered by Study 1's cross-family panel agreement

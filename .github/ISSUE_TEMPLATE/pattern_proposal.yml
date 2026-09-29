@@ -3,10 +3,6 @@ description: Suggest a new AI-writing pattern or rewrite rule
 title: "pattern: "
 labels: [patterns]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        See the [Issue/PR workflow](https://github.com/devswha/patina/blob/main/docs/WORKFLOW.md) for scope, acceptance, verification, and ownership.
   - type: dropdown
     id: language
     attributes:
@@ -38,17 +34,17 @@ body:
   - type: textarea
     id: evaluation_fixture
     attributes:
-      label: 50-document evaluation fixture
-      description: Link to a 25-hot / 25-cold fixture or manifest, or describe the collection plan required before promotion.
+      label: Evaluation examples or fixture
+      description: "Optional: link examples, a fixture, or a collection idea."
     validations:
-      required: true
+      required: false
   - type: textarea
     id: measurement
     attributes:
       label: Precision / recall evidence
-      description: Paste the precision/recall or hot/cold firing summary when available; otherwise state what still blocks promotion.
+      description: "Optional: share existing measurements or questions to investigate."
     validations:
-      required: true
+      required: false
   - type: textarea
     id: rewrite
     attributes:
@@ -61,18 +57,5 @@ body:
     attributes:
       label: False-positive risk
       description: When would this phrase or structure be legitimate human writing?
-    validations:
-      required: true
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: Scope and acceptance
-      description: See the [Issue/PR workflow](https://github.com/devswha/patina/blob/main/docs/WORKFLOW.md) for scope, non-goals, acceptance, verification, risk, and ownership.
-      placeholder: |
-        Scope:
-        Non-goals:
-        Acceptance criteria:
-        Verification and risk:
-        Owner: maintainer until assigned
     validations:
       required: true

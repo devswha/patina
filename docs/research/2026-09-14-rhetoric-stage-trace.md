@@ -6,7 +6,7 @@ Plan source (PLAN v2): the v2 rewrite-quality plan, archived as [`rewrite-qualit
 
 This note answers PLAN v2 §4 before any H-RHETORIC experiment: where would a leftover like the PLAN §2.3 synthetic adverb survive on the current rewrite path, and do existing tools already record stage outputs?
 
-**Do not treat this note as permission to ship a prompt change.**
+This note records the inspected prompt path; it did not change the implementation.
 
 ## Verdict
 

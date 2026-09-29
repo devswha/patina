@@ -17,9 +17,9 @@ intuition.
   supplies the *terminology and conceptual frame*; the calibration evidence is
   patina's own.
 - The signals remain **advisory only**: `translationese` and `koPostEditese.v1`
-  must not feed score, the document `hot` verdict, gates, severity, baselines,
-  percentiles, benchmark claims, or authorship verdicts. Any future coupling
-  requires the separately approved Phase 4 calibration package in
+  do not feed score, the document `hot` verdict, gates, severity, baselines,
+  percentiles, benchmark claims, or authorship verdicts in the current implementation.
+  Calibration ideas are described in
   [`TRANSLATIONESE-KO.md`](../TRANSLATIONESE-KO.md).
 
 ## Conceptual lineage

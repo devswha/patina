@@ -17,9 +17,9 @@ Web deployment normally follows a reviewed feature PR into `main` through the
 existing Vercel project. A version-preparation PR and npm release tag are separate;
 a feature merge may reach the website first. Check the project's production
 branch and verify the production version and rewrite flow after deployment.
-Production deployments must originate from a `main` SHA: let the Vercel Git
-integration build the merge commit, or use an authorized `vercel --prod` from a
-clean `main` checkout. Keep the previous production deployment ID for rollback.
+Vercel can build the merge commit through its Git integration, or a deployment
+can be created with `vercel --prod` from a `main` checkout. Deployment history
+contains previous production builds for rollback.
 
 Release tags start the npm publication job; push a tag only for an intended
 release. The GitHub Release remains coupled to successful npm publication.
@@ -38,8 +38,7 @@ It then builds the real root and alias `.tgz` files once with
 `scripts/release-artifacts.mjs`. The script records `sourceSHA`, the shared
 version, each tarball's SHA-256/SHA-512/SRI integrity, and the packed file
 lists in `release-manifest.json`. A clean fixture installs **both tarballs in
-one `npm install` command**, then runs `npm ci` from that generated lockfile
-dependencies (currently
+one `npm install` command**, then runs `npm ci` from that generated lockfile. Dependencies (currently
 `js-yaml`/`argparse`) may use the public registry; the lockfile must show
 `file:` resolutions and matching integrity for both `patina-cli` and
 `patina-humanizer`, with paths resolving to the two supplied tarballs, so

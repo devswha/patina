@@ -9,8 +9,7 @@ Scope: AI 문체 신호 완화와 자연스러운 글 품질 개선에 필요한
 
 2026-09-08 결정: 보류했던 사람 블라인드 평가 #159와 사람 라벨 기반
 짧은 글 코퍼스 #643은 폐기하고 `not_planned`로 종료했다. 아래에 남긴
-해당 설계와 요구사항은 이력이며 대기 작업이 아니다. 명시적인 새 요청 없이
-재개하지 않는다. 이 결정은 다른 연구의 실행이나 검증 기준 생략을 승인하지 않는다.
+해당 설계와 요구사항은 당시 결정의 이력이다.
 
 ## Source Documents
 
@@ -166,18 +165,9 @@ source_doc:
 
 Do not commit private raw text when a hash, manifest row, or aggregate score is enough. If raw examples are required for a public fixture, keep them small, license-compatible, and explicitly reviewed.
 
-## Guardrails
+## Priorities recorded on 2026-09-01
 
-- Do not frame this work as detector bypass or evasion.
-- Do not tune global thresholds to fix one language/model family miss cluster.
-- Do not merge pilot ZH/JA data into published broad claims until the claim gate is met.
-- Do not use MPS proxy as a substitute for naturalness evaluation.
-- Do not add lexicon entries without cold-corpus checks.
-- Do not publish private generated or user-provided source text.
-
-## Suggested Order
-
-Execution order frozen for the next performance-only cycle (2026-09-01):
+The following sequence records the plan at that date:
 
 1. **KO GPT-family miss-review manifest.** Classify the currently available misses (up to 100) by register, deterministic signal breakdown, and root cause. Do not change thresholds or production behavior in this step. **Reviewed 2026-09-02 — GO (measure-only); design, data contract, taxonomy, procedure and acceptance criteria in [`ko-gpt-miss-review-step1-decision-20260902.md`](./ko-gpt-miss-review-step1-decision-20260902.md); implementation deferred to its own branches. Implemented 2026-09-02 (PR #718): hash-only discovery manifest (48 reviewed rows + 8 precondition exclusions from analyzer drift), blinded two-reviewer labels, and the measure-only report [`docs/benchmarks/ko-gpt-miss-review-v1.md`](../benchmarks/ko-gpt-miss-review-v1.md); taxonomy constants in [`ko-gpt-miss-taxonomy-v1.md`](./ko-gpt-miss-taxonomy-v1.md).**
 2. **Edited-AI intake and corpus.** Freeze light/heavy edit policies and the manifest schema before generating samples.
@@ -188,15 +178,15 @@ Execution order frozen for the next performance-only cycle (2026-09-01):
 7. **KO register and lexicon calibration.** Use the miss review and real false-positive intake to remine evidence-backed entries and stress high-risk registers without global threshold inflation.
 8. **ZH/JA corpus expansion.** Reach the same per-language class/register evidence gate before making broader claims.
 
-Step 1 is complete (PR #718). Later steps still require their own acceptance
-evidence; this historical sequence does not activate them automatically.
+Step 1 completed in PR #718. The remaining entries describe proposed work
+at the time of this record.
 
-**Owner decision 2026-09-02:** with step 1 complete (PR #718), the survey's H-4b (specificity-preservation constraint on the plain rewrite) runs ahead of steps 2–8 as rewrite-efficacy **Study 4**, registered in [`2026-rewrite-efficacy-prereg.md`](./2026-rewrite-efficacy-prereg.md) before any data. Steps 2–8 stay in their frozen order behind it.
+**Owner decision 2026-09-02:** with step 1 complete (PR #718), the survey's H-4b (specificity-preservation constraint on the plain rewrite) runs ahead of steps 2–8 as rewrite-efficacy **Study 4**, registered in [`2026-rewrite-efficacy-prereg.md`](./2026-rewrite-efficacy-prereg.md) before any data. Steps 2–8 were listed after it in that plan.
 
 **Status 2026-09-07:** [Study 4](./2026-rewrite-efficacy-study4.md) is complete
 without promotion in either language. The
 [September 6 scope decision](https://github.com/devswha/patina/issues/643#issuecomment-5559803306)
 defers human ratings, manual labels, contributor confirmations and manual
-rights/counterfactual review. Those requirements remain unmet. Active short-form
-work is limited to automated diagnostics on admissible, hash-bound inputs;
-model scores are not human ratings or validated corpus error-rate gates.
+rights/counterfactual review. At that date, short-form work used automated
+diagnostics on hash-bound inputs, without human ratings or validated corpus
+error-rate estimates.

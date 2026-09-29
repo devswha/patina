@@ -2,10 +2,9 @@
 
 A public image is published at `ghcr.io/devswha/patina` (tag `latest`, verified
 2026-09-02). Publishing is **manual**: the `ghcr` job in `release.yml` runs only
-on `workflow_dispatch` with `publish_ghcr=true`, after the same release-ready
-authorization as the npm publish. Tag pushes publish npm and the GitHub Release
+on `workflow_dispatch` with `publish_ghcr=true`. Tag pushes publish npm and the GitHub Release
 but do not rebuild the image, so `latest` can lag the npm version. Manual
-publication must run from `main`. This authorized path publishes `latest`;
+publication is accepted by the workflow from `main` and publishes `latest`;
 the current workflow does not emit a separate version tag from that branch.
 
 ```bash

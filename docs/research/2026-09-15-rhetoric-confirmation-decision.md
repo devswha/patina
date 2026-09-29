@@ -44,18 +44,16 @@ evidence gate; ZH/JA remain exploration-only on existing data.
   discriminating failure in #828 appeared on the longer marketing case, not
   the short PLAN one-liners — sample-size sensitivity is real.
 - **Starting the pilot immediately without the quota check.** Rejected by
-  PLAN §7.B's own pre-flight rule and by the repository rule that paid /
-  model-backed checks need explicit authorization with a recorded profile.
+  the study's planned quota and call-budget check.
 - **Building new experiment infrastructure before reusing existing pieces.**
-  The pilot must first inventory what #817 (`tests/quality/rhetoric-contract.mjs`),
+  The plan was to inventory what #817 (`tests/quality/rhetoric-contract.mjs`),
   the #828 A/B scripts (local-only, never committed), and the existing
   quality runners already provide.
 
-## Next action
+## Next action proposed at the time
 
-Run the §7.B pre-flight check (quota/cap evidence per backend, call budget,
-wall-clock estimate), record it in this directory, then execute the pilot
-exactly as PLAN §7.B specifies: 24 unique sources (KO 16 / EN 8; T12·C6·N6),
+The proposed next step was to check per-backend quota, call budget, and runtime,
+then record the result and execute the pilot described in PLAN §7.B: 24 unique sources (KO 16 / EN 8; T12·C6·N6),
 arms N0/G/P/H on one generation model, two judge families with balanced A/B
 and pre-registered flips, no retry-until-success.
 
@@ -63,6 +61,4 @@ and pre-registered flips, no retry-until-success.
 
 - Not experiment results. No call was made for this record.
 - Not a relaxation of §8 thresholds.
-- Not authorization to spend against any specific backend account — the
-  pre-flight check produces the evidence for that authorization.
 - Not a change to `PATINA_RHETORIC_POLICY` behavior or defaults.

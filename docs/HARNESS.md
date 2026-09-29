@@ -87,7 +87,9 @@ analysis below ablates each one to report its marginal contribution.
 | Tool | Command | Purpose |
 |---|---|---|
 | Lint | `npm run lint` | syntax + eslint + tsc + cspell |
-| Tests | `npm test` | unit + e2e (`node --test`) |
+| Tests | `npm test` | unit + e2e (`node --test`), no registry installation |
+| Browser fixtures | `npm run test:browser` | Chromium with local transport fixtures |
+| Package install | `npm run test:release-install` | Explicit online npm-registry smoke of local root/alias tarballs |
 | Release metadata | `npm run release:check` | version sync across all version-bearing surfaces |
 | Private-asset leak | `npm run check:no-private-assets` | no private/vendor text in the npm tarball or tree |
 | Prose score gate | `patina-score` | hot-paragraph ratio CI gate (default 30) |

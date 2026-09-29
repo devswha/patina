@@ -22,7 +22,9 @@ runs a Node 18.1.0 smoke check plus full tests on Node 20, 22, and floating
 `lts/*`. Branch protection requires the exact `test (lts/*)` name, so the
 matrix keeps the floating entry rather than a fixed 24; review fixed coverage
 when LTS advances. None of this changes the product engine requirement
-(`>=18.1.0`).
+(`>=18.1.0`). Browser fixtures run on Node 24 with Chromium and blocked
+external browser requests. `release-install` is a separate, explicitly online
+npm-registry installation smoke; ordinary unit/e2e tests do not install packages.
 
 ## The branch model
 

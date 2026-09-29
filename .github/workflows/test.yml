@@ -58,6 +58,8 @@ jobs:
       - name: Run tests
         if: matrix.node-version != '18.1.0'
         run: npm test
+        env:
+          NPM_CONFIG_OFFLINE: "true"
 
       - name: Run minimum Node smoke
         if: matrix.node-version == '18.1.0'
@@ -169,3 +171,34 @@ jobs:
             echo '::error::tests/unit/quota-redis.test.js did not execute against real Redis (non-zero skip count).'
             exit 1
           }
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium and system dependencies
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Browser regression with local transport fixtures
+        run: npm run test:browser
+
+  release-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Registry-backed package installation smoke
+        # Explicit network profile: ordinary npm test never installs dependencies.
+        run: npm run test:release-install

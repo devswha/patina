@@ -28,8 +28,9 @@ result `inconclusive` until an approved command exists.
 |---|---|---|
 | `unit` | `npm run test:unit` | Unit tests |
 | `e2e` | `npm run test:e2e` | End-to-end tests; inspect whether transport is mocked |
-| `deterministic` | `npm test` | Unit plus e2e (`node --test`) |
+| `deterministic` | `npm test` | Unit plus e2e (`node --test`); no registry installation or live backend probes |
 | `static` | `npm run lint` | Syntax, ESLint, TypeScript, configured CSpell, and AST import boundaries; spellcheck uses this checkout as its gitignore root |
+| `release-install` | `npm run test:release-install` | Explicitly online public-registry install of local root/alias tarballs; separate from unit/e2e |
 | `browser-fixture` | `npm run test:browser` | Real Chromium, local fixture transport, and checked-JS browser assertions; Node 24 development profile, not live-model quality |
 | `regression` | `npm run benchmark` | Fixed quality fixtures |
 | `quality-report` | `npm run benchmark:report` | Existing benchmark report generation |
@@ -38,6 +39,14 @@ result `inconclusive` until an approved command exists.
 | `dogfood` | `npm run dogfood` | Configured public-document checks |
 | `release-safety` | `npm run release:check` and `npm run check:no-private-assets` | Release metadata and private-asset boundary |
 | `live-model` | `npm run quality:live` | Opt-in model-backed quality; approval and budget required |
+
+CI provisions dependencies before running the profiles. The `browser` job
+installs Chromium, then runs local transport fixtures; the `release-install`
+job confines registry reads to its isolated runner. Local registry installation
+requires explicit authorization. The release workflow also exercises installation
+when it builds and verifies the exact publication tarballs. Tests of backend
+listing inject status probes; adapter authentication tests use owned fixtures.
+No profile here proves live-model quality.
 
 The private-asset gate checks tracked and packaged paths, including `.env` and `.env.*`,
 credentials, key files, `docs/internal/`, and client-specific agent rules.
@@ -141,8 +150,8 @@ makes no LLM call.
 
 Read the lifecycle numbers carefully. On platforms without POSIX process
 groups the cancellation/isolation tests **skip**, which is *absent coverage*,
-not a pass; the `backend-agy` launch tests in the same step skip for a
-different reason (host Antigravity settings that widen permissions). The
+not a pass; the `backend-agy` launch tests also skip on Windows because their fake CLI
+requires a POSIX shebang. Antigravity settings tests use an owned home. The
 receipt therefore carries failing names and counts, and whoever reads it must
 state which promise each skip removes rather than treating a skip total as
 platform support. `doctor` exit 1 with a valid report ("no usable backend") is

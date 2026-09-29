@@ -63,7 +63,7 @@ test('CI workflow YAML configuration contracts retain protected checks, matrix, 
     assert.equal(eventConfig['paths-ignore'], undefined, `${eventName} must not add path filters`);
   }
   assert.ok(Object.prototype.hasOwnProperty.call(events, 'workflow_dispatch'));
-  assert.deepEqual(Object.keys(jobs).sort(), ['lint', 'quality', 'test']);
+  assert.deepEqual(Object.keys(jobs).sort(), ['browser', 'lint', 'quality', 'release-install', 'test']);
   assert.equal(jobs.lint.name, undefined, 'lint check identity must remain the job id');
   assert.equal(jobs.quality.name, undefined, 'quality check identity must remain the job id');
 
@@ -120,6 +120,15 @@ test('CI workflow YAML configuration contracts retain protected checks, matrix, 
   ]) {
     assertExecutableLine(jobs.quality, gate, 'quality');
   }
+
+  assert.equal(jobs.test.steps.find(step => step.name === 'Run tests').env.NPM_CONFIG_OFFLINE, 'true');
+  assertExecutableLine(jobs.browser, 'npm ci', 'browser');
+  assertExecutableLine(jobs.browser, 'npx --no-install playwright install --with-deps chromium', 'browser');
+  assertExecutableLine(jobs.browser, 'npm run test:browser', 'browser');
+  assertExecutableLine(jobs['release-install'], 'npm run test:release-install', 'release-install');
+  const pkg = JSON.parse(readFileSync(resolve(REPO_ROOT, 'package.json'), 'utf8'));
+  assert.equal(pkg.scripts['test:release-install'], 'node -r ./tests/helpers/real-tmpdir.cjs --test tests/integration/release-install.test.js');
+  assert.doesNotMatch(pkg.scripts.test, /integration/);
 
   const driftCheck = jobs.quality.steps.find((step) => step.name === 'Benchmark report drift check');
   assert.equal(driftCheck?.run?.trim(), [

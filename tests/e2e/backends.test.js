@@ -367,9 +367,17 @@ describe('Backend Fallback Chain', () => {
   });
 });
 
+// Status probes have their own adapter fixture tests. Listing must never probe
+// a developer's CLI installation, credential files, or macOS Keychain.
+const fixtureStatus = (backend) => ({
+  available: backend.name === 'openai-http',
+  authenticated: backend.name === 'gemini-cli',
+  authHint: `fixture auth for ${backend.name}`,
+});
+
 describe('Backend Listing', () => {
   it('returns at least openai-http, codex-cli, claude-cli, gemini-cli', () => {
-    const list = listBackends();
+    const list = listBackends({ probeStatus: fixtureStatus });
     const names = list.map((b) => b.name);
     for (const expected of ['openai-http', 'codex-cli', 'claude-cli', 'gemini-cli']) {
       assert.ok(names.includes(expected), `expected backend ${expected}`);
@@ -377,21 +385,21 @@ describe('Backend Listing', () => {
   });
 
   it('reports openai-http as always available (HTTP, no install check)', () => {
-    const list = listBackends();
+    const list = listBackends({ probeStatus: fixtureStatus });
     const http = list.find((b) => b.name === 'openai-http');
     assert.strictEqual(http.available, true);
   });
 
   it('reports authenticated status for each backend', () => {
-    const list = listBackends();
+    const list = listBackends({ probeStatus: fixtureStatus });
     for (const b of list) {
-      assert.strictEqual(typeof b.authenticated, 'boolean');
-      assert.strictEqual(typeof b.authHint, 'string');
+      assert.strictEqual(b.authenticated, b.name === 'gemini-cli');
+      assert.strictEqual(b.authHint, `fixture auth for ${b.name}`);
     }
   });
 
   it('reports default best-model ids for user-facing backend status', () => {
-    const byName = new Map(listBackends().map((b) => [b.name, b.defaultModel]));
+    const byName = new Map(listBackends({ probeStatus: fixtureStatus }).map((b) => [b.name, b.defaultModel]));
     assert.strictEqual(byName.get('openai-http'), DEFAULT_BEST_MODELS.openai);
     assert.strictEqual(byName.get('codex-cli'), DEFAULT_BEST_MODELS.codexCli);
     assert.strictEqual(byName.get('claude-cli'), DEFAULT_BEST_MODELS.claudeCli);

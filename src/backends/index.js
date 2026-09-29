@@ -74,11 +74,20 @@ const BACKEND_META = {
   },
 };
 
-export function listBackends() {
+function probeBackendStatus(backend) {
+  return {
+    available: backend.isAvailable(),
+    authenticated: backend.isAuthenticated(),
+    authHint: backend.authHint(),
+  };
+}
+
+export function listBackends({ probeStatus = probeBackendStatus } = {}) {
   return Object.keys(REGISTRY).map((key) => {
     const b = REGISTRY[key];
     const meta = BACKEND_META[key];
     const safety = getBackendSafety(key);
+    const status = probeStatus(b);
     return {
       name: key,
       kind: meta.kind,
@@ -89,9 +98,9 @@ export function listBackends() {
       maxRetries: safety.maxRetries,
       promptMode: safety.promptMode,
       agentRuntime: safety.agentRuntime,
-      available: b.isAvailable(),
-      authenticated: b.isAuthenticated(),
-      authHint: b.authHint(),
+      available: status.available,
+      authenticated: status.authenticated,
+      authHint: status.authHint,
       loginCommand: b.loginCommand || null,
       installHint: b.installHint || null,
     };

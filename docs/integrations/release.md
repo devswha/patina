@@ -47,7 +47,9 @@ dependencies (currently
 `patina-humanizer`, with paths resolving to the two supplied tarballs, so
 neither package can silently fall back to a registry version. The fixture
 verifies that the alias's exact `patina-cli` dependency resolves to the
-supplied root tarball and runs both CLI `--version` smoke checks. The verified
+supplied root tarball and runs both CLI `--version` smoke checks. The same
+registry-backed test is available as `npm run test:release-install` and runs in
+its own PR CI job; it is not part of ordinary `npm test`. The verified
 directory is uploaded as an artifact named for the commit SHA.
 The build output directory and smoke fixture are required to be new or empty;
 the script refuses to delete caller-owned files.

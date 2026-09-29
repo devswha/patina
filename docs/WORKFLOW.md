@@ -51,7 +51,7 @@ git fetch origin main
 git worktree add ../patina-feature -b bot/my-feature origin/main
 # edit and verify in the new worktree
 git push -u origin bot/my-feature     # external write: needs authority
-gh pr create --draft --base main      # CI runs before marking Ready
+gh pr create --draft --base main      # CI runs; CodeRabbit waits for Ready
 ```
 
 Run the relevant local checks and CI before marking Ready. Fix review findings
@@ -115,14 +115,31 @@ Automatic review or QA retries stop after two; keep the first failure and its
 reason, and never turn a timeout, authentication failure, or cancellation into
 a pass.
 
-**Review.** A `bot/*` PR gets one independent, read-only review pass (a
-reviewer that did not write the change) plus the full deterministic CI: lint,
-unit/e2e, quality, and architecture boundaries. Native Codex GitHub review is
-not used in this repository. The `vercel` bot only builds a preview; it reads
-no code and is not a review. Record the review verdict and findings in the PR,
-fix findings on the same PR, and never run two reviewers against the same
-diff. A review never replaces required CI, QA, or the maintainer's merge
-decision.
+**Review.** CodeRabbit is the default independent PR reviewer. The repository
+configuration is `.coderabbit.yaml`; the coding guidelines remain in `AGENTS.md`,
+`CONTRIBUTING.md`, `docs/ARCHITECTURE.md`, and `docs/QA.md`. Product `SKILL.md`
+is reviewed as product content, never used as repository-development policy.
+
+CodeRabbit reviews Ready PRs into `main`, with an initial review and at most two
+automatic follow-ups before pausing. Resolve actionable findings or record why
+a finding does not apply. A progress check alone does not establish approval:
+record the reviewed head and disposition of findings. CI remains mandatory.
+CodeRabbit is advisory during onboarding; the maintainer evaluates the first
+five Ready PRs before deciding whether to require its check. Owner: repository
+maintainer; review deadline: 2026-10-07; record the decision in the onboarding PR.
+Missing or failed reviews are not passes. Until the app is installed and a
+review completes, use one independent read-only reviewer and record that
+fallback explicitly. Do not run a second AI reviewer on a diff already
+reviewed by CodeRabbit. Native Codex GitHub review is not configured. Vercel
+preview checks are not code reviews. Review never grants merge authority.
+
+Install the CodeRabbit GitHub App for this repository only. Code generation,
+autofix, issue planning, automatic labels, and reviewer assignment are disabled
+in the repository configuration. App permissions are broader than review mode;
+installation requires the account owner's consent. Validate a real Ready PR
+before claiming the integration is active. See the official
+[GitHub setup](https://docs.coderabbit.ai/platforms/github-com) and
+[configuration reference](https://docs.coderabbit.ai/reference/configuration).
 
 **External writes** include creating or editing Issues, PRs, comments or
 labels, pushing or deleting branches, changing protection, merging, tagging,

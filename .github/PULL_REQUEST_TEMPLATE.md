@@ -14,6 +14,7 @@ Refs #... (or why this low-risk change needs no Issue)
 ## Verification
 
 - Commands run and their results (exit codes):
+- Independent review: CodeRabbit reviewed head / findings disposition, or named fallback reviewer:
 - Checks not run, and why (see [`docs/QA.md`](../docs/QA.md)):
 
 ## Release and rollback

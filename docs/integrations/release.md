@@ -17,9 +17,13 @@ Web deployment normally follows a reviewed feature PR into `main` through the
 existing Vercel project. A version-preparation PR and npm release tag are separate;
 a feature merge may reach the website first. Check the project's production
 branch and verify the production version and rewrite flow after deployment.
-Vercel can build the merge commit through its Git integration, or a deployment
-can be created with `vercel --prod` from a `main` checkout. Deployment history
-contains previous production builds for rollback.
+Vercel's Git integration builds the merge commit. The
+[Vercel CLI](https://vercel.com/docs/cli/deploy) instead deploys the current
+project directory, which can include local edits. To deploy the merged `main`
+revision with `vercel --prod`, fetch `origin/main`, check that
+`git status --porcelain` is empty, and compare `git rev-parse HEAD` with
+`git rev-parse origin/main` before deploying. Deployment history contains
+previous production builds for rollback.
 
 Release tags start the npm publication job; push a tag only for an intended
 release. The GitHub Release remains coupled to successful npm publication.

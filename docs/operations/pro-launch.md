@@ -14,7 +14,7 @@ the inputs; deploy the resulting `playground/launch-config.js` with that release
 | Input | Disabled/default behavior | Enabled requirement |
 |---|---|---|
 | `PATINA_PRO_CHECKOUT_ENABLED` | Missing or `false` generates disabled checkout. | Must be exactly `true`. |
-| `PATINA_DEPLOYMENT_CHANNEL` | Not used while checkout is disabled. | Exactly `staging` or `production` and the binding channel. |
+| `PATINA_DEPLOYMENT_CHANNEL` | Not used while checkout is disabled. | Matches the binding channel; the current table has only `production`. The parser also recognizes `staging`. |
 | `PATINA_PRO_CHECKOUT_URL` | Not used while checkout is disabled. | Exact bound provider HTTPS checkout URL (production: `https://buy.polar.sh/polar_cl_*`): no userinfo, port, query, fragment, alternate host/subdomain, encoded path, or trailing slash. |
 | `PATINA_PRO_GATE_EVIDENCE_ID` | Not used while checkout is disabled. | Staging: `PAY-STG-`; production: `PAY-B-`; exact bound evidence ID in either case. |
 
@@ -87,15 +87,20 @@ The generator accepts `PAY-STG-[A-Za-z0-9][A-Za-z0-9_-]*` for staging and
 channel, origin, and path against `scripts/checkout-evidence-bindings.mjs`.
 The Polar production binding is documented by
 `pay-b-binding-polar-20260729.json` and `pay-live-runtime-polar-20260729.json`.
-These identifiers and bindings are runtime inputs.
+Bindings are source-controlled configuration. Environment variables supply
+the evidence ID and checkout URL at build time; the generator matches them
+against that table. The generated public configuration is read at runtime.
 
 ## Staging and live configuration
 
-A staging deployment uses `PATINA_DEPLOYMENT_CHANNEL=staging`, a matching
-`PAY-STG-...` binding, and its checkout URL. Production uses `production` and
-its `PAY-B-...` binding. In either case, setting
+The current source table contains only the production Polar binding, so enabled
+staging checkout is unsupported. Tests inject a staging binding into their
+fixture; environment variables cannot add one to a deployment.
+
+Production uses `PATINA_DEPLOYMENT_CHANNEL=production`, the bound `PAY-B-...`
+evidence ID and checkout URL, and Vercel's `VERCEL_ENV=production`. Setting
 `PATINA_PRO_CHECKOUT_ENABLED=true` and running `npm run launch-config:generate`
-produces the enabled config when all inputs match.
+produces the enabled config when those inputs match the source table.
 
 The public config contains `schemaVersion: 1`, channel, enabled state,
 checkout origin/path, and evidence ID. Useful browser checks include the CTA,

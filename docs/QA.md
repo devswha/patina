@@ -161,7 +161,7 @@ Procedure per machine:
 
 ```bash
 git clone https://github.com/devswha/patina.git && cd patina
-git switch dev            # or the exact SHA being accepted
+git switch main           # or the exact SHA being accepted
 npm run smoke:platform    # add --skip-install if npm ci already ran
 ```
 

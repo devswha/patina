@@ -13,15 +13,13 @@ The npm publication hold ended with the 8.7.0 release. The npm package version
 does not establish which version is deployed on the website; verify the
 production version after each web deployment.
 
-Web deployment normally follows the reviewed `dev` → `main` merge and the existing
-Vercel project. The isolated 8.5.2 hotfix starts from released `main`; merge it
-back into `dev` immediately. Deployment needs no npm publication or release tag. Keep `dev` in
-sync with the resulting `main` history and verify the production version and
-rewrite flow after deployment. Production deployments must originate from a
-`main` SHA: let the Vercel Git integration build the merge commit, or run
-`vercel --prod` from a clean `main` checkout. Do not upload from a `dev`
-working tree. Keep the previous production deployment ID as the rollback
-target.
+Web deployment normally follows a reviewed feature PR into `main` through the
+existing Vercel project. A version-preparation PR and npm release tag are separate;
+a feature merge may reach the website first. Check the project's production
+branch and verify the production version and rewrite flow after deployment.
+Production deployments must originate from a `main` SHA: let the Vercel Git
+integration build the merge commit, or use an authorized `vercel --prod` from a
+clean `main` checkout. Keep the previous production deployment ID for rollback.
 
 Release tags start the npm publication job; push a tag only for an intended
 release. The GitHub Release remains coupled to successful npm publication.

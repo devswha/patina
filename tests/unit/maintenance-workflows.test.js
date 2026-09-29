@@ -14,7 +14,7 @@ function readYaml(path) {
   return yaml.load(readFileSync(path, 'utf8'));
 }
 
-test('Dependabot routes weekly version updates through dev, bounded and unautomated', () => {
+test('Dependabot routes weekly version updates through main, bounded and unautomated', () => {
   const config = readYaml(DEPENDABOT_PATH);
   assert.equal(config.version, 2);
   assert.deepEqual(config.updates.map((update) => update['package-ecosystem']), ['npm', 'github-actions']);
@@ -25,7 +25,7 @@ test('Dependabot routes weekly version updates through dev, bounded and unautoma
     assert.equal(update.directory, '/');
     assert.deepEqual(update.schedule, { interval: 'weekly' });
     assert.equal(update['open-pull-requests-limit'], 1);
-    assert.equal(update['target-branch'], 'dev');
+    assert.equal(update['target-branch'], 'main');
     assert.equal(update['rebase-strategy'], undefined);
   }
 

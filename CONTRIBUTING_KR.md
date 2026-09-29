@@ -35,7 +35,7 @@ scoped agent 파일은 비공개 자료를 지키는 장치이지 공개 대상�
 
 ## 개발 워크플로우와 정본 문서 링크
 
-세션마다 하나의 브랜치와 worktree를 사용하며, 일반적으로 `dev`에서
+세션마다 하나의 브랜치와 worktree를 사용하며, 일반적으로 `main`에서
 분기합니다. 각 PR은 하나의 동작, 계약 또는 책임 변경으로 유지합니다.
 브랜치, PR/Issue, review, merge, release의 전체 정책은
 [`docs/WORKFLOW.md`](docs/WORKFLOW.md)를 따릅니다. 모듈 소유권과 공개
@@ -201,14 +201,14 @@ metadata 검사로 유지합니다. 각 release 항목에는 짧은 semver ratio
 
 ## PR 절차
 
-1. `dev`에서 branch를 만들고 독립적으로 review할 수 있는 가장 작은
+1. `main`에서 branch를 만들고 독립적으로 review할 수 있는 가장 작은
    변경을 합니다.
 2. 문제, 범위, 비목표, 공개 계약 영향, 위험, rollback을 설명하고 관련
    테스트 또는 fixture와 그 증거를 포함합니다.
 3. 구현, 회귀 범위, 필요한 공개 문서를 함께 두되 무관한 정리, 생성물,
    release bump는 분리합니다.
-4. 명확한 설명과 함께 `dev`를 대상으로 PR을 엽니다. 이후 `dev` → `main`
-   merge에는 release 절차를 사용하며, 기능 PR은 release가 아닙니다.
+4. 명확한 설명과 함께 `main`을 대상으로 PR을 엽니다. 이후 버전 준비 PR과 태그에는 release 절차를 사용하며,
+   기능 PR 병합은 npm release가 아닙니다.
 5. 패턴 변경에는 before/after 예시를 포함하고 실행하지 않았거나 막힌
    검사를 명시합니다. 실행하지 않았거나 오래된 검사를 통과한 것으로
    취급하지 않습니다.

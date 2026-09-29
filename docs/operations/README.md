@@ -53,7 +53,7 @@ Production deployment follows one contract: approved `main` SHA → same-SHA
 preview → application smoke → maintainer-approved promotion, keeping the prior
 deployment ID as the rollback target. Build from `main` through the Vercel Git
 integration or run `vercel --prod` from a clean `main` checkout; never upload
-from `dev`.
+from a feature branch.
 
 ## Standing decisions
 

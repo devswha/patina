@@ -56,7 +56,9 @@ Note: rolled-back builds retain their original env snapshot — re-verify
 
 - A CLI redeploy has no `VERCEL_GIT_COMMIT_SHA`, so the pro-monitor stays in
   its fail-closed 503 until the next git deploy. Any drill that used
-  `redeploy` therefore ends with a dev -> main merge.
+  `redeploy` therefore ends with an approved Git deployment from `main`,
+  following [the current workflow](../WORKFLOW.md). The dated evidence below
+  retains its original branch names.
 - The monitor cron fires every 15 minutes and alerts Discord when synthetic
   checks fail. Watch one full cycle after a drill before calling it recovered.
 

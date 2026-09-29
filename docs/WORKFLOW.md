@@ -6,7 +6,7 @@ and humans both follow it. The step-by-step PR checklist lives in
 statuses live in [`docs/QA.md`](QA.md).
 
 - Default branch: `main`
-- Integration branch: `dev`
+- Integration branch: `main` (short-lived feature branches; no persistent `dev`)
 - Feature branch prefixes: `bot/*` (agent/automation work), `feat/*` (larger features)
 - Version-bearing files: `package.json`, `SKILL.md`, `.patina.default.yaml`,
   the README version badge, `.claude-plugin/plugin.json`, and the CHANGELOG
@@ -28,41 +28,37 @@ npm-registry installation smoke; ordinary unit/e2e tests do not install packages
 
 ## The branch model
 
+```text
+bot/<feature> ──PR + CI + review──▶ main
+bot/release-X.Y.Z ──version PR────▶ main ──approved tag──▶ npm
 ```
-bot/<feature>  ──PR──▶  dev  ──release PR──▶  main  ──▶  publish/deploy
- (do the work)        (integrate/stage)     (release)
-```
 
-- **`main`** — released/deployed history. Never commit directly to it.
-- **`dev`** — integration/staging. Everything converges here first and is verified together before a release.
-- **`bot/<feature>` / `feat/<feature>`** — one independently verifiable and
-  revertible behavior or contract unit, branched **from `dev`**.
-
-Every PR carries exactly one such unit, together with its regression test and
-the contract documentation needed to understand it. Split out unrelated
-cleanup, version changes, and generated-file maintenance unless they are
-inseparable from the unit.
-
-`dev` MUST always be at or ahead of `main`. If a hotfix lands directly on
-`main`, merge `main` → `dev` immediately; a stale `dev` is the most common way
-this workflow rots.
+- **`main`** is the integration branch and must stay deployable. Never commit
+  directly to it. A merged feature is not an npm release; tags identify releases.
+- **`bot/<feature>` / `feat/<feature>`** branches start at the latest `main` and
+  contain one independently reviewable behavior or contract change, its
+  regression coverage, and required documentation.
+- Each session keeps its own branch and worktree. Concurrent agents do not
+  require a persistent integration branch besides `main`.
+- Vercel may deploy a `main` merge independently of npm publication. Confirm
+  the project's production-branch setting before merging a web-affecting PR;
+  keep the deployment ID and rollback target. PR previews validate the candidate.
 
 ## Feature workflow
 
 ```bash
-git switch dev && git pull            # start from the latest integration state
-git switch -c bot/my-feature          # branch off dev
-# ...edit, commit in small logical commits...
-git push -u origin bot/my-feature     # external write: needs explicit authority
-gh pr create --base dev               # CI + review run here
+git fetch origin main
+git worktree add ../patina-feature -b bot/my-feature origin/main
+# edit and verify in the new worktree
+git push -u origin bot/my-feature     # external write: needs authority
+gh pr create --draft --base main      # CI runs before marking Ready
 ```
 
-- Commit in small, self-contained commits with clear messages.
-- Open the PR as **Draft** while scope and acceptance criteria settle. Run the
-  cheapest relevant local checks and the normal CI before marking it Ready.
-- If the branch grows beyond one behavior unit, split it.
-- Opening or merging a PR never grants permission to publish, deploy, change
-  account settings, or write to another external system.
+Run the relevant local checks and CI before marking Ready. Fix review findings
+on the same PR, rerun affected checks on its final head, and merge only with
+maintainer authority. Split a branch that grows beyond one behavior unit.
+Opening or merging a PR never grants permission to publish or change another
+external system.
 
 ## Parallel work
 
@@ -71,17 +67,17 @@ other's uncommitted changes and interleave commits. Use **git worktrees**:
 separate folders and branches over one shared `.git`.
 
 ```bash
-git worktree add ../<repo>-featureX -b bot/featureX dev
+git worktree add ../<repo>-featureX -b bot/featureX origin/main
 git worktree list
 git worktree remove ../<repo>-featureX
 ```
 
 1. **One worktree and one branch per session.** Never run two sessions in the
    same directory on the same branch.
-2. **Branch from the latest `dev`**, and merge `dev` periodically into
+2. **Branch from the latest `main`**, and merge `origin/main` periodically into
    long-running work.
 3. **Split scope by files.** Disjoint file sets almost never conflict.
-4. **`dev` is the single convergence point.** Resolve conflicts once, when each
+4. **`main` is the single convergence point.** Resolve conflicts once, when each
    branch merges into it.
 
 Worktrees isolate files and branches, not external state. Give each session its
@@ -135,40 +131,50 @@ accounts, settings, credentials, or production data. Each needs explicit
 authority that names the actor, channel, scope, and operation. An
 implementation request, plan approval, or review approval grants none of them.
 
-## Release workflow (`dev` → `main`)
+## Release workflow (version PR → tag)
 
 ```bash
-git switch dev && git pull
-# 1) confirm the integrated dev tree and the PRs it includes
-# 2) bump every version-bearing file once, in this release change
-# 3) run the release checks against the release tree
-gh pr create --base main --head dev        # release PR (external write)
-# 4) on green CI and with merge authority: MERGE (not squash)
-# 5) tag or publish only through an approved channel procedure
-git switch dev && git merge main           # keep dev in sync
+git fetch origin main
+git worktree add ../patina-release -b bot/release-X.Y.Z origin/main
+# update version-bearing files and CHANGELOG once; verify the release tree
+git push -u origin bot/release-X.Y.Z          # external write
+gh pr create --base main                    # external write
+# after CI, review, and authorized merge: tag the exact merged main SHA
+# publish only through the approved release.yml channel
 ```
 
-- A merge into `dev` does not mean users received a release. It closes an
-  Issue only when the owner confirms its acceptance criteria; a `Closes #...`
-  keyword in a `dev` PR is not that confirmation.
-- The release PR is the one aggregation exception to the size guidance. It adds
-  no new behavior, lists the already-reviewed PRs it includes, and carries
-  release-tree and rollback evidence.
-- Version changes are release-only. Feature PRs record their semver impact;
-  the release PR bumps the version-bearing files once.
-  `npm run release:sync-plugin-versions` copies the root package version into
-  `.claude-plugin/plugin.json` and the matching marketplace entry only;
-  `npm run release:check` still validates every mirror.
-- **Merge, do not squash, for `dev` → `main`**, so a release keeps per-feature
-  history. Squash is the default for a small `feature → dev` PR; merge when a
-  meaningful commit series is the safer rollback.
-- Report delivery per channel (npm, web, container) only after the exact
-  `main` SHA, artifact or deployment ID, and smoke result are recorded.
-- npm publication runs through Trusted Publishing (OIDC) from `release.yml`
-  ([`docs/integrations/release.md`](integrations/release.md)). It is possible
-  but never automatic: no session may publish, tag, or deploy on its own
-  initiative, and each publication needs its own explicit authorization. A
-  release may be integrated and verified without being published.
+- Feature PRs record semver impact; version changes belong in a separate
+  release-preparation PR. It lists the integrated features, adds no new product
+  behavior, and records release-tree and rollback evidence.
+- `npm run release:sync-plugin-versions` copies the root version into the plugin
+  and marketplace entry; `npm run release:check` validates every mirror.
+- Squash small feature or release-preparation PRs. Keep a meaningful commit
+  series with a merge when that is safer to revert. There is no `dev` merge-back.
+- Close an Issue only when its acceptance criteria are satisfied; merging into
+  `main` is not evidence that npm or a container was published.
+- Report delivery separately for npm, web, and containers using the exact SHA,
+  artifact/deployment ID, and smoke result. Vercel Git deployment may follow
+  `main` immediately; npm publication requires an approved tag or manual action.
+- npm uses Trusted Publishing (OIDC) from `release.yml`. Every tag/publication
+  still requires explicit authority; integrating code never authorizes one.
+  See [`docs/integrations/release.md`](integrations/release.md).
+
+## Migration from the former dev branch
+
+Before retiring `dev`, record its tip and confirm it is an ancestor of `main`.
+Retarget every open PR, update Dependabot and CI, and stop new work from
+branching from `dev`. After the migration PR passes and lands, require `lint`,
+`quality`, `browser`, `release-install`, `test (18.1.0)`, `test (20)`, `test (22)`,
+and `test (lts/*)` on up-to-date PRs to `main`; enforce the checks for admins,
+require PRs and resolved conversations, and forbid force pushes and deletion.
+For a single-maintainer repository, do not require an additional human approval
+that its sole author cannot supply. The maintainer still reviews the findings.
+
+Only then delete the remote `dev` ref with branch-deletion authority. Do not
+switch or remove another session's worktree. Rollback can recreate `dev` at the
+recorded tip and restore the old targets through a reviewed PR; no history
+rewrite is needed. A repository config file alone does not change GitHub branch
+protection or install a GitHub App; verify those external settings separately.
 
 ## External tools and dependency updates
 
@@ -188,10 +194,9 @@ Review dependency updates as behavior changes: lifecycle scripts, runtime
 impact, lockfile installation, and the relevant contract smoke. Keep at most
 two general update PRs open; triage security updates separately and never
 auto-merge them just because a bot opened them. `.github/dependabot.yml`
-targets `dev` for npm and github-actions version updates. GitHub raises
-security updates against the default branch (`main`); when one lands there,
-merge `main` → `dev` immediately. GitHub reads `dependabot.yml` from `main`,
-so a change to it takes effect only after it reaches `main`.
+targets `main` for npm and github-actions version updates, as do GitHub security
+updates. GitHub reads `dependabot.yml` from `main`, so configuration changes
+take effect only after they reach `main`.
 
 ## Exceptions
 
@@ -206,7 +211,7 @@ new tool, a weaker gate, or a burst of automatic Issues or PRs.
 
 - Treat unexpected changes as another session's work. **Never revert, stash,
   reset, or force-push over changes you did not make.**
-- **Before pushing a shared branch** (`dev`/`main`), `git fetch` and confirm the
+- **Before pushing a shared branch** (`main`), `git fetch` and confirm the
   push only *adds* commits (fast-forward or a clean merge), never a history
   rewrite: `git merge-base --is-ancestor origin/<branch> HEAD`.
 - Prefer PRs over direct pushes to shared branches so CI and review run.
@@ -215,7 +220,7 @@ new tool, a weaker gate, or a burst of automatic Issues or PRs.
 ## Cleanup
 
 Delete a merged branch, local and remote, only with branch-deletion authority.
-Keep only `main`, `dev`, and branches still in flight.
+Keep only `main` and branches still in flight.
 
 ```bash
 git branch -d bot/my-feature                 # refuses if not merged
@@ -227,9 +232,8 @@ git fetch --prune                            # drop stale remote-tracking refs
 
 | Task | Command |
 |---|---|
-| New feature | `git switch dev && git switch -c bot/x` |
-| Parallel session | `git worktree add ../repo-x -b bot/x dev` |
-| Open PR into dev | external-write authority → `gh pr create --base dev` |
+| New feature | `git fetch origin main && git worktree add ../repo-x -b bot/x origin/main` |
+| Parallel session | `git worktree add ../repo-x -b bot/x origin/main` |
+| Open PR into main | external-write authority → `gh pr create --base main` |
 | Release | integrate/verify → version bump → external-write authority → PR to `main` → merge → approved channel step |
-| Keep dev synced | `git switch dev && git merge main` |
 | Clean merged branch | deletion authority → `git branch -d bot/x && git push origin --delete bot/x` |

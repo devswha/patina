@@ -18,7 +18,7 @@ do not copy them into this file.
 
 ## Scope and safe changes
 
-- Branch feature work from the current `dev`; use one branch and worktree per
+- Branch feature work from the current `main`; use one branch and worktree per
   session. Follow [`docs/WORKFLOW.md`](docs/WORKFLOW.md) for branch, PR, review,
   merge, and release operations.
 - Do not reset, stash, overwrite, or force-push another session's changes. Do

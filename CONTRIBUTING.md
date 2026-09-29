@@ -35,7 +35,7 @@ material must not be moved into the repository.
 
 ## Development workflow and canonical references
 
-Use one branch and worktree per session, normally branched from `dev`, and keep
+Use one branch and worktree per session, normally branched from `main`, and keep
 each PR to one behavior, contract, or responsibility change. The complete
 branch, PR/Issue, review, merge, and release policy is
 [`docs/WORKFLOW.md`](docs/WORKFLOW.md). Read
@@ -239,12 +239,12 @@ Be helpful. Don't be a jerk. AI writing patterns are not moral failings — we'r
    test-only fix may skip it and say why. Scoring, pattern, benchmark,
    installer and provider changes also need explicit maintainer approval
    ([`GOVERNANCE.md`](GOVERNANCE.md)).
-2. Branch from `dev` and make the smallest independently reviewable change.
+2. Branch from `main` and make the smallest independently reviewable change.
 3. Explain the problem, scope, non-goals, public-contract impact, risk, and
    rollback. Include the relevant test or fixture and its evidence.
 4. Keep implementation, regression coverage, and required public documentation
    together; separate unrelated cleanup, generated output, and release bumps.
-5. Open the PR into `dev` with a clear description. Use the release workflow
-   for the later `dev` → `main` merge; a feature PR is not a release.
+5. Open the PR into `main` with a clear description. Use the release workflow
+   for a later version-preparation PR and tag; a feature PR is not an npm release.
 6. Include before/after examples for pattern changes and state any check that
    was not run or is blocked. Do not treat an unrun or stale check as passing.

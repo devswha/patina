@@ -55,8 +55,8 @@ test('CI workflow YAML configuration contracts retain protected checks, matrix, 
   const events = workflow.on;
   const jobs = workflow.jobs;
 
-  assert.deepEqual(events.push.branches, ['main', 'dev']);
-  assert.deepEqual(events.pull_request.branches, ['main', 'dev']);
+  assert.deepEqual(events.push.branches, ['main']);
+  assert.deepEqual(events.pull_request.branches, ['main']);
   for (const [eventName, eventConfig] of Object.entries(events)) {
     if (!eventConfig || typeof eventConfig !== 'object') continue;
     assert.equal(eventConfig.paths, undefined, `${eventName} must not add path filters`);

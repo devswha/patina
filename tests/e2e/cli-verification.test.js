@@ -301,9 +301,11 @@ test('CLI --verify JSON binds scores to graded text and rejects post-verificatio
     // length_ratio band stays out of the way and the claim bag is what decides.
     'claim-swap': 'The service retains 12 of 12 logs.',
     'claim-safe-reword': 'The service retains 12 audit files.',
+    'comma-reword': 'As planned, there were 5.',
   };
-  for (const scenario of ['pass', 'hard-fail', 'malformed', 'dropped-number', 'retry-pass', 'nested-body', 'claim-swap', 'claim-safe-reword']) {
-    const text = scenario === 'nested-body' ? 'The service does not store drafts. It runs locally.\n' : 'The service retains 12 audit logs.';
+  for (const scenario of ['pass', 'hard-fail', 'malformed', 'dropped-number', 'retry-pass', 'nested-body', 'claim-swap', 'claim-safe-reword', 'comma-reword']) {
+    const text = scenario === 'nested-body' ? 'The service does not store drafts. It runs locally.\n'
+      : scenario === 'comma-reword' ? 'There were 5, as planned.' : 'The service retains 12 audit logs.';
     const dir = mkdtempSync(join(tmpdir(), 'patina-runtime-json-'));
     writeFileSync(join(dir, 'key'), 'test-key');
     writeFileSync(join(dir, 'input.txt'), text);
@@ -335,8 +337,8 @@ test('CLI --verify JSON binds scores to graded text and rejects post-verificatio
         '--api-key-file', join(dir, 'key'), '--base-url', `http://127.0.0.1:${server.address().port}/v1`, join(dir, 'input.txt')],
       { cwd: dir, timeout: 20000, env: { ...process.env, HOME: dir, USERPROFILE: dir, TMPDIR: dir } })
         .then(result => ({ ...result, code: 0 }), error => error);
-      const success = ['pass', 'retry-pass', 'claim-safe-reword'].includes(scenario);
-      const singlePass = ['pass', 'dropped-number', 'nested-body', 'claim-swap', 'claim-safe-reword'].includes(scenario);
+      const success = ['pass', 'retry-pass', 'claim-safe-reword', 'comma-reword'].includes(scenario);
+      const singlePass = ['pass', 'dropped-number', 'nested-body', 'claim-swap', 'claim-safe-reword', 'comma-reword'].includes(scenario);
       assert.equal(result.code, success ? 0 : 4, result.stderr);
       const payload = JSON.parse(result.stdout);
       assert.equal(payload.mode, 'rewrite');
@@ -344,7 +346,7 @@ test('CLI --verify JSON binds scores to graded text and rejects post-verificatio
       assert.deepEqual(payload.verification, {
         verified: success, mps: scenario === 'malformed' ? null : scenario === 'hard-fail' ? 95 : 100,
         fidelity: 100, retried: !singlePass,
-        reason: ['pass', 'claim-safe-reword'].includes(scenario) ? 'passed' : scenario === 'retry-pass' ? 'passed-on-retry'
+        reason: ['pass', 'claim-safe-reword', 'comma-reword'].includes(scenario) ? 'passed' : scenario === 'retry-pass' ? 'passed-on-retry'
           : scenario === 'dropped-number' ? 'dropped-numbers' : scenario === 'claim-swap' ? 'numeric-claim-changed'
           : scenario === 'nested-body' ? 'output-changed' : 'floor-not-met',
         mpsFloor: 95, fidelityFloor: 95,

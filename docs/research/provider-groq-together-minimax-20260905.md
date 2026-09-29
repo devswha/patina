@@ -94,7 +94,10 @@ The baseline should keep the existing prompt-only score format. Strict structure
 
 The study's HTTP transport rejects remote non-HTTPS endpoints and embedded URL credentials. Its Gemini guard requires the parent's admitted loopback OpenCodex route and explicit `google-antigravity/gemini-*` identity. A Gemini API key, direct API request, or direct CLI fallback is outside this study. [Local transport](../../scripts/research/model-evaluation-transport.mjs#L39)
 
-**Execution admission checklist**
+**September 5 study protocol**
+
+The procedure below records that study's proposed design and ownership. It is
+historical context for interpreting the study, not a current execution policy.
 
 1. Parent supplies provider access, funded balance, spend ceiling and a new private output directory. Account access remains missing until observed. Confirm model lifecycle, region, price mode and actual limits.
 2. Freeze source SHA, config/pattern/prompt hashes, fixture identities, selected candidates, settings and judge seats. Copy selected rows into a new admitted manifest. Carry upstream-family metadata and the existing fixed judge seats from the [reviewed protocol](model-evaluation-20260904.md); do not edit an active manifest or reuse a frozen collector.

@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -43,35 +43,30 @@ const FAKE_AGY = [
 
 async function withFakeAgy(mode, fn) {
   const binDir = mkdtempSync(join(tmpdir(), 'patina-agy-fake-'));
-  const oldPath = process.env.PATH;
-  const oldMode = process.env.FAKE_AGY_MODE;
+  const saved = Object.fromEntries(['PATH', 'FAKE_AGY_MODE', 'HOME', 'USERPROFILE'].map(key => [key, process.env[key]]));
+  const fixtureHome = join(binDir, 'home');
   try {
+    mkdirSync(fixtureHome);
+    process.env.HOME = fixtureHome;
+    process.env.USERPROFILE = fixtureHome;
+    assert.equal(agyCli.agySettingsPath(), join(fixtureHome, '.gemini', 'antigravity-cli', 'settings.json'));
     const path = join(binDir, 'agy');
     writeFileSync(path, FAKE_AGY);
     chmodSync(path, 0o755);
-    process.env.PATH = `${binDir}:${oldPath || ''}`;
+    process.env.PATH = `${binDir}:${saved.PATH || ''}`;
     process.env.FAKE_AGY_MODE = mode;
-    return await fn();
+    return await fn(fixtureHome);
   } finally {
-    process.env.PATH = oldPath;
-    if (oldMode === undefined) delete process.env.FAKE_AGY_MODE;
-    else process.env.FAKE_AGY_MODE = oldMode;
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
     rmSync(binDir, { recursive: true, force: true });
   }
 }
 
-// invoke() reads the real ~/.gemini/antigravity-cli/settings.json and refuses
-// to launch when it widens headless permissions; os.homedir() cannot be
-// redirected here, so the launch-path tests skip on such hosts instead of
-// flaking. The refusal itself is covered by the settings test below.
-function hostSettingsProblem() {
-  try {
-    agyCli.assertAgySettingsSafe(agyCli.readAgySettings());
-    return false;
-  } catch (err) {
-    return err.message;
-  }
-}
+// Each launch reads settings from an owned home, independent of host login
+// or permissions. The adapter's production settings check remains active.
 // The fake `agy` is an extensionless POSIX shebang script joined to PATH with
 // ':'. Windows never resolves an extensionless name through PATHEXT and (since
 // the Node CVE-2024-27980 fix) refuses to spawn a .cmd shim without a shell,
@@ -80,7 +75,7 @@ function hostSettingsProblem() {
 // stream parsing, settings guard) still runs on win32.
 const launchSkip = process.platform === 'win32'
   ? 'fake agy CLI shim requires POSIX shebang semantics; live Windows launch unverified'
-  : hostSettingsProblem();
+  : false;
 
 function argValue(args, flag) {
   const index = args.indexOf(flag);
@@ -144,6 +139,15 @@ test('agy-cli fails closed on empty, error, tool-using, garbage and non-zero out
   });
   await withFakeAgy('nullpayload', async () => {
     await assert.rejects(agyCli.invoke({ prompt: 'x' }), /carried 2 result events/);
+  });
+});
+
+test('agy-cli refuses unsafe settings in the owned launch fixture', { skip: launchSkip }, async () => {
+  await withFakeAgy('success', async (fixtureHome) => {
+    const settingsDir = join(fixtureHome, '.gemini', 'antigravity-cli');
+    mkdirSync(settingsDir, { recursive: true });
+    writeFileSync(join(settingsDir, 'settings.json'), JSON.stringify({ toolPermission: 'always-proceed' }));
+    await assert.rejects(agyCli.invoke({ prompt: 'x' }), /refusing to run[\s\S]*always-proceed/);
   });
 });
 

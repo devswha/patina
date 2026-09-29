@@ -35,6 +35,19 @@ test('deterministicMeaningGuard preserves non-standard grouping so a dropped 1,2
   assert.ok(warnings.some((w) => /numbers/.test(w)), warnings.join(' | '));
 });
 
+test('meaning safety ignores sentence punctuation after a preserved number', () => {
+  for (const [original, rewrite] of [
+    ['There were 5, as planned.', 'As planned, there were 5.'],
+    ['We reached 1,200, as planned.', 'As planned, we reached 1200.'],
+    ['The value was 1.25, as expected.', 'As expected, the value was 1.25.'],
+  ]) {
+    assert.deepEqual(deterministicMeaningGuard(original, rewrite), []);
+    assert.equal(assessRewriteMeaningSafety(original, rewrite).ok, true);
+    assert.equal(assessRewriteMeaningSafety(rewrite, original).ok, true);
+  }
+  assert.equal(assessRewriteMeaningSafety('There were 5, as planned.', 'There were 6.').ok, false);
+});
+
 test('assessRewriteMeaningSafety keeps vanished digits as dropped-numbers', () => {
   const result = assessRewriteMeaningSafety(
     'The service retains 12 audit logs.',

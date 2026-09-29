@@ -1,7 +1,10 @@
 # KO GPT-family miss-review manifest — step-1 review decision (2026-09-02)
 
+> Historical study record (2026-09-02). The procedure and permitted diff below
+> describe that completed investigation, not constraints on subsequent work.
+
 Status: **GO (measure-only)** — external review complete; no collector, manifest, taxonomy, threshold, pattern, lexicon, or runtime change was made in this step.
-Roadmap: step 1 of the frozen performance-only order in `humanization-data-backlog.md`. Steps 2–8 stay inactive.
+Roadmap at the time: step 1 of the September 2 plan in `humanization-data-backlog.md`; steps 2–8 were outside this investigation.
 
 This record separates two voices on purpose: what the external reviewer said, and what the executing maintainer session concludes from it. Nothing below changes production behaviour.
 

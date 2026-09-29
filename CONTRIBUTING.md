@@ -1,116 +1,66 @@
 # Contributing to Patina
 
-Thanks for considering a contribution. Patina is a pattern-based tool, so the most impactful contributions are usually new patterns, better examples, Document Type policies, or Persona refinements.
+Contributions include CLI fixes, detection signals, patterns, examples,
+Document Types, Personas, integrations, and documentation.
 
-To submit a pattern, start with the [pattern proposal issue form](.github/ISSUE_TEMPLATE/pattern_proposal.yml). The pack template and PR checklist are in [Adding a New Pattern](#adding-a-new-pattern). A short worked pair is in [pattern of the week](docs/community/pattern-of-the-week.md).
+## Finding your way around
 
-## Documentation boundaries
+- `src/`, `api/`, and `playground/` contain executable product code.
+- `SKILL.md` and `core/` describe the product's text-processing flow.
+- `patterns/`, `document-types/`, `personas/`, and `examples/` hold product assets.
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) explains the current module layout.
+- [QA.md](docs/QA.md) lists test commands and their coverage.
+- [WORKFLOW.md](docs/WORKFLOW.md) provides Git, CI, and release examples.
+- `docs/research/` contains dated studies and proposals; `docs/operations/`
+  contains runbooks and past operating records.
 
-The tracked tree is public by default. Keep these roles distinct:
+## Local development
 
-- **Development policy:** `AGENTS.md`, this file, and the linked
-  `docs/WORKFLOW.md`, `docs/ARCHITECTURE.md`, and `docs/QA.md`.
-- **Product documentation and assets:** `README*.md`, `SKILL.md`, `core/`,
-  `patterns/`, `document-types/`, `personas/`, `examples/`, and user-facing
-  material under `docs/`.
-- **Reviewed operational evidence:** a sanitized, explicitly approved record
-  may live under `docs/operations/`; it is not a substitute for user docs.
-- **Historical evidence:** dated plans, research, and benchmark records remain
-  labeled with their date, conditions, and source revision. Do not rewrite an
-  historical result as a current claim.
+The development checks use Node 24. The published CLI's minimum Node version
+is recorded in `package.json`.
 
-Private runbooks, raw user or model text, review/run logs, credentials, tokens,
-personal profiles, and local QA workspaces belong outside the public tree.
-`docs/internal/` and other gitignored directories and scoped agent files are
-guards for private material, not publication targets.
-Never copy a private parent `AGENTS.md` or its contents into this repository.
-Do not put private material in issues, telemetry, package tarballs, or examples.
+```bash
+npm ci
+npm test
+npm run lint
+```
 
-The root `AGENTS.md` is the public repository-development entrypoint; no
-product instructions belong there. This repository grants no external
-publication, registry, deployment, account, or release rights. Maintainer
-approval and the documented release process are required for every external
-write. When moving a public root document, link it from `README.md`; private
-material must not be moved into the repository.
+Focused tests are useful during implementation, and `npm run test:browser`
+exercises the playground with Chromium fixtures. Additional commands live in
+`package.json` and the [harness guide](docs/HARNESS.md).
 
-## Development workflow and canonical references
+## Adding a new pattern
 
-Use one branch and worktree per session, normally branched from `dev`, and keep
-each PR to one behavior, contract, or responsibility change. The complete
-branch, PR/Issue, review, merge, and release policy is
-[`docs/WORKFLOW.md`](docs/WORKFLOW.md). Read
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for module ownership and public
-contracts, and [`docs/QA.md`](docs/QA.md) for verification profiles, evidence,
-and isolation. Do not duplicate those documents here.
+Patterns live in `patterns/{lang}-{category}.md`. Categories include content,
+language, style, structure, communication, filler, and the score-only viral-hook
+pack. Existing pack frontmatter and numbered `### N.` entries show the format:
 
-## Korean Translation Policy
+- Watch words and a fire condition.
+- Exclusions and false-positive examples.
+- A description of the editing problem.
+- Before/after text with the intended meaning preserved.
 
-Primary user docs should keep a Korean companion when they explain installation, support, contribution, examples, or troubleshooting. The required pairs are:
+The language packs are Korean, English, Chinese, and Japanese. A contribution
+can start with any one of them. The optional [pattern proposal form](.github/ISSUE_TEMPLATE/pattern_proposal.yml)
+and [pattern-of-the-week example](docs/community/pattern-of-the-week.md) can
+help organize an idea.
 
-- `README.md` → `README_KR.md`
-- `CONTRIBUTING.md` → `CONTRIBUTING_KR.md`
-- `docs/FAQ.md` → `docs/FAQ_KR.md`
-- `docs/AUTHENTICATION.md` → `docs/AUTHENTICATION_KR.md`
-- `docs/EXAMPLES.md` → `docs/EXAMPLES_KR.md`
+Pack frontmatter records `patterns:` counts. The catalog is in
+`docs/PATTERNS.md` and `docs/PATTERNS-{lang}.md`; examples live in `examples/`.
+Count changes can also affect README and SKILL metadata.
 
-When a PR changes one of these English files, update the Korean pair in the same PR or explain why the translation can safely lag. Keep commands, paths, config keys, issue numbers, and code fences unchanged unless the source file itself changes them.
+Patterns can be added, revised, reduced, or removed as evidence changes.
+[Pattern freshness](process/pattern-freshness.md) describes available tools and
+provenance fields.
 
-## Adding a New Pattern
+## False positives and fixtures
 
-If you are proposing a new tell, open a [pattern proposal](.github/ISSUE_TEMPLATE/pattern_proposal.yml) first. The form asks for language, examples, a rewrite, false-positive risk, and a 50-document evaluation fixture or collection plan.
+A useful false-positive report includes the language, writing context, observed
+signal, and a small shareable reproduction. Possible fixes include an exclusion,
+a changed detector, a Document Type override, or removal of an unreliable pattern.
 
-1. **Pick the right pack.** Patterns live in `patterns/{lang}-{category}.md`. Categories: content, language, style, structure, communication, filler, plus the score-only `viral-hook` pack. That pack file is the template: copy its frontmatter and a numbered `### N.` section.
-
-2. **Follow the template.** Each pattern needs:
-   - Number (next available, e.g. #30)
-   - Watch words
-   - Fire condition (when should it trigger?)
-   - Exclusion condition (when should it NOT trigger?)
-   - Problem description
-   - Before/after example
-
-3. **Add to all languages you can.** We have 4 language packs (ko, en, zh, ja). If you only know one, that's fine — file the PR for that language and note the others need translation.
-
-4. **Update counts.** After adding a pattern:
-   - Pack header: increment `patterns:` count
-   - `docs/PATTERNS.md` and `docs/PATTERNS-{lang}.md`: regenerate the catalog; README `Facts` row: update the total
-   - SKILL.md description: update total if hardcoded
-
-5. **Add an example.** If possible, add `examples/{lang}-{number}-success-01.md` and `examples/{lang}-{number}-failure-01.md` (false positive case).
-
-## Improving an Existing Pattern
-
-The most common improvement: better before/after examples. The "after" text should preserve the original meaning — not rewrite it into something different.
-
-Good test: if someone read only the "after" text, would they get the same takeaway as the "before"? If the sentiment flips, the example is bad.
-
-## Pattern Evaluation Checklist
-
-Before opening a pattern PR, check:
-
-- **Fire condition:** would at least 2-3 real AI-generated examples trigger it?
-- **Exclusion condition:** can a human-written, domain-appropriate example avoid the hit?
-- **Semantic risk:** what facts, numbers, polarity, causation, or domain terms could be damaged by the rewrite?
-- **Before/after pair:** does the after version preserve the same claims without merely swapping synonyms?
-- **Freshness evidence:** link a 50-document hot/cold fixture, manifest, or collection plan when proposing an emerging model-era tell.
-- **Count sync:** pack frontmatter `patterns:` must match numbered `### N.` pattern headings.
-
-## False Positive Triage Workflow
-
-False positives are expected, especially for academic, encyclopedic, legal, corporate, or heavily edited prose. To report one:
-
-1. Use the false-positive issue template.
-2. Include language, genre/register, score/audit excerpt, and the specific pattern that over-fired.
-3. Remove private text or replace it with a minimal redistributable excerpt.
-4. Suggest whether the fix should be an exclusion rule, lower severity, Document Type `pattern-overrides` change, or benchmark fixture.
-
-Maintainers should prefer tightening exclusions over deleting patterns outright.
-
-## Adding Benchmark Fixtures
-
-Suspect-zone fixtures live under `tests/fixtures/suspect-zones/{lang}/{ai|natural}/`.
-
-Each fixture needs YAML frontmatter:
+Suspect-zone fixtures live in `tests/fixtures/suspect-zones/{lang}/{ai|natural}/`.
+Their frontmatter describes the fixture and expected measurements:
 
 ```yaml
 ---
@@ -119,132 +69,59 @@ language: en
 class: ai
 expected_hot: true
 why_designed_this_way: |
-  Explain which deterministic signal should fire and why.
+  Explain which deterministic signal this fixture exercises.
 expected_metrics:
   cv_band: low
 ---
 ```
 
-Then run:
+`npm run benchmark:report` regenerates `tests/quality/results.json`,
+`docs/benchmarks/latest.json`, and `docs/benchmarks/latest.md`.
 
-```bash
-npm run benchmark:report
-```
+## Detection signals
 
-This regenerates `tests/quality/results.json`, `docs/benchmarks/latest.json`, and `docs/benchmarks/latest.md`.
+The current analyzer in `src/features/` computes signals locally without a
+model or network. `src/features/index.js` combines them into paragraph and
+document results. [ARCHITECTURE.md](docs/ARCHITECTURE.md) maps the callers and
+public outputs; `core/stylometry.md` explains the current scoring behavior.
 
-## Adding a Deterministic Detection Signal
+`npm run benchmark:signal-impact` compares signal contributions and false
+positives. Matched human controls, examples of missed detections, and results
+by language/register help evaluate a proposed detector. The same tools can
+support experiments with new approaches and revisions to existing ones.
 
-Patterns (above) are LLM-executed catalog entries. A **detection signal** is
-different: a deterministic hot/cold input computed in `src/features/*` and
-folded into the per-paragraph hot OR rule (burstiness, MATTR, lexicon density,
-the Korean diagnostics composite, the ending-monotony signal, etc.). The
-analysis layer stays LLM-free, so a new signal is real engineering with a
-calibration bar. Follow this loop:
+## Document Types and Personas
 
-1. **Diagnose the miss with evidence.** Find where detection fails on a labeled
-   manifest, not by intuition. `score_review.trigger_counts` in the scored
-   manifests shows which signals fire on which rows; `npm run benchmark:signal-impact`
-   reports each existing signal's marginal catch/FP so you can see the gap.
-2. **Find a false-positive-safe discriminator.** Compare AI misses against human
-   controls **at matched length/register** (a short-text confound is not an AI
-   tell). The discriminator must separate AI from *the human register that
-   shares the surface feature* — e.g. plain `-다` AI vs formal-human `-다` needed
-   a burstiness conjunct, not `-다` alone.
-3. **Implement it first-class, never by coupling an advisory payload.** Advisory
-   signals (`translationese`, `koPostEditese.v1`) must not feed the hot verdict
-   (see [docs/TRANSLATIONESE-KO.md](docs/TRANSLATIONESE-KO.md)). Add a dedicated
-   computation in `src/features/stylometry.js`, wire it into the hot OR in
-   `src/features/index.js`, and add a precision gate (length/count floors) if it
-   over-fires on short or corner-case text.
-4. **Keep runtime surfaces aligned.** A signal is not done until it is consistent across:
-   `src/features/index.js` / server-side feature callers such as
-   `src/web-rewrite-stream.js`, `scripts/rebaseline-score.mjs`
-   `trigger_counts`, the hot-rule prose in `core/stylometry.md` and `SKILL.md`,
-   and unit tests (including precision guards). The browser playground is a
-   `playground/chatgpt.js` UI over server-side detection/scoring, not a separate
-   deterministic-analysis mirror.
-5. **Measure with the harness, not by hand.** Run `npm run benchmark:signal-impact`
-   for the marginal before/after, `npm run benchmark` (the 49-fixture suite must
-   stay 100% — natural fixtures must not flip hot), and confirm the human-control
-   false-positive rate stays within the published CI in
-   `docs/benchmarks/rebaseline-latest.md`. Record the measured numbers in the
-   changelog. The frozen public claim manifests are refreshed in a separate
-   rebaseline pass, not in the signal PR.
-6. **Record the release impact.** A new detection signal changes hot behavior
-   and normally warrants a **minor** release (it is additive, not a removal).
-   Record that impact and the measured catch/FP deltas in the PR, but leave
-   package and mirror updates to the release process.
+Document Types live in `document-types/{name}.md`. Their frontmatter includes
+`document-type`, `scope`, `purpose`, `audience`, `structure`, `style`, `avoid`,
+and language-scoped `pattern-overrides`. `suppress` currently affects
+deterministic analysis; `reduce`/`amplify` describe policy intent without a
+runtime weighting change.
 
-Acceptance bar (mirrors the roadmap's deterministic-feature-expansion criteria):
-recall or precision improves on the labeled manifest, the human-control
-false-positive rate stays within the published tolerance, and the signal ships
-with a documented failure mode plus before/after examples.
+`patina persona new` creates reusable voice metadata. The current Persona
+validator distinguishes voice fields from Document Type, Register, and safety
+fields.
 
-See [docs/HARNESS.md](docs/HARNESS.md) for the full measurement-tool map.
+## Translations
 
-## Translating Examples
-
-- Preserve the original semantic anchors: numbers, entities, negation, causation, and modality.
-- Do not translate an English AI tell literally if it is not a tell in the target language.
-- Add a target-language false-positive note when a phrase is normal in that register.
-- Keep examples redistributable; do not paste private user text.
-
-## Adding a Document Type
-
-Document Types live in `document-types/{name}.md`. Copy an existing policy
-(for example `blog.md`), set `document-type:` to the filename stem, and define
-`scope`, `purpose`, `audience`, `structure`, `style`, `avoid`, and
-language-scoped `pattern-overrides`. `suppress` is applied deterministically;
-`reduce`/`amplify` document policy intent but do not currently change a runtime
-weight. Keep Persona voice, casual/professional Register markers, and
-verification thresholds out of this axis.
-
-For reusable voice, create a Persona v2 with `patina persona new`. Persona
-frontmatter is validated to reject document policy, Register, and safety fields.
-
-## Pattern Staleness
-
-AI writing patterns evolve as models get fine-tuned. Some patterns decay (e.g. "delve" after it became a meme), while new ones emerge. 
-
-How we handle this:
-- **Community reporting:** If you notice a pattern that's no longer a reliable signal, open an issue
-- **New pattern proposals:** If you spot a new AI tell, file a [pattern proposal](.github/ISSUE_TEMPLATE/pattern_proposal.yml) with 3+ real-world examples and a 50-document evaluation fixture or collection plan
-- **Quarterly review:** Maintainers follow [`process/pattern-freshness.md`](process/pattern-freshness.md) for corpus freeze windows, promotion thresholds, and frontmatter metadata
-- **Lexicon provenance:** Newly mined or re-mined lexicon entries need `added`, `source`, and `last_validated` provenance before changing shipped behavior; run `npm run lexicon:freshness` to verify sidecars match the shipped entries
-- **Version notes:** Each pattern pack has a `version` field. Record its
-  compatibility impact when patterns change; release preparation updates
-  package and mirror versions through the documented process.
-- **No deletion without replacement:** We don't remove patterns outright; we mark them as `low` severity or move them to `reduce` in a Document Type policy
+English/Korean document pairs include `README`, `CONTRIBUTING`, `docs/FAQ`,
+`docs/AUTHENTICATION`, and `docs/EXAMPLES`. Comparing both versions helps keep
+commands and explanations aligned. Pattern translations can use examples
+natural to the target language instead of literal translations of an English tell.
 
 ## Versioning and releases
 
-Record the expected semver impact in a feature or documentation PR, but do not
-bump the package version there. Version changes are release-only: the release
-PR updates `package.json` (the source of truth), its documented mirrors, and
-the matching `CHANGELOG.md` entry once. Use the checks and version-bearing-file
-list in [`docs/WORKFLOW.md`](docs/WORKFLOW.md); `npm run release:check` must
-remain the final metadata check. Include a short semver rationale in each
-release entry. Pattern-pack and Document Type metadata may have their own
-compatibility rules, but must not silently change the package release version.
+`package.json` is the package-version source. `npm run release:check` validates
+its mirrors and CHANGELOG entry, and `npm run release:sync-plugin-versions`
+updates the plugin mirrors. [The release guide](docs/integrations/release.md)
+explains artifact creation, npm publication, and container delivery.
 
-## Code of Conduct
+## PR process
 
-Be helpful. Don't be a jerk. AI writing patterns are not moral failings — we're building a tool, not a tribunal.
+Changes normally reach `main` through a pull request. A helpful description
+explains the behavior, reasoning, and relevant checks. Issues are available
+for discussion and tracking when useful. Reviews can consider alternatives
+and revise the approach as new evidence appears.
 
-## PR Process
-
-1. Open or find an Issue first when the change affects user-visible behavior,
-   a public contract, security, payment, or release; a small docs or
-   test-only fix may skip it and say why. Scoring, pattern, benchmark,
-   installer and provider changes also need explicit maintainer approval
-   ([`GOVERNANCE.md`](GOVERNANCE.md)).
-2. Branch from `dev` and make the smallest independently reviewable change.
-3. Explain the problem, scope, non-goals, public-contract impact, risk, and
-   rollback. Include the relevant test or fixture and its evidence.
-4. Keep implementation, regression coverage, and required public documentation
-   together; separate unrelated cleanup, generated output, and release bumps.
-5. Open the PR into `dev` with a clear description. Use the release workflow
-   for the later `dev` → `main` merge; a feature PR is not a release.
-6. Include before/after examples for pattern changes and state any check that
-   was not run or is blocked. Do not treat an unrun or stale check as passing.
+The repository is public. Synthetic examples and sanitized summaries are useful
+for discussing private inputs without publishing credentials or personal text.

@@ -89,8 +89,7 @@ construction (revisions of known AI positives). **Verdict: genuine.**
 - Edited-AI audited: **genuine**.
 - **No mislabeled or too-easy samples found.** The corpus is genuinely hard
   (overall TPR at 5% FPR is 0.0% — high-scoring human controls block low-FPR
-  operation), which is the honest measure-only outcome motivating a future,
-  separately-approved calibration delta.
+  operation), which motivated the calibration investigation recorded below.
 
 ## Post-calibration update (lexicon density_threshold 2.0 → 3.0)
 

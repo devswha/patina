@@ -4,7 +4,7 @@ Status: PLAN v2 §7.A reproduction on the current dest rewrite path. No product 
 Tree: `bot/plan-live-diagnostic-20260914` @ `142b2eb5a0db9ad75c8e1efb5f77359c3a6148de` (`origin/dev` at branch creation).
 Plan source (PLAN): the v2 rewrite-quality plan, §4 and §7.A, archived as [`rewrite-quality-plan-v2-20260909.md`](rewrite-quality-plan-v2-20260909.md).
 
-This note records first-available stage outputs for eight synthetic KO cases from PLAN §2.3. It is a path reproduction, not a quality claim, not a language-wide result, and not permission to ship H-RHETORIC.
+This note records first-available stage outputs for eight synthetic KO cases from PLAN §2.3. It is a path reproduction, not a quality claim, not a language-wide result. H-RHETORIC was unchanged by this diagnostic.
 
 **Mode:** `first_draft_only`. `--verify` was not used.
 

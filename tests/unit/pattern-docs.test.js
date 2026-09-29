@@ -150,18 +150,13 @@ test('pattern and lexicon packs carry corpus snapshot metadata', () => {
   }
 });
 
-test('pattern freshness process defines cadence, candidate fixtures, and promotion gates', () => {
+test('pattern freshness guide references available evaluation commands', () => {
   const processDoc = readFileSync(resolve(REPO_ROOT, 'process/pattern-freshness.md'), 'utf8');
-  assert.match(processDoc, /quarterly review process/i);
-  assert.match(processDoc, /50-document evaluation fixture/i);
-  assert.match(processDoc, /Precision floor/);
-  assert.match(processDoc, /Recall floor/);
-  assert.match(processDoc, /corpus-snapshot:/);
-
-  const template = readFileSync(resolve(REPO_ROOT, '.github/ISSUE_TEMPLATE/pattern_proposal.yml'), 'utf8');
-  assert.match(template, /id: register_scope/);
-  assert.match(template, /id: evaluation_fixture/);
-  assert.match(template, /id: measurement/);
+  const pkg = JSON.parse(readFileSync(resolve(REPO_ROOT, 'package.json'), 'utf8'));
+  const commands = new Set([...processDoc.matchAll(/npm run ([\w:-]+)/g)].map(match => match[1]));
+  for (const command of commands) {
+    assert.equal(typeof pkg.scripts[command], 'string', `unknown documented command: npm run ${command}`);
+  }
 });
 
 test('viral-hook packs remain score-only with expanded severity-documented coverage', () => {

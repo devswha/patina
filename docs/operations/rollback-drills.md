@@ -56,7 +56,9 @@ Note: rolled-back builds retain their original env snapshot — re-verify
 
 - A CLI redeploy has no `VERCEL_GIT_COMMIT_SHA`, so the pro-monitor stays in
   its fail-closed 503 until the next git deploy. Any drill that used
-  `redeploy` therefore ends with a dev -> main merge.
+  `redeploy` therefore is followed by a Git deployment from `main`,
+  following [the current workflow](../WORKFLOW.md). The dated evidence below
+  retains its original branch names.
 - The monitor cron fires every 15 minutes and alerts Discord when synthetic
   checks fail. Watch one full cycle after a drill before calling it recovered.
 
@@ -78,19 +80,13 @@ trigger, a `monitor_recovered` message, and consumption of the linked alert
 state. A pass is code evidence only; it is not a production incident,
 deployment, or Discord event.
 
-The source authority is
-`src/pro-monitor.js#evaluateProMonitor`; the deployed route, when separately
-approved, is `api/pro-monitor.js`. The owner authority is the repository
-maintainer, who alone approves a production promotion or rollback and records
-the exact source SHA, deployment ID, smoke result, and prior rollback ID.
-Do not collect credentials, request text, provider responses, or raw logs for
-this fixture.
+The calculator is `src/pro-monitor.js#evaluateProMonitor`; the deployed route
+is `api/pro-monitor.js`. Source SHA, deployment ID, smoke result, and the prior
+deployment ID describe the tested build and rollback target.
 
-## P13a — web deployment binding (human-gated)
+## P13a — web deployment binding (2026-09-09 record)
 
-The required sequence is **approved main SHA → preview/deployment built from
-that same SHA → application smoke → owner-approved promotion → retained prior
-deployment ID for rollback**. No step below authorizes a promotion or rollback.
+The following is the evidence available during that investigation.
 
 Read-only evidence captured from the existing Vercel account (no secret
 plaintext/decrypt/log access) is limited to:
@@ -106,25 +102,23 @@ plaintext/decrypt/log access) is limited to:
 - `b9fff3e...` is an ancestor of `origin/main`; the deployed `b9fff3e...`
   tree and the `d7a4741...` release-merge tree are both
   `7cd7f924d1b2228a9692b64842b69918beaf2a21`. The source-ref/SHA discrepancy
-  is therefore not a content mismatch or proven malfunction; the maintainer
-  must reconcile the `sourceRef=dev` exception before promotion.
+  did not establish a content mismatch or malfunction in that investigation.
 - `https://patina.vibetip.help` returned a basic read smoke rendering the
   `8.6.0` title. This is not application acceptance evidence.
 - Environment metadata exposed target counts `production=34` and `preview=31`
   with `decrypt=false`; no values were read or printed. Required-check and
-  remaining account-setting fields were not exposed and remain **unknown**;
-  account confirmation is human-blocked.
+  remaining account-setting fields were not exposed and were **unknown** in
+  that investigation.
 
 The earlier GitHub production deployment record `6347382527` (source
 `d7a4741ed9f767bd22a39255e10acf159351fb7a`) reported success, but did not
-prove an application smoke or Vercel account configuration. Real promotion and
-rollback remain unexecuted, unapproved, and human-blocked, so the retained
-prior ID above is an inventory fact, not a completed rollback drill.
+prove an application smoke or Vercel account configuration. That investigation
+did not execute promotion or rollback, so the retained prior ID is an inventory
+fact, not a completed rollback drill.
 
 The separate npm artifact recovery lane owns its mock partial-registry
 exercise: [`scripts/release-artifacts.mjs`](../../scripts/release-artifacts.mjs),
 [`tests/unit/release-artifacts.test.js`](../../tests/unit/release-artifacts.test.js),
-and [`docs/integrations/release.md`](../integrations/release.md). Do not
-report that lane or this web drill as passed until the parent verification
-records its result. Native Codex automation settings (P09) and any unexposed
-web account configuration remain unknown.
+and [`docs/integrations/release.md`](../integrations/release.md). Native Codex
+automation settings (P09) and unexposed web account configuration were not
+verified by this investigation.

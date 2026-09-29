@@ -13,15 +13,17 @@ The npm publication hold ended with the 8.7.0 release. The npm package version
 does not establish which version is deployed on the website; verify the
 production version after each web deployment.
 
-Web deployment normally follows the reviewed `dev` → `main` merge and the existing
-Vercel project. The isolated 8.5.2 hotfix starts from released `main`; merge it
-back into `dev` immediately. Deployment needs no npm publication or release tag. Keep `dev` in
-sync with the resulting `main` history and verify the production version and
-rewrite flow after deployment. Production deployments must originate from a
-`main` SHA: let the Vercel Git integration build the merge commit, or run
-`vercel --prod` from a clean `main` checkout. Do not upload from a `dev`
-working tree. Keep the previous production deployment ID as the rollback
-target.
+Web deployment normally follows a reviewed feature PR into `main` through the
+existing Vercel project. A version-preparation PR and npm release tag are separate;
+a feature merge may reach the website first. Check the project's production
+branch and verify the production version and rewrite flow after deployment.
+Vercel's Git integration builds the merge commit. The
+[Vercel CLI](https://vercel.com/docs/cli/deploy) instead deploys the current
+project directory, which can include local edits. To deploy the merged `main`
+revision with `vercel --prod`, fetch `origin/main`, check that
+`git status --porcelain` is empty, and compare `git rev-parse HEAD` with
+`git rev-parse origin/main` before deploying. Deployment history contains
+previous production builds for rollback.
 
 Release tags start the npm publication job; push a tag only for an intended
 release. The GitHub Release remains coupled to successful npm publication.
@@ -40,14 +42,15 @@ It then builds the real root and alias `.tgz` files once with
 `scripts/release-artifacts.mjs`. The script records `sourceSHA`, the shared
 version, each tarball's SHA-256/SHA-512/SRI integrity, and the packed file
 lists in `release-manifest.json`. A clean fixture installs **both tarballs in
-one `npm install` command**, then runs `npm ci` from that generated lockfile
-dependencies (currently
+one `npm install` command**, then runs `npm ci` from that generated lockfile. Dependencies (currently
 `js-yaml`/`argparse`) may use the public registry; the lockfile must show
 `file:` resolutions and matching integrity for both `patina-cli` and
 `patina-humanizer`, with paths resolving to the two supplied tarballs, so
 neither package can silently fall back to a registry version. The fixture
 verifies that the alias's exact `patina-cli` dependency resolves to the
-supplied root tarball and runs both CLI `--version` smoke checks. The verified
+supplied root tarball and runs both CLI `--version` smoke checks. The same
+registry-backed test is available as `npm run test:release-install` and runs in
+its own PR CI job; it is not part of ordinary `npm test`. The verified
 directory is uploaded as an artifact named for the commit SHA.
 The build output directory and smoke fixture are required to be new or empty;
 the script refuses to delete caller-owned files.

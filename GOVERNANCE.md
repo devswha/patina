@@ -1,60 +1,14 @@
-# Governance
+# Project maintenance
 
-Patina uses lightweight maintainer governance until the contributor base grows.
+Patina is maintained through GitHub issues and pull requests. The maintainer
+sets project priorities and coordinates releases; contributors can propose
+changes and discuss alternatives in the same repository.
 
-## Decision model
+[CONTRIBUTING.md](CONTRIBUTING.md) describes the code and content layout.
+[docs/WORKFLOW.md](docs/WORKFLOW.md) lists common Git and release operations.
+GitHub repository settings contain the current branch protection and access
+configuration.
 
-- Routine docs, tests, examples, and small CLI fixes can be merged after one maintainer review or an equivalent verified maintainer run.
-- Pattern, scoring, benchmark, installer, provider, and release changes need explicit maintainer approval.
-- Changes that affect the core skill pipeline should explain the meaning-preservation impact and include before/after examples when practical.
-
-## Change-proposal flow
-
-Follow the [PR process in CONTRIBUTING.md](CONTRIBUTING.md#pr-process). Prefer follow-up issues over expanding a PR after review starts.
-
-## Main branch protection
-
-`main` is protected. The rule is intentionally small and reproducible:
-
-- force pushes are blocked;
-- branch deletion is blocked;
-- pull requests are required before normal merges;
-- one approving review is required for non-admin merges;
-- required checks must pass before merging, and branches must be up to date:
-  - `lint`
-  - `test (18.1.0)`
-  - `test (20)`
-  - `test (22)`
-  - `test (lts/*)`
-  - `quality`
-
-Administrators are not included in enforcement for now (`enforce_admins=false`) so the maintainer can recover the repository or unblock automation if a protection rule misconfiguration prevents release work. Admin bypass should be treated as an emergency path, not the normal merge path.
-
-## Close criteria
-
-An issue can be closed when the linked PR is merged and the issue's acceptance criteria are met, or when the maintainer records why the request is duplicate, out of scope, not reproducible, or intentionally deferred. Partial fixes should leave a comment naming the remaining work.
-
-## Triage labels
-
-Suggested label groups:
-
-- `bug` — incorrect behavior or broken documented workflow
-- `enhancement` — product, CLI, integration, or distribution improvement
-- `documentation` — docs-only update
-- `patterns` — pattern catalog or rewrite-rule change
-- `benchmark` — corpus, metrics, calibration, or quality gate work
-- `research` — evaluation methodology or external comparison
-- `false-positive` — human prose flagged too strongly
-- `good first issue` — bounded and low-risk contributor task
-- `help wanted` — useful but not on the immediate maintainer path
-- `ecosystem` — package, dataset, marketplace, or third-party surface work
-- `integration` — editor, GitHub Action, pre-commit, or app integration
-- `distribution` — npm, Docker, releases, install channels
-- `governance` — maintainer process, labels, community health
-- `discussion` — design or research thread before implementation
-
-## Safety notes
-
-- Do not position patina as an AI-detector bypass tool. The accepted framing is auditable editing with meaning-preservation checks.
-- Do not include private user text in issues, fixtures, or benchmarks unless the contributor has explicit redistribution rights.
-- Prefer small, reversible changes over broad rewrites.
+Labels such as `bug`, `enhancement`, `documentation`, `patterns`, `benchmark`,
+`research`, `false-positive`, and `integration` help organize related work.
+Issues can track a bug, question, proposal, or a larger task across PRs.

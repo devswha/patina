@@ -33,10 +33,9 @@ rewrite that this survey is built around:
 4. The human-evaluation panel (`human-eval-panel.md`, #159) is designed but has
    never run, and the meaning proxy (MPS) checks anchors only.
 
-The frozen performance-only order in `humanization-data-backlog.md` keeps step 1
-(KO GPT-family miss review) as the sole active item. This note does **not**
-activate steps 2–8; it records what the literature says each step should look
-like, phrased as pre-registrable hypotheses in §9.
+The September 2 backlog prioritized the KO GPT-family miss review. This survey
+records possible follow-up work as pre-registrable hypotheses in §9; the
+historical backlog does not fix the order of future investigations.
 
 Ethics frame (`docs/ETHICS.md`): patina's success metric is *perceived*
 AI-likeness by blind readers plus meaning preservation, not detector bypass.

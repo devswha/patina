@@ -473,7 +473,7 @@ candidate on that list — a pre-rewrite **structure plan step**.
 ### What ships on the result
 
 - All criteria pass → the plan-step mechanism graduates to a **product
-  proposal** (separate approval; candidate surfaces: a restructure option in
+  proposal** (candidate surfaces: a restructure option in
   the rewrite pipeline or a redesigned pro pack v2 that carries the plan
   contract) citing this registration and the measured CIs.
 - H-S3a fails or a guard rail is violated → published as-is; next iteration
@@ -635,7 +635,7 @@ only.
 
 - All criteria pass (stage 1) → a product proposal to fold the constraint
   block into the production rewrite prompt (minimal and strict modes) for ko,
-  with the en decision waiting on stage 2; separate approval, citing this
+  with the en decision waiting on stage 2, citing this
   registration and the measured CIs.
 - H-4b-a fails or a guard rail is violated → published as-is; the next
   candidate is H-4a (deterministic merge/split with seam-only infill). No

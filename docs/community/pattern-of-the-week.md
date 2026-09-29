@@ -48,8 +48,10 @@ claims, it does not fact-check them.
 
 ## How to add the next one
 
-1. Open a [pattern proposal](https://github.com/devswha/patina/issues/new?template=pattern_proposal.yml) or a [false-positive](https://github.com/devswha/patina/issues/new?template=false_positive.yml) report.
-2. Follow [CONTRIBUTING.md](../../CONTRIBUTING.md). Include a success rewrite and a case that must not fire.
-3. Edit the pack in `patterns/{lang}-*.md`. Do not bump the package version in the same PR.
+The packs live in `patterns/{lang}-*.md`; [CONTRIBUTING.md](../../CONTRIBUTING.md)
+describes their format. A success rewrite and a false-positive example help
+explain a proposed change. A [pattern proposal](https://github.com/devswha/patina/issues/new?template=pattern_proposal.yml)
+or [false-positive report](https://github.com/devswha/patina/issues/new?template=false_positive.yml)
+can provide a place to discuss it.
 
 Starter issues use the `good first issue` and `patterns` labels.

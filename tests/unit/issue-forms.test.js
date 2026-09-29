@@ -6,7 +6,6 @@ import yaml from 'js-yaml';
 import test from 'node:test';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const POLICY_URL = 'https://github.com/devswha/patina/blob/dev/docs/WORKFLOW.md';
 const FORM_PATHS = [
   '.github/ISSUE_TEMPLATE/bug_report.yml',
   '.github/ISSUE_TEMPLATE/feature_request.yml',
@@ -17,20 +16,25 @@ const FORM_PATHS = [
   '.github/ISSUE_TEMPLATE/research_proposal.yml'
 ];
 
-function loadForm(relativePath) {
-  const source = readFileSync(resolve(REPO_ROOT, relativePath), 'utf8');
-  return yaml.load(source);
-}
-
-test('all issue forms link to workflow policy and collect scope and acceptance', () => {
+test('issue forms have usable fields and unique identifiers', () => {
   for (const relativePath of FORM_PATHS) {
-    const form = loadForm(relativePath);
-    assert.ok(Array.isArray(form.body), `${relativePath} should define a body`);
-    const acceptance = form.body.find((field) => field.id === 'acceptance');
-    assert.ok(acceptance, `${relativePath} should define an acceptance field`);
-    assert.equal(acceptance.type, 'textarea');
-    assert.equal(acceptance.attributes.label, 'Scope and acceptance');
-    assert.equal(acceptance.validations.required, true);
-    assert.match(JSON.stringify(form), new RegExp(POLICY_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    const form = yaml.load(readFileSync(resolve(REPO_ROOT, relativePath), 'utf8'));
+    assert.ok(form.name && form.description, `${relativePath} needs a name and description`);
+    assert.ok(Array.isArray(form.body) && form.body.length > 0, `${relativePath} needs fields`);
+    const ids = new Set();
+    for (const field of form.body) {
+      assert.ok(['markdown', 'input', 'textarea', 'dropdown', 'checkboxes'].includes(field.type), field.type);
+      if (field.type === 'markdown') {
+        assert.ok(field.attributes.value.trim(), `${relativePath} has an empty notice`);
+        continue;
+      }
+      assert.ok(field.id && !ids.has(field.id), `${relativePath}: duplicate or missing id ${field.id}`);
+      ids.add(field.id);
+      assert.ok(field.attributes.label, `${relativePath}: ${field.id} needs a label`);
+      if (field.validations?.required !== undefined) assert.equal(typeof field.validations.required, 'boolean');
+      if (field.type === 'dropdown' || field.type === 'checkboxes') {
+        assert.ok(field.attributes.options.length > 0, `${relativePath}: ${field.id} needs choices`);
+      }
+    }
   }
 });

@@ -33,11 +33,10 @@ endpoint. Keep that distinction until the parent verifies response identity.
 Google documents these families in Antigravity, but does not establish the
 mapping of a local OpenCodex alias. [GTHINK] [GACCESS]
 
-Every Gemini experiment must use **only**
-`http://127.0.0.1:10100/v1` and the registered
-`google-antigravity/gemini-*` route. No Gemini key, direct API call, or Gemini
-CLI fallback is allowed by this study. Nothing in this research probed that
-endpoint.
+The September 5 study specified `http://127.0.0.1:10100/v1` and the registered
+`google-antigravity/gemini-*` route for its Gemini cohort. Direct API and CLI
+routes were outside that cohort. This research did not probe the endpoint;
+these settings describe the dated study, not future experiment requirements.
 
 Google's 3.8 migration guide tells clients to remove `temperature`, `top_p`,
 `top_k` and the old thinking-budget control. Use the documented thinking-level

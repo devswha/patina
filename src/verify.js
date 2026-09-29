@@ -20,7 +20,7 @@ function numbersIn(text) {
     // Normalize valid grouping commas (1,200 === 1200) and strip trailing
     // separators so the same number in a different format is not flagged as
     // dropped; non-standard grouping (1,2) is preserved to avoid false negatives.
-    const raw = m[0].replace(/\.+$/, '');
+    const raw = m[0].replace(/[.,]+$/, '');
     const normalized = GROUPED_THOUSANDS_RE.test(raw) ? raw.replace(/,/g, '') : raw;
     if (normalized) out.add(normalized);
   }

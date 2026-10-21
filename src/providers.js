@@ -52,13 +52,13 @@ export const PROVIDERS = {
     name: 'minimax',
     baseURL: 'https://api.minimax.io/v1',
     apiKeyEnv: 'MINIMAX_API_KEY',
-    defaultModel: 'MiniMax-M3',
+    defaultModel: 'MiniMax-M3.1-Flash',
   },
   'minimax-cn': {
     name: 'minimax-cn',
     baseURL: 'https://api.minimaxi.com/v1',
     apiKeyEnv: 'MINIMAX_API_KEY',
-    defaultModel: 'MiniMax-M3',
+    defaultModel: 'MiniMax-M3.1-Flash',
   },
 };
 

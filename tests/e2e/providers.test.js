@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { selectProvider, resolveProviderConfig } from '../../src/providers.js';
+import { chatCompletionsBody } from '../../src/llm-transport.js';
 
 function withEnv(envOverrides, fn) {
   const original = {};
@@ -43,11 +44,56 @@ describe('Provider Selection', () => {
       assert.strictEqual(globalRegion.apiKey, 'mm-env');
       assert.strictEqual(globalRegion.apiKeySource, 'env:MINIMAX_API_KEY');
       assert.strictEqual(globalRegion.baseURL, 'https://api.minimax.io/v1');
-      assert.strictEqual(globalRegion.model, 'MiniMax-M3');
+      assert.strictEqual(globalRegion.model, 'MiniMax-M3.1-Flash');
       const china = resolveProviderConfig({ provider: selectProvider('minimax-cn') });
       assert.strictEqual(china.baseURL, 'https://api.minimaxi.com/v1');
-      assert.strictEqual(china.model, 'MiniMax-M3');
+      assert.strictEqual(china.model, 'MiniMax-M3.1-Flash');
+
+      const m3 = resolveProviderConfig({
+        provider: selectProvider('minimax'),
+        model: 'MiniMax-M3',
+      });
+      assert.strictEqual(m3.model, 'MiniMax-M3');
+      assert.strictEqual(m3.modelSource, 'flag');
+
+      const custom = resolveProviderConfig({
+        provider: selectProvider('minimax-cn'),
+        model: 'custom-minimax-model',
+      });
+      assert.strictEqual(custom.model, 'custom-minimax-model');
+      assert.strictEqual(custom.modelSource, 'flag');
     });
+  });
+
+  it('preserves model environment precedence with and without a MiniMax preset', () => {
+    withEnv({ PATINA_MODEL: 'saved-model' }, () => {
+      assert.strictEqual(resolveProviderConfig({}).model, 'saved-model');
+      for (const name of ['minimax', 'minimax-cn']) {
+        const provider = selectProvider(name);
+        assert.strictEqual(resolveProviderConfig({ provider }).model, 'MiniMax-M3.1-Flash');
+        assert.strictEqual(resolveProviderConfig({ provider, model: 'MiniMax-M2.5' }).model, 'MiniMax-M2.5');
+      }
+    });
+  });
+
+  it('serializes MiniMax defaults and explicit models unchanged in chat completion requests', () => {
+    const prompt = 'Rewrite this sentence.';
+    for (const name of ['minimax', 'minimax-cn']) {
+      for (const model of [undefined, 'MiniMax-M3', 'MiniMax-M2.5', 'custom-minimax-model']) {
+        const resolved = resolveProviderConfig({ provider: selectProvider(name), model });
+        for (const stream of [false, true]) {
+          const body = JSON.parse(JSON.stringify(chatCompletionsBody({
+            prompt, model: resolved.model, temperature: 0.7, stream,
+          })));
+          assert.strictEqual(body.model, model ?? 'MiniMax-M3.1-Flash');
+          assert.deepStrictEqual(body.messages, [{ role: 'user', content: prompt }]);
+          assert.strictEqual(body.stream, stream ? true : undefined);
+          for (const field of ['thinking', 'reasoning_effort', 'reasoning_split', 'service_tier']) {
+            assert.ok(!(field in body), `${field} must remain omitted`);
+          }
+        }
+      }
+    }
   });
 });
 
